@@ -15,6 +15,85 @@ vi.mock('./keycloak-user-attributes.js', () => ({
 }));
 
 describe('readSvaMainserverCredentials', () => {
+  it('derives a secret-safe readiness result for missing, partial and complete pairs', async () => {
+    const { resolveMainserverCredentialReadiness } = await import('./mainserver-credentials.js');
+
+    expect(resolveMainserverCredentialReadiness(null)).toEqual({ status: 'unavailable' });
+    expect(resolveMainserverCredentialReadiness({})).toEqual({
+      status: 'missing',
+      missingAttributeNames: ['mainserverUserApplicationId', 'mainserverUserApplicationSecret'],
+    });
+    expect(
+      resolveMainserverCredentialReadiness({ mainserverUserApplicationId: ['app-id'] })
+    ).toEqual({
+      status: 'partial',
+      missingAttributeNames: ['mainserverUserApplicationSecret'],
+    });
+    expect(
+      resolveMainserverCredentialReadiness({ mainserverUserApplicationSecret: ['secret'] })
+    ).toEqual({
+      status: 'partial',
+      missingAttributeNames: ['mainserverUserApplicationId'],
+    });
+    expect(
+      resolveMainserverCredentialReadiness({
+        mainserverUserApplicationId: ['app-id'],
+        mainserverUserApplicationSecret: ['secret'],
+      })
+    ).toEqual({
+      status: 'ready',
+      attributeSource: 'canonical',
+      credentials: { apiKey: 'app-id', apiSecret: 'secret' },
+    });
+  });
+
+  it('verifies a persisted credential version without returning credential values', async () => {
+    const { createMainserverCredentialFingerprint, verifyMainserverCredentialReadback } =
+      await import('./mainserver-credentials.js');
+    const expectedFingerprint = createMainserverCredentialFingerprint({
+      instanceId: 'instance-1',
+      source: 'user',
+      principalId: 'subject-1',
+      credentials: { apiKey: 'app-id', apiSecret: 'secret' },
+    });
+
+    expect(
+      verifyMainserverCredentialReadback({
+        attributes: {
+          mainserverUserApplicationId: ['app-id'],
+          mainserverUserApplicationSecret: ['secret'],
+        },
+        expectedFingerprint,
+        instanceId: 'instance-1',
+        principalId: 'subject-1',
+      })
+    ).toEqual({ status: 'ready', credentialFingerprint: expectedFingerprint });
+
+    expect(
+      verifyMainserverCredentialReadback({
+        attributes: {
+          mainserverUserApplicationId: ['other-app-id'],
+          mainserverUserApplicationSecret: ['secret'],
+        },
+        expectedFingerprint,
+        instanceId: 'instance-1',
+        principalId: 'subject-1',
+      })
+    ).toEqual({ status: 'stale' });
+
+    expect(
+      verifyMainserverCredentialReadback({
+        attributes: {
+          sva_mainserver_api_key: ['app-id'],
+          sva_mainserver_api_secret: ['secret'],
+        },
+        expectedFingerprint,
+        instanceId: 'instance-1',
+        principalId: 'subject-1',
+      })
+    ).toEqual({ status: 'stale' });
+  });
+
   it('classifies complete, partial, missing and unavailable credential states', async () => {
     const { resolveMainserverCredentialStatus } = await import('./mainserver-credentials.js');
 
@@ -121,6 +200,20 @@ describe('readSvaMainserverCredentials', () => {
     });
   });
 
+  it('returns unavailable when the configured identity provider read fails', async () => {
+    state.resolveIdentityProvider.mockReturnValue({
+      provider: {
+        getUserAttributes: vi.fn().mockRejectedValue(new Error('keycloak unavailable')),
+      },
+    });
+
+    const { readSvaMainserverCredentialsWithStatus } = await import('./mainserver-credentials.js');
+
+    await expect(readSvaMainserverCredentialsWithStatus('subject-1')).resolves.toEqual({
+      status: 'identity_provider_unavailable',
+    });
+  });
+
   it('returns detailed status when required attributes are missing', async () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {
@@ -133,7 +226,8 @@ describe('readSvaMainserverCredentials', () => {
     const { readSvaMainserverCredentialsWithStatus } = await import('./mainserver-credentials.js');
 
     await expect(readSvaMainserverCredentialsWithStatus('subject-1')).resolves.toEqual({
-      status: 'missing_credentials',
+      status: 'partial_credentials',
+      missingAttributeNames: ['mainserverUserApplicationSecret'],
     });
   });
 

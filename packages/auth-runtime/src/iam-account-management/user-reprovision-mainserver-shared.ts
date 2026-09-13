@@ -1,17 +1,18 @@
 import type { ApiErrorCode } from '@sva/core';
 
 import type { IdentityProviderPort } from '../identity-provider-port.js';
-import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
 import { jsonResponse } from '../db.js';
 
 import { createApiError } from './api-helpers.js';
 import { provisionMainserverUserCredentials } from './mainserver-user-provisioning.js';
 import type { MainserverUserProvisioningError } from './mainserver-user-provisioning-error.js';
+import { persistProvisionedMainserverCredentials } from './mainserver-credential-persistence.js';
 import { emitActivityLog } from './shared-activity.js';
 import { completeIdempotency, reserveIdempotency } from './shared-idempotency.js';
 import { trackKeycloakCall, withInstanceScopedDb } from './shared.js';
 
-export const REPROVISION_MAINSERVER_ENDPOINT = 'POST:/api/v1/iam/users/$userId/reprovision-mainserver';
+export const REPROVISION_MAINSERVER_ENDPOINT =
+  'POST:/api/v1/iam/users/$userId/reprovision-mainserver';
 
 export type MainserverReprovisionActor = {
   readonly instanceId: string;
@@ -97,21 +98,28 @@ const mapMainserverProvisioningErrorToApiError = (
       };
     case 'missing_credentials':
     case 'organization_mainserver_credentials_missing':
+    case 'mainserver_credentials_missing':
+    case 'mainserver_credentials_partial':
       return {
         code: 'mainserver_credentials_missing',
         details: { dependency: 'sva_mainserver', reason_code: error.code },
         status: error.statusCode,
       };
     case 'identity_provider_unavailable':
+    case 'mainserver_credentials_unavailable':
       return {
         code: 'mainserver_credentials_unavailable',
         details: { dependency: 'sva_mainserver', reason_code: error.code },
         status: error.statusCode,
       };
     case 'unauthorized':
+    case 'mainserver_credentials_stale':
       return {
         code: 'mainserver_credentials_invalid',
-        details: { dependency: 'sva_mainserver', reason_code: 'mainserver_token_unauthorized' },
+        details: {
+          dependency: 'sva_mainserver',
+          reason_code: error.code === 'unauthorized' ? 'mainserver_token_unauthorized' : error.code,
+        },
         status: 409,
       };
     case 'local_user_conflict':
@@ -133,9 +141,14 @@ const mapMainserverProvisioningErrorToApiError = (
   }
 };
 
-export const buildProvisioningErrorResponse = (requestId: string | undefined, error: unknown): Response => {
+export const buildProvisioningErrorResponse = (
+  requestId: string | undefined,
+  error: unknown
+): Response => {
   if (error instanceof Error && error.name === 'MainserverUserProvisioningError') {
-    const mappedError = mapMainserverProvisioningErrorToApiError(error as MainserverUserProvisioningError);
+    const mappedError = mapMainserverProvisioningErrorToApiError(
+      error as MainserverUserProvisioningError
+    );
     const responseStatus =
       mappedError.details.reason_code === 'mainserver_tenant_forbidden' ||
       mappedError.details.reason_code === 'mainserver_request_rejected'
@@ -149,7 +162,12 @@ export const buildProvisioningErrorResponse = (requestId: string | undefined, er
       mappedError.details
     );
   }
-  return createApiError(500, 'internal_error', 'Mainserver-Daten konnten nicht aktualisiert werden.', requestId);
+  return createApiError(
+    500,
+    'internal_error',
+    'Mainserver-Daten konnten nicht aktualisiert werden.',
+    requestId
+  );
 };
 
 export const completeReprovisionIdempotency = async (input: {
@@ -183,36 +201,23 @@ export const reserveReprovisionIdempotency = async (input: {
     payloadHash: input.payloadHash,
   });
   if (reserve.status === 'replay') {
-    return { kind: 'response', response: jsonResponse(reserve.responseStatus, reserve.responseBody) } as const;
+    return {
+      kind: 'response',
+      response: jsonResponse(reserve.responseStatus, reserve.responseBody),
+    } as const;
   }
   if (reserve.status === 'conflict') {
     return {
       kind: 'response',
-      response: createTerminalReprovisionResponse(input.requestId, 409, 'idempotency_key_reuse', reserve.message),
+      response: createTerminalReprovisionResponse(
+        input.requestId,
+        409,
+        'idempotency_key_reuse',
+        reserve.message
+      ),
     } as const;
   }
   return { kind: 'reserved' } as const;
-};
-
-const persistMainserverCredentials = async (input: {
-  credentials: {
-    mainserverUserApplicationId: string;
-    mainserverUserApplicationSecret: string;
-  };
-  identityProvider: IdentityProviderPort;
-  keycloakSubject: string;
-}) => {
-  const existingAttributes = await trackKeycloakCall('get_user_attributes', () =>
-    input.identityProvider.getUserAttributes(input.keycloakSubject)
-  );
-  const nextAttributes = buildMainserverIdentityAttributes({
-    existingAttributes,
-    mainserverUserApplicationId: input.credentials.mainserverUserApplicationId,
-    mainserverUserApplicationSecret: input.credentials.mainserverUserApplicationSecret,
-  });
-  await trackKeycloakCall('update_user', () =>
-    input.identityProvider.updateUser(input.keycloakSubject, { attributes: nextAttributes })
-  );
 };
 
 const emitMainserverReprovisionAudit = async (input: {
@@ -240,7 +245,9 @@ const emitMainserverReprovisionAudit = async (input: {
     })
   );
 
-export const reprovisionMainserverCredentials = async (input: MainserverProvisioningSuccessInput) => {
+export const reprovisionMainserverCredentials = async (
+  input: MainserverProvisioningSuccessInput
+) => {
   const credentials = await provisionMainserverUserCredentials({
     actor: input.actor,
     actorSubject: input.actorSubject,
@@ -262,10 +269,12 @@ export const reprovisionMainserverCredentials = async (input: MainserverProvisio
       ),
     } as const;
   }
-  await persistMainserverCredentials({
+  await persistProvisionedMainserverCredentials({
     credentials,
     identityProvider: input.identityProvider,
+    instanceId: input.actor.instanceId,
     keycloakSubject: input.user.keycloakSubject,
+    trackKeycloakCall,
   });
   await emitMainserverReprovisionAudit({
     actor: input.actor,

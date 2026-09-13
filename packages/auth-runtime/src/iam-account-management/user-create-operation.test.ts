@@ -80,20 +80,122 @@ describe('executeCreateUser', () => {
       executionMode: 'tenant_admin' as const,
     };
 
-    const { persistProvisionedMainserverCredentials } = await import('./user-create-operation.js');
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
     await persistProvisionedMainserverCredentials({
-      identityProvider,
+      identityProvider: identityProvider.provider,
+      instanceId: 'instance-1',
       keycloakSubject: 'kc-user-1',
       credentials: {
         dataProviderId: '4711',
         mainserverUserApplicationId: 'mainserver-app-1',
         mainserverUserApplicationSecret: 'mainserver-secret-1',
       },
+      trackKeycloakCall: state.trackKeycloakCall,
     });
 
     expect(identityProvider.provider.getUserAttributes).toHaveBeenCalledWith('kc-user-1');
     expect(updateUser).not.toHaveBeenCalled();
   }, 15_000);
+
+  it('rejects a partial canonical readback after writing provisioned credentials', async () => {
+    const getUserAttributes = vi
+      .fn()
+      .mockResolvedValueOnce({ locale: ['de'] })
+      .mockResolvedValueOnce({
+        locale: ['de'],
+        mainserverUserApplicationId: ['mainserver-app-1'],
+      });
+    const identityProvider = {
+      provider: {
+        getUserAttributes,
+        updateUser: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: identityProvider.provider,
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: 'mainserver-app-1',
+          mainserverUserApplicationSecret: 'mainserver-secret-1',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'mainserver_credentials_partial',
+      statusCode: 409,
+    });
+    expect(getUserAttributes).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a stale canonical readback after writing provisioned credentials', async () => {
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: {
+          getUserAttributes: vi
+            .fn()
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({
+              mainserverUserApplicationId: ['other-app'],
+              mainserverUserApplicationSecret: ['other-secret'],
+            }),
+          updateUser: vi.fn(async () => undefined),
+        },
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: 'mainserver-app-1',
+          mainserverUserApplicationSecret: 'mainserver-secret-1',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).rejects.toMatchObject({ code: 'mainserver_credentials_stale', statusCode: 409 });
+  });
+
+  it('reports an unavailable canonical readback after writing provisioned credentials', async () => {
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: {
+          getUserAttributes: vi
+            .fn()
+            .mockResolvedValueOnce({})
+            .mockRejectedValueOnce(new Error('keycloak unavailable')),
+          updateUser: vi.fn(async () => undefined),
+        },
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: 'mainserver-app-1',
+          mainserverUserApplicationSecret: 'mainserver-secret-1',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).rejects.toMatchObject({
+      code: 'mainserver_credentials_unavailable',
+      statusCode: 503,
+      retryable: true,
+    });
+  });
 
   it('creates a user without sending an invite when the payload disables it', async () => {
     const identityProvider = {
@@ -145,13 +247,14 @@ describe('executeCreateUser', () => {
       },
       roleNames: ['system_admin'],
     });
+    let attributes: Record<string, readonly string[]> = { locale: ['de'] };
     const identityProvider = {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
-        getUserAttributes: vi.fn(async () => ({
-          locale: ['de'],
-        })),
-        updateUser: vi.fn(async () => undefined),
+        getUserAttributes: vi.fn(async () => attributes),
+        updateUser: vi.fn(async (_subject: string, payload: { attributes: typeof attributes }) => {
+          attributes = payload.attributes;
+        }),
         syncRoles: vi.fn(async () => undefined),
       },
       realm: 'tenant-realm',

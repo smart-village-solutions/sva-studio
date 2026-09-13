@@ -262,6 +262,97 @@ describe('content projection reconciliation paging', () => {
     ]);
   });
 
+  it('blocks slim projection before the upstream call when credentials are not ready', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'partial_credentials',
+      missingAttributeNames: ['mainserverUserApplicationSecret'],
+    });
+    const { loadMainserverProjectionPage } =
+      await import('./iam-content-list-projection-source.server.js');
+
+    await expect(
+      loadMainserverProjectionPage(
+        {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'kc-user-1',
+          actorAccountId: 'account-1',
+          contentType: 'news.article',
+          organizationId: 'org-1',
+          actingPrincipalType: 'user',
+        },
+        { page: 1, pageSize: 100 }
+      )
+    ).rejects.toMatchObject({ code: 'mainserver_credentials_partial' });
+    expect(state.listSvaMainserverProjection).not.toHaveBeenCalled();
+  });
+
+  it('persists a stable credential-readiness error without calling the upstream', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'partial_credentials',
+      missingAttributeNames: ['mainserverUserApplicationSecret'],
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+    const payload = (await response.json()) as { data: { status: string } };
+
+    expect(payload.data.status).toBe('failed');
+    expect(state.listSvaMainserverProjection).not.toHaveBeenCalled();
+    expect(
+      fixture.syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article')
+    ).toEqual(
+      expect.objectContaining({
+        last_failed_at: expect.any(String),
+        last_error_code: 'mainserver_credentials_partial',
+      })
+    );
+  });
+
+  it('restores the credential cooldown per principal from persisted sync state', async () => {
+    const scopeKey = 'de-musterhausen::account-1::org-1::user::news.article';
+    fixture.syncStates.set(`news.article::${scopeKey}`, {
+      sync_scope_key: scopeKey,
+      last_started_at: new Date().toISOString(),
+      last_succeeded_at: null,
+      last_failed_at: new Date(Date.now() - 60_000).toISOString(),
+      last_error_code: 'mainserver_credentials_missing',
+      last_error_message: 'Mainserver-Credentials sind nicht einsatzbereit.',
+      projected_count: 0,
+    });
+    const { resetContentProjectionRuntimeStateForTests, triggerMainserverProjectionRefreshBatch } =
+      await import('./iam-content-list-projection-sync.server.js');
+    resetContentProjectionRuntimeStateForTests();
+
+    const target = {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      contentType: 'news.article',
+      actingPrincipalType: 'user',
+    } as const;
+    await triggerMainserverProjectionRefreshBatch([target], {
+      force: false,
+      awaitCompletion: true,
+      trigger: 'scheduler',
+    });
+    expect(state.listSvaMainserverNews).not.toHaveBeenCalled();
+
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    await triggerMainserverProjectionRefreshBatch(
+      [{ ...target, keycloakSubject: 'kc-user-2', actorAccountId: 'account-2' }],
+      { force: false, awaitCompletion: true, trigger: 'scheduler' }
+    );
+    expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(1);
+  });
+
   it('persists the FAQ language code from slim projection rows', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     state.resolveEffectivePermissions.mockResolvedValue({
@@ -460,13 +551,15 @@ describe('content projection reconciliation paging', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(fixture.projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          source_entity_id: 'news-page-1',
-          projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
-        }),
-      ])
+    await vi.waitFor(() =>
+      expect(fixture.projectionRows).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source_entity_id: 'news-page-1',
+            projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
+          }),
+        ])
+      )
     );
     expect(payload.metadata.mainserverSyncStates).toEqual([
       expect.objectContaining({

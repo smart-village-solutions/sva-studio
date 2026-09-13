@@ -25,6 +25,7 @@ import {
 } from './iam-content-list-projection-repository.server.js';
 import {
   GENERIC_ITEMS_CONTENT_TYPE,
+  assertProjectionCredentialsReady,
   enrichMutationProjectionRowWithBinding,
   loadMainserverProjectionMutationRow,
   requireMutationProjectionPrincipalContext,
@@ -118,6 +119,7 @@ const upsertProjectionMutation = async (
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
+      await assertProjectionCredentialsReady(input.target);
       const loadedRow =
         input.row ?? (await loadMainserverProjectionMutationRow(input.target, input.entityId));
       const row = await enrichMutationProjectionRowWithBinding(input.target, loadedRow);

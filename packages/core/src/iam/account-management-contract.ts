@@ -56,6 +56,8 @@ export type ApiErrorCode =
   | 'database_unavailable'
   | 'mainserver_configuration_incomplete'
   | 'mainserver_credentials_missing'
+  | 'mainserver_credentials_partial'
+  | 'mainserver_credentials_stale'
   | 'mainserver_credentials_unavailable'
   | 'mainserver_credentials_invalid'
   | 'mainserver_user_conflict'

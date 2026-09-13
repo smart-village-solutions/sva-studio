@@ -179,10 +179,7 @@ describe('content projection mutation recovery and audit', () => {
       entityId: 'poi-mutation-queued-1',
     });
 
-    for (let index = 0; index < 10; index += 1) {
-      await Promise.resolve();
-    }
-    expect(state.getSvaMainserverPoi).toHaveBeenCalledTimes(1);
+    await expect.poll(() => state.getSvaMainserverPoi.mock.calls.length).toBe(1);
 
     releaseBatchList.current?.();
 

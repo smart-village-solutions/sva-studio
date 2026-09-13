@@ -27,6 +27,12 @@ import {
 export { enqueueProjectionWork } from './iam-content-list-projection-sync-worker.server.js';
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
+const DURABLE_CREDENTIAL_ERROR_COOLDOWN_MS = 15 * 60 * 1000;
+const durableCredentialErrorCodes = new Set([
+  'mainserver_credentials_missing',
+  'mainserver_credentials_partial',
+  'mainserver_credentials_stale',
+]);
 
 type NormalizedProjectionSyncStateRow = Required<ProjectionSyncStateRow>;
 
@@ -168,6 +174,33 @@ type ProjectionRefreshOptions = Readonly<{
   trigger: ProjectionRefreshTrigger;
 }>;
 
+export const isProjectionRefreshDue = (input: {
+  readonly state: ContentProjectionSyncState | undefined;
+  readonly options: ProjectionRefreshOptions;
+  readonly nowMs?: number;
+}): boolean => {
+  if (!input.state) return true;
+
+  if (
+    input.options.trigger !== 'manual' &&
+    input.state.lastErrorCode &&
+    durableCredentialErrorCodes.has(input.state.lastErrorCode) &&
+    input.state.lastFailedAt
+  ) {
+    const lastFailedAtMs = Date.parse(input.state.lastFailedAt);
+    if (
+      Number.isFinite(lastFailedAtMs) &&
+      (input.nowMs ?? Date.now()) - lastFailedAtMs < DURABLE_CREDENTIAL_ERROR_COOLDOWN_MS
+    ) {
+      return false;
+    }
+  }
+
+  if (input.options.force) return true;
+
+  return !input.state.hasSnapshot || input.state.isStale;
+};
+
 const partitionProjectionSyncs = (targets: readonly ContentProjectionSyncTarget[]) => {
   const pendingSyncs = new Map<string, Promise<Response | null>>();
   const idleTargets: ContentProjectionSyncTarget[] = [];
@@ -252,8 +285,7 @@ export const triggerMainserverProjectionRefreshBatch = async (
 
   const currentStates = await computeProjectionSyncStates(targets);
   const targetsToRefresh = targets.filter((_target, index) => {
-    const currentState = currentStates[index];
-    return options.force || !currentState || !currentState.hasSnapshot || currentState.isStale;
+    return isProjectionRefreshDue({ state: currentStates[index], options });
   });
 
   if (targetsToRefresh.length === 0) {

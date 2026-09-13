@@ -53,7 +53,7 @@ vi.mock('../iam-account-management/mainserver-upstream-http.js', () => ({
 vi.mock('../iam-account-management/mainserver-upstream-url-validation.js', () => ({
   normalizeProvisioningUpstreamUrl: state.normalizeProvisioningUpstreamUrl,
 }));
-vi.mock('../iam-account-management/user-create-operation.js', () => ({
+vi.mock('../iam-account-management/mainserver-credential-persistence.js', () => ({
   persistProvisionedMainserverCredentials: state.persistProvisionedMainserverCredentials,
 }));
 vi.mock('../iam-account-management/user-create-persistence.js', () => ({
@@ -669,13 +669,15 @@ describe('organization Mainserver provisioning', () => {
     });
     expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
     expect(state.persistProvisionedMainserverCredentials).toHaveBeenCalledWith({
-      identityProvider: { provider },
+      identityProvider: provider,
+      instanceId: 'de-koeln',
       keycloakSubject: 'kc-technical-1',
       credentials: {
         dataProviderId: '4711',
         mainserverUserApplicationId: 'existing-app',
         mainserverUserApplicationSecret: 'existing-secret',
       },
+      trackKeycloakCall: expect.any(Function),
     });
     expect(state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0]).toBeLessThan(
       state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0] ?? 0

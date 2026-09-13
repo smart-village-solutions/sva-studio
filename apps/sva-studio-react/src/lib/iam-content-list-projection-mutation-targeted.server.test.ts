@@ -126,6 +126,12 @@ describe('targeted content projection mutations', () => {
   });
 
   it('does not invent user ownership for mutation projection refreshes', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key', apiSecret: 'secret' },
+      credentialFingerprint: 'c'.repeat(64),
+    });
     state.getSvaMainserverPoi.mockResolvedValue({
       id: 'poi-user-1',
       name: 'User POI',
@@ -169,6 +175,12 @@ describe('targeted content projection mutations', () => {
   });
 
   it('derives a targeted personal owner only from the exact verified binding of the immutable context', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key', apiSecret: 'secret' },
+      credentialFingerprint: 'c'.repeat(64),
+    });
     state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
       dataProviderId: 'provider-user',
     });
@@ -232,6 +244,15 @@ describe('targeted content projection mutations', () => {
   });
 
   it('moves an account transfer projection into the recipient scope and keeps the audit actor', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
+      async (input: { keycloakSubject: string }) => ({
+        status: 'ok',
+        source: 'user',
+        credentials: { apiKey: 'key', apiSecret: 'secret' },
+        credentialFingerprint:
+          input.keycloakSubject === 'kc-target' ? 'b'.repeat(64) : 'a'.repeat(64),
+      })
+    );
     state.getSvaMainserverPoi.mockResolvedValue({
       id: 'poi-transfer-1',
       name: 'Übertragener POI',
@@ -312,6 +333,32 @@ describe('targeted content projection mutations', () => {
 
     expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
     expect(state.listSvaMainserverNews).not.toHaveBeenCalled();
+    expect(fixture.projectionRows).toEqual([]);
+  });
+
+  it('rejects a mutation follow-up when the credential version changed', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'new-key', apiSecret: 'new-secret' },
+      credentialFingerprint: 'b'.repeat(64),
+    });
+
+    await expect(
+      refreshProjectedContentsForMainserverMutation({
+        actingPrincipalType: 'user',
+        authorizationMode: 'exact',
+        contentType: 'news.article',
+        credentialFingerprint: 'a'.repeat(64),
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        operation: 'update',
+        entityId: 'news-1',
+      })
+    ).rejects.toMatchObject({ code: 'mainserver_credentials_stale' });
+
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
     expect(fixture.projectionRows).toEqual([]);
   });
 });

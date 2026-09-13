@@ -48,6 +48,20 @@ const toDiagnosticString = (value: unknown): string => {
   }
 };
 
+const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
+
+const readDiagnosticErrorType = (error: unknown): string => {
+  const name = readProperty(error, 'name');
+  return error instanceof Error ? error.name : typeof name === 'string' ? name : typeof error;
+};
+
+const readDiagnosticErrorCode = (error: unknown): string => {
+  const code = readProperty(error, 'code');
+  return typeof code === 'string' && /^[A-Za-z0-9_:-]{2,100}$/u.test(code)
+    ? code
+    : INGRESS_FAILURE_CLASSIFICATION;
+};
+
 const snapshotError = (error: unknown): Readonly<Record<string, unknown>> => ({
   name:
     error instanceof Error
@@ -173,10 +187,14 @@ const ingressStep: StepHandler = async ({
     logger.warn('tenant_ingress_publish_failed', {
       operation: 'publish_tenant_ingress',
       result: 'failed',
+      request_id: run.requestId,
       instance_id: instance.instanceId,
       primary_hostname: instance.primaryHostname,
       run_id: run.id,
       step_key: 'ingress',
+      error_type: readDiagnosticErrorType(error),
+      error_code: readDiagnosticErrorCode(error),
+      classification: INGRESS_FAILURE_CLASSIFICATION,
       ...buildIngressFailureDiagnostics(error),
     });
     throw error;

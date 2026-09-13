@@ -372,6 +372,7 @@ describe('tenant provisioning parent orchestrator', () => {
     Object.assign(harness.getRun(), {
       status: 'provisioning',
       stepKey: 'ingress',
+      requestId: 'request-ingress-1',
     });
     const cause = new Error('authorization: Bearer inner-secret');
     const publishError = Object.assign(new Error('open failed password=outer-secret'), {
@@ -390,9 +391,13 @@ describe('tenant provisioning parent orchestrator', () => {
       expect.objectContaining({
         operation: 'publish_tenant_ingress',
         result: 'failed',
+        request_id: 'request-ingress-1',
         instance_id: 'tenant-a',
         run_id: '00000000-0000-4000-8000-000000000001',
         step_key: 'ingress',
+        error_type: 'Error',
+        error_code: 'EACCES',
+        classification: 'tenant_provisioning_step_failed',
         diagnostic_error: expect.objectContaining({
           name: 'Error',
           message: 'open failed password=[REDACTED]',
@@ -420,6 +425,55 @@ describe('tenant provisioning parent orchestrator', () => {
       errorCode: 'tenant_provisioning_step_failed',
       completedAt: undefined,
     });
+  });
+
+  it('stops ingress error diagnostics at a self-referential cause', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'ingress',
+    });
+    const publishError = Object.assign(new Error('cyclic ingress failure'), {
+      cause: undefined as unknown,
+    });
+    publishError.cause = publishError;
+    vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'tenant_ingress_publish_failed',
+      expect.objectContaining({ diagnostic_causes: [] })
+    );
+  });
+
+  it('limits ingress error diagnostics to five nested causes', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'ingress',
+    });
+    let cause = new Error('cause-7');
+    for (let index = 6; index >= 1; index -= 1) {
+      cause = Object.assign(new Error(`cause-${index}`), { cause });
+    }
+    const publishError = Object.assign(new Error('root ingress failure'), { cause });
+    vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'tenant_ingress_publish_failed',
+      expect.objectContaining({
+        diagnostic_causes: [
+          expect.objectContaining({ message: 'cause-1' }),
+          expect.objectContaining({ message: 'cause-2' }),
+          expect.objectContaining({ message: 'cause-3' }),
+          expect.objectContaining({ message: 'cause-4' }),
+          expect.objectContaining({ message: 'cause-5' }),
+        ],
+      })
+    );
   });
 
   it('fails closed when mutable registry configuration drifts from the snapshot', async () => {

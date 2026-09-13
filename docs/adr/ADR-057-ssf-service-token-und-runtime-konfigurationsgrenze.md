@@ -72,6 +72,14 @@ Studio-Sitzungen beenden würde. Fehler verbleiben fail-closed; SSF vergleicht
 den Tokenclaim mit der vom Runtime-Endpunkt gelieferten
 `authorizationRevision`.
 
+Eine revisionsgleich bestätigte leere IAM-Projektion gilt als technisch
+konvergiert. Sie hält den Mandanten jedoch aus dem Admin-Login-Verzeichnis, bis
+der persistierte bestätigte Projektionszustand mindestens ein wirksam
+SSF-berechtigtes Subject enthält. Diese zusätzliche Directory-Voraussetzung
+sperrt den Runtime-Konfigurationsabruf für gültige Gäste-Sessions nicht. Beide
+Request-Pfade bleiben schreibfrei und lösen weder eine Keycloak-
+Benutzerauflistung noch eine neue Projektion aus.
+
 Root-Actions werden nicht in diesen Tenant-Pfad projiziert. Das SSF-Plugin
 registriert `ssf.configuration.server.manage`,
 `ssf.configuration.tenant-policy.manage` sowie die erforderlichen Root-Reads
@@ -115,6 +123,9 @@ Konfigurationen oder Revisionen berechnen.
   Projektionspfade, obwohl ihre Action-IDs im selben `ssf`-Namespace liegen.
 - Gesprächsinhalte, Gäste-Sessions und Auswertungsdaten bleiben außerhalb des
   Runtime-Konfigurationsvertrags.
+- Ein Mandant ohne projiziertes Subject erscheint nicht in der Admin-Login-
+  Auswahl; seine technisch konvergierte Runtime-Basis bleibt für gültige
+  Gäste-Sessions verfügbar.
 
 ## Verworfene Alternativen
 

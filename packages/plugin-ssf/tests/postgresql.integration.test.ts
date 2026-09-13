@@ -7,6 +7,7 @@ import {
   createPostgresSsfAuthorizationProjectionStore,
   createSsfConfigurationRevision,
   createSsfAuthorizationRevision,
+  hasReadySsfAuthorizationProjectionSubjects,
   markSsfAuthorizationProjectionReady,
   provisionSsfTenant,
   readSsfConfigurationOverrides,
@@ -306,6 +307,9 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       })
     ).toBe(true);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBe(revision);
+    await expect(hasReadySsfAuthorizationProjectionSubjects(tenantPool, 'tenant-a')).resolves.toBe(
+      true
+    );
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-b')).resolves.toBeNull();
     const persisted = await rootPool.query<{
       sessions_revoked_revision: string | null;
@@ -330,6 +334,9 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       })
     ).toBe(true);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+    await expect(hasReadySsfAuthorizationProjectionSubjects(tenantPool, 'tenant-a')).resolves.toBe(
+      false
+    );
     expect(
       await claimSsfAuthorizationProjection(rootPool, {
         instanceId: 'tenant-b',
@@ -345,6 +352,37 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       subjects: [{ ...desiredSubject, permissions: [] }],
     });
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+
+    const empty = { ...desired, subjects: [] };
+    const emptyState = await stageSsfAuthorizationProjection(rootPool, empty);
+    const emptyRevision = createSsfAuthorizationRevision(empty);
+    expect(
+      await claimSsfAuthorizationProjection(rootPool, {
+        instanceId: 'tenant-a',
+        generation: emptyState.generation,
+        desiredRevision: emptyRevision,
+      })
+    ).toBe(true);
+    expect(
+      await confirmSsfAuthorizationProjectionReadBack(rootPool, {
+        desired: empty,
+        readBack: empty,
+        generation: emptyState.generation,
+      })
+    ).toBe(true);
+    expect(
+      await markSsfAuthorizationProjectionReady(rootPool, {
+        instanceId: 'tenant-a',
+        generation: emptyState.generation,
+        authorizationRevision: emptyRevision,
+      })
+    ).toBe(true);
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBe(
+      emptyRevision
+    );
+    await expect(hasReadySsfAuthorizationProjectionSubjects(tenantPool, 'tenant-a')).resolves.toBe(
+      false
+    );
   });
 
   it('serializes projection work per tenant while allowing another tenant to proceed', async () => {

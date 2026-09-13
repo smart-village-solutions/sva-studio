@@ -228,6 +228,12 @@ describe('SSF runtime plugin service host gates', () => {
       'ssf_tenant_not_ready',
     ],
     [
+      'login readiness not confirmed',
+      () => readLoginReadiness.mockResolvedValue(false),
+      409,
+      'ssf_tenant_not_ready',
+    ],
+    [
       'missing tenant timezone',
       () => readInstance.mockResolvedValue({ ...instance(), timeZone: '' }),
       409,

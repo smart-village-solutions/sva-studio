@@ -6,6 +6,7 @@ import {
   confirmSsfAuthorizationProjectionReadBack,
   createPostgresSsfAuthorizationProjectionStore,
   createSsfAuthorizationRevision,
+  hasReadySsfAuthorizationProjectionSubjects,
   markSsfAuthorizationProjectionReady,
   readReadySsfAuthorizationRevision,
   stageSsfAuthorizationProjection,
@@ -240,5 +241,66 @@ describe('SSF authorization projection repository', () => {
       ['tenant-a']
     );
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('reads subject availability only from an exactly converged projection', async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: null, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ confirmed_has_subjects: true }] })
+        .mockResolvedValueOnce({ rowCount: null, rows: [] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+
+    await expect(hasReadySsfAuthorizationProjectionSubjects(pool, 'tenant-a')).resolves.toBe(true);
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('SELECT confirmed_has_subjects'),
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('desired_revision = confirmed_revision'),
+      ['tenant-a']
+    );
+  });
+
+  it('treats missing subject evidence in a historical schema as unavailable', async () => {
+    const missingColumnError = Object.assign(new Error('column does not exist'), { code: '42703' });
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: null, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockRejectedValueOnce(missingColumnError)
+        .mockResolvedValueOnce({ rowCount: null, rows: [] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+
+    await expect(hasReadySsfAuthorizationProjectionSubjects(pool, 'tenant-a')).resolves.toBe(false);
+    expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('preserves database errors other than a missing subject evidence column', async () => {
+    const databaseError = Object.assign(new Error('database unavailable'), { code: '57P01' });
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: null, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockRejectedValueOnce(databaseError)
+        .mockResolvedValueOnce({ rowCount: null, rows: [] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+
+    await expect(hasReadySsfAuthorizationProjectionSubjects(pool, 'tenant-a')).rejects.toBe(
+      databaseError
+    );
   });
 });

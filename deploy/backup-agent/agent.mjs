@@ -812,6 +812,7 @@ export const buildSsfRuntimePrincipalReconciliationSql = (target) => {
   const database = sqlIdentifier(target.postgresDatabase);
   const runtimeRole = sqlIdentifier(target.runtimeRole);
   const runtimeUser = sqlIdentifier(target.runtimeUser);
+  const schemaOwner = sqlIdentifier(target.schemaOwner);
   return `
 DO $restore_principal_guard$
 BEGIN
@@ -822,6 +823,7 @@ BEGIN
 END
 $restore_principal_guard$;
 
+SET ROLE ${schemaOwner};
 GRANT ${runtimeRole} TO ${runtimeUser} WITH INHERIT FALSE;
 GRANT CONNECT ON DATABASE ${database} TO ${runtimeUser};
 GRANT USAGE ON SCHEMA ssf TO ${runtimeRole};
@@ -831,6 +833,22 @@ GRANT SELECT (
   instance_id, generation, status, desired_revision, confirmed_revision,
   sessions_revoked_revision, last_error_code
 ) ON ssf.authorization_projections TO ${runtimeRole};
+
+DO $restore_subject_evidence_grant$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema = 'ssf'
+       AND table_name = 'authorization_projections'
+       AND column_name = 'confirmed_has_subjects'
+  ) THEN
+    GRANT SELECT (confirmed_has_subjects)
+      ON ssf.authorization_projections TO ${runtimeRole};
+  END IF;
+END
+$restore_subject_evidence_grant$;
+RESET ROLE;
 `;
 };
 

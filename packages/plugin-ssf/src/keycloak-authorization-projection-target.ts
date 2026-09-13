@@ -164,9 +164,7 @@ export const createSsfKeycloakAuthorizationProjectionTarget = (
     if (!(await dependencies.readLoginReadiness?.(instanceId))) return false;
     try {
       const projection = await readBackProjection(dependencies, instanceId);
-      return (
-        projection.subjects.length > 0 && createSsfAuthorizationRevision(projection) === revision
-      );
+      return createSsfAuthorizationRevision(projection) === revision;
     } catch (error) {
       if (
         error instanceof Error &&

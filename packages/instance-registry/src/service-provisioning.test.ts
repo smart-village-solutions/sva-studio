@@ -9,7 +9,7 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 type ProvisioningRepositoryMock = Pick<
   InstanceRegistryRepository,
-  'appendAuditEvent' | 'createProvisioningRun' | 'setInstanceStatus'
+  'appendAuditEvent' | 'createProvisioningRun' | 'listModuleActivations' | 'setInstanceStatus'
 >;
 
 const asRepository = (
@@ -22,6 +22,12 @@ const createRun = (status: InstanceProvisioningRun['status']): InstanceProvision
   operation: 'create',
   status,
   idempotencyKey: 'idem-1',
+  snapshotVersion: '1.0',
+  desiredSnapshot: {},
+  attemptCount: 0,
+  nextAttemptAt: '2026-01-01T00:00:00.000Z',
+  deadlineAt: '2026-01-01T00:30:00.000Z',
+  terminalEvidence: {},
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 });
@@ -69,7 +75,11 @@ describe('service-provisioning', () => {
       appendAuditEvent: vi.fn(async () => undefined),
     } satisfies Partial<ProvisioningRepositoryMock>;
 
-    await createProvisioningArtifacts(asRepository(repository), baseInstance, baseInput);
+    await createProvisioningArtifacts(
+      { repository: asRepository(repository), invalidateHost: vi.fn() },
+      baseInstance,
+      baseInput
+    );
 
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -84,6 +94,58 @@ describe('service-provisioning', () => {
       expect.objectContaining({
         instanceId: 'de-test',
         eventType: 'instance_requested',
+      })
+    );
+  });
+
+  it('binds effective plugin lifecycle and OIDC contracts to an automated run', async () => {
+    const repository = {
+      createProvisioningRun: vi.fn(async () => createRun('requested')),
+      appendAuditEvent: vi.fn(async () => undefined),
+      listModuleActivations: vi.fn(async () => [
+        {
+          instanceId: 'de-test',
+          moduleId: 'ssf',
+          activationPolicy: 'default_on' as const,
+          effectiveActive: true,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    } satisfies Partial<ProvisioningRepositoryMock>;
+    const lifecycle = {
+      pluginId: 'ssf',
+      contractVersion: 1 as const,
+      contractRevision: 'ssf-1:contract',
+      operations: [{ operation: 'provision' as const, jobTypeId: 'ssf.provision' }],
+      readinessChecks: [{ checkId: 'login', titleKey: 'ssf.login', required: true }],
+    };
+    const oidcClient = {
+      pluginId: 'ssf',
+      contractVersion: '1.0' as const,
+      clientId: 'ssf',
+      audience: 'ssf',
+      enabled: false as const,
+    };
+
+    await createProvisioningArtifacts(
+      {
+        repository: asRepository(repository),
+        invalidateHost: vi.fn(),
+        pluginTenantLifecycleRegistry: new Map([['ssf', lifecycle]]),
+        readPluginOidcClientRequirements: () => [oidcClient],
+      },
+      { ...baseInstance, assignedModules: ['ssf'] },
+      baseInput,
+      'kassel-traefik-file'
+    );
+
+    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desiredSnapshot: expect.objectContaining({
+          pluginSnapshotVersion: '1.0',
+          pluginLifecycles: [lifecycle],
+          pluginOidcClients: [oidcClient],
+        }),
       })
     );
   });

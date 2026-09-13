@@ -1,10 +1,16 @@
 import { createPluginTenantReadinessReadModel } from '@sva/plugin-sdk';
 
+import type { PluginTenantLifecycleRegistryEntry } from '@sva/plugin-sdk';
 import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import { withPluginTenantLifecycleRepository } from '../plugin-operations/repository.js';
 
-export const readConfiguredPluginTenantReadiness = async (instanceId: string) => {
+export const readConfiguredPluginTenantReadiness = async (
+  instanceId: string,
+  definitions: readonly PluginTenantLifecycleRegistryEntry[] = [
+    ...readInstanceRegistryPluginTenantLifecycleRegistry().values(),
+  ]
+) => {
   const [activations, lifecycleRecords] = await Promise.all([
     withRegistryRepository((repository) => repository.listModuleActivations(instanceId)),
     withPluginTenantLifecycleRepository(instanceId, (repository) =>
@@ -18,7 +24,7 @@ export const readConfiguredPluginTenantReadiness = async (instanceId: string) =>
     lifecycleRecords.map((lifecycle) => [lifecycle.pluginId, lifecycle])
   );
 
-  return [...readInstanceRegistryPluginTenantLifecycleRegistry().values()]
+  return definitions
     .map((definition) => {
       const activation = activationsByPluginId.get(definition.pluginId);
       if (!activation) {

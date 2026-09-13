@@ -20,6 +20,7 @@ import type {
   ExecuteInstanceKeycloakProvisioningInput,
   InstanceModuleMutationResult,
   ReconcileInstanceKeycloakInput,
+  RetryTenantProvisioningInput,
   RevokeInstanceModuleInput,
   SeedInstanceIamBaselineInput,
   UpdateInstanceInput,
@@ -60,6 +61,23 @@ export type InstanceModuleIamRegistryEntry = {
   readonly systemAdminPermissionExclusions?: readonly string[];
 };
 
+export type ProvisioningPluginTenantLifecycleContract = Readonly<{
+  pluginId: string;
+  contractVersion: 1;
+  contractRevision: string;
+  operations: readonly Readonly<{
+    operation: 'provision' | 'reconcile' | 'suspend' | 'reactivate' | 'readiness';
+    jobTypeId: string;
+    supportsCancellation?: boolean;
+  }>[];
+  readinessChecks: readonly Readonly<{
+    checkId: string;
+    titleKey: string;
+    required: boolean;
+    repairOperation?: 'provision' | 'reconcile' | 'suspend' | 'reactivate';
+  }>[];
+}>;
+
 type KeycloakProvisioningContext = {
   instanceId: string;
   primaryHostname: string;
@@ -99,6 +117,7 @@ export type InstanceRegistryService = {
   createProvisioningRequest(
     input: CreateInstanceProvisioningInput
   ): Promise<CreateInstanceProvisioningResult>;
+  retryTenantProvisioning(input: RetryTenantProvisioningInput): Promise<IamInstanceListItem | null>;
   updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;
@@ -152,6 +171,35 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly resolveProvisioningAuthIssuerUrl?: (input: {
+    readonly parentDomain: string;
+    readonly authRealm: string;
+    readonly authIssuerUrl?: string;
+  }) => string | undefined;
+  readonly isAutomatedTenantProvisioningEnabled?: (input: {
+    readonly parentDomain: string;
+  }) => boolean;
+  readonly publishTenantIngress?: (input: {
+    readonly instanceId: string;
+    readonly primaryHostname: string;
+  }) => Promise<Readonly<{ routerName: string; configHash: string }>>;
+  readonly probeTenantEndpoint?: (input: {
+    readonly kind: 'ingress' | 'login';
+    readonly primaryHostname: string;
+    readonly authIssuerUrl: string;
+    readonly authClientId: string;
+    readonly expectedRouterName: string;
+    readonly expectedConfigHash: string;
+  }) => Promise<Readonly<Record<string, unknown>>>;
+  readonly readProvisioningModuleReadiness?: (input: {
+    readonly instanceId: string;
+    readonly lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
+  }) => Promise<
+    Readonly<{
+      status: 'ready' | 'pending' | 'blocked';
+      evidence: Readonly<Record<string, unknown>>;
+    }>
+  >;
   readonly reservedHostnames?: readonly string[] | (() => readonly string[]);
   readonly reservedOidcClientIds?: readonly string[] | (() => readonly string[]);
   readonly invalidatePermissionSnapshots?: (input: {
@@ -170,8 +218,7 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
-  readonly readPluginOidcClientRequirements?: () =>
-    KeycloakProvisioningInput['pluginOidcClients'];
+  readonly readPluginOidcClientRequirements?: () => KeycloakProvisioningInput['pluginOidcClients'];
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;
@@ -218,7 +265,7 @@ export type InstanceRegistryServiceDeps = {
   readonly moduleIamRegistry?: ReadonlyMap<string, InstanceModuleIamRegistryEntry>;
   readonly pluginTenantLifecycleRegistry?: ReadonlyMap<
     string,
-    Readonly<{ pluginId: string; contractRevision: string }>
+    ProvisioningPluginTenantLifecycleContract
   >;
   readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
   readonly probeTenantIamAccess?: (input: {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useStudioSaveFeedback } from '@sva/studio-ui-react';
+import { Button, useStudioSaveFeedback } from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
@@ -119,6 +119,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [actionFeedbackFading, setActionFeedbackFading] = React.useState(false);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('betrieb');
+  const [isRetryingProvisioning, setIsRetryingProvisioning] = React.useState(false);
   const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -171,6 +172,15 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     selectedInstance,
     WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS
   );
+  const failedAutomatedCreateRun = selectedInstance?.provisioningRuns.find(
+    (run) =>
+      run.operation === 'create' &&
+      run.status === 'failed' &&
+      run.snapshotVersion === '2.0' &&
+      run.desiredSnapshot.automationMode === 'kassel-traefik-file'
+  );
+  const canRetryTenantProvisioning =
+    selectedInstance?.status === 'failed' && Boolean(failedAutomatedCreateRun);
   const hasRunningOperations = Boolean(
     operationsModel?.steps.some((step) => step.status === 'läuft')
   );
@@ -405,6 +415,23 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
+  const retryTenantProvisioning = async () => {
+    if (!selectedInstance || !canRetryTenantProvisioning) return;
+    setActionFeedback(null);
+    setIsRetryingProvisioning(true);
+    try {
+      const result = await instancesApi.retryTenantProvisioning(selectedInstance.instanceId);
+      if (result) {
+        setActionFeedback({
+          tone: 'success',
+          message: t('admin.instances.feedback.provisioningRetryQueued'),
+        });
+      }
+    } finally {
+      setIsRetryingProvisioning(false);
+    }
+  };
+
   const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
     switch (action) {
       case 'focus_configuration':
@@ -432,6 +459,22 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       {actionFeedback ? (
         <Alert className={readActionFeedbackClassName(actionFeedback, actionFeedbackFading)}>
           <AlertDescription>{actionFeedback.message}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {canRetryTenantProvisioning ? (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950">
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>{t('admin.instances.feedback.provisioningRetryAvailable')}</span>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isRetryingProvisioning || isLoading || detailLoading || statusLoading}
+              onClick={() => void retryTenantProvisioning()}
+            >
+              {t('admin.instances.feedback.provisioningRetryAction')}
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : null}
 

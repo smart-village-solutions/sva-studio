@@ -12,10 +12,15 @@ export const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = 
     'Die OIDC-Client-ID ist für einen installierten Plugin-Vertrag reserviert.',
   tenant_hostname_reserved:
     'Der Hostname ist für den Studio-Root oder einen Infrastruktur-Dienst reserviert.',
-  auth_realm_conflict:
-    'Der Keycloak-Realm ist bereits einer anderen Studio-Instanz zugeordnet.',
+  auth_realm_conflict: 'Der Keycloak-Realm ist bereits einer anderen Studio-Instanz zugeordnet.',
   instance_configuration_change_blocked:
     'Die Instanzkonfiguration kann während eines geplanten oder laufenden Provisionings nicht geändert werden. Bitte versuchen Sie es danach erneut.',
+  provisioning_retry_mode_invalid:
+    'Dieser Provisioning-Lauf kann in der aktuellen Umgebung nicht automatisch erneut gestartet werden.',
+  provisioning_retry_instance_status_invalid:
+    'Nur ein fehlgeschlagener automatisierter Mandanten-Provisioning-Lauf kann erneut gestartet werden.',
+  provisioning_retry_conflict:
+    'Der Provisioning-Lauf wurde gleichzeitig geändert. Bitte laden Sie die Instanz neu und versuchen Sie es erneut.',
   database_unavailable:
     'Die Instanzverwaltung konnte wegen eines Datenbank- oder Schemafehlers nicht abgeschlossen werden.',
   encryption_not_configured: 'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',

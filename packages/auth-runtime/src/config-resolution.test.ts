@@ -138,6 +138,11 @@ describe('auth config resolution', () => {
       redirectUri: 'https://smartcity.dialog.kassel.de/auth/callback',
       postLogoutRedirectUri: 'https://smartcity.dialog.kassel.de/',
     });
+    expect(state.assertActiveRegistryEntry).toHaveBeenLastCalledWith(
+      'smartcity.dialog.kassel.de',
+      expect.objectContaining({ instanceId: 'tenant-kassel' }),
+      { allowKasselProvisioningLoginProbe: true }
+    );
     for (const host of ['dialog.kassel.de', 'auth.dialog.kassel.de']) {
       state.resolveEffectiveRequestHost.mockReturnValue(host);
       await expect(

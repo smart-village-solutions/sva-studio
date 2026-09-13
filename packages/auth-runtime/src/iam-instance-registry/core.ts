@@ -25,6 +25,7 @@ import { parseRegistryRequestBody } from './request-parsing.js';
 import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import {
   scheduleConfiguredPluginTenantProvisioning,
+  withRegistryCreateService,
   withRegistryService,
   withScopedRegistryService,
 } from './repository.js';
@@ -52,6 +53,7 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
   validateCsrf: (request, requestId) =>
     isAuthenticatedRegistryServiceRequest(request) ? null : validateSessionCsrf(request, requestId),
   requireFreshReauth,
+  withRegistryCreateService,
   withRegistryService,
   withScopedRegistryService,
   reservedOidcClientIds: () =>
@@ -88,6 +90,11 @@ export const createInstanceInternal = async (
 ): Promise<Response> => {
   return instanceHttpHandlers.createInstance(request, ctx);
 };
+
+export const retryTenantProvisioningInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => instanceHttpHandlers.retryTenantProvisioning(request, ctx);
 
 export const updateInstanceInternal = async (
   request: Request,

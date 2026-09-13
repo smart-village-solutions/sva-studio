@@ -5,35 +5,72 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
+import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
-type CreatedInstanceRecord = NonNullable<Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>>;
+type CreatedInstanceRecord = NonNullable<
+  Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>
+>;
 
 export const createProvisioningArtifacts = async (
-  repository: InstanceRegistryRepository,
+  deps: InstanceRegistryServiceDeps,
   instance: CreatedInstanceRecord,
-  input: CreateInstanceProvisioningInput
-): Promise<void> => {
-  await runInstanceRegistryStep('provisioning_run_insert', () => repository.createProvisioningRun({
-    instanceId: instance.instanceId,
-    operation: 'create',
-    status: 'requested',
-    idempotencyKey: input.idempotencyKey,
-    payloadFingerprint: buildCreateInstancePayloadFingerprint(input),
-    actorId: input.actorId,
-    requestId: input.requestId,
-  }));
-  await runInstanceRegistryStep('audit_event_insert', () => repository.appendAuditEvent({
-    instanceId: instance.instanceId,
-    eventType: 'instance_requested',
-    actorId: input.actorId,
-    requestId: input.requestId,
-    details: createAuditDetails({
-      parentDomain: instance.parentDomain,
-      primaryHostname: instance.primaryHostname,
-    }),
-  }));
+  input: CreateInstanceProvisioningInput,
+  automationMode: 'external' | 'kassel-traefik-file' = 'external'
+): Promise<Awaited<ReturnType<InstanceRegistryRepository['createProvisioningRun']>>> => {
+  const repository = deps.repository;
+  const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
+  const pluginSnapshot =
+    automationMode === 'kassel-traefik-file'
+      ? await (async () => {
+          const activeModuleIds = new Set(
+            (await repository.listModuleActivations(instance.instanceId))
+              .filter(({ effectiveActive }) => effectiveActive)
+              .map(({ moduleId }) => moduleId)
+          );
+          return {
+            lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])]
+              .filter(({ pluginId }) => activeModuleIds.has(pluginId))
+              .sort((left, right) => left.pluginId.localeCompare(right.pluginId)),
+            oidcClients: [...(deps.readPluginOidcClientRequirements?.() ?? [])]
+              .filter(({ pluginId }) => activeModuleIds.has(pluginId))
+              .sort((left, right) => left.clientId.localeCompare(right.clientId)),
+          };
+        })()
+      : { lifecycles: [], oidcClients: [] };
+  const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
+    repository.createProvisioningRun({
+      instanceId: instance.instanceId,
+      operation: 'create',
+      status: 'requested',
+      idempotencyKey: input.idempotencyKey,
+      payloadFingerprint,
+      snapshotVersion: '2.0',
+      desiredSnapshot: buildTenantProvisioningSnapshot(
+        instance,
+        input,
+        payloadFingerprint,
+        automationMode,
+        pluginSnapshot
+      ),
+      actorId: input.actorId,
+      requestId: input.requestId,
+    })
+  );
+  await runInstanceRegistryStep('audit_event_insert', () =>
+    repository.appendAuditEvent({
+      instanceId: instance.instanceId,
+      eventType: 'instance_requested',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: createAuditDetails({
+        parentDomain: instance.parentDomain,
+        primaryHostname: instance.primaryHostname,
+      }),
+    })
+  );
+  return provisioningRun;
 };
 
 export const provisionInstanceAuth = async (

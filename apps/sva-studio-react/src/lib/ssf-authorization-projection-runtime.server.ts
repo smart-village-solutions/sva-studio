@@ -1,6 +1,7 @@
 import {
   prepareInstanceSsfLoginClients,
   readInstanceSsfLoginClientsReady,
+  readInstanceSsfProvisioningLoginClientsReady,
   readTenantPermissionProjectionSubjects,
   resolveInstanceKeycloakProjectionTenant,
 } from '@sva/auth-runtime/server';
@@ -29,6 +30,17 @@ export const readStudioSsfLoginBaselineReadiness = async (
   );
 };
 
+const readStudioSsfProvisioningLoginBaselineReadiness = async (
+  instanceId: string,
+  authRealm?: string
+): Promise<boolean> => {
+  const pool = resolveSsfDatabasePool();
+  return (
+    Boolean(pool && (await readSsfTenant(pool, instanceId))) &&
+    (await readInstanceSsfProvisioningLoginClientsReady(instanceId, authRealm))
+  );
+};
+
 export const createStudioSsfAuthorizationProjectionTarget = (authRealm?: string) =>
   createConfiguredSsfKeycloakAuthorizationProjectionTarget({
     resolveTenant: (instanceId) =>
@@ -42,7 +54,7 @@ export const createStudioSsfAuthorizationProjectionTarget = (authRealm?: string)
       await provisionSsfTenant(pool, instanceId);
     },
     readLoginReadiness: (instanceId) =>
-      readStudioSsfLoginBaselineReadiness(instanceId, authRealm),
+      readStudioSsfProvisioningLoginBaselineReadiness(instanceId, authRealm),
   });
 
 export const createStudioSsfAuthorizationProjectionRuntime = () => {

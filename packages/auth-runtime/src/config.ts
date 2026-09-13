@@ -259,7 +259,9 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
     });
   }
 
-  assertActiveRegistryEntry(host, registryEntry);
+  assertActiveRegistryEntry(host, registryEntry, {
+    allowKasselProvisioningLoginProbe: new URL(request.url).pathname === '/auth/login',
+  });
   const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId, {
     allowGlobalFallback: false,
   });

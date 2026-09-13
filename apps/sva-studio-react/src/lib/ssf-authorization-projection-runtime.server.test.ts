@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   provision: vi.fn(),
   prepareClients: vi.fn(),
   clientsReady: vi.fn(),
+  provisioningClientsReady: vi.fn(),
   tenant: vi.fn(),
   target: vi.fn((input: TargetConfiguration) => input),
   resolveTenant: vi.fn(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   prepareInstanceSsfLoginClients: mocks.prepareClients,
   readInstanceSsfLoginClientsReady: mocks.clientsReady,
+  readInstanceSsfProvisioningLoginClientsReady: mocks.provisioningClientsReady,
   readTenantPermissionProjectionSubjects: mocks.readSubjects,
   resolveInstanceKeycloakProjectionTenant: mocks.resolveTenant,
 }));
@@ -57,6 +59,7 @@ beforeEach(() => {
   mocks.resolveRuntime.mockReturnValue(mocks.runtimePool);
   mocks.tenant.mockResolvedValue({ instanceId: 'tenant-a' });
   mocks.clientsReady.mockResolvedValue(true);
+  mocks.provisioningClientsReady.mockResolvedValue(true);
   mocks.prepareClients.mockResolvedValue(undefined);
   mocks.instance.mockResolvedValue({ instanceId: 'tenant-a', authRealm: 'realm-a' });
 });
@@ -99,5 +102,5 @@ it('binds every projection phase to the realm snapshot loaded for the lifecycle 
 
   expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend', 'realm-a');
   expect(mocks.prepareClients).toHaveBeenCalledWith('tenant-a', 'realm-a');
-  expect(mocks.clientsReady).toHaveBeenCalledWith('tenant-a', 'realm-a');
+  expect(mocks.provisioningClientsReady).toHaveBeenCalledWith('tenant-a', 'realm-a');
 });

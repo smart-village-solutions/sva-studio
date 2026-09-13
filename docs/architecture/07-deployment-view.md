@@ -366,3 +366,12 @@ geschützten Override-Bundle. Vor dem ersten SSF-fähigen Promote muss der
 Backup-Agent seine `ssf`-Capability live ausweisen. Die produktive
 Endpoint-Freigabe bleibt zusätzlich bis zur revisionsgebundenen
 SSF-IAM-Projektion fail-closed.
+
+### Ergänzung 2026-09: Kasseler Ingress-Deployment
+
+Nur der bestehende Kasseler Provisioner erhält den schreibbaren Mount des
+dynamischen Traefik-Verzeichnisses. Traefik liest ihn read-only; App, reguläre
+Studio-Deployments und andere Worker erhalten weder diesen Mount noch
+Docker-Socket oder ACME-Speicher. App und Provisioner verwenden dasselbe
+immutable Image, aber keine gemeinsame In-Memory-Konfiguration: der
+prozessübergreifende Vertrag liegt im versionierten Elternlauf-Snapshot.

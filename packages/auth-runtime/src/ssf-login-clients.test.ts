@@ -25,6 +25,7 @@ vi.mock('./ssf-authorization-projection-tenant.js', () => ({
 import {
   prepareInstanceSsfLoginClients,
   readInstanceSsfLoginClientsReady,
+  readInstanceSsfProvisioningLoginClientsReady,
 } from './ssf-login-clients.js';
 
 beforeEach(() => {
@@ -88,11 +89,17 @@ it('creates an absent resource baseline through the Core adapter on initial prov
 it('uses an explicitly captured realm throughout a lifecycle run', async () => {
   await prepareInstanceSsfLoginClients('tenant-a', 'captured-realm');
   await readInstanceSsfLoginClientsReady('tenant-a', 'captured-realm');
-  expect(mocks.resolveTenant).toHaveBeenCalledWith(
-    'tenant-a',
-    'ssf-frontend',
-    'captured-realm'
-  );
+  expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend', 'captured-realm');
+});
+it('allows lifecycle readiness during provisioning without publishing the tenant as active', async () => {
+  mocks.instance.mockResolvedValue({
+    instanceId: 'tenant-a',
+    status: 'provisioning',
+    authClientId: 'studio',
+    authRealm: 'realm-a',
+  });
+  expect(await readInstanceSsfLoginClientsReady('tenant-a')).toBe(false);
+  expect(await readInstanceSsfProvisioningLoginClientsReady('tenant-a')).toBe(true);
 });
 it('does not publish disabled browser clients or drifted resource clients', async () => {
   mocks.readClient.mockResolvedValue({ enabled: false });

@@ -56,6 +56,7 @@ vi.mock('./core.js', () => ({
     async () => new Response('bootstrap', { status: 200 })
   ),
   createInstanceInternal: vi.fn(async () => new Response('create', { status: 200 })),
+  retryTenantProvisioningInternal: vi.fn(async () => new Response('retry', { status: 200 })),
   getInstanceInternal: vi.fn(async () => new Response('get', { status: 200 })),
   listInstancesInternal: vi.fn(async () => new Response('list', { status: 200 })),
   revokeInstanceModuleInternal: vi.fn(async () => new Response('revoke', { status: 200 })),
@@ -155,6 +156,22 @@ describe('iam-instance-registry/server', () => {
     );
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
     expect(state.markAuthenticatedRegistryServiceRequest).toHaveBeenCalledWith(request);
+  });
+
+  it('authorizes explicit tenant provisioning retries with instance.create', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const request = new Request(
+      'https://studio.example.org/api/v1/iam/instances/demo/provisioning/retry',
+      { method: 'POST', headers: { authorization: 'Bearer signed-token' } }
+    );
+
+    const response = await instanceRegistryHandlers.retryTenantProvisioning(request);
+
+    expect(response.status).toBe(200);
+    expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith(
+      'signed-token',
+      'instance.create'
+    );
   });
 
   it('never falls back to a browser session for malformed Authorization', async () => {
@@ -322,9 +339,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(25);
+    expect(responses).toHaveLength(26);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(25);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(26);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

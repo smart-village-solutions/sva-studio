@@ -634,6 +634,7 @@ describe('service-keycloak-execution', () => {
     const { createExecuteKeycloakProvisioningHandler } = await import('./service-keycloak-execution.js');
     const repository = {
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'queued' }),
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
     };
     const handler = createExecuteKeycloakProvisioningHandler({
       repository: repository as never,
@@ -671,7 +672,9 @@ describe('service-keycloak-execution', () => {
     const createQueuedRun = vi.fn();
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
     const handler = createReconcileKeycloakHandler({
-      repository: {} as never,
+      repository: {
+        listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      } as never,
       createQueuedRun,
       getKeycloakPreflight: vi.fn().mockResolvedValue({
         overallStatus: 'blocked',

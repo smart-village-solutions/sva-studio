@@ -337,3 +337,11 @@ Lokale IAM-Rollen bleiben die normative Quelle der Studio-Autorisierung.
 Tenant-Realm-Rollen werden separat gelesen und mit `iam.role.write` als
 einzelne, serverseitig tenantgebundene Deltas verwaltet. Externe Rollennamen
 werden weder in lokale Rollen importiert noch für Studio-Fachgates ausgewertet.
+
+### Ergänzung 2026-09: Terminale Kasseler Instanzanlage
+
+Die Kasseler Instanzanlage folgt einem persistenten, lease-geschützten
+Elternlauf. Ein an den Lauf gebundener Plugin-, OIDC- und Lifecycle-Snapshot
+überbrückt die Prozessgrenze zwischen App und Provisioner. Fehlende Composition,
+Readiness oder öffentliche Postconditions führen fail-closed zu `failed`;
+`active` wird ausschließlich als letzter Schritt gespeichert.

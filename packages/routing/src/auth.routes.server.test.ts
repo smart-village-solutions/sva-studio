@@ -143,6 +143,7 @@ const authServerMocks = vi.hoisted(() => {
       startPluginTenantLifecycle: vi.fn(async () => response('startPluginTenantLifecycleHandler')),
       getSingleInstanceAuditRun: vi.fn(async () => response('getSingleInstanceAuditRunHandler')),
       createInstance: vi.fn(async () => response('createInstanceHandler')),
+      retryTenantProvisioning: vi.fn(async () => response('retryTenantProvisioningHandler')),
       updateInstance: vi.fn(async () => response('updateInstanceHandler')),
       getInstanceKeycloakStatus: vi.fn(async () => response('getInstanceKeycloakStatusHandler')),
       getInstanceKeycloakPreflight: vi.fn(async () =>
@@ -1204,6 +1205,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getMediaDeliveryHandler).toHaveBeenCalled();
     expect(authServerMocks.replaceMediaReferencesHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.retryTenantProvisioning).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getPluginTenantReadiness).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.startPluginTenantLifecycle).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceAuditRun).toHaveBeenCalled();

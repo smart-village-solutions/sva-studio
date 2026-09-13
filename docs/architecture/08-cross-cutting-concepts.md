@@ -1033,3 +1033,15 @@ Lesen erfordert `iam.user.read` und `iam.role.read`, Schreiben
 Service- und Plattformrollen bleiben read-only. `system_admin` verwendet den
 gekoppelten lokalen Sonderpfad. Auditdaten enthalten keine rohen Subjects,
 Tokens, Secrets oder E-Mail-Adressen.
+
+### Kasseler Provisioning-Invarianten
+
+- Ein nichtterminaler Create-Lauf besitzt Lease, nächsten Wake-up und Deadline.
+- Plugin-, OIDC- und Lifecycle-Sollzustand wird vor dem Workerstart vollständig
+  persistiert; eine fehlende oder leere Composition ist ein terminaler Fehler.
+- Retry und Redelivery sind idempotent und erzeugen einen langlebigen
+  Lifecycle-Reconcile-Intent statt eines ausschließlich prozesslokalen Aufrufs.
+- Öffentliche Veröffentlichung bleibt statusgebunden. Nur die interne
+  Lifecycle-Readiness darf eine `provisioning`-Instanz prüfen.
+- Logs und Evidenz enthalten Korrelation, Stufe, Routername und Hash, aber keine
+  Client-Secrets, Zugangsdaten oder ACME-Inhalte.

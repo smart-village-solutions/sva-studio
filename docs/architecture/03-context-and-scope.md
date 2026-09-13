@@ -115,3 +115,12 @@ Einträge der lokalen Registry mit ID, Bezeichnung und Realm. Der Host stellt di
 installationsweiten Lesezugriff vor dem tenantgebundenen Plugin-Dispatch bereit.
 Er verwendet den bestehenden internen Ingress-Schutz und die SSF-Service-Identität
 mit eigener Directory-Rolle. SSF besitzt weiterhin Login-Auswahl und OIDC-Flow.
+
+### Ergänzung 2026-09: Kasseler Mandanten-Provisionierung
+
+In der Kasseler Standalone-Installation sind der externe Keycloak, der
+SSF-Traefik und dessen ACME-Endpunkt Nachbarsysteme des Studio-Control-Plane.
+Studio besitzt den fachlichen Elternlauf; der eigenständige Provisioner darf
+ausschließlich den Kasseler Traefik-File-Provider beschreiben. Reguläre
+Studio-Umgebungen und ein allgemeiner Ingress-Vertrag bleiben außerhalb dieses
+Zuschnitts. Details legt [ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md) fest.

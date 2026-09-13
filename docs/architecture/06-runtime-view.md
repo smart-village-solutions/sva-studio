@@ -1314,3 +1314,19 @@ Nachweis gesperrt.
    und liest anschließend die direkten Rollen erneut.
 4. Nur der belegte Zielzustand wird als Erfolg bestätigt. Ein unklarer Zustand
    liefert einen Reconciliation-Konflikt und ein pseudonymisiertes Audit-Event.
+
+### Szenario 21: Kasseler Mandantenanlage abschließen
+
+1. Die App persistiert Instanz, effektive Aktivierungen, Lifecycle-Intent und
+   Elternlauf einschließlich unveränderlichem Plugin-/OIDC-Snapshot.
+2. Der Provisioner setzt `provisioning`, startet den Keycloak-Kindlauf mit dem
+   OIDC-Snapshot und wartet auf dessen korrelierten Erfolg.
+3. Der vorhandene Plugin-Worker verarbeitet den persistenten Lifecycle-Intent;
+   der Provisioner veröffentlicht parallel den expliziten Router und weist TLS nach.
+4. Der Provisioner bewertet Lifecycle-Evidenz gegen den Snapshot. Die interne
+   SSF-Prüfung darf dabei `provisioning` lesen; Directory und öffentlicher
+   Tenant-Verkehr bleiben weiterhin auf `active` begrenzt.
+5. Nach Login-Nachweis setzt ausschließlich der Elternlauf Instanz und Lauf auf
+   `active`. Jeder terminale Fehler bleibt mit Artefakten und Evidenz erhalten.
+6. Ein Retry persistiert vor der Rückgabe erneut einen Lifecycle-Intent und
+   beginnt ab der ersten nicht mehr nachgewiesenen Stufe.

@@ -962,3 +962,17 @@ IAM-Revisionsprovider bleibt der Pfad fail-closed.
 projiziert Katalog sowie direkte und effektive Zuweisungen und führt einzelne
 Assign-/Remove-Deltas aus. Die React-App stellt diese externe Sicht getrennt
 von lokalen IAM-Rollen dar und besitzt keine eigene Rollen-Allowlist.
+
+### Kasseler Provisioning-Bausteine
+
+- `@sva/instance-registry` besitzt Elternlauf, Sollsnapshot, Lease, Retry und
+  terminale Aktivierung.
+- `@sva/auth-runtime` bindet beim Create die effektiv aktiven Lifecycle- und
+  OIDC-Verträge an den Lauf und bewertet im separaten Worker nur diese
+  persistierte Composition.
+- Das framework-unabhängige Ingress-Modul rendert und veröffentlicht genau eine
+  atomar ersetzte Routerdatei je Tenant.
+- Plugin-Lifecycle-Jobs bleiben im vorhandenen Graphile-Worker; Create und Retry
+  persistieren dafür einen ausfallsicheren Reconcile-Intent.
+
+Die Bausteine und ihre Trust Boundaries sind in [ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md) verbindlich abgegrenzt.

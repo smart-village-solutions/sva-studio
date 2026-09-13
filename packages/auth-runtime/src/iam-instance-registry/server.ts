@@ -29,6 +29,7 @@ import {
   getInstanceInternal,
   listInstancesInternal,
   revokeInstanceModuleInternal,
+  retryTenantProvisioningInternal,
   seedInstanceIamBaselineInternal,
   suspendInstanceInternal,
   updateInstanceInternal,
@@ -139,6 +140,8 @@ export const instanceRegistryHandlers = {
     ),
   createInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.create', createInstanceInternal),
+  retryTenantProvisioning: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, 'instance.create', retryTenantProvisioningInternal),
   updateInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.update', updateInstanceInternal),
   getInstanceAuditRun: async (request: Request): Promise<Response> =>

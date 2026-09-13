@@ -39,6 +39,10 @@
       "types": "./dist/keycloak-types.d.ts",
       "default": "./dist/keycloak-types.js"
     },
+    "./kassel-tenant-ingress": {
+      "types": "./dist/kassel-tenant-ingress.d.ts",
+      "default": "./dist/kassel-tenant-ingress.js"
+    },
     "./mutation-errors": {
       "types": "./dist/mutation-errors.d.ts",
       "default": "./dist/mutation-errors.js"

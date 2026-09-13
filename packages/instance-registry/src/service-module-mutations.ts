@@ -1,6 +1,7 @@
 import { resolvesSystemAdminGrant, tenantCorePermissionCatalog } from '@sva/core';
 import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
 
+import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import { createGetInstanceDetail } from './service-detail.js';
 import {
   invalidateInstancePermissionSnapshots,
@@ -139,6 +140,7 @@ export const createAssignModuleHandler =
     if (!instance) {
       return { ok: false, reason: 'not_found' };
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
     if (!registry.has(input.moduleId)) {
@@ -325,6 +327,7 @@ export const createBootstrapAdminStructureHandler =
     if (!instance) {
       return { ok: false, reason: 'not_found' };
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
     const requestedModuleIds = withRequiredCompanionModules(input.moduleIds);
@@ -390,6 +393,7 @@ export const createRevokeModuleHandler =
     if (!instance) {
       return { ok: false, reason: 'not_found' };
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
     if (!registry.has(input.moduleId)) {
@@ -445,6 +449,7 @@ export const createSeedIamBaselineHandler =
     if (!instance) {
       return { ok: false, reason: 'not_found' };
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);

@@ -41,6 +41,7 @@ const createClient = () => {
     { name: string; protocol: string; protocolMapper: string; config: Record<string, string> }
   >();
   const client = {
+    getOidcClientByClientId: vi.fn(async () => ({ enabled: true })),
     listClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
     listEffectiveClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
     listUsers: vi.fn(async ({ first = 0, max = 100 } = {}) =>
@@ -253,6 +254,19 @@ describe('SSF Keycloak authorization projection target', () => {
 
     expect(client.setOidcClientEnabled).toHaveBeenNthCalledWith(1, 'ssf', false);
     expect(client.setOidcClientEnabled).toHaveBeenNthCalledWith(2, 'ssf', true);
+  });
+
+  it('treats an absent browser client as already unable to issue tokens', async () => {
+    const { client } = createClient();
+    client.getOidcClientByClientId.mockResolvedValueOnce(null);
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client })),
+      revokeSsfTenantSessions: vi.fn(async () => undefined),
+    });
+
+    await target.suspendTokenIssuance('tenant-a');
+
+    expect(client.setOidcClientEnabled).not.toHaveBeenCalled();
   });
 
   it('rejects a read-back whose stored revision does not match projected claims', async () => {

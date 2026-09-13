@@ -65,7 +65,7 @@ it('converges a drifted legacy resource client to login readiness', async () => 
 
   expect(await readInstanceSsfLoginClientsReady('tenant-a')).toBe(false);
   await prepareInstanceSsfLoginClients('tenant-a');
-  expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend');
+  expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend', 'realm-a');
   expect(mocks.reconcile).toHaveBeenCalledWith(
     expect.any(Object),
     expect.objectContaining({

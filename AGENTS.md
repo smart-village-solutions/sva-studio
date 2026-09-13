@@ -1,103 +1,63 @@
 # Agents
 
-## Code-Stil
+Die verbindlichen Entwicklungsrichtlinien stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Diese Datei enthält nur die Regeln, die bei der täglichen Agentenarbeit unmittelbar präsent sein müssen. Im Zweifel gilt `DEVELOPMENT_RULES.md`.
 
-- TypeScript Strict-Mode mit hoher Typsicherheit
-- Framework-agnostische Kernlogik, getrennt von React-Bindings
-- Typsicheres Routing mit Search-Params und Path-Params
-- Workspace-Protokoll für interne Abhängigkeiten verwenden (`workspace:*`)
-- Für serverseitig von Node geladene Workspace-Packages gilt ESM-strikte Schreibweise:
-  - relative Runtime-Imports und Re-Exports immer mit expliziter Laufzeitendung (`.js`)
-  - reine `import type`-Pfade dürfen typbezogen bleiben, Runtime-Pfade nicht
-  - Runtime-Imports auf andere Workspace-Packages müssen im lokalen `package.json` unter `dependencies` stehen
+## Code und Ownership
 
-## Komplexitäts- und Ownership-Disziplin
+- TypeScript im Strict-Mode und typsicheres Routing mit Search- und Path-Params verwenden; framework-agnostische Kernlogik von React-Bindings trennen.
+- Interne Abhängigkeiten mit `workspace:*` deklarieren. Bei serverseitig von Node geladenen Workspace-Packages müssen relative Runtime-Imports und Re-Exports `.js` verwenden; Runtime-Imports auf andere Workspace-Packages gehören unter `dependencies`. Reine `import type`-Pfade dürfen typbezogen bleiben.
+- UI-Reihenfolge: native Browser-/HTML-Funktion, vorhandene shadcn/ui- oder Design-System-Komponente, vorhandene Workspace-Komponente, dann minimale neue Komponente.
+- Vereinfachungen dürfen Testabdeckung, Typklarheit, Security, Accessibility, i18n, Fehlerbehandlung, Datenintegrität, Server-Runtime-Regeln oder Architekturgrenzen nicht schwächen.
 
-- Ziel ist nicht minimale LOC, sondern minimale langfristige Ownership bei voller Qualität.
-- Vor neuer Eigenlogik prüfen:
-  - Gibt es bereits eine robuste Lösung im Projekt oder Workspace?
-  - Deckt TypeScript/Stdlib, Browser-/Node-Plattform oder Datenbank die Anforderung korrekt ab?
-  - Reduziert ein etabliertes externes Package die Ownership gegenüber einer Eigenentwicklung?
-  - Erst danach minimale Eigenimplementierung schreiben.
-- Neue Dependencies sind zulässig, wenn sie komplexe oder riskante Domänen besser abdecken als lokale Eigenlogik, z. B. Auth, Crypto, Parser, Datums-/Zeitzonenlogik, Accessibility-Primitives, Virtualisierung, i18n, Validierung oder Security-Middleware.
-- Keine neue Dependency für triviale Hilfslogik, wenn vorhandene Plattform-, Workspace- oder Design-System-Mittel die Edge Cases ausreichend abdecken.
-- Keine Abstraktion ohne belegten Bedarf: keine Interfaces mit einer Implementierung, Factories mit einem Produkt, Provider/Services/Hooks ohne klaren Mehrwert oder Config für Werte, die nicht variieren.
-- Vereinfachungen dürfen niemals Testabdeckung, Typklarheit, Security, Accessibility, i18n, Fehlerbehandlung, Datenintegrität, Server-Runtime-Regeln oder bestehende Architekturgrenzen unterlaufen.
-- UI-Implementierungen folgen der Reihenfolge: native Browser-/HTML-Funktion, vorhandene shadcn/ui- oder Design-System-Komponente, vorhandene Workspace-Komponente, dann minimale neue Komponente.
-- Bei Review und Refactoring gezielt nach entfernbarer Komplexität suchen: handgerollte Standardfunktionen, tote Flexibilität, ungenutzte Layer, vermeidbare Dependencies und spekulative Erweiterbarkeit. Solche Funde sind Ergänzungen zu normalen Correctness-, Security-, Test- und UX-Reviews, kein Ersatz.
+## Anti-Ausdehnungsregel
+
+- Standard ist die Erweiterung des bestehenden zuständigen Pfads. Vor Eigenlogik vorhandene Projekt-/Workspace-Lösungen, Plattformmittel und etablierte Dependencies prüfen. Neue Packages, Services, Provider, Factories, Gates, Workflows, Agenten, Skripte, Spezifikationen oder Konfigurationsschichten sind nur zulässig, wenn ein konkreter aktueller Bedarf im bestehenden Pfad nicht korrekt erfüllt werden kann.
+- Vor einem neuen Artefakt in höchstens zwei Sätzen die belegte Lücke, den unmittelbaren Verbraucher und den Grund gegen die Erweiterung einer bestehenden Lösung benennen. Ist das nicht möglich, das Artefakt nicht anlegen.
+- Ersetzt eine Änderung einen bestehenden Pfad, diesen im selben Lieferabschnitt löschen. Parallele, alternative oder Shadow-Pfade sind nur für eine unvermeidbare Migration mit expliziter Endbedingung und festgelegter Entfernung zulässig.
+- Keine Kontrollschicht darf ausschließlich eine andere Kontrollschicht koordinieren. Neue CI-Gates, Wrapper, Agenten oder Governance-Dokumente benötigen einen eigenständigen, messbaren Sicherheits- oder Qualitätsgewinn.
+- Spekulative Erweiterbarkeit ist kein Nutzen. Keine Hooks, Optionen, Interfaces, Adapter oder Konfigurationen für noch nicht existierende Verbraucher.
+- Vor Abschluss prüfen, welche Konzepte, Dateien und Ausführungspfade hinzugefügt und entfernt wurden. Wächst die technische oder organisatorische Oberfläche stärker als die unmittelbar gelieferte Fähigkeit, den Entwurf vereinfachen oder neu zuschneiden.
+
+## Nicht verhandelbare Produktregeln
+
+- Keine hardcodierten UI-Texte; immer `t('key')` verwenden.
+- Server-Code nutzt den Logger aus `@sva/server-runtime`, nie `console.*`. Development-Console ist zulässig; Production bleibt OTEL-first ohne Console-Ausgabe.
+- Eingaben client- und serverseitig validieren und PII aus Logs fernhalten.
+- Design-System statt statischem Inline-CSS verwenden. Neue UI basiert auf shadcn/ui und erfüllt WCAG 2.1 AA; parallele Basis-Komponenten benötigen eine dokumentierte Architekturentscheidung.
+- Autorisierbare Actions immer als `<namespace>.<actionName>` modellieren; Plugins verwenden ausschließlich ihren eigenen Namespace.
+- Vor DB-/Migrationsänderungen `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` prüfen; nach Schemaänderungen beide aktualisieren.
 
 ## Proportionaler Projektzuschnitt
 
 - Kleine, lokal begrenzte Änderungen ohne neue systemübergreifende Invariante bleiben im Schnellpfad: keine künstlichen PR-Stacks, Zustandsmatrizen oder zusätzlichen OpenSpec-Changes.
-- Vor systemübergreifenden Großvorhaben die für den konkreten Fall relevanten Lieferabschnitte, Trust Boundaries, Ausführungsgrenzen und Failure Modes klären. Form und Tiefe der Darstellung richten sich nach dem Risiko; eine Zustandsmatrix ist nur ein mögliches Hilfsmittel.
-- Stacked PRs bevorzugen, wenn sie eigenständig build-, test- und reviewbare Zwischenstände mit geringerem Integrationsrisiko schaffen. Der konkrete Zuschnitt bleibt eine begründete Einzelfallentscheidung.
+- Vor systemübergreifenden Großvorhaben Lieferabschnitte, Trust Boundaries, Ausführungsgrenzen, Failure Modes und kritische Invarianten samt geplantem Nachweis klären. Form und Tiefe richten sich nach dem Risiko.
+- Stacked PRs nur verwenden, wenn sie eigenständig build-, test- und reviewbare Zwischenstände mit geringerem Integrationsrisiko schaffen.
 - Bei risikoreichen Großvorhaben die kritischen Invarianten und ihre geplanten Nachweise vor der Implementierung nachvollziehbar festhalten. `assurance.md`, stabile IDs und die bereitgestellten Templates sind empfohlene Hilfsmittel, keine Selbstzwecke; gleichwertige Darstellungen im Proposal, Design oder PR sind zulässig. Vor dem Merge muss die gewählte Evidenz für den exakten HEAD belastbar sein.
 - Wenn mehrere neue Review- oder Testbefunde dieselbe Invariante oder Systemgrenze betreffen, lokale Mikrofixes stoppen und vor dem nächsten Push Zustandsraum sowie alle Verbraucher zusammenhängend prüfen.
 - Einen bereits stark integrierten PR nicht allein wegen seiner Größe spät mechanisch zerlegen; ein Split benötigt weiterhin stabile, eigenständig prüfbare Zwischenstände.
-- Die kanonischen Entscheidungsleitlinien und nicht verhandelbaren Qualitätsgrenzen stehen in [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md), Abschnitt 1.7.
-
-## Tipps zur Entwicklungsumgebung
-
-- Dies ist ein pnpm-Workspace-Monorepo; Packages sind nach Funktionalität organisiert
-- Nx bietet Caching, affected-Testing, Targeting und parallele Ausführung für mehr Effizienz
-- Alle verfügbaren Packages anzeigen: `pnpm nx show projects`
-- Ein einzelnes Projekt gezielt starten: `pnpm nx run sva-studio-react:serve`
-- Nur betroffene Tests ausführen: `pnpm nx affected --target=test:unit`
-- Ausschlussmuster verwenden: `pnpm nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
 
 ## Test-Anweisungen
 
-- **Kritisch:** Neue Codeblöcke und wesentliche Scope-Erweiterungen während der Entwicklung mit den relevanten Unit- und Type-Tests absichern – bei Fehlschlägen nicht weitermachen. Kleine Folgefixes in bestehenden PRs folgen der differenzierten Push-Regel unten.
-- **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
-- **Test-Runner-Standard:** Repository-interne Testdateien unter `apps/`, `packages/` und `scripts/` laufen einheitlich über Vitest; neue `node:test`-Fragmente oder `node --test`-Scriptpfade sind nicht zulässig
-- **Server-Runtime-Gate:** Für serverseitige Packages zusätzlich `pnpm check:server-runtime` beachten; der Check steckt auch in `pnpm test:types`, soll aber bei Änderungen an `packages/{core,data,monitoring-client,sdk,auth,routing,sva-mainserver}` gezielt früh ausgeführt werden
-- **PR-Standard-Gate (bevorzugt):** Vor dem initialen Push eines neuen oder wesentlich erweiterten Code-Scopes beziehungsweise vor PR-Erstellung nach Möglichkeit `pnpm test:pr` ausführen; dieser Workflow deckt affected Coverage, Coverage-Gate, Complexity-Gate, Integrationstests und den Frontend-Build ab. Für kleine Folgefixes in einem bestehenden PR wird dieser breite Lauf nicht vor jedem Push lokal wiederholt.
-- **Coverage-PR-Gate:** Wenn gezielt Coverage für einen PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
-- **Komplette CI-Suite:** `pnpm test:ci`
-- **ESLint ausführen:** `pnpm lint`
-- **Shift-left (verbindlich):** Neue Funktionalität und wesentliche Refactorings in abgeschlossenen Änderungsblöcken mit betroffenen Tests absichern, nicht erst am Ende der Umsetzung. Kleine Folgefixes in bestehenden PRs benötigen nur dann einen lokalen Test, wenn er schnell und für den konkreten Fix aussagekräftig ist.
-- **Schnelliterationsphase:** Details, Grenzen und Transparenzpflichten stehen kanonisch in [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md); hier nur anwenden, nicht doppelt ausdefinieren
-- **Push-Gate nach Push-Art:** Vor dem initialen Push eines neuen Codeblocks oder einer wesentlichen Scope-Erweiterung mindestens den kleinsten relevanten Gate-Pfad ausführen. `pnpm nx affected --target=test:unit --base=origin/main` ist nur dann der Standard, wenn der gemessene affected-Scope lokal klein und handhabbar ist; bei Typänderungen zusätzlich den passenden Type-Gate-Pfad ausführen. Bei kleinen Folgefixes in einem bestehenden PR sind breite lokale `affected`- oder `test:pr`-Läufe vor dem Push nicht erforderlich: GitHub-Gates sind die führende Gesamtvalidierung, lokal genügt ein gezielter Test des unmittelbar geänderten Pfads, sofern er schnell und aussagekräftig ist. Reine Text-/Dokumentationsänderungen benötigen keine Tests.
-- **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
-- **Kleinster echter Gate-Pfad zuerst:** Für neue Codeblöcke und wesentliche Scope-Erweiterungen den kleinsten tatsächlich relevanten Gate-Pfad ausführen, nicht reflexartig die Vollsuite. Bei kleinen Folgefixes im aktiven PR keine bereits durch GitHub geprüften, unveränderten Bereiche lokal erneut testen. Beispiele:
-  - UI-/Hook-Fix: betroffener Unit-Run plus Scope-Prüfung für `pnpm nx affected --target=test:unit --base=origin/main`
-  - Typänderung: betroffener Type-Run oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der affected-Scope klein ist
-  - Skript-/CI-Datei unter `scripts/ci/` oder Root-TS-Skripten: zusätzlich `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder den passenden Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
-  - Server-Runtime-relevante Änderung: früh `pnpm check:server-runtime`
-- **Affected-Scope vor breiten Runs messen:** Vor lokalen `affected`-Unit-Runs gegen `origin/main` zuerst `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` ausführen. Wenn der Lauf mehr als 6 Projekte, App-UI-/Routes-Matrizen oder offensichtlich PR-fremde Langläufer zieht, gilt er lokal als breiter PR-Gate-Lauf und kommt nur für einen initialen oder wesentlich scope-erweiternden Code-Push infrage.
-- **Kleine Folgefixes in bestehenden PRs:** Bei Review-, CI- oder sonstigen kleinen Folgefixes keine breiten lokalen `affected`- oder `test:pr`-Läufe wiederholen. Den unmittelbar geänderten Pfad nur gezielt validieren, wenn ein schneller aussagekräftiger Test existiert oder der Fix ein lokales Fehlersignal adressiert; anschließend die GitHub-Gates für den exakten neuen HEAD auswerten. Sicherheits-, Auth-, Datenintegritäts-, Migrations- und Server-Runtime-Änderungen behalten ihre speziellen Pflicht-Gates.
-- **Timeouts in PR-fremden Tests:** Wenn ein breiter affected-Run in einem nicht direkt geänderten Bereich timeoutet, den Lauf abbrechen und den einzelnen Test separat reproduzieren. Nur wenn der Einzeltest reproduzierbar rot ist oder der Bereich vom Fix betroffen ist, wird er Teil des aktuellen Fixblocks.
-- **Effizienter, zielgerichteter Test-Workflow:**
-  1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
-  2. **Spezifische Packages:** `pnpm nx run sva-studio-react:test:unit`
-  3. **Spezifische Dateien via Nx-Target:** `pnpm nx run sva-studio-react:test:unit --testFiles=src/foo.test.tsx --testFiles=src/bar.test.tsx`
-  4. **Direkter Vitest-Fallback:** `cd packages/data && npx vitest run tests/xyz.test.tsx`
-- **Pro-Tipps:**
-  - Mit `npx vitest list` verfügbare Tests vorab ansehen
-  - Mit `-t "pattern"` gezielt auf Funktionalität fokussieren
-  - Mit `--exclude`-Mustern Unrelevantes überspringen
-  - Nx-Package-Targeting mit Vitest-File-Targeting kombinieren (maximale Präzision)
-  - Dateifilter für Nx-Testtargets immer explizit per `--testFiles=...` übergeben; `@nx/vitest:test` und die Vitest-Wrapper unter `scripts/ci/run-vitest-target.ts` unterstützen dieses Format
+- Repository-interne Tests unter `apps/`, `packages/` und `scripts/` laufen über Vitest; keine neuen `node:test`- oder `node --test`-Pfade anlegen.
+- Neue Codeblöcke und wesentliche Scope-Erweiterungen sofort mit dem kleinsten echten Unit-/Type-Gate absichern; auf bekannt rotem Stand nicht weiterimplementieren. Reine Text-, Kommentar- und Dokumentationsänderungen benötigen keine Tests.
+- Vor einem affected-Unit-Run zuerst den Scope messen: `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main`. Bei mehr als sechs Projekten, App-UI-/Routes-Matrizen oder PR-fremden Langläufern gezielte Projekt-/Dateitests verwenden und den breiten Lauf CI beziehungsweise dem finalen Gate überlassen.
+- Kleine Folgefixes in bestehenden PRs nur gezielt testen, wenn ein schneller aussagekräftiger Test existiert oder ein konkretes Fehlersignal reproduziert wird; keine breiten lokalen `affected`- oder `test:pr`-Wiederholungen.
+- Für serverseitige Änderungen unter `packages/{core,data,monitoring-client,sdk,auth,routing,sva-mainserver}` früh `pnpm check:server-runtime` ausführen. Für Root-TS-, Skript- oder CI-Änderungen den passenden Skript-Typecheck verwenden, etwa `pnpm exec tsc -p tsconfig.scripts.json --noEmit`.
+- Dateifilter für Nx-Testtargets immer als `--testFiles=...` übergeben. Bevorzugte Gates: `pnpm nx affected --target=test:unit --base=origin/main`, `pnpm test:pr`, `pnpm test:coverage:pr`; die vollständige Suite ist `pnpm test:ci`.
+- Sicherheits-, Auth-, Datenintegritäts-, Migrations- und Server-Runtime-Änderungen behalten ihre speziellen Pflicht-Gates. Details und Auswahlregeln stehen in `DEVELOPMENT_RULES.md`, Abschnitt 5.2.
 
 ## PR-Anweisungen
 
+- **PR-Auftrag vor Beginn:** Vor der Änderung das Ziel des PRs in einem Satz, die expliziten Nicht-Ziele und die maximal betroffenen Bereiche festhalten. Diese Grenze ist während der Merge-Phase verbindlich.
 - **PR-Fixing-Priorität:** Bei der Bearbeitung bestehender PRs sind die GitHub-Gates für den exakten HEAD die führende Wahrheit. Lokale Testläufe dienen nur der schnellsten gezielten Reproduktion oder Absicherung des unmittelbar geänderten Pfads und werden auf Testdatei, Testnamen oder kleinstes betroffenes Projekt begrenzt. Keine breiten lokalen `affected`-, `test:pr`- oder Vollsuite-Läufe wiederholen, wenn GitHub den unveränderten Scope bereits prüft; spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen und Server-Runtime bleiben bestehen.
 - **Rote Gates zuerst:** Zuerst den konkreten roten GitHub-Job und dessen Logs auswerten. Nur das belegte Fehlersignal lokal reproduzieren, minimal beheben, gezielt prüfen, pushen und anschließend die GitHub-Gates am neuen HEAD beobachten. Keine vorsorglichen Reparaturen angrenzender Bereiche.
 - **Thread-Triage vor Umsetzung:** Review-Threads nur bearbeiten, wenn der Befund nach Prüfung notwendig ist, um einen realen Bug, eine Regression, ein Security-/Datenschutzproblem, Datenverlust, einen verletzten Vertrag oder ein zwingendes Akzeptanzkriterium des PRs zu vermeiden. Hypothetische Risiken, Geschmacksfragen, optionale Refactorings, zusätzliche Abstraktionen und nicht erforderliche Robustheits- oder Komfortverbesserungen gehören nicht in den laufenden PR.
-- **Nicht notwendige Threads:** Nicht automatisch umsetzen. Den Befund kritisch gegen Ziel, Diff und reale Ausführung prüfen, die Ablehnung beziehungsweise Verschiebung nachvollziehbar begründen und nur bei eigenständigem, belegtem Nutzen ein separates Follow-up-Issue vorschlagen oder anlegen. Ein solches Issue darf den Abschluss des aktuellen PRs nicht blockieren.
-- **Scope-Schutz:** Während PR-Fixing weder Feature-Creep noch Overengineering zulassen. Die kleinste korrekte Änderung wählen; keine neue Architektur, Generalisierung, Dependency oder spekulative Zukunftsfähigkeit ergänzen, sofern sie nicht zur Behebung des belegten Blockers zwingend erforderlich ist.
-- Für einen initialen oder wesentlich scope-erweiternden Code-Push und die erste PR-Vorbereitung bevorzugt `pnpm test:pr` statt nur einzelner Teilchecks ausführen
-- Wenn nur Coverage/Change-Risk für den PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
-- Bei neuen Codeblöcken und wesentlichen Scope-Erweiterungen vor dem initialen Push den kleinsten relevanten Gate-Pfad gemäß Test-Anweisungen ausführen; `pnpm test:pr` ist der bevorzugte breite Lauf vor der ersten PR-Erstellung oder bei unsicherem Änderungsbild
-- Bei kleinen Folgefixes in bestehenden PRs und roten CI-Checks zuerst `gh pr checks <nr>` beziehungsweise die roten Job-Logs prüfen; lokal nur das konkrete Fehlersignal oder den unmittelbar geänderten Pfad gezielt reproduzieren
-- Nach jedem Push bei aktivem PR-Fixing den Check-Status erneut prüfen und den nächsten Blocker selbstständig ableiten; Commit und Push dabei nie parallel starten
-- Änderungen an den relevanten Stellen testen
-- Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren
-- Bei Architektur-/Systemänderungen die relevanten arc42-Abschnitte unter `docs/architecture/` aktualisieren und im PR verlinken
-- Einstiegspunkt für Architekturdoku ist `docs/architecture/README.md` (Abschnitte 1-12)
-- Für Doku-Qualität und Doku-Abdeckung bei Proposals/PRs steht der Agent `documentation.agent.md` unter `.github/agents/` bereit
-- Für jede Code-Änderung Tests hinzufügen oder anpassen
-- Interne Doku-Links relativ zum Ordner `docs/` schreiben (z. B. `./guide/data-loading`)
+- **Nicht notwendige Threads:** Nicht automatisch umsetzen. Bei eigenständigem, belegtem Nutzen sofort als nicht blockierendes Follow-up erfassen und den Thread mit Verweis darauf schließen; rein hypothetische oder geschmackliche Befunde ohne belegten Nutzen begründet schließen. Ein Follow-up darf den Abschluss des aktuellen PRs nicht blockieren.
+- **Scope-Schutz in der Merge-Phase:** Ausschließlich unmittelbar blockierende Correctness-, Security- oder Datenintegritätsprobleme mit der kleinsten lokalen Änderung beheben. Keine neue Abstraktion, Generalisierung, Komponente, zentrale Infrastruktur oder systemübergreifenden Verträge einführen. Berührt ein Fix neue Komponenten oder Verträge oder erweitert er den festgehaltenen Scope, den Fix zurückschneiden und vor weiteren Änderungen stoppen. Lässt sich ein echter Blocker innerhalb dieser Grenze nicht korrekt beheben, ist der PR nicht merge-reif und benötigt einen einfacheren Entwurf oder einen neu zugeschnittenen Lieferabschnitt.
+- **Circuit-Breaker nach einer Review-Fixrunde:** Weitere Findings führen entweder zu einem einfacheren Entwurf oder zu nicht blockierenden Follow-ups, nicht zu einer zusätzlichen Implementierungsschicht im laufenden PR. Mehrere Befunde an derselben Invariante oder Systemgrenze lösen weiterhin die Review- und Fix-Stop-Regel aus `DEVELOPMENT_RULES.md` aus.
+- Bei roten CI-Checks zuerst `gh pr checks <nr>` und die roten Job-Logs prüfen; lokal nur das konkrete Fehlersignal oder den unmittelbar geänderten Pfad reproduzieren.
+- Nach jedem Push bei aktivem PR-Fixing den Check-Status erneut prüfen und frühe rote Signale auswerten; Commit und Push dabei nie parallel starten. Die vollständigen CI-Gates nur für den exakten finalen HEAD einmal bis zum terminalen Ergebnis abwarten.
+- Codeänderungen benötigen passende Tests und aktualisieren die relevante aktuelle Dokumentation, sofern sie betroffen ist. Features und Architektur-/Systemänderungen berücksichtigen zusätzlich die relevanten arc42-Abschnitte unter `docs/architecture/`.
 
 ## Verbindlicher Rollout-Prozess
 
@@ -109,87 +69,19 @@
 
 ## Review-Agents
 
-- Die Agent-Definitionen unter `.github/agents/` bleiben die kanonische Quelle und sind zusätzlich als Codex-Agents über `.codex/config.toml` registriert.
-- Für normale PRs und Code-Reviews steht `pr-review-orchestrator.agent.md` unter `.github/agents/` bereit.
-- Für das iterative Fixen von PRs (Threads, Tests, Quality Gates) steht `pr-fixer.agent.md` unter `.github/agents/` bereit.
-- Für Proposal-Reviews bleibt `proposal-review-orchestrator.agent.md` der Einstiegspunkt.
-- Für Rollouts (Image-Build, quantum-cli Deploy, Keycloak-IAM, Smoke-Tests) steht `rollout-operator.agent.md` unter `.github/agents/` bereit.
-- Spezialisierte Reviewer ergänzen die bestehende Matrix für:
-  - Testqualität (`test-quality.agent.md`)
-  - i18n & Content (`i18n-content.agent.md`)
-  - User Journey & Usability (`user-journey-usability.agent.md`)
-  - Performance (`performance.agent.md`)
-- Die zentrale Trigger-Matrix und Abgrenzung liegt unter `docs/development/review-agent-governance.md`.
+- `.github/agents/` ist die kanonische Quelle; die Trigger-Matrix steht in `docs/development/review-agent-governance.md`.
+- Einstiegspunkte: `pr-review-orchestrator.agent.md` für Reviews, `pr-fixer.agent.md` für iterative PR-Fixes, `proposal-review-orchestrator.agent.md` für Proposals und `rollout-operator.agent.md` für Rollouts.
+- Fachreviews stehen für Testqualität, i18n/Content, User Journey/Usability und Performance bereit.
 
-## Repository File Placement (Enforced)
+## Dokumentation und Dateiplatzierung
 
+- Aktuelle Dokumentation über `docs/README.md` und die Bereichsindizes unter `docs/{development,operations,reference,governance}/README.md` einordnen. Maßgebliche Dokumente sind deutsch mit korrekten Umlauten; interne Links relativ zum Ordner `docs/` schreiben.
+- Neue aktuelle Dokumente gehören zweckbezogen nach `docs/{architecture,adr,development,operations,reference,api,governance}/`. `docs/guides/` enthält ausschließlich `studio-rollout-process.md`.
+- Reports nach `docs/reports/`, Staging-Nachweise nach `docs/staging/YYYY-MM/` und PR-Unterlagen nach `docs/pr/<nummer>/` legen.
 - Root-Level Markdown ist gesperrt (Ausnahme: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `DEBUGGING.md`, `DEVELOPMENT_RULES.md`, `AGENTS.md`, `SECURITY.md`)
 - Debug-Skripte gehören ausschließlich nach `scripts/debug/auth/` oder `scripts/debug/otel/`
-- Operative Reports gehören nach `docs/reports/`
-- Staging-Dokumente gehören nach `docs/staging/YYYY-MM/`
-- PR-Dokumente gehören nach `docs/pr/<nummer>/`
 - Legacy-Dateinamen wie `docs/STAGING-TODOS.md`, `docs/pr45-*.md`, `docs/pr-45-*.md` sind verboten
-- Verbindlicher Check: `pnpm check:file-placement`
-- Für lokale Hook-Aktivierung: `pnpm hooks:install`
-
-## Package-Struktur
-
-**Core packages:**
-
-- `packages/core/` - Framework-agnostische Kernlogik
-- `packages/data/` - Data-Loading und State-Management
-
-**Tooling:**
-
-- `packages/.../` - ...
-
-**Dependencies:**
-
-- Verwendet Workspace-Protokoll (`workspace:*`) - core → framework → start packages
-
-## Anforderungen an die Umgebung
-
-- **Node.js** - Erforderlich für die Entwicklung
-- **pnpm** - Package-Manager (erforderlich für Workspace-Features)
-
-## Wichtige Architektur-Patterns
-
-- **Typsicherheit**: Umfangreiches TypeScript für typsicheres Routing
-- **Framework-agnostisch**: Kernlogik getrennt von Framework-Bindings
-- **Code-basiertes Routing**: Unterstützung für code-basiertes Routing (dynamische Routen aus Plugins)
-- **Bundler vs. Node-ESM**: `moduleResolution: "Bundler"` ist für das Dev-Tooling bequem, ersetzt aber nicht die strengeren Node-ESM-Regeln für gebaute `dist/*.js`-Packages
-
-## Development Rules
-
-Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md). Alle Agenten-Reviews sind im Zweifel an diesen Regeln auszurichten.
-
-### Kritische Regeln (Non-Negotiable)
-
-1. **Texte & Übersetzungen**: Keine hardcoded Strings, immer `t('key')` verwenden
-2. **Logging**: Server-Code nutzt den Server-Runtime-Logger (`@sva/server-runtime`), nie `console.*`
-   Development: Console + lokale Dev-Konsole sind erlaubt; Production bleibt OTEL-first ohne Console-Ausgabe
-3. **Security**: Input-Validation client+server, PII-Schutz in Logs
-4. **CSS**: Design-System verwenden, keine inline-styles (außer dynamische Daten)
-5. **UI-Standard**: Neue UI mit `shadcn/ui` bauen; keine parallelen Basis-Komponenten ohne dokumentierte Architekturentscheidung
-6. **Accessibility**: WCAG 2.1 AA compliant
-7. **Docs**: Alle Änderungen müssen die relevante aktuelle Dokumentation im zuständigen Bereich aktualisieren
-8. **Server-Package-Runtime**: Bei serverseitigen Workspace-Packages keine endungslosen relativen Runtime-Imports; `pnpm check:server-runtime` muss für entsprechende Änderungen grün bleiben
-9. **Action-IDs**: Autorisierbare Actions immer fully-qualified als `<namespace>.<actionName>` modellieren; keine neuen Kurzformen ohne Namespace, Plugins nur im eigenen Namespace
-10. **DB-Schema präsent halten**: Vor DB-/Migrationsänderungen `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` prüfen; nach jeder Schemaänderung den Snapshot und die Doku fortschreiben
-
-**Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
-
-### Docs Regeln
-
-- **Einstieg**: `docs/README.md` und die Bereichsindizes unter `docs/{development,operations,reference,governance}/README.md` sind die Navigation der aktuellen lokalen Wissensbasis
-- **Aktuelle Dokumentation**: Neue Dokumente gehören nach Zweck in `docs/architecture/`, `docs/adr/`, `docs/development/`, `docs/operations/`, `docs/reference/`, `docs/api/` oder `docs/governance/`
-- **Kompatibilitätsanker**: `docs/guides/` enthält ausschließlich `studio-rollout-process.md`; neue allgemeine Dokumente gehören in den zuständigen Bereich. `docs/governance/dokumentationsmigration.md` weist die abgeschlossene Migration nach
-- **Nachweise und Historie**: Reports, Staging- und PR-Unterlagen bleiben in den dafür vorgesehenen, nicht normativen Bereichen
-- **Namenskonvention**: Dokumente müssen beschreibende Namen haben, die den Inhalt klar widerspiegeln (z.B. `docs/development/monitoring-stack.md`)
-- **Sprache**: Maßgebliche Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss). Für systemübergreifende technische Abstimmungen ist eine direkt verlinkte englische Übersetzung mit der Endung `.en.md` neben der maßgeblichen deutschen Fassung zulässig; bei Abweichungen gilt die deutsche Fassung.
-- **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
-- **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
-- **DB-Schema-Snapshot**: Änderungen an Tabellen, Spalten, Constraints, Indizes, RLS, Triggern oder DB-Funktionen müssen immer auch `docs/development/studio-db-schema-final.sql` und bei Bedarf `docs/development/studio-db-schema.md` aktualisieren
+- Verbindlicher Check: `pnpm check:file-placement`; lokale Hooks mit `pnpm hooks:install` aktivieren.
 
 <!-- OPENSPEC:START -->
 

@@ -9,7 +9,7 @@ import {
   updateClaimedRun,
 } from './tenant-provisioning-state.js';
 import type { ParentStep } from './tenant-provisioning-state.js';
-import { runTenantProvisioningStep } from './tenant-provisioning-steps.js';
+import { readDiagnosticErrorType, runTenantProvisioningStep } from './tenant-provisioning-steps.js';
 import { assertTenantProvisioningSnapshotCurrent } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({
@@ -20,6 +20,11 @@ const logger = createSdkLogger({
 const KASSEL_PARENT_DOMAIN = 'dialog.kassel.de';
 const LEASE_MILLISECONDS = 30_000;
 const LEASE_HEARTBEAT_MILLISECONDS = 10_000;
+type TenantProvisioningFailurePhase =
+  | 'execution_guard'
+  | 'instance_validation'
+  | 'snapshot_validation'
+  | 'step_execution';
 const TERMINAL_ERROR_CODES = new Set([
   'instance_not_found',
   'kassel_auth_issuer_missing',
@@ -162,13 +167,17 @@ export const processNextTenantProvisioningRun = async (
         throw new Error('provisioning_deadline_exceeded');
       }
     };
+    let failurePhase: TenantProvisioningFailurePhase = 'execution_guard';
     try {
       assertExecutionActive();
+      failurePhase = 'instance_validation';
       if (!instance) throw new Error('instance_not_found');
       if (!['requested', 'validated', 'provisioning'].includes(instance.status)) {
         throw new Error('provisioning_instance_status_invalid');
       }
+      failurePhase = 'snapshot_validation';
       assertTenantProvisioningSnapshotCurrent(current, instance);
+      failurePhase = 'step_execution';
       return await runTenantProvisioningStep({
         deps: lockedDeps,
         run: current,
@@ -178,9 +187,26 @@ export const processNextTenantProvisioningRun = async (
         assertExecutionActive,
       });
     } catch (error) {
-      if (errorCode(error) === 'provisioning_claim_lost') throw error;
+      const code = errorCode(error);
+      if (code === 'provisioning_claim_lost') throw error;
       const stepKey =
-        errorCode(error) === 'provisioning_step_invalid' ? 'registry' : readStep(current);
+        code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
+      try {
+        logger.warn('tenant_provisioning_step_exception', {
+          operation: 'create_instance',
+          result: 'failed',
+          request_id: current.requestId,
+          instance_id: current.instanceId,
+          run_id: current.id,
+          step_key: stepKey,
+          failure_phase: failurePhase,
+          error_type: readDiagnosticErrorType(error),
+          error_code: code,
+          classification: code,
+        });
+      } catch {
+        // Diagnostic logging must never replace the provisioning failure.
+      }
       const failureTime = currentTime();
       const terminal =
         isTerminalError(error) || failureTime.getTime() >= new Date(current.deadlineAt).getTime();
@@ -192,12 +218,12 @@ export const processNextTenantProvisioningRun = async (
         instance_id: current.instanceId,
         run_id: current.id,
         step_key: stepKey,
-        error_code: errorCode(error),
+        error_code: code,
       });
       return updateClaimedRun(lockedDeps, current, input.workerId, {
         stepKey,
         nextAttemptAt: new Date(failureTime.getTime() + RETRY_MILLISECONDS).toISOString(),
-        errorCode: errorCode(error),
+        errorCode: code,
         errorMessage: 'Provisionierung wird erneut versucht.',
       });
     }

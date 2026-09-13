@@ -437,6 +437,62 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
+  it('logs the outer failure phase when persistence fails after ingress publication', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'ingress',
+      requestId: 'request-ingress-persist-1',
+    });
+    const persistenceError = Object.assign(new Error('database update failed database-secret'), {
+      code: 'XX001',
+      table: 'instance_provisioning_runs',
+      column: 'terminal_evidence',
+      constraint: 'instance_provisioning_runs_pkey',
+      detail: 'database-detail-secret',
+      hint: 'database-hint-secret',
+      query: 'UPDATE secret_table SET password = $1',
+      parameters: ['database-parameter-secret'],
+      stack: 'database-stack-secret',
+    });
+    vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(persistenceError);
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.deps.publishTenantIngress).toHaveBeenCalledOnce();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'tenant_ingress_publish_failed',
+      expect.anything()
+    );
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'tenant_provisioning_step_exception',
+      expect.objectContaining({
+        operation: 'create_instance',
+        result: 'failed',
+        request_id: 'request-ingress-persist-1',
+        instance_id: 'tenant-a',
+        run_id: '00000000-0000-4000-8000-000000000001',
+        step_key: 'ingress',
+        failure_phase: 'step_execution',
+        error_type: 'Error',
+        error_code: 'tenant_provisioning_step_failed',
+        classification: 'tenant_provisioning_step_failed',
+      })
+    );
+    const logged = JSON.stringify(state.logger.warn.mock.calls);
+    expect(logged).not.toContain('database-secret');
+    expect(logged).not.toContain('database-detail-secret');
+    expect(logged).not.toContain('database-hint-secret');
+    expect(logged).not.toContain('secret_table');
+    expect(logged).not.toContain('database-parameter-secret');
+    expect(logged).not.toContain('database-stack-secret');
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'ingress',
+      errorCode: 'tenant_provisioning_step_failed',
+    });
+  });
+
   it('preserves the provisioning failure when ingress diagnostics throw', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {

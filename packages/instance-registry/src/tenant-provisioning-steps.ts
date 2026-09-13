@@ -55,7 +55,7 @@ const readDiagnosticString = (value: unknown, key: string): string | undefined =
   return typeof candidate === 'string' ? candidate : undefined;
 };
 
-const readDiagnosticErrorType = (error: unknown): string => {
+export const readDiagnosticErrorType = (error: unknown): string => {
   return readDiagnosticString(error, 'name') ?? typeof error;
 };
 
@@ -68,7 +68,9 @@ const readDiagnosticErrorCode = (error: unknown): string => {
     : INGRESS_FAILURE_CLASSIFICATION;
 };
 
-const buildIngressFailureDiagnostics = (error: unknown): Readonly<Record<string, unknown>> =>
+export const buildProvisioningFailureDiagnostics = (
+  error: unknown
+): Readonly<Record<string, unknown>> =>
   redactObject({
     diagnostic_error: {
       name: readDiagnosticErrorType(error),
@@ -179,7 +181,7 @@ const ingressStep: StepHandler = async ({
         error_type: readDiagnosticErrorType(error),
         error_code: readDiagnosticErrorCode(error),
         classification: INGRESS_FAILURE_CLASSIFICATION,
-        ...buildIngressFailureDiagnostics(error),
+        ...buildProvisioningFailureDiagnostics(error),
       });
     } catch {
       // Diagnostic logging must never replace the provisioning failure.

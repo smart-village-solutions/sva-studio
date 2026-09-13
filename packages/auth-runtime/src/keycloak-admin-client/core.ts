@@ -118,6 +118,15 @@ type KeycloakProtocolMapperRepresentation = {
   readonly config?: Readonly<Record<string, string>>;
 };
 
+type KeycloakProtocolMapperEvaluationRepresentation = {
+  readonly mapperId?: string;
+  readonly mapperName?: string;
+  readonly containerId?: string;
+  readonly containerName?: string;
+  readonly containerType?: string;
+  readonly protocolMapper?: string;
+};
+
 type KeycloakUserCreateResponse = {
   readonly location: string | null;
 };
@@ -1594,10 +1603,49 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   ): Promise<readonly KeycloakProtocolMapperRepresentation[]> {
     const client = await this.getOidcClientByClientId(clientId);
     if (!client) return [];
-    return this.executeWithResilience<KeycloakProtocolMapperRepresentation[]>({
+    const evaluatedMappers = await this.executeWithResilience<
+      KeycloakProtocolMapperEvaluationRepresentation[]
+    >({
       method: 'GET',
       path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/evaluate-scopes/protocol-mappers`,
       operation: 'list_effective_protocol_mappers',
+    });
+    const directMappers = await this.executeWithResilience<KeycloakProtocolMapperRepresentation[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/protocol-mappers/models`,
+      operation: 'list_protocol_mappers',
+    });
+    const mappersById = new Map(directMappers.map((mapper) => [mapper.id, mapper]));
+    const clientScopeIds = new Set(
+      evaluatedMappers.flatMap((mapper) =>
+        mapper.containerType === 'client-scope' && mapper.containerId ? [mapper.containerId] : []
+      )
+    );
+
+    for (const clientScopeId of clientScopeIds) {
+      const clientScopeMappers = await this.executeWithResilience<
+        KeycloakProtocolMapperRepresentation[]
+      >({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/client-scopes/${encodePathSegment(clientScopeId)}/protocol-mappers/models`,
+        operation: 'list_client_scope_protocol_mappers',
+      });
+      for (const mapper of clientScopeMappers) mappersById.set(mapper.id, mapper);
+    }
+
+    return evaluatedMappers.map((evaluatedMapper) => {
+      const mapper = evaluatedMapper.mapperId
+        ? mappersById.get(evaluatedMapper.mapperId)
+        : undefined;
+      if (!mapper) {
+        throw new KeycloakAdminRequestError({
+          message: 'Keycloak effective protocol mapper could not be resolved.',
+          statusCode: 502,
+          code: 'effective_protocol_mapper_unresolved',
+          retryable: false,
+        });
+      }
+      return mapper;
     });
   }
 

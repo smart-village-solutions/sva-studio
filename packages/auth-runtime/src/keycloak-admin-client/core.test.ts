@@ -1807,8 +1807,15 @@ describe('Keycloak admin client', () => {
   });
 
   it('reads effective protocol mappers including attached client scopes', async () => {
-    const mapper = {
-      id: 'mapper-1',
+    const directMapper = {
+      id: 'mapper-direct',
+      name: 'direct-claim',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-usermodel-attribute-mapper',
+      config: { 'claim.name': 'studio_tenant_id' },
+    };
+    const inheritedMapper = {
+      id: 'mapper-inherited',
       name: 'inherited-claim',
       protocol: 'openid-connect',
       protocolMapper: 'oidc-hardcoded-claim-mapper',
@@ -1820,15 +1827,69 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, [{ id: 'client-1', clientId: 'ssf-frontend' }])
       )
-      .mockResolvedValueOnce(createJsonResponse(200, [mapper]));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          {
+            mapperId: 'mapper-direct',
+            mapperName: 'direct-claim',
+            containerId: 'client-1',
+            containerName: 'ssf-frontend',
+            containerType: 'client',
+            protocolMapper: 'oidc-usermodel-attribute-mapper',
+          },
+          {
+            mapperId: 'mapper-inherited',
+            mapperName: 'inherited-claim',
+            containerId: 'scope-1',
+            containerName: 'profile',
+            containerType: 'client-scope',
+            protocolMapper: 'oidc-hardcoded-claim-mapper',
+          },
+        ])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, [directMapper]))
+      .mockResolvedValueOnce(createJsonResponse(200, [inheritedMapper]));
     const client = await createClient(fetchImpl);
 
     await expect(client.listEffectiveClientProtocolMappers('ssf-frontend')).resolves.toEqual([
-      mapper,
+      directMapper,
+      inheritedMapper,
     ]);
-    expect(String(fetchImpl.mock.calls.at(-1)?.[0])).toContain(
+    expect(String(fetchImpl.mock.calls[2]?.[0])).toContain(
       '/clients/client-1/evaluate-scopes/protocol-mappers'
     );
+    expect(String(fetchImpl.mock.calls.at(-1)?.[0])).toContain(
+      '/client-scopes/scope-1/protocol-mappers/models'
+    );
+  });
+
+  it('fails closed when effective protocol mapper metadata cannot be resolved', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'client-1', clientId: 'ssf-frontend' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          {
+            mapperId: 'missing-mapper',
+            mapperName: 'missing-claim',
+            containerId: 'client-1',
+            containerName: 'ssf-frontend',
+            containerType: 'client',
+            protocolMapper: 'oidc-hardcoded-claim-mapper',
+          },
+        ])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.listEffectiveClientProtocolMappers('ssf-frontend')).rejects.toMatchObject({
+      code: 'effective_protocol_mapper_unresolved',
+      retryable: false,
+      statusCode: 502,
+    });
   });
 
   it('repairs provisioning metadata on an existing realm role for the Studio instance', async () => {

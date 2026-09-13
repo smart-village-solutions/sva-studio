@@ -22,10 +22,15 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { shouldExposeAutomatedProvisioning } from './service-active-provisioning.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 
-const persistProvisioningLifecycleRetry = async (
+const prepareProvisioningRetry = async (
   deps: InstanceRegistryServiceDeps,
   run: Parameters<typeof readTenantProvisioningPluginSnapshot>[0]
 ): Promise<void> => {
+  await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
+    instanceId: run.instanceId,
+    actorId: run.actorId,
+    requestId: run.requestId,
+  });
   const { lifecycles } = readTenantProvisioningPluginSnapshot(run);
   await deps.repository.persistPluginTenantLifecycleReconcileIntents({
     instanceId: run.instanceId,
@@ -84,6 +89,7 @@ export const resolveIdempotentCreateRetry = async (
   ) {
     throw new Error('provisioning_retry_mode_invalid');
   }
+  await prepareProvisioningRetry(deps, matchingRun);
   const retriedRun = await deps.repository.retryProvisioningRun({
     instanceId: instance.instanceId,
     idempotencyKey: input.idempotencyKey,
@@ -92,7 +98,6 @@ export const resolveIdempotentCreateRetry = async (
     deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   });
   if (!retriedRun) throw new Error('provisioning_retry_conflict');
-  await persistProvisioningLifecycleRetry(deps, retriedRun);
   const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
   const requestedInstance =
     (await deps.repository.setInstanceStatus({
@@ -157,6 +162,7 @@ export const createRetryTenantProvisioningHandler =
       throw new Error('provisioning_retry_instance_status_invalid');
     }
 
+    await prepareProvisioningRetry(deps, latestCreateRun);
     const retriedRun = await deps.repository.retryProvisioningRun({
       instanceId: instance.instanceId,
       idempotencyKey: latestCreateRun.idempotencyKey,
@@ -165,8 +171,6 @@ export const createRetryTenantProvisioningHandler =
       deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     });
     if (!retriedRun) throw new Error('provisioning_retry_conflict');
-    await persistProvisioningLifecycleRetry(deps, retriedRun);
-
     const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
     const requestedInstance = await deps.repository.setInstanceStatus({
       instanceId: instance.instanceId,

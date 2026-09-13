@@ -706,6 +706,50 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
+  it('syncs assigned module IAM before creating a fresh provisioning run', async () => {
+    const reconcileModuleActivationPolicies = vi.fn(async () => ({
+      changedModuleIds: [],
+      conflictModuleIds: [],
+      unchangedModuleIds: ['news'],
+    }));
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+      reconcileModuleActivationPolicies,
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [
+            {
+              moduleId: 'news',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'news-1',
+            },
+          ],
+        }),
+      })
+    );
+
+    await service.createProvisioningRequest({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'dialog.kassel.de',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
+      idempotencyKey: 'idem-fresh-iam',
+    });
+
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo' })
+    );
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(
+      repository.createProvisioningRun as ReturnType<typeof vi.fn>
+    );
+  });
+
   it('resolves a concurrent identical create after losing the instance insert race', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),
@@ -1042,10 +1086,16 @@ describe('instance registry service facade', () => {
       completedAt: undefined,
     };
     const retryProvisioningRun = vi.fn(async () => retriedRun);
+    const reconcileModuleActivationPolicies = vi.fn(async () => ({
+      changedModuleIds: [],
+      conflictModuleIds: [],
+      unchangedModuleIds: ['news'],
+    }));
     const repository = createRepository({
       getInstanceById: vi.fn(async () => failedInstance),
       listProvisioningRuns: vi.fn(async () => [failedRun]),
       retryProvisioningRun,
+      reconcileModuleActivationPolicies,
       setInstanceStatus: vi.fn(async () => ({
         ...failedInstance,
         status: 'provisioning' as const,
@@ -1053,7 +1103,21 @@ describe('instance registry service facade', () => {
     });
 
     await expect(
-      createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+      createInstanceRegistryService(
+        createDeps(repository, {
+          readModuleActivationPolicySnapshot: () => ({
+            revision: 'catalog-1',
+            modules: [
+              {
+                moduleId: 'news',
+                activationPolicy: 'automatic',
+                manifestVersion: 1,
+                policyRevision: 'news-1',
+              },
+            ],
+          }),
+        })
+      ).retryTenantProvisioning({
         instanceId: 'demo',
         actorId: 'admin-1',
         requestId: 'retry-1',
@@ -1076,6 +1140,10 @@ describe('instance registry service facade', () => {
       lifecycles: kasselPluginSnapshot.pluginLifecycles,
       forcePluginIds: ['news'],
     });
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo' })
+    );
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(retryProvisioningRun);
   });
 
   it('returns an already requeued automated run without creating another retry', async () => {

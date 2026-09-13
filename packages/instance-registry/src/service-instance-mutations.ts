@@ -84,7 +84,7 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    await createReconcileModuleActivationPoliciesHandler(deps)({
+    await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
       instanceId: instance.instanceId,
       actorId: effectiveInput.actorId,
       requestId: effectiveInput.requestId,

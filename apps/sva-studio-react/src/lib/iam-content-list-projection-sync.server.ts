@@ -179,10 +179,10 @@ export const isProjectionRefreshDue = (input: {
   readonly options: ProjectionRefreshOptions;
   readonly nowMs?: number;
 }): boolean => {
-  if (input.options.force || !input.state) return true;
+  if (!input.state) return true;
 
   if (
-    input.options.trigger === 'scheduler' &&
+    input.options.trigger !== 'manual' &&
     input.state.lastErrorCode &&
     durableCredentialErrorCodes.has(input.state.lastErrorCode) &&
     input.state.lastFailedAt
@@ -195,6 +195,8 @@ export const isProjectionRefreshDue = (input: {
       return false;
     }
   }
+
+  if (input.options.force) return true;
 
   return !input.state.hasSnapshot || input.state.isStale;
 };

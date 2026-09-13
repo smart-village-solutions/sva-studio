@@ -21,18 +21,31 @@ describe('isProjectionRefreshDue', () => {
   const nowMs = Date.parse('2026-09-13T12:15:00.000Z');
 
   it.each([
-    'mainserver_credentials_missing',
-    'mainserver_credentials_partial',
-    'mainserver_credentials_stale',
-  ])('holds scheduler retries for recent durable error %s', (errorCode) => {
+    ['scheduler', false],
+    ['reconciliation', true],
+    ['mutation_follow_up', true],
+  ] as const)('holds automatic %s retries even when force is %s', (trigger, force) => {
     expect(
       isProjectionRefreshDue({
-        state: failedState(errorCode, '2026-09-13T12:00:01.000Z'),
-        options: { force: false, awaitCompletion: false, trigger: 'scheduler' },
+        state: failedState('mainserver_credentials_missing', '2026-09-13T12:00:01.000Z'),
+        options: { force, awaitCompletion: false, trigger },
         nowMs,
       })
     ).toBe(false);
   });
+
+  it.each(['mainserver_credentials_partial', 'mainserver_credentials_stale'])(
+    'holds scheduler retries for recent durable error %s',
+    (errorCode) => {
+      expect(
+        isProjectionRefreshDue({
+          state: failedState(errorCode, '2026-09-13T12:00:01.000Z'),
+          options: { force: false, awaitCompletion: false, trigger: 'scheduler' },
+          nowMs,
+        })
+      ).toBe(false);
+    }
+  );
 
   it('retries a durable credential error after fifteen minutes', () => {
     expect(

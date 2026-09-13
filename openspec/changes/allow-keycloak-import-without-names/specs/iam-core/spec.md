@@ -34,6 +34,14 @@ The system SHALL run Keycloak user synchronization as a reconciliation flow that
 - **THEN** upserted das System den subject- und instanzgebundenen IAM-Account mit optionalen Namensfeldern
 - **AND** stellt es die tenantlokale Membership idempotent sicher
 - **AND** erzeugt es für die fehlenden Namen keinen `manual_review`-Warnzustand
+
+#### Scenario: Abgewiesene reine Namensreparatur blockiert die Membership nicht
+
+- **GIVEN** ein tenantlokaler Keycloak-User hat eine aufgelöste E-Mail und ein optionales Namensfeld ist aus dem subjectgebundenen lokalen Seed auflösbar
+- **WHEN** Keycloak die reine Namensreparatur ablehnt
+- **THEN** normalisiert und persistiert das System den subjectgebundenen IAM-Account weiterhin
+- **AND** stellt es die tenantlokale Membership idempotent sicher
+- **AND** protokolliert es nur eine datensparsame technische Warnung ohne Profilwerte
 - **AND** verwendet es einen vorhandenen Anzeigenamen-Fallback, ohne diesen als erfundenes Profildatum zu persistieren
 
 #### Scenario: Nicht auflösbare E-Mail bleibt blockiert

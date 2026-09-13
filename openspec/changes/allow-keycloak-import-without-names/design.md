@@ -29,11 +29,13 @@ Eine bereits vorhandene Keycloak-E-Mail bleibt gegenüber einem abweichenden lok
 
 Ein fehlender Name wird nicht durch `Unbekannt` oder einen anderen Platzhalter ersetzt. Die bestehende Anzeigenamensauflösung in IAM verwendet vorhandene Namen und fällt andernfalls auf Username, E-Mail oder Subject zurück. Oberflächen dürfen einen übersetzten Anzeigehinweis verwenden, ohne ihn als Profildatum zu persistieren.
 
+Optionale Textfelder werden vor dem IAM-Upsert getrimmt; reine Leerzeichen werden als abwesend persistiert. Schlägt ausschließlich eine optionale Namensreparatur in Keycloak fehl, wird der subjectgebundene IAM-Account dennoch aus den aufgelösten Werten upserted und die Membership sichergestellt. Eine erforderliche E-Mail-Reparatur bleibt dagegen fail-closed.
+
 ## Data Flow
 
 1. Der Sync listet die Benutzer des aufgelösten tenantlokalen Keycloak-Realms.
 2. Für jedes Subject werden vorhandene Quellwerte und der ausschließlich für dieselbe Instanz und dasselbe Subject geladene lokale Seed ausgewertet.
-3. Auflösbare fehlende Felder dürfen über den bestehenden Provider-Pfad am exakten Keycloak-Subject repariert werden.
+3. Auflösbare fehlende Felder dürfen über den bestehenden Provider-Pfad am exakten Keycloak-Subject repariert werden; eine abgewiesene reine Namensreparatur wird datensparsam protokolliert und als nicht blockierend behandelt.
 4. Ist die E-Mail anschließend vorhanden, wird der IAM-Account mit optionalen Namensfeldern upserted und die Membership idempotent sichergestellt.
 5. Ist die E-Mail weiterhin nicht vorhanden, wird der Item-Savepoint zurückgerollt und der Fall als `manual_review` gezählt.
 6. Der Gesamtreport bleibt `partial_failure` beziehungsweise `failed`, solange mindestens eine E-Mail nicht aufgelöst werden kann.
@@ -46,6 +48,7 @@ Ein fehlender Name wird nicht durch `Unbekannt` oder einen anderen Platzhalter e
 - **IAM-IMPORT-4 – Keine erfundenen Namen:** Fehlende Namen bleiben optional; weder Keycloak noch IAM erhalten Platzhalter-Profildaten.
 - **IAM-IMPORT-5 – Datenschutz:** Logs und Reports enthalten keine Profilwerte, sondern nur bestehende Zähler, Ursachen und pseudonymisierte Subject-Verweise.
 - **IAM-IMPORT-6 – Wiederholung:** Ein erneuter Sync eines nur hinsichtlich der Namen unvollständigen Profils erzeugt keinen `manual_review`-Warnzustand und bleibt idempotent.
+- **IAM-IMPORT-7 – Optionale Mutation:** Eine fehlgeschlagene reine Namensreparatur verhindert weder Account-Upsert noch Membership; eine fehlgeschlagene erforderliche E-Mail-Reparatur bleibt blockierend.
 
 Ein separates `assurance.md` ist nicht erforderlich: Die Änderung bleibt in einem synchronen, bestehenden Item-Savepoint begrenzt, führt keine neue Trust Boundary und keinen neuen persistenten Zustand ein. Die relevanten Datenintegritäts- und Datenschutzinvarianten sind oben vollständig festgehalten.
 
@@ -54,6 +57,7 @@ Ein separates `assurance.md` ist nicht erforderlich: Die Änderung bleibt in ein
 - Unit-Reproduktion: vorhandene E-Mail bei fehlenden beiden Namen wird persistiert und nicht als `manual_review` gezählt.
 - Varianten: nur Vorname oder nur Nachname fehlt; Leerzeichen werden wie fehlende Werte behandelt.
 - Positivpfade: Namen werden weiterhin aus demselben subjectgebundenen lokalen Seed repariert, sofern vorhanden.
+- Provider-Grenze: Eine abgewiesene reine Namensreparatur lässt die Membership-Persistenz zu; eine abgewiesene E-Mail-Reparatur bricht weiterhin ab.
 - E-Mail-Grenze: fehlende E-Mail ohne auflösbaren Seed oder E-Mail-Username bleibt `manual_review` ohne Persistenz.
 - Vorrang: vorhandene Quell-E-Mail bleibt bei widersprüchlichem Seed unverändert.
 - Wiederholung: derselbe namenlose Benutzer kann erneut idempotent synchronisiert werden, ohne Warnung oder doppelte Membership.

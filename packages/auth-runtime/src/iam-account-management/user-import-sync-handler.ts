@@ -47,6 +47,14 @@ const normalizeOptionalText = (value: string | undefined | null): string | undef
 const hasRequiredImportEmail = (user: IdentityListedUser): boolean =>
   normalizeOptionalText(user.email) !== undefined;
 
+const normalizeIdentityUserProfile = (user: IdentityListedUser): IdentityListedUser => ({
+  ...user,
+  username: normalizeOptionalText(user.username),
+  email: normalizeOptionalText(user.email),
+  firstName: normalizeOptionalText(user.firstName),
+  lastName: normalizeOptionalText(user.lastName),
+});
+
 const looksLikeEmail = (value: string | undefined): value is string => {
   if (typeof value !== 'string') {
     return false;
@@ -112,7 +120,7 @@ type ProfileRepairPlan = {
 const resolveProfileValue = (
   sourceValue: string | undefined,
   seedValue: string | undefined
-): string | undefined => normalizeOptionalText(sourceValue) ?? seedValue;
+): string | undefined => normalizeOptionalText(sourceValue) ?? normalizeOptionalText(seedValue);
 
 const resolveProfileEmail = (
   sourceEmail: string | undefined,
@@ -186,9 +194,30 @@ const repairIdentityUserProfileIfPossible = async (
     return { user: input.user, repaired: false };
   }
 
-  await trackKeycloakCall('repair_imported_user_profile', () =>
-    input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
-  );
+  try {
+    await trackKeycloakCall('repair_imported_user_profile', () =>
+      input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
+    );
+  } catch (error) {
+    if (repair.repairedEmail) {
+      throw error;
+    }
+
+    logger.warn('Optional Keycloak user name repair skipped during IAM sync', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      auth_realm: input.identityProvider.realm,
+      provider_source: input.identityProvider.source,
+      request_id: input.requestId,
+      trace_id: input.traceId,
+      subject_ref: toSubjectRef(input.user.externalId),
+      reason: 'optional_name_update_failed',
+      repaired_first_name: repair.repairedFirstName,
+      repaired_last_name: repair.repairedLastName,
+    });
+
+    return { repaired: false, user: repair.user };
+  }
 
   logger.info('Keycloak user profile repaired during IAM sync', {
     operation: 'sync_keycloak_users',
@@ -403,7 +432,8 @@ const syncIdentityUser = async (
       traceId: input.traceId,
     });
     repairedProfile = repaired.repaired;
-    if (!hasRequiredImportEmail(repaired.user)) {
+    const normalizedUser = normalizeIdentityUserProfile(repaired.user);
+    if (!hasRequiredImportEmail(normalizedUser)) {
       throw new KeycloakUserSyncManualReviewError(
         'identity_profile_incomplete',
         'Keycloak-Benutzerprofil enthält keine auflösbare E-Mail-Adresse und erfordert manuelle Prüfung.'
@@ -411,7 +441,7 @@ const syncIdentityUser = async (
     }
     const result = await upsertIdentityUser(client, {
       instanceId: input.instanceId,
-      user: repaired.user,
+      user: normalizedUser,
     });
     await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
     return { created: result.created, manualReview: false, repaired: repairedProfile };

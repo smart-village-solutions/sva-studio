@@ -154,6 +154,7 @@ const runSync = async (input: {
   readonly user: IdentityListedUser;
   readonly seed?: LocalProfileSeed | null;
   readonly instanceId?: string;
+  readonly updateUser?: () => Promise<void>;
 }) => {
   state.loadLocalProfileSeed.mockImplementationOnce(async () => {
     state.events.push('seed:load');
@@ -174,6 +175,7 @@ const runSync = async (input: {
       }),
       updateUser: vi.fn(async () => {
         state.events.push('keycloak:update');
+        await input.updateUser?.();
       }),
     },
   };
@@ -371,7 +373,11 @@ describe('user-import-sync-handler profile repair characterization', () => {
     expect(result.provider.updateUser).not.toHaveBeenCalled();
     expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
       instanceId: 'instance-1',
-      user,
+      user: {
+        ...user,
+        firstName: user.firstName?.trim() || undefined,
+        lastName: user.lastName?.trim() || undefined,
+      },
     });
     expect(result.report).toMatchObject({
       outcome: 'success',
@@ -380,6 +386,62 @@ describe('user-import-sync-handler profile repair characterization', () => {
       importedCount: 1,
       updatedCount: 0,
     });
+  });
+
+  it('keeps a name-only Keycloak repair failure from blocking IAM membership persistence', async () => {
+    const user = createUser({ firstName: undefined, lastName: undefined });
+    const result = await runSync({
+      user,
+      seed: { firstName: 'Seed', lastName: 'User' },
+      updateUser: async () => {
+        throw new Error('profile_policy_rejected');
+      },
+    });
+
+    expect(result.provider.updateUser).toHaveBeenCalledWith(
+      'subject-1',
+      expect.objectContaining({ firstName: 'Seed', lastName: 'User' })
+    );
+    expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      user: { ...user, firstName: 'Seed', lastName: 'User' },
+    });
+    expect(result.report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      manualReviewCount: 0,
+      importedCount: 1,
+      updatedCount: 0,
+    });
+    expect(result.report.repairedProfileCount).toBeUndefined();
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.objectContaining({
+        reason: 'optional_name_update_failed',
+        subject_ref: expect.stringMatching(/^[a-f0-9]{12}$/),
+      })
+    );
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.externalId);
+  });
+
+  it('keeps a required email repair failure blocking', async () => {
+    const user = createUser({ email: undefined });
+
+    await expect(
+      runSync({
+        user,
+        seed: { email: 'seed@example.test' },
+        updateUser: async () => {
+          throw new Error('keycloak_unavailable');
+        },
+      })
+    ).rejects.toThrow('keycloak_unavailable');
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.anything()
+    );
   });
 
   it('repairs a missing email from an email-shaped username without inventing missing names', async () => {
@@ -426,16 +488,13 @@ describe('user-import-sync-handler profile repair characterization', () => {
     );
   });
 
-  it('preserves the current blank local-seed contract and sends it to manual review', async () => {
+  it('treats a blank local email seed as unresolved and sends it to manual review', async () => {
     const result = await runSync({
       user: createUser({ email: undefined }),
       seed: { email: '   ', firstName: 'Seed', lastName: 'User' },
     });
 
-    expect(result.provider.updateUser).toHaveBeenCalledWith(
-      'subject-1',
-      expect.objectContaining({ email: '   ' })
-    );
+    expect(result.provider.updateUser).not.toHaveBeenCalled();
     expect(state.upsertIdentityUser).not.toHaveBeenCalled();
     expect(result.report).toMatchObject({ outcome: 'failed', manualReviewCount: 1 });
   });

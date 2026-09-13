@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   InstanceKeycloakProvisioningRun,
   InstanceProvisioningRun,
@@ -6,14 +6,19 @@ import type {
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
-vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: () => ({
+const state = vi.hoisted(() => ({
+  logger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     isLevelEnabled: vi.fn(() => true),
-  }),
+  },
+}));
+
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
+  createSdkLogger: () => state.logger,
 }));
 
 import { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
@@ -200,6 +205,10 @@ const createHarness = () => {
 };
 
 describe('tenant provisioning parent orchestrator', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('reaches terminal success only after Keycloak, ingress, login, and module readiness', async () => {
     const harness = createHarness();
     const iterate = () =>
@@ -356,6 +365,61 @@ describe('tenant provisioning parent orchestrator', () => {
       completedAt: undefined,
     });
     expect(harness.getInstance().status).toBe('requested');
+  });
+
+  it('logs a redacted error and cause chain at the tenant ingress publish boundary', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'ingress',
+    });
+    const cause = new Error('authorization: Bearer inner-secret');
+    const publishError = Object.assign(new Error('open failed password=outer-secret'), {
+      code: 'EACCES',
+      syscall: 'open',
+      path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
+      dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
+      cause,
+    });
+    vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'tenant_ingress_publish_failed',
+      expect.objectContaining({
+        operation: 'publish_tenant_ingress',
+        result: 'failed',
+        instance_id: 'tenant-a',
+        run_id: '00000000-0000-4000-8000-000000000001',
+        step_key: 'ingress',
+        diagnostic_error: expect.objectContaining({
+          name: 'Error',
+          message: 'open failed password=[REDACTED]',
+          code: 'EACCES',
+          syscall: 'open',
+          path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
+          dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
+          stack: expect.any(String),
+        }),
+        diagnostic_causes: [
+          expect.objectContaining({
+            name: 'Error',
+            message: 'authorization: [REDACTED]',
+            stack: expect.any(String),
+          }),
+        ],
+      })
+    );
+    const logged = JSON.stringify(state.logger.warn.mock.calls);
+    expect(logged).not.toContain('outer-secret');
+    expect(logged).not.toContain('inner-secret');
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'ingress',
+      errorCode: 'tenant_provisioning_step_failed',
+      completedAt: undefined,
+    });
   });
 
   it('fails closed when mutable registry configuration drifts from the snapshot', async () => {

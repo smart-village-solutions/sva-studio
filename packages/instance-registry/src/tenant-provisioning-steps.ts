@@ -1,4 +1,5 @@
 import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+import { createSdkLogger, redactObject } from '@sva/server-runtime';
 
 import { createExecuteKeycloakProvisioningHandler } from './service-keycloak-execution.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -22,6 +23,65 @@ type StepContext = {
 };
 
 type StepHandler = (context: StepContext) => Promise<InstanceProvisioningRun>;
+
+const logger = createSdkLogger({
+  component: 'iam-instance-registry-tenant-provisioning',
+  level: 'info',
+});
+
+const readProperty = (value: unknown, key: string): unknown => {
+  if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
+    return undefined;
+  }
+  try {
+    return Reflect.get(value, key);
+  } catch {
+    return undefined;
+  }
+};
+
+const toDiagnosticString = (value: unknown): string => {
+  try {
+    return String(value);
+  } catch {
+    return '[unstringifiable-error]';
+  }
+};
+
+const snapshotError = (error: unknown): Readonly<Record<string, unknown>> => ({
+  name:
+    error instanceof Error
+      ? error.name
+      : typeof readProperty(error, 'name') === 'string'
+        ? readProperty(error, 'name')
+        : typeof error,
+  message: error instanceof Error ? error.message : toDiagnosticString(error),
+  stack: error instanceof Error && typeof error.stack === 'string' ? error.stack : undefined,
+  code: readProperty(error, 'code'),
+  syscall: readProperty(error, 'syscall'),
+  path: readProperty(error, 'path'),
+  dest: readProperty(error, 'dest'),
+});
+
+const readErrorCauseChain = (error: unknown): readonly Readonly<Record<string, unknown>>[] => {
+  const causes: Readonly<Record<string, unknown>>[] = [];
+  const seen = new Set<unknown>([error]);
+  let current = error;
+  while (causes.length < 5) {
+    const cause = readProperty(current, 'cause');
+    if (cause === undefined || seen.has(cause)) break;
+    seen.add(cause);
+    causes.push(snapshotError(cause));
+    current = cause;
+  }
+  return causes;
+};
+
+const buildIngressFailureDiagnostics = (error: unknown): Readonly<Record<string, unknown>> =>
+  redactObject({
+    diagnostic_error: snapshotError(error),
+    diagnostic_causes: readErrorCauseChain(error),
+  });
 
 const registryStep: StepHandler = async ({
   deps,
@@ -99,13 +159,28 @@ const ingressStep: StepHandler = async ({
   assertExecutionActive,
 }) => {
   assertExecutionActive();
-  const evidence = await requireDependency(
+  const publishTenantIngress = requireDependency(
     deps.publishTenantIngress,
     'dependency_missing_publishTenantIngress'
-  )({
-    instanceId: instance.instanceId,
-    primaryHostname: instance.primaryHostname,
-  });
+  );
+  let evidence: Awaited<ReturnType<typeof publishTenantIngress>>;
+  try {
+    evidence = await publishTenantIngress({
+      instanceId: instance.instanceId,
+      primaryHostname: instance.primaryHostname,
+    });
+  } catch (error) {
+    logger.warn('tenant_ingress_publish_failed', {
+      operation: 'publish_tenant_ingress',
+      result: 'failed',
+      instance_id: instance.instanceId,
+      primary_hostname: instance.primaryHostname,
+      run_id: run.id,
+      step_key: 'ingress',
+      ...buildIngressFailureDiagnostics(error),
+    });
+    throw error;
+  }
   assertExecutionActive();
   return continueAt(deps, run, workerId, 'tls', now, { terminalEvidence: evidence });
 };

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1384,
+  "body": "Die Entwicklungsregeln für das Studio wurden vereinfacht und begrenzen zusätzliche technische sowie organisatorische Komplexität.\n\n- Bestehende Lösungen sollen vor neuen Packages, Workflows, Gates oder Abstraktionen erweitert werden.\n- Review-Fixes bleiben auf unmittelbar blockierende Probleme und den vereinbarten PR-Umfang begrenzt."
+}

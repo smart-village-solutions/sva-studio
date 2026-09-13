@@ -174,7 +174,6 @@ describe('http mutation handlers', () => {
       request_id: 'req-test',
       error_type: 'Error',
       error_code: '23505',
-      database_sqlstate: '23505',
       database_table: 'instances',
       database_constraint: 'instances_pkey',
       classification: 'internal_unclassified',

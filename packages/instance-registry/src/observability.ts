@@ -21,19 +21,6 @@ const readSafeString = (value: unknown, key: string): string | undefined => {
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
 };
 
-export const buildPostgresDiagnosticFields = (error: unknown): Record<string, string> => {
-  const sqlState = readSafeString(error, 'code');
-  if (!sqlState || !/^[0-9A-Z]{5}$/u.test(sqlState)) return {};
-  return {
-    database_sqlstate: sqlState,
-    ...(readSafeString(error, 'table') ? { database_table: readSafeString(error, 'table') } : {}),
-    ...(readSafeString(error, 'column') ? { database_column: readSafeString(error, 'column') } : {}),
-    ...(readSafeString(error, 'constraint')
-      ? { database_constraint: readSafeString(error, 'constraint') }
-      : {}),
-  };
-};
-
 const stepKeys = new Set([
   'registry_lookup',
   'registry_insert',
@@ -99,6 +86,8 @@ export const buildInstanceRegistryFailureLog = (
     ...(context.intent ? { intent: context.intent } : {}),
     ...(stepKey ? { step_key: stepKey } : {}),
     ...(context.dependency ? { dependency: context.dependency } : {}),
-    ...buildPostgresDiagnosticFields(error),
+    ...(readSafeString(error, 'table') ? { database_table: readSafeString(error, 'table') } : {}),
+    ...(readSafeString(error, 'column') ? { database_column: readSafeString(error, 'column') } : {}),
+    ...(readSafeString(error, 'constraint') ? { database_constraint: readSafeString(error, 'constraint') } : {}),
   };
 };

@@ -408,10 +408,6 @@ describe('tenant provisioning parent orchestrator', () => {
     );
     const logged = JSON.stringify(state.logger.warn.mock.calls);
     expect(logged).not.toContain('outer-secret');
-    const outerLog = state.logger.warn.mock.calls.find(
-      ([event]) => event === 'tenant_provisioning_step_exception'
-    );
-    expect(outerLog?.[1]).not.toHaveProperty('database_sqlstate');
     expect(harness.getRun()).toMatchObject({
       status: 'provisioning',
       stepKey: 'ingress',
@@ -481,10 +477,6 @@ describe('tenant provisioning parent orchestrator', () => {
         error_type: 'Error',
         error_code: 'tenant_provisioning_step_failed',
         classification: 'tenant_provisioning_step_failed',
-        database_sqlstate: 'XX001',
-        database_table: 'instance_provisioning_runs',
-        database_column: 'terminal_evidence',
-        database_constraint: 'instance_provisioning_runs_pkey',
       })
     );
     const logged = JSON.stringify(state.logger.warn.mock.calls);

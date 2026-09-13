@@ -1,7 +1,6 @@
 import type { InstanceProvisioningRun } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { buildPostgresDiagnosticFields } from './observability.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import {
   readStep,
@@ -204,7 +203,6 @@ export const processNextTenantProvisioningRun = async (
           error_type: readDiagnosticErrorType(error),
           error_code: code,
           classification: code,
-          ...buildPostgresDiagnosticFields(error),
         });
       } catch {
         // Diagnostic logging must never replace the provisioning failure.

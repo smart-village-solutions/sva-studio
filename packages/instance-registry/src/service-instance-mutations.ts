@@ -12,6 +12,7 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 import {
   assertOidcClientIdsNotReserved,
   assertTenantHostnameAvailable,
@@ -84,6 +85,7 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
+    await syncProtectedSystemAdminPermissions(deps, instance.instanceId);
     await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
       instanceId: instance.instanceId,
       actorId: effectiveInput.actorId,

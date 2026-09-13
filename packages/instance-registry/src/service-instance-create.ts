@@ -7,6 +7,7 @@ import type {
   RetryTenantProvisioningInput,
 } from './mutation-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 import {
   buildCreateInstancePayloadFingerprint,
   matchesPersistedCreateSecrets,
@@ -24,12 +25,14 @@ import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snap
 
 const prepareProvisioningRetry = async (
   deps: InstanceRegistryServiceDeps,
-  run: Parameters<typeof readTenantProvisioningPluginSnapshot>[0]
+  run: Parameters<typeof readTenantProvisioningPluginSnapshot>[0],
+  attribution: { readonly actorId?: string; readonly requestId?: string }
 ): Promise<void> => {
+  await syncProtectedSystemAdminPermissions(deps, run.instanceId);
   await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
     instanceId: run.instanceId,
-    actorId: run.actorId,
-    requestId: run.requestId,
+    actorId: attribution.actorId,
+    requestId: attribution.requestId,
   });
   const { lifecycles } = readTenantProvisioningPluginSnapshot(run);
   await deps.repository.persistPluginTenantLifecycleReconcileIntents({
@@ -89,7 +92,7 @@ export const resolveIdempotentCreateRetry = async (
   ) {
     throw new Error('provisioning_retry_mode_invalid');
   }
-  await prepareProvisioningRetry(deps, matchingRun);
+  await prepareProvisioningRetry(deps, matchingRun, input);
   const retriedRun = await deps.repository.retryProvisioningRun({
     instanceId: instance.instanceId,
     idempotencyKey: input.idempotencyKey,
@@ -162,7 +165,7 @@ export const createRetryTenantProvisioningHandler =
       throw new Error('provisioning_retry_instance_status_invalid');
     }
 
-    await prepareProvisioningRetry(deps, latestCreateRun);
+    await prepareProvisioningRetry(deps, latestCreateRun, input);
     const retriedRun = await deps.repository.retryProvisioningRun({
       instanceId: instance.instanceId,
       idempotencyKey: latestCreateRun.idempotencyKey,

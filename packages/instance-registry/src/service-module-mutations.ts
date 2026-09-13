@@ -32,7 +32,7 @@ const withRequiredCompanionModules = (moduleIds: readonly string[]): string[] =>
   );
 };
 
-const syncProtectedSystemAdminPermissions = async (
+export const syncProtectedSystemAdminPermissions = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string
 ) => {
@@ -453,16 +453,16 @@ export const createSeedIamBaselineHandler =
 
     const registry = requireModuleIamRegistry(deps);
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    const corePermissionReconcile = await syncProtectedSystemAdminPermissions(
+      deps,
+      input.instanceId
+    );
     const modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
       managedModuleIds: [...registry.keys()],
       managedContracts: resolveManagedModuleContracts(deps),
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
-    const corePermissionReconcile = await syncProtectedSystemAdminPermissions(
-      deps,
-      input.instanceId
-    );
     await invalidateInstancePermissionSnapshots(
       deps,
       input.instanceId,

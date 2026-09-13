@@ -745,6 +745,9 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'demo' })
     );
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledBefore(
+      repository.syncAssignedModuleIam as ReturnType<typeof vi.fn>
+    );
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(
       repository.createProvisioningRun as ReturnType<typeof vi.fn>
     );
@@ -1142,6 +1145,21 @@ describe('instance registry service facade', () => {
     });
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'demo' })
+    );
+    expect(reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        actorId: 'admin-1',
+      })
+    );
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'admin-1',
+        requestId: 'retry-1',
+      })
+    );
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledBefore(
+      repository.syncAssignedModuleIam as ReturnType<typeof vi.fn>
     );
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(retryProvisioningRun);
   });
@@ -2501,6 +2519,13 @@ describe('instance registry service facade', () => {
         ]),
       }),
     });
+    const protectedRoleSyncOrder = (
+      repository.syncProtectedSystemRolePermissions as ReturnType<typeof vi.fn>
+    ).mock.invocationCallOrder.at(-1);
+    const moduleIamSyncOrder = (
+      repository.syncAssignedModuleIam as ReturnType<typeof vi.fn>
+    ).mock.invocationCallOrder.at(-1);
+    expect(protectedRoleSyncOrder).toBeLessThan(moduleIamSyncOrder ?? 0);
     expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(1, {
       instanceId: 'demo',
       trigger: 'instance_module_assigned',

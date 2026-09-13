@@ -10,6 +10,33 @@ import {
 } from './runtime-health.ts';
 import { buildExpectedLiveRuntimeFlags } from './runtime-health-doctor-checks.ts';
 
+type RuntimeHealthOpsDeps = Parameters<typeof createRuntimeHealthOps>[0];
+
+const createDoctorTestOps = (overrides: Partial<RuntimeHealthOpsDeps> = {}) =>
+  createRuntimeHealthOps({
+    assertRuntimeEnv: vi.fn(),
+    checkHttpHealth: vi.fn(),
+    commandExists: vi.fn(),
+    getConfiguredQuantumEndpoint: vi.fn(),
+    getConfiguredStackName: vi.fn(() => 'studio'),
+    getRemoteAppServiceName: vi.fn(() => 'app'),
+    getRuntimeProfileDefinition: vi.fn(),
+    inspectRemoteServiceContract: vi.fn(),
+    isExpectedOidcRedirect: vi.fn(),
+    isMainserverCheckRequired: vi.fn(),
+    isMockAuthRuntimeProfile: vi.fn(),
+    readRemoteStackEvidence: vi.fn(),
+    resolveTenantRuntimeTargets: vi.fn(),
+    runCapture: vi.fn(),
+    runSchemaGuard: vi.fn(),
+    summarizeSchemaGuardFailures: vi.fn(),
+    toDoctorCheck: vi.fn((name, status, code, message, details) => ({ code, details, message, name, status })),
+    wait: vi.fn(),
+    waitForRemoteSmokeWarmup: vi.fn(),
+    withoutDebugEnv: vi.fn(),
+    ...overrides,
+  } as RuntimeHealthOpsDeps);
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -301,7 +328,7 @@ describe('runtime-health helpers', () => {
         }
 
         if ((new URL(url).searchParams.get('query') ?? '').includes('Non-secure context detected')) {
-          return new Response(JSON.stringify({ data: { result: [] }, status: 'success' }), { status: 200 });
+          return new Response(JSON.stringify({ data: { result: [], resultType: 'streams' }, status: 'success' }), { status: 200 });
         }
 
         return new Response(JSON.stringify({
@@ -331,7 +358,7 @@ describe('runtime-health helpers', () => {
       readRemoteStackEvidence: vi.fn(),
       resolveTenantRuntimeTargets: vi.fn(async () => ({
         source: 'registry' as const,
-        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+        targets: [{ authIssuerUrl: 'https://issuer.example.test/realms/studio', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
       })),
       runCapture: vi.fn(),
       runSchemaGuard: vi.fn(),
@@ -378,9 +405,9 @@ describe('runtime-health helpers', () => {
         if (query.includes('Non-secure context detected')) {
           insecureContextQueryCount += 1;
           return insecureContextQueryCount < 3
-            ? new Response(JSON.stringify({ data: { result: [] }, status: 'success' }), { status: 200 })
+            ? new Response(JSON.stringify({ data: { result: [], resultType: 'streams' }, status: 'success' }), { status: 200 })
             : new Response(JSON.stringify({
-              data: { result: [{ values: [['1', 'Non-secure context detected; cookies are not secured sensitive-log-fragment']] }] },
+              data: { result: [{ stream: {}, values: [['1', 'Non-secure context detected; cookies are not secured sensitive-log-fragment']] }], resultType: 'streams' },
               status: 'success',
             }), { status: 200 });
         }
@@ -539,8 +566,61 @@ describe('runtime-health helpers', () => {
     }));
   });
 
+  it.each([
+    ['a missing stream object', { data: { result: [{ values: [] }], resultType: 'streams' }, status: 'success' }],
+    ['missing values', { data: { result: [{ stream: {} }], resultType: 'streams' }, status: 'success' }],
+    ['wrong values type', { data: { result: [{ stream: {}, values: {} }], resultType: 'streams' }, status: 'success' }],
+    ['a non-string stream label', { data: { result: [{ stream: { job: 42 }, values: [] }], resultType: 'streams' }, status: 'success' }],
+    ['a malformed value tuple', { data: { result: [{ stream: {}, values: [['1']] }], resultType: 'streams' }, status: 'success' }],
+    ['a wrong result type', { data: { result: [], resultType: 'matrix' }, status: 'success' }],
+  ])('fails closed when the Keycloak Loki stream schema has %s', async (_name, payload) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })));
+
+    await expect(createDoctorTestOps().buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'keycloak_insecure_cookie_probe_failed',
+      name: 'observability-readiness',
+      status: 'error',
+    }));
+  });
+
+  it('fails closed on malformed JSON without reporting its raw body', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('sensitive-invalid-json', { status: 200 })));
+
+    const result = await createDoctorTestOps().buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    });
+
+    expect(result).toEqual(expect.objectContaining({ code: 'keycloak_insecure_cookie_probe_failed', status: 'error' }));
+    expect(JSON.stringify(result)).not.toContain('sensitive-invalid-json');
+  });
+
+  it('keeps a valid empty Keycloak Loki result on the bounded retry path', async () => {
+    const wait = vi.fn();
+    let keycloakQueryCount = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const query = new URL(url).searchParams.get('query') ?? '';
+      if (query.includes('Non-secure context detected')) {
+        keycloakQueryCount += 1;
+        return new Response(JSON.stringify({ data: { result: [], resultType: 'streams' }, status: 'success' }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ data: { result: [{ values: [['1', 'observability_ready']] }] } }), { status: 200 });
+    }));
+
+    await expect(createDoctorTestOps({ wait }).buildObservabilityDoctorCheck('studio', {
+      SVA_GRAFANA_TOKEN: 'token',
+      SVA_LOKI_URL: 'https://loki.example.test',
+    })).resolves.toEqual(expect.objectContaining({ code: 'observability_ready', status: 'ok' }));
+    expect(keycloakQueryCount).toBe(3);
+    expect(wait).toHaveBeenCalledTimes(2);
+  });
+
   it('follows the tenant authorization redirect without exposing its URL', async () => {
-    const sensitiveAuthorizationUrl = 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const sensitiveAuthorizationUrl = 'https://tenant-issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, {
@@ -565,7 +645,7 @@ describe('runtime-health helpers', () => {
       readRemoteStackEvidence: vi.fn(),
       resolveTenantRuntimeTargets: vi.fn(async () => ({
         source: 'registry' as const,
-        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+        targets: [{ authIssuerUrl: 'https://tenant-issuer.example.test/keycloak/realms/studio', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
       })),
       runCapture: vi.fn(),
       runSchemaGuard: vi.fn(),
@@ -578,7 +658,7 @@ describe('runtime-health helpers', () => {
 
     const result = await ops.buildTenantAuthProofCheck('studio', {
       SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
-      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
+      SVA_AUTH_ISSUER: 'https://platform-issuer.example.test/realms/platform',
     });
 
     expect(fetchMock).toHaveBeenNthCalledWith(2, new URL(sensitiveAuthorizationUrl), expect.objectContaining({
@@ -593,10 +673,33 @@ describe('runtime-health helpers', () => {
     expect(JSON.stringify(result)).not.toContain(sensitiveAuthorizationUrl);
   });
 
-  it('rejects tenant authorization redirects outside the configured Keycloak origins', async () => {
-    const maliciousAuthorizationUrl = 'https://internal.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+  it.each([
+    ['a relative issuer', '/realms/studio'],
+    ['issuer userinfo', 'https://user:password@issuer.example.test/realms/studio'],
+  ])('rejects %s before making a request', async (_name, authIssuerUrl) => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+    const ops = createDoctorTestOps({
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authIssuerUrl, authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+    });
+
+    await expect(ops.buildTenantAuthProofCheck('studio', {
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    })).resolves.toEqual(expect.objectContaining({ code: 'tenant_auth_redirect_failed', status: 'error' }));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a relative URL', '/realms/studio/protocol/openid-connect/auth?state=sensitive-state'],
+    ['URL userinfo', 'https://user:password@keycloak.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state'],
+    ['a foreign origin', 'https://internal.example.test/realms/studio/protocol/openid-connect/auth?state=sensitive-state'],
+    ['a different authorization path', 'https://keycloak.example.test/realms/studio/protocol/openid-connect/token?state=sensitive-state'],
+  ])('rejects a tenant authorization redirect with %s', async (_name, authorizationUrl) => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(null, {
-      headers: { location: maliciousAuthorizationUrl },
+      headers: { location: authorizationUrl },
       status: 302,
     }));
     vi.stubGlobal('fetch', fetchMock);
@@ -638,8 +741,37 @@ describe('runtime-health helpers', () => {
       code: 'tenant_auth_redirect_failed',
       status: 'error',
     }));
-    expect(JSON.stringify(result)).not.toContain('internal.example.test');
     expect(JSON.stringify(result)).not.toContain('sensitive-state');
+  });
+
+  it('uses SVA_AUTH_ISSUER for tenant targets without an issuer or admin base URL', async () => {
+    const authorizationUrl = 'https://issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: { location: authorizationUrl },
+        status: 302,
+      }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const ops = createDoctorTestOps({
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+    });
+
+    await expect(ops.buildTenantAuthProofCheck('studio', {
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/keycloak/realms/studio',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'tenant_auth_authorization_failed',
+      status: 'error',
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, new URL(authorizationUrl), expect.objectContaining({
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    }));
   });
 
   it('uses timeouts for login and me smoke requests', async () => {

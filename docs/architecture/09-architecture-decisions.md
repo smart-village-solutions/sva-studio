@@ -99,9 +99,21 @@ mit Bezug auf die arc42-Abschnitte.
 
 - Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-019; die Fortschreibung 2026-09 bindet
   Keycloaks Forwarded-Header-Auswertung an das verifizierte Traefik-/Keycloak-Overlay-Subnetz und
-  ergänzt den redigierten, ingestion-toleranten Loki-Gate.
+  ergänzt den redigierten, ingestion-toleranten Loki-Gate. Das release-blockierende Gate wertet nur
+  strukturell vollständige Loki-Streams-Antworten als Evidenz; malformed Payloads bleiben fail-closed.
 - Abschnitt 05/07/08 (Bausteine/Deployment/Querschnitt): ADR-011 (Fortschreibung: Subdomain-Ableitung)
 - Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-020
+
+### Fortschreibung 2026-09: Issuer-gebundene Tenant-Login-Probe ohne neue ADR
+
+- Die Runtime-Doctor-Härtung führt kein neues IAM- oder Hosting-Pattern ein. Sie vollzieht die
+  Registry-Führung aus ADR-030 und die Trennung des Tenant-Login-Vertrags aus ADR-033 in der
+  betrieblichen Probe fail-closed.
+- Der vollständige Registry-Issuer ist die primäre Vertrauensquelle. Runtime-Fallbacks gelten nur
+  für Altziele ohne diesen Wert; ein Redirect darf Origin und Authorization-Pfad des aufgelösten
+  Issuers nicht verlassen.
+- ADR-060 bleibt für die Grenze der Doctor-Evidenz maßgeblich: Die Probe erhält keine zusätzliche
+  privilegierte Identität und veröffentlicht keine Redirect-URLs, Query-Werte, Cookies oder Tokens.
 
 ### IAM-spezifische ADR-Verweise (Masterplan)
 

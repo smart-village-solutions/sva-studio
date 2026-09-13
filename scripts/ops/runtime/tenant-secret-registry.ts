@@ -146,7 +146,8 @@ SELECT COALESCE(
     json_build_object(
       'instanceId', scoped.instance_id,
       'host', scoped.primary_hostname,
-      'authRealm', scoped.auth_realm
+      'authRealm', scoped.auth_realm,
+      'authIssuerUrl', scoped.auth_issuer_url
     )
     ORDER BY scoped.instance_id
   ),
@@ -156,7 +157,8 @@ FROM (
   SELECT
     instance.id AS instance_id,
     instance.primary_hostname,
-    COALESCE(NULLIF(instance.auth_realm, ''), instance.id) AS auth_realm
+    COALESCE(NULLIF(instance.auth_realm, ''), instance.id) AS auth_realm,
+    NULLIF(instance.auth_issuer_url, '') AS auth_issuer_url
   FROM iam.instances instance
   WHERE instance.status = 'active'
     AND NULLIF(instance.primary_hostname, '') IS NOT NULL
@@ -165,12 +167,27 @@ FROM (
 ) scoped;
 `;
 
-const isTenantRuntimeTarget = (entry: unknown): entry is TenantRuntimeTarget =>
-  !!entry &&
-  typeof entry === 'object' &&
-  typeof (entry as TenantRuntimeTarget).instanceId === 'string' &&
-  typeof (entry as TenantRuntimeTarget).host === 'string' &&
-  typeof (entry as TenantRuntimeTarget).authRealm === 'string';
+type SerializedTenantRuntimeTarget = Omit<TenantRuntimeTarget, 'authIssuerUrl'> & {
+  readonly authIssuerUrl?: string | null;
+};
+
+const isTenantRuntimeTarget = (entry: unknown): entry is SerializedTenantRuntimeTarget => {
+  if (!entry || typeof entry !== 'object') return false;
+  const target = entry as Record<string, unknown>;
+  return (
+    typeof target.instanceId === 'string' &&
+    typeof target.host === 'string' &&
+    typeof target.authRealm === 'string' &&
+    (target.authIssuerUrl === null || target.authIssuerUrl === undefined || typeof target.authIssuerUrl === 'string')
+  );
+};
+
+const normalizeTenantRuntimeTarget = (target: SerializedTenantRuntimeTarget): TenantRuntimeTarget => ({
+  authRealm: target.authRealm,
+  ...(typeof target.authIssuerUrl === 'string' ? { authIssuerUrl: target.authIssuerUrl } : {}),
+  host: target.host,
+  instanceId: target.instanceId,
+});
 
 const loadRegistryTenantTargets = (
   deps: TenantSecretRegistryDeps,
@@ -180,10 +197,10 @@ const loadRegistryTenantTargets = (
 ): readonly TenantRuntimeTarget[] => {
   if (!deps.isRemoteRuntimeProfile(runtimeProfile)) return [];
   const sql = buildRegistryTenantTargetsSql(remoteRegistryLimitClause(options));
-  const payload = deps.parseJsonFromCommandOutput<readonly TenantRuntimeTarget[]>(
+  const payload = deps.parseJsonFromCommandOutput<unknown>(
     deps.createDbSqlRunner(runtimeProfile, env)(sql),
   );
-  return Array.isArray(payload) ? payload.filter(isTenantRuntimeTarget) : [];
+  return Array.isArray(payload) ? payload.filter(isTenantRuntimeTarget).map(normalizeTenantRuntimeTarget) : [];
 };
 
 export const createTenantSecretRegistryOps = (deps: TenantSecretRegistryDeps) => ({

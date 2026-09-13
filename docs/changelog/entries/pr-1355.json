@@ -1,0 +1,4 @@
+{
+  "prNumber": 1355,
+  "body": "Zuverlässigere Sicherheitsprüfungen für Anmeldung und Monitoring\n\n- Die Anmeldung eines Mandanten wird nur noch über den für diesen Mandanten hinterlegten sicheren Login-Endpunkt geprüft.\n- Unerwartete Weiterleitungen zu fremden oder unvollständigen Adressen stoppen die Prüfung, bevor Anmeldedaten übertragen werden können.\n- Die Monitoring-Prüfung akzeptiert nur noch vollständig gültige Loki-Antworten und verhindert dadurch eine fälschlich grüne Freigabe."
+}

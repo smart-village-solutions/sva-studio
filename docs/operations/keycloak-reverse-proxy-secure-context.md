@@ -67,13 +67,22 @@ Logzeilen. Leere Ergebnisse werden vor einem grünen Ergebnis dreimal mit jeweil
 Abstand abgefragt, damit ein kurzer Loki-Ingestion-Lag nicht zu einem falschen Erfolg führt. Ist
 Loki konfiguriert, aber die Sicherheitsabfrage schlägt fehl, wird der Gate ebenfalls blockierend
 `error`; das gilt auch für eine HTTP-Erfolgsantwort ohne Loki-Status `success` und gültiges
-`data.result`. Im Precheck folgt der Tenant-Login-Probe ausschließlich einem absoluten
-HTTPS-Authorization-Redirect, dessen Origin einer konfigurierten Keycloak-Origin aus
-`SVA_AUTH_ISSUER` oder `KEYCLOAK_ADMIN_BASE_URL` entspricht. Relative und fremde Origins werden
-vor dem Request blockiert. Der Probe protokolliert weder URL noch Cookies und führt erst danach die
-Sicherheitsabfrage aus. Dadurch wird eine dabei erzeugte Keycloak-Warnung noch im selben Lauf
-erkannt. Fehlende lokale Loki-Zugangskonfiguration bleibt als `warn` sichtbar und
-ist kein Freigabenachweis.
+`data.result`. Eine gültige Antwort besitzt außerdem `data.resultType = "streams"`; jeder
+Result-Eintrag enthält ein Objekt `stream` mit String-Werten und ein Array `values` aus exakt
+zweielementigen String-Tupeln für Zeitstempel und Logzeile. Fehlende Felder, falsche Typen,
+ungültige Tupel und nicht parsebares JSON gelten nicht als leeres Ergebnis, sondern als
+`keycloak_insecure_cookie_probe_failed`. Rohantworten werden dabei nicht ausgegeben.
+
+Im Precheck folgt der Tenant-Login-Probe ausschließlich dem aus dem vertrauenswürdigen
+Tenant-Issuer abgeleiteten Authorization-Endpunkt. Registry-basierte Ziele verwenden dafür das
+optionale `iam.instances.auth_issuer_url`; ohne expliziten Wert gilt derselbe Fallback wie in der
+Auth-Runtime: `KEYCLOAK_ADMIN_BASE_URL + /realms/<authRealm>`, danach `SVA_AUTH_ISSUER`. Issuer und
+Redirect müssen absolute HTTPS-URLs ohne Userinfo sein. Origin und der vollständige, auch
+Pfadpräfixe enthaltende Authorization-Pfad müssen exakt dem Tenant-Issuer entsprechen. Relative
+URLs, fremde Origins und abweichende Pfade werden vor dem Authorization-Request blockiert. Der
+Probe protokolliert weder URL noch Cookies und führt erst danach die Sicherheitsabfrage aus.
+Dadurch wird eine dabei erzeugte Keycloak-Warnung noch im selben Lauf erkannt. Fehlende lokale
+Loki-Zugangskonfiguration bleibt als `warn` sichtbar und ist kein Freigabenachweis.
 
 Für den Zugriff werden wie bei den übrigen Runtime-Probes `SVA_LOKI_URL` und ein nur lesbares
 `SVA_GRAFANA_TOKEN` aus dem lokalen Operator-Overlay verwendet. Unmittelbar nach einer Korrektur kann

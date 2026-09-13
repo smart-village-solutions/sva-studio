@@ -160,6 +160,7 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
   await deps.syncTenantAdminBootstrapAccount({
     instanceId: loaded.instance.instanceId,
     tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
+    tenantAdminClientSecret: loaded.tenantAdminClientSecret,
     requestId: run.requestId,
     actorId: run.actorId,
   });

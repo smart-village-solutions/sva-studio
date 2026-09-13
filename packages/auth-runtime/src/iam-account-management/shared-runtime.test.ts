@@ -172,6 +172,26 @@ describe('iam account management shared runtime logging', () => {
     );
   });
 
+  it('uses an in-memory tenant admin secret without a second repository lookup', async () => {
+    state.loadInstanceById.mockResolvedValueOnce({
+      authRealm: 'tenant-realm',
+      tenantAdminClient: { clientId: 'tenant-admin' },
+    });
+
+    const { resolveIdentityProviderForInstance } = await import('./shared-runtime.js');
+    const resolution = await resolveIdentityProviderForInstance('instance-1', {
+      executionMode: 'tenant_admin',
+      tenantAdminClientSecret: 'fresh-tenant-secret',
+    });
+
+    expect(resolution).toMatchObject({
+      realm: 'tenant-realm',
+      clientId: 'tenant-admin',
+      executionMode: 'tenant_admin',
+    });
+    expect(state.resolveTenantAdminClientSecret).not.toHaveBeenCalled();
+  });
+
   it('uses the provisioner base URL as fallback for tenant admin resolution', async () => {
     delete process.env.KEYCLOAK_ADMIN_BASE_URL;
     process.env.KEYCLOAK_PROVISIONER_BASE_URL = 'https://keycloak-provisioner.example.test';

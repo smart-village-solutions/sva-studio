@@ -2,8 +2,15 @@ import type { TenantAdminBootstrap } from '@sva/instance-registry';
 import type { QueryClient } from '../db.js';
 
 import { jitProvisionAccountWithClient } from '../jit-provisioning.js';
-import { assignRoles, notifyPermissionInvalidation, resolveRolesByExternalNames } from '../iam-account-management/shared.js';
-import { resolveIdentityProviderForInstance, withInstanceScopedDb } from '../iam-account-management/shared-runtime.js';
+import {
+  assignRoles,
+  notifyPermissionInvalidation,
+  resolveRolesByExternalNames,
+} from '../iam-account-management/shared.js';
+import {
+  resolveIdentityProviderForInstance,
+  withInstanceScopedDb,
+} from '../iam-account-management/shared-runtime.js';
 
 const SYSTEM_ADMIN_ROLE = 'system_admin';
 
@@ -52,9 +59,11 @@ const mergeUniqueRoleIds = (...roleSets: readonly (readonly string[])[]): readon
 const resolveTenantAdminIdentityUser = async (input: {
   instanceId: string;
   tenantAdminBootstrap: TenantAdminBootstrap;
+  tenantAdminClientSecret?: string;
 }) => {
   const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, {
     executionMode: 'tenant_admin',
+    tenantAdminClientSecret: input.tenantAdminClientSecret,
   });
   if (!identityProvider) {
     throw new Error('tenant_admin_identity_provider_unavailable');
@@ -67,9 +76,10 @@ const resolveTenantAdminIdentityUser = async (input: {
     max: 1,
   });
   const normalizedBootstrapUsername = bootstrapUsername.toLowerCase();
-  const user = usernameMatches.find(
-    (candidate) => candidate.username?.toLowerCase() === normalizedBootstrapUsername
-  ) ?? null;
+  const user =
+    usernameMatches.find(
+      (candidate) => candidate.username?.toLowerCase() === normalizedBootstrapUsername
+    ) ?? null;
 
   if (!user) {
     throw new Error('tenant_admin_bootstrap_user_not_found');
@@ -84,6 +94,7 @@ const resolveTenantAdminIdentityUser = async (input: {
 export const syncTenantAdminBootstrapAccount = async (input: {
   instanceId: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
+  tenantAdminClientSecret?: string;
   requestId?: string;
   actorId?: string;
 }) => {
@@ -94,6 +105,7 @@ export const syncTenantAdminBootstrapAccount = async (input: {
   const { user } = await resolveTenantAdminIdentityUser({
     instanceId: input.instanceId,
     tenantAdminBootstrap: input.tenantAdminBootstrap,
+    tenantAdminClientSecret: input.tenantAdminClientSecret,
   });
 
   await withInstanceScopedDb(input.instanceId, async (client) => {

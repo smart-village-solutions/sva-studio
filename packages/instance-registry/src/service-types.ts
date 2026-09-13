@@ -209,6 +209,7 @@ export type InstanceRegistryServiceDeps = {
   readonly syncTenantAdminBootstrapAccount?: (input: {
     instanceId: string;
     tenantAdminBootstrap?: TenantAdminBootstrap;
+    tenantAdminClientSecret?: string;
     requestId?: string;
     actorId?: string;
   }) => Promise<void>;

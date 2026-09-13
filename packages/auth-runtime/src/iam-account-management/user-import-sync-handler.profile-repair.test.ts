@@ -268,45 +268,53 @@ describe('user-import-sync-handler profile repair characterization', () => {
         firstName: 'Seed',
         lastName: 'User',
       },
+      expectedUpdate: {
+        username: 'seed-user',
+        email: 'seed@example.test',
+        firstName: 'Seed',
+        lastName: 'User',
+      },
     },
     {
       name: 'keeps a source email while filling both missing names from a conflicting seed',
       user: createUser({ email: 'source@example.test', firstName: undefined, lastName: undefined }),
       seed: { email: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { email: 'source@example.test', firstName: 'Seed', lastName: 'User' },
+      expectedUpdate: { firstName: 'Seed', lastName: 'User' },
     },
     {
       name: 'keeps a source first name while filling email and last name from the seed',
       user: createUser({ email: undefined, firstName: 'Source', lastName: undefined }),
       seed: { email: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { email: 'seed@example.test', firstName: 'Source', lastName: 'User' },
+      expectedUpdate: { email: 'seed@example.test', lastName: 'User' },
     },
     {
       name: 'keeps a source last name while filling email and first name from the seed',
       user: createUser({ email: undefined, firstName: undefined, lastName: 'Source' }),
       seed: { email: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { email: 'seed@example.test', firstName: 'Seed', lastName: 'Source' },
+      expectedUpdate: { email: 'seed@example.test', firstName: 'Seed' },
     },
     {
       name: 'uses the source username as the final email fallback',
       user: createUser({ username: 'username@example.test', email: undefined }),
       seed: { firstName: 'Seed', lastName: 'User' },
       expected: { username: 'username@example.test', email: 'username@example.test' },
+      expectedUpdate: { email: 'username@example.test' },
     },
     {
       name: 'uses the local username as the final email fallback',
       user: createUser({ username: undefined, email: undefined }),
       seed: { username: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { username: 'seed@example.test', email: 'seed@example.test' },
+      expectedUpdate: { username: 'seed@example.test', email: 'seed@example.test' },
     },
-  ])('$name', async ({ user, seed, expected }) => {
+  ])('$name', async ({ user, seed, expected, expectedUpdate }) => {
     const result = await runSync({ user, seed });
 
     expect(result.provider.updateUser).toHaveBeenCalledOnce();
-    expect(result.provider.updateUser).toHaveBeenCalledWith(
-      'subject-1',
-      expect.objectContaining(expected)
-    );
+    expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', expectedUpdate);
     expect(state.upsertIdentityUser).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -400,14 +408,18 @@ describe('user-import-sync-handler profile repair characterization', () => {
           statusCode: 400,
           code: 'http_400',
           retryable: false,
+          fieldErrors: [
+            { field: 'firstName', code: 'error-user-attribute-read-only' },
+            { field: 'lastName', code: 'error-user-attribute-read-only' },
+          ],
         });
       },
     });
 
-    expect(result.provider.updateUser).toHaveBeenCalledWith(
-      'subject-1',
-      expect.objectContaining({ firstName: 'Seed', lastName: 'User' })
-    );
+    expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', {
+      firstName: 'Seed',
+      lastName: 'User',
+    });
     expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
       instanceId: 'instance-1',
       user: { ...user, firstName: 'Seed', lastName: 'User' },
@@ -469,6 +481,49 @@ describe('user-import-sync-handler profile repair characterization', () => {
     );
   });
 
+  it('keeps mixed field rejections and non-name profile repairs fail-closed', async () => {
+    const { KeycloakAdminRequestError } = await import('../keycloak-admin-client.js');
+    const mixedFieldError = new KeycloakAdminRequestError({
+      message: 'mixed validation failure',
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+      fieldErrors: [
+        { field: 'firstName', code: 'error-user-attribute-read-only' },
+        { field: 'email', code: 'error-invalid-email' },
+      ],
+    });
+    const usernameRepairError = new KeycloakAdminRequestError({
+      message: 'name field is read-only',
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+      fieldErrors: [{ field: 'firstName', code: 'error-user-attribute-read-only' }],
+    });
+
+    await expect(
+      runSync({
+        user: createUser({ firstName: undefined }),
+        seed: { firstName: 'Seed' },
+        updateUser: async () => {
+          throw mixedFieldError;
+        },
+      })
+    ).rejects.toBe(mixedFieldError);
+
+    await expect(
+      runSync({
+        user: createUser({ username: ' ', firstName: undefined }),
+        seed: { username: 'seed-user', firstName: 'Seed' },
+        updateUser: async () => {
+          throw usernameRepairError;
+        },
+      })
+    ).rejects.toBe(usernameRepairError);
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+  });
+
   it('keeps a required email repair failure blocking', async () => {
     const user = createUser({ email: undefined });
 
@@ -500,7 +555,6 @@ describe('user-import-sync-handler profile repair characterization', () => {
 
     expect(result.provider.updateUser).toHaveBeenCalledOnce();
     expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', {
-      username: 'username@example.test',
       email: 'username@example.test',
     });
     expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {

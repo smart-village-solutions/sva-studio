@@ -201,7 +201,7 @@ describe('Keycloak admin client', () => {
     );
   });
 
-  it('preserves the Keycloak read-only attribute reason for profile update failures', async () => {
+  it('preserves every structured Keycloak field error for profile update failures', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -213,6 +213,11 @@ describe('Keycloak admin client', () => {
               errorMessage: 'error-user-attribute-read-only',
               params: ['firstName'],
             },
+            {
+              field: 'email',
+              errorMessage: 'error-invalid-email',
+              params: ['email'],
+            },
           ],
         })
       );
@@ -223,6 +228,10 @@ describe('Keycloak admin client', () => {
       code: 'http_400',
       retryable: false,
       message: expect.stringContaining('error-user-attribute-read-only'),
+      fieldErrors: [
+        { field: 'firstName', code: 'error-user-attribute-read-only' },
+        { field: 'email', code: 'error-invalid-email' },
+      ],
     });
   });
 

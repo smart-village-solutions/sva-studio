@@ -52,7 +52,12 @@ const isReadOnlyAttributeRejection = (error: unknown): boolean =>
   error instanceof KeycloakAdminRequestError &&
   error.statusCode === 400 &&
   !error.retryable &&
-  error.message.includes(KEYCLOAK_READ_ONLY_ATTRIBUTE_ERROR);
+  error.fieldErrors.length > 0 &&
+  error.fieldErrors.every(
+    (fieldError) =>
+      (fieldError.field === 'firstName' || fieldError.field === 'lastName') &&
+      fieldError.code === KEYCLOAK_READ_ONLY_ATTRIBUTE_ERROR
+  );
 
 const normalizeIdentityUserProfile = (user: IdentityListedUser): IdentityListedUser => ({
   ...user,
@@ -119,6 +124,7 @@ type ResolvedProfileFields = {
 type ProfileRepairPlan = {
   readonly user: IdentityListedUser;
   readonly update: ResolvedProfileFields;
+  readonly repairedUsername: boolean;
   readonly repairedEmail: boolean;
   readonly repairedFirstName: boolean;
   readonly repairedLastName: boolean;
@@ -149,21 +155,16 @@ const resolveProfileFields = (
   };
 };
 
-const toProfileUpdate = (fields: ResolvedProfileFields): ProfileRepairPlan['update'] => ({
-  ...(fields.username ? { username: fields.username } : {}),
-  ...(fields.email ? { email: fields.email } : {}),
-  ...(fields.firstName ? { firstName: fields.firstName } : {}),
-  ...(fields.lastName ? { lastName: fields.lastName } : {}),
-});
-
 const buildProfileRepairPlan = (
   user: IdentityListedUser,
   localSeed: LocalProfileSeed
 ): ProfileRepairPlan | undefined => {
+  const sourceUsername = normalizeOptionalText(user.username);
   const sourceEmail = normalizeOptionalText(user.email);
   const sourceFirstName = normalizeOptionalText(user.firstName);
   const sourceLastName = normalizeOptionalText(user.lastName);
   const resolved = resolveProfileFields(user, localSeed);
+  const repairedUsername = resolved.username !== sourceUsername;
   const repairedEmail = resolved.email !== sourceEmail;
   const repairedFirstName = resolved.firstName !== sourceFirstName;
   const repairedLastName = resolved.lastName !== sourceLastName;
@@ -172,10 +173,16 @@ const buildProfileRepairPlan = (
     return undefined;
   }
 
-  const update = toProfileUpdate(resolved);
+  const update = {
+    ...(repairedUsername && resolved.username ? { username: resolved.username } : {}),
+    ...(repairedEmail && resolved.email ? { email: resolved.email } : {}),
+    ...(repairedFirstName && resolved.firstName ? { firstName: resolved.firstName } : {}),
+    ...(repairedLastName && resolved.lastName ? { lastName: resolved.lastName } : {}),
+  };
   return {
     user: { ...user, ...update },
     update,
+    repairedUsername,
     repairedEmail,
     repairedFirstName,
     repairedLastName,
@@ -206,7 +213,7 @@ const repairIdentityUserProfileIfPossible = async (
       input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
     );
   } catch (error) {
-    if (repair.repairedEmail || !isReadOnlyAttributeRejection(error)) {
+    if (repair.repairedUsername || repair.repairedEmail || !isReadOnlyAttributeRejection(error)) {
       throw error;
     }
 

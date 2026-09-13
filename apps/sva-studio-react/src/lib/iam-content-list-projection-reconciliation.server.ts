@@ -4,6 +4,10 @@ import type {
   ContentProjectionSyncTarget,
   MainserverProjectionRowInput,
 } from './iam-content-list-projection-model.server.js';
+import {
+  GENERIC_ITEMS_CONTENT_TYPE,
+  registeredGenericItemContentTypes,
+} from './iam-content-list-projection-source-loaders.server.js';
 
 type ReplayGroup = {
   actingPrincipalType: 'organization' | 'user';
@@ -44,7 +48,11 @@ export const reconcilePersistedMainserverProjectionRows = async (
         actingPrincipalId: group.actingPrincipalId,
         ...(target.organizationId ? { activeOrganizationId: target.organizationId } : {}),
         credentialFingerprint: group.credentialFingerprint,
-        rows: group.rows,
+        rows: group.rows.map((row) =>
+          registeredGenericItemContentTypes.has(row.sourceEntityType)
+            ? { ...row, journalContentType: GENERIC_ITEMS_CONTENT_TYPE }
+            : row
+        ),
       })
     )
   );

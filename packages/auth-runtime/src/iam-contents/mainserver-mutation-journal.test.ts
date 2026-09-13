@@ -152,6 +152,9 @@ describe('Mainserver mutation journal', () => {
     expect(state.query.mock.calls[0]?.[0]).toContain("provider_outcome = 'succeeded'");
     expect(state.query.mock.calls[0]?.[0]).toContain("reconciliation_status = 'complete'");
     expect(state.query.mock.calls[0]?.[0]).toContain('last_error_code IS NULL');
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "NOT (completed_steps ? 'projection_history_reconciled')"
+    );
   });
 
   it('loads an operation without exposing the preimage', async () => {

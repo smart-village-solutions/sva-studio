@@ -177,6 +177,34 @@ describe('mainserver content ownership API projection follow-up', () => {
     });
   });
 
+  it('does not finalize a confirmed transfer while its projection history is deferred', async () => {
+    state.dispatch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            contentId: 'news-1',
+            targetPrincipal: {
+              type: 'organization',
+              id: '22222222-2222-4222-8222-222222222222',
+            },
+            targetDataProvider: { id: 'provider-target' },
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    state.refreshProjection.mockResolvedValueOnce(true);
+
+    await dispatchMainserverContentOwnershipRequest(
+      new Request(
+        'https://studio.test/api/v1/mainserver/content-ownership/news.article/news-1/transfer',
+        { method: 'POST' }
+      )
+    );
+
+    expect(state.finalizeJournal).not.toHaveBeenCalled();
+  });
+
   it('writes account transfers into the recipient scope while retaining the audit actor', async () => {
     state.resolveTarget.mockResolvedValueOnce({
       ok: true,

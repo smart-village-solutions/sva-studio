@@ -36,8 +36,8 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       rows: [
         {
           operation_external_id: 'operation-1',
-          action_id: 'news.update',
-          content_type: 'news.article',
+          action_id: 'generic-items.update',
+          content_type: 'generic-items.generic-item',
           content_id: 'news-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
@@ -58,9 +58,10 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         credentialFingerprint: 'a'.repeat(64),
         rows: [
           {
-            sourceEntityType: 'news.article',
+            sourceEntityType: 'projects.project',
+            journalContentType: 'generic-items.generic-item',
             sourceEntityId: 'news-1',
-            contentType: 'news.article',
+            contentType: 'projects.project',
             organizationId: '33333333-3333-4333-8333-333333333333',
             title: 'Erfolgreiche Änderung',
             payload: { title: 'Erfolgreiche Änderung' },
@@ -82,7 +83,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         '33333333-3333-4333-8333-333333333333',
         'a'.repeat(64),
         ['news-1'],
-        ['news.article'],
+        ['generic-items.generic-item'],
       ]
     );
     expect(state.query.mock.calls[0]?.[0]).toContain(
@@ -93,6 +94,8 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         actorDisplayName: 'Redaktion',
         mutationRef: 'operation-1',
         operation: 'update',
+        contentType: 'projects.project',
+        sourceEntityType: 'projects.project',
         sourceEntityId: 'news-1',
       })
     );

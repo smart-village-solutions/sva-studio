@@ -35,10 +35,10 @@ const registeredProjectionTargets = new Map<string, ContentProjectionSyncTarget>
 let contentProjectionSchedulerStarted = false;
 let contentProjectionSchedulerTimer: ReturnType<typeof setInterval> | null = null;
 
-export const enqueueProjectionWork = async (
+export const enqueueProjectionWork = async <TResult>(
   target: ContentProjectionSyncTarget,
-  work: () => Promise<void>
-): Promise<void> => {
+  work: () => Promise<TResult>
+): Promise<TResult> => {
   const targetKey = buildProjectionTargetKey(target);
   const precedingSync = runningProjectionSyncs.get(targetKey) ?? Promise.resolve(null);
   const queuedWork = precedingSync.then(work);
@@ -54,7 +54,7 @@ export const enqueueProjectionWork = async (
     });
 
   runningProjectionSyncs.set(targetKey, registeredWork);
-  await queuedWork;
+  return queuedWork;
 };
 
 export const refreshMainserverProjectionBatch = (

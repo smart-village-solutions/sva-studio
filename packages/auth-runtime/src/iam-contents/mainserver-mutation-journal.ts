@@ -266,7 +266,8 @@ WHERE instance_id = $1
   AND operation_external_id = $2
   AND provider_outcome = 'succeeded'
   AND reconciliation_status = 'complete'
-  AND last_error_code IS NULL;
+  AND last_error_code IS NULL
+  AND NOT (completed_steps ? 'projection_history_reconciled');
       `,
       [
         input.instanceId,

@@ -18,6 +18,7 @@ type DeferredMutationRow = Readonly<{
 
 export type ReconciledMainserverProjectionRow = Readonly<{
   sourceEntityType: string;
+  journalContentType?: string;
   sourceEntityId: string;
   contentType: string;
   organizationId?: string;
@@ -77,7 +78,7 @@ ORDER BY journal.updated_at ASC;
         input.activeOrganizationId ?? null,
         input.credentialFingerprint,
         [...new Set(input.rows.map((row) => row.sourceEntityId))],
-        [...new Set(input.rows.map((row) => row.sourceEntityType))],
+        [...new Set(input.rows.map((row) => row.journalContentType ?? row.sourceEntityType))],
       ]
     );
     return result.rows;
@@ -93,7 +94,10 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
 }): Promise<number> => {
   if (input.rows.length === 0) return 0;
   const rowsByKey = new Map(
-    input.rows.map((row) => [rowKey(row.sourceEntityType, row.sourceEntityId), row] as const)
+    input.rows.map(
+      (row) =>
+        [rowKey(row.journalContentType ?? row.sourceEntityType, row.sourceEntityId), row] as const
+    )
   );
   const deferred = await loadDeferredMainserverMutationRows(input);
 

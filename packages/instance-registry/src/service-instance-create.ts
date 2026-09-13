@@ -58,6 +58,12 @@ export const resolveIdempotentCreateRetry = async (
   if (instance.status !== 'failed') {
     throw new Error('provisioning_retry_instance_status_invalid');
   }
+  if (
+    matchingRun.desiredSnapshot.automationMode !== 'kassel-traefik-file' ||
+    !shouldExposeAutomatedProvisioning(deps, instance)
+  ) {
+    throw new Error('provisioning_retry_mode_invalid');
+  }
   const retriedRun = await deps.repository.retryProvisioningRun({
     instanceId: instance.instanceId,
     idempotencyKey: input.idempotencyKey,
@@ -66,10 +72,11 @@ export const resolveIdempotentCreateRetry = async (
     deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   });
   if (!retriedRun) throw new Error('provisioning_retry_conflict');
+  const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
   const requestedInstance =
     (await deps.repository.setInstanceStatus({
       instanceId: instance.instanceId,
-      status: 'requested',
+      status: resumedStatus,
       actorId: input.actorId,
       requestId: input.requestId,
     })) ?? instance;

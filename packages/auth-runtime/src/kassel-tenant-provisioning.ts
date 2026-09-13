@@ -43,22 +43,6 @@ const requireExpectedRouter = (response: Response, input: EndpointProbeInput): v
   }
 };
 
-const requireSuccessfulIngress = (response: Response, primaryHostname: string): void => {
-  if (response.status >= 200 && response.status < 300) return;
-  if (response.status >= 300 && response.status < 400) {
-    const location = response.headers.get('location');
-    let redirect: URL;
-    try {
-      redirect = new URL(location ?? '', `https://${primaryHostname}`);
-    } catch {
-      throw new Error('kassel_ingress_redirect_invalid');
-    }
-    if (redirect.origin === `https://${primaryHostname}`) return;
-    throw new Error('kassel_ingress_redirect_invalid');
-  }
-  throw new Error('kassel_ingress_probe_failed');
-};
-
 const requireValidLoginRedirect = (
   response: Response,
   input: EndpointProbeInput
@@ -76,12 +60,14 @@ const requireValidLoginRedirect = (
   } catch {
     throw new Error('kassel_login_redirect_invalid');
   }
+  const state = redirect.searchParams.get('state');
+  const codeChallenge = redirect.searchParams.get('code_challenge');
   if (
     redirect.origin !== issuer.origin ||
     redirect.pathname !== `${issuer.pathname}/protocol/openid-connect/auth` ||
     redirect.searchParams.get('client_id') !== input.authClientId ||
-    redirect.searchParams.get('state') === null ||
-    redirect.searchParams.get('code_challenge') === null ||
+    !state ||
+    !codeChallenge ||
     redirect.searchParams.get('code_challenge_method') !== 'S256'
   ) {
     throw new Error('kassel_login_redirect_invalid');
@@ -114,14 +100,13 @@ export const probeKasselTenantEndpoint = async (
   fetcher: typeof fetch = fetch
 ): Promise<Readonly<Record<string, unknown>>> => {
   requireKasselMode();
-  const path = input.kind === 'login' ? '/auth/login' : '/';
-  const response = await fetcher(`https://${input.primaryHostname}${path}`, {
+  const response = await fetcher(`https://${input.primaryHostname}/auth/login`, {
     redirect: 'manual',
     signal: AbortSignal.timeout(10_000),
     headers: { 'User-Agent': 'sva-studio-kassel-provisioner/1.0' },
   });
   requireExpectedRouter(response, input);
-  if (input.kind === 'login') return requireValidLoginRedirect(response, input);
-  requireSuccessfulIngress(response, input.primaryHostname);
+  const loginEvidence = requireValidLoginRedirect(response, input);
+  if (input.kind === 'login') return loginEvidence;
   return { status: response.status, hostname: input.primaryHostname };
 };

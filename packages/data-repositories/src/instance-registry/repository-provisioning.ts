@@ -182,7 +182,11 @@ const retryProvisioningRun = async (
       `
 UPDATE iam.instance_provisioning_runs
 SET status = 'requested',
-    step_key = CASE WHEN step_key IN ('registry', 'keycloak') THEN 'registry' ELSE step_key END,
+    step_key = CASE
+      WHEN step_key IN ('registry', 'keycloak') THEN 'registry'
+      WHEN step_key IN ('tls', 'module_readiness', 'login', 'activate') THEN 'tls'
+      ELSE step_key
+    END,
     child_keycloak_run_id = CASE
       WHEN step_key IN ('registry', 'keycloak') THEN NULL
       ELSE child_keycloak_run_id

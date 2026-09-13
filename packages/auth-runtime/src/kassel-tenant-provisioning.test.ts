@@ -16,27 +16,39 @@ const routerHeaders = (headers: Record<string, string> = {}) => ({
   ...headers,
 });
 
+const loginRedirectResponse = (overrides: Record<string, string> = {}) => {
+  const authorize = new URL(`${input.authIssuerUrl}/protocol/openid-connect/auth`);
+  authorize.searchParams.set('client_id', input.authClientId);
+  authorize.searchParams.set('state', 'opaque');
+  authorize.searchParams.set('code_challenge', 'challenge');
+  authorize.searchParams.set('code_challenge_method', 'S256');
+  authorize.searchParams.set('redirect_uri', `https://${input.primaryHostname}/auth/callback`);
+  for (const [key, value] of Object.entries(overrides)) authorize.searchParams.set(key, value);
+  return new Response(null, {
+    status: 302,
+    headers: routerHeaders({ Location: authorize.toString() }),
+  });
+};
+
 describe('Kassel tenant public probes', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('accepts a publicly trusted tenant response', async () => {
+  it('uses the narrowly enabled login endpoint for the ingress probe', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
-    const fetcher = vi.fn(
-      async () => new Response('ok', { status: 200, headers: routerHeaders() })
-    );
+    const fetcher = vi.fn(async () => loginRedirectResponse());
 
     await expect(
       probeKasselTenantEndpoint({ ...input, kind: 'ingress' }, fetcher)
-    ).resolves.toEqual({ status: 200, hostname: input.primaryHostname });
+    ).resolves.toEqual({ status: 302, hostname: input.primaryHostname });
     expect(fetcher).toHaveBeenCalledWith(
-      `https://${input.primaryHostname}/`,
+      `https://${input.primaryHostname}/auth/login`,
       expect.objectContaining({ redirect: 'manual' })
     );
   });
 
-  it('accepts only tenant-local ingress redirects', async () => {
+  it('rejects ingress responses without the expected login redirect', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     const localRedirect = new Response(null, {
       status: 302,
@@ -48,7 +60,7 @@ describe('Kassel tenant public probes', () => {
         { ...input, kind: 'ingress' },
         vi.fn(async () => localRedirect)
       )
-    ).resolves.toEqual({ status: 302, hostname: input.primaryHostname });
+    ).rejects.toThrow('kassel_login_redirect_invalid');
 
     await expect(
       probeKasselTenantEndpoint(
@@ -61,7 +73,7 @@ describe('Kassel tenant public probes', () => {
             })
         )
       )
-    ).rejects.toThrow('kassel_ingress_redirect_invalid');
+    ).rejects.toThrow('kassel_login_redirect_invalid');
   });
 
   it('accepts only the expected public issuer and tenant callback', async () => {
@@ -137,6 +149,20 @@ describe('Kassel tenant public probes', () => {
         )
       )
     ).rejects.toThrow(/^kassel_login_/u);
+  });
+
+  it.each([
+    ['state', ''],
+    ['code_challenge', ''],
+  ])('rejects an empty %s parameter', async (parameter, value) => {
+    vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
+
+    await expect(
+      probeKasselTenantEndpoint(
+        { ...input, kind: 'login' },
+        vi.fn(async () => loginRedirectResponse({ [parameter]: value }))
+      )
+    ).rejects.toThrow('kassel_login_redirect_invalid');
   });
 
   it('cannot run outside the explicit Kassel mode', async () => {

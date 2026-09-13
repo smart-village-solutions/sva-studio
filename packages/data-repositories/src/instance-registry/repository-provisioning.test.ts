@@ -559,7 +559,7 @@ describe('instance registry repository provisioning', () => {
       ...provisioningRow,
       snapshot_version: '2.0',
       status: 'requested',
-      step_key: 'login',
+      step_key: 'tls',
       terminal_evidence: { failedStep: 'login' },
     };
     const { executor, statements } = createQueuedExecutor([[retriedRow]]);
@@ -575,12 +575,15 @@ describe('instance registry repository provisioning', () => {
       })
     ).resolves.toMatchObject({
       status: 'requested',
-      stepKey: 'login',
+      stepKey: 'tls',
       terminalEvidence: { failedStep: 'login' },
     });
     expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
     expect(statements[0]?.text).toContain(
-      "CASE WHEN step_key IN ('registry', 'keycloak') THEN 'registry' ELSE step_key END"
+      "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
+    );
+    expect(statements[0]?.text).toContain(
+      "WHEN step_key IN ('tls', 'module_readiness', 'login', 'activate') THEN 'tls'"
     );
     expect(statements[0]?.text).not.toContain('terminal_evidence =');
   });

@@ -888,18 +888,33 @@ describe('instance registry service facade', () => {
   });
 
   it('requeues a terminally failed parent run with the same idempotent create request', async () => {
-    const failedInstance = { ...baseInstance, status: 'failed' as const };
+    const failedInstance = {
+      ...baseInstance,
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
     const failedRun = {
       ...latestRun,
       status: 'failed' as const,
       stepKey: 'login',
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      payloadFingerprint: buildCreateInstancePayloadFingerprint({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      }),
       errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
     };
     const retryProvisioningRun = vi.fn(async () => ({
       ...failedRun,
       status: 'requested' as const,
-      stepKey: 'registry',
+      stepKey: 'tls',
       errorCode: undefined,
       completedAt: undefined,
     }));
@@ -909,8 +924,51 @@ describe('instance registry service facade', () => {
       retryProvisioningRun,
       setInstanceStatus: vi.fn(async () => ({
         ...failedInstance,
-        status: 'requested' as const,
+        status: 'provisioning' as const,
       })),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        status: 'provisioning',
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'tls' }),
+      }),
+    });
+    expect(retryProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', idempotencyKey: 'idem-1' })
+    );
+    expect(repository.setInstanceStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', status: 'provisioning' })
+    );
+  });
+
+  it('does not requeue an external or currently disabled automated create run', async () => {
+    const failedInstance = { ...baseInstance, status: 'failed' as const };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      desiredSnapshot: { automationMode: 'external' },
+      errorCode: 'tenant_provisioning_step_failed',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn();
+    const setInstanceStatus = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+      setInstanceStatus,
     });
 
     await expect(
@@ -923,16 +981,29 @@ describe('instance registry service facade', () => {
         authClientId: 'studio-client',
         idempotencyKey: 'idem-1',
       })
-    ).resolves.toEqual({
-      ok: true,
-      instance: expect.objectContaining({
-        status: 'requested',
-        latestProvisioningRun: expect.objectContaining({ stepKey: 'registry' }),
-      }),
-    });
-    expect(retryProvisioningRun).toHaveBeenCalledWith(
-      expect.objectContaining({ instanceId: 'demo', idempotencyKey: 'idem-1' })
-    );
+    ).rejects.toThrow('provisioning_retry_mode_invalid');
+
+    const kasselRun = {
+      ...failedRun,
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+    };
+    vi.mocked(repository.listProvisioningRuns).mockResolvedValueOnce([kasselRun]);
+    await expect(
+      createInstanceRegistryService(
+        createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => false })
+      ).createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('provisioning_retry_mode_invalid');
+
+    expect(retryProvisioningRun).not.toHaveBeenCalled();
+    expect(setInstanceStatus).not.toHaveBeenCalled();
   });
 
   it('does not revive an archived instance through an idempotent failed-create retry', async () => {

@@ -37,6 +37,7 @@ vi.mock('./repository.js', () => ({
 import {
   readPluginActivationPolicyFleetReconcileReport,
   reconcileConfiguredPluginActivationPoliciesForAllInstances,
+  recordUnexpectedPluginActivationPolicyFleetReconcileFailure,
   resetPluginActivationPolicyFleetReconcileReportForTests,
 } from './plugin-activation-policy-reconcile.js';
 
@@ -82,6 +83,40 @@ describe('plugin activation policy fleet reconcile', () => {
     expect(collectMetric('sva_plugin_activation_policy_fleet_state')).toEqual([]);
     expect(collectMetric('sva_plugin_activation_policy_fleet_failure_count')).toEqual([]);
     expect(collectMetric('sva_plugin_activation_policy_fleet_seconds_since_success')).toEqual([]);
+  });
+
+  it('replaces a previous ready report with a bounded unexpected failure', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([]);
+    await reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-1' });
+
+    expect(readPluginActivationPolicyFleetReconcileReport()?.status).toBe('ready');
+
+    expect(
+      recordUnexpectedPluginActivationPolicyFleetReconcileFailure({ revision: 'catalog-2' })
+    ).toEqual(
+      expect.objectContaining({
+        revision: 'catalog-2',
+        status: 'degraded',
+        failures: [
+          expect.objectContaining({
+            reasonCode: 'plugin_activation_policy_reconcile_unknown',
+            retryClass: 'degraded',
+          }),
+        ],
+      })
+    );
+    expect(collectMetric('sva_plugin_activation_policy_fleet_state')).toContainEqual({
+      value: 1,
+      attributes: { state: 'degraded' },
+    });
+    expect(collectMetric('sva_plugin_activation_policy_fleet_failure_count')).toContainEqual({
+      value: 1,
+      attributes: {
+        reason_code: 'plugin_activation_policy_reconcile_unknown',
+        retry_class: 'degraded',
+      },
+    });
   });
 
   it('reconciles every existing instance and publishes a ready report', async () => {

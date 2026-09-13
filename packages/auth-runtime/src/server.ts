@@ -10,6 +10,7 @@ export {
 export {
   readPluginActivationPolicyFleetReconcileReport,
   reconcileConfiguredPluginActivationPoliciesForAllInstances,
+  recordUnexpectedPluginActivationPolicyFleetReconcileFailure,
   type PluginActivationPolicyFleetReconcileFailure,
   type PluginActivationPolicyFleetReconcileReport,
 } from './iam-instance-registry/plugin-activation-policy-reconcile.js';

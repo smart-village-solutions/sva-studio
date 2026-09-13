@@ -230,6 +230,9 @@ const startFleetReconcileInBackground = (
       }
     } catch (error) {
       if (generation !== bootstrapGeneration) return;
+      configuration.authRuntime.recordUnexpectedPluginActivationPolicyFleetReconcileFailure({
+        revision,
+      });
       const decision = updateFleetFailureState({
         revision,
         retryClass: 'degraded',

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const configureMock = vi.fn();
 const reconcileMock = vi.fn();
+const recordUnexpectedFailureMock = vi.fn();
 const loggerInfoMock = vi.fn();
 const loggerWarnMock = vi.fn();
 const loggerErrorMock = vi.fn();
@@ -54,6 +55,7 @@ vi.mock('./plugins', () => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   configureInstanceRegistryPluginRuntimeSnapshot: configureMock,
   reconcileConfiguredPluginActivationPoliciesForAllInstances: reconcileMock,
+  recordUnexpectedPluginActivationPolicyFleetReconcileFailure: recordUnexpectedFailureMock,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -74,6 +76,7 @@ beforeEach(() => {
   vi.unstubAllEnvs();
   configureMock.mockReset();
   reconcileMock.mockReset();
+  recordUnexpectedFailureMock.mockReset();
   loggerInfoMock.mockReset();
   loggerWarnMock.mockReset();
   loggerErrorMock.mockReset();
@@ -365,6 +368,9 @@ describe('plugin activation policy bootstrap', () => {
     await ensurePluginActivationPoliciesConfigured();
     startPluginActivationPolicyFleetReconcileInBackground();
     await vi.waitFor(() => expect(loggerErrorMock).toHaveBeenCalledOnce());
+
+    expect(recordUnexpectedFailureMock).toHaveBeenCalledOnce();
+    expect(recordUnexpectedFailureMock).toHaveBeenCalledWith({ revision: 'catalog-1' });
 
     const retryTimer = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 1_800_000);
     expect(retryTimer).toBeDefined();

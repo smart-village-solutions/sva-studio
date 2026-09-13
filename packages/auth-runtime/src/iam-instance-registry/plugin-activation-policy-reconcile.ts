@@ -189,6 +189,30 @@ export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async 
 export const readPluginActivationPolicyFleetReconcileReport = ():
   PluginActivationPolicyFleetReconcileReport | undefined => lastReport;
 
+export const recordUnexpectedPluginActivationPolicyFleetReconcileFailure = (input: {
+  revision: string;
+}): PluginActivationPolicyFleetReconcileReport => {
+  fleetMetricsOwnedByProcess = true;
+  const timestamp = new Date().toISOString();
+  lastReport = Object.freeze({
+    revision: input.revision,
+    status: 'degraded',
+    startedAt: timestamp,
+    completedAt: timestamp,
+    instanceCount: 0,
+    reconciledInstanceCount: 0,
+    failures: Object.freeze([
+      Object.freeze({
+        stage: 'list_instances',
+        code: 'plugin_activation_policy_reconcile_failed',
+        reasonCode: 'plugin_activation_policy_reconcile_unknown',
+        retryClass: 'degraded',
+      }),
+    ]),
+  });
+  return lastReport;
+};
+
 export const resetPluginActivationPolicyFleetReconcileReportForTests = (): void => {
   lastReport = undefined;
   lastSuccessfulReconcileAtMs = undefined;

@@ -19,6 +19,10 @@ export const persistProvisionedMainserverCredentials = async (input: {
   credentials: ProvisionedMainserverUserCredentials;
   trackKeycloakCall: TrackKeycloakCall;
 }): Promise<void> => {
+  const normalizedCredentials = {
+    apiKey: input.credentials.mainserverUserApplicationId.trim(),
+    apiSecret: input.credentials.mainserverUserApplicationSecret.trim(),
+  };
   const readAttributes = async (attributeNames?: readonly string[]) => {
     try {
       return await input.trackKeycloakCall('get_user_attributes', () =>
@@ -39,8 +43,8 @@ export const persistProvisionedMainserverCredentials = async (input: {
   const existingAttributes = await readAttributes();
   const nextAttributes = buildMainserverIdentityAttributes({
     existingAttributes,
-    mainserverUserApplicationId: input.credentials.mainserverUserApplicationId,
-    mainserverUserApplicationSecret: input.credentials.mainserverUserApplicationSecret,
+    mainserverUserApplicationId: normalizedCredentials.apiKey,
+    mainserverUserApplicationSecret: normalizedCredentials.apiSecret,
   });
   const requiresWrite = !haveEqualIdentityAttributes(existingAttributes, nextAttributes);
 
@@ -63,10 +67,7 @@ export const persistProvisionedMainserverCredentials = async (input: {
       instanceId: input.instanceId,
       source: 'user',
       principalId: input.keycloakSubject,
-      credentials: {
-        apiKey: input.credentials.mainserverUserApplicationId,
-        apiSecret: input.credentials.mainserverUserApplicationSecret,
-      },
+      credentials: normalizedCredentials,
     }),
     instanceId: input.instanceId,
     principalId: input.keycloakSubject,

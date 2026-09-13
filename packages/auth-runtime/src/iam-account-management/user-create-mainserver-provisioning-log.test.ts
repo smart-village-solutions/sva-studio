@@ -204,15 +204,16 @@ describe('logMainserverProvisioningFailure', () => {
   });
 
   it.each([
-    'alice@example.com',
-    'tenant_forbidden\nforged_log_entry=true',
-    'x'.repeat(10_000),
-  ])('replaces an untrusted upstream error code with a stable fallback', (untrustedCode) => {
-    const error = Object.assign(new Error('untrusted upstream rejection detail'), {
+    'mainserver_credentials_missing',
+    'mainserver_credentials_partial',
+    'mainserver_credentials_stale',
+    'mainserver_credentials_unavailable',
+  ])('preserves %s as a safe credential-phase diagnostic', (code) => {
+    const error = Object.assign(new Error('credential readiness failed'), {
       name: 'MainserverUserProvisioningError',
-      code: untrustedCode,
-      statusCode: 409,
-      retryable: false,
+      code,
+      statusCode: code === 'mainserver_credentials_unavailable' ? 503 : 409,
+      retryable: code === 'mainserver_credentials_unavailable',
       outcomeUnknown: false,
     });
 
@@ -225,14 +226,42 @@ describe('logMainserverProvisioningFailure', () => {
 
     expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
       expect.objectContaining({
-        mainserver_error_code: 'mainserver_user_provisioning_failed',
-        mainserver_failure_phase: 'unknown',
+        error: code,
+        mainserver_error_code: code,
+        mainserver_failure_phase: 'credentials',
       })
     );
-    expect(loggerState.error.mock.calls[0]?.[1]?.context).not.toEqual(
-      expect.objectContaining({ mainserver_error_code: untrustedCode })
-    );
   });
+
+  it.each(['alice@example.com', 'tenant_forbidden\nforged_log_entry=true', 'x'.repeat(10_000)])(
+    'replaces an untrusted upstream error code with a stable fallback',
+    (untrustedCode) => {
+      const error = Object.assign(new Error('untrusted upstream rejection detail'), {
+        name: 'MainserverUserProvisioningError',
+        code: untrustedCode,
+        statusCode: 409,
+        retryable: false,
+        outcomeUnknown: false,
+      });
+
+      logMainserverProvisioningFailure({
+        actor,
+        email: 'alice@example.com',
+        keycloakSubject: 'kc-user-1',
+        error,
+      });
+
+      expect(loggerState.error.mock.calls[0]?.[1]?.context).toEqual(
+        expect.objectContaining({
+          mainserver_error_code: 'mainserver_user_provisioning_failed',
+          mainserver_failure_phase: 'unknown',
+        })
+      );
+      expect(loggerState.error.mock.calls[0]?.[1]?.context).not.toEqual(
+        expect.objectContaining({ mainserver_error_code: untrustedCode })
+      );
+    }
+  );
 
   it.each([
     { code: 'upstream_timeout', outcomeUnknown: false, phase: 'token' },

@@ -168,6 +168,41 @@ describe('executeCreateUser', () => {
     ).rejects.toMatchObject({ code: 'mainserver_credentials_stale', statusCode: 409 });
   });
 
+  it('normalizes provisioned credentials identically for the write and expected fingerprint', async () => {
+    const updateUser = vi.fn(async () => undefined);
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: {
+          getUserAttributes: vi
+            .fn()
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({
+              mainserverUserApplicationId: ['mainserver-app-1'],
+              mainserverUserApplicationSecret: ['mainserver-secret-1'],
+            }),
+          updateUser,
+        },
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: '  mainserver-app-1  ',
+          mainserverUserApplicationSecret: '  mainserver-secret-1  ',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).resolves.toBeUndefined();
+    expect(updateUser).toHaveBeenCalledWith('kc-user-1', {
+      attributes: {
+        mainserverUserApplicationId: ['mainserver-app-1'],
+        mainserverUserApplicationSecret: ['mainserver-secret-1'],
+      },
+    });
+  });
+
   it('reports an unavailable canonical readback after writing provisioned credentials', async () => {
     const { persistProvisionedMainserverCredentials } =
       await import('./mainserver-credential-persistence.js');

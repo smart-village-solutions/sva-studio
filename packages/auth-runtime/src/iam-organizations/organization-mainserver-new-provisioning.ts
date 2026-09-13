@@ -103,6 +103,20 @@ const persistCredentials = async (
   credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>
 ): Promise<void> => {
   input.setPhase('credential_persistence');
+  await updateState(input, {
+    instanceId: input.instanceId,
+    organizationId: input.organizationId,
+    operationReference: input.operationReference,
+    provisioningStatus: 'provisioning',
+    provisioningPhase: 'account_credentials_persistence',
+  });
+  await persistProvisionedMainserverCredentials({
+    identityProvider: identityProvider.provider,
+    instanceId: input.instanceId,
+    keycloakSubject: resolved.account.keycloakSubject,
+    credentials,
+    trackKeycloakCall,
+  });
   const persisted = await withInstanceScopedDb(input.instanceId, (client) =>
     writeActiveOrganizationProvisioningCredentials(client, {
       instanceId: input.instanceId,
@@ -116,13 +130,6 @@ const persistCredentials = async (
   if (!persisted) {
     throw new Error('organization_provisioning_lease_lost');
   }
-  await persistProvisionedMainserverCredentials({
-    identityProvider: identityProvider.provider,
-    instanceId: input.instanceId,
-    keycloakSubject: resolved.account.keycloakSubject,
-    credentials,
-    trackKeycloakCall,
-  });
 };
 
 const completeProvisioning = async (

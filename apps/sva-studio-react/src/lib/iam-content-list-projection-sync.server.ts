@@ -34,6 +34,9 @@ const durableCredentialErrorCodes = new Set([
   'mainserver_credentials_stale',
 ]);
 
+export const isDurableCredentialErrorCode = (code: string | undefined): boolean =>
+  code !== undefined && durableCredentialErrorCodes.has(code);
+
 type NormalizedProjectionSyncStateRow = Required<ProjectionSyncStateRow>;
 
 const emptyProjectionSyncStateRow: ProjectionSyncStateRow = {
@@ -184,7 +187,7 @@ export const isProjectionRefreshDue = (input: {
   if (
     input.options.trigger !== 'manual' &&
     input.state.lastErrorCode &&
-    durableCredentialErrorCodes.has(input.state.lastErrorCode) &&
+    isDurableCredentialErrorCode(input.state.lastErrorCode) &&
     input.state.lastFailedAt
   ) {
     const lastFailedAtMs = Date.parse(input.state.lastFailedAt);

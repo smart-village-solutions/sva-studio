@@ -295,6 +295,29 @@ describe('provisionMainserverUserCredentials', () => {
     });
   });
 
+  it('maps an unavailable initial credential read to a stable retryable error', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'identity_provider_unavailable',
+    });
+
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'mainserver_credentials_unavailable',
+      retryable: true,
+      statusCode: 503,
+    });
+  });
+
   it('maps non-200 token responses to unauthorized and retryable token failures', async () => {
     const { provisionMainserverUserCredentials } =
       await import('./mainserver-user-provisioning.js');

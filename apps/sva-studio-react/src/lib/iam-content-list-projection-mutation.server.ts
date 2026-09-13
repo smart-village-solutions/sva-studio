@@ -33,7 +33,10 @@ import {
   toMutationProjectionConnectionContext,
 } from './iam-content-list-projection-source.server.js';
 import {
+  computeProjectionSyncStates,
   enqueueProjectionWork,
+  isDurableCredentialErrorCode,
+  isProjectionRefreshDue,
   triggerMainserverProjectionRefresh,
 } from './iam-content-list-projection-sync.server.js';
 import { studioMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.server.js';
@@ -133,6 +136,13 @@ const upsertProjectionMutation = async (
       return;
     } catch (error) {
       lastError = error;
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code?: unknown }).code
+          : undefined;
+      if (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode)) {
+        throw error;
+      }
     }
   }
   throw lastError instanceof Error
@@ -170,6 +180,17 @@ export const refreshMainserverProjectionForMutation = async (
   const { target } = input;
   const refreshRunId = randomUUID();
   await enqueueProjectionWork(target, async () => {
+    if (input.operation !== 'delete') {
+      const [syncState] = await computeProjectionSyncStates([target]);
+      if (
+        !isProjectionRefreshDue({
+          state: syncState,
+          options: { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' },
+        })
+      ) {
+        return;
+      }
+    }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
     try {
       await (input.operation === 'delete'

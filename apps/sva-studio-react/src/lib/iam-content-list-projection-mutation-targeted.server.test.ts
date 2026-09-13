@@ -359,6 +359,35 @@ describe('targeted content projection mutations', () => {
     ).rejects.toMatchObject({ code: 'mainserver_credentials_stale' });
 
     expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledOnce();
     expect(fixture.projectionRows).toEqual([]);
+  });
+
+  it('skips a targeted mutation follow-up during the persisted credential cooldown', async () => {
+    const syncScopeKey = 'de-musterhausen::account-1::org-1::organization::news.article';
+    fixture.syncStates.set(`news.article::${syncScopeKey}`, {
+      sync_scope_key: syncScopeKey,
+      last_started_at: '2026-09-13T12:00:00.000Z',
+      last_succeeded_at: null,
+      last_failed_at: new Date().toISOString(),
+      last_error_code: 'mainserver_credentials_partial',
+      last_error_message: 'credentials not ready',
+      projected_count: 0,
+    });
+
+    await expect(
+      refreshProjectedContentsForMainserverMutation({
+        contentType: 'news.article',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        organizationId: 'org-1',
+        operation: 'update',
+        entityId: 'news-1',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
   });
 });

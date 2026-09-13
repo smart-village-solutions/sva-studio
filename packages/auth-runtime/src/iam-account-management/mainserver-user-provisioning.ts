@@ -101,10 +101,14 @@ const loadProvisioningBearerToken = async (input: {
     keycloakSubject: input.actorSubject,
   });
   if (credentialResult.status !== 'ok') {
+    const credentialsUnavailable =
+      credentialResult.status === 'identity_provider_unavailable' ||
+      credentialResult.status === 'database_unavailable';
     throw new MainserverUserProvisioningError({
-      code: credentialResult.status,
+      code: credentialsUnavailable ? 'mainserver_credentials_unavailable' : credentialResult.status,
       message: 'Mainserver-Provisioning-Credentials des handelnden Benutzers fehlen.',
-      statusCode: 409,
+      statusCode: credentialsUnavailable ? 503 : 409,
+      retryable: credentialsUnavailable,
     });
   }
 

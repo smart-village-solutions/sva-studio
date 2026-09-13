@@ -31,6 +31,18 @@ const SAFE_MAINSERVER_ERROR_CODES = new Set([
   'upstream_timeout',
 ]);
 
+const CREDENTIAL_ERROR_CODES = new Set([
+  'missing_credentials',
+  'organization_mainserver_credentials_missing',
+  'mainserver_credentials_missing',
+  'mainserver_credentials_partial',
+  'mainserver_credentials_stale',
+  'mainserver_credentials_unavailable',
+  'secret_unavailable',
+  'identity_provider_unavailable',
+  'invalid_credentials',
+]);
+
 const isMainserverProvisioningError = (error: unknown): error is MainserverProvisioningLogError =>
   (() => {
     if (!(error instanceof Error) || error.name !== 'MainserverUserProvisioningError') {
@@ -52,17 +64,7 @@ const resolveFailurePhase = (
   if (error.code === 'mainserver_user_provisioning_config_incomplete') {
     return 'configuration';
   }
-  if (
-    error.code === 'missing_credentials' ||
-    error.code === 'organization_mainserver_credentials_missing' ||
-    error.code === 'mainserver_credentials_missing' ||
-    error.code === 'mainserver_credentials_partial' ||
-    error.code === 'mainserver_credentials_stale' ||
-    error.code === 'mainserver_credentials_unavailable' ||
-    error.code === 'secret_unavailable' ||
-    error.code === 'identity_provider_unavailable' ||
-    error.code === 'invalid_credentials'
-  ) {
+  if (CREDENTIAL_ERROR_CODES.has(error.code)) {
     return 'credentials';
   }
   if (error.code === 'unauthorized' || error.code === 'token_request_failed') {

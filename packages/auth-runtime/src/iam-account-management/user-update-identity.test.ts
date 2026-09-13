@@ -1,25 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  buildMainserverIdentityAttributes: vi.fn(
-    ({ existingAttributes, mainserverUserApplicationId, mainserverUserApplicationSecret }) => ({
-      ...(existingAttributes ?? {}),
-      ...(mainserverUserApplicationId !== undefined
-        ? { mainserverUserApplicationId: [mainserverUserApplicationId] }
-        : {}),
-      ...(mainserverUserApplicationSecret !== undefined
-        ? { mainserverUserApplicationSecret: [mainserverUserApplicationSecret] }
-        : {}),
-    })
-  ),
   trackKeycloakCall: vi.fn(async (_operation: string, work: () => Promise<unknown>) => work()),
   logger: {
     error: vi.fn(),
   },
-}));
-
-vi.mock('../mainserver-credentials.js', () => ({
-  buildMainserverIdentityAttributes: state.buildMainserverIdentityAttributes,
 }));
 
 vi.mock('./shared.js', () => ({
@@ -89,11 +74,43 @@ describe('user update identity helpers', () => {
     ).toEqual({
       locale: ['de'],
     });
-    expect(state.buildMainserverIdentityAttributes).toHaveBeenLastCalledWith({
-      existingAttributes: { locale: ['de'] },
-      mainserverUserApplicationId: undefined,
-      mainserverUserApplicationSecret: undefined,
-      preserveExistingCredentials: true,
+  });
+
+  it('preserves mixed credentials on a profile update with an unchanged projected id', async () => {
+    const { buildIdentityAttributesForUserUpdate } = await import('./user-update-identity.js');
+
+    expect(
+      buildIdentityAttributesForUserUpdate({
+        existingAttributes: {
+          mainserverUserApplicationId: ['canonical-id'],
+          sva_mainserver_api_secret: ['legacy-secret'],
+        },
+        payload: {
+          displayName: 'Jane Doe',
+          mainserverUserApplicationId: 'canonical-id',
+        } as never,
+      })
+    ).toEqual({
+      displayName: ['Jane Doe'],
+      mainserverUserApplicationId: ['canonical-id'],
+      sva_mainserver_api_secret: ['legacy-secret'],
+    });
+
+    expect(
+      buildIdentityAttributesForUserUpdate({
+        existingAttributes: {
+          mainserverUserApplicationSecret: ['canonical-secret'],
+          sva_mainserver_api_key: ['legacy-id'],
+        },
+        payload: {
+          displayName: 'John Doe',
+          mainserverUserApplicationId: '',
+        } as never,
+      })
+    ).toEqual({
+      displayName: ['John Doe'],
+      mainserverUserApplicationSecret: ['canonical-secret'],
+      sva_mainserver_api_key: ['legacy-id'],
     });
   });
 

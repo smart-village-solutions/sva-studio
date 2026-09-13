@@ -198,6 +198,7 @@ export {
 export {
   annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
+  deferMainserverMutationProjection,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
   type MainserverMutationJournalEntry,

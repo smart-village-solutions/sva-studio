@@ -1,4 +1,5 @@
 import {
+  deferMainserverMutationProjection,
   recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation,
   withInstanceScopedDb,
@@ -190,17 +191,22 @@ const requiresMutationHistory = (input: MutationRefreshInput): boolean =>
     input.target.mutationRef
   );
 
+const deferMutationHistory = async (input: MutationRefreshInput): Promise<void> => {
+  if (!requiresMutationHistory(input) || !input.target.mutationRef) return;
+  await deferMainserverMutationProjection({
+    instanceId: input.target.instanceId,
+    operationExternalId: input.target.mutationRef,
+  });
+};
+
 export const refreshMainserverProjectionForMutation = async (
   input: MutationRefreshInput
 ): Promise<void> => {
   const { target } = input;
   const refreshRunId = randomUUID();
   await enqueueProjectionWork(target, async () => {
-    if (
-      input.operation !== 'delete' &&
-      !(await isMutationFollowUpDue(target)) &&
-      !requiresMutationHistory(input)
-    ) {
+    if (input.operation !== 'delete' && !(await isMutationFollowUpDue(target))) {
+      await deferMutationHistory(input);
       return;
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
@@ -343,11 +349,8 @@ export const refreshGenericItemSiblingProjections = async (
   input: GenericItemSiblingRefreshInput
 ): Promise<void> => {
   await recordGenericItemDeletionAudit(input);
-  if (
-    input.operation !== 'delete' &&
-    !(await isMutationFollowUpDue(input.target)) &&
-    !requiresMutationHistory(input)
-  ) {
+  if (input.operation !== 'delete' && !(await isMutationFollowUpDue(input.target))) {
+    await deferMutationHistory(input);
     return;
   }
   const loadedItem = await loadGenericItemForSiblingRefresh(input);

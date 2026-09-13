@@ -89,6 +89,8 @@ describe('GenericItem content projection mutations', () => {
         instanceId: 'de-musterhausen',
         keycloakSubject: 'kc-user-1',
         actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-generic-update-cooldown',
         organizationId: 'org-1',
         operation: 'update',
         entityId: 'generic-mutation-1',
@@ -97,6 +99,10 @@ describe('GenericItem content projection mutations', () => {
 
     expect(state.getSvaMainserverGenericItem).not.toHaveBeenCalled();
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-generic-update-cooldown',
+    });
   });
 
   it('refreshes only the registered FAQ projection after FAQ mutations', async () => {

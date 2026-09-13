@@ -241,6 +241,39 @@ RETURNING ${columns};
     return result.rows[0] ? mapEntry(result.rows[0]) : undefined;
   });
 
+export const deferMainserverMutationProjection = async (input: {
+  readonly instanceId: string;
+  readonly operationExternalId: string;
+}): Promise<boolean> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const result = await client.query(
+      `
+UPDATE iam.mainserver_mutation_journal
+SET
+  reconciliation_status = 'reconciliation_required',
+  completed_steps = (
+    SELECT COALESCE(jsonb_agg(step ORDER BY step), '[]'::jsonb)
+    FROM (
+      SELECT DISTINCT jsonb_array_elements_text(
+        completed_steps || '["projection_follow_up_deferred"]'::jsonb
+      ) AS step
+    ) AS distinct_steps
+  ),
+  last_error_code = 'mainserver_projection_credential_cooldown',
+  completed_at = NULL,
+  updated_at = NOW()
+WHERE instance_id = $1
+  AND operation_external_id = $2
+  AND provider_outcome = 'succeeded';
+      `,
+      [
+        input.instanceId,
+        required(input.operationExternalId, 'mainserver_operation_external_id_required'),
+      ]
+    );
+    return (result.rowCount ?? 0) > 0;
+  });
+
 export const annotateMainserverMutationJournal = async (input: {
   readonly instanceId: string;
   readonly operationExternalId: string;

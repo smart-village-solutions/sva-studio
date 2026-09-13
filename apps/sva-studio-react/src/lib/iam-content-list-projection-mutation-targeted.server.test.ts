@@ -391,7 +391,7 @@ describe('targeted content projection mutations', () => {
     expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
   });
 
-  it('preserves successful mutation history when a prior credential cooldown is active', async () => {
+  it('defers successful mutation history without an upstream read during credential cooldown', async () => {
     const syncScopeKey = 'de-musterhausen::account-1::org-1::organization::news.article';
     fixture.syncStates.set(`news.article::${syncScopeKey}`, {
       sync_scope_key: syncScopeKey,
@@ -402,16 +402,6 @@ describe('targeted content projection mutations', () => {
       last_error_message: 'credentials not ready',
       projected_count: 0,
     });
-    state.getSvaMainserverNews.mockResolvedValue({
-      id: 'news-1',
-      title: 'Erfolgreiche Änderung',
-      contentType: 'news.article',
-      payload: {},
-      visible: true,
-      createdAt: '2026-09-13T12:00:00.000Z',
-      updatedAt: '2026-09-13T12:01:00.000Z',
-    });
-
     await refreshProjectedContentsForMainserverMutation({
       contentType: 'news.article',
       instanceId: 'de-musterhausen',
@@ -424,9 +414,11 @@ describe('targeted content projection mutations', () => {
       entityId: 'news-1',
     });
 
-    expect(state.getSvaMainserverNews).toHaveBeenCalledOnce();
-    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
-      expect.objectContaining({ mutationRef: 'operation-news-update-1', sourceEntityId: 'news-1' })
-    );
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-news-update-1',
+    });
   });
 });

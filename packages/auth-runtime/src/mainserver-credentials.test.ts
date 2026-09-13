@@ -375,6 +375,20 @@ describe('readSvaMainserverCredentials', () => {
         preserveExistingCredentials: true,
       })
     ).toEqual(canonicalSecretWithLegacyId);
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalIdWithLegacySecret,
+        mainserverUserApplicationId: 'canonical-id',
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalIdWithLegacySecret);
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalSecretWithLegacyId,
+        mainserverUserApplicationId: '',
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalSecretWithLegacyId);
   });
 
   it('treats blank secret updates as not set and preserves the existing secret', async () => {

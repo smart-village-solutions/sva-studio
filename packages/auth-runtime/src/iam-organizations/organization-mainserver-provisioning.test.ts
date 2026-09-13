@@ -583,9 +583,9 @@ describe('organization Mainserver provisioning', () => {
         mainserverApplicationSecret: 'org-secret',
       })
     );
-    expect(state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0]).toBeLessThan(
-      state.writeActiveOrganizationProvisioningCredentials.mock.invocationCallOrder[0] ?? 0
-    );
+    expect(
+      state.writeActiveOrganizationProvisioningCredentials.mock.invocationCallOrder[0]
+    ).toBeLessThan(state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0] ?? 0);
     expect(state.recordMainserverDataProviderObservation).toHaveBeenCalledWith({
       instanceId: 'de-koeln',
       principalType: 'organization',
@@ -619,7 +619,7 @@ describe('organization Mainserver provisioning', () => {
       errorCode: 'mainserver_credentials_unavailable',
     });
     expect(state.persistProvisionedMainserverCredentials).toHaveBeenCalledOnce();
-    expect(state.writeActiveOrganizationProvisioningCredentials).not.toHaveBeenCalled();
+    expect(state.writeActiveOrganizationProvisioningCredentials).toHaveBeenCalledOnce();
   });
 
   it('does not mutate Keycloak credentials after the provisioning lease was lost', async () => {

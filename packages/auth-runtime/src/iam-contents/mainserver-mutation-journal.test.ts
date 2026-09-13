@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
+  deferMainserverMutationProjection,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
 } from './mainserver-mutation-journal.js';
@@ -132,6 +133,23 @@ describe('Mainserver mutation journal', () => {
         completedSteps: ['provider_write', 'tombstone'],
       })
     ).resolves.toMatchObject({ providerOutcome: 'succeeded', reconciliationStatus: 'complete' });
+  });
+
+  it('defers successful mutation projection without another provider read', async () => {
+    state.query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    await expect(
+      deferMainserverMutationProjection({
+        instanceId: 'de-musterhausen',
+        operationExternalId: 'operation-1',
+      })
+    ).resolves.toBe(true);
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("reconciliation_status = 'reconciliation_required'"),
+      ['de-musterhausen', 'operation-1']
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain('projection_follow_up_deferred');
+    expect(state.query.mock.calls[0]?.[0]).toContain("provider_outcome = 'succeeded'");
   });
 
   it('loads an operation without exposing the preimage', async () => {

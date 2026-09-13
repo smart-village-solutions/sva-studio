@@ -829,7 +829,7 @@ GRANT SELECT ON ssf.server_settings, ssf.server_locales TO ${runtimeRole};
 GRANT SELECT, INSERT, UPDATE, DELETE ON ssf.tenant_settings, ssf.tenant_locales TO ${runtimeRole};
 GRANT SELECT (
   instance_id, generation, status, desired_revision, confirmed_revision,
-  sessions_revoked_revision, last_error_code
+  sessions_revoked_revision, last_error_code, confirmed_has_subjects
 ) ON ssf.authorization_projections TO ${runtimeRole};
 `;
 };

@@ -101,7 +101,9 @@ Konvergenznachweis der SSF-IAM-Projektion:
 - `ssf.authorization_projections` für getrennten Soll- und bestätigten
   Read-back-Zustand je Mandant; die vorhandenen Session-Widerrufsfelder bleiben
   für eine spätere Härtung reserviert und sind keine Voraussetzung für
-  `ready`,
+  `ready`; die generierte boolesche Evidenz `confirmed_has_subjects` erlaubt der
+  Tenant-Runtime die Login-Verzeichnis-Prüfung, ohne Subject-Identitäten oder
+  die vollständige Projektion offenzulegen,
 - erzwungene Row-Level Security auf allen Tenanttabellen,
 - getrennte NOLOGIN-Rollen für Migration, Root-Verwaltung und
   tenantgebundene Runtime-Zugriffe.

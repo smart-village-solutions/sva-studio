@@ -367,6 +367,9 @@ describe('backup agent runtime contract', () => {
     expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain(
       'ON ssf.authorization_projections'
     );
+    expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain(
+      'last_error_code, confirmed_has_subjects'
+    );
     expect(ssfRuntimePrincipalProbeSql(target)).toContain("'ssf.tenant_settings'");
     expect(ssfRestoreSchemaResetSql('sva')).toContain('DROP SCHEMA IF EXISTS ssf CASCADE');
     expect(

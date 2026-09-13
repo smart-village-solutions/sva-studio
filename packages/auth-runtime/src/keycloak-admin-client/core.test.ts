@@ -308,6 +308,42 @@ describe('Keycloak admin client', () => {
     await expect(client.listRoles()).resolves.toEqual([]);
   });
 
+  it('does not open the circuit breaker for deterministic client rejections', async () => {
+    const { KeycloakAdminClient, KeycloakAdminRequestError } = await import('./core.js');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(400, {
+          errors: [
+            {
+              field: 'firstName',
+              errorMessage: 'error-user-attribute-read-only',
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example',
+      realm: 'demo',
+      clientId: 'studio',
+      clientSecret: 'secret',
+      fetchImpl,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 1,
+      circuitBreakerOpenMs: 30_000,
+      now: () => 0,
+      sleep: async () => undefined,
+    });
+
+    await expect(client.updateUser('kc-user-1', { firstName: 'Seed' })).rejects.toBeInstanceOf(
+      KeycloakAdminRequestError
+    );
+    await expect(client.listRoles()).resolves.toEqual([]);
+  });
+
   it('reads env-based configs and prefers runtime secrets when available', async () => {
     state.getKeycloakAdminClientSecret.mockReturnValue('secret-from-runtime');
     state.getKeycloakProvisionerClientSecret.mockReturnValue('provisioner-from-runtime');

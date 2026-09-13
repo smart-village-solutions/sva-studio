@@ -1913,7 +1913,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         const retryable = this.isRetryableError(error);
         const isLastAttempt = attempt >= this.maxRetries;
         if (!retryable || isLastAttempt) {
-          if (trackCircuitState) this.markFailure();
+          if (trackCircuitState && retryable) this.markFailure();
           throw error;
         }
 

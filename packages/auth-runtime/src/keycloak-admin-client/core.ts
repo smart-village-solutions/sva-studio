@@ -1274,8 +1274,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       adminUrl: input.rootUrl,
     };
 
-    await this.upsertOidcClient(existing, payload, input.clientId);
-    await this.reconcileCreatedOidcClientDefaults(existing, payload, input);
+    const createdClientId = await this.upsertOidcClient(existing, payload, input.clientId);
+    await this.reconcileCreatedOidcClientDefaults(existing, createdClientId, payload, input);
     if (!input.publicClient) await this.syncOidcClientSecret(existing, input);
   }
 
@@ -1295,19 +1295,29 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
   private async reconcileCreatedOidcClientDefaults(
     existing: KeycloakClientRepresentation | null,
+    createdClientId: string | null,
     payload: Parameters<KeycloakAdminClient['upsertOidcClient']>[1],
     input: { clientId: string; uriPolicy?: 'merge' | 'replace' }
   ): Promise<void> {
     const emptyAllowlist = payload.redirectUris.length === 0 && payload.webOrigins.length === 0;
     if (existing || (input.uriPolicy !== 'replace' && !emptyAllowlist)) return;
-    const created = await this.getOidcClientByClientId(input.clientId);
+    let created: KeycloakClientRepresentation | null;
+    try {
+      created = await this.getOidcClientByClientId(input.clientId);
+    } catch (error) {
+      return this.compensateCreatedOidcClient(createdClientId, input.clientId, error);
+    }
     if (!created) {
-      throw new KeycloakAdminRequestError({
-        message: `Keycloak client ${input.clientId} is missing after creation.`,
-        statusCode: 502,
-        code: 'client_readback_failed',
-        retryable: false,
-      });
+      return this.compensateCreatedOidcClient(
+        createdClientId,
+        input.clientId,
+        new KeycloakAdminRequestError({
+          message: `Keycloak client ${input.clientId} is missing after creation.`,
+          statusCode: 502,
+          code: 'client_readback_failed',
+          retryable: false,
+        })
+      );
     }
     // Keycloak may normalize empty callback/origin arrays to wildcard defaults
     // during POST. Reconcile the read-back representation so strict clients
@@ -1319,27 +1329,22 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         input.clientId
       );
     } catch (error) {
-      try {
-        await this.deleteOidcClient(created, input.clientId);
-      } catch (cleanupError) {
-        const manualActionError = new Error(
-          'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
-        ) as Error & { cause?: unknown };
-        manualActionError.cause = cleanupError;
-        throw manualActionError;
-      }
-      throw error;
+      await this.compensateCreatedOidcClient(created.id, input.clientId, error);
     }
   }
 
-  private async deleteOidcClient(
-    client: KeycloakClientRepresentation,
-    clientId: string
-  ): Promise<void> {
+  private async compensateCreatedOidcClient(
+    createdClientId: string | null,
+    clientId: string,
+    originalError: unknown
+  ): Promise<never> {
     try {
-      await this.executeWithResilience<void>({
+      if (!createdClientId) throw new Error('created_client_id_unavailable_for_cleanup');
+      // Compensation must remain available after the repair failure opens the
+      // normal request circuit, so it deliberately bypasses circuit state.
+      await this.executeRequest<void>({
         method: 'DELETE',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}`,
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(createdClientId)}`,
         operation: 'delete_client',
       });
       logKeycloakWriteSuccess('delete_client', {
@@ -1347,14 +1352,19 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         realm: this.realm,
         client_id: clientId,
       });
-    } catch (error) {
+    } catch (cleanupError) {
       logKeycloakWriteFailure(
         'delete_client_failed',
         { operation: 'delete_client', realm: this.realm, client_id: clientId },
-        error
+        cleanupError
       );
-      throw error;
+      const manualActionError = new Error(
+        'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
+      ) as Error & { cause?: unknown };
+      manualActionError.cause = cleanupError;
+      throw manualActionError;
     }
+    throw originalError;
   }
 
   private async upsertOidcClient(
@@ -1377,10 +1387,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       adminUrl: string;
     },
     clientId: string
-  ): Promise<void> {
+  ): Promise<string | null> {
     if (!existing) {
-      await this.createOidcClient(payload, clientId);
-      return;
+      return this.createOidcClient(payload, clientId);
     }
     const requiresUpdate =
       existing.enabled !== payload.enabled ||
@@ -1404,6 +1413,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     if (requiresUpdate) {
       await this.updateOidcClient(existing, payload, clientId);
     }
+    return null;
   }
 
   async setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void> {
@@ -1422,9 +1432,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     await this.updateOidcClient(existing, { ...existing, enabled }, clientId);
   }
 
-  private async createOidcClient(payload: object, clientId: string): Promise<void> {
+  private async createOidcClient(payload: object, clientId: string): Promise<string | null> {
     try {
-      await this.executeWithResilience<void>({
+      const response = await this.executeWithResilience<KeycloakUserCreateResponse>({
         method: 'POST',
         path: `/admin/realms/${encodePathSegment(this.realm)}/clients`,
         operation: 'create_client',
@@ -1435,6 +1445,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         realm: this.realm,
         client_id: clientId,
       });
+      return parseLocationHeader(response?.location ?? null);
     } catch (error) {
       logKeycloakWriteFailure(
         'create_client_failed',
@@ -1949,7 +1960,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       return undefined as T;
     }
 
-    if (request.operation === 'create_user') {
+    if (request.operation === 'create_user' || request.operation === 'create_client') {
       return { location: response.headers.get('location') } as T;
     }
 

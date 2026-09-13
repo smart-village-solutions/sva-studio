@@ -921,7 +921,7 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
       .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
-    const client = await createClient(fetchImpl);
+    const client = await createClient(fetchImpl, { circuitBreakerFailureThreshold: 1 });
 
     await expect(
       client.ensureOidcClient({
@@ -942,6 +942,84 @@ describe('Keycloak admin client', () => {
       (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
     );
     expect(deleteCall).toBeDefined();
+  });
+
+  it('deletes a newly created strict client when its immediate readback fails', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 201,
+          headers: {
+            location: 'https://keycloak.example/admin/realms/demo/clients/client-1',
+          },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(503, { error: 'temporarily_unavailable' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl, { maxRetries: 0 });
+
+    await expect(
+      client.ensureOidcClient({
+        clientId: 'ssf',
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: '',
+        enabled: false,
+        standardFlowEnabled: false,
+        implicitFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+      })
+    ).rejects.toMatchObject({ statusCode: 503 });
+
+    expect(
+      fetchImpl.mock.calls.some(
+        (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
+      )
+    ).toBe(true);
+  });
+
+  it('requires manual action when strict client repair and cleanup both fail', async () => {
+    const createdClient = {
+      id: 'client-1',
+      clientId: 'ssf',
+      redirectUris: ['/*'],
+      webOrigins: ['/*'],
+      attributes: {},
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
+      .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
+      .mockResolvedValueOnce(createJsonResponse(500, { error: 'cleanup_failed' }));
+    const client = await createClient(fetchImpl);
+
+    const error = await client
+      .ensureOidcClient({
+        clientId: 'ssf',
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: '',
+        enabled: false,
+        standardFlowEnabled: false,
+        implicitFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      message: 'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action',
+      cause: { statusCode: 500, code: 'http_500' },
+    });
   });
 
   it('skips a redundant update when Keycloak preserves strict client settings on creation', async () => {

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1372,
+  "body": "Benutzersynchronisierung\n\n- Bestehende Keycloak-Mitglieder werden auch ohne hinterlegten Vor- oder Nachnamen ins Studio übernommen. Eine fehlende E-Mail bleibt weiterhin ein Prüfproblem."
+}

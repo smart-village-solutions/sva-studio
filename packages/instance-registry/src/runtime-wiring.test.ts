@@ -134,9 +134,10 @@ describe('runtime wiring', () => {
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));',
       ['tenant-a']
     );
-    expect(client.query).toHaveBeenNthCalledWith(3, 'insert instance');
-    expect(client.query).toHaveBeenNthCalledWith(4, 'insert parent run');
-    expect(client.query).toHaveBeenNthCalledWith(5, 'COMMIT');
+    expect(client.query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'insert instance');
+    expect(client.query).toHaveBeenNthCalledWith(5, 'insert parent run');
+    expect(client.query).toHaveBeenNthCalledWith(6, 'COMMIT');
   });
 
   it('serializes provisioning worker work in the scoped instance transaction', async () => {

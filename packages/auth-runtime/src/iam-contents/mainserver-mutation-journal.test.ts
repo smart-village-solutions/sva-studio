@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
-  deferMainserverMutationProjection,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
 } from './mainserver-mutation-journal.js';
+import { deferMainserverMutationProjection } from './mainserver-mutation-projection-deferral.js';
 import {
   hasUnresolvedMainserverOwnershipTransfer,
   loadRecoverableMainserverOwnershipTransfers,

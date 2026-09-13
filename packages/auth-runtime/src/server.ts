@@ -198,13 +198,13 @@ export {
 export {
   annotateMainserverMutationJournal,
   beginMainserverMutationJournal,
-  deferMainserverMutationProjection,
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
   type MainserverMutationJournalEntry,
   type MainserverMutationProviderOutcome,
   type MainserverMutationReconciliationStatus,
 } from './iam-contents/mainserver-mutation-journal.js';
+export { deferMainserverMutationProjection } from './iam-contents/mainserver-mutation-projection-deferral.js';
 export {
   reconcileDeferredMainserverMutationProjections,
   type ReconciledMainserverProjectionRow,

@@ -10,6 +10,24 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
   if (error instanceof Error) {
     const message = error.message || '';
 
+    if (message.includes('plugin_oidc_client_reconciliation_failed_compensated_by_realm_cleanup')) {
+      return {
+        reasonCode: 'PLUGIN_OIDC_RECONCILIATION_FAILED_COMPENSATED',
+        safeSummary:
+          'Die Plugin-Client-Provisionierung ist fehlgeschlagen; das neu angelegte Keycloak-Realm wurde vollständig entfernt.',
+      };
+    }
+    if (
+      message.includes(
+        'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
+      )
+    ) {
+      return {
+        reasonCode: 'CLIENT_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION',
+        safeSummary:
+          'Ein neu angelegter Keycloak-Client konnte nach fehlgeschlagener Sicherheitskorrektur nicht entfernt werden. Manuelle Bereinigung ist erforderlich.',
+      };
+    }
     if (message.includes('realm_cleanup_failed_requires_manual_action')) {
       return {
         reasonCode: 'REALM_CLEANUP_FAILED_REQUIRES_MANUAL_ACTION',
@@ -30,8 +48,7 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
     ) {
       return {
         reasonCode: 'PLUGIN_OIDC_SNAPSHOT_INVALID',
-        safeSummary:
-          'Der Provisioning-Auftrag enthält keinen gültigen Plugin-OIDC-Snapshot.',
+        safeSummary: 'Der Provisioning-Auftrag enthält keinen gültigen Plugin-OIDC-Snapshot.',
       };
     }
     if (message.includes('Keycloak') || message.includes('keycloak')) {

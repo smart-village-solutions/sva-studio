@@ -1,0 +1,4 @@
+{
+  "prNumber": 1359,
+  "body": "Sichere Keycloak-Client-Anlage\n\n- Neu angelegte technische OIDC-Clients werden nach dem Erstellen erneut geprüft und von automatisch ergänzten Wildcard-Callbacks und -Origins bereinigt."
+}

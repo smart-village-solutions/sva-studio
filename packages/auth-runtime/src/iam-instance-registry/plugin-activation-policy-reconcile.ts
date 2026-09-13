@@ -1,6 +1,9 @@
 import { metrics } from '@opentelemetry/api';
 
-import { readInstanceRegistryPluginRuntimeSnapshotGeneration } from './plugin-activation-policy-snapshot.js';
+import {
+  readInstanceRegistryPluginRuntimeSnapshotGeneration,
+  withCapturedInstanceRegistryPluginRuntimeSnapshot,
+} from './plugin-activation-policy-snapshot.js';
 import { withRegistryService, withScopedRegistryService } from './repository.js';
 
 export const pluginActivationPolicyFleetReconcileReasonCodes = [
@@ -138,11 +141,10 @@ const classifyFleetReconcileError = (
   );
 };
 
-export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async (input: {
-  revision: string;
-}): Promise<PluginActivationPolicyFleetReconcileReport> => {
-  fleetMetricsOwnedByProcess = true;
-  const runtimeSnapshotGeneration = readInstanceRegistryPluginRuntimeSnapshotGeneration();
+const reconcileCapturedPluginActivationPoliciesForAllInstances = async (
+  input: { revision: string },
+  runtimeSnapshotGeneration: number
+): Promise<PluginActivationPolicyFleetReconcileReport> => {
   const startedAt = new Date().toISOString();
   let instanceCount = 0;
   let reconciledInstanceCount = 0;
@@ -189,6 +191,15 @@ export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async 
     if (report.status === 'ready') lastSuccessfulReconcileAtMs = Date.now();
   }
   return report;
+};
+
+export const reconcileConfiguredPluginActivationPoliciesForAllInstances = (input: {
+  revision: string;
+}): Promise<PluginActivationPolicyFleetReconcileReport> => {
+  fleetMetricsOwnedByProcess = true;
+  return withCapturedInstanceRegistryPluginRuntimeSnapshot((runtimeSnapshotGeneration) =>
+    reconcileCapturedPluginActivationPoliciesForAllInstances(input, runtimeSnapshotGeneration)
+  );
 };
 
 export const readPluginActivationPolicyFleetReconcileReport = ():

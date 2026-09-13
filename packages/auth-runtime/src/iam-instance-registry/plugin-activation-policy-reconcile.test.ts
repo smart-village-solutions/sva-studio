@@ -40,7 +40,10 @@ import {
   recordUnexpectedPluginActivationPolicyFleetReconcileFailure,
   resetPluginActivationPolicyFleetReconcileReportForTests,
 } from './plugin-activation-policy-reconcile.js';
-import { configureInstanceRegistryPluginActivationPolicies } from './plugin-activation-policy-snapshot.js';
+import {
+  configureInstanceRegistryPluginActivationPolicies,
+  readInstanceRegistryPluginActivationPolicies,
+} from './plugin-activation-policy-snapshot.js';
 
 afterEach(() => {
   mocks.listInstances.mockReset();
@@ -187,6 +190,27 @@ describe('plugin activation policy fleet reconcile', () => {
     expect(collectMetric('sva_plugin_activation_policy_fleet_seconds_since_success')).toEqual([
       { value: -1, attributes: undefined },
     ]);
+  });
+
+  it('uses one immutable runtime snapshot throughout every instance mutation', async () => {
+    const observedRevisions: string[] = [];
+    configureRegistryService();
+    configureInstanceRegistryPluginActivationPolicies({ revision: 'catalog-1', modules: [] });
+    mocks.listInstances.mockResolvedValue([
+      { instanceId: 'instance-a' },
+      { instanceId: 'instance-b' },
+    ]);
+    mocks.withScopedRegistryService.mockImplementation(async (_instanceId, operation) => {
+      observedRevisions.push(readInstanceRegistryPluginActivationPolicies().revision);
+      if (observedRevisions.length === 1) {
+        configureInstanceRegistryPluginActivationPolicies({ revision: 'catalog-2', modules: [] });
+      }
+      return operation({});
+    });
+
+    await reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-1' });
+
+    expect(observedRevisions).toEqual(['catalog-1', 'catalog-1']);
   });
 
   it('continues after an instance failure and identifies the degraded instance', async () => {

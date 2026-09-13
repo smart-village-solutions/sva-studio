@@ -24,6 +24,12 @@ noch ungebundene interne Fehlermeldungen erzeugen.
 - Ein Prozess beobachtet die prozesslokalen Fleet-Gauges erst, nachdem er den
   Reconcile tatsächlich übernommen hat. Ein reiner Import des Auth-Runtime-
   Moduls erzeugt deshalb keinen leeren oder konkurrierenden Fleet-Zustand.
+- Jeder Fleet-Lauf bindet den vollständigen Runtime-Snapshot aus
+  Aktivierungsrichtlinien, IAM-Verträgen, Tenant-Lifecycles und OIDC-
+  Anforderungen als unveränderliche Ausführungssicht. Ändert sich die globale
+  Snapshot-Generation während des Laufs, darf der alte Lauf weder Report noch
+  Erfolgszeitpunkt veröffentlichen; die aktuelle Revision wird anschließend
+  eigenständig gestartet.
 - Fehlerberichte und Metriken verwenden nur die festgelegten `reason_code`-
   und `retry_class`-Werte. Unerwartete Abbrüche werden auf
   `plugin_activation_policy_reconcile_unknown` und `degraded` abgebildet.
@@ -42,7 +48,10 @@ Ein temporärer Lock-Konflikt kann die IAM-Konvergenz nicht für 30 Minuten
 verzögern, während dauerhaft degradierte Zustände weiterhin kontrolliert und
 ohne Warnungsflut geprüft werden. Nach einem Prozessneustart beginnt der
 App-Owner erneut mit dem aktuellen Snapshot; es entsteht kein zusätzlicher
-persistenter Fleet-Statusspeicher.
+persistenter Fleet-Statusspeicher. Ein laufender Reconcile kann bei einem
+Snapshot-Wechsel noch mit seiner gebundenen alten Sicht zu Ende laufen, aber
+weder innerhalb des Laufs alte und neue Verträge mischen noch seinen Zustand
+als Ergebnis der neuen Generation veröffentlichen.
 
 Mehrere parallele Replikate derselben `default`-Lane benötigen vor einer
 solchen Skalierung eine zusätzliche deploymentsweite Leader- oder

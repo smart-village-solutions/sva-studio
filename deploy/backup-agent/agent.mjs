@@ -812,6 +812,7 @@ export const buildSsfRuntimePrincipalReconciliationSql = (target) => {
   const database = sqlIdentifier(target.postgresDatabase);
   const runtimeRole = sqlIdentifier(target.runtimeRole);
   const runtimeUser = sqlIdentifier(target.runtimeUser);
+  const schemaOwner = sqlIdentifier(target.schemaOwner);
   return `
 DO $restore_principal_guard$
 BEGIN
@@ -822,6 +823,7 @@ BEGIN
 END
 $restore_principal_guard$;
 
+SET ROLE ${schemaOwner};
 GRANT ${runtimeRole} TO ${runtimeUser} WITH INHERIT FALSE;
 GRANT CONNECT ON DATABASE ${database} TO ${runtimeUser};
 GRANT USAGE ON SCHEMA ssf TO ${runtimeRole};
@@ -846,6 +848,7 @@ BEGIN
   END IF;
 END
 $restore_subject_evidence_grant$;
+RESET ROLE;
 `;
 };
 

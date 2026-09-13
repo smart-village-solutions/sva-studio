@@ -361,6 +361,7 @@ describe('backup agent runtime contract', () => {
 
   it('uses SSF-specific restore schemas, principals and archive checks', () => {
     const target = resolveDatabaseTarget('prod', 'ssf', 'restore');
+    expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain('SET ROLE "sva";');
     expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain(
       'GRANT "ssf_plugin_tenant_runtime" TO "sva_ssf_runtime"'
     );
@@ -373,6 +374,7 @@ describe('backup agent runtime contract', () => {
     expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain(
       'GRANT SELECT (confirmed_has_subjects)'
     );
+    expect(buildSsfRuntimePrincipalReconciliationSql(target)).toContain('RESET ROLE;');
     expect(ssfRuntimePrincipalProbeSql(target)).toContain("'ssf.tenant_settings'");
     expect(ssfRestoreSchemaResetSql('sva')).toContain('DROP SCHEMA IF EXISTS ssf CASCADE');
     expect(

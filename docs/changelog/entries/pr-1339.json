@@ -1,4 +1,4 @@
 {
   "prNumber": 1339,
-  "body": "SSF-Anmeldung\n\n- Mandanten erscheinen erst dann in der Anmeldeauswahl, wenn ihre Anmeldung, Berechtigungen und Laufzeit vollständig eingerichtet und geprüft wurden."
+  "body": "SSF-Anmeldung und automatisierte Mandantenanlage in Kassel\n\n- Mandanten erscheinen erst dann in der Anmeldeauswahl, wenn ihre Anmeldung, Berechtigungen und Laufzeit vollständig eingerichtet und geprüft wurden.\n- Neue Kasseler Mandanten werden serverseitig einschließlich Anmeldung, Erreichbarkeit und Zertifikat eingerichtet und erst nach vollständiger Prüfung aktiviert."
 }

@@ -23,7 +23,11 @@ const resolveLoginContract = async (instanceId: string) => {
     pluginOidcClients: requirements,
   };
   readPluginOidcClientRequirements(input);
-  const tenant = await resolveInstanceKeycloakProjectionTenant(instanceId, browser.clientId);
+  const tenant = await resolveInstanceKeycloakProjectionTenant(
+    instanceId,
+    browser.clientId,
+    instance.authRealm
+  );
   return tenant ? { tenant, input, instance } : null;
 };
 

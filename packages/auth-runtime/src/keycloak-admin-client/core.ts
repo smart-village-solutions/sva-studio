@@ -1232,12 +1232,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     pkceCodeChallengeMethod?: 'S256';
     accessTokenLifespan?: 900;
   }): Promise<void> {
-    if (
-      input.publicClient &&
-      (input.clientSecret || input.rotateClientSecret || input.serviceAccountsEnabled)
-    ) {
-      throw new Error('public_oidc_client_secret_or_service_account_forbidden');
-    }
+    this.assertValidOidcClientInput(input);
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
     const payload = {
@@ -1280,22 +1275,43 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     };
 
     await this.upsertOidcClient(existing, payload, input.clientId);
-    if (!existing && input.uriPolicy === 'replace') {
-      const created = await this.getOidcClientByClientId(input.clientId);
-      if (!created) {
-        throw new KeycloakAdminRequestError({
-          message: `Keycloak client ${input.clientId} is missing after creation.`,
-          statusCode: 502,
-          code: 'client_readback_failed',
-          retryable: true,
-        });
-      }
-      // Keycloak may normalize empty callback/origin arrays to wildcard defaults
-      // during POST. Reconcile the read-back representation so strict clients
-      // never retain broader URI access than requested.
-      await this.upsertOidcClient(created, payload, input.clientId);
-    }
+    await this.reconcileCreatedStrictOidcClient(existing, payload, input);
     if (!input.publicClient) await this.syncOidcClientSecret(existing, input);
+  }
+
+  private assertValidOidcClientInput(input: {
+    publicClient?: boolean;
+    clientSecret?: string;
+    rotateClientSecret?: boolean;
+    serviceAccountsEnabled?: boolean;
+  }): void {
+    if (
+      input.publicClient &&
+      (input.clientSecret || input.rotateClientSecret || input.serviceAccountsEnabled)
+    ) {
+      throw new Error('public_oidc_client_secret_or_service_account_forbidden');
+    }
+  }
+
+  private async reconcileCreatedStrictOidcClient(
+    existing: KeycloakClientRepresentation | null,
+    payload: Parameters<KeycloakAdminClient['upsertOidcClient']>[1],
+    input: { clientId: string; uriPolicy?: 'merge' | 'replace' }
+  ): Promise<void> {
+    if (existing || input.uriPolicy !== 'replace') return;
+    const created = await this.getOidcClientByClientId(input.clientId);
+    if (!created) {
+      throw new KeycloakAdminRequestError({
+        message: `Keycloak client ${input.clientId} is missing after creation.`,
+        statusCode: 502,
+        code: 'client_readback_failed',
+        retryable: true,
+      });
+    }
+    // Keycloak may normalize empty callback/origin arrays to wildcard defaults
+    // during POST. Reconcile the read-back representation so strict clients
+    // never retain broader URI access than requested.
+    await this.upsertOidcClient(created, payload, input.clientId);
   }
 
   private async upsertOidcClient(

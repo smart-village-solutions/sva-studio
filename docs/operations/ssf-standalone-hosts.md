@@ -230,3 +230,7 @@ maßgeblich. Die Freigabe benötigt einen echten Zwei-Realm-Nachweis:
 Directory-Auswahl → Keycloak-Login → SSF-Callback → Gateway-Akzeptanz, mit aktueller
 Tenant-/Audience-/Rollenbindung und derselben Authorization-Revision wie die
 Runtime-Antwort. Ein grüner lokaler Vertragstest ersetzt diesen Nachweis nicht.
+Dieser credentialgebundene Lauf ist ein Release- und Kassel-Enablement-Gate,
+kein Schritt jeder Mandantenerstellung. Der Create-Lauf endet nach seinen
+maschinenprüfbaren Postconditions terminal; der Provisioner erhält weder
+Acceptance-Passwörter noch einen Benutzer-Credential-Lifecycle.

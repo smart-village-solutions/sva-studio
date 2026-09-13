@@ -85,8 +85,10 @@ der statischen Docker-Label-Regel entfernen.
 
 Das Kasseler Provisioning SHALL Routerübernahme, öffentlich vertrauenswürdiges
 TLS und den externen Studio-Login als zwingende Postconditions des fachlichen
-Elternlaufs behandeln. Modulabhängige öffentliche Postconditions SHALL aus den
-jeweils führenden Modulverträgen stammen.
+Elternlaufs behandeln. Modulabhängige, maschinenprüfbare Postconditions SHALL
+aus den jeweils führenden Modulverträgen stammen. Credentialgebundene
+Browser-Acceptance SHALL als getrenntes Rollout- und Enablement-Gate behandelt
+werden.
 
 #### Scenario: TLS und Studio-Login sind extern betriebsbereit
 
@@ -95,6 +97,13 @@ jeweils führenden Modulverträgen stammen.
 - **AND** verifiziert es den Studio-Login-Redirect zum erwarteten Tenant-Realm
 - **AND** verifiziert es eine Redirect- beziehungsweise Callback-Konfiguration auf demselben Tenant-Host
 - **AND** gilt die Anlage erst nach allen allgemeinen und modulabhängigen Nachweisen als erfolgreich
+
+#### Scenario: Die SSF-Browser-Acceptance ist noch nicht nachgewiesen
+
+- **WHEN** ein einzelner Create-Lauf alle maschinenprüfbaren Postconditions erfüllt, aber der Release noch keinen credentialgebundenen SSF-Browsernachweis besitzt
+- **THEN** darf der Create-Lauf terminal erfolgreich enden
+- **AND** bleibt das Kassel-Enablement bis zum geschützten Directory-, Keycloak-, Callback- und Gateway-Nachweis gesperrt
+- **AND** erhält der Provisioner dafür keine Benutzer-Credentials
 
 #### Scenario: Der Studio-Login liefert trotz gültigem Zertifikat einen Fehler
 

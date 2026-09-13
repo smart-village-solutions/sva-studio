@@ -381,9 +381,11 @@ zugreifen.
   [ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md)
   beschriebenen persistenten Elternlauf. Ihr Traefik-File-Provider ist ein
   installationsspezifischer Adapter und kein zweiter allgemeiner
-  Studio-Rolloutpfad. Instanzstatus `active`, SSF-Directory-Veröffentlichung
-  und Browser-Login folgen erst auf Router-, TLS-, Lifecycle- und
-  Login-Readiness-Evidenz.
+  Studio-Rolloutpfad. Instanzstatus `active` und SSF-Directory-Veröffentlichung
+  folgen erst auf Router-, TLS-, Lifecycle- und maschinenprüfbare
+  Login-Readiness-Evidenz. Der echte credentialgebundene SSF-Browserpfad wird
+  getrennt im geschützten Rollout nachgewiesen und blockiert bei einem Fehler
+  das Kassel-Enablement, nicht den persistenten Abschluss eines Create-Laufs.
 - Plugin-Deaktivierung löscht keine Daten automatisch.
 - Gesprächsinhalte sind kein Bestandteil der ersten Ausbaustufe.
 

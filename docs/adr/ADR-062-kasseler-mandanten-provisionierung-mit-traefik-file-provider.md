@@ -32,6 +32,11 @@ gesicherten Bedarf verändern.
 - Für den Login-Smoke darf ausschließlich `/auth/login` im expliziten
   Kassel-Modus bereits eine `provisioning`-Instanz auflösen. Callback und
   übriger Tenant-Verkehr behalten das bestehende Active-Gate.
+- Der Create-Lauf prüft die maschinenlesbaren SSF-Postconditions aus Client,
+  IAM-Projektion, Tenant-Baseline, Runtime und Authorization-Revision. Der
+  echte credentialgebundene Pfad Directory → Keycloak → Callback → Gateway
+  bleibt ein geschütztes Rollout- und Kassel-Enablement-Gate; der Provisioner
+  erhält dafür keine Benutzer-Credentials oder dedizierte Testidentität.
 - Der Provisioner schreibt atomar genau eine validierte File-Provider-Datei je
   Tenant. Traefik liest das Verzeichnis read-only und routet auf den live
   verifizierten Docker-Service `sva-studio-ssf@docker`. Studio erhält weder
@@ -51,6 +56,8 @@ und Retry erhalten.
 Die Kasseler Installation benötigt einen koordinierten Rollout zweier
 Repositorys. Der Studio-Modus darf erst aktiviert werden, nachdem der leere
 File Provider ausgerollt und die Bestandsrouter überprüft wurden.
+Der externe SSF-Browsernachweis stoppt bei einem Fehler das Enablement, lässt
+aber keinen einzelnen Create-Lauf ohne ausführbaren Folgepunkt offen.
 
 ## Verworfene Alternativen
 

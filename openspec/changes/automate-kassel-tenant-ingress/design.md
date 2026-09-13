@@ -29,9 +29,10 @@ korrelierte Live-Diagnose zeigt als Ursache eine fehlende öffentliche
 Issuer-URL vor dem Keycloak-Snapshot ableiten und persistieren.
 
 Issue #1319 hat zusätzlich belegt, dass SSF-Betriebsbereitschaft mehr als einen
-Studio-OIDC-Redirect erfordert. Der dortige Vertrag bleibt in seinen
-SSF-spezifischen Specs führend und wird hier nur als terminale Abhängigkeit
-referenziert.
+Studio-OIDC-Redirect erfordert. Seine maschinenprüfbaren Client-, IAM-,
+Baseline-, Runtime- und Revisionspostconditions bleiben für den Create-Lauf
+führend. Der credentialgebundene Browserpfad bleibt dagegen ein separates
+Rollout- und Enablement-Gate.
 
 ## Ziele
 
@@ -58,6 +59,8 @@ referenziert.
 - Keine automatische Löschung bereits erzeugter Registry-, Keycloak-, Secret-,
   Lifecycle- oder Router-Artefakte bei Fehlern.
 - Keine Neuimplementierung der SSF-Readiness aus #1319.
+- Kein Acceptance-Runner, keine dedizierte Testidentität und kein
+  Benutzer-Credential-Lifecycle innerhalb eines Tenant-Create-Laufs.
 - Keine Verallgemeinerung auf Dev, Staging oder reguläre Production in diesem
   Change.
 
@@ -95,9 +98,9 @@ Konfiguration erzeugten Erfolg als aktuelle Evidenz.
 
 Plugin-Lifecycle und SSF-Readiness bleiben in ihrer vorhandenen Ownership. Für
 einen Tenant mit effektiv aktivem SSF wartet der Elternlauf auf die aktuelle
-Lifecycle-/Authorization-Revision und die durch #1319 definierte vollständige
-Readiness. Nicht zugewiesene oder nicht wirksame Module erzeugen keine
-phantomhaften Provisioning-Abhängigkeiten.
+Lifecycle-/Authorization-Revision sowie die maschinenprüfbaren Client-, IAM-,
+Baseline- und Runtime-Postconditions aus #1319. Nicht zugewiesene oder nicht
+wirksame Module erzeugen keine phantomhaften Provisioning-Abhängigkeiten.
 
 Kindläufe dürfen unabhängig diagnostizierbar bleiben. Nur der Elternlauf darf
 jedoch den Create-Vorgang in der Control Plane als erfolgreich abgeschlossen
@@ -193,10 +196,9 @@ Serialisierung idempotent ab:
 9. Studio-Login-Redirect über den öffentlichen Tenant-Host prüfen. Nur dieser
    Einstieg darf im expliziten Kassel-Modus eine `provisioning`-Instanz
    auflösen; Callback und übriger Tenant-Verkehr bleiben gesperrt.
-10. Bei effektiv aktivem SSF den vollständigen #1319-Vertrag prüfen:
+10. Bei effektiv aktivem SSF die maschinenprüfbaren #1319-Postconditions prüfen:
     `ssf-frontend`, Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline,
-    Runtime-Readiness, aktuelle Authorization-Revision sowie
-    Directory → Keycloak → Callback → Gateway.
+    Runtime-Readiness und aktuelle Authorization-Revision.
 11. Erst danach Instanz und Elternlauf terminal auf `active` setzen.
 
 Damit existiert kein Zustand `active` mit nichtterminalem Create-Lauf. Der
@@ -204,6 +206,14 @@ Login-Smoke folgt Redirects bewusst nicht bis zum Callback; er verifiziert den
 öffentlichen Issuer, die exakte Client-ID, PKCE `S256` und den hostgleichen
 Callback. Der normale Callback bleibt bis zur terminalen Aktivierung durch das
 bestehende Traffic-Gate gesperrt.
+
+Ein echter SSF-Browserlogin kann deshalb nicht widerspruchsfrei innerhalb des
+Create-Laufs stattfinden: Das SSF-Directory veröffentlicht nur `active`
+Mandanten, und der Provisioner besitzt bewusst keine Benutzer-Credentials.
+Directory → Keycloak → Callback → Gateway wird mit dedizierten
+Acceptance-Identitäten im geschützten Rollout nachgewiesen. Ein fehlender
+Rollout-Nachweis verhindert das Kassel-Enablement, hält einen einzelnen
+Create-Lauf aber nicht künstlich nichtterminal.
 
 Jede nichtterminale Stufe besitzt einen persistenten Wake-up-/Lease-Zustand,
 begrenzte Wiederholungen und eine Deadline. Technische Transienten werden
@@ -252,13 +262,14 @@ Elternlauf fail-closed bleiben.
 | Elternlauf → Plugin-Lifecycle      | Nur aktuelle modulbezogene Readiness; keine Freigabe durch Directory-Filter allein  |
 | Provisioner → Konfigurationsordner | Nur ein Zielverzeichnis schreibbar; deterministische Dateinamen; kein Docker-Socket |
 | Traefik → Konfigurationsordner     | Nur lesbar; keine Rückschreibmöglichkeit                                            |
-| Öffentlicher Smoke → Tenant/SSF    | Exakter SNI/Host, erwarteter Realm, Callback, Audience, Tenant und Revision         |
+| Create-Smoke → Tenant              | Exakter SNI/Host, erwarteter Realm, Client, PKCE und hostgleicher Callback          |
+| Rollout-Acceptance → SSF           | Credentialgebundener Directory-, Callback- und Gateway-Nachweis mit Tenant/Revision |
 | UI → Elternlauf                    | Reine Beobachtung; kein Polling als Recovery- oder Fortschrittsmechanismus          |
 
 ## Cross-Repository-Lieferung
 
-1. PR #1339 oder ein gleichwertig freigegebener Nachfolger etabliert zuerst den
-   vollständigen SSF-Readiness-Vertrag.
+1. PR #1339 oder ein gleichwertig freigegebener Nachfolger etabliert zuerst die
+   maschinenprüfbare SSF-Readiness und den getrennten externen Acceptance-Vertrag.
 2. `smart-speech-flow` liefert File Provider, Read-only-Verzeichnis und
    Traefik-Vertragstests ohne Änderung der vorhandenen Router.
 3. `sva-studio` liefert Elternlauf-Orchestrierung, Ingressmodul und

@@ -52,10 +52,16 @@ Sollzustand nachweislich betriebsbereit sind.
 #### Scenario: SSF ist für den Tenant effektiv aktiv
 
 - **WHEN** der Elternlauf die SSF-Readiness als terminale Postcondition bewertet
-- **THEN** bestätigt er den vollständigen aktuellen SSF-Vertrag für Browserclient, Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline und Runtime-Readiness
-- **AND** bestätigt er eine aktuelle und zwischen Token und Runtime übereinstimmende Authorization-Revision
-- **AND** bestätigt er Directory-Auswahl, Keycloak-Login, SSF-Callback und Gateway-Akzeptanz
+- **THEN** bestätigt er die aktuellen maschinenprüfbaren SSF-Postconditions für Browserclient, Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline und Runtime-Readiness
+- **AND** bestätigt er die aktuelle IAM-Authorization-Revision gegen den Lifecycle- und Runtime-Sollzustand
 - **AND** behandelt er Directory-Sichtbarkeit allein nicht als ausreichenden Erfolgsnachweis
+
+#### Scenario: Der Kassel-Modus wird für einen Release aktiviert
+
+- **WHEN** die Kasseler Installation mit SSF für einen Release freigegeben werden soll
+- **THEN** weist der geschützte Rollout mit dedizierten Acceptance-Identitäten Directory-Auswahl, Keycloak-Login, SSF-Callback und Gateway-Akzeptanz nach
+- **AND** bestätigt er dabei Tenant-, Audience-, Rollen- und Authorization-Revision
+- **AND** ersetzt dieser umgebungsgebundene Nachweis weder die maschinenprüfbare Create-Readiness noch lässt sein Fehlen einen einzelnen Create-Lauf unbegrenzt nichtterminal
 
 #### Scenario: Ein Modul ist nicht effektiv aktiv
 
@@ -65,7 +71,7 @@ Sollzustand nachweislich betriebsbereit sind.
 
 #### Scenario: Der Prozess endet vor der terminalen Aktivierung
 
-- **WHEN** eine Instanz `provisioning` ist und ihr Elternlauf noch keinen terminal erfolgreichen Public-Smoke besitzt
+- **WHEN** eine Instanz `provisioning` ist und ihr Elternlauf noch nicht alle maschinenprüfbaren Postconditions bestätigt hat
 - **THEN** erkennt der persistente Recovery-Mechanismus diesen Zustand unabhängig vom ursprünglichen Prozess
 - **AND** führt er die fehlenden Postconditions weiter oder setzt Instanz und Elternlauf innerhalb der Fehlerfrist auf `failed`
 - **AND** wird weder die Instanz noch der nichtterminale Lauf zu diesem Zeitpunkt als aktive oder abgeschlossene Anlage dargestellt

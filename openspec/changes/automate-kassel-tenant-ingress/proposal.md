@@ -37,11 +37,14 @@ Verträge ausgerichtet.
   generischer `HostRegexp`-Router und ein Wildcard-Zertifikat bleiben
   ausgeschlossen.
 - Eine Kasseler Anlage gilt erst nach Registry, Keycloak, Ingress, öffentlichem
-  TLS, Studio-Login und den für ihre effektiv aktiven Module erforderlichen
-  Readiness-Nachweisen als erfolgreich. Für SSF umfasst das den vollständigen
-  Vertrag aus #1319: Browser- und Ressourcenclient, IAM-Projektion,
-  Runtime-Tenant-Baseline, Runtime-Readiness, aktuelle Authorization-Revision
-  sowie Directory → Keycloak → Callback → Gateway.
+  TLS, Studio-Login und den für ihre effektiv aktiven Module erforderlichen,
+  maschinenprüfbaren Readiness-Nachweisen als erfolgreich. Für SSF umfasst das
+  Browser- und Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline,
+  Runtime-Readiness und aktuelle Authorization-Revision aus #1319.
+- Der echte credentialgebundene SSF-Pfad Directory → Keycloak → Callback →
+  Gateway bleibt ein geschütztes Rollout- und Enablement-Gate. Er ist kein
+  Bestandteil jedes Create-Laufs, weil das Directory vor `active` absichtlich
+  unsichtbar bleibt und der Provisioner keine Benutzerpasswörter erhält.
 - Create liefert einen beobachtbaren Elternlauf, aber keinen vorzeitigen
   fachlichen Erfolg. Die UI zeigt die Anlage ausschließlich nach terminalem
   Erfolg als abgeschlossen; jeder Fehler endet innerhalb einer definierten
@@ -60,7 +63,8 @@ Verträge ausgerichtet.
   Keycloak-Provisioner.
 - Issue #1319 und PR #1339 definieren beziehungsweise implementieren den
   stärkeren SSF-Login-Readiness-Vertrag; #1339 ist noch nicht gemergt und ist
-  eine fachliche Vorbedingung für die SSF-Ende-zu-Ende-Abnahme dieses Changes.
+  eine fachliche Vorbedingung für die maschinenprüfbare SSF-Readiness sowie die
+  getrennte Ende-zu-Ende-Rollout-Abnahme dieses Changes.
 - Live sind `tenant-havelland` und `svs` weiterhin Bestandteile einer statischen
   Docker-Label-Hostregel. Der Traefik File Provider ist nicht aktiviert.
 - `tenant-havelland` liefert aktuell einen erfolgreichen Studio-Login-Redirect;

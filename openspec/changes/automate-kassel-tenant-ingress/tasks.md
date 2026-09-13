@@ -33,8 +33,9 @@
       erfolgreiche Stufe akzeptieren
 - [x] 2.3 Effektiv aktive Module aus dem aktuellen Lifecycle-Vertrag ableiten;
       nicht zugewiesene Module nicht blockierend behandeln
-- [x] 2.4 Für SSF den vollständigen #1319-Readiness-Vertrag referenzieren und
-      Directory-Filter nur als letzte fail-closed Sicherung behandeln
+- [x] 2.4 Für SSF die maschinenprüfbaren #1319-Readiness-Postconditions
+      referenzieren, Directory-Filter nur als letzte fail-closed Sicherung
+      behandeln und den credentialgebundenen Browserpfad dem Rollout zuordnen
 - [ ] 2.5 Tests für fehlende, blocked, stale und nach Prozessabbruch
       wiederhergestellte Kindlauf-/Lifecycle-Evidenz ergänzen
 
@@ -69,10 +70,10 @@
 - [ ] 4.7 Unit-, Property-, Golden- und Fault-Injection-Tests einschließlich
       Injektions-, Teilwrite-, Reload- und ACME-Fehlern ergänzen
 
-## 5. Terminale Ende-zu-Ende-Orchestrierung
+## 5. Terminale Create-Orchestrierung
 
 - [x] 5.1 Registry-, Keycloak-, Lifecycle-, Ingress-, TLS-, Auth-,
-      Aktivierungs- und Public-Smoke-Stufen im Elternlauf orchestrieren
+      Aktivierungs- und öffentliche Studio-Smoke-Stufen im Elternlauf orchestrieren
 - [x] 5.2 Erfolg ausschließlich nach Studio-Login und den Anforderungen aller
       effektiv aktiven Module terminal speichern
 - [x] 5.3 Recovery für Prozessabbruch insbesondere vor der terminalen
@@ -127,13 +128,15 @@
       Rückweg festhalten
 - [ ] 9.2 SSF File Provider zunächst mit leerem Verzeichnis aktivieren und alle
       Bestands-Hosts prüfen
-- [ ] 9.3 Studio-Provisioner und Kassel-Modus kontrolliert aktivieren
+- [ ] 9.3 Studio-Provisioner und Kassel-Modus kontrolliert für die geschützte
+      Rollout-Abnahme bereitstellen
 - [ ] 9.4 `tenant-havelland` über einen höher priorisierten dynamischen Router
       migrieren, vollständig prüfen und erst danach aus der statischen Regel
       entfernen
 - [ ] 9.5 Login-500 von `svs` beheben und denselben Migrationspfad erst nach
       erfolgreicher Readiness ausführen
-- [ ] 9.6 Zertifikat, Router, Studio-Login und bei aktivem SSF den vollständigen
+- [ ] 9.6 Vor dem allgemeinen Kassel-Enablement Zertifikat, Router, Studio-Login
+      und bei aktivem SSF den vollständigen
       Directory-/Keycloak-/Callback-/Gateway-Pfad extern nachweisen
 - [ ] 9.7 Unbekannten Host, fehlgeschlagenen Tenant, fehlende Modul-Readiness,
       Provisioner-Abbruch und Retry live fail-closed prüfen

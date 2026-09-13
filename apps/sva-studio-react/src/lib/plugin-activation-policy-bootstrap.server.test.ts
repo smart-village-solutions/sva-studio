@@ -359,6 +359,62 @@ describe('plugin activation policy bootstrap', () => {
     setTimeoutSpy.mockRestore();
   });
 
+  it('discards a stale result and starts the latest revision after the inflight run', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    let completeFirstReconcile:
+      | ((value: {
+          status: 'degraded';
+          revision: string;
+          instanceCount: number;
+          reconciledInstanceCount: number;
+          failures: Array<{
+            instanceId: string;
+            stage: string;
+            code: string;
+            reasonCode: string;
+            retryClass: string;
+          }>;
+        }) => void)
+      | undefined;
+    reconcileMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            completeFirstReconcile = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ status: 'ready' });
+
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledWith({ revision: 'catalog-1' }));
+
+    snapshot.revision = 'catalog-2';
+    await ensurePluginActivationPoliciesConfigured();
+    completeFirstReconcile?.({
+      status: 'degraded',
+      revision: 'catalog-1',
+      instanceCount: 1,
+      reconciledInstanceCount: 0,
+      failures: [
+        {
+          instanceId: 'tenant-a',
+          stage: 'reconcile_instance',
+          code: 'plugin_activation_policy_reconcile_failed',
+          reasonCode: 'plugin_activation_state_conflict',
+          retryClass: 'retryable',
+        },
+      ],
+    });
+
+    await vi.waitFor(() =>
+      expect(reconcileMock).toHaveBeenNthCalledWith(2, { revision: 'catalog-2' })
+    );
+    expect(setTimeoutSpy.mock.calls.some(([, delay]) => delay === 60_000)).toBe(false);
+    expect(loggerWarnMock).not.toHaveBeenCalled();
+    setTimeoutSpy.mockRestore();
+  });
+
   it('schedules an autonomous retry after an unexpected fleet reconcile failure', async () => {
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     reconcileMock

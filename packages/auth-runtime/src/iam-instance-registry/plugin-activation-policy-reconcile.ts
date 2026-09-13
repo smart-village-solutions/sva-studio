@@ -54,9 +54,9 @@ const fleetSecondsSinceSuccessGauge = meter.createObservableGauge(
 const readFleetState = (): (typeof fleetStates)[number] => {
   if (!lastReport) return 'unknown';
   if (lastReport.status === 'ready') return 'ready';
-  return lastReport.failures.some(({ retryClass }) => retryClass === 'degraded')
-    ? 'degraded'
-    : 'retrying';
+  return lastReport.failures.some(({ retryClass }) => retryClass === 'retryable')
+    ? 'retrying'
+    : 'degraded';
 };
 
 fleetStateGauge.addCallback((result) => {

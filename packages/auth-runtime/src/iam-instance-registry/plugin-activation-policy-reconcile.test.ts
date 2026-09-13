@@ -193,6 +193,24 @@ describe('plugin activation policy fleet reconcile', () => {
     );
   });
 
+  it('reports a mixed fleet as retrying when any failure is retryable', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([
+      { instanceId: 'instance-a' },
+      { instanceId: 'instance-b' },
+    ]);
+    mocks.withScopedRegistryService
+      .mockRejectedValueOnce(new Error('waste_tenant_role_privilege_drift:instance-a'))
+      .mockRejectedValueOnce(new Error('plugin_activation_state_conflict:instance-b'));
+
+    await reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-2' });
+
+    expect(collectMetric('sva_plugin_activation_policy_fleet_state')).toContainEqual({
+      value: 1,
+      attributes: { state: 'retrying' },
+    });
+  });
+
   it('publishes a degraded report when lifecycle follow-up scheduling fails', async () => {
     configureRegistryService();
     mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);

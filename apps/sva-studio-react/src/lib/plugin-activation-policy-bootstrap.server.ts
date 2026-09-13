@@ -170,6 +170,12 @@ const scheduleFleetReconcileRetry = (
   reconciliationRetryTimer.unref?.();
 };
 
+const isCurrentFleetReconcile = (
+  configuration: PluginActivationPolicyConfiguration,
+  generation: number
+): boolean =>
+  generation === bootstrapGeneration && latestConfiguration?.revision === configuration.revision;
+
 const startFleetReconcileInBackground = (
   configuration: PluginActivationPolicyConfiguration
 ): void => {
@@ -185,28 +191,22 @@ const startFleetReconcileInBackground = (
       const report = await authRuntime.reconcileConfiguredPluginActivationPoliciesForAllInstances({
         revision,
       });
+      if (!isCurrentFleetReconcile(configuration, generation)) return;
       if (report.status === 'ready') {
-        if (generation === bootstrapGeneration) {
-          const recoveredFailure = reconciliationFailureState;
-          reconciledRevision = revision;
-          clearFleetReconcileRetry();
-          reconciliationFailureState = undefined;
-          if (recoveredFailure?.revision === revision) {
-            await logReconcileFailure(
-              'info',
-              'Plugin activation policy fleet reconcile recovered',
-              {
-                revision,
-                previous_retry_class: recoveredFailure.retryClass,
-                previous_reason_codes: recoveredFailure.reasonCodes,
-                degraded_duration_ms: Math.max(0, Date.now() - recoveredFailure.startedAtMs),
-              }
-            );
-          }
+        const recoveredFailure = reconciliationFailureState;
+        reconciledRevision = revision;
+        clearFleetReconcileRetry();
+        reconciliationFailureState = undefined;
+        if (recoveredFailure?.revision === revision) {
+          await logReconcileFailure('info', 'Plugin activation policy fleet reconcile recovered', {
+            revision,
+            previous_retry_class: recoveredFailure.retryClass,
+            previous_reason_codes: recoveredFailure.reasonCodes,
+            degraded_duration_ms: Math.max(0, Date.now() - recoveredFailure.startedAtMs),
+          });
         }
         return;
       }
-      if (generation !== bootstrapGeneration) return;
       const failure = resolveFleetFailure(report);
       const decision = updateFleetFailureState({ revision, ...failure });
       scheduleFleetReconcileRetry(configuration, generation, decision.state.retryDelayMs);
@@ -229,7 +229,7 @@ const startFleetReconcileInBackground = (
         );
       }
     } catch (error) {
-      if (generation !== bootstrapGeneration) return;
+      if (!isCurrentFleetReconcile(configuration, generation)) return;
       configuration.authRuntime.recordUnexpectedPluginActivationPolicyFleetReconcileFailure({
         revision,
       });
@@ -254,7 +254,11 @@ const startFleetReconcileInBackground = (
       }
     }
   })().finally(() => {
-    if (generation === bootstrapGeneration) reconciliationPromise = undefined;
+    if (generation !== bootstrapGeneration) return;
+    reconciliationPromise = undefined;
+    if (latestConfiguration && latestConfiguration.revision !== revision) {
+      startFleetReconcileInBackground(latestConfiguration);
+    }
   });
 };
 

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1383,
+  "body": "SSF-Anmeldung\n\n- Aktive Organisationen werden wieder in der Organisationsauswahl angezeigt, wenn ihre Keycloak-Claim-Mapper korrekt bereitstehen."
+}

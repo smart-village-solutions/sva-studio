@@ -1,0 +1,4 @@
+{
+  "prNumber": 1347,
+  "body": "Interaktive Karten verwenden die aktuelle MapLibre-Version\n\n- Die Karten in POI, Veranstaltungen und generischen Inhalten behalten ihre bestehende Bedienung.\n- Koordinaten können weiterhin per Kartenklick oder durch Verschieben der Markierung bearbeitet werden.\n- Die aktualisierte Kartenbibliothek wird weiterhin nur bei Bedarf im Browser geladen."
+}

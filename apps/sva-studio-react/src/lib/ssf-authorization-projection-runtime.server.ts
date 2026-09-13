@@ -4,6 +4,7 @@ import {
   readTenantPermissionProjectionSubjects,
   resolveInstanceKeycloakProjectionTenant,
 } from '@sva/auth-runtime/server';
+import { loadInstanceById } from '@sva/data-repositories/server';
 import {
   createConfiguredSsfKeycloakAuthorizationProjectionTarget,
   createPostgresSsfAuthorizationProjectionStore,
@@ -17,27 +18,31 @@ import {
 import { SSF_LOGIN_CLIENT_ID } from '@sva/plugin-ssf/provisioning';
 
 /** Constant-cost readiness for request paths; full subject read-back stays in reconciliation. */
-export const readStudioSsfLoginBaselineReadiness = async (instanceId: string): Promise<boolean> => {
+export const readStudioSsfLoginBaselineReadiness = async (
+  instanceId: string,
+  authRealm?: string
+): Promise<boolean> => {
   const pool = resolveSsfDatabasePool();
   return (
     Boolean(pool && (await readSsfTenant(pool, instanceId))) &&
-    (await readInstanceSsfLoginClientsReady(instanceId))
+    (await readInstanceSsfLoginClientsReady(instanceId, authRealm))
   );
 };
 
-export const createStudioSsfAuthorizationProjectionTarget = () =>
+export const createStudioSsfAuthorizationProjectionTarget = (authRealm?: string) =>
   createConfiguredSsfKeycloakAuthorizationProjectionTarget({
     resolveTenant: (instanceId) =>
-      resolveInstanceKeycloakProjectionTenant(instanceId, SSF_LOGIN_CLIENT_ID),
+      resolveInstanceKeycloakProjectionTenant(instanceId, SSF_LOGIN_CLIENT_ID, authRealm),
     prepareLoginClients: async (instanceId) => {
-      await prepareInstanceSsfLoginClients(instanceId);
+      await prepareInstanceSsfLoginClients(instanceId, authRealm);
     },
     prepareRuntimeBaseline: async (instanceId) => {
       const pool = resolveSsfRootDatabasePool();
       if (!pool) throw new Error('ssf_root_database_not_configured');
       await provisionSsfTenant(pool, instanceId);
     },
-    readLoginReadiness: readStudioSsfLoginBaselineReadiness,
+    readLoginReadiness: (instanceId) =>
+      readStudioSsfLoginBaselineReadiness(instanceId, authRealm),
   });
 
 export const createStudioSsfAuthorizationProjectionRuntime = () => {
@@ -57,6 +62,10 @@ export const createStudioSsfAuthorizationProjectionRuntime = () => {
     },
     source: { readSubjects: readTenantPermissionProjectionSubjects },
     store: createPostgresSsfAuthorizationProjectionStore(pool),
-    target: createStudioSsfAuthorizationProjectionTarget(),
+    createTarget: async (instanceId) => {
+      const instance = await loadInstanceById(instanceId);
+      if (!instance) throw new Error('ssf_projection_tenant_not_found');
+      return createStudioSsfAuthorizationProjectionTarget(instance.authRealm);
+    },
   });
 };

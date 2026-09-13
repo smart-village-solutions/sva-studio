@@ -36,7 +36,7 @@ describe('SSF authorization projection runtime', () => {
       const runtime = createSsfAuthorizationProjectionRuntime({
         source,
         store,
-        target,
+        createTarget: async () => target,
         readReadyRevision,
       });
 
@@ -103,7 +103,7 @@ describe('SSF authorization projection runtime', () => {
     const runtime = createSsfAuthorizationProjectionRuntime({
       source,
       store,
-      target,
+      createTarget: async () => target,
       readReadyRevision: async () => null,
     });
 

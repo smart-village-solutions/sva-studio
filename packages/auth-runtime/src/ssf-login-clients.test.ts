@@ -85,6 +85,15 @@ it('creates an absent resource baseline through the Core adapter on initial prov
     })
   );
 });
+it('uses an explicitly captured realm throughout a lifecycle run', async () => {
+  await prepareInstanceSsfLoginClients('tenant-a', 'captured-realm');
+  await readInstanceSsfLoginClientsReady('tenant-a', 'captured-realm');
+  expect(mocks.resolveTenant).toHaveBeenCalledWith(
+    'tenant-a',
+    'ssf-frontend',
+    'captured-realm'
+  );
+});
 it('does not publish disabled browser clients or drifted resource clients', async () => {
   mocks.readClient.mockResolvedValue({ enabled: false });
   expect(await readInstanceSsfLoginClientsReady('tenant-a')).toBe(false);

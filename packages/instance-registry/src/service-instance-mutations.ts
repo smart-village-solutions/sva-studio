@@ -1,24 +1,10 @@
-import {
-  buildPrimaryHostname,
-  canTransitionInstanceStatus,
-  normalizeHost,
-} from '@sva/core';
-import type { InstanceRegistryRecord } from '@sva/core';
+import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
 
-import type {
-  CreateInstanceProvisioningInput,
-  CreateInstanceProvisioningResult,
-  UpdateInstanceInput,
-} from './mutation-types.js';
+import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
 import {
-  buildCreateInstancePayloadFingerprint,
-  matchesPersistedCreateSecrets,
-} from './service-instance-create-fingerprint.js';
-import {
-  DEFAULT_TENANT_ADMIN_CLIENT_ID,
   encryptAuthClientSecret,
   encryptTenantAdminClientSecret,
   instanceRegistryServiceLogger,
@@ -26,152 +12,92 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
-import { assertOidcClientIdsNotReserved, assertTenantHostnameAvailable } from './service-reservations.js';
+import {
+  assertOidcClientIdsNotReserved,
+  assertTenantHostnameAvailable,
+} from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
-
-const assertIdempotentCreateRetry = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput,
-  instance: InstanceRegistryRecord
-): Promise<boolean> => {
-  const matchingRun = (await deps.repository.listProvisioningRuns(input.instanceId)).find(
-    (run) => run.operation === 'create' && run.idempotencyKey === input.idempotencyKey
-  );
-  if (!matchingRun) {
-    return false;
-  }
-  if (
-    !matchingRun.payloadFingerprint ||
-    matchingRun.payloadFingerprint !== buildCreateInstancePayloadFingerprint(input)
-  ) {
-    throw new Error('idempotency_key_reuse');
-  }
-  if (!(await matchesPersistedCreateSecrets(deps, input, instance))) {
-    throw new Error('idempotency_key_reuse');
-  }
-  return true;
-};
-
-const resolveIdempotentCreateRetry = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput,
-  instance: InstanceRegistryRecord
-): Promise<CreateInstanceProvisioningResult | null> => {
-  if (!(await assertIdempotentCreateRetry(deps, input, instance))) {
-    return null;
-  }
-  await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-    instanceId: instance.instanceId,
-    actorId: input.actorId,
-    requestId: input.requestId,
-  });
-  invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
-  return { ok: true, instance: toListItem(instance) };
-};
-
-const concurrentCreateRetryDelaysMs = [0, 25, 100, 400] as const;
-
-const resolveConcurrentIdempotentCreateRetry = async (
-  deps: InstanceRegistryServiceDeps,
-  input: CreateInstanceProvisioningInput,
-  instance: InstanceRegistryRecord
-): Promise<CreateInstanceProvisioningResult | null> => {
-  for (const delayMs of concurrentCreateRetryDelaysMs) {
-    if (delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-    const retry = await resolveIdempotentCreateRetry(deps, input, instance);
-    if (retry) return retry;
-  }
-  return null;
-};
+import {
+  assertNoActiveTenantProvisioning,
+  shouldExposeAutomatedProvisioning,
+} from './service-active-provisioning.js';
+import {
+  createRequestedInstance,
+  resolveConcurrentIdempotentCreateRetry,
+  resolveIdempotentCreateRetry,
+} from './service-instance-create.js';
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
-    assertOidcClientIdsNotReserved(deps, input);
-    assertTenantHostnameAvailable(deps, buildPrimaryHostname(input.instanceId, input.parentDomain));
+    const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
+      parentDomain: input.parentDomain,
+      authRealm: input.authRealm,
+      authIssuerUrl: input.authIssuerUrl,
+    });
+    const effectiveInput = authIssuerUrl ? { ...input, authIssuerUrl } : input;
+    assertOidcClientIdsNotReserved(deps, effectiveInput);
+    assertTenantHostnameAvailable(
+      deps,
+      buildPrimaryHostname(effectiveInput.instanceId, effectiveInput.parentDomain)
+    );
     instanceRegistryServiceLogger.info('instance_create_requested', {
       operation: 'create_instance',
-      instance_id: input.instanceId,
-      request_id: input.requestId,
-      actor_id: input.actorId,
+      instance_id: effectiveInput.instanceId,
+      request_id: effectiveInput.requestId,
+      actor_id: effectiveInput.actorId,
     });
     const existing = await runInstanceRegistryStep('registry_lookup', () =>
-      deps.repository.getInstanceById(input.instanceId)
+      deps.repository.getInstanceById(effectiveInput.instanceId)
     );
     if (existing) {
-      const retry = await resolveIdempotentCreateRetry(deps, input, existing);
+      const retry = await resolveIdempotentCreateRetry(deps, effectiveInput, existing);
       if (retry) return retry;
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
-        instance_id: input.instanceId,
-        request_id: input.requestId,
+        instance_id: effectiveInput.instanceId,
+        request_id: effectiveInput.requestId,
       });
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    const normalizedParentDomain = normalizeHost(input.parentDomain);
-    const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
-    const tenantAdminClient = input.tenantAdminClient ?? {
-      clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID,
-    };
     const instance = await runInstanceRegistryStep('registry_insert', () =>
-      deps.repository.createInstance({
-        instanceId: input.instanceId,
-        displayName: input.displayName,
-        status: 'requested',
-        parentDomain: normalizedParentDomain,
-        primaryHostname,
-        realmMode: input.realmMode,
-        authRealm: input.authRealm,
-        authClientId: input.authClientId,
-        authIssuerUrl: input.authIssuerUrl,
-        authClientSecretCiphertext: encryptAuthClientSecret(
-          deps,
-          input.instanceId,
-          input.authClientSecret
-        ),
-        tenantAdminClient: tenantAdminClient
-          ? {
-              clientId: tenantAdminClient.clientId,
-              secretCiphertext: encryptTenantAdminClientSecret(
-                deps,
-                input.instanceId,
-                tenantAdminClient.secret
-              ),
-            }
-          : undefined,
-        tenantAdminBootstrap: input.tenantAdminBootstrap,
-        actorId: input.actorId,
-        requestId: input.requestId,
-        themeKey: input.themeKey,
-        featureFlags: input.featureFlags,
-        mainserverConfigRef: input.mainserverConfigRef,
-      })
+      createRequestedInstance(deps, effectiveInput)
     );
     if (!instance) {
       const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>
-        deps.repository.getInstanceById(input.instanceId)
+        deps.repository.getInstanceById(effectiveInput.instanceId)
       );
       if (concurrentInstance) {
-        const retry = await resolveConcurrentIdempotentCreateRetry(deps, input, concurrentInstance);
+        const retry = await resolveConcurrentIdempotentCreateRetry(
+          deps,
+          effectiveInput,
+          concurrentInstance
+        );
         if (retry) return retry;
       }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
         operation: 'create_instance',
-        instance_id: input.instanceId,
-        request_id: input.requestId,
+        instance_id: effectiveInput.instanceId,
+        request_id: effectiveInput.requestId,
       });
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    await createProvisioningArtifacts(deps.repository, instance, input);
     await createReconcileModuleActivationPoliciesHandler(deps)({
       instanceId: instance.instanceId,
-      actorId: input.actorId,
-      requestId: input.requestId,
+      actorId: effectiveInput.actorId,
+      requestId: effectiveInput.requestId,
     });
+    const reconciledInstance =
+      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
+    const automated = shouldExposeAutomatedProvisioning(deps, reconciledInstance);
+    const provisioningRun = await createProvisioningArtifacts(
+      deps.repository,
+      reconciledInstance,
+      effectiveInput,
+      automated ? 'kassel-traefik-file' : 'external'
+    );
     try {
       invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
     } catch (error) {
@@ -181,11 +107,12 @@ export const createProvisioningRequestHandler =
       operation: 'create_instance',
       instance_id: instance.instanceId,
       status: instance.status,
-      request_id: input.requestId,
+      request_id: effectiveInput.requestId,
     });
-    const reconciledInstance =
-      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
-    return { ok: true, instance: toListItem(reconciledInstance) };
+    return {
+      ok: true,
+      instance: toListItem(reconciledInstance, automated ? provisioningRun : undefined),
+    };
   };
 
 export const createChangeStatusHandler =
@@ -195,6 +122,7 @@ export const createChangeStatusHandler =
     if (!current) {
       return { ok: false, reason: 'not_found' as const };
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     if (!canTransitionInstanceStatus(current.status, input.nextStatus)) {
       instanceRegistryServiceLogger.warn('instance_status_transition_rejected', {
@@ -243,7 +171,13 @@ export const createUpdateInstanceHandler =
     if (!existing) {
       return null;
     }
+    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
     const normalizedParentDomain = normalizeHost(input.parentDomain);
+    const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
+      parentDomain: normalizedParentDomain,
+      authRealm: input.authRealm,
+      authIssuerUrl: input.authIssuerUrl,
+    });
     const primaryHostname =
       normalizeHost(existing.parentDomain) === normalizedParentDomain
         ? existing.primaryHostname
@@ -257,7 +191,7 @@ export const createUpdateInstanceHandler =
       realmMode: input.realmMode,
       authRealm: input.authRealm,
       authClientId: input.authClientId,
-      authIssuerUrl: input.authIssuerUrl,
+      authIssuerUrl: authIssuerUrl ?? input.authIssuerUrl,
       authClientSecretCiphertext: encryptAuthClientSecret(
         deps,
         input.instanceId,

@@ -24,6 +24,7 @@ const bootstrapInstanceAdminStructureMock = vi.fn();
 const revokeInstanceModuleMock = vi.fn();
 const seedInstanceIamBaselineMock = vi.fn();
 const createInstanceMock = vi.fn();
+const retryInstanceProvisioningMock = vi.fn();
 const updateInstanceMock = vi.fn();
 const reconcileInstanceKeycloakMock = vi.fn();
 const activateInstanceMock = vi.fn();
@@ -102,6 +103,7 @@ vi.mock('../lib/iam-api', () => ({
   revokeInstanceModule: (...args: unknown[]) => revokeInstanceModuleMock(...args),
   seedInstanceIamBaseline: (...args: unknown[]) => seedInstanceIamBaselineMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
+  retryInstanceProvisioning: (...args: unknown[]) => retryInstanceProvisioningMock(...args),
   updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
   reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
   activateInstance: (...args: unknown[]) => activateInstanceMock(...args),
@@ -292,6 +294,9 @@ describe('useInstances', () => {
         primaryHostname: 'demo.studio.example.org',
       },
     });
+    retryInstanceProvisioningMock.mockResolvedValue({
+      data: { instanceId: 'demo', status: 'provisioning' },
+    });
     updateInstanceMock.mockResolvedValue({
       data: {
         instanceId: 'demo',
@@ -379,6 +384,7 @@ describe('useInstances', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
+      await result.current.retryTenantProvisioning('demo');
       await result.current.probeTenantIamAccess('demo');
       await result.current.reconcileKeycloak('demo', {});
       await result.current.bootstrapAdminStructure('demo', ['news']);
@@ -389,6 +395,7 @@ describe('useInstances', () => {
 
     expect(createInstanceMock).toHaveBeenCalledTimes(1);
     expect(updateInstanceMock).toHaveBeenCalledTimes(1);
+    expect(retryInstanceProvisioningMock).toHaveBeenCalledWith('demo');
     expect(probeTenantIamAccessMock).toHaveBeenCalledTimes(1);
     expect(reconcileInstanceKeycloakMock).toHaveBeenCalledTimes(1);
     expect(bootstrapInstanceAdminStructureMock).toHaveBeenCalledTimes(1);

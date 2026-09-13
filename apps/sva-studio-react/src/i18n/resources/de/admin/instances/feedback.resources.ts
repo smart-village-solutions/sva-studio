@@ -3,6 +3,10 @@ export const feedbackInstancesAdminDEResources = {
   keycloakStatusUpdated: 'Keycloak-Status wurde aktualisiert.',
   provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
   provisioningQueued: 'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',
+  provisioningRetryAvailable:
+    'Die automatische Mandanten-Provisionierung ist fehlgeschlagen und kann sicher fortgesetzt werden.',
+  provisioningRetryAction: 'Mandanten-Provisionierung erneut starten',
+  provisioningRetryQueued: 'Die Mandanten-Provisionierung wurde erneut gestartet.',
   instanceActivated: 'Die Instanz wurde aktiviert.',
   tenantIamProbeUpdated: 'Tenant-IAM-Rechteprobe wurde aktualisiert.',
   workerEnvMissing:

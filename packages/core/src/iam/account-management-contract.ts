@@ -551,6 +551,14 @@ export type IamInstanceProvisioningRun = {
   readonly status: InstanceStatus;
   readonly stepKey?: string;
   readonly idempotencyKey: string;
+  readonly snapshotVersion: string;
+  readonly desiredSnapshot: Readonly<Record<string, unknown>>;
+  readonly childKeycloakRunId?: string;
+  readonly attemptCount: number;
+  readonly nextAttemptAt: string;
+  readonly deadlineAt: string;
+  readonly terminalEvidence: Readonly<Record<string, unknown>>;
+  readonly completedAt?: string;
   readonly errorCode?: string;
   readonly errorMessage?: string;
   readonly requestId?: string;

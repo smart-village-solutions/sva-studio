@@ -14,6 +14,11 @@ describe('http-instance-handlers', () => {
       ok: true,
       instance: { instanceId: 'demo', status: 'validated' },
     })),
+    retryTenantProvisioning: vi.fn(async () => ({
+      instanceId: 'demo',
+      primaryHostname: 'demo.dialog.kassel.de',
+      status: 'provisioning',
+    })),
     updateInstance: vi.fn(async () => ({ instanceId: 'demo', status: 'active' })),
   } as unknown as InstanceRegistryService;
 
@@ -49,8 +54,10 @@ describe('http-instance-handlers', () => {
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     ),
     withScopedRegistryService: vi.fn(
-      async (_instanceId: string, work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
-        work(service)
+      async (
+        _instanceId: string,
+        work: (registryService: InstanceRegistryService) => Promise<unknown>
+      ) => work(service)
     ),
     reservedOidcClientIds: ['ssf'],
     onInstanceProvisioningRequested: vi.fn(),
@@ -67,9 +74,7 @@ describe('http-instance-handlers', () => {
     deps.withRegistryService.mockImplementation(
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     );
-    deps.withScopedRegistryService.mockImplementation(
-      async (_instanceId, work) => work(service)
-    );
+    deps.withScopedRegistryService.mockImplementation(async (_instanceId, work) => work(service));
     vi.mocked(service.listInstances).mockResolvedValue([
       { instanceId: 'demo', status: 'active' },
     ] as never);
@@ -80,6 +85,11 @@ describe('http-instance-handlers', () => {
     vi.mocked(service.createProvisioningRequest).mockResolvedValue({
       ok: true,
       instance: { instanceId: 'demo', status: 'validated' },
+    } as never);
+    vi.mocked(service.retryTenantProvisioning).mockResolvedValue({
+      instanceId: 'demo',
+      primaryHostname: 'demo.dialog.kassel.de',
+      status: 'provisioning',
     } as never);
     vi.mocked(service.updateInstance).mockResolvedValue({
       instanceId: 'demo',
@@ -130,6 +140,70 @@ describe('http-instance-handlers', () => {
     expect(deps.onInstanceProvisioningRequested).toHaveBeenCalledWith({
       instanceId: 'demo',
       primaryHostname: 'demo.studio.example.org',
+      actorId: 'admin-1',
+    });
+  });
+
+  it('uses the locked create transaction adapter when available', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'existing',
+        authRealm: 'smartcity',
+        authClientId: 'sva-studio-login',
+      },
+    });
+    const withRegistryCreateService = vi.fn(
+      async (_instanceId: string, work: (value: InstanceRegistryService) => Promise<unknown>) =>
+        work(service)
+    );
+    const handlers = createInstanceRegistryHttpHandlers({
+      ...deps,
+      withRegistryCreateService,
+    });
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.dialog.kassel.de/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    expect(withRegistryCreateService).toHaveBeenCalledWith('demo', expect.any(Function));
+    expect(deps.withRegistryService).not.toHaveBeenCalled();
+  });
+
+  it('retries tenant provisioning under the create lock with a fresh HTTP idempotency key', async () => {
+    const withRegistryCreateService = vi.fn(
+      async (_instanceId: string, work: (value: InstanceRegistryService) => Promise<unknown>) =>
+        work(service)
+    );
+    const handlers = createInstanceRegistryHttpHandlers({
+      ...deps,
+      withRegistryCreateService,
+    });
+
+    const response = await handlers.retryTenantProvisioning(
+      new Request('https://studio.dialog.kassel.de/api/v1/iam/instances/demo/provisioning/retry', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'retry-request-1' },
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.requireIdempotencyKey).toHaveBeenCalled();
+    expect(withRegistryCreateService).toHaveBeenCalledWith('demo', expect.any(Function));
+    expect(service.retryTenantProvisioning).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      actorId: 'admin-1',
+      requestId: 'req-1',
+    });
+    expect(deps.onInstanceProvisioningRequested).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      primaryHostname: 'demo.dialog.kassel.de',
       actorId: 'admin-1',
     });
   });

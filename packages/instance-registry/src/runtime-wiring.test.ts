@@ -113,6 +113,32 @@ describe('runtime wiring', () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it('persists create-side instance and parent-run writes in one locked transaction', async () => {
+    const client = createClient();
+    const repository = {} as InstanceRegistryRepository;
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: () => repository,
+      serviceDeps: { invalidateHost: vi.fn() },
+    });
+
+    await runtime.withRegistryCreateService('tenant-a', async () => {
+      await client.query('insert instance');
+      await client.query('insert parent run');
+      return 'created';
+    });
+
+    expect(client.query).toHaveBeenNthCalledWith(1, 'BEGIN');
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0));',
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(3, 'insert instance');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'insert parent run');
+    expect(client.query).toHaveBeenNthCalledWith(5, 'COMMIT');
+  });
+
   it('serializes provisioning worker work in the scoped instance transaction', async () => {
     const client = createClient();
     const realmAssignments = [{ instanceId: 'tenant-a', authRealm: 'realm-a' }];
@@ -134,7 +160,9 @@ describe('runtime wiring', () => {
 
     await runtime.withRegistryProvisioningWorkerDeps((workerDeps) =>
       workerDeps.withInstanceProvisioningLock?.('tenant-a', async (lockedDeps) => {
-        await expect(lockedDeps.listProvisioningRealmAssignments?.()).resolves.toEqual(realmAssignments);
+        await expect(lockedDeps.listProvisioningRealmAssignments?.()).resolves.toEqual(
+          realmAssignments
+        );
         return 'done';
       })
     );

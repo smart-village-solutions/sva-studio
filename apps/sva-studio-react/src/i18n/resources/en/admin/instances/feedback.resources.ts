@@ -3,6 +3,9 @@ export const feedbackInstancesAdminENResources = {
   keycloakStatusUpdated: 'Keycloak status was refreshed.',
   provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
   provisioningQueued: 'The provisioning job was queued for execution.',
+  provisioningRetryAvailable: 'Automated tenant provisioning failed and can be resumed safely.',
+  provisioningRetryAction: 'Retry tenant provisioning',
+  provisioningRetryQueued: 'Tenant provisioning was restarted.',
   instanceActivated: 'The instance was activated.',
   tenantIamProbeUpdated: 'The tenant IAM access probe was refreshed.',
   workerEnvMissing:

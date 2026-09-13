@@ -1,4 +1,4 @@
-import { isTrafficEnabledInstanceStatus } from '@sva/core';
+import { isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data-repositories/server';
 import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 
@@ -63,9 +63,15 @@ export const loadRegistryEntryForHost = async (host: string): Promise<RegistryEn
 
 export const assertActiveRegistryEntry = (
   host: string,
-  registryEntry: NonNullable<RegistryEntry>
+  registryEntry: NonNullable<RegistryEntry>,
+  options: { readonly allowKasselProvisioningLoginProbe?: boolean } = {}
 ): void => {
-  if (!isTrafficEnabledInstanceStatus(registryEntry.status)) {
+  const isNarrowProvisioningProbe =
+    options.allowKasselProvisioningLoginProbe === true &&
+    process.env.SVA_TENANT_INGRESS_MODE === 'kassel-traefik-file' &&
+    normalizeHost(registryEntry.parentDomain) === 'dialog.kassel.de' &&
+    registryEntry.status === 'provisioning';
+  if (!isTrafficEnabledInstanceStatus(registryEntry.status) && !isNarrowProvisioningProbe) {
     throw new TenantAuthResolutionError({
       host,
       reason: 'tenant_inactive',

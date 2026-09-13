@@ -217,7 +217,7 @@ export const InstanceCreatePage = () => {
       </header>
 
       {createdInstance && successGuidance ? (
-        <Card className="space-y-4 p-5">
+        <Card className="space-y-4 p-5" aria-live="polite">
           <div className="space-y-2">
             <div className="text-sm font-medium text-foreground">{successGuidance.title}</div>
             <p className="text-sm text-muted-foreground">{successGuidance.summary}</p>
@@ -234,12 +234,21 @@ export const InstanceCreatePage = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link
-                to="/admin/instances/$instanceId/setup"
-                params={{ instanceId: createdInstance.instanceId }}
-              >
-                {t('admin.instances.setup.actions.completeSetup')}
-              </Link>
+              {successGuidance.automated ? (
+                <Link
+                  to="/admin/instances/$instanceId"
+                  params={{ instanceId: createdInstance.instanceId }}
+                >
+                  {t('admin.instances.success.actions.openDetail')}
+                </Link>
+              ) : (
+                <Link
+                  to="/admin/instances/$instanceId/setup"
+                  params={{ instanceId: createdInstance.instanceId }}
+                >
+                  {t('admin.instances.setup.actions.completeSetup')}
+                </Link>
+              )}
             </Button>
             <Button asChild type="button" variant="secondary">
               <Link to="/admin/instances">

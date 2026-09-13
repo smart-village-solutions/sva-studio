@@ -13,7 +13,6 @@ import {
   readInstanceRegistryPluginOidcClientRequirements,
   readInstanceRegistryPluginTenantLifecycleRegistry,
 } from './plugin-activation-policy-snapshot.js';
-
 import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
 import {
   getInstanceKeycloakPlanViaProvisioner,
@@ -32,18 +31,16 @@ import {
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
+import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
   level: 'info',
 });
-
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
-
 export const closeInstanceRegistryRepositoryPoolForShutdown = async (): Promise<void> => {
   await resolvePool()?.end();
 };
-
 const readPersistablePluginTenantLifecycleRegistry = () =>
   new Map(
     [...readInstanceRegistryPluginTenantLifecycleRegistry()].flatMap(([pluginId, lifecycle]) =>
@@ -260,6 +257,10 @@ const registryRuntime = createInstanceRegistryRuntime({
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
+    isAutomatedTenantProvisioningEnabled: ({ parentDomain }) =>
+      process.env.SVA_TENANT_INGRESS_MODE === 'kassel-traefik-file' &&
+      parentDomain === 'dialog.kassel.de',
     reservedOidcClientIds: readReservedPluginOidcClientIds,
     reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
@@ -282,6 +283,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     runConfiguredPluginTenantProvisioningSchedule(instanceId),
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
     reservedOidcClientIds: readReservedPluginOidcClientIds,
     reservedHostnames: readReservedInstanceHostnames,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
@@ -310,6 +312,7 @@ export const {
   withRegistryRepository,
   withScopedRegistryRepository,
   withRegistryService,
+  withRegistryCreateService,
   withScopedRegistryService,
   withRegistryProvisioningWorkerService,
   withRegistryProvisioningWorkerDeps,

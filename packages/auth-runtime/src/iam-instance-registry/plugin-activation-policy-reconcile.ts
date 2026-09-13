@@ -88,7 +88,7 @@ fleetSecondsSinceSuccessGauge.addCallback((result) => {
 const errorClassifications = Object.freeze({
   plugin_activation_state_conflict: {
     reasonCode: 'plugin_activation_state_conflict',
-    retryClass: 'degraded',
+    retryClass: 'retryable',
   },
   plugin_tenant_lifecycle_schedule_exhausted: {
     reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',

@@ -200,7 +200,7 @@ describe('plugin activation policy fleet reconcile', () => {
     );
   });
 
-  it('keeps a known activation conflict bounded and marks it as degraded', async () => {
+  it('keeps a known activation conflict bounded and marks it as retryable', async () => {
     configureRegistryService();
     mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);
     mocks.withScopedRegistryService.mockRejectedValueOnce(
@@ -217,7 +217,7 @@ describe('plugin activation policy fleet reconcile', () => {
             stage: 'reconcile_instance',
             code: 'plugin_activation_policy_reconcile_failed',
             reasonCode: 'plugin_activation_state_conflict',
-            retryClass: 'degraded',
+            retryClass: 'retryable',
           },
         ],
       })

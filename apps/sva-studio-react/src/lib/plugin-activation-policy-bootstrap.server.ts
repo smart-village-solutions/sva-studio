@@ -98,9 +98,9 @@ const resolveFleetFailure = (
   reasonCodes: readonly string[];
   signature: string;
 }> => {
-  const retryClass = report.failures.some((failure) => failure.retryClass === 'degraded')
-    ? 'degraded'
-    : 'retryable';
+  const retryClass = report.failures.some((failure) => failure.retryClass === 'retryable')
+    ? 'retryable'
+    : 'degraded';
   const reasonCodes = [
     ...new Set(report.failures.map((failure) => failure.reasonCode).filter(Boolean)),
   ].sort();

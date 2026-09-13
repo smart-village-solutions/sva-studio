@@ -254,7 +254,7 @@ describe('plugin activation policy bootstrap', () => {
           instanceId: 'tenant-a',
           stage: 'reconcile_instance',
           code: 'plugin_activation_policy_reconcile_failed',
-          reasonCode: 'plugin_activation_state_conflict',
+          reasonCode: 'waste_tenant_role_privilege_drift',
           retryClass: 'degraded',
         },
       ],
@@ -279,6 +279,44 @@ describe('plugin activation policy bootstrap', () => {
     await vi.waitFor(() => expect(loggerInfoMock).toHaveBeenCalledOnce());
 
     expect(loggerWarnMock).toHaveBeenCalledOnce();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('uses the shorter retry cadence when a fleet report mixes failure classes', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    reconcileMock.mockResolvedValueOnce({
+      status: 'degraded',
+      revision: 'catalog-1',
+      instanceCount: 2,
+      reconciledInstanceCount: 0,
+      failures: [
+        {
+          instanceId: 'tenant-a',
+          stage: 'reconcile_instance',
+          code: 'plugin_activation_policy_reconcile_failed',
+          reasonCode: 'waste_tenant_role_privilege_drift',
+          retryClass: 'degraded',
+        },
+        {
+          instanceId: 'tenant-b',
+          stage: 'reconcile_instance',
+          code: 'plugin_activation_policy_reconcile_failed',
+          reasonCode: 'plugin_activation_state_conflict',
+          retryClass: 'retryable',
+        },
+      ],
+    });
+
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledOnce());
+
+    expect(setTimeoutSpy.mock.calls.some(([, delay]) => delay === 60_000)).toBe(true);
+    expect(setTimeoutSpy.mock.calls.some(([, delay]) => delay === 1_800_000)).toBe(false);
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      'Plugin activation policy fleet reconcile completed with failures',
+      expect.objectContaining({ retry_class: 'retryable' })
+    );
     setTimeoutSpy.mockRestore();
   });
 

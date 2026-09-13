@@ -6,6 +6,7 @@ export type KeycloakProjectionUser = Readonly<{
 }>;
 
 export interface SsfKeycloakProjectionClient {
+  getOidcClientByClientId(clientId: string): Promise<Readonly<{ enabled?: boolean }> | null>;
   listClientProtocolMappers(clientId: string): Promise<
     readonly Readonly<{
       name: string;

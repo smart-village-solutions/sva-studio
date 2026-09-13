@@ -38,6 +38,7 @@ const suspendTokenIssuance = async (
   instanceId: string
 ): Promise<void> => {
   const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+  if (!(await tenant.client.getOidcClientByClientId(tenant.clientId))) return;
   await tenant.client.setOidcClientEnabled(tenant.clientId, false);
 };
 

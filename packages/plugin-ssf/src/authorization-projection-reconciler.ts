@@ -122,12 +122,12 @@ const reconcileClaimedProjection = async (
 ): Promise<SsfAuthorizationProjectionReconcileResult> => {
   let readBack: SsfAuthorizationProjection;
   try {
-    await prepareLoginClients(dependencies.target, staged.instanceId);
     try {
       await dependencies.target.suspendTokenIssuance(staged.instanceId);
     } catch {
       throw new SsfProjectionPhaseError('token_issuance_suspend_failed');
     }
+    await prepareLoginClients(dependencies.target, staged.instanceId);
     try {
       await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
     } catch {

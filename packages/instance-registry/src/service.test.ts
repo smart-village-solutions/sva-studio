@@ -1000,6 +1000,87 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('requeues the latest failed automated create run without the original HTTP key', async () => {
+    const failedInstance = {
+      ...baseInstance,
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'login',
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      errorCode: 'kassel_login_probe_failed',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retriedRun = {
+      ...failedRun,
+      status: 'requested' as const,
+      stepKey: 'tls',
+      errorCode: undefined,
+      completedAt: undefined,
+    };
+    const retryProvisioningRun = vi.fn(async () => retriedRun);
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+      setInstanceStatus: vi.fn(async () => ({
+        ...failedInstance,
+        status: 'provisioning' as const,
+      })),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+        instanceId: 'demo',
+        actorId: 'admin-1',
+        requestId: 'retry-1',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'provisioning',
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'tls' }),
+      })
+    );
+    expect(retryProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        idempotencyKey: 'idem-1',
+        requestId: 'retry-1',
+      })
+    );
+  });
+
+  it('returns an already requeued automated run without creating another retry', async () => {
+    const provisioningInstance = { ...baseInstance, status: 'provisioning' as const };
+    const runningRun = {
+      ...latestRun,
+      status: 'provisioning' as const,
+      stepKey: 'tls',
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+    };
+    const retryProvisioningRun = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => provisioningInstance),
+      listProvisioningRuns: vi.fn(async () => [runningRun]),
+      retryProvisioningRun,
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+        instanceId: 'demo',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'tls' }),
+      })
+    );
+    expect(retryProvisioningRun).not.toHaveBeenCalled();
+  });
+
   it('does not requeue an external or currently disabled automated create run', async () => {
     const failedInstance = { ...baseInstance, status: 'failed' as const };
     const failedRun = {

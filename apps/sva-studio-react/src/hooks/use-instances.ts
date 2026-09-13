@@ -20,6 +20,7 @@ import {
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileInstanceKeycloak,
+  retryInstanceProvisioning,
   rotateInstanceSecret,
   revokeInstanceModule,
   seedInstanceIamBaseline,
@@ -426,6 +427,12 @@ export const useInstances = () => {
     clearMutationError: () => setMutationError(null),
     createInstance: async (payload: CreateInstancePayload) =>
       mutate(() => createInstance(payload), payload.instanceId, 'create_instance'),
+    retryTenantProvisioning: async (instanceId: string) =>
+      mutate(
+        () => retryInstanceProvisioning(instanceId),
+        instanceId,
+        'retry_instance_provisioning'
+      ),
     updateInstance: async (instanceId: string, payload: UpdateInstancePayload) =>
       mutate(() => updateInstance(instanceId, payload), instanceId, 'update_instance'),
     refreshKeycloakStatus: async (instanceId: string) => {

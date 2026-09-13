@@ -1,4 +1,5 @@
-export type AuthRoutePath = '/auth/login'
+export type AuthRoutePath =
+  | '/auth/login'
   | '/auth/account-action'
   | '/auth/dev-login'
   | '/auth/callback'
@@ -39,6 +40,7 @@ export type AuthRoutePath = '/auth/login'
   | '/api/v1/iam/instances'
   | '/api/v1/iam/instances/audit'
   | '/api/v1/iam/instances/$instanceId'
+  | '/api/v1/iam/instances/$instanceId/provisioning/retry'
   | '/api/v1/iam/instances/$instanceId/plugin-readiness'
   | '/api/v1/iam/instances/$instanceId/audit'
   | '/api/v1/iam/instances/$instanceId/keycloak/status'
@@ -200,6 +202,7 @@ export const authRoutePaths = [
   '/api/v1/iam/instances',
   '/api/v1/iam/instances/audit',
   '/api/v1/iam/instances/$instanceId',
+  '/api/v1/iam/instances/$instanceId/provisioning/retry',
   '/api/v1/iam/instances/$instanceId/plugin-readiness',
   '/api/v1/iam/instances/$instanceId/audit',
   '/api/v1/iam/instances/$instanceId/keycloak/status',

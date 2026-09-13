@@ -116,6 +116,53 @@ export const createCreateInstanceHandler =
     return deps.jsonResponse(201, deps.asApiItem(result.instance, deps.getRequestId()));
   };
 
+export const createRetryTenantProvisioningHandler =
+  <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
+  async (request: Request, ctx: TContext): Promise<Response> => {
+    const guardError = requireMutationGuards(deps, request, ctx, { requireFreshReauth: false });
+    if (guardError) return guardError;
+
+    const idempotencyResult = deps.requireIdempotencyKey(request, deps.getRequestId());
+    if ('error' in idempotencyResult) return idempotencyResult.error;
+
+    const instanceId = readInstanceIdOrError(deps, request);
+    if (instanceId instanceof Response) return instanceId;
+
+    const actor = deps.getActor(ctx);
+    try {
+      const retry = (service: InstanceRegistryService) =>
+        service.retryTenantProvisioning({
+          instanceId,
+          actorId: actor.id,
+          requestId: deps.getRequestId(),
+        });
+      const result = deps.withRegistryCreateService
+        ? await deps.withRegistryCreateService(instanceId, retry)
+        : await deps.withRegistryService(retry);
+      if (!result) {
+        return deps.createApiError(
+          404,
+          'not_found',
+          'Instanz wurde nicht gefunden.',
+          deps.getRequestId()
+        );
+      }
+
+      deps.onInstanceProvisioningRequested?.({
+        instanceId: result.instanceId,
+        primaryHostname: result.primaryHostname,
+        actorId: actor.id,
+      });
+      return deps.jsonResponse(200, deps.asApiItem(result, deps.getRequestId()));
+    } catch (error) {
+      return deps.mapMutationError(error, {
+        operation: 'retry_instance_provisioning',
+        requestId: deps.getRequestId(),
+        instanceId,
+      });
+    }
+  };
+
 export const createUpdateInstanceHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
   async (request: Request, ctx: TContext): Promise<Response> => {

@@ -93,10 +93,13 @@ nachgewiesenen Stufe fortsetzen.
 
 #### Scenario: Ein fehlgeschlagener Lauf wird erneut ausgeführt
 
-- **WHEN** eine berechtigte Person nach Behebung der Ursache einen Retry startet
+- **WHEN** eine berechtigte Person nach Behebung der Ursache über die sichtbare Retry-Aktion `POST /api/v1/iam/instances/:instanceId/provisioning/retry` startet
+- **AND** die Anfrage einen frischen HTTP-Idempotency-Key trägt, ohne den ursprünglichen Create-Key erneut zu benötigen
 - **THEN** reconciled das System jede Stufe gegen den aktuellen, zum Sollsnapshot passenden Ist-Zustand
 - **AND** verwendet es bereits korrekte Artefakte weiter
 - **AND** setzt es am ersten unvollständigen, veralteten oder abweichenden Schritt fort
+- **AND** gibt eine wiederholte Retry-Anfrage den bereits aufgenommenen Lauf zurück, statt einen weiteren Elternlauf zu erzeugen
+- **AND** lehnt es Legacy-, externe, aktive oder nicht fehlgeschlagene Läufe terminal ab, ohne ihren Zustand zu öffnen
 
 #### Scenario: Zwei Anforderungen konkurrieren um dieselbe Instanz
 

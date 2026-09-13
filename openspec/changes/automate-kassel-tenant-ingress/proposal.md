@@ -50,8 +50,9 @@ Verträge ausgerichtet.
   Erfolg als abgeschlossen; jeder Fehler endet innerhalb einer definierten
   Frist terminal als `failed`.
 - Registry-, Keycloak-, Secret-, Lifecycle- und Router-Artefakte bleiben bei
-  `failed` erhalten. Ein autorisierter Retry verwendet denselben
-  Idempotenzvertrag und reconciled ab der ersten nicht nachgewiesenen Stufe.
+  `failed` erhalten. Ein autorisierter Retry wird über eine eigene Aktion mit
+  frischem Transport-Idempotency-Key ausgelöst, setzt denselben persistierten
+  Elternlauf fort und reconciled ab der ersten nicht nachgewiesenen Stufe.
 - Der Kassel-Modus ist explizit und standardmäßig aus. Dev, Staging, Production
   und andere Studio-Installationen behalten ihren vorhandenen Ingress- und
   Promote-Vertrag.

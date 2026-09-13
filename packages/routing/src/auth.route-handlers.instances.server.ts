@@ -19,6 +19,9 @@ export const instanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstance),
     PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.updateInstance),
   },
+  '/api/v1/iam/instances/$instanceId/provisioning/retry': {
+    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.retryTenantProvisioning),
+  },
   '/api/v1/iam/instances/$instanceId/plugin-readiness': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getPluginTenantReadiness),
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.startPluginTenantLifecycle),

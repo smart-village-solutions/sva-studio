@@ -231,6 +231,13 @@ Kindlauf-Korrelation und redigierte Postcondition-Evidenz.
 Ein autorisierter Retry reconciled jede Stufe gegen den aktuellen, zum
 Sollsnapshot passenden Ist-Zustand. Bereits korrekte Routerdateien,
 Keycloak-Clients oder Lifecycle-Evidenz werden validiert und weiterverwendet.
+Die UI löst ihn über
+`POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit einem frischen
+HTTP-Idempotency-Key aus. Die Serveraktion benötigt `instance.create`, nimmt
+unter demselben Instanz-Lock den jüngsten fehlgeschlagenen versionierten
+Kassel-Create-Lauf wieder auf und benötigt dessen ursprünglichen
+Idempotency-Key nicht vom Browser. Wiederholte Retry-Anfragen geben den bereits
+wieder aufgenommenen Lauf zurück.
 Parallele Create-/Retry-Anfragen für dieselbe Instanz dürfen höchstens einen
 wirksamen Elternlauf besitzen.
 

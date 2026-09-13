@@ -42,7 +42,11 @@ gesicherten Bedarf verändern.
   verifizierten Docker-Service `sva-studio-ssf@docker`. Studio erhält weder
   Docker-Socket noch ACME- oder DNS-Zugangsdaten.
 - Fehler löschen keine Registry-, Keycloak-, Secret- oder Router-Artefakte.
-  Ein Retry setzt denselben versionierten Lauf unter neuer Lease fort.
+  Eine sichtbare, mit `instance.create` autorisierte Retry-Aktion setzt über
+  `POST /api/v1/iam/instances/:instanceId/provisioning/retry` denselben
+  versionierten Lauf unter neuer Lease fort. Der HTTP-Aufruf verwendet einen
+  frischen Idempotency-Key; der Browser muss den ursprünglichen Create-Key
+  nicht aufbewahren.
 - Der reguläre Studio-Rollout bleibt unverändert; die SSF-File-Provider-
   Ergänzung wird im zuständigen Repository separat geliefert.
 

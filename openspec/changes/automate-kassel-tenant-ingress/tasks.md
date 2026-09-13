@@ -91,7 +91,7 @@
 - [x] 6.2 `requested` und `provisioning` als laufenden Vorgang, niemals als
       abgeschlossene Anlage darstellen
 - [x] 6.3 Erfolg ausschließlich für terminal erfolgreichen Elternlauf anzeigen
-- [ ] 6.4 Terminalen Fehler mit sicherer Stufe, Fehlercode und Retry-Aktion
+- [x] 6.4 Terminalen Fehler mit sicherer Stufe, Fehlercode und Retry-Aktion
       darstellen
 - [x] 6.5 Texte vollständig über i18n und Status-/Fehlerdarstellung
       barrierefrei umsetzen und testen

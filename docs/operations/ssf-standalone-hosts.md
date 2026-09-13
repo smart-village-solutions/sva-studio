@@ -142,7 +142,11 @@ bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit
 `snapshot_version = '2.0'` werden automatisiert beansprucht. Für Diagnose sind
 Elternlauf-ID, `child_keycloak_run_id`, `step_key`, Lease, Attempts, Deadline,
 Fehlercode und `terminal_evidence` gemeinsam auszuwerten. Ein Retry darf nur
-denselben unveränderten Soll-Snapshot fortsetzen.
+denselben unveränderten Soll-Snapshot fortsetzen. Er wird in der
+Instanz-Detailansicht über „Mandanten-Provisionierung erneut starten“ oder per
+`POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit Berechtigung
+`instance.create` und einem frischen `Idempotency-Key` ausgelöst. Der
+ursprüngliche Create-Key wird dabei serverseitig aus dem Elternlauf gelesen.
 
 Der vorhandene Keycloak-Router erhält die Host-Regel für `auth.dialog.kassel.de`.
 Der SSF-Einstieg erhält einen eigenen Router für `dialog.kassel.de` auf den bestehenden

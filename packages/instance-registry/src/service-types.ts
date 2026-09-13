@@ -20,6 +20,7 @@ import type {
   ExecuteInstanceKeycloakProvisioningInput,
   InstanceModuleMutationResult,
   ReconcileInstanceKeycloakInput,
+  RetryTenantProvisioningInput,
   RevokeInstanceModuleInput,
   SeedInstanceIamBaselineInput,
   UpdateInstanceInput,
@@ -99,6 +100,7 @@ export type InstanceRegistryService = {
   createProvisioningRequest(
     input: CreateInstanceProvisioningInput
   ): Promise<CreateInstanceProvisioningResult>;
+  retryTenantProvisioning(input: RetryTenantProvisioningInput): Promise<IamInstanceListItem | null>;
   updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;

@@ -5,6 +5,7 @@ const state = vi.hoisted(() => {
     listInstances: vi.fn(async () => new Response('list')),
     getInstance: vi.fn(async () => new Response('get')),
     createInstance: vi.fn(async () => new Response('create')),
+    retryTenantProvisioning: vi.fn(async () => new Response('retry')),
     updateInstance: vi.fn(async () => new Response('update')),
   };
 
@@ -155,7 +156,7 @@ describe('iam-instance-registry core handlers', () => {
     );
   });
 
-  it('delegates list/get/create/update requests to the generated instance handlers', async () => {
+  it('delegates list/get/create/retry/update requests to the generated instance handlers', async () => {
     const subject = await import('./core.js');
     const request = new Request('https://example.test/api/v1/instances');
     const ctx = { user: { id: 'actor-1' } } as never;
@@ -163,11 +164,13 @@ describe('iam-instance-registry core handlers', () => {
     await subject.listInstancesInternal(request, ctx);
     await subject.getInstanceInternal(request, ctx);
     await subject.createInstanceInternal(request, ctx);
+    await subject.retryTenantProvisioningInternal(request, ctx);
     await subject.updateInstanceInternal(request, ctx);
 
     expect(state.handlers.listInstances).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.getInstance).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.createInstance).toHaveBeenCalledWith(request, ctx);
+    expect(state.handlers.retryTenantProvisioning).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.updateInstance).toHaveBeenCalledWith(request, ctx);
   });
 

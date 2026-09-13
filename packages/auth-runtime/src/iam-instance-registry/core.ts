@@ -91,6 +91,11 @@ export const createInstanceInternal = async (
   return instanceHttpHandlers.createInstance(request, ctx);
 };
 
+export const retryTenantProvisioningInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => instanceHttpHandlers.retryTenantProvisioning(request, ctx);
+
 export const updateInstanceInternal = async (
   request: Request,
   ctx: RegistryRequestContext

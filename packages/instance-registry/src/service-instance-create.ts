@@ -4,6 +4,7 @@ import type { InstanceRegistryRecord } from '@sva/core';
 import type {
   CreateInstanceProvisioningInput,
   CreateInstanceProvisioningResult,
+  RetryTenantProvisioningInput,
 } from './mutation-types.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import {
@@ -114,6 +115,59 @@ export const resolveConcurrentIdempotentCreateRetry = async (
   }
   return null;
 };
+
+export const createRetryTenantProvisioningHandler =
+  (deps: InstanceRegistryServiceDeps) => async (input: RetryTenantProvisioningInput) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) return null;
+
+    const latestCreateRun = (await deps.repository.listProvisioningRuns(input.instanceId)).find(
+      (run) => run.operation === 'create'
+    );
+    if (
+      !latestCreateRun ||
+      latestCreateRun.snapshotVersion !== '2.0' ||
+      latestCreateRun.desiredSnapshot.automationMode !== 'kassel-traefik-file' ||
+      !shouldExposeAutomatedProvisioning(deps, instance)
+    ) {
+      throw new Error('provisioning_retry_mode_invalid');
+    }
+
+    if (
+      (latestCreateRun.status === 'requested' || latestCreateRun.status === 'provisioning') &&
+      (instance.status === 'requested' || instance.status === 'provisioning')
+    ) {
+      return toListItem(instance, latestCreateRun);
+    }
+    if (latestCreateRun.status !== 'failed' || instance.status !== 'failed') {
+      throw new Error('provisioning_retry_instance_status_invalid');
+    }
+
+    const retriedRun = await deps.repository.retryProvisioningRun({
+      instanceId: instance.instanceId,
+      idempotencyKey: latestCreateRun.idempotencyKey,
+      actorId: input.actorId,
+      requestId: input.requestId,
+      deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    });
+    if (!retriedRun) throw new Error('provisioning_retry_conflict');
+
+    const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
+    const requestedInstance = await deps.repository.setInstanceStatus({
+      instanceId: instance.instanceId,
+      status: resumedStatus,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+    if (!requestedInstance) throw new Error('provisioning_retry_conflict');
+
+    invalidateHostWithLog(
+      deps.invalidateHost,
+      requestedInstance.primaryHostname,
+      requestedInstance.instanceId
+    );
+    return toListItem(requestedInstance, retriedRun);
+  };
 
 export const createRequestedInstance = (
   deps: InstanceRegistryServiceDeps,

@@ -27,8 +27,8 @@ const provisioningResponseSchema = z.object({
   data_provider_id: z.union([z.string().min(1), z.number().int()]).transform(String),
   keycloak: z.object({
     attributes: z.object({
-      mainserverUserApplicationId: z.string().min(1),
-      mainserverUserApplicationSecret: z.string().min(1),
+      mainserverUserApplicationId: z.string().trim().min(1),
+      mainserverUserApplicationSecret: z.string().trim().min(1),
     }),
   }),
 });
@@ -101,10 +101,44 @@ const loadProvisioningBearerToken = async (input: {
     keycloakSubject: input.actorSubject,
   });
   if (credentialResult.status !== 'ok') {
+    const errorByStatus = {
+      identity_provider_unavailable: {
+        code: 'mainserver_credentials_unavailable',
+        statusCode: 503,
+        retryable: true,
+      },
+      database_unavailable: {
+        code: 'mainserver_credentials_unavailable',
+        statusCode: 503,
+        retryable: true,
+      },
+      missing_credentials: {
+        code: 'mainserver_credentials_missing',
+        statusCode: 409,
+        retryable: false,
+      },
+      partial_credentials: {
+        code: 'mainserver_credentials_partial',
+        statusCode: 409,
+        retryable: false,
+      },
+      organization_mainserver_credentials_missing: {
+        code: 'organization_mainserver_credentials_missing',
+        statusCode: 409,
+        retryable: false,
+      },
+      acting_principal_not_allowed: {
+        code: 'acting_principal_not_allowed',
+        statusCode: 409,
+        retryable: false,
+      },
+    } as const;
+    const error = errorByStatus[credentialResult.status];
     throw new MainserverUserProvisioningError({
-      code: credentialResult.status,
+      code: error.code,
       message: 'Mainserver-Provisioning-Credentials des handelnden Benutzers fehlen.',
-      statusCode: 409,
+      statusCode: error.statusCode,
+      retryable: error.retryable,
     });
   }
 

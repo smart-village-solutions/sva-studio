@@ -95,8 +95,8 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
   readonly authorizationMode: 'credential_visible_compatibility' | 'exact';
   readonly operation?: MainserverProjectionMutationOperation;
   readonly entityId?: string;
-}): Promise<void> => {
-  if (!input.actorAccountId) return;
+}): Promise<true | undefined> => {
+  if (!input.actorAccountId) return undefined;
 
   const target = {
     instanceId: input.instanceId,
@@ -123,23 +123,22 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
       input.contentType === GENERIC_ITEMS_CONTENT_TYPE ||
       registeredGenericItemContentTypes.has(input.contentType)
     ) {
-      await refreshGenericItemSiblingProjections({
+      return refreshGenericItemSiblingProjections({
         target,
         operation: input.operation,
         entityId: input.entityId,
       });
-      return;
     }
-    await refreshMainserverProjectionForMutation({
+    return refreshMainserverProjectionForMutation({
       target,
       operation: input.operation,
       entityId: input.entityId,
     });
-    return;
   }
   await triggerMainserverProjectionRefresh(target, {
     force: true,
     awaitCompletion: true,
     trigger: 'mutation_follow_up',
   });
+  return undefined;
 };

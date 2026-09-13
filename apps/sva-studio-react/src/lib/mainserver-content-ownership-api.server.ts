@@ -81,7 +81,7 @@ const refreshTransferredOwnershipProjection = async (input: {
   if (target.target.dataProviderId !== input.expectedDataProviderId) {
     throw new Error('content_transfer_target_binding_changed');
   }
-  await refreshProjectedContentsForMainserverMutation({
+  const projectionDeferred = await refreshProjectedContentsForMainserverMutation({
     instanceId: input.followUp.instanceId,
     keycloakSubject: target.target.connection.keycloakSubject,
     actorAccountId:
@@ -98,6 +98,7 @@ const refreshTransferredOwnershipProjection = async (input: {
     operation: 'update',
     entityId: input.providerEntityId,
   });
+  if (projectionDeferred) return;
   await finalizeMainserverMutationJournal({
     instanceId: input.followUp.instanceId,
     operationExternalId: input.operationExternalId,

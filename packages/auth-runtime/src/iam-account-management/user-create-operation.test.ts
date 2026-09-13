@@ -168,6 +168,64 @@ describe('executeCreateUser', () => {
     ).rejects.toMatchObject({ code: 'mainserver_credentials_stale', statusCode: 409 });
   });
 
+  it('normalizes provisioned credentials identically for the write and expected fingerprint', async () => {
+    const updateUser = vi.fn(async () => undefined);
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: {
+          getUserAttributes: vi
+            .fn()
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({
+              mainserverUserApplicationId: ['mainserver-app-1'],
+              mainserverUserApplicationSecret: ['mainserver-secret-1'],
+            }),
+          updateUser,
+        },
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: '  mainserver-app-1  ',
+          mainserverUserApplicationSecret: '  mainserver-secret-1  ',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).resolves.toBeUndefined();
+    expect(updateUser).toHaveBeenCalledWith('kc-user-1', {
+      attributes: {
+        mainserverUserApplicationId: ['mainserver-app-1'],
+        mainserverUserApplicationSecret: ['mainserver-secret-1'],
+      },
+    });
+  });
+
+  it('rejects empty normalized credentials before reading or updating keycloak', async () => {
+    const getUserAttributes = vi.fn();
+    const updateUser = vi.fn();
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: { getUserAttributes, updateUser },
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: '   ',
+          mainserverUserApplicationSecret: 'mainserver-secret-1',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).rejects.toMatchObject({ code: 'invalid_response', statusCode: 502 });
+    expect(getUserAttributes).not.toHaveBeenCalled();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
   it('reports an unavailable canonical readback after writing provisioned credentials', async () => {
     const { persistProvisionedMainserverCredentials } =
       await import('./mainserver-credential-persistence.js');

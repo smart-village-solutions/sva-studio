@@ -15,12 +15,14 @@ export type EffectiveMainserverCredentialsInput = {
   readonly keycloakSubject: string;
   readonly activeOrganizationId?: string;
   readonly actingPrincipalType?: EffectiveMainserverCredentialSource;
+  readonly allowProvisioningOrganizationCredentials?: boolean;
 };
 
 type OrganizationMainserverCredentialRow = {
   readonly content_author_policy: IamContentAuthorPolicy;
   readonly mainserver_application_id: string | null;
   readonly mainserver_application_secret_ciphertext: string | null;
+  readonly provisioning_status: string | null;
 };
 
 export type EffectiveMainserverCredentialSource = 'organization' | 'user';
@@ -77,7 +79,8 @@ const loadOrganizationMainserverCredentialRow = async (
 SELECT
   organizations.content_author_policy,
   credentials.mainserver_application_id,
-  credentials.mainserver_application_secret_ciphertext
+  credentials.mainserver_application_secret_ciphertext,
+  credentials.provisioning_status
 FROM iam.organizations AS organizations
 LEFT JOIN iam.organization_mainserver_credentials AS credentials
   ON credentials.instance_id = organizations.instance_id
@@ -94,11 +97,15 @@ LIMIT 1;
 
 const resolveOrganizationCredentialReadiness = (
   row: OrganizationMainserverCredentialRow,
-  organizationId: string
+  organizationId: string,
+  allowProvisioningCredentials: boolean
 ):
   | { readonly status: 'ready'; readonly credentials: SvaMainserverCredentials }
   | { readonly status: 'missing' }
   | { readonly status: 'partial'; readonly missingAttributeNames: readonly string[] } => {
+  if (row.provisioning_status !== 'ready' && !allowProvisioningCredentials) {
+    return { status: 'missing' };
+  }
   const apiKey = normalizeOptionalText(row.mainserver_application_id);
   const apiSecret = normalizeOptionalText(
     revealField(
@@ -206,7 +213,8 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
 
   const organizationReadiness = resolveOrganizationCredentialReadiness(
     organizationCredentialRow,
-    input.activeOrganizationId
+    input.activeOrganizationId,
+    input.allowProvisioningOrganizationCredentials === true
   );
   if (
     input.actingPrincipalType === 'organization' ||

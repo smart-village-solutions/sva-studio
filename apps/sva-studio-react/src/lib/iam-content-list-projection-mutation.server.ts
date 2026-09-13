@@ -1,4 +1,5 @@
 import {
+  deferMainserverMutationProjection,
   recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation,
   withInstanceScopedDb,
@@ -33,7 +34,10 @@ import {
   toMutationProjectionConnectionContext,
 } from './iam-content-list-projection-source.server.js';
 import {
+  computeProjectionSyncStates,
   enqueueProjectionWork,
+  isDurableCredentialErrorCode,
+  isProjectionRefreshDue,
   triggerMainserverProjectionRefresh,
 } from './iam-content-list-projection-sync.server.js';
 import { studioMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.server.js';
@@ -133,6 +137,13 @@ const upsertProjectionMutation = async (
       return;
     } catch (error) {
       lastError = error;
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code?: unknown }).code
+          : undefined;
+      if (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode)) {
+        throw error;
+      }
     }
   }
   throw lastError instanceof Error
@@ -164,12 +175,40 @@ const finalizeFailedMutation = async (
   await markProjectionSyncFailed(input.target, refreshRunId, errorCode, errorMessage);
 };
 
+const isMutationFollowUpDue = async (target: ContentProjectionSyncTarget): Promise<boolean> => {
+  const [syncState] = await computeProjectionSyncStates([target]);
+  return isProjectionRefreshDue({
+    state: syncState,
+    options: { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' },
+  });
+};
+
+const requiresMutationHistory = (input: MutationRefreshInput): boolean =>
+  (input.operation === 'create' || input.operation === 'update') &&
+  Boolean(
+    (input.target.auditActorAccountId ?? input.target.actorAccountId) &&
+    input.target.actorDisplayName &&
+    input.target.mutationRef
+  );
+
+const deferMutationHistory = async (input: MutationRefreshInput): Promise<true | undefined> => {
+  if (!requiresMutationHistory(input) || !input.target.mutationRef) return undefined;
+  const deferred = await deferMainserverMutationProjection({
+    instanceId: input.target.instanceId,
+    operationExternalId: input.target.mutationRef,
+  });
+  return deferred ? true : undefined;
+};
+
 export const refreshMainserverProjectionForMutation = async (
   input: MutationRefreshInput
-): Promise<void> => {
+): Promise<true | undefined> => {
   const { target } = input;
   const refreshRunId = randomUUID();
-  await enqueueProjectionWork(target, async () => {
+  return enqueueProjectionWork(target, async () => {
+    if (input.operation !== 'delete' && !(await isMutationFollowUpDue(target))) {
+      return deferMutationHistory(input);
+    }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
     try {
       await (input.operation === 'delete'
@@ -177,8 +216,16 @@ export const refreshMainserverProjectionForMutation = async (
         : upsertProjectionMutation(input, refreshRunId));
     } catch (error) {
       await finalizeFailedMutation(input, refreshRunId, error);
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code?: unknown }).code
+          : undefined;
+      if (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode)) {
+        await deferMutationHistory(input);
+      }
       throw error;
     }
+    return undefined;
   });
 };
 
@@ -292,13 +339,13 @@ const refreshGenericItemSibling = async (input: {
   readonly contentType: ContentProjectionSyncTarget['contentType'];
   readonly resolvedContentType: string | undefined;
   readonly item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
-}): Promise<void> => {
+}): Promise<true | undefined> => {
   const target = { ...input.mutation.target, contentType: input.contentType };
   if (input.contentType !== input.resolvedContentType || !input.item) {
     await deleteStaleGenericItemSiblingProjection(target, input.mutation.entityId);
-    return;
+    return undefined;
   }
-  await refreshMainserverProjectionForMutation({
+  return refreshMainserverProjectionForMutation({
     target,
     operation: input.mutation.operation,
     entityId: input.mutation.entityId,
@@ -308,25 +355,31 @@ const refreshGenericItemSibling = async (input: {
 
 export const refreshGenericItemSiblingProjections = async (
   input: GenericItemSiblingRefreshInput
-): Promise<void> => {
+): Promise<true | undefined> => {
   await recordGenericItemDeletionAudit(input);
+  if (input.operation !== 'delete' && !(await isMutationFollowUpDue(input.target))) {
+    return deferMutationHistory(input);
+  }
   const loadedItem = await loadGenericItemForSiblingRefresh(input);
   if (loadedItem.failed) {
     await refreshGenericItemProjectionSnapshots(input.target);
-    return;
+    return undefined;
   }
   const resolvedContentType = loadedItem.item
     ? resolveGenericItemProjectionContentType(loadedItem.item.genericType)
     : undefined;
 
+  let deferred: true | undefined;
   for (const contentType of genericItemProjectionContentTypes) {
-    await refreshGenericItemSibling({
-      mutation: input,
-      contentType,
-      resolvedContentType,
-      item: loadedItem.item,
-    });
+    deferred =
+      (await refreshGenericItemSibling({
+        mutation: input,
+        contentType,
+        resolvedContentType,
+        item: loadedItem.item,
+      })) ?? deferred;
   }
+  return deferred;
 };
 
 import { randomUUID } from 'node:crypto';

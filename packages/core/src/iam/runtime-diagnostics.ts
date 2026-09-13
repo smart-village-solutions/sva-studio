@@ -93,6 +93,8 @@ const REGISTRY_DRIFT_INPUT_CODES = new Set([
   'tenant_admin_client_secret_missing',
   'mainserver_configuration_incomplete',
   'mainserver_credentials_missing',
+  'mainserver_credentials_partial',
+  'mainserver_credentials_stale',
   'mainserver_credentials_unavailable',
   'mainserver_credentials_invalid',
   'mainserver_user_conflict',
@@ -157,13 +159,10 @@ const readSafeDetails = (
     : undefined;
 };
 
-const resolvePreSyncClassification: RuntimeDiagnosticClassificationResolver = ({
-  safeDetails,
-}) => readReasonClassification(safeDetails?.reason_code, PRE_SYNC_REASON_CLASSIFICATIONS);
+const resolvePreSyncClassification: RuntimeDiagnosticClassificationResolver = ({ safeDetails }) =>
+  readReasonClassification(safeDetails?.reason_code, PRE_SYNC_REASON_CLASSIFICATIONS);
 
-const resolveSyncClassification: RuntimeDiagnosticClassificationResolver = ({
-  safeDetails,
-}) => {
+const resolveSyncClassification: RuntimeDiagnosticClassificationResolver = ({ safeDetails }) => {
   const syncErrorCode = safeDetails?.sync_error_code;
   if (syncErrorCode === 'DB_WRITE_FAILED') {
     return 'database_mapping_or_membership_inconsistency';
@@ -188,9 +187,7 @@ const resolveSessionClassification: RuntimeDiagnosticClassificationResolver = ({
     ? 'session_store_or_session_hydration'
     : undefined;
 
-const resolveActorClassification: RuntimeDiagnosticClassificationResolver = ({
-  safeDetails,
-}) =>
+const resolveActorClassification: RuntimeDiagnosticClassificationResolver = ({ safeDetails }) =>
   matchesReasonCode(safeDetails?.actor_resolution, ACTOR_RESOLUTION_CODES) ||
   matchesReasonCode(safeDetails?.reason_code, ACTOR_RESOLUTION_CODES)
     ? 'actor_resolution_or_membership'
@@ -209,9 +206,7 @@ const resolveDependencyClassification: RuntimeDiagnosticClassificationResolver =
     }
   }
 
-  return REGISTRY_DRIFT_INPUT_CODES.has(input.code)
-    ? 'registry_or_provisioning_drift'
-    : undefined;
+  return REGISTRY_DRIFT_INPUT_CODES.has(input.code) ? 'registry_or_provisioning_drift' : undefined;
 };
 
 const CLASSIFICATION_RESOLVERS = [

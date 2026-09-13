@@ -37,6 +37,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_only',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: 'org-secret-1',
             },
@@ -72,6 +73,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_or_personal',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: null,
             },
@@ -114,6 +116,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_or_personal',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: 'org-secret-1',
             },
@@ -152,6 +155,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_only',
+              provisioning_status: 'ready',
               mainserver_application_id: null,
               mainserver_application_secret_ciphertext: null,
             },
@@ -219,6 +223,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_or_personal',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: 'org-secret-1',
             },
@@ -249,6 +254,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_or_personal',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: 'org-secret-1',
             },
@@ -282,6 +288,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_only',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: 'org-secret-1',
             },
@@ -311,6 +318,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
           rows: [
             {
               content_author_policy: 'org_or_personal',
+              provisioning_status: 'ready',
               mainserver_application_id: 'org-app-1',
               mainserver_application_secret_ciphertext: null,
             },
@@ -331,6 +339,35 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
       missingAttributeNames: ['mainserverUserApplicationSecret'],
     });
     expect(state.readSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
+  });
+
+  it('does not expose organization credentials that require reconciliation', async () => {
+    state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rows: [
+            {
+              content_author_policy: 'org_only',
+              provisioning_status: 'reconciliation_required',
+              mainserver_application_id: 'org-app-1',
+              mainserver_application_secret_ciphertext: 'org-secret-1',
+            },
+          ],
+        })),
+      })
+    );
+
+    await expect(
+      readEffectiveSvaMainserverCredentialsWithStatus({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        actingPrincipalType: 'organization',
+      })
+    ).resolves.toEqual({
+      status: 'organization_mainserver_credentials_missing',
+      organizationId: '11111111-1111-1111-8111-111111111111',
+    });
   });
 
   it('returns a stable fingerprint per credential version and principal context', async () => {

@@ -336,9 +336,12 @@ const priorityCases: readonly Readonly<{
 ];
 
 describe('deriveIamRuntimeDiagnostics', () => {
-  it.each(classificationCases)('preserves $name classification and action', ({ input, expected }) => {
-    expect(deriveIamRuntimeDiagnostics(input)).toEqual(expected);
-  });
+  it.each(classificationCases)(
+    'preserves $name classification and action',
+    ({ input, expected }) => {
+      expect(deriveIamRuntimeDiagnostics(input)).toEqual(expected);
+    }
+  );
 
   it.each(priorityCases)(
     'preserves $name priority',
@@ -364,9 +367,7 @@ describe('deriveIamRuntimeDiagnostics', () => {
       details: { syncError: { code: 'IDP_FORBIDDEN' }, syncState: 'failed' },
     },
   ])('normalizes $name sync details', ({ details }) => {
-    expect(
-      deriveIamRuntimeDiagnostics({ code: 'internal_error', status: 500, details })
-    ).toEqual({
+    expect(deriveIamRuntimeDiagnostics({ code: 'internal_error', status: 500, details })).toEqual({
       classification: 'keycloak_reconcile',
       recommendedAction: 'rollenabgleich_pruefen',
       safeDetails: {
@@ -631,6 +632,17 @@ describe('deriveIamRuntimeDiagnostics', () => {
       status: 'manuelle_pruefung_erforderlich',
     });
   });
+
+  it.each(['mainserver_credentials_partial', 'mainserver_credentials_stale'])(
+    'classifies %s as registry or provisioning drift',
+    (code) => {
+      expect(deriveIamRuntimeDiagnostics({ code, status: 409 })).toEqual({
+        classification: 'registry_or_provisioning_drift',
+        recommendedAction: 'provisioning_pruefen',
+        status: 'degradiert',
+      });
+    }
+  );
 
   it('classifies schema drift diagnostics from safe details', () => {
     expect(

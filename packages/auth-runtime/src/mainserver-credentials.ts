@@ -96,18 +96,29 @@ const copyIdentityAttributes = (
 export const resolveMainserverCredentialState = (
   attributes: IdentityUserAttributes | null | undefined
 ): MainserverCredentialState => {
-  const applicationId = resolveAttributeFromCandidates(
-    attributes,
-    MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES
+  const readiness = resolveMainserverCredentialReadiness(attributes);
+  if (readiness.status === 'ready') {
+    return {
+      mainserverUserApplicationId: readiness.credentials.apiKey,
+      mainserverUserApplicationSecretSet: true,
+    };
+  }
+  if (readiness.status === 'unavailable' || readiness.status === 'missing') {
+    return { mainserverUserApplicationSecretSet: false };
+  }
+
+  const applicationIdMissing = readiness.missingAttributeNames.includes(
+    MAINSERVER_APPLICATION_ID_ATTRIBUTE
   );
-  const applicationSecret = resolveAttributeFromCandidates(
-    attributes,
-    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
-  );
+  const applicationId = applicationIdMissing
+    ? null
+    : resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES);
 
   return {
     mainserverUserApplicationId: applicationId ?? undefined,
-    mainserverUserApplicationSecretSet: applicationSecret !== null,
+    mainserverUserApplicationSecretSet: !readiness.missingAttributeNames.includes(
+      MAINSERVER_APPLICATION_SECRET_ATTRIBUTE
+    ),
   };
 };
 
@@ -118,28 +129,44 @@ export const resolveMainserverCredentialStatus = (
     return 'unknown';
   }
 
-  const state = resolveMainserverCredentialState(attributes);
-  const applicationIdSet = state.mainserverUserApplicationId !== undefined;
-  if (applicationIdSet && state.mainserverUserApplicationSecretSet) {
+  const readiness = resolveMainserverCredentialReadiness(attributes);
+  if (readiness.status === 'ready') {
     return 'complete';
   }
-  if (!applicationIdSet && !state.mainserverUserApplicationSecretSet) {
+  if (readiness.status === 'missing') {
     return 'missing_both';
   }
-  return applicationIdSet ? 'missing_application_secret' : 'missing_application_id';
+  if (readiness.status === 'unavailable') {
+    return 'unknown';
+  }
+  return readiness.missingAttributeNames.includes(MAINSERVER_APPLICATION_SECRET_ATTRIBUTE)
+    ? 'missing_application_secret'
+    : 'missing_application_id';
 };
 
 export const buildMainserverIdentityAttributes = (input: {
   readonly existingAttributes: IdentityUserAttributes | null | undefined;
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecret?: string;
+  readonly preserveExistingCredentials?: boolean;
 }): Record<string, readonly string[]> => {
   const attributes = copyIdentityAttributes(input.existingAttributes);
   const currentState = resolveMainserverCredentialState(attributes);
-  const preservedSecret = resolveAttributeFromCandidates(
-    attributes,
-    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
-  );
+  const hasApplicationIdUpdate =
+    input.mainserverUserApplicationId !== undefined &&
+    input.mainserverUserApplicationId.trim() !== (currentState.mainserverUserApplicationId ?? '');
+  const hasSecretUpdate = Boolean(input.mainserverUserApplicationSecret?.trim());
+  if (input.preserveExistingCredentials && !hasApplicationIdUpdate && !hasSecretUpdate) {
+    return attributes;
+  }
+  const readiness = resolveMainserverCredentialReadiness(attributes);
+  const preservedSecret =
+    readiness.status === 'ready'
+      ? readiness.credentials.apiSecret
+      : readiness.status === 'partial' &&
+          !readiness.missingAttributeNames.includes(MAINSERVER_APPLICATION_SECRET_ATTRIBUTE)
+        ? resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES)
+        : null;
 
   delete attributes[LEGACY_MAINSERVER_API_KEY_ATTRIBUTE];
   delete attributes[LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE];

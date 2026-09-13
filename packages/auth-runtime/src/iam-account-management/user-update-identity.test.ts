@@ -1,23 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  buildMainserverIdentityAttributes: vi.fn(({ existingAttributes, mainserverUserApplicationId, mainserverUserApplicationSecret }) => ({
-    ...(existingAttributes ?? {}),
-    ...(mainserverUserApplicationId !== undefined
-      ? { mainserverUserApplicationId: [mainserverUserApplicationId] }
-      : {}),
-    ...(mainserverUserApplicationSecret !== undefined
-      ? { mainserverUserApplicationSecret: [mainserverUserApplicationSecret] }
-      : {}),
-  })),
   trackKeycloakCall: vi.fn(async (_operation: string, work: () => Promise<unknown>) => work()),
   logger: {
     error: vi.fn(),
   },
-}));
-
-vi.mock('../mainserver-credentials.js', () => ({
-  buildMainserverIdentityAttributes: state.buildMainserverIdentityAttributes,
 }));
 
 vi.mock('./shared.js', () => ({
@@ -26,15 +13,17 @@ vi.mock('./shared.js', () => ({
   trackKeycloakCall: state.trackKeycloakCall,
 }));
 
-const createCompensationPlan = (overrides: {
-  readonly keycloakSubject?: string;
-  readonly email?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly status?: 'active' | 'inactive';
-  readonly previousRoleNames?: readonly string[];
-  readonly nextRoleNames?: readonly string[];
-} = {}) => ({
+const createCompensationPlan = (
+  overrides: {
+    readonly keycloakSubject?: string;
+    readonly email?: string;
+    readonly firstName?: string;
+    readonly lastName?: string;
+    readonly status?: 'active' | 'inactive';
+    readonly previousRoleNames?: readonly string[];
+    readonly nextRoleNames?: readonly string[];
+  } = {}
+) => ({
   existing: {
     keycloakSubject: overrides.keycloakSubject ?? 'kc-1',
     email: overrides.email ?? 'jane@example.test',
@@ -87,6 +76,44 @@ describe('user update identity helpers', () => {
     });
   });
 
+  it('preserves mixed credentials on a profile update with an unchanged projected id', async () => {
+    const { buildIdentityAttributesForUserUpdate } = await import('./user-update-identity.js');
+
+    expect(
+      buildIdentityAttributesForUserUpdate({
+        existingAttributes: {
+          mainserverUserApplicationId: ['canonical-id'],
+          sva_mainserver_api_secret: ['legacy-secret'],
+        },
+        payload: {
+          displayName: 'Jane Doe',
+          mainserverUserApplicationId: 'canonical-id',
+        } as never,
+      })
+    ).toEqual({
+      displayName: ['Jane Doe'],
+      mainserverUserApplicationId: ['canonical-id'],
+      sva_mainserver_api_secret: ['legacy-secret'],
+    });
+
+    expect(
+      buildIdentityAttributesForUserUpdate({
+        existingAttributes: {
+          mainserverUserApplicationSecret: ['canonical-secret'],
+          sva_mainserver_api_key: ['legacy-id'],
+        },
+        payload: {
+          displayName: 'John Doe',
+          mainserverUserApplicationId: '',
+        } as never,
+      })
+    ).toEqual({
+      displayName: ['John Doe'],
+      mainserverUserApplicationSecret: ['canonical-secret'],
+      sva_mainserver_api_key: ['legacy-id'],
+    });
+  });
+
   it('compensates identity and role updates and logs failures without throwing', async () => {
     const { compensateUserIdentityUpdate } = await import('./user-update-identity.js');
     const updateUser = vi
@@ -136,7 +163,10 @@ describe('user update identity helpers', () => {
     await compensateUserIdentityUpdate({
       instanceId: 'instance-1',
       userId: 'user-1',
-      plan: createCompensationPlan({ status: 'inactive', previousRoleNames: ['system_admin'] }) as never,
+      plan: createCompensationPlan({
+        status: 'inactive',
+        previousRoleNames: ['system_admin'],
+      }) as never,
       restoreIdentity: true,
       restoreRoles: false,
       restoreIdentityAttributes: { locale: ['de'] },
@@ -148,12 +178,16 @@ describe('user update identity helpers', () => {
         },
       } as never,
     });
-    expect(updateUser).toHaveBeenLastCalledWith('kc-1', expect.objectContaining({ enabled: false }));
+    expect(updateUser).toHaveBeenLastCalledWith(
+      'kc-1',
+      expect.objectContaining({ enabled: false })
+    );
   });
 
   it('returns early when neither identity nor roles must be restored and logs string compensation errors', async () => {
     const { compensateUserIdentityUpdate } = await import('./user-update-identity.js');
-    const { assignRealmRoles, removeRealmRoles, syncRoles, updateUser } = createIdentityProviderMocks();
+    const { assignRealmRoles, removeRealmRoles, syncRoles, updateUser } =
+      createIdentityProviderMocks();
 
     await compensateUserIdentityUpdate({
       instanceId: 'instance-1',

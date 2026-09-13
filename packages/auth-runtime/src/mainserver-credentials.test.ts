@@ -45,6 +45,35 @@ describe('readSvaMainserverCredentials', () => {
       attributeSource: 'canonical',
       credentials: { apiKey: 'app-id', apiSecret: 'secret' },
     });
+    expect(
+      resolveMainserverCredentialReadiness({
+        mainserverUserApplicationId: ['canonical-id'],
+        sva_mainserver_api_secret: ['legacy-secret'],
+      })
+    ).toEqual({
+      status: 'partial',
+      missingAttributeNames: ['mainserverUserApplicationSecret'],
+    });
+    expect(
+      resolveMainserverCredentialReadiness({
+        mainserverUserApplicationSecret: ['canonical-secret'],
+        sva_mainserver_api_key: ['legacy-id'],
+      })
+    ).toEqual({
+      status: 'partial',
+      missingAttributeNames: ['mainserverUserApplicationId'],
+    });
+    expect(
+      resolveMainserverCredentialReadiness({
+        mainserverUserApplicationId: ['incomplete-canonical-id'],
+        sva_mainserver_api_key: ['legacy-id'],
+        sva_mainserver_api_secret: ['legacy-secret'],
+      })
+    ).toEqual({
+      status: 'ready',
+      attributeSource: 'legacy',
+      credentials: { apiKey: 'legacy-id', apiSecret: 'legacy-secret' },
+    });
   });
 
   it('verifies a persisted credential version without returning credential values', async () => {
@@ -112,6 +141,38 @@ describe('readSvaMainserverCredentials', () => {
     expect(resolveMainserverCredentialStatus({})).toBe('missing_both');
     expect(resolveMainserverCredentialStatus(undefined)).toBe('unknown');
     expect(resolveMainserverCredentialStatus(null)).toBe('unknown');
+    expect(
+      resolveMainserverCredentialStatus({
+        mainserverUserApplicationId: ['canonical-id'],
+        sva_mainserver_api_secret: ['legacy-secret'],
+      })
+    ).toBe('missing_application_secret');
+    expect(
+      resolveMainserverCredentialStatus({
+        mainserverUserApplicationSecret: ['canonical-secret'],
+        sva_mainserver_api_key: ['legacy-id'],
+      })
+    ).toBe('missing_application_id');
+  });
+
+  it('projects mixed canonical and legacy pairs as incomplete for admin and API responses', async () => {
+    const { resolveMainserverCredentialState } = await import('./mainserver-credentials.js');
+
+    expect(
+      resolveMainserverCredentialState({
+        mainserverUserApplicationId: ['canonical-id'],
+        sva_mainserver_api_secret: ['legacy-secret'],
+      })
+    ).toEqual({
+      mainserverUserApplicationId: 'canonical-id',
+      mainserverUserApplicationSecretSet: false,
+    });
+    expect(
+      resolveMainserverCredentialState({
+        mainserverUserApplicationSecret: ['canonical-secret'],
+        sva_mainserver_api_key: ['legacy-id'],
+      })
+    ).toEqual({ mainserverUserApplicationSecretSet: true });
   });
 
   it('returns credentials from the current keycloak attributes', async () => {
@@ -268,6 +329,66 @@ describe('readSvaMainserverCredentials', () => {
       mainserverUserApplicationId: ['updated-id'],
       mainserverUserApplicationSecret: ['legacy-secret'],
     });
+  });
+
+  it('keeps a selected legacy pair together when canonical attributes are incomplete', async () => {
+    const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.js');
+
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: {
+          displayName: ['Alice Admin'],
+          mainserverUserApplicationSecret: ['unpaired-canonical-secret'],
+          sva_mainserver_api_key: ['legacy-key'],
+          sva_mainserver_api_secret: ['legacy-secret'],
+        },
+      })
+    ).toEqual({
+      displayName: ['Alice Admin'],
+      mainserverUserApplicationId: ['legacy-key'],
+      mainserverUserApplicationSecret: ['legacy-secret'],
+    });
+  });
+
+  it('preserves incomplete mixed-source attributes during unrelated profile updates', async () => {
+    const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.js');
+    const canonicalIdWithLegacySecret = {
+      displayName: ['Alice Admin'],
+      mainserverUserApplicationId: ['canonical-id'],
+      sva_mainserver_api_secret: ['legacy-secret'],
+    };
+    const canonicalSecretWithLegacyId = {
+      displayName: ['Bob Admin'],
+      mainserverUserApplicationSecret: ['canonical-secret'],
+      sva_mainserver_api_key: ['legacy-id'],
+    };
+
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalIdWithLegacySecret,
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalIdWithLegacySecret);
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalSecretWithLegacyId,
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalSecretWithLegacyId);
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalIdWithLegacySecret,
+        mainserverUserApplicationId: 'canonical-id',
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalIdWithLegacySecret);
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalSecretWithLegacyId,
+        mainserverUserApplicationId: '',
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalSecretWithLegacyId);
   });
 
   it('treats blank secret updates as not set and preserves the existing secret', async () => {

@@ -103,6 +103,13 @@ const persistCredentials = async (
   credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>
 ): Promise<void> => {
   input.setPhase('credential_persistence');
+  await updateState(input, {
+    instanceId: input.instanceId,
+    organizationId: input.organizationId,
+    operationReference: input.operationReference,
+    provisioningStatus: 'provisioning',
+    provisioningPhase: 'account_credentials_persistence',
+  });
   const persisted = await withInstanceScopedDb(input.instanceId, (client) =>
     writeActiveOrganizationProvisioningCredentials(client, {
       instanceId: input.instanceId,
@@ -137,6 +144,7 @@ const completeProvisioning = async (
     keycloakSubject: input.actorSubject,
     activeOrganizationId: input.organizationId,
     actingPrincipalType: 'organization',
+    allowProvisioningOrganizationCredentials: true,
   });
   if (effective.status !== 'ok' || effective.source !== 'organization') {
     throw new Error('organization_credentials_unavailable_after_persist');

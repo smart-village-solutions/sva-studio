@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MainserverUserProvisioningError } from '../iam-account-management/mainserver-user-provisioning-error.js';
+
 const state = vi.hoisted(() => ({
   client: { query: vi.fn() },
   loadDefaultExternalInterfaceRecord: vi.fn(),
@@ -289,25 +291,42 @@ describe('organization Mainserver provisioning', () => {
     );
   });
 
-  it('keeps automatic organization creation neutral when personal bootstrap credentials are missing', async () => {
+  it.each(['missing_credentials', 'partial_credentials'] as const)(
+    'keeps automatic organization creation neutral when personal bootstrap credentials are %s',
+    async (status) => {
+      prepareNewProvisioningAccount();
+      state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+        status,
+      });
+
+      const { provisionOrganizationMainserver } =
+        await import('./organization-mainserver-provisioning.js');
+      await expect(
+        provisionOrganizationMainserver({ ...actorInput, trigger: 'organization_create' })
+      ).resolves.toMatchObject({ outcome: 'skipped', errorCode: status });
+      expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
+      expect(state.updateOrganizationMainserverProvisioningState).toHaveBeenCalledWith(
+        state.client,
+        expect.objectContaining({
+          provisioningStatus: 'not_provisioned',
+          provisioningPhase: 'personal_credentials_missing',
+        })
+      );
+    }
+  );
+
+  it('keeps explicit retry fail-closed for partial personal bootstrap credentials', async () => {
     prepareNewProvisioningAccount();
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
-      status: 'missing_credentials',
+      status: 'partial_credentials',
     });
 
     const { provisionOrganizationMainserver } =
       await import('./organization-mainserver-provisioning.js');
-    await expect(
-      provisionOrganizationMainserver({ ...actorInput, trigger: 'organization_create' })
-    ).resolves.toMatchObject({ outcome: 'skipped', errorCode: 'missing_credentials' });
-    expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
-    expect(state.updateOrganizationMainserverProvisioningState).toHaveBeenCalledWith(
-      state.client,
-      expect.objectContaining({
-        provisioningStatus: 'not_provisioned',
-        provisioningPhase: 'personal_credentials_missing',
-      })
-    );
+    await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+      outcome: 'failed',
+      errorCode: 'partial_credentials',
+    });
   });
 
   it('marks a lost Mainserver response for reconciliation without compensating the account', async () => {
@@ -581,6 +600,9 @@ describe('organization Mainserver provisioning', () => {
         mainserverApplicationSecret: 'org-secret',
       })
     );
+    expect(
+      state.writeActiveOrganizationProvisioningCredentials.mock.invocationCallOrder[0]
+    ).toBeLessThan(state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0] ?? 0);
     expect(state.recordMainserverDataProviderObservation).toHaveBeenCalledWith({
       instanceId: 'de-koeln',
       principalType: 'organization',
@@ -591,6 +613,32 @@ describe('organization Mainserver provisioning', () => {
     });
   });
 
+  it('does not activate organization credentials when the Keycloak readback fails', async () => {
+    prepareNewProvisioningAccount();
+    state.provisionMainserverUserCredentials.mockResolvedValue({
+      dataProviderId: '4711',
+      mainserverUserApplicationId: 'org-app',
+      mainserverUserApplicationSecret: 'org-secret',
+    });
+    state.persistProvisionedMainserverCredentials.mockRejectedValueOnce(
+      new MainserverUserProvisioningError({
+        code: 'mainserver_credentials_unavailable',
+        message: 'readback failed',
+        statusCode: 503,
+        retryable: true,
+      })
+    );
+
+    const { provisionOrganizationMainserver } =
+      await import('./organization-mainserver-provisioning.js');
+    await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+      outcome: 'reconciliation_required',
+      errorCode: 'mainserver_credentials_unavailable',
+    });
+    expect(state.persistProvisionedMainserverCredentials).toHaveBeenCalledOnce();
+    expect(state.writeActiveOrganizationProvisioningCredentials).toHaveBeenCalledOnce();
+  });
+
   it('does not mutate Keycloak credentials after the provisioning lease was lost', async () => {
     prepareNewProvisioningAccount();
     state.provisionMainserverUserCredentials.mockResolvedValue({
@@ -598,7 +646,10 @@ describe('organization Mainserver provisioning', () => {
       mainserverUserApplicationId: 'org-app',
       mainserverUserApplicationSecret: 'org-secret',
     });
-    state.writeActiveOrganizationProvisioningCredentials.mockResolvedValue(false);
+    state.updateOrganizationMainserverProvisioningState.mockImplementation(
+      async (_client: unknown, input: { provisioningPhase: string }) =>
+        input.provisioningPhase === 'account_credentials_persistence' ? null : {}
+    );
 
     const { provisionOrganizationMainserver } =
       await import('./organization-mainserver-provisioning.js');
@@ -607,6 +658,7 @@ describe('organization Mainserver provisioning', () => {
       errorCode: 'organization_provisioning_lease_lost',
     });
     expect(state.persistProvisionedMainserverCredentials).not.toHaveBeenCalled();
+    expect(state.writeActiveOrganizationProvisioningCredentials).not.toHaveBeenCalled();
   });
 
   it('verifies existing credentials before attempting a new upstream provisioning', async () => {

@@ -10,11 +10,7 @@ type MainserverProvisioningLogError = Error & {
 };
 
 type MainserverProvisioningFailurePhase =
-  | 'configuration'
-  | 'credentials'
-  | 'token'
-  | 'provisioning'
-  | 'unknown';
+  'configuration' | 'credentials' | 'token' | 'provisioning' | 'unknown';
 
 const SAFE_MAINSERVER_ERROR_CODES = new Set([
   'invalid_credentials',
@@ -22,6 +18,10 @@ const SAFE_MAINSERVER_ERROR_CODES = new Set([
   'identity_provider_unavailable',
   'mainserver_user_provisioning_config_incomplete',
   'mainserver_user_provisioning_failed',
+  'mainserver_credentials_missing',
+  'mainserver_credentials_partial',
+  'mainserver_credentials_stale',
+  'mainserver_credentials_unavailable',
   'missing_credentials',
   'network_error',
   'organization_mainserver_credentials_missing',
@@ -29,6 +29,18 @@ const SAFE_MAINSERVER_ERROR_CODES = new Set([
   'token_request_failed',
   'unauthorized',
   'upstream_timeout',
+]);
+
+const CREDENTIAL_ERROR_CODES = new Set([
+  'missing_credentials',
+  'organization_mainserver_credentials_missing',
+  'mainserver_credentials_missing',
+  'mainserver_credentials_partial',
+  'mainserver_credentials_stale',
+  'mainserver_credentials_unavailable',
+  'secret_unavailable',
+  'identity_provider_unavailable',
+  'invalid_credentials',
 ]);
 
 const isMainserverProvisioningError = (error: unknown): error is MainserverProvisioningLogError =>
@@ -52,13 +64,7 @@ const resolveFailurePhase = (
   if (error.code === 'mainserver_user_provisioning_config_incomplete') {
     return 'configuration';
   }
-  if (
-    error.code === 'missing_credentials' ||
-    error.code === 'organization_mainserver_credentials_missing' ||
-    error.code === 'secret_unavailable' ||
-    error.code === 'identity_provider_unavailable' ||
-    error.code === 'invalid_credentials'
-  ) {
+  if (CREDENTIAL_ERROR_CODES.has(error.code)) {
     return 'credentials';
   }
   if (error.code === 'unauthorized' || error.code === 'token_request_failed') {

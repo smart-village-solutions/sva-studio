@@ -68,6 +68,13 @@ export const resolveMainserverCredentialReadiness = (
   const canonicalApplicationSecret = normalizeMainserverCredentialAttributeValue(
     attributes[MAINSERVER_APPLICATION_SECRET_ATTRIBUTE]
   );
+  const legacyApplicationId = normalizeMainserverCredentialAttributeValue(
+    attributes[LEGACY_MAINSERVER_API_KEY_ATTRIBUTE]
+  );
+  const legacyApplicationSecret = normalizeMainserverCredentialAttributeValue(
+    attributes[LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE]
+  );
+
   if (canonicalApplicationId && canonicalApplicationSecret) {
     return {
       status: 'ready',
@@ -79,12 +86,6 @@ export const resolveMainserverCredentialReadiness = (
     };
   }
 
-  const legacyApplicationId = normalizeMainserverCredentialAttributeValue(
-    attributes[LEGACY_MAINSERVER_API_KEY_ATTRIBUTE]
-  );
-  const legacyApplicationSecret = normalizeMainserverCredentialAttributeValue(
-    attributes[LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE]
-  );
   if (legacyApplicationId && legacyApplicationSecret) {
     return {
       status: 'ready',
@@ -96,8 +97,12 @@ export const resolveMainserverCredentialReadiness = (
     };
   }
 
-  const applicationId = canonicalApplicationId ?? legacyApplicationId;
-  const applicationSecret = canonicalApplicationSecret ?? legacyApplicationSecret;
+  const hasCanonicalAttribute = Boolean(canonicalApplicationId || canonicalApplicationSecret);
+  const applicationId = hasCanonicalAttribute ? canonicalApplicationId : legacyApplicationId;
+  const applicationSecret = hasCanonicalAttribute
+    ? canonicalApplicationSecret
+    : legacyApplicationSecret;
+
   if (!applicationId && !applicationSecret) {
     return {
       status: 'missing',

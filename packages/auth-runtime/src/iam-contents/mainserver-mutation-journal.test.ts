@@ -6,6 +6,7 @@ import {
   finalizeMainserverMutationJournal,
   loadMainserverMutationJournal,
 } from './mainserver-mutation-journal.js';
+import { deferMainserverMutationProjection } from './mainserver-mutation-projection-deferral.js';
 import {
   hasUnresolvedMainserverOwnershipTransfer,
   loadRecoverableMainserverOwnershipTransfers,
@@ -132,6 +133,45 @@ describe('Mainserver mutation journal', () => {
         completedSteps: ['provider_write', 'tombstone'],
       })
     ).resolves.toMatchObject({ providerOutcome: 'succeeded', reconciliationStatus: 'complete' });
+  });
+
+  it('defers successful mutation projection without another provider read', async () => {
+    state.query.mockResolvedValueOnce({ rows: [{ deferred: true }] });
+
+    await expect(
+      deferMainserverMutationProjection({
+        instanceId: 'de-musterhausen',
+        operationExternalId: 'operation-1',
+      })
+    ).resolves.toBe(true);
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("reconciliation_status = 'reconciliation_required'"),
+      ['de-musterhausen', 'operation-1']
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain('projection_follow_up_deferred');
+    expect(state.query.mock.calls[0]?.[0]).toContain("provider_outcome = 'succeeded'");
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "reconciliation_status IN ('complete', 'reconciliation_required')"
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain('last_error_code = COALESCE');
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "NOT (completed_steps ? 'projection_history_reconciled')"
+    );
+  });
+
+  it('reports an already deferred projection idempotently', async () => {
+    state.query.mockResolvedValueOnce({ rows: [{ deferred: true }] });
+
+    await expect(
+      deferMainserverMutationProjection({
+        instanceId: 'de-musterhausen',
+        operationExternalId: 'operation-1',
+      })
+    ).resolves.toBe(true);
+
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "completed_steps ? 'projection_follow_up_deferred'"
+    );
   });
 
   it('loads an operation without exposing the preimage', async () => {

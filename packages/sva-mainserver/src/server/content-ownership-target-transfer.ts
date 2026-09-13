@@ -23,7 +23,10 @@ export const executeWithCurrentTargetBinding = async (input: {
           instanceId: input.actor.instanceId,
           operationExternalId: input.actor.operationExternalId,
           expectedDataProviderId: input.target.dataProviderId,
-          metadata: input.ownershipTransfer,
+          metadata: {
+            ...input.ownershipTransfer,
+            targetCredentialFingerprint: input.target.connection.credentialFingerprint,
+          },
         });
         return input.execute();
       },

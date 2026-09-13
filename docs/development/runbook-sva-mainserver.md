@@ -64,8 +64,11 @@ Betriebsrelevante Regeln:
 Bei `mainserver_credentials_missing`, `mainserver_credentials_partial` oder
 `mainserver_credentials_stale` startet die Projection keinen Token- oder
 GraphQL-Aufruf. Der automatische Retry erfolgt pro Account-, Organisations-
-und Content-Type-Scope frühestens nach 15 Minuten; ein manueller Refresh prüft
-sofort erneut. Vorhandene Snapshot-Zeilen bleiben dabei erhalten.
+und Content-Type-Scope frühestens nach 15 Minuten. Auch der gezielte Follow-up
+nach einer Mutation respektiert diesen persistenten Cooldown und prüft einen
+dauerhaften Readiness-Fehler innerhalb desselben Recovery-Laufs nicht doppelt;
+nur ein manueller Refresh darf sofort erneut prüfen. Vorhandene Snapshot-Zeilen
+bleiben dabei erhalten.
 
 ## News-Operationen
 
@@ -164,7 +167,7 @@ Rollback erfolgt wie bei den anderen Mainserver-Content-Typen über `iam.instanc
 
 1. Betroffenen Benutzer in Keycloak identifizieren.
 2. Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret` neu setzen.
-3. Falls der Benutzer noch nicht migriert wurde, werden `sva_mainserver_api_key` und `sva_mainserver_api_secret` zur Laufzeit weiterhin als Fallback gelesen; neue Schreibvorgänge sollen aber nur noch die kanonischen Attribute verwenden.
+3. Falls der Benutzer noch nicht migriert wurde, werden `sva_mainserver_api_key` und `sva_mainserver_api_secret` zur Laufzeit weiterhin als vollständiges Legacy-Paar gelesen; kanonische und Legacy-Einzelwerte werden nie zu einem scheinbar vollständigen Paar kombiniert. Neue Schreibvorgänge sollen nur noch die kanonischen Attribute verwenden.
 4. Anschließend die Mainserver-Diagnostik aus Studio erneut ausführen.
 5. Falls weiterhin `unauthorized` oder `forbidden` auftritt, lokale Studio-Rollen und Mainserver-Rechte gegentesten.
 6. Alte Credentials nach erfolgreicher Validierung endgültig invalidieren.
@@ -173,7 +176,10 @@ Create und Reprovisionierung gelten erst nach erfolgreichem Keycloak-Read-back
 als abgeschlossen. `mainserver_credentials_partial` bedeutet, dass genau eines
 der kanonischen Attribute fehlt; `mainserver_credentials_stale`, dass der
 zurückgelesene Fingerprint nicht zur gerade provisionierten Version passt.
-Credentialwerte selbst dürfen weder in Logs noch in Tickets übernommen werden.
+Organisations-Credentials werden erst nach diesem Read-back als wirksam
+persistiert. Ein nicht verfügbarer initialer Credential-Read wird als
+retrybares `mainserver_credentials_unavailable` klassifiziert. Credentialwerte
+selbst dürfen weder in Logs noch in Tickets übernommen werden.
 
 ## Notfallabschaltung
 

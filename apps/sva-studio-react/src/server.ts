@@ -144,7 +144,9 @@ const startPluginOperationWorkerInBackground = (): void => {
     try {
       await ensurePluginActivationPoliciesConfigured();
       await ensurePluginOperationHandlersRegistered();
-      startPluginActivationPolicyFleetReconcileInBackground();
+      if (studioJobWorkerLane === 'default') {
+        startPluginActivationPolicyFleetReconcileInBackground();
+      }
       if (!studioJobWorkerEnabled) return;
       const startWorker = await getEnsureStudioJobWorkerStarted();
       await startWorker({

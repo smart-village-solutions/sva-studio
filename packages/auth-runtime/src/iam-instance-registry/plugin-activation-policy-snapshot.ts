@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import type { TenantModuleActivationPolicySnapshot } from '@sva/core';
 import type { KeycloakProvisioningInput } from '@sva/instance-registry';
@@ -39,6 +40,33 @@ let configuredTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycle
 let configuredPluginOidcClientRequirements: readonly PluginOidcClientRequirement[] = Object.freeze(
   []
 );
+let configuredRuntimeSnapshotGeneration = 0;
+
+type InstanceRegistryPluginRuntimeSnapshot = Readonly<{
+  generation: number;
+  activationPolicies: TenantModuleActivationPolicySnapshot;
+  moduleIamRegistry: ReadonlyMap<string, InstanceRegistryModuleIamSnapshotEntry>;
+  tenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycleRegistryEntry>;
+  pluginOidcClientRequirements: readonly PluginOidcClientRequirement[];
+}>;
+
+const runtimeSnapshotScope = new AsyncLocalStorage<InstanceRegistryPluginRuntimeSnapshot>();
+
+const captureInstanceRegistryPluginRuntimeSnapshot = (): InstanceRegistryPluginRuntimeSnapshot =>
+  Object.freeze({
+    generation: configuredRuntimeSnapshotGeneration,
+    activationPolicies: configuredSnapshot,
+    moduleIamRegistry: configuredModuleIamRegistry,
+    tenantLifecycleRegistry: configuredTenantLifecycleRegistry,
+    pluginOidcClientRequirements: configuredPluginOidcClientRequirements,
+  });
+
+export const withCapturedInstanceRegistryPluginRuntimeSnapshot = <T>(
+  work: (generation: number) => T
+): T => {
+  const snapshot = captureInstanceRegistryPluginRuntimeSnapshot();
+  return runtimeSnapshotScope.run(snapshot, () => work(snapshot.generation));
+};
 
 const readLifecycleContractDigest = (
   lifecycle: PluginTenantLifecycleRegistryEntry,
@@ -78,6 +106,7 @@ export const configureInstanceRegistryPluginActivationPolicies = (
   snapshot: TenantModuleActivationPolicySnapshot
 ): void => {
   configuredSnapshot = copySnapshot(snapshot);
+  configuredRuntimeSnapshotGeneration += 1;
 };
 
 const copyModuleIamRegistry = (
@@ -205,27 +234,35 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   configuredModuleIamRegistry = moduleIamRegistry;
   configuredTenantLifecycleRegistry = tenantLifecycleRegistry;
   configuredPluginOidcClientRequirements = pluginOidcClientRequirements;
+  configuredRuntimeSnapshotGeneration += 1;
 };
 
+export const readInstanceRegistryPluginRuntimeSnapshotGeneration = (): number =>
+  configuredRuntimeSnapshotGeneration;
+
 export const readInstanceRegistryPluginActivationPolicies =
-  (): TenantModuleActivationPolicySnapshot => configuredSnapshot;
+  (): TenantModuleActivationPolicySnapshot =>
+    runtimeSnapshotScope.getStore()?.activationPolicies ?? configuredSnapshot;
 
 export const readInstanceRegistryModuleIamRegistry = (): ReadonlyMap<
   string,
   InstanceRegistryModuleIamSnapshotEntry
-> => configuredModuleIamRegistry;
+> => runtimeSnapshotScope.getStore()?.moduleIamRegistry ?? configuredModuleIamRegistry;
 
 export const readInstanceRegistryPluginTenantLifecycleRegistry = (): ReadonlyMap<
   string,
   PluginTenantLifecycleRegistryEntry
-> => configuredTenantLifecycleRegistry;
+> => runtimeSnapshotScope.getStore()?.tenantLifecycleRegistry ?? configuredTenantLifecycleRegistry;
 
 export const readInstanceRegistryPluginOidcClientRequirements =
-  (): readonly PluginOidcClientRequirement[] => configuredPluginOidcClientRequirements;
+  (): readonly PluginOidcClientRequirement[] =>
+    runtimeSnapshotScope.getStore()?.pluginOidcClientRequirements ??
+    configuredPluginOidcClientRequirements;
 
 export const resetInstanceRegistryPluginActivationPoliciesForTests = (): void => {
   configuredSnapshot = emptySnapshot;
   configuredModuleIamRegistry = new Map();
   configuredTenantLifecycleRegistry = new Map();
   configuredPluginOidcClientRequirements = Object.freeze([]);
+  configuredRuntimeSnapshotGeneration += 1;
 };

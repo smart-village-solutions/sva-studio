@@ -857,6 +857,7 @@ describe('server transport', () => {
       expect(ensurePrivilegedStudioJobWorkerStartedMock).toHaveBeenCalledOnce();
     });
     expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
+    expect(startPluginActivationPolicyFleetReconcileInBackgroundMock).not.toHaveBeenCalled();
   });
 
   it('exits with an error after a terminal worker failure', async () => {

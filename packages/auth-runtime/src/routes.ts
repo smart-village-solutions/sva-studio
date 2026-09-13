@@ -1,5 +1,4 @@
-export type AuthRoutePath =
-  | '/auth/login'
+export type AuthRoutePath = '/auth/login'
   | '/auth/account-action'
   | '/auth/dev-login'
   | '/auth/callback'
@@ -39,8 +38,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/groups/$groupId/memberships'
   | '/api/v1/iam/instances'
   | '/api/v1/iam/instances/audit'
-  | '/api/v1/iam/instances/$instanceId'
-  | '/api/v1/iam/instances/$instanceId/provisioning/retry'
+  | `/api/v1/iam/instances/$instanceId${'' | '/provisioning/retry'}`
   | '/api/v1/iam/instances/$instanceId/plugin-readiness'
   | '/api/v1/iam/instances/$instanceId/audit'
   | '/api/v1/iam/instances/$instanceId/keycloak/status'
@@ -157,7 +155,6 @@ export type AuthRoutePath =
   | '/api/v1/plugin-operations/jobs/$jobId'
   | '/api/v1/plugin-operations/jobs/$jobId/artifacts/$artifactId'
   | '/api/v1/plugin-operations/jobs/$jobId/cancel';
-
 export const authRoutePaths = [
   '/auth/login',
   '/auth/account-action',

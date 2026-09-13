@@ -200,6 +200,20 @@ describe('readSvaMainserverCredentials', () => {
     });
   });
 
+  it('returns unavailable when the configured identity provider read fails', async () => {
+    state.resolveIdentityProvider.mockReturnValue({
+      provider: {
+        getUserAttributes: vi.fn().mockRejectedValue(new Error('keycloak unavailable')),
+      },
+    });
+
+    const { readSvaMainserverCredentialsWithStatus } = await import('./mainserver-credentials.js');
+
+    await expect(readSvaMainserverCredentialsWithStatus('subject-1')).resolves.toEqual({
+      status: 'identity_provider_unavailable',
+    });
+  });
+
   it('returns detailed status when required attributes are missing', async () => {
     state.resolveIdentityProvider.mockReturnValue({
       provider: {

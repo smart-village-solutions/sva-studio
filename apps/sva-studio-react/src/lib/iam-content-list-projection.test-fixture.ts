@@ -110,7 +110,7 @@ export const refreshProjectedContentsForMainserverMutationForTest = (
   refreshProjectedContentsForMainserverMutationBase({
     actingPrincipalType: 'organization',
     authorizationMode: 'credential_visible_compatibility',
-    credentialFingerprint: 'a'.repeat(64),
+    credentialFingerprint: 'b'.repeat(64),
     ...input,
   });
 

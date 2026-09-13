@@ -28,7 +28,7 @@ const contentProjectionLogger = createSdkLogger({
   level: 'info',
 });
 
-const assertProjectionCredentialsReady = async (
+export const assertProjectionCredentialsReady = async (
   target: ContentProjectionSyncTarget
 ): Promise<void> => {
   const result = await readEffectiveSvaMainserverCredentialsWithStatus({
@@ -37,7 +37,17 @@ const assertProjectionCredentialsReady = async (
     activeOrganizationId: target.organizationId,
     actingPrincipalType: target.actingPrincipalType,
   });
-  if (result.status === 'ok') return;
+  if (result.status === 'ok') {
+    if (
+      target.credentialFingerprint &&
+      target.credentialFingerprint !== result.credentialFingerprint
+    ) {
+      throw Object.assign(new Error('Mainserver-Credentials sind nicht einsatzbereit.'), {
+        code: 'mainserver_credentials_stale',
+      });
+    }
+    return;
+  }
 
   const code =
     result.status === 'partial_credentials'

@@ -169,16 +169,20 @@ export const buildMainserverIdentityAttributes = (input: {
 export const readIdentityUserAttributes = async (
   input: ReadIdentityUserAttributesInput
 ): Promise<IdentityUserAttributes | null> => {
-  const identityProvider = input.instanceId
-    ? await resolveIdentityProviderForInstance(input.instanceId)
-    : resolveIdentityProvider();
-  if (!identityProvider) {
+  try {
+    const identityProvider = input.instanceId
+      ? await resolveIdentityProviderForInstance(input.instanceId)
+      : resolveIdentityProvider();
+    if (!identityProvider) {
+      return null;
+    }
+
+    return await trackKeycloakCall('get_user_attributes', () =>
+      identityProvider.provider.getUserAttributes(input.keycloakSubject, input.attributeNames)
+    );
+  } catch {
     return null;
   }
-
-  return trackKeycloakCall('get_user_attributes', () =>
-    identityProvider.provider.getUserAttributes(input.keycloakSubject, input.attributeNames)
-  );
 };
 
 export const readSvaMainserverCredentials = async (

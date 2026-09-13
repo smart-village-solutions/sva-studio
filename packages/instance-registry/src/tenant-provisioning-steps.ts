@@ -73,7 +73,6 @@ const buildIngressFailureDiagnostics = (error: unknown): Readonly<Record<string,
     diagnostic_error: {
       name: readDiagnosticErrorType(error),
       message: readDiagnosticString(error, 'message') ?? toDiagnosticString(error),
-      stack: readDiagnosticString(error, 'stack'),
       code: readDiagnosticString(error, 'code'),
       syscall: readDiagnosticString(error, 'syscall'),
       path: readDiagnosticString(error, 'path'),

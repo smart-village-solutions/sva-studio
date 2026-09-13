@@ -403,7 +403,6 @@ describe('tenant provisioning parent orchestrator', () => {
           syscall: 'open',
           path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
           dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
-          stack: expect.any(String),
         }),
       })
     );

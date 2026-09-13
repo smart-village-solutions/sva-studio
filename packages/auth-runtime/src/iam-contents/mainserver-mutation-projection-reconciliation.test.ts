@@ -87,7 +87,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       ]
     );
     expect(state.query.mock.calls[0]?.[0]).toContain(
-      "journal.last_error_code = 'mainserver_projection_credential_cooldown'"
+      "journal.action_id <> 'content.transferOwnership'"
     );
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -203,6 +203,57 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       expect.objectContaining({
         operationExternalId: 'transfer-1',
         completedSteps: ['projection_history_reconciled', 'target_projection_refreshed'],
+      })
+    );
+  });
+
+  it('preserves an independent reconciliation error after replaying lifecycle history', async () => {
+    state.query.mockResolvedValue({
+      rows: [
+        {
+          operation_external_id: 'publish-1',
+          action_id: 'content.publish',
+          content_type: 'news.article',
+          content_id: 'news-1',
+          actor_account_id: '22222222-2222-4222-8222-222222222222',
+          keycloak_subject: 'subject-1',
+          display_name_ciphertext: 'encrypted-name',
+          deferred_at: '2026-09-13T12:02:00.000Z',
+          last_error_code: 'mainserver_data_provider_binding_conflict',
+        },
+      ],
+    });
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'user',
+      actingPrincipalId: '22222222-2222-4222-8222-222222222222',
+      credentialFingerprint: 'a'.repeat(64),
+      rows: [
+        {
+          sourceEntityType: 'news.article',
+          sourceEntityId: 'news-1',
+          contentType: 'news.article',
+          title: 'Veröffentlichter Inhalt',
+          payload: {},
+          status: 'published',
+          authorDisplayMode: 'user',
+          author: 'Redaktion',
+          updatedAt: '2026-09-13T12:01:00.000Z',
+        },
+      ],
+    });
+
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ mutationRef: 'publish-1', operation: 'update' })
+    );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationExternalId: 'publish-1',
+        reconciliationStatus: 'reconciliation_required',
+        lastErrorCode: 'mainserver_data_provider_binding_conflict',
       })
     );
   });

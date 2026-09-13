@@ -14,6 +14,7 @@ type DeferredMutationRow = Readonly<{
   keycloak_subject: string;
   display_name_ciphertext: string | null;
   deferred_at: string;
+  last_error_code: string | null;
 }>;
 
 export type ReconciledMainserverProjectionRow = Readonly<{
@@ -52,7 +53,8 @@ SELECT
   journal.actor_account_id::text,
   accounts.keycloak_subject,
   accounts.display_name_ciphertext,
-  journal.updated_at::text AS deferred_at
+  journal.updated_at::text AS deferred_at,
+  journal.last_error_code
 FROM iam.mainserver_mutation_journal AS journal
 JOIN iam.accounts AS accounts
   ON accounts.instance_id = journal.instance_id
@@ -61,10 +63,9 @@ WHERE journal.instance_id = $1
   AND journal.reconciliation_status = 'reconciliation_required'
   AND journal.completed_steps ? 'projection_follow_up_deferred'
   AND journal.provider_outcome = 'succeeded'
-  AND journal.last_error_code = 'mainserver_projection_credential_cooldown'
   AND (
     (
-      journal.action_id ~ '\\.(create|update)$'
+      journal.action_id <> 'content.transferOwnership'
       AND journal.acting_principal_type = $2
       AND journal.acting_principal_id = $3::uuid
       AND journal.active_organization_id IS NOT DISTINCT FROM $4::uuid
@@ -82,10 +83,6 @@ WHERE journal.instance_id = $1
   )
   AND journal.content_id = ANY($6::text[])
   AND journal.content_type = ANY($7::text[])
-  AND (
-    journal.action_id ~ '\\.(create|update)$'
-    OR journal.action_id = 'content.transferOwnership'
-  )
 ORDER BY journal.updated_at ASC;
       `,
       [
@@ -154,16 +151,22 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       authorDisplayMode: row.authorDisplayMode,
       authorDisplayName: row.author,
     });
+    const independentReconciliationError =
+      typeof entry.last_error_code === 'string' &&
+      entry.last_error_code !== 'mainserver_projection_credential_cooldown'
+        ? entry.last_error_code
+        : undefined;
     await finalizeMainserverMutationJournal({
       instanceId: input.instanceId,
       operationExternalId: entry.operation_external_id,
       providerOutcome: 'succeeded',
-      reconciliationStatus: 'complete',
+      reconciliationStatus: independentReconciliationError ? 'reconciliation_required' : 'complete',
       completedSteps:
         entry.action_id === 'content.transferOwnership'
           ? ['projection_history_reconciled', 'target_projection_refreshed']
           : ['projection_history_reconciled'],
       contentId,
+      ...(independentReconciliationError ? { lastErrorCode: independentReconciliationError } : {}),
     });
     reconciled += 1;
   }

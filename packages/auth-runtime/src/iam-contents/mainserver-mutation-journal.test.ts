@@ -150,14 +150,12 @@ describe('Mainserver mutation journal', () => {
     );
     expect(state.query.mock.calls[0]?.[0]).toContain('projection_follow_up_deferred');
     expect(state.query.mock.calls[0]?.[0]).toContain("provider_outcome = 'succeeded'");
-    expect(state.query.mock.calls[0]?.[0]).toContain("reconciliation_status = 'complete'");
-    expect(state.query.mock.calls[0]?.[0]).toContain('last_error_code IS NULL');
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "reconciliation_status IN ('complete', 'reconciliation_required')"
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain('last_error_code = COALESCE');
     expect(state.query.mock.calls[0]?.[0]).toContain(
       "NOT (completed_steps ? 'projection_history_reconciled')"
-    );
-    expect(state.query.mock.calls[0]?.[0]).toContain("action_id = 'content.transferOwnership'");
-    expect(state.query.mock.calls[0]?.[0]).toContain(
-      "completed_steps ? 'target_provider_confirmed'"
     );
   });
 

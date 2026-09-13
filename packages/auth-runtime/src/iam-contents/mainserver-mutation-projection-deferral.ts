@@ -22,26 +22,18 @@ WITH deferred_update AS (
         ) AS step
       ) AS distinct_steps
     ),
-    last_error_code = 'mainserver_projection_credential_cooldown',
+    last_error_code = COALESCE(
+      last_error_code,
+      'mainserver_projection_credential_cooldown'
+    ),
     completed_at = NULL,
     updated_at = NOW()
   WHERE instance_id = $1
     AND operation_external_id = $2
     AND provider_outcome = 'succeeded'
+    AND reconciliation_status IN ('complete', 'reconciliation_required')
     AND NOT (completed_steps ? 'projection_history_reconciled')
     AND NOT (completed_steps ? 'projection_follow_up_deferred')
-    AND (
-      (reconciliation_status = 'complete' AND last_error_code IS NULL)
-      OR (
-        action_id = 'content.transferOwnership'
-        AND reconciliation_status = 'reconciliation_required'
-        AND last_error_code IS NULL
-        AND (
-          completed_steps ? 'target_provider_confirmed'
-          OR completed_steps ? 'target_reread_confirmed'
-        )
-      )
-    )
   RETURNING 1
 )
 SELECT
@@ -55,7 +47,6 @@ SELECT
       AND reconciliation_status = 'reconciliation_required'
       AND completed_steps ? 'projection_follow_up_deferred'
       AND NOT (completed_steps ? 'projection_history_reconciled')
-      AND last_error_code = 'mainserver_projection_credential_cooldown'
   ) AS deferred;
       `,
       [input.instanceId, operationExternalId]

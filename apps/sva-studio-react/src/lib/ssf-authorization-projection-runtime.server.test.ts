@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   readSubjects: vi.fn(),
   store: vi.fn(),
   runtime: vi.fn(),
+  instance: vi.fn(),
 }));
 vi.mock('@sva/auth-runtime/server', () => ({
   prepareInstanceSsfLoginClients: mocks.prepareClients,
@@ -26,6 +27,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   readTenantPermissionProjectionSubjects: mocks.readSubjects,
   resolveInstanceKeycloakProjectionTenant: mocks.resolveTenant,
 }));
+vi.mock('@sva/data-repositories/server', () => ({ loadInstanceById: mocks.instance }));
 vi.mock('@sva/plugin-ssf/runtime', () => ({
   createConfiguredSsfKeycloakAuthorizationProjectionTarget: mocks.target,
   createPostgresSsfAuthorizationProjectionStore: mocks.store,
@@ -56,6 +58,7 @@ beforeEach(() => {
   mocks.tenant.mockResolvedValue({ instanceId: 'tenant-a' });
   mocks.clientsReady.mockResolvedValue(true);
   mocks.prepareClients.mockResolvedValue(undefined);
+  mocks.instance.mockResolvedValue({ instanceId: 'tenant-a', authRealm: 'realm-a' });
 });
 it('separates client preparation from the post-projection runtime baseline', async () => {
   const target = configuration();
@@ -64,7 +67,7 @@ it('separates client preparation from the post-projection runtime baseline', asy
   await target.prepareRuntimeBaseline!('tenant-a');
   expect(mocks.provision).toHaveBeenCalledWith(mocks.rootPool, 'tenant-a');
   await target.resolveTenant('tenant-a');
-  expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend');
+  expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend', undefined);
   expect(await target.readLoginReadiness!('tenant-a')).toBe(true);
   expect(await readStudioSsfLoginBaselineReadiness('tenant-a')).toBe(true);
   expect(mocks.tenant).toHaveBeenCalledWith(mocks.runtimePool, 'tenant-a');
@@ -83,4 +86,18 @@ it('never reports readiness without the baseline or privileged provisioning conf
   await expect(
     createStudioSsfAuthorizationProjectionRuntime().reconcile('tenant-a')
   ).rejects.toThrow('ssf_root_database_not_configured');
+});
+it('binds every projection phase to the realm snapshot loaded for the lifecycle run', async () => {
+  createStudioSsfAuthorizationProjectionRuntime();
+  const runtimeConfiguration = mocks.runtime.mock.calls.at(-1)?.[0];
+  if (!runtimeConfiguration) throw new Error('missing_runtime_configuration');
+
+  const target = await runtimeConfiguration.createTarget('tenant-a');
+  await target.resolveTenant('tenant-a');
+  await target.prepareLoginClients?.('tenant-a');
+  await target.readLoginReadiness?.('tenant-a');
+
+  expect(mocks.resolveTenant).toHaveBeenCalledWith('tenant-a', 'ssf-frontend', 'realm-a');
+  expect(mocks.prepareClients).toHaveBeenCalledWith('tenant-a', 'realm-a');
+  expect(mocks.clientsReady).toHaveBeenCalledWith('tenant-a', 'realm-a');
 });

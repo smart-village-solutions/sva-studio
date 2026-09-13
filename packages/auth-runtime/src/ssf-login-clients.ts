@@ -8,7 +8,7 @@ import {
 import { readInstanceRegistryPluginOidcClientRequirements } from './iam-instance-registry/plugin-activation-policy-snapshot.js';
 import { resolveInstanceKeycloakProjectionTenant } from './ssf-authorization-projection-tenant.js';
 
-const resolveLoginContract = async (instanceId: string) => {
+const resolveLoginContract = async (instanceId: string, authRealm?: string) => {
   const instance = await loadInstanceById(instanceId);
   if (!instance || instance.status === 'suspended' || instance.status === 'archived') return null;
   const requirements = readInstanceRegistryPluginOidcClientRequirements().filter(
@@ -26,14 +26,17 @@ const resolveLoginContract = async (instanceId: string) => {
   const tenant = await resolveInstanceKeycloakProjectionTenant(
     instanceId,
     browser.clientId,
-    instance.authRealm
+    authRealm ?? instance.authRealm
   );
   return tenant ? { tenant, input, instance } : null;
 };
 
 /** Only validated installation declarations enter the existing Core provisioning adapter. */
-export const prepareInstanceSsfLoginClients = async (instanceId: string): Promise<void> => {
-  const contract = await resolveLoginContract(instanceId);
+export const prepareInstanceSsfLoginClients = async (
+  instanceId: string,
+  authRealm?: string
+): Promise<void> => {
+  const contract = await resolveLoginContract(instanceId, authRealm);
   if (!contract) throw new Error('ssf_login_contract_unavailable');
   // Reconcile the browser client first, then normalize the resource client.
   // This also migrates legacy resource clients that token issuance left enabled.
@@ -47,8 +50,11 @@ export const prepareInstanceSsfLoginClients = async (instanceId: string): Promis
   });
 };
 
-export const readInstanceSsfLoginClientsReady = async (instanceId: string): Promise<boolean> => {
-  const contract = await resolveLoginContract(instanceId);
+export const readInstanceSsfLoginClientsReady = async (
+  instanceId: string,
+  authRealm?: string
+): Promise<boolean> => {
+  const contract = await resolveLoginContract(instanceId, authRealm);
   if (!contract || contract.instance.status !== 'active') return false;
   for (const requirement of contract.input.pluginOidcClients) {
     const clientRepresentation = await contract.tenant.client.getOidcClientByClientId(

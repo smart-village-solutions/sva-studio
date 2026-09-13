@@ -1,0 +1,4 @@
+{
+  "prNumber": 1348,
+  "body": "Interne Bildverarbeitung aktualisiert\n\n- Bild-Uploads und das PDF-Branding verwenden eine aktuelle Version der Bildverarbeitungsbibliothek.\n- Die bestehende Verarbeitung und Ausgabe bleiben unverändert."
+}

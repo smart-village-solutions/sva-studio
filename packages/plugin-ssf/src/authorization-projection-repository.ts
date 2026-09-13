@@ -231,16 +231,24 @@ export const readReadySsfAuthorizationRevision = async (
 export const hasReadySsfAuthorizationProjectionSubjects = async (
   pool: Pool,
   instanceId: string
-): Promise<boolean> =>
-  withTenantRead(pool, instanceId, async (client) => {
-    const result = await client.query<{ confirmed_has_subjects: boolean }>(
-      `SELECT confirmed_has_subjects
-         FROM ssf.authorization_projections
-        WHERE instance_id = $1
-          AND status = 'ready'
-          AND desired_revision = confirmed_revision
-          AND last_error_code IS NULL`,
-      [instanceId]
-    );
-    return result.rows[0]?.confirmed_has_subjects === true;
-  });
+): Promise<boolean> => {
+  try {
+    return await withTenantRead(pool, instanceId, async (client) => {
+      const result = await client.query<{ confirmed_has_subjects: boolean }>(
+        `SELECT confirmed_has_subjects
+           FROM ssf.authorization_projections
+          WHERE instance_id = $1
+            AND status = 'ready'
+            AND desired_revision = confirmed_revision
+            AND last_error_code IS NULL`,
+        [instanceId]
+      );
+      return result.rows[0]?.confirmed_has_subjects === true;
+    });
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '42703') {
+      return false;
+    }
+    throw error;
+  }
+};

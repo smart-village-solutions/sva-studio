@@ -1,0 +1,4 @@
+{
+  "prNumber": 1368,
+  "body": "Zuverlässige IAM-Basis bei Mandanten-Provisionierung\n\n- Neue Mandanten und fehlgeschlagene Wiederholungen synchronisieren die lokale IAM-Basis jetzt vor dem Keycloak- und Tenant-Admin-Bootstrap."
+}

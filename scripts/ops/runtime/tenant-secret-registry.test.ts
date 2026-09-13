@@ -132,4 +132,43 @@ describe('tenant secret registry', () => {
 
     expect(envWrapCalls).toHaveLength(1);
   });
+
+  it('loads and normalizes tenant auth issuers from the remote registry', () => {
+    const runSql = vi.fn(() => 'registry-payload');
+    const registryPayload = [
+      {
+        authIssuerUrl: 'https://tenant-id.example.test/keycloak/realms/tenant-a',
+        authRealm: 'tenant-a',
+        host: 'tenant-a.studio.example.test',
+        instanceId: 'tenant-a',
+      },
+      {
+        authIssuerUrl: null,
+        authRealm: 'tenant-b',
+        host: 'tenant-b.studio.example.test',
+        instanceId: 'tenant-b',
+      },
+    ];
+    const ops = createTenantSecretRegistryOps({
+      createDbSqlRunner: vi.fn(() => runSql),
+      isRemoteRuntimeProfile: vi.fn(() => true),
+      parseJsonFromCommandOutput: <T,>() => registryPayload as T,
+      withTemporaryProcessEnv: async (_env, operation) => operation(),
+    });
+
+    expect(ops.loadRegistryTenantTargets('studio', {})).toEqual([
+      {
+        authIssuerUrl: 'https://tenant-id.example.test/keycloak/realms/tenant-a',
+        authRealm: 'tenant-a',
+        host: 'tenant-a.studio.example.test',
+        instanceId: 'tenant-a',
+      },
+      {
+        authRealm: 'tenant-b',
+        host: 'tenant-b.studio.example.test',
+        instanceId: 'tenant-b',
+      },
+    ]);
+    expect(runSql).toHaveBeenCalledWith(expect.stringContaining('instance.auth_issuer_url'));
+  });
 });

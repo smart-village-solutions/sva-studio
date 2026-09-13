@@ -21,7 +21,7 @@ describe('resolveTenantRuntimeTargets remote registry scope', () => {
     runQuantumExecMock.mockReturnValue(`
 noise before
 __SVA_DOCTOR_JSON___START
-[{"instanceId":"hb-demo","host":"hb-demo.studio.example.org","authRealm":"saas-hb-demo"}]
+[{"instanceId":"hb-demo","host":"hb-demo.studio.example.org","authRealm":"saas-hb-demo","authIssuerUrl":"https://tenant-id.example.org/keycloak/realms/saas-hb-demo"}]
 __SVA_DOCTOR_JSON___END
 noise after
 `);
@@ -48,6 +48,7 @@ noise after
       source: 'registry',
       targets: [
         {
+          authIssuerUrl: 'https://tenant-id.example.org/keycloak/realms/saas-hb-demo',
           instanceId: 'hb-demo',
           host: 'hb-demo.studio.example.org',
           authRealm: 'saas-hb-demo',

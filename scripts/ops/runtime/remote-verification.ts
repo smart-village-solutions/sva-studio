@@ -42,7 +42,13 @@ export const mergeExplicitTenantTargetsWithRegistry = (
   const registryByInstanceId = new Map(registryTargets.map((target) => [target.instanceId, target] as const));
   return explicitTargets.map((target) => {
     const registryTarget = registryByInstanceId.get(target.instanceId);
-    return registryTarget ? { ...target, authRealm: registryTarget.authRealm } : target;
+    return registryTarget
+      ? {
+          ...target,
+          authRealm: registryTarget.authRealm,
+          ...(registryTarget.authIssuerUrl ? { authIssuerUrl: registryTarget.authIssuerUrl } : {}),
+        }
+      : target;
   });
 };
 

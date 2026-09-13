@@ -16,6 +16,39 @@ const KEYCLOAK_INSECURE_CONTEXT_QUERY =
   '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"';
 const LOKI_PROBE_WINDOW_MINUTES = 15;
 
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const isLokiValuePair = (value: unknown): value is readonly [string, string] =>
+  Array.isArray(value) && value.length === 2 && typeof value[0] === 'string' && typeof value[1] === 'string';
+
+const isLokiStream = (value: unknown): value is Readonly<{
+  stream: Readonly<Record<string, string>>;
+  values: ReadonlyArray<readonly [string, string]>;
+}> =>
+  isRecord(value) &&
+  isRecord(value.stream) &&
+  Object.values(value.stream).every((labelValue) => typeof labelValue === 'string') &&
+  Array.isArray(value.values) &&
+  value.values.every(isLokiValuePair);
+
+const parseStrictLokiStreamLines = (payload: unknown): readonly string[] => {
+  if (
+    !isRecord(payload) ||
+    payload.status !== 'success' ||
+    !isRecord(payload.data) ||
+    payload.data.resultType !== 'streams' ||
+    !Array.isArray(payload.data.result) ||
+    !payload.data.result.every(isLokiStream)
+  ) {
+    throw new Error('loki_probe_invalid_response');
+  }
+
+  return payload.data.result
+    .flatMap((entry) => entry.values.map(([, line]) => line))
+    .filter((line) => line.length > 0);
+};
+
 const readLiveRuntimeFlags = async (deps: RuntimeHealthDeps, env: NodeJS.ProcessEnv): Promise<LiveRuntimeFlags> => {
   const stackName = deps.getConfiguredStackName(env);
   const liveContract = await deps.inspectRemoteServiceContract(env, {
@@ -42,11 +75,10 @@ const queryRecentLokiLines = async (
   url.searchParams.set('start', String((Date.now() - LOKI_PROBE_WINDOW_MINUTES * 60 * 1000) * 1_000_000));
   const response = await fetch(url, { headers: { Authorization: `Bearer ${grafanaToken}` }, signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`loki_probe_failed:${response.status}`);
-  const payload = (await response.json()) as { data?: { result?: Array<{ values?: string[][] }> }; status?: unknown };
-  if (strictResult && (payload.status !== 'success' || !Array.isArray(payload.data?.result))) {
-    throw new Error('loki_probe_invalid_response');
-  }
-  return (payload.data?.result ?? []).flatMap((entry) => (entry.values ?? []).map((value) => value[1] ?? '')).filter((line) => line.length > 0);
+  const payload: unknown = await response.json();
+  if (strictResult) return parseStrictLokiStreamLines(payload);
+  const permissivePayload = payload as { data?: { result?: Array<{ values?: string[][] }> } };
+  return (permissivePayload.data?.result ?? []).flatMap((entry) => (entry.values ?? []).map((value) => value[1] ?? '')).filter((line) => line.length > 0);
 };
 
 const queryRecentLokiLinesWithRetry = async (
@@ -167,31 +199,44 @@ type TenantAuthRedirectProbeResult =
   | { failedCheck: DoctorCheck }
   | { probeResults: Array<{ authRealm: string; host: string; instanceId: string }>; source: TenantRuntimeTargetResolution['source'] };
 
-const getConfiguredKeycloakOrigins = (env: NodeJS.ProcessEnv): ReadonlySet<string> => {
-  const origins = [env.SVA_AUTH_ISSUER, env.KEYCLOAK_ADMIN_BASE_URL].flatMap((value) => {
-    if (!value?.trim()) return [];
-    try {
-      return [new URL(value.trim()).origin];
-    } catch {
-      return [];
-    }
-  });
-  return new Set(origins);
+const resolveTenantIssuerUrl = (
+  tenantTarget: TenantRuntimeTargetResolution['targets'][number],
+  env: NodeJS.ProcessEnv,
+): URL | null => {
+  const rawIssuerUrl = tenantTarget.authIssuerUrl
+    ? tenantTarget.authIssuerUrl
+    : env.KEYCLOAK_ADMIN_BASE_URL
+      ? `${normalizeBaseUrl(env.KEYCLOAK_ADMIN_BASE_URL)}/realms/${tenantTarget.authRealm}`
+      : env.SVA_AUTH_ISSUER;
+  if (!rawIssuerUrl) return null;
+
+  try {
+    const issuerUrl = new URL(rawIssuerUrl);
+    return issuerUrl.protocol === 'https:' &&
+      issuerUrl.username.length === 0 &&
+      issuerUrl.password.length === 0 &&
+      issuerUrl.search.length === 0 &&
+      issuerUrl.hash.length === 0
+      ? issuerUrl
+      : null;
+  } catch {
+    return null;
+  }
 };
 
 const parseTenantAuthorizationUrl = (
   location: string,
-  authRealm: string,
-  configuredKeycloakOrigins: ReadonlySet<string>,
+  issuerUrl: URL,
 ): URL | null => {
   try {
     const authorizationUrl = new URL(location);
-    const expectedPathPrefix = `/realms/${encodeURIComponent(authRealm)}/protocol/openid-connect/auth`;
+    const expectedPath = `${issuerUrl.pathname.replace(/\/+$/u, '')}/protocol/openid-connect/auth`;
     return authorizationUrl.protocol === 'https:'
       && authorizationUrl.username.length === 0
       && authorizationUrl.password.length === 0
-      && configuredKeycloakOrigins.has(authorizationUrl.origin)
-      && authorizationUrl.pathname === expectedPathPrefix
+      && authorizationUrl.origin === issuerUrl.origin
+      && authorizationUrl.pathname === expectedPath
+      && authorizationUrl.hash.length === 0
       ? authorizationUrl
       : null;
   } catch {
@@ -205,14 +250,17 @@ const probeTenantAuthRedirects = async (
   tenantTargetResolution: TenantRuntimeTargetResolution,
 ): Promise<TenantAuthRedirectProbeResult> => {
   const baseProtocol = new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol;
-  const configuredKeycloakOrigins = getConfiguredKeycloakOrigins(env);
   const probeResults: Array<{ authRealm: string; host: string; instanceId: string }> = [];
   for (const tenantTarget of tenantTargetResolution.targets.slice(0, 2)) {
+    const issuerUrl = resolveTenantIssuerUrl(tenantTarget, env);
+    if (!issuerUrl) {
+      return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} besitzt keinen gueltigen vertrauenswuerdigen Issuer.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source }) };
+    }
     const target = `${baseProtocol}//${tenantTarget.host}/auth/login`;
     const response = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
     const location = response.headers.get('location') ?? '';
     const authorizationUrl = response.status === 302
-      ? parseTenantAuthorizationUrl(location, tenantTarget.authRealm, configuredKeycloakOrigins)
+      ? parseTenantAuthorizationUrl(location, issuerUrl)
       : null;
     if (!authorizationUrl) {
       return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source, status: response.status }) };

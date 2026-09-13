@@ -998,7 +998,7 @@ describe('resolveTenantRuntimeTargets', () => {
     });
   });
 
-  it('hydrates explicit remote tenant scopes with the registry auth realm when available', () => {
+  it('hydrates explicit remote tenant scopes with the registry auth realm and issuer when available', () => {
     expect(
       mergeExplicitTenantTargetsWithRegistry(
         [
@@ -1010,6 +1010,7 @@ describe('resolveTenantRuntimeTargets', () => {
         ],
         [
           {
+            authIssuerUrl: 'https://tenant-id.example.test/keycloak/realms/saas-hb-meinquartier',
             authRealm: 'saas-hb-meinquartier',
             host: 'hb-meinquartier.studio.smart-village.app',
             instanceId: 'hb-meinquartier',
@@ -1018,6 +1019,7 @@ describe('resolveTenantRuntimeTargets', () => {
       )
     ).toEqual([
       {
+        authIssuerUrl: 'https://tenant-id.example.test/keycloak/realms/saas-hb-meinquartier',
         authRealm: 'saas-hb-meinquartier',
         host: 'hb-meinquartier.studio.smart-village.app',
         instanceId: 'hb-meinquartier',

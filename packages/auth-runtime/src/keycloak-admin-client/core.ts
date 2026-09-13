@@ -1350,6 +1350,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         },
         false
       );
+      // A successful authenticated cleanup proves Keycloak is reachable again
+      // and must leave outer compensation (for example realm deletion) usable.
+      this.markSuccess();
       logKeycloakWriteSuccess('delete_client', {
         operation: 'delete_client',
         realm: this.realm,

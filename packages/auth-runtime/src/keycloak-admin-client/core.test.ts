@@ -954,7 +954,8 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
       .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { realm: 'demo' }));
     const client = await createClient(fetchImpl, { circuitBreakerFailureThreshold: 1 });
 
     await expect(
@@ -976,6 +977,7 @@ describe('Keycloak admin client', () => {
       (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
     );
     expect(deleteCall).toBeDefined();
+    await expect(client.getRealm()).resolves.toEqual({ realm: 'demo' });
   });
 
   it('retries transient failures while deleting a failed strict client creation', async () => {

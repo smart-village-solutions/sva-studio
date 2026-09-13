@@ -70,6 +70,35 @@ describe('GenericItem content projection mutations', () => {
     ]);
   });
 
+  it('applies the credential cooldown before loading generic item details', async () => {
+    const syncScopeKey =
+      'de-musterhausen::account-1::org-1::organization::generic-items.generic-item';
+    fixture.syncStates.set(`generic-items.generic-item::${syncScopeKey}`, {
+      sync_scope_key: syncScopeKey,
+      last_started_at: '2026-09-13T12:00:00.000Z',
+      last_succeeded_at: null,
+      last_failed_at: new Date().toISOString(),
+      last_error_code: 'mainserver_credentials_stale',
+      last_error_message: 'credentials not ready',
+      projected_count: 0,
+    });
+
+    await expect(
+      refreshProjectedContentsForMainserverMutation({
+        contentType: 'generic-items.generic-item',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        organizationId: 'org-1',
+        operation: 'update',
+        entityId: 'generic-mutation-1',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.getSvaMainserverGenericItem).not.toHaveBeenCalled();
+    expect(state.readEffectiveSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
+  });
+
   it('refreshes only the registered FAQ projection after FAQ mutations', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'faq-mutation-1',

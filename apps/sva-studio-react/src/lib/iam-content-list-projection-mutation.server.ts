@@ -174,22 +174,22 @@ const finalizeFailedMutation = async (
   await markProjectionSyncFailed(input.target, refreshRunId, errorCode, errorMessage);
 };
 
+const isMutationFollowUpDue = async (target: ContentProjectionSyncTarget): Promise<boolean> => {
+  const [syncState] = await computeProjectionSyncStates([target]);
+  return isProjectionRefreshDue({
+    state: syncState,
+    options: { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' },
+  });
+};
+
 export const refreshMainserverProjectionForMutation = async (
   input: MutationRefreshInput
 ): Promise<void> => {
   const { target } = input;
   const refreshRunId = randomUUID();
   await enqueueProjectionWork(target, async () => {
-    if (input.operation !== 'delete') {
-      const [syncState] = await computeProjectionSyncStates([target]);
-      if (
-        !isProjectionRefreshDue({
-          state: syncState,
-          options: { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' },
-        })
-      ) {
-        return;
-      }
+    if (input.operation !== 'delete' && !(await isMutationFollowUpDue(target))) {
+      return;
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
     try {
@@ -331,6 +331,9 @@ export const refreshGenericItemSiblingProjections = async (
   input: GenericItemSiblingRefreshInput
 ): Promise<void> => {
   await recordGenericItemDeletionAudit(input);
+  if (input.operation !== 'delete' && !(await isMutationFollowUpDue(input.target))) {
+    return;
+  }
   const loadedItem = await loadGenericItemForSiblingRefresh(input);
   if (loadedItem.failed) {
     await refreshGenericItemProjectionSnapshots(input.target);

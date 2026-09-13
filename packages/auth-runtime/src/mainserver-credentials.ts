@@ -150,11 +150,15 @@ export const buildMainserverIdentityAttributes = (input: {
   readonly mainserverUserApplicationSecret?: string;
 }): Record<string, readonly string[]> => {
   const attributes = copyIdentityAttributes(input.existingAttributes);
+  const readiness = resolveMainserverCredentialReadiness(attributes);
   const currentState = resolveMainserverCredentialState(attributes);
-  const preservedSecret = resolveAttributeFromCandidates(
-    attributes,
-    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
-  );
+  const preservedSecret =
+    readiness.status === 'ready'
+      ? readiness.credentials.apiSecret
+      : readiness.status === 'partial' &&
+          !readiness.missingAttributeNames.includes(MAINSERVER_APPLICATION_SECRET_ATTRIBUTE)
+        ? resolveAttributeFromCandidates(attributes, MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES)
+        : null;
 
   delete attributes[LEGACY_MAINSERVER_API_KEY_ATTRIBUTE];
   delete attributes[LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE];

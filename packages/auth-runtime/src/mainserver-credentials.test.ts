@@ -331,6 +331,25 @@ describe('readSvaMainserverCredentials', () => {
     });
   });
 
+  it('keeps a selected legacy pair together when canonical attributes are incomplete', async () => {
+    const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.js');
+
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: {
+          displayName: ['Alice Admin'],
+          mainserverUserApplicationSecret: ['unpaired-canonical-secret'],
+          sva_mainserver_api_key: ['legacy-key'],
+          sva_mainserver_api_secret: ['legacy-secret'],
+        },
+      })
+    ).toEqual({
+      displayName: ['Alice Admin'],
+      mainserverUserApplicationId: ['legacy-key'],
+      mainserverUserApplicationSecret: ['legacy-secret'],
+    });
+  });
+
   it('treats blank secret updates as not set and preserves the existing secret', async () => {
     const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.js');
 

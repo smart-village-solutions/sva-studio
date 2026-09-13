@@ -1,0 +1,4 @@
+{
+  "prNumber": 1361,
+  "body": "Zuverlässiger Tenant-Admin-Bootstrap\n\n- Neu erzeugte Tenant-Admin-Zugangsdaten werden im Provisioning-Lauf direkt für den lokalen IAM-Abgleich verwendet, sodass neue Instanzen ohne verzögerten Secret-Lookup betriebsbereit werden."
+}

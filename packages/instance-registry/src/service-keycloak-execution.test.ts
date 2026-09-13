@@ -122,7 +122,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('returns null when no claimed run is available', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
 
     await expect(
       processClaimedKeycloakProvisioningRun(
@@ -135,9 +136,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('allows legacy role migration only for a uniquely assigned realm in every realm mode', async () => {
-    const { isLegacyRealmRoleMigrationAllowed, resolveLegacyRealmRoleMigrationAllowed } = await import(
-      './provisioning-auth-policy.js'
-    );
+    const { isLegacyRealmRoleMigrationAllowed, resolveLegacyRealmRoleMigrationAllowed } =
+      await import('./provisioning-auth-policy.js');
     const current = { instanceId: 'tenant-havelland', authRealm: 'havelland' };
 
     expect(isLegacyRealmRoleMigrationAllowed([current], current)).toBe(true);
@@ -156,9 +156,7 @@ describe('service-keycloak-execution', () => {
   });
 
   it('keeps snapshot fingerprints stable across status-only instance transitions', async () => {
-    const { buildKeycloakSnapshotInputFingerprint } = await import(
-      './provisioning-auth-policy.js'
-    );
+    const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
     const provisioning = {
       instanceId: 'tenant-havelland',
       primaryHostname: 'havelland.example.test',
@@ -177,9 +175,9 @@ describe('service-keycloak-execution', () => {
         updatedAt: '2026-09-11T10:01:00.000Z',
       })
     ).toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
-    expect(
-      buildKeycloakSnapshotInputFingerprint({ ...provisioning, authRealm: 'other' })
-    ).not.toBe(buildKeycloakSnapshotInputFingerprint(provisioning));
+    expect(buildKeycloakSnapshotInputFingerprint({ ...provisioning, authRealm: 'other' })).not.toBe(
+      buildKeycloakSnapshotInputFingerprint(provisioning)
+    );
     expect(
       buildKeycloakSnapshotInputFingerprint(provisioning, {
         authClientSecretCiphertext: 'rotated-ciphertext',
@@ -199,9 +197,12 @@ describe('service-keycloak-execution', () => {
   });
 
   it('fails claimed runs when worker dependencies are missing', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
     };
 
     await expect(
@@ -223,9 +224,12 @@ describe('service-keycloak-execution', () => {
   });
 
   it('returns the persisted run when the claimed instance no longer exists', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue(null);
 
@@ -252,10 +256,13 @@ describe('service-keycloak-execution', () => {
   });
 
   it('marks runs as failed when preflight or plan reports blockers', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
 
@@ -266,7 +273,9 @@ describe('service-keycloak-execution', () => {
           provisionInstanceAuth: vi.fn(),
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'blocked' }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
         createRun()
       )
@@ -280,7 +289,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('executes technical repairs for an imported realm without admin bootstrap data', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const getKeycloakPreflight = vi.fn().mockResolvedValue({
       overallStatus: 'warning',
@@ -290,19 +300,23 @@ describe('service-keycloak-execution', () => {
       overallStatus: 'ready',
       driftSummary: 'Technische Reparatur erforderlich.',
     });
-    const pluginOidcClients = [{
-      contractVersion: '1.0',
-      pluginId: 'ssf',
-      clientId: 'ssf',
-      audience: 'ssf',
-      enabled: false,
-    }];
+    const pluginOidcClients = [
+      {
+        contractVersion: '1.0',
+        pluginId: 'ssf',
+        clientId: 'ssf',
+        audience: 'ssf',
+        enabled: false,
+      },
+    ];
     state.readQueuedPluginOidcClientRequirements.mockReturnValue(pluginOidcClients);
-    const listProvisioningRealmAssignments = vi.fn().mockResolvedValue([
-      { instanceId: 'instance-1', authRealm: 'tenant' },
-    ]);
+    const listProvisioningRealmAssignments = vi
+      .fn()
+      .mockResolvedValue([{ instanceId: 'instance-1', authRealm: 'tenant' }]);
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue({
       ...createLoaded(),
@@ -327,10 +341,12 @@ describe('service-keycloak-execution', () => {
         } as never,
         createRun({
           mode: 'new',
-          steps: [{
-            stepKey: 'queued',
-            details: { pluginOidcSnapshotVersion: '1.0', pluginOidcClients },
-          }],
+          steps: [
+            {
+              stepKey: 'queued',
+              details: { pluginOidcSnapshotVersion: '1.0', pluginOidcClients },
+            },
+          ],
         })
       )
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
@@ -357,11 +373,14 @@ describe('service-keycloak-execution', () => {
   });
 
   it('fails a claimed run when its queued plugin OIDC snapshot is missing', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const snapshotError = new Error('queued_plugin_oidc_client_requirements_missing_or_invalid');
     const provisionInstanceAuth = vi.fn();
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
     state.readQueuedPluginOidcClientRequirements.mockImplementation(() => {
@@ -389,7 +408,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('fails a claimed run when the realm ownership lookup fails', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const lookupError = new Error('registry_unavailable');
     const repository = {
       getKeycloakProvisioningRun: vi
@@ -422,9 +442,12 @@ describe('service-keycloak-execution', () => {
   });
 
   it('processes rotate_client_secret runs with the rotated secret sync path', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
 
@@ -436,7 +459,9 @@ describe('service-keycloak-execution', () => {
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
         createRun({ intent: 'rotate_client_secret', mode: 'existing' })
       )
@@ -447,16 +472,61 @@ describe('service-keycloak-execution', () => {
     expect(state.syncTenantAdminBootstrapAccount).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       tenantAdminBootstrap: undefined,
+      tenantAdminClientSecret: undefined,
       requestId: 'request-1',
       actorId: 'actor-1',
     });
     expect(state.completeRun).toHaveBeenCalled();
   });
 
-  it('does not sync a rotated secret when provisioning fails before rotation', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+  it('passes the freshly synchronized tenant admin secret to the bootstrap adapter', async () => {
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
+    const loaded = createLoaded();
+    loaded.instance.tenantAdminBootstrap = { username: 'tenant.admin' };
+    loaded.instance.tenantAdminClient = { clientId: 'tenant-admin' };
+    state.loadInstanceWithSecret.mockResolvedValue(loaded);
+    state.syncProvisionedClientSecretToRegistry.mockImplementationOnce(
+      async (_deps, { loaded: input }) => {
+        input.tenantAdminClientSecret = 'fresh-tenant-admin-secret';
+      }
+    );
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+    };
+
+    await processClaimedKeycloakProvisioningRun(
+      {
+        repository: repository as never,
+        provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+        syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
+        readKeycloakStateViaProvisioner: vi.fn(),
+        getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+        planKeycloakProvisioning: vi
+          .fn()
+          .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+      } as never,
+      createRun()
+    );
+
+    expect(state.syncTenantAdminBootstrapAccount).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      tenantAdminBootstrap: { username: 'tenant.admin' },
+      tenantAdminClientSecret: 'fresh-tenant-admin-secret',
+      requestId: 'request-1',
+      actorId: 'actor-1',
+    });
+  });
+
+  it('does not sync a rotated secret when provisioning fails before rotation', async () => {
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
+    const repository = {
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
 
@@ -464,10 +534,14 @@ describe('service-keycloak-execution', () => {
       processClaimedKeycloakProvisioningRun(
         {
           repository: repository as never,
-          provisionInstanceAuth: vi.fn().mockRejectedValue(new Error('plugin_oidc_client_readback_failed:ssf:ssf')),
+          provisionInstanceAuth: vi
+            .fn()
+            .mockRejectedValue(new Error('plugin_oidc_client_readback_failed:ssf:ssf')),
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
         createRun({ intent: 'rotate_client_secret', mode: 'existing' })
       )
@@ -478,12 +552,18 @@ describe('service-keycloak-execution', () => {
   });
 
   it('recovers a missing tenant secret even when the derived plan remains blocked', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
-    state.loadInstanceWithSecret.mockResolvedValue({ ...createLoaded(), authClientSecret: undefined });
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...createLoaded(),
+      authClientSecret: undefined,
+    });
 
     await expect(
       processClaimedKeycloakProvisioningRun(
@@ -508,14 +588,19 @@ describe('service-keycloak-execution', () => {
       )
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'succeeded' });
 
-    expect(provisionInstanceAuth).toHaveBeenCalledWith(expect.objectContaining({ rotateClientSecret: true }));
+    expect(provisionInstanceAuth).toHaveBeenCalledWith(
+      expect.objectContaining({ rotateClientSecret: true })
+    );
     expect(state.syncRotatedClientSecretToRegistry).toHaveBeenCalled();
   });
 
   it('limits reset_tenant_admin runs to tenant-admin user reconciliation', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
@@ -529,7 +614,9 @@ describe('service-keycloak-execution', () => {
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
         createRun({
           intent: 'reset_tenant_admin',
@@ -551,15 +638,19 @@ describe('service-keycloak-execution', () => {
     expect(state.syncTenantAdminBootstrapAccount).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       tenantAdminBootstrap: undefined,
+      tenantAdminClientSecret: undefined,
       requestId: 'request-1',
       actorId: 'actor-1',
     });
   });
 
   it('passes the configured tenant admin bootstrap to the local sync hook after provisioning', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue({
       ...createLoaded(),
@@ -582,7 +673,9 @@ describe('service-keycloak-execution', () => {
           syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
         createRun()
       )
@@ -596,15 +689,19 @@ describe('service-keycloak-execution', () => {
         firstName: 'Tenant',
         lastName: 'Admin',
       },
+      tenantAdminClientSecret: undefined,
       requestId: 'request-1',
       actorId: 'actor-1',
     });
   });
 
   it('fails the run when execution throws and reloads the persisted run state', async () => {
-    const { processClaimedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
     state.syncProvisionedClientSecretToRegistry.mockRejectedValue(new Error('database error'));
@@ -616,7 +713,9 @@ describe('service-keycloak-execution', () => {
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
-          planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
         } as never,
         createRun()
       )
@@ -631,9 +730,12 @@ describe('service-keycloak-execution', () => {
   });
 
   it('enqueues provisioning runs only for existing instances', async () => {
-    const { createExecuteKeycloakProvisioningHandler } = await import('./service-keycloak-execution.js');
+    const { createExecuteKeycloakProvisioningHandler } =
+      await import('./service-keycloak-execution.js');
     const repository = {
-      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1', overallStatus: 'queued' }),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'queued' }),
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
     };
     const handler = createExecuteKeycloakProvisioningHandler({
@@ -685,7 +787,9 @@ describe('service-keycloak-execution', () => {
           { status: 'blocked', summary: 'Client fehlt.' },
         ],
       }),
-      planKeycloakProvisioning: vi.fn().mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+      planKeycloakProvisioning: vi
+        .fn()
+        .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
     } as never);
 
     await expect(
@@ -701,7 +805,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('claims the next queued run via the repository helper', async () => {
-    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processNextQueuedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
       claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(null),
     };
@@ -717,7 +822,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('passes claim filters through to the repository helper', async () => {
-    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processNextQueuedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const repository = {
       claimNextKeycloakProvisioningRun: vi.fn().mockResolvedValue(null),
     };
@@ -738,7 +844,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('validates the instance lock dependency before claiming a run', async () => {
-    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processNextQueuedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const claimNextKeycloakProvisioningRun = vi.fn();
 
     await expect(
@@ -751,7 +858,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('processes a claimed run only inside its instance provisioning lock', async () => {
-    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processNextQueuedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const run = createRun();
     const lockedRepository = {
       getInstanceById: vi.fn().mockResolvedValue(null),
@@ -785,7 +893,8 @@ describe('service-keycloak-execution', () => {
   });
 
   it('skips a claimed run that is no longer running after acquiring the lock', async () => {
-    const { processNextQueuedKeycloakProvisioningRun } = await import('./service-keycloak-execution.js');
+    const { processNextQueuedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
     const run = createRun();
     const persistedRun = createRun({ overallStatus: 'failed' });
     const lockedDeps = {

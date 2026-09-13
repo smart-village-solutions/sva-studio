@@ -85,6 +85,7 @@ describe('tenant admin bootstrap sync', () => {
     await expect(
       syncTenantAdminBootstrapAccount({
         instanceId: 'tenant-a',
+        tenantAdminClientSecret: 'fresh-tenant-admin-secret',
         tenantAdminBootstrap: {
           username: 'tenant.admin',
           email: 'tenant.admin@example.test',
@@ -96,6 +97,7 @@ describe('tenant admin bootstrap sync', () => {
 
     expect(state.resolveIdentityProviderForInstance).toHaveBeenCalledWith('tenant-a', {
       executionMode: 'tenant_admin',
+      tenantAdminClientSecret: 'fresh-tenant-admin-secret',
     });
     expect(state.jitProvisionAccountWithClient).toHaveBeenCalledWith(state.client, {
       instanceId: 'tenant-a',
@@ -183,10 +185,7 @@ describe('tenant admin bootstrap sync', () => {
 
   it('keeps the sync idempotent when system_admin is already assigned directly', async () => {
     state.client.query.mockResolvedValue({
-      rows: [
-        { role_id: 'role-existing' },
-        { role_id: 'role-system-admin' },
-      ],
+      rows: [{ role_id: 'role-existing' }, { role_id: 'role-system-admin' }],
     });
 
     const { syncTenantAdminBootstrapAccount } = await import('./tenant-admin-bootstrap-sync.js');

@@ -14,10 +14,7 @@ import { resolveTenantAdminClientSecret } from '../config-tenant-secret.js';
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
 const logger = createSdkLogger({ component: 'iam-account-management', level: 'info' });
 
-let identityProviderCache:
-  | IdentityProviderResolution
-  | null
-  | undefined;
+let identityProviderCache: IdentityProviderResolution | null | undefined;
 
 export type IdentityProviderResolution = {
   provider: IdentityProviderPort;
@@ -140,20 +137,25 @@ const resolveBreakGlassIdentityProvider = (
 const resolveTenantAdminIdentityProvider = async (
   instanceId: string,
   instance: ResolvedInstanceMetadata,
-  executionMode: IdentityProviderResolution['executionMode']
+  executionMode: IdentityProviderResolution['executionMode'],
+  tenantAdminClientSecret?: string
 ): Promise<IdentityProviderResolution | null> => {
   try {
-    const tenantSecret = await resolveTenantAdminClientSecret(instanceId);
-    const resolvedSecret = tenantSecret.secret;
+    const resolvedSecret = tenantAdminClientSecret?.trim()
+      ? tenantAdminClientSecret.trim()
+      : (await resolveTenantAdminClientSecret(instanceId)).secret;
     const resolvedClientId = instance.tenantAdminClient?.clientId;
     if (!resolvedSecret || !resolvedClientId) {
-      logger.warn('Instance identity provider resolution returned incomplete tenant admin credentials', {
-        instance_id: instanceId,
-        reason_code: 'tenant_admin_credentials_incomplete',
-        execution_mode: executionMode,
-        has_client_id: Boolean(resolvedClientId),
-        has_client_secret: Boolean(resolvedSecret),
-      });
+      logger.warn(
+        'Instance identity provider resolution returned incomplete tenant admin credentials',
+        {
+          instance_id: instanceId,
+          reason_code: 'tenant_admin_credentials_incomplete',
+          execution_mode: executionMode,
+          has_client_id: Boolean(resolvedClientId),
+          has_client_secret: Boolean(resolvedSecret),
+        }
+      );
       return null;
     }
 
@@ -169,12 +171,15 @@ const resolveTenantAdminIdentityProvider = async (
     logResolvedInstanceIdentityProvider(instanceId, resolution);
     return resolution;
   } catch (error) {
-    logger.warn('Instance identity provider resolution failed while loading tenant admin credentials', {
-      instance_id: instanceId,
-      reason_code: 'tenant_admin_resolution_failed',
-      error_type: error instanceof Error ? error.constructor.name : typeof error,
-      execution_mode: executionMode,
-    });
+    logger.warn(
+      'Instance identity provider resolution failed while loading tenant admin credentials',
+      {
+        instance_id: instanceId,
+        reason_code: 'tenant_admin_resolution_failed',
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        execution_mode: executionMode,
+      }
+    );
     return null;
   }
 };
@@ -183,11 +188,9 @@ export const resolveIdentityProviderForInstance = async (
   instanceId: string,
   options: {
     executionMode?: 'tenant_admin' | 'break_glass';
+    tenantAdminClientSecret?: string;
   } = {}
-): Promise<
-  | IdentityProviderResolution
-  | null
-> => {
+): Promise<IdentityProviderResolution | null> => {
   const executionMode = options.executionMode ?? 'tenant_admin';
   const instance = await loadInstanceForIdentityProvider(instanceId, executionMode);
   if (!instance) {
@@ -198,7 +201,12 @@ export const resolveIdentityProviderForInstance = async (
     return resolveBreakGlassIdentityProvider(instanceId, instance, executionMode);
   }
 
-  return resolveTenantAdminIdentityProvider(instanceId, instance, executionMode);
+  return resolveTenantAdminIdentityProvider(
+    instanceId,
+    instance,
+    executionMode,
+    options.tenantAdminClientSecret
+  );
 };
 
 export const isKeycloakIdentityProvider = (

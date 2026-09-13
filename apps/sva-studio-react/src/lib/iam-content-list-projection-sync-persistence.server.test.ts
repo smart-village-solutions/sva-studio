@@ -71,6 +71,10 @@ describe('content list projection sync and persistence', () => {
         source_system: 'mainserver',
       }),
     ]);
+    expect(state.reconcileDeferredMainserverMutationProjections).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      rows: [expect.objectContaining({ sourceEntityId: 'event-refresh-1' })],
+    });
   });
 
   it('requests invisible mainserver records during projection refresh', async () => {

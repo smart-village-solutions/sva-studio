@@ -206,6 +206,10 @@ export {
   type MainserverMutationReconciliationStatus,
 } from './iam-contents/mainserver-mutation-journal.js';
 export {
+  reconcileDeferredMainserverMutationProjections,
+  type ReconciledMainserverProjectionRow,
+} from './iam-contents/mainserver-mutation-projection-reconciliation.js';
+export {
   hasUnresolvedMainserverOwnershipTransfer,
   loadRecoverableMainserverOwnershipTransfers,
   markMainserverMutationReconciliationRequired,

@@ -1,4 +1,7 @@
-import { withInstanceScopedDb } from '@sva/auth-runtime/server';
+import {
+  reconcileDeferredMainserverMutationProjections,
+  withInstanceScopedDb,
+} from '@sva/auth-runtime/server';
 
 import {
   dedupeProjectionRows,
@@ -361,6 +364,7 @@ export const persistMainserverProjectionRowsProgressively = async (
         )
       : null;
 
+  let rowsPersisted = false;
   await withInstanceScopedDb(input.target.instanceId, async (client) => {
     await withProjectionSchemaModeRetry(input.target, 'sync-state', async () => {
       const schemaMode = await loadProjectionSyncStateSchemaMode(client, input.target.instanceId);
@@ -371,10 +375,17 @@ export const persistMainserverProjectionRowsProgressively = async (
 
       if (projectionPayloadJson) {
         await upsertMainserverProjectionRows(client, input.target, projectionPayloadJson);
+        rowsPersisted = true;
       }
       const availableCount = await countProjectedRowsForScopeWithClient(client, input.target);
       await updateProjectionRefreshProgress(client, input, schemaMode, availableCount);
       await finalizeProgressiveProjectionRefresh(client, input, dedupedRows);
     });
   });
+  if (rowsPersisted) {
+    await reconcileDeferredMainserverMutationProjections({
+      instanceId: input.target.instanceId,
+      rows: dedupedRows,
+    });
+  }
 };

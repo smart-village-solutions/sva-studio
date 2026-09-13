@@ -1,0 +1,126 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const state = vi.hoisted(() => ({
+  finalizeMainserverMutationJournal: vi.fn(),
+  query: vi.fn(),
+  recordSuccessfulExternalContentMutation: vi.fn(),
+  revealField: vi.fn(),
+  withInstanceScopedDb: vi.fn(),
+}));
+
+vi.mock('@sva/iam-admin', () => ({ revealField: state.revealField }));
+vi.mock('../iam-account-management/shared.js', () => ({
+  withInstanceScopedDb: state.withInstanceScopedDb,
+}));
+vi.mock('./external-content-mutations.js', () => ({
+  recordSuccessfulExternalContentMutation: state.recordSuccessfulExternalContentMutation,
+}));
+vi.mock('./mainserver-mutation-journal.js', () => ({
+  finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
+}));
+
+describe('deferred Mainserver mutation projection reconciliation', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) =>
+      work({ query: state.query })
+    );
+    state.revealField.mockReturnValue('Redaktion');
+    state.recordSuccessfulExternalContentMutation.mockResolvedValue(
+      '11111111-1111-4111-8111-111111111111'
+    );
+  });
+
+  it('materializes deferred history from the next loaded projection row', async () => {
+    state.query.mockResolvedValue({
+      rows: [
+        {
+          operation_external_id: 'operation-1',
+          action_id: 'news.update',
+          content_type: 'news.article',
+          content_id: 'news-1',
+          actor_account_id: '22222222-2222-4222-8222-222222222222',
+          keycloak_subject: 'subject-1',
+          display_name_ciphertext: 'encrypted-name',
+        },
+      ],
+    });
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(
+      reconcileDeferredMainserverMutationProjections({
+        instanceId: 'de-musterhausen',
+        rows: [
+          {
+            sourceEntityType: 'news.article',
+            sourceEntityId: 'news-1',
+            contentType: 'news.article',
+            organizationId: '33333333-3333-4333-8333-333333333333',
+            title: 'Erfolgreiche Änderung',
+            payload: { title: 'Erfolgreiche Änderung' },
+            status: 'published',
+            authorDisplayMode: 'organization',
+            author: 'Musterhausen',
+          },
+        ],
+      })
+    ).resolves.toBe(1);
+
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-1',
+        operation: 'update',
+        sourceEntityId: 'news-1',
+      })
+    );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-1',
+      providerOutcome: 'succeeded',
+      reconciliationStatus: 'complete',
+      completedSteps: ['projection_history_reconciled'],
+      contentId: '11111111-1111-4111-8111-111111111111',
+    });
+  });
+
+  it('keeps an entry deferred when its actor display name cannot be recovered', async () => {
+    state.query.mockResolvedValue({
+      rows: [
+        {
+          operation_external_id: 'operation-1',
+          action_id: 'news.create',
+          content_type: 'news.article',
+          content_id: 'news-1',
+          actor_account_id: '22222222-2222-4222-8222-222222222222',
+          keycloak_subject: 'subject-1',
+          display_name_ciphertext: null,
+        },
+      ],
+    });
+    state.revealField.mockReturnValue(undefined);
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(
+      reconcileDeferredMainserverMutationProjections({
+        instanceId: 'de-musterhausen',
+        rows: [
+          {
+            sourceEntityType: 'news.article',
+            sourceEntityId: 'news-1',
+            contentType: 'news.article',
+            title: 'Erfolgreiche Änderung',
+            payload: {},
+            status: 'draft',
+            authorDisplayMode: 'user',
+            author: 'Redaktion',
+          },
+        ],
+      })
+    ).resolves.toBe(0);
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+});

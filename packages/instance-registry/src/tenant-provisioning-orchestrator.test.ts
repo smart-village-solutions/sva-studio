@@ -408,6 +408,10 @@ describe('tenant provisioning parent orchestrator', () => {
     );
     const logged = JSON.stringify(state.logger.warn.mock.calls);
     expect(logged).not.toContain('outer-secret');
+    const outerLog = state.logger.warn.mock.calls.find(
+      ([event]) => event === 'tenant_provisioning_step_exception'
+    );
+    expect(outerLog?.[1]).not.toHaveProperty('database_sqlstate');
     expect(harness.getRun()).toMatchObject({
       status: 'provisioning',
       stepKey: 'ingress',

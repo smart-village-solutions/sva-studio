@@ -350,6 +350,33 @@ describe('readSvaMainserverCredentials', () => {
     });
   });
 
+  it('preserves incomplete mixed-source attributes during unrelated profile updates', async () => {
+    const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.js');
+    const canonicalIdWithLegacySecret = {
+      displayName: ['Alice Admin'],
+      mainserverUserApplicationId: ['canonical-id'],
+      sva_mainserver_api_secret: ['legacy-secret'],
+    };
+    const canonicalSecretWithLegacyId = {
+      displayName: ['Bob Admin'],
+      mainserverUserApplicationSecret: ['canonical-secret'],
+      sva_mainserver_api_key: ['legacy-id'],
+    };
+
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalIdWithLegacySecret,
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalIdWithLegacySecret);
+    expect(
+      buildMainserverIdentityAttributes({
+        existingAttributes: canonicalSecretWithLegacyId,
+        preserveExistingCredentials: true,
+      })
+    ).toEqual(canonicalSecretWithLegacyId);
+  });
+
   it('treats blank secret updates as not set and preserves the existing secret', async () => {
     const { buildMainserverIdentityAttributes } = await import('./mainserver-credentials.js');
 

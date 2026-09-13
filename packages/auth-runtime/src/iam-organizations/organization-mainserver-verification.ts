@@ -168,6 +168,7 @@ export const verifyExistingOrganizationCredentials = async (input: {
     keycloakSubject: input.actorSubject,
     activeOrganizationId: input.organizationId,
     actingPrincipalType: 'organization',
+    allowProvisioningOrganizationCredentials: true,
   });
   if (effective.status !== 'ok' || effective.source !== 'organization') {
     throw new MainserverUserProvisioningError({

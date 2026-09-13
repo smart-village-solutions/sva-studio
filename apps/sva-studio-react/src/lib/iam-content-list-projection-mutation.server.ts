@@ -182,13 +182,25 @@ const isMutationFollowUpDue = async (target: ContentProjectionSyncTarget): Promi
   });
 };
 
+const requiresMutationHistory = (input: MutationRefreshInput): boolean =>
+  (input.operation === 'create' || input.operation === 'update') &&
+  Boolean(
+    (input.target.auditActorAccountId ?? input.target.actorAccountId) &&
+    input.target.actorDisplayName &&
+    input.target.mutationRef
+  );
+
 export const refreshMainserverProjectionForMutation = async (
   input: MutationRefreshInput
 ): Promise<void> => {
   const { target } = input;
   const refreshRunId = randomUUID();
   await enqueueProjectionWork(target, async () => {
-    if (input.operation !== 'delete' && !(await isMutationFollowUpDue(target))) {
+    if (
+      input.operation !== 'delete' &&
+      !(await isMutationFollowUpDue(target)) &&
+      !requiresMutationHistory(input)
+    ) {
       return;
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
@@ -331,7 +343,11 @@ export const refreshGenericItemSiblingProjections = async (
   input: GenericItemSiblingRefreshInput
 ): Promise<void> => {
   await recordGenericItemDeletionAudit(input);
-  if (input.operation !== 'delete' && !(await isMutationFollowUpDue(input.target))) {
+  if (
+    input.operation !== 'delete' &&
+    !(await isMutationFollowUpDue(input.target)) &&
+    !requiresMutationHistory(input)
+  ) {
     return;
   }
   const loadedItem = await loadGenericItemForSiblingRefresh(input);

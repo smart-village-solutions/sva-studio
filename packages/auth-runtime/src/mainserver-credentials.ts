@@ -148,8 +148,14 @@ export const buildMainserverIdentityAttributes = (input: {
   readonly existingAttributes: IdentityUserAttributes | null | undefined;
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecret?: string;
+  readonly preserveExistingCredentials?: boolean;
 }): Record<string, readonly string[]> => {
   const attributes = copyIdentityAttributes(input.existingAttributes);
+  const hasApplicationIdUpdate = input.mainserverUserApplicationId !== undefined;
+  const hasSecretUpdate = Boolean(input.mainserverUserApplicationSecret?.trim());
+  if (input.preserveExistingCredentials && !hasApplicationIdUpdate && !hasSecretUpdate) {
+    return attributes;
+  }
   const readiness = resolveMainserverCredentialReadiness(attributes);
   const currentState = resolveMainserverCredentialState(attributes);
   const preservedSecret =

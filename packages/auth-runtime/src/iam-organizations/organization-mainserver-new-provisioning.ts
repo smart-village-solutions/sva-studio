@@ -144,6 +144,7 @@ const completeProvisioning = async (
     keycloakSubject: input.actorSubject,
     activeOrganizationId: input.organizationId,
     actingPrincipalType: 'organization',
+    allowProvisioningOrganizationCredentials: true,
   });
   if (effective.status !== 'ok' || effective.source !== 'organization') {
     throw new Error('organization_credentials_unavailable_after_persist');

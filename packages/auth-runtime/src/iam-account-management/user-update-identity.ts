@@ -14,6 +14,7 @@ export const buildIdentityAttributesForUserUpdate = (input: {
     existingAttributes: input.existingAttributes,
     mainserverUserApplicationId: input.payload.mainserverUserApplicationId,
     mainserverUserApplicationSecret: input.payload.mainserverUserApplicationSecret,
+    preserveExistingCredentials: true,
   });
 
   if (input.payload.displayName !== undefined) {
@@ -23,7 +24,9 @@ export const buildIdentityAttributesForUserUpdate = (input: {
   return attributes;
 };
 
-const resolveRoleCompensationDelta = (plan: UserUpdatePlan): {
+const resolveRoleCompensationDelta = (
+  plan: UserUpdatePlan
+): {
   readonly rolesToAssign: readonly string[];
   readonly rolesToRemove: readonly string[];
 } => {
@@ -105,7 +108,10 @@ export const compensateUserIdentityUpdate = async (input: {
           keycloak_subject: plan.existing.keycloakSubject,
           request_id: requestId,
           trace_id: traceId,
-          error: compensationError instanceof Error ? compensationError.message : String(compensationError),
+          error:
+            compensationError instanceof Error
+              ? compensationError.message
+              : String(compensationError),
         },
       });
     }
@@ -131,7 +137,10 @@ export const compensateUserIdentityUpdate = async (input: {
         keycloak_subject: plan.existing.keycloakSubject,
         request_id: requestId,
         trace_id: traceId,
-        error: compensationError instanceof Error ? compensationError.message : String(compensationError),
+        error:
+          compensationError instanceof Error
+            ? compensationError.message
+            : String(compensationError),
       },
     });
   }

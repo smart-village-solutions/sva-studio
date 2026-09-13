@@ -174,8 +174,8 @@ describe('provisionMainserverUserCredentials', () => {
             data_provider_id: 4711,
             keycloak: {
               attributes: {
-                mainserverUserApplicationId: 'user-app',
-                mainserverUserApplicationSecret: 'user-secret',
+                mainserverUserApplicationId: '  user-app  ',
+                mainserverUserApplicationSecret: '  user-secret  ',
               },
             },
           }),

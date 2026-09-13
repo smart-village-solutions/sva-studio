@@ -390,4 +390,43 @@ describe('targeted content projection mutations', () => {
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
     expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
   });
+
+  it('preserves successful mutation history when a prior credential cooldown is active', async () => {
+    const syncScopeKey = 'de-musterhausen::account-1::org-1::organization::news.article';
+    fixture.syncStates.set(`news.article::${syncScopeKey}`, {
+      sync_scope_key: syncScopeKey,
+      last_started_at: '2026-09-13T12:00:00.000Z',
+      last_succeeded_at: null,
+      last_failed_at: new Date().toISOString(),
+      last_error_code: 'mainserver_credentials_stale',
+      last_error_message: 'credentials not ready',
+      projected_count: 0,
+    });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      title: 'Erfolgreiche Änderung',
+      contentType: 'news.article',
+      payload: {},
+      visible: true,
+      createdAt: '2026-09-13T12:00:00.000Z',
+      updatedAt: '2026-09-13T12:01:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'news.article',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-news-update-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'news-1',
+    });
+
+    expect(state.getSvaMainserverNews).toHaveBeenCalledOnce();
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ mutationRef: 'operation-news-update-1', sourceEntityId: 'news-1' })
+    );
+  });
 });

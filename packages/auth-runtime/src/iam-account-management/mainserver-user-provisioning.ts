@@ -27,8 +27,8 @@ const provisioningResponseSchema = z.object({
   data_provider_id: z.union([z.string().min(1), z.number().int()]).transform(String),
   keycloak: z.object({
     attributes: z.object({
-      mainserverUserApplicationId: z.string().min(1),
-      mainserverUserApplicationSecret: z.string().min(1),
+      mainserverUserApplicationId: z.string().trim().min(1),
+      mainserverUserApplicationSecret: z.string().trim().min(1),
     }),
   }),
 });

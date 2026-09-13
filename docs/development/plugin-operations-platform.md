@@ -141,6 +141,8 @@ Worker-fähige Serverprozesse starten ihre konfigurierte Lane bereits beim Proze
 
 Der anschließende Fleet-Reconcile gleicht für jede Instanz auch bei unveränderten Aktivierungszeilen die aktuell konfigurierten IAM-Verträge idempotent ab. Reine IAM-Vertragsänderungen werden dadurch auf bestehende Zuweisungen angewendet; entfernte Rollen-/Permission-Paare verlieren ausschließlich ihren als `module_sync` markierten Grant, während manuelle Grants und Permission-Definitionen bestehen bleiben. Ein fehlgeschlagener oder degradierter Fleet-Lauf plant revisions- und prozessgenerationsgebunden selbstständig einen neuen Versuch; er ist nicht von einem späteren HTTP-Request abhängig.
 
+Fleet-Fehler behalten pro Instanz ausschließlich eine begrenzte Fehlerklasse und die Einordnung `retryable` oder `degraded`; rohe Exception-, SQL- oder Secret-Inhalte sind weder Report- noch Metrikbestandteil. Identische retrybare Fehler werden nach 1, 5 und anschließend höchstens 15 Minuten erneut geprüft. Dauerhaft degradierte Zustände erhalten alle 30 Minuten eine Kontrollprobe. Eine Warnung entsteht nur beim Eintritt, bei einer geänderten Fehlermenge oder beim Wechsel der Backoff-Stufe; die Rückkehr zu `ready` erzeugt genau ein Recovery-Signal. Diese prozesslokale Fleet-Schleife ersetzt keine persistenten Plugin-Lifecycle-Retries und führt keinen zweiten fachlichen Statusspeicher ein.
+
 Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integrationsschritt:
 
 - die deklarativen `jobTypes` bleiben Build-Time-Vertrag im Plugin

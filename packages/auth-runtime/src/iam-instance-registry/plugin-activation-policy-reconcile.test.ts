@@ -5,6 +5,28 @@ const mocks = vi.hoisted(() => ({
   reconcileModuleActivationPolicies: vi.fn(),
   withRegistryService: vi.fn(),
   withScopedRegistryService: vi.fn(),
+  metricCallbacks: new Map<
+    string,
+    (result: {
+      observe: (value: number, attributes?: Readonly<Record<string, string>>) => void;
+    }) => void
+  >(),
+}));
+
+vi.mock('@opentelemetry/api', () => ({
+  metrics: {
+    getMeter: () => ({
+      createObservableGauge: (name: string) => ({
+        addCallback: (
+          callback: (result: {
+            observe: (value: number, attributes?: Readonly<Record<string, string>>) => void;
+          }) => void
+        ) => {
+          mocks.metricCallbacks.set(name, callback);
+        },
+      }),
+    }),
+  },
 }));
 
 vi.mock('./repository.js', () => ({
@@ -25,6 +47,19 @@ afterEach(() => {
   mocks.withScopedRegistryService.mockReset();
   resetPluginActivationPolicyFleetReconcileReportForTests();
 });
+
+const collectMetric = (metricName: string) => {
+  const observations: Array<{
+    value: number;
+    attributes?: Readonly<Record<string, string>>;
+  }> = [];
+  const callback = mocks.metricCallbacks.get(metricName);
+  if (!callback) throw new Error(`missing metric callback: ${metricName}`);
+  callback({
+    observe: (value, attributes) => observations.push({ value, attributes }),
+  });
+  return observations;
+};
 
 const configureRegistryService = () => {
   mocks.withRegistryService.mockImplementation(
@@ -109,6 +144,8 @@ describe('plugin activation policy fleet reconcile', () => {
             instanceId: 'instance-a',
             stage: 'reconcile_instance',
             code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_activation_policy_reconcile_unknown',
+            retryClass: 'degraded',
           },
         ],
       })
@@ -118,7 +155,9 @@ describe('plugin activation policy fleet reconcile', () => {
   it('publishes a degraded report when lifecycle follow-up scheduling fails', async () => {
     configureRegistryService();
     mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);
-    mocks.withScopedRegistryService.mockRejectedValueOnce(new Error('queue unavailable'));
+    mocks.withScopedRegistryService.mockRejectedValueOnce(
+      new Error('plugin_tenant_lifecycle_schedule_exhausted:instance-a:ssf')
+    );
 
     await expect(
       reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-2' })
@@ -131,6 +170,8 @@ describe('plugin activation policy fleet reconcile', () => {
             instanceId: 'instance-a',
             stage: 'reconcile_instance',
             code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',
+            retryClass: 'retryable',
           },
         ],
       })
@@ -151,9 +192,80 @@ describe('plugin activation policy fleet reconcile', () => {
           {
             stage: 'list_instances',
             code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_activation_policy_reconcile_unknown',
+            retryClass: 'degraded',
           },
         ],
       })
     );
+  });
+
+  it('keeps a known activation conflict bounded and marks it as degraded', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);
+    mocks.withScopedRegistryService.mockRejectedValueOnce(
+      new Error('plugin_activation_state_conflict:events')
+    );
+
+    await expect(
+      reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-4' })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        failures: [
+          {
+            instanceId: 'instance-a',
+            stage: 'reconcile_instance',
+            code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_activation_state_conflict',
+            retryClass: 'degraded',
+          },
+        ],
+      })
+    );
+  });
+
+  it('does not expose an unknown exception message in the fleet report', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);
+    mocks.withScopedRegistryService.mockRejectedValueOnce(
+      new Error('password=do-not-expose host=internal.example')
+    );
+
+    const report = await reconcileConfiguredPluginActivationPoliciesForAllInstances({
+      revision: 'catalog-5',
+    });
+
+    expect(JSON.stringify(report)).not.toContain('do-not-expose');
+    expect(report.failures[0]).toEqual(
+      expect.objectContaining({
+        reasonCode: 'plugin_activation_policy_reconcile_unknown',
+        retryClass: 'degraded',
+      })
+    );
+  });
+
+  it('exports fleet state and bounded failure metrics from the latest report', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a' }]);
+    mocks.withScopedRegistryService.mockRejectedValueOnce(
+      new Error('plugin_tenant_lifecycle_schedule_exhausted:instance-a:ssf')
+    );
+
+    await reconcileConfiguredPluginActivationPoliciesForAllInstances({ revision: 'catalog-6' });
+
+    expect(collectMetric('sva_plugin_activation_policy_fleet_state')).toContainEqual({
+      value: 1,
+      attributes: { state: 'retrying' },
+    });
+    expect(collectMetric('sva_plugin_activation_policy_fleet_failure_count')).toContainEqual({
+      value: 1,
+      attributes: {
+        reason_code: 'plugin_tenant_lifecycle_schedule_exhausted',
+        retry_class: 'retryable',
+      },
+    });
+    expect(collectMetric('sva_plugin_activation_policy_fleet_seconds_since_success')).toEqual([
+      { value: -1, attributes: undefined },
+    ]);
   });
 });

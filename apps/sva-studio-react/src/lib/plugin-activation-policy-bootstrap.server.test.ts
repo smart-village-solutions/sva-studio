@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const configureMock = vi.fn();
 const reconcileMock = vi.fn();
+const loggerInfoMock = vi.fn();
 const loggerWarnMock = vi.fn();
 const loggerErrorMock = vi.fn();
 const pluginSources: { pluginId: string }[] = [];
@@ -56,7 +57,11 @@ vi.mock('@sva/auth-runtime/server', () => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: () => ({ warn: loggerWarnMock, error: loggerErrorMock }),
+  createSdkLogger: () => ({
+    info: loggerInfoMock,
+    warn: loggerWarnMock,
+    error: loggerErrorMock,
+  }),
 }));
 
 import {
@@ -69,9 +74,11 @@ beforeEach(() => {
   vi.unstubAllEnvs();
   configureMock.mockReset();
   reconcileMock.mockReset();
+  loggerInfoMock.mockReset();
   loggerWarnMock.mockReset();
   loggerErrorMock.mockReset();
   pluginSources.splice(0, pluginSources.length, { pluginId: 'news' });
+  snapshot.revision = 'catalog-1';
   reconcileMock.mockResolvedValue({ status: 'ready' });
   resetPluginActivationPolicyBootstrapForTests();
 });
@@ -128,7 +135,7 @@ describe('plugin activation policy bootstrap', () => {
     expect(reconcileMock.mock.calls[1]?.[0].revision).not.toBe(firstRevision);
   });
 
-  it('schedules an autonomous retry after a degraded fleet reconcile', async () => {
+  it('backs off identical retryable failures and logs one recovery', async () => {
     const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     reconcileMock
       .mockResolvedValueOnce({
@@ -141,6 +148,53 @@ describe('plugin activation policy bootstrap', () => {
             instanceId: 'tenant-a',
             stage: 'reconcile_instance',
             code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',
+            retryClass: 'retryable',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        status: 'degraded',
+        revision: 'catalog-1',
+        instanceCount: 1,
+        reconciledInstanceCount: 0,
+        failures: [
+          {
+            instanceId: 'tenant-a',
+            stage: 'reconcile_instance',
+            code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',
+            retryClass: 'retryable',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        status: 'degraded',
+        revision: 'catalog-1',
+        instanceCount: 1,
+        reconciledInstanceCount: 0,
+        failures: [
+          {
+            instanceId: 'tenant-a',
+            stage: 'reconcile_instance',
+            code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',
+            retryClass: 'retryable',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        status: 'degraded',
+        revision: 'catalog-1',
+        instanceCount: 1,
+        reconciledInstanceCount: 0,
+        failures: [
+          {
+            instanceId: 'tenant-a',
+            stage: 'reconcile_instance',
+            code: 'plugin_activation_policy_reconcile_failed',
+            reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',
+            retryClass: 'retryable',
           },
         ],
       })
@@ -152,14 +206,115 @@ describe('plugin activation policy bootstrap', () => {
     startPluginActivationPolicyFleetReconcileInBackground();
     await Promise.resolve();
     expect(reconcileMock).toHaveBeenCalledTimes(1);
-    const retryTimer = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
-    expect(retryTimer).toBeDefined();
-    (retryTimer?.[0] as () => void)();
+    const firstRetry = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
+    expect(firstRetry).toBeDefined();
+    (firstRetry?.[0] as () => void)();
     await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledTimes(2));
+
+    const secondRetry = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 300_000);
+    expect(secondRetry).toBeDefined();
+    (secondRetry?.[0] as () => void)();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledTimes(3));
+
+    const cappedRetries = () => setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 900_000);
+    await vi.waitFor(() => expect(cappedRetries()).toHaveLength(1));
+    (cappedRetries()[0]?.[0] as () => void)();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(4));
+    expect(loggerWarnMock).toHaveBeenCalledTimes(3);
+
+    await vi.waitFor(() => expect(cappedRetries()).toHaveLength(2));
+    (cappedRetries()[1]?.[0] as () => void)();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(5));
+    await vi.waitFor(() => expect(loggerInfoMock).toHaveBeenCalledOnce());
     await ensurePluginActivationPoliciesConfigured();
 
     expect(configureMock).toHaveBeenCalledTimes(1);
-    expect(reconcileMock).toHaveBeenCalledTimes(2);
+    expect(reconcileMock).toHaveBeenCalledTimes(5);
+    expect(loggerInfoMock).toHaveBeenCalledWith(
+      'Plugin activation policy fleet reconcile recovered',
+      expect.objectContaining({
+        previous_retry_class: 'retryable',
+        previous_reason_codes: ['plugin_tenant_lifecycle_schedule_exhausted'],
+      })
+    );
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('checks an identical degraded failure every 30 minutes without repeated warnings', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const degradedReport = {
+      status: 'degraded',
+      revision: 'catalog-1',
+      instanceCount: 1,
+      reconciledInstanceCount: 0,
+      failures: [
+        {
+          instanceId: 'tenant-a',
+          stage: 'reconcile_instance',
+          code: 'plugin_activation_policy_reconcile_failed',
+          reasonCode: 'plugin_activation_state_conflict',
+          retryClass: 'degraded',
+        },
+      ],
+    };
+    reconcileMock
+      .mockResolvedValueOnce(degradedReport)
+      .mockResolvedValueOnce(degradedReport)
+      .mockResolvedValueOnce({ status: 'ready' });
+
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledOnce());
+
+    const degradedRetries = () =>
+      setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 1_800_000);
+    (degradedRetries()[0]?.[0] as () => void)();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
+    expect(loggerWarnMock).toHaveBeenCalledOnce();
+
+    await vi.waitFor(() => expect(degradedRetries()).toHaveLength(2));
+    (degradedRetries()[1]?.[0] as () => void)();
+    await vi.waitFor(() => expect(loggerInfoMock).toHaveBeenCalledOnce());
+
+    expect(loggerWarnMock).toHaveBeenCalledOnce();
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('resets retry backoff when the configured revision changes', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const retryableReport = {
+      status: 'degraded',
+      revision: 'catalog-1',
+      instanceCount: 1,
+      reconciledInstanceCount: 0,
+      failures: [
+        {
+          instanceId: 'tenant-a',
+          stage: 'reconcile_instance',
+          code: 'plugin_activation_policy_reconcile_failed',
+          reasonCode: 'plugin_tenant_lifecycle_schedule_exhausted',
+          retryClass: 'retryable',
+        },
+      ],
+    };
+    reconcileMock.mockResolvedValueOnce(retryableReport).mockResolvedValueOnce({
+      ...retryableReport,
+      revision: 'catalog-2',
+    });
+
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledOnce());
+
+    snapshot.revision = 'catalog-2';
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(loggerWarnMock).toHaveBeenCalledTimes(2));
+
+    expect(setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 60_000)).toHaveLength(2);
+    expect(setTimeoutSpy.mock.calls.some(([, delay]) => delay === 300_000)).toBe(false);
     setTimeoutSpy.mockRestore();
   });
 

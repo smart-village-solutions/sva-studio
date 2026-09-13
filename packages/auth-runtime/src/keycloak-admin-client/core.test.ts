@@ -344,6 +344,30 @@ describe('Keycloak admin client', () => {
     await expect(client.listRoles()).resolves.toEqual([]);
   });
 
+  it('opens the circuit breaker for unclassified provider failures', async () => {
+    const { KeycloakAdminClient, KeycloakAdminUnavailableError } = await import('./core.js');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockRejectedValueOnce(new TypeError('network failure'));
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example',
+      realm: 'demo',
+      clientId: 'studio',
+      clientSecret: 'secret',
+      fetchImpl,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 1,
+      circuitBreakerOpenMs: 30_000,
+      now: () => 0,
+      sleep: async () => undefined,
+    });
+
+    await expect(client.listRoles()).rejects.toThrow('network failure');
+    await expect(client.listUsers()).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
+  });
+
   it('reads env-based configs and prefers runtime secrets when available', async () => {
     state.getKeycloakAdminClientSecret.mockReturnValue('secret-from-runtime');
     state.getKeycloakProvisionerClientSecret.mockReturnValue('provisioner-from-runtime');

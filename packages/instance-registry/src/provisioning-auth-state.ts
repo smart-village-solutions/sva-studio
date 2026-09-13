@@ -20,6 +20,22 @@ import {
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
+const rethrowAfterSuccessfulRealmCleanup = (error: unknown): never => {
+  if (
+    !(error instanceof Error) ||
+    !error.message.includes(
+      'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
+    )
+  ) {
+    throw error;
+  }
+  const compensatedError = new Error(
+    'plugin_oidc_client_reconciliation_failed_compensated_by_realm_cleanup'
+  ) as Error & { cause?: unknown };
+  compensatedError.cause = error;
+  throw compensatedError;
+};
+
 export {
   readPluginOidcClientAlignment,
   readPluginOidcClientRequirements,
@@ -451,7 +467,7 @@ export const createProvisionInstanceAuthArtifacts =
         manualActionError.cause = cleanupError;
         throw manualActionError;
       }
-      throw error;
+      rethrowAfterSuccessfulRealmCleanup(error);
     }
     if (reconcileAuthClient) {
       await client.ensureOidcClient({

@@ -139,6 +139,27 @@ describe('service-keycloak-execution-failures', () => {
     );
   });
 
+  it('records successful outer realm compensation without a manual-cleanup label', async () => {
+    const repository = {
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-compensated',
+      instanceId: 'demo',
+      intent: 'provision',
+      error: new Error('plugin_oidc_client_reconciliation_failed_compensated_by_realm_cleanup'),
+    });
+
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: { reasonCode: 'PLUGIN_OIDC_RECONCILIATION_FAILED_COMPENSATED' },
+        summary: expect.not.stringContaining('Manuelle Bereinigung'),
+      })
+    );
+  });
+
   it('classifies a missing queued plugin OIDC snapshot with a stable reason', async () => {
     const repository = {
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),

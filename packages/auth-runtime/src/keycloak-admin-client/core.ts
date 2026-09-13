@@ -1359,6 +1359,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         client_id: clientId,
       });
     } catch (cleanupError) {
+      if (cleanupError instanceof KeycloakAdminRequestError && cleanupError.statusCode === 404) {
+        this.markSuccess();
+        logKeycloakWriteSuccess('delete_client', {
+          operation: 'delete_client',
+          realm: this.realm,
+          client_id: clientId,
+        });
+        throw originalError;
+      }
       logKeycloakWriteFailure(
         'delete_client_failed',
         { operation: 'delete_client', realm: this.realm, client_id: clientId },

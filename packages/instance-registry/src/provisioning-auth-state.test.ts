@@ -523,6 +523,33 @@ describe('provisioning-auth-state', () => {
     expect(client.deleteRealm).toHaveBeenCalledOnce();
   });
 
+  it('clears client manual-cleanup status after removing the newly created realm', async () => {
+    const clientCleanupError = new Error(
+      'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
+    );
+    const client = createClient({
+      ensureOidcClient: vi.fn(async () => {
+        throw clientCleanupError;
+      }),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    const result = provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      pluginOidcClients: [ssfClientRequirement],
+    });
+
+    await expect(result).rejects.toMatchObject({
+      message: 'plugin_oidc_client_reconciliation_failed_compensated_by_realm_cleanup',
+      cause: clientCleanupError,
+    });
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
+  });
+
   it('rejects existing-realm provisioning when the target realm is missing', async () => {
     const client = createClient({
       getRealm: vi.fn(async () => null),
@@ -673,14 +700,11 @@ describe('provisioning-auth-state', () => {
 
   it('preserves the raced username identity email when no bootstrap email is configured', async () => {
     const client = createClient({
-      findUserByUsername: vi
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: 'tenant-user',
-          email: 'preserved@example.org',
-          enabled: true,
-        }),
+      findUserByUsername: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'tenant-user',
+        email: 'preserved@example.org',
+        enabled: true,
+      }),
       createUser: vi.fn(async () => {
         throw Object.assign(new Error('conflict'), { statusCode: 409 });
       }),

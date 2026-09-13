@@ -996,7 +996,7 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
       .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
       .mockResolvedValueOnce(createJsonResponse(503, { error: 'temporarily_unavailable' }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(createJsonResponse(404, { error: 'client_not_found' }));
     const client = await createClient(fetchImpl, {
       circuitBreakerFailureThreshold: 1,
       maxRetries: 1,

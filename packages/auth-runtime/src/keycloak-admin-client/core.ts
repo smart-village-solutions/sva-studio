@@ -1305,13 +1305,17 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         message: `Keycloak client ${input.clientId} is missing after creation.`,
         statusCode: 502,
         code: 'client_readback_failed',
-        retryable: true,
+        retryable: false,
       });
     }
     // Keycloak may normalize empty callback/origin arrays to wildcard defaults
     // during POST. Reconcile the read-back representation so strict clients
     // never retain broader URI access than requested.
-    await this.upsertOidcClient(created, payload, input.clientId);
+    await this.upsertOidcClient(
+      created,
+      { ...payload, attributes: { ...created.attributes, ...payload.attributes } },
+      input.clientId
+    );
   }
 
   private async upsertOidcClient(

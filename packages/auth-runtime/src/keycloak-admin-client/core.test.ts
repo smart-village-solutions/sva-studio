@@ -851,7 +851,7 @@ describe('Keycloak admin client', () => {
       rootUrl: '',
       redirectUris: ['/*'],
       webOrigins: ['/*'],
-      attributes: {},
+      attributes: { realm_client: 'false', 'client.secret.creation.time': '123' },
       publicClient: false,
       standardFlowEnabled: false,
       implicitFlowEnabled: false,
@@ -890,8 +890,53 @@ describe('Keycloak admin client', () => {
       rootUrl: '',
       redirectUris: [],
       webOrigins: [],
-      attributes: { 'post.logout.redirect.uris': '' },
+      attributes: {
+        realm_client: 'false',
+        'client.secret.creation.time': '123',
+        'post.logout.redirect.uris': '',
+      },
     });
+  });
+
+  it('skips a redundant update when Keycloak preserves strict client settings on creation', async () => {
+    const createdClient = {
+      id: 'client-1',
+      clientId: 'ssf',
+      enabled: false,
+      rootUrl: '',
+      redirectUris: [],
+      webOrigins: [],
+      attributes: { 'post.logout.redirect.uris': '' },
+      publicClient: false,
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      protocol: 'openid-connect',
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [createdClient]));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'ssf',
+      redirectUris: [],
+      postLogoutRedirectUris: [],
+      webOrigins: [],
+      rootUrl: '',
+      enabled: false,
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      uriPolicy: 'replace',
+    });
+
+    expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
   });
 
   it('grants required realm-management client roles to the tenant admin service account', async () => {

@@ -25,6 +25,7 @@ describe('instance registry observability', () => {
     expect(log).toMatchObject({
       operation: 'create_instance', result: 'failed', request_id: 'req-1', instance_id: 'demo',
       step_key: 'registry_insert', error_type: 'Error', error_code: '23505',
+      database_sqlstate: '23505',
       database_table: 'instances', database_column: 'id', database_constraint: 'instances_pkey',
     });
     expect(JSON.stringify(log)).not.toContain('secret@example.test');

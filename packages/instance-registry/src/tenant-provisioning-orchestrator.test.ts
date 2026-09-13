@@ -444,10 +444,17 @@ describe('tenant provisioning parent orchestrator', () => {
       stepKey: 'ingress',
       requestId: 'request-ingress-persist-1',
     });
-    const persistenceError = Object.assign(
-      new Error('database update failed password=database-secret'),
-      { code: 'XX001' }
-    );
+    const persistenceError = Object.assign(new Error('database update failed database-secret'), {
+      code: 'XX001',
+      table: 'instance_provisioning_runs',
+      column: 'terminal_evidence',
+      constraint: 'instance_provisioning_runs_pkey',
+      detail: 'database-detail-secret',
+      hint: 'database-hint-secret',
+      query: 'UPDATE secret_table SET password = $1',
+      parameters: ['database-parameter-secret'],
+      stack: 'database-stack-secret',
+    });
     vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(persistenceError);
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
@@ -470,14 +477,19 @@ describe('tenant provisioning parent orchestrator', () => {
         error_type: 'Error',
         error_code: 'tenant_provisioning_step_failed',
         classification: 'tenant_provisioning_step_failed',
-        diagnostic_error: expect.objectContaining({
-          name: 'Error',
-          message: 'database update failed password=[REDACTED]',
-          code: 'XX001',
-        }),
+        database_sqlstate: 'XX001',
+        database_table: 'instance_provisioning_runs',
+        database_column: 'terminal_evidence',
+        database_constraint: 'instance_provisioning_runs_pkey',
       })
     );
-    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain('database-secret');
+    const logged = JSON.stringify(state.logger.warn.mock.calls);
+    expect(logged).not.toContain('database-secret');
+    expect(logged).not.toContain('database-detail-secret');
+    expect(logged).not.toContain('database-hint-secret');
+    expect(logged).not.toContain('secret_table');
+    expect(logged).not.toContain('database-parameter-secret');
+    expect(logged).not.toContain('database-stack-secret');
     expect(harness.getRun()).toMatchObject({
       status: 'provisioning',
       stepKey: 'ingress',

@@ -314,6 +314,38 @@ Nachweis umgesetzt werden. Vorhaben mit mehreren eigenständig lieferbaren
 Fähigkeiten oder neuen systemübergreifenden Invarianten müssen dagegen vor der
 Implementierung in reviewbare Abschnitte zerlegt werden.
 
+### Anti-Ausdehnungsregel
+
+Standard ist die Erweiterung des bestehenden zuständigen Pfads. Vor neuer
+Eigenlogik sind vorhandene Projekt- und Workspace-Lösungen, TypeScript/Stdlib,
+Browser-/Node-Plattform, Datenbankmittel und etablierte Dependencies zu prüfen.
+Neue Packages, Services, Provider, Factories, Gates, Workflows, Agenten,
+Skripte, Spezifikationen oder Konfigurationsschichten sind nur zulässig, wenn
+ein konkreter aktueller Bedarf im bestehenden Pfad nicht korrekt erfüllt werden
+kann.
+
+Vor einem neuen Artefakt müssen in höchstens zwei Sätzen die belegte Lücke, der
+unmittelbare Verbraucher und der Grund gegen die Erweiterung einer bestehenden
+Lösung benannt werden. Ist das nicht möglich, wird das Artefakt nicht angelegt.
+Etablierte Dependencies sind zulässig, wenn sie komplexe oder riskante Domänen
+mit weniger langfristiger Ownership abdecken; für triviale Hilfslogik wird
+keine neue Dependency eingeführt.
+
+Ersetzt eine Änderung einen bestehenden Pfad, wird dieser im selben
+Lieferabschnitt gelöscht. Parallele, alternative oder Shadow-Pfade sind nur für
+eine unvermeidbare Migration mit expliziter Endbedingung und festgelegter
+Entfernung zulässig. Keine Kontrollschicht darf ausschließlich eine andere
+Kontrollschicht koordinieren. Neue CI-Gates, Wrapper, Agenten oder
+Governance-Dokumente benötigen einen eigenständigen, messbaren Sicherheits-
+oder Qualitätsgewinn.
+
+Spekulative Erweiterbarkeit ist kein Nutzen. Hooks, Optionen, Interfaces,
+Adapter oder Konfigurationen für noch nicht existierende Verbraucher sind nicht
+zulässig. Vor Abschluss wird geprüft, welche Konzepte, Dateien und
+Ausführungspfade hinzugefügt und entfernt wurden. Wächst die technische oder
+organisatorische Oberfläche stärker als die unmittelbar gelieferte Fähigkeit,
+wird der Entwurf vereinfacht oder neu zugeschnitten.
+
 ### Einordnung vor der Umsetzung
 
 Eine vertiefte Vorabklärung ist insbesondere erforderlich, wenn eine Änderung
@@ -413,13 +445,43 @@ greift die Review- und Fix-Stop-Regel.
 
 ### Review- und Fix-Stop-Regel
 
+Vor Beginn der Änderung werden das Ziel des PRs in einem Satz, die expliziten
+Nicht-Ziele und die maximal betroffenen Bereiche festgehalten. Diese Grenze ist
+während der Merge-Phase verbindlich. In dieser Phase werden ausschließlich
+Findings behoben, die die konkrete Änderung unmittelbar falsch oder unsicher
+machen oder ihre Correctness, Security beziehungsweise Datenintegrität
+verletzen. Dafür ist die kleinste lokale Korrektur zu wählen. Neue
+Abstraktionen, Generalisierungen, Komponenten, zentrale Infrastruktur oder
+systemübergreifende Verträge sind während der Merge-Phase ausgeschlossen.
+
+Nicht blockierende Findings werden bei eigenständigem, belegtem Nutzen sofort
+als Follow-up erfasst und der Review-Thread mit Verweis darauf geschlossen. Rein
+hypothetische oder geschmackliche Befunde ohne belegten Nutzen werden begründet
+geschlossen, ohne Backlog-Arbeit zu erzeugen. Erweitert ein Fix den
+festgehaltenen Scope oder berührt er neue Komponenten beziehungsweise Verträge,
+wird er zurückgeschnitten und vor weiteren Änderungen gestoppt. Kann ein echter
+Blocker innerhalb dieser Grenze nicht korrekt behoben werden, ist der PR nicht
+merge-reif und benötigt einen einfacheren Entwurf oder einen neu zugeschnittenen
+Lieferabschnitt.
+
+Nach einer Review-Fixrunde gilt ein Circuit-Breaker: Ein weiterer unmittelbar
+blockierender Befund darf weiterhin mit der kleinsten lokalen Korrektur behoben
+werden, wenn diese innerhalb des vereinbarten Scopes bleibt und weder neue
+Komponenten oder Verträge noch eine zusätzliche Implementierungsschicht
+einführt. Alle anderen Findings führen zu einem einfacheren Entwurf oder zu
+nicht blockierenden Follow-ups, nicht zu einer weiteren Schicht im laufenden
+PR.
+
 Wenn in aufeinanderfolgenden Reviews oder CI-/Test-Runden mehrere neue Befunde
 dieselbe Invariante, Zustandsmaschine oder Systemgrenze betreffen, dürfen nicht
 weiter ausschließlich lokale Mikrofixes gestapelt werden. Vor dem nächsten
 Push sind die zugrunde liegende Invariante, ihr vollständiger Zustandsraum und
 alle bekannten Verbraucher zusammenhängend zu prüfen. Die daraus entstehenden
-Korrekturen bleiben so klein wie möglich, dürfen aber die gemeinsame Ursache
-nicht nur an einem einzelnen Symptom reparieren.
+Korrekturen bleiben so klein wie möglich und dürfen die gemeinsame Ursache
+nicht nur an einem einzelnen Symptom reparieren. Überschreitet die notwendige
+Korrektur dabei den festgehaltenen PR-Scope, wird nicht im laufenden PR eine
+weitere Schicht ergänzt, sondern der Entwurf vereinfacht oder der Lieferabschnitt
+neu zugeschnitten.
 
 Ein bereits stark integrierter PR wird nicht allein wegen seiner Größe spät
 mechanisch aufgeteilt. In diesem Fall ist anhand von Abhängigkeiten,
@@ -690,6 +752,7 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Nach jedem abgeschlossenen neuen Codeblock oder einer wesentlichen Scope-Erweiterung sind mindestens die betroffenen Unit-Tests auszuführen.
 - Vor dem initialen Push eines neuen Codeblocks oder einer wesentlichen Erweiterung des PR-Scopes muss ein schneller lokaler Gate-Lauf für die betroffenen Projekte erfolgen.
 - Bei kleinen Folgefixes in einem bestehenden PR sind breite lokale `affected`- oder `test:pr`-Läufe vor dem Push nicht erforderlich. Die GitHub-Gates validieren den gesamten exakten HEAD; lokal wird nur der unmittelbar geänderte Pfad getestet, wenn ein schneller aussagekräftiger Test existiert oder ein konkretes lokales beziehungsweise CI-Fehlersignal reproduziert werden muss.
+- Nach Zwischen-Pushes werden Check-Status und frühe rote Signale ausgewertet, ohne jedes Mal die vollständige Pipeline abzuwarten. Die vollständigen CI-Gates werden einmal für den exakten finalen HEAD bis zum terminalen Ergebnis abgewartet; jede danach erforderliche Codeänderung erzeugt einen neuen finalen HEAD und verwirft die vorherige Freigabeevidenz.
 - Reine Text-, Kommentar- und Dokumentationsänderungen benötigen keine lokalen Tests.
 - Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
 - Verifikation muss den kleinsten relevanten echten Gate-Pfad bevorzugen, nicht pauschal den größten Lauf.

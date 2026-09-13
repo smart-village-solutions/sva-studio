@@ -15,6 +15,7 @@ describe('content list projection sync and persistence', () => {
 
   it('refreshes requested mainserver projections synchronously', async () => {
     state.listSvaMainserverEvents.mockResolvedValue({
+      credentialSource: 'organization',
       data: [
         {
           id: 'event-refresh-1',
@@ -73,6 +74,10 @@ describe('content list projection sync and persistence', () => {
     ]);
     expect(state.reconcileDeferredMainserverMutationProjections).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
+      actingPrincipalType: 'organization',
+      actingPrincipalId: 'org-1',
+      activeOrganizationId: 'org-1',
+      credentialFingerprint: 'b'.repeat(64),
       rows: [expect.objectContaining({ sourceEntityId: 'event-refresh-1' })],
     });
   });

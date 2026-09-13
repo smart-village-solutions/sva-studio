@@ -42,6 +42,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',
+          deferred_at: '2026-09-13T12:02:00.000Z',
         },
       ],
     });
@@ -51,6 +52,10 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     await expect(
       reconcileDeferredMainserverMutationProjections({
         instanceId: 'de-musterhausen',
+        actingPrincipalType: 'organization',
+        actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+        activeOrganizationId: '33333333-3333-4333-8333-333333333333',
+        credentialFingerprint: 'a'.repeat(64),
         rows: [
           {
             sourceEntityType: 'news.article',
@@ -62,11 +67,27 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
             status: 'published',
             authorDisplayMode: 'organization',
             author: 'Musterhausen',
+            updatedAt: '2026-09-13T12:01:00.000Z',
           },
         ],
       })
     ).resolves.toBe(1);
 
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('journal.acting_principal_type = $2'),
+      [
+        'de-musterhausen',
+        'organization',
+        '33333333-3333-4333-8333-333333333333',
+        '33333333-3333-4333-8333-333333333333',
+        'a'.repeat(64),
+        ['news-1'],
+        ['news.article'],
+      ]
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "journal.last_error_code = 'mainserver_projection_credential_cooldown'"
+    );
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
       expect.objectContaining({
         actorDisplayName: 'Redaktion',
@@ -96,6 +117,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: null,
+          deferred_at: '2026-09-13T12:02:00.000Z',
         },
       ],
     });
@@ -106,6 +128,9 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     await expect(
       reconcileDeferredMainserverMutationProjections({
         instanceId: 'de-musterhausen',
+        actingPrincipalType: 'user',
+        actingPrincipalId: '22222222-2222-4222-8222-222222222222',
+        credentialFingerprint: 'a'.repeat(64),
         rows: [
           {
             sourceEntityType: 'news.article',
@@ -116,6 +141,50 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
             status: 'draft',
             authorDisplayMode: 'user',
             author: 'Redaktion',
+            updatedAt: '2026-09-13T12:01:00.000Z',
+          },
+        ],
+      })
+    ).resolves.toBe(0);
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
+  it('does not attribute a newer provider snapshot to the deferred Studio mutation', async () => {
+    state.query.mockResolvedValue({
+      rows: [
+        {
+          operation_external_id: 'operation-1',
+          action_id: 'news.update',
+          content_type: 'news.article',
+          content_id: 'news-1',
+          actor_account_id: '22222222-2222-4222-8222-222222222222',
+          keycloak_subject: 'subject-1',
+          display_name_ciphertext: 'encrypted-name',
+          deferred_at: '2026-09-13T12:02:00.000Z',
+        },
+      ],
+    });
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(
+      reconcileDeferredMainserverMutationProjections({
+        instanceId: 'de-musterhausen',
+        actingPrincipalType: 'user',
+        actingPrincipalId: '22222222-2222-4222-8222-222222222222',
+        credentialFingerprint: 'a'.repeat(64),
+        rows: [
+          {
+            sourceEntityType: 'news.article',
+            sourceEntityId: 'news-1',
+            contentType: 'news.article',
+            title: 'Extern geändert',
+            payload: {},
+            status: 'published',
+            authorDisplayMode: 'user',
+            author: 'Andere Redaktion',
+            updatedAt: '2026-09-13T12:03:00.000Z',
           },
         ],
       })

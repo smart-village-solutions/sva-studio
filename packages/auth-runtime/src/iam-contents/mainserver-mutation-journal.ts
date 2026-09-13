@@ -264,7 +264,9 @@ SET
   updated_at = NOW()
 WHERE instance_id = $1
   AND operation_external_id = $2
-  AND provider_outcome = 'succeeded';
+  AND provider_outcome = 'succeeded'
+  AND reconciliation_status = 'complete'
+  AND last_error_code IS NULL;
       `,
       [
         input.instanceId,

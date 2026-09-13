@@ -1,7 +1,4 @@
-import {
-  reconcileDeferredMainserverMutationProjections,
-  withInstanceScopedDb,
-} from '@sva/auth-runtime/server';
+import { withInstanceScopedDb } from '@sva/auth-runtime/server';
 
 import {
   dedupeProjectionRows,
@@ -9,6 +6,7 @@ import {
   type MainserverProjectionRowInput,
   type ProjectionDbClient,
 } from './iam-content-list-projection-model.server.js';
+import { reconcilePersistedMainserverProjectionRows } from './iam-content-list-projection-reconciliation.server.js';
 import {
   buildMainserverSyncScopeKey,
   buildProjectionTargetKey,
@@ -383,9 +381,6 @@ export const persistMainserverProjectionRowsProgressively = async (
     });
   });
   if (rowsPersisted) {
-    await reconcileDeferredMainserverMutationProjections({
-      instanceId: input.target.instanceId,
-      rows: dedupedRows,
-    });
+    await reconcilePersistedMainserverProjectionRows(input.target, dedupedRows);
   }
 };

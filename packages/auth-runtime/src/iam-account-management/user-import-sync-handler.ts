@@ -44,10 +44,8 @@ const normalizeOptionalText = (value: string | undefined | null): string | undef
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
-const hasRequiredProfileFields = (user: IdentityListedUser): boolean =>
-  normalizeOptionalText(user.email) !== undefined &&
-  normalizeOptionalText(user.firstName) !== undefined &&
-  normalizeOptionalText(user.lastName) !== undefined;
+const hasRequiredImportEmail = (user: IdentityListedUser): boolean =>
+  normalizeOptionalText(user.email) !== undefined;
 
 const looksLikeEmail = (value: string | undefined): value is string => {
   if (typeof value !== 'string') {
@@ -405,10 +403,10 @@ const syncIdentityUser = async (
       traceId: input.traceId,
     });
     repairedProfile = repaired.repaired;
-    if (!hasRequiredProfileFields(repaired.user)) {
+    if (!hasRequiredImportEmail(repaired.user)) {
       throw new KeycloakUserSyncManualReviewError(
         'identity_profile_incomplete',
-        'Keycloak-Benutzerprofil ist unvollständig und erfordert manuelle Prüfung.'
+        'Keycloak-Benutzerprofil enthält keine auflösbare E-Mail-Adresse und erfordert manuelle Prüfung.'
       );
     }
     const result = await upsertIdentityUser(client, {

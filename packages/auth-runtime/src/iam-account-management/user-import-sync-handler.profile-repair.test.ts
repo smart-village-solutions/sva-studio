@@ -320,23 +320,13 @@ describe('user-import-sync-handler profile repair characterization', () => {
     });
   });
 
-  it.each([
-    {
-      name: 'does not invent an email from a non-email username',
-      user: createUser({ username: 'not-an-email', email: undefined }),
-      seed: { firstName: 'Seed', lastName: 'User' },
-    },
-    {
-      name: 'does not invent missing names from the username-as-email fallback',
-      user: createUser({
-        username: 'username@example.test',
-        email: undefined,
-        firstName: undefined,
-        lastName: undefined,
-      }),
-      seed: null,
-    },
-  ])('$name and reports manual review without persisting the identity', async ({ user, seed }) => {
+  it('does not invent an email from a non-email username and reports manual review without persisting the identity', async () => {
+    const user = createUser({
+      externalId: 'missing-email-subject',
+      username: 'not-an-email',
+      email: undefined,
+    });
+    const seed = { firstName: 'Seed', lastName: 'User' };
     const result = await runSync({ user, seed });
 
     expect(state.upsertIdentityUser).not.toHaveBeenCalled();
@@ -347,6 +337,93 @@ describe('user-import-sync-handler profile repair characterization', () => {
       importedCount: 0,
       updatedCount: 0,
     });
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Keycloak user sync left a user in manual review',
+      expect.objectContaining({
+        reason: 'identity_profile_incomplete',
+        subject_ref: expect.stringMatching(/^[a-f0-9]{12}$/),
+        error:
+          'Keycloak-Benutzerprofil enthält keine auflösbare E-Mail-Adresse und erfordert manuelle Prüfung.',
+      })
+    );
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.externalId);
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.username);
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.firstName);
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.lastName);
+  });
+
+  it.each([
+    {
+      name: 'both names are absent',
+      user: createUser({ firstName: undefined, lastName: undefined }),
+    },
+    {
+      name: 'the first name is blank',
+      user: createUser({ firstName: '   ' }),
+    },
+    {
+      name: 'the last name is absent',
+      user: createUser({ lastName: undefined }),
+    },
+  ])('imports the identity without defaults when $name', async ({ user }) => {
+    const result = await runSync({ user, seed: null });
+
+    expect(result.provider.updateUser).not.toHaveBeenCalled();
+    expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      user,
+    });
+    expect(result.report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      manualReviewCount: 0,
+      importedCount: 1,
+      updatedCount: 0,
+    });
+  });
+
+  it('repairs a missing email from an email-shaped username without inventing missing names', async () => {
+    const user = createUser({
+      username: 'username@example.test',
+      email: undefined,
+      firstName: undefined,
+      lastName: undefined,
+    });
+    const result = await runSync({ user, seed: null });
+
+    expect(result.provider.updateUser).toHaveBeenCalledOnce();
+    expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', {
+      username: 'username@example.test',
+      email: 'username@example.test',
+    });
+    expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      user: {
+        ...user,
+        email: 'username@example.test',
+      },
+    });
+    expect(result.report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      manualReviewCount: 0,
+      repairedProfileCount: 1,
+    });
+  });
+
+  it('keeps repeated name-only incomplete profiles out of manual review', async () => {
+    const user = createUser({ firstName: undefined, lastName: undefined });
+
+    const first = await runSync({ user, seed: null });
+    const second = await runSync({ user, seed: null });
+
+    expect(first.report).toMatchObject({ outcome: 'success', manualReviewCount: 0 });
+    expect(second.report).toMatchObject({ outcome: 'success', manualReviewCount: 0 });
+    expect(state.upsertIdentityUser).toHaveBeenCalledTimes(2);
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Keycloak user sync left a user in manual review',
+      expect.anything()
+    );
   });
 
   it('preserves the current blank local-seed contract and sends it to manual review', async () => {

@@ -843,6 +843,57 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('removes wildcard callback defaults that Keycloak adds while creating a strict client', async () => {
+    const createdClient = {
+      id: 'client-1',
+      clientId: 'ssf',
+      enabled: false,
+      rootUrl: '',
+      redirectUris: ['/*'],
+      webOrigins: ['/*'],
+      attributes: {},
+      publicClient: false,
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      protocol: 'openid-connect',
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'ssf',
+      redirectUris: [],
+      postLogoutRedirectUris: [],
+      webOrigins: [],
+      rootUrl: '',
+      enabled: false,
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      uriPolicy: 'replace',
+    });
+
+    const updateCall = fetchImpl.mock.calls.find(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
+      enabled: false,
+      rootUrl: '',
+      redirectUris: [],
+      webOrigins: [],
+      attributes: { 'post.logout.redirect.uris': '' },
+    });
+  });
+
   it('grants required realm-management client roles to the tenant admin service account', async () => {
     const fetchImpl = vi
       .fn()

@@ -1280,6 +1280,21 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     };
 
     await this.upsertOidcClient(existing, payload, input.clientId);
+    if (!existing && input.uriPolicy === 'replace') {
+      const created = await this.getOidcClientByClientId(input.clientId);
+      if (!created) {
+        throw new KeycloakAdminRequestError({
+          message: `Keycloak client ${input.clientId} is missing after creation.`,
+          statusCode: 502,
+          code: 'client_readback_failed',
+          retryable: true,
+        });
+      }
+      // Keycloak may normalize empty callback/origin arrays to wildcard defaults
+      // during POST. Reconcile the read-back representation so strict clients
+      // never retain broader URI access than requested.
+      await this.upsertOidcClient(created, payload, input.clientId);
+    }
     if (!input.publicClient) await this.syncOidcClientSecret(existing, input);
   }
 

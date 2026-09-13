@@ -23,6 +23,13 @@ export const persistProvisionedMainserverCredentials = async (input: {
     apiKey: input.credentials.mainserverUserApplicationId.trim(),
     apiSecret: input.credentials.mainserverUserApplicationSecret.trim(),
   };
+  if (!normalizedCredentials.apiKey || !normalizedCredentials.apiSecret) {
+    throw new MainserverUserProvisioningError({
+      code: 'invalid_response',
+      message: 'SVA-Mainserver-Provisioning hat unvollständige Credentials geliefert.',
+      statusCode: 502,
+    });
+  }
   const readAttributes = async (attributeNames?: readonly string[]) => {
     try {
       return await input.trackKeycloakCall('get_user_attributes', () =>

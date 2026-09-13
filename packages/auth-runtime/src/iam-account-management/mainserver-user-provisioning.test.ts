@@ -290,7 +290,31 @@ describe('provisionMainserverUserCredentials', () => {
       })
     ).rejects.toMatchObject({
       name: 'MainserverUserProvisioningError',
-      code: 'missing_credentials',
+      code: 'mainserver_credentials_missing',
+      statusCode: 409,
+    });
+  });
+
+  it('maps partial actor credentials to the canonical readiness error', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'partial_credentials',
+      missingAttributeNames: ['mainserverUserApplicationSecret'],
+    });
+
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
+    await expect(
+      provisionMainserverUserCredentials({
+        actor: createActor(),
+        actorSubject: 'kc-admin-1',
+        keycloakSubject: 'kc-user-1',
+        payload: createPayload(),
+        fetchImpl: vi.fn(),
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverUserProvisioningError',
+      code: 'mainserver_credentials_partial',
+      retryable: false,
       statusCode: 409,
     });
   });

@@ -101,14 +101,44 @@ const loadProvisioningBearerToken = async (input: {
     keycloakSubject: input.actorSubject,
   });
   if (credentialResult.status !== 'ok') {
-    const credentialsUnavailable =
-      credentialResult.status === 'identity_provider_unavailable' ||
-      credentialResult.status === 'database_unavailable';
+    const errorByStatus = {
+      identity_provider_unavailable: {
+        code: 'mainserver_credentials_unavailable',
+        statusCode: 503,
+        retryable: true,
+      },
+      database_unavailable: {
+        code: 'mainserver_credentials_unavailable',
+        statusCode: 503,
+        retryable: true,
+      },
+      missing_credentials: {
+        code: 'mainserver_credentials_missing',
+        statusCode: 409,
+        retryable: false,
+      },
+      partial_credentials: {
+        code: 'mainserver_credentials_partial',
+        statusCode: 409,
+        retryable: false,
+      },
+      organization_mainserver_credentials_missing: {
+        code: 'organization_mainserver_credentials_missing',
+        statusCode: 409,
+        retryable: false,
+      },
+      acting_principal_not_allowed: {
+        code: 'acting_principal_not_allowed',
+        statusCode: 409,
+        retryable: false,
+      },
+    } as const;
+    const error = errorByStatus[credentialResult.status];
     throw new MainserverUserProvisioningError({
-      code: credentialsUnavailable ? 'mainserver_credentials_unavailable' : credentialResult.status,
+      code: error.code,
       message: 'Mainserver-Provisioning-Credentials des handelnden Benutzers fehlen.',
-      statusCode: credentialsUnavailable ? 503 : 409,
-      retryable: credentialsUnavailable,
+      statusCode: error.statusCode,
+      retryable: error.retryable,
     });
   }
 

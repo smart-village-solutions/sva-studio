@@ -75,21 +75,33 @@ export const resolveMainserverCredentialReadiness = (
     attributes[LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE]
   );
 
+  if (canonicalApplicationId && canonicalApplicationSecret) {
+    return {
+      status: 'ready',
+      attributeSource: 'canonical',
+      credentials: {
+        apiKey: canonicalApplicationId,
+        apiSecret: canonicalApplicationSecret,
+      },
+    };
+  }
+
+  if (legacyApplicationId && legacyApplicationSecret) {
+    return {
+      status: 'ready',
+      attributeSource: 'legacy',
+      credentials: {
+        apiKey: legacyApplicationId,
+        apiSecret: legacyApplicationSecret,
+      },
+    };
+  }
+
   const hasCanonicalAttribute = Boolean(canonicalApplicationId || canonicalApplicationSecret);
   const applicationId = hasCanonicalAttribute ? canonicalApplicationId : legacyApplicationId;
   const applicationSecret = hasCanonicalAttribute
     ? canonicalApplicationSecret
     : legacyApplicationSecret;
-  if (applicationId && applicationSecret) {
-    return {
-      status: 'ready',
-      attributeSource: hasCanonicalAttribute ? 'canonical' : 'legacy',
-      credentials: {
-        apiKey: applicationId,
-        apiSecret: applicationSecret,
-      },
-    };
-  }
 
   if (!applicationId && !applicationSecret) {
     return {

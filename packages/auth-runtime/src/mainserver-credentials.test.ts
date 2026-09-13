@@ -63,6 +63,17 @@ describe('readSvaMainserverCredentials', () => {
       status: 'partial',
       missingAttributeNames: ['mainserverUserApplicationId'],
     });
+    expect(
+      resolveMainserverCredentialReadiness({
+        mainserverUserApplicationId: ['incomplete-canonical-id'],
+        sva_mainserver_api_key: ['legacy-id'],
+        sva_mainserver_api_secret: ['legacy-secret'],
+      })
+    ).toEqual({
+      status: 'ready',
+      attributeSource: 'legacy',
+      credentials: { apiKey: 'legacy-id', apiSecret: 'legacy-secret' },
+    });
   });
 
   it('verifies a persisted credential version without returning credential values', async () => {

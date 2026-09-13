@@ -203,6 +203,29 @@ describe('executeCreateUser', () => {
     });
   });
 
+  it('rejects empty normalized credentials before reading or updating keycloak', async () => {
+    const getUserAttributes = vi.fn();
+    const updateUser = vi.fn();
+    const { persistProvisionedMainserverCredentials } =
+      await import('./mainserver-credential-persistence.js');
+
+    await expect(
+      persistProvisionedMainserverCredentials({
+        identityProvider: { getUserAttributes, updateUser },
+        instanceId: 'instance-1',
+        keycloakSubject: 'kc-user-1',
+        credentials: {
+          dataProviderId: '4711',
+          mainserverUserApplicationId: '   ',
+          mainserverUserApplicationSecret: 'mainserver-secret-1',
+        },
+        trackKeycloakCall: state.trackKeycloakCall,
+      })
+    ).rejects.toMatchObject({ code: 'invalid_response', statusCode: 502 });
+    expect(getUserAttributes).not.toHaveBeenCalled();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
   it('reports an unavailable canonical readback after writing provisioned credentials', async () => {
     const { persistProvisionedMainserverCredentials } =
       await import('./mainserver-credential-persistence.js');

@@ -40,6 +40,7 @@ import {
   recordUnexpectedPluginActivationPolicyFleetReconcileFailure,
   resetPluginActivationPolicyFleetReconcileReportForTests,
 } from './plugin-activation-policy-reconcile.js';
+import { configureInstanceRegistryPluginActivationPolicies } from './plugin-activation-policy-snapshot.js';
 
 afterEach(() => {
   mocks.listInstances.mockReset();
@@ -159,6 +160,33 @@ describe('plugin activation policy fleet reconcile', () => {
       })
     );
     expect(readPluginActivationPolicyFleetReconcileReport()).toBe(report);
+  });
+
+  it('does not publish a result from an obsolete runtime snapshot generation', async () => {
+    let completeInstanceList: ((instances: readonly never[]) => void) | undefined;
+    configureRegistryService();
+    configureInstanceRegistryPluginActivationPolicies({ revision: 'catalog-1', modules: [] });
+    mocks.listInstances.mockImplementationOnce(
+      () =>
+        new Promise<readonly never[]>((resolve) => {
+          completeInstanceList = resolve;
+        })
+    );
+
+    const reconcile = reconcileConfiguredPluginActivationPoliciesForAllInstances({
+      revision: 'catalog-1',
+    });
+    await vi.waitFor(() => expect(mocks.listInstances).toHaveBeenCalledOnce());
+    configureInstanceRegistryPluginActivationPolicies({ revision: 'catalog-2', modules: [] });
+    completeInstanceList?.([]);
+
+    await expect(reconcile).resolves.toEqual(
+      expect.objectContaining({ revision: 'catalog-1', status: 'ready' })
+    );
+    expect(readPluginActivationPolicyFleetReconcileReport()).toBeUndefined();
+    expect(collectMetric('sva_plugin_activation_policy_fleet_seconds_since_success')).toEqual([
+      { value: -1, attributes: undefined },
+    ]);
   });
 
   it('continues after an instance failure and identifies the degraded instance', async () => {

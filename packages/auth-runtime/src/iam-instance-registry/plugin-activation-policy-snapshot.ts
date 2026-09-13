@@ -39,6 +39,7 @@ let configuredTenantLifecycleRegistry: ReadonlyMap<string, PluginTenantLifecycle
 let configuredPluginOidcClientRequirements: readonly PluginOidcClientRequirement[] = Object.freeze(
   []
 );
+let configuredRuntimeSnapshotGeneration = 0;
 
 const readLifecycleContractDigest = (
   lifecycle: PluginTenantLifecycleRegistryEntry,
@@ -78,6 +79,7 @@ export const configureInstanceRegistryPluginActivationPolicies = (
   snapshot: TenantModuleActivationPolicySnapshot
 ): void => {
   configuredSnapshot = copySnapshot(snapshot);
+  configuredRuntimeSnapshotGeneration += 1;
 };
 
 const copyModuleIamRegistry = (
@@ -205,7 +207,11 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   configuredModuleIamRegistry = moduleIamRegistry;
   configuredTenantLifecycleRegistry = tenantLifecycleRegistry;
   configuredPluginOidcClientRequirements = pluginOidcClientRequirements;
+  configuredRuntimeSnapshotGeneration += 1;
 };
+
+export const readInstanceRegistryPluginRuntimeSnapshotGeneration = (): number =>
+  configuredRuntimeSnapshotGeneration;
 
 export const readInstanceRegistryPluginActivationPolicies =
   (): TenantModuleActivationPolicySnapshot => configuredSnapshot;

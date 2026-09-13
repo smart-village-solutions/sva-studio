@@ -843,7 +843,7 @@ describe('Keycloak admin client', () => {
     });
   });
 
-  it('removes wildcard callback defaults that Keycloak adds while creating a strict client', async () => {
+  it('removes wildcard callback defaults that Keycloak adds to an empty client allowlist', async () => {
     const createdClient = {
       id: 'client-1',
       clientId: 'ssf',
@@ -879,7 +879,6 @@ describe('Keycloak admin client', () => {
       implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
-      uriPolicy: 'replace',
     });
 
     const updateCall = fetchImpl.mock.calls.find(
@@ -896,6 +895,53 @@ describe('Keycloak admin client', () => {
         'post.logout.redirect.uris': '',
       },
     });
+  });
+
+  it('deletes a newly created client when its strict readback repair fails', async () => {
+    const createdClient = {
+      id: 'client-1',
+      clientId: 'ssf',
+      enabled: false,
+      rootUrl: '',
+      redirectUris: ['/*'],
+      webOrigins: ['/*'],
+      attributes: {},
+      publicClient: false,
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      protocol: 'openid-connect',
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
+      .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureOidcClient({
+        clientId: 'ssf',
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: '',
+        enabled: false,
+        standardFlowEnabled: false,
+        implicitFlowEnabled: false,
+        directAccessGrantsEnabled: false,
+        serviceAccountsEnabled: false,
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    const deleteCall = fetchImpl.mock.calls.find(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
+    );
+    expect(deleteCall).toBeDefined();
   });
 
   it('skips a redundant update when Keycloak preserves strict client settings on creation', async () => {

@@ -1275,7 +1275,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     };
 
     await this.upsertOidcClient(existing, payload, input.clientId);
-    await this.reconcileCreatedStrictOidcClient(existing, payload, input);
+    await this.reconcileCreatedOidcClientDefaults(existing, payload, input);
     if (!input.publicClient) await this.syncOidcClientSecret(existing, input);
   }
 
@@ -1293,12 +1293,13 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  private async reconcileCreatedStrictOidcClient(
+  private async reconcileCreatedOidcClientDefaults(
     existing: KeycloakClientRepresentation | null,
     payload: Parameters<KeycloakAdminClient['upsertOidcClient']>[1],
     input: { clientId: string; uriPolicy?: 'merge' | 'replace' }
   ): Promise<void> {
-    if (existing || input.uriPolicy !== 'replace') return;
+    const emptyAllowlist = payload.redirectUris.length === 0 && payload.webOrigins.length === 0;
+    if (existing || (input.uriPolicy !== 'replace' && !emptyAllowlist)) return;
     const created = await this.getOidcClientByClientId(input.clientId);
     if (!created) {
       throw new KeycloakAdminRequestError({
@@ -1311,11 +1312,49 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     // Keycloak may normalize empty callback/origin arrays to wildcard defaults
     // during POST. Reconcile the read-back representation so strict clients
     // never retain broader URI access than requested.
-    await this.upsertOidcClient(
-      created,
-      { ...payload, attributes: { ...created.attributes, ...payload.attributes } },
-      input.clientId
-    );
+    try {
+      await this.upsertOidcClient(
+        created,
+        { ...payload, attributes: { ...created.attributes, ...payload.attributes } },
+        input.clientId
+      );
+    } catch (error) {
+      try {
+        await this.deleteOidcClient(created, input.clientId);
+      } catch (cleanupError) {
+        const manualActionError = new Error(
+          'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
+        ) as Error & { cause?: unknown };
+        manualActionError.cause = cleanupError;
+        throw manualActionError;
+      }
+      throw error;
+    }
+  }
+
+  private async deleteOidcClient(
+    client: KeycloakClientRepresentation,
+    clientId: string
+  ): Promise<void> {
+    try {
+      await this.executeWithResilience<void>({
+        method: 'DELETE',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}`,
+        operation: 'delete_client',
+      });
+      logKeycloakWriteSuccess('delete_client', {
+        operation: 'delete_client',
+        realm: this.realm,
+        client_id: clientId,
+      });
+    } catch (error) {
+      logKeycloakWriteFailure(
+        'delete_client_failed',
+        { operation: 'delete_client', realm: this.realm, client_id: clientId },
+        error
+      );
+      throw error;
+    }
   }
 
   private async upsertOidcClient(

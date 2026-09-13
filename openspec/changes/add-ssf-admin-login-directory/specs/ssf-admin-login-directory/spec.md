@@ -12,6 +12,9 @@ kanonisch sortierten `tenants`-Darstellung gebildet werden, bei unverändertem
 Dieser MUST den bereiten Lifecycle, den Tenant-Grunddatensatz, beide Client-Verträge
 und die bestätigte IAM-Revision verlangen. Die Erstprovisionierung MUST diese
 Voraussetzungen vor `ready` herstellen; Directory-Reads bleiben schreibfrei.
+Die bestätigte IAM-Revision MUST mindestens ein wirksam SSF-berechtigtes Subject
+enthalten. Der Directory-Request MUST dafür den gemeinsamen Readiness-Zustand
+verwenden und darf keine zusätzliche Benutzerauflistung oder Projektion auslösen.
 
 #### Scenario: Aktive und inaktive Einträge
 

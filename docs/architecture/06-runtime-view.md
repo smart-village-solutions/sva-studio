@@ -1299,7 +1299,12 @@ die effektiven Studio-Permissions, verwendet den kanonisch aufgelösten
 Tenant-Realm und den Browserclient `ssf-frontend`. Vor der Projektion gleicht der
 Core die deklarierten Clients ab. Erst nach dem bestätigten Projektions-Read-back
 provisioniert das Plugin den Tenant-Grunddatensatz idempotent. Nach Client-Aktivierung
-und erneuter Baseline-/Revisionsprüfung wird `ssf.loginReady` bestätigt. Ein veraltetes `ready`
+und erneuter Baseline-/Revisionsprüfung wird `ssf.loginReady` bestätigt, sofern die
+revisionsgleiche Projektion mindestens ein wirksam SSF-berechtigtes Subject enthält.
+Eine konvergierte leere Projektion bleibt fachlich nicht loginbereit; beim ersten
+berechtigten Subject kann der Lifecycle den Zugang öffnen, beim Entzug des letzten
+Subjects schließt er ihn wieder. Root-Rechte werden dabei nicht automatisch auf
+Tenant-Rechte ausgeweitet. Ein veraltetes `ready`
 wird erneut beansprucht und repariert. Das Login-Verzeichnis und der Runtime-Zugriff
 verwenden denselben schreibfreien Readiness-Pfad; unvollständige Mandanten bleiben
 unveröffentlicht. Nicht bereite Ergebnisse bleiben im vorhandenen

@@ -156,6 +156,28 @@ describe('SSF Keycloak authorization projection target', () => {
     await expect(target.readBack('tenant-a')).resolves.toEqual(desired);
   });
 
+  it('requires at least one projected subject for login readiness across grant transitions', async () => {
+    const { client } = createClient();
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf', client })),
+      readLoginReadiness: vi.fn(async () => true),
+      revokeSsfTenantSessions: vi.fn(async () => undefined),
+    });
+    const empty = { ...desiredProjection(), subjects: [] };
+    const populated = desiredProjection();
+    const emptyRevision = createSsfAuthorizationRevision(empty);
+    const populatedRevision = createSsfAuthorizationRevision(populated);
+
+    await target.reconcile(empty, emptyRevision);
+    await expect(target.isReady('tenant-a', emptyRevision)).resolves.toBe(false);
+
+    await target.reconcile(populated, populatedRevision);
+    await expect(target.isReady('tenant-a', populatedRevision)).resolves.toBe(true);
+
+    await target.reconcile(empty, emptyRevision);
+    await expect(target.isReady('tenant-a', emptyRevision)).resolves.toBe(false);
+  });
+
   it('fails before writes when the desired subject does not exist in the tenant realm', async () => {
     const { client } = createClient();
     const target = createSsfKeycloakAuthorizationProjectionTarget({
@@ -260,7 +282,11 @@ describe('SSF Keycloak authorization projection target', () => {
     const { client } = createClient();
     client.getOidcClientByClientId.mockResolvedValueOnce(null);
     const target = createSsfKeycloakAuthorizationProjectionTarget({
-      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client })),
+      resolveTenant: vi.fn(async (instanceId) => ({
+        instanceId,
+        clientId: 'ssf-frontend',
+        client,
+      })),
       revokeSsfTenantSessions: vi.fn(async () => undefined),
     });
 

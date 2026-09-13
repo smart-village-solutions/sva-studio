@@ -160,6 +160,10 @@ SSF `/login/*`), Code Flow, PKCE S256 und maximal 900 Sekunden Access-Token-Lauf
 erzwingen; Implicit Flow, Passwortgrant, Service Accounts und Client-Secrets
 sind ausgeschlossen. Die Origin MUST aus der expliziten Installationskonfiguration
 stammen und darf nicht aus Requests oder Tenant-Hostnamen abgeleitet werden.
+`ssf.loginReady` MUST zusätzlich zu einer revisionsgleichen Projektion mindestens
+ein wirksam SSF-berechtigtes Subject verlangen. Eine revisionsgleiche leere
+Projektion ist technisch konvergiert, aber fachlich nicht loginbereit. Root-Rechte
+dürfen diese Voraussetzung nicht durch automatische Tenant-Rechte erfüllen.
 
 #### Scenario: Erstprovisionierung und Abbruch
 
@@ -169,6 +173,26 @@ stammen und darf nicht aus Requests oder Tenant-Hostnamen abgeleitet werden.
 - **AND** provisioniert das Plugin `ssf.tenants` erst nach diesem bestätigten IAM-Read-back idempotent
 - **AND** wird `ssf.loginReady` erst nach Aktivierung und gemeinsamer Readiness-Prüfung bestätigt
 - **AND** bleibt der Mandant bis zum erfolgreichen Lifecycle-Abschluss unveröffentlicht
+
+#### Scenario: Leere Projektion bleibt unveröffentlicht
+
+- **GIVEN** die SSF-Berechtigungsprojektion eines Mandanten ist revisionsgleich, enthält aber kein berechtigtes Subject
+- **WHEN** der Lifecycle die gemeinsame Login-Readiness prüft
+- **THEN** bleibt `ssf.loginReady` gesperrt
+- **AND** bleiben Login-Verzeichnis und Runtime-Zugriff für diesen Mandanten geschlossen
+
+#### Scenario: Erstes berechtigtes Subject öffnet den Zugang
+
+- **GIVEN** ein technisch provisionierter SSF-Mandant besitzt noch kein berechtigtes Subject
+- **WHEN** das erste berechtigte Subject erfolgreich projiziert und revisionsgleich bestätigt wurde
+- **THEN** darf der Lifecycle `ssf.loginReady` bestätigen
+
+#### Scenario: Entzug des letzten Subjects schließt den Zugang
+
+- **GIVEN** ein loginbereiter SSF-Mandant besitzt genau ein berechtigtes Subject
+- **WHEN** dessen Berechtigung entzogen und die leere Projektion revisionsgleich bestätigt wurde
+- **THEN** wird `ssf.loginReady` wieder gesperrt
+- **AND** werden Login-Verzeichnis und Runtime-Zugriff für diesen Mandanten geschlossen
 
 #### Scenario: Bestehende manuelle Recovery wird übernommen
 

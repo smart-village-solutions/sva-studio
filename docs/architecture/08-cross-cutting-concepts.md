@@ -989,7 +989,11 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
 - Das Verzeichnis veröffentlicht nur aktive, vollständig loginbereite Registry-Einträge
   mit ID, öffentlicher Bezeichnung und Realm. Sein schreibfreier Readiness-Pfad wird
   auch vom Runtime-Zugriff verwendet und prüft Lifecycle, Tenant-Grunddatensatz,
-  Ressourcenclient, aktivierten Browserclient und bestätigte Projektionsrevision.
+  Ressourcenclient, aktivierten Browserclient und eine bestätigte Projektionsrevision
+  mit mindestens einem wirksam SSF-berechtigten Subject. Eine revisionsgleiche leere
+  Projektion bleibt unveröffentlicht. Die Subject-Prüfung erfolgt im Lifecycle-
+  Reconcile; Directory- und Runtime-Requests verwenden den bestätigten Zustand ohne
+  zusätzliche Keycloak-Benutzerauflistung.
   Der Lifecycle stellt zuerst Clients und IAM-Projektion her, bestätigt deren Read-back
   und provisioniert erst danach den Tenant-Grunddatensatz. SSF führt weiterhin
   den Login selbst aus; Studio stellt keinen zusätzlichen Login-Handler bereit.

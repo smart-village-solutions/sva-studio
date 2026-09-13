@@ -153,6 +153,60 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
   });
 
+  it('reconciles an ownership transfer against its recorded target credentials', async () => {
+    state.query.mockResolvedValue({
+      rows: [
+        {
+          operation_external_id: 'transfer-1',
+          action_id: 'content.transferOwnership',
+          content_type: 'news.article',
+          content_id: 'news-1',
+          actor_account_id: '22222222-2222-4222-8222-222222222222',
+          keycloak_subject: 'subject-1',
+          display_name_ciphertext: 'encrypted-name',
+          deferred_at: '2026-09-13T12:02:00.000Z',
+        },
+      ],
+    });
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(
+      reconcileDeferredMainserverMutationProjections({
+        instanceId: 'de-musterhausen',
+        actingPrincipalType: 'organization',
+        actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+        activeOrganizationId: '33333333-3333-4333-8333-333333333333',
+        credentialFingerprint: 'b'.repeat(64),
+        rows: [
+          {
+            sourceEntityType: 'news.article',
+            sourceEntityId: 'news-1',
+            contentType: 'news.article',
+            organizationId: '33333333-3333-4333-8333-333333333333',
+            title: 'Übertragener Inhalt',
+            payload: {},
+            status: 'published',
+            authorDisplayMode: 'organization',
+            author: 'Musterhausen',
+            updatedAt: '2026-09-13T12:01:00.000Z',
+          },
+        ],
+      })
+    ).resolves.toBe(1);
+
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "journal.action_id = 'content.transferOwnership'"
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain('targetCredentialFingerprint');
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationExternalId: 'transfer-1',
+        completedSteps: ['projection_history_reconciled', 'target_projection_refreshed'],
+      })
+    );
+  });
+
   it('does not attribute a newer provider snapshot to the deferred Studio mutation', async () => {
     state.query.mockResolvedValue({
       rows: [

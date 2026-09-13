@@ -291,25 +291,42 @@ describe('organization Mainserver provisioning', () => {
     );
   });
 
-  it('keeps automatic organization creation neutral when personal bootstrap credentials are missing', async () => {
+  it.each(['missing_credentials', 'partial_credentials'] as const)(
+    'keeps automatic organization creation neutral when personal bootstrap credentials are %s',
+    async (status) => {
+      prepareNewProvisioningAccount();
+      state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+        status,
+      });
+
+      const { provisionOrganizationMainserver } =
+        await import('./organization-mainserver-provisioning.js');
+      await expect(
+        provisionOrganizationMainserver({ ...actorInput, trigger: 'organization_create' })
+      ).resolves.toMatchObject({ outcome: 'skipped', errorCode: status });
+      expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
+      expect(state.updateOrganizationMainserverProvisioningState).toHaveBeenCalledWith(
+        state.client,
+        expect.objectContaining({
+          provisioningStatus: 'not_provisioned',
+          provisioningPhase: 'personal_credentials_missing',
+        })
+      );
+    }
+  );
+
+  it('keeps explicit retry fail-closed for partial personal bootstrap credentials', async () => {
     prepareNewProvisioningAccount();
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
-      status: 'missing_credentials',
+      status: 'partial_credentials',
     });
 
     const { provisionOrganizationMainserver } =
       await import('./organization-mainserver-provisioning.js');
-    await expect(
-      provisionOrganizationMainserver({ ...actorInput, trigger: 'organization_create' })
-    ).resolves.toMatchObject({ outcome: 'skipped', errorCode: 'missing_credentials' });
-    expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
-    expect(state.updateOrganizationMainserverProvisioningState).toHaveBeenCalledWith(
-      state.client,
-      expect.objectContaining({
-        provisioningStatus: 'not_provisioned',
-        provisioningPhase: 'personal_credentials_missing',
-      })
-    );
+    await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+      outcome: 'failed',
+      errorCode: 'partial_credentials',
+    });
   });
 
   it('marks a lost Mainserver response for reconciliation without compensating the account', async () => {

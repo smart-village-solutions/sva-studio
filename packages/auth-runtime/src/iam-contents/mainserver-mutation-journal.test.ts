@@ -136,7 +136,7 @@ describe('Mainserver mutation journal', () => {
   });
 
   it('defers successful mutation projection without another provider read', async () => {
-    state.query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    state.query.mockResolvedValueOnce({ rows: [{ deferred: true }] });
 
     await expect(
       deferMainserverMutationProjection({
@@ -154,6 +154,25 @@ describe('Mainserver mutation journal', () => {
     expect(state.query.mock.calls[0]?.[0]).toContain('last_error_code IS NULL');
     expect(state.query.mock.calls[0]?.[0]).toContain(
       "NOT (completed_steps ? 'projection_history_reconciled')"
+    );
+    expect(state.query.mock.calls[0]?.[0]).toContain("action_id = 'content.transferOwnership'");
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "completed_steps ? 'target_provider_confirmed'"
+    );
+  });
+
+  it('reports an already deferred projection idempotently', async () => {
+    state.query.mockResolvedValueOnce({ rows: [{ deferred: true }] });
+
+    await expect(
+      deferMainserverMutationProjection({
+        instanceId: 'de-musterhausen',
+        operationExternalId: 'operation-1',
+      })
+    ).resolves.toBe(true);
+
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "completed_steps ? 'projection_follow_up_deferred'"
     );
   });
 

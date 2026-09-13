@@ -67,7 +67,9 @@ export const preflightNewOrganizationProvisioning = async (input: {
 
 export const isAutomaticPreflightSkip = (error: unknown): boolean =>
   error instanceof MainserverUserProvisioningError &&
-  (error.code === 'missing_credentials' || error.code === 'identity_provider_unavailable');
+  (error.code === 'missing_credentials' ||
+    error.code === 'partial_credentials' ||
+    error.code === 'identity_provider_unavailable');
 
 const requestAccessToken = async (input: {
   readonly oauthTokenUrl: string;

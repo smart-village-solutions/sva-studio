@@ -246,35 +246,62 @@ export const deferMainserverMutationProjection = async (input: {
   readonly operationExternalId: string;
 }): Promise<boolean> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const result = await client.query(
+    const result = await client.query<{ deferred: boolean }>(
       `
-UPDATE iam.mainserver_mutation_journal
-SET
-  reconciliation_status = 'reconciliation_required',
-  completed_steps = (
-    SELECT COALESCE(jsonb_agg(step ORDER BY step), '[]'::jsonb)
-    FROM (
-      SELECT DISTINCT jsonb_array_elements_text(
-        completed_steps || '["projection_follow_up_deferred"]'::jsonb
-      ) AS step
-    ) AS distinct_steps
-  ),
-  last_error_code = 'mainserver_projection_credential_cooldown',
-  completed_at = NULL,
-  updated_at = NOW()
-WHERE instance_id = $1
-  AND operation_external_id = $2
-  AND provider_outcome = 'succeeded'
-  AND reconciliation_status = 'complete'
-  AND last_error_code IS NULL
-  AND NOT (completed_steps ? 'projection_history_reconciled');
+WITH deferred_update AS (
+  UPDATE iam.mainserver_mutation_journal
+  SET
+    reconciliation_status = 'reconciliation_required',
+    completed_steps = (
+      SELECT COALESCE(jsonb_agg(step ORDER BY step), '[]'::jsonb)
+      FROM (
+        SELECT DISTINCT jsonb_array_elements_text(
+          completed_steps || '["projection_follow_up_deferred"]'::jsonb
+        ) AS step
+      ) AS distinct_steps
+    ),
+    last_error_code = 'mainserver_projection_credential_cooldown',
+    completed_at = NULL,
+    updated_at = NOW()
+  WHERE instance_id = $1
+    AND operation_external_id = $2
+    AND provider_outcome = 'succeeded'
+    AND NOT (completed_steps ? 'projection_history_reconciled')
+    AND NOT (completed_steps ? 'projection_follow_up_deferred')
+    AND (
+      (reconciliation_status = 'complete' AND last_error_code IS NULL)
+      OR (
+        action_id = 'content.transferOwnership'
+        AND reconciliation_status = 'reconciliation_required'
+        AND last_error_code IS NULL
+        AND (
+          completed_steps ? 'target_provider_confirmed'
+          OR completed_steps ? 'target_reread_confirmed'
+        )
+      )
+    )
+  RETURNING 1
+)
+SELECT
+  EXISTS (SELECT 1 FROM deferred_update)
+  OR EXISTS (
+    SELECT 1
+    FROM iam.mainserver_mutation_journal
+    WHERE instance_id = $1
+      AND operation_external_id = $2
+      AND provider_outcome = 'succeeded'
+      AND reconciliation_status = 'reconciliation_required'
+      AND completed_steps ? 'projection_follow_up_deferred'
+      AND NOT (completed_steps ? 'projection_history_reconciled')
+      AND last_error_code = 'mainserver_projection_credential_cooldown'
+  ) AS deferred;
       `,
       [
         input.instanceId,
         required(input.operationExternalId, 'mainserver_operation_external_id_required'),
       ]
     );
-    return (result.rowCount ?? 0) > 0;
+    return result.rows[0]?.deferred === true;
   });
 
 export const annotateMainserverMutationJournal = async (input: {

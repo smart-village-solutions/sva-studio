@@ -353,6 +353,8 @@ describe('targeted content projection mutations', () => {
         instanceId: 'de-musterhausen',
         keycloakSubject: 'kc-user-1',
         actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-news-update-stale',
         operation: 'update',
         entityId: 'news-1',
       })
@@ -360,6 +362,10 @@ describe('targeted content projection mutations', () => {
 
     expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledOnce();
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'operation-news-update-stale',
+    });
     expect(fixture.projectionRows).toEqual([]);
   });
 

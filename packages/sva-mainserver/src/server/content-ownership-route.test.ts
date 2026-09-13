@@ -304,6 +304,7 @@ describe('Mainserver content ownership route', () => {
         sourceDataProviderId: 'provider-source',
         targetDataProviderId: 'provider-target',
         targetBindingVersion: target.bindingVersion,
+        targetCredentialFingerprint: target.connection.credentialFingerprint,
       }),
     });
     expect(state.annotateJournal.mock.invocationCallOrder[0]).toBeLessThan(

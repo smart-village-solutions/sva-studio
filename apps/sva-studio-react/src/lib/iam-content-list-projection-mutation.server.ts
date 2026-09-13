@@ -216,6 +216,13 @@ export const refreshMainserverProjectionForMutation = async (
         : upsertProjectionMutation(input, refreshRunId));
     } catch (error) {
       await finalizeFailedMutation(input, refreshRunId, error);
+      const errorCode =
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code?: unknown }).code
+          : undefined;
+      if (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode)) {
+        await deferMutationHistory(input);
+      }
       throw error;
     }
     return undefined;

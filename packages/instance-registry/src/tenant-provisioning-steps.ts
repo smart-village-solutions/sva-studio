@@ -50,51 +50,35 @@ const toDiagnosticString = (value: unknown): string => {
 
 const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
 
+const readDiagnosticString = (value: unknown, key: string): string | undefined => {
+  const candidate = readProperty(value, key);
+  return typeof candidate === 'string' ? candidate : undefined;
+};
+
 const readDiagnosticErrorType = (error: unknown): string => {
-  const name = readProperty(error, 'name');
-  return error instanceof Error ? error.name : typeof name === 'string' ? name : typeof error;
+  return readDiagnosticString(error, 'name') ?? typeof error;
 };
 
 const readDiagnosticErrorCode = (error: unknown): string => {
-  const code = readProperty(error, 'code');
-  return typeof code === 'string' && /^[A-Za-z0-9_:-]{2,100}$/u.test(code)
-    ? code
+  const code = readDiagnosticString(error, 'code');
+  if (code && /^[A-Za-z0-9_:-]{2,100}$/u.test(code)) return code;
+  const message = readDiagnosticString(error, 'message');
+  return message && /^[a-z][a-z0-9_:-]{2,100}$/u.test(message)
+    ? message
     : INGRESS_FAILURE_CLASSIFICATION;
-};
-
-const snapshotError = (error: unknown): Readonly<Record<string, unknown>> => ({
-  name:
-    error instanceof Error
-      ? error.name
-      : typeof readProperty(error, 'name') === 'string'
-        ? readProperty(error, 'name')
-        : typeof error,
-  message: error instanceof Error ? error.message : toDiagnosticString(error),
-  stack: error instanceof Error && typeof error.stack === 'string' ? error.stack : undefined,
-  code: readProperty(error, 'code'),
-  syscall: readProperty(error, 'syscall'),
-  path: readProperty(error, 'path'),
-  dest: readProperty(error, 'dest'),
-});
-
-const readErrorCauseChain = (error: unknown): readonly Readonly<Record<string, unknown>>[] => {
-  const causes: Readonly<Record<string, unknown>>[] = [];
-  const seen = new Set<unknown>([error]);
-  let current = error;
-  while (causes.length < 5) {
-    const cause = readProperty(current, 'cause');
-    if (cause === undefined || seen.has(cause)) break;
-    seen.add(cause);
-    causes.push(snapshotError(cause));
-    current = cause;
-  }
-  return causes;
 };
 
 const buildIngressFailureDiagnostics = (error: unknown): Readonly<Record<string, unknown>> =>
   redactObject({
-    diagnostic_error: snapshotError(error),
-    diagnostic_causes: readErrorCauseChain(error),
+    diagnostic_error: {
+      name: readDiagnosticErrorType(error),
+      message: readDiagnosticString(error, 'message') ?? toDiagnosticString(error),
+      stack: readDiagnosticString(error, 'stack'),
+      code: readDiagnosticString(error, 'code'),
+      syscall: readDiagnosticString(error, 'syscall'),
+      path: readDiagnosticString(error, 'path'),
+      dest: readDiagnosticString(error, 'dest'),
+    },
   });
 
 const registryStep: StepHandler = async ({
@@ -184,19 +168,23 @@ const ingressStep: StepHandler = async ({
       primaryHostname: instance.primaryHostname,
     });
   } catch (error) {
-    logger.warn('tenant_ingress_publish_failed', {
-      operation: 'publish_tenant_ingress',
-      result: 'failed',
-      request_id: run.requestId,
-      instance_id: instance.instanceId,
-      primary_hostname: instance.primaryHostname,
-      run_id: run.id,
-      step_key: 'ingress',
-      error_type: readDiagnosticErrorType(error),
-      error_code: readDiagnosticErrorCode(error),
-      classification: INGRESS_FAILURE_CLASSIFICATION,
-      ...buildIngressFailureDiagnostics(error),
-    });
+    try {
+      logger.warn('tenant_ingress_publish_failed', {
+        operation: 'publish_tenant_ingress',
+        result: 'failed',
+        request_id: run.requestId,
+        instance_id: instance.instanceId,
+        primary_hostname: instance.primaryHostname,
+        run_id: run.id,
+        step_key: 'ingress',
+        error_type: readDiagnosticErrorType(error),
+        error_code: readDiagnosticErrorCode(error),
+        classification: INGRESS_FAILURE_CLASSIFICATION,
+        ...buildIngressFailureDiagnostics(error),
+      });
+    } catch {
+      // Diagnostic logging must never replace the provisioning failure.
+    }
     throw error;
   }
   assertExecutionActive();

@@ -367,20 +367,18 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('requested');
   });
 
-  it('logs a redacted error and cause chain at the tenant ingress publish boundary', async () => {
+  it('logs redacted primitive diagnostics at the tenant ingress publish boundary', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {
       status: 'provisioning',
       stepKey: 'ingress',
       requestId: 'request-ingress-1',
     });
-    const cause = new Error('authorization: Bearer inner-secret');
     const publishError = Object.assign(new Error('open failed password=outer-secret'), {
       code: 'EACCES',
       syscall: 'open',
       path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
       dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
-      cause,
     });
     vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
 
@@ -407,18 +405,10 @@ describe('tenant provisioning parent orchestrator', () => {
           dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
           stack: expect.any(String),
         }),
-        diagnostic_causes: [
-          expect.objectContaining({
-            name: 'Error',
-            message: 'authorization: [REDACTED]',
-            stack: expect.any(String),
-          }),
-        ],
       })
     );
     const logged = JSON.stringify(state.logger.warn.mock.calls);
     expect(logged).not.toContain('outer-secret');
-    expect(logged).not.toContain('inner-secret');
     expect(harness.getRun()).toMatchObject({
       status: 'provisioning',
       stepKey: 'ingress',
@@ -427,52 +417,48 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
-  it('stops ingress error diagnostics at a self-referential cause', async () => {
+  it('uses the validated domain message as the ingress error code fallback', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {
       status: 'provisioning',
       stepKey: 'ingress',
     });
-    const publishError = Object.assign(new Error('cyclic ingress failure'), {
-      cause: undefined as unknown,
-    });
-    publishError.cause = publishError;
+    const publishError = new Error('kassel_traefik_dynamic_dir_missing');
     vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(state.logger.warn).toHaveBeenCalledWith(
       'tenant_ingress_publish_failed',
-      expect.objectContaining({ diagnostic_causes: [] })
+      expect.objectContaining({ error_code: 'kassel_traefik_dynamic_dir_missing' })
     );
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      errorCode: 'kassel_traefik_dynamic_dir_missing',
+    });
   });
 
-  it('limits ingress error diagnostics to five nested causes', async () => {
+  it('preserves the provisioning failure when ingress diagnostics throw', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {
       status: 'provisioning',
       stepKey: 'ingress',
     });
-    let cause = new Error('cause-7');
-    for (let index = 6; index >= 1; index -= 1) {
-      cause = Object.assign(new Error(`cause-${index}`), { cause });
-    }
-    const publishError = Object.assign(new Error('root ingress failure'), { cause });
+    const publishError = new Error('kassel_traefik_dynamic_dir_missing');
     vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(publishError);
+    state.logger.warn.mockImplementationOnce(() => {
+      throw new Error('logging_failed');
+    });
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
-    expect(state.logger.warn).toHaveBeenCalledWith(
-      'tenant_ingress_publish_failed',
-      expect.objectContaining({
-        diagnostic_causes: [
-          expect.objectContaining({ message: 'cause-1' }),
-          expect.objectContaining({ message: 'cause-2' }),
-          expect.objectContaining({ message: 'cause-3' }),
-          expect.objectContaining({ message: 'cause-4' }),
-          expect.objectContaining({ message: 'cause-5' }),
-        ],
-      })
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      errorCode: 'kassel_traefik_dynamic_dir_missing',
+    });
+    expect(state.logger.error).toHaveBeenLastCalledWith(
+      'tenant_provisioning_failed',
+      expect.objectContaining({ error_code: 'kassel_traefik_dynamic_dir_missing' })
     );
   });
 

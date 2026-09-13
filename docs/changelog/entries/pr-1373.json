@@ -1,4 +1,4 @@
 {
   "prNumber": 1373,
-  "body": "Fehler bei der automatischen Mandanten-Ingress-Bereitstellung lassen sich gezielter diagnostizieren\n\n- Der Provisionierungs-Worker protokolliert Fehler am Ingress-Publish-Übergang mit redigiertem Stack und technischer Cause-Chain.\n- Geheimnisse bleiben maskiert; Provisionierungs-, Retry- und Fehlerverhalten ändern sich nicht."
+  "body": "Die Fehleranalyse bei einer fehlgeschlagenen automatischen Mandanteneinrichtung wurde verbessert."
 }

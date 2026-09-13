@@ -719,6 +719,53 @@ describe('instance registry service facade', () => {
     expect(repository.listProvisioningRuns).toHaveBeenCalledWith('demo');
   });
 
+  it('returns the active parent run on an automated idempotent redelivery', async () => {
+    const kasselInstance = {
+      ...idempotentInstance,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const kasselRun = {
+      ...latestRun,
+      status: 'provisioning' as const,
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      payloadFingerprint: buildCreateInstancePayloadFingerprint({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      }),
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => kasselInstance),
+      listProvisioningRuns: vi.fn(async () => [kasselRun]),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        instanceId: 'demo',
+        latestProvisioningRun: expect.objectContaining({
+          id: kasselRun.id,
+          status: 'provisioning',
+        }),
+      }),
+    });
+  });
+
   it('waits for the winning create request to persist its idempotency evidence', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),

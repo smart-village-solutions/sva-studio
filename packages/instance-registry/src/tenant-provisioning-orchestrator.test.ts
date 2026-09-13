@@ -429,11 +429,39 @@ describe('tenant provisioning parent orchestrator', () => {
       const processing = processNextTenantProvisioningRun(harness.deps, {
         workerId: 'worker-1',
       });
+      const rejected = expect(processing).rejects.toThrow('provisioning_claim_lost');
       await vi.advanceTimersByTimeAsync(15_000);
 
-      await expect(processing).resolves.toBeNull();
+      await rejected;
       expect(harness.getRun().stepKey).toBe('lifecycle');
       expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('propagates claim loss after activation so the enclosing transaction rolls back', async () => {
+    vi.useFakeTimers({ now });
+    try {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'activate' });
+      vi.mocked(harness.repository.renewProvisioningRunLease)
+        .mockResolvedValueOnce(harness.getRun())
+        .mockResolvedValueOnce(null);
+      vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
+        if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));
+        harness.changeInstance({ status });
+        return harness.getInstance();
+      });
+
+      const processing = processNextTenantProvisioningRun(harness.deps, {
+        workerId: 'worker-1',
+      });
+      const rejected = expect(processing).rejects.toThrow('provisioning_claim_lost');
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await rejected;
+      expect(harness.getRun().stepKey).toBe('activate');
     } finally {
       vi.useRealTimers();
     }

@@ -53,7 +53,13 @@ export const resolveIdempotentCreateRetry = async (
       requestId: input.requestId,
     });
     invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
-    return { ok: true, instance: toListItem(instance) };
+    const automatedRun =
+      matchingRun.snapshotVersion === '2.0' &&
+      matchingRun.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
+      shouldExposeAutomatedProvisioning(deps, instance)
+        ? matchingRun
+        : undefined;
+    return { ok: true, instance: toListItem(instance, automatedRun) };
   }
   if (instance.status !== 'failed') {
     throw new Error('provisioning_retry_instance_status_invalid');

@@ -174,7 +174,7 @@ export const processNextTenantProvisioningRun = async (
         assertExecutionActive,
       });
     } catch (error) {
-      if (errorCode(error) === 'provisioning_claim_lost') return null;
+      if (errorCode(error) === 'provisioning_claim_lost') throw error;
       const stepKey =
         errorCode(error) === 'provisioning_step_invalid' ? 'registry' : readStep(current);
       const failureTime = currentTime();

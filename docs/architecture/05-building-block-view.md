@@ -226,6 +226,7 @@ Abhängigkeiten des aktuellen Systems.
 - Mainserver-Credential-Auflösung für Downstream-Integrationen:
   - `packages/iam-admin` hält den organisationsgebundenen Credential-Speicher, die Write-only-Secret-Pflege und die read-safe Projektionslogik für Organisationen.
   - `packages/auth-runtime` liefert den aktiven Session- und Organisationskontext und stellt die Laufzeitgrenze für Mainserver-Aufrufe bereit.
+  - Derselbe Baustein unterscheidet vollständige, fehlende, partielle, veraltete und nicht lesbare Credential-Zustände und bestätigt Provisioning-Writes über einen fingerprintgebundenen Read-back.
   - `packages/auth-runtime` orchestriert nach lokal erfolgreicher Organisationserstellung und über den expliziten Retry-Endpunkt die Lease-geschützte Provisionierung. Nur `iam.org.write` autorisiert diesen eng begrenzten Systempfad; Rollen, Gruppen und freie Accountattribute sind kein Requestbestandteil.
   - `packages/sva-mainserver` löst daraus die effektive Credential-Quelle policy-gesteuert auf; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal`.
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
@@ -261,6 +262,7 @@ Abhängigkeiten des aktuellen Systems.
   - Read besitzt Visibility-SQL, Deduplizierung, Sortierung und Paging; Authorization besitzt Request-Aufbau, Typprüfung, Actor-Auflösung und Item-Access; List orchestriert Snapshot-Vorbereitung, Blocking-Entscheidung und Response-Aufbau
   - Modellentscheidungen bleiben I/O-frei, das Repository besitzt SQL- und Schema-Kompatibilität, die Source besitzt Mainserver-Page-/Detailzugriffe und Binding-Enrichment, Sync besitzt Generationen und Laufregistrierung, Mutation nutzt dieselbe Sync-Queue für gezielte Nachsynchronisation
   - die Mainserver-Projektionspersistenz ist account- und scope-isoliert: Snapshot, Deduplizierung und Sync-State werden über `instanceId`, `actorAccountId`, aktiven Organisationskontext und `contentType` getrennt geführt, damit keine Listenstände oder Fehlerzustände account-übergreifend wiederverwendet werden
+  - die Source-Grenze prüft Credential-Readiness vor dem ersten Mainserver-Aufruf; der bestehende Sync-State drosselt dauerhafte Credential-Fehler pro Scope für 15 Minuten, ohne einen zweiten Scheduler oder Speicher einzuführen
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
   - `packages/plugin-surveys` für plugin-spezifische Survey-Ansichten mit zusätzlichem Moderations-, Ergebnis- und Historienzuschnitt auf Basis desselben hostgeführten Content-/Mainserver-Backbones
 - Externe Mainserver-Anbindung:

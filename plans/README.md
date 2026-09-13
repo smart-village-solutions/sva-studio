@@ -11,6 +11,7 @@ vergeben.
 | ----------------------------------------------------------- | -------------------------------------------------- | --------: | ------: | ------------------------ | ----------- |
 | [035](./035-shadow-consolidated-ci-gates.md)                | Konsolidierte Gates im Shadow-Modus beweisen       |        P1 |       L | 034 genehmigt            | IN PROGRESS |
 | [036](./036-cut-over-and-delete-legacy-ci-orchestration.md) | Cutover durchführen und Alt-Orchestrierung löschen |        P1 |       M | 035 mit 20-Läufe-Parität | BLOCKED     |
+| [038](./038-enforce-mainserver-credential-readiness.md)     | Mainserver-Credential-Readiness erzwingen          |        P1 |       M | OpenSpec-Freigabe        | IN PROGRESS |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `BLOCKED`. Terminale Statuswerte `DONE` und
 `REJECTED` werden zusammen mit der jeweiligen Plandatei archiviert.
@@ -28,6 +29,12 @@ Statuswerte: `TODO`, `IN PROGRESS`, `BLOCKED`. Terminale Statuswerte `DONE` und
 - Plan 036 erzeugt den Ownership-Gewinn durch atomaren Cutover und Löschung.
   Required-Check-Namen bleiben unverändert; eine Ruleset-Mutation ist nicht
   Bestandteil der vorliegenden Autorisierung.
+- Plan 038 behebt Issue #1332 principalgenau. Die Umsetzung beginnt erst nach
+  Freigabe des strikt validierten OpenSpec-Changes
+  `enforce-mainserver-credential-readiness`; Issue #1331 / PR #1356 ist bereits
+  gemergt und Issue #1336 bleibt außerhalb dieses Plans. Production-
+  Verifikation und Rollout-Abnahme folgen separat über
+  `verify-mainserver-credential-readiness-rollout`.
 
 ## Scope-Grenzen
 

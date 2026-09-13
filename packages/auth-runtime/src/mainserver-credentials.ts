@@ -6,11 +6,31 @@ import {
   resolveIdentityProviderForInstance,
   trackKeycloakCall,
 } from './keycloak-user-attributes.js';
+import {
+  LEGACY_MAINSERVER_API_KEY_ATTRIBUTE,
+  LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE,
+  MAINSERVER_APPLICATION_ID_ATTRIBUTE,
+  MAINSERVER_APPLICATION_SECRET_ATTRIBUTE,
+  normalizeMainserverCredentialAttributeValue,
+  resolveMainserverCredentialReadiness,
+  type MainserverCredentialReadiness,
+  type SvaMainserverCredentials,
+} from './mainserver-credential-readiness.js';
 
-export type SvaMainserverCredentials = {
-  readonly apiKey: string;
-  readonly apiSecret: string;
-};
+export {
+  createMainserverCredentialFingerprint,
+  LEGACY_MAINSERVER_API_KEY_ATTRIBUTE,
+  LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE,
+  MAINSERVER_APPLICATION_ID_ATTRIBUTE,
+  MAINSERVER_APPLICATION_SECRET_ATTRIBUTE,
+  resolveMainserverCredentialReadiness,
+  verifyMainserverCredentialReadback,
+} from './mainserver-credential-readiness.js';
+export type {
+  MainserverCredentialReadback,
+  MainserverCredentialReadiness,
+  SvaMainserverCredentials,
+} from './mainserver-credential-readiness.js';
 
 export type MainserverCredentialState = {
   readonly mainserverUserApplicationId?: string;
@@ -26,6 +46,12 @@ type ReadSvaMainserverCredentialsResult =
       readonly status: 'missing_credentials';
     }
   | {
+      readonly status: 'partial_credentials';
+      readonly missingAttributeNames: readonly [
+        typeof MAINSERVER_APPLICATION_ID_ATTRIBUTE | typeof MAINSERVER_APPLICATION_SECRET_ATTRIBUTE,
+      ];
+    }
+  | {
       readonly status: 'identity_provider_unavailable';
     };
 
@@ -34,11 +60,6 @@ type ReadIdentityUserAttributesInput = {
   readonly attributeNames?: readonly string[];
   readonly instanceId?: string;
 };
-
-export const MAINSERVER_APPLICATION_ID_ATTRIBUTE = 'mainserverUserApplicationId';
-export const MAINSERVER_APPLICATION_SECRET_ATTRIBUTE = 'mainserverUserApplicationSecret';
-export const LEGACY_MAINSERVER_API_KEY_ATTRIBUTE = 'sva_mainserver_api_key';
-export const LEGACY_MAINSERVER_API_SECRET_ATTRIBUTE = 'sva_mainserver_api_secret';
 
 const MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES = [
   MAINSERVER_APPLICATION_ID_ATTRIBUTE,
@@ -54,20 +75,12 @@ export const getSvaMainserverCredentialAttributeNames = (): readonly string[] =>
   ...MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES,
 ];
 
-const normalizeAttributeValue = (value: readonly string[] | undefined): string | null => {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-  const candidate = value.find((entry) => typeof entry === 'string' && entry.trim().length > 0);
-  return candidate?.trim() ?? null;
-};
-
 const resolveAttributeFromCandidates = (
   attributes: IdentityUserAttributes | null | undefined,
   attributeNames: readonly string[]
 ): string | null => {
   for (const attributeName of attributeNames) {
-    const value = normalizeAttributeValue(attributes?.[attributeName]);
+    const value = normalizeMainserverCredentialAttributeValue(attributes?.[attributeName]);
     if (value) {
       return value;
     }
@@ -180,30 +193,35 @@ export const readSvaMainserverCredentials = async (
   return result.credentials;
 };
 
-export const readSvaMainserverCredentialsWithStatus = async (
+export const readSvaMainserverCredentialReadiness = async (
   keycloakSubject: string,
   instanceId?: string
-): Promise<ReadSvaMainserverCredentialsResult> => {
+): Promise<MainserverCredentialReadiness> => {
   const attributes = await readIdentityUserAttributes({
     keycloakSubject,
     attributeNames: getSvaMainserverCredentialAttributeNames(),
     instanceId,
   });
-  if (!attributes) {
+  return resolveMainserverCredentialReadiness(attributes);
+};
+
+export const readSvaMainserverCredentialsWithStatus = async (
+  keycloakSubject: string,
+  instanceId?: string
+): Promise<ReadSvaMainserverCredentialsResult> => {
+  const readiness = await readSvaMainserverCredentialReadiness(keycloakSubject, instanceId);
+  if (readiness.status === 'unavailable') {
     return {
       status: 'identity_provider_unavailable',
     };
   }
-
-  const apiKey = resolveAttributeFromCandidates(
-    attributes,
-    MAINSERVER_APPLICATION_ID_ATTRIBUTE_NAMES
-  );
-  const apiSecret = resolveAttributeFromCandidates(
-    attributes,
-    MAINSERVER_APPLICATION_SECRET_ATTRIBUTE_NAMES
-  );
-  if (!apiKey || !apiSecret) {
+  if (readiness.status === 'partial') {
+    return {
+      status: 'partial_credentials',
+      missingAttributeNames: readiness.missingAttributeNames,
+    };
+  }
+  if (readiness.status === 'missing') {
     return {
       status: 'missing_credentials',
     };
@@ -211,6 +229,6 @@ export const readSvaMainserverCredentialsWithStatus = async (
 
   return {
     status: 'ok',
-    credentials: { apiKey, apiSecret },
+    credentials: readiness.credentials,
   };
 };

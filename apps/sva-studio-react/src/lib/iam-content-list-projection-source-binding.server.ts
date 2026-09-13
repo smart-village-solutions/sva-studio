@@ -28,6 +28,29 @@ const contentProjectionLogger = createSdkLogger({
   level: 'info',
 });
 
+const assertProjectionCredentialsReady = async (
+  target: ContentProjectionSyncTarget
+): Promise<void> => {
+  const result = await readEffectiveSvaMainserverCredentialsWithStatus({
+    instanceId: target.instanceId,
+    keycloakSubject: target.keycloakSubject,
+    activeOrganizationId: target.organizationId,
+    actingPrincipalType: target.actingPrincipalType,
+  });
+  if (result.status === 'ok') return;
+
+  const code =
+    result.status === 'partial_credentials'
+      ? 'mainserver_credentials_partial'
+      : result.status === 'missing_credentials' ||
+          result.status === 'organization_mainserver_credentials_missing'
+        ? 'mainserver_credentials_missing'
+        : result.status === 'acting_principal_not_allowed'
+          ? 'acting_principal_not_allowed'
+          : 'mainserver_credentials_unavailable';
+  throw Object.assign(new Error('Mainserver-Credentials sind nicht einsatzbereit.'), { code });
+};
+
 type ProjectionBindingState = Readonly<{
   authorizationMode: 'credential_visible_compatibility' | 'exact';
   userDataProviderId?: string;
@@ -228,6 +251,9 @@ export const loadMainserverProjectionPage = async (
       'invalid_instance_id',
       'Kein Instanzkontext für diese Inhalte vorhanden.'
     );
+  }
+  if (pageQuery.page === 1) {
+    await assertProjectionCredentialsReady(target);
   }
   if ((process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE ?? 'slim') !== 'legacy') {
     const result = await listSvaMainserverProjection({

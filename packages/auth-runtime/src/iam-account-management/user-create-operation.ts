@@ -14,12 +14,11 @@ import {
   sendPasswordSetupInvitation,
   type CreateUserActorInfo,
 } from './user-create-invitation.js';
-import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
-import { haveEqualIdentityAttributes } from '../identity-attributes.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
 import { provisionMainserverUserCredentials } from './mainserver-user-provisioning.js';
+import { persistProvisionedMainserverCredentials } from './mainserver-credential-persistence.js';
 import { logMainserverProvisioningFailure } from './user-create-mainserver-provisioning-log.js';
 type InvitationResult = IamCreateUserResult['invitation'];
 
@@ -91,30 +90,6 @@ const syncUserRolesIfNeeded = async (input: {
   );
 };
 
-export const persistProvisionedMainserverCredentials = async (input: {
-  identityProvider: IdentityProviderResolution;
-  keycloakSubject: string;
-  credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>;
-}) => {
-  const existingAttributes = await trackKeycloakCall('get_user_attributes', () =>
-    input.identityProvider.provider.getUserAttributes(input.keycloakSubject)
-  );
-  const nextAttributes = buildMainserverIdentityAttributes({
-    existingAttributes,
-    mainserverUserApplicationId: input.credentials.mainserverUserApplicationId,
-    mainserverUserApplicationSecret: input.credentials.mainserverUserApplicationSecret,
-  });
-
-  if (haveEqualIdentityAttributes(existingAttributes, nextAttributes)) {
-    return;
-  }
-
-  await trackKeycloakCall('update_user', () =>
-    input.identityProvider.provider.updateUser(input.keycloakSubject, {
-      attributes: nextAttributes,
-    })
-  );
-};
 const enrichUserWithMainserverCredentials = (
   user: IamCreateUserResult['user'],
   credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>
@@ -142,9 +117,11 @@ const tryProvisionMainserverCredentials = async (input: {
   }
 
   await persistProvisionedMainserverCredentials({
-    identityProvider: input.identityProvider,
+    identityProvider: input.identityProvider.provider,
+    instanceId: input.actor.instanceId,
     keycloakSubject: input.keycloakSubject,
     credentials,
+    trackKeycloakCall,
   });
 
   return credentials;

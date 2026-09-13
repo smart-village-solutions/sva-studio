@@ -7,12 +7,16 @@ const state = vi.hoisted(() => ({
   reserveIdempotency: vi.fn(),
   completeIdempotency: vi.fn(async () => undefined),
   resolveUserMutationTargetContext: vi.fn(),
-  withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})),
+  withInstanceScopedDb: vi.fn(
+    async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})
+  ),
   resolveUserDetail: vi.fn(),
   resolveActorMaxRoleLevel: vi.fn(async () => 100),
   ensureActorCanManageTarget: vi.fn(() => ({ ok: true })),
   provisionMainserverUserCredentials: vi.fn(),
-  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
+  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) =>
+    execute()
+  ),
   emitActivityLog: vi.fn(async () => undefined),
 }));
 
@@ -91,6 +95,7 @@ describe('reprovisionMainserverUserInternal', () => {
     vi.clearAllMocks();
     state.requireIdempotencyKey.mockReturnValue({ key: 'idem-1' });
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    let attributes: Record<string, readonly string[]> = { locale: ['de'] };
     state.resolveUserMutationTargetContext.mockResolvedValue({
       actor: {
         instanceId: 'instance-1',
@@ -101,8 +106,12 @@ describe('reprovisionMainserverUserInternal', () => {
       },
       identityProvider: {
         provider: {
-          getUserAttributes: vi.fn(async () => ({ locale: ['de'] })),
-          updateUser: vi.fn(async () => undefined),
+          getUserAttributes: vi.fn(async () => attributes),
+          updateUser: vi.fn(
+            async (_subject: string, payload: { attributes: typeof attributes }) => {
+              attributes = payload.attributes;
+            }
+          ),
         },
       },
       userId: 'user-1',
@@ -124,7 +133,8 @@ describe('reprovisionMainserverUserInternal', () => {
   });
 
   it('reprovisions mainserver credentials for an existing user and stores them in keycloak', async () => {
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
 
     const response = await reprovisionMainserverUserInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
@@ -149,12 +159,12 @@ describe('reprovisionMainserverUserInternal', () => {
     });
     expect(state.provisionMainserverUserCredentials).toHaveBeenCalledWith({
       actor: {
-          instanceId: 'instance-1',
-          actorAccountId: 'actor-1',
-          activeOrganizationId: 'org-1',
-          requestId: 'req-1',
-          traceId: 'trace-1',
-        },
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        activeOrganizationId: 'org-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
       actorSubject: 'kc-actor-1',
       keycloakSubject: 'kc-user-1',
       payload: {
@@ -191,9 +201,59 @@ describe('reprovisionMainserverUserInternal', () => {
     );
   });
 
+  it('does not report success when the Keycloak readback is partial', async () => {
+    state.resolveUserMutationTargetContext.mockResolvedValue({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        activeOrganizationId: 'org-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      identityProvider: {
+        provider: {
+          getUserAttributes: vi
+            .fn()
+            .mockResolvedValueOnce({ locale: ['de'] })
+            .mockResolvedValueOnce({ mainserverUserApplicationId: ['mainserver-app-1'] }),
+          updateUser: vi.fn(async () => undefined),
+        },
+      },
+      userId: 'user-1',
+    });
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
+
+    const response = await reprovisionMainserverUserInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        activeOrganizationId: 'org-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'mainserver_credentials_missing',
+        details: { reason_code: 'mainserver_credentials_partial' },
+      },
+    });
+    expect(state.emitActivityLog).not.toHaveBeenCalled();
+  });
+
   it('returns not_found when the target user does not exist', async () => {
     state.resolveUserDetail.mockResolvedValue(null);
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
 
     const response = await reprovisionMainserverUserInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
@@ -219,7 +279,9 @@ describe('reprovisionMainserverUserInternal', () => {
   });
 
   it('maps mainserver upstream failures to provisioning diagnostics instead of keycloak errors', async () => {
-    const provisioningError = new Error('Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.') as Error & {
+    const provisioningError = new Error(
+      'Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.'
+    ) as Error & {
       code: string;
       statusCode: number;
     };
@@ -228,7 +290,8 @@ describe('reprovisionMainserverUserInternal', () => {
     provisioningError.statusCode = 504;
     state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
 
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
 
     const response = await reprovisionMainserverUserInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
@@ -271,7 +334,8 @@ describe('reprovisionMainserverUserInternal', () => {
       },
     });
 
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
 
     const response = await reprovisionMainserverUserInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
@@ -307,7 +371,8 @@ describe('reprovisionMainserverUserInternal', () => {
     provisioningError.statusCode = 401;
     state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
 
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
 
     const response = await reprovisionMainserverUserInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
@@ -362,7 +427,8 @@ describe('reprovisionMainserverUserInternal', () => {
       provisioningError.statusCode = upstreamStatus;
       state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
 
-      const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+      const { reprovisionMainserverUserInternal } =
+        await import('./user-reprovision-mainserver-handler.js');
       const response = await reprovisionMainserverUserInternal(
         new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
           method: 'POST',
@@ -403,7 +469,9 @@ describe('reprovisionMainserverUserInternal', () => {
   ])(
     'does not classify token endpoint status $upstreamStatus as a provisioning rejection',
     async ({ upstreamStatus, expectedStatus }) => {
-      const provisioningError = new Error('Mainserver-Provisioning-Token konnte nicht geladen werden.') as Error & {
+      const provisioningError = new Error(
+        'Mainserver-Provisioning-Token konnte nicht geladen werden.'
+      ) as Error & {
         code: string;
         statusCode: number;
       };
@@ -412,7 +480,8 @@ describe('reprovisionMainserverUserInternal', () => {
       provisioningError.statusCode = upstreamStatus;
       state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
 
-      const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+      const { reprovisionMainserverUserInternal } =
+        await import('./user-reprovision-mainserver-handler.js');
       const response = await reprovisionMainserverUserInternal(
         new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
           method: 'POST',
@@ -445,39 +514,44 @@ describe('reprovisionMainserverUserInternal', () => {
     }
   );
 
-  it.each([302, 400])('normalizes upstream status %s to a conflict response', async (upstreamStatus) => {
-    const provisioningError = new Error('Mainserver-Anfrage fehlgeschlagen.') as Error & {
-      code: string;
-      statusCode: number;
-    };
-    provisioningError.name = 'MainserverUserProvisioningError';
-    provisioningError.code = 'upstream_failure';
-    provisioningError.statusCode = upstreamStatus;
-    state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
+  it.each([302, 400])(
+    'normalizes upstream status %s to a conflict response',
+    async (upstreamStatus) => {
+      const provisioningError = new Error('Mainserver-Anfrage fehlgeschlagen.') as Error & {
+        code: string;
+        statusCode: number;
+      };
+      provisioningError.name = 'MainserverUserProvisioningError';
+      provisioningError.code = 'upstream_failure';
+      provisioningError.statusCode = upstreamStatus;
+      state.provisionMainserverUserCredentials.mockRejectedValueOnce(provisioningError);
 
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
-    const response = await reprovisionMainserverUserInternal(
-      new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
-        method: 'POST',
-        body: '{}',
-      }),
-      {
-        sessionId: 'session-1',
-        activeOrganizationId: 'org-1',
-        user: {
-          id: 'kc-actor-1',
-          instanceId: 'instance-1',
-          roles: ['system_admin'],
-        },
-      }
-    );
+      const { reprovisionMainserverUserInternal } =
+        await import('./user-reprovision-mainserver-handler.js');
+      const response = await reprovisionMainserverUserInternal(
+        new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
+          method: 'POST',
+          body: '{}',
+        }),
+        {
+          sessionId: 'session-1',
+          activeOrganizationId: 'org-1',
+          user: {
+            id: 'kc-actor-1',
+            instanceId: 'instance-1',
+            roles: ['system_admin'],
+          },
+        }
+      );
 
-    expect(response.status).toBe(409);
-  });
+      expect(response.status).toBe(409);
+    }
+  );
 
   it('marks reserved idempotency keys as failed when target resolution throws before provisioning', async () => {
     state.resolveUserDetail.mockRejectedValueOnce(new Error('db exploded'));
-    const { reprovisionMainserverUserInternal } = await import('./user-reprovision-mainserver-handler.js');
+    const { reprovisionMainserverUserInternal } =
+      await import('./user-reprovision-mainserver-handler.js');
 
     const response = await reprovisionMainserverUserInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/reprovision-mainserver', {
@@ -497,7 +571,10 @@ describe('reprovisionMainserverUserInternal', () => {
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({
-      error: { code: 'internal_error', message: 'Mainserver-Daten konnten nicht aktualisiert werden.' },
+      error: {
+        code: 'internal_error',
+        message: 'Mainserver-Daten konnten nicht aktualisiert werden.',
+      },
       requestId: 'req-1',
     });
     expect(state.completeIdempotency).toHaveBeenCalledWith(

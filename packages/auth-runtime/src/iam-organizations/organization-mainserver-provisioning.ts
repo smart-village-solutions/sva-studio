@@ -11,9 +11,10 @@ import { recordMainserverDataProviderObservation } from '../iam-contents/mainser
 import { MainserverUserProvisioningError } from '../iam-account-management/mainserver-user-provisioning-error.js';
 import {
   resolveIdentityProviderForInstance,
+  trackKeycloakCall,
   withInstanceScopedDb,
 } from '../iam-account-management/shared.js';
-import { persistProvisionedMainserverCredentials } from '../iam-account-management/user-create-operation.js';
+import { persistProvisionedMainserverCredentials } from '../iam-account-management/mainserver-credential-persistence.js';
 import { provisionNewOrganizationMainserver } from './organization-mainserver-new-provisioning.js';
 import {
   ORGANIZATION_PROVISIONING_LEASE_SECONDS,
@@ -93,13 +94,15 @@ const verifyReservedCredentials = async (
     throw new Error('organization_provisioning_lease_lost');
   }
   await persistProvisionedMainserverCredentials({
-    identityProvider,
+    identityProvider: identityProvider.provider,
+    instanceId: input.instanceId,
     keycloakSubject: resolved.account.keycloakSubject,
     credentials: {
       dataProviderId: verified.dataProviderId,
       mainserverUserApplicationId: verified.credentials.apiKey,
       mainserverUserApplicationSecret: verified.credentials.apiSecret,
     },
+    trackKeycloakCall,
   });
   setPhase('data_provider_binding');
   const observation = await recordMainserverDataProviderObservation({

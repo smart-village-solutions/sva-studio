@@ -61,6 +61,12 @@ Betriebsrelevante Regeln:
 5. Bei gemischten Listen (`visibleType` enthält lokale und Mainserver-Typen) die lokale IAM-Antwort nicht separat als alternative Listenquelle interpretieren; führend bleibt die aggregierte Host-Antwort.
 6. Bei manuell ausgelöstem Refresh zusätzlich den Statusvertrag von `POST /api/v1/iam/contents/refresh` prüfen: `accepted`, `already_running`, `completed` oder `failed`.
 
+Bei `mainserver_credentials_missing`, `mainserver_credentials_partial` oder
+`mainserver_credentials_stale` startet die Projection keinen Token- oder
+GraphQL-Aufruf. Der automatische Retry erfolgt pro Account-, Organisations-
+und Content-Type-Scope frühestens nach 15 Minuten; ein manueller Refresh prüft
+sofort erneut. Vorhandene Snapshot-Zeilen bleiben dabei erhalten.
+
 ## News-Operationen
 
 Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der Browser ruft ausschließlich die hostgeführte Fassade unter `/api/v1/mainserver/news` und `/api/v1/mainserver/news/$newsId` auf; die App prüft Session, Instanzkontext, lokale Content-Primitive und Mainserver-Credentials, bevor ein Upstream-Call erfolgt.
@@ -162,6 +168,12 @@ Rollback erfolgt wie bei den anderen Mainserver-Content-Typen über `iam.instanc
 4. Anschließend die Mainserver-Diagnostik aus Studio erneut ausführen.
 5. Falls weiterhin `unauthorized` oder `forbidden` auftritt, lokale Studio-Rollen und Mainserver-Rechte gegentesten.
 6. Alte Credentials nach erfolgreicher Validierung endgültig invalidieren.
+
+Create und Reprovisionierung gelten erst nach erfolgreichem Keycloak-Read-back
+als abgeschlossen. `mainserver_credentials_partial` bedeutet, dass genau eines
+der kanonischen Attribute fehlt; `mainserver_credentials_stale`, dass der
+zurückgelesene Fingerprint nicht zur gerade provisionierten Version passt.
+Credentialwerte selbst dürfen weder in Logs noch in Tickets übernommen werden.
 
 ## Notfallabschaltung
 

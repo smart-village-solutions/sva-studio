@@ -117,8 +117,9 @@ const buildInsertedSyncState = (
   syncScopeKey: string
 ): TestSyncState => {
   const current =
-    context.fixture.syncStates.get(`${contentType}::${syncScopeKey}`) ??
-    initialSyncState(syncScopeKey);
+    (context.fixture.syncScopeKeyColumnAvailable
+      ? context.fixture.syncStates.get(`${contentType}::${syncScopeKey}`)
+      : storedSyncState(context.fixture, contentType, syncScopeKey)) ?? initialSyncState(syncScopeKey);
   const firstPayloadIndex = context.fixture.syncScopeKeyColumnAvailable ? 3 : 2;
   if (text.includes("'partial_running'")) {
     return partialRunningSyncState(context, current, values, firstPayloadIndex);

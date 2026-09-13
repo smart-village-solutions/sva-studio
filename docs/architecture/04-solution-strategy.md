@@ -44,6 +44,7 @@ Architekturprinzipien auf IST-Basis.
 - Verwaltete IAM-Permissions klassifizieren ihre Laufzeitsemantik explizit über `runtimeScope = instance | record | organization_context`; `accessScope` bleibt auf datensatzbezogene Rollen-Zuordnungen begrenzt
 - Für tenant-spezifische Logins stammt `instanceId` aus Host, Registry und dem zugeordneten Realm-Scope; ein benutzerbezogener OIDC-Claim ist nur Interop-/Diagnoseartefakt und kein zweites Login-Gate
 - Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig; Credentials werden policy-gesteuert aus aktivem Organisationskontext oder aus dem persönlichen Benutzerkontext aufgelöst
+- Mainserver-Credentials gelten erst nach einem instanz- und principalgebundenen Read-back als einsatzbereit; Projection-Refreshes brechen bei `missing`, `partial`, `stale` oder `unavailable` vor dem Upstream-Aufruf ab
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
 - Instanzbezogene Upstream-Endpunkte liegen in Postgres; Mainserver-Credentials liegen organisationsgebunden in Postgres oder personenbezogen in Keycloak, abhängig vom fachlichen Organisationskontext
 - Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert

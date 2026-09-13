@@ -89,7 +89,10 @@ describe('content projection schema and binding compatibility', () => {
       })
     );
     expect(fixture.syncStates.get('news.article')?.last_started_at).toBeTruthy();
-    expect(fixture.projectionInsertArgs).toHaveLength(1);
+    await vi.waitFor(() => expect(fixture.projectionInsertArgs).toHaveLength(1));
+    await vi.waitFor(() =>
+      expect(fixture.syncStates.get('news.article')?.last_succeeded_at).toBeTruthy()
+    );
   });
 
   it('keeps the legacy sync-state schema readable while scoped rows are refreshed', async () => {

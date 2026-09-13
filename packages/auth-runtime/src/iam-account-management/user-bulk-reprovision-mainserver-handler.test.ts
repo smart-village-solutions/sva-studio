@@ -33,17 +33,24 @@ const state = vi.hoisted(() => {
     setExecuteBulkReprovisionMainserver: (fn: typeof executeBulkReprovisionMainserver) => {
       executeBulkReprovisionMainserver = fn;
     },
-    trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
-    withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})),
+    trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) =>
+      execute()
+    ),
+    withInstanceScopedDb: vi.fn(
+      async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})
+    ),
   };
 });
 
 vi.mock('@sva/iam-admin', () => ({
-  createBulkReprovisionMainserverHandlerInternal:
-    (deps: { executeBulkReprovisionMainserver: typeof state.getExecuteBulkReprovisionMainserver extends () => infer T ? T : never }) => {
-      state.setExecuteBulkReprovisionMainserver(deps.executeBulkReprovisionMainserver);
-      return vi.fn();
-    },
+  createBulkReprovisionMainserverHandlerInternal: (deps: {
+    executeBulkReprovisionMainserver: typeof state.getExecuteBulkReprovisionMainserver extends () => infer T
+      ? T
+      : never;
+  }) => {
+    state.setExecuteBulkReprovisionMainserver(deps.executeBulkReprovisionMainserver);
+    return vi.fn();
+  },
 }));
 
 vi.mock('./user-bulk-reprovision-mainserver-context.js', () => ({
@@ -102,6 +109,7 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
       throw new Error('executeBulkReprovisionMainserver not captured');
     }
 
+    let attributes: Record<string, readonly string[]> = { locale: ['de'] };
     await executeBulkReprovisionMainserver({
       actor: {
         instanceId: 'instance-1',
@@ -119,8 +127,12 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
       userIds: ['user-1'],
       identityProvider: {
         provider: {
-          getUserAttributes: vi.fn(async () => ({ locale: ['de'] })),
-          updateUser: vi.fn(async () => undefined),
+          getUserAttributes: vi.fn(async () => attributes),
+          updateUser: vi.fn(
+            async (_subject: string, payload: { attributes: typeof attributes }) => {
+              attributes = payload.attributes;
+            }
+          ),
         },
       },
     });
@@ -132,6 +144,43 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
         }),
       })
     );
+  });
+
+  it('returns a per-user credential failure when the Keycloak readback is partial', async () => {
+    await import('./user-bulk-reprovision-mainserver-handler.js');
+    const executeBulkReprovisionMainserver = state.getExecuteBulkReprovisionMainserver();
+    if (!executeBulkReprovisionMainserver) {
+      throw new Error('executeBulkReprovisionMainserver not captured');
+    }
+
+    await expect(
+      executeBulkReprovisionMainserver({
+        actor: { instanceId: 'instance-1', actorAccountId: 'actor-1', requestId: 'req-1' },
+        ctx: {
+          activeOrganizationId: 'org-1',
+          user: { id: 'kc-actor-1', roles: ['system_admin'] },
+        },
+        userIds: ['user-1'],
+        identityProvider: {
+          provider: {
+            getUserAttributes: vi
+              .fn()
+              .mockResolvedValueOnce({ locale: ['de'] })
+              .mockResolvedValueOnce({ mainserverUserApplicationId: ['app-1'] }),
+            updateUser: vi.fn(async () => undefined),
+          },
+        },
+      })
+    ).resolves.toEqual({
+      successes: [],
+      failures: [
+        {
+          id: 'user-1',
+          code: 'mainserver_credentials_missing',
+          message: 'Mainserver-Credentials wurden nach dem Speichern nicht vollständig bestätigt.',
+        },
+      ],
+    });
   });
 
   it.each([
@@ -201,7 +250,9 @@ describe('user-bulk-reprovision-mainserver-handler', () => {
   it.each([403, 422])(
     'does not classify a token endpoint status %s as a provisioning rejection',
     async (statusCode) => {
-      const provisioningError = new Error('Mainserver-Provisioning-Token konnte nicht geladen werden.') as Error & {
+      const provisioningError = new Error(
+        'Mainserver-Provisioning-Token konnte nicht geladen werden.'
+      ) as Error & {
         code: string;
         statusCode: number;
       };

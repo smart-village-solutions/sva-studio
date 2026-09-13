@@ -8,9 +8,10 @@ import {
 import { recordMainserverDataProviderObservation } from '../iam-contents/mainserver-data-provider-bindings.js';
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
 import { provisionMainserverUserCredentials } from '../iam-account-management/mainserver-user-provisioning.js';
-import { persistProvisionedMainserverCredentials } from '../iam-account-management/user-create-operation.js';
+import { persistProvisionedMainserverCredentials } from '../iam-account-management/mainserver-credential-persistence.js';
 import {
   resolveIdentityProviderForInstance,
+  trackKeycloakCall,
   withInstanceScopedDb,
 } from '../iam-account-management/shared.js';
 import type { IdentityProviderResolution } from '../iam-account-management/shared-runtime.js';
@@ -116,9 +117,11 @@ const persistCredentials = async (
     throw new Error('organization_provisioning_lease_lost');
   }
   await persistProvisionedMainserverCredentials({
-    identityProvider,
+    identityProvider: identityProvider.provider,
+    instanceId: input.instanceId,
     keycloakSubject: resolved.account.keycloakSubject,
     credentials,
+    trackKeycloakCall,
   });
 };
 

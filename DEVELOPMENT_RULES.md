@@ -464,9 +464,13 @@ Blocker innerhalb dieser Grenze nicht korrekt behoben werden, ist der PR nicht
 merge-reif und benötigt einen einfacheren Entwurf oder einen neu zugeschnittenen
 Lieferabschnitt.
 
-Nach einer Review-Fixrunde gilt ein Circuit-Breaker: Weitere Findings führen
-entweder zu einem einfacheren Entwurf oder zu nicht blockierenden Follow-ups,
-nicht zu einer zusätzlichen Implementierungsschicht im laufenden PR.
+Nach einer Review-Fixrunde gilt ein Circuit-Breaker: Ein weiterer unmittelbar
+blockierender Befund darf weiterhin mit der kleinsten lokalen Korrektur behoben
+werden, wenn diese innerhalb des vereinbarten Scopes bleibt und weder neue
+Komponenten oder Verträge noch eine zusätzliche Implementierungsschicht
+einführt. Alle anderen Findings führen zu einem einfacheren Entwurf oder zu
+nicht blockierenden Follow-ups, nicht zu einer weiteren Schicht im laufenden
+PR.
 
 Wenn in aufeinanderfolgenden Reviews oder CI-/Test-Runden mehrere neue Befunde
 dieselbe Invariante, Zustandsmaschine oder Systemgrenze betreffen, dürfen nicht

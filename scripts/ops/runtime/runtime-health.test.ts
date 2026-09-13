@@ -570,6 +570,7 @@ describe('runtime-health helpers', () => {
     ['a missing stream object', { data: { result: [{ values: [] }], resultType: 'streams' }, status: 'success' }],
     ['missing values', { data: { result: [{ stream: {} }], resultType: 'streams' }, status: 'success' }],
     ['wrong values type', { data: { result: [{ stream: {}, values: {} }], resultType: 'streams' }, status: 'success' }],
+    ['a non-string stream label', { data: { result: [{ stream: { job: 42 }, values: [] }], resultType: 'streams' }, status: 'success' }],
     ['a malformed value tuple', { data: { result: [{ stream: {}, values: [['1']] }], resultType: 'streams' }, status: 'success' }],
     ['a wrong result type', { data: { result: [], resultType: 'matrix' }, status: 'success' }],
   ])('fails closed when the Keycloak Loki stream schema has %s', async (_name, payload) => {
@@ -741,6 +742,36 @@ describe('runtime-health helpers', () => {
       status: 'error',
     }));
     expect(JSON.stringify(result)).not.toContain('sensitive-state');
+  });
+
+  it('uses SVA_AUTH_ISSUER for tenant targets without an issuer or admin base URL', async () => {
+    const authorizationUrl = 'https://issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: { location: authorizationUrl },
+        status: 302,
+      }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const ops = createDoctorTestOps({
+      resolveTenantRuntimeTargets: vi.fn(async () => ({
+        source: 'registry' as const,
+        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+      })),
+    });
+
+    await expect(ops.buildTenantAuthProofCheck('studio', {
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/keycloak/realms/studio',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
+    })).resolves.toEqual(expect.objectContaining({
+      code: 'tenant_auth_authorization_failed',
+      status: 'error',
+    }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, new URL(authorizationUrl), expect.objectContaining({
+      headers: { Accept: 'text/html' },
+      redirect: 'manual',
+    }));
   });
 
   it('uses timeouts for login and me smoke requests', async () => {

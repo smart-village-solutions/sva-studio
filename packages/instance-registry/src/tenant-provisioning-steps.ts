@@ -1,4 +1,5 @@
 import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+import { createSdkLogger, redactObject } from '@sva/server-runtime';
 
 import { createExecuteKeycloakProvisioningHandler } from './service-keycloak-execution.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -22,6 +23,62 @@ type StepContext = {
 };
 
 type StepHandler = (context: StepContext) => Promise<InstanceProvisioningRun>;
+
+const logger = createSdkLogger({
+  component: 'iam-instance-registry-tenant-provisioning',
+  level: 'info',
+});
+
+const readProperty = (value: unknown, key: string): unknown => {
+  if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
+    return undefined;
+  }
+  try {
+    return Reflect.get(value, key);
+  } catch {
+    return undefined;
+  }
+};
+
+const toDiagnosticString = (value: unknown): string => {
+  try {
+    return String(value);
+  } catch {
+    return '[unstringifiable-error]';
+  }
+};
+
+const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
+
+const readDiagnosticString = (value: unknown, key: string): string | undefined => {
+  const candidate = readProperty(value, key);
+  return typeof candidate === 'string' ? candidate : undefined;
+};
+
+const readDiagnosticErrorType = (error: unknown): string => {
+  return readDiagnosticString(error, 'name') ?? typeof error;
+};
+
+const readDiagnosticErrorCode = (error: unknown): string => {
+  const code = readDiagnosticString(error, 'code');
+  if (code && /^[A-Za-z0-9_:-]{2,100}$/u.test(code)) return code;
+  const message = readDiagnosticString(error, 'message');
+  return message && /^[a-z][a-z0-9_:-]{2,100}$/u.test(message)
+    ? message
+    : INGRESS_FAILURE_CLASSIFICATION;
+};
+
+const buildIngressFailureDiagnostics = (error: unknown): Readonly<Record<string, unknown>> =>
+  redactObject({
+    diagnostic_error: {
+      name: readDiagnosticErrorType(error),
+      message: readDiagnosticString(error, 'message') ?? toDiagnosticString(error),
+      code: readDiagnosticString(error, 'code'),
+      syscall: readDiagnosticString(error, 'syscall'),
+      path: readDiagnosticString(error, 'path'),
+      dest: readDiagnosticString(error, 'dest'),
+    },
+  });
 
 const registryStep: StepHandler = async ({
   deps,
@@ -99,13 +156,36 @@ const ingressStep: StepHandler = async ({
   assertExecutionActive,
 }) => {
   assertExecutionActive();
-  const evidence = await requireDependency(
+  const publishTenantIngress = requireDependency(
     deps.publishTenantIngress,
     'dependency_missing_publishTenantIngress'
-  )({
-    instanceId: instance.instanceId,
-    primaryHostname: instance.primaryHostname,
-  });
+  );
+  let evidence: Awaited<ReturnType<typeof publishTenantIngress>>;
+  try {
+    evidence = await publishTenantIngress({
+      instanceId: instance.instanceId,
+      primaryHostname: instance.primaryHostname,
+    });
+  } catch (error) {
+    try {
+      logger.warn('tenant_ingress_publish_failed', {
+        operation: 'publish_tenant_ingress',
+        result: 'failed',
+        request_id: run.requestId,
+        instance_id: instance.instanceId,
+        primary_hostname: instance.primaryHostname,
+        run_id: run.id,
+        step_key: 'ingress',
+        error_type: readDiagnosticErrorType(error),
+        error_code: readDiagnosticErrorCode(error),
+        classification: INGRESS_FAILURE_CLASSIFICATION,
+        ...buildIngressFailureDiagnostics(error),
+      });
+    } catch {
+      // Diagnostic logging must never replace the provisioning failure.
+    }
+    throw error;
+  }
   assertExecutionActive();
   return continueAt(deps, run, workerId, 'tls', now, { terminalEvidence: evidence });
 };

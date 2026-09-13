@@ -135,9 +135,13 @@ describe('runtime wiring', () => {
       ['tenant-a']
     );
     expect(client.query).toHaveBeenNthCalledWith(3, 'SET LOCAL ROLE iam_app;');
-    expect(client.query).toHaveBeenNthCalledWith(4, 'insert instance');
-    expect(client.query).toHaveBeenNthCalledWith(5, 'insert parent run');
-    expect(client.query).toHaveBeenNthCalledWith(6, 'COMMIT');
+    expect(client.query).toHaveBeenNthCalledWith(4, 'SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      'tenant-a',
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(5, 'insert instance');
+    expect(client.query).toHaveBeenNthCalledWith(6, 'insert parent run');
+    expect(client.query).toHaveBeenNthCalledWith(7, 'COMMIT');
   });
 
   it('serializes provisioning worker work in the scoped instance transaction', async () => {

@@ -95,6 +95,7 @@ const beginLockedTransaction = async (
   await client.query('BEGIN');
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', [instanceId]);
   await client.query('SET LOCAL ROLE iam_app;');
+  await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
 };
 
 const beginScopedTransaction = async (
@@ -102,7 +103,6 @@ const beginScopedTransaction = async (
   instanceId: string
 ): Promise<void> => {
   await beginLockedTransaction(client, instanceId);
-  await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
 };
 
 const withInstanceTransaction = async <T>(

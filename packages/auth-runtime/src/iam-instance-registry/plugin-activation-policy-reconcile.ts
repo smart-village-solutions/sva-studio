@@ -34,6 +34,7 @@ export type PluginActivationPolicyFleetReconcileReport = Readonly<{
 
 let lastReport: PluginActivationPolicyFleetReconcileReport | undefined;
 let lastSuccessfulReconcileAtMs: number | undefined;
+let fleetMetricsOwnedByProcess = false;
 
 const fleetStates = ['unknown', 'ready', 'retrying', 'degraded'] as const;
 const retryClasses = ['retryable', 'degraded'] as const;
@@ -59,6 +60,7 @@ const readFleetState = (): (typeof fleetStates)[number] => {
 };
 
 fleetStateGauge.addCallback((result) => {
+  if (!fleetMetricsOwnedByProcess) return;
   const state = readFleetState();
   for (const candidate of fleetStates) {
     result.observe(candidate === state ? 1 : 0, { state: candidate });
@@ -66,6 +68,7 @@ fleetStateGauge.addCallback((result) => {
 });
 
 fleetFailureGauge.addCallback((result) => {
+  if (!fleetMetricsOwnedByProcess) return;
   for (const reasonCode of pluginActivationPolicyFleetReconcileReasonCodes) {
     for (const retryClass of retryClasses) {
       const failureCount =
@@ -78,6 +81,7 @@ fleetFailureGauge.addCallback((result) => {
 });
 
 fleetSecondsSinceSuccessGauge.addCallback((result) => {
+  if (!fleetMetricsOwnedByProcess) return;
   result.observe(
     lastSuccessfulReconcileAtMs === undefined
       ? -1
@@ -136,6 +140,7 @@ const classifyFleetReconcileError = (
 export const reconcileConfiguredPluginActivationPoliciesForAllInstances = async (input: {
   revision: string;
 }): Promise<PluginActivationPolicyFleetReconcileReport> => {
+  fleetMetricsOwnedByProcess = true;
   const startedAt = new Date().toISOString();
   let instanceCount = 0;
   let reconciledInstanceCount = 0;
@@ -187,4 +192,5 @@ export const readPluginActivationPolicyFleetReconcileReport = ():
 export const resetPluginActivationPolicyFleetReconcileReportForTests = (): void => {
   lastReport = undefined;
   lastSuccessfulReconcileAtMs = undefined;
+  fleetMetricsOwnedByProcess = false;
 };

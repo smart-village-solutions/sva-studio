@@ -78,6 +78,12 @@ const configureRegistryService = () => {
 };
 
 describe('plugin activation policy fleet reconcile', () => {
+  it('does not observe fleet metrics before this process owns a reconcile', () => {
+    expect(collectMetric('sva_plugin_activation_policy_fleet_state')).toEqual([]);
+    expect(collectMetric('sva_plugin_activation_policy_fleet_failure_count')).toEqual([]);
+    expect(collectMetric('sva_plugin_activation_policy_fleet_seconds_since_success')).toEqual([]);
+  });
+
   it('reconciles every existing instance and publishes a ready report', async () => {
     configureRegistryService();
     mocks.listInstances.mockResolvedValue([

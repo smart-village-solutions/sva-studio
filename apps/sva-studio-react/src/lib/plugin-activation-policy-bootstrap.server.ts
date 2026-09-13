@@ -232,9 +232,9 @@ const startFleetReconcileInBackground = (
       if (generation !== bootstrapGeneration) return;
       const decision = updateFleetFailureState({
         revision,
-        retryClass: 'retryable',
-        reasonCodes: ['plugin_activation_policy_reconcile_unexpected'],
-        signature: 'plugin_activation_policy_reconcile_unexpected',
+        retryClass: 'degraded',
+        reasonCodes: ['plugin_activation_policy_reconcile_unknown'],
+        signature: 'plugin_activation_policy_reconcile_unknown:degraded',
       });
       scheduleFleetReconcileRetry(configuration, generation, decision.state.retryDelayMs);
       if (decision.shouldWarn) {

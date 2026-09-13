@@ -366,14 +366,18 @@ describe('plugin activation policy bootstrap', () => {
     startPluginActivationPolicyFleetReconcileInBackground();
     await vi.waitFor(() => expect(loggerErrorMock).toHaveBeenCalledOnce());
 
-    const retryTimer = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 60_000);
+    const retryTimer = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 1_800_000);
     expect(retryTimer).toBeDefined();
     (retryTimer?.[0] as () => void)();
     await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
 
     expect(loggerErrorMock).toHaveBeenCalledWith(
       'Plugin activation policy fleet reconcile failed unexpectedly',
-      expect.objectContaining({ revision: 'catalog-1', error_type: 'TypeError' })
+      expect.objectContaining({
+        revision: 'catalog-1',
+        error_type: 'TypeError',
+        retry_class: 'degraded',
+      })
     );
     setTimeoutSpy.mockRestore();
   });

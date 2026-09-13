@@ -24,6 +24,7 @@ Architekturprinzipien auf IST-Basis.
 - Neue asynchrone Keycloak-Aufträge tragen die von der App validierten Plugin-OIDC-Anforderungen als versionierten, unveränderlichen Queue-Snapshot. Der getrennte Provisioner verwendet diesen Snapshot unverändert. Unversionierte Bestandsaufträge entsprechen dem früheren Vertrag ohne Plugin-OIDC-Anforderungen; unvollständige versionierte Aufträge brechen vor der Ausführung fail-closed ab. Installationen mit Plugin-OIDC-Anforderungen müssen unversionierte Aufträge vor dem Versionswechsel mit dem bisherigen Worker leeren.
 - Plugin-Manifeste deklarieren verpflichtend den Extension-Tier `feature`, `admin` oder `platform`. Nur freigegebene Admin-/Plattform-Tiers dürfen Plattformbeiträge für `instance_registry_admin` in den kanonischen Snapshot einbringen; Fachplugins bleiben tenantgebunden.
 - Der versionierte Manifestvertrag deklariert außerdem `optional`, `automatic` oder `required`; `iam.instance_modules` materialisiert die Richtlinie als einzigen effektiven Tenant-Aktivierungszustand und erhält manuelle Overrides für automatische Plugins.
+- Der App-Prozess der `default`-Lane ist im Standard-Deployment alleiniger Owner des revisionsgebundenen Aktivierungsrichtlinien-Fleet-Reconcile und seiner prozesslokalen Metriken. Transiente Konflikte werden früh erneut versucht; unbekannte Fehler bleiben mit begrenztem Fehlercode fail-closed degradiert.
 - Aktivierung und Fachbereitschaft bleiben getrennte Verträge. Für Plugins mit Tenant-Lifecycle gibt der Host Fachrouten und normale Plugin-Jobs erst bei valider, nicht blockierender Readiness frei; fehlende, ungültige, suspendierte oder blockierte Evidenz bleibt fail-closed.
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
@@ -89,6 +90,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-SDK-Vertrag v1: `ADR-034`
 - Plugin-Plattform v2 für externe Distribution und host-owned Runtime: `ADR-041`
 - Generischer Plugin-Tenant-Lifecycle und fail-closed Fachzugriff: `ADR-058`
+- Fleet-Reconcile-Ownership und begrenzte Retry-Semantik: `ADR-063`
 - Design-Token-Architektur: `ADR-003`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`

@@ -60,6 +60,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-059 Administrative Keycloak-Realm-Rollenzuweisungen](../adr/ADR-059-administrative-keycloak-realm-rollenzuweisungen.md)
 - [ADR-060 Keycloak-Serviceidentitäten und Doctor-Evidenz trennen](../adr/ADR-060-keycloak-serviceidentitaeten-und-doctor-evidenz.md)
 - [ADR-061 Instanzgebundene Keycloak-Provisioning-Ownership und -Serialisierung](../adr/ADR-061-instanzgebundene-keycloak-provisioning-ownership-und-serialisierung.md)
+- [ADR-063 Fleet-Reconcile-Ownership und begrenzte Retry-Semantik](../adr/ADR-063-fleet-reconcile-ownership-und-begrenzte-retry-semantik.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -633,3 +634,15 @@ schmalen Traefik-File-Provider-Adapter. Der reguläre Studio-Rollout und die
 allgemeine Ingress-Architektur bleiben unverändert. Prozessübergreifende
 Plugin-Verträge werden über den Lauf-Snapshot statt über globale
 In-Memory-Registries transportiert.
+
+### Fortschreibung 2026-09: Fleet-Reconcile-Ownership und begrenzte Retry-Semantik
+
+[ADR-063](../adr/ADR-063-fleet-reconcile-ownership-und-begrenzte-retry-semantik.md)
+legt den App-Prozess mit `default`-Lane als alleinigen Standard-Owner des
+Aktivierungsrichtlinien-Fleet-Reconcile und seiner prozesslokalen Metriken fest.
+Retrybare und degradierte Fehler behalten begrenzte Codes; gemischte Läufe
+verwenden den kürzeren Retry-Takt und unerwartete Abbrüche bleiben fail-closed.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/09: ADR-063

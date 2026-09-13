@@ -897,6 +897,40 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('removes a wildcard default when only one client allowlist is empty', async () => {
+    const createdClient = {
+      id: 'client-1',
+      clientId: 'web-app',
+      redirectUris: ['https://web.example/callback'],
+      webOrigins: ['/*'],
+      attributes: {},
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'web-app',
+      redirectUris: ['https://web.example/callback'],
+      postLogoutRedirectUris: [],
+      webOrigins: [],
+      rootUrl: 'https://web.example',
+    });
+
+    const updateCall = fetchImpl.mock.calls.find(
+      (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'PUT'
+    );
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
+      redirectUris: ['https://web.example/callback'],
+      webOrigins: [],
+    });
+  });
+
   it('deletes a newly created client when its strict readback repair fails', async () => {
     const createdClient = {
       id: 'client-1',
@@ -942,6 +976,45 @@ describe('Keycloak admin client', () => {
       (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
     );
     expect(deleteCall).toBeDefined();
+  });
+
+  it('retries transient failures while deleting a failed strict client creation', async () => {
+    const createdClient = {
+      id: 'client-1',
+      clientId: 'ssf',
+      redirectUris: ['/*'],
+      webOrigins: ['/*'],
+      attributes: {},
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
+      .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
+      .mockResolvedValueOnce(createJsonResponse(503, { error: 'temporarily_unavailable' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl, {
+      circuitBreakerFailureThreshold: 1,
+      maxRetries: 1,
+    });
+
+    await expect(
+      client.ensureOidcClient({
+        clientId: 'ssf',
+        redirectUris: [],
+        postLogoutRedirectUris: [],
+        webOrigins: [],
+        rootUrl: '',
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(
+      fetchImpl.mock.calls.filter(
+        (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
+      )
+    ).toHaveLength(2);
   });
 
   it('deletes a newly created strict client when its immediate readback fails', async () => {
@@ -999,7 +1072,7 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, [createdClient]))
       .mockResolvedValueOnce(createJsonResponse(400, { error: 'invalid_client' }))
       .mockResolvedValueOnce(createJsonResponse(500, { error: 'cleanup_failed' }));
-    const client = await createClient(fetchImpl);
+    const client = await createClient(fetchImpl, { maxRetries: 0 });
 
     const error = await client
       .ensureOidcClient({

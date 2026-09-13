@@ -1299,8 +1299,8 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     payload: Parameters<KeycloakAdminClient['upsertOidcClient']>[1],
     input: { clientId: string; uriPolicy?: 'merge' | 'replace' }
   ): Promise<void> {
-    const emptyAllowlist = payload.redirectUris.length === 0 && payload.webOrigins.length === 0;
-    if (existing || (input.uriPolicy !== 'replace' && !emptyAllowlist)) return;
+    const hasEmptyAllowlist = payload.redirectUris.length === 0 || payload.webOrigins.length === 0;
+    if (existing || (input.uriPolicy !== 'replace' && !hasEmptyAllowlist)) return;
     let created: KeycloakClientRepresentation | null;
     try {
       created = await this.getOidcClientByClientId(input.clientId);
@@ -1341,12 +1341,15 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     try {
       if (!createdClientId) throw new Error('created_client_id_unavailable_for_cleanup');
       // Compensation must remain available after the repair failure opens the
-      // normal request circuit, so it deliberately bypasses circuit state.
-      await this.executeRequest<void>({
-        method: 'DELETE',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(createdClientId)}`,
-        operation: 'delete_client',
-      });
+      // normal request circuit, while retaining normal transient-failure retries.
+      await this.executeWithRetryPolicy<void>(
+        {
+          method: 'DELETE',
+          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(createdClientId)}`,
+          operation: 'delete_client',
+        },
+        false
+      );
       logKeycloakWriteSuccess('delete_client', {
         operation: 'delete_client',
         realm: this.realm,
@@ -1861,20 +1864,27 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       throw new KeycloakAdminUnavailableError('Keycloak unavailable. Circuit breaker is open.');
     }
 
+    return this.executeWithRetryPolicy<T>(request, true);
+  }
+
+  private async executeWithRetryPolicy<T>(
+    request: RequestExecutionOptions,
+    trackCircuitState: boolean
+  ): Promise<T> {
     let lastError: unknown;
     const retryDelays = [1_000, 2_000, 4_000];
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
       try {
         const result = await this.executeRequest<T>(request);
-        this.markSuccess();
+        if (trackCircuitState) this.markSuccess();
         return result;
       } catch (error) {
         lastError = error;
         const retryable = this.isRetryableError(error);
         const isLastAttempt = attempt >= this.maxRetries;
         if (!retryable || isLastAttempt) {
-          this.markFailure();
+          if (trackCircuitState) this.markFailure();
           throw error;
         }
 
@@ -1890,7 +1900,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       }
     }
 
-    this.markFailure();
+    if (trackCircuitState) this.markFailure();
     throw lastError;
   }
 

@@ -20,6 +20,7 @@ import {
   resolvePluginModuleFromRegistry,
 } from './plugin-build-registry.js';
 import { studioPluginSnapshot } from './plugins.js';
+import { readStudioSsfLoginReadiness } from './ssf-login-readiness.server.js';
 
 type PluginServerModuleExports = Readonly<{
   createPluginServerHandlers?: PluginServerHandlerModuleFactory;
@@ -134,6 +135,7 @@ export const createStudioPluginServerHandlerDispatcher = async (
     pluginSources: studioPluginSnapshot.pluginSources as readonly StudioPluginServerSource[],
   });
   const ssfRuntimeServiceAccess = createSsfRuntimePluginServiceAccess({
+    readLoginReadiness: readStudioSsfLoginReadiness,
     readDatabaseReadiness: async (instanceId) => {
       const pool = resolveSsfDatabasePool();
       return pool ? (await readSsfTenant(pool, instanceId)) !== null : false;

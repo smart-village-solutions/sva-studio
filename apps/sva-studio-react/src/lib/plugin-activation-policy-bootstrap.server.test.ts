@@ -66,6 +66,7 @@ import {
 } from './plugin-activation-policy-bootstrap.server';
 
 beforeEach(() => {
+  vi.unstubAllEnvs();
   configureMock.mockReset();
   reconcileMock.mockReset();
   loggerWarnMock.mockReset();
@@ -107,6 +108,24 @@ describe('plugin activation policy bootstrap', () => {
         ],
       })
     );
+  });
+
+  it('invalidates the fleet revision when the configured SSF login origin changes', async () => {
+    pluginSources.push({ pluginId: 'ssf' });
+    vi.stubEnv('SVA_STUDIO_SSF_LOGIN_ORIGIN', 'https://dialog-a.example.org');
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(1));
+    const firstRevision = reconcileMock.mock.calls[0]?.[0].revision;
+
+    vi.stubEnv('SVA_STUDIO_SSF_LOGIN_ORIGIN', 'https://dialog-b.example.org');
+    await ensurePluginActivationPoliciesConfigured();
+    startPluginActivationPolicyFleetReconcileInBackground();
+
+    expect(configureMock).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(2));
+    expect(reconcileMock.mock.calls[1]?.[0].revision).toMatch(/^catalog-1:oidc:[a-f0-9]{64}$/u);
+    expect(reconcileMock.mock.calls[1]?.[0].revision).not.toBe(firstRevision);
   });
 
   it('schedules an autonomous retry after a degraded fleet reconcile', async () => {

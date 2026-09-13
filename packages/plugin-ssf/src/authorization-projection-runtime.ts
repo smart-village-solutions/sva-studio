@@ -10,10 +10,7 @@ import {
 } from './authorization-projection-reconciler.js';
 
 export type SsfAuthorizationProjectionSource = Readonly<{
-  readSubjects(input: {
-    instanceId: string;
-    permissionIds: readonly string[];
-  }): Promise<
+  readSubjects(input: { instanceId: string; permissionIds: readonly string[] }): Promise<
     readonly Readonly<{
       keycloakSubject: string;
       roleNames: readonly string[];
@@ -24,17 +21,29 @@ export type SsfAuthorizationProjectionSource = Readonly<{
 
 export type SsfAuthorizationProjectionRuntime = Readonly<{
   reconcile(instanceId: string): Promise<SsfAuthorizationProjectionReconcileResult>;
+  readiness(instanceId: string): Promise<string | null>;
 }>;
 
 export const createSsfAuthorizationProjectionRuntime = (dependencies: {
   readonly source: SsfAuthorizationProjectionSource;
   readonly store: SsfAuthorizationProjectionStore;
-  readonly target: SsfAuthorizationProjectionTarget;
+  readonly createTarget: (instanceId: string) => Promise<SsfAuthorizationProjectionTarget>;
+  readonly readReadyRevision: (instanceId: string) => Promise<string | null>;
 }): SsfAuthorizationProjectionRuntime => {
-  const reconcileProjection = createSsfAuthorizationProjectionReconciler(dependencies);
-
   return {
+    async readiness(instanceId) {
+      const revision = await dependencies.readReadyRevision(instanceId);
+      if (!revision) return null;
+      const target = await dependencies.createTarget(instanceId);
+      if (!(await target.isReady(instanceId, revision))) return null;
+      return (await dependencies.readReadyRevision(instanceId)) === revision ? revision : null;
+    },
     async reconcile(instanceId) {
+      const target = await dependencies.createTarget(instanceId);
+      const reconcileProjection = createSsfAuthorizationProjectionReconciler({
+        store: dependencies.store,
+        target,
+      });
       const sourceSubjects = await dependencies.source.readSubjects({
         instanceId,
         permissionIds: SSF_TENANT_PERMISSION_IDS,

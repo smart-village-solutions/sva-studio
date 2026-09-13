@@ -36,7 +36,14 @@ const createClient = () => {
       },
     ],
   ]);
+  const mappers = new Map<
+    string,
+    { name: string; protocol: string; protocolMapper: string; config: Record<string, string> }
+  >();
   const client = {
+    getOidcClientByClientId: vi.fn(async () => ({ enabled: true })),
+    listClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
+    listEffectiveClientProtocolMappers: vi.fn(async () => [...mappers.values()]),
     listUsers: vi.fn(async ({ first = 0, max = 100 } = {}) =>
       [...attributes.entries()].slice(first, first + max).map(([externalId, userAttributes]) => ({
         externalId,
@@ -48,7 +55,20 @@ const createClient = () => {
         attributes.set(externalId, { ...input.attributes });
       }
     ),
-    ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
+    ensureUserAttributeProtocolMapper: vi.fn(async (input) => {
+      mappers.set(input.claimName, {
+        name: input.name,
+        protocol: 'openid-connect',
+        protocolMapper: 'oidc-usermodel-attribute-mapper',
+        config: {
+          'claim.name': input.claimName,
+          'user.attribute': input.userAttribute,
+          'access.token.claim': 'true',
+          'jsonType.label': 'String',
+          multivalued: String(input.multivalued ?? false),
+        },
+      });
+    }),
     setOidcClientEnabled: vi.fn(async () => undefined),
   } satisfies SsfKeycloakProjectionClient;
   return { attributes, client };
@@ -236,6 +256,19 @@ describe('SSF Keycloak authorization projection target', () => {
     expect(client.setOidcClientEnabled).toHaveBeenNthCalledWith(2, 'ssf', true);
   });
 
+  it('treats an absent browser client as already unable to issue tokens', async () => {
+    const { client } = createClient();
+    client.getOidcClientByClientId.mockResolvedValueOnce(null);
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: vi.fn(async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client })),
+      revokeSsfTenantSessions: vi.fn(async () => undefined),
+    });
+
+    await target.suspendTokenIssuance('tenant-a');
+
+    expect(client.setOidcClientEnabled).not.toHaveBeenCalled();
+  });
+
   it('rejects a read-back whose stored revision does not match projected claims', async () => {
     const { client, attributes } = createClient();
     attributes.set('user-1', {
@@ -250,8 +283,40 @@ describe('SSF Keycloak authorization projection target', () => {
       revokeSsfTenantSessions: vi.fn(async () => undefined),
     });
 
+    await target.reconcile(
+      desiredProjection(),
+      createSsfAuthorizationRevision(desiredProjection())
+    );
+    const userAttributes = attributes.get('user-1');
+    if (!userAttributes) throw new Error('missing_test_subject');
+    userAttributes[SSF_TOKEN_CLAIMS.authorizationRevision] = [`sha256:${'b'.repeat(64)}`];
     await expect(target.readBack('tenant-a')).rejects.toThrow(
       'ssf_keycloak_projection_revision_mismatch'
     );
   });
+});
+
+it('does not accept hardcoded or duplicate claims from effective client-scope mappers', async () => {
+  const { client } = createClient();
+  const target = createSsfKeycloakAuthorizationProjectionTarget({
+    resolveTenant: async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client }),
+    readLoginReadiness: async () => true,
+    prepareLoginClients: async () => undefined,
+    revokeSsfTenantSessions: async () => undefined,
+  });
+  const desired = desiredProjection();
+  const revision = createSsfAuthorizationRevision(desired);
+  await target.reconcile(desired, revision);
+  expect(await target.isReady('tenant-a', revision)).toBe(true);
+  const mappers = await client.listEffectiveClientProtocolMappers('ssf-frontend');
+  client.listEffectiveClientProtocolMappers.mockResolvedValue([
+    ...mappers,
+    {
+      name: 'manual-revision',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-hardcoded-claim-mapper',
+      config: { 'claim.name': 'ssf_authorization_revision', 'claim.value': revision },
+    },
+  ]);
+  expect(await target.isReady('tenant-a', revision)).toBe(false);
 });

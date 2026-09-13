@@ -319,6 +319,18 @@ Zugriff, Dispatcherbindung und Host-Gates sind implementiert. Der produktive
 Pfad bleibt ohne Deployment-Provider und eine verifizierte
 Autorisierungsrevision deaktiviert und fail-closed.
 
+### SSF-Login-Bereitschaft vor Veröffentlichung
+
+Das SSF-Plugin deklariert getrennt den Ressourcenclient `ssf` (Vertrag 1.0) und
+bei expliziter HTTPS-Installationskonfiguration den Browserclient `ssf-frontend`
+(Vertrag 2.0). Die bestehende Provisioning-Queue transportiert den validierten
+Snapshot bis zum Worker. Der Browserclient wird zunächst deaktiviert provisioniert;
+seine Aktivierung gehört dem tenantgebundenen Projektions-Lifecycle. Der Lifecycle
+bestätigt zuerst die IAM-Projektion, provisioniert danach die Tenant-Baseline und
+prüft zuletzt Client, Baseline und Revision gemeinsam vor `ready`.
+Directory und Runtime prüfen dieselbe Bereitschaft. Details:
+[Login-Vertrag](../api/ssf-admin-login-mandanten-v1.md).
+
 ### Ergänzung 2026-09: Keycloak-Rollen als getrennte Interop-Sicht
 
 Lokale IAM-Rollen bleiben die normative Quelle der Studio-Autorisierung.

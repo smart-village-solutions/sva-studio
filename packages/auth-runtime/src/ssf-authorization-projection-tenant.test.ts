@@ -46,4 +46,12 @@ describe('SSF Keycloak projection tenant resolver', () => {
     loadInstanceById.mockResolvedValue(null);
     await expect(resolveInstanceKeycloakProjectionTenant('tenant-a', 'ssf')).resolves.toBeNull();
   });
+
+  it('uses an already loaded instance snapshot without a second repository read', async () => {
+    await expect(
+      resolveInstanceKeycloakProjectionTenant('tenant-a', 'ssf', 'snapshot-realm')
+    ).resolves.toEqual({ instanceId: 'tenant-a', clientId: 'ssf', client });
+    expect(loadInstanceById).not.toHaveBeenCalled();
+    expect(getKeycloakProvisionerClientConfigFromEnv).toHaveBeenCalledWith('snapshot-realm');
+  });
 });

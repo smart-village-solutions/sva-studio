@@ -3,9 +3,9 @@
 ## Why
 
 SSF benötigt ID, Namen und Realm der aktiven Mandanten dieser Studio-Installation
-für seine eigene Login-Auswahl. Der vereinfachte Vertrag wurde im Dialog
-freigegeben: nur aktive Registry-Einträge, keine zusätzliche SSF-Readiness,
-keine Freigabeliste und kein Studio-Login-Handler.
+für seine eigene Login-Auswahl. Issue #1319 ergänzt den bisherigen Vertrag:
+Aktive Einträge werden erst nach vollständiger Provisionierung und verifizierter
+SSF-Readiness veröffentlicht. Es entsteht kein Studio-Login-Handler.
 
 ## What Changes
 
@@ -30,7 +30,7 @@ keine Freigabeliste und kein Studio-Login-Handler.
 ## Invarianten und Nachweise
 
 Authentifizierung und Directory-Rolle müssen vor dem Registry-Lesen erfolgreich
-sein. Nur aktive Einträge und die zwei freigegebenen Felder dürfen die Grenze
+sein. Nur aktive, loginbereite Einträge und die drei freigegebenen Felder dürfen die Grenze
 passieren. Ausfälle ergeben `503`, eine tatsächlich leere Liste `200`.
 Gezielte Unit-Tests, Ingress-Tests, Rollen-Abgleichstests, Type- und
 Server-Runtime-Gates sichern diese Grenzen ab.

@@ -98,8 +98,16 @@ export const ssfPlugin = {
         operation: 'reconcile',
         jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID,
       },
+      { operation: 'readiness', jobTypeId: SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID },
     ],
-    readinessChecks: [],
+    readinessChecks: [
+      {
+        checkId: 'ssf.loginReady',
+        titleKey: 'ssf.readiness.login',
+        required: true,
+        repairOperation: 'reconcile',
+      },
+    ],
   },
   translations: ssfPluginTranslations,
   routes: [

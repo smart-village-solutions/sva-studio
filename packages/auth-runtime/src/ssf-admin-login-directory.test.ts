@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   listInstances: vi.fn(),
+  readTenantReadiness: vi.fn(),
   authenticate: vi.fn(),
   emitSecurityAudit: vi.fn(),
 }));
@@ -17,7 +18,10 @@ vi.mock('./ssf-runtime-service-token.js', () => ({
   authenticateSsfServiceToken: mocks.authenticate,
 }));
 
-import { dispatchSsfAdminLoginDirectoryRequest } from './ssf-admin-login-directory.js';
+import { dispatchSsfAdminLoginDirectoryRequest as dispatchDirectory } from './ssf-admin-login-directory.js';
+
+const dispatchSsfAdminLoginDirectoryRequest: typeof dispatchDirectory = (request, dependencies) =>
+  dispatchDirectory(request, { readTenantReadiness: mocks.readTenantReadiness, ...dependencies });
 
 const request = (authorization = 'Bearer service-token', method = 'GET') =>
   new Request('http://studio:3000/internal/plugins/ssf/v1/admin-login-tenants', {
@@ -48,6 +52,7 @@ describe('SSF admin login directory', () => {
     vi.clearAllMocks();
     mocks.authenticate.mockResolvedValue({ kind: 'authenticated', subject: 'ssf-service' });
     mocks.listInstances.mockResolvedValue([]);
+    mocks.readTenantReadiness.mockResolvedValue(true);
   });
 
   it('lists only active local records with a deterministic revision', async () => {
@@ -188,5 +193,27 @@ describe('SSF admin login directory', () => {
     expect(response?.headers.get('Allow')).toBe('GET');
     expect(mocks.authenticate).not.toHaveBeenCalled();
     expect(mocks.listInstances).not.toHaveBeenCalled();
+  });
+  it('fails closed without an explicit readiness provider', async () => {
+    mocks.listInstances.mockResolvedValue([instance()]);
+    const response = await dispatchDirectory(request());
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toEqual({
+      error: {
+        code: 'admin_login_directory_unavailable',
+        correlationId: 'directory-test',
+      },
+    });
+    expect(mocks.listInstances).not.toHaveBeenCalled();
+  });
+
+  it('excludes incomplete tenants and reports probe failures as unavailable', async () => {
+    mocks.listInstances.mockResolvedValue([instance()]);
+    mocks.readTenantReadiness.mockResolvedValue(false);
+    expect(await (await dispatchSsfAdminLoginDirectoryRequest(request()))?.json()).toMatchObject({
+      tenants: [],
+    });
+    mocks.readTenantReadiness.mockRejectedValue(new Error('upstream unavailable'));
+    expect((await dispatchSsfAdminLoginDirectoryRequest(request()))?.status).toBe(503);
   });
 });

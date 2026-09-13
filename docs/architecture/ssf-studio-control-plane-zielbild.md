@@ -19,17 +19,15 @@ aufeinander aufbauende OpenSpec-Changes gegliedert:
 
 Der aktuelle Studio-Zwischenstand umfasst den fail-closed Runtime-Lesepfad,
 die Studio-seitige Projektionslogik, den getesteten Consumer für den
-tenantgebundenen SSF-Session-Widerruf und den tenantlokalen SSF-OIDC-Client als
-deaktiviertes Integrationsartefakt sowie getrennte Root- und Tenant-Editoren für
-die Runtime-Konfiguration. Das Plugin deklariert dafür ausschließlich
-die feste Client-ID und Audience `ssf`; die generische Keycloak-Provisionierung
-entfernt Callback-, Logout- und Origin-Freigaben, deaktiviert alle Flows und
-prüft Client sowie Audience-Mapper per Read-back. Bewusst offen bleiben der
-später gemeinsam mit SSF festzulegende Client-Typ, exakte Callback-URIs, die
-Aktivierung sowie die Anbindung an Plugin-Lifecycle und Host-Readiness-Provider
-und die SSF-seitige Implementierung des Sammelwiderrufs. Bis diese Verträge
-gemeinsam im Staging nachgewiesen sind, bleibt das produktive Enablement
-gesperrt.
+tenantgebundenen SSF-Session-Widerruf, getrennte Root- und Tenant-Editoren sowie
+den versionierten SSF-OIDC-Vertrag. Der Ressourcenclient `ssf` bleibt
+deaktiviert. Der öffentliche Browserclient `ssf-frontend` verwendet Code Flow,
+PKCE S256, eine maximale Access-Token-Laufzeit von 900 Sekunden und ausschließlich
+die aus `SVA_STUDIO_SSF_LOGIN_ORIGIN` abgeleiteten `/login/*`-Callbacks und
+Web-Origins. Der Plugin-Lifecycle aktiviert ihn erst nach IAM-, Datenbank- und
+Client-Read-back. Directory und Runtime prüfen dieselbe revisionsgebundene
+Readiness. Bis der reale Browser-Login gemeinsam im Staging nachgewiesen ist,
+bleibt das produktive Enablement gesperrt.
 
 Für den generischen Modul-IAM-Abgleich registriert `ssf` seine beiden
 Tenant-Konfigurationsrechte `ssf.configuration.tenant.read` und
@@ -185,15 +183,15 @@ Benutzername existiert nicht. Root-Benutzer werden nicht in Tenant-Realms
 kopiert. Der Realm `master` ist kein Anwendungsrealm. Gäste mit
 SSF-Session-Token bleiben außerhalb des Studio-IAM.
 
-Der Studio-seitig provisionierte Client `ssf` bleibt bis zur gemeinsamen
-Providerintegration deaktiviert und besitzt keine Redirect-, Logout- oder
-Web-Origin-Freigaben; OIDC-Protokoll, vertraulicher Client-Modus sowie die
-explizit abgeschalteten Standard-, Implicit- und Direct-Access-Flows und Service
-Accounts sind Bestandteil des Read-backs. Sein
-Audience-Mapper schreibt `ssf` in Access- und
-Introspection-Tokens, nicht in ID-Tokens. Der Vertrag ist versioniert und
-allowlist-basiert; zusätzliche, vom Plugin
-eingeschleuste Keycloak-Felder werden vor jedem Read oder Write abgelehnt.
+Der Studio-seitig provisionierte Ressourcenclient `ssf` bleibt deaktiviert und
+besitzt keine Redirect-, Logout- oder Web-Origin-Freigaben. Sein Audience-Mapper
+schreibt `ssf` in Access- und Introspection-Tokens, nicht in ID-Tokens. Der
+öffentliche Client `ssf-frontend` besitzt keine Secrets, Password- oder
+Service-Account-Flows. Seine Claim-Mapper werden einschließlich der über
+Client-Scopes effektiv angehängten Mapper geprüft, damit konkurrierende
+SSF-Claims die Freigabe blockieren. Beide Verträge sind versioniert und
+allowlist-basiert; zusätzliche, vom Plugin eingeschleuste Keycloak-Felder werden
+vor jedem Read oder Write abgelehnt.
 Der operative Keycloak-Status und der Instanz-Audit verdichten den Read-back
 aller deklarierten Plugin-OIDC-Clients in einen gemeinsamen Alignment-Befund.
 Nach einer Studio-Client-Secret-Rotation verwendet der Registry-Abgleich einen

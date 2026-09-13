@@ -51,6 +51,9 @@ const fixtures = (desired = projection()) => {
     withTenantLock: vi.fn(async (_instanceId, operation) => operation(lockedStore)),
   } satisfies SsfAuthorizationProjectionStore;
   const target = {
+    prepareLoginClients: vi.fn(async () => undefined),
+    prepareRuntimeBaseline: vi.fn(async () => undefined),
+    isReady: vi.fn(async () => true),
     suspendTokenIssuance: vi.fn(async () => undefined),
     reconcile: vi.fn(async () => undefined),
     readBack: vi.fn(async () => desired),
@@ -79,12 +82,19 @@ describe('SSF authorization projection reconciler', () => {
     });
     expect(target.reconcile).toHaveBeenCalledWith(desired, revision);
     expect(target.suspendTokenIssuance).toHaveBeenCalledWith('tenant-a');
+    expect(target.suspendTokenIssuance.mock.invocationCallOrder[0]).toBeLessThan(
+      target.prepareLoginClients.mock.invocationCallOrder[0]
+    );
     expect(target.readBack).toHaveBeenCalledWith('tenant-a');
     expect(lockedStore.confirmReadBack).toHaveBeenCalledWith({
       desired,
       readBack: desired,
       generation: 1,
     });
+    expect(target.prepareRuntimeBaseline).toHaveBeenCalledWith('tenant-a');
+    expect(lockedStore.confirmReadBack.mock.invocationCallOrder[0]).toBeLessThan(
+      target.prepareRuntimeBaseline.mock.invocationCallOrder[0]
+    );
     expect(target.revokeTenantSessions).not.toHaveBeenCalled();
     expect(target.resumeTokenIssuance).toHaveBeenCalledWith('tenant-a');
     expect(lockedStore.markReady).toHaveBeenCalledWith({
@@ -143,6 +153,8 @@ describe('SSF authorization projection reconciler', () => {
   });
 
   it.each([
+    ['login_client_preparation_failed', 'prepareLoginClients'],
+    ['runtime_baseline_preparation_failed', 'prepareRuntimeBaseline'],
     ['token_issuance_suspend_failed', 'suspendTokenIssuance'],
     ['target_write_failed', 'reconcile'],
     ['target_readback_failed', 'readBack'],
@@ -181,4 +193,35 @@ describe('SSF authorization projection reconciler', () => {
       createSsfAuthorizationRevision(projection('tenant-b'))
     );
   });
+});
+
+it('repairs a stale ready state before publishing it again', async () => {
+  const desired = projection();
+  const revision = createSsfAuthorizationRevision(desired);
+  const { lockedStore, target, reconcile } = fixtures(desired);
+  lockedStore.stage.mockResolvedValue(
+    state(desired, { status: 'ready', confirmedRevision: revision })
+  );
+  target.isReady.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  await expect(reconcile(desired)).resolves.toMatchObject({ status: 'ready', changed: true });
+  expect(lockedStore.claim).toHaveBeenCalledOnce();
+  expect(target.prepareLoginClients.mock.invocationCallOrder[0]).toBeLessThan(
+    target.reconcile.mock.invocationCallOrder[0]
+  );
+  expect(target.isReady.mock.invocationCallOrder[1]).toBeLessThan(
+    lockedStore.markReady.mock.invocationCallOrder[0]
+  );
+});
+
+it('keeps the tenant blocked and disables login when the final baseline or client read-back fails', async () => {
+  const { target, lockedStore, reconcile } = fixtures();
+  target.isReady.mockResolvedValue(false);
+  await expect(reconcile(projection())).resolves.toMatchObject({
+    status: 'blocked',
+    reason: 'tenant_readiness_failed',
+  });
+  expect(lockedStore.markReady).not.toHaveBeenCalled();
+  expect(target.suspendTokenIssuance.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+    target.resumeTokenIssuance.mock.invocationCallOrder[0]
+  );
 });

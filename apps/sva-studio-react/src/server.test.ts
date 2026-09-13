@@ -48,6 +48,10 @@ vi.mock('@sva/routing/server', () => ({
   dispatchAuthRouteRequest: dispatchAuthRouteRequestMock,
 }));
 
+vi.mock('./lib/ssf-admin-login-directory.server.js', () => ({
+  dispatchStudioSsfAdminLoginDirectoryRequest: dispatchSsfAdminLoginDirectoryRequestMock,
+}));
+
 vi.mock('@sva/auth-runtime/server', () => ({
   dispatchSsfAdminLoginDirectoryRequest: dispatchSsfAdminLoginDirectoryRequestMock,
   ensureStudioJobWorkerStarted: ensurePluginOperationWorkerStartedMock,
@@ -208,22 +212,22 @@ describe('server transport', () => {
   });
 
   it('dispatches internal SSF runtime configuration before auth and TanStack Start', async () => {
-      vi.stubEnv('NODE_ENV', 'production');
-      const pluginResponse = new Response('plugin', { status: 200 });
-      const startFetch = vi.fn().mockResolvedValue(new Response('start'));
-      createStartHandlerMock.mockReturnValue(startFetch);
-      dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+    vi.stubEnv('NODE_ENV', 'production');
+    const pluginResponse = new Response('plugin', { status: 200 });
+    const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+    createStartHandlerMock.mockReturnValue(startFetch);
+    dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
 
-      const mod = await import('./server');
-      const request = new Request(
-        'http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration'
-      );
-      const response = await mod.default.fetch(request);
+    const mod = await import('./server');
+    const request = new Request(
+      'http://localhost:3000/internal/plugins/ssf/v1/runtime-configuration'
+    );
+    const response = await mod.default.fetch(request);
 
-      expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
-      expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
-      expect(startFetch).not.toHaveBeenCalled();
-      expect(response).toBe(pluginResponse);
+    expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    expect(response).toBe(pluginResponse);
   }, 10_000);
 
   it('dispatches the SSF directory without constructing the tenant plugin dispatcher', async () => {
@@ -233,7 +237,9 @@ describe('server transport', () => {
     const startFetch = vi.fn().mockResolvedValue(new Response('start'));
     createStartHandlerMock.mockReturnValue(startFetch);
     dispatchSsfAdminLoginDirectoryRequestMock.mockResolvedValue(directoryResponse);
-    ensurePluginActivationPoliciesConfiguredMock.mockRejectedValue(new Error('broken plugin catalog'));
+    ensurePluginActivationPoliciesConfiguredMock.mockRejectedValue(
+      new Error('broken plugin catalog')
+    );
     createStudioPluginServerHandlerDispatcherMock.mockRejectedValue(
       new Error('broken tenant plugin')
     );

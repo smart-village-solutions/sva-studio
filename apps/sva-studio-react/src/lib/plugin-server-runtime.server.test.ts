@@ -24,6 +24,8 @@ const ssfRuntimeMocks = vi.hoisted(() => ({
 vi.mock('@sva/auth-runtime/server', () => authRuntimeMocks);
 vi.mock('@sva/plugin-ssf/runtime', () => ssfRuntimeMocks);
 
+vi.mock('./ssf-login-readiness.server.js', () => ({ readStudioSsfLoginReadiness: vi.fn() }));
+
 vi.mock('./plugins.js', () => ({
   studioPluginSnapshot: {
     pluginSources: [],
@@ -107,6 +109,7 @@ describe('plugin server runtime loader', () => {
     expect(authRuntimeMocks.createSsfRuntimePluginServiceAccess).toHaveBeenCalledWith({
       readAuthorizationRevision: expect.any(Function),
       readDatabaseReadiness: expect.any(Function),
+      readLoginReadiness: expect.any(Function),
     });
     expect(authRuntimeMocks.createPluginServerHandlerDispatcher).toHaveBeenCalledWith(
       expect.objectContaining({

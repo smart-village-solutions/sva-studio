@@ -72,3 +72,24 @@ aktuell projizierten Claims verwenden.
 - **WHEN** Write, Read-back und erneute Client-Aktivierung erfolgreich sind
 - **THEN** blockiert das die Projektionsreadiness nicht
 - **AND** bleiben vorhandene Widerrufsfelder ohne falsche Erfolgsbestätigung leer
+
+### Requirement: Readiness berücksichtigt aktuelle Login-Voraussetzungen
+
+Eine gespeicherte identische Projektionsrevision SHALL allein kein `ready`
+begründen. Der Lifecycle MUST Client-Verträge, Claim-Mapper und Tenant-Baseline
+verifizieren und veraltete Ready-Generationen unter demselben Tenant-Lock erneut
+beanspruchen. Directory und Runtime MUST denselben hostseitigen Readiness-Pfad
+verwenden; eine während des Read-back wechselnde Revision sperrt die Freigabe.
+
+#### Scenario: Gleiche Revision mit fehlender Baseline
+
+- **GIVEN** eine gespeicherte Projektion ist `ready`, aber Client oder Tenant-Grunddatensatz fehlt
+- **WHEN** ein Reconcile ausgeführt wird
+- **THEN** stellt er die Voraussetzungen idempotent her und prüft die Projektion erneut
+- **AND** darf ein Fehler keine neue Veröffentlichung auslösen
+
+#### Scenario: Fehler nach Aktivierung
+
+- **WHEN** die gemeinsame Readiness-Prüfung nach Aktivierung des Browserclients fehlschlägt
+- **THEN** bleibt die Projektion gesperrt und der Lifecycle erfolglos
+- **AND** versucht der Adapter, ausschließlich die Browser-Tokenausstellung wieder zu sperren

@@ -84,7 +84,9 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       rootPool.query("UPDATE ssf.tenants SET status = 'active' WHERE instance_id = 'tenant-a'")
     ).rejects.toMatchObject({ code: '23514' });
     await expect(
-      rootPool.query("UPDATE ssf.tenants SET instance_id = 'tenant-renamed' WHERE instance_id = 'tenant-a'")
+      rootPool.query(
+        "UPDATE ssf.tenants SET instance_id = 'tenant-renamed' WHERE instance_id = 'tenant-a'"
+      )
     ).rejects.toMatchObject({ code: '42501' });
     await expect(
       rootPool.query("UPDATE ssf.tenants SET created_at = now() WHERE instance_id = 'tenant-a'")
@@ -318,6 +320,23 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       sessions_revoked_revision: null,
       sessions_revoked_at: null,
     });
+
+    // A live drift probe must be able to withdraw previously published readiness.
+    expect(
+      await claimSsfAuthorizationProjection(rootPool, {
+        instanceId: 'tenant-a',
+        generation: state.generation,
+        desiredRevision: revision,
+      })
+    ).toBe(true);
+    await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+    expect(
+      await claimSsfAuthorizationProjection(rootPool, {
+        instanceId: 'tenant-b',
+        generation: state.generation,
+        desiredRevision: revision,
+      })
+    ).toBe(false);
 
     const desiredSubject = desired.subjects[0];
     if (!desiredSubject) throw new Error('projection fixture requires a subject');

@@ -502,6 +502,7 @@ ersten Slices verbleiben:
 ## Ergänzender Login-Vertrag
 
 Das separate [SSF-Login-Mandantenverzeichnis](./ssf-admin-login-mandanten-v1.md)
-liefert aktive Registry-Einträge mit ID, Name und Realm ohne Tenant-Bindung.
-Seine eigene Directory-Leseberechtigung und reine Statusfilterung ändern die
-Aktivierungs- und Readiness-Anforderungen dieses Runtime-Vertrags nicht.
+liefert aktive, loginbereite Registry-Einträge mit ID, Name und Realm ohne
+Tenant-Bindung. Die Directory-Leseberechtigung bleibt getrennt; Directory und
+Runtime verwenden denselben hostseitigen Readiness-Pfad für Lifecycle,
+Tenant-Grunddatensatz, Keycloak-Clients und bestätigte IAM-Revision.

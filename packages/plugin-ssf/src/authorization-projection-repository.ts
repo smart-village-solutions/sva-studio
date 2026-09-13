@@ -15,12 +15,7 @@ import {
 type ProjectionQueryClient = Pick<Pool, 'query'>;
 
 export type SsfAuthorizationProjectionStatus =
-  | 'pending'
-  | 'projecting'
-  | 'activation_pending'
-  | 'revocation_pending'
-  | 'ready'
-  | 'blocked';
+  'pending' | 'projecting' | 'activation_pending' | 'revocation_pending' | 'ready' | 'blocked';
 
 export type SsfAuthorizationProjectionState = Readonly<{
   instanceId: string;
@@ -106,7 +101,7 @@ export const claimSsfAuthorizationProjection = async (
       WHERE instance_id = $1
         AND generation = $2
         AND desired_revision = $3
-        AND status IN ('pending', 'projecting', 'activation_pending', 'revocation_pending', 'blocked')`,
+        AND status IN ('pending', 'projecting', 'activation_pending', 'revocation_pending', 'blocked', 'ready')`,
     [input.instanceId, input.generation, input.desiredRevision]
   );
   return result.rowCount === 1;

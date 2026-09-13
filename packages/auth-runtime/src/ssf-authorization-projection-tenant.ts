@@ -7,18 +7,19 @@ import {
 
 export const resolveInstanceKeycloakProjectionTenant = async (
   instanceId: string,
-  clientId: string
+  clientId: string,
+  authRealm?: string
 ): Promise<{
   readonly instanceId: string;
   readonly clientId: string;
   readonly client: KeycloakAdminClient;
 } | null> => {
-  const instance = await loadInstanceById(instanceId);
-  if (!instance) return null;
+  const resolvedAuthRealm = authRealm ?? (await loadInstanceById(instanceId))?.authRealm;
+  if (!resolvedAuthRealm) return null;
 
   return {
     instanceId,
     clientId,
-    client: new KeycloakAdminClient(getKeycloakProvisionerClientConfigFromEnv(instance.authRealm)),
+    client: new KeycloakAdminClient(getKeycloakProvisionerClientConfigFromEnv(resolvedAuthRealm)),
   };
 };

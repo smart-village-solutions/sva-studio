@@ -8,10 +8,39 @@ export { ssfPlugin };
 const lifecycleError = (message: string, cause: Readonly<Record<string, unknown>>): Error =>
   Object.assign(new Error(message), { cause });
 
+const executeReadiness = async (
+  runtime: SsfAuthorizationProjectionRuntime,
+  context: Parameters<PluginJobExecutionHandler>[0]
+): ReturnType<PluginJobExecutionHandler> => {
+  await context.throwIfCancellationRequested();
+  let revision: Awaited<ReturnType<SsfAuthorizationProjectionRuntime['readiness']>>;
+  try {
+    revision = await runtime.readiness(context.job.instanceId);
+  } catch (error) {
+    throw lifecycleError('ssf_authorization_readiness_unavailable', {
+      code: 'ssf.authorization-readiness-unavailable',
+      messageKey: 'ssf.errors.authorizationReconcileUnavailable',
+      retry: { kind: 'retryable' },
+      details: { errorType: error instanceof Error ? error.name : typeof error },
+    });
+  }
+  await context.throwIfCancellationRequested();
+  return {
+    resultPayload: { plugin: { operation: 'readiness' } },
+    tenantLifecycle: {
+      revision: revision ?? 'ssf:not-ready',
+      checks: [{ checkId: 'ssf.loginReady', status: revision ? 'ready' : 'blocked' }],
+    },
+  };
+};
+
 export const createPluginJobExecutionHandlers = (
   runtime: SsfAuthorizationProjectionRuntime
 ): Readonly<Record<string, PluginJobExecutionHandler>> => ({
   [SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID]: async (context) => {
+    if (context.tenantLifecycle?.operation === 'readiness') {
+      return executeReadiness(runtime, context);
+    }
     if (
       context.tenantLifecycle?.operation !== 'provision' &&
       context.tenantLifecycle?.operation !== 'reconcile'
@@ -61,7 +90,7 @@ export const createPluginJobExecutionHandlers = (
       },
       tenantLifecycle: {
         revision: result.authorizationRevision,
-        checks: [],
+        checks: [{ checkId: 'ssf.loginReady', status: 'ready' }],
       },
     };
   },

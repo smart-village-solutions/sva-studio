@@ -1,3 +1,15 @@
+## Aktueller Lieferstand: Ergänzung Issue #1319
+
+Der nachfolgend beschriebene ursprüngliche Voraussetzungsslice wird durch #1319
+bis zur lokalen Login-Bereitschaft erweitert. Der deaktivierte Client `ssf`
+bleibt Ressourcenclient. Der zusätzliche Browservertrag 2.0 für `ssf-frontend`
+verwendet die explizite HTTPS-Installationsorigin, PKCE S256 und den begrenzten
+Redirect `/login/*`. Nach der Client-Provisionierung wird zuerst die IAM-Projektion
+bestätigt und danach der Tenant-Grunddatensatz provisioniert; beides liegt vor
+`ready`; Directory und Runtime prüfen denselben Readiness-Pfad. Die ursprüngliche
+Stopplinie vor der Lifecycle-Anbindung ist damit für die lokale Implementierung
+überholt. Der echte revisionsgleiche SSF-/Staging-Nachweis bleibt offen.
+
 ## Context
 
 Eine Studio-Installation läuft innerhalb derselben Deployment-Grenze wie genau

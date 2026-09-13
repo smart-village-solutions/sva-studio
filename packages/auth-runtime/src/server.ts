@@ -288,3 +288,7 @@ export type {
   SessionControlState,
   SessionUser,
 } from './types.js';
+export {
+  prepareInstanceSsfLoginClients,
+  readInstanceSsfLoginClientsReady,
+} from './ssf-login-clients.js';

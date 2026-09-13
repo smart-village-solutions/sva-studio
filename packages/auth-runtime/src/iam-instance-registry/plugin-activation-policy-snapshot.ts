@@ -40,13 +40,17 @@ let configuredPluginOidcClientRequirements: readonly PluginOidcClientRequirement
   []
 );
 
-const readLifecycleContractDigest = (lifecycle: PluginTenantLifecycleRegistryEntry): string =>
+const readLifecycleContractDigest = (
+  lifecycle: PluginTenantLifecycleRegistryEntry,
+  oidcClientRequirements: readonly PluginOidcClientRequirement[]
+): string =>
   createHash('sha256')
     .update(
       JSON.stringify({
         contractVersion: lifecycle.contractVersion,
         operations: lifecycle.operations,
         readinessChecks: lifecycle.readinessChecks,
+        oidcClientRequirements,
       })
     )
     .digest('hex');
@@ -146,6 +150,25 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
 }): void => {
   const activationPolicies = copySnapshot(input.activationPolicies);
   const moduleIamRegistry = copyModuleIamRegistry(input.moduleIamContracts);
+  const pluginOidcClientRequirements = Object.freeze(
+    input.pluginOidcClientRequirements.map((requirement) =>
+      Object.freeze(
+        requirement.contractVersion === '2.0'
+          ? {
+              ...requirement,
+              redirectUris: Object.freeze([...requirement.redirectUris]),
+              webOrigins: Object.freeze([...requirement.webOrigins]),
+            }
+          : { ...requirement }
+      )
+    )
+  );
+  if (
+    new Set(pluginOidcClientRequirements.map(({ clientId }) => clientId)).size !==
+    pluginOidcClientRequirements.length
+  ) {
+    throw new Error('plugin_oidc_client_duplicate_client_id');
+  }
   const activationPolicyByModuleId = new Map(
     activationPolicies.modules.map((module) => [module.moduleId, module] as const)
   );
@@ -159,7 +182,12 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
         lifecycle.pluginId,
         Object.freeze({
           ...lifecycle,
-          contractRevision: `${activationPolicy.policyRevision}:${readLifecycleContractDigest(lifecycle)}`,
+          contractRevision: `${activationPolicy.policyRevision}:${readLifecycleContractDigest(
+            lifecycle,
+            pluginOidcClientRequirements.filter(
+              (requirement) => requirement.pluginId === lifecycle.pluginId
+            )
+          )}`,
           operations: Object.freeze(
             lifecycle.operations.map((operation) => Object.freeze({ ...operation }))
           ),
@@ -173,16 +201,6 @@ export const configureInstanceRegistryPluginRuntimeSnapshot = (input: {
   if (tenantLifecycleRegistry.size !== input.tenantLifecycles.length) {
     throw new Error('plugin_tenant_lifecycle_duplicate_plugin');
   }
-  const pluginOidcClientRequirements = Object.freeze(
-    input.pluginOidcClientRequirements.map((requirement) => Object.freeze({ ...requirement }))
-  );
-  if (
-    new Set(pluginOidcClientRequirements.map(({ clientId }) => clientId)).size !==
-    pluginOidcClientRequirements.length
-  ) {
-    throw new Error('plugin_oidc_client_duplicate_client_id');
-  }
-
   configuredSnapshot = activationPolicies;
   configuredModuleIamRegistry = moduleIamRegistry;
   configuredTenantLifecycleRegistry = tenantLifecycleRegistry;

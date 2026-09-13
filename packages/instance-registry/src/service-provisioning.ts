@@ -14,12 +14,31 @@ type CreatedInstanceRecord = NonNullable<
 >;
 
 export const createProvisioningArtifacts = async (
-  repository: InstanceRegistryRepository,
+  deps: InstanceRegistryServiceDeps,
   instance: CreatedInstanceRecord,
   input: CreateInstanceProvisioningInput,
   automationMode: 'external' | 'kassel-traefik-file' = 'external'
 ): Promise<Awaited<ReturnType<InstanceRegistryRepository['createProvisioningRun']>>> => {
+  const repository = deps.repository;
   const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
+  const pluginSnapshot =
+    automationMode === 'kassel-traefik-file'
+      ? await (async () => {
+          const activeModuleIds = new Set(
+            (await repository.listModuleActivations(instance.instanceId))
+              .filter(({ effectiveActive }) => effectiveActive)
+              .map(({ moduleId }) => moduleId)
+          );
+          return {
+            lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])]
+              .filter(({ pluginId }) => activeModuleIds.has(pluginId))
+              .sort((left, right) => left.pluginId.localeCompare(right.pluginId)),
+            oidcClients: [...(deps.readPluginOidcClientRequirements?.() ?? [])]
+              .filter(({ pluginId }) => activeModuleIds.has(pluginId))
+              .sort((left, right) => left.clientId.localeCompare(right.clientId)),
+          };
+        })()
+      : { lifecycles: [], oidcClients: [] };
   const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
     repository.createProvisioningRun({
       instanceId: instance.instanceId,
@@ -32,7 +51,8 @@ export const createProvisioningArtifacts = async (
         instance,
         input,
         payloadFingerprint,
-        automationMode
+        automationMode,
+        pluginSnapshot
       ),
       actorId: input.actorId,
       requestId: input.requestId,

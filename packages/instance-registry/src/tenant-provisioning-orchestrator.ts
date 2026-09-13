@@ -33,6 +33,8 @@ const TERMINAL_ERROR_CODES = new Set([
   'module_readiness_blocked',
   'provisioning_step_invalid',
   'provisioning_snapshot_drift',
+  'provisioning_plugin_snapshot_missing',
+  'provisioning_plugin_activation_missing',
   'provisioning_instance_status_invalid',
   'tenant_ingress_hostname_invalid_label',
   'tenant_ingress_hostname_invalid_label_count',

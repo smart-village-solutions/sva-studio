@@ -77,6 +77,20 @@ const latestRun = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+const kasselPluginSnapshot = {
+  pluginSnapshotVersion: '1.0',
+  pluginLifecycles: [
+    {
+      pluginId: 'news',
+      contractVersion: 1,
+      contractRevision: 'news-1:contract',
+      operations: [{ operation: 'provision', jobTypeId: 'news.provision' }],
+      readinessChecks: [],
+    },
+  ],
+  pluginOidcClients: [],
+};
+
 const latestRunWithAuthSecret = {
   ...latestRun,
   payloadFingerprint: buildCreateInstancePayloadFingerprint({
@@ -728,7 +742,7 @@ describe('instance registry service facade', () => {
     const kasselRun = {
       ...latestRun,
       status: 'provisioning' as const,
-      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      desiredSnapshot: { automationMode: 'kassel-traefik-file', ...kasselPluginSnapshot },
       payloadFingerprint: buildCreateInstancePayloadFingerprint({
         instanceId: 'demo',
         displayName: 'Demo',
@@ -945,7 +959,7 @@ describe('instance registry service facade', () => {
       ...latestRun,
       status: 'failed' as const,
       stepKey: 'login',
-      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      desiredSnapshot: { automationMode: 'kassel-traefik-file', ...kasselPluginSnapshot },
       payloadFingerprint: buildCreateInstancePayloadFingerprint({
         instanceId: 'demo',
         displayName: 'Demo',
@@ -961,7 +975,7 @@ describe('instance registry service facade', () => {
     const retryProvisioningRun = vi.fn(async () => ({
       ...failedRun,
       status: 'requested' as const,
-      stepKey: 'tls',
+      stepKey: 'lifecycle',
       errorCode: undefined,
       completedAt: undefined,
     }));
@@ -989,7 +1003,7 @@ describe('instance registry service facade', () => {
       ok: true,
       instance: expect.objectContaining({
         status: 'provisioning',
-        latestProvisioningRun: expect.objectContaining({ stepKey: 'tls' }),
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'lifecycle' }),
       }),
     });
     expect(retryProvisioningRun).toHaveBeenCalledWith(
@@ -998,6 +1012,11 @@ describe('instance registry service facade', () => {
     expect(repository.setInstanceStatus).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'demo', status: 'provisioning' })
     );
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      lifecycles: kasselPluginSnapshot.pluginLifecycles,
+      forcePluginIds: ['news'],
+    });
   });
 
   it('requeues the latest failed automated create run without the original HTTP key', async () => {
@@ -1011,14 +1030,14 @@ describe('instance registry service facade', () => {
       ...latestRun,
       status: 'failed' as const,
       stepKey: 'login',
-      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      desiredSnapshot: { automationMode: 'kassel-traefik-file', ...kasselPluginSnapshot },
       errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
     };
     const retriedRun = {
       ...failedRun,
       status: 'requested' as const,
-      stepKey: 'tls',
+      stepKey: 'lifecycle',
       errorCode: undefined,
       completedAt: undefined,
     };
@@ -1042,7 +1061,7 @@ describe('instance registry service facade', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         status: 'provisioning',
-        latestProvisioningRun: expect.objectContaining({ stepKey: 'tls' }),
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'lifecycle' }),
       })
     );
     expect(retryProvisioningRun).toHaveBeenCalledWith(
@@ -1052,6 +1071,11 @@ describe('instance registry service facade', () => {
         requestId: 'retry-1',
       })
     );
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      lifecycles: kasselPluginSnapshot.pluginLifecycles,
+      forcePluginIds: ['news'],
+    });
   });
 
   it('returns an already requeued automated run without creating another retry', async () => {

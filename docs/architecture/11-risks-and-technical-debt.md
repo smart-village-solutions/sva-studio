@@ -673,3 +673,15 @@ Referenzen:
 - Restrisiko: Bereits ausgestellte Service-Tokens können alte Rollen bis zu
   ihrem Ablauf tragen. Maßnahme: Rollenänderung erst mit neu bezogenem Token
   bewerten und den negativen Mutationsnachweis nach Token-Erneuerung führen.
+
+### Fortschreibung 2026-09: Kasseler Ingress-Automatisierung
+
+- Das Verfahren ist bewusst an `dialog.kassel.de`, die vorhandene
+  Standalone-Topologie und TLS-ALPN gebunden. Eine Übertragung auf reguläre
+  Studio-Umgebungen benötigt einen eigenen Infrastrukturvertrag.
+- Ein Ausfall von Keycloak, ACME, Traefik oder Plugin-Worker kann die Anlage bis
+  zur Deadline verzögern. Lease, persistente Wake-ups und terminales `failed`
+  verhindern einen fälschlich fertigen Tenant, ersetzen aber kein externes
+  Betriebsmonitoring.
+- Der credentialgebundene Browserpfad bleibt ein geschütztes Enablement-Gate und
+  ist nicht Teil der automatischen Create-Credentials.

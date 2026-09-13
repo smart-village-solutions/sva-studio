@@ -50,12 +50,13 @@ export const prepareInstanceSsfLoginClients = async (
   });
 };
 
-export const readInstanceSsfLoginClientsReady = async (
+const readInstanceSsfLoginClientsReadyForStatuses = async (
   instanceId: string,
-  authRealm?: string
+  authRealm: string | undefined,
+  allowedStatuses: ReadonlySet<string>
 ): Promise<boolean> => {
   const contract = await resolveLoginContract(instanceId, authRealm);
-  if (!contract || contract.instance.status !== 'active') return false;
+  if (!contract || !allowedStatuses.has(contract.instance.status)) return false;
   for (const requirement of contract.input.pluginOidcClients) {
     const clientRepresentation = await contract.tenant.client.getOidcClientByClientId(
       requirement.clientId
@@ -73,3 +74,19 @@ export const readInstanceSsfLoginClientsReady = async (
   }
   return true;
 };
+
+export const readInstanceSsfLoginClientsReady = async (
+  instanceId: string,
+  authRealm?: string
+): Promise<boolean> =>
+  readInstanceSsfLoginClientsReadyForStatuses(instanceId, authRealm, new Set(['active']));
+
+export const readInstanceSsfProvisioningLoginClientsReady = async (
+  instanceId: string,
+  authRealm?: string
+): Promise<boolean> =>
+  readInstanceSsfLoginClientsReadyForStatuses(
+    instanceId,
+    authRealm,
+    new Set(['provisioning', 'active'])
+  );

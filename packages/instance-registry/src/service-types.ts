@@ -61,6 +61,23 @@ export type InstanceModuleIamRegistryEntry = {
   readonly systemAdminPermissionExclusions?: readonly string[];
 };
 
+export type ProvisioningPluginTenantLifecycleContract = Readonly<{
+  pluginId: string;
+  contractVersion: 1;
+  contractRevision: string;
+  operations: readonly Readonly<{
+    operation: 'provision' | 'reconcile' | 'suspend' | 'reactivate' | 'readiness';
+    jobTypeId: string;
+    supportsCancellation?: boolean;
+  }>[];
+  readinessChecks: readonly Readonly<{
+    checkId: string;
+    titleKey: string;
+    required: boolean;
+    repairOperation?: 'provision' | 'reconcile' | 'suspend' | 'reactivate';
+  }>[];
+}>;
+
 type KeycloakProvisioningContext = {
   instanceId: string;
   primaryHostname: string;
@@ -174,8 +191,10 @@ export type InstanceRegistryServiceDeps = {
     readonly expectedRouterName: string;
     readonly expectedConfigHash: string;
   }) => Promise<Readonly<Record<string, unknown>>>;
-  readonly scheduleProvisioningModuleReconcile?: (instanceId: string) => Promise<void>;
-  readonly readProvisioningModuleReadiness?: (instanceId: string) => Promise<
+  readonly readProvisioningModuleReadiness?: (input: {
+    readonly instanceId: string;
+    readonly lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
+  }) => Promise<
     Readonly<{
       status: 'ready' | 'pending' | 'blocked';
       evidence: Readonly<Record<string, unknown>>;
@@ -246,7 +265,7 @@ export type InstanceRegistryServiceDeps = {
   readonly moduleIamRegistry?: ReadonlyMap<string, InstanceModuleIamRegistryEntry>;
   readonly pluginTenantLifecycleRegistry?: ReadonlyMap<
     string,
-    Readonly<{ pluginId: string; contractRevision: string }>
+    ProvisioningPluginTenantLifecycleContract
   >;
   readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
   readonly probeTenantIamAccess?: (input: {

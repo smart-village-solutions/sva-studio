@@ -29,6 +29,10 @@ gesicherten Bedarf verändern.
   Router, öffentliches TLS, Modul-Readiness, Login-Redirect und Aktivierung.
   `active` wird erst als letzter Schritt gespeichert. Bis dahin bleibt die
   Instanz `provisioning` und erscheint nicht im SSF-Login-Verzeichnis.
+- Der Elternlauf bindet die vollständigen Verträge der effektiv aktiven
+  Plugin-Lifecycles und OIDC-Clients als versionierten Snapshot. Der separate
+  Provisioner liest keinen globalen In-Memory-Snapshot der App; fehlende oder
+  leere Composition blockiert terminal.
 - Für den Login-Smoke darf ausschließlich `/auth/login` im expliziten
   Kassel-Modus bereits eine `provisioning`-Instanz auflösen. Callback und
   übriger Tenant-Verkehr behalten das bestehende Active-Gate.
@@ -47,6 +51,9 @@ gesicherten Bedarf verändern.
   versionierten Lauf unter neuer Lease fort. Der HTTP-Aufruf verwendet einen
   frischen Idempotency-Key; der Browser muss den ursprünglichen Create-Key
   nicht aufbewahren.
+- Create und Retry persistieren den Plugin-Lifecycle-Intent samt Graphile-Wake-up
+  innerhalb des Registry-Transaktionspfads. Der App-Callback bleibt eine
+  Beschleunigung, ist aber keine Voraussetzung für Recovery.
 - Der reguläre Studio-Rollout bleibt unverändert; die SSF-File-Provider-
   Ergänzung wird im zuständigen Repository separat geliefert.
 

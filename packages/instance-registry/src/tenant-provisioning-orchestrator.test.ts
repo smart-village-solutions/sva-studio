@@ -21,6 +21,18 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
 
 const now = new Date('2026-09-12T12:00:00.000Z');
+const pluginSnapshot = {
+  lifecycles: [
+    {
+      pluginId: 'ssf',
+      contractVersion: 1 as const,
+      contractRevision: 'ssf-1:contract',
+      operations: [{ operation: 'provision' as const, jobTypeId: 'ssf.provision' }],
+      readinessChecks: [{ checkId: 'login', titleKey: 'ssf.login', required: true }],
+    },
+  ],
+  oidcClients: [],
+};
 
 const instance: InstanceRegistryRecord = {
   instanceId: 'tenant-a',
@@ -62,7 +74,8 @@ const createRun = (): InstanceProvisioningRun => ({
       featureFlags: instance.featureFlags,
     },
     'fingerprint-1',
-    'kassel-traefik-file'
+    'kassel-traefik-file',
+    pluginSnapshot
   ),
   attemptCount: 0,
   nextAttemptAt: now.toISOString(),
@@ -162,7 +175,6 @@ const createHarness = () => {
       configHash: 'sha256:router',
     })),
     probeTenantEndpoint: vi.fn(async ({ kind }) => ({ [`${kind}Status`]: 200 })),
-    scheduleProvisioningModuleReconcile: vi.fn(async () => undefined),
     readProvisioningModuleReadiness: vi.fn(async () => ({
       status: readiness,
       evidence: { moduleStatus: readiness },
@@ -359,6 +371,36 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
+  it('fails closed when the persisted Kassel plugin composition is empty', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      desiredSnapshot: buildTenantProvisioningSnapshot(
+        instance,
+        {
+          instanceId: instance.instanceId,
+          displayName: instance.displayName,
+          parentDomain: instance.parentDomain,
+          realmMode: instance.realmMode,
+          authRealm: instance.authRealm,
+          authClientId: instance.authClientId,
+          authIssuerUrl: instance.authIssuerUrl,
+          idempotencyKey: 'idem-1',
+          featureFlags: instance.featureFlags,
+        },
+        'fingerprint-1',
+        'kassel-traefik-file'
+      ),
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      errorCode: 'provisioning_plugin_snapshot_missing',
+    });
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+  });
+
   it('accepts only the correlated Keycloak new-to-existing realm transition', async () => {
     const harness = createHarness();
     const newRealmInstance = { ...harness.getInstance(), realmMode: 'new' as const };
@@ -381,7 +423,8 @@ describe('tenant provisioning parent orchestrator', () => {
           featureFlags: newRealmInstance.featureFlags,
         },
         'fingerprint-1',
-        'kassel-traefik-file'
+        'kassel-traefik-file',
+        pluginSnapshot
       ),
     });
     harness.changeInstance({ realmMode: 'existing' });
@@ -396,8 +439,8 @@ describe('tenant provisioning parent orchestrator', () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
-      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'lifecycle' });
-      vi.mocked(harness.deps.scheduleProvisioningModuleReconcile).mockImplementation(
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
+      vi.mocked(harness.deps.publishTenantIngress).mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 15_000))
       );
 
@@ -408,7 +451,7 @@ describe('tenant provisioning parent orchestrator', () => {
       await processing;
 
       expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledTimes(2);
-      expect(harness.getRun().stepKey).toBe('ingress');
+      expect(harness.getRun().stepKey).toBe('tls');
     } finally {
       vi.useRealTimers();
     }
@@ -418,7 +461,7 @@ describe('tenant provisioning parent orchestrator', () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
-      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'lifecycle' });
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
       let releaseHeartbeat!: () => void;
       const heartbeat = new Promise<void>((resolve) => {
         releaseHeartbeat = resolve;
@@ -429,7 +472,7 @@ describe('tenant provisioning parent orchestrator', () => {
           await heartbeat;
           return harness.getRun();
         });
-      vi.mocked(harness.deps.scheduleProvisioningModuleReconcile).mockImplementation(
+      vi.mocked(harness.deps.publishTenantIngress).mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 11_000))
       );
 
@@ -438,7 +481,7 @@ describe('tenant provisioning parent orchestrator', () => {
       });
       await vi.advanceTimersByTimeAsync(11_000);
 
-      await expect(processing).resolves.toEqual(expect.objectContaining({ stepKey: 'ingress' }));
+      await expect(processing).resolves.toEqual(expect.objectContaining({ stepKey: 'tls' }));
       releaseHeartbeat();
       await Promise.resolve();
     } finally {
@@ -450,11 +493,11 @@ describe('tenant provisioning parent orchestrator', () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
-      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'lifecycle' });
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
       vi.mocked(harness.repository.renewProvisioningRunLease)
         .mockResolvedValueOnce(harness.getRun())
         .mockResolvedValueOnce(null);
-      vi.mocked(harness.deps.scheduleProvisioningModuleReconcile).mockImplementation(
+      vi.mocked(harness.deps.publishTenantIngress).mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 15_000))
       );
 
@@ -465,8 +508,9 @@ describe('tenant provisioning parent orchestrator', () => {
       await vi.advanceTimersByTimeAsync(15_000);
 
       await rejected;
-      expect(harness.getRun().stepKey).toBe('lifecycle');
-      expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
+      expect(harness.getRun().stepKey).toBe('ingress');
+      expect(harness.deps.publishTenantIngress).toHaveBeenCalledOnce();
+      expect(harness.deps.probeTenantEndpoint).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }

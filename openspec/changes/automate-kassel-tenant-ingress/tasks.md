@@ -2,7 +2,7 @@
 
 - [x] 0.1 Revidiertes Proposal, Design, Assurance und Spec-Deltas fachlich
       freigeben
-- [ ] 0.2 #1319/#1339 oder einen gleichwertigen Nachfolger als führenden
+- [x] 0.2 #1319/#1339 oder einen gleichwertigen Nachfolger als führenden
       SSF-Readiness-Vertrag abschließen
 - [x] 0.3 Cross-Repository-Reihenfolge und zuständige Reviewer für
       `sva-studio` und `smart-speech-flow` festlegen
@@ -10,7 +10,7 @@
       Fehlerursache korrelieren
 - [x] 0.5 Allgemeine SSF-Readiness und Kasseler Elternlauf-Automatisierung in
       zwei eigenständig prüfbare Studio-PRs trennen
-- [ ] 0.6 Den versionierten Plugin-/OIDC-/Lifecycle-Snapshot im separaten
+- [x] 0.6 Den versionierten Plugin-/OIDC-/Lifecycle-Snapshot im separaten
       Provisioner-Prozess explizit initialisieren oder persistent binden und
       leere Composition fail-closed testen
 
@@ -109,7 +109,7 @@
       File-Provider-Integration verfassen
 - [x] 7.2 `docs/operations/ssf-standalone-hosts.md` auf die tatsächlichen
       Bestands- und Zielrouter sowie den terminalen Ablauf aktualisieren
-- [ ] 7.3 Control-Plane-Zielbild und betroffene arc42-Abschnitte 03, 04, 05,
+- [x] 7.3 Control-Plane-Zielbild und betroffene arc42-Abschnitte 03, 04, 05,
       06, 07, 08, 09, 10 und 11 aktualisieren und verlinken
 - [x] 7.4 Queue-Drain, Snapshot-Kompatibilität, Diagnose, Retry, Failure
       Retention und nichtdestruktiven Rollback dokumentieren

@@ -45,7 +45,7 @@ const readPersistablePluginTenantLifecycleRegistry = () =>
   new Map(
     [...readInstanceRegistryPluginTenantLifecycleRegistry()].flatMap(([pluginId, lifecycle]) =>
       lifecycle.contractRevision
-        ? [[pluginId, { pluginId, contractRevision: lifecycle.contractRevision }] as const]
+        ? [[pluginId, { ...lifecycle, contractRevision: lifecycle.contractRevision }] as const]
         : []
     )
   );

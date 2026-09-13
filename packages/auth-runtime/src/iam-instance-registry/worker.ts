@@ -4,6 +4,7 @@ import {
   isWorkerEntrypoint,
   processNextTenantProvisioningRun,
   runKeycloakProvisioningWorkerLoop as runTargetKeycloakProvisioningWorkerLoop,
+  type ProvisioningPluginTenantLifecycleContract,
 } from '@sva/instance-registry/provisioning-worker';
 
 import { readConfiguredPluginTenantReadiness } from '../plugin-tenant-lifecycle/read-model.js';
@@ -11,16 +12,20 @@ import {
   probeKasselTenantEndpoint,
   publishConfiguredKasselTenantIngress,
 } from '../kassel-tenant-provisioning.js';
-import {
-  runConfiguredPluginTenantProvisioningSchedule,
-  withRegistryProvisioningWorkerDeps,
-} from './repository.js';
+import { withRegistryProvisioningWorkerDeps } from './repository.js';
 import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-execution.js';
 
 const workerId = `kassel-tenant-provisioner:${randomUUID()}`;
 
-export const readProvisioningModuleReadiness = async (instanceId: string) => {
-  const models = await readConfiguredPluginTenantReadiness(instanceId);
+export const readProvisioningModuleReadiness = async (input: {
+  instanceId: string;
+  lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
+}) => {
+  if (input.lifecycles.length === 0) throw new Error('provisioning_plugin_snapshot_missing');
+  const models = await readConfiguredPluginTenantReadiness(input.instanceId, input.lifecycles);
+  if (models.length !== input.lifecycles.length) {
+    throw new Error('provisioning_plugin_activation_missing');
+  }
   const evidence = {
     modules: models.map((model) => ({
       pluginId: model.pluginId,
@@ -56,7 +61,6 @@ export const runKeycloakProvisioningWorkerIteration = async () =>
         ...deps,
         publishTenantIngress: publishConfiguredKasselTenantIngress,
         probeTenantEndpoint: probeKasselTenantEndpoint,
-        scheduleProvisioningModuleReconcile: runConfiguredPluginTenantProvisioningSchedule,
         readProvisioningModuleReadiness,
       },
       { workerId }

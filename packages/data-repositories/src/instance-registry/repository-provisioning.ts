@@ -184,7 +184,8 @@ UPDATE iam.instance_provisioning_runs
 SET status = 'requested',
     step_key = CASE
       WHEN step_key IN ('registry', 'keycloak') THEN 'registry'
-      WHEN step_key IN ('tls', 'module_readiness', 'login', 'activate') THEN 'tls'
+      WHEN step_key = 'tls' THEN 'tls'
+      WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'
       ELSE step_key
     END,
     child_keycloak_run_id = CASE

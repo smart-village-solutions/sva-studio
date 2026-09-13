@@ -20,6 +20,19 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { shouldExposeAutomatedProvisioning } from './service-active-provisioning.js';
+import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
+
+const persistProvisioningLifecycleRetry = async (
+  deps: InstanceRegistryServiceDeps,
+  run: Parameters<typeof readTenantProvisioningPluginSnapshot>[0]
+): Promise<void> => {
+  const { lifecycles } = readTenantProvisioningPluginSnapshot(run);
+  await deps.repository.persistPluginTenantLifecycleReconcileIntents({
+    instanceId: run.instanceId,
+    lifecycles,
+    forcePluginIds: lifecycles.map(({ pluginId }) => pluginId),
+  });
+};
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -79,6 +92,7 @@ export const resolveIdempotentCreateRetry = async (
     deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   });
   if (!retriedRun) throw new Error('provisioning_retry_conflict');
+  await persistProvisioningLifecycleRetry(deps, retriedRun);
   const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
   const requestedInstance =
     (await deps.repository.setInstanceStatus({
@@ -151,6 +165,7 @@ export const createRetryTenantProvisioningHandler =
       deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     });
     if (!retriedRun) throw new Error('provisioning_retry_conflict');
+    await persistProvisioningLifecycleRetry(deps, retriedRun);
 
     const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
     const requestedInstance = await deps.repository.setInstanceStatus({

@@ -93,7 +93,7 @@ export const createProvisioningRequestHandler =
       (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
     const automated = shouldExposeAutomatedProvisioning(deps, reconciledInstance);
     const provisioningRun = await createProvisioningArtifacts(
-      deps.repository,
+      deps,
       reconciledInstance,
       effectiveInput,
       automated ? 'kassel-traefik-file' : 'external'

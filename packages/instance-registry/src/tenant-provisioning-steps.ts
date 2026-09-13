@@ -10,6 +10,7 @@ import {
   updateClaimedRun,
 } from './tenant-provisioning-state.js';
 import type { ParentStep } from './tenant-provisioning-state.js';
+import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -39,9 +40,13 @@ const registryStep: StepHandler = async ({
   });
   assertExecutionActive();
   if (!provisioning) throw new Error('instance_not_found');
-  const child = await createExecuteKeycloakProvisioningHandler(deps, {
-    allowActiveTenantProvisioning: true,
-  })({
+  const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
+  const child = await createExecuteKeycloakProvisioningHandler(
+    { ...deps, readPluginOidcClientRequirements: () => pluginSnapshot.oidcClients },
+    {
+      allowActiveTenantProvisioning: true,
+    }
+  )({
     instanceId: instance.instanceId,
     intent: 'provision',
     idempotencyKey: `parent:${run.id}:keycloak:${run.deadlineAt}`,
@@ -79,20 +84,9 @@ const keycloakStep: StepHandler = async ({
   });
 };
 
-const lifecycleStep: StepHandler = async ({
-  deps,
-  run,
-  instance,
-  workerId,
-  now,
-  assertExecutionActive,
-}) => {
+const lifecycleStep: StepHandler = async ({ deps, run, workerId, now, assertExecutionActive }) => {
   assertExecutionActive();
-  await requireDependency(
-    deps.scheduleProvisioningModuleReconcile,
-    'dependency_missing_scheduleProvisioningModuleReconcile'
-  )(instance.instanceId);
-  assertExecutionActive();
+  readTenantProvisioningPluginSnapshot(run);
   return continueAt(deps, run, workerId, 'ingress', now);
 };
 
@@ -153,7 +147,10 @@ const moduleReadinessStep: StepHandler = async ({
   const readiness = await requireDependency(
     deps.readProvisioningModuleReadiness,
     'dependency_missing_readProvisioningModuleReadiness'
-  )(instance.instanceId);
+  )({
+    instanceId: instance.instanceId,
+    lifecycles: readTenantProvisioningPluginSnapshot(run).lifecycles,
+  });
   assertExecutionActive();
   if (readiness.status === 'blocked') throw new Error('module_readiness_blocked');
   const pending = readiness.status === 'pending';

@@ -6,6 +6,15 @@ const mocks = vi.hoisted(() => ({
   withDeps: vi.fn(),
   readReadiness: vi.fn(async () => []),
 }));
+const lifecycles = [
+  {
+    pluginId: 'ssf',
+    contractVersion: 1 as const,
+    contractRevision: 'ssf-1:contract',
+    operations: [{ operation: 'provision' as const, jobTypeId: 'ssf.provision' }],
+    readinessChecks: [{ checkId: 'login', titleKey: 'ssf.login', required: true }],
+  },
+];
 
 vi.mock('@sva/instance-registry/provisioning-worker', () => ({
   isWorkerEntrypoint: () => false,
@@ -93,9 +102,24 @@ describe('instance provisioning worker routing', () => {
       },
     ]);
 
-    await expect(readModuleReadiness('tenant-a')).resolves.toMatchObject({
+    await expect(
+      readModuleReadiness({ instanceId: 'tenant-a', lifecycles })
+    ).resolves.toMatchObject({
       status: 'pending',
       evidence: { modules: [{ pluginId: 'ssf', errorCode: 'lifecycle_job_missing' }] },
     });
+  });
+
+  it('fails closed when the persisted worker composition is empty', async () => {
+    await expect(readModuleReadiness({ instanceId: 'tenant-a', lifecycles: [] })).rejects.toThrow(
+      'provisioning_plugin_snapshot_missing'
+    );
+    expect(mocks.readReadiness).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when an expected persisted activation is absent', async () => {
+    await expect(readModuleReadiness({ instanceId: 'tenant-a', lifecycles })).rejects.toThrow(
+      'provisioning_plugin_activation_missing'
+    );
   });
 });

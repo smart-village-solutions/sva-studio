@@ -291,4 +291,5 @@ export type {
 export {
   prepareInstanceSsfLoginClients,
   readInstanceSsfLoginClientsReady,
+  readInstanceSsfProvisioningLoginClientsReady,
 } from './ssf-login-clients.js';

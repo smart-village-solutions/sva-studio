@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
+export { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
+export type { ProvisioningPluginTenantLifecycleContract } from './service-types.js';
 
 const logger = createSdkLogger({
   component: 'iam-instance-registry-provisioner-worker',

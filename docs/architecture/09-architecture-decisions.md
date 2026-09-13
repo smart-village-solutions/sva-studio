@@ -624,3 +624,12 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 03/04/05/06/07/08/09: ADR-057
+
+### Fortschreibung 2026-09: Kasseler Mandanten-Provisionierung
+
+[ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md)
+entscheidet einen Kassel-spezifischen, persistenten Elternlauf und einen
+schmalen Traefik-File-Provider-Adapter. Der reguläre Studio-Rollout und die
+allgemeine Ingress-Architektur bleiben unverändert. Prozessübergreifende
+Plugin-Verträge werden über den Lauf-Snapshot statt über globale
+In-Memory-Registries transportiert.

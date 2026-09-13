@@ -137,6 +137,13 @@ abgelaufene Lease wird erneut beansprucht. Snapshot-Drift, terminal blockierte
 Readiness oder Ablauf der Deadline führen zu `failed`, ohne vorhandene
 Registry-, Keycloak-, Secret- oder Router-Artefakte zu löschen.
 
+Der Elternlauf enthält außerdem `pluginSnapshotVersion`, die vollständigen
+Lifecycle-Verträge der effektiv aktiven Plugins und deren OIDC-Anforderungen.
+Der eigenständige Provisioner bewertet ausschließlich diesen Snapshot. Eine
+fehlende oder leere Composition endet mit
+`provisioning_plugin_snapshot_missing`; fehlt eine erwartete effektive
+Aktivierung, endet der Lauf mit `provisioning_plugin_activation_missing`.
+
 Vor einem Queue-Vertragswechsel müssen alle alten `legacy`-Läufe geleert oder
 bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit
 `snapshot_version = '2.0'` werden automatisiert beansprucht. Für Diagnose sind
@@ -147,6 +154,8 @@ Instanz-Detailansicht über „Mandanten-Provisionierung erneut starten“ oder 
 `POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit Berechtigung
 `instance.create` und einem frischen `Idempotency-Key` ausgelöst. Der
 ursprüngliche Create-Key wird dabei serverseitig aus dem Elternlauf gelesen.
+Der Retry persistiert vor der Antwort einen neuen Lifecycle-Reconcile-Intent
+und setzt Fehler ab Modul-Readiness auf die Lifecycle-Stufe zurück.
 
 Der vorhandene Keycloak-Router erhält die Host-Regel für `auth.dialog.kassel.de`.
 Der SSF-Einstieg erhält einen eigenen Router für `dialog.kassel.de` auf den bestehenden

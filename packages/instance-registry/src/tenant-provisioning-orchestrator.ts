@@ -60,6 +60,7 @@ const executeWithLeaseHeartbeat = async <T>(
   execute: (assertLeaseActive: () => void) => Promise<T>
 ): Promise<T> => {
   let leaseFailure: Error | undefined;
+  let stopped = false;
   const renewLease = async (): Promise<void> => {
     const renewed = await deps.repository.renewProvisioningRunLease({
       runId: run.id,
@@ -74,6 +75,7 @@ const executeWithLeaseHeartbeat = async <T>(
     if (renewal) return;
     renewal = renewLease()
       .catch((error) => {
+        if (stopped) return;
         leaseFailure = new Error('provisioning_claim_lost');
         logger.warn('tenant_provisioning_lease_heartbeat_failed', {
           operation: 'create_instance',
@@ -93,8 +95,8 @@ const executeWithLeaseHeartbeat = async <T>(
   try {
     return await execute(assertLeaseActive);
   } finally {
+    stopped = true;
     clearInterval(timer);
-    await renewal?.catch(() => undefined);
   }
 };
 

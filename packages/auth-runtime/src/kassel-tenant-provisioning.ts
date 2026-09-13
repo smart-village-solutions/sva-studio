@@ -62,12 +62,16 @@ const requireValidLoginRedirect = (
   }
   const state = redirect.searchParams.get('state');
   const codeChallenge = redirect.searchParams.get('code_challenge');
+  const scopes = redirect.searchParams.get('scope')?.split(/\s+/u) ?? [];
   if (
     redirect.origin !== issuer.origin ||
     redirect.pathname !== `${issuer.pathname}/protocol/openid-connect/auth` ||
     redirect.searchParams.get('client_id') !== input.authClientId ||
+    redirect.searchParams.get('response_type') !== 'code' ||
+    !scopes.includes('openid') ||
     !state ||
     !codeChallenge ||
+    !/^[A-Za-z0-9._~-]{43,128}$/u.test(codeChallenge) ||
     redirect.searchParams.get('code_challenge_method') !== 'S256'
   ) {
     throw new Error('kassel_login_redirect_invalid');

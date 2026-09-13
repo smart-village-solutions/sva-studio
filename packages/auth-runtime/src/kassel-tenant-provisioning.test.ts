@@ -19,8 +19,10 @@ const routerHeaders = (headers: Record<string, string> = {}) => ({
 const loginRedirectResponse = (overrides: Record<string, string> = {}) => {
   const authorize = new URL(`${input.authIssuerUrl}/protocol/openid-connect/auth`);
   authorize.searchParams.set('client_id', input.authClientId);
+  authorize.searchParams.set('response_type', 'code');
+  authorize.searchParams.set('scope', 'openid profile');
   authorize.searchParams.set('state', 'opaque');
-  authorize.searchParams.set('code_challenge', 'challenge');
+  authorize.searchParams.set('code_challenge', 'A'.repeat(43));
   authorize.searchParams.set('code_challenge_method', 'S256');
   authorize.searchParams.set('redirect_uri', `https://${input.primaryHostname}/auth/callback`);
   for (const [key, value] of Object.entries(overrides)) authorize.searchParams.set(key, value);
@@ -80,8 +82,10 @@ describe('Kassel tenant public probes', () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     const authorize = new URL(`${input.authIssuerUrl}/protocol/openid-connect/auth`);
     authorize.searchParams.set('client_id', 'sva-studio-login');
+    authorize.searchParams.set('response_type', 'code');
+    authorize.searchParams.set('scope', 'openid');
     authorize.searchParams.set('state', 'opaque');
-    authorize.searchParams.set('code_challenge', 'challenge');
+    authorize.searchParams.set('code_challenge', 'A'.repeat(43));
     authorize.searchParams.set('code_challenge_method', 'S256');
     authorize.searchParams.set('redirect_uri', `https://${input.primaryHostname}/auth/callback`);
     const fetcher = vi.fn(
@@ -132,8 +136,10 @@ describe('Kassel tenant public probes', () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     const authorize = new URL(`${input.authIssuerUrl}/protocol/openid-connect/auth`);
     authorize.searchParams.set('client_id', clientId);
+    authorize.searchParams.set('response_type', 'code');
+    authorize.searchParams.set('scope', 'openid');
     authorize.searchParams.set('state', 'opaque');
-    authorize.searchParams.set('code_challenge', 'challenge');
+    authorize.searchParams.set('code_challenge', 'A'.repeat(43));
     authorize.searchParams.set('code_challenge_method', method);
     authorize.searchParams.set('redirect_uri', `https://${input.primaryHostname}${callbackPath}`);
 
@@ -154,7 +160,10 @@ describe('Kassel tenant public probes', () => {
   it.each([
     ['state', ''],
     ['code_challenge', ''],
-  ])('rejects an empty %s parameter', async (parameter, value) => {
+    ['code_challenge', 'too-short'],
+    ['response_type', 'token'],
+    ['scope', 'profile email'],
+  ])('rejects an invalid %s parameter', async (parameter, value) => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
 
     await expect(

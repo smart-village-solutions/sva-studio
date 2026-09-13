@@ -414,6 +414,38 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   });
 
+  it('does not hold the provisioning transaction open for an in-flight heartbeat', async () => {
+    vi.useFakeTimers({ now });
+    try {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'lifecycle' });
+      let releaseHeartbeat!: () => void;
+      const heartbeat = new Promise<void>((resolve) => {
+        releaseHeartbeat = resolve;
+      });
+      vi.mocked(harness.repository.renewProvisioningRunLease)
+        .mockResolvedValueOnce(harness.getRun())
+        .mockImplementationOnce(async () => {
+          await heartbeat;
+          return harness.getRun();
+        });
+      vi.mocked(harness.deps.scheduleProvisioningModuleReconcile).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 11_000))
+      );
+
+      const processing = processNextTenantProvisioningRun(harness.deps, {
+        workerId: 'worker-1',
+      });
+      await vi.advanceTimersByTimeAsync(11_000);
+
+      await expect(processing).resolves.toEqual(expect.objectContaining({ stepKey: 'ingress' }));
+      releaseHeartbeat();
+      await Promise.resolve();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('stops advancing after a heartbeat loses the provisioning claim', async () => {
     vi.useFakeTimers({ now });
     try {

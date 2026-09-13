@@ -67,3 +67,5 @@ Benutzerverwaltung aufzubauen.
   - `docs/architecture/09-architecture-decisions.md`
   - `docs/architecture/10-quality-requirements.md`
   - `docs/architecture/11-risks-and-technical-debt.md`
+- Affected ADR:
+  - `docs/adr/ADR-057-ssf-service-token-und-runtime-konfigurationsgrenze.md`

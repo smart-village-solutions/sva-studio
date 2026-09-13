@@ -633,6 +633,11 @@ Zuordnung:
 - Das SSF-Plugin ist alleinige Runtime-Quelle der vollständig aufgelösten
   Konfiguration einschließlich aller versionierten Produktdefaults. SSF hält
   weder eine zweite Default-Auflösung noch eine persistente Konfigurationskopie.
+- Eine bestätigte leere IAM-Projektion ist technisch konvergiert, bleibt aber
+  aus dem Admin-Login-Verzeichnis. Nur das Directory prüft dafür den
+  persistierten Projektionszustand auf mindestens ein wirksam berechtigtes
+  Subject; die Runtime-Konfiguration bleibt für gültige Gäste-Sessions
+  verfügbar und beide Request-Pfade vermeiden Keycloak-Benutzerauflistungen.
 
 Zuordnung:
 

@@ -90,4 +90,5 @@ Abnahme bleibt das produktive Enablement fail-closed.
 - [x] Tenant-Grunddatensatz vor der Projektion provisionieren und Browserclaims benutzerbezogen verifizieren
 - [x] Veraltetes `ready` erneut prüfen und denselben Readiness-Pfad für Directory und Runtime verwenden
 - [x] Lokale Zwei-Tenant-, Teilfehler- und PostgreSQL-Wiederanlaufnachweise ergänzen
+- [x] Leere konvergierte Projektionen nur aus dem Login-Verzeichnis filtern und Gast-Runtime erhalten
 - [ ] Gemeinsamen echten Zwei-Realm-Login bis SSF-Gateway in Staging nachweisen und Digest dokumentieren

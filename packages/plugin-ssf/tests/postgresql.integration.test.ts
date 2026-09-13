@@ -7,6 +7,7 @@ import {
   createPostgresSsfAuthorizationProjectionStore,
   createSsfConfigurationRevision,
   createSsfAuthorizationRevision,
+  hasReadySsfAuthorizationProjectionSubjects,
   markSsfAuthorizationProjectionReady,
   provisionSsfTenant,
   readSsfConfigurationOverrides,
@@ -306,6 +307,9 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       })
     ).toBe(true);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBe(revision);
+    await expect(hasReadySsfAuthorizationProjectionSubjects(tenantPool, 'tenant-a')).resolves.toBe(
+      true
+    );
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-b')).resolves.toBeNull();
     const persisted = await rootPool.query<{
       sessions_revoked_revision: string | null;
@@ -330,6 +334,9 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
       })
     ).toBe(true);
     await expect(readReadySsfAuthorizationRevision(tenantPool, 'tenant-a')).resolves.toBeNull();
+    await expect(hasReadySsfAuthorizationProjectionSubjects(tenantPool, 'tenant-a')).resolves.toBe(
+      false
+    );
     expect(
       await claimSsfAuthorizationProjection(rootPool, {
         instanceId: 'tenant-b',

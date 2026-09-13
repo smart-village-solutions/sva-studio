@@ -160,10 +160,13 @@ SSF `/login/*`), Code Flow, PKCE S256 und maximal 900 Sekunden Access-Token-Lauf
 erzwingen; Implicit Flow, Passwortgrant, Service Accounts und Client-Secrets
 sind ausgeschlossen. Die Origin MUST aus der expliziten Installationskonfiguration
 stammen und darf nicht aus Requests oder Tenant-Hostnamen abgeleitet werden.
-`ssf.loginReady` MUST zusätzlich zu einer revisionsgleichen Projektion mindestens
-ein wirksam SSF-berechtigtes Subject verlangen. Eine revisionsgleiche leere
-Projektion ist technisch konvergiert, aber fachlich nicht loginbereit. Root-Rechte
-dürfen diese Voraussetzung nicht durch automatische Tenant-Rechte erfüllen.
+`ssf.loginReady` MUST die technisch vollständige Login-Baseline und eine
+revisionsgleiche Projektion bestätigen. Eine revisionsgleiche leere Projektion
+ist technisch konvergiert und darf diesen Lifecycle-Check erfüllen. Das
+Admin-Login-Verzeichnis MUST zusätzlich mindestens ein wirksam
+SSF-berechtigtes Subject im persistierten bestätigten Projektionszustand
+verlangen. Root-Rechte dürfen diese Voraussetzung nicht durch automatische
+Tenant-Rechte erfüllen.
 
 #### Scenario: Erstprovisionierung und Abbruch
 
@@ -174,25 +177,27 @@ dürfen diese Voraussetzung nicht durch automatische Tenant-Rechte erfüllen.
 - **AND** wird `ssf.loginReady` erst nach Aktivierung und gemeinsamer Readiness-Prüfung bestätigt
 - **AND** bleibt der Mandant bis zum erfolgreichen Lifecycle-Abschluss unveröffentlicht
 
-#### Scenario: Leere Projektion bleibt unveröffentlicht
+#### Scenario: Leere Projektion bleibt im Login-Verzeichnis unveröffentlicht
 
 - **GIVEN** die SSF-Berechtigungsprojektion eines Mandanten ist revisionsgleich, enthält aber kein berechtigtes Subject
-- **WHEN** der Lifecycle die gemeinsame Login-Readiness prüft
-- **THEN** bleibt `ssf.loginReady` gesperrt
-- **AND** bleiben Login-Verzeichnis und Runtime-Zugriff für diesen Mandanten geschlossen
+- **WHEN** Lifecycle und Login-Verzeichnis ihre Readiness prüfen
+- **THEN** darf der Lifecycle die technisch konvergierte Basis als `ssf.loginReady` bestätigen
+- **AND** bleibt der Mandant im Login-Verzeichnis unveröffentlicht
+- **AND** bleibt der Runtime-Zugriff für eine gültige Gäste-Session verfügbar
 
 #### Scenario: Erstes berechtigtes Subject öffnet den Zugang
 
 - **GIVEN** ein technisch provisionierter SSF-Mandant besitzt noch kein berechtigtes Subject
 - **WHEN** das erste berechtigte Subject erfolgreich projiziert und revisionsgleich bestätigt wurde
-- **THEN** darf der Lifecycle `ssf.loginReady` bestätigen
+- **THEN** darf das Login-Verzeichnis den technisch bereits bereiten Mandanten veröffentlichen
 
-#### Scenario: Entzug des letzten Subjects schließt den Zugang
+#### Scenario: Entzug des letzten Subjects schließt die Login-Auswahl
 
 - **GIVEN** ein loginbereiter SSF-Mandant besitzt genau ein berechtigtes Subject
 - **WHEN** dessen Berechtigung entzogen und die leere Projektion revisionsgleich bestätigt wurde
-- **THEN** wird `ssf.loginReady` wieder gesperrt
-- **AND** werden Login-Verzeichnis und Runtime-Zugriff für diesen Mandanten geschlossen
+- **THEN** bleibt die technisch konvergierte Basis `ssf.loginReady`
+- **AND** wird der Mandant aus dem Login-Verzeichnis entfernt
+- **AND** bleibt der Runtime-Zugriff für eine gültige Gäste-Session verfügbar
 
 #### Scenario: Bestehende manuelle Recovery wird übernommen
 

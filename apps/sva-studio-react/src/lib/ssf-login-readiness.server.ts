@@ -1,5 +1,9 @@
 import { readConfiguredPluginTenantAccess } from '@sva/auth-runtime/server';
-import { readReadySsfAuthorizationRevision, resolveSsfDatabasePool } from '@sva/plugin-ssf/runtime';
+import {
+  hasReadySsfAuthorizationProjectionSubjects,
+  readReadySsfAuthorizationRevision,
+  resolveSsfDatabasePool,
+} from '@sva/plugin-ssf/runtime';
 
 import { ensurePluginActivationPoliciesConfigured } from './plugin-activation-policy-bootstrap.server.js';
 import { readStudioSsfLoginBaselineReadiness } from './ssf-authorization-projection-runtime.server.js';
@@ -19,4 +23,11 @@ export const readStudioSsfLoginReadiness = async (
   if (!(await readStudioSsfLoginBaselineReadiness(instanceId))) return false;
   // Reconciliation may have started while the baseline and clients were being read.
   return (await readReadySsfAuthorizationRevision(pool, instanceId)) === revision;
+};
+
+/** Directory eligibility adds a persisted subject check without querying Keycloak. */
+export const readStudioSsfAdminLoginReadiness = async (instanceId: string): Promise<boolean> => {
+  if (!(await readStudioSsfLoginReadiness(instanceId))) return false;
+  const pool = resolveSsfDatabasePool();
+  return pool ? hasReadySsfAuthorizationProjectionSubjects(pool, instanceId) : false;
 };

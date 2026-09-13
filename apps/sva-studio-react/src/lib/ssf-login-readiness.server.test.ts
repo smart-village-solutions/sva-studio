@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   configure: vi.fn(),
   access: vi.fn(),
+  hasSubjects: vi.fn(),
   pool: {},
   resolvePool: vi.fn(),
   revision: vi.fn(),
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@sva/auth-runtime/server', () => ({ readConfiguredPluginTenantAccess: mocks.access }));
 vi.mock('@sva/plugin-ssf/runtime', () => ({
+  hasReadySsfAuthorizationProjectionSubjects: mocks.hasSubjects,
   readReadySsfAuthorizationRevision: mocks.revision,
   resolveSsfDatabasePool: mocks.resolvePool,
 }));
@@ -19,12 +21,16 @@ vi.mock('./plugin-activation-policy-bootstrap.server.js', () => ({
 vi.mock('./ssf-authorization-projection-runtime.server.js', () => ({
   readStudioSsfLoginBaselineReadiness: mocks.baselineReady,
 }));
-import { readStudioSsfLoginReadiness } from './ssf-login-readiness.server.js';
+import {
+  readStudioSsfAdminLoginReadiness,
+  readStudioSsfLoginReadiness,
+} from './ssf-login-readiness.server.js';
 
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.resolvePool.mockReturnValue(mocks.pool);
   mocks.access.mockResolvedValue({ allowed: true, reason: 'ready' });
+  mocks.hasSubjects.mockResolvedValue(true);
   mocks.revision.mockResolvedValue('sha256:confirmed');
   mocks.baselineReady.mockResolvedValue(true);
 });
@@ -57,4 +63,11 @@ it('isolates two tenants and rejects a false-ready client independently', async 
   mocks.baselineReady.mockImplementation(async (id) => id === 'tenant-a');
   expect(await readStudioSsfLoginReadiness('tenant-a')).toBe(true);
   expect(await readStudioSsfLoginReadiness('tenant-b')).toBe(false);
+});
+it('keeps technical runtime readiness independent from directory subject eligibility', async () => {
+  mocks.hasSubjects.mockResolvedValue(false);
+
+  expect(await readStudioSsfLoginReadiness('tenant-a')).toBe(true);
+  expect(await readStudioSsfAdminLoginReadiness('tenant-a')).toBe(false);
+  expect(mocks.hasSubjects).toHaveBeenCalledWith(mocks.pool, 'tenant-a');
 });

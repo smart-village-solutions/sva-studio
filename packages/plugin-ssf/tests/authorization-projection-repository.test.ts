@@ -6,6 +6,7 @@ import {
   confirmSsfAuthorizationProjectionReadBack,
   createPostgresSsfAuthorizationProjectionStore,
   createSsfAuthorizationRevision,
+  hasReadySsfAuthorizationProjectionSubjects,
   markSsfAuthorizationProjectionReady,
   readReadySsfAuthorizationRevision,
   stageSsfAuthorizationProjection,
@@ -240,5 +241,30 @@ describe('SSF authorization projection repository', () => {
       ['tenant-a']
     );
     expect(client.release).toHaveBeenCalledOnce();
+  });
+
+  it('reads subject availability only from an exactly converged projection', async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: null, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ has_subjects: true }] })
+        .mockResolvedValueOnce({ rowCount: null, rows: [] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+
+    await expect(hasReadySsfAuthorizationProjectionSubjects(pool, 'tenant-a')).resolves.toBe(true);
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("jsonb_array_length(confirmed_projection -> 'subjects') > 0"),
+      ['tenant-a']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('desired_revision = confirmed_revision'),
+      ['tenant-a']
+    );
   });
 });

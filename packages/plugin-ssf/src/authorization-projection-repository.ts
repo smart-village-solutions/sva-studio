@@ -227,3 +227,20 @@ export const readReadySsfAuthorizationRevision = async (
     );
     return result.rows[0]?.confirmed_revision ?? null;
   });
+
+export const hasReadySsfAuthorizationProjectionSubjects = async (
+  pool: Pool,
+  instanceId: string
+): Promise<boolean> =>
+  withTenantRead(pool, instanceId, async (client) => {
+    const result = await client.query<{ has_subjects: boolean }>(
+      `SELECT jsonb_array_length(confirmed_projection -> 'subjects') > 0 AS has_subjects
+         FROM ssf.authorization_projections
+        WHERE instance_id = $1
+          AND status = 'ready'
+          AND desired_revision = confirmed_revision
+          AND last_error_code IS NULL`,
+      [instanceId]
+    );
+    return result.rows[0]?.has_subjects === true;
+  });

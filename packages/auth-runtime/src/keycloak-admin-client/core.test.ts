@@ -201,6 +201,40 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('preserves every structured Keycloak field error for profile update failures', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(400, {
+          errors: [
+            {
+              field: 'firstName',
+              errorMessage: 'error-user-attribute-read-only',
+              params: ['firstName'],
+            },
+            {
+              field: 'email',
+              errorMessage: 'error-invalid-email',
+              params: ['email'],
+            },
+          ],
+        })
+      );
+    const client = await createClient(fetchImpl, { maxRetries: 0 });
+
+    await expect(client.updateUser('kc-user-1', { firstName: 'Seed' })).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+      message: expect.stringContaining('error-user-attribute-read-only'),
+      fieldErrors: [
+        { field: 'firstName', code: 'error-user-attribute-read-only' },
+        { field: 'email', code: 'error-invalid-email' },
+      ],
+    });
+  });
+
   it('surfaces keycloak delete-user failures', async () => {
     const { KeycloakAdminRequestError } = await import('./core.js');
     const fetchImpl = vi
@@ -272,6 +306,66 @@ describe('Keycloak admin client', () => {
     now = 40_000;
     fetchImpl.mockResolvedValueOnce(createJsonResponse(200, []));
     await expect(client.listRoles()).resolves.toEqual([]);
+  });
+
+  it('does not open the circuit breaker for deterministic client rejections', async () => {
+    const { KeycloakAdminClient, KeycloakAdminRequestError } = await import('./core.js');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(400, {
+          errors: [
+            {
+              field: 'firstName',
+              errorMessage: 'error-user-attribute-read-only',
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example',
+      realm: 'demo',
+      clientId: 'studio',
+      clientSecret: 'secret',
+      fetchImpl,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 1,
+      circuitBreakerOpenMs: 30_000,
+      now: () => 0,
+      sleep: async () => undefined,
+    });
+
+    await expect(client.updateUser('kc-user-1', { firstName: 'Seed' })).rejects.toBeInstanceOf(
+      KeycloakAdminRequestError
+    );
+    await expect(client.listRoles()).resolves.toEqual([]);
+  });
+
+  it('opens the circuit breaker for unclassified provider failures', async () => {
+    const { KeycloakAdminClient, KeycloakAdminUnavailableError } = await import('./core.js');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockRejectedValueOnce(new TypeError('network failure'));
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example',
+      realm: 'demo',
+      clientId: 'studio',
+      clientSecret: 'secret',
+      fetchImpl,
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 1,
+      circuitBreakerOpenMs: 30_000,
+      now: () => 0,
+      sleep: async () => undefined,
+    });
+
+    await expect(client.listRoles()).rejects.toThrow('network failure');
+    await expect(client.listUsers()).rejects.toBeInstanceOf(KeycloakAdminUnavailableError);
   });
 
   it('reads env-based configs and prefers runtime secrets when available', async () => {

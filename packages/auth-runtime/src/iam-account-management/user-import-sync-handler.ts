@@ -36,6 +36,7 @@ import {
 import { resolveMutationActorWithAccount } from './mutation-request-context.shared.js';
 
 const KEYCLOAK_PAGE_SIZE = 100;
+const KEYCLOAK_READ_ONLY_ATTRIBUTE_ERROR = 'error-user-attribute-read-only';
 const isPlatformIdentityProviderConfigurationError = (error: unknown): boolean =>
   error instanceof Error && error.message === 'platform_identity_provider_not_configured';
 
@@ -44,10 +45,27 @@ const normalizeOptionalText = (value: string | undefined | null): string | undef
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
-const hasRequiredProfileFields = (user: IdentityListedUser): boolean =>
-  normalizeOptionalText(user.email) !== undefined &&
-  normalizeOptionalText(user.firstName) !== undefined &&
-  normalizeOptionalText(user.lastName) !== undefined;
+const hasRequiredImportEmail = (user: IdentityListedUser): boolean =>
+  normalizeOptionalText(user.email) !== undefined;
+
+const isReadOnlyAttributeRejection = (error: unknown): boolean =>
+  error instanceof KeycloakAdminRequestError &&
+  error.statusCode === 400 &&
+  !error.retryable &&
+  error.fieldErrors.length > 0 &&
+  error.fieldErrors.every(
+    (fieldError) =>
+      (fieldError.field === 'firstName' || fieldError.field === 'lastName') &&
+      fieldError.code === KEYCLOAK_READ_ONLY_ATTRIBUTE_ERROR
+  );
+
+const normalizeIdentityUserProfile = (user: IdentityListedUser): IdentityListedUser => ({
+  ...user,
+  username: normalizeOptionalText(user.username),
+  email: normalizeOptionalText(user.email),
+  firstName: normalizeOptionalText(user.firstName),
+  lastName: normalizeOptionalText(user.lastName),
+});
 
 const looksLikeEmail = (value: string | undefined): value is string => {
   if (typeof value !== 'string') {
@@ -106,6 +124,7 @@ type ResolvedProfileFields = {
 type ProfileRepairPlan = {
   readonly user: IdentityListedUser;
   readonly update: ResolvedProfileFields;
+  readonly repairedUsername: boolean;
   readonly repairedEmail: boolean;
   readonly repairedFirstName: boolean;
   readonly repairedLastName: boolean;
@@ -114,7 +133,7 @@ type ProfileRepairPlan = {
 const resolveProfileValue = (
   sourceValue: string | undefined,
   seedValue: string | undefined
-): string | undefined => normalizeOptionalText(sourceValue) ?? seedValue;
+): string | undefined => normalizeOptionalText(sourceValue) ?? normalizeOptionalText(seedValue);
 
 const resolveProfileEmail = (
   sourceEmail: string | undefined,
@@ -136,21 +155,16 @@ const resolveProfileFields = (
   };
 };
 
-const toProfileUpdate = (fields: ResolvedProfileFields): ProfileRepairPlan['update'] => ({
-  ...(fields.username ? { username: fields.username } : {}),
-  ...(fields.email ? { email: fields.email } : {}),
-  ...(fields.firstName ? { firstName: fields.firstName } : {}),
-  ...(fields.lastName ? { lastName: fields.lastName } : {}),
-});
-
 const buildProfileRepairPlan = (
   user: IdentityListedUser,
   localSeed: LocalProfileSeed
 ): ProfileRepairPlan | undefined => {
+  const sourceUsername = normalizeOptionalText(user.username);
   const sourceEmail = normalizeOptionalText(user.email);
   const sourceFirstName = normalizeOptionalText(user.firstName);
   const sourceLastName = normalizeOptionalText(user.lastName);
   const resolved = resolveProfileFields(user, localSeed);
+  const repairedUsername = resolved.username !== sourceUsername;
   const repairedEmail = resolved.email !== sourceEmail;
   const repairedFirstName = resolved.firstName !== sourceFirstName;
   const repairedLastName = resolved.lastName !== sourceLastName;
@@ -159,10 +173,16 @@ const buildProfileRepairPlan = (
     return undefined;
   }
 
-  const update = toProfileUpdate(resolved);
+  const update = {
+    ...(repairedUsername && resolved.username ? { username: resolved.username } : {}),
+    ...(repairedEmail && resolved.email ? { email: resolved.email } : {}),
+    ...(repairedFirstName && resolved.firstName ? { firstName: resolved.firstName } : {}),
+    ...(repairedLastName && resolved.lastName ? { lastName: resolved.lastName } : {}),
+  };
   return {
     user: { ...user, ...update },
     update,
+    repairedUsername,
     repairedEmail,
     repairedFirstName,
     repairedLastName,
@@ -188,9 +208,30 @@ const repairIdentityUserProfileIfPossible = async (
     return { user: input.user, repaired: false };
   }
 
-  await trackKeycloakCall('repair_imported_user_profile', () =>
-    input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
-  );
+  try {
+    await trackKeycloakCall('repair_imported_user_profile', () =>
+      input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
+    );
+  } catch (error) {
+    if (repair.repairedUsername || repair.repairedEmail || !isReadOnlyAttributeRejection(error)) {
+      throw error;
+    }
+
+    logger.warn('Optional Keycloak user name repair skipped during IAM sync', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      auth_realm: input.identityProvider.realm,
+      provider_source: input.identityProvider.source,
+      request_id: input.requestId,
+      trace_id: input.traceId,
+      subject_ref: toSubjectRef(input.user.externalId),
+      reason: 'optional_name_update_failed',
+      repaired_first_name: repair.repairedFirstName,
+      repaired_last_name: repair.repairedLastName,
+    });
+
+    return { repaired: false, user: repair.user };
+  }
 
   logger.info('Keycloak user profile repaired during IAM sync', {
     operation: 'sync_keycloak_users',
@@ -405,15 +446,16 @@ const syncIdentityUser = async (
       traceId: input.traceId,
     });
     repairedProfile = repaired.repaired;
-    if (!hasRequiredProfileFields(repaired.user)) {
+    const normalizedUser = normalizeIdentityUserProfile(repaired.user);
+    if (!hasRequiredImportEmail(normalizedUser)) {
       throw new KeycloakUserSyncManualReviewError(
         'identity_profile_incomplete',
-        'Keycloak-Benutzerprofil ist unvollständig und erfordert manuelle Prüfung.'
+        'Keycloak-Benutzerprofil enthält keine auflösbare E-Mail-Adresse und erfordert manuelle Prüfung.'
       );
     }
     const result = await upsertIdentityUser(client, {
       instanceId: input.instanceId,
-      user: repaired.user,
+      user: normalizedUser,
     });
     await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
     return { created: result.created, manualReview: false, repaired: repairedProfile };

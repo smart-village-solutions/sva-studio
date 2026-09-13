@@ -154,6 +154,7 @@ const runSync = async (input: {
   readonly user: IdentityListedUser;
   readonly seed?: LocalProfileSeed | null;
   readonly instanceId?: string;
+  readonly updateUser?: () => Promise<void>;
 }) => {
   state.loadLocalProfileSeed.mockImplementationOnce(async () => {
     state.events.push('seed:load');
@@ -174,6 +175,7 @@ const runSync = async (input: {
       }),
       updateUser: vi.fn(async () => {
         state.events.push('keycloak:update');
+        await input.updateUser?.();
       }),
     },
   };
@@ -266,45 +268,53 @@ describe('user-import-sync-handler profile repair characterization', () => {
         firstName: 'Seed',
         lastName: 'User',
       },
+      expectedUpdate: {
+        username: 'seed-user',
+        email: 'seed@example.test',
+        firstName: 'Seed',
+        lastName: 'User',
+      },
     },
     {
       name: 'keeps a source email while filling both missing names from a conflicting seed',
       user: createUser({ email: 'source@example.test', firstName: undefined, lastName: undefined }),
       seed: { email: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { email: 'source@example.test', firstName: 'Seed', lastName: 'User' },
+      expectedUpdate: { firstName: 'Seed', lastName: 'User' },
     },
     {
       name: 'keeps a source first name while filling email and last name from the seed',
       user: createUser({ email: undefined, firstName: 'Source', lastName: undefined }),
       seed: { email: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { email: 'seed@example.test', firstName: 'Source', lastName: 'User' },
+      expectedUpdate: { email: 'seed@example.test', lastName: 'User' },
     },
     {
       name: 'keeps a source last name while filling email and first name from the seed',
       user: createUser({ email: undefined, firstName: undefined, lastName: 'Source' }),
       seed: { email: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { email: 'seed@example.test', firstName: 'Seed', lastName: 'Source' },
+      expectedUpdate: { email: 'seed@example.test', firstName: 'Seed' },
     },
     {
       name: 'uses the source username as the final email fallback',
       user: createUser({ username: 'username@example.test', email: undefined }),
       seed: { firstName: 'Seed', lastName: 'User' },
       expected: { username: 'username@example.test', email: 'username@example.test' },
+      expectedUpdate: { email: 'username@example.test' },
     },
     {
       name: 'uses the local username as the final email fallback',
       user: createUser({ username: undefined, email: undefined }),
       seed: { username: 'seed@example.test', firstName: 'Seed', lastName: 'User' },
       expected: { username: 'seed@example.test', email: 'seed@example.test' },
+      expectedUpdate: { username: 'seed@example.test', email: 'seed@example.test' },
     },
-  ])('$name', async ({ user, seed, expected }) => {
+  ])('$name', async ({ user, seed, expected, expectedUpdate }) => {
     const result = await runSync({ user, seed });
 
     expect(result.provider.updateUser).toHaveBeenCalledOnce();
-    expect(result.provider.updateUser).toHaveBeenCalledWith(
-      'subject-1',
-      expect.objectContaining(expected)
-    );
+    expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', expectedUpdate);
     expect(state.upsertIdentityUser).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -320,23 +330,13 @@ describe('user-import-sync-handler profile repair characterization', () => {
     });
   });
 
-  it.each([
-    {
-      name: 'does not invent an email from a non-email username',
-      user: createUser({ username: 'not-an-email', email: undefined }),
-      seed: { firstName: 'Seed', lastName: 'User' },
-    },
-    {
-      name: 'does not invent missing names from the username-as-email fallback',
-      user: createUser({
-        username: 'username@example.test',
-        email: undefined,
-        firstName: undefined,
-        lastName: undefined,
-      }),
-      seed: null,
-    },
-  ])('$name and reports manual review without persisting the identity', async ({ user, seed }) => {
+  it('does not invent an email from a non-email username and reports manual review without persisting the identity', async () => {
+    const user = createUser({
+      externalId: 'missing-email-subject',
+      username: 'not-an-email',
+      email: undefined,
+    });
+    const seed = { firstName: 'Seed', lastName: 'User' };
     const result = await runSync({ user, seed });
 
     expect(state.upsertIdentityUser).not.toHaveBeenCalled();
@@ -347,18 +347,253 @@ describe('user-import-sync-handler profile repair characterization', () => {
       importedCount: 0,
       updatedCount: 0,
     });
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Keycloak user sync left a user in manual review',
+      expect.objectContaining({
+        reason: 'identity_profile_incomplete',
+        subject_ref: expect.stringMatching(/^[a-f0-9]{12}$/),
+        error:
+          'Keycloak-Benutzerprofil enthält keine auflösbare E-Mail-Adresse und erfordert manuelle Prüfung.',
+      })
+    );
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.externalId);
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.username);
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.firstName);
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.lastName);
   });
 
-  it('preserves the current blank local-seed contract and sends it to manual review', async () => {
+  it.each([
+    {
+      name: 'both names are absent',
+      user: createUser({ firstName: undefined, lastName: undefined }),
+    },
+    {
+      name: 'the first name is blank',
+      user: createUser({ firstName: '   ' }),
+    },
+    {
+      name: 'the last name is absent',
+      user: createUser({ lastName: undefined }),
+    },
+  ])('imports the identity without defaults when $name', async ({ user }) => {
+    const result = await runSync({ user, seed: null });
+
+    expect(result.provider.updateUser).not.toHaveBeenCalled();
+    expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      user: {
+        ...user,
+        firstName: user.firstName?.trim() || undefined,
+        lastName: user.lastName?.trim() || undefined,
+      },
+    });
+    expect(result.report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      manualReviewCount: 0,
+      importedCount: 1,
+      updatedCount: 0,
+    });
+  });
+
+  it('keeps a name-only Keycloak repair failure from blocking IAM membership persistence', async () => {
+    const user = createUser({ firstName: undefined, lastName: undefined });
+    const { KeycloakAdminRequestError } = await import('../keycloak-admin-client.js');
+    const result = await runSync({
+      user,
+      seed: { firstName: 'Seed', lastName: 'User' },
+      updateUser: async () => {
+        throw new KeycloakAdminRequestError({
+          message: 'Keycloak update_user failed: error-user-attribute-read-only',
+          statusCode: 400,
+          code: 'http_400',
+          retryable: false,
+          fieldErrors: [
+            { field: 'firstName', code: 'error-user-attribute-read-only' },
+            { field: 'lastName', code: 'error-user-attribute-read-only' },
+          ],
+        });
+      },
+    });
+
+    expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', {
+      firstName: 'Seed',
+      lastName: 'User',
+    });
+    expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      user: { ...user, firstName: 'Seed', lastName: 'User' },
+    });
+    expect(result.report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      manualReviewCount: 0,
+      importedCount: 1,
+      updatedCount: 0,
+    });
+    expect(result.report.repairedProfileCount).toBeUndefined();
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.objectContaining({
+        reason: 'optional_name_update_failed',
+        subject_ref: expect.stringMatching(/^[a-f0-9]{12}$/),
+      })
+    );
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain(user.externalId);
+  });
+
+  it('keeps technical and unknown name-only repair failures fail-closed', async () => {
+    const { KeycloakAdminRequestError, KeycloakAdminUnavailableError } =
+      await import('../keycloak-admin-client.js');
+    const failures = [
+      new KeycloakAdminRequestError({
+        message: 'missing subject',
+        statusCode: 404,
+        code: 'http_404',
+        retryable: false,
+      }),
+      new KeycloakAdminRequestError({
+        message: 'connect timeout',
+        statusCode: 503,
+        code: 'connect_timeout',
+        retryable: true,
+      }),
+      new KeycloakAdminUnavailableError('circuit open'),
+      new Error('unexpected_failure'),
+    ];
+
+    for (const error of failures) {
+      await expect(
+        runSync({
+          user: createUser({ firstName: undefined }),
+          seed: { firstName: 'Seed' },
+          updateUser: async () => {
+            throw error;
+          },
+        })
+      ).rejects.toBe(error);
+    }
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.anything()
+    );
+  });
+
+  it('keeps mixed field rejections and non-name profile repairs fail-closed', async () => {
+    const { KeycloakAdminRequestError } = await import('../keycloak-admin-client.js');
+    const mixedFieldError = new KeycloakAdminRequestError({
+      message: 'mixed validation failure',
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+      fieldErrors: [
+        { field: 'firstName', code: 'error-user-attribute-read-only' },
+        { field: 'email', code: 'error-invalid-email' },
+      ],
+    });
+    const usernameRepairError = new KeycloakAdminRequestError({
+      message: 'name field is read-only',
+      statusCode: 400,
+      code: 'http_400',
+      retryable: false,
+      fieldErrors: [{ field: 'firstName', code: 'error-user-attribute-read-only' }],
+    });
+
+    await expect(
+      runSync({
+        user: createUser({ firstName: undefined }),
+        seed: { firstName: 'Seed' },
+        updateUser: async () => {
+          throw mixedFieldError;
+        },
+      })
+    ).rejects.toBe(mixedFieldError);
+
+    await expect(
+      runSync({
+        user: createUser({ username: ' ', firstName: undefined }),
+        seed: { username: 'seed-user', firstName: 'Seed' },
+        updateUser: async () => {
+          throw usernameRepairError;
+        },
+      })
+    ).rejects.toBe(usernameRepairError);
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+  });
+
+  it('keeps a required email repair failure blocking', async () => {
+    const user = createUser({ email: undefined });
+
+    await expect(
+      runSync({
+        user,
+        seed: { email: 'seed@example.test' },
+        updateUser: async () => {
+          throw new Error('keycloak_unavailable');
+        },
+      })
+    ).rejects.toThrow('keycloak_unavailable');
+
+    expect(state.upsertIdentityUser).not.toHaveBeenCalled();
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Optional Keycloak user name repair skipped during IAM sync',
+      expect.anything()
+    );
+  });
+
+  it('repairs a missing email from an email-shaped username without inventing missing names', async () => {
+    const user = createUser({
+      username: 'username@example.test',
+      email: undefined,
+      firstName: undefined,
+      lastName: undefined,
+    });
+    const result = await runSync({ user, seed: null });
+
+    expect(result.provider.updateUser).toHaveBeenCalledOnce();
+    expect(result.provider.updateUser).toHaveBeenCalledWith('subject-1', {
+      email: 'username@example.test',
+    });
+    expect(state.upsertIdentityUser).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      user: {
+        ...user,
+        email: 'username@example.test',
+      },
+    });
+    expect(result.report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      manualReviewCount: 0,
+      repairedProfileCount: 1,
+    });
+  });
+
+  it('keeps repeated name-only incomplete profiles out of manual review', async () => {
+    const user = createUser({ firstName: undefined, lastName: undefined });
+
+    const first = await runSync({ user, seed: null });
+    const second = await runSync({ user, seed: null });
+
+    expect(first.report).toMatchObject({ outcome: 'success', manualReviewCount: 0 });
+    expect(second.report).toMatchObject({ outcome: 'success', manualReviewCount: 0 });
+    expect(state.upsertIdentityUser).toHaveBeenCalledTimes(2);
+    expect(state.logger.warn).not.toHaveBeenCalledWith(
+      'Keycloak user sync left a user in manual review',
+      expect.anything()
+    );
+  });
+
+  it('treats a blank local email seed as unresolved and sends it to manual review', async () => {
     const result = await runSync({
       user: createUser({ email: undefined }),
       seed: { email: '   ', firstName: 'Seed', lastName: 'User' },
     });
 
-    expect(result.provider.updateUser).toHaveBeenCalledWith(
-      'subject-1',
-      expect.objectContaining({ email: '   ' })
-    );
+    expect(result.provider.updateUser).not.toHaveBeenCalled();
     expect(state.upsertIdentityUser).not.toHaveBeenCalled();
     expect(result.report).toMatchObject({ outcome: 'failed', manualReviewCount: 1 });
   });

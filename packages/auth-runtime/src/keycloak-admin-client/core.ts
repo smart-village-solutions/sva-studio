@@ -64,6 +64,15 @@ type KeycloakErrorResponse = {
   readonly errorMessage?: string;
   readonly field?: string;
   readonly params?: readonly string[];
+  readonly errors?: readonly {
+    readonly field?: string;
+    readonly errorMessage?: string;
+  }[];
+};
+
+export type KeycloakAdminFieldError = {
+  readonly field?: string;
+  readonly code: string;
 };
 
 type KeycloakRoleMapping = {
@@ -156,13 +165,21 @@ export class KeycloakAdminRequestError extends Error {
   readonly statusCode: number;
   readonly code: string;
   readonly retryable: boolean;
+  readonly fieldErrors: readonly KeycloakAdminFieldError[];
 
-  constructor(input: { message: string; statusCode: number; code: string; retryable: boolean }) {
+  constructor(input: {
+    message: string;
+    statusCode: number;
+    code: string;
+    retryable: boolean;
+    fieldErrors?: readonly KeycloakAdminFieldError[];
+  }) {
     super(input.message);
     this.name = 'KeycloakAdminRequestError';
     this.statusCode = input.statusCode;
     this.code = input.code;
     this.retryable = input.retryable;
+    this.fieldErrors = input.fieldErrors ?? [];
   }
 }
 
@@ -1896,7 +1913,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         const retryable = this.isRetryableError(error);
         const isLastAttempt = attempt >= this.maxRetries;
         if (!retryable || isLastAttempt) {
-          if (trackCircuitState) this.markFailure();
+          if (trackCircuitState && (retryable || !(error instanceof KeycloakAdminRequestError))) {
+            this.markFailure();
+          }
           throw error;
         }
 
@@ -1969,9 +1988,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     const response = await this.executeFetchWithTimeout(url, init);
 
     if (!response.ok) {
-      const message = await this.buildErrorMessage(response, request.operation);
+      const details = await this.buildErrorDetails(response, request.operation);
       throw new KeycloakAdminRequestError({
-        message,
+        ...details,
         statusCode: response.status,
         code: `http_${response.status}`,
         retryable: isRetryableStatus(response.status),
@@ -1993,31 +2012,63 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     return JSON.parse(text) as T;
   }
 
-  private async buildErrorMessage(response: Response, operation: string): Promise<string> {
+  private async buildErrorDetails(
+    response: Response,
+    operation: string
+  ): Promise<{
+    readonly message: string;
+    readonly fieldErrors: readonly KeycloakAdminFieldError[];
+  }> {
+    const fallback = {
+      message: `Keycloak ${operation} failed with HTTP ${response.status}`,
+      fieldErrors: [],
+    };
     try {
       const text = await withTimeout(response.text(), this.readTimeoutMs, 'read');
       if (!text) {
-        return `Keycloak ${operation} failed with HTTP ${response.status}`;
+        return fallback;
       }
       const parsed = JSON.parse(text) as KeycloakErrorResponse;
+      const fieldErrors: KeycloakAdminFieldError[] = [
+        ...(parsed.field && parsed.errorMessage
+          ? [{ field: parsed.field, code: parsed.errorMessage }]
+          : []),
+        ...(parsed.errors ?? []).flatMap((entry) =>
+          typeof entry.errorMessage === 'string' && entry.errorMessage.length > 0
+            ? [{ ...(entry.field ? { field: entry.field } : {}), code: entry.errorMessage }]
+            : []
+        ),
+      ];
       if (parsed.error_description) {
-        return `Keycloak ${operation} failed: ${parsed.error_description}`;
+        return {
+          message: `Keycloak ${operation} failed: ${parsed.error_description}`,
+          fieldErrors,
+        };
+      }
+      if (fieldErrors.length > 0) {
+        return {
+          message: `Keycloak ${operation} failed: ${fieldErrors.map((entry) => entry.code).join(', ')}`,
+          fieldErrors,
+        };
       }
       if (parsed.errorMessage) {
-        if (parsed.field) {
-          return `Keycloak ${operation} failed: ${parsed.errorMessage} (${parsed.field})`;
-        }
         if (parsed.params && parsed.params.length > 0) {
-          return `Keycloak ${operation} failed: ${parsed.errorMessage} (${parsed.params.join(', ')})`;
+          return {
+            message: `Keycloak ${operation} failed: ${parsed.errorMessage} (${parsed.params.join(', ')})`,
+            fieldErrors: [],
+          };
         }
-        return `Keycloak ${operation} failed: ${parsed.errorMessage}`;
+        return {
+          message: `Keycloak ${operation} failed: ${parsed.errorMessage}`,
+          fieldErrors: [],
+        };
       }
       if (parsed.error) {
-        return `Keycloak ${operation} failed: ${parsed.error}`;
+        return { message: `Keycloak ${operation} failed: ${parsed.error}`, fieldErrors: [] };
       }
-      return `Keycloak ${operation} failed with HTTP ${response.status}`;
+      return fallback;
     } catch {
-      return `Keycloak ${operation} failed with HTTP ${response.status}`;
+      return fallback;
     }
   }
 
@@ -2054,9 +2105,9 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
 
     if (!response.ok) {
-      const message = await this.buildErrorMessage(response, 'fetch_token');
+      const details = await this.buildErrorDetails(response, 'fetch_token');
       throw new KeycloakAdminRequestError({
-        message,
+        ...details,
         statusCode: response.status,
         code: `token_http_${response.status}`,
         retryable: isRetryableStatus(response.status),

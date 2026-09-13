@@ -8,6 +8,11 @@
       `sva-studio` und `smart-speech-flow` festlegen
 - [x] 0.4 Den aktuellen Login-500 von `svs` read-only bis zur konkreten
       Fehlerursache korrelieren
+- [x] 0.5 Allgemeine SSF-Readiness und Kasseler Elternlauf-Automatisierung in
+      zwei eigenständig prüfbare Studio-PRs trennen
+- [ ] 0.6 Den versionierten Plugin-/OIDC-/Lifecycle-Snapshot im separaten
+      Provisioner-Prozess explizit initialisieren oder persistent binden und
+      leere Composition fail-closed testen
 
 ## 1. Führenden Elternlauf härten
 

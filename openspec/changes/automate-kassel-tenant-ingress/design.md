@@ -66,6 +66,20 @@ Rollout- und Enablement-Gate.
 
 ## Architekturentscheidung
 
+### 0. Getrennte Lieferabschnitte und Prozessgrenze
+
+Der allgemeine SSF-Login-/Readiness-Vertrag wird unabhängig von der Kasseler
+Create-Orchestrierung geliefert. Die Kasseler Automatisierung baut auf diesem
+Vertrag auf, bleibt aber ein eigener PR, weil sie zusätzlich die Grenze
+zwischen Studio-App und eigenständigem Provisioner-Prozess überschreitet.
+
+Konfiguration in einem globalen In-Memory-Snapshot der App darf nicht als
+Konfiguration des Workers gelten. Der Provisioner muss seinen vollständigen,
+versionierten Plugin-, OIDC- und Lifecycle-Vertrag selbst initialisieren oder
+aus persistierter, an den Elternlauf gebundener Evidenz lesen. Fehlende oder
+leere Composition blockiert die Kasseler Anlage fail-closed und darf niemals
+als leere, damit vermeintlich bereite Modulmenge ausgewertet werden.
+
 ### 1. Der vorhandene Elternlauf wird fachlich führend
 
 `iam.instance_provisioning_runs` bleibt die eine fachliche Sicht auf Create,

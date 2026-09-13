@@ -95,3 +95,19 @@ Verträge ausgerichtet.
   weiterhin dem geschützten Build-/Promote-Prozess; die SSF-Infrastruktur wird
   in ihrem zuständigen Repository geliefert und vor Aktivierung des
   Kassel-Modus ausgerollt.
+
+## Liefergrenze
+
+Die Umsetzung wird nach der Review-Erkenntnis zur getrennten Worker-
+Prozessgrenze in zwei eigenständig prüfbare Studio-PRs aufgeteilt:
+
+1. Der vorgelagerte SSF-Readiness-PR liefert ausschließlich den allgemeinen
+   Browser-, IAM-, Runtime- und Directory-Vertrag.
+2. Dieser Change liefert darauf aufbauend den Kasseler Elternlauf, die
+   explizite Initialisierung beziehungsweise Persistenz des Plugin-Vertrags im
+   separaten Provisioner-Prozess, Ingress/TLS, Retry und UI.
+
+Der zweite Slice darf nicht als merge- oder enablement-bereit gelten, solange
+der Provisioner seinen benötigten Plugin-/OIDC-/Lifecycle-Snapshot nur aus
+prozesslokalem App-Zustand ableiten würde. Ein leerer Worker-Snapshot ist kein
+gültiger Readiness-Nachweis.

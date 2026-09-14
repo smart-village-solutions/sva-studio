@@ -116,11 +116,21 @@ const listUserRealmRoles = async (
   return roles.map((role) => role.name);
 };
 
-const listTenantAdminServiceRoles = async (
+type TenantAdminServiceRoleMappings = Readonly<{
+  directRoles: readonly string[];
+  effectiveRoles: readonly string[];
+}>;
+
+const EMPTY_TENANT_ADMIN_SERVICE_ROLE_MAPPINGS: TenantAdminServiceRoleMappings = {
+  directRoles: [],
+  effectiveRoles: [],
+};
+
+const listTenantAdminServiceRoleMappings = async (
   configPath: string,
   realm: string,
   clientId: string
-): Promise<readonly string[]> => {
+): Promise<TenantAdminServiceRoleMappings> => {
   const tenantAdminClients = await runKcadmJson<readonly KeycloakClientSnapshot[]>(configPath, [
     'get',
     'clients',
@@ -131,7 +141,7 @@ const listTenantAdminServiceRoles = async (
   ]);
   const tenantAdminClient = tenantAdminClients[0];
   if (!tenantAdminClient?.id) {
-    return [];
+    return EMPTY_TENANT_ADMIN_SERVICE_ROLE_MAPPINGS;
   }
   const realmManagementClients = await runKcadmJson<readonly KeycloakClientSnapshot[]>(configPath, [
     'get',
@@ -143,7 +153,7 @@ const listTenantAdminServiceRoles = async (
   ]);
   const realmManagementClient = realmManagementClients[0];
   if (!realmManagementClient?.id) {
-    return [];
+    return EMPTY_TENANT_ADMIN_SERVICE_ROLE_MAPPINGS;
   }
   const serviceUser = await runKcadmJson<KeycloakUserRepresentation>(configPath, [
     'get',
@@ -152,15 +162,27 @@ const listTenantAdminServiceRoles = async (
     realm,
   ]);
   if (!serviceUser.id) {
-    return [];
+    return EMPTY_TENANT_ADMIN_SERVICE_ROLE_MAPPINGS;
   }
-  const roles = await runKcadmJson<readonly KeycloakRoleRepresentation[]>(configPath, [
-    'get',
-    `users/${serviceUser.id}/role-mappings/clients/${realmManagementClient.id}`,
-    '-r',
-    realm,
+  const roleMappingsPath = `users/${serviceUser.id}/role-mappings/clients/${realmManagementClient.id}`;
+  const [directRoles, effectiveRoles] = await Promise.all([
+    runKcadmJson<readonly KeycloakRoleRepresentation[]>(configPath, [
+      'get',
+      roleMappingsPath,
+      '-r',
+      realm,
+    ]),
+    runKcadmJson<readonly KeycloakRoleRepresentation[]>(configPath, [
+      'get',
+      `${roleMappingsPath}/composite`,
+      '-r',
+      realm,
+    ]),
   ]);
-  return roles.map((role) => role.name);
+  return {
+    directRoles: directRoles.map((role) => role.name),
+    effectiveRoles: effectiveRoles.map((role) => role.name),
+  };
 };
 
 const listRealmRoles = async (configPath: string, realm: string): Promise<readonly string[]> => {
@@ -241,9 +263,13 @@ const collectKeycloakAuditSnapshot = async (configPath: string, target: AuditReg
   );
   const realmRoles = await listRealmRoles(configPath, target.authRealm);
   const systemAdmin = await readSystemAdminState(configPath, target.authRealm, realmRoles);
-  const tenantAdminServiceRoles = target.tenantAdminClientId
-    ? await listTenantAdminServiceRoles(configPath, target.authRealm, target.tenantAdminClientId)
-    : [];
+  const tenantAdminServiceRoleMappings = target.tenantAdminClientId
+    ? await listTenantAdminServiceRoleMappings(
+        configPath,
+        target.authRealm,
+        target.tenantAdminClientId
+      )
+    : EMPTY_TENANT_ADMIN_SERVICE_ROLE_MAPPINGS;
 
   return {
     loginClient: login.client,
@@ -253,7 +279,8 @@ const collectKeycloakAuditSnapshot = async (configPath: string, target: AuditReg
     systemAdminUserRoles: systemAdmin.systemAdminUserRoles,
     tenantAdminClient: tenantAdmin.client,
     tenantAdminSecret: tenantAdmin.secret,
-    tenantAdminServiceRoles,
+    tenantAdminServiceDirectRoles: tenantAdminServiceRoleMappings.directRoles,
+    tenantAdminServiceEffectiveRoles: tenantAdminServiceRoleMappings.effectiveRoles,
   };
 };
 

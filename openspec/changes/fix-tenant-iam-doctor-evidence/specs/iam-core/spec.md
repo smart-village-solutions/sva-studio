@@ -17,6 +17,12 @@ Das System SHALL der tenantgebundenen IAM-Serviceidentität genau den für ihre 
 - **THEN** verwendet sie ausschließlich die tenantgebundene IAM-Serviceidentität des Ziel-Tenants
 - **AND** führt sie nur nicht-destruktive Leseoperationen aus
 
+#### Scenario: Geerbte verbotene Rollen werden nicht übersehen
+
+- **WHEN** eine verbotene `realm-management`-Rolle über eine Gruppe oder Composite-Rolle effektiv auf den Tenant-IAM-Service-Account wirkt
+- **THEN** schlagen Provisioning-Read-back und Audit fail-closed fehl
+- **AND** verändert das System die indirekte Zuweisungsquelle nicht automatisch
+
 #### Scenario: Tenant-IAM darf Clients nicht verändern
 
 - **WHEN** die Tenant-IAM-Serviceidentität versucht, einen Client anzulegen, zu ändern, zu löschen oder dessen Secret zu rotieren

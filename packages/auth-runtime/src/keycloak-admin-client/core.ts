@@ -92,6 +92,27 @@ const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
 ] as const;
 
 const LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME = 'manage-clients';
+const FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
+  'realm-admin',
+  LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME,
+  'manage-identity-providers',
+  'manage-events',
+] as const;
+
+const tenantAdminServiceRoleMappingsAreSafe = (
+  directRoleMappings: readonly KeycloakRoleMapping[],
+  effectiveRoleMappings: readonly KeycloakRoleMapping[]
+): boolean => {
+  const directRoleNames = new Set(directRoleMappings.map((role) => role.name));
+  const effectiveRoleNames = new Set(effectiveRoleMappings.map((role) => role.name));
+  return (
+    REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => directRoleNames.has(roleName)) &&
+    REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => effectiveRoleNames.has(roleName)) &&
+    FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES.every(
+      (roleName) => !directRoleNames.has(roleName) && !effectiveRoleNames.has(roleName)
+    )
+  );
+};
 
 type KeycloakClientRepresentation = {
   readonly id: string;
@@ -823,23 +844,20 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       });
     }
 
-    if (rolesToAdd.length === 0 && !legacyClientWriteRole) {
-      return;
-    }
+    const [directRoleMappings, effectiveRoleMappings] = await Promise.all([
+      this.executeWithResilience<KeycloakRoleMapping[]>({
+        method: 'GET',
+        path: roleMappingsPath,
+        operation: 'verify_direct_service_account_client_roles',
+      }),
+      this.executeWithResilience<KeycloakRoleMapping[]>({
+        method: 'GET',
+        path: `${roleMappingsPath}/composite`,
+        operation: 'verify_effective_service_account_client_roles',
+      }),
+    ]);
 
-    const reconciledRoleMappings = await this.executeWithResilience<KeycloakRoleMapping[]>({
-      method: 'GET',
-      path: roleMappingsPath,
-      operation: 'verify_service_account_client_roles',
-    });
-    const reconciledRoleNames = new Set(reconciledRoleMappings.map((role) => role.name));
-    const missingReconciledRoles = REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.filter(
-      (roleName) => !reconciledRoleNames.has(roleName)
-    );
-    if (
-      missingReconciledRoles.length > 0 ||
-      reconciledRoleNames.has(LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME)
-    ) {
+    if (!tenantAdminServiceRoleMappingsAreSafe(directRoleMappings, effectiveRoleMappings)) {
       throw new KeycloakAdminRequestError({
         message: 'Tenant admin service-account role reconciliation could not be verified.',
         statusCode: 500,

@@ -29,6 +29,9 @@ Geplanter Nachweis:
 ### TIAM-DOC-03: Tenant-IAM kann Clients nicht mutieren
 
 Der Tenant-IAM-Service-Account besitzt `view-clients`, aber kein `manage-clients`. Sämtliche Clientmutationen bleiben beim Provisioner.
+Der Nachweis umfasst direkte und effektive Rollen; über Gruppen oder
+Composite-Rollen geerbte verbotene Rechte führen fail-closed zur manuellen
+Bereinigung der Zuweisungsquelle.
 
 Geplanter Nachweis:
 

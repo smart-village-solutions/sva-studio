@@ -72,7 +72,8 @@ type ScenarioOverrides = Readonly<{
   systemAdminUser?: Readonly<Record<string, unknown>> | null;
   tenantAdminClient?: Readonly<Record<string, unknown>> | null;
   tenantAdminSecret?: string | null;
-  tenantAdminServiceRoles?: readonly string[];
+  tenantAdminServiceDirectRoles?: readonly string[];
+  tenantAdminServiceEffectiveRoles?: readonly string[];
 }>;
 
 const configureScenario = (overrides: ScenarioOverrides = {}): void => {
@@ -103,13 +104,15 @@ const configureScenario = (overrides: ScenarioOverrides = {}): void => {
       : overrides.systemAdminUser;
   const realmRoles = overrides.realmRoles ?? ['system_admin', 'instance_registry_admin'];
   const systemAdminRoles = overrides.systemAdminRoles ?? ['system_admin'];
-  const tenantAdminServiceRoles = overrides.tenantAdminServiceRoles ?? [
+  const tenantAdminServiceDirectRoles = overrides.tenantAdminServiceDirectRoles ?? [
     'manage-users',
     'view-users',
     'view-realm',
     'manage-realm',
     'view-clients',
   ];
+  const tenantAdminServiceEffectiveRoles =
+    overrides.tenantAdminServiceEffectiveRoles ?? tenantAdminServiceDirectRoles;
 
   kcadmMock.responder = async (args) => {
     const key = commandKey(args);
@@ -144,7 +147,9 @@ const configureScenario = (overrides: ScenarioOverrides = {}): void => {
         })
       ),
       'get users/tenant-admin-service-user-id/role-mappings/clients/realm-management-id -r tenant-realm':
-        tenantAdminServiceRoles.map((name) => ({ id: `${name}-id`, name })),
+        tenantAdminServiceDirectRoles.map((name) => ({ id: `${name}-id`, name })),
+      'get users/tenant-admin-service-user-id/role-mappings/clients/realm-management-id/composite -r tenant-realm':
+        tenantAdminServiceEffectiveRoles.map((name) => ({ id: `${name}-id`, name })),
     };
 
     if (key === 'get realms/tenant-realm' && overrides.realmExists === false) {
@@ -239,7 +244,8 @@ describe('inspectRealmAndClients contract', () => {
       {
         checkId: 'keycloak.client.tenant_admin.roles',
         details: {
-          assignedRoles: [
+          directRoles: ['manage-users', 'view-users', 'view-realm', 'manage-realm', 'view-clients'],
+          effectiveRoles: [
             'manage-users',
             'view-users',
             'view-realm',
@@ -274,7 +280,8 @@ describe('inspectRealmAndClients contract', () => {
       {
         checkId: 'tenant_iam.access',
         details: {
-          assignedRoles: [
+          directRoles: ['manage-users', 'view-users', 'view-realm', 'manage-realm', 'view-clients'],
+          effectiveRoles: [
             'manage-users',
             'view-users',
             'view-realm',
@@ -324,6 +331,7 @@ describe('inspectRealmAndClients contract', () => {
       'get clients -r tenant-realm -q clientId=realm-management',
       'get clients/tenant-admin-internal-id/service-account-user -r tenant-realm',
       'get users/tenant-admin-service-user-id/role-mappings/clients/realm-management-id -r tenant-realm',
+      'get users/tenant-admin-service-user-id/role-mappings/clients/realm-management-id/composite -r tenant-realm',
     ]);
     expect(existsSync(readConfigPath())).toBe(false);
   });
@@ -393,7 +401,7 @@ describe('inspectRealmAndClients contract', () => {
         standardFlowEnabled: true,
       },
       tenantAdminSecret: null,
-      tenantAdminServiceRoles: ['view-users'],
+      tenantAdminServiceDirectRoles: ['view-users'],
       systemAdminRoles: ['system_admin', 'instance_registry_admin'],
     });
 
@@ -424,13 +432,42 @@ describe('inspectRealmAndClients contract', () => {
 
   it('rejects legacy client write access even when all read roles are assigned', async () => {
     configureScenario({
-      tenantAdminServiceRoles: [
+      tenantAdminServiceDirectRoles: [
+        'manage-users',
+        'view-users',
+        'view-realm',
+        'manage-realm',
+        'view-clients',
+      ],
+      tenantAdminServiceEffectiveRoles: [
         'manage-users',
         'view-users',
         'view-realm',
         'manage-realm',
         'view-clients',
         'manage-clients',
+      ],
+    });
+
+    const result = await inspectRealmAndClients(target, {
+      authSecret: loginSecretMarker,
+      tenantAdminSecret: tenantAdminSecretMarker,
+    });
+    const byId = new Map(result.checks.map((check) => [check.checkId, check]));
+
+    expect(byId.get('keycloak.client.tenant_admin.roles')).toMatchObject({ status: 'fail' });
+    expect(byId.get('tenant_iam.access')).toMatchObject({ status: 'pass' });
+  });
+
+  it('rejects an effectively inherited realm-admin role without hiding functional access', async () => {
+    configureScenario({
+      tenantAdminServiceEffectiveRoles: [
+        'manage-users',
+        'view-users',
+        'view-realm',
+        'manage-realm',
+        'view-clients',
+        'realm-admin',
       ],
     });
 

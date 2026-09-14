@@ -253,6 +253,10 @@ Begründung:
   Redirect-Ziel zu referenzieren.
 - `manage-clients` ist nicht zulässig. Clientmutationen und Secret-Rotation
   bleiben ausschließlich beim Provisioner.
+- Die Prüfung liest direkte und effektive Rollen getrennt. Über Gruppen oder
+  Composite-Rollen geerbte verbotene Rechte lassen Provisioning und Audit
+  fail-closed fehlschlagen und werden nicht automatisch aus ihrer
+  Zuweisungsquelle entfernt.
 
 Nicht Ziel dieses Vertrags:
 

@@ -43,8 +43,11 @@ Provisioner gehören.
 - Nach Abschluss der additiven Einführungsphase gleicht ein expliziter
   Provisioning- oder Reconcile-Lauf Bestandsinstanzen auf den minimalen Vertrag
   ab: Er ergänzt zuerst `view-clients`, entzieht danach `manage-clients` und
-  verifiziert das Ergebnis per Read-back. Ohne einen ausdrücklich gestarteten
-  Lauf verändert die Software keine Keycloak-Instanz.
+  verifiziert das Ergebnis per getrenntem Read-back der direkten und effektiven
+  Client-Rollen. Effektiv über Gruppen oder Composite-Rollen geerbte verbotene
+  Rechte führen fail-closed zu manueller Bereinigung; der Abgleich verändert
+  solche Zuweisungsquellen nicht automatisch. Ohne einen ausdrücklich
+  gestarteten Lauf verändert die Software keine Keycloak-Instanz.
 
 ## Alternativen
 

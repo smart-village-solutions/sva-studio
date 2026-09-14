@@ -55,6 +55,10 @@ Für Tenant-Hosts gilt zusätzlich:
 
 - Studio verwendet ausschließlich den in der Instanz-Registry hinterlegten Tenant-Admin-Client.
 - `view-clients` dient ausschließlich dazu, den referenzierten Login-Client read-only zu prüfen; `manage-clients` ist nicht zulässig.
+- Audit und Provisioning-Read-back prüfen direkte sowie effektive
+  `realm-management`-Rollen. Verbotene Rechte aus Gruppen oder Composite-Rollen
+  blockieren den Sollvertrag und müssen an ihrer Zuweisungsquelle manuell
+  entfernt werden.
 - Ein fehlender Tenant-Admin-Client oder ein fehlendes Tenant-Admin-Secret führt fail-closed zu `tenant_admin_client_not_configured`.
 - Platform- oder globale Admin-Credentials dürfen tenantlokale User- oder technische Rollenzuordnungsoperationen nicht ersetzen.
 - Fachliche Tenant-Rollen werden DB-only gepflegt. Built-in-, Default- und Legacy-Keycloak-Rollen dürfen sichtbar sein, bleiben aber technische Diagnose und keine normative Fachsicht.

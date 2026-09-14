@@ -1,0 +1,4 @@
+{
+  "prNumber": 1397,
+  "body": "Vollständige Mandantenbereitstellung für Kassel\n\n- Neue Mandanten werden erst aktiviert, wenn ihre Rollen vollständig abgeglichen sind.\n- Vor der Aktivierung prüft das System automatisch den tenantlokalen IAM-Zugriff.\n- Fehlgeschlagene Prüfungen bleiben im bestehenden Wiederholungsablauf sichtbar und verhindern einen verfrühten Aktiv-Status.\n- Ein manueller Abgleich über die Diagnoseoberfläche ist für regulär neu angelegte Mandanten nicht mehr erforderlich."
+}

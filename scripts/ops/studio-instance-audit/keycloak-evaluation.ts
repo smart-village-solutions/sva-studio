@@ -8,12 +8,11 @@ export const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'view-clients',
 ] as const;
 
-const FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
-  'realm-admin',
-  'create-client',
-  'manage-clients',
-  'manage-identity-providers',
-  'manage-events',
+const ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
+  ...REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES,
+  'query-users',
+  'query-groups',
+  'query-clients',
 ] as const;
 
 export type KeycloakClientSnapshot = Readonly<{
@@ -79,10 +78,13 @@ const hasMinimalTenantAdminRoleContract = (
   directRoles: readonly string[],
   effectiveRoles: readonly string[]
 ): boolean =>
+  directRoles.length === REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.length &&
   hasRequiredTenantAdminRoles(directRoles) &&
   hasRequiredTenantAdminRoles(effectiveRoles) &&
-  FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES.every(
-    (roleName) => !directRoles.includes(roleName) && !effectiveRoles.includes(roleName)
+  effectiveRoles.every((roleName) =>
+    ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES.includes(
+      roleName as (typeof ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES)[number]
+    )
   );
 
 type LoginUrlState = Readonly<{

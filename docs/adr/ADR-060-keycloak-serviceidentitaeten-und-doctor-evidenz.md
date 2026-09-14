@@ -45,10 +45,12 @@ Provisioner gehören.
   Provisioning- oder Reconcile-Lauf Bestandsinstanzen auf den minimalen Vertrag
   ab: Er ergänzt zuerst `view-clients`, entzieht danach `manage-clients` und
   verifiziert das Ergebnis per getrenntem Read-back der direkten und effektiven
-  Client-Rollen. Effektiv über Gruppen oder Composite-Rollen geerbte verbotene
-  Rechte führen fail-closed zu manueller Bereinigung; der Abgleich verändert
-  solche Zuweisungsquellen nicht automatisch. Ohne einen ausdrücklich
-  gestarteten Lauf verändert die Software keine Keycloak-Instanz.
+  Client-Rollen. Direkt sind ausschließlich die fünf Sollrollen erlaubt;
+  effektiv zusätzlich nur Keycloaks daraus abgeleitete Query-Rollen
+  `query-users`, `query-groups` und `query-clients`. Jede andere effektive Rolle
+  führt fail-closed zu manueller Bereinigung; der Abgleich verändert solche
+  Zuweisungsquellen nicht automatisch. Ohne einen ausdrücklich gestarteten Lauf
+  verändert die Software keine Keycloak-Instanz.
 
 ## Alternativen
 

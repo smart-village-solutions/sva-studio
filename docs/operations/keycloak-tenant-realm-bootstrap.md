@@ -253,10 +253,11 @@ Begründung:
   Redirect-Ziel zu referenzieren.
 - `create-client` und `manage-clients` sind nicht zulässig. Clientmutationen
   und Secret-Rotation bleiben ausschließlich beim Provisioner.
-- Die Prüfung liest direkte und effektive Rollen getrennt. Über Gruppen oder
-  Composite-Rollen geerbte verbotene Rechte lassen Provisioning und Audit
-  fail-closed fehlschlagen und werden nicht automatisch aus ihrer
-  Zuweisungsquelle entfernt.
+- Die Prüfung liest direkte und effektive Rollen getrennt. Direkt sind nur die
+  fünf Sollrollen erlaubt; effektiv zusätzlich `query-users`, `query-groups`
+  und `query-clients`, die Keycloak daraus als Composite-Rollen ableitet. Jede
+  andere effektive Rolle lässt Provisioning und Audit fail-closed fehlschlagen
+  und wird nicht automatisch aus ihrer Zuweisungsquelle entfernt.
 
 Nicht Ziel dieses Vertrags:
 

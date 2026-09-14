@@ -71,6 +71,9 @@ Ohne diesen Nachweis gilt:
 ### Tenant-IAM darf Clients lesen, aber nicht verwalten
 
 Die Tenant-IAM-Serviceidentität benötigt `view-clients`, um den konfigurierten Login-Client und für IAM-Abläufe relevante Clientmetadaten nicht-destruktiv zu prüfen. Sie erhält weder `create-client` noch `manage-clients`.
+Der Read-back akzeptiert direkt ausschließlich die fünf Sollrollen und effektiv
+zusätzlich nur die von Keycloak daraus abgeleiteten Rollen `query-users`,
+`query-groups` und `query-clients`.
 
 Client anlegen, ändern, löschen, Secret rotieren und Service-Account-Konfiguration verändern bleiben ausschließlich Aufgaben von `sva-studio-provisioner`. Die Implementierung prüft den exakten Sollvertrag und nicht nur das Vorhandensein einer Obermenge privilegierter Rollen.
 

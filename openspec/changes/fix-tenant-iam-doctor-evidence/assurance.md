@@ -32,8 +32,9 @@ Der Tenant-IAM-Service-Account besitzt `view-clients`, aber weder
 `create-client` noch `manage-clients`. Sämtliche Clientmutationen bleiben beim
 Provisioner.
 Der Nachweis umfasst direkte und effektive Rollen; über Gruppen oder
-Composite-Rollen geerbte verbotene Rechte führen fail-closed zur manuellen
-Bereinigung der Zuweisungsquelle.
+Composite-Rollen geerbte Rechte außerhalb der Sollrollen und der daraus
+abgeleiteten Query-Rollen führen fail-closed zur manuellen Bereinigung der
+Zuweisungsquelle.
 
 Geplanter Nachweis:
 

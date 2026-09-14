@@ -92,12 +92,11 @@ const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
 ] as const;
 
 const LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME = 'manage-clients';
-const FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
-  'realm-admin',
-  'create-client',
-  LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME,
-  'manage-identity-providers',
-  'manage-events',
+const ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
+  ...REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES,
+  'query-users',
+  'query-groups',
+  'query-clients',
 ] as const;
 
 const tenantAdminServiceRoleMappingsAreSafe = (
@@ -107,10 +106,13 @@ const tenantAdminServiceRoleMappingsAreSafe = (
   const directRoleNames = new Set(directRoleMappings.map((role) => role.name));
   const effectiveRoleNames = new Set(effectiveRoleMappings.map((role) => role.name));
   return (
+    directRoleNames.size === REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.length &&
     REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => directRoleNames.has(roleName)) &&
     REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => effectiveRoleNames.has(roleName)) &&
-    FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES.every(
-      (roleName) => !directRoleNames.has(roleName) && !effectiveRoleNames.has(roleName)
+    [...effectiveRoleNames].every((roleName) =>
+      ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES.includes(
+        roleName as (typeof ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES)[number]
+      )
     )
   );
 };

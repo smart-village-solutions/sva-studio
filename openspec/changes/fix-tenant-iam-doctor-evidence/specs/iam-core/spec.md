@@ -24,6 +24,12 @@ Das System SHALL der tenantgebundenen IAM-Serviceidentität genau den für ihre 
 - **THEN** schlagen Provisioning-Read-back und Audit fail-closed fehl
 - **AND** verändert das System die indirekte Zuweisungsquelle nicht automatisch
 
+#### Scenario: Effektive Composite-Unterrollen bleiben explizit begrenzt
+
+- **WHEN** Keycloak die Sollrollen `view-users` und `view-clients` effektiv auflöst
+- **THEN** akzeptiert das System zusätzlich `query-users`, `query-groups` und `query-clients`
+- **AND** führt jede andere zusätzliche effektive `realm-management`-Rolle fail-closed zu manueller Bereinigung
+
 #### Scenario: Tenant-IAM darf Clients nicht verändern
 
 - **WHEN** die Tenant-IAM-Serviceidentität versucht, einen Client anzulegen, zu ändern, zu löschen oder dessen Secret zu rotieren

@@ -112,7 +112,10 @@ const configureScenario = (overrides: ScenarioOverrides = {}): void => {
     'view-clients',
   ];
   const tenantAdminServiceEffectiveRoles =
-    overrides.tenantAdminServiceEffectiveRoles ?? tenantAdminServiceDirectRoles;
+    overrides.tenantAdminServiceEffectiveRoles ??
+    (overrides.tenantAdminServiceDirectRoles
+      ? tenantAdminServiceDirectRoles
+      : [...tenantAdminServiceDirectRoles, 'query-users', 'query-groups', 'query-clients']);
 
   kcadmMock.responder = async (args) => {
     const key = commandKey(args);
@@ -251,6 +254,9 @@ describe('inspectRealmAndClients contract', () => {
             'view-realm',
             'manage-realm',
             'view-clients',
+            'query-users',
+            'query-groups',
+            'query-clients',
           ],
         },
         status: 'pass',
@@ -287,6 +293,9 @@ describe('inspectRealmAndClients contract', () => {
             'view-realm',
             'manage-realm',
             'view-clients',
+            'query-users',
+            'query-groups',
+            'query-clients',
           ],
         },
         status: 'pass',
@@ -459,7 +468,7 @@ describe('inspectRealmAndClients contract', () => {
     expect(byId.get('tenant_iam.access')).toMatchObject({ status: 'pass' });
   });
 
-  it.each(['realm-admin', 'create-client'])(
+  it.each(['realm-admin', 'create-client', 'impersonation'])(
     'rejects an effectively inherited %s role without hiding functional access',
     async (forbiddenRoleName) => {
       configureScenario({

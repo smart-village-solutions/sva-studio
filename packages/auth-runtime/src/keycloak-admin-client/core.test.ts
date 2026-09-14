@@ -1510,7 +1510,14 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
       .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
       .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
-      .mockResolvedValueOnce(createJsonResponse(200, exactRoles));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          ...exactRoles,
+          { id: 'role-query-users', name: 'query-users' },
+          { id: 'role-query-groups', name: 'query-groups' },
+          { id: 'role-query-clients', name: 'query-clients' },
+        ])
+      );
 
     const client = await createClient(fetchImpl);
 
@@ -1521,7 +1528,7 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(8);
   });
 
-  it.each(['manage-clients', 'create-client'])(
+  it.each(['manage-clients', 'create-client', 'impersonation'])(
     'fails closed when %s remains effective through inherited role mappings',
     async (forbiddenRoleName) => {
       type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;

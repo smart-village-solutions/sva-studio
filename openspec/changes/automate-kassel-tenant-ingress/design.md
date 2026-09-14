@@ -254,7 +254,9 @@ Release nicht auf eine Plugin-Contract-Revision, die der aktuelle Worker nicht
 mehr erzeugen kann. Hat sich der OIDC-Vertrag geändert, beginnt der Elternlauf
 erneut bei Registry und referenziert keinen Kindlauf des alten Vertrags. Kann
 ein aktueller Lifecycle-Intent wegen eines aktiven Jobs nicht vollständig
-persistiert werden, wird der Elternlauf nicht wieder geöffnet.
+persistiert werden, wird der Elternlauf nicht wieder geöffnet. Fehlt eine zuvor
+gebundene OIDC-Client-ID im aktuellen Vertrag, bleibt der Retry bis zu einem
+expliziten Client-Retirement ebenfalls geschlossen.
 Die UI löst ihn über
 `POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit einem frischen
 HTTP-Idempotency-Key aus. Die Serveraktion benötigt `instance.create`, nimmt

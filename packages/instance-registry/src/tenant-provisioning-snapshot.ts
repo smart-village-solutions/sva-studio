@@ -180,6 +180,14 @@ export const rebaseTenantProvisioningPluginSnapshot = (
     throw new Error('provisioning_plugin_snapshot_missing');
   }
   const pluginSnapshot = buildConfiguredTenantProvisioningPluginSnapshot(deps, assignedModules);
+  const currentOidcClientIds = new Set(pluginSnapshot.oidcClients.map(({ clientId }) => clientId));
+  if (
+    previousPluginSnapshot.oidcClients.some(
+      ({ clientId }) => !currentOidcClientIds.has(clientId)
+    )
+  ) {
+    throw new Error('provisioning_plugin_snapshot_missing');
+  }
   const currentLifecyclePluginIds = new Set(
     pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)
   );

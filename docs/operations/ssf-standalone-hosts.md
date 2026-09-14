@@ -144,7 +144,9 @@ fehlende oder leere Composition endet mit
 `provisioning_plugin_snapshot_missing`; fehlt eine erwartete effektive
 Aktivierung, endet der Lauf mit `provisioning_plugin_activation_missing`. Ein
 Retry mit vorhandenen OIDC-Verträgen bleibt ebenfalls geschlossen, wenn der
-aktuelle Prozess keine OIDC-Vertragsquelle geladen hat.
+aktuelle Prozess keine OIDC-Vertragsquelle geladen hat oder eine bisherige
+Client-ID nicht mehr deklariert. Das Entfernen solcher Clients erfordert einen
+eigenen Retirement-Pfad.
 
 Vor einem Queue-Vertragswechsel müssen alle alten `legacy`-Läufe geleert oder
 bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit

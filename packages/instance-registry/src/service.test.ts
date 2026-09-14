@@ -1468,7 +1468,10 @@ describe('instance registry service facade', () => {
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
 
-  it('rejects retry when snapshotted OIDC contracts have no current source', async () => {
+  it.each([
+    ['no current source', undefined],
+    ['a removed snapshotted client', () => []],
+  ] as const)('rejects retry when OIDC contracts have %s', async (_reason, currentOidcReader) => {
     const failedInstance = {
       ...baseInstance,
       status: 'failed' as const,
@@ -1505,7 +1508,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(
-        createDeps(repository, { readPluginOidcClientRequirements: undefined })
+        createDeps(repository, { readPluginOidcClientRequirements: currentOidcReader })
       ).retryTenantProvisioning({ instanceId: 'demo' })
     ).rejects.toThrow('provisioning_plugin_snapshot_missing');
 

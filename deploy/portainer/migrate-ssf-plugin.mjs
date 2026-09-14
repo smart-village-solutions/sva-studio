@@ -41,6 +41,8 @@ const principalPassword = ({ explicitPassword, connectionString, login, sourceNa
     readDatabasePassword({
       connectionString,
       expectedDatabase: targetDatabase,
+      expectedHost: postgresHost,
+      expectedPort: postgresPort,
       expectedUser: login,
       name: sourceName,
     })
@@ -104,6 +106,7 @@ const reconcile = () => {
         login: runtimeLogin,
         sourceName: 'SVA_STUDIO_SSF_DATABASE_URL',
       }),
+      forbiddenRole: 'ssf_plugin_root',
       role: 'ssf_plugin_tenant_runtime',
     },
     {
@@ -114,10 +117,11 @@ const reconcile = () => {
         login: rootLogin,
         sourceName: 'SVA_STUDIO_SSF_ROOT_DATABASE_URL',
       }),
+      forbiddenRole: 'ssf_plugin_tenant_runtime',
       role: 'ssf_plugin_root',
     },
   ];
-  for (const { login, password, role } of principals) {
+  for (const { forbiddenRole, login, password, role } of principals) {
     runPsql(
       targetDatabase,
       `DO $ssf_login_role$
@@ -136,6 +140,10 @@ BEGIN
       JOIN pg_roles AS member_role ON member_role.oid = membership.member
       WHERE granted_role.rolname = ${sqlLiteral(role)}
         AND member_role.rolname = ${sqlLiteral(login)}
+    ) OR pg_has_role(
+      ${sqlLiteral(login)},
+      ${sqlLiteral(forbiddenRole)},
+      'MEMBER'
     ) THEN
       RAISE EXCEPTION 'existing database login is not owned by its expected SSF role';
     END IF;

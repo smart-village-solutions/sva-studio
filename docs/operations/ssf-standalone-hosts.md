@@ -238,6 +238,9 @@ bereits in `runtime.env` vorhandenen Runtime- und Root-Verbindungs-URLs liefern
 die rollenbezogenen Kennwörter, ohne sie in eine zweite Konfiguration zu kopieren;
 Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
 `SSF_PLUGIN_*_DB_PASSWORD`-Werte bleiben für andere Laufzeitprofile zulässig.
+Bei der Wiederverwendung einer URL müssen zusätzlich Host und effektiver Port
+mit `POSTGRES_HOST` und `POSTGRES_PORT` übereinstimmen, damit Migration,
+Passwortrotation und Anwendung dasselbe PostgreSQL-Ziel verwenden.
 Runtime- und Root-Login müssen verschieden sein und dürfen weder dem
 `POSTGRES_USER` noch den festen Gruppenrollen `ssf_plugin_tenant_runtime` und
 `ssf_plugin_root` entsprechen. Der eingebaute PostgreSQL-Admin `postgres` ist
@@ -246,6 +249,9 @@ Migrator prüft dies vor jedem Rollen-Write.
 Existiert ein konfigurierter Login bereits, muss er schon Mitglied seiner
 erwarteten SSF-Gruppenrolle sein. Andernfalls behandelt der Migrator ihn als
 fremden Principal und bricht vor Passwort-, Attribut- oder Grant-Änderungen ab.
+Ein Runtime-Login mit effektivem Zugriff auf `ssf_plugin_root` und ein Root-Login
+mit effektivem Zugriff auf `ssf_plugin_tenant_runtime` werden ebenfalls
+abgewiesen; `NOINHERIT` verhindert den Zugriff über `SET ROLE` nicht.
 `SSF_PLUGIN_DATABASE_NAME` muss außerdem von `POSTGRES_DB` verschieden sein und
 darf weder `postgres` noch `template0` oder `template1` bezeichnen; diese Prüfung
 erfolgt vor dem ersten Datenbankzugriff des SSF-Migrators.

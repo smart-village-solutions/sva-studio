@@ -366,7 +366,10 @@ auch der eingebaute Principal `postgres` bleibt unabhängig vom konfigurierten
 Admin gesperrt. Die SSF-Zieldatenbank muss von der Studio-IAM-Datenbank
 verschieden sein und darf keine PostgreSQL-Systemdatenbank sein. Eine vorhandene Login-Rolle wird nur rotiert, wenn ihre Mitgliedschaft in
 der jeweils erwarteten SSF-Gruppenrolle sie bereits als SSF-eigen ausweist. Ein
-Verstoß beendet den Migrationsservice vor jeder Änderung dieses Principals.
+Runtime-Login mit effektivem Zugriff auf die Root-Gruppenrolle oder umgekehrt
+wird abgewiesen. Aus Runtime-URLs übernommene Kennwörter sind nur zulässig, wenn
+Host und Port exakt dem Migrationsziel entsprechen. Ein Verstoß beendet den
+Migrationsservice vor jeder Änderung dieses Principals.
 
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 

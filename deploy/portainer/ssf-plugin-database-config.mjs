@@ -1,6 +1,8 @@
 export const readDatabasePassword = ({
   connectionString,
   expectedDatabase,
+  expectedHost,
+  expectedPort,
   expectedUser,
   name,
 }) => {
@@ -20,6 +22,12 @@ export const readDatabasePassword = ({
   }
   if (decodeURIComponent(parsed.pathname.slice(1)) !== expectedDatabase) {
     throw new Error(`${name}_database_mismatch`);
+  }
+  if (parsed.hostname.toLowerCase() !== expectedHost.trim().toLowerCase()) {
+    throw new Error(`${name}_host_mismatch`);
+  }
+  if ((parsed.port || '5432') !== expectedPort.trim()) {
+    throw new Error(`${name}_port_mismatch`);
   }
   const password = decodeURIComponent(parsed.password);
   if (!password) throw new Error(`${name}_password_missing`);

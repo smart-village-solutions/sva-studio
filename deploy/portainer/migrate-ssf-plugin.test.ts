@@ -32,6 +32,9 @@ describe('SSF plugin migration runner', () => {
       "RAISE EXCEPTION 'existing database login is not owned by its expected SSF role'"
     );
     expect(source).toContain("'GRANT %I TO %I WITH INHERIT FALSE'");
+    expect(source).toContain('pg_has_role(');
+    expect(source).toContain("forbiddenRole: 'ssf_plugin_root'");
+    expect(source).toContain("forbiddenRole: 'ssf_plugin_tenant_runtime'");
   });
 
   it('reads a role password only from a connection string bound to that role and database', () => {
@@ -40,6 +43,8 @@ describe('SSF plugin migration runner', () => {
         connectionString:
           'postgresql://sva_ssf_runtime:p%40ss@postgres:5432/sva_studio_ssf?sslmode=disable',
         expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
         expectedUser: 'sva_ssf_runtime',
         name: 'SVA_STUDIO_SSF_DATABASE_URL',
       })
@@ -48,6 +53,8 @@ describe('SSF plugin migration runner', () => {
       readDatabasePassword({
         connectionString: 'postgresql://other:secret@postgres/sva_studio_ssf',
         expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
         expectedUser: 'sva_ssf_runtime',
         name: 'SVA_STUDIO_SSF_DATABASE_URL',
       })
@@ -56,10 +63,32 @@ describe('SSF plugin migration runner', () => {
       readDatabasePassword({
         connectionString: 'postgresql://sva_ssf_runtime:secret@postgres/other',
         expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
         expectedUser: 'sva_ssf_runtime',
         name: 'SVA_STUDIO_SSF_DATABASE_URL',
       })
     ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_database_mismatch');
+    expect(() =>
+      readDatabasePassword({
+        connectionString: 'postgresql://sva_ssf_runtime:secret@remote:5432/sva_studio_ssf',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_host_mismatch');
+    expect(() =>
+      readDatabasePassword({
+        connectionString: 'postgresql://sva_ssf_runtime:secret@postgres:5433/sva_studio_ssf',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_port_mismatch');
   });
 
   it.each([

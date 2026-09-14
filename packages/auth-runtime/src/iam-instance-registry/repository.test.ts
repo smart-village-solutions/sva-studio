@@ -313,6 +313,34 @@ describe('iam instance registry repository wiring', () => {
     );
   });
 
+  it('uses the persisted login client while the instance is still provisioning', async () => {
+    const getOidcClientByClientId = vi.fn(async () => ({
+      id: 'client-1',
+      clientId: 'sva-studio',
+    }));
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId,
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockClear();
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    await expect(
+      runtimeConfig?.provisioningWorkerServiceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        authClientId: 'sva-studio',
+        requestId: 'req-provisioning-probe',
+      })
+    ).resolves.toEqual(expect.objectContaining({ status: 'ready' }));
+    expect(getOidcClientByClientId).toHaveBeenCalledWith('sva-studio');
+    expect(resolveAuthConfigForInstanceMock).not.toHaveBeenCalled();
+  });
+
   it('reports ready tenant IAM access when password setup emails can be triggered for the configured login client', async () => {
     resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
       provider: {

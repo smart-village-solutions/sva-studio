@@ -7,6 +7,7 @@ import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 
 const probePasswordSetupEmailCapability = async (input: {
   instanceId: string;
+  authClientId?: string;
   identityProvider: NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>;
 }) => {
   if (!input.identityProvider.provider.executeActionsEmail) {
@@ -19,18 +20,17 @@ const probePasswordSetupEmailCapability = async (input: {
   if (!isKeycloakIdentityProvider(input.identityProvider.provider)) {
     return { ok: true as const, loginClientId: undefined };
   }
-  const authConfig = await resolveAuthConfigForInstance(input.instanceId);
-  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(
-    authConfig.clientId
-  );
+  const authClientId =
+    input.authClientId ?? (await resolveAuthConfigForInstance(input.instanceId)).clientId;
+  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(authClientId);
   if (!targetClient) {
     return {
       ok: false as const,
       errorCode: 'AUTH_CLIENT_VISIBILITY_UNCONFIRMED',
-      summary: `Tenant-Admin-Client konnte die Sichtbarkeit des Login-Clients ${authConfig.clientId} nicht bestätigen.`,
+      summary: `Tenant-Admin-Client konnte die Sichtbarkeit des Login-Clients ${authClientId} nicht bestätigen.`,
     };
   }
-  return { ok: true as const, loginClientId: authConfig.clientId };
+  return { ok: true as const, loginClientId: authClientId };
 };
 
 const classifyPasswordSetupCapabilityFailure = (input: {
@@ -43,7 +43,11 @@ const classifyPasswordSetupCapabilityFailure = (input: {
   return { ...input, status: 'blocked', classification: 'misconfigured' } as const;
 };
 
-export const probeTenantIamAccess = async (input: { instanceId: string; requestId?: string }) => {
+export const probeTenantIamAccess = async (input: {
+  instanceId: string;
+  authClientId?: string;
+  requestId?: string;
+}) => {
   const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, {
     executionMode: 'tenant_admin',
   });
@@ -63,7 +67,11 @@ export const probeTenantIamAccess = async (input: { instanceId: string; requestI
     const [rolesResult, usersResult, capabilityResult] = await Promise.allSettled([
       identityProvider.provider.listRoles(),
       identityProvider.provider.listUsers({ max: 1 }),
-      probePasswordSetupEmailCapability({ instanceId: input.instanceId, identityProvider }),
+      probePasswordSetupEmailCapability({
+        instanceId: input.instanceId,
+        authClientId: input.authClientId,
+        identityProvider,
+      }),
     ]);
     const firstAccessFailure =
       rolesResult.status === 'rejected'

@@ -275,6 +275,12 @@ const activateStep: StepHandler = async ({
   assertExecutionActive,
 }) => {
   assertExecutionActive();
+  if (
+    readProperty(run.terminalEvidence.tenantIamRoleReconcile, 'outcome') !== 'success' ||
+    readProperty(run.terminalEvidence.tenantIamAccess, 'status') !== 'ready'
+  ) {
+    return continueAt(deps, run, workerId, 'tenant_iam_roles', now);
+  }
   const activated = await deps.repository.setInstanceStatus({
     instanceId: instance.instanceId,
     status: 'active',

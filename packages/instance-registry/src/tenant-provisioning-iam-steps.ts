@@ -58,6 +58,7 @@ export const tenantIamAccessStep = async ({
     'dependency_missing_probeTenantIamAccess'
   )({
     instanceId: instance.instanceId,
+    authClientId: instance.authClientId ?? undefined,
     actorId: run.actorId,
     requestId: run.requestId,
   });

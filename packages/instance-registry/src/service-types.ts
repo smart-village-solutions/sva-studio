@@ -271,6 +271,7 @@ export type InstanceRegistryServiceDeps = {
   readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;
+    authClientId?: string;
     actorId?: string;
     requestId?: string;
   }) => Promise<IamTenantIamAxis>;

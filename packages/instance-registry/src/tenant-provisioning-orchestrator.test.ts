@@ -348,6 +348,9 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun().stepKey).toBe('activate');
+    expect(harness.deps.probeTenantIamAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ authClientId: instance.authClientId })
+    );
     expect(harness.repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'tenant-a',
@@ -397,6 +400,22 @@ describe('tenant provisioning parent orchestrator', () => {
       errorCode: 'tenant_iam_roles_reconcile_not_ready',
     });
     expect(harness.deps.probeTenantIamAccess).not.toHaveBeenCalled();
+  });
+
+  it('routes a recovered legacy activate step through the tenant IAM postflight', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'activate' });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getInstance().status).toBe('requested');
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'tenant_iam_roles',
+    });
+    expect(harness.repository.setInstanceStatus).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active' })
+    );
   });
 
   it('persists a degraded tenant IAM probe and does not activate the instance', async () => {
@@ -940,7 +959,14 @@ describe('tenant provisioning parent orchestrator', () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
-      Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'activate' });
+      Object.assign(harness.getRun(), {
+        status: 'provisioning',
+        stepKey: 'activate',
+        terminalEvidence: {
+          tenantIamRoleReconcile: { outcome: 'success' },
+          tenantIamAccess: { status: 'ready' },
+        },
+      });
       vi.mocked(harness.repository.renewProvisioningRunLease)
         .mockResolvedValueOnce(harness.getRun())
         .mockResolvedValueOnce(null);
@@ -971,6 +997,10 @@ describe('tenant provisioning parent orchestrator', () => {
         status: 'provisioning',
         stepKey: 'activate',
         deadlineAt: new Date(now.getTime() + 10_000).toISOString(),
+        terminalEvidence: {
+          tenantIamRoleReconcile: { outcome: 'success' },
+          tenantIamAccess: { status: 'ready' },
+        },
       });
       vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
         if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));

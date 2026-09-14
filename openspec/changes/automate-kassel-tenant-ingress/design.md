@@ -246,6 +246,19 @@ Kindlauf-Korrelation und redigierte Postcondition-Evidenz.
 Ein autorisierter Retry reconciled jede Stufe gegen den aktuellen, zum
 Sollsnapshot passenden Ist-Zustand. Bereits korrekte Routerdateien,
 Keycloak-Clients oder Lifecycle-Evidenz werden validiert und weiterverwendet.
+Der tenantbezogene Sollzustand bleibt dabei unverändert. Die technischen
+Lifecycle- und OIDC-Verträge der darin zugewiesenen Module werden bei der
+Wiederaufnahme an den aktuell geladenen Plugin-Snapshot gebunden und gemeinsam
+mit dem erneuten Queue-Zustand persistiert. Dadurch wartet ein Lauf nach einem
+Release nicht auf eine Plugin-Contract-Revision, die der aktuelle Worker nicht
+mehr erzeugen kann. Hat sich der OIDC-Vertrag geändert, beginnt der Elternlauf
+erneut bei Registry. Eine alte Kindlauf-ID bleibt bis zur Persistierung des
+neuen Kindlaufs nur als Realm-Transition-Evidenz erhalten und wird vor der
+Keycloak-Stufe durch dessen ID ersetzt. Kann
+ein aktueller Lifecycle-Intent wegen eines aktiven Jobs nicht vollständig
+persistiert werden, wird der Elternlauf nicht wieder geöffnet. Fehlt eine zuvor
+gebundene OIDC-Client-ID im aktuellen Vertrag, bleibt der Retry bis zu einem
+expliziten Client-Retirement ebenfalls geschlossen.
 Die UI löst ihn über
 `POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit einem frischen
 HTTP-Idempotency-Key aus. Die Serveraktion benötigt `instance.create`, nimmt

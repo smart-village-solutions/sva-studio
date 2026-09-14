@@ -183,17 +183,20 @@ const retryProvisioningRun = async (
 UPDATE iam.instance_provisioning_runs
 SET status = 'requested',
     step_key = CASE
+      WHEN $7::boolean THEN 'registry'
       WHEN step_key IN ('registry', 'keycloak') THEN 'registry'
       WHEN step_key = 'tls' THEN 'tls'
       WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'
       ELSE step_key
     END,
     child_keycloak_run_id = CASE
+      WHEN $7::boolean THEN child_keycloak_run_id
       WHEN step_key IN ('registry', 'keycloak') THEN NULL
       ELSE child_keycloak_run_id
     END,
     lease_owner = NULL, lease_expires_at = NULL, next_attempt_at = now(),
     deadline_at = $5::timestamptz, completed_at = NULL,
+    desired_snapshot = $6::jsonb,
     error_code = NULL, error_message = NULL,
     actor_id = COALESCE($3, actor_id), request_id = COALESCE($4, request_id), updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
@@ -206,6 +209,8 @@ RETURNING ${provisioningColumns};
         input.actorId ?? null,
         input.requestId ?? null,
         input.deadlineAt,
+        JSON.stringify(input.desiredSnapshot),
+        input.keycloakReconcileRequired,
       ]
     )
   );

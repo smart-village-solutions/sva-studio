@@ -144,14 +144,29 @@ Lifecycle-Verträge der effektiv aktiven Plugins und deren OIDC-Anforderungen.
 Der eigenständige Provisioner bewertet ausschließlich diesen Snapshot. Eine
 fehlende oder leere Composition endet mit
 `provisioning_plugin_snapshot_missing`; fehlt eine erwartete effektive
-Aktivierung, endet der Lauf mit `provisioning_plugin_activation_missing`.
+Aktivierung, endet der Lauf mit `provisioning_plugin_activation_missing`. Ein
+Retry mit vorhandenen OIDC-Verträgen bleibt ebenfalls geschlossen, wenn der
+aktuelle Prozess keine OIDC-Vertragsquelle geladen hat oder eine bisherige
+Client-ID nicht mehr deklariert. Das Entfernen solcher Clients erfordert einen
+eigenen Retirement-Pfad.
 
 Vor einem Queue-Vertragswechsel müssen alle alten `legacy`-Läufe geleert oder
 bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit
 `snapshot_version = '2.0'` werden automatisiert beansprucht. Für Diagnose sind
 Elternlauf-ID, `child_keycloak_run_id`, `step_key`, Lease, Attempts, Deadline,
-Fehlercode und `terminal_evidence` gemeinsam auszuwerten. Ein Retry darf nur
-denselben unveränderten Soll-Snapshot fortsetzen. Er wird in der
+Fehlercode und `terminal_evidence` gemeinsam auszuwerten. Ein Retry behält den
+tenantbezogenen Sollzustand unverändert bei. Damit ein fehlgeschlagener Lauf
+nach einem Release nicht dauerhaft auf einer veralteten technischen
+Plugin-Revision wartet, bindet die Retry-Transaktion die Lifecycle- und
+OIDC-Verträge der unveränderten Modulzuweisungen an den aktuell geladenen
+Plugin-Snapshot und persistiert diese Revision atomar mit der Wiederaufnahme
+des Elternlaufs. Geänderte OIDC-Verträge setzen den Elternlauf auf die
+Registry-Stufe zurück und verwerfen seine bisherige Keycloak-Kindlauf-Referenz,
+nachdem der neue Kindlauf persistiert wurde. Bis dahin bleibt eine vorhandene
+Kindlauf-ID ausschließlich als Evidenz eines bereits vollzogenen
+`new → existing`-Realm-Übergangs erhalten. Kann ein
+Lifecycle-Intent wegen eines aktiven Jobs nicht vollständig persistiert werden,
+bleibt der Elternlauf `failed`. Er wird in der
 Instanz-Detailansicht über „Mandanten-Provisionierung erneut starten“ oder per
 `POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit Berechtigung
 `instance.create` und einem frischen `Idempotency-Key` ausgelöst. Der

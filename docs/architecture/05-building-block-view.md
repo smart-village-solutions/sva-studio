@@ -972,6 +972,10 @@ von lokalen IAM-Rollen dar und besitzt keine eigene Rollen-Allowlist.
 - `@sva/auth-runtime` bindet beim Create die effektiv aktiven Lifecycle- und
   OIDC-Verträge an den Lauf und bewertet im separaten Worker nur diese
   persistierte Composition.
+- Beim Eintritt in den Instanz-Lock erhält der Orchestrator die vom Worker
+  bereitgestellten Funktionen für Ingress-Veröffentlichung, Endpoint-Prüfung
+  und Modulbereitschaft. Repository und übrige Abhängigkeiten stammen aus dem
+  gesperrten Kontext; die Lease-Erneuerung bleibt außerhalb dieser Transaktion.
 - Das framework-unabhängige Ingress-Modul rendert und veröffentlicht genau eine
   atomar ersetzte Routerdatei je Tenant.
 - Plugin-Lifecycle-Jobs bleiben im vorhandenen Graphile-Worker; Create und Retry

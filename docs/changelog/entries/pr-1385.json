@@ -1,0 +1,4 @@
+{
+  "prNumber": 1385,
+  "body": "Zuverlässiges Tenant-Provisioning\n\n- Das Provisioning behält die benötigten Laufzeitfunktionen für Ingress, TLS und Modulbereitschaft auch innerhalb der Datenbanksperre.\n- Fehler in diesen Schritten werden mit sicher gefilterten technischen Details protokolliert, damit Ursachen eindeutig erkennbar bleiben."
+}

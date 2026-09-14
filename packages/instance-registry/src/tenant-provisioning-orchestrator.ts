@@ -9,7 +9,11 @@ import {
   updateClaimedRun,
 } from './tenant-provisioning-state.js';
 import type { ParentStep } from './tenant-provisioning-state.js';
-import { readDiagnosticErrorType, runTenantProvisioningStep } from './tenant-provisioning-steps.js';
+import {
+  buildProvisioningFailureDiagnostics,
+  readDiagnosticErrorType,
+  runTenantProvisioningStep,
+} from './tenant-provisioning-steps.js';
 import { assertTenantProvisioningSnapshotCurrent } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({
@@ -59,6 +63,16 @@ const errorCode = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
   return /^[a-z][a-z0-9_:-]{2,100}$/u.test(message) ? message : 'tenant_provisioning_step_failed';
 };
+
+const bindWorkerCallbacksToLockedDeps = (
+  lockedDeps: InstanceRegistryServiceDeps,
+  workerDeps: InstanceRegistryServiceDeps
+): InstanceRegistryServiceDeps => ({
+  ...lockedDeps,
+  publishTenantIngress: workerDeps.publishTenantIngress,
+  probeTenantEndpoint: workerDeps.probeTenantEndpoint,
+  readProvisioningModuleReadiness: workerDeps.readProvisioningModuleReadiness,
+});
 
 const executeWithLeaseHeartbeat = async <T>(
   deps: InstanceRegistryServiceDeps,
@@ -203,6 +217,7 @@ export const processNextTenantProvisioningRun = async (
           error_type: readDiagnosticErrorType(error),
           error_code: code,
           classification: code,
+          ...buildProvisioningFailureDiagnostics(error),
         });
       } catch {
         // Diagnostic logging must never replace the provisioning failure.
@@ -234,7 +249,7 @@ export const processNextTenantProvisioningRun = async (
   );
   return withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
     executeWithLeaseHeartbeat(deps, run, input.workerId, (assertLeaseActive) =>
-      execute(lockedDeps, assertLeaseActive)
+      execute(bindWorkerCallbacksToLockedDeps(lockedDeps, deps), assertLeaseActive)
     )
   );
 };

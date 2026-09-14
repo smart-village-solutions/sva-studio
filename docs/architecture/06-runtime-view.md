@@ -1304,6 +1304,8 @@ abweichender oder nicht lesbarer Profilzustand stoppt den Lifecycle fail-closed.
 Der Read-back bestätigt zugleich den semantischen Erhalt der übernommenen
 fremden Attribute, Gruppen und übrigen Profilfelder. Readiness prüft den
 admin-only Vertrag bei jedem Lauf erneut und sperrt bei späterem Drift.
+Ein unmittelbar vor dem vollständigen Profil-PUT wiederholter semantischer Read
+blockiert den Write, wenn ein Keycloak-Admin das Profil zwischenzeitlich geändert hat.
 Der initiale Tenant-Admin wird lokal nur beim erstmaligen Insert als `active`
 angelegt, wenn die exakt konfigurierte Keycloak-Identität aktiviert ist. Retries
 lassen vorhandene Statuswerte unverändert. Erst nach dem bestätigten Projektions-Read-back

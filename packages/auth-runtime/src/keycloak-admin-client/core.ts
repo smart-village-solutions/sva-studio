@@ -178,6 +178,9 @@ const isPreservedJson = (expected: unknown, actual: unknown): boolean => {
   return Object.is(expected, actual);
 };
 
+const isSemanticallyEqualJson = (left: unknown, right: unknown): boolean =>
+  isPreservedJson(left, right) && isPreservedJson(right, left);
+
 const hasAdminOnlyUserProfileAttributes = (
   profile: KeycloakUserProfileConfig,
   desiredAttributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
@@ -1775,6 +1778,20 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         name: desired.name,
         multivalued: desired.multivalued,
         permissions: adminOnlyPermissions,
+      });
+    }
+
+    const preWriteProfile = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path,
+      operation: 'verify_user_profile_precondition',
+    });
+    if (!isSemanticallyEqualJson(profile, preWriteProfile)) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak user profile changed concurrently.',
+        statusCode: 409,
+        code: 'user_profile_concurrent_modification',
+        retryable: true,
       });
     }
 

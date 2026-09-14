@@ -315,6 +315,9 @@ dieser Berechtigungsfelder. Jeder spätere Projektions-Read-back prüft den
 admin-only Zustand erneut. Eine nicht bestätigte Profiländerung oder späterer
 Drift blockiert die Projektion. Siehe
 [Keycloak-Benutzerprofile](https://www.keycloak.org/docs/latest/server_admin/#_user-profile).
+Unmittelbar vor dem vollständigen Profil-PUT liest der Abgleich das Profil
+erneut. Eine zwischenzeitliche semantische Änderung an fremden Attributen,
+Gruppen oder Profilfeldern stoppt den Write als konkurrierende Änderung.
 
 Falls nach einer Benutzeraktivierung kein Abgleich läuft, kann eine authentifizierte
 Root-Administratorsitzung auf dem Studio-Root den vorhandenen Endpunkt

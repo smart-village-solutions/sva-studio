@@ -1631,6 +1631,7 @@ describe('Keycloak admin client', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
+      .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
@@ -1683,6 +1684,7 @@ describe('Keycloak admin client', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(createJsonResponse(200, { attributes: [] }))
+      .mockResolvedValueOnce(createJsonResponse(200, { attributes: [] }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(createJsonResponse(200, { attributes: [] }));
     const client = await createClient(fetchImpl);
@@ -1704,6 +1706,7 @@ describe('Keycloak admin client', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
       .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
@@ -1747,6 +1750,32 @@ describe('Keycloak admin client', () => {
     await expect(
       client.hasAdminOnlyUserProfileAttributes([{ name: 'ssf_permissions', multivalued: true }])
     ).resolves.toBe(true);
+    expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
+  });
+
+  it('fails before writing when the user profile changes concurrently', async () => {
+    const initialProfile = {
+      attributes: [{ name: 'email', displayName: '${email}' }],
+      groups: [{ name: 'identity', displayHeader: 'Identity' }],
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, initialProfile))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          ...initialProfile,
+          groups: [...initialProfile.groups, { name: 'address', displayHeader: 'Address' }],
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureAdminOnlyUserProfileAttributes([{ name: 'ssf_roles', multivalued: true }])
+    ).rejects.toMatchObject({
+      code: 'user_profile_concurrent_modification',
+      retryable: true,
+    });
     expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
   });
 

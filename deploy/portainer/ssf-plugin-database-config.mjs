@@ -17,6 +17,21 @@ export const readDatabasePassword = ({
   if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
     throw new Error(`${name}_invalid`);
   }
+  const identityAndTargetOverrides = new Set([
+    'database',
+    'dbname',
+    'host',
+    'hostaddr',
+    'password',
+    'port',
+    'service',
+    'user',
+  ]);
+  if (
+    [...parsed.searchParams.keys()].some((key) => identityAndTargetOverrides.has(key.toLowerCase()))
+  ) {
+    throw new Error(`${name}_target_override`);
+  }
   if (decodeURIComponent(parsed.username) !== expectedUser) {
     throw new Error(`${name}_user_mismatch`);
   }

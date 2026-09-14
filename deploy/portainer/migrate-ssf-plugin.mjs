@@ -128,7 +128,7 @@ const reconcile = () => {
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(login)}) THEN
     EXECUTE format(
-      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT',
       ${sqlLiteral(login)},
       ${sqlLiteral(password)}
     );
@@ -148,7 +148,7 @@ BEGIN
       RAISE EXCEPTION 'existing database login is not owned by its expected SSF role';
     END IF;
     EXECUTE format(
-      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT',
       ${sqlLiteral(login)},
       ${sqlLiteral(password)}
     );

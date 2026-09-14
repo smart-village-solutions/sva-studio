@@ -35,6 +35,7 @@ describe('SSF plugin migration runner', () => {
     expect(source).toContain('pg_has_role(');
     expect(source).toContain("forbiddenRole: 'ssf_plugin_root'");
     expect(source).toContain("forbiddenRole: 'ssf_plugin_tenant_runtime'");
+    expect(source).toContain('NOREPLICATION NOBYPASSRLS NOINHERIT');
   });
 
   it('reads a role password only from a connection string bound to that role and database', () => {
@@ -90,6 +91,22 @@ describe('SSF plugin migration runner', () => {
       })
     ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_port_mismatch');
   });
+
+  it.each(['database', 'dbname', 'host', 'hostaddr', 'password', 'port', 'service', 'user'])(
+    'rejects connection-string target override %s',
+    (key) => {
+      expect(() =>
+        readDatabasePassword({
+          connectionString: `postgresql://sva_ssf_runtime:secret@postgres:5432/sva_studio_ssf?${key}=override`,
+          expectedDatabase: 'sva_studio_ssf',
+          expectedHost: 'postgres',
+          expectedPort: '5432',
+          expectedUser: 'sva_ssf_runtime',
+          name: 'SVA_STUDIO_SSF_DATABASE_URL',
+        })
+      ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_target_override');
+    }
+  );
 
   it.each([
     {

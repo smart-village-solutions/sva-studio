@@ -1232,7 +1232,7 @@ describe('instance registry service facade', () => {
       createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
         instanceId: 'demo',
       })
-    ).rejects.toThrow('provisioning_plugin_lifecycle_reconcile_conflict');
+    ).rejects.toThrow('provisioning_retry_conflict');
 
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
@@ -1463,6 +1463,50 @@ describe('instance registry service facade', () => {
         actorId: 'admin-1',
         requestId: 'retry-1',
       })
+    ).rejects.toThrow('provisioning_plugin_snapshot_missing');
+
+    expect(retryProvisioningRun).not.toHaveBeenCalled();
+  });
+
+  it('rejects retry when snapshotted OIDC contracts have no current source', async () => {
+    const failedInstance = {
+      ...baseInstance,
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'module_readiness',
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: ['news'],
+        ...kasselPluginSnapshot,
+        pluginOidcClients: [
+          {
+            pluginId: 'news',
+            clientId: 'news-client',
+            audience: 'news',
+            enabled: false as const,
+            contractVersion: '1.0' as const,
+          },
+        ],
+      },
+      errorCode: 'provisioning_deadline_exceeded',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+    });
+
+    await expect(
+      createInstanceRegistryService(
+        createDeps(repository, { readPluginOidcClientRequirements: undefined })
+      ).retryTenantProvisioning({ instanceId: 'demo' })
     ).rejects.toThrow('provisioning_plugin_snapshot_missing');
 
     expect(retryProvisioningRun).not.toHaveBeenCalled();

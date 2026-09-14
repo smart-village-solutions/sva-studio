@@ -142,7 +142,9 @@ Lifecycle-Verträge der effektiv aktiven Plugins und deren OIDC-Anforderungen.
 Der eigenständige Provisioner bewertet ausschließlich diesen Snapshot. Eine
 fehlende oder leere Composition endet mit
 `provisioning_plugin_snapshot_missing`; fehlt eine erwartete effektive
-Aktivierung, endet der Lauf mit `provisioning_plugin_activation_missing`.
+Aktivierung, endet der Lauf mit `provisioning_plugin_activation_missing`. Ein
+Retry mit vorhandenen OIDC-Verträgen bleibt ebenfalls geschlossen, wenn der
+aktuelle Prozess keine OIDC-Vertragsquelle geladen hat.
 
 Vor einem Queue-Vertragswechsel müssen alle alten `legacy`-Läufe geleert oder
 bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit

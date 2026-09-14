@@ -53,7 +53,7 @@ const prepareProvisioningRetry = async (
     persistedPluginIds.length !== lifecycles.length ||
     lifecycles.some(({ pluginId }) => !persistedPluginIds.includes(pluginId))
   ) {
-    throw new Error('provisioning_plugin_lifecycle_reconcile_conflict');
+    throw new Error('provisioning_retry_conflict');
   }
   return { desiredSnapshot, keycloakReconcileRequired };
 };

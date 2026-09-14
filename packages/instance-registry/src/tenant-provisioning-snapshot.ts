@@ -176,6 +176,9 @@ export const rebaseTenantProvisioningPluginSnapshot = (
   ) {
     throw new Error('provisioning_plugin_snapshot_missing');
   }
+  if (previousPluginSnapshot.oidcClients.length > 0 && !deps.readPluginOidcClientRequirements) {
+    throw new Error('provisioning_plugin_snapshot_missing');
+  }
   const pluginSnapshot = buildConfiguredTenantProvisioningPluginSnapshot(deps, assignedModules);
   const currentLifecyclePluginIds = new Set(
     pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)

@@ -775,8 +775,22 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       });
     }
 
-    const currentRoleNames = new Set(currentRoleMappings.map((role) => role.name));
-    const rolesToAdd = availableRoles
+    await this.reconcileTenantAdminServiceRoleMappings({
+      availableRoles,
+      currentRoleMappings,
+      realmManagementClientId: realmManagementClient.id,
+      serviceAccountUserId: serviceAccountUser.id,
+    });
+  }
+
+  private async reconcileTenantAdminServiceRoleMappings(input: {
+    readonly availableRoles: readonly KeycloakRoleMapping[];
+    readonly currentRoleMappings: readonly KeycloakRoleMapping[];
+    readonly realmManagementClientId: string;
+    readonly serviceAccountUserId: string;
+  }): Promise<void> {
+    const currentRoleNames = new Set(input.currentRoleMappings.map((role) => role.name));
+    const rolesToAdd = input.availableRoles
       .filter((role) =>
         REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.includes(
           role.name as (typeof REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES)[number]
@@ -784,27 +798,26 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       )
       .filter((role) => !currentRoleNames.has(role.name))
       .map((role) => ({ id: role.id, name: role.name }));
+    const roleMappingsPath =
+      `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(input.serviceAccountUserId)}` +
+      `/role-mappings/clients/${encodePathSegment(input.realmManagementClientId)}`;
 
     if (rolesToAdd.length > 0) {
       await this.executeWithResilience<void>({
         method: 'POST',
-        path:
-          `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
-          `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+        path: roleMappingsPath,
         body: JSON.stringify(rolesToAdd),
         operation: 'grant_service_account_client_roles',
       });
     }
 
-    const legacyClientWriteRole = currentRoleMappings.find(
+    const legacyClientWriteRole = input.currentRoleMappings.find(
       (role) => role.name === LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME
     );
     if (legacyClientWriteRole) {
       await this.executeWithResilience<void>({
         method: 'DELETE',
-        path:
-          `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
-          `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+        path: roleMappingsPath,
         body: JSON.stringify([{ id: legacyClientWriteRole.id, name: legacyClientWriteRole.name }]),
         operation: 'revoke_service_account_client_roles',
       });
@@ -816,9 +829,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
 
     const reconciledRoleMappings = await this.executeWithResilience<KeycloakRoleMapping[]>({
       method: 'GET',
-      path:
-        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
-        `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+      path: roleMappingsPath,
       operation: 'verify_service_account_client_roles',
     });
     const reconciledRoleNames = new Set(reconciledRoleMappings.map((role) => role.name));

@@ -240,12 +240,15 @@ Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
 `SSF_PLUGIN_*_DB_PASSWORD`-Werte bleiben für andere Laufzeitprofile zulässig.
 Runtime- und Root-Login müssen verschieden sein und dürfen weder dem
 `POSTGRES_USER` noch den festen Gruppenrollen `ssf_plugin_tenant_runtime` und
-`ssf_plugin_root` entsprechen; der Migrator prüft dies vor jedem Rollen-Write.
+`ssf_plugin_root` entsprechen. Der eingebaute PostgreSQL-Admin `postgres` ist
+auch dann gesperrt, wenn `POSTGRES_USER` einen anderen Wert verwendet; der
+Migrator prüft dies vor jedem Rollen-Write.
 Existiert ein konfigurierter Login bereits, muss er schon Mitglied seiner
 erwarteten SSF-Gruppenrolle sein. Andernfalls behandelt der Migrator ihn als
 fremden Principal und bricht vor Passwort-, Attribut- oder Grant-Änderungen ab.
-`SSF_PLUGIN_DATABASE_NAME` muss außerdem von `POSTGRES_DB` verschieden sein;
-diese Prüfung erfolgt vor dem ersten Datenbankzugriff des SSF-Migrators.
+`SSF_PLUGIN_DATABASE_NAME` muss außerdem von `POSTGRES_DB` verschieden sein und
+darf weder `postgres` noch `template0` oder `template1` bezeichnen; diese Prüfung
+erfolgt vor dem ersten Datenbankzugriff des SSF-Migrators.
 Ein Fehler stoppt den Startpfad geschlossen.
 Der reguläre Studio-Rollout bleibt im [Rollout-Prozess](../guides/studio-rollout-process.md)
 beschrieben; eine zusätzliche Migrationsplattform ist dafür nicht erforderlich.

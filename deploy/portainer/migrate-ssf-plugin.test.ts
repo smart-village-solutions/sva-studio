@@ -88,6 +88,16 @@ describe('SSF plugin migration runner', () => {
       rootLogin: 'ssf_plugin_root',
       runtimeLogin: 'sva_ssf_runtime',
     },
+    {
+      expectedError: 'SSF_PLUGIN_RUNTIME_DB_USER_reserved',
+      rootLogin: 'sva_ssf_root',
+      runtimeLogin: 'postgres',
+    },
+    {
+      expectedError: 'SSF_PLUGIN_ROOT_DB_USER_reserved',
+      rootLogin: 'postgres',
+      runtimeLogin: 'sva_ssf_runtime',
+    },
   ])('rejects unsafe migration login names: $expectedError', (input) => {
     expect(() => assertSafeDatabaseLogins({ postgresUser: 'sva', ...input })).toThrow(
       input.expectedError
@@ -112,4 +122,13 @@ describe('SSF plugin migration runner', () => {
       })
     ).toThrow('SSF_PLUGIN_DATABASE_NAME_matches_POSTGRES_DB');
   });
+
+  it.each(['postgres', 'template0', 'template1'])(
+    'rejects PostgreSQL system database %s as the SSF migration target',
+    (targetDatabase) => {
+      expect(() =>
+        assertDistinctDatabaseNames({ adminDatabase: 'sva_studio', targetDatabase })
+      ).toThrow('SSF_PLUGIN_DATABASE_NAME_reserved');
+    }
+  );
 });

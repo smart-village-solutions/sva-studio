@@ -362,8 +362,9 @@ Migrationsservice aus exakt derselben unveränderlichen Studio-Image-Referenz.
 Dieser aktualisiert auch die versionierte SSF-Plugin-Datenbank und reconciliert
 getrennte Runtime- und Root-Logins. Identische Login-Namen sowie der
 PostgreSQL-Admin und die festen SSF-Gruppenrollen sind als Login-Ziele gesperrt;
-die SSF-Zieldatenbank muss außerdem von der Studio-IAM-Datenbank verschieden
-sein. Eine vorhandene Login-Rolle wird nur rotiert, wenn ihre Mitgliedschaft in
+auch der eingebaute Principal `postgres` bleibt unabhängig vom konfigurierten
+Admin gesperrt. Die SSF-Zieldatenbank muss von der Studio-IAM-Datenbank
+verschieden sein und darf keine PostgreSQL-Systemdatenbank sein. Eine vorhandene Login-Rolle wird nur rotiert, wenn ihre Mitgliedschaft in
 der jeweils erwarteten SSF-Gruppenrolle sie bereits als SSF-eigen ausweist. Ein
 Verstoß beendet den Migrationsservice vor jeder Änderung dieses Principals.
 

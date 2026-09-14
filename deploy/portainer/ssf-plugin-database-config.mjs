@@ -30,7 +30,12 @@ export const assertSafeDatabaseLogins = ({ postgresUser, rootLogin, runtimeLogin
   if (runtimeLogin === rootLogin) {
     throw new Error('SSF_PLUGIN_DATABASE_USERS_must_differ');
   }
-  const reservedLogins = new Set([postgresUser, 'ssf_plugin_root', 'ssf_plugin_tenant_runtime']);
+  const reservedLogins = new Set([
+    postgresUser,
+    'postgres',
+    'ssf_plugin_root',
+    'ssf_plugin_tenant_runtime',
+  ]);
   if (reservedLogins.has(runtimeLogin)) {
     throw new Error('SSF_PLUGIN_RUNTIME_DB_USER_reserved');
   }
@@ -42,5 +47,8 @@ export const assertSafeDatabaseLogins = ({ postgresUser, rootLogin, runtimeLogin
 export const assertDistinctDatabaseNames = ({ adminDatabase, targetDatabase }) => {
   if (adminDatabase === targetDatabase) {
     throw new Error('SSF_PLUGIN_DATABASE_NAME_matches_POSTGRES_DB');
+  }
+  if (new Set(['postgres', 'template0', 'template1']).has(targetDatabase)) {
+    throw new Error('SSF_PLUGIN_DATABASE_NAME_reserved');
   }
 };

@@ -154,7 +154,11 @@ nach einem Release nicht dauerhaft auf einer veralteten technischen
 Plugin-Revision wartet, bindet die Retry-Transaktion die Lifecycle- und
 OIDC-Verträge der unveränderten Modulzuweisungen an den aktuell geladenen
 Plugin-Snapshot und persistiert diese Revision atomar mit der Wiederaufnahme
-des Elternlaufs. Er wird in der
+des Elternlaufs. Geänderte OIDC-Verträge setzen den Elternlauf auf die
+Registry-Stufe zurück und verwerfen seine bisherige Keycloak-Kindlauf-Referenz,
+damit ein neuer Kindlauf den aktuellen Vertrag reconciled. Kann ein
+Lifecycle-Intent wegen eines aktiven Jobs nicht vollständig persistiert werden,
+bleibt der Elternlauf `failed`. Er wird in der
 Instanz-Detailansicht über „Mandanten-Provisionierung erneut starten“ oder per
 `POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit Berechtigung
 `instance.create` und einem frischen `Idempotency-Key` ausgelöst. Der

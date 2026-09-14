@@ -573,6 +573,7 @@ describe('instance registry repository provisioning', () => {
         requestId: 'request-2',
         deadlineAt: '2026-01-01T01:00:00.000Z',
         desiredSnapshot: { pluginSnapshotVersion: '1.0' },
+        keycloakReconcileRequired: true,
       })
     ).resolves.toMatchObject({
       status: 'requested',
@@ -583,11 +584,14 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain(
       "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
     );
+    expect(statements[0]?.text).toContain("WHEN $7::boolean THEN 'registry'");
+    expect(statements[0]?.text).toContain('WHEN $7::boolean THEN NULL');
     expect(statements[0]?.text).toContain(
       "WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'"
     );
     expect(statements[0]?.text).not.toContain('terminal_evidence =');
     expect(statements[0]?.text).toContain('desired_snapshot = $6::jsonb');
     expect(statements[0]?.values?.[5]).toBe('{"pluginSnapshotVersion":"1.0"}');
+    expect(statements[0]?.values?.[6]).toBe(true);
   });
 });

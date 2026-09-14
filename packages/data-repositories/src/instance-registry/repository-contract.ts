@@ -361,6 +361,7 @@ export type InstanceRegistryRepository = {
     requestId?: string;
     deadlineAt: string;
     desiredSnapshot: Readonly<Record<string, unknown>>;
+    keycloakReconcileRequired: boolean;
   }) => Promise<InstanceProvisioningRun | null>;
   readonly appendAuditEvent: (input: {
     instanceId: string;

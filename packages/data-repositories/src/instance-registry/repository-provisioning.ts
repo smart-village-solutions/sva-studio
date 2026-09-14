@@ -183,12 +183,14 @@ const retryProvisioningRun = async (
 UPDATE iam.instance_provisioning_runs
 SET status = 'requested',
     step_key = CASE
+      WHEN $7::boolean THEN 'registry'
       WHEN step_key IN ('registry', 'keycloak') THEN 'registry'
       WHEN step_key = 'tls' THEN 'tls'
       WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'
       ELSE step_key
     END,
     child_keycloak_run_id = CASE
+      WHEN $7::boolean THEN NULL
       WHEN step_key IN ('registry', 'keycloak') THEN NULL
       ELSE child_keycloak_run_id
     END,
@@ -208,6 +210,7 @@ RETURNING ${provisioningColumns};
         input.requestId ?? null,
         input.deadlineAt,
         JSON.stringify(input.desiredSnapshot),
+        input.keycloakReconcileRequired,
       ]
     )
   );

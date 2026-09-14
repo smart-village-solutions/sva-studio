@@ -166,6 +166,7 @@ export const rebaseTenantProvisioningPluginSnapshot = (
 ): Readonly<{
   desiredSnapshot: Readonly<Record<string, unknown>>;
   lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
+  keycloakReconcileRequired: boolean;
 }> => {
   const previousPluginSnapshot = readTenantProvisioningPluginSnapshot(run);
   const assignedModules = run.desiredSnapshot.assignedModules;
@@ -194,6 +195,9 @@ export const rebaseTenantProvisioningPluginSnapshot = (
       pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
     },
     lifecycles: pluginSnapshot.lifecycles,
+    keycloakReconcileRequired:
+      buildPayloadFingerprint(previousPluginSnapshot.oidcClients) !==
+      buildPayloadFingerprint(pluginSnapshot.oidcClients),
   };
 };
 

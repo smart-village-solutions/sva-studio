@@ -1,4 +1,4 @@
 {
   "prNumber": 1395,
-  "body": "Zuverlässige Provisioning-Retries nach Releases\n\n- Ein fehlgeschlagener Tenant-Provisioning-Lauf übernimmt beim Retry die aktuell geladenen technischen Plugin-Verträge für seine unveränderten Modulzuweisungen.\n- Dadurch kann der aktuelle Worker die erwartete Modulbereitschaft nachweisen, statt auf eine veraltete Vertragsrevision zu warten."
+  "body": "Zuverlässige Provisioning-Retries nach Releases\n\n- Ein fehlgeschlagener Tenant-Provisioning-Lauf übernimmt beim Retry die aktuell geladenen technischen Plugin-Verträge für seine unveränderten Modulzuweisungen.\n- Geänderte OIDC-Verträge werden durch einen neuen Keycloak-Kindlauf abgeglichen; aktive Lifecycle-Jobs halten den Parent-Retry bis zur sicheren Wiederaufnahme geschlossen.\n- Dadurch kann der aktuelle Worker die erwartete Modulbereitschaft nachweisen, statt auf eine veraltete Vertragsrevision zu warten."
 }

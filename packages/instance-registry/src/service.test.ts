@@ -1095,14 +1095,13 @@ describe('instance registry service facade', () => {
       errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
     };
-    const retriedRun = {
+    const retryProvisioningRun = vi.fn(async () => ({
       ...failedRun,
       status: 'requested' as const,
-      stepKey: 'lifecycle',
+      stepKey: 'registry',
       errorCode: undefined,
       completedAt: undefined,
-    };
-    const retryProvisioningRun = vi.fn(async () => retriedRun);
+    }));
     const reconcileModuleActivationPolicies = vi.fn(async () => ({
       changedModuleIds: [],
       conflictModuleIds: [],
@@ -1115,7 +1114,7 @@ describe('instance registry service facade', () => {
       reconcileModuleActivationPolicies,
       setInstanceStatus: vi.fn(async () => ({
         ...failedInstance,
-        status: 'provisioning' as const,
+        status: 'requested' as const,
       })),
     });
 
@@ -1131,6 +1130,15 @@ describe('instance registry service facade', () => {
               },
             ],
           ]),
+          readPluginOidcClientRequirements: () => [
+            {
+              pluginId: 'news',
+              clientId: 'news-client',
+              audience: 'news',
+              enabled: false,
+              contractVersion: '1.0',
+            },
+          ],
           readModuleActivationPolicySnapshot: () => ({
             revision: 'catalog-1',
             modules: [
@@ -1150,8 +1158,8 @@ describe('instance registry service facade', () => {
       })
     ).resolves.toEqual(
       expect.objectContaining({
-        status: 'provisioning',
-        latestProvisioningRun: expect.objectContaining({ stepKey: 'lifecycle' }),
+        status: 'requested',
+        latestProvisioningRun: expect.objectContaining({ stepKey: 'registry' }),
       })
     );
     expect(retryProvisioningRun).toHaveBeenCalledWith(
@@ -1159,6 +1167,7 @@ describe('instance registry service facade', () => {
         instanceId: 'demo',
         idempotencyKey: 'idem-1',
         requestId: 'retry-1',
+        keycloakReconcileRequired: true,
         desiredSnapshot: expect.objectContaining({
           pluginLifecycles: [
             expect.objectContaining({ pluginId: 'news', contractRevision: 'news-2:contract' }),
@@ -1190,6 +1199,42 @@ describe('instance registry service facade', () => {
       repository.syncAssignedModuleIam as ReturnType<typeof vi.fn>
     );
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(retryProvisioningRun);
+  });
+
+  it('does not requeue when a current lifecycle reconcile intent is still active', async () => {
+    const failedInstance = {
+      ...baseInstance,
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'module_readiness',
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: ['news'],
+        ...kasselPluginSnapshot,
+      },
+      errorCode: 'provisioning_deadline_exceeded',
+      completedAt: '2026-01-01T00:30:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => []),
+      retryProvisioningRun,
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+        instanceId: 'demo',
+      })
+    ).rejects.toThrow('provisioning_plugin_lifecycle_reconcile_conflict');
+
+    expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
 
   it('returns an already requeued automated run without creating another retry', async () => {

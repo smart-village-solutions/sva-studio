@@ -186,7 +186,9 @@ SET status = 'requested',
       WHEN $7::boolean THEN 'registry'
       WHEN step_key IN ('registry', 'keycloak') THEN 'registry'
       WHEN step_key = 'tls' THEN 'tls'
-      WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'
+      WHEN step_key IN (
+        'module_readiness', 'login', 'tenant_iam_roles', 'tenant_iam_access', 'activate'
+      ) THEN 'lifecycle'
       ELSE step_key
     END,
     child_keycloak_run_id = CASE

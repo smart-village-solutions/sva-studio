@@ -271,7 +271,19 @@ export type InstanceRegistryServiceDeps = {
   readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;
+    authClientId?: string;
     actorId?: string;
     requestId?: string;
   }) => Promise<IamTenantIamAxis>;
+  readonly reconcileTenantIamRoles?: (input: {
+    instanceId: string;
+    actorId?: string;
+    requestId?: string;
+  }) => Promise<{
+    readonly outcome: 'success' | 'partial_failure' | 'failed';
+    readonly checkedCount: number;
+    readonly correctedCount: number;
+    readonly failedCount: number;
+    readonly requiresManualActionCount: number;
+  }>;
 };

@@ -13,6 +13,8 @@ export type ParentStep =
   | 'activate'
   | 'login'
   | 'module_readiness'
+  | 'tenant_iam_roles'
+  | 'tenant_iam_access'
   | 'completed';
 
 const parentSteps = new Set<string>([
@@ -24,6 +26,8 @@ const parentSteps = new Set<string>([
   'activate',
   'login',
   'module_readiness',
+  'tenant_iam_roles',
+  'tenant_iam_access',
   'completed',
 ]);
 

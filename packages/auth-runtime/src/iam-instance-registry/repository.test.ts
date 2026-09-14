@@ -13,6 +13,15 @@ const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
 const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
 const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
+const runRoleCatalogReconciliationMock = vi.fn(async () => ({
+  outcome: 'success' as const,
+  checkedCount: 1,
+  correctedCount: 1,
+  failedCount: 0,
+  manualReviewCount: 0,
+  requiresManualActionCount: 0,
+  roles: [],
+}));
 const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
@@ -130,6 +139,10 @@ vi.mock('../iam-account-management/encryption.js', () => ({
   revealField: vi.fn(),
 }));
 
+vi.mock('../iam-account-management/reconcile-core.js', () => ({
+  runRoleCatalogReconciliation: runRoleCatalogReconciliationMock,
+}));
+
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
   resolveIdentityProviderForInstance: (...args: unknown[]) =>
     resolveIdentityProviderForInstanceMock(...args),
@@ -239,6 +252,8 @@ describe('iam instance registry repository wiring', () => {
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
           syncTenantAdminBootstrapAccount: expect.any(Function),
+          reconcileTenantIamRoles: expect.any(Function),
+          probeTenantIamAccess: expect.any(Function),
           loadWasteDataSourceRecord: expect.any(Function),
           saveWasteDataSourceRecord: expect.any(Function),
         }),
@@ -258,6 +273,30 @@ describe('iam instance registry repository wiring', () => {
     await runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus(keycloakInput);
     expect(getInstanceKeycloakStatusViaTenantAdminMock).toHaveBeenCalledWith(keycloakInput);
     expect(getInstanceKeycloakStatusViaProvisionerMock).toHaveBeenCalledWith(keycloakInput);
+
+    await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
+      instanceId: 'demo',
+      actorId: '11111111-1111-4111-8111-111111111111',
+      requestId: 'request-1',
+    });
+    expect(runRoleCatalogReconciliationMock).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      actorAccountId: '11111111-1111-4111-8111-111111111111',
+      requestId: 'request-1',
+    });
+    await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
+      instanceId: 'demo',
+      actorId: 'keycloak-service:sva-studio-mcp',
+      requestId: 'request-2',
+    });
+    expect(runRoleCatalogReconciliationMock).toHaveBeenLastCalledWith({
+      instanceId: 'demo',
+      actorAccountId: undefined,
+      requestId: 'request-2',
+    });
+    expect(runtimeConfig?.provisioningWorkerServiceDeps.probeTenantIamAccess).toBe(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess
+    );
   }, 15_000);
 
   it('reports blocked tenant IAM access instead of throwing when the tenant admin client is missing', async () => {
@@ -282,6 +321,34 @@ describe('iam instance registry repository wiring', () => {
         requestId: 'req-probe-1',
       })
     );
+  });
+
+  it('uses the persisted login client while the instance is still provisioning', async () => {
+    const getOidcClientByClientId = vi.fn(async () => ({
+      id: 'client-1',
+      clientId: 'sva-studio',
+    }));
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId,
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockClear();
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    await expect(
+      runtimeConfig?.provisioningWorkerServiceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        authClientId: 'sva-studio',
+        requestId: 'req-provisioning-probe',
+      })
+    ).resolves.toEqual(expect.objectContaining({ status: 'ready' }));
+    expect(getOidcClientByClientId).toHaveBeenCalledWith('sva-studio');
+    expect(resolveAuthConfigForInstanceMock).not.toHaveBeenCalled();
   });
 
   it('reports ready tenant IAM access when password setup emails can be triggered for the configured login client', async () => {

@@ -207,14 +207,18 @@ Serialisierung idempotent ab:
 6. Öffentlich vertrauenswürdiges Zertifikat für den exakten Host bestätigen.
 7. Auth-Issuer, Studio-Login-Client, Redirect und Callback-Konfiguration
    read-back-verifizieren.
-8. Alle modulabhängigen Readiness-Prüfungen abschließen.
+8. Alle modulabhängigen Readiness-Prüfungen abschließen. Bei effektiv aktivem
+   SSF umfasst das die maschinenprüfbaren #1319-Postconditions für
+   `ssf-frontend`, Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline,
+   Runtime-Readiness und aktuelle Authorization-Revision.
 9. Studio-Login-Redirect über den öffentlichen Tenant-Host prüfen. Nur dieser
    Einstieg darf im expliziten Kassel-Modus eine `provisioning`-Instanz
    auflösen; Callback und übriger Tenant-Verkehr bleiben gesperrt.
-10. Bei effektiv aktivem SSF die maschinenprüfbaren #1319-Postconditions prüfen:
-    `ssf-frontend`, Ressourcenclient, IAM-Projektion, Runtime-Tenant-Baseline,
-    Runtime-Readiness und aktuelle Authorization-Revision.
-11. Erst danach Instanz und Elternlauf terminal auf `active` setzen.
+10. Den tenantlokalen Rollenabgleich ausführen und ausschließlich bei einem
+    vollständig erfolgreichen Ergebnis fortfahren.
+11. Die tenantgebundene IAM-Rechteprobe ausführen und deren redigierte Evidenz
+    im Elternlauf und im Instanz-Audit speichern.
+12. Erst danach Instanz und Elternlauf terminal auf `active` setzen.
 
 Damit existiert kein Zustand `active` mit nichtterminalem Create-Lauf. Der
 Login-Smoke folgt Redirects bewusst nicht bis zum Callback; er verifiziert den

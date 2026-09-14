@@ -88,6 +88,9 @@
 - [ ] 5.5 Integrations- und Fault-Injection-Tests für jede Stufengrenze,
       `svs`-ähnlichen Login-500 und aktive Instanz mit nichtterminalem Lauf
       ergänzen
+- [x] 5.6 Tenantlokalen Rollenabgleich und Rechteprobe als persistente
+      Postflight-Stufen vor der terminalen Aktivierung ausführen und deren
+      Fehler über Retry und Deadline fail-closed behandeln
 
 ## 6. Control-Plane-UI und Beobachtbarkeit
 

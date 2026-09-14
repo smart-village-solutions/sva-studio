@@ -72,6 +72,8 @@ const bindWorkerCallbacksToLockedDeps = (
   publishTenantIngress: workerDeps.publishTenantIngress,
   probeTenantEndpoint: workerDeps.probeTenantEndpoint,
   readProvisioningModuleReadiness: workerDeps.readProvisioningModuleReadiness,
+  reconcileTenantIamRoles: workerDeps.reconcileTenantIamRoles,
+  probeTenantIamAccess: workerDeps.probeTenantIamAccess,
 });
 
 const executeWithLeaseHeartbeat = async <T>(

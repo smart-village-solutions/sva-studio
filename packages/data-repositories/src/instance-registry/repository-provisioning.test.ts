@@ -585,11 +585,9 @@ describe('instance registry repository provisioning', () => {
       "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
     );
     expect(statements[0]?.text).toContain("WHEN $7::boolean THEN 'registry'");
+    expect(statements[0]?.text).toContain('WHEN $7::boolean THEN child_keycloak_run_id');
     expect(statements[0]?.text).toContain(
-      'WHEN $7::boolean THEN child_keycloak_run_id'
-    );
-    expect(statements[0]?.text).toContain(
-      "WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'"
+      "'module_readiness', 'login', 'tenant_iam_roles', 'tenant_iam_access', 'activate'"
     );
     expect(statements[0]?.text).not.toContain('terminal_evidence =');
     expect(statements[0]?.text).toContain('desired_snapshot = $6::jsonb');

@@ -13,6 +13,15 @@ const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
 const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
 const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
+const runRoleCatalogReconciliationMock = vi.fn(async () => ({
+  outcome: 'success' as const,
+  checkedCount: 1,
+  correctedCount: 1,
+  failedCount: 0,
+  manualReviewCount: 0,
+  requiresManualActionCount: 0,
+  roles: [],
+}));
 const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
@@ -130,6 +139,10 @@ vi.mock('../iam-account-management/encryption.js', () => ({
   revealField: vi.fn(),
 }));
 
+vi.mock('../iam-account-management/reconcile-core.js', () => ({
+  runRoleCatalogReconciliation: runRoleCatalogReconciliationMock,
+}));
+
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
   resolveIdentityProviderForInstance: (...args: unknown[]) =>
     resolveIdentityProviderForInstanceMock(...args),
@@ -239,6 +252,8 @@ describe('iam instance registry repository wiring', () => {
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
           syncTenantAdminBootstrapAccount: expect.any(Function),
+          reconcileTenantIamRoles: expect.any(Function),
+          probeTenantIamAccess: expect.any(Function),
           loadWasteDataSourceRecord: expect.any(Function),
           saveWasteDataSourceRecord: expect.any(Function),
         }),
@@ -258,6 +273,20 @@ describe('iam instance registry repository wiring', () => {
     await runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus(keycloakInput);
     expect(getInstanceKeycloakStatusViaTenantAdminMock).toHaveBeenCalledWith(keycloakInput);
     expect(getInstanceKeycloakStatusViaProvisionerMock).toHaveBeenCalledWith(keycloakInput);
+
+    await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
+      instanceId: 'demo',
+      actorId: 'actor-1',
+      requestId: 'request-1',
+    });
+    expect(runRoleCatalogReconciliationMock).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      actorAccountId: 'actor-1',
+      requestId: 'request-1',
+    });
+    expect(runtimeConfig?.provisioningWorkerServiceDeps.probeTenantIamAccess).toBe(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess
+    );
   }, 15_000);
 
   it('reports blocked tenant IAM access instead of throwing when the tenant admin client is missing', async () => {

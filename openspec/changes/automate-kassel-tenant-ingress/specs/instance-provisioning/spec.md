@@ -47,6 +47,7 @@ Sollzustand nachweislich betriebsbereit sind.
 - **WHEN** alle internen Provisioning-Stufen, die aktuellen Readiness-Verträge aller effektiv aktiven Module und der öffentliche Studio-Login-Redirect erfolgreich sind
 - **THEN** setzt das System Instanz und Elternlauf gemeinsam terminal auf `active`
 - **AND** hat es zuvor den erwarteten Realm, die exakte Client-ID, PKCE `S256` und die hostgleiche Callback-Konfiguration bestätigt
+- **AND** hat es den tenantlokalen Rollenabgleich sowie die Rechteprobe erfolgreich abgeschlossen und als korrelierbare Evidenz gespeichert
 - **AND** zeigt die Control Plane erst diesen terminalen Zustand als abgeschlossene Anlage an
 
 #### Scenario: SSF ist für den Tenant effektiv aktiv

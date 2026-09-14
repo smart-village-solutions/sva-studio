@@ -12,6 +12,7 @@ import {
 } from './tenant-provisioning-state.js';
 import type { ParentStep } from './tenant-provisioning-state.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
+import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -296,7 +297,9 @@ const stepHandlers: Record<ParentStep, StepHandler> = {
   ingress: ingressStep,
   tls: probeStep('ingress', 'module_readiness'),
   module_readiness: moduleReadinessStep,
-  login: probeStep('login', 'activate'),
+  login: probeStep('login', 'tenant_iam_roles'),
+  tenant_iam_roles: tenantIamRolesStep,
+  tenant_iam_access: tenantIamAccessStep,
   activate: activateStep,
   completed: async ({ run }) => run,
 };

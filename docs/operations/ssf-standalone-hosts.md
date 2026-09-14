@@ -312,6 +312,14 @@ Directory und ein erfolgreicher Browser-Login gemeinsam nachzuweisen. Eine leere
 Projektion bleibt auch nach Migration `0006` unveröffentlicht. Historische Konten
 anderer Realms werden für diesen Nachweis nicht automatisch übernommen.
 
+Bei einer neuen Kasseler Instanz führt der persistente Elternlauf vor der
+Aktivierung außerdem den tenantlokalen Rollenabgleich und die Rechteprobe aus.
+`active` ist deshalb erst zulässig, wenn `system_admin` synchronisiert ist und
+der Tenant-Admin-Client den erforderlichen IAM-Zugriff erfolgreich bestätigt
+hat. Diese beiden Postflight-Schritte verwenden denselben Retry- und
+Deadline-Vertrag wie die übrigen Provisionierungsstufen; ein manueller
+MCP- oder Doctor-Aufruf gehört nicht zum erfolgreichen Create-Pfad.
+
 ### Keycloak-Benutzerprofil für die SSF-Projektion
 
 Vor der Projektion müssen im jeweiligen Tenant-Realm diese verwalteten

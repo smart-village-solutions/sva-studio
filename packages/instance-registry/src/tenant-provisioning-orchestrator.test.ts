@@ -165,6 +165,7 @@ const createHarness = () => {
       details: {},
     })),
     getKeycloakProvisioningRun: vi.fn(async () => childRun(keycloakStatus)),
+    appendAuditEvent: vi.fn(async () => undefined),
     setInstanceStatus: vi.fn(async ({ status }) => {
       currentInstance = { ...currentInstance, status };
       return currentInstance;
@@ -184,6 +185,22 @@ const createHarness = () => {
     readProvisioningModuleReadiness: vi.fn(async () => ({
       status: readiness,
       evidence: { moduleStatus: readiness },
+    })),
+    reconcileTenantIamRoles: vi.fn(async () => ({
+      outcome: 'success' as const,
+      checkedCount: 1,
+      correctedCount: 1,
+      failedCount: 0,
+      requiresManualActionCount: 0,
+    })),
+    probeTenantIamAccess: vi.fn(async () => ({
+      status: 'ready' as const,
+      summary: 'Tenant IAM access is ready.',
+      source: 'access_probe' as const,
+      serviceIdentity: 'sva-studio-tenant-iam' as const,
+      classification: 'ready' as const,
+      checkedAt: now.toISOString(),
+      requestId: 'tenant-iam-probe-1',
     })),
     withInstanceProvisioningLock: async (_instanceId, work) => work(deps),
   };
@@ -214,7 +231,9 @@ describe('tenant provisioning parent orchestrator', () => {
     { step: 'ingress', next: 'tls', callback: 'publishTenantIngress' },
     { step: 'tls', next: 'module_readiness', callback: 'probeTenantEndpoint' },
     { step: 'module_readiness', next: 'login', callback: 'readProvisioningModuleReadiness' },
-    { step: 'login', next: 'activate', callback: 'probeTenantEndpoint' },
+    { step: 'login', next: 'tenant_iam_roles', callback: 'probeTenantEndpoint' },
+    { step: 'tenant_iam_roles', next: 'tenant_iam_access', callback: 'reconcileTenantIamRoles' },
+    { step: 'tenant_iam_access', next: 'activate', callback: 'probeTenantIamAccess' },
   ] as const)('preserves $callback across the real runtime lock for $step', async ({ step, next, callback }) => {
     const harness = createHarness();
     harness.setReadiness('ready');
@@ -251,6 +270,8 @@ describe('tenant provisioning parent orchestrator', () => {
         publishTenantIngress: harness.deps.publishTenantIngress,
         probeTenantEndpoint: harness.deps.probeTenantEndpoint,
         readProvisioningModuleReadiness: harness.deps.readProvisioningModuleReadiness,
+        reconcileTenantIamRoles: harness.deps.reconcileTenantIamRoles,
+        probeTenantIamAccess: harness.deps.probeTenantIamAccess,
       }, { workerId: 'worker-1', now })
     );
 
@@ -275,7 +296,7 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(scopedClient.release).toHaveBeenCalledOnce();
   });
 
-  it('reaches terminal success only after Keycloak, ingress, login, and module readiness', async () => {
+  it('reaches terminal success only after Keycloak, ingress, login, module readiness, and tenant IAM postflight', async () => {
     const harness = createHarness();
     const iterate = () =>
       processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
@@ -314,11 +335,23 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getRun().stepKey).toBe('login');
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
-    expect(harness.getRun().stepKey).toBe('activate');
+    expect(harness.getRun().stepKey).toBe('tenant_iam_roles');
     expect(harness.deps.probeTenantEndpoint).toHaveBeenLastCalledWith(
       expect.objectContaining({
         expectedRouterName: 'studio-tenant-tenant-a',
         expectedConfigHash: 'sha256:router',
+      })
+    );
+    expect(harness.getInstance().status).toBe('provisioning');
+    await iterate();
+    expect(harness.getRun().stepKey).toBe('tenant_iam_access');
+    expect(harness.getInstance().status).toBe('provisioning');
+    await iterate();
+    expect(harness.getRun().stepKey).toBe('activate');
+    expect(harness.repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        eventType: 'tenant_iam_access_probed',
       })
     );
     expect(harness.getInstance().status).toBe('provisioning');
@@ -332,7 +365,65 @@ describe('tenant provisioning parent orchestrator', () => {
         ingressStatus: 200,
         loginStatus: 200,
         moduleStatus: 'ready',
+        tenantIamRoleReconcile: {
+          outcome: 'success',
+          checkedCount: 1,
+          correctedCount: 1,
+        },
+        tenantIamAccess: {
+          status: 'ready',
+        },
       },
+    });
+  });
+
+  it('keeps the instance fail-closed when tenant IAM role reconciliation is incomplete', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'tenant_iam_roles' });
+    vi.mocked(harness.deps.reconcileTenantIamRoles).mockResolvedValue({
+      outcome: 'partial_failure',
+      checkedCount: 1,
+      correctedCount: 0,
+      failedCount: 1,
+      requiresManualActionCount: 0,
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getInstance().status).toBe('requested');
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'tenant_iam_roles',
+      errorCode: 'tenant_iam_roles_reconcile_not_ready',
+    });
+    expect(harness.deps.probeTenantIamAccess).not.toHaveBeenCalled();
+  });
+
+  it('persists a degraded tenant IAM probe and does not activate the instance', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'tenant_iam_access' });
+    vi.mocked(harness.deps.probeTenantIamAccess).mockResolvedValue({
+      status: 'degraded',
+      summary: 'Tenant IAM access is unavailable.',
+      source: 'access_probe',
+      serviceIdentity: 'sva-studio-tenant-iam',
+      classification: 'unavailable',
+      errorCode: 'tenant_iam_unavailable',
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'tenant_iam_access_probed',
+        details: expect.objectContaining({ status: 'degraded' }),
+      })
+    );
+    expect(harness.getInstance().status).toBe('requested');
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'tenant_iam_access',
+      errorCode: 'tenant_iam_access_not_ready',
     });
   });
 

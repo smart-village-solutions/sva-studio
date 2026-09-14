@@ -38,3 +38,9 @@ export const assertSafeDatabaseLogins = ({ postgresUser, rootLogin, runtimeLogin
     throw new Error('SSF_PLUGIN_ROOT_DB_USER_reserved');
   }
 };
+
+export const assertDistinctDatabaseNames = ({ adminDatabase, targetDatabase }) => {
+  if (adminDatabase === targetDatabase) {
+    throw new Error('SSF_PLUGIN_DATABASE_NAME_matches_POSTGRES_DB');
+  }
+};

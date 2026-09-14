@@ -232,7 +232,8 @@ fachliche Repositories und Schema-Ownership liegen beim SSF-Plugin.
 Im Standalone-Profil führt ein einmaliger Service aus derselben gebundenen
 Studio-Image-Referenz diese Migrationen vor App und Provisioner aus. Getrennte
 Runtime- und Root-Logins dürfen weder identisch noch der PostgreSQL-Admin oder
-eine feste SSF-Gruppenrolle sein.
+eine feste SSF-Gruppenrolle sein. Die SSF-Plugin-Datenbank darf nicht mit der
+Studio-IAM-Datenbank identisch sein.
 
 ## Administrationsoberflächen für die Runtime-Konfiguration
 

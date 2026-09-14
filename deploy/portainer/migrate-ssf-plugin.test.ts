@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { assertSafeDatabaseLogins, readDatabasePassword } from './ssf-plugin-database-config.mjs';
+import {
+  assertDistinctDatabaseNames,
+  assertSafeDatabaseLogins,
+  readDatabasePassword,
+} from './ssf-plugin-database-config.mjs';
 
 describe('SSF plugin migration runner', () => {
   it('passes secret-bearing SQL to psql through stdin instead of process arguments', () => {
@@ -93,5 +97,14 @@ describe('SSF plugin migration runner', () => {
         runtimeLogin: 'sva_ssf_runtime',
       })
     ).not.toThrow();
+  });
+
+  it('rejects the Studio IAM database as the SSF migration target', () => {
+    expect(() =>
+      assertDistinctDatabaseNames({
+        adminDatabase: 'sva_studio',
+        targetDatabase: 'sva_studio',
+      })
+    ).toThrow('SSF_PLUGIN_DATABASE_NAME_matches_POSTGRES_DB');
   });
 });

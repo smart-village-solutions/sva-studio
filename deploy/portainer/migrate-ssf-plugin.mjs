@@ -1,6 +1,10 @@
 import { spawnSync } from 'node:child_process';
 
-import { assertSafeDatabaseLogins, readDatabasePassword } from './ssf-plugin-database-config.mjs';
+import {
+  assertDistinctDatabaseNames,
+  assertSafeDatabaseLogins,
+  readDatabasePassword,
+} from './ssf-plugin-database-config.mjs';
 
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 
@@ -27,6 +31,8 @@ const targetDatabase = identifier(
   process.env.SSF_PLUGIN_DATABASE_NAME || 'sva_studio_ssf',
   'SSF_PLUGIN_DATABASE_NAME'
 );
+const adminDatabase = identifier(process.env.POSTGRES_DB, 'POSTGRES_DB');
+assertDistinctDatabaseNames({ adminDatabase, targetDatabase });
 
 const principalPassword = ({ explicitPassword, connectionString, login, sourceName }) => {
   const configured = explicitPassword?.trim();
@@ -72,7 +78,6 @@ const runPsql = (database, sql) => {
 };
 
 const prepare = () => {
-  const adminDatabase = identifier(process.env.POSTGRES_DB, 'POSTGRES_DB');
   const exists = runPsql(
     adminDatabase,
     `SELECT 1 FROM pg_database WHERE datname = ${sqlLiteral(targetDatabase)}`

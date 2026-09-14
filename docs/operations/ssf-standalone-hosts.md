@@ -241,6 +241,8 @@ Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
 Runtime- und Root-Login müssen verschieden sein und dürfen weder dem
 `POSTGRES_USER` noch den festen Gruppenrollen `ssf_plugin_tenant_runtime` und
 `ssf_plugin_root` entsprechen; der Migrator prüft dies vor jedem Rollen-Write.
+`SSF_PLUGIN_DATABASE_NAME` muss außerdem von `POSTGRES_DB` verschieden sein;
+diese Prüfung erfolgt vor dem ersten Datenbankzugriff des SSF-Migrators.
 Ein Fehler stoppt den Startpfad geschlossen.
 Der reguläre Studio-Rollout bleibt im [Rollout-Prozess](../guides/studio-rollout-process.md)
 beschrieben; eine zusätzliche Migrationsplattform ist dafür nicht erforderlich.

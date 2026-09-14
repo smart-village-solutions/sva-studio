@@ -276,13 +276,23 @@ describe('iam instance registry repository wiring', () => {
 
     await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
       instanceId: 'demo',
-      actorId: 'actor-1',
+      actorId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-1',
     });
     expect(runRoleCatalogReconciliationMock).toHaveBeenCalledWith({
       instanceId: 'demo',
-      actorAccountId: 'actor-1',
+      actorAccountId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-1',
+    });
+    await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
+      instanceId: 'demo',
+      actorId: 'keycloak-service:sva-studio-mcp',
+      requestId: 'request-2',
+    });
+    expect(runRoleCatalogReconciliationMock).toHaveBeenLastCalledWith({
+      instanceId: 'demo',
+      actorAccountId: undefined,
+      requestId: 'request-2',
     });
     expect(runtimeConfig?.provisioningWorkerServiceDeps.probeTenantIamAccess).toBe(
       runtimeConfig?.serviceDeps.probeTenantIamAccess

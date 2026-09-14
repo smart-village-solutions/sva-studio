@@ -4,6 +4,7 @@ import {
 } from '../iam-account-management/shared-runtime.js';
 import { resolveAuthConfigForInstance } from '../config.js';
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
+import { isUuid } from '../shared/input-readers.js';
 
 const probePasswordSetupEmailCapability = async (input: {
   instanceId: string;
@@ -136,7 +137,7 @@ export const reconcileTenantIamRoles = async (input: {
     await import('../iam-account-management/reconcile-core.js');
   return runRoleCatalogReconciliation({
     instanceId: input.instanceId,
-    actorAccountId: input.actorId,
+    actorAccountId: input.actorId && isUuid(input.actorId) ? input.actorId : undefined,
     requestId: input.requestId,
   });
 };

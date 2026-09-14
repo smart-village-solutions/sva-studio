@@ -452,7 +452,7 @@ describe('tenant provisioning parent orchestrator', () => {
       requestId: 'request-ingress-1',
     });
     const publishError = Object.assign(new Error('open failed password=outer-secret'), {
-      code: 'EACCES',
+      code: 'EPERM',
       syscall: 'open',
       path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
       dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
@@ -471,12 +471,11 @@ describe('tenant provisioning parent orchestrator', () => {
         run_id: '00000000-0000-4000-8000-000000000001',
         step_key: 'ingress',
         error_type: 'Error',
-        error_code: 'EACCES',
+        error_code: 'EPERM',
         classification: 'tenant_provisioning_step_failed',
         diagnostic_error: expect.objectContaining({
           name: 'Error',
-          message: 'open failed password=[REDACTED]',
-          code: 'EACCES',
+          code: 'EPERM',
           syscall: 'open',
           path: '/var/lib/sva-studio/traefik-dynamic/.tenant.tmp',
           dest: '/var/lib/sva-studio/traefik-dynamic/tenant.yml',
@@ -577,11 +576,14 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
-  it('logs redacted outer exception details without changing the scheduled retry', async () => {
+  it('excludes untrusted provider details from outer diagnostics without changing the retry', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
     vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
-      new Error('update failed password=outer-secret')
+      Object.assign(new Error('provider response for user@example.org password=outer-secret'), {
+        name: 'Provider response for user@example.org',
+        code: 'provider_user_example',
+      })
     );
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
@@ -591,16 +593,14 @@ describe('tenant provisioning parent orchestrator', () => {
       expect.objectContaining({
         failure_phase: 'step_execution',
         diagnostic_error: {
-          name: 'Error',
-          message: 'update failed password=[REDACTED]',
-          code: null,
-          syscall: null,
-          path: null,
-          dest: null,
+          name: 'object',
         },
       })
     );
-    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain('outer-secret');
+    const logged = JSON.stringify(state.logger.warn.mock.calls);
+    expect(logged).not.toContain('outer-secret');
+    expect(logged).not.toContain('user@example.org');
+    expect(logged).not.toContain('provider_user_example');
     expect(harness.getRun()).toMatchObject({
       status: 'provisioning',
       stepKey: 'ingress',

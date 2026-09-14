@@ -40,15 +40,18 @@ const readProperty = (value: unknown, key: string): unknown => {
   }
 };
 
-const toDiagnosticString = (value: unknown): string => {
-  try {
-    return String(value);
-  } catch {
-    return '[unstringifiable-error]';
-  }
-};
-
 const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
+const SAFE_DIAGNOSTIC_ERROR_TYPES = new Set([
+  'AggregateError',
+  'DatabaseError',
+  'Error',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'SystemError',
+  'TypeError',
+  'URIError',
+]);
 
 const readDiagnosticString = (value: unknown, key: string): string | undefined => {
   const candidate = readProperty(value, key);
@@ -56,7 +59,8 @@ const readDiagnosticString = (value: unknown, key: string): string | undefined =
 };
 
 export const readDiagnosticErrorType = (error: unknown): string => {
-  return readDiagnosticString(error, 'name') ?? typeof error;
+  const name = readDiagnosticString(error, 'name');
+  return name && SAFE_DIAGNOSTIC_ERROR_TYPES.has(name) ? name : typeof error;
 };
 
 const readDiagnosticErrorCode = (error: unknown): string => {
@@ -72,8 +76,11 @@ export const buildProvisioningFailureDiagnostics = (
   error: unknown
 ): Readonly<Record<string, unknown>> => {
   const code = readDiagnosticString(error, 'code');
-  // Treat SQLSTATE-shaped codes conservatively: database messages may contain row values.
-  if (code && /^[0-9A-Z]{5}$/u.test(code)) {
+  const postgresDiagnosticKeys = ['severity', 'schema', 'table', 'column', 'constraint', 'routine'];
+  const isPostgresError =
+    Boolean(code && /^[0-9A-Z]{5}$/u.test(code)) &&
+    postgresDiagnosticKeys.some((key) => readDiagnosticString(error, key) !== undefined);
+  if (isPostgresError) {
     return redactObject({
       diagnostic_error: {
         name: readDiagnosticErrorType(error),
@@ -84,14 +91,22 @@ export const buildProvisioningFailureDiagnostics = (
       },
     });
   }
+  const syscall = readDiagnosticString(error, 'syscall');
+  const isNodeSystemError = Boolean(code && /^E[A-Z0-9_]{1,99}$/u.test(code) && syscall);
+  if (isNodeSystemError) {
+    return redactObject({
+      diagnostic_error: {
+        name: readDiagnosticErrorType(error),
+        code,
+        syscall,
+        path: readDiagnosticString(error, 'path'),
+        dest: readDiagnosticString(error, 'dest'),
+      },
+    });
+  }
   return redactObject({
     diagnostic_error: {
       name: readDiagnosticErrorType(error),
-      message: readDiagnosticString(error, 'message') ?? toDiagnosticString(error),
-      code,
-      syscall: readDiagnosticString(error, 'syscall'),
-      path: readDiagnosticString(error, 'path'),
-      dest: readDiagnosticString(error, 'dest'),
     },
   });
 };

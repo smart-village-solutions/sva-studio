@@ -585,7 +585,9 @@ describe('instance registry repository provisioning', () => {
       "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
     );
     expect(statements[0]?.text).toContain("WHEN $7::boolean THEN 'registry'");
-    expect(statements[0]?.text).toContain('WHEN $7::boolean THEN NULL');
+    expect(statements[0]?.text).toContain(
+      'WHEN $7::boolean THEN child_keycloak_run_id'
+    );
     expect(statements[0]?.text).toContain(
       "WHEN step_key IN ('module_readiness', 'login', 'activate') THEN 'lifecycle'"
     );

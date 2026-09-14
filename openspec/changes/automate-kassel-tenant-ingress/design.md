@@ -252,7 +252,9 @@ Wiederaufnahme an den aktuell geladenen Plugin-Snapshot gebunden und gemeinsam
 mit dem erneuten Queue-Zustand persistiert. Dadurch wartet ein Lauf nach einem
 Release nicht auf eine Plugin-Contract-Revision, die der aktuelle Worker nicht
 mehr erzeugen kann. Hat sich der OIDC-Vertrag geändert, beginnt der Elternlauf
-erneut bei Registry und referenziert keinen Kindlauf des alten Vertrags. Kann
+erneut bei Registry. Eine alte Kindlauf-ID bleibt bis zur Persistierung des
+neuen Kindlaufs nur als Realm-Transition-Evidenz erhalten und wird vor der
+Keycloak-Stufe durch dessen ID ersetzt. Kann
 ein aktueller Lifecycle-Intent wegen eines aktiven Jobs nicht vollständig
 persistiert werden, wird der Elternlauf nicht wieder geöffnet. Fehlt eine zuvor
 gebundene OIDC-Client-ID im aktuellen Vertrag, bleibt der Retry bis zu einem

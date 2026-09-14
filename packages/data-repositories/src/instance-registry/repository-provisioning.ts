@@ -190,7 +190,7 @@ SET status = 'requested',
       ELSE step_key
     END,
     child_keycloak_run_id = CASE
-      WHEN $7::boolean THEN NULL
+      WHEN $7::boolean THEN child_keycloak_run_id
       WHEN step_key IN ('registry', 'keycloak') THEN NULL
       ELSE child_keycloak_run_id
     END,

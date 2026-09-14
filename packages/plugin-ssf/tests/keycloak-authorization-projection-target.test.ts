@@ -55,6 +55,7 @@ const createClient = () => {
         attributes.set(externalId, { ...input.attributes });
       }
     ),
+    ensureAdminOnlyUserProfileAttributes: vi.fn(async () => undefined),
     ensureUserAttributeProtocolMapper: vi.fn(async (input) => {
       mappers.set(input.claimName, {
         name: input.name,
@@ -146,6 +147,12 @@ describe('SSF Keycloak authorization projection target', () => {
     });
     expect(attributes.get('stale-user')).toEqual({ locale: ['en'] });
     expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledTimes(4);
+    expect(client.ensureAdminOnlyUserProfileAttributes).toHaveBeenCalledWith([
+      { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
+      { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
+      { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
+      { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
+    ]);
     expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: 'ssf',
@@ -198,6 +205,7 @@ describe('SSF Keycloak authorization projection target', () => {
     await expect(
       target.reconcile(desired, createSsfAuthorizationRevision(desired))
     ).rejects.toThrow('ssf_keycloak_projection_subject_missing');
+    expect(client.ensureAdminOnlyUserProfileAttributes).not.toHaveBeenCalled();
     expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
     expect(client.updateUser).not.toHaveBeenCalled();
   });

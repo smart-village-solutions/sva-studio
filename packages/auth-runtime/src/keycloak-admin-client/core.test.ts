@@ -1596,6 +1596,101 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('adds admin-only managed user-profile attributes without changing existing fields', async () => {
+    const existingProfile = {
+      unmanagedAttributePolicy: 'DISABLED',
+      attributes: [
+        {
+          name: 'email',
+          displayName: '${email}',
+          permissions: { view: ['admin', 'user'], edit: ['admin', 'user'] },
+        },
+        {
+          name: 'ssf_roles',
+          displayName: 'SSF roles',
+          multivalued: false,
+          permissions: { view: ['admin', 'user'], edit: ['user'] },
+        },
+      ],
+      groups: [{ name: 'identity', displayHeader: 'Identity' }],
+    };
+    const expectedAttributes = [
+      existingProfile.attributes[0],
+      {
+        ...existingProfile.attributes[1],
+        multivalued: true,
+        permissions: { view: ['admin'], edit: ['admin'] },
+      },
+      {
+        name: 'studio_tenant_id',
+        multivalued: false,
+        permissions: { view: ['admin'], edit: ['admin'] },
+      },
+    ];
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { ...existingProfile, attributes: expectedAttributes })
+      );
+    const client = await createClient(fetchImpl);
+
+    await client.ensureAdminOnlyUserProfileAttributes([
+      { name: 'studio_tenant_id', multivalued: false },
+      { name: 'ssf_roles', multivalued: true },
+    ]);
+
+    const updateCall = fetchImpl.mock.calls.find((call) => call[1]?.method === 'PUT');
+    expect(String(updateCall?.[0])).toContain('/admin/realms/demo/users/profile');
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toEqual({
+      ...existingProfile,
+      attributes: expectedAttributes,
+    });
+  });
+
+  it('does not rewrite a complete admin-only user profile', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          attributes: [
+            {
+              name: 'ssf_permissions',
+              multivalued: true,
+              permissions: { view: ['admin'], edit: ['admin'] },
+            },
+          ],
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await client.ensureAdminOnlyUserProfileAttributes([
+      { name: 'ssf_permissions', multivalued: true },
+    ]);
+
+    expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
+  });
+
+  it('fails closed when a user-profile update cannot be confirmed', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { attributes: [] }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { attributes: [] }));
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureAdminOnlyUserProfileAttributes([{ name: 'ssf_roles', multivalued: true }])
+    ).rejects.toMatchObject({
+      code: 'user_profile_attribute_readback_mismatch',
+      retryable: true,
+    });
+  });
+
   it('creates and updates protocol mappers only when configuration changed', async () => {
     const fetchImpl = vi
       .fn()

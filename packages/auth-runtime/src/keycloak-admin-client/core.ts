@@ -131,6 +131,21 @@ type KeycloakUserCreateResponse = {
   readonly location: string | null;
 };
 
+type KeycloakUserProfileAttribute = Readonly<{
+  name: string;
+  multivalued?: boolean;
+  permissions?: Readonly<{
+    view?: readonly string[];
+    edit?: readonly string[];
+  }>;
+  [key: string]: unknown;
+}>;
+
+type KeycloakUserProfileConfig = Readonly<{
+  attributes?: readonly KeycloakUserProfileAttribute[];
+  [key: string]: unknown;
+}>;
+
 export type KeycloakListUsersQuery = IdentityUserListQuery & {
   readonly briefRepresentation?: boolean;
 };
@@ -1675,6 +1690,83 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       },
       input.exclusiveClaim
     );
+  }
+
+  async ensureAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
+  ): Promise<void> {
+    await this.assertWriteAvailability();
+    const path = `/admin/realms/${encodePathSegment(this.realm)}/users/profile`;
+    const profile = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path,
+      operation: 'read_user_profile',
+    });
+    const desiredByName = new Map(attributes.map((attribute) => [attribute.name, attribute]));
+    const existingAttributes = profile.attributes ?? [];
+    const adminOnlyPermissions = { view: ['admin'], edit: ['admin'] } as const;
+    const isDesired = (attribute: KeycloakUserProfileAttribute | undefined): boolean => {
+      if (!attribute) return false;
+      const desired = desiredByName.get(attribute.name);
+      return Boolean(
+        desired &&
+        Boolean(attribute.multivalued) === desired.multivalued &&
+        attribute.permissions?.view?.length === 1 &&
+        attribute.permissions.view[0] === 'admin' &&
+        attribute.permissions.edit?.length === 1 &&
+        attribute.permissions.edit[0] === 'admin'
+      );
+    };
+    const hasCompleteProfile = attributes.every((desired) => {
+      const matches = existingAttributes.filter((attribute) => attribute.name === desired.name);
+      return matches.length === 1 && isDesired(matches[0]);
+    });
+    if (hasCompleteProfile) return;
+
+    const retainedNames = new Set<string>();
+    const nextAttributes = existingAttributes.map((attribute) => {
+      const desired = desiredByName.get(attribute.name);
+      if (!desired || retainedNames.has(attribute.name)) return attribute;
+      retainedNames.add(attribute.name);
+      return {
+        ...attribute,
+        multivalued: desired.multivalued,
+        permissions: adminOnlyPermissions,
+      };
+    });
+    for (const desired of attributes) {
+      if (retainedNames.has(desired.name)) continue;
+      nextAttributes.push({
+        name: desired.name,
+        multivalued: desired.multivalued,
+        permissions: adminOnlyPermissions,
+      });
+    }
+
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path,
+      body: JSON.stringify({ ...profile, attributes: nextAttributes }),
+      operation: 'update_user_profile',
+    });
+    const readBack = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path,
+      operation: 'verify_user_profile',
+    });
+    for (const desired of attributes) {
+      const matches = (readBack.attributes ?? []).filter(
+        (attribute) => attribute.name === desired.name
+      );
+      if (matches.length !== 1 || !isDesired(matches[0])) {
+        throw new KeycloakAdminRequestError({
+          message: 'Keycloak user profile attribute read-back mismatch.',
+          statusCode: 502,
+          code: 'user_profile_attribute_readback_mismatch',
+          retryable: true,
+        });
+      }
+    }
   }
 
   async ensureAudienceProtocolMapper(input: {

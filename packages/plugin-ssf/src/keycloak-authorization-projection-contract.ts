@@ -32,6 +32,12 @@ export interface SsfKeycloakProjectionClient {
     externalId: string,
     input: { readonly attributes: Readonly<Record<string, readonly string[]>> }
   ): Promise<void>;
+  ensureAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{
+      name: string;
+      multivalued: boolean;
+    }>[]
+  ): Promise<void>;
   ensureUserAttributeProtocolMapper(input: {
     readonly clientId: string;
     readonly name: string;

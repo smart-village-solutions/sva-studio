@@ -87,6 +87,12 @@ export const readSingleAttribute = (attributes: KeycloakAttributes, name: string
 };
 
 export const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): Promise<void> => {
+  await tenant.client.ensureAdminOnlyUserProfileAttributes([
+    { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
+    { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
+    { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
+    { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
+  ]);
   for (const [claimName, multivalued] of [
     [SSF_TOKEN_CLAIMS.instanceId, false],
     [SSF_TOKEN_CLAIMS.roles, true],

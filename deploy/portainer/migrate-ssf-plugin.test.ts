@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { readDatabasePassword } from './ssf-plugin-database-config.mjs';
+
 describe('SSF plugin migration runner', () => {
   it('passes secret-bearing SQL to psql through stdin instead of process arguments', () => {
     const source = readFileSync(new URL('./migrate-ssf-plugin.mjs', import.meta.url), 'utf8');
@@ -18,5 +20,33 @@ describe('SSF plugin migration runner', () => {
     expect(source).toContain('ssf_plugin_tenant_runtime');
     expect(source).toContain('SSF_PLUGIN_ROOT_DB_PASSWORD');
     expect(source).toContain('ssf_plugin_root');
+  });
+
+  it('reads a role password only from a connection string bound to that role and database', () => {
+    expect(
+      readDatabasePassword({
+        connectionString:
+          'postgresql://sva_ssf_runtime:p%40ss@postgres:5432/sva_studio_ssf?sslmode=disable',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toBe('p@ss');
+    expect(() =>
+      readDatabasePassword({
+        connectionString: 'postgresql://other:secret@postgres/sva_studio_ssf',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_user_mismatch');
+    expect(() =>
+      readDatabasePassword({
+        connectionString: 'postgresql://sva_ssf_runtime:secret@postgres/other',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_database_mismatch');
   });
 });

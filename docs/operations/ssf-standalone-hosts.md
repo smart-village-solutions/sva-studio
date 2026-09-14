@@ -97,7 +97,9 @@ docker compose \
 Overlay und `up.sh` werden dazu aus dem exakt freigegebenen Release-Stand in den eigenständigen
 Compose-Projektordner übernommen. Das Startskript akzeptiert ausschließlich eine vollständige
 Image-Referenz aus `ghcr.io/smart-village-solutions/sva-studio` mit `@sha256:` und bindet App
-und Worker an exakt denselben Digest.
+und Worker an exakt denselben Digest. Vor dem Start führt es den einmaligen Dienst `migrate`
+mit demselben Digest aus. Ein fehlgeschlagener IAM- oder SSF-Plugin-Migrationsschritt beendet
+`up.sh`, bevor App und Provisioner aktualisiert werden.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
 wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
 
@@ -218,6 +220,93 @@ OCI-Revision `4985a80e4296af4ab2051d0aa927b901fdfb08bd` (PR #1295).
 Dieser historische Wert muss unmittelbar vor einem tatsächlichen Rollout erneut geprüft werden.
 
 ## Login-Baseline und Veröffentlichung (#1319)
+
+### Separate SSF-Plugin-Datenbank und Benutzerfreigabe
+
+Die Studio-SSF-Plugin-Datenbank ist von der Studio-IAM-Datenbank und der Datenbank
+des eigenständigen SSF-Backends zu unterscheiden. Das tatsächliche Ziel wird aus
+`SVA_STUDIO_SSF_DATABASE_URL` und `SVA_STUDIO_SSF_ROOT_DATABASE_URL` ermittelt,
+ohne die Zugangsdaten auszugeben. In der Kasseler Installation liegt sie als
+`sva_studio_ssf` am Studio-Postgres; die Backend-Datenbank `ssf` ist hierfür nicht
+das Migrationsziel.
+
+Ein Imagewechsel ersetzt den separaten Migrationsschritt nicht. `deploy/standalone/up.sh`
+startet deshalb vor App und Provisioner den Dienst `migrate`. Dieser verwendet den
+Goose-Ledger `public.goose_db_version`, das Verzeichnis
+`packages/plugin-ssf/migrations` und den Migrator des freigegebenen Images. Die
+bereits in `runtime.env` vorhandenen Runtime- und Root-Verbindungs-URLs liefern
+die rollenbezogenen Kennwörter, ohne sie in eine zweite Konfiguration zu kopieren;
+Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
+`SSF_PLUGIN_*_DB_PASSWORD`-Werte bleiben für andere Laufzeitprofile zulässig.
+Ein Fehler stoppt den Startpfad geschlossen.
+Der reguläre Studio-Rollout bleibt im [Rollout-Prozess](../guides/studio-rollout-process.md)
+beschrieben; eine zusätzliche Migrationsplattform ist dafür nicht erforderlich.
+
+Migration `0006_ssf_authorization_subject_evidence.sql` ergänzt die generierte
+Spalte `confirmed_has_subjects` und deren Spaltenleserecht für
+`ssf_plugin_tenant_runtime`. Die Abnahme prüft Ledger, generierte Spalte und
+den Tenant-Lesezugriff mit dem tatsächlich von Studio verwendeten `pg`-Treiber.
+Die Login-Rolle `sva_ssf_runtime` verwendet `NOINHERIT` und aktiviert die
+Funktionsrolle über die Verbindungsoption. Fehlende direkte Rechte der Login-Rolle
+sind deshalb allein kein Fehlernachweis. Eine URL mit kodierter Rollenoption ist
+für eine `psql`-Diagnose nicht ungeprüft wiederzuverwenden.
+
+Die Organisationsauswahl verlangt zusätzlich mindestens einen aktiven,
+SSF-berechtigten Benutzer in der bestätigten Autorisierungsprojektion. Eine
+Migration erzeugt oder aktiviert keine Benutzer. Für Bestandskonten erfolgt die
+Freigabe im zugehörigen Studio-Tenant über **Benutzer → Verwaltung → Status → Aktiv →
+Speichern** oder den regulären IAM-Update-Endpunkt. Die Keycloak-basierte
+Listenanzeige „Aktiv“ ersetzt nicht den Nachweis von `iam.accounts.status = 'active'`.
+Die [Bootstrap-Regeln](./instance-keycloak-provisioning.md#rollen--und-rechte-modell)
+beschreiben die automatische Aktivierung ausschließlich neu angelegter
+Bootstrap-Administratoren.
+
+Nach der Freigabe sind der Abschluss des SSF-Autorisierungsabgleichs, identische
+Soll-/Ist-Revisionen, `confirmed_has_subjects = true`, die Veröffentlichung im
+Directory und ein erfolgreicher Browser-Login gemeinsam nachzuweisen. Eine leere
+Projektion bleibt auch nach Migration `0006` unveröffentlicht. Historische Konten
+anderer Realms werden für diesen Nachweis nicht automatisch übernommen.
+
+### Keycloak-Benutzerprofil für die SSF-Projektion
+
+Vor der Projektion müssen im jeweiligen Tenant-Realm diese verwalteten
+Benutzerattribute vorhanden sein:
+
+| Attribut                     | Mehrwertig | Lesen / Schreiben      |
+| ---------------------------- | ---------- | ---------------------- |
+| `studio_tenant_id`           | nein       | ausschließlich `admin` |
+| `ssf_roles`                  | ja         | ausschließlich `admin` |
+| `ssf_permissions`            | ja         | ausschließlich `admin` |
+| `ssf_authorization_revision` | nein       | ausschließlich `admin` |
+
+Bei deaktivierten unverwalteten Attributen kann Keycloak Benutzer-Updates
+annehmen, ohne die nicht deklarierten SSF-Attribute zu speichern. Der
+Autorisierungsabgleich endet dann mit `target_readback_mismatch`.
+Der SSF-Autorisierungsabgleich liest deshalb das Profil über
+`GET /admin/realms/{realm}/users/profile`, ergänzt oder korrigiert ausschließlich
+die vier verwalteten Attribute über den entsprechenden `PUT` und bestätigt sie
+anschließend durch erneutes Lesen. Bestehende Attribute und die übrige
+Profilkonfiguration bleiben erhalten. Der Abgleich aktiviert keine allgemeine
+Freigabe unverwalteter Attribute und erlaubt Endbenutzern keine Bearbeitung
+dieser Berechtigungsfelder. Eine nicht bestätigte Profiländerung blockiert die
+Projektion. Siehe
+[Keycloak-Benutzerprofile](https://www.keycloak.org/docs/latest/server_admin/#_user-profile).
+
+Falls nach einer Benutzeraktivierung kein Abgleich läuft, kann eine authentifizierte
+Root-Administratorsitzung auf dem Studio-Root den vorhandenen Endpunkt
+`POST /api/v1/iam/instances/{instanceId}/plugin-readiness` mit
+`{"pluginId":"ssf","operation":"reconcile"}` aufrufen. Der Aufruf benötigt
+den normalen CSRF-Schutz (`X-Requested-With: XMLHttpRequest` und vertrauenswürdige
+Origin). `202` bestätigt nur die Annahme; maßgeblich sind der abgeschlossene
+Job und die anschließende Veröffentlichung. Technische Clients benötigen den
+expliziten Scope `instance.pluginLifecycle.reconcile`.
+
+Der öffentliche SSF-Directory-Aufruf verwendet die API-Basis aus dem tatsächlich
+ausgelieferten Frontend. Am 14. September 2026 war dies
+`https://ssf.smart-village.solutions/api/login/tenants`; derselbe Pfad auf dem
+Frontend-Host lieferte HTML und war kein Directory-Nachweis.
+
+### Browser- und Lifecycle-Vertrag
 
 Die App erhält zusätzlich `SVA_STUDIO_SSF_LOGIN_ORIGIN=https://dialog.kassel.de`.
 Der Host leitet daraus ausschließlich `ssf-frontend`, die Web-Origin

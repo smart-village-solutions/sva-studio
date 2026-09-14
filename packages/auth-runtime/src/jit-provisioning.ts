@@ -13,7 +13,8 @@ export type JitProvisionInput = {
 export type JitProvisionResult =
   | {
       readonly skipped: true;
-      readonly reason: 'missing_instance' | 'invalid_instance' | 'missing_subject' | 'missing_database';
+      readonly reason:
+        'missing_instance' | 'invalid_instance' | 'missing_subject' | 'missing_database';
     }
   | {
       readonly skipped: false;
@@ -29,6 +30,7 @@ export const jitProvisionAccountWithClient = async (
     requestId?: string;
     traceId?: string;
     emitAuditLog?: boolean;
+    initialStatus?: 'pending' | 'active';
   }
 ): Promise<{ accountId: string; created: boolean }> => {
   const upsert = await client.query<{ id: string; created: boolean }>(
@@ -38,12 +40,12 @@ INSERT INTO iam.accounts (
   keycloak_subject,
   status
 )
-VALUES ($1, $2, 'pending')
+VALUES ($1, $2, $3)
 ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO UPDATE
 SET updated_at = NOW()
 RETURNING id, (xmax = 0) AS created;
 `,
-    [input.instanceId, input.keycloakSubject]
+    [input.instanceId, input.keycloakSubject, input.initialStatus ?? 'pending']
   );
 
   const accountId = upsert.rows[0]?.id;
@@ -83,7 +85,9 @@ VALUES ($1, $2::uuid, $2::uuid, 'user.jit_provisioned', 'success', '{}'::jsonb, 
   return { accountId, created };
 };
 
-export const jitProvisionAccount = async (input: JitProvisionInput): Promise<JitProvisionResult> => {
+export const jitProvisionAccount = async (
+  input: JitProvisionInput
+): Promise<JitProvisionResult> => {
   const rawInstanceId = input.instanceId;
   const keycloakSubject = input.keycloakSubject;
 

@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
+import { readDatabasePassword } from './ssf-plugin-database-config.mjs';
+
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 
 const required = (value, name) => {
@@ -25,6 +27,19 @@ const targetDatabase = identifier(
   process.env.SSF_PLUGIN_DATABASE_NAME || 'sva_studio_ssf',
   'SSF_PLUGIN_DATABASE_NAME'
 );
+
+const principalPassword = ({ explicitPassword, connectionString, login, sourceName }) => {
+  const configured = explicitPassword?.trim();
+  return (
+    configured ||
+    readDatabasePassword({
+      connectionString,
+      expectedDatabase: targetDatabase,
+      expectedUser: login,
+      name: sourceName,
+    })
+  );
+};
 
 const runPsql = (database, sql) => {
   const result = spawnSync(
@@ -66,24 +81,33 @@ const prepare = () => {
 };
 
 const reconcile = () => {
+  const runtimeLogin = identifier(
+    process.env.SSF_PLUGIN_RUNTIME_DB_USER || 'sva_ssf_runtime',
+    'SSF_PLUGIN_RUNTIME_DB_USER'
+  );
+  const rootLogin = identifier(
+    process.env.SSF_PLUGIN_ROOT_DB_USER || 'sva_ssf_root',
+    'SSF_PLUGIN_ROOT_DB_USER'
+  );
   const principals = [
     {
-      login: identifier(
-        process.env.SSF_PLUGIN_RUNTIME_DB_USER || 'sva_ssf_runtime',
-        'SSF_PLUGIN_RUNTIME_DB_USER'
-      ),
-      password: required(
-        process.env.SSF_PLUGIN_RUNTIME_DB_PASSWORD,
-        'SSF_PLUGIN_RUNTIME_DB_PASSWORD'
-      ),
+      login: runtimeLogin,
+      password: principalPassword({
+        explicitPassword: process.env.SSF_PLUGIN_RUNTIME_DB_PASSWORD,
+        connectionString: process.env.SVA_STUDIO_SSF_DATABASE_URL,
+        login: runtimeLogin,
+        sourceName: 'SVA_STUDIO_SSF_DATABASE_URL',
+      }),
       role: 'ssf_plugin_tenant_runtime',
     },
     {
-      login: identifier(
-        process.env.SSF_PLUGIN_ROOT_DB_USER || 'sva_ssf_root',
-        'SSF_PLUGIN_ROOT_DB_USER'
-      ),
-      password: required(process.env.SSF_PLUGIN_ROOT_DB_PASSWORD, 'SSF_PLUGIN_ROOT_DB_PASSWORD'),
+      login: rootLogin,
+      password: principalPassword({
+        explicitPassword: process.env.SSF_PLUGIN_ROOT_DB_PASSWORD,
+        connectionString: process.env.SVA_STUDIO_SSF_ROOT_DATABASE_URL,
+        login: rootLogin,
+        sourceName: 'SVA_STUDIO_SSF_ROOT_DATABASE_URL',
+      }),
       role: 'ssf_plugin_root',
     },
   ];

@@ -79,8 +79,14 @@ esac
 
 case "${SSF_PLUGIN_DATABASE_ENABLED:-false}" in
   true)
-    require_env SSF_PLUGIN_RUNTIME_DB_PASSWORD
-    require_env SSF_PLUGIN_ROOT_DB_PASSWORD
+    if [ -z "${SSF_PLUGIN_RUNTIME_DB_PASSWORD:-}" ] && [ -z "${SVA_STUDIO_SSF_DATABASE_URL:-}" ]; then
+      log 'SSF_PLUGIN_RUNTIME_DB_PASSWORD oder SVA_STUDIO_SSF_DATABASE_URL muss gesetzt sein'
+      exit 30
+    fi
+    if [ -z "${SSF_PLUGIN_ROOT_DB_PASSWORD:-}" ] && [ -z "${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}" ]; then
+      log 'SSF_PLUGIN_ROOT_DB_PASSWORD oder SVA_STUDIO_SSF_ROOT_DATABASE_URL muss gesetzt sein'
+      exit 30
+    fi
     SSF_PLUGIN_MIGRATOR="${SSF_PLUGIN_MIGRATOR:-./migrate-ssf-plugin.mjs}"
     SSF_PLUGIN_MIGRATIONS_DIR="${SSF_PLUGIN_MIGRATIONS_DIR:-packages/plugin-ssf/migrations}"
     SSF_PLUGIN_DATABASE_NAME="${SSF_PLUGIN_DATABASE_NAME:-sva_studio_ssf}"

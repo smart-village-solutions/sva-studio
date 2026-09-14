@@ -256,6 +256,10 @@ erwarteten SSF-Gruppenrolle sein. Andernfalls behandelt der Migrator ihn als
 fremden Principal und bricht vor Passwort-, Attribut- oder Grant-Änderungen ab.
 Auch ein bereits vorhandenes `NOLOGIN`-Rollenobjekt wird nicht in einen Login
 umgewandelt, selbst wenn es Mitglied der erwarteten SSF-Rolle ist.
+Bestehende Principals dürfen neben ihrer jeweils erwarteten SSF-Gruppenrolle
+keine weitere direkte oder indirekte Rollenmitgliedschaft besitzen. Prüfung,
+Kennwortrotation, Attributhärtung und Grants beider Principals laufen gemeinsam
+in einer Transaktion; ein Fehler lässt daher auch das andere Kennwort unverändert.
 Ein Runtime-Login mit effektivem Zugriff auf `ssf_plugin_root` und ein Root-Login
 mit effektivem Zugriff auf `ssf_plugin_tenant_runtime` werden ebenfalls
 abgewiesen; `NOINHERIT` verhindert den Zugriff über `SET ROLE` nicht.

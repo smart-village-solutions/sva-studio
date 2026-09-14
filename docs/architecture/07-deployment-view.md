@@ -367,7 +367,10 @@ Admin gesperrt. Die SSF-Zieldatenbank muss von der Studio-IAM-Datenbank
 verschieden sein und darf keine PostgreSQL-Systemdatenbank sein. Eine vorhandene Login-Rolle wird nur rotiert, wenn ihre Mitgliedschaft in
 der jeweils erwarteten SSF-Gruppenrolle sie bereits als SSF-eigen ausweist. Ein
 Runtime-Login mit effektivem Zugriff auf die Root-Gruppenrolle oder umgekehrt
-wird abgewiesen. Aus Runtime-URLs übernommene Kennwörter sind nur zulässig, wenn
+wird abgewiesen. Dasselbe gilt für jede weitere direkte oder indirekte
+Rollenmitgliedschaft. Prüfung und Reconcile beider Logins erfolgen in einer
+gemeinsamen Transaktion, sodass auch eine Kennwortrotation nur vollständig wirksam
+wird. Aus Runtime-URLs übernommene Kennwörter sind nur zulässig, wenn
 Host und Port exakt dem Migrationsziel entsprechen; bei gleichzeitig gesetztem
 separatem Kennwort bleibt die Runtime-URL einschließlich ihres Kennworts autoritativ.
 Ein Verstoß beendet den

@@ -118,10 +118,8 @@ const reconcile = () => {
       role: 'ssf_plugin_root',
     },
   ];
-  for (const { forbiddenRole, login, password, role } of principals) {
-    runPsql(
-      targetDatabase,
-      `DO $ssf_login_role$
+  const reconcilePrincipalSql = ({ forbiddenRole, login, password, role }) => `
+DO $ssf_login_role$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(login)}) THEN
     EXECUTE format(
@@ -142,6 +140,11 @@ BEGIN
       ${sqlLiteral(login)},
       ${sqlLiteral(forbiddenRole)},
       'MEMBER'
+    ) OR EXISTS (
+      SELECT 1
+      FROM pg_roles AS candidate_role
+      WHERE candidate_role.rolname NOT IN (${sqlLiteral(login)}, ${sqlLiteral(role)})
+        AND pg_has_role(${sqlLiteral(login)}, candidate_role.oid, 'MEMBER')
     ) THEN
       RAISE EXCEPTION 'existing database login is not owned by its expected SSF role';
     END IF;
@@ -159,9 +162,13 @@ BEGIN
 END
 $ssf_login_role$;
 REVOKE CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} FROM PUBLIC;
-GRANT CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} TO ${sqlIdentifier(login)};`
-    );
-  }
+GRANT CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} TO ${sqlIdentifier(login)};`;
+  runPsql(
+    targetDatabase,
+    `BEGIN;
+${principals.map(reconcilePrincipalSql).join('\n')}
+COMMIT;`
+  );
 };
 
 const mode = process.argv[2];

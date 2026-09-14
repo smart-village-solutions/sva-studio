@@ -30,6 +30,8 @@ describe('SSF plugin migration runner', () => {
     );
     expect(source).toContain('FROM pg_auth_members AS membership');
     expect(source).toContain('AND member_role.rolcanlogin');
+    expect(source).toContain('FROM pg_roles AS candidate_role');
+    expect(source).toContain('candidate_role.rolname NOT IN (');
     expect(source).toContain(
       "RAISE EXCEPTION 'existing database login is not owned by its expected SSF role'"
     );
@@ -38,6 +40,12 @@ describe('SSF plugin migration runner', () => {
     expect(source).toContain("forbiddenRole: 'ssf_plugin_root'");
     expect(source).toContain("forbiddenRole: 'ssf_plugin_tenant_runtime'");
     expect(source).toContain('NOREPLICATION NOBYPASSRLS NOINHERIT');
+    expect(source).toContain('BEGIN;');
+    expect(source).toContain("principals.map(reconcilePrincipalSql).join('\\n')");
+    expect(source).toContain('COMMIT;');
+    expect(source).not.toContain(
+      'for (const { forbiddenRole, login, password, role } of principals)'
+    );
   });
 
   it('uses a supplied runtime URL as the authoritative validated password source', () => {

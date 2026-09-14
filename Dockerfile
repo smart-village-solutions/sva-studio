@@ -126,6 +126,7 @@ COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-graphile
 COPY --from=build --chown=node:node /workspace/deploy/portainer/verify-iam-schema.mjs ./verify-iam-schema.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-ssf-plugin.mjs ./migrate-ssf-plugin.mjs
+COPY --from=build --chown=node:node /workspace/deploy/portainer/ssf-plugin-database-config.mjs ./ssf-plugin-database-config.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/waste-tenant-migration-catalog.mjs ./waste-tenant-migration-catalog.mjs
 COPY --from=build --chown=node:node /workspace/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs

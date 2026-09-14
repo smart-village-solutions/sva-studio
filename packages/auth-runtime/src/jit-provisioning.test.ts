@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { QueryClient } from './db';
 import { jitProvisionAccountWithClient } from './jit-provisioning';
@@ -46,7 +46,10 @@ const createMockClient = () => {
         return { rowCount: 1, rows: [] };
       }
 
-      if (normalized.includes("insert into iam.activity_logs") && normalized.includes('user.jit_provisioned')) {
+      if (
+        normalized.includes('insert into iam.activity_logs') &&
+        normalized.includes('user.jit_provisioned')
+      ) {
         activityEvents += 1;
         return { rowCount: 1, rows: [] };
       }
@@ -62,6 +65,34 @@ const createMockClient = () => {
 };
 
 describe('jitProvisionAccountWithClient', () => {
+  it.each([
+    [undefined, 'pending'],
+    ['active', 'active'],
+  ] as const)(
+    'uses initial status %s only for account creation',
+    async (initialStatus, expectedStatus) => {
+      const query = vi.fn().mockResolvedValue({ rows: [{ id: 'account-1', created: true }] });
+
+      await jitProvisionAccountWithClient(
+        { query },
+        {
+          instanceId: 'tenant-a',
+          keycloakSubject: 'kc-bootstrap-admin',
+          initialStatus,
+          emitAuditLog: false,
+        }
+      );
+
+      const [sql, parameters] = query.mock.calls[0] as [string, readonly unknown[]];
+      expect(sql).toContain('VALUES ($1, $2, $3)');
+      expect(parameters).toEqual(['tenant-a', 'kc-bootstrap-admin', expectedStatus]);
+      // Repeated bootstrap must preserve pending/inactive accounts and all existing lifecycle fields.
+      expect(sql.split('DO UPDATE')[1]?.split('RETURNING')[0]?.trim()).toBe(
+        'SET updated_at = NOW()'
+      );
+    }
+  );
+
   it('creates account with pending status and emits user.jit_provisioned on first login', async () => {
     const mock = createMockClient();
 

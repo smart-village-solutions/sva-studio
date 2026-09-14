@@ -66,6 +66,7 @@ export type SsfAuthorizationProjectionReconcileResult =
         | 'runtime_baseline_preparation_failed'
         | 'tenant_readiness_failed'
         | 'token_issuance_suspend_failed'
+        | 'target_integrity_failed'
         | 'target_write_failed'
         | 'target_readback_failed'
         | 'target_readback_mismatch'
@@ -79,6 +80,7 @@ class SsfProjectionPhaseError extends Error {
       | 'runtime_baseline_preparation_failed'
       | 'tenant_readiness_failed'
       | 'token_issuance_suspend_failed'
+      | 'target_integrity_failed'
       | 'target_write_failed'
       | 'target_readback_failed'
       | 'token_issuance_resume_failed'
@@ -92,6 +94,12 @@ type SsfAuthorizationProjectionReconcilerDependencies = Readonly<{
   store: SsfAuthorizationProjectionStore;
   target: SsfAuthorizationProjectionTarget;
 }>;
+
+const isTargetIntegrityFailure = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === 'user_profile_preservation_readback_mismatch';
 
 const prepareRuntimeBaseline = async (
   target: SsfAuthorizationProjectionTarget,
@@ -130,8 +138,10 @@ const reconcileClaimedProjection = async (
     await prepareLoginClients(dependencies.target, staged.instanceId);
     try {
       await dependencies.target.reconcile(staged.desiredProjection, staged.desiredRevision);
-    } catch {
-      throw new SsfProjectionPhaseError('target_write_failed');
+    } catch (error) {
+      throw new SsfProjectionPhaseError(
+        isTargetIntegrityFailure(error) ? 'target_integrity_failed' : 'target_write_failed'
+      );
     }
     try {
       readBack = await dependencies.target.readBack(staged.instanceId);

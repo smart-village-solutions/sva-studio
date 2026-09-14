@@ -630,6 +630,10 @@ Zuordnung:
   in den SSF-Client des gemeinsamen Tenant-Realms projiziert. Root-Actions
   besitzen stattdessen einen getrennten Plattformbeitrag mit Grant für
   `instance_registry_admin`.
+- Die Fortschreibung von ADR-057 bindet diese Projektion an vier explizit
+  admin-only verwaltete Keycloak-Benutzerprofilattribute mit Read-back. Sie
+  begrenzt außerdem die direkte Aktivierung auf den erstmaligen Insert des
+  exakt konfigurierten und in Keycloak aktivierten Bootstrap-Administrators.
 - Das SSF-Plugin ist alleinige Runtime-Quelle der vollständig aufgelösten
   Konfiguration einschließlich aller versionierten Produktdefaults. SSF hält
   weder eine zweite Default-Auflösung noch eine persistente Konfigurationskopie.

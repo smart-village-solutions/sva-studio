@@ -67,10 +67,14 @@ export const createPluginJobExecutionHandlers = (
       });
     }
     if (result.status !== 'ready') {
+      const targetIntegrityFailure =
+        result.status === 'blocked' && result.reason === 'target_integrity_failed';
       throw lifecycleError(`ssf_authorization_reconcile_${result.status}`, {
-        code: 'ssf.authorization-reconcile-unavailable',
+        code: targetIntegrityFailure
+          ? 'ssf.authorization-profile-integrity-failed'
+          : 'ssf.authorization-reconcile-unavailable',
         messageKey: 'ssf.errors.authorizationReconcileUnavailable',
-        retry: { kind: 'retryable' },
+        retry: { kind: targetIntegrityFailure ? 'terminal' : 'retryable' },
         details: {
           status: result.status,
           generation: result.generation,

@@ -42,6 +42,11 @@ if [ "${1:-}" = '--validate-only' ]; then
 fi
 
 if [ "${ingress_mode}" = 'kassel-traefik-file' ]; then
+  docker compose \
+    -f app.compose.yml \
+    -f keycloak-provisioner.compose.yml \
+    -f kassel-ingress.compose.yml \
+    run --rm migrate
   exec docker compose \
     -f app.compose.yml \
     -f keycloak-provisioner.compose.yml \
@@ -49,6 +54,10 @@ if [ "${ingress_mode}" = 'kassel-traefik-file' ]; then
     up -d app provisioner
 fi
 
+docker compose \
+  -f app.compose.yml \
+  -f keycloak-provisioner.compose.yml \
+  run --rm migrate
 exec docker compose \
   -f app.compose.yml \
   -f keycloak-provisioner.compose.yml \

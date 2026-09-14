@@ -962,6 +962,17 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   `system_admin`, die tenantlokale Studio-Rolle `system_admin` als SSF-
   `tenant_admin` eingeordnet. Gäste bleiben im SSF-Sessionmodell. Access-Tokens
   gelten standardmäßig fünf und höchstens zehn Minuten.
+- Die vier von Studio verwalteten SSF-Claim-Attribute müssen im
+  Keycloak-Benutzerprofil eindeutig, mit korrekter Ein-/Mehrwertigkeit und
+  admin-only Sicht-/Bearbeitungsrechten deklariert sein. Die Projektion erhält
+  alle fremden Profilfelder und bestätigt deren semantischen Erhalt im
+  Read-back. Readiness prüft den admin-only Vertrag erneut und bleibt bei Drift
+  gesperrt, weil Keycloak nicht deklarierte Attribute bei Benutzerwrites
+  verwerfen oder freigegebene Attribute Benutzern zur Bearbeitung anbieten kann.
+- Ein aktivierter, exakt konfigurierter Bootstrap-Admin erhält `active` nur als
+  Insert-Startwert. Reconcile und Konfliktpfade dürfen bestehende lokale
+  Account-Status weder aktivieren noch herabstufen; alle anderen JIT-Accounts
+  starten weiterhin `pending`.
 - Konfigurations-Reads und -Writes prüfen die festgelegten
   `ssf.configuration.*`-Actions. Systemadmin und Mandantenadmin sind Personas
   mit Default-Grants; kundenspezifische Rollen werden nicht durch Prüfungen auf

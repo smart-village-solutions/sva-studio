@@ -240,6 +240,15 @@ Optional und weiter diagnostizierbar:
   Konflikte werden sichtbar abgebrochen, statt eine fremde Identität zu
   übernehmen.
 - Weitere tenantlokale Rollen werden individuell verwaltet; der Root-Bootstrap erzeugt keine zusätzlichen Default-Admin-Rollen mehr.
+- Ein neu angelegtes lokales Konto des ausdrücklich konfigurierten Bootstrap-Administrators
+  erhält bereits im Bootstrap den Status `active`. Voraussetzung ist, dass der exakt
+  zugeordnete Keycloak-Benutzer `enabled = true` bestätigt. Ein fehlender oder deaktivierter
+  Benutzerstatus beendet diesen Schritt mit `tenant_admin_bootstrap_user_not_enabled`.
+- Der Bootstrap überschreibt den Status vorhandener Konten nicht. Insbesondere werden
+  bestehende `pending`- oder `inactive`-Konten durch Wiederholungen nicht automatisch
+  freigeschaltet. Deren Aktivierung erfolgt über die tenantlokale Benutzerverwaltung
+  beziehungsweise `PATCH /api/v1/iam/users/{userId}` mit `status: active` und
+  Berechtigung `iam.user.write`. Normale JIT-Anmeldungen legen weiterhin `pending`-Konten an.
 
 ## Secret-Policy
 

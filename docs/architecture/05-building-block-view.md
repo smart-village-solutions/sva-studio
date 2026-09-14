@@ -919,6 +919,15 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   tenantgebundene `ssf.*`-Permissions und ihre Revision in den jeweiligen
   SSF-Client des gemeinsamen Tenant-Realms. Projektionsfehler sperren Client
   und Plugin-Readiness.
+- `@sva/auth-runtime` verwaltet vor dieser Projektion die Attribute
+  `studio_tenant_id`, `ssf_roles`, `ssf_permissions` und
+  `ssf_authorization_revision` im Keycloak-Benutzerprofil. Es erhält fremde
+  Profilfelder, begrenzt Sicht und Bearbeitung der SSF-Attribute auf Admins und
+  bestätigt den vollständigen Sollzustand per Read-back.
+- Der Bootstrap-Sync legt ausschließlich einen neuen, exakt konfigurierten und
+  in Keycloak aktivierten Tenant-Administrator lokal als `active` an. Normale
+  JIT-Anlage bleibt `pending`; vorhandene Account-Status sind kein
+  Reconcile-Ziel.
 - Das SSF-Plugin enthält für den nachgelagerten Session-Widerruf einen schmalen
   HTTP-Consumer. Basis- und Token-URL sowie die Credentials der getrennten
   technischen Identität `sva-studio-ssf-control-plane` stammen aus dem

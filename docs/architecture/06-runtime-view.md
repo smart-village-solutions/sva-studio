@@ -1297,7 +1297,22 @@ Der implementierte Studio-Pfad registriert die SSF-Projektion als generische
 Tenant-Lifecycle-Operation für Provisionierung und Reconcile. Der Handler liest
 die effektiven Studio-Permissions, verwendet den kanonisch aufgelösten
 Tenant-Realm und den Browserclient `ssf-frontend`. Vor der Projektion gleicht der
-Core die deklarierten Clients ab. Erst nach dem bestätigten Projektions-Read-back
+Core die deklarierten Clients ab. Danach stellt er die vier verwalteten
+SSF-Claim-Attribute im Keycloak-Benutzerprofil admin-only her und liest diese
+Konfiguration zurück. Erst anschließend schreibt er Benutzerattribute; ein
+abweichender oder nicht lesbarer Profilzustand stoppt den Lifecycle fail-closed.
+Der Read-back bestätigt zugleich den semantischen Erhalt der übernommenen
+fremden Attribute, Gruppen und übrigen Profilfelder. Readiness prüft den
+admin-only Vertrag bei jedem Lauf erneut und sperrt bei späterem Drift.
+Ein unmittelbar vor dem vollständigen Profil-PUT wiederholter semantischer Read
+blockiert den Write, wenn ein Keycloak-Admin das Profil zwischenzeitlich geändert hat.
+Ein nach dem PUT erkannter Verlust fremder Profilkonfiguration wird als
+`target_integrity_failed` persistent blockiert und als terminaler Lifecycle-Fehler
+klassifiziert. Erst eine manuelle Reparatur mit anschließendem explizitem Abgleich
+kann die Projektion wieder freigeben.
+Der initiale Tenant-Admin wird lokal nur beim erstmaligen Insert als `active`
+angelegt, wenn die exakt konfigurierte Keycloak-Identität aktiviert ist. Retries
+lassen vorhandene Statuswerte unverändert. Erst nach dem bestätigten Projektions-Read-back
 provisioniert das Plugin den Tenant-Grunddatensatz idempotent. Nach Client-Aktivierung
 und erneuter Baseline-/Revisionsprüfung wird `ssf.loginReady` für die technisch
 konvergierte Projektion bestätigt. Das Login-Verzeichnis ergänzt diesen

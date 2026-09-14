@@ -357,6 +357,27 @@ SSF-seitige Persistenz für Studio-Konfiguration betrieben. Verfügbarkeit und
 Rollout bleiben deshalb bewusst gekoppelt; V1 verlangt keine eigenständige
 Offline-Fähigkeit eines Teilsystems.
 
+Der Standalone-Updatepfad startet vor App und Provisioner einen einmaligen
+Migrationsservice aus exakt derselben unveränderlichen Studio-Image-Referenz.
+Dieser aktualisiert auch die versionierte SSF-Plugin-Datenbank und reconciliert
+getrennte Runtime- und Root-Logins. Identische Login-Namen sowie der
+PostgreSQL-Admin und die festen SSF-Gruppenrollen sind als Login-Ziele gesperrt;
+auch der eingebaute Principal `postgres` bleibt unabhängig vom konfigurierten
+Admin gesperrt. Die SSF-Zieldatenbank muss von der Studio-IAM-Datenbank
+verschieden sein und darf keine PostgreSQL-Systemdatenbank sein. Eine vorhandene Login-Rolle wird nur rotiert, wenn ihre Mitgliedschaft in
+der jeweils erwarteten SSF-Gruppenrolle sie bereits als SSF-eigen ausweist. Ein
+Runtime-Login mit effektivem Zugriff auf die Root-Gruppenrolle oder umgekehrt
+wird abgewiesen. Dasselbe gilt für jede weitere direkte oder indirekte
+Rollenmitgliedschaft. Prüfung und Reconcile beider Logins erfolgen in einer
+gemeinsamen Transaktion, sodass auch eine Kennwortrotation nur vollständig wirksam
+wird. Aus Runtime-URLs übernommene Kennwörter sind nur zulässig, wenn
+Host und Port exakt dem Migrationsziel entsprechen; bei gleichzeitig gesetztem
+separatem Kennwort bleibt die Runtime-URL einschließlich ihres Kennworts autoritativ.
+Ein Verstoß beendet den
+Migrationsservice vor jeder Änderung dieses Principals. Queryparameter dürfen
+diese Bindung nicht überschreiben; reconciliierte Logins erhalten weder
+Replikations- noch RLS-Bypass-Rechte.
+
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 
 Der Repository-Zwischenstand integriert Migration, Rollen, RLS sowie getrennte

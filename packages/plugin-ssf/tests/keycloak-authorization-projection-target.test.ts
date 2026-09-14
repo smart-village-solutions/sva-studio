@@ -56,6 +56,7 @@ const createClient = () => {
       }
     ),
     ensureAdminOnlyUserProfileAttributes: vi.fn(async () => undefined),
+    hasAdminOnlyUserProfileAttributes: vi.fn(async () => true),
     ensureUserAttributeProtocolMapper: vi.fn(async (input) => {
       mappers.set(input.claimName, {
         name: input.name,
@@ -353,4 +354,23 @@ it('does not accept hardcoded or duplicate claims from effective client-scope ma
     },
   ]);
   expect(await target.isReady('tenant-a', revision)).toBe(false);
+});
+
+it('fails readiness closed when an SSF profile attribute becomes user-editable', async () => {
+  const { client } = createClient();
+  const target = createSsfKeycloakAuthorizationProjectionTarget({
+    resolveTenant: async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client }),
+    readLoginReadiness: async () => true,
+    revokeSsfTenantSessions: async () => undefined,
+  });
+  const desired = desiredProjection();
+  const revision = createSsfAuthorizationRevision(desired);
+  await target.reconcile(desired, revision);
+
+  client.hasAdminOnlyUserProfileAttributes.mockResolvedValue(false);
+
+  await expect(target.isReady('tenant-a', revision)).resolves.toBe(false);
+  await expect(target.readBack('tenant-a')).rejects.toThrow(
+    'ssf_keycloak_projection_user_profile_mismatch'
+  );
 });

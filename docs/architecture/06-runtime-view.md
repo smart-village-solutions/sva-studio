@@ -1301,6 +1301,9 @@ Core die deklarierten Clients ab. Danach stellt er die vier verwalteten
 SSF-Claim-Attribute im Keycloak-Benutzerprofil admin-only her und liest diese
 Konfiguration zurück. Erst anschließend schreibt er Benutzerattribute; ein
 abweichender oder nicht lesbarer Profilzustand stoppt den Lifecycle fail-closed.
+Der Read-back bestätigt zugleich den semantischen Erhalt der übernommenen
+fremden Attribute, Gruppen und übrigen Profilfelder. Readiness prüft den
+admin-only Vertrag bei jedem Lauf erneut und sperrt bei späterem Drift.
 Der initiale Tenant-Admin wird lokal nur beim erstmaligen Insert als `active`
 angelegt, wenn die exakt konfigurierte Keycloak-Identität aktiviert ist. Retries
 lassen vorhandene Statuswerte unverändert. Erst nach dem bestätigten Projektions-Read-back

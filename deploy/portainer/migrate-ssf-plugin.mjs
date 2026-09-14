@@ -129,15 +129,29 @@ BEGIN
       ${sqlLiteral(password)}
     );
   ELSE
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_auth_members AS membership
+      JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
+      JOIN pg_roles AS member_role ON member_role.oid = membership.member
+      WHERE granted_role.rolname = ${sqlLiteral(role)}
+        AND member_role.rolname = ${sqlLiteral(login)}
+    ) THEN
+      RAISE EXCEPTION 'existing database login is not owned by its expected SSF role';
+    END IF;
     EXECUTE format(
       'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
       ${sqlLiteral(login)},
       ${sqlLiteral(password)}
     );
   END IF;
+  EXECUTE format(
+    'GRANT %I TO %I WITH INHERIT FALSE',
+    ${sqlLiteral(role)},
+    ${sqlLiteral(login)}
+  );
 END
 $ssf_login_role$;
-GRANT ${sqlIdentifier(role)} TO ${sqlIdentifier(login)} WITH INHERIT FALSE;
 REVOKE CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} FROM PUBLIC;
 GRANT CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} TO ${sqlIdentifier(login)};`
     );

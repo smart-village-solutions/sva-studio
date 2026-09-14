@@ -363,7 +363,9 @@ Dieser aktualisiert auch die versionierte SSF-Plugin-Datenbank und reconciliert
 getrennte Runtime- und Root-Logins. Identische Login-Namen sowie der
 PostgreSQL-Admin und die festen SSF-Gruppenrollen sind als Login-Ziele gesperrt;
 die SSF-Zieldatenbank muss außerdem von der Studio-IAM-Datenbank verschieden
-sein. Ein Verstoß beendet den Migrationsservice vor jedem Schema- oder Rollen-Write.
+sein. Eine vorhandene Login-Rolle wird nur rotiert, wenn ihre Mitgliedschaft in
+der jeweils erwarteten SSF-Gruppenrolle sie bereits als SSF-eigen ausweist. Ein
+Verstoß beendet den Migrationsservice vor jeder Änderung dieses Principals.
 
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 

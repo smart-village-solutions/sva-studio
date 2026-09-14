@@ -195,8 +195,10 @@ vor jedem Read oder Write abgelehnt.
 Die Projektion deklariert die Claims `studio_tenant_id`, `ssf_roles`,
 `ssf_permissions` und `ssf_authorization_revision` zusätzlich als admin-only
 Attribute des Keycloak-Benutzerprofils und bestätigt ihre Ein-/Mehrwertigkeit
-per Read-back. Dadurch kann Keycloak die projizierten Benutzerattribute nicht
-unbemerkt als undeklariert verwerfen.
+per Read-back. Jeder spätere Projektions-Read-back und jede Readiness-Prüfung
+bestätigt denselben admin-only Vertrag erneut. Dadurch kann Keycloak die
+projizierten Benutzerattribute weder unbemerkt als undeklariert verwerfen noch
+nach einer Profiländerung als benutzerbearbeitbar freigeben.
 Der operative Keycloak-Status und der Instanz-Audit verdichten den Read-back
 aller deklarierten Plugin-OIDC-Clients in einen gemeinsamen Alignment-Befund.
 Nach einer Studio-Client-Secret-Rotation verwendet der Registry-Abgleich einen

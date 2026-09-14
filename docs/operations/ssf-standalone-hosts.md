@@ -241,6 +241,9 @@ Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
 Runtime- und Root-Login müssen verschieden sein und dürfen weder dem
 `POSTGRES_USER` noch den festen Gruppenrollen `ssf_plugin_tenant_runtime` und
 `ssf_plugin_root` entsprechen; der Migrator prüft dies vor jedem Rollen-Write.
+Existiert ein konfigurierter Login bereits, muss er schon Mitglied seiner
+erwarteten SSF-Gruppenrolle sein. Andernfalls behandelt der Migrator ihn als
+fremden Principal und bricht vor Passwort-, Attribut- oder Grant-Änderungen ab.
 `SSF_PLUGIN_DATABASE_NAME` muss außerdem von `POSTGRES_DB` verschieden sein;
 diese Prüfung erfolgt vor dem ersten Datenbankzugriff des SSF-Migrators.
 Ein Fehler stoppt den Startpfad geschlossen.
@@ -290,11 +293,14 @@ Autorisierungsabgleich endet dann mit `target_readback_mismatch`.
 Der SSF-Autorisierungsabgleich liest deshalb das Profil über
 `GET /admin/realms/{realm}/users/profile`, ergänzt oder korrigiert ausschließlich
 die vier verwalteten Attribute über den entsprechenden `PUT` und bestätigt sie
-anschließend durch erneutes Lesen. Bestehende Attribute und die übrige
-Profilkonfiguration bleiben erhalten. Der Abgleich aktiviert keine allgemeine
+anschließend durch erneutes Lesen. Der Read-back bestätigt auch den semantischen
+Erhalt bestehender Attribute, Gruppen und der übrigen Profilkonfiguration; von
+Keycloak ergänzte Felder und reine Reihenfolgenänderungen sind zulässig. Der
+Abgleich aktiviert keine allgemeine
 Freigabe unverwalteter Attribute und erlaubt Endbenutzern keine Bearbeitung
-dieser Berechtigungsfelder. Eine nicht bestätigte Profiländerung blockiert die
-Projektion. Siehe
+dieser Berechtigungsfelder. Jeder spätere Projektions-Read-back prüft den
+admin-only Zustand erneut. Eine nicht bestätigte Profiländerung oder späterer
+Drift blockiert die Projektion. Siehe
 [Keycloak-Benutzerprofile](https://www.keycloak.org/docs/latest/server_admin/#_user-profile).
 
 Falls nach einer Benutzeraktivierung kein Abgleich läuft, kann eine authentifizierte

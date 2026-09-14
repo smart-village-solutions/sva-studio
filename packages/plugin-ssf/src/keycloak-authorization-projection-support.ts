@@ -11,6 +11,12 @@ const PAGE_SIZE = 100;
 const DEFAULT_SESSION_REVOCATION_TIMEOUT_MS = 10_000;
 const CLAIM_NAMES = Object.values(SSF_TOKEN_CLAIMS);
 const CLAIM_NAME_SET = new Set<string>(CLAIM_NAMES);
+const ADMIN_ONLY_PROFILE_ATTRIBUTES = [
+  { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
+  { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
+  { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
+  { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
+] as const;
 
 export const withSessionRevocationTimeout = async <T>(
   operation: (signal: AbortSignal) => Promise<T>,
@@ -87,12 +93,7 @@ export const readSingleAttribute = (attributes: KeycloakAttributes, name: string
 };
 
 export const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): Promise<void> => {
-  await tenant.client.ensureAdminOnlyUserProfileAttributes([
-    { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
-    { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
-    { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
-    { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
-  ]);
+  await tenant.client.ensureAdminOnlyUserProfileAttributes(ADMIN_ONLY_PROFILE_ATTRIBUTES);
   for (const [claimName, multivalued] of [
     [SSF_TOKEN_CLAIMS.instanceId, false],
     [SSF_TOKEN_CLAIMS.roles, true],
@@ -107,6 +108,14 @@ export const ensureClaimMappers = async (tenant: SsfKeycloakProjectionTenant): P
       multivalued,
       exclusiveClaim: true,
     });
+  }
+};
+
+export const verifyAdminOnlyUserProfileAttributes = async (
+  tenant: SsfKeycloakProjectionTenant
+): Promise<void> => {
+  if (!(await tenant.client.hasAdminOnlyUserProfileAttributes(ADMIN_ONLY_PROFILE_ATTRIBUTES))) {
+    throw new Error('ssf_keycloak_projection_user_profile_mismatch');
   }
 };
 

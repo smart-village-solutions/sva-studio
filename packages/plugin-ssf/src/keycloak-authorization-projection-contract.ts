@@ -38,6 +38,12 @@ export interface SsfKeycloakProjectionClient {
       multivalued: boolean;
     }>[]
   ): Promise<void>;
+  hasAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{
+      name: string;
+      multivalued: boolean;
+    }>[]
+  ): Promise<boolean>;
   ensureUserAttributeProtocolMapper(input: {
     readonly clientId: string;
     readonly name: string;

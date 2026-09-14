@@ -21,6 +21,7 @@ import {
   withSessionRevocationTimeout,
   withoutProjectionAttributes,
   verifyClaimMappers,
+  verifyAdminOnlyUserProfileAttributes,
 } from './keycloak-authorization-projection-support.js';
 import type { SsfAuthorizationProjectionTarget } from './authorization-projection-reconciler.js';
 import {
@@ -82,6 +83,7 @@ const readProjectedSubjects = async (
   instanceId: string
 ): Promise<readonly ProjectedSubject[]> => {
   const tenant = await requireTenant(dependencies.resolveTenant, instanceId);
+  await verifyAdminOnlyUserProfileAttributes(tenant);
   await verifyClaimMappers(tenant);
   const users = await listAllUsers(tenant.client);
   return users

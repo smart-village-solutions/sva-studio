@@ -1633,7 +1633,11 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
-        createJsonResponse(200, { ...existingProfile, attributes: expectedAttributes })
+        createJsonResponse(200, {
+          ...existingProfile,
+          attributes: [...expectedAttributes].reverse(),
+          keycloakAddedField: true,
+        })
       );
     const client = await createClient(fetchImpl);
 
@@ -1689,6 +1693,83 @@ describe('Keycloak admin client', () => {
       code: 'user_profile_attribute_readback_mismatch',
       retryable: true,
     });
+  });
+
+  it('fails closed when a user-profile update drops retained configuration', async () => {
+    const existingProfile = {
+      unmanagedAttributePolicy: 'DISABLED',
+      attributes: [{ name: 'email', displayName: '${email}' }],
+      groups: [{ name: 'identity', displayHeader: 'Identity' }],
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, existingProfile))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          attributes: [
+            {
+              name: 'ssf_roles',
+              multivalued: true,
+              permissions: { view: ['admin'], edit: ['admin'] },
+            },
+          ],
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureAdminOnlyUserProfileAttributes([{ name: 'ssf_roles', multivalued: true }])
+    ).rejects.toMatchObject({
+      code: 'user_profile_preservation_readback_mismatch',
+      retryable: true,
+    });
+  });
+
+  it('reads the admin-only user-profile contract without writing', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          attributes: [
+            {
+              name: 'ssf_permissions',
+              multivalued: true,
+              permissions: { view: ['admin'], edit: ['admin'] },
+            },
+          ],
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.hasAdminOnlyUserProfileAttributes([{ name: 'ssf_permissions', multivalued: true }])
+    ).resolves.toBe(true);
+    expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
+  });
+
+  it('reports a user-editable managed profile attribute as unsafe', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          attributes: [
+            {
+              name: 'ssf_permissions',
+              multivalued: true,
+              permissions: { view: ['admin', 'user'], edit: ['admin', 'user'] },
+            },
+          ],
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.hasAdminOnlyUserProfileAttributes([{ name: 'ssf_permissions', multivalued: true }])
+    ).resolves.toBe(false);
   });
 
   it('creates and updates protocol mappers only when configuration changed', async () => {

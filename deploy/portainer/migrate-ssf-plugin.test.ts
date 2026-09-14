@@ -27,6 +27,11 @@ describe('SSF plugin migration runner', () => {
     expect(source).toContain(
       'assertSafeDatabaseLogins({ postgresUser, rootLogin, runtimeLogin });'
     );
+    expect(source).toContain('FROM pg_auth_members AS membership');
+    expect(source).toContain(
+      "RAISE EXCEPTION 'existing database login is not owned by its expected SSF role'"
+    );
+    expect(source).toContain("'GRANT %I TO %I WITH INHERIT FALSE'");
   });
 
   it('reads a role password only from a connection string bound to that role and database', () => {

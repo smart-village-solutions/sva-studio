@@ -90,6 +90,20 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneRunbook).toContain('ps app provisioner');
   });
 
+  it('ships the SSF migrator and migrations in every Studio runtime image', () => {
+    for (const dockerfile of dockerfiles) {
+      expect(dockerfile).toContain(
+        '/workspace/deploy/portainer/migrate-ssf-plugin.mjs ./migrate-ssf-plugin.mjs'
+      );
+      expect(dockerfile).toContain(
+        '/workspace/deploy/portainer/ssf-plugin-database-config.mjs ./ssf-plugin-database-config.mjs'
+      );
+      expect(dockerfile).toContain(
+        '/workspace/packages/plugin-ssf/migrations ./packages/plugin-ssf/migrations'
+      );
+    }
+  });
+
   it('isolates the Kassel Traefik writer mount to the standalone provisioner', () => {
     expect(standaloneKasselIngress).toContain('provisioner:');
     expect(standaloneKasselIngress).toContain('app:');

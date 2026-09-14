@@ -110,7 +110,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 
 RUN apk add --no-cache bash curl ca-certificates postgresql-client
-RUN mkdir -p artifacts/tools/goose packages/data/scripts packages/data/migrations
+RUN mkdir -p artifacts/tools/goose packages/data/scripts packages/data/migrations packages/plugin-ssf/migrations
 
 COPY --from=build --chown=node:node /workspace/.deploy/sva-studio-react/node_modules ./node_modules
 COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./.output
@@ -120,6 +120,8 @@ COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-entrypoi
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-graphile-worker.mjs ./migrate-graphile-worker.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/verify-iam-schema.mjs ./verify-iam-schema.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
+COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-ssf-plugin.mjs ./migrate-ssf-plugin.mjs
+COPY --from=build --chown=node:node /workspace/deploy/portainer/ssf-plugin-database-config.mjs ./ssf-plugin-database-config.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/waste-tenant-migration-catalog.mjs ./waste-tenant-migration-catalog.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
@@ -127,6 +129,7 @@ COPY --from=build --chown=node:node /workspace/deploy/portainer/otel-bootstrap.m
 COPY --from=build --chown=node:node /workspace/packages/data/goose.config.json ./packages/data/goose.config.json
 COPY --from=build --chown=node:node /workspace/packages/data/scripts/goosew.sh ./packages/data/scripts/goosew.sh
 COPY --from=build --chown=node:node /workspace/packages/data/migrations ./packages/data/migrations
+COPY --from=build --chown=node:node /workspace/packages/plugin-ssf/migrations ./packages/plugin-ssf/migrations
 RUN chmod +x entrypoint.sh bootstrap-entrypoint.sh migrate-entrypoint.sh provisioner-entrypoint.sh packages/data/scripts/goosew.sh
 RUN chown -R node:node /app
 

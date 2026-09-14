@@ -5,7 +5,10 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 import { runInstanceRegistryStep } from './observability.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
-import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
+import {
+  buildConfiguredTenantProvisioningPluginSnapshot,
+  buildTenantProvisioningSnapshot,
+} from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
@@ -29,14 +32,7 @@ export const createProvisioningArtifacts = async (
               .filter(({ effectiveActive }) => effectiveActive)
               .map(({ moduleId }) => moduleId)
           );
-          return {
-            lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])]
-              .filter(({ pluginId }) => activeModuleIds.has(pluginId))
-              .sort((left, right) => left.pluginId.localeCompare(right.pluginId)),
-            oidcClients: [...(deps.readPluginOidcClientRequirements?.() ?? [])]
-              .filter(({ pluginId }) => activeModuleIds.has(pluginId))
-              .sort((left, right) => left.clientId.localeCompare(right.clientId)),
-          };
+          return buildConfiguredTenantProvisioningPluginSnapshot(deps, [...activeModuleIds]);
         })()
       : { lifecycles: [], oidcClients: [] };
   const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>

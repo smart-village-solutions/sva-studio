@@ -726,6 +726,44 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getRun().stepKey).toBe('lifecycle');
   });
 
+  it('replaces the transition evidence when an OIDC retry starts at registry', async () => {
+    const harness = createHarness();
+    const newRealmInstance = { ...harness.getInstance(), realmMode: 'new' as const };
+    Object.assign(harness.getRun(), {
+      status: 'requested',
+      stepKey: 'registry',
+      childKeycloakRunId: '00000000-0000-4000-8000-000000000003',
+      desiredSnapshot: buildTenantProvisioningSnapshot(
+        newRealmInstance,
+        {
+          instanceId: newRealmInstance.instanceId,
+          displayName: newRealmInstance.displayName,
+          parentDomain: newRealmInstance.parentDomain,
+          realmMode: 'new',
+          authRealm: newRealmInstance.authRealm,
+          authClientId: newRealmInstance.authClientId,
+          authIssuerUrl: newRealmInstance.authIssuerUrl,
+          idempotencyKey: 'idem-1',
+          featureFlags: newRealmInstance.featureFlags,
+        },
+        'fingerprint-1',
+        'kassel-traefik-file',
+        pluginSnapshot
+      ),
+    });
+    harness.changeInstance({ realmMode: 'existing' });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'keycloak',
+      childKeycloakRunId: '00000000-0000-4000-8000-000000000002',
+      errorCode: undefined,
+    });
+    expect(harness.repository.createKeycloakProvisioningRun).toHaveBeenCalledOnce();
+  });
+
   it('renews the lease while a provisioning step is still running', async () => {
     vi.useFakeTimers({ now });
     try {

@@ -71,7 +71,8 @@ describe('IAM schema readiness deployment contract', () => {
 
   it('ships the standalone Keycloak provisioner as a digest-bound internal service', () => {
     expect(standaloneProvisioner).toContain('provisioner:');
-    expect(standaloneProvisioner.match(/image: \$\{SVA_IMAGE_REF:/gu)).toHaveLength(2);
+    expect(standaloneProvisioner).toContain('migrate:');
+    expect(standaloneProvisioner.match(/image: \$\{SVA_IMAGE_REF:/gu)).toHaveLength(3);
     expect(standaloneProvisioner).toContain('./provisioner-entrypoint.sh');
     expect(standaloneProvisioner).toContain('command:');
     expect(standaloneProvisioner).toContain(
@@ -83,8 +84,24 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).toContain('name: ssf-backend_default');
     expect(standaloneProvisioner).not.toContain('ports:');
     expect(standaloneProvisioner).not.toContain('traefik');
+    expect(standaloneProvisioner).toContain('./migrate-entrypoint.sh');
+    expect(standaloneProvisioner).toContain("SSF_PLUGIN_DATABASE_ENABLED: 'true'");
     expect(standaloneRunbook).toContain('keycloak-provisioner.compose.yml');
     expect(standaloneRunbook).toContain('ps app provisioner');
+  });
+
+  it('ships the SSF migrator and migrations in every Studio runtime image', () => {
+    for (const dockerfile of dockerfiles) {
+      expect(dockerfile).toContain(
+        '/workspace/deploy/portainer/migrate-ssf-plugin.mjs ./migrate-ssf-plugin.mjs'
+      );
+      expect(dockerfile).toContain(
+        '/workspace/deploy/portainer/ssf-plugin-database-config.mjs ./ssf-plugin-database-config.mjs'
+      );
+      expect(dockerfile).toContain(
+        '/workspace/packages/plugin-ssf/migrations ./packages/plugin-ssf/migrations'
+      );
+    }
   });
 
   it('isolates the Kassel Traefik writer mount to the standalone provisioner', () => {
@@ -135,7 +152,11 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneUp).toContain('-f keycloak-provisioner.compose.yml');
     expect(standaloneUp).toContain('SVA_TENANT_INGRESS_MODE:-external');
     expect(standaloneUp).toContain('-f kassel-ingress.compose.yml');
+    expect(standaloneUp).toContain('run --rm migrate');
     expect(standaloneUp).toContain('up -d app provisioner');
+    expect(standaloneUp.indexOf('run --rm migrate')).toBeLessThan(
+      standaloneUp.indexOf('up -d app provisioner')
+    );
   });
 
   it('accepts an approved tagged image only when it is pinned to a digest', () => {

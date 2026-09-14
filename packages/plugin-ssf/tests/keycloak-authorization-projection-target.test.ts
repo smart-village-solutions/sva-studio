@@ -55,6 +55,8 @@ const createClient = () => {
         attributes.set(externalId, { ...input.attributes });
       }
     ),
+    ensureAdminOnlyUserProfileAttributes: vi.fn(async () => undefined),
+    hasAdminOnlyUserProfileAttributes: vi.fn(async () => true),
     ensureUserAttributeProtocolMapper: vi.fn(async (input) => {
       mappers.set(input.claimName, {
         name: input.name,
@@ -146,6 +148,12 @@ describe('SSF Keycloak authorization projection target', () => {
     });
     expect(attributes.get('stale-user')).toEqual({ locale: ['en'] });
     expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledTimes(4);
+    expect(client.ensureAdminOnlyUserProfileAttributes).toHaveBeenCalledWith([
+      { name: SSF_TOKEN_CLAIMS.instanceId, multivalued: false },
+      { name: SSF_TOKEN_CLAIMS.roles, multivalued: true },
+      { name: SSF_TOKEN_CLAIMS.permissions, multivalued: true },
+      { name: SSF_TOKEN_CLAIMS.authorizationRevision, multivalued: false },
+    ]);
     expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: 'ssf',
@@ -198,6 +206,7 @@ describe('SSF Keycloak authorization projection target', () => {
     await expect(
       target.reconcile(desired, createSsfAuthorizationRevision(desired))
     ).rejects.toThrow('ssf_keycloak_projection_subject_missing');
+    expect(client.ensureAdminOnlyUserProfileAttributes).not.toHaveBeenCalled();
     expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
     expect(client.updateUser).not.toHaveBeenCalled();
   });
@@ -345,4 +354,23 @@ it('does not accept hardcoded or duplicate claims from effective client-scope ma
     },
   ]);
   expect(await target.isReady('tenant-a', revision)).toBe(false);
+});
+
+it('fails readiness closed when an SSF profile attribute becomes user-editable', async () => {
+  const { client } = createClient();
+  const target = createSsfKeycloakAuthorizationProjectionTarget({
+    resolveTenant: async (instanceId) => ({ instanceId, clientId: 'ssf-frontend', client }),
+    readLoginReadiness: async () => true,
+    revokeSsfTenantSessions: async () => undefined,
+  });
+  const desired = desiredProjection();
+  const revision = createSsfAuthorizationRevision(desired);
+  await target.reconcile(desired, revision);
+
+  client.hasAdminOnlyUserProfileAttributes.mockResolvedValue(false);
+
+  await expect(target.isReady('tenant-a', revision)).resolves.toBe(false);
+  await expect(target.readBack('tenant-a')).rejects.toThrow(
+    'ssf_keycloak_projection_user_profile_mismatch'
+  );
 });

@@ -60,6 +60,31 @@ describe('SSF authorization lifecycle job', () => {
     });
   });
 
+  it('keeps a profile integrity failure blocked until an explicit lifecycle retry', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      readiness: vi.fn(),
+      reconcile: vi.fn().mockResolvedValue({
+        status: 'blocked',
+        generation: 4,
+        reason: 'target_integrity_failed',
+      }),
+    })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
+
+    await expect(
+      handler?.({
+        job: { instanceId: 'tenant-a' },
+        tenantLifecycle: { operation: 'reconcile', generation: 4 },
+        throwIfCancellationRequested: vi.fn(),
+      } as never)
+    ).rejects.toMatchObject({
+      cause: {
+        code: 'ssf.authorization-profile-integrity-failed',
+        retry: { kind: 'terminal' },
+        details: { reason: 'target_integrity_failed' },
+      },
+    });
+  });
+
   it('classifies runtime failures as retryable', async () => {
     const handler = createPluginJobExecutionHandlers({
       readiness: vi.fn(),

@@ -84,6 +84,9 @@ const resolveTenantAdminIdentityUser = async (input: {
   if (!user) {
     throw new Error('tenant_admin_bootstrap_user_not_found');
   }
+  if (user.enabled !== true) {
+    throw new Error('tenant_admin_bootstrap_user_not_enabled');
+  }
 
   return {
     identityProvider,
@@ -114,6 +117,7 @@ export const syncTenantAdminBootstrapAccount = async (input: {
       keycloakSubject: user.externalId,
       requestId: input.requestId,
       emitAuditLog: false,
+      initialStatus: 'active',
     });
 
     const systemAdminRoles = await resolveRolesByExternalNames(client, {

@@ -72,6 +72,21 @@ Studio-Sitzungen beenden würde. Fehler verbleiben fail-closed; SSF vergleicht
 den Tokenclaim mit der vom Runtime-Endpunkt gelieferten
 `authorizationRevision`.
 
+Vor den Benutzerwrites verwaltet Studio die dafür erforderlichen Attribute
+`studio_tenant_id`, `ssf_roles`, `ssf_permissions` und
+`ssf_authorization_revision` explizit im Keycloak-Benutzerprofil. Diese
+Attribute sind eindeutig, besitzen die vertraglich festgelegte Ein- oder
+Mehrwertigkeit und dürfen nur von Administratoren gesehen oder bearbeitet
+werden. Studio erhält alle anderen Profilfelder und bestätigt den geschriebenen
+Gesamtzustand durch erneutes Lesen. Ohne diesen Read-back bleibt die Projektion
+nicht bereit.
+
+Der explizit konfigurierte initiale Tenant-Administrator bildet eine enge
+Bootstrap-Ausnahme vom normalen JIT-Vertrag: Ist genau dieser Benutzer in
+Keycloak aktiviert, startet sein neu eingefügter lokaler Account als `active`.
+Normale JIT-Accounts starten `pending`, und ein wiederholter Bootstrap verändert
+keinen bestehenden Account-Status.
+
 Eine revisionsgleich bestätigte leere IAM-Projektion gilt als technisch
 konvergiert. Sie hält den Mandanten jedoch aus dem Admin-Login-Verzeichnis, bis
 der persistierte bestätigte Projektionszustand mindestens ein wirksam
@@ -119,6 +134,10 @@ Konfigurationen oder Revisionen berechnen.
 - Relevante Tenant-IAM-Änderungen sperren die SSF-Tokenausstellung bis zur
   verifizierten Projektion. Dadurch kann ein Keycloak-Ausfall die SSF-Nutzung
   des betroffenen Mandanten vorübergehend blockieren.
+- Ein Keycloak-Realm ohne bestätigten admin-only Benutzerprofilvertrag kann
+  keine SSF-Projektion als bereit veröffentlichen.
+- Die Bootstrap-Aktivierung gilt nur beim erstmaligen lokalen Insert; spätere
+  Freigaben und Sperren bleiben Eigentum der normalen Account-Lifecycle-Pfade.
 - Plattform-Grants und Tenant-Grants verwenden getrennte Katalog- und
   Projektionspfade, obwohl ihre Action-IDs im selben `ssf`-Namespace liegen.
 - Gesprächsinhalte, Gäste-Sessions und Auswertungsdaten bleiben außerhalb des

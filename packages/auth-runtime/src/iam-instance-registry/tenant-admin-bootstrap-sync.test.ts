@@ -42,7 +42,7 @@ describe('tenant admin bootstrap sync', () => {
       provider: {
         listUsers: vi.fn(async (query?: { username?: string; email?: string; exact?: boolean }) => {
           if (query?.username === 'tenant.admin') {
-            return [{ externalId: 'kc-user-1', username: 'TENANT.ADMIN' }];
+            return [{ externalId: 'kc-user-1', username: 'TENANT.ADMIN', enabled: true }];
           }
           return [];
         }),
@@ -104,6 +104,7 @@ describe('tenant admin bootstrap sync', () => {
       keycloakSubject: 'kc-user-1',
       requestId: 'req-1',
       emitAuditLog: false,
+      initialStatus: 'active',
     });
     expect(state.resolveRolesByExternalNames).toHaveBeenCalledWith(state.client, {
       instanceId: 'tenant-a',
@@ -121,6 +122,31 @@ describe('tenant admin bootstrap sync', () => {
       trigger: 'tenant_admin_bootstrap_sync',
     });
   });
+
+  it.each([false, undefined])(
+    'rejects a bootstrap identity whose enabled state is %s',
+    async (enabled) => {
+      state.resolveIdentityProviderForInstance.mockResolvedValueOnce({
+        provider: {
+          listUsers: vi
+            .fn()
+            .mockResolvedValue([{ externalId: 'kc-user-1', username: 'tenant.admin', enabled }]),
+        },
+      });
+      const { syncTenantAdminBootstrapAccount } = await import('./tenant-admin-bootstrap-sync.js');
+
+      await expect(
+        syncTenantAdminBootstrapAccount({
+          instanceId: 'tenant-a',
+          tenantAdminBootstrap: { username: 'tenant.admin' },
+        })
+      ).rejects.toThrow('tenant_admin_bootstrap_user_not_enabled');
+
+      expect(state.withInstanceScopedDb).not.toHaveBeenCalled();
+      expect(state.assignRoles).not.toHaveBeenCalled();
+      expect(state.notifyPermissionInvalidation).not.toHaveBeenCalled();
+    }
+  );
 
   it('does not link a different tenant identity by matching email', async () => {
     const listUsers = vi.fn(

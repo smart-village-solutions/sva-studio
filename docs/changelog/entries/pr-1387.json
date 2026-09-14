@@ -1,0 +1,4 @@
+{
+  "prNumber": 1387,
+  "body": "Zuverlässigere Bereitstellung von Smart Speech Flow\n\n- Neu eingerichtete Mandanten können ihre freigeschaltete Administration direkt verwenden.\n- Die erforderlichen Berechtigungen werden vollständig geprüft, bevor der Mandant als einsatzbereit gilt.\n- Datenbankaktualisierungen werden beim Start automatisch vor der Anwendung ausgeführt."
+}

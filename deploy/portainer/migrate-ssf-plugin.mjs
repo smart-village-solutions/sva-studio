@@ -1,5 +1,11 @@
 import { spawnSync } from 'node:child_process';
 
+import {
+  assertDistinctDatabaseNames,
+  assertSafeDatabaseLogins,
+  resolveDatabasePassword,
+} from './ssf-plugin-database-config.mjs';
+
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 
 const required = (value, name) => {
@@ -25,6 +31,20 @@ const targetDatabase = identifier(
   process.env.SSF_PLUGIN_DATABASE_NAME || 'sva_studio_ssf',
   'SSF_PLUGIN_DATABASE_NAME'
 );
+const adminDatabase = identifier(process.env.POSTGRES_DB, 'POSTGRES_DB');
+assertDistinctDatabaseNames({ adminDatabase, targetDatabase });
+
+const principalPassword = ({ explicitPassword, connectionString, login, sourceName }) => {
+  return resolveDatabasePassword({
+    explicitPassword,
+    connectionString,
+    expectedDatabase: targetDatabase,
+    expectedHost: postgresHost,
+    expectedPort: postgresPort,
+    expectedUser: login,
+    name: sourceName,
+  });
+};
 
 const runPsql = (database, sql) => {
   const result = spawnSync(
@@ -57,7 +77,6 @@ const runPsql = (database, sql) => {
 };
 
 const prepare = () => {
-  const adminDatabase = identifier(process.env.POSTGRES_DB, 'POSTGRES_DB');
   const exists = runPsql(
     adminDatabase,
     `SELECT 1 FROM pg_database WHERE datname = ${sqlLiteral(targetDatabase)}`
@@ -66,52 +85,90 @@ const prepare = () => {
 };
 
 const reconcile = () => {
+  const runtimeLogin = identifier(
+    process.env.SSF_PLUGIN_RUNTIME_DB_USER || 'sva_ssf_runtime',
+    'SSF_PLUGIN_RUNTIME_DB_USER'
+  );
+  const rootLogin = identifier(
+    process.env.SSF_PLUGIN_ROOT_DB_USER || 'sva_ssf_root',
+    'SSF_PLUGIN_ROOT_DB_USER'
+  );
+  assertSafeDatabaseLogins({ postgresUser, rootLogin, runtimeLogin });
   const principals = [
     {
-      login: identifier(
-        process.env.SSF_PLUGIN_RUNTIME_DB_USER || 'sva_ssf_runtime',
-        'SSF_PLUGIN_RUNTIME_DB_USER'
-      ),
-      password: required(
-        process.env.SSF_PLUGIN_RUNTIME_DB_PASSWORD,
-        'SSF_PLUGIN_RUNTIME_DB_PASSWORD'
-      ),
+      login: runtimeLogin,
+      password: principalPassword({
+        explicitPassword: process.env.SSF_PLUGIN_RUNTIME_DB_PASSWORD,
+        connectionString: process.env.SVA_STUDIO_SSF_DATABASE_URL,
+        login: runtimeLogin,
+        sourceName: 'SVA_STUDIO_SSF_DATABASE_URL',
+      }),
+      forbiddenRole: 'ssf_plugin_root',
       role: 'ssf_plugin_tenant_runtime',
     },
     {
-      login: identifier(
-        process.env.SSF_PLUGIN_ROOT_DB_USER || 'sva_ssf_root',
-        'SSF_PLUGIN_ROOT_DB_USER'
-      ),
-      password: required(process.env.SSF_PLUGIN_ROOT_DB_PASSWORD, 'SSF_PLUGIN_ROOT_DB_PASSWORD'),
+      login: rootLogin,
+      password: principalPassword({
+        explicitPassword: process.env.SSF_PLUGIN_ROOT_DB_PASSWORD,
+        connectionString: process.env.SVA_STUDIO_SSF_ROOT_DATABASE_URL,
+        login: rootLogin,
+        sourceName: 'SVA_STUDIO_SSF_ROOT_DATABASE_URL',
+      }),
+      forbiddenRole: 'ssf_plugin_tenant_runtime',
       role: 'ssf_plugin_root',
     },
   ];
-  for (const { login, password, role } of principals) {
-    runPsql(
-      targetDatabase,
-      `DO $ssf_login_role$
+  const reconcilePrincipalSql = ({ forbiddenRole, login, password, role }) => `
+DO $ssf_login_role$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(login)}) THEN
     EXECUTE format(
-      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT',
       ${sqlLiteral(login)},
       ${sqlLiteral(password)}
     );
   ELSE
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_auth_members AS membership
+      JOIN pg_roles AS granted_role ON granted_role.oid = membership.roleid
+      JOIN pg_roles AS member_role ON member_role.oid = membership.member
+      WHERE granted_role.rolname = ${sqlLiteral(role)}
+        AND member_role.rolname = ${sqlLiteral(login)}
+        AND member_role.rolcanlogin
+    ) OR pg_has_role(
+      ${sqlLiteral(login)},
+      ${sqlLiteral(forbiddenRole)},
+      'MEMBER'
+    ) OR EXISTS (
+      SELECT 1
+      FROM pg_roles AS candidate_role
+      WHERE candidate_role.rolname NOT IN (${sqlLiteral(login)}, ${sqlLiteral(role)})
+        AND pg_has_role(${sqlLiteral(login)}, candidate_role.oid, 'MEMBER')
+    ) THEN
+      RAISE EXCEPTION 'existing database login is not owned by its expected SSF role';
+    END IF;
     EXECUTE format(
-      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS NOINHERIT',
       ${sqlLiteral(login)},
       ${sqlLiteral(password)}
     );
   END IF;
+  EXECUTE format(
+    'GRANT %I TO %I WITH INHERIT FALSE',
+    ${sqlLiteral(role)},
+    ${sqlLiteral(login)}
+  );
 END
 $ssf_login_role$;
-GRANT ${sqlIdentifier(role)} TO ${sqlIdentifier(login)} WITH INHERIT FALSE;
 REVOKE CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} FROM PUBLIC;
-GRANT CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} TO ${sqlIdentifier(login)};`
-    );
-  }
+GRANT CONNECT ON DATABASE ${sqlIdentifier(targetDatabase)} TO ${sqlIdentifier(login)};`;
+  runPsql(
+    targetDatabase,
+    `BEGIN;
+${principals.map(reconcilePrincipalSql).join('\n')}
+COMMIT;`
+  );
 };
 
 const mode = process.argv[2];

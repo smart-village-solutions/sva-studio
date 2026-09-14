@@ -154,6 +154,75 @@ type KeycloakUserCreateResponse = {
   readonly location: string | null;
 };
 
+type KeycloakUserProfileAttribute = Readonly<{
+  name: string;
+  multivalued?: boolean;
+  permissions?: Readonly<{
+    view?: readonly string[];
+    edit?: readonly string[];
+  }>;
+  [key: string]: unknown;
+}>;
+
+type KeycloakUserProfileConfig = Readonly<{
+  attributes?: readonly KeycloakUserProfileAttribute[];
+  [key: string]: unknown;
+}>;
+
+const isJsonRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isNormalizationOnlyValue = (value: unknown): boolean =>
+  value === null ||
+  value === undefined ||
+  (Array.isArray(value) && value.length === 0) ||
+  (isJsonRecord(value) && Object.keys(value).length === 0);
+
+const isPreservedJson = (expected: unknown, actual: unknown): boolean => {
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) return expected.length === 0 && actual === undefined;
+    const unmatched = [...actual];
+    return expected.every((expectedItem) => {
+      const matchIndex = unmatched.findIndex((actualItem) =>
+        isPreservedJson(expectedItem, actualItem)
+      );
+      if (matchIndex < 0) return false;
+      unmatched.splice(matchIndex, 1);
+      return true;
+    });
+  }
+  if (isJsonRecord(expected)) {
+    if (!isJsonRecord(actual)) return Object.keys(expected).length === 0 && actual === undefined;
+    return Object.entries(expected).every(([key, value]) => {
+      if (!(key in actual) && isNormalizationOnlyValue(value)) return true;
+      return isPreservedJson(value, actual[key]);
+    });
+  }
+  return Object.is(expected, actual);
+};
+
+const isSemanticallyEqualJson = (left: unknown, right: unknown): boolean =>
+  isPreservedJson(left, right) && isPreservedJson(right, left);
+
+const hasAdminOnlyUserProfileAttributes = (
+  profile: KeycloakUserProfileConfig,
+  desiredAttributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
+): boolean =>
+  desiredAttributes.every((desired) => {
+    const matches = (profile.attributes ?? []).filter(
+      (attribute) => attribute.name === desired.name
+    );
+    const attribute = matches[0];
+    return (
+      matches.length === 1 &&
+      Boolean(attribute?.multivalued) === desired.multivalued &&
+      attribute?.permissions?.view?.length === 1 &&
+      attribute.permissions.view[0] === 'admin' &&
+      attribute.permissions.edit?.length === 1 &&
+      attribute.permissions.edit[0] === 'admin'
+    );
+  });
+
 export type KeycloakListUsersQuery = IdentityUserListQuery & {
   readonly briefRepresentation?: boolean;
 };
@@ -1745,6 +1814,95 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       },
       input.exclusiveClaim
     );
+  }
+
+  async ensureAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
+  ): Promise<void> {
+    await this.assertWriteAvailability();
+    const path = `/admin/realms/${encodePathSegment(this.realm)}/users/profile`;
+    const profile = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path,
+      operation: 'read_user_profile',
+    });
+    const desiredByName = new Map(attributes.map((attribute) => [attribute.name, attribute]));
+    const existingAttributes = profile.attributes ?? [];
+    const adminOnlyPermissions = { view: ['admin'], edit: ['admin'] } as const;
+    if (hasAdminOnlyUserProfileAttributes(profile, attributes)) return;
+
+    const retainedNames = new Set<string>();
+    const nextAttributes = existingAttributes.map((attribute) => {
+      const desired = desiredByName.get(attribute.name);
+      if (!desired || retainedNames.has(attribute.name)) return attribute;
+      retainedNames.add(attribute.name);
+      return {
+        ...attribute,
+        multivalued: desired.multivalued,
+        permissions: adminOnlyPermissions,
+      };
+    });
+    for (const desired of attributes) {
+      if (retainedNames.has(desired.name)) continue;
+      nextAttributes.push({
+        name: desired.name,
+        multivalued: desired.multivalued,
+        permissions: adminOnlyPermissions,
+      });
+    }
+
+    const preWriteProfile = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path,
+      operation: 'verify_user_profile_precondition',
+    });
+    if (!isSemanticallyEqualJson(profile, preWriteProfile)) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak user profile changed concurrently.',
+        statusCode: 409,
+        code: 'user_profile_concurrent_modification',
+        retryable: true,
+      });
+    }
+
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path,
+      body: JSON.stringify({ ...profile, attributes: nextAttributes }),
+      operation: 'update_user_profile',
+    });
+    const readBack = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path,
+      operation: 'verify_user_profile',
+    });
+    if (!hasAdminOnlyUserProfileAttributes(readBack, attributes)) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak user profile attribute read-back mismatch.',
+        statusCode: 502,
+        code: 'user_profile_attribute_readback_mismatch',
+        retryable: true,
+      });
+    }
+    if (!isPreservedJson({ ...profile, attributes: nextAttributes }, readBack)) {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak user profile preservation read-back mismatch.',
+        statusCode: 502,
+        code: 'user_profile_preservation_readback_mismatch',
+        retryable: false,
+      });
+    }
+  }
+
+  async hasAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
+  ): Promise<boolean> {
+    const profile = await this.executeWithResilience<KeycloakUserProfileConfig>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/profile`,
+      operation: 'verify_user_profile_permissions',
+    });
+    return hasAdminOnlyUserProfileAttributes(profile, attributes);
   }
 
   async ensureAudienceProtocolMapper(input: {

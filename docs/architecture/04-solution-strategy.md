@@ -331,6 +331,12 @@ Snapshot bis zum Worker. Der Browserclient wird zunächst deaktiviert provisioni
 seine Aktivierung gehört dem tenantgebundenen Projektions-Lifecycle. Der Lifecycle
 bestätigt zuerst die IAM-Projektion, provisioniert danach die Tenant-Baseline und
 prüft zuletzt Client, Baseline und Revision gemeinsam vor `ready`.
+Vor den Benutzerwrites stellt die Projektion die vier SSF-Claim-Attribute im
+Keycloak-Benutzerprofil mit ausschließlich administrativen Sicht- und
+Bearbeitungsrechten her und bestätigt diesen Zustand per Read-back. Ein explizit
+konfigurierter Bootstrap-Administrator wird bei der ersten lokalen Anlage nur
+dann `active`, wenn derselbe Keycloak-Benutzer aktiviert ist; Wiederholungen
+verändern vorhandene Account-Status nicht.
 Directory und Runtime prüfen dieselbe Bereitschaft. Details:
 [Login-Vertrag](../api/ssf-admin-login-mandanten-v1.md).
 

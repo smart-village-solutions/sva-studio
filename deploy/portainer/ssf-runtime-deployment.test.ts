@@ -29,6 +29,7 @@ describe('SSF runtime deployment contract', () => {
 
     expect(compose).toContain("SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'");
     const provisioner = compose.slice(compose.indexOf('  provisioner:'));
+    const migrate = compose.slice(compose.indexOf('  migrate:'), compose.indexOf('  bootstrap:'));
     expect(provisioner).toContain(
       "SVA_STUDIO_SSF_LOGIN_ORIGIN: '${SVA_STUDIO_SSF_LOGIN_ORIGIN:-}'"
     );
@@ -47,6 +48,10 @@ describe('SSF runtime deployment contract', () => {
       "SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'"
     );
     expect(provisioner).toContain(
+      "SVA_STUDIO_SSF_ROOT_DATABASE_URL: '${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'"
+    );
+    expect(migrate).toContain("SVA_STUDIO_SSF_DATABASE_URL: '${SVA_STUDIO_SSF_DATABASE_URL:-}'");
+    expect(migrate).toContain(
       "SVA_STUDIO_SSF_ROOT_DATABASE_URL: '${SVA_STUDIO_SSF_ROOT_DATABASE_URL:-}'"
     );
     const canonicalApp = canonicalCompose.slice(

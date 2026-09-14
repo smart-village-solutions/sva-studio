@@ -2,6 +2,25 @@ services:
   app:
     image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
 
+  migrate:
+    image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
+    entrypoint:
+      - ./migrate-entrypoint.sh
+    env_file:
+      - ./runtime.env
+    environment:
+      POSTGRES_USER: sva
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: '5432'
+      WASTE_TENANT_MIGRATIONS_ENABLED: 'false'
+      SSF_PLUGIN_DATABASE_ENABLED: 'true'
+      SSF_PLUGIN_DATABASE_NAME: sva_studio_ssf
+      SSF_PLUGIN_RUNTIME_DB_USER: sva_ssf_runtime
+      SSF_PLUGIN_ROOT_DB_USER: sva_ssf_root
+    restart: 'no'
+    networks:
+      - studio-internal
+
   provisioner:
     image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
     entrypoint:

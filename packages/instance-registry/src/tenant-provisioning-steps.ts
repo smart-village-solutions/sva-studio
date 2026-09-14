@@ -70,17 +70,31 @@ const readDiagnosticErrorCode = (error: unknown): string => {
 
 export const buildProvisioningFailureDiagnostics = (
   error: unknown
-): Readonly<Record<string, unknown>> =>
-  redactObject({
+): Readonly<Record<string, unknown>> => {
+  const code = readDiagnosticString(error, 'code');
+  // Treat SQLSTATE-shaped codes conservatively: database messages may contain row values.
+  if (code && /^[0-9A-Z]{5}$/u.test(code)) {
+    return redactObject({
+      diagnostic_error: {
+        name: readDiagnosticErrorType(error),
+        code,
+        table: readDiagnosticString(error, 'table'),
+        column: readDiagnosticString(error, 'column'),
+        constraint: readDiagnosticString(error, 'constraint'),
+      },
+    });
+  }
+  return redactObject({
     diagnostic_error: {
       name: readDiagnosticErrorType(error),
       message: readDiagnosticString(error, 'message') ?? toDiagnosticString(error),
-      code: readDiagnosticString(error, 'code'),
+      code,
       syscall: readDiagnosticString(error, 'syscall'),
       path: readDiagnosticString(error, 'path'),
       dest: readDiagnosticString(error, 'dest'),
     },
   });
+};
 
 const registryStep: StepHandler = async ({
   deps,

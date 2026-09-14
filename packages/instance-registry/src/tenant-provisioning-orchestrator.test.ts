@@ -24,6 +24,7 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
 import { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
+import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 
 const now = new Date('2026-09-12T12:00:00.000Z');
 const pluginSnapshot = {
@@ -209,6 +210,71 @@ describe('tenant provisioning parent orchestrator', () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    { step: 'ingress', next: 'tls', callback: 'publishTenantIngress' },
+    { step: 'tls', next: 'module_readiness', callback: 'probeTenantEndpoint' },
+    { step: 'module_readiness', next: 'login', callback: 'readProvisioningModuleReadiness' },
+    { step: 'login', next: 'activate', callback: 'probeTenantEndpoint' },
+  ] as const)('preserves $callback across the real runtime lock for $step', async ({ step, next, callback }) => {
+    const harness = createHarness();
+    harness.setReadiness('ready');
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: step,
+      terminalEvidence: {
+        routerName: 'studio-tenant-tenant-a',
+        configHash: 'sha256:router',
+      },
+    });
+    const globalRepository = {
+      ...harness.repository,
+      getInstanceById: vi.fn<InstanceRegistryRepository['getInstanceById']>(),
+      listProvisioningRuns: vi.fn<InstanceRegistryRepository['listProvisioningRuns']>(),
+      updateProvisioningRun: vi.fn<InstanceRegistryRepository['updateProvisioningRun']>(),
+    };
+    const scopedRepository = {
+      ...harness.repository,
+      renewProvisioningRunLease: vi.fn<InstanceRegistryRepository['renewProvisioningRunLease']>(),
+    };
+    const globalClient = { query: vi.fn(async () => ({ rowCount: 0, rows: [] })), release: vi.fn() };
+    const scopedClient = { query: vi.fn(async () => ({ rowCount: 0, rows: [] })), release: vi.fn() };
+    const connect = vi.fn().mockResolvedValueOnce(globalClient).mockResolvedValueOnce(scopedClient);
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect }),
+      createRepository: vi.fn().mockReturnValueOnce(globalRepository).mockReturnValueOnce(scopedRepository),
+      serviceDeps: { invalidateHost: vi.fn() },
+    });
+
+    await runtime.withRegistryProvisioningWorkerDeps((workerDeps) =>
+      processNextTenantProvisioningRun({
+        ...workerDeps,
+        publishTenantIngress: harness.deps.publishTenantIngress,
+        probeTenantEndpoint: harness.deps.probeTenantEndpoint,
+        readProvisioningModuleReadiness: harness.deps.readProvisioningModuleReadiness,
+      }, { workerId: 'worker-1', now })
+    );
+
+    expect(harness.deps[callback]).toHaveBeenCalledOnce();
+    expect(harness.getRun()).toMatchObject({ status: 'provisioning', stepKey: next, errorCode: undefined });
+    expect(scopedRepository.getInstanceById).toHaveBeenCalledWith('tenant-a');
+    expect(scopedRepository.listProvisioningRuns).toHaveBeenCalledWith('tenant-a');
+    expect(scopedRepository.updateProvisioningRun).toHaveBeenCalledOnce();
+    expect(globalRepository.getInstanceById).not.toHaveBeenCalled();
+    expect(globalRepository.listProvisioningRuns).not.toHaveBeenCalled();
+    expect(globalRepository.updateProvisioningRun).not.toHaveBeenCalled();
+    expect(globalRepository.renewProvisioningRunLease).toHaveBeenCalledOnce();
+    expect(scopedRepository.renewProvisioningRunLease).not.toHaveBeenCalled();
+    expect(scopedClient.query.mock.calls).toEqual([
+      ['BEGIN'],
+      ['SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', ['tenant-a']],
+      ['SET LOCAL ROLE iam_app;'],
+      ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
+      ['COMMIT'],
+    ]);
+    expect(globalClient.release).toHaveBeenCalledOnce();
+    expect(scopedClient.release).toHaveBeenCalledOnce();
+  });
+
   it('reaches terminal success only after Keycloak, ingress, login, and module readiness', async () => {
     const harness = createHarness();
     const iterate = () =>
@@ -339,7 +405,7 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
   });
 
-  it('retries transient ingress availability failures until the deadline', async () => {
+  it('retries transient ingress availability failures and advances after recovery', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {
       status: 'provisioning',
@@ -362,6 +428,17 @@ describe('tenant provisioning parent orchestrator', () => {
       status: 'provisioning',
       stepKey: 'tls',
       errorCode: 'kassel_ingress_probe_failed',
+      completedAt: undefined,
+    });
+    expect(harness.getInstance().status).toBe('requested');
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(probeTenantEndpoint).toHaveBeenCalledTimes(2);
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'module_readiness',
+      errorCode: undefined,
       completedAt: undefined,
     });
     expect(harness.getInstance().status).toBe('requested');
@@ -477,6 +554,13 @@ describe('tenant provisioning parent orchestrator', () => {
         error_type: 'Error',
         error_code: 'tenant_provisioning_step_failed',
         classification: 'tenant_provisioning_step_failed',
+        diagnostic_error: {
+          name: 'Error',
+          code: 'XX001',
+          table: 'instance_provisioning_runs',
+          column: 'terminal_evidence',
+          constraint: 'instance_provisioning_runs_pkey',
+        },
       })
     );
     const logged = JSON.stringify(state.logger.warn.mock.calls);
@@ -490,6 +574,57 @@ describe('tenant provisioning parent orchestrator', () => {
       status: 'provisioning',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
+    });
+  });
+
+  it('logs redacted outer exception details without changing the scheduled retry', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
+    vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
+      new Error('update failed password=outer-secret')
+    );
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'tenant_provisioning_step_exception',
+      expect.objectContaining({
+        failure_phase: 'step_execution',
+        diagnostic_error: {
+          name: 'Error',
+          message: 'update failed password=[REDACTED]',
+          code: null,
+          syscall: null,
+          path: null,
+          dest: null,
+        },
+      })
+    );
+    expect(JSON.stringify(state.logger.warn.mock.calls)).not.toContain('outer-secret');
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'ingress',
+      errorCode: 'tenant_provisioning_step_failed',
+      nextAttemptAt: new Date(now.getTime() + 5_000).toISOString(),
+      completedAt: undefined,
+    });
+  });
+
+  it('preserves the scheduled retry when outer diagnostic logging throws', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
+    vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(new Error('update failed'));
+    state.logger.warn.mockImplementationOnce(() => {
+      throw new Error('logging_failed');
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'provisioning',
+      stepKey: 'ingress',
+      errorCode: 'tenant_provisioning_step_failed',
+      nextAttemptAt: new Date(now.getTime() + 5_000).toISOString(),
     });
   });
 

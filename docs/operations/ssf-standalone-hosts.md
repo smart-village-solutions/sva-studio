@@ -148,8 +148,13 @@ Vor einem Queue-Vertragswechsel müssen alle alten `legacy`-Läufe geleert oder
 bewusst als historische Evidenz belassen werden. Nur Create-Läufe mit
 `snapshot_version = '2.0'` werden automatisiert beansprucht. Für Diagnose sind
 Elternlauf-ID, `child_keycloak_run_id`, `step_key`, Lease, Attempts, Deadline,
-Fehlercode und `terminal_evidence` gemeinsam auszuwerten. Ein Retry darf nur
-denselben unveränderten Soll-Snapshot fortsetzen. Er wird in der
+Fehlercode und `terminal_evidence` gemeinsam auszuwerten. Ein Retry behält den
+tenantbezogenen Sollzustand unverändert bei. Damit ein fehlgeschlagener Lauf
+nach einem Release nicht dauerhaft auf einer veralteten technischen
+Plugin-Revision wartet, bindet die Retry-Transaktion die Lifecycle- und
+OIDC-Verträge der unveränderten Modulzuweisungen an den aktuell geladenen
+Plugin-Snapshot und persistiert diese Revision atomar mit der Wiederaufnahme
+des Elternlaufs. Er wird in der
 Instanz-Detailansicht über „Mandanten-Provisionierung erneut starten“ oder per
 `POST /api/v1/iam/instances/:instanceId/provisioning/retry` mit Berechtigung
 `instance.create` und einem frischen `Idempotency-Key` ausgelöst. Der

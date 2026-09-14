@@ -194,6 +194,7 @@ SET status = 'requested',
     END,
     lease_owner = NULL, lease_expires_at = NULL, next_attempt_at = now(),
     deadline_at = $5::timestamptz, completed_at = NULL,
+    desired_snapshot = $6::jsonb,
     error_code = NULL, error_message = NULL,
     actor_id = COALESCE($3, actor_id), request_id = COALESCE($4, request_id), updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
@@ -206,6 +207,7 @@ RETURNING ${provisioningColumns};
         input.actorId ?? null,
         input.requestId ?? null,
         input.deadlineAt,
+        JSON.stringify(input.desiredSnapshot),
       ]
     )
   );

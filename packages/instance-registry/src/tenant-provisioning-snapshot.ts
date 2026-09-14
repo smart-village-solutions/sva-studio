@@ -11,11 +11,37 @@ type PluginOidcClients = NonNullable<
   ReturnType<NonNullable<InstanceRegistryServiceDeps['readPluginOidcClientRequirements']>>
 >;
 
+type TenantProvisioningPluginSnapshot = Readonly<{
+  lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
+  oidcClients: PluginOidcClients;
+}>;
+
 const copyLifecycle = (lifecycle: ProvisioningPluginTenantLifecycleContract) => ({
   ...lifecycle,
   operations: lifecycle.operations.map((operation) => ({ ...operation })),
   readinessChecks: lifecycle.readinessChecks.map((check) => ({ ...check })),
 });
+
+const copyOidcClient = (client: PluginOidcClients[number]) => ({
+  ...client,
+  ...('redirectUris' in client ? { redirectUris: [...client.redirectUris] } : {}),
+  ...('webOrigins' in client ? { webOrigins: [...client.webOrigins] } : {}),
+});
+
+export const buildConfiguredTenantProvisioningPluginSnapshot = (
+  deps: InstanceRegistryServiceDeps,
+  assignedModuleIds: readonly string[]
+): TenantProvisioningPluginSnapshot => {
+  const assignedModules = new Set(assignedModuleIds);
+  return {
+    lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])]
+      .filter(({ pluginId }) => assignedModules.has(pluginId))
+      .sort((left, right) => left.pluginId.localeCompare(right.pluginId)),
+    oidcClients: [...(deps.readPluginOidcClientRequirements?.() ?? [])]
+      .filter(({ pluginId }) => assignedModules.has(pluginId))
+      .sort((left, right) => left.clientId.localeCompare(right.clientId)),
+  };
+};
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -94,10 +120,7 @@ export const buildTenantProvisioningSnapshot = (
   input: CreateInstanceProvisioningInput,
   payloadFingerprint: string,
   automationMode: 'external' | 'kassel-traefik-file' = 'external',
-  pluginSnapshot: Readonly<{
-    lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
-    oidcClients: PluginOidcClients;
-  }> = { lifecycles: [], oidcClients: [] }
+  pluginSnapshot: TenantProvisioningPluginSnapshot = { lifecycles: [], oidcClients: [] }
 ) => ({
   ...registryConfiguration(instance),
   registryFingerprint: buildPayloadFingerprint(registryConfiguration(instance)),
@@ -106,11 +129,7 @@ export const buildTenantProvisioningSnapshot = (
   automationMode,
   pluginSnapshotVersion: '1.0',
   pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
-  pluginOidcClients: pluginSnapshot.oidcClients.map((client) => ({
-    ...client,
-    ...('redirectUris' in client ? { redirectUris: [...client.redirectUris] } : {}),
-    ...('webOrigins' in client ? { webOrigins: [...client.webOrigins] } : {}),
-  })),
+  pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
   payloadFingerprint,
 });
 
@@ -138,6 +157,43 @@ export const readTenantProvisioningPluginSnapshot = (
   return {
     lifecycles: snapshot.pluginLifecycles,
     oidcClients: snapshot.pluginOidcClients,
+  };
+};
+
+export const rebaseTenantProvisioningPluginSnapshot = (
+  run: InstanceProvisioningRun,
+  deps: InstanceRegistryServiceDeps
+): Readonly<{
+  desiredSnapshot: Readonly<Record<string, unknown>>;
+  lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
+}> => {
+  const previousPluginSnapshot = readTenantProvisioningPluginSnapshot(run);
+  const assignedModules = run.desiredSnapshot.assignedModules;
+  if (
+    !Array.isArray(assignedModules) ||
+    !assignedModules.every((moduleId) => typeof moduleId === 'string')
+  ) {
+    throw new Error('provisioning_plugin_snapshot_missing');
+  }
+  const pluginSnapshot = buildConfiguredTenantProvisioningPluginSnapshot(deps, assignedModules);
+  const currentLifecyclePluginIds = new Set(
+    pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)
+  );
+  if (
+    pluginSnapshot.lifecycles.length === 0 ||
+    previousPluginSnapshot.lifecycles.some(
+      ({ pluginId }) => !currentLifecyclePluginIds.has(pluginId)
+    )
+  ) {
+    throw new Error('provisioning_plugin_snapshot_missing');
+  }
+  return {
+    desiredSnapshot: {
+      ...run.desiredSnapshot,
+      pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
+      pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
+    },
+    lifecycles: pluginSnapshot.lifecycles,
   };
 };
 

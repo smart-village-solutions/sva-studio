@@ -77,17 +77,17 @@ const latestRun = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+const currentNewsLifecycle = {
+  pluginId: 'news',
+  contractVersion: 1 as const,
+  contractRevision: 'news-1:contract',
+  operations: [{ operation: 'provision' as const, jobTypeId: 'news.provision' }],
+  readinessChecks: [],
+};
+
 const kasselPluginSnapshot = {
   pluginSnapshotVersion: '1.0',
-  pluginLifecycles: [
-    {
-      pluginId: 'news',
-      contractVersion: 1,
-      contractRevision: 'news-1:contract',
-      operations: [{ operation: 'provision', jobTypeId: 'news.provision' }],
-      readinessChecks: [],
-    },
-  ],
+  pluginLifecycles: [currentNewsLifecycle],
   pluginOidcClients: [],
 };
 
@@ -309,6 +309,8 @@ const createDeps = (
       },
     ],
   ]),
+  pluginTenantLifecycleRegistry: new Map([['news', currentNewsLifecycle]]),
+  readPluginOidcClientRequirements: () => [],
   ...overrides,
 });
 
@@ -789,7 +791,11 @@ describe('instance registry service facade', () => {
     const kasselRun = {
       ...latestRun,
       status: 'provisioning' as const,
-      desiredSnapshot: { automationMode: 'kassel-traefik-file', ...kasselPluginSnapshot },
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: ['news'],
+        ...kasselPluginSnapshot,
+      },
       payloadFingerprint: buildCreateInstancePayloadFingerprint({
         instanceId: 'demo',
         displayName: 'Demo',
@@ -1006,7 +1012,11 @@ describe('instance registry service facade', () => {
       ...latestRun,
       status: 'failed' as const,
       stepKey: 'login',
-      desiredSnapshot: { automationMode: 'kassel-traefik-file', ...kasselPluginSnapshot },
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: ['news'],
+        ...kasselPluginSnapshot,
+      },
       payloadFingerprint: buildCreateInstancePayloadFingerprint({
         instanceId: 'demo',
         displayName: 'Demo',
@@ -1077,7 +1087,11 @@ describe('instance registry service facade', () => {
       ...latestRun,
       status: 'failed' as const,
       stepKey: 'login',
-      desiredSnapshot: { automationMode: 'kassel-traefik-file', ...kasselPluginSnapshot },
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: ['news'],
+        ...kasselPluginSnapshot,
+      },
       errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
     };
@@ -1108,6 +1122,15 @@ describe('instance registry service facade', () => {
     await expect(
       createInstanceRegistryService(
         createDeps(repository, {
+          pluginTenantLifecycleRegistry: new Map([
+            [
+              'news',
+              {
+                ...currentNewsLifecycle,
+                contractRevision: 'news-2:contract',
+              },
+            ],
+          ]),
           readModuleActivationPolicySnapshot: () => ({
             revision: 'catalog-1',
             modules: [
@@ -1136,11 +1159,16 @@ describe('instance registry service facade', () => {
         instanceId: 'demo',
         idempotencyKey: 'idem-1',
         requestId: 'retry-1',
+        desiredSnapshot: expect.objectContaining({
+          pluginLifecycles: [
+            expect.objectContaining({ pluginId: 'news', contractRevision: 'news-2:contract' }),
+          ],
+        }),
       })
     );
     expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
       instanceId: 'demo',
-      lifecycles: kasselPluginSnapshot.pluginLifecycles,
+      lifecycles: [expect.objectContaining({ contractRevision: 'news-2:contract' })],
       forcePluginIds: ['news'],
     });
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
@@ -1354,6 +1382,45 @@ describe('instance registry service facade', () => {
         desiredSnapshot: expect.objectContaining({ automationMode: 'external' }),
       })
     );
+  });
+
+  it('rejects retry when a snapshotted lifecycle plugin is no longer configured', async () => {
+    const failedInstance = {
+      ...baseInstance,
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'module_readiness',
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: ['news'],
+        ...kasselPluginSnapshot,
+      },
+      errorCode: 'provisioning_deadline_exceeded',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+    });
+
+    await expect(
+      createInstanceRegistryService(
+        createDeps(repository, { pluginTenantLifecycleRegistry: new Map() })
+      ).retryTenantProvisioning({
+        instanceId: 'demo',
+        actorId: 'admin-1',
+        requestId: 'retry-1',
+      })
+    ).rejects.toThrow('provisioning_plugin_snapshot_missing');
+
+    expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
 
   it('persists the environment-resolved public issuer in the create snapshot', async () => {

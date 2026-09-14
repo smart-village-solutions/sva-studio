@@ -96,6 +96,7 @@ nachgewiesenen Stufe fortsetzen.
 - **WHEN** eine berechtigte Person nach Behebung der Ursache über die sichtbare Retry-Aktion `POST /api/v1/iam/instances/:instanceId/provisioning/retry` startet
 - **AND** die Anfrage einen frischen HTTP-Idempotency-Key trägt, ohne den ursprünglichen Create-Key erneut zu benötigen
 - **THEN** reconciled das System jede Stufe gegen den aktuellen, zum Sollsnapshot passenden Ist-Zustand
+- **AND** behält es den tenantbezogenen Sollzustand bei und bindet nur dessen technische Plugin-Verträge atomar an den aktuell geladenen Plugin-Snapshot
 - **AND** verwendet es bereits korrekte Artefakte weiter
 - **AND** setzt es am ersten unvollständigen, veralteten oder abweichenden Schritt fort
 - **AND** gibt eine wiederholte Retry-Anfrage den bereits aufgenommenen Lauf zurück, statt einen weiteren Elternlauf zu erzeugen

@@ -21,25 +21,29 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { shouldExposeAutomatedProvisioning } from './service-active-provisioning.js';
-import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
+import {
+  readTenantProvisioningPluginSnapshot,
+  rebaseTenantProvisioningPluginSnapshot,
+} from './tenant-provisioning-snapshot.js';
 
 const prepareProvisioningRetry = async (
   deps: InstanceRegistryServiceDeps,
   run: Parameters<typeof readTenantProvisioningPluginSnapshot>[0],
   attribution: { readonly actorId?: string; readonly requestId?: string }
-): Promise<void> => {
+): Promise<Readonly<Record<string, unknown>>> => {
   await syncProtectedSystemAdminPermissions(deps, run.instanceId);
   await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
     instanceId: run.instanceId,
     actorId: attribution.actorId,
     requestId: attribution.requestId,
   });
-  const { lifecycles } = readTenantProvisioningPluginSnapshot(run);
+  const { desiredSnapshot, lifecycles } = rebaseTenantProvisioningPluginSnapshot(run, deps);
   await deps.repository.persistPluginTenantLifecycleReconcileIntents({
     instanceId: run.instanceId,
     lifecycles,
     forcePluginIds: lifecycles.map(({ pluginId }) => pluginId),
   });
+  return desiredSnapshot;
 };
 
 const assertIdempotentCreateRetry = async (
@@ -92,13 +96,14 @@ export const resolveIdempotentCreateRetry = async (
   ) {
     throw new Error('provisioning_retry_mode_invalid');
   }
-  await prepareProvisioningRetry(deps, matchingRun, input);
+  const desiredSnapshot = await prepareProvisioningRetry(deps, matchingRun, input);
   const retriedRun = await deps.repository.retryProvisioningRun({
     instanceId: instance.instanceId,
     idempotencyKey: input.idempotencyKey,
     actorId: input.actorId,
     requestId: input.requestId,
     deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    desiredSnapshot,
   });
   if (!retriedRun) throw new Error('provisioning_retry_conflict');
   const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
@@ -165,13 +170,14 @@ export const createRetryTenantProvisioningHandler =
       throw new Error('provisioning_retry_instance_status_invalid');
     }
 
-    await prepareProvisioningRetry(deps, latestCreateRun, input);
+    const desiredSnapshot = await prepareProvisioningRetry(deps, latestCreateRun, input);
     const retriedRun = await deps.repository.retryProvisioningRun({
       instanceId: instance.instanceId,
       idempotencyKey: latestCreateRun.idempotencyKey,
       actorId: input.actorId,
       requestId: input.requestId,
       deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      desiredSnapshot,
     });
     if (!retriedRun) throw new Error('provisioning_retry_conflict');
     const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';

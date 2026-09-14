@@ -360,6 +360,7 @@ export type InstanceRegistryRepository = {
     actorId?: string;
     requestId?: string;
     deadlineAt: string;
+    desiredSnapshot: Readonly<Record<string, unknown>>;
   }) => Promise<InstanceProvisioningRun | null>;
   readonly appendAuditEvent: (input: {
     instanceId: string;

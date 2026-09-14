@@ -192,6 +192,11 @@ Client-Scopes effektiv angehängten Mapper geprüft, damit konkurrierende
 SSF-Claims die Freigabe blockieren. Beide Verträge sind versioniert und
 allowlist-basiert; zusätzliche, vom Plugin eingeschleuste Keycloak-Felder werden
 vor jedem Read oder Write abgelehnt.
+Die Projektion deklariert die Claims `studio_tenant_id`, `ssf_roles`,
+`ssf_permissions` und `ssf_authorization_revision` zusätzlich als admin-only
+Attribute des Keycloak-Benutzerprofils und bestätigt ihre Ein-/Mehrwertigkeit
+per Read-back. Dadurch kann Keycloak die projizierten Benutzerattribute nicht
+unbemerkt als undeklariert verwerfen.
 Der operative Keycloak-Status und der Instanz-Audit verdichten den Read-back
 aller deklarierten Plugin-OIDC-Clients in einen gemeinsamen Alignment-Befund.
 Nach einer Studio-Client-Secret-Rotation verwendet der Registry-Abgleich einen
@@ -224,6 +229,10 @@ Mandantenschlüssel. Tenantzugriffe werden serverseitig an diesen Kontext
 gebunden und durch Row-Level Security abgesichert. Root-Zugriffe verwenden
 einen getrennten, ausdrücklich autorisierten Datenbankpfad. Datenbankmigrationen,
 fachliche Repositories und Schema-Ownership liegen beim SSF-Plugin.
+Im Standalone-Profil führt ein einmaliger Service aus derselben gebundenen
+Studio-Image-Referenz diese Migrationen vor App und Provisioner aus. Getrennte
+Runtime- und Root-Logins dürfen weder identisch noch der PostgreSQL-Admin oder
+eine feste SSF-Gruppenrolle sein.
 
 ## Administrationsoberflächen für die Runtime-Konfiguration
 
@@ -296,8 +305,9 @@ gelieferten bestätigten Revision.
 ```text
 Root-System-Admin legt eine Studio-Instanz an
     → Core provisioniert den Tenant-Realm und getrennte OIDC-Clients
-    → Core richtet den initialen Tenant-Admin ein
+    → Core legt den aktivierten initialen Tenant-Admin lokal einmalig als aktiv an
     → Core aktiviert das installierte automatische SSF-Plugin
+    → Core bestätigt die admin-only SSF-Benutzerprofilattribute
     → Core materialisiert die tenantlokale SSF-IAM-Basis
     → SSF-Plugin legt die Tenant-Grunddaten in seiner Datenbank an
     → Readiness-Prüfungen bestätigen Realm, Clients, IAM und Plugin-Daten

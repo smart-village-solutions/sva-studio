@@ -238,6 +238,9 @@ bereits in `runtime.env` vorhandenen Runtime- und Root-Verbindungs-URLs liefern
 die rollenbezogenen Kennwörter, ohne sie in eine zweite Konfiguration zu kopieren;
 Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
 `SSF_PLUGIN_*_DB_PASSWORD`-Werte bleiben für andere Laufzeitprofile zulässig.
+Runtime- und Root-Login müssen verschieden sein und dürfen weder dem
+`POSTGRES_USER` noch den festen Gruppenrollen `ssf_plugin_tenant_runtime` und
+`ssf_plugin_root` entsprechen; der Migrator prüft dies vor jedem Rollen-Write.
 Ein Fehler stoppt den Startpfad geschlossen.
 Der reguläre Studio-Rollout bleibt im [Rollout-Prozess](../guides/studio-rollout-process.md)
 beschrieben; eine zusätzliche Migrationsplattform ist dafür nicht erforderlich.

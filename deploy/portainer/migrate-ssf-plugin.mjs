@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-import { readDatabasePassword } from './ssf-plugin-database-config.mjs';
+import { assertSafeDatabaseLogins, readDatabasePassword } from './ssf-plugin-database-config.mjs';
 
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 
@@ -89,6 +89,7 @@ const reconcile = () => {
     process.env.SSF_PLUGIN_ROOT_DB_USER || 'sva_ssf_root',
     'SSF_PLUGIN_ROOT_DB_USER'
   );
+  assertSafeDatabaseLogins({ postgresUser, rootLogin, runtimeLogin });
   const principals = [
     {
       login: runtimeLogin,

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { readDatabasePassword } from './ssf-plugin-database-config.mjs';
+import { assertSafeDatabaseLogins, readDatabasePassword } from './ssf-plugin-database-config.mjs';
 
 describe('SSF plugin migration runner', () => {
   it('passes secret-bearing SQL to psql through stdin instead of process arguments', () => {
@@ -20,6 +20,9 @@ describe('SSF plugin migration runner', () => {
     expect(source).toContain('ssf_plugin_tenant_runtime');
     expect(source).toContain('SSF_PLUGIN_ROOT_DB_PASSWORD');
     expect(source).toContain('ssf_plugin_root');
+    expect(source).toContain(
+      'assertSafeDatabaseLogins({ postgresUser, rootLogin, runtimeLogin });'
+    );
   });
 
   it('reads a role password only from a connection string bound to that role and database', () => {
@@ -48,5 +51,47 @@ describe('SSF plugin migration runner', () => {
         name: 'SVA_STUDIO_SSF_DATABASE_URL',
       })
     ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_database_mismatch');
+  });
+
+  it.each([
+    {
+      expectedError: 'SSF_PLUGIN_DATABASE_USERS_must_differ',
+      rootLogin: 'shared_login',
+      runtimeLogin: 'shared_login',
+    },
+    {
+      expectedError: 'SSF_PLUGIN_RUNTIME_DB_USER_reserved',
+      rootLogin: 'sva_ssf_root',
+      runtimeLogin: 'sva',
+    },
+    {
+      expectedError: 'SSF_PLUGIN_ROOT_DB_USER_reserved',
+      rootLogin: 'sva',
+      runtimeLogin: 'sva_ssf_runtime',
+    },
+    {
+      expectedError: 'SSF_PLUGIN_RUNTIME_DB_USER_reserved',
+      rootLogin: 'sva_ssf_root',
+      runtimeLogin: 'ssf_plugin_tenant_runtime',
+    },
+    {
+      expectedError: 'SSF_PLUGIN_ROOT_DB_USER_reserved',
+      rootLogin: 'ssf_plugin_root',
+      runtimeLogin: 'sva_ssf_runtime',
+    },
+  ])('rejects unsafe migration login names: $expectedError', (input) => {
+    expect(() => assertSafeDatabaseLogins({ postgresUser: 'sva', ...input })).toThrow(
+      input.expectedError
+    );
+  });
+
+  it('accepts distinct unreserved migration login names', () => {
+    expect(() =>
+      assertSafeDatabaseLogins({
+        postgresUser: 'sva',
+        rootLogin: 'sva_ssf_root',
+        runtimeLogin: 'sva_ssf_runtime',
+      })
+    ).not.toThrow();
   });
 });

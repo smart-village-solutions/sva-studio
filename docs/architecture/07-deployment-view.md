@@ -357,6 +357,13 @@ SSF-seitige Persistenz für Studio-Konfiguration betrieben. Verfügbarkeit und
 Rollout bleiben deshalb bewusst gekoppelt; V1 verlangt keine eigenständige
 Offline-Fähigkeit eines Teilsystems.
 
+Der Standalone-Updatepfad startet vor App und Provisioner einen einmaligen
+Migrationsservice aus exakt derselben unveränderlichen Studio-Image-Referenz.
+Dieser aktualisiert auch die versionierte SSF-Plugin-Datenbank und reconciliert
+getrennte Runtime- und Root-Logins. Identische Login-Namen sowie der
+PostgreSQL-Admin und die festen SSF-Gruppenrollen sind als Login-Ziele gesperrt;
+ein Verstoß beendet den Migrationsservice vor jedem Rollen-Write.
+
 Siehe [Studio–SSF-Vertrag für Runtime-Konfiguration V1](../api/ssf-studio-runtime-konfigurationsvertrag-v1.md).
 
 Der Repository-Zwischenstand integriert Migration, Rollen, RLS sowie getrennte

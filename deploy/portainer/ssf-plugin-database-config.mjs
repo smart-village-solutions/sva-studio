@@ -25,3 +25,16 @@ export const readDatabasePassword = ({
   if (!password) throw new Error(`${name}_password_missing`);
   return password;
 };
+
+export const assertSafeDatabaseLogins = ({ postgresUser, rootLogin, runtimeLogin }) => {
+  if (runtimeLogin === rootLogin) {
+    throw new Error('SSF_PLUGIN_DATABASE_USERS_must_differ');
+  }
+  const reservedLogins = new Set([postgresUser, 'ssf_plugin_root', 'ssf_plugin_tenant_runtime']);
+  if (reservedLogins.has(runtimeLogin)) {
+    throw new Error('SSF_PLUGIN_RUNTIME_DB_USER_reserved');
+  }
+  if (reservedLogins.has(rootLogin)) {
+    throw new Error('SSF_PLUGIN_ROOT_DB_USER_reserved');
+  }
+};

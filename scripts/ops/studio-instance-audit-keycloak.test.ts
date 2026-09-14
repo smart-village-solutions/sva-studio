@@ -108,7 +108,7 @@ const configureScenario = (overrides: ScenarioOverrides = {}): void => {
     'view-users',
     'view-realm',
     'manage-realm',
-    'manage-clients',
+    'view-clients',
   ];
 
   kcadmMock.responder = async (args) => {
@@ -244,7 +244,7 @@ describe('inspectRealmAndClients contract', () => {
             'view-users',
             'view-realm',
             'manage-realm',
-            'manage-clients',
+            'view-clients',
           ],
         },
         status: 'pass',
@@ -279,7 +279,7 @@ describe('inspectRealmAndClients contract', () => {
             'view-users',
             'view-realm',
             'manage-realm',
-            'manage-clients',
+            'view-clients',
           ],
         },
         status: 'pass',
@@ -420,6 +420,28 @@ describe('inspectRealmAndClients contract', () => {
     expect(byId.get('keycloak.user.system_admin.not_instance_registry_admin')).toMatchObject({
       status: 'fail',
     });
+  });
+
+  it('rejects legacy client write access even when all read roles are assigned', async () => {
+    configureScenario({
+      tenantAdminServiceRoles: [
+        'manage-users',
+        'view-users',
+        'view-realm',
+        'manage-realm',
+        'view-clients',
+        'manage-clients',
+      ],
+    });
+
+    const result = await inspectRealmAndClients(target, {
+      authSecret: loginSecretMarker,
+      tenantAdminSecret: tenantAdminSecretMarker,
+    });
+    const byId = new Map(result.checks.map((check) => [check.checkId, check]));
+
+    expect(byId.get('keycloak.client.tenant_admin.roles')).toMatchObject({ status: 'fail' });
+    expect(byId.get('tenant_iam.access')).toMatchObject({ status: 'pass' });
   });
 
   it('preserves missing-client failures without attempting client-secret reads', async () => {

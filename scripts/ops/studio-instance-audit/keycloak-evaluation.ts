@@ -5,8 +5,10 @@ export const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'view-users',
   'view-realm',
   'manage-realm',
-  'manage-clients',
+  'view-clients',
 ] as const;
+
+const FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES = ['manage-clients'] as const;
 
 export type KeycloakClientSnapshot = Readonly<{
   id: string;
@@ -63,8 +65,12 @@ const expectedLoginClientConfig = (hostname: string) => {
 const sameList = (actual: readonly string[], expected: readonly string[]): boolean =>
   JSON.stringify(actual) === JSON.stringify(expected);
 
-const hasTenantAdminRoles = (roles: readonly string[]): boolean =>
+const hasRequiredTenantAdminRoles = (roles: readonly string[]): boolean =>
   REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => roles.includes(roleName));
+
+const hasMinimalTenantAdminRoleContract = (roles: readonly string[]): boolean =>
+  hasRequiredTenantAdminRoles(roles) &&
+  FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => !roles.includes(roleName));
 
 type LoginUrlState = Readonly<{
   postLogoutRedirectUris: readonly string[];
@@ -215,7 +221,7 @@ const buildTenantAdminRolesCheck = (
 ): AuditCheckResult => ({
   checkId: 'keycloak.client.tenant_admin.roles',
   details: { assignedRoles: roles },
-  status: hasTenantAdminRoles(roles) ? 'pass' : 'fail',
+  status: hasMinimalTenantAdminRoleContract(roles) ? 'pass' : 'fail',
   summary: target.tenantAdminClientId,
   title: 'Tenant-Admin-Serviceaccount hat realm-management-Rollen',
 });
@@ -277,7 +283,7 @@ const buildTenantIamAccessCheck = (
 ): AuditCheckResult => ({
   checkId: 'tenant_iam.access',
   details: { assignedRoles: roles },
-  status: hasTenantAdminRoles(roles) ? 'pass' : 'fail',
+  status: hasRequiredTenantAdminRoles(roles) ? 'pass' : 'fail',
   summary: target.tenantAdminClientId,
   title: 'Tenant-IAM-Zugriff ist funktionsfähig',
 });

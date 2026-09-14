@@ -40,10 +40,11 @@ Provisioner gehören.
   aber weder Clients noch Secrets verändern.
 - UI, Audit und MCP können Struktur-, Access- und Reconcile-Befunde ihrer
   technischen Identität zuordnen.
-- Bestandsinstanzen erhalten `view-clients` beim nächsten expliziten
-  Provisioning- oder Reconcile-Lauf. `manage-clients` bleibt während dieser
-  additiven Phase bestehen und wird nicht durch diesen Codeblock entzogen; die
-  Software allein verändert keine produktive Keycloak-Instanz.
+- Nach Abschluss der additiven Einführungsphase gleicht ein expliziter
+  Provisioning- oder Reconcile-Lauf Bestandsinstanzen auf den minimalen Vertrag
+  ab: Er ergänzt zuerst `view-clients`, entzieht danach `manage-clients` und
+  verifiziert das Ergebnis per Read-back. Ohne einen ausdrücklich gestarteten
+  Lauf verändert die Software keine Keycloak-Instanz.
 
 ## Alternativen
 

@@ -243,14 +243,16 @@ Dem Service-Account des Tenant-Admin-Clients werden mindestens folgende
 - `view-users`
 - `view-realm`
 - `manage-realm`
-- `manage-clients`
+- `view-clients`
 
 Begründung:
 
 - Die ersten vier Rollen decken tenant-lokales User- und Realm-Rollen-Management ab.
-- `manage-clients` ist erforderlich, damit Studio den referenzierten Login-Client
-  `authClientId` im Tenant-Realm lesen und Passwort-Setup-Mails mit dem richtigen
-  `client_id` auslösen kann.
+- `view-clients` erlaubt Studio, den referenzierten Login-Client `authClientId`
+  im Tenant-Realm read-only zu prüfen und bei Passwort-Setup-Mails als
+  Redirect-Ziel zu referenzieren.
+- `manage-clients` ist nicht zulässig. Clientmutationen und Secret-Rotation
+  bleiben ausschließlich beim Provisioner.
 
 Nicht Ziel dieses Vertrags:
 

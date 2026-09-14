@@ -18,7 +18,8 @@
 - [x] 3.1 `view-clients` in den Provisioning- und Reconcile-Sollvertrag des Tenant-IAM-Service-Accounts aufnehmen.
 - [x] 3.2 Clientmutationen und Secret-Rotation ausschließlich auf den Provisioner-Pfad begrenzen.
 - [ ] 3.3 Bestehende Tenant-IAM-Service-Accounts zunächst um `view-clients` ergänzen und den neuen Access-Probe-Vertrag nachweisen.
-- [ ] 3.4 Erst nach erfolgreichem Staging-Nachweis `manage-clients` explizit aus Tenant-IAM-Service-Accounts entfernen.
+- [x] 3.4a Den expliziten Provisioning-/Reconcile-Pfad implementieren, der `view-clients` vor dem Entzug von `manage-clients` sicherstellt und den Rollenvertrag per Read-back verifiziert.
+- [ ] 3.4b Erst nach erfolgreichem Staging-Nachweis `manage-clients` mit diesem Pfad aus bestehenden Tenant-IAM-Service-Accounts entfernen.
 - [ ] 3.5 Negativtests für Tenant-IAM-Clientmutationen und Positivtests für autorisierte Provisioner-Mutationen ergänzen.
 
 ## 4. Doctor, UI und MCP

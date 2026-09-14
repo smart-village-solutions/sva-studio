@@ -91,6 +91,8 @@ const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'view-clients',
 ] as const;
 
+const LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME = 'manage-clients';
+
 type KeycloakClientRepresentation = {
   readonly id: string;
   readonly clientId: string;
@@ -783,18 +785,57 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       .filter((role) => !currentRoleNames.has(role.name))
       .map((role) => ({ id: role.id, name: role.name }));
 
-    if (rolesToAdd.length === 0) {
+    if (rolesToAdd.length > 0) {
+      await this.executeWithResilience<void>({
+        method: 'POST',
+        path:
+          `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
+          `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+        body: JSON.stringify(rolesToAdd),
+        operation: 'grant_service_account_client_roles',
+      });
+    }
+
+    const legacyClientWriteRole = currentRoleMappings.find(
+      (role) => role.name === LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME
+    );
+    if (legacyClientWriteRole) {
+      await this.executeWithResilience<void>({
+        method: 'DELETE',
+        path:
+          `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
+          `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+        body: JSON.stringify([{ id: legacyClientWriteRole.id, name: legacyClientWriteRole.name }]),
+        operation: 'revoke_service_account_client_roles',
+      });
+    }
+
+    if (rolesToAdd.length === 0 && !legacyClientWriteRole) {
       return;
     }
 
-    await this.executeWithResilience<void>({
-      method: 'POST',
+    const reconciledRoleMappings = await this.executeWithResilience<KeycloakRoleMapping[]>({
+      method: 'GET',
       path:
         `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}` +
         `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
-      body: JSON.stringify(rolesToAdd),
-      operation: 'grant_service_account_client_roles',
+      operation: 'verify_service_account_client_roles',
     });
+    const reconciledRoleNames = new Set(reconciledRoleMappings.map((role) => role.name));
+    const missingReconciledRoles = REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.filter(
+      (roleName) => !reconciledRoleNames.has(roleName)
+    );
+    if (
+      missingReconciledRoles.length > 0 ||
+      reconciledRoleNames.has(LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME)
+    ) {
+      throw new KeycloakAdminRequestError({
+        message: 'Tenant admin service-account role reconciliation could not be verified.',
+        statusCode: 500,
+        code: 'tenant_admin_service_access_readback_failed',
+        retryable: false,
+      });
+    }
   }
 
   async getUserAttributes(

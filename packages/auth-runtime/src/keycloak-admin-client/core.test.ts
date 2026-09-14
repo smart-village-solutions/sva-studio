@@ -1263,7 +1263,16 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, [{ id: 'role-view-users', name: 'view-users' }])
       )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-view-clients', name: 'view-clients' },
+        ])
+      );
 
     const client = await createClient(fetchImpl);
 
@@ -1282,7 +1291,7 @@ describe('Keycloak admin client', () => {
     ]);
   });
 
-  it('keeps legacy client write access during the additive role rollout', async () => {
+  it('removes legacy client write access after client read access is present', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -1317,6 +1326,16 @@ describe('Keycloak admin client', () => {
           { id: 'role-view-realm', name: 'view-realm' },
           { id: 'role-manage-realm', name: 'manage-realm' },
           { id: 'role-manage-clients', name: 'manage-clients' },
+          { id: 'role-view-clients', name: 'view-clients' },
+        ])
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
           { id: 'role-view-clients', name: 'view-clients' },
         ])
       );
@@ -1324,14 +1343,15 @@ describe('Keycloak admin client', () => {
     const client = await createClient(fetchImpl);
 
     await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
-    expect(fetchImpl).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ method: 'DELETE' })
-    );
+    expect(fetchImpl.mock.calls[6]?.[1]?.method).toBe('DELETE');
+    expect(JSON.parse(String(fetchImpl.mock.calls[6]?.[1]?.body))).toEqual([
+      { id: 'role-manage-clients', name: 'manage-clients' },
+    ]);
+    expect(fetchImpl.mock.calls[7]?.[1]?.method).toBe('GET');
+    expect(fetchImpl).toHaveBeenCalledTimes(8);
   });
 
-  it('adds client read access without revoking legacy client write access', async () => {
+  it('adds client read access before revoking legacy client write access', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -1368,18 +1388,68 @@ describe('Keycloak admin client', () => {
           { id: 'role-manage-clients', name: 'manage-clients' },
         ])
       )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-view-clients', name: 'view-clients' },
+        ])
+      );
 
     const client = await createClient(fetchImpl);
 
     await client.ensureTenantAdminServiceAccess('tenant-admin');
 
     expect(fetchImpl.mock.calls[6]?.[1]?.method).toBe('POST');
-    expect(fetchImpl).toHaveBeenCalledTimes(7);
-    expect(fetchImpl).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ method: 'DELETE' })
-    );
+    expect(fetchImpl.mock.calls[7]?.[1]?.method).toBe('DELETE');
+    expect(fetchImpl.mock.calls[8]?.[1]?.method).toBe('GET');
+    expect(fetchImpl).toHaveBeenCalledTimes(9);
+  });
+
+  it('fails closed when the tenant admin service role readback still has client write access', async () => {
+    type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;
+    const roleMappings = [
+      { id: 'role-manage-users', name: 'manage-users' },
+      { id: 'role-view-users', name: 'view-users' },
+      { id: 'role-view-realm', name: 'view-realm' },
+      { id: 'role-manage-realm', name: 'manage-realm' },
+      { id: 'role-manage-clients', name: 'manage-clients' },
+      { id: 'role-view-clients', name: 'view-clients' },
+    ];
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'realm-management-client-id', clientId: 'realm-management' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          id: 'service-account-user-id',
+          username: 'service-account-tenant-admin',
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, roleMappings))
+      .mockResolvedValueOnce(createJsonResponse(200, roleMappings))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, roleMappings));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureTenantAdminServiceAccess('tenant-admin')
+    ).rejects.toMatchObject<KeycloakAdminRequestError>({
+      code: 'tenant_admin_service_access_readback_failed',
+      statusCode: 500,
+    });
   });
 
   it('skips tenant admin service role updates when the exact required roles are assigned', async () => {

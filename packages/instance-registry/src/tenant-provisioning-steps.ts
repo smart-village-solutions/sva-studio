@@ -73,27 +73,13 @@ const readDiagnosticErrorCode = (error: unknown): string => {
 };
 
 export const buildProvisioningFailureDiagnostics = (
-  error: unknown
+  error: unknown,
+  options: { includeNodeSystemFields?: boolean } = {}
 ): Readonly<Record<string, unknown>> => {
   const code = readDiagnosticString(error, 'code');
-  const postgresDiagnosticKeys = ['severity', 'schema', 'table', 'column', 'constraint', 'routine'];
-  const isPostgresError =
-    Boolean(code && /^[0-9A-Z]{5}$/u.test(code)) &&
-    postgresDiagnosticKeys.some((key) => readDiagnosticString(error, key) !== undefined);
-  if (isPostgresError) {
-    return redactObject({
-      diagnostic_error: {
-        name: readDiagnosticErrorType(error),
-        code,
-        table: readDiagnosticString(error, 'table'),
-        column: readDiagnosticString(error, 'column'),
-        constraint: readDiagnosticString(error, 'constraint'),
-      },
-    });
-  }
   const syscall = readDiagnosticString(error, 'syscall');
   const isNodeSystemError = Boolean(code && /^E[A-Z0-9_]{1,99}$/u.test(code) && syscall);
-  if (isNodeSystemError) {
+  if (options.includeNodeSystemFields && isNodeSystemError) {
     return redactObject({
       diagnostic_error: {
         name: readDiagnosticErrorType(error),
@@ -101,6 +87,14 @@ export const buildProvisioningFailureDiagnostics = (
         syscall,
         path: readDiagnosticString(error, 'path'),
         dest: readDiagnosticString(error, 'dest'),
+      },
+    });
+  }
+  if (code && /^[0-9A-Z]{5}$/u.test(code)) {
+    return redactObject({
+      diagnostic_error: {
+        name: readDiagnosticErrorType(error),
+        code,
       },
     });
   }
@@ -210,7 +204,7 @@ const ingressStep: StepHandler = async ({
         error_type: readDiagnosticErrorType(error),
         error_code: readDiagnosticErrorCode(error),
         classification: INGRESS_FAILURE_CLASSIFICATION,
-        ...buildProvisioningFailureDiagnostics(error),
+        ...buildProvisioningFailureDiagnostics(error, { includeNodeSystemFields: true }),
       });
     } catch {
       // Diagnostic logging must never replace the provisioning failure.

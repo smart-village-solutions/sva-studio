@@ -556,9 +556,6 @@ describe('tenant provisioning parent orchestrator', () => {
         diagnostic_error: {
           name: 'Error',
           code: 'XX001',
-          table: 'instance_provisioning_runs',
-          column: 'terminal_evidence',
-          constraint: 'instance_provisioning_runs_pkey',
         },
       })
     );

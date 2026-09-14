@@ -174,10 +174,10 @@ export const rebaseTenantProvisioningPluginSnapshot = (
     !Array.isArray(assignedModules) ||
     !assignedModules.every((moduleId) => typeof moduleId === 'string')
   ) {
-    throw new Error('provisioning_plugin_snapshot_missing');
+    throw new Error('provisioning_retry_conflict');
   }
   if (previousPluginSnapshot.oidcClients.length > 0 && !deps.readPluginOidcClientRequirements) {
-    throw new Error('provisioning_plugin_snapshot_missing');
+    throw new Error('provisioning_retry_conflict');
   }
   const pluginSnapshot = buildConfiguredTenantProvisioningPluginSnapshot(deps, assignedModules);
   const currentOidcClientIds = new Set(pluginSnapshot.oidcClients.map(({ clientId }) => clientId));
@@ -186,7 +186,7 @@ export const rebaseTenantProvisioningPluginSnapshot = (
       ({ clientId }) => !currentOidcClientIds.has(clientId)
     )
   ) {
-    throw new Error('provisioning_plugin_snapshot_missing');
+    throw new Error('provisioning_retry_conflict');
   }
   const currentLifecyclePluginIds = new Set(
     pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)
@@ -197,7 +197,7 @@ export const rebaseTenantProvisioningPluginSnapshot = (
       ({ pluginId }) => !currentLifecyclePluginIds.has(pluginId)
     )
   ) {
-    throw new Error('provisioning_plugin_snapshot_missing');
+    throw new Error('provisioning_retry_conflict');
   }
   return {
     desiredSnapshot: {

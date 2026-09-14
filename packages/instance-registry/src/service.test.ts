@@ -1463,7 +1463,7 @@ describe('instance registry service facade', () => {
         actorId: 'admin-1',
         requestId: 'retry-1',
       })
-    ).rejects.toThrow('provisioning_plugin_snapshot_missing');
+    ).rejects.toThrow('provisioning_retry_conflict');
 
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
@@ -1510,7 +1510,7 @@ describe('instance registry service facade', () => {
       createInstanceRegistryService(
         createDeps(repository, { readPluginOidcClientRequirements: currentOidcReader })
       ).retryTenantProvisioning({ instanceId: 'demo' })
-    ).rejects.toThrow('provisioning_plugin_snapshot_missing');
+    ).rejects.toThrow('provisioning_retry_conflict');
 
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });

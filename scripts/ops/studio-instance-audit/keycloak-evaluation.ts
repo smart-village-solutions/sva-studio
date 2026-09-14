@@ -5,7 +5,14 @@ export const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'view-users',
   'view-realm',
   'manage-realm',
-  'manage-clients',
+  'view-clients',
+] as const;
+
+const ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
+  ...REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES,
+  'query-users',
+  'query-groups',
+  'query-clients',
 ] as const;
 
 export type KeycloakClientSnapshot = Readonly<{
@@ -29,7 +36,8 @@ export type KeycloakAuditSnapshot = Readonly<{
   systemAdminUserRoles: readonly string[];
   tenantAdminClient: KeycloakClientSnapshot | null;
   tenantAdminSecret: string | null;
-  tenantAdminServiceRoles: readonly string[];
+  tenantAdminServiceDirectRoles: readonly string[];
+  tenantAdminServiceEffectiveRoles: readonly string[];
 }>;
 
 type ExpectedSecrets = Readonly<{
@@ -63,8 +71,21 @@ const expectedLoginClientConfig = (hostname: string) => {
 const sameList = (actual: readonly string[], expected: readonly string[]): boolean =>
   JSON.stringify(actual) === JSON.stringify(expected);
 
-const hasTenantAdminRoles = (roles: readonly string[]): boolean =>
+const hasRequiredTenantAdminRoles = (roles: readonly string[]): boolean =>
   REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.every((roleName) => roles.includes(roleName));
+
+const hasMinimalTenantAdminRoleContract = (
+  directRoles: readonly string[],
+  effectiveRoles: readonly string[]
+): boolean =>
+  directRoles.length === REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.length &&
+  hasRequiredTenantAdminRoles(directRoles) &&
+  hasRequiredTenantAdminRoles(effectiveRoles) &&
+  effectiveRoles.every((roleName) =>
+    ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES.includes(
+      roleName as (typeof ALLOWED_EFFECTIVE_TENANT_ADMIN_CLIENT_ROLE_NAMES)[number]
+    )
+  );
 
 type LoginUrlState = Readonly<{
   postLogoutRedirectUris: readonly string[];
@@ -211,11 +232,12 @@ const buildTenantAdminFlagsCheck = (
 
 const buildTenantAdminRolesCheck = (
   target: AuditRegistryTarget,
-  roles: readonly string[]
+  directRoles: readonly string[],
+  effectiveRoles: readonly string[]
 ): AuditCheckResult => ({
   checkId: 'keycloak.client.tenant_admin.roles',
-  details: { assignedRoles: roles },
-  status: hasTenantAdminRoles(roles) ? 'pass' : 'fail',
+  details: { directRoles, effectiveRoles },
+  status: hasMinimalTenantAdminRoleContract(directRoles, effectiveRoles) ? 'pass' : 'fail',
   summary: target.tenantAdminClientId,
   title: 'Tenant-Admin-Serviceaccount hat realm-management-Rollen',
 });
@@ -230,7 +252,11 @@ const buildTenantAdminChecks = (
     buildTenantAdminExistenceCheck(target, client),
     buildTenantAdminFlagsCheck(target, client),
     buildTenantAdminSecretCheck(secrets.tenantAdminSecret, snapshot.tenantAdminSecret),
-    buildTenantAdminRolesCheck(target, snapshot.tenantAdminServiceRoles),
+    buildTenantAdminRolesCheck(
+      target,
+      snapshot.tenantAdminServiceDirectRoles,
+      snapshot.tenantAdminServiceEffectiveRoles
+    ),
   ];
 };
 
@@ -273,11 +299,12 @@ const buildSystemAdminChecks = (snapshot: KeycloakAuditSnapshot): readonly Audit
 
 const buildTenantIamAccessCheck = (
   target: AuditRegistryTarget,
-  roles: readonly string[]
+  directRoles: readonly string[],
+  effectiveRoles: readonly string[]
 ): AuditCheckResult => ({
   checkId: 'tenant_iam.access',
-  details: { assignedRoles: roles },
-  status: hasTenantAdminRoles(roles) ? 'pass' : 'fail',
+  details: { directRoles, effectiveRoles },
+  status: hasRequiredTenantAdminRoles(effectiveRoles) ? 'pass' : 'fail',
   summary: target.tenantAdminClientId,
   title: 'Tenant-IAM-Zugriff ist funktionsfähig',
 });
@@ -303,7 +330,11 @@ export const evaluateKeycloakAuditChecks = (
   ...buildLoginChecks(target, snapshot, secrets),
   ...buildTenantAdminChecks(target, snapshot, secrets),
   ...buildSystemAdminChecks(snapshot),
-  buildTenantIamAccessCheck(target, snapshot.tenantAdminServiceRoles),
+  buildTenantIamAccessCheck(
+    target,
+    snapshot.tenantAdminServiceDirectRoles,
+    snapshot.tenantAdminServiceEffectiveRoles
+  ),
   {
     checkId: 'keycloak.mapper.instance_id',
     status: 'warn',

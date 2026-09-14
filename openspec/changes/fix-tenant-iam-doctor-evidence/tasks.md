@@ -3,7 +3,7 @@
 - [x] 1.1 Den bestehenden Tenant-IAM-Statusvertrag um eindeutige Serviceidentität, Evidenzquelle und konservative Fehlerklassifikation ergänzen.
 - [x] 1.2 Die aktuelle Falschmeldung als Regressionstest abbilden: vorhandener Login-Client, aber fehlende Sichtbarkeit darf nicht `AUTH_CLIENT_MISSING` ergeben.
 - [x] 1.3 Tabellengetestete Regeln für `missing`, `forbidden`, `unknown`, `unavailable` und `misconfigured` ergänzen.
-- [x] 1.4 Den exakten Keycloak-Rollensollvertrag für Tenant-IAM (`view-clients`, kein `manage-clients`) und Provisioner festlegen.
+- [x] 1.4 Den exakten Keycloak-Rollensollvertrag für Tenant-IAM (`view-clients`, weder `create-client` noch `manage-clients`) und Provisioner festlegen.
 
 ## 2. Serviceidentitäten und Probe-Pfade
 
@@ -18,7 +18,8 @@
 - [x] 3.1 `view-clients` in den Provisioning- und Reconcile-Sollvertrag des Tenant-IAM-Service-Accounts aufnehmen.
 - [x] 3.2 Clientmutationen und Secret-Rotation ausschließlich auf den Provisioner-Pfad begrenzen.
 - [ ] 3.3 Bestehende Tenant-IAM-Service-Accounts zunächst um `view-clients` ergänzen und den neuen Access-Probe-Vertrag nachweisen.
-- [ ] 3.4 Erst nach erfolgreichem Staging-Nachweis `manage-clients` explizit aus Tenant-IAM-Service-Accounts entfernen.
+- [x] 3.4a Den expliziten Provisioning-/Reconcile-Pfad implementieren, der `view-clients` vor dem Entzug von `manage-clients` sicherstellt und den Rollenvertrag per getrenntem Read-back direkter und effektiver Rollen verifiziert.
+- [ ] 3.4b Erst nach erfolgreichem Staging-Nachweis `manage-clients` mit diesem Pfad aus bestehenden Tenant-IAM-Service-Accounts entfernen.
 - [ ] 3.5 Negativtests für Tenant-IAM-Clientmutationen und Positivtests für autorisierte Provisioner-Mutationen ergänzen.
 
 ## 4. Doctor, UI und MCP

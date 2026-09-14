@@ -23,7 +23,8 @@ Provisioner gehören.
    Objekt interpretiert werden. Im Tenant-IAM-Access-Pfad wird ein mehrdeutiges
    leeres Ergebnis als `AUTH_CLIENT_VISIBILITY_UNCONFIRMED` und `unknown`
    ausgegeben.
-4. Tenant-IAM erhält `view-clients`, aber kein `manage-clients`. Der
+4. Tenant-IAM erhält `view-clients`, aber weder `create-client` noch
+   `manage-clients`. Der
    Provisioning-Abgleich ergänzt zuerst ausschließlich das Leserecht. Das
    frühere Schreibrecht wird erst nach erfolgreichem Staging-Nachweis in einem
    getrennten, ausdrücklich autorisierten Migrationsschritt entzogen.
@@ -40,10 +41,16 @@ Provisioner gehören.
   aber weder Clients noch Secrets verändern.
 - UI, Audit und MCP können Struktur-, Access- und Reconcile-Befunde ihrer
   technischen Identität zuordnen.
-- Bestandsinstanzen erhalten `view-clients` beim nächsten expliziten
-  Provisioning- oder Reconcile-Lauf. `manage-clients` bleibt während dieser
-  additiven Phase bestehen und wird nicht durch diesen Codeblock entzogen; die
-  Software allein verändert keine produktive Keycloak-Instanz.
+- Nach Abschluss der additiven Einführungsphase gleicht ein expliziter
+  Provisioning- oder Reconcile-Lauf Bestandsinstanzen auf den minimalen Vertrag
+  ab: Er ergänzt zuerst `view-clients`, entzieht danach `manage-clients` und
+  verifiziert das Ergebnis per getrenntem Read-back der direkten und effektiven
+  Client-Rollen. Direkt sind ausschließlich die fünf Sollrollen erlaubt;
+  effektiv zusätzlich nur Keycloaks daraus abgeleitete Query-Rollen
+  `query-users`, `query-groups` und `query-clients`. Jede andere effektive Rolle
+  führt fail-closed zu manueller Bereinigung; der Abgleich verändert solche
+  Zuweisungsquellen nicht automatisch. Ohne einen ausdrücklich gestarteten Lauf
+  verändert die Software keine Keycloak-Instanz.
 
 ## Alternativen
 

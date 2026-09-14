@@ -8,6 +8,7 @@ Das System SHALL der tenantgebundenen IAM-Serviceidentität genau den für ihre 
 
 - **WHEN** das Studio den Keycloak-Service-Account für Tenant-IAM provisioniert oder abgleicht
 - **THEN** enthält dessen Sollvertrag `view-clients`
+- **AND** enthält dessen Sollvertrag kein `create-client`
 - **AND** enthält dessen Sollvertrag kein `manage-clients`
 - **AND** werden weitergehende Rollen nicht als gleichwertiger Ersatz für den minimalen Sollvertrag akzeptiert
 
@@ -16,6 +17,18 @@ Das System SHALL der tenantgebundenen IAM-Serviceidentität genau den für ihre 
 - **WHEN** eine explizite Tenant-IAM-Rechteprobe Clientmetadaten für den konfigurierten Login-Client benötigt
 - **THEN** verwendet sie ausschließlich die tenantgebundene IAM-Serviceidentität des Ziel-Tenants
 - **AND** führt sie nur nicht-destruktive Leseoperationen aus
+
+#### Scenario: Geerbte verbotene Rollen werden nicht übersehen
+
+- **WHEN** eine verbotene `realm-management`-Rolle über eine Gruppe oder Composite-Rolle effektiv auf den Tenant-IAM-Service-Account wirkt
+- **THEN** schlagen Provisioning-Read-back und Audit fail-closed fehl
+- **AND** verändert das System die indirekte Zuweisungsquelle nicht automatisch
+
+#### Scenario: Effektive Composite-Unterrollen bleiben explizit begrenzt
+
+- **WHEN** Keycloak die Sollrollen `view-users` und `view-clients` effektiv auflöst
+- **THEN** akzeptiert das System zusätzlich `query-users`, `query-groups` und `query-clients`
+- **AND** führt jede andere zusätzliche effektive `realm-management`-Rolle fail-closed zu manueller Bereinigung
 
 #### Scenario: Tenant-IAM darf Clients nicht verändern
 

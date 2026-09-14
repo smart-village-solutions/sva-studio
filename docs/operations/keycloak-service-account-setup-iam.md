@@ -29,6 +29,10 @@ Dem Service-Account ausschließlich folgende `realm-management`-Rollen zuweisen:
 - `view-realm`
 - `manage-realm`
 
+Der tenantgebundene IAM-Service-Account benötigt zusätzlich:
+
+- `view-clients`
+
 Begründung und Scope:
 
 | Rolle | Erlaubte Operationen | Nicht damit begründete Operationen |
@@ -37,12 +41,13 @@ Begründung und Scope:
 | `view-users` | User lesen, Detailansichten laden | Schreibzugriffe auf User oder Rollen |
 | `view-realm` | Realm-Metadaten und Rollenbestand lesen | Änderungen an Rollen, Clients oder Flows |
 | `manage-realm` | technische Sonderrollen wie `system_admin` im Tenant-Realm anlegen, aktualisieren und löschen | fachliche Tenant-Rollen, Clients, Identity Provider oder Auth-Flows verwalten |
+| `view-clients` (nur Tenant-IAM) | den in der Registry referenzierten Login-Client lesen | Clients, Redirect-URIs, Mapper oder Secrets verändern |
 
 Explizit verboten:
 
 - `realm-admin`
+- `create-client`
 - `manage-clients`
-- `view-clients`
 - `manage-identity-providers`
 - `manage-events`
 - zusätzliche globale Admin-Rollen außerhalb von `realm-management`
@@ -50,6 +55,12 @@ Explizit verboten:
 Für Tenant-Hosts gilt zusätzlich:
 
 - Studio verwendet ausschließlich den in der Instanz-Registry hinterlegten Tenant-Admin-Client.
+- `view-clients` dient ausschließlich dazu, den referenzierten Login-Client read-only zu prüfen; `manage-clients` ist nicht zulässig.
+- Audit und Provisioning-Read-back prüfen direkte sowie effektive
+  `realm-management`-Rollen. Direkt sind ausschließlich die fünf Sollrollen
+  erlaubt; effektiv zusätzlich die daraus abgeleiteten Rollen `query-users`,
+  `query-groups` und `query-clients`. Jede andere effektive Rolle blockiert den
+  Sollvertrag und muss an ihrer Zuweisungsquelle manuell entfernt werden.
 - Ein fehlender Tenant-Admin-Client oder ein fehlendes Tenant-Admin-Secret führt fail-closed zu `tenant_admin_client_not_configured`.
 - Platform- oder globale Admin-Credentials dürfen tenantlokale User- oder technische Rollenzuordnungsoperationen nicht ersetzen.
 - Fachliche Tenant-Rollen werden DB-only gepflegt. Built-in-, Default- und Legacy-Keycloak-Rollen dürfen sichtbar sein, bleiben aber technische Diagnose und keine normative Fachsicht.

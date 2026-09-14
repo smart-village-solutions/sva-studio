@@ -10,6 +10,7 @@ export const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
 
 const FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'realm-admin',
+  'create-client',
   'manage-clients',
   'manage-identity-providers',
   'manage-events',

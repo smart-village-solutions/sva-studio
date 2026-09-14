@@ -3,7 +3,7 @@
 - [x] 1.1 Den bestehenden Tenant-IAM-Statusvertrag um eindeutige Serviceidentität, Evidenzquelle und konservative Fehlerklassifikation ergänzen.
 - [x] 1.2 Die aktuelle Falschmeldung als Regressionstest abbilden: vorhandener Login-Client, aber fehlende Sichtbarkeit darf nicht `AUTH_CLIENT_MISSING` ergeben.
 - [x] 1.3 Tabellengetestete Regeln für `missing`, `forbidden`, `unknown`, `unavailable` und `misconfigured` ergänzen.
-- [x] 1.4 Den exakten Keycloak-Rollensollvertrag für Tenant-IAM (`view-clients`, kein `manage-clients`) und Provisioner festlegen.
+- [x] 1.4 Den exakten Keycloak-Rollensollvertrag für Tenant-IAM (`view-clients`, weder `create-client` noch `manage-clients`) und Provisioner festlegen.
 
 ## 2. Serviceidentitäten und Probe-Pfade
 

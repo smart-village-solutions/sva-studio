@@ -46,6 +46,7 @@ Begründung und Scope:
 Explizit verboten:
 
 - `realm-admin`
+- `create-client`
 - `manage-clients`
 - `manage-identity-providers`
 - `manage-events`

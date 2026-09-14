@@ -94,6 +94,7 @@ const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
 const LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME = 'manage-clients';
 const FORBIDDEN_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
   'realm-admin',
+  'create-client',
   LEGACY_TENANT_ADMIN_CLIENT_ROLE_NAME,
   'manage-identity-providers',
   'manage-events',

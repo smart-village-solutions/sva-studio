@@ -1521,54 +1521,59 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(8);
   });
 
-  it('fails closed when client write access remains effective through inherited role mappings', async () => {
-    type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;
-    const directRoles = [
-      { id: 'role-manage-users', name: 'manage-users' },
-      { id: 'role-view-users', name: 'view-users' },
-      { id: 'role-view-realm', name: 'view-realm' },
-      { id: 'role-manage-realm', name: 'manage-realm' },
-      { id: 'role-view-clients', name: 'view-clients' },
-    ];
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(
-        createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse(200, [
-          { id: 'realm-management-client-id', clientId: 'realm-management' },
-        ])
-      )
-      .mockResolvedValueOnce(
-        createJsonResponse(200, {
-          id: 'service-account-user-id',
-          username: 'service-account-tenant-admin',
-        })
-      )
-      .mockResolvedValueOnce(createJsonResponse(200, directRoles))
-      .mockResolvedValueOnce(createJsonResponse(200, directRoles))
-      .mockResolvedValueOnce(createJsonResponse(200, directRoles))
-      .mockResolvedValueOnce(
-        createJsonResponse(200, [
-          ...directRoles,
-          { id: 'role-manage-clients', name: 'manage-clients' },
-        ])
+  it.each(['manage-clients', 'create-client'])(
+    'fails closed when %s remains effective through inherited role mappings',
+    async (forbiddenRoleName) => {
+      type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;
+      const directRoles = [
+        { id: 'role-manage-users', name: 'manage-users' },
+        { id: 'role-view-users', name: 'view-users' },
+        { id: 'role-view-realm', name: 'view-realm' },
+        { id: 'role-manage-realm', name: 'manage-realm' },
+        { id: 'role-view-clients', name: 'view-clients' },
+      ];
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        )
+        .mockResolvedValueOnce(
+          createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }])
+        )
+        .mockResolvedValueOnce(
+          createJsonResponse(200, [
+            { id: 'realm-management-client-id', clientId: 'realm-management' },
+          ])
+        )
+        .mockResolvedValueOnce(
+          createJsonResponse(200, {
+            id: 'service-account-user-id',
+            username: 'service-account-tenant-admin',
+          })
+        )
+        .mockResolvedValueOnce(createJsonResponse(200, directRoles))
+        .mockResolvedValueOnce(createJsonResponse(200, directRoles))
+        .mockResolvedValueOnce(createJsonResponse(200, directRoles))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, [
+            ...directRoles,
+            { id: `role-${forbiddenRoleName}`, name: forbiddenRoleName },
+          ])
+        );
+
+      const client = await createClient(fetchImpl);
+
+      await expect(
+        client.ensureTenantAdminServiceAccess('tenant-admin')
+      ).rejects.toMatchObject<KeycloakAdminRequestError>({
+        code: 'tenant_admin_service_access_readback_failed',
+        statusCode: 500,
+      });
+      expect(String(fetchImpl.mock.calls[7]?.[0])).toContain(
+        '/role-mappings/clients/realm-management-client-id/composite'
       );
-
-    const client = await createClient(fetchImpl);
-
-    await expect(
-      client.ensureTenantAdminServiceAccess('tenant-admin')
-    ).rejects.toMatchObject<KeycloakAdminRequestError>({
-      code: 'tenant_admin_service_access_readback_failed',
-      statusCode: 500,
-    });
-    expect(String(fetchImpl.mock.calls[7]?.[0])).toContain(
-      '/role-mappings/clients/realm-management-client-id/composite'
-    );
-  });
+    }
+  );
 
   it('fails tenant admin service access provisioning when a required realm-management role is missing', async () => {
     type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;

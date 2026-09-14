@@ -251,8 +251,8 @@ Begründung:
 - `view-clients` erlaubt Studio, den referenzierten Login-Client `authClientId`
   im Tenant-Realm read-only zu prüfen und bei Passwort-Setup-Mails als
   Redirect-Ziel zu referenzieren.
-- `manage-clients` ist nicht zulässig. Clientmutationen und Secret-Rotation
-  bleiben ausschließlich beim Provisioner.
+- `create-client` und `manage-clients` sind nicht zulässig. Clientmutationen
+  und Secret-Rotation bleiben ausschließlich beim Provisioner.
 - Die Prüfung liest direkte und effektive Rollen getrennt. Über Gruppen oder
   Composite-Rollen geerbte verbotene Rechte lassen Provisioning und Audit
   fail-closed fehlschlagen und werden nicht automatisch aus ihrer

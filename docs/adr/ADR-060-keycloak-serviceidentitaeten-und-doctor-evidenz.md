@@ -23,7 +23,8 @@ Provisioner gehören.
    Objekt interpretiert werden. Im Tenant-IAM-Access-Pfad wird ein mehrdeutiges
    leeres Ergebnis als `AUTH_CLIENT_VISIBILITY_UNCONFIRMED` und `unknown`
    ausgegeben.
-4. Tenant-IAM erhält `view-clients`, aber kein `manage-clients`. Der
+4. Tenant-IAM erhält `view-clients`, aber weder `create-client` noch
+   `manage-clients`. Der
    Provisioning-Abgleich ergänzt zuerst ausschließlich das Leserecht. Das
    frühere Schreibrecht wird erst nach erfolgreichem Staging-Nachweis in einem
    getrennten, ausdrücklich autorisierten Migrationsschritt entzogen.

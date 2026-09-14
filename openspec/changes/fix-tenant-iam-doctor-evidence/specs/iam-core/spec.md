@@ -8,6 +8,7 @@ Das System SHALL der tenantgebundenen IAM-Serviceidentität genau den für ihre 
 
 - **WHEN** das Studio den Keycloak-Service-Account für Tenant-IAM provisioniert oder abgleicht
 - **THEN** enthält dessen Sollvertrag `view-clients`
+- **AND** enthält dessen Sollvertrag kein `create-client`
 - **AND** enthält dessen Sollvertrag kein `manage-clients`
 - **AND** werden weitergehende Rollen nicht als gleichwertiger Ersatz für den minimalen Sollvertrag akzeptiert
 

@@ -459,27 +459,30 @@ describe('inspectRealmAndClients contract', () => {
     expect(byId.get('tenant_iam.access')).toMatchObject({ status: 'pass' });
   });
 
-  it('rejects an effectively inherited realm-admin role without hiding functional access', async () => {
-    configureScenario({
-      tenantAdminServiceEffectiveRoles: [
-        'manage-users',
-        'view-users',
-        'view-realm',
-        'manage-realm',
-        'view-clients',
-        'realm-admin',
-      ],
-    });
+  it.each(['realm-admin', 'create-client'])(
+    'rejects an effectively inherited %s role without hiding functional access',
+    async (forbiddenRoleName) => {
+      configureScenario({
+        tenantAdminServiceEffectiveRoles: [
+          'manage-users',
+          'view-users',
+          'view-realm',
+          'manage-realm',
+          'view-clients',
+          forbiddenRoleName,
+        ],
+      });
 
-    const result = await inspectRealmAndClients(target, {
-      authSecret: loginSecretMarker,
-      tenantAdminSecret: tenantAdminSecretMarker,
-    });
-    const byId = new Map(result.checks.map((check) => [check.checkId, check]));
+      const result = await inspectRealmAndClients(target, {
+        authSecret: loginSecretMarker,
+        tenantAdminSecret: tenantAdminSecretMarker,
+      });
+      const byId = new Map(result.checks.map((check) => [check.checkId, check]));
 
-    expect(byId.get('keycloak.client.tenant_admin.roles')).toMatchObject({ status: 'fail' });
-    expect(byId.get('tenant_iam.access')).toMatchObject({ status: 'pass' });
-  });
+      expect(byId.get('keycloak.client.tenant_admin.roles')).toMatchObject({ status: 'fail' });
+      expect(byId.get('tenant_iam.access')).toMatchObject({ status: 'pass' });
+    }
+  );
 
   it('preserves missing-client failures without attempting client-secret reads', async () => {
     configureScenario({ loginClient: null, tenantAdminClient: null });

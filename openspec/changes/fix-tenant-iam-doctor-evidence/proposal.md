@@ -11,7 +11,7 @@ Der in `docs/architecture/keycloak-serviceidentitaeten-und-berechtigungen.md` be
 - Der Doctor bewertet Keycloak-Struktur ausschließlich anhand einer hinreichend berechtigten, eindeutig benannten Provisioning-Evidenz.
 - Die Tenant-IAM-Rechteprobe läuft ausschließlich mit der tenantgebundenen Serviceidentität und prüft nur deren eigenen Betriebsvertrag.
 - Ein leeres Client-Suchergebnis gilt nur dann als `missing`, wenn die prüfende Identität nachweislich die erforderliche Lesecapability besitzt; andernfalls wird `forbidden` oder `unknown` gemeldet.
-- Der Tenant-IAM-Service-Account erhält für Clientdiagnosen `view-clients`, aber kein `manage-clients`; Clientmutationen bleiben beim Provisioner.
+- Der Tenant-IAM-Service-Account erhält für Clientdiagnosen `view-clients`, aber weder `create-client` noch `manage-clients`; Clientmutationen bleiben beim Provisioner.
 - Diagnoseergebnisse weisen Achse, Serviceidentität, Quelle, Prüfzeitpunkt, stabilen Fehlercode und nach Möglichkeit `requestId` aus.
 - Reparaturempfehlungen adressieren den zuständigen Service und lösen während einer Gesundheitsprüfung keine Keycloak-Mutation aus.
 - Die Umstellung bestehender Service-Accounts erfolgt gestuft: Leserecht ergänzen und nachweisen, anschließend überflüssiges Schreibrecht entziehen.

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1396,
+  "body": "Sichererer Abgleich der Mandanten-Anmeldung\n\n- Der technische Mandanten-Abgleich erhält nur noch den notwendigen Lesezugriff auf die Anmeldekonfiguration.\n- Die Diagnose unterscheidet jetzt zwischen funktionsfähigem Zugriff und einer zu weitreichenden technischen Berechtigung.\n- Der Abgleich meldet einen Fehler, wenn die eingeschränkten Berechtigungen nach der Aktualisierung nicht eindeutig bestätigt werden können.\n- Dabei erfolgt keine Anmeldung in ein Benutzerkonto und es wird keine Anmelde-E-Mail ausgelöst."
+}

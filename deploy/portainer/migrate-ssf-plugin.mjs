@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import {
   assertDistinctDatabaseNames,
   assertSafeDatabaseLogins,
-  readDatabasePassword,
+  resolveDatabasePassword,
 } from './ssf-plugin-database-config.mjs';
 
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
@@ -35,18 +35,15 @@ const adminDatabase = identifier(process.env.POSTGRES_DB, 'POSTGRES_DB');
 assertDistinctDatabaseNames({ adminDatabase, targetDatabase });
 
 const principalPassword = ({ explicitPassword, connectionString, login, sourceName }) => {
-  const configured = explicitPassword?.trim();
-  return (
-    configured ||
-    readDatabasePassword({
-      connectionString,
-      expectedDatabase: targetDatabase,
-      expectedHost: postgresHost,
-      expectedPort: postgresPort,
-      expectedUser: login,
-      name: sourceName,
-    })
-  );
+  return resolveDatabasePassword({
+    explicitPassword,
+    connectionString,
+    expectedDatabase: targetDatabase,
+    expectedHost: postgresHost,
+    expectedPort: postgresPort,
+    expectedUser: login,
+    name: sourceName,
+  });
 };
 
 const runPsql = (database, sql) => {
@@ -140,6 +137,7 @@ BEGIN
       JOIN pg_roles AS member_role ON member_role.oid = membership.member
       WHERE granted_role.rolname = ${sqlLiteral(role)}
         AND member_role.rolname = ${sqlLiteral(login)}
+        AND member_role.rolcanlogin
     ) OR pg_has_role(
       ${sqlLiteral(login)},
       ${sqlLiteral(forbiddenRole)},

@@ -238,6 +238,9 @@ bereits in `runtime.env` vorhandenen Runtime- und Root-Verbindungs-URLs liefern
 die rollenbezogenen Kennwörter, ohne sie in eine zweite Konfiguration zu kopieren;
 Benutzer und Datenbankname müssen zum erwarteten Ziel passen. Explizite
 `SSF_PLUGIN_*_DB_PASSWORD`-Werte bleiben für andere Laufzeitprofile zulässig.
+Ist zugleich eine Runtime-URL gesetzt, wird sie immer vollständig validiert und
+ihr Kennwort ist für den verwendeten Runtime-Pool und die Migration autoritativ;
+der separate Kennwortwert dient ausschließlich als Fallback ohne URL.
 Bei der Wiederverwendung einer URL müssen zusätzlich Host und effektiver Port
 mit `POSTGRES_HOST` und `POSTGRES_PORT` übereinstimmen, damit Migration,
 Passwortrotation und Anwendung dasselbe PostgreSQL-Ziel verwenden.
@@ -251,6 +254,8 @@ Migrator prüft dies vor jedem Rollen-Write.
 Existiert ein konfigurierter Login bereits, muss er schon Mitglied seiner
 erwarteten SSF-Gruppenrolle sein. Andernfalls behandelt der Migrator ihn als
 fremden Principal und bricht vor Passwort-, Attribut- oder Grant-Änderungen ab.
+Auch ein bereits vorhandenes `NOLOGIN`-Rollenobjekt wird nicht in einen Login
+umgewandelt, selbst wenn es Mitglied der erwarteten SSF-Rolle ist.
 Ein Runtime-Login mit effektivem Zugriff auf `ssf_plugin_root` und ein Root-Login
 mit effektivem Zugriff auf `ssf_plugin_tenant_runtime` werden ebenfalls
 abgewiesen; `NOINHERIT` verhindert den Zugriff über `SET ROLE` nicht.
@@ -318,6 +323,11 @@ Drift blockiert die Projektion. Siehe
 Unmittelbar vor dem vollständigen Profil-PUT liest der Abgleich das Profil
 erneut. Eine zwischenzeitliche semantische Änderung an fremden Attributen,
 Gruppen oder Profilfeldern stoppt den Write als konkurrierende Änderung.
+Verliert Keycloak trotz erfolgreichem PUT fremde Profilkonfiguration, bleibt die
+Projektionsgeneration mit `target_integrity_failed` und terminaler Retry-Klasse
+gesperrt. Nach der manuellen Profilreparatur ist ein expliziter Lifecycle-Abgleich
+erforderlich; automatische Wiederholungen dürfen den beschädigten Zustand nicht
+als bereit veröffentlichen.
 
 Falls nach einer Benutzeraktivierung kein Abgleich läuft, kann eine authentifizierte
 Root-Administratorsitzung auf dem Studio-Root den vorhandenen Endpunkt

@@ -368,7 +368,9 @@ verschieden sein und darf keine PostgreSQL-Systemdatenbank sein. Eine vorhandene
 der jeweils erwarteten SSF-Gruppenrolle sie bereits als SSF-eigen ausweist. Ein
 Runtime-Login mit effektivem Zugriff auf die Root-Gruppenrolle oder umgekehrt
 wird abgewiesen. Aus Runtime-URLs übernommene Kennwörter sind nur zulässig, wenn
-Host und Port exakt dem Migrationsziel entsprechen. Ein Verstoß beendet den
+Host und Port exakt dem Migrationsziel entsprechen; bei gleichzeitig gesetztem
+separatem Kennwort bleibt die Runtime-URL einschließlich ihres Kennworts autoritativ.
+Ein Verstoß beendet den
 Migrationsservice vor jeder Änderung dieses Principals. Queryparameter dürfen
 diese Bindung nicht überschreiben; reconciliierte Logins erhalten weder
 Replikations- noch RLS-Bypass-Rechte.

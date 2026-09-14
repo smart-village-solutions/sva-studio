@@ -1726,7 +1726,7 @@ describe('Keycloak admin client', () => {
       client.ensureAdminOnlyUserProfileAttributes([{ name: 'ssf_roles', multivalued: true }])
     ).rejects.toMatchObject({
       code: 'user_profile_preservation_readback_mismatch',
-      retryable: true,
+      retryable: false,
     });
   });
 

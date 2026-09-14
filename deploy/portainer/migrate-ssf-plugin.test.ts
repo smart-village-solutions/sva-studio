@@ -6,6 +6,7 @@ import {
   assertDistinctDatabaseNames,
   assertSafeDatabaseLogins,
   readDatabasePassword,
+  resolveDatabasePassword,
 } from './ssf-plugin-database-config.mjs';
 
 describe('SSF plugin migration runner', () => {
@@ -28,6 +29,7 @@ describe('SSF plugin migration runner', () => {
       'assertSafeDatabaseLogins({ postgresUser, rootLogin, runtimeLogin });'
     );
     expect(source).toContain('FROM pg_auth_members AS membership');
+    expect(source).toContain('AND member_role.rolcanlogin');
     expect(source).toContain(
       "RAISE EXCEPTION 'existing database login is not owned by its expected SSF role'"
     );
@@ -36,6 +38,48 @@ describe('SSF plugin migration runner', () => {
     expect(source).toContain("forbiddenRole: 'ssf_plugin_root'");
     expect(source).toContain("forbiddenRole: 'ssf_plugin_tenant_runtime'");
     expect(source).toContain('NOREPLICATION NOBYPASSRLS NOINHERIT');
+  });
+
+  it('uses a supplied runtime URL as the authoritative validated password source', () => {
+    expect(
+      resolveDatabasePassword({
+        explicitPassword: 'stale-explicit-secret',
+        connectionString: 'postgresql://sva_ssf_runtime:url-secret@postgres/sva_studio_ssf',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toBe('url-secret');
+  });
+
+  it('validates a supplied runtime URL even when an explicit password exists', () => {
+    expect(() =>
+      resolveDatabasePassword({
+        explicitPassword: 'explicit-secret',
+        connectionString: 'postgresql://sva_ssf_runtime:url-secret@other/sva_studio_ssf',
+        expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toThrow('SVA_STUDIO_SSF_DATABASE_URL_host_mismatch');
+  });
+
+  it('uses the explicit password only when no runtime URL is configured', () => {
+    expect(
+      resolveDatabasePassword({
+        explicitPassword: 'explicit-secret',
+        connectionString: undefined,
+        expectedDatabase: 'sva_studio_ssf',
+        expectedHost: 'postgres',
+        expectedPort: '5432',
+        expectedUser: 'sva_ssf_runtime',
+        name: 'SVA_STUDIO_SSF_DATABASE_URL',
+      })
+    ).toBe('explicit-secret');
   });
 
   it('reads a role password only from a connection string bound to that role and database', () => {

@@ -1819,7 +1819,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         message: 'Keycloak user profile preservation read-back mismatch.',
         statusCode: 502,
         code: 'user_profile_preservation_readback_mismatch',
-        retryable: true,
+        retryable: false,
       });
     }
   }

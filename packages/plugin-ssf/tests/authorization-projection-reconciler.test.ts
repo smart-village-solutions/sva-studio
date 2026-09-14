@@ -180,6 +180,28 @@ describe('SSF authorization projection reconciler', () => {
     );
   });
 
+  it('persists a profile preservation failure as a target integrity blocker', async () => {
+    const desired = projection();
+    const { lockedStore, target, reconcile } = fixtures(desired);
+    target.reconcile.mockRejectedValue(
+      Object.assign(new Error('Keycloak user profile preservation read-back mismatch.'), {
+        code: 'user_profile_preservation_readback_mismatch',
+      })
+    );
+
+    await expect(reconcile(desired)).resolves.toEqual({
+      status: 'blocked',
+      generation: 1,
+      reason: 'target_integrity_failed',
+    });
+    expect(lockedStore.markBlocked).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      generation: 1,
+      desiredRevision: createSsfAuthorizationRevision(desired),
+      errorCode: 'target_integrity_failed',
+    });
+  });
+
   it('keeps two tenant projections isolated without requiring session revocation', async () => {
     const tenantA = fixtures(projection('tenant-a'));
     const tenantB = fixtures(projection('tenant-b'));

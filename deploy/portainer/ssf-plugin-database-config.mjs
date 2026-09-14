@@ -49,6 +49,15 @@ export const readDatabasePassword = ({
   return password;
 };
 
+export const resolveDatabasePassword = ({ explicitPassword, connectionString, ...binding }) => {
+  if (connectionString?.trim()) {
+    return readDatabasePassword({ connectionString, ...binding });
+  }
+  const configured = explicitPassword?.trim();
+  if (configured) return configured;
+  return readDatabasePassword({ connectionString, ...binding });
+};
+
 export const assertSafeDatabaseLogins = ({ postgresUser, rootLogin, runtimeLogin }) => {
   if (runtimeLogin === rootLogin) {
     throw new Error('SSF_PLUGIN_DATABASE_USERS_must_differ');

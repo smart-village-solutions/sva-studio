@@ -1306,6 +1306,10 @@ fremden Attribute, Gruppen und übrigen Profilfelder. Readiness prüft den
 admin-only Vertrag bei jedem Lauf erneut und sperrt bei späterem Drift.
 Ein unmittelbar vor dem vollständigen Profil-PUT wiederholter semantischer Read
 blockiert den Write, wenn ein Keycloak-Admin das Profil zwischenzeitlich geändert hat.
+Ein nach dem PUT erkannter Verlust fremder Profilkonfiguration wird als
+`target_integrity_failed` persistent blockiert und als terminaler Lifecycle-Fehler
+klassifiziert. Erst eine manuelle Reparatur mit anschließendem explizitem Abgleich
+kann die Projektion wieder freigeben.
 Der initiale Tenant-Admin wird lokal nur beim erstmaligen Insert als `active`
 angelegt, wenn die exakt konfigurierte Keycloak-Identität aktiviert ist. Retries
 lassen vorhandene Statuswerte unverändert. Erst nach dem bestätigten Projektions-Read-back

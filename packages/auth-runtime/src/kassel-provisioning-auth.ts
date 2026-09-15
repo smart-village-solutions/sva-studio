@@ -13,6 +13,7 @@ type KasselProvisioningEnvironment = {
   readonly tenantIngressMode?: string;
   readonly publicAuthOrigin?: string;
   readonly keycloakBaseUrl?: string;
+  readonly nodeEnv?: string;
 };
 
 const parseHttpsOrigin = (value: string): string => {
@@ -35,14 +36,20 @@ const parseHttpsOrigin = (value: string): string => {
   return url.origin;
 };
 
-const parseHttpsBaseUrl = (value: string): string => {
+const parseKeycloakBaseUrl = (value: string, allowHttp: boolean): string => {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     throw new Error('keycloak_admin_base_url_invalid');
   }
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
+  if (
+    (url.protocol !== 'https:' && !(allowHttp && url.protocol === 'http:')) ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
     throw new Error('keycloak_admin_base_url_invalid');
   }
   return url.toString().replace(/\/$/, '');
@@ -56,7 +63,8 @@ export const resolveProvisioningAuthIssuerUrl = (
     if (input.authIssuerUrl) return input.authIssuerUrl;
     const keycloakBaseUrl = environment.keycloakBaseUrl?.trim();
     if (!keycloakBaseUrl) throw new Error('keycloak_admin_base_url_missing');
-    return `${parseHttpsBaseUrl(keycloakBaseUrl)}/realms/${encodeURIComponent(input.authRealm)}`;
+    const baseUrl = parseKeycloakBaseUrl(keycloakBaseUrl, environment.nodeEnv !== 'production');
+    return `${baseUrl}/realms/${encodeURIComponent(input.authRealm)}`;
   }
   if (normalizeHost(input.parentDomain) !== KASSEL_PARENT_DOMAIN) {
     throw new Error('kassel_parent_domain_invalid');
@@ -79,4 +87,5 @@ export const resolveConfiguredProvisioningAuthIssuerUrl = (
     tenantIngressMode: process.env.SVA_TENANT_INGRESS_MODE,
     publicAuthOrigin: process.env.SVA_KASSEL_PUBLIC_AUTH_ORIGIN,
     keycloakBaseUrl: process.env.KEYCLOAK_ADMIN_BASE_URL,
+    nodeEnv: process.env.NODE_ENV,
   });

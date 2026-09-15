@@ -1839,6 +1839,39 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('normalizes updates entering new realm mode to the server baseline', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      updateInstance: vi.fn(async () => baseInstance),
+    });
+    const resolveProvisioningAuthIssuerUrl = vi.fn(() => 'https://auth.example.org/realms/demo');
+    const service = createInstanceRegistryService(
+      createDeps(repository, { resolveProvisioningAuthIssuerUrl })
+    );
+
+    await service.updateInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.example.org',
+      realmMode: 'new',
+      authRealm: 'custom-realm',
+      authClientId: 'custom-login',
+      tenantAdminClient: { clientId: 'custom-admin' },
+    });
+
+    expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ authRealm: 'demo' })
+    );
+    expect(repository.updateInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: expect.objectContaining({ clientId: 'sva-studio-realm-admin' }),
+      })
+    );
+  });
+
   it('updates instances and returns detail projections', async () => {
     const updated = {
       ...baseInstance,

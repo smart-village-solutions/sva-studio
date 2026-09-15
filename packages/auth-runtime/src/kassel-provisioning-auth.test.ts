@@ -32,6 +32,26 @@ describe('Kassel provisioning auth issuer', () => {
     ).toThrow('keycloak_admin_base_url_missing');
   });
 
+  it('supports configured HTTP Keycloak bases outside production', () => {
+    expect(
+      resolveProvisioningAuthIssuerUrl(input, {
+        tenantIngressMode: 'external',
+        keycloakBaseUrl: 'http://keycloak:38080',
+        nodeEnv: 'development',
+      })
+    ).toBe('http://keycloak:38080/realms/smartcity');
+  });
+
+  it('rejects configured HTTP Keycloak bases in production', () => {
+    expect(() =>
+      resolveProvisioningAuthIssuerUrl(input, {
+        tenantIngressMode: 'external',
+        keycloakBaseUrl: 'http://keycloak:38080',
+        nodeEnv: 'production',
+      })
+    ).toThrow('keycloak_admin_base_url_invalid');
+  });
+
   it('derives the public issuer before provisioning in Kassel mode', () => {
     expect(
       resolveProvisioningAuthIssuerUrl(

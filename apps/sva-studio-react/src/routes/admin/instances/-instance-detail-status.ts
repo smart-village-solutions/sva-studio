@@ -54,6 +54,14 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
   if (!status) {
     return [];
   }
+  const managedRealmBaseline =
+    selectedInstance.realmMode === 'new' ||
+    selectedInstance.keycloakProvisioningRuns?.some(
+      (run) =>
+        run.mode === 'new' &&
+        run.overallStatus === 'succeeded' &&
+        run.steps.some((step) => step.stepKey === 'realm_baseline' && step.status === 'done')
+    ) === true;
 
   return [
     ...getApplicableInstanceKeycloakRequirements({
@@ -82,10 +90,10 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
       'admin.instances.keycloakStatus.runtimeSecretSourceTenant',
       status.runtimeSecretSource === 'tenant',
     ],
-    ...(selectedInstance.realmMode !== 'new' || status.realmBaselineAligned === undefined
+    ...(!managedRealmBaseline || status.realmBaselineAligned === undefined
       ? []
       : [[KEYCLOAK_STATUS_LABELS.realmBaselineAligned, status.realmBaselineAligned] as const]),
-    ...(selectedInstance.realmMode !== 'new' || status.userProfileBaselineAligned === undefined
+    ...(!managedRealmBaseline || status.userProfileBaselineAligned === undefined
       ? []
       : [
           [
@@ -93,12 +101,12 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
             status.userProfileBaselineAligned,
           ] as const,
         ]),
-    ...(selectedInstance.realmMode !== 'new' || status.instanceIdMapperAligned === undefined
+    ...(!managedRealmBaseline || status.instanceIdMapperAligned === undefined
       ? []
       : [
           [KEYCLOAK_STATUS_LABELS.instanceIdMapperAligned, status.instanceIdMapperAligned] as const,
         ]),
-    ...(selectedInstance.realmMode !== 'new' || status.smtpPasswordConfigured === undefined
+    ...(!managedRealmBaseline || status.smtpPasswordConfigured === undefined
       ? []
       : [[KEYCLOAK_STATUS_LABELS.smtpPasswordConfigured, status.smtpPasswordConfigured] as const]),
   ] as const;

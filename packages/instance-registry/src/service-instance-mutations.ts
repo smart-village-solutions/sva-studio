@@ -27,6 +27,20 @@ import {
   resolveConcurrentIdempotentCreateRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
+import { KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
+
+const applyNewRealmUpdateDefaults = (input: UpdateInstanceInput): UpdateInstanceInput =>
+  input.realmMode === 'new'
+    ? {
+        ...input,
+        authRealm: input.instanceId,
+        authClientId: KEYCLOAK_REALM_BASELINE.loginClientId,
+        tenantAdminClient: {
+          ...input.tenantAdminClient,
+          clientId: KEYCLOAK_REALM_BASELINE.tenantAdminClientId,
+        },
+      }
+    : input;
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
@@ -162,61 +176,62 @@ export const createChangeStatusHandler =
 export const createUpdateInstanceHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['updateInstance'] =>
   async (input: UpdateInstanceInput) => {
-    assertOidcClientIdsNotReserved(deps, input);
+    const effectiveInput = applyNewRealmUpdateDefaults(input);
+    assertOidcClientIdsNotReserved(deps, effectiveInput);
     instanceRegistryServiceLogger.info('instance_update_started', {
       operation: 'update_instance',
-      instance_id: input.instanceId,
-      request_id: input.requestId,
-      actor_id: input.actorId,
+      instance_id: effectiveInput.instanceId,
+      request_id: effectiveInput.requestId,
+      actor_id: effectiveInput.actorId,
     });
-    const existing = await deps.repository.getInstanceById(input.instanceId);
+    const existing = await deps.repository.getInstanceById(effectiveInput.instanceId);
     if (!existing) {
       return null;
     }
-    await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
-    const normalizedParentDomain = normalizeHost(input.parentDomain);
+    await assertNoActiveTenantProvisioning(deps.repository, effectiveInput.instanceId);
+    const normalizedParentDomain = normalizeHost(effectiveInput.parentDomain);
     const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
       parentDomain: normalizedParentDomain,
-      authRealm: input.authRealm,
-      authIssuerUrl: input.authIssuerUrl,
+      authRealm: effectiveInput.authRealm,
+      authIssuerUrl: effectiveInput.authIssuerUrl,
     });
     const primaryHostname =
       normalizeHost(existing.parentDomain) === normalizedParentDomain
         ? existing.primaryHostname
-        : buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+        : buildPrimaryHostname(effectiveInput.instanceId, normalizedParentDomain);
     assertTenantHostnameAvailable(deps, primaryHostname);
     const updated = await deps.repository.updateInstance({
-      instanceId: input.instanceId,
-      displayName: input.displayName,
+      instanceId: effectiveInput.instanceId,
+      displayName: effectiveInput.displayName,
       parentDomain: normalizedParentDomain,
       primaryHostname,
-      realmMode: input.realmMode,
-      authRealm: input.authRealm,
-      authClientId: input.authClientId,
-      authIssuerUrl: authIssuerUrl ?? input.authIssuerUrl,
+      realmMode: effectiveInput.realmMode,
+      authRealm: effectiveInput.authRealm,
+      authClientId: effectiveInput.authClientId,
+      authIssuerUrl: authIssuerUrl ?? effectiveInput.authIssuerUrl,
       authClientSecretCiphertext: encryptAuthClientSecret(
         deps,
-        input.instanceId,
-        input.authClientSecret
+        effectiveInput.instanceId,
+        effectiveInput.authClientSecret
       ),
-      keepExistingAuthClientSecret: !input.authClientSecret?.trim(),
-      tenantAdminClient: input.tenantAdminClient
+      keepExistingAuthClientSecret: !effectiveInput.authClientSecret?.trim(),
+      tenantAdminClient: effectiveInput.tenantAdminClient
         ? {
-            clientId: input.tenantAdminClient.clientId,
+            clientId: effectiveInput.tenantAdminClient.clientId,
             secretCiphertext: encryptTenantAdminClientSecret(
               deps,
-              input.instanceId,
-              input.tenantAdminClient.secret
+              effectiveInput.instanceId,
+              effectiveInput.tenantAdminClient.secret
             ),
           }
         : undefined,
-      keepExistingTenantAdminClientSecret: !input.tenantAdminClient?.secret?.trim(),
-      tenantAdminBootstrap: input.tenantAdminBootstrap ?? existing.tenantAdminBootstrap,
-      actorId: input.actorId,
-      requestId: input.requestId,
-      themeKey: input.themeKey,
-      featureFlags: input.featureFlags,
-      mainserverConfigRef: input.mainserverConfigRef,
+      keepExistingTenantAdminClientSecret: !effectiveInput.tenantAdminClient?.secret?.trim(),
+      tenantAdminBootstrap: effectiveInput.tenantAdminBootstrap ?? existing.tenantAdminBootstrap,
+      actorId: effectiveInput.actorId,
+      requestId: effectiveInput.requestId,
+      themeKey: effectiveInput.themeKey,
+      featureFlags: effectiveInput.featureFlags,
+      mainserverConfigRef: effectiveInput.mainserverConfigRef,
     });
     if (!updated) {
       return null;

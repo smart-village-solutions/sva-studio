@@ -57,6 +57,13 @@ export const createPluginJobExecutionHandlers = (
     try {
       result = await runtime.reconcile(context.job.instanceId);
     } catch (error) {
+      if (error instanceof Error && error.message === 'ssf_root_database_not_configured') {
+        throw lifecycleError('ssf_root_database_not_configured', {
+          code: 'ssf.root-database-not-configured',
+          messageKey: 'ssf.errors.rootDatabaseNotConfigured',
+          retry: { kind: 'terminal' },
+        });
+      }
       throw lifecycleError('ssf_authorization_reconcile_unavailable', {
         code: 'ssf.authorization-reconcile-unavailable',
         messageKey: 'ssf.errors.authorizationReconcileUnavailable',

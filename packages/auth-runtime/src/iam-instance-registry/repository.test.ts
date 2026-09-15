@@ -123,6 +123,7 @@ vi.mock('../runtime-secrets.js', () => ({
 }));
 
 vi.mock('./provisioning-auth.js', () => ({
+  deleteProvisionedRealmViaProvisioner: vi.fn(),
   getInstanceKeycloakStatusViaTenantAdmin: getInstanceKeycloakStatusViaTenantAdminMock,
   getInstanceKeycloakPlanViaProvisioner: vi.fn(),
   getInstanceKeycloakPreflightViaProvisioner: vi.fn(),

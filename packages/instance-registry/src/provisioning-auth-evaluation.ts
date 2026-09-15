@@ -1,10 +1,6 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
-import type {
-  KeycloakProvisioningInput,
-  KeycloakReadState,
-  TenantAdminBootstrap,
-} from './provisioning-auth-types.js';
+import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
 import { isInstanceIdMapperAligned } from './keycloak-realm-baseline.js';
 import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
 import { readPluginOidcClientAlignment } from './provisioning-auth-plugin-clients.js';
@@ -144,10 +140,7 @@ const resolveTenantSecretSummary = (
     : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
 };
 
-const buildTenantAdminCheck = (
-  realmMode: InstanceRealmMode,
-  tenantAdminBootstrap?: TenantAdminBootstrap
-): InstanceKeycloakPreflightCheck => {
+const buildTenantAdminCheck = (realmMode: InstanceRealmMode, tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
   const configured = Boolean(tenantAdminBootstrap?.username);
   const missingStatus = realmMode === 'existing' ? 'warning' : 'blocked';
   return createPreflightCheck(
@@ -204,12 +197,7 @@ export const buildPreflightChecks = (input: {
   accessError?: string;
 }): readonly InstanceKeycloakPreflightCheck[] => {
   const checks: InstanceKeycloakPreflightCheck[] = [
-    createPreflightCheck(
-      'platform_access',
-      'Plattformzugriff',
-      'ready',
-      'Der aufrufende Benutzer ist für die Root-Host-Instanzverwaltung autorisiert.'
-    ),
+    createPreflightCheck('platform_access', 'Plattformzugriff', 'ready', 'Der aufrufende Benutzer ist für die Root-Host-Instanzverwaltung autorisiert.'),
   ];
 
   if (input.accessError) {

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1405,
+  "body": "Waste-Provisionierung gegen Queue-Rückstau abgesichert\n\n- Die privilegierte Waste-Tenant-Provisionierung verwendet eine eigene Verarbeitungsqueue und kann dadurch nicht mehr von wiederholten Standardjobs blockiert werden.\n- Die Modulfreigabe bleibt weiterhin fail-closed, bis die Provisionierung erfolgreich abgeschlossen ist."
+}

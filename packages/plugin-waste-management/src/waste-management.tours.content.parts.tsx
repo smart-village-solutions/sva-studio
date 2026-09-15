@@ -88,6 +88,27 @@ const useWasteToursVisibleSelectionState = ({
   };
 };
 
+const useWasteToursDialogState = () => {
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [tourPendingDelete, setTourPendingDelete] = useState<WasteTourRecord | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkValidityOpen, setBulkValidityOpen] = useState(false);
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+
+  return {
+    filterDialogOpen,
+    setFilterDialogOpen,
+    tourPendingDelete,
+    setTourPendingDelete,
+    bulkDeleteOpen,
+    setBulkDeleteOpen,
+    bulkValidityOpen,
+    setBulkValidityOpen,
+    bulkStatusOpen,
+    setBulkStatusOpen,
+  };
+};
+
 export const useWasteToursSelectionState = ({
   tours,
   availableTourIds,
@@ -102,11 +123,7 @@ export const useWasteToursSelectionState = ({
   endDateFrom,
   endDateTo,
 }: UseWasteToursSelectionStateArgs) => {
-  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-  const [tourPendingDelete, setTourPendingDelete] = useState<WasteTourRecord | null>(null);
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkValidityOpen, setBulkValidityOpen] = useState(false);
-  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const dialogState = useWasteToursDialogState();
   const visibleSelectionState = useWasteToursVisibleSelectionState({
     tours,
     availableTourIds,
@@ -133,7 +150,7 @@ export const useWasteToursSelectionState = ({
     hasActiveFilters,
     syncDraftFilters,
   } = useWasteToursDraftFiltersState({
-    filterDialogOpen,
+    filterDialogOpen: dialogState.filterDialogOpen,
     query,
     status,
     tourValidityPeriod,
@@ -145,8 +162,7 @@ export const useWasteToursSelectionState = ({
   });
 
   return {
-    filterDialogOpen,
-    setFilterDialogOpen,
+    ...dialogState,
     ...visibleSelectionState,
     draftQuery,
     setDraftQuery,
@@ -166,13 +182,5 @@ export const useWasteToursSelectionState = ({
     setDraftEndDateTo,
     hasActiveFilters,
     syncDraftFilters,
-    tourPendingDelete,
-    setTourPendingDelete,
-    bulkDeleteOpen,
-    setBulkDeleteOpen,
-    bulkValidityOpen,
-    setBulkValidityOpen,
-    bulkStatusOpen,
-    setBulkStatusOpen,
   };
 };

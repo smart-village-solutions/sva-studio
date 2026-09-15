@@ -1,8 +1,4 @@
-import type {
-  WasteTourListFilter,
-  WasteTourRecord,
-  WasteTourStatusBulkUpdateInput,
-} from '@sva/core';
+import type { WasteTourListFilter, WasteTourRecord } from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -17,6 +13,7 @@ import {
   mapWasteTourValidityRow,
   type WasteTourValidityRow,
 } from './master-data.tour-validity.js';
+import { buildTourStatusBulkUpdateStatement } from './master-data.tour-status.js';
 
 type WasteTourRow = {
   readonly id: string;
@@ -202,19 +199,6 @@ DELETE FROM waste_tours
 WHERE id = $1::uuid;
 `,
   values: [id],
-});
-
-const buildTourStatusBulkUpdateStatement = (
-  input: WasteTourStatusBulkUpdateInput
-): SqlStatement => ({
-  text: `
-UPDATE waste_tours
-SET status = $2,
-    active = ($2 = 'published'),
-    updated_at = NOW()
-WHERE id = ANY($1::uuid[]);
-`,
-  values: [input.tourIds, input.status],
 });
 
 export const createWasteTourRepositoryPart = (

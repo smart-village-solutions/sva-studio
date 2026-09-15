@@ -19,7 +19,8 @@ import {
   wasteHolidayRuleConflictStatuses,
   wasteHolidayRuleSourceStatuses,
 } from './waste-management/master-data-holiday-rule-status.js';
-import { wasteTourRecurrences, wasteTourStatuses } from './waste-management/master-data-tours.js';
+import { wasteTourStatuses } from './waste-management/master-data-tour-status.js';
+import { wasteTourRecurrences } from './waste-management/master-data-tours.js';
 
 export const wasteManagementSchedulingDataProfiles = [
   {

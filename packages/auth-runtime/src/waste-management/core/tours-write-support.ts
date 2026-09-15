@@ -81,14 +81,13 @@ export const duplicateWasteTourDependencies = async ({
   const deleteTour = requireDeps(deps.deleteWasteTour, 'deleteWasteTour');
 
   try {
-    const [sourceLinks, sourcePickupDates, sourceTourAssignments, sourceShifts] = await Promise.all(
-      [
+    const [sourceLinks, sourcePickupDates, sourceTourAssignments, sourceShifts] =
+      await Promise.all([
         listLinks(instanceId, sourceTourId),
         listPickupDates(instanceId, { tourId: sourceTourId }),
         listTourAssignments(instanceId, { tourId: sourceTourId }),
         listShifts(instanceId, sourceTourId),
-      ]
-    );
+      ]);
 
     for (const sourceLink of sourceLinks) {
       await saveLink(instanceId, {

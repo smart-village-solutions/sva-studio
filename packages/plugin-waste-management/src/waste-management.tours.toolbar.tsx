@@ -1,10 +1,8 @@
 import { usePluginTranslation, type WasteTourStatus } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 
-import {
-  WasteToursToolbarActions,
-  WasteToursToolbarFilters,
-} from './waste-management.tours.toolbar.parts.js';
+import { WasteToursToolbarActions } from './waste-management.tours.toolbar.actions.js';
+import { WasteToursToolbarFilters } from './waste-management.tours.toolbar.parts.js';
 import type { WasteManagementTourValidityPeriod } from './search-params.js';
 
 type WasteToursToolbarProps = {

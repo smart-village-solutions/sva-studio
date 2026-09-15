@@ -30,8 +30,6 @@ import type {
   WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
-  WasteTourStatusBulkUpdateInput,
-  WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTenantProvisioningRecord,
@@ -48,6 +46,7 @@ import type { WasteCollectionLocationReadHandlerDeps } from './collection-locati
 import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-deps.js';
 import type { WasteMainserverSyncStatusHandlerDeps } from './mainserver-sync-status-deps.js';
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
+import type { WasteTourStatusBulkHandlerDeps } from './tour-status-bulk-deps.js';
 
 type ResolveWasteActorInfoResult =
   | {
@@ -62,7 +61,7 @@ type ResolveWasteActorInfoResult =
       readonly error: Response;
     };
 
-type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
+type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulkHandlerDeps & {
   readonly getRequestId?: () => string | undefined;
   readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
   readonly loadDefaultInterfaceRecord?: (
@@ -270,10 +269,6 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
     instanceId: string,
     input: WasteTourValidityBulkUpdateInput
   ) => Promise<WasteTourValidityBulkUpdateResult>;
-  readonly updateWasteTourStatusBulk?: (
-    instanceId: string,
-    input: WasteTourStatusBulkUpdateInput
-  ) => Promise<WasteTourStatusBulkUpdateResult>;
   readonly loadWasteTourById?: (
     instanceId: string,
     tourId: string

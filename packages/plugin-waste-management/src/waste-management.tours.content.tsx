@@ -7,20 +7,16 @@ import {
   type WasteToursFilterViewModel,
   type WasteToursTableViewModel,
 } from './waste-management.tours.content.body.js';
-import {
-  WasteToursDeleteDialogs,
-  useWasteToursSelectionState,
-} from './waste-management.tours.content.parts.js';
+import { useWasteToursSelectionState } from './waste-management.tours.content.parts.js';
 import {
   applyWasteToursFilters,
   resetWasteToursFilters,
   updateWasteToursSorting,
 } from './waste-management.tours.content.helpers.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
-import { WasteToursBulkValidityDialog } from './waste-management.tours-bulk-validity.js';
 import { useWasteToursContentSorting } from './waste-management.tours.content.sorting.js';
 import { useWasteToursAnnualTransfer } from './waste-management.tours-annual-transfer.js';
-import { WasteToursStatusBulkDialog } from './waste-management.tours-status-bulk-dialog.js';
+import { WasteToursContentDialogs } from './waste-management.tours.content.dialogs.js';
 export { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
 export const WasteToursContent = (props: WasteToursContentProps) => {
   const annualTransfer = useWasteToursAnnualTransfer(props);
@@ -229,59 +225,26 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         focusFallbackRef={deleteFocusFallbackRef}
         focusFallbackLabel={pt('tabs.tours.title')}
       />
-      {annualTransfer.dialog}
-      <WasteToursBulkValidityDialog
-        open={bulkValidityOpen}
-        tours={allTours}
-        selectedTourIds={selectedTourIds}
+      <WasteToursContentDialogs
+        annualTransferDialog={annualTransfer.dialog}
+        allTours={allTours}
         saving={saving}
-        onOpenChange={setBulkValidityOpen}
-        onUpdate={onUpdateTourValidityBulk}
-        onUpdated={() => {
-          setSelectedTourIds([]);
-          setBulkValidityOpen(false);
-        }}
-      />
-      {bulkStatusOpen ? (
-        <WasteToursStatusBulkDialog
-          open
-          selectedTourIds={selectedTourIds}
-          saving={saving}
-          onOpenChange={setBulkStatusOpen}
-          onSubmit={onUpdateTourStatusBulk}
-          onUpdated={() => {
-            clearSelection();
-            setBulkStatusOpen(false);
-          }}
-        />
-      ) : null}
-      {tourPendingStatusChange ? (
-        <WasteToursStatusBulkDialog
-          open
-          selectedTourIds={[tourPendingStatusChange.id]}
-          tourName={tourPendingStatusChange.name}
-          saving={saving}
-          onOpenChange={(open) => {
-            if (!open) {
-              setTourPendingStatusChange(null);
-            }
-          }}
-          onSubmit={onUpdateTourStatusBulk}
-          onUpdated={() => setTourPendingStatusChange(null)}
-        />
-      ) : null}
-      <WasteToursDeleteDialogs
         tourPendingDelete={tourPendingDelete}
         bulkDeleteOpen={bulkDeleteOpen}
+        bulkValidityOpen={bulkValidityOpen}
+        bulkStatusOpen={bulkStatusOpen}
+        tourPendingStatusChange={tourPendingStatusChange}
         selectedTourIds={selectedTourIds}
-        onCancelSingle={() => setTourPendingDelete(null)}
-        onCancelBulk={() => setBulkDeleteOpen(false)}
+        setSelectedTourIds={setSelectedTourIds}
+        setTourPendingDelete={setTourPendingDelete}
+        setBulkDeleteOpen={setBulkDeleteOpen}
+        setBulkValidityOpen={setBulkValidityOpen}
+        setBulkStatusOpen={setBulkStatusOpen}
+        setTourPendingStatusChange={setTourPendingStatusChange}
         onDeleteTour={onDeleteTour}
         onDeleteTours={onDeleteTours}
-        onAfterBulkDelete={(failedIds) => {
-          setSelectedTourIds(failedIds);
-          setBulkDeleteOpen(failedIds.length > 0);
-        }}
+        onUpdateTourValidityBulk={onUpdateTourValidityBulk}
+        onUpdateTourStatusBulk={onUpdateTourStatusBulk}
         fallbackFocusRef={deleteFocusFallbackRef}
       />
     </div>

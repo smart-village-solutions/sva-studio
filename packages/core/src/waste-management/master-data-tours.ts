@@ -1,3 +1,5 @@
+import type { WasteTourStatus } from './master-data-tour-status.js';
+
 export const wasteTourRecurrences = [
   'weekly',
   'biweekly',
@@ -8,10 +10,6 @@ export const wasteTourRecurrences = [
 ] as const;
 
 export type WasteTourRecurrence = (typeof wasteTourRecurrences)[number];
-
-export const wasteTourStatuses = ['draft', 'published', 'archived'] as const;
-
-export type WasteTourStatus = (typeof wasteTourStatuses)[number];
 
 export type WasteCustomTourDate = {
   readonly date: string;
@@ -50,17 +48,6 @@ export type WasteTourListFilter = {
   readonly recurrence?: WasteTourRecurrence;
   readonly wasteFractionId?: string;
   readonly search?: string;
-};
-
-export const wasteTourStatusBulkLimit = 1_000;
-
-export type WasteTourStatusBulkUpdateInput = {
-  readonly tourIds: readonly string[];
-  readonly status: WasteTourStatus;
-};
-
-export type WasteTourStatusBulkUpdateResult = {
-  readonly updatedCount: number;
 };
 
 export type WasteLocationTourLinkRecord = {

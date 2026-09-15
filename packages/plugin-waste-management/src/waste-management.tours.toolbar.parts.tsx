@@ -1,4 +1,3 @@
-import { IconCalendarTime, IconFilter, IconToggleRight, IconTrash } from '@tabler/icons-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import type { WasteTourStatus } from '@sva/plugin-sdk';
 import {
@@ -9,7 +8,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  cn,
 } from '@sva/studio-ui-react';
 
 import { WasteToursToolbarFilterFields } from './waste-management.tours.toolbar.filter-fields.js';
@@ -83,129 +81,6 @@ const toWasteToursToolbarFilterFieldProps = ({
   onDraftEndDateFromChange,
   onDraftEndDateToChange,
 });
-
-export const WasteToursToolbarActions = ({
-  selectedCount,
-  hiddenSelectedCount,
-  filteredCount,
-  allFilteredSelected,
-  someFilteredSelected,
-  filterDialogOpen,
-  hasActiveFilters,
-  onOpenBulkDelete,
-  onOpenBulkValidity,
-  onOpenBulkStatus,
-  onToggleSelectAllFiltered,
-  onClearSelection,
-  onOpenFilterDialog,
-  onResetFilters,
-}: {
-  readonly selectedCount: number;
-  readonly hiddenSelectedCount: number;
-  readonly filteredCount: number;
-  readonly allFilteredSelected: boolean;
-  readonly someFilteredSelected: boolean;
-  readonly filterDialogOpen: boolean;
-  readonly hasActiveFilters: boolean;
-  readonly onOpenBulkDelete: () => void;
-  readonly onOpenBulkValidity: () => void;
-  readonly onOpenBulkStatus: () => void;
-  readonly onToggleSelectAllFiltered: (checked: boolean) => void;
-  readonly onClearSelection: () => void;
-  readonly onOpenFilterDialog: () => void;
-  readonly onResetFilters: () => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        type="button"
-        variant="tertiary"
-        className="h-10 rounded-lg px-3"
-        disabled={filteredCount === 0}
-        aria-pressed={allFilteredSelected}
-        data-partially-selected={someFilteredSelected && !allFilteredSelected ? '' : undefined}
-        onClick={() => onToggleSelectAllFiltered(!allFilteredSelected)}
-      >
-        {allFilteredSelected
-          ? pt('tours.selection.deselectFiltered')
-          : pt('tours.selection.selectFiltered', { value: filteredCount })}
-      </Button>
-      {selectedCount > 0 ? (
-        <>
-          <span className="text-sm font-medium" aria-live="polite">
-            {pt('tours.selection.selectedCount', { value: selectedCount })}
-            {hiddenSelectedCount > 0
-              ? ` · ${pt('tours.selection.hiddenSelectedCount', { value: hiddenSelectedCount })}`
-              : null}
-          </span>
-          <Button
-            type="button"
-            variant="tertiary"
-            className="h-10 rounded-lg px-3"
-            onClick={onClearSelection}
-          >
-            {pt('tours.selection.clear')}
-          </Button>
-        </>
-      ) : null}
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-10 rounded-lg px-3"
-        disabled={selectedCount === 0}
-        onClick={onOpenBulkStatus}
-      >
-        <IconToggleRight aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.bulkStatusDialog.open')}
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-10 rounded-lg px-3"
-        disabled={selectedCount === 0}
-        onClick={onOpenBulkValidity}
-      >
-        <IconCalendarTime aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.bulkValidityDialog.title')}
-      </Button>
-      <Button
-        type="button"
-        variant="tertiary"
-        className={cn(
-          'h-10 rounded-lg border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
-          selectedCount === 0 && 'text-destructive/50'
-        )}
-        disabled={selectedCount === 0}
-        onClick={onOpenBulkDelete}
-      >
-        <IconTrash aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.table.deleteSelected')}
-      </Button>
-      {hasActiveFilters ? (
-        <Button
-          type="button"
-          variant="tertiary"
-          className="h-10 rounded-lg px-3"
-          onClick={onResetFilters}
-        >
-          {pt('tours.filters.reset')}
-        </Button>
-      ) : null}
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-10 rounded-lg border-border/70 px-3"
-        aria-expanded={filterDialogOpen}
-        onClick={onOpenFilterDialog}
-      >
-        <IconFilter aria-hidden="true" className="h-4 w-4" />
-        {pt('tours.filters.open')}
-      </Button>
-    </div>
-  );
-};
 
 const hasWasteToursDraftFilterChanges = ({
   query,

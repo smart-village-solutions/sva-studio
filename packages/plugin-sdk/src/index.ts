@@ -180,9 +180,6 @@ export type {
   WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
-  WasteTourStatus,
-  WasteTourStatusBulkUpdateInput,
-  WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
@@ -192,17 +189,9 @@ export type * from './waste-annual-tour-transfer.js';
 export * from './media-content-save-client.js';
 export * from './list-pagination.js';
 export * from './content-media-permissions.js';
-export {
-  isWasteTourValidityApplicable,
-  resolveWasteTourValidityDates,
-  wasteTourStatusBulkLimit,
-  wasteTourStatuses,
-} from './public-api.js';
-export {
-  buildWasteStreetKey,
-  isValidInstanceId,
-  resolveEffectiveWasteTourDateShiftsForYear,
-} from '@sva/core';
+export * from './waste-tour-status-public-api.js';
+export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
+export { buildWasteStreetKey, isValidInstanceId, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

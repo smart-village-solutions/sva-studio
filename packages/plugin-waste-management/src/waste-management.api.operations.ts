@@ -6,9 +6,6 @@ import type {
   WasteLocationTourPickupDateRecord,
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
-  WasteTourRecord,
-  WasteTourStatusBulkUpdateResult,
-  WasteTourValidityBulkUpdateResult,
   WasteTourAssignmentRecord,
 } from '@sva/plugin-sdk';
 
@@ -16,7 +13,6 @@ import type {
   CreateWasteManagementGlobalDateShiftInput,
   CreateWasteManagementLocationTourPickupDateInput,
   CreateWasteManagementTourDateShiftInput,
-  CreateWasteManagementTourInput,
   CreateWasteManagementTourAssignmentInput,
   PreviewWasteLocationTourPickupDateImportInput,
   PreviewWasteLocationTourPickupDateImportResult,
@@ -29,9 +25,6 @@ import type {
   UpdateWasteManagementHolidayRuleInput,
   UpdateWasteManagementLocationTourPickupDateInput,
   UpdateWasteManagementTourDateShiftInput,
-  UpdateWasteManagementTourInput,
-  UpdateWasteManagementTourStatusBulkInput,
-  UpdateWasteManagementTourValidityBulkInput,
   UpdateWasteManagementTourAssignmentInput,
   WasteManagementSettingsInput,
 } from './waste-management.api.types.js';
@@ -43,39 +36,7 @@ import {
   requestWasteManagementMutationResponse,
 } from './waste-management.api.shared.js';
 
-export const createWasteManagementTour = async (
-  input: CreateWasteManagementTourInput
-): Promise<WasteTourRecord> =>
-  requestWasteManagementMutation('/api/v1/waste-management/tours', input);
-
-export const updateWasteManagementTour = async (
-  tourId: string,
-  input: UpdateWasteManagementTourInput
-): Promise<WasteTourRecord> =>
-  requestWasteManagementMutation(
-    `/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`,
-    input,
-    'PUT'
-  );
-
-export const updateWasteManagementTourValidityBulk = async (
-  input: UpdateWasteManagementTourValidityBulkInput
-): Promise<WasteTourValidityBulkUpdateResult> =>
-  requestWasteManagementMutation('/api/v1/waste-management/tours/bulk-validity', input, 'PUT');
-
-export const updateWasteManagementTourStatusBulk = async (
-  input: UpdateWasteManagementTourStatusBulkInput
-): Promise<WasteTourStatusBulkUpdateResult> =>
-  requestWasteManagementMutation('/api/v1/waste-management/tours/bulk-status', input, 'PUT');
-
-export const deleteWasteManagementTour = async (
-  tourId: string
-): Promise<Readonly<{ id: string }>> =>
-  requestWasteManagementMutation(
-    `/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`,
-    undefined,
-    'DELETE'
-  );
+export * from './waste-management.api.operations.tours.js';
 
 export const createWasteManagementTourAssignment = async (
   input: CreateWasteManagementTourAssignmentInput

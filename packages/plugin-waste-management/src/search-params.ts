@@ -1,7 +1,6 @@
 import type {
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
-  WasteTourStatus,
 } from '@sva/plugin-sdk';
 
 import {
@@ -9,6 +8,7 @@ import {
   normalizeWasteCollectionLocationSortMode,
 } from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
+import { normalizeTourStatus, type WasteManagementTourStatusFilter } from './search-params.tour-status.js';
 
 const wasteManagementTabs = [
   'fractions',
@@ -25,7 +25,6 @@ const wasteManagementToursViews = ['list', 'create', 'edit'] as const;
 const wasteManagementLocationsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementSchedulingViews = ['list', 'create', 'edit'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
-const wasteManagementTourStatusFilters = ['all', 'draft', 'published', 'archived'] as const;
 const wasteManagementTourValidityPeriods = ['all', 'previous', 'current', 'next'] as const;
 const wasteManagementShiftContexts = ['all', 'holiday', 'global', 'tour'] as const;
 const wasteManagementSchedulingEntryTypes = ['holiday-rule', 'global-shift', 'tour-shift'] as const;
@@ -45,7 +44,6 @@ type WasteManagementToursView = (typeof wasteManagementToursViews)[number];
 type WasteManagementLocationsView = (typeof wasteManagementLocationsViews)[number];
 export type WasteManagementSchedulingView = (typeof wasteManagementSchedulingViews)[number];
 export type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
-export type WasteManagementTourStatusFilter = 'all' | WasteTourStatus;
 export type WasteManagementTourValidityPeriod = (typeof wasteManagementTourValidityPeriods)[number];
 export type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
 export type WasteManagementSchedulingEntryType =
@@ -151,21 +149,6 @@ const normalizeStatus = (value: unknown): WasteManagementStatusFilter =>
     ? (value as WasteManagementStatusFilter)
     : 'all';
 
-const normalizeTourStatus = (
-  value: unknown,
-  legacyStatus: unknown
-): WasteManagementTourStatusFilter => {
-  if (
-    typeof value === 'string' &&
-    wasteManagementTourStatusFilters.includes(value as WasteManagementTourStatusFilter)
-  ) {
-    return value as WasteManagementTourStatusFilter;
-  }
-  if (legacyStatus === 'active') return 'published';
-  if (legacyStatus === 'inactive') return 'draft';
-  return 'all';
-};
-
 const normalizeTourValidityPeriod = (value: unknown): WasteManagementTourValidityPeriod =>
   typeof value === 'string' &&
   wasteManagementTourValidityPeriods.includes(value as WasteManagementTourValidityPeriod)
@@ -239,7 +222,10 @@ export const normalizeWasteManagementSearchParams = (
     pageSize,
     fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
-    tourStatus: normalizeTourStatus(search.tourStatus, tab === 'tours' ? search.status : undefined),
+    tourStatus: normalizeTourStatus(
+      search.tourStatus,
+      tab === 'tours' ? search.status : undefined
+    ),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),

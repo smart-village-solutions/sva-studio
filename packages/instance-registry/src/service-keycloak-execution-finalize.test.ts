@@ -247,7 +247,9 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi
+            .fn()
+            .mockResolvedValue({ realm: { realm: 'demo' } }),
         } as never,
         {
           loaded: {
@@ -276,6 +278,57 @@ describe('service-keycloak-execution-finalize', () => {
     });
     expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({ overallStatus: 'succeeded' })
+    );
+  });
+
+  it('keeps the realm baseline applicable after a managed realm transitioned to existing', async () => {
+    const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          operation: 'create',
+          status: 'active',
+          desiredSnapshot: { realmMode: 'new' },
+          childKeycloakRunId: 'initial-keycloak-run',
+        },
+      ]),
+      setInstanceStatus: vi.fn(),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+    const status = { realmExists: true };
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.buildFinalRunSteps.mockReturnValue([
+      { stepKey: 'realm_baseline', title: 'Realm-Baseline', ok: true, summary: 'ok' },
+    ]);
+    state.areAllRequirementsSatisfied.mockReturnValue(true);
+    state.buildKeycloakStatus.mockReturnValue(status);
+    state.appendRunStep.mockResolvedValue(undefined);
+
+    await expect(
+      completeRun(
+        {
+          repository: repository as never,
+          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+        } as never,
+        {
+          loaded: {
+            instance: {
+              instanceId: 'managed-instance',
+              status: 'active',
+              realmMode: 'existing',
+            },
+          } as never,
+          runId: 'later-keycloak-run',
+          intent: 'provision',
+        }
+      )
+    ).resolves.toBe('succeeded');
+
+    expect(state.buildFinalRunSteps).toHaveBeenCalledWith(
+      expect.objectContaining({ requireRealmBaseline: true })
+    );
+    expect(state.buildPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ realmBaselineApplicable: true })
     );
   });
 

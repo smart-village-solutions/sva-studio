@@ -2,6 +2,7 @@ import {
   areAllInstanceKeycloakRequirementsSatisfied,
   isInstanceTenantAdminRequired,
   type InstanceRegistryRecord,
+  type InstanceProvisioningRun,
 } from '@sva/core';
 
 import type { KeycloakTenantStatus } from './keycloak-types.js';
@@ -46,17 +47,28 @@ const resolveFinalSnapshotInstance = (
   return transitionNewRealm ? { ...snapshotInstance, realmMode: 'existing' } : snapshotInstance;
 };
 
-const assertParentProvisioningRunActive = async (
-  deps: InstanceRegistryServiceDeps,
+const assertParentProvisioningRunActive = (
+  provisioningRuns: readonly InstanceProvisioningRun[],
   input: CompleteRunInput
-): Promise<void> => {
-  const parent = (
-    await deps.repository.listProvisioningRuns(input.loaded.instance.instanceId)
-  ).find((run) => run.childKeycloakRunId === input.runId);
+): void => {
+  const parent = provisioningRuns.find((run) => run.childKeycloakRunId === input.runId);
   if (parent && !['requested', 'validated', 'provisioning'].includes(parent.status)) {
     throw new Error('keycloak_parent_provisioning_run_inactive');
   }
 };
+
+const isRealmBaselineApplicable = (
+  instance: InstanceRegistryRecord,
+  provisioningRuns: readonly InstanceProvisioningRun[]
+): boolean =>
+  instance.realmMode === 'new' ||
+  provisioningRuns.some(
+    (run) =>
+      run.operation === 'create' &&
+      run.status === 'active' &&
+      run.desiredSnapshot.realmMode === 'new' &&
+      typeof run.childKeycloakRunId === 'string'
+  );
 
 const buildStatusFromState = (
   provisioningInput: KeycloakProvisioningInput,
@@ -76,7 +88,8 @@ const appendFinalStatusSnapshot = async (
   deps: InstanceRegistryServiceDeps,
   input: CompleteRunInput,
   snapshotInstance: InstanceRegistryRecord,
-  state: KeycloakReadState
+  state: KeycloakReadState,
+  realmBaselineApplicable: boolean
 ) => {
   const finalProvisioningInput = {
     ...buildProvisioningInput({ ...input.loaded, instance: snapshotInstance }),
@@ -105,7 +118,7 @@ const appendFinalStatusSnapshot = async (
     tenantAdminClientSecret: finalProvisioningInput.tenantAdminClientSecret,
     tenantAdminBootstrap: finalProvisioningInput.tenantAdminBootstrap,
     pluginOidcClients: finalProvisioningInput.pluginOidcClients,
-    realmBaselineApplicable: input.loaded.instance.realmMode === 'new',
+    realmBaselineApplicable,
     preflight,
     state,
   });
@@ -142,13 +155,15 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
   const state = await readKeycloakState(provisioningInput);
   const status = buildStatusFromState(provisioningInput, state);
   const requireTenantAdmin = isInstanceTenantAdminRequired(input.loaded.instance);
+  const provisioningRuns = await deps.repository.listProvisioningRuns(provisioningInput.instanceId);
+  const realmBaselineApplicable = isRealmBaselineApplicable(input.loaded.instance, provisioningRuns);
 
   const completionSteps = buildFinalRunSteps({
     status,
     intent: input.intent,
     usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
     requireTenantAdmin,
-    requireRealmBaseline: input.loaded.instance.realmMode === 'new',
+    requireRealmBaseline: realmBaselineApplicable,
   });
 
   const completionSatisfied = completionSteps.every((step) => step.ok);
@@ -163,7 +178,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
     input.intent !== 'reset_tenant_admin' &&
     input.loaded.instance.realmMode === 'new';
 
-  await assertParentProvisioningRunActive(deps, input);
+  assertParentProvisioningRunActive(provisioningRuns, input);
 
   let snapshotInstance = input.loaded.instance;
 
@@ -184,7 +199,13 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
     transitionNewRealm
   );
   if (finalSnapshotInstance) {
-    await appendFinalStatusSnapshot(deps, input, finalSnapshotInstance, state);
+    await appendFinalStatusSnapshot(
+      deps,
+      input,
+      finalSnapshotInstance,
+      state,
+      realmBaselineApplicable
+    );
   }
 
   for (const step of completionSteps) {

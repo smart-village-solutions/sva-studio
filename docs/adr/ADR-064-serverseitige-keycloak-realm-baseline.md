@@ -33,8 +33,9 @@ werden.
   übernommene Realms werden nicht gelöscht.
 - Nach erfolgreichem Abschluss wechselt die Registry erst als letzte fallible
   Operation von `new` auf `existing`. Status- und Plan-Evidenz behalten dabei
-  die Herkunft als Studio-verwalteter Realm, damit die offene SMTP-Nacharbeit
-  sichtbar bleibt.
+  anhand des abgeschlossenen initialen Tenant-Provisioning-Laufs auch in
+  späteren Keycloak-Läufen die Herkunft als Studio-verwalteter Realm, damit die
+  offene SMTP-Nacharbeit sichtbar bleibt.
 - Der lokale Bootstrap-Account wird erst nach erfolgreicher Realm-Abnahme
   synchronisiert. Ein vorheriger Abschlussfehler kann dadurch keinen lokalen
   privilegierten Account für einen anschließend kompensierten Realm hinterlassen.

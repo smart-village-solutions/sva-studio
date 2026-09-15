@@ -15,6 +15,7 @@ import {
 } from './plugin-activation-policy-snapshot.js';
 import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
 import {
+  deleteProvisionedRealmViaProvisioner,
   getInstanceKeycloakPlanViaProvisioner,
   getInstanceKeycloakPreflightViaProvisioner,
   getInstanceKeycloakStatusViaTenantAdmin,
@@ -159,6 +160,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     saveWasteDataSourceRecord,
     readKeycloakStateViaProvisioner,
     provisionInstanceAuth: provisionInstanceAuthArtifactsViaProvisioner,
+    deleteProvisionedRealm: deleteProvisionedRealmViaProvisioner,
     getKeycloakPreflight: getWorkerKeycloakPreflight,
     planKeycloakProvisioning: getWorkerKeycloakPlan,
     getKeycloakStatus: getWorkerKeycloakStatus,

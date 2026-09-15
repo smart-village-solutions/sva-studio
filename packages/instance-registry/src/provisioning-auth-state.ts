@@ -167,6 +167,7 @@ export const createKeycloakProvisioningAdapters = (
 ) => ({
   readKeycloakState: createReadKeycloakState(createClient),
   provisionInstanceAuthArtifacts: createProvisionInstanceAuthArtifacts(createClient),
+  deleteKeycloakRealm: (realm: string) => createClient(realm).deleteRealm(),
 });
 
 type TenantAdminInput = {

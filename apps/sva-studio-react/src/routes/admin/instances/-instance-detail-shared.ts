@@ -97,6 +97,28 @@ export const createWorkflowStep = (input: SetupWorkflowStep): SetupWorkflowStep 
 export const translateConfigurationStatus = (status: InstanceConfigurationOverallStatus) =>
   t(CONFIGURATION_STATUS_LABELS[status]);
 
+type LocalizableKeycloakStep = Readonly<{
+  title: string;
+  summary: string;
+  details?: Readonly<Record<string, unknown>>;
+}>;
+
+const translateKeycloakStepField = (
+  step: LocalizableKeycloakStep,
+  key: 'titleKey' | 'summaryKey',
+  fallback: string
+): string => {
+  const translationKey = step.details?.[key];
+  if (typeof translationKey !== 'string') return fallback;
+  const translated = t(translationKey);
+  return translated === translationKey ? fallback : translated;
+};
+
+export const translateKeycloakStep = (step: LocalizableKeycloakStep) => ({
+  title: translateKeycloakStepField(step, 'titleKey', step.title),
+  summary: translateKeycloakStepField(step, 'summaryKey', step.summary),
+});
+
 export const readRequirementGroupSatisfied = (instance: IamInstanceDetail, uiStepKey: string) =>
   Boolean(
     instance.keycloakStatus &&

@@ -10,6 +10,7 @@ import {
 import { getErrorMessage } from './-instance-error-messages';
 import { getKeycloakStatusEntries, getStatusGuidance } from './-instance-detail-status';
 import { getEffectiveTenantIamStatus } from './-instance-detail-tenant-iam';
+import { translateKeycloakStep } from './-instance-detail-shared';
 import { getSetupWorkflowSteps } from './-instance-detail-workflow';
 
 const createKeycloakStatusFixture = (overrides: Record<string, unknown> = {}) =>
@@ -78,6 +79,33 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
   }) as const;
 
 describe('instance detail split helpers', () => {
+  it('translates server-provided Keycloak step keys and keeps legacy text as fallback', () => {
+    expect(
+      translateKeycloakStep({
+        title: 'Realm baseline',
+        summary: 'pending',
+        details: { titleKey: 'admin.instances.operations.keycloakSteps.realmBaseline.title' },
+      }).title
+    ).toBe('Realm-Baseline anwenden');
+    expect(
+      translateKeycloakStep({
+        title: 'Realm baseline',
+        summary: 'pending',
+        details: { summaryKey: 'admin.instances.operations.keycloakSteps.realmBaseline.pending' },
+      }).summary
+    ).toContain('automatisch eingerichtet');
+    expect(translateKeycloakStep({ title: 'Legacy title', summary: 'Legacy summary' }).title).toBe(
+      'Legacy title'
+    );
+    expect(
+      translateKeycloakStep({
+        title: 'Legacy title',
+        summary: 'Legacy summary',
+        details: { titleKey: 'iam.provisioning.steps.realm.title' },
+      }).title
+    ).toBe('Legacy title');
+  });
+
   it('maps cockpit helper labels and statuses across all public helper branches', () => {
     expect(mapConfigurationStatusToCockpitStatus('complete')).toBe('ready');
     expect(mapConfigurationStatusToCockpitStatus('degraded')).toBe('degraded');

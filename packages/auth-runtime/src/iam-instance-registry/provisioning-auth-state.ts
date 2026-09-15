@@ -62,7 +62,9 @@ const withInstalledPluginOidcClients = <
 
 const withProvisionerPluginOidcClients = <
   T extends Pick<KeycloakProvisioningInput, 'pluginOidcClients'>,
->(input: T): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> =>
+>(
+  input: T
+): T & Pick<KeycloakProvisioningInput, 'pluginOidcClients'> =>
   input.pluginOidcClients === undefined ? withInstalledPluginOidcClients(input) : input;
 
 export const readKeycloakState = (input: KeycloakProvisioningInput) =>
@@ -94,3 +96,5 @@ export const provisionInstanceAuthArtifacts = (
 export const provisionInstanceAuthArtifactsViaProvisioner = (
   input: Parameters<typeof provisionerAdapters.provisionInstanceAuthArtifacts>[0]
 ) => provisionerAdapters.provisionInstanceAuthArtifacts(withProvisionerPluginOidcClients(input));
+export const deleteProvisionedRealmViaProvisioner = (authRealm: string) =>
+  provisionerAdapters.deleteKeycloakRealm(authRealm);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isInstanceIdMapperAligned,
   isKeycloakRealmBaselineAligned,
   KEYCLOAK_REALM_BASELINE,
   KEYCLOAK_REALM_BASELINE_FINGERPRINT,
@@ -35,6 +36,31 @@ describe('keycloak realm baseline', () => {
       isKeycloakRealmBaselineAligned({
         ...realm,
         smtpServer: { ...realm.smtpServer, host: 'other.example.org' },
+      })
+    ).toBe(false);
+  });
+
+  it('validates the complete instanceId mapper contract', () => {
+    const mapper = {
+      name: 'instanceId',
+      protocol: 'openid-connect',
+      protocolMapper: 'oidc-usermodel-attribute-mapper',
+      config: {
+        'user.attribute': 'instanceId',
+        'claim.name': 'instanceId',
+        'jsonType.label': 'String',
+        multivalued: 'false',
+        'id.token.claim': 'true',
+        'access.token.claim': 'true',
+        'userinfo.token.claim': 'true',
+      },
+    };
+
+    expect(isInstanceIdMapperAligned(mapper)).toBe(true);
+    expect(
+      isInstanceIdMapperAligned({
+        ...mapper,
+        config: { ...mapper.config, 'claim.name': 'wrongClaim' },
       })
     ).toBe(false);
   });

@@ -167,6 +167,61 @@ const syncTenantAdminBootstrapAccountAfterProvisioning = async (
   });
 };
 
+const cleanupNewRealmAfterPostProvisioningFailure = async (
+  deps: InstanceRegistryServiceDeps,
+  provisioningInput: QueuedProvisioningInput,
+  failure: unknown
+): Promise<void> => {
+  if (provisioningInput.realmMode !== 'new') return;
+  if (!deps.deleteProvisionedRealm) {
+    const cleanupUnavailable = new Error(
+      'new_realm_post_provisioning_cleanup_unavailable_requires_manual_action'
+    ) as Error & { cause?: unknown };
+    cleanupUnavailable.cause = failure;
+    throw cleanupUnavailable;
+  }
+  try {
+    await deps.deleteProvisionedRealm(provisioningInput.authRealm);
+  } catch (cleanupError) {
+    const manualActionError = new Error(
+      'new_realm_post_provisioning_cleanup_failed_requires_manual_action'
+    ) as Error & { cause?: unknown };
+    manualActionError.cause = cleanupError;
+    throw manualActionError;
+  }
+};
+
+const finalizeProvisionedRun = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceKeycloakProvisioningRun,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
+  tenantAdminTemporaryPassword: string | undefined,
+  provisioningInput: QueuedProvisioningInput
+) => {
+  try {
+    await runInstanceRegistryStep('secret_sync', () =>
+      syncClientSecretAfterProvisioning(deps, run, loaded)
+    );
+    await runInstanceRegistryStep('admin_bootstrap', () =>
+      syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded)
+    );
+    return await runInstanceRegistryStep('worker_complete', () =>
+      completeRun(deps, {
+        loaded,
+        runId: run.id,
+        requestId: run.requestId,
+        actorId: run.actorId,
+        intent: run.intent,
+        tenantAdminTemporaryPassword,
+        pluginOidcClients: provisioningInput.pluginOidcClients,
+      })
+    );
+  } catch (error) {
+    await cleanupNewRealmAfterPostProvisioningFailure(deps, provisioningInput, error);
+    throw error;
+  }
+};
+
 const executeClaimedRun = async (
   deps: InstanceRegistryServiceDeps,
   run: InstanceKeycloakProvisioningRun,
@@ -231,24 +286,21 @@ const executeClaimedRun = async (
     })
   );
 
-  await runInstanceRegistryStep('secret_sync', () =>
-    syncClientSecretAfterProvisioning(deps, run, loaded)
-  );
-  await runInstanceRegistryStep('admin_bootstrap', () =>
-    syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded)
+  const finalRunStatus = await finalizeProvisionedRun(
+    deps,
+    run,
+    loaded,
+    tenantAdminTemporaryPassword,
+    provisioningInput
   );
 
-  const finalRunStatus = await runInstanceRegistryStep('worker_complete', () =>
-    completeRun(deps, {
-      loaded,
-      runId: run.id,
-      requestId: run.requestId,
-      actorId: run.actorId,
-      intent: run.intent,
-      tenantAdminTemporaryPassword,
-      pluginOidcClients: provisioningInput.pluginOidcClients,
-    })
-  );
+  if (finalRunStatus === 'failed') {
+    await cleanupNewRealmAfterPostProvisioningFailure(
+      deps,
+      provisioningInput,
+      new Error('new_realm_completion_failed')
+    );
+  }
 
   logger.info('keycloak_provisioning_completed', {
     operation: 'process_keycloak_provisioning_run',

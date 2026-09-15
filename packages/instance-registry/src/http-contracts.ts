@@ -56,8 +56,7 @@ export const listQuerySchema = z.object({
   status: z.enum(instanceStatuses).optional(),
 });
 
-const instanceWriteSchemaFields = {
-  instanceId: instanceIdSchema,
+const sharedInstanceWriteSchemaFields = {
   displayName: z.string().trim().min(1),
   parentDomain: z.string().trim().min(1),
   realmMode: z.enum(['new', 'existing']),
@@ -71,7 +70,8 @@ const instanceWriteSchemaFields = {
 
 export const createInstanceSchema = z
   .object({
-    ...instanceWriteSchemaFields,
+    instanceId: instanceIdSchema,
+    ...sharedInstanceWriteSchemaFields,
     authRealm: authRealmSchema.optional(),
     authClientId: z.string().trim().min(1).optional(),
     tenantAdminClient: tenantAdminClientSchema,
@@ -124,7 +124,7 @@ export const resolveCreateInstanceDefaults = (value: z.output<typeof createInsta
       };
 
 export const updateInstanceSchema = z.object({
-  ...instanceWriteSchemaFields,
+  ...sharedInstanceWriteSchemaFields,
   authRealm: authRealmSchema,
   authClientId: z.string().trim().min(1),
   tenantAdminClient: tenantAdminClientSchema,

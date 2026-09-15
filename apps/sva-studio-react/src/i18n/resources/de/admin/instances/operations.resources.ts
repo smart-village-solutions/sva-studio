@@ -23,6 +23,24 @@ export const operationsInstancesAdminDEResources = {
     erfolgreich: 'Erfolgreich',
     fehlgeschlagen: 'Fehlgeschlagen',
   },
+  keycloakSteps: {
+    realmBaseline: {
+      title: 'Realm-Baseline anwenden',
+      existing: 'Bestands-Realms werden nicht automatisch auf die New-Realm-Baseline umgestellt.',
+      aligned:
+        'Realm-Einstellungen, Benutzerprofil und instanceId-Mapper entsprechen der Baseline.',
+      pending:
+        'Theme, deutsche Lokalisierung, Events, E-Mail-Grundkonfiguration, Benutzerprofil und Mapper werden automatisch eingerichtet.',
+      failed: 'Die automatische Realm-Baseline konnte nicht vollständig bestätigt werden.',
+    },
+    smtpPassword: {
+      title: 'SMTP-Passwort manuell setzen',
+      existing: 'Das SMTP-Passwort des Bestands-Realm bleibt unverändert.',
+      configured: 'In Keycloak ist ein SMTP-Passwort hinterlegt.',
+      required:
+        'Die SMTP-Grundkonfiguration ist vorhanden; das Passwort muss einmalig direkt in Keycloak gesetzt werden.',
+    },
+  },
   new: {
     title: 'Neuen Realm aufbauen',
     stepsTitle: 'Schrittkette für den Realm-Grundaufbau',

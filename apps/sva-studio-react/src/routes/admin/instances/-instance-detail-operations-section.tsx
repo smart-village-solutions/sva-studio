@@ -5,8 +5,13 @@ import { Label } from '../../../components/ui/label';
 import { t } from '../../../i18n';
 import { InstanceDetailModulesSection } from './-instance-detail-modules-section';
 import { getKeycloakStatusEntries, getSetupWorkflowSteps } from './-instance-detail-models';
+import { translateKeycloakStep } from './-instance-detail-shared';
 import { KeycloakStatusBadge, WorkflowStatusBadge } from './-instance-status-badges';
-import { TENANT_IAM_AXIS_TITLE_KEYS, TenantIamStatusBadge, type WorkflowAction } from './-instance-detail-view-shared';
+import {
+  TENANT_IAM_AXIS_TITLE_KEYS,
+  TenantIamStatusBadge,
+  type WorkflowAction,
+} from './-instance-detail-view-shared';
 
 import type { OperationsSectionProps } from './-instance-detail-view-shared';
 
@@ -63,7 +68,10 @@ const WorkflowCard = ({
   mutationError,
   onTriggerWorkflowAction,
   statusLoading,
-}: Pick<OperationsSectionProps, 'selectedInstance' | 'mutationError' | 'onTriggerWorkflowAction' | 'statusLoading'>) => (
+}: Pick<
+  OperationsSectionProps,
+  'selectedInstance' | 'mutationError' | 'onTriggerWorkflowAction' | 'statusLoading'
+>) => (
   <Card className="space-y-4 p-4">
     <div className="space-y-1">
       <div className="font-medium text-foreground">{t('admin.instances.workflow.title')}</div>
@@ -102,14 +110,19 @@ const ExecuteProvisioningCard = ({
   detailFormValues,
   setDetailFormValues,
   onExecuteProvisioning,
-}: Pick<OperationsSectionProps, 'detailFormValues' | 'setDetailFormValues' | 'onExecuteProvisioning'>) => (
+}: Pick<
+  OperationsSectionProps,
+  'detailFormValues' | 'setDetailFormValues' | 'onExecuteProvisioning'
+>) => (
   <Card className="space-y-3 p-4">
     <div className="space-y-1">
       <div className="font-medium text-foreground">{t('admin.instances.flow.executeTitle')}</div>
       <p className="text-xs text-muted-foreground">{t('admin.instances.flow.executeSubtitle')}</p>
     </div>
     <div className="space-y-1">
-      <Label htmlFor="tenant-admin-password">{t('admin.instances.keycloakPanel.temporaryPassword')}</Label>
+      <Label htmlFor="tenant-admin-password">
+        {t('admin.instances.keycloakPanel.temporaryPassword')}
+      </Label>
       <Input
         id="tenant-admin-password"
         type="password"
@@ -120,19 +133,33 @@ const ExecuteProvisioningCard = ({
           )
         }
       />
-      <p className="text-xs text-muted-foreground">{t('admin.instances.keycloakPanel.passwordHint')}</p>
+      <p className="text-xs text-muted-foreground">
+        {t('admin.instances.keycloakPanel.passwordHint')}
+      </p>
     </div>
     <div className="flex flex-wrap gap-2">
       <Button type="button" onClick={() => void onExecuteProvisioning('provision')}>
         {t('admin.instances.actions.executeProvisioning')}
       </Button>
-      <Button type="button" variant="secondary" onClick={() => void onExecuteProvisioning('provision_admin_client')}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void onExecuteProvisioning('provision_admin_client')}
+      >
         {t('admin.instances.actions.provisionAdminClient')}
       </Button>
-      <Button type="button" variant="secondary" onClick={() => void onExecuteProvisioning('reset_tenant_admin')}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void onExecuteProvisioning('reset_tenant_admin')}
+      >
         {t('admin.instances.actions.resetTenantAdmin')}
       </Button>
-      <Button type="button" variant="secondary" onClick={() => void onExecuteProvisioning('rotate_client_secret')}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void onExecuteProvisioning('rotate_client_secret')}
+      >
         {t('admin.instances.actions.rotateClientSecret')}
       </Button>
     </div>
@@ -143,17 +170,30 @@ const PreflightCard = ({
   selectedInstance,
   onTriggerWorkflowAction,
   statusLoading,
-}: Pick<OperationsSectionProps, 'selectedInstance' | 'onTriggerWorkflowAction' | 'statusLoading'>) => (
+}: Pick<
+  OperationsSectionProps,
+  'selectedInstance' | 'onTriggerWorkflowAction' | 'statusLoading'
+>) => (
   <Card className="space-y-3 p-4">
     <div className="space-y-1">
       <div className="font-medium text-foreground">{t('admin.instances.flow.preflightTitle')}</div>
       <p className="text-xs text-muted-foreground">{t('admin.instances.flow.preflightSubtitle')}</p>
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="secondary" onClick={() => void onTriggerWorkflowAction('check_preflight')} disabled={statusLoading}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void onTriggerWorkflowAction('check_preflight')}
+        disabled={statusLoading}
+      >
         {t('admin.instances.actions.checkPreflight')}
       </Button>
-      <Button type="button" variant="secondary" onClick={() => void onTriggerWorkflowAction('check_keycloak_status')} disabled={statusLoading}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void onTriggerWorkflowAction('check_keycloak_status')}
+        disabled={statusLoading}
+      >
         {t('admin.instances.actions.checkKeycloakStatus')}
       </Button>
     </div>
@@ -166,7 +206,9 @@ const PreflightCard = ({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{check.summary}</p>
         </div>
-      )) ?? <p className="text-sm text-muted-foreground">{t('admin.instances.flow.preflightEmpty')}</p>}
+      )) ?? (
+        <p className="text-sm text-muted-foreground">{t('admin.instances.flow.preflightEmpty')}</p>
+      )}
     </div>
   </Card>
 );
@@ -175,14 +217,22 @@ const PlanPreviewCard = ({
   selectedInstance,
   onTriggerWorkflowAction,
   statusLoading,
-}: Pick<OperationsSectionProps, 'selectedInstance' | 'onTriggerWorkflowAction' | 'statusLoading'>) => (
+}: Pick<
+  OperationsSectionProps,
+  'selectedInstance' | 'onTriggerWorkflowAction' | 'statusLoading'
+>) => (
   <Card className="space-y-3 p-4">
     <div className="space-y-1">
       <div className="font-medium text-foreground">{t('admin.instances.flow.previewTitle')}</div>
       <p className="text-xs text-muted-foreground">{t('admin.instances.flow.previewSubtitle')}</p>
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="secondary" onClick={() => void onTriggerWorkflowAction('plan_provisioning')} disabled={statusLoading}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => void onTriggerWorkflowAction('plan_provisioning')}
+        disabled={statusLoading}
+      >
         {t('admin.instances.actions.planProvisioning')}
       </Button>
     </div>
@@ -191,10 +241,14 @@ const PlanPreviewCard = ({
         selectedInstance.keycloakPlan.steps.map((step) => (
           <div key={step.stepKey} className="rounded-md border border-border p-3">
             <div className="flex items-center justify-between gap-3">
-              <span className="font-medium text-foreground">{step.title}</span>
+              <span className="font-medium text-foreground">
+                {translateKeycloakStep(step).title}
+              </span>
               <span className="text-xs text-muted-foreground">{step.action}</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{step.summary}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {translateKeycloakStep(step).summary}
+            </p>
           </div>
         ))
       ) : (
@@ -204,7 +258,9 @@ const PlanPreviewCard = ({
   </Card>
 );
 
-const KeycloakStatusCard = ({ selectedInstance }: Pick<OperationsSectionProps, 'selectedInstance'>) => (
+const KeycloakStatusCard = ({
+  selectedInstance,
+}: Pick<OperationsSectionProps, 'selectedInstance'>) => (
   <Card className="space-y-3 p-4">
     <div className="space-y-1">
       <div className="font-medium text-foreground">{t('admin.instances.keycloakPanel.title')}</div>
@@ -213,7 +269,10 @@ const KeycloakStatusCard = ({ selectedInstance }: Pick<OperationsSectionProps, '
     <div className="grid gap-2">
       {getKeycloakStatusEntries(selectedInstance).length ? (
         getKeycloakStatusEntries(selectedInstance).map(([labelKey, ready]) => (
-          <div key={labelKey} className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
+          <div
+            key={labelKey}
+            className="flex items-center justify-between gap-3 rounded-md border border-border p-2"
+          >
             <span>{t(labelKey)}</span>
             <KeycloakStatusBadge ready={ready} />
           </div>

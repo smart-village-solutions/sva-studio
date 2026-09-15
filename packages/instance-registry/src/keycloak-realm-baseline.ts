@@ -102,6 +102,20 @@ export const isKeycloakRealmBaselineAligned = (
   );
 };
 
+export const isInstanceIdMapperAligned = (
+  mapper: KeycloakReadState['protocolMappers'][number] | undefined
+): boolean =>
+  mapper?.name === KEYCLOAK_REALM_BASELINE.instanceIdMapper.name &&
+  mapper.protocol === 'openid-connect' &&
+  mapper.protocolMapper === 'oidc-usermodel-attribute-mapper' &&
+  mapper.config?.['user.attribute'] === KEYCLOAK_REALM_BASELINE.instanceIdMapper.userAttribute &&
+  mapper.config?.['claim.name'] === KEYCLOAK_REALM_BASELINE.instanceIdMapper.claimName &&
+  mapper.config?.['jsonType.label'] === 'String' &&
+  mapper.config?.multivalued === 'false' &&
+  mapper.config?.['id.token.claim'] === 'true' &&
+  mapper.config?.['access.token.claim'] === 'true' &&
+  mapper.config?.['userinfo.token.claim'] === 'true';
+
 const buildRealmBaselineStep = (
   realmMode: InstanceRealmMode,
   state: KeycloakReadState | undefined,
@@ -114,15 +128,17 @@ const buildRealmBaselineStep = (
       action: 'skip',
       status: blocked ? 'blocked' : 'ready',
       summary: 'Bestands-Realms werden nicht automatisch auf die New-Realm-Baseline umgestellt.',
-      details: { applicable: false },
+      details: {
+        applicable: false,
+        titleKey: 'admin.instances.operations.keycloakSteps.realmBaseline.title',
+        summaryKey: 'admin.instances.operations.keycloakSteps.realmBaseline.existing',
+      },
     };
   }
 
   const realmBaselineAligned = Boolean(state?.realmBaselineAligned);
   const userProfileBaselineAligned = Boolean(state?.userProfileBaselineAligned);
-  const instanceIdMapperAligned = Boolean(
-    (state?.protocolMappers ?? []).some((mapper) => mapper.name === 'instanceId')
-  );
+  const instanceIdMapperAligned = (state?.protocolMappers ?? []).some(isInstanceIdMapperAligned);
   const aligned = realmBaselineAligned && userProfileBaselineAligned && instanceIdMapperAligned;
 
   return {
@@ -138,6 +154,10 @@ const buildRealmBaselineStep = (
       realmBaselineAligned,
       userProfileBaselineAligned,
       instanceIdMapperAligned,
+      titleKey: 'admin.instances.operations.keycloakSteps.realmBaseline.title',
+      summaryKey: aligned
+        ? 'admin.instances.operations.keycloakSteps.realmBaseline.aligned'
+        : 'admin.instances.operations.keycloakSteps.realmBaseline.pending',
     },
   };
 };
@@ -169,6 +189,12 @@ const buildSmtpPasswordStep = (
           ? 'smtp_password_configured'
           : 'smtp_password_required',
       actionCode: !applicable || configured ? 'none' : 'set_smtp_password_in_keycloak',
+      titleKey: 'admin.instances.operations.keycloakSteps.smtpPassword.title',
+      summaryKey: !applicable
+        ? 'admin.instances.operations.keycloakSteps.smtpPassword.existing'
+        : configured
+          ? 'admin.instances.operations.keycloakSteps.smtpPassword.configured'
+          : 'admin.instances.operations.keycloakSteps.smtpPassword.required',
     },
   };
 };

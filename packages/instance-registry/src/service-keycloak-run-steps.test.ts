@@ -176,7 +176,7 @@ describe('service-keycloak-run-steps', () => {
         configured: false,
         reasonCode: 'smtp_password_required',
         actionCode: 'set_smtp_password_in_keycloak',
-        titleKey: 'iam.provisioning.steps.smtp_password.title',
+        titleKey: 'admin.instances.operations.keycloakSteps.smtpPassword.title',
       },
     });
   });

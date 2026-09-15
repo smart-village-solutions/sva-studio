@@ -732,6 +732,80 @@ describe('service-keycloak-execution', () => {
     );
   });
 
+  it('removes a newly created realm when final validation reports failure', async () => {
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
+    const deleteProvisionedRealm = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    state.buildProvisioningInput.mockReturnValue({
+      authRealm: 'tenant',
+      realmMode: 'new',
+    });
+    state.completeRun.mockResolvedValue('failed');
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+          deleteProvisionedRealm,
+          readKeycloakStateViaProvisioner: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+        } as never,
+        createRun()
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'failed' });
+
+    expect(deleteProvisionedRealm).toHaveBeenCalledWith('tenant');
+  });
+
+  it('removes a newly created realm when final validation cannot be read', async () => {
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
+    const deleteProvisionedRealm = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+    };
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    state.buildProvisioningInput.mockReturnValue({
+      authRealm: 'tenant',
+      realmMode: 'new',
+    });
+    state.completeRun.mockRejectedValue(new Error('final-read-failed'));
+
+    await expect(
+      processClaimedKeycloakProvisioningRun(
+        {
+          repository: repository as never,
+          provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+          deleteProvisionedRealm,
+          readKeycloakStateViaProvisioner: vi.fn(),
+          getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+          planKeycloakProvisioning: vi
+            .fn()
+            .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+        } as never,
+        createRun()
+      )
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'failed' });
+
+    expect(deleteProvisionedRealm).toHaveBeenCalledWith('tenant');
+    expect(state.failRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ runId: 'run-1', error: expect.any(Error) })
+    );
+  });
+
   it('enqueues provisioning runs only for existing instances', async () => {
     const { createExecuteKeycloakProvisioningHandler } =
       await import('./service-keycloak-execution.js');

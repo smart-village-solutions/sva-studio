@@ -10,6 +10,7 @@ import {
   readDetailInstanceId,
   readKeycloakRunId,
   seedIamBaselineSchema,
+  updateInstanceSchema,
 } from './http-contracts.js';
 
 describe('http-contracts', () => {
@@ -116,6 +117,18 @@ describe('http-contracts', () => {
         authClientId: 'custom-login',
       }).success
     ).toBe(false);
+  });
+
+  it('keeps the instance id in the update URL instead of requiring it in the body', () => {
+    expect(
+      updateInstanceSchema.safeParse({
+        displayName: 'Demo',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'de-test',
+        authClientId: 'sva-studio-login',
+      }).success
+    ).toBe(true);
   });
 
   it('rejects reserved instance ids for audit routes', () => {

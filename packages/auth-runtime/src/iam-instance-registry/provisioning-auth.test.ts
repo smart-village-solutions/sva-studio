@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   createKeycloakProvisioningAdapters: vi.fn((factory) => ({
     readKeycloakState: vi.fn(async () => ({ factory, kind: 'state' })),
     provisionInstanceAuthArtifacts: vi.fn(async () => ({ factory, kind: 'provision' })),
+    deleteKeycloakRealm: vi.fn(async () => undefined),
   })),
   createReadKeycloakState: vi.fn((factory) =>
     vi.fn(async (input) => ({
@@ -136,6 +137,7 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     expect(subject.readKeycloakStateViaTenantAdmin).toBeDefined();
     expect(subject.provisionInstanceAuthArtifacts).toBeDefined();
     expect(subject.provisionInstanceAuthArtifactsViaProvisioner).toBeDefined();
+    expect(subject.deleteProvisionedRealmViaProvisioner).toBeDefined();
   });
 
   it('injects the installed SSF client declaration at the auth-runtime composition boundary', async () => {

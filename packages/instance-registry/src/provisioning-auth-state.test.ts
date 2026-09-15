@@ -809,5 +809,8 @@ describe('provisioning-auth-state', () => {
     expect(resolveConfig).toHaveBeenCalledWith('demo');
     expect(createClientFromConfig).toHaveBeenCalledWith({ realm: 'demo' });
     expect(typeof adapters.provisionInstanceAuthArtifacts).toBe('function');
+
+    await adapters.deleteKeycloakRealm('demo');
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
   });
 });

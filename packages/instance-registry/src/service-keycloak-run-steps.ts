@@ -62,7 +62,10 @@ const buildRealmBaselineCompletionStep = (status: KeycloakTenantStatus): Complet
       realmBaselineAligned: status.realmBaselineAligned,
       userProfileBaselineAligned: status.userProfileBaselineAligned,
       instanceIdMapperAligned: status.instanceIdMapperAligned,
-      titleKey: 'iam.provisioning.steps.realm_baseline.title',
+      titleKey: 'admin.instances.operations.keycloakSteps.realmBaseline.title',
+      summaryKey: aligned
+        ? 'admin.instances.operations.keycloakSteps.realmBaseline.aligned'
+        : 'admin.instances.operations.keycloakSteps.realmBaseline.failed',
     },
     ok: aligned,
   };
@@ -80,7 +83,10 @@ const buildSmtpPasswordCompletionStep = (status: KeycloakTenantStatus): Completi
       ? 'smtp_password_configured'
       : 'smtp_password_required',
     actionCode: status.smtpPasswordConfigured ? 'none' : 'set_smtp_password_in_keycloak',
-    titleKey: 'iam.provisioning.steps.smtp_password.title',
+    titleKey: 'admin.instances.operations.keycloakSteps.smtpPassword.title',
+    summaryKey: status.smtpPasswordConfigured
+      ? 'admin.instances.operations.keycloakSteps.smtpPassword.configured'
+      : 'admin.instances.operations.keycloakSteps.smtpPassword.required',
   },
   ok: true,
 });

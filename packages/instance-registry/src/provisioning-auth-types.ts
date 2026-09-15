@@ -92,7 +92,12 @@ export type KeycloakReadState = {
   readonly clientRepresentation: KeycloakClientRepresentation;
   readonly tenantAdminClientRepresentation: KeycloakClientRepresentation;
   readonly pluginOidcClients: readonly PluginOidcClientState[];
-  readonly protocolMappers: readonly { name: string }[];
+  readonly protocolMappers: readonly {
+    readonly name: string;
+    readonly protocol?: string;
+    readonly protocolMapper?: string;
+    readonly config?: Readonly<Record<string, string>>;
+  }[];
   readonly tenantAdminStatus: TenantAdminStatus;
   readonly keycloakClientSecret: string | null;
   readonly tenantAdminClientSecret: string | null;

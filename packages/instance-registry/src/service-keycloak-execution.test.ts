@@ -606,7 +606,12 @@ describe('service-keycloak-execution', () => {
         .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
     };
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
-    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    const loaded = createLoaded();
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...loaded,
+      instance: { ...loaded.instance, realmMode: 'existing' },
+    });
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning', realmMode: 'existing' });
     state.readQueuedTemporaryPassword.mockReturnValue('tmp-password');
 
     await expect(
@@ -645,6 +650,25 @@ describe('service-keycloak-execution', () => {
       requestId: 'request-1',
       actorId: 'actor-1',
     });
+  });
+
+  it('rejects tenant-admin-only reset runs while the instance still owns a new realm', async () => {
+    const { createExecuteKeycloakProvisioningHandler } =
+      await import('./service-keycloak-execution.js');
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    const handler = createExecuteKeycloakProvisioningHandler({
+      repository: { listProvisioningRuns: vi.fn().mockResolvedValue([]) } as never,
+    } as never);
+
+    await expect(
+      handler({
+        instanceId: 'instance-1',
+        requestId: 'request-1',
+        actorId: 'actor-1',
+        intent: 'reset_tenant_admin',
+      } as never)
+    ).rejects.toThrow('reset_tenant_admin_requires_existing_realm');
+    expect(state.createQueuedRun).not.toHaveBeenCalled();
   });
 
   it('passes the configured tenant admin bootstrap to the local sync hook after provisioning', async () => {
@@ -743,6 +767,7 @@ describe('service-keycloak-execution', () => {
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
     state.buildProvisioningInput.mockReturnValue({
+      instanceId: 'instance-1',
       authRealm: 'tenant',
       realmMode: 'new',
     });
@@ -778,6 +803,7 @@ describe('service-keycloak-execution', () => {
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
     state.buildProvisioningInput.mockReturnValue({
+      instanceId: 'instance-1',
       authRealm: 'tenant',
       realmMode: 'new',
     });
@@ -804,6 +830,45 @@ describe('service-keycloak-execution', () => {
       expect.anything(),
       expect.objectContaining({ runId: 'run-1', error: expect.any(Error) })
     );
+  });
+
+  it('does not delete the realm when finalization already committed the existing mode', async () => {
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
+    const deleteProvisionedRealm = vi.fn();
+    const loaded = createLoaded();
+    state.loadInstanceWithSecret
+      .mockResolvedValueOnce(loaded)
+      .mockResolvedValueOnce({
+        ...loaded,
+        instance: { ...loaded.instance, realmMode: 'existing' },
+      });
+    state.buildProvisioningInput.mockReturnValue({
+      instanceId: 'instance-1',
+      authRealm: 'tenant',
+      realmMode: 'new',
+    });
+    state.completeRun.mockRejectedValue(new Error('late-finalization-failure'));
+
+    await processClaimedKeycloakProvisioningRun(
+      {
+        repository: {
+          getKeycloakProvisioningRun: vi
+            .fn()
+            .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+        } as never,
+        provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+        deleteProvisionedRealm,
+        readKeycloakStateViaProvisioner: vi.fn(),
+        getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+        planKeycloakProvisioning: vi
+          .fn()
+          .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+      } as never,
+      createRun()
+    );
+
+    expect(deleteProvisionedRealm).not.toHaveBeenCalled();
   });
 
   it('enqueues provisioning runs only for existing instances', async () => {

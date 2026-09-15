@@ -152,20 +152,6 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
 
   let snapshotInstance = input.loaded.instance;
 
-  if (
-    finalRunStatus === 'succeeded' &&
-    input.intent !== 'reset_tenant_admin' &&
-    input.loaded.instance.realmMode === 'new'
-  ) {
-    snapshotInstance =
-      (await deps.repository.setInstanceRealmMode({
-        instanceId: input.loaded.instance.instanceId,
-        realmMode: 'existing',
-        actorId: input.actorId,
-        requestId: input.requestId,
-      })) ?? snapshotInstance;
-  }
-
   if (finalRunStatus === 'succeeded' && input.loaded.instance.status !== 'active') {
     snapshotInstance =
       (await deps.repository.setInstanceStatus({
@@ -183,7 +169,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
       runId: input.runId,
       stepKey: step.stepKey,
       title: step.title,
-      status: step.ok ? 'done' : 'failed',
+      status: step.status ?? (step.ok ? 'done' : 'failed'),
       summary: step.summary,
       details: step.details,
       requestId: input.requestId,
@@ -198,5 +184,18 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
         ? 'Provisioning erfolgreich abgeschlossen.'
         : 'Provisioning abgeschlossen, aber einzelne Sollzustände weichen weiterhin ab.',
   });
+
+  if (
+    finalRunStatus === 'succeeded' &&
+    input.intent !== 'reset_tenant_admin' &&
+    input.loaded.instance.realmMode === 'new'
+  ) {
+    await deps.repository.setInstanceRealmMode({
+      instanceId: input.loaded.instance.instanceId,
+      realmMode: 'existing',
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+  }
   return finalRunStatus;
 };

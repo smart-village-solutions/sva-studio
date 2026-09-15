@@ -436,6 +436,10 @@ describe('instance detail split helpers', () => {
       'admin.instances.keycloakStatus.tenantAdminHasSystemAdmin',
       false,
     ]);
+    expect(importedRealmEntries).not.toContainEqual([
+      'admin.instances.keycloakStatus.realmBaselineAligned',
+      true,
+    ]);
 
     for (const status of [
       'requested',

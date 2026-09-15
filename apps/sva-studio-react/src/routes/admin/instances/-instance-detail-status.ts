@@ -82,10 +82,10 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
       'admin.instances.keycloakStatus.runtimeSecretSourceTenant',
       status.runtimeSecretSource === 'tenant',
     ],
-    ...(status.realmBaselineAligned === undefined
+    ...(selectedInstance.realmMode !== 'new' || status.realmBaselineAligned === undefined
       ? []
       : [[KEYCLOAK_STATUS_LABELS.realmBaselineAligned, status.realmBaselineAligned] as const]),
-    ...(status.userProfileBaselineAligned === undefined
+    ...(selectedInstance.realmMode !== 'new' || status.userProfileBaselineAligned === undefined
       ? []
       : [
           [
@@ -93,12 +93,12 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
             status.userProfileBaselineAligned,
           ] as const,
         ]),
-    ...(status.instanceIdMapperAligned === undefined
+    ...(selectedInstance.realmMode !== 'new' || status.instanceIdMapperAligned === undefined
       ? []
       : [
           [KEYCLOAK_STATUS_LABELS.instanceIdMapperAligned, status.instanceIdMapperAligned] as const,
         ]),
-    ...(status.smtpPasswordConfigured === undefined
+    ...(selectedInstance.realmMode !== 'new' || status.smtpPasswordConfigured === undefined
       ? []
       : [[KEYCLOAK_STATUS_LABELS.smtpPasswordConfigured, status.smtpPasswordConfigured] as const]),
   ] as const;

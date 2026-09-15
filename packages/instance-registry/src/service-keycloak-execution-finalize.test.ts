@@ -77,15 +77,15 @@ describe('service-keycloak-execution-finalize', () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
     const status = { realmExists: true };
-    const realmUpdated = {
+    const statusUpdated = {
       instanceId: 'instance-1',
-      status: 'draft',
-      realmMode: 'existing',
+      status: 'provisioning',
+      realmMode: 'new',
       updatedAt: '2026-09-11T10:00:01.000Z',
     };
-    const statusUpdated = {
-      ...realmUpdated,
-      status: 'provisioning',
+    const realmUpdated = {
+      ...statusUpdated,
+      realmMode: 'existing',
       updatedAt: '2026-09-11T10:00:02.000Z',
     };
     const repository = {
@@ -103,6 +103,13 @@ describe('service-keycloak-execution-finalize', () => {
         ok: true,
         summary: 'ok',
         details: { scope: 'roles' },
+      },
+      {
+        stepKey: 'smtp_password',
+        title: 'SMTP-Passwort manuell setzen',
+        ok: true,
+        status: 'pending',
+        summary: 'manuell offen',
       },
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(true);
@@ -197,6 +204,14 @@ describe('service-keycloak-execution-finalize', () => {
       overallStatus: 'succeeded',
       driftSummary: 'Provisioning erfolgreich abgeschlossen.',
     });
+    expect(repository.updateKeycloakProvisioningRun.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.setInstanceRealmMode.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(state.appendRunStep).toHaveBeenNthCalledWith(
+      3,
+      expect.anything(),
+      expect.objectContaining({ stepKey: 'smtp_password', status: 'pending' })
+    );
   });
 
   it('completes an existing realm repair without an optional bootstrap admin', async () => {

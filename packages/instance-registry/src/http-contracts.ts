@@ -87,6 +87,14 @@ export const createInstanceSchema = z
       return;
     }
 
+    if (!authRealmSchema.safeParse(value.instanceId).success) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['instanceId'],
+        message: 'Instanz-ID kann nicht als Realm-Name verwendet werden',
+      });
+    }
+
     const conflicts = [
       value.authRealm && value.authRealm !== value.instanceId ? 'authRealm' : undefined,
       value.authClientId && value.authClientId !== KEYCLOAK_REALM_BASELINE.loginClientId

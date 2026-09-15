@@ -172,6 +172,7 @@ describe('service-keycloak-run-steps', () => {
     expect(steps.find((step) => step.stepKey === 'realm_baseline')).toMatchObject({ ok: true });
     expect(steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
       ok: true,
+      status: 'pending',
       details: {
         configured: false,
         reasonCode: 'smtp_password_required',

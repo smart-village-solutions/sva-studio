@@ -35,6 +35,7 @@ type CompletionStep = {
   title: string;
   summary: string;
   details?: Readonly<Record<string, unknown>>;
+  status?: 'pending';
   ok: boolean;
 };
 
@@ -88,6 +89,7 @@ const buildSmtpPasswordCompletionStep = (status: KeycloakTenantStatus): Completi
       ? 'admin.instances.operations.keycloakSteps.smtpPassword.configured'
       : 'admin.instances.operations.keycloakSteps.smtpPassword.required',
   },
+  status: status.smtpPasswordConfigured ? undefined : 'pending',
   ok: true,
 });
 

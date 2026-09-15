@@ -69,6 +69,17 @@ describe('http-contracts', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects an invalid instance id when it would become the new realm name', () => {
+    expect(
+      createInstanceSchema.safeParse({
+        instanceId: 'tenant/foo',
+        displayName: 'Demo',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'new',
+      }).success
+    ).toBe(false);
+  });
+
   it('allows create requests without a tenant admin client contract', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',

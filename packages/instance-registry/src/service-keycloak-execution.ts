@@ -42,6 +42,15 @@ type QueuedProvisioningInput = ReturnType<typeof buildProvisioningInput> & {
   pluginOidcClients: NonNullable<KeycloakProvisioningInput['pluginOidcClients']>;
 };
 
+const assertProvisioningIntentAllowed = (
+  realmMode: KeycloakProvisioningInput['realmMode'],
+  intent: ExecuteInstanceKeycloakProvisioningInput['intent']
+): void => {
+  if (realmMode === 'new' && intent === 'reset_tenant_admin') {
+    throw new Error('reset_tenant_admin_requires_existing_realm');
+  }
+};
+
 const loadClaimedRunInstance = async (
   deps: InstanceRegistryServiceDeps,
   run: InstanceKeycloakProvisioningRun
@@ -173,6 +182,17 @@ const cleanupNewRealmAfterPostProvisioningFailure = async (
   failure: unknown
 ): Promise<void> => {
   if (provisioningInput.realmMode !== 'new') return;
+  let current;
+  try {
+    current = await loadInstanceWithSecret(deps, provisioningInput.instanceId);
+  } catch (stateError) {
+    const cleanupUnverified = new Error(
+      'new_realm_cleanup_state_unavailable_requires_manual_action'
+    ) as Error & { cause?: unknown };
+    cleanupUnverified.cause = stateError;
+    throw cleanupUnverified;
+  }
+  if (!current || current.instance.realmMode !== 'new') return;
   if (!deps.deleteProvisionedRealm) {
     const cleanupUnavailable = new Error(
       'new_realm_post_provisioning_cleanup_unavailable_requires_manual_action'
@@ -229,6 +249,7 @@ const executeClaimedRun = async (
   tenantAdminTemporaryPassword: string | undefined,
   provisioningInput: QueuedProvisioningInput
 ) => {
+  assertProvisioningIntentAllowed(provisioningInput.realmMode, run.intent);
   const secretVersions = await loadKeycloakSnapshotSecretVersions(
     deps.repository,
     loaded.instance.instanceId
@@ -424,6 +445,7 @@ export const createExecuteKeycloakProvisioningHandler =
       });
       return null;
     }
+    assertProvisioningIntentAllowed(loaded.instance.realmMode, input.intent);
     if (!options.allowActiveTenantProvisioning) {
       await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
     }

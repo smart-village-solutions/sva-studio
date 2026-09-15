@@ -3,6 +3,8 @@ import {
   isValidWasteIsoDateOnly,
   wasteAnnualTourTransferLimits,
   wasteManagementMasterDataContract,
+  wasteTourStatusBulkLimit,
+  wasteTourStatuses,
   type WasteTourRecurrence,
 } from '@sva/core';
 import { z } from 'zod';
@@ -357,7 +359,7 @@ const wasteCustomTourDateSchema = z.object({
   description: z.string().trim().min(1).optional(),
 });
 
-const createWasteTourSchema = z.object({
+const wasteTourSchemaBase = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
   description: z.string().trim().min(1).optional(),
@@ -368,10 +370,15 @@ const createWasteTourSchema = z.object({
   firstDate: wasteTourDateSchema.optional(),
   endDate: wasteTourDateSchema.optional(),
   customDates: z.array(wasteCustomTourDateSchema).optional(),
-  active: z.boolean(),
 });
 
-const updateWasteTourSchema = createWasteTourSchema.omit({ id: true });
+const createWasteTourSchema = wasteTourSchemaBase.extend({
+  status: z.literal('draft').optional().default('draft'),
+});
+
+const updateWasteTourSchema = wasteTourSchemaBase.omit({ id: true }).extend({
+  status: z.enum(wasteTourStatuses),
+});
 
 const wasteAnnualTourReplacementDateSchema = z
   .object({
@@ -449,6 +456,23 @@ const updateWasteTourValidityBulkSchema = z
     }
   });
 
+const updateWasteTourStatusBulkSchema = z
+  .object({
+    tourIds: z.array(z.string().trim().min(1)).min(1).max(wasteTourStatusBulkLimit),
+    status: z.enum(wasteTourStatuses),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const normalizedTourIds = value.tourIds.map((tourId) => tourId.trim());
+    if (new Set(normalizedTourIds).size !== normalizedTourIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'tourIds dürfen keine Duplikate enthalten.',
+        path: ['tourIds'],
+      });
+    }
+  });
+
 const createWasteTourDateShiftSchema = z.object({
   id: z.string().trim().min(1),
   tourId: z.string().trim().min(1),
@@ -516,6 +540,7 @@ export const wasteManagementTourSchemas = {
   previewWasteAnnualTourTransferSchema,
   createWasteAnnualTourTransferSchema,
   updateWasteTourValidityBulkSchema,
+  updateWasteTourStatusBulkSchema,
   createWasteTourDateShiftSchema,
   updateWasteTourDateShiftSchema,
   createWasteGlobalDateShiftSchema,

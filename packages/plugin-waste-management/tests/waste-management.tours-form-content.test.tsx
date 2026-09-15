@@ -78,7 +78,7 @@ describe('WasteToursFormContent', () => {
         endDate: '',
         customDates: [],
         dateLocationAssignments: [],
-        active: true,
+        status: 'draft',
       },
       fractions: [] as const,
       locations: [] as const,
@@ -123,7 +123,7 @@ describe('WasteToursFormContent', () => {
           endDate: '',
           customDates: [],
           dateLocationAssignments: [],
-          active: true,
+          status: 'draft',
         }}
         fractions={[]}
         locations={[]}
@@ -160,7 +160,7 @@ describe('WasteToursFormContent', () => {
         endDate: '2026-12-31',
         customDates: [],
         dateLocationAssignments: [],
-        active: true,
+        status: 'published',
       },
       fractions: [] as const,
       locations: [] as const,

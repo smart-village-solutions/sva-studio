@@ -16,11 +16,10 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     shiftDateAccessible: 'Shift date {{date}} of tour {{name}}',
     opensInNewTab: 'Opens in a new tab',
     openAssignmentsAccessible: 'Edit assigned pickup locations for {{name}} ({{count}})',
+    changeStatusAccessible: 'Change status of tour {{name}}',
     edit: 'Edit',
     duplicate: 'Duplicate',
     delete: 'Delete',
-    activateStatus: 'Activate tour {{value}}',
-    deactivateStatus: 'Deactivate tour {{value}}',
     cancel: 'Cancel',
     create: 'Save tour',
     save: 'Save changes',
@@ -36,7 +35,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     customDates: 'Custom dates',
     wasteFractions: 'Waste fractions',
     noFractionsAvailable: 'No waste fractions are available yet.',
-    active: 'Status',
+    status: 'Status',
   },
   filters: {
     open: 'Filter',
@@ -57,8 +56,6 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     apply: 'Apply',
     status: {
       all: 'All',
-      active: 'Active tours',
-      inactive: 'Inactive tours',
     },
     validityPeriod: {
       all: 'All tours',
@@ -73,8 +70,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     scheduling: 'Scheduling logic',
     schedulingHint:
       'Decide whether the tour follows a fixed cadence or is maintained through individual dates.',
-    visibility: 'Visibility',
-    visibilityHint: 'Control whether the tour is immediately active in the studio.',
+    visibility: 'Status',
+    visibilityHint: 'Control publication and archiving of the tour.',
   },
   fieldHints: {
     name: 'Use a clear label so the tour can be found quickly in lists and assignments.',
@@ -84,11 +81,16 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     customDates:
       'Maintain individual pickup days in the annual calendar and assign the matching collection locations with free-text notes directly in the tour.',
     wasteFractions: 'Select all fractions collected by this tour.',
-    active: 'Active tours are immediately available for assignments and further maintenance.',
+    status: 'Only published tours are used in public and operational output.',
   },
   statusHints: {
-    active: 'The tour can be used immediately in assignments and date maintenance.',
-    inactive: 'The tour remains available in the system but is not active for operational use.',
+    status: 'Draft and archived tours remain editable in Studio.',
+    newTourDraft: 'New and duplicated tours are initially saved as drafts.',
+  },
+  status: {
+    draft: 'Draft',
+    published: 'Published',
+    archived: 'Archived',
   },
   dialog: {
     createTitle: 'Create tour',
@@ -130,8 +132,6 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     noShifts: 'No shifts',
     noAssignments: 'No assignments',
     noCustomDates: 'No custom dates',
-    active: 'Active',
-    inactive: 'Inactive',
   },
   deleteDialog: {
     title: 'Delete tour',
@@ -139,14 +139,25 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     confirm: 'Delete',
     cancel: 'Cancel',
   },
-  statusDialog: {
-    activateTitle: 'Activate tour',
-    activateDescription: 'The tour {{value}} will be activated.',
-    deactivateTitle: 'Deactivate tour',
-    deactivateDescription: 'The tour {{value}} will be deactivated.',
-    confirm: 'Confirm',
+  selection: {
+    selectFiltered: 'Select all {{value}} filtered tours',
+    deselectFiltered: 'Deselect filtered tours',
+    selectedCount: '{{value}} tours selected',
+    hiddenSelectedCount: '{{value}} outside the current filter',
+    clear: 'Clear selection',
+  },
+  bulkStatusDialog: {
+    open: 'Change status',
+    title: 'Change tour status',
+    description: 'Set the target status for {{value}} selected tours.',
+    singleTitle: 'Change tour status',
+    singleDescription: 'Set the target status for tour {{value}}.',
+    targetLabel: 'Target status',
+    targetPlaceholder: 'Select status',
+    apply: 'Change status',
     cancel: 'Cancel',
-    error: 'The status could not be changed. Please try again.',
+    error: 'The status could not be changed. The selection has been retained.',
+    tooMany: 'Select no more than {{value}} tours.',
   },
   bulkDeleteDialog: {
     title: 'Delete tours',
@@ -187,7 +198,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     loadPreview: 'Create preview',
     refreshPreview: 'Refresh preview',
     review: 'Review selection',
-    confirm: 'Create as inactive',
+    confirm: 'Create as draft',
     back: 'Back',
     cancel: 'Cancel',
     close: 'Close',
@@ -238,8 +249,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     createError: 'The tour set could not be created.',
     stale: 'The schedule changed. Please review the updated preview again.',
     result:
-      '{{created}} tours were created as inactive for {{year}}; {{existing}} identical existing tours were reused.',
-    showResult: 'Show inactive tours in the following year',
+      '{{created}} tours were created as drafts for {{year}}; {{existing}} identical existing tours were reused.',
+    showResult: 'Show draft tours in the following year',
     steps: 'Step {{current}} of 3',
     weekdays: {
       sunday: 'Sunday',
@@ -404,6 +415,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     updateSuccess: 'The waste tour was updated.',
     validityUpdateSuccess: 'The validity period of {{value}} tours was updated.',
     validityUpdateError: 'The validity periods could not be updated.',
+    statusBulkUpdateSuccess: 'The status of {{value}} tours was updated.',
+    statusBulkUpdateError: 'The status of the selected tours could not be updated.',
     duplicateHint:
       'All collection-location assignments, individual pickup dates, and tour-specific date shifts are copied after saving. Assignments use the validity period of the new tour.',
     assignmentIncomplete:

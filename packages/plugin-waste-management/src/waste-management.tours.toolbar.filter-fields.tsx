@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, type WasteTourStatus } from '@sva/plugin-sdk';
 import { Input, Select } from '@sva/studio-ui-react';
 
 import type { WasteManagementTourValidityPeriod } from './search-params.js';
@@ -7,7 +7,7 @@ import type { WasteManagementTourValidityPeriod } from './search-params.js';
 type WasteToursToolbarFilterFieldsProps = {
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly draftQuery: string;
-  readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
@@ -15,7 +15,7 @@ type WasteToursToolbarFilterFieldsProps = {
   readonly draftEndDateFrom: string | undefined;
   readonly draftEndDateTo: string | undefined;
   readonly onDraftQueryChange: (value: string) => void;
-  readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftStatusChange: (value: 'all' | WasteTourStatus) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
@@ -109,13 +109,12 @@ const WasteToursToolbarBasicFilterFields = ({
           aria-label={pt('tours.filters.statusLabel')}
           value={draftStatus}
           className="h-10 rounded-lg"
-          onChange={(event) =>
-            onDraftStatusChange(event.target.value as 'all' | 'active' | 'inactive')
-          }
+          onChange={(event) => onDraftStatusChange(event.target.value as 'all' | WasteTourStatus)}
         >
           <option value="all">{pt('tours.filters.status.all')}</option>
-          <option value="active">{pt('tours.filters.status.active')}</option>
-          <option value="inactive">{pt('tours.filters.status.inactive')}</option>
+          <option value="draft">{pt('tours.status.draft')}</option>
+          <option value="published">{pt('tours.status.published')}</option>
+          <option value="archived">{pt('tours.status.archived')}</option>
         </Select>
       </WasteToursToolbarFilterField>
       <TourValidityPeriodField

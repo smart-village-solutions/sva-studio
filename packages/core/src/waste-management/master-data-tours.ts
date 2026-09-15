@@ -1,8 +1,17 @@
 export const wasteTourRecurrences = [
-  'weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom',
+  'weekly',
+  'biweekly',
+  'fourweekly',
+  'yearly',
+  'on-demand',
+  'custom',
 ] as const;
 
 export type WasteTourRecurrence = (typeof wasteTourRecurrences)[number];
+
+export const wasteTourStatuses = ['draft', 'published', 'archived'] as const;
+
+export type WasteTourStatus = (typeof wasteTourStatuses)[number];
 
 export type WasteCustomTourDate = {
   readonly date: string;
@@ -30,17 +39,28 @@ export type WasteTourRecord = {
   readonly firstDate?: string;
   readonly endDate?: string;
   readonly customDates?: readonly WasteCustomTourDate[];
-  readonly active: boolean;
+  readonly status: WasteTourStatus;
   readonly locationCount?: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
 
 export type WasteTourListFilter = {
-  readonly active?: boolean;
+  readonly status?: WasteTourStatus;
   readonly recurrence?: WasteTourRecurrence;
   readonly wasteFractionId?: string;
   readonly search?: string;
+};
+
+export const wasteTourStatusBulkLimit = 1_000;
+
+export type WasteTourStatusBulkUpdateInput = {
+  readonly tourIds: readonly string[];
+  readonly status: WasteTourStatus;
+};
+
+export type WasteTourStatusBulkUpdateResult = {
+  readonly updatedCount: number;
 };
 
 export type WasteLocationTourLinkRecord = {

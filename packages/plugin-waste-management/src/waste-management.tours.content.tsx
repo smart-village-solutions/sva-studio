@@ -1,14 +1,26 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StatusNotice } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
-import { WasteToursContentBody, type WasteToursFilterViewModel, type WasteToursTableViewModel } from './waste-management.tours.content.body.js';
-import { WasteToursDeleteDialogs, useWasteToursSelectionState } from './waste-management.tours.content.parts.js';
-import { applyWasteToursFilters, resetWasteToursFilters, updateWasteToursSorting } from './waste-management.tours.content.helpers.js';
+import {
+  WasteToursContentBody,
+  type WasteToursFilterViewModel,
+  type WasteToursTableViewModel,
+} from './waste-management.tours.content.body.js';
+import {
+  WasteToursDeleteDialogs,
+  useWasteToursSelectionState,
+} from './waste-management.tours.content.parts.js';
+import {
+  applyWasteToursFilters,
+  resetWasteToursFilters,
+  updateWasteToursSorting,
+} from './waste-management.tours.content.helpers.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 import { WasteToursBulkValidityDialog } from './waste-management.tours-bulk-validity.js';
 import { useWasteToursContentSorting } from './waste-management.tours.content.sorting.js';
 import { useWasteToursAnnualTransfer } from './waste-management.tours-annual-transfer.js';
+import { WasteToursStatusBulkDialog } from './waste-management.tours-status-bulk-dialog.js';
 export { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
 export const WasteToursContent = (props: WasteToursContentProps) => {
   const annualTransfer = useWasteToursAnnualTransfer(props);
@@ -16,6 +28,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     assignmentContextLoading,
     message,
     tours,
+    allTours = tours,
     fractions,
     masterDataOverview,
     schedulingOverview,
@@ -26,10 +39,10 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onOpenEditAssignmentsDialog,
     onOpenCalendar,
     onOpenEditFraction,
-    onToggleTourStatus,
     onDeleteTour,
     onDeleteTours,
     onUpdateTourValidityBulk,
+    onUpdateTourStatusBulk,
     canDuplicateTour = false,
     canManageScheduling = false,
     search,
@@ -51,14 +64,14 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onStatusChange,
     onFiltersChange,
   } = props;
-  const pt = usePluginTranslation('wasteManagement'); const deleteFocusFallbackRef = useRef<HTMLElement | null>(null);
+  const pt = usePluginTranslation('wasteManagement');
+  const [tourPendingStatusChange, setTourPendingStatusChange] = useState<
+    (typeof tours)[number] | null
+  >(null);
+  const deleteFocusFallbackRef = useRef<HTMLElement | null>(null);
   const { sortedTours, sortField, setSortField, sortDirection, setSortDirection } =
     useWasteToursContentSorting(tours, masterDataOverview?.locationTourLinks);
-  const [tourPendingStatusChange, setTourPendingStatusChange] = useState<{
-    readonly tour: (typeof tours)[number];
-    readonly nextActive: boolean;
-  } | null>(null);
-  const [statusChangePending, setStatusChangePending] = useState(false); const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
+  const availableTourIds = useMemo(() => allTours.map((tour) => tour.id), [allTours]);
   const {
     selectedTourIds,
     setSelectedTourIds,
@@ -88,12 +101,20 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setBulkDeleteOpen,
     bulkValidityOpen,
     setBulkValidityOpen,
+    bulkStatusOpen,
+    setBulkStatusOpen,
     allVisibleSelected,
     someVisibleSelected,
+    allFilteredSelected,
+    someFilteredSelected,
+    hiddenSelectedCount,
     toggleSelectAllVisible,
+    toggleSelectAllFiltered,
+    clearSelection,
     toggleSelectedTour,
   } = useWasteToursSelectionState({
     tours: sortedTours,
+    availableTourIds,
     page,
     pageSize,
     query,
@@ -164,6 +185,9 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     assignmentContextLoading,
     allVisibleSelected,
     someVisibleSelected,
+    allFilteredSelected,
+    someFilteredSelected,
+    hiddenSelectedCount,
     saving,
     sortField,
     sortDirection,
@@ -175,8 +199,11 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onSortChange: (field) =>
       updateWasteToursSorting({ field, sortField, setSortField, setSortDirection }),
     toggleSelectAllVisible,
+    toggleSelectAllFiltered,
+    clearSelection,
     toggleSelectedTour,
     onOpenCalendar,
+    onOpenStatusDialog: setTourPendingStatusChange,
     onOpenEditFraction,
     onOpenEditDialog,
     onOpenDuplicateDialog,
@@ -185,11 +212,6 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     canDuplicateTour,
     canManageScheduling,
     search,
-    onToggleTourStatus: (tour, nextActive) => {
-      setStatusChangeError(null);
-      setTourPendingStatusChange({ tour, nextActive });
-      return Promise.resolve();
-    },
     setTourPendingDelete,
   };
   return (
@@ -198,17 +220,19 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
       <WasteToursContentBody
         setBulkDeleteOpen={setBulkDeleteOpen}
         setBulkValidityOpen={setBulkValidityOpen}
+        setBulkStatusOpen={setBulkStatusOpen}
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
         onOpenAnnualTransfer={annualTransfer.open}
         filters={filters}
         table={table}
-        focusFallbackRef={deleteFocusFallbackRef} focusFallbackLabel={pt('tabs.tours.title')}
+        focusFallbackRef={deleteFocusFallbackRef}
+        focusFallbackLabel={pt('tabs.tours.title')}
       />
       {annualTransfer.dialog}
       <WasteToursBulkValidityDialog
         open={bulkValidityOpen}
-        tours={sortedTours}
+        tours={allTours}
         selectedTourIds={selectedTourIds}
         saving={saving}
         onOpenChange={setBulkValidityOpen}
@@ -218,33 +242,41 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
           setBulkValidityOpen(false);
         }}
       />
+      {bulkStatusOpen ? (
+        <WasteToursStatusBulkDialog
+          open
+          selectedTourIds={selectedTourIds}
+          saving={saving}
+          onOpenChange={setBulkStatusOpen}
+          onSubmit={onUpdateTourStatusBulk}
+          onUpdated={() => {
+            clearSelection();
+            setBulkStatusOpen(false);
+          }}
+        />
+      ) : null}
+      {tourPendingStatusChange ? (
+        <WasteToursStatusBulkDialog
+          open
+          selectedTourIds={[tourPendingStatusChange.id]}
+          tourName={tourPendingStatusChange.name}
+          saving={saving}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTourPendingStatusChange(null);
+            }
+          }}
+          onSubmit={onUpdateTourStatusBulk}
+          onUpdated={() => setTourPendingStatusChange(null)}
+        />
+      ) : null}
       <WasteToursDeleteDialogs
         tourPendingDelete={tourPendingDelete}
-        tourPendingStatusChange={tourPendingStatusChange}
         bulkDeleteOpen={bulkDeleteOpen}
         selectedTourIds={selectedTourIds}
         onCancelSingle={() => setTourPendingDelete(null)}
-        onCancelStatusChange={() => {
-          setStatusChangeError(null);
-          setTourPendingStatusChange(null);
-        }}
         onCancelBulk={() => setBulkDeleteOpen(false)}
         onDeleteTour={onDeleteTour}
-        onConfirmStatusChange={() => {
-          if (!tourPendingStatusChange) {
-            return Promise.resolve();
-          }
-          setStatusChangePending(true);
-          setStatusChangeError(null);
-          return Promise.resolve(
-            onToggleTourStatus(tourPendingStatusChange.tour, tourPendingStatusChange.nextActive)
-          )
-            .then(() => setTourPendingStatusChange(null))
-            .catch(() => setStatusChangeError(pt('tours.statusDialog.error')))
-            .finally(() => setStatusChangePending(false));
-        }}
-        statusChangePending={statusChangePending}
-        statusChangeError={statusChangeError}
         onDeleteTours={onDeleteTours}
         onAfterBulkDelete={(failedIds) => {
           setSelectedTourIds(failedIds);

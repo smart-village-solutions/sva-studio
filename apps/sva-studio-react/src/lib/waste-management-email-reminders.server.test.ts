@@ -585,6 +585,19 @@ describe('waste management operations runtime', () => {
 
   it('materializes reminders for explicit assignments even when public signup is disabled', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const listWasteTours = vi.fn(async () => [
+      {
+        id: 'tour-1',
+        name: 'Biotour',
+        description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
+        wasteFractionIds: ['fraction-bio'],
+        recurrence: null,
+        firstDate: undefined,
+        endDate: undefined,
+        customDates: undefined,
+        status: 'published' as const,
+      },
+    ]);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
         {
@@ -619,19 +632,7 @@ describe('waste management operations runtime', () => {
           updatedAt: '',
         },
       ]),
-      listWasteTours: vi.fn(async () => [
-        {
-          id: 'tour-1',
-          name: 'Biotour',
-          description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
-          wasteFractionIds: ['fraction-bio'],
-          recurrence: null,
-          firstDate: undefined,
-          endDate: undefined,
-          customDates: undefined,
-          active: true,
-        },
-      ]),
+      listWasteTours,
       listWasteLocationTourLinks: vi.fn(async () => []),
       listWasteCollectionLocations: vi.fn(async () => [
         {
@@ -699,6 +700,7 @@ describe('waste management operations runtime', () => {
       referenceTime: '2026-06-15T06:00:00.000Z',
     });
 
+    expect(listWasteTours).toHaveBeenCalledWith({ status: 'published' });
     expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
     expect(enqueueOutboxEntry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -765,7 +767,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -880,7 +882,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1154,7 +1156,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1273,7 +1275,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1405,7 +1407,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1546,7 +1548,7 @@ describe('waste management operations runtime', () => {
           name: 'Biotour',
           wasteFractionIds: ['fraction-bio'],
           recurrence: 'weekly',
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1706,7 +1708,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [

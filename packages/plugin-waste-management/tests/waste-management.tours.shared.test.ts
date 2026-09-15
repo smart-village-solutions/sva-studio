@@ -45,7 +45,7 @@ describe('waste-management.tours.shared', () => {
       endDate: '',
       customDates: [],
       dateLocationAssignments: [],
-      active: true,
+      status: 'draft',
     });
   });
 
@@ -75,7 +75,7 @@ describe('waste-management.tours.shared', () => {
           { date: '2026-05-01', description: 'Feiertag' },
           { date: '2026-06-01', description: '' },
         ],
-        active: false,
+        status: 'archived',
       } as never)
     ).toEqual({
       id: 'tour-1',
@@ -91,7 +91,7 @@ describe('waste-management.tours.shared', () => {
         { date: '2026-06-01', description: '' },
       ],
       dateLocationAssignments: [],
-      active: false,
+      status: 'archived',
     });
 
     expect(
@@ -105,7 +105,7 @@ describe('waste-management.tours.shared', () => {
         firstDate: '2026-01-01',
         endDate: '2026-02-01',
         customDates: [],
-        active: true,
+        status: 'published',
       } as never)
     ).toEqual({
       id: 'tour-2',
@@ -118,7 +118,7 @@ describe('waste-management.tours.shared', () => {
       endDate: '2026-02-01',
       customDates: [],
       dateLocationAssignments: [],
-      active: true,
+      status: 'published',
     });
   });
 
@@ -160,7 +160,7 @@ describe('waste-management.tours.shared', () => {
         { date: '2026-06-01', description: 'mit | pipe' },
       ],
       dateLocationAssignments: [],
-      active: true,
+      status: 'published',
     } as const;
 
     expect(toCreateTourInput(form)).toEqual({
@@ -176,7 +176,7 @@ describe('waste-management.tours.shared', () => {
         { date: '2026-05-01', description: 'Tag der Arbeit' },
         { date: '2026-06-01', description: 'mit | pipe' },
       ],
-      active: true,
+      status: 'draft',
     });
 
     expect(
@@ -194,7 +194,7 @@ describe('waste-management.tours.shared', () => {
       firstDate: '2026-01-02',
       endDate: undefined,
       customDates: undefined,
-      active: true,
+      status: 'published',
     });
 
     expect(
@@ -216,7 +216,7 @@ describe('waste-management.tours.shared', () => {
       firstDate: '2026-01-02',
       endDate: '2026-02-01',
       customDates: undefined,
-      active: true,
+      status: 'draft',
     });
   });
 
@@ -347,7 +347,7 @@ describe('waste-management.tours.shared', () => {
         name: 'Restmüll Nord',
         description: 'Montag',
         wasteFractionIds: ['fraction-1'],
-        active: true,
+        status: 'published',
         firstDate: '2026-01-10',
         endDate: '2026-12-20',
       },
@@ -356,7 +356,7 @@ describe('waste-management.tours.shared', () => {
         name: 'Papier West',
         description: 'Dienstag',
         wasteFractionIds: ['fraction-2'],
-        active: false,
+        status: 'draft',
         firstDate: '2026-03-01',
         endDate: '2026-09-30',
       },
@@ -365,7 +365,7 @@ describe('waste-management.tours.shared', () => {
         name: 'Bio Süd',
         description: '',
         wasteFractionIds: ['fraction-1', 'fraction-3'],
-        active: undefined,
+        status: 'archived',
         firstDate: undefined,
         endDate: undefined,
       },
@@ -377,10 +377,10 @@ describe('waste-management.tours.shared', () => {
         q: '',
         page: 1,
         pageSize: 25,
-        status: 'active',
+        tourStatus: 'published',
         tourValidityPeriod: 'all',
       } as never).map((tour) => tour.id)
-    ).toEqual(['tour-active', 'tour-unknown']);
+    ).toEqual(['tour-active']);
 
     expect(
       filterTours(tours, {
@@ -388,7 +388,7 @@ describe('waste-management.tours.shared', () => {
         q: '',
         page: 1,
         pageSize: 25,
-        status: 'inactive',
+        tourStatus: 'draft',
         tourValidityPeriod: 'all',
         tourWasteFractionId: 'fraction-2',
       } as never).map((tour) => tour.id)
@@ -400,7 +400,7 @@ describe('waste-management.tours.shared', () => {
         q: '',
         page: 1,
         pageSize: 25,
-        status: 'all',
+        tourStatus: 'all',
         tourValidityPeriod: 'all',
         firstDateFrom: '2026-02-01',
         firstDateTo: '2026-03-31',
@@ -415,7 +415,7 @@ describe('waste-management.tours.shared', () => {
         q: '',
         page: 1,
         pageSize: 25,
-        status: 'all',
+        tourStatus: 'all',
         tourValidityPeriod: 'all',
         firstDateFrom: '2026-01-10',
         firstDateTo: '2026-01-31',
@@ -429,7 +429,7 @@ describe('waste-management.tours.shared', () => {
         q: 'mont',
         page: 1,
         pageSize: 25,
-        status: 'all',
+        tourStatus: 'all',
         tourValidityPeriod: 'all',
       } as never).map((tour) => tour.id)
     ).toEqual(['tour-active']);
@@ -440,7 +440,7 @@ describe('waste-management.tours.shared', () => {
         q: 'papier',
         page: 1,
         pageSize: 25,
-        status: 'all',
+        tourStatus: 'all',
         tourValidityPeriod: 'all',
         tourId: 'tour-inactive',
       } as never).map((tour) => tour.id)
@@ -453,7 +453,7 @@ describe('waste-management.tours.shared', () => {
         id: 'overlap-on-boundary',
         name: 'Boundary',
         wasteFractionIds: ['fraction-1'],
-        active: true,
+        status: 'published',
         firstDate: '2025-01-01',
         endDate: '2026-01-01',
       },
@@ -461,7 +461,7 @@ describe('waste-management.tours.shared', () => {
         id: 'explicit-date',
         name: 'Explicit',
         wasteFractionIds: ['fraction-1'],
-        active: true,
+        status: 'published',
         firstDate: '2027-01-01',
         endDate: '2027-12-31',
         customDates: [{ date: '2026-06-15' }],
@@ -470,7 +470,7 @@ describe('waste-management.tours.shared', () => {
         id: 'future',
         name: 'Future',
         wasteFractionIds: ['fraction-1'],
-        active: true,
+        status: 'published',
         firstDate: '2027-01-01',
         endDate: '2027-12-31',
       },
@@ -484,7 +484,7 @@ describe('waste-management.tours.shared', () => {
           q: '',
           page: 1,
           pageSize: 25,
-          status: 'active',
+          tourStatus: 'published',
           tourValidityPeriod: 'current',
           tourWasteFractionId: 'fraction-1',
         } as never,

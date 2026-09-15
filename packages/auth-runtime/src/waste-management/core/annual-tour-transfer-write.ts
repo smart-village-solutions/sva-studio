@@ -14,9 +14,7 @@ const executeJsonBatches = async <T>(
   statement: string
 ): Promise<void> => {
   for (let offset = 0; offset < items.length; offset += writeBatchSize) {
-    await client.query(statement, [
-      JSON.stringify(items.slice(offset, offset + writeBatchSize)),
-    ]);
+    await client.query(statement, [JSON.stringify(items.slice(offset, offset + writeBatchSize))]);
   }
 };
 
@@ -36,17 +34,18 @@ const writeTours = async (
       first_date: targetTour.firstDate ?? null,
       end_date: targetTour.endDate ?? null,
       custom_dates: targetTour.customDates ?? null,
-      active: targetTour.active,
+      status: targetTour.status,
+      active: targetTour.status === 'published',
     })),
     `
 INSERT INTO waste_tours (
   id, name, description, waste_fraction_ids, recurrence, custom_recurrence_id,
-  first_date, end_date, custom_dates, active
+  first_date, end_date, custom_dates, status, active
 )
 SELECT
   item.id::uuid, item.name, item.description, item.waste_fraction_ids, item.recurrence,
   item.custom_recurrence_id::uuid, item.first_date::date, item.end_date::date,
-  item.custom_dates, item.active
+  item.custom_dates, item.status, item.active
 FROM jsonb_to_recordset($1::jsonb) AS item(
   id text,
   name text,
@@ -57,6 +56,7 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
   first_date text,
   end_date text,
   custom_dates jsonb,
+  status text,
   active boolean
 )
 ON CONFLICT (id) DO UPDATE
@@ -68,6 +68,7 @@ SET name = EXCLUDED.name,
     first_date = EXCLUDED.first_date,
     end_date = EXCLUDED.end_date,
     custom_dates = EXCLUDED.custom_dates,
+    status = EXCLUDED.status,
     active = EXCLUDED.active,
     updated_at = NOW();`
   );

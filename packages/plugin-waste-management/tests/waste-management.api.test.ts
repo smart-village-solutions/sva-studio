@@ -53,6 +53,7 @@ import {
   updateWasteManagementStreet,
   updateWasteManagementTour,
   updateWasteManagementTourValidityBulk,
+  updateWasteManagementTourStatusBulk,
   updateWasteManagementTourDateShift,
   updateWasteManagementTourAssignment,
   updateWasteManagementSettings,
@@ -1084,7 +1085,7 @@ describe('waste-management api client', () => {
                 name: 'Restmüll Nord',
                 wasteFractionIds: ['fraction-1'],
                 recurrence: 'weekly',
-                active: true,
+                status: 'published',
                 createdAt: '2026-05-09T10:00:00.000Z',
                 updatedAt: '2026-05-09T10:00:00.000Z',
               },
@@ -1118,7 +1119,7 @@ describe('waste-management api client', () => {
               wasteFractionIds: ['fraction-2'],
               recurrence: 'biweekly',
               firstDate: '2026-05-19',
-              active: true,
+              status: 'draft',
               createdAt: '2026-05-09T10:00:00.000Z',
               updatedAt: '2026-05-09T10:00:00.000Z',
             },
@@ -1135,7 +1136,7 @@ describe('waste-management api client', () => {
               wasteFractionIds: ['fraction-2'],
               recurrence: 'biweekly',
               firstDate: '2026-05-19',
-              active: true,
+              status: 'published',
               createdAt: '2026-05-09T10:00:00.000Z',
               updatedAt: '2026-05-09T12:00:00.000Z',
             },
@@ -1151,7 +1152,7 @@ describe('waste-management api client', () => {
       recurrence: 'biweekly',
       customRecurrenceId: undefined,
       firstDate: '2026-05-19',
-      active: true,
+      status: 'draft',
     });
     await updateWasteManagementTour('tour-3', {
       name: 'Papier Mitte Plus',
@@ -1159,7 +1160,7 @@ describe('waste-management api client', () => {
       recurrence: 'biweekly',
       customRecurrenceId: undefined,
       firstDate: '2026-05-19',
-      active: true,
+      status: 'published',
     });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -1174,7 +1175,7 @@ describe('waste-management api client', () => {
           recurrence: 'biweekly',
           customRecurrenceId: undefined,
           firstDate: '2026-05-19',
-          active: true,
+          status: 'draft',
         }),
       })
     );
@@ -1189,7 +1190,7 @@ describe('waste-management api client', () => {
           recurrence: 'biweekly',
           customRecurrenceId: undefined,
           firstDate: '2026-05-19',
-          active: true,
+          status: 'published',
         }),
       })
     );
@@ -1224,6 +1225,30 @@ describe('waste-management api client', () => {
     );
   });
 
+  it('updates selected tour status through the atomic host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { updatedCount: 2 } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    await expect(
+      updateWasteManagementTourStatusBulk({
+        tourIds: ['tour-1', 'tour-2'],
+        status: 'archived',
+      })
+    ).resolves.toEqual({ updatedCount: 2 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/tours/bulk-status',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ tourIds: ['tour-1', 'tour-2'], status: 'archived' }),
+      })
+    );
+  });
+
   it('previews and creates an annual tour transfer with an explicit idempotency key', async () => {
     const preview = {
       sourceYear: 2026,
@@ -1246,7 +1271,7 @@ describe('waste-management api client', () => {
       existingTourIds: [],
       createdCount: 1,
       existingCount: 0,
-      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+      listTarget: { tourValidityPeriod: 'next', status: 'draft' },
     };
     fetchMock
       .mockResolvedValueOnce(

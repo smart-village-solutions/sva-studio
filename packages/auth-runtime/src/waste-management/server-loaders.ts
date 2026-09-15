@@ -42,6 +42,8 @@ import {
   WasteTourAssignmentRecord,
   type WasteTourRecurrence,
   WasteTourRecord,
+  type WasteTourStatusBulkUpdateInput,
+  type WasteTourStatusBulkUpdateResult,
   type WasteAnnualTourTransferCreateInput,
   type WasteAnnualTourTransferMappedTour,
   type WasteAnnualTourTransferPreview,
@@ -611,11 +613,9 @@ const mapJobTypeIdToTechnicalEventType = (
 };
 
 const toIsoString = (value: string | Date | null): string | undefined =>
-  value instanceof Date ? value.toISOString() : value ?? undefined;
+  value instanceof Date ? value.toISOString() : (value ?? undefined);
 
-const toSyncJobSummary = (
-  row: WasteMainserverSyncStatusJobRow
-): WasteMainserverSyncJobSummary => ({
+const toSyncJobSummary = (row: WasteMainserverSyncStatusJobRow): WasteMainserverSyncJobSummary => ({
   id: row.id,
   status: row.status,
   ...(toIsoString(row.started_at) ? { startedAt: toIsoString(row.started_at) } : {}),
@@ -1589,6 +1589,34 @@ const updateWasteTourValidityBulk = async (
     }
   });
 
+const updateWasteTourStatusBulk = async (
+  instanceId: string,
+  input: WasteTourStatusBulkUpdateInput
+): Promise<WasteTourStatusBulkUpdateResult> =>
+  withWasteClient(instanceId, 'update_waste_tour_status_bulk', async (client) => {
+    try {
+      await client.query('BEGIN');
+      const repository = createWasteMasterDataRepository(createSqlExecutor(client));
+      const tours = await repository.lockWasteToursByIds(input.tourIds);
+      const existingTourIds = new Set(tours.map((tour) => tour.id));
+      const missingTourId = input.tourIds.find((tourId) => !existingTourIds.has(tourId));
+      if (missingTourId) {
+        throw new Error(`bulk_tour_status_not_found:${missingTourId}`);
+      }
+
+      const updatedCount = await repository.updateWasteTourStatusBulk(input);
+      if (updatedCount !== input.tourIds.length) {
+        throw new Error(`bulk_tour_status_verification_failed:${updatedCount}`);
+      }
+
+      await client.query('COMMIT');
+      return { updatedCount };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+  });
+
 const loadWasteAnnualTourTransferSource = async (
   repository: WasteRepository
 ): Promise<WasteAnnualTourTransferSource> => {
@@ -1648,7 +1676,7 @@ const comparableMappedTour = (
       firstDate: targetTour.firstDate,
       endDate: targetTour.endDate,
       customDates: targetTour.customDates,
-      active: targetTour.active,
+      status: targetTour.status,
       locationCount: targetTour.locationCount,
     },
     locationTourLinks: snapshot.locationTourLinks
@@ -1778,7 +1806,7 @@ IN SHARE ROW EXCLUSIVE MODE;`);
       },
       listTarget: {
         tourValidityPeriod: preview.targetYear === new Date().getUTCFullYear() ? 'current' : 'next',
-        status: 'inactive',
+        status: 'draft',
       },
     };
   } catch (error) {
@@ -1857,6 +1885,7 @@ export const wasteManagementEntitySavers = {
   saveWasteTour,
   createWasteAnnualTourTransfer,
   updateWasteTourValidityBulk,
+  updateWasteTourStatusBulk,
   deleteWasteTour,
   deleteWasteTourDateShift,
   createWasteTourDateShift,

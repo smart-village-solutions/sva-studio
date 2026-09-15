@@ -1,4 +1,4 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, type WasteTourStatus } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 
 import {
@@ -10,8 +10,12 @@ import type { WasteManagementTourValidityPeriod } from './search-params.js';
 type WasteToursToolbarProps = {
   readonly filterDialogOpen: boolean;
   readonly selectedCount: number;
+  readonly hiddenSelectedCount: number;
+  readonly filteredCount: number;
+  readonly allFilteredSelected: boolean;
+  readonly someFilteredSelected: boolean;
   readonly query: string;
-  readonly status: 'all' | 'active' | 'inactive';
+  readonly status: 'all' | WasteTourStatus;
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly tourWasteFractionId: string | undefined;
@@ -20,7 +24,7 @@ type WasteToursToolbarProps = {
   readonly endDateFrom: string | undefined;
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
-  readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
@@ -35,8 +39,11 @@ type WasteToursToolbarProps = {
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onOpenBulkDelete: () => void;
   readonly onOpenBulkValidity: () => void;
+  readonly onOpenBulkStatus: () => void;
+  readonly onToggleSelectAllFiltered: (checked: boolean) => void;
+  readonly onClearSelection: () => void;
   readonly onDraftQueryChange: (value: string) => void;
-  readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftStatusChange: (value: 'all' | WasteTourStatus) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
@@ -49,18 +56,32 @@ type WasteToursToolbarProps = {
 
 const toWasteToursToolbarActionsProps = ({
   selectedCount,
+  hiddenSelectedCount,
+  filteredCount,
+  allFilteredSelected,
+  someFilteredSelected,
   filterDialogOpen,
   hasActiveFilters,
   onOpenBulkDelete,
   onOpenBulkValidity,
+  onOpenBulkStatus,
+  onToggleSelectAllFiltered,
+  onClearSelection,
   onOpenFilterDialog,
   onResetFilters,
 }: WasteToursToolbarProps) => ({
   selectedCount,
+  hiddenSelectedCount,
+  filteredCount,
+  allFilteredSelected,
+  someFilteredSelected,
   filterDialogOpen,
   hasActiveFilters,
   onOpenBulkDelete,
   onOpenBulkValidity,
+  onOpenBulkStatus,
+  onToggleSelectAllFiltered,
+  onClearSelection,
   onOpenFilterDialog,
   onResetFilters,
 });

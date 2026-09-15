@@ -30,6 +30,8 @@ import type {
   WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTourStatusBulkUpdateInput,
+  WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTenantProvisioningRecord,
@@ -268,6 +270,10 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
     instanceId: string,
     input: WasteTourValidityBulkUpdateInput
   ) => Promise<WasteTourValidityBulkUpdateResult>;
+  readonly updateWasteTourStatusBulk?: (
+    instanceId: string,
+    input: WasteTourStatusBulkUpdateInput
+  ) => Promise<WasteTourStatusBulkUpdateResult>;
   readonly loadWasteTourById?: (
     instanceId: string,
     tourId: string

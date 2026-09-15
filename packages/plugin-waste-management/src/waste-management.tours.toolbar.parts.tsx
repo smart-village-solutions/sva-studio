@@ -1,5 +1,6 @@
-import { IconCalendarTime, IconFilter, IconTrash } from '@tabler/icons-react';
+import { IconCalendarTime, IconFilter, IconToggleRight, IconTrash } from '@tabler/icons-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import type { WasteTourStatus } from '@sva/plugin-sdk';
 import {
   Button,
   Dialog,
@@ -17,7 +18,7 @@ import type { WasteManagementTourValidityPeriod } from './search-params.js';
 type WasteToursToolbarFiltersProps = {
   readonly filterDialogOpen: boolean;
   readonly query: string;
-  readonly status: 'all' | 'active' | 'inactive';
+  readonly status: 'all' | WasteTourStatus;
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly tourWasteFractionId: string | undefined;
@@ -26,7 +27,7 @@ type WasteToursToolbarFiltersProps = {
   readonly endDateFrom: string | undefined;
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
-  readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
@@ -35,7 +36,7 @@ type WasteToursToolbarFiltersProps = {
   readonly draftEndDateTo: string | undefined;
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onDraftQueryChange: (value: string) => void;
-  readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftStatusChange: (value: 'all' | WasteTourStatus) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
@@ -85,18 +86,32 @@ const toWasteToursToolbarFilterFieldProps = ({
 
 export const WasteToursToolbarActions = ({
   selectedCount,
+  hiddenSelectedCount,
+  filteredCount,
+  allFilteredSelected,
+  someFilteredSelected,
   filterDialogOpen,
   hasActiveFilters,
   onOpenBulkDelete,
   onOpenBulkValidity,
+  onOpenBulkStatus,
+  onToggleSelectAllFiltered,
+  onClearSelection,
   onOpenFilterDialog,
   onResetFilters,
 }: {
   readonly selectedCount: number;
+  readonly hiddenSelectedCount: number;
+  readonly filteredCount: number;
+  readonly allFilteredSelected: boolean;
+  readonly someFilteredSelected: boolean;
   readonly filterDialogOpen: boolean;
   readonly hasActiveFilters: boolean;
   readonly onOpenBulkDelete: () => void;
   readonly onOpenBulkValidity: () => void;
+  readonly onOpenBulkStatus: () => void;
+  readonly onToggleSelectAllFiltered: (checked: boolean) => void;
+  readonly onClearSelection: () => void;
   readonly onOpenFilterDialog: () => void;
   readonly onResetFilters: () => void;
 }) => {
@@ -104,6 +119,47 @@ export const WasteToursToolbarActions = ({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="tertiary"
+        className="h-10 rounded-lg px-3"
+        disabled={filteredCount === 0}
+        aria-pressed={allFilteredSelected}
+        data-partially-selected={someFilteredSelected && !allFilteredSelected ? '' : undefined}
+        onClick={() => onToggleSelectAllFiltered(!allFilteredSelected)}
+      >
+        {allFilteredSelected
+          ? pt('tours.selection.deselectFiltered')
+          : pt('tours.selection.selectFiltered', { value: filteredCount })}
+      </Button>
+      {selectedCount > 0 ? (
+        <>
+          <span className="text-sm font-medium" aria-live="polite">
+            {pt('tours.selection.selectedCount', { value: selectedCount })}
+            {hiddenSelectedCount > 0
+              ? ` · ${pt('tours.selection.hiddenSelectedCount', { value: hiddenSelectedCount })}`
+              : null}
+          </span>
+          <Button
+            type="button"
+            variant="tertiary"
+            className="h-10 rounded-lg px-3"
+            onClick={onClearSelection}
+          >
+            {pt('tours.selection.clear')}
+          </Button>
+        </>
+      ) : null}
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-10 rounded-lg px-3"
+        disabled={selectedCount === 0}
+        onClick={onOpenBulkStatus}
+      >
+        <IconToggleRight aria-hidden="true" className="h-4 w-4" />
+        {pt('tours.bulkStatusDialog.open')}
+      </Button>
       <Button
         type="button"
         variant="secondary"
@@ -170,7 +226,7 @@ const hasWasteToursDraftFilterChanges = ({
   draftEndDateTo,
 }: {
   readonly query: string;
-  readonly status: 'all' | 'active' | 'inactive';
+  readonly status: 'all' | WasteTourStatus;
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
@@ -178,7 +234,7 @@ const hasWasteToursDraftFilterChanges = ({
   readonly endDateFrom: string | undefined;
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
-  readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftStatus: 'all' | WasteTourStatus;
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;

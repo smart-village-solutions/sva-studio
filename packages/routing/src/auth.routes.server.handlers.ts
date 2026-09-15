@@ -188,6 +188,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tours/bulk-validity': {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourValidityBulk),
   },
+  '/api/v1/waste-management/tours/bulk-status': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourStatusBulk),
+  },
   '/api/v1/waste-management/tours/$tourId': {
     DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTour),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTour),

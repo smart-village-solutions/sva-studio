@@ -14,7 +14,9 @@ describe('createWasteToursActions', () => {
   });
 
   it('opens create and edit flows, including existing assignment links', async () => {
-    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({ locationTourPickupDates: [] });
+    apiMocks.getWasteManagementSchedulingOverview.mockResolvedValue({
+      locationTourPickupDates: [],
+    });
     const state = {
       schedulingOverview: { locationTourPickupDates: [] },
       masterDataOverview: {
@@ -46,7 +48,7 @@ describe('createWasteToursActions', () => {
       wasteFractionIds: ['fraction-1'],
       recurrence: 'custom',
       customDates: [{ date: '2026-08-18' }],
-      active: true,
+      status: 'published',
       createdAt: '2026-05-01T10:00:00.000Z',
       updatedAt: '2026-05-01T10:00:00.000Z',
     };
@@ -99,7 +101,7 @@ describe('createWasteToursActions', () => {
       name: 'Tour B',
       wasteFractionIds: [],
       recurrence: 'custom',
-      active: true,
+      status: 'published',
       createdAt: '2026-05-01T10:00:00.000Z',
       updatedAt: '2026-05-01T10:00:00.000Z',
     };

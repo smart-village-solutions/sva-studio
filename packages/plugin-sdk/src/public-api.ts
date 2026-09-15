@@ -6,6 +6,8 @@ export {
   wasteManagementImportCatalog,
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
+  wasteTourStatusBulkLimit,
+  wasteTourStatuses,
 } from '@sva/core';
 export type {
   ApiItemResponse,
@@ -63,6 +65,9 @@ export type {
   WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
+  WasteTourStatus,
+  WasteTourStatusBulkUpdateInput,
+  WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,

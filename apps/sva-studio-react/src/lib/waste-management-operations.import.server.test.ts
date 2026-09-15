@@ -80,7 +80,7 @@ const createRepositoryMock = () => ({
       firstDate: undefined,
       endDate: undefined,
       customDates: undefined,
-      active: true,
+      status: 'published' as const,
       locationCount: undefined,
       createdAt: '',
       updatedAt: '',

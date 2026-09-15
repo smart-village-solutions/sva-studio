@@ -93,10 +93,9 @@ type WasteManagementToursCopy = Readonly<{
     apply: string;
     status: Readonly<{
       all: string;
-      active: string;
-      inactive: string;
     }>;
   }>;
+  status?: Readonly<Record<string, string>>;
   sections?: Readonly<Record<string, string>>;
   fieldHints?: Readonly<Record<string, string>>;
   statusHints?: Readonly<Record<string, string>>;
@@ -118,6 +117,8 @@ type WasteManagementToursCopy = Readonly<{
   }>;
   deleteDialog?: Readonly<Record<string, string>>;
   statusDialog?: Readonly<Record<string, string>>;
+  selection?: Readonly<Record<string, string>>;
+  bulkStatusDialog?: Readonly<Record<string, string>>;
   bulkDeleteDialog?: Readonly<Record<string, string>>;
   bulkValidityDialog?: Readonly<Record<string, unknown>>;
   annualTransfer?: Readonly<Record<string, unknown>>;
@@ -203,6 +204,7 @@ export const createWasteManagementToursTranslations = <
           actions: createCrudActions(copy.actions),
           fields: copy.fields,
           filters: copy.filters,
+          status: copy.status,
           sections: copy.sections,
           fieldHints: copy.fieldHints,
           statusHints: copy.statusHints,
@@ -213,6 +215,8 @@ export const createWasteManagementToursTranslations = <
           customDates: copy.customDates,
           deleteDialog: copy.deleteDialog,
           statusDialog: copy.statusDialog,
+          selection: copy.selection,
+          bulkStatusDialog: copy.bulkStatusDialog,
           bulkDeleteDialog: copy.bulkDeleteDialog,
           bulkValidityDialog: copy.bulkValidityDialog,
           annualTransfer: copy.annualTransfer,

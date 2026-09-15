@@ -9,7 +9,21 @@ const controllerMock = vi.hoisted(() => ({
   loading: false,
   error: null,
   lastOutcome: 'create-success' as const,
-  overview: null as null | { tours: readonly { id: string; name: string; wasteFractionIds: readonly string[]; active: boolean; createdAt: string; updatedAt: string; description?: string | null; recurrence?: string | null; firstDate?: string | null; endDate?: string | null; customDates?: readonly { date: string; description?: string | null }[] | null }[] },
+  overview: null as null | {
+    tours: readonly {
+      id: string;
+      name: string;
+      wasteFractionIds: readonly string[];
+      status: 'draft' | 'published' | 'archived';
+      createdAt: string;
+      updatedAt: string;
+      description?: string | null;
+      recurrence?: string | null;
+      firstDate?: string | null;
+      endDate?: string | null;
+      customDates?: readonly { date: string; description?: string | null }[] | null;
+    }[];
+  },
   schedulingOverview: null,
   tourForm: { id: 'tour-form-1' },
   setDialogOpen: vi.fn(),
@@ -30,7 +44,9 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock('../src/use-waste-tours-view-model.js', () => ({
@@ -103,7 +119,7 @@ describe('WasteToursPanel', () => {
           id: 'tour-99',
           name: 'Tour 99',
           wasteFractionIds: [],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         },
@@ -154,7 +170,7 @@ describe('WasteToursPanel', () => {
           id: 'tour-99',
           name: 'Tour 99',
           wasteFractionIds: [],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         },
@@ -199,7 +215,7 @@ describe('WasteToursPanel', () => {
           id: 'tour-99',
           name: 'Tour 99',
           wasteFractionIds: [],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         },
@@ -242,7 +258,7 @@ describe('WasteToursPanel', () => {
           id: 'tour-99',
           name: 'Tour 99',
           wasteFractionIds: [],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         },

@@ -13,12 +13,19 @@ const schemaName = 'waste_mainserver_revision_test';
 const pool = new Pool({ connectionString: databaseUrl, max: 1 });
 let client: PoolClient;
 let catalogMigrationSatisfied = false;
+let tourStatusMigrationSatisfied = false;
 
 const sourceRevisionMigration = wasteTenantMigrations.find(
   ({ id }) => id === '20260827_01_add_mainserver_source_revision'
 );
 if (!sourceRevisionMigration) {
   throw new Error('waste_mainserver_source_revision_migration_missing');
+}
+const tourStatusMigration = wasteTenantMigrations.find(
+  ({ id }) => id === '20260915_01_add_waste_tour_status'
+);
+if (!tourStatusMigration) {
+  throw new Error('waste_tour_status_migration_missing');
 }
 
 const ids = {
@@ -78,6 +85,12 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       [...sourceRevisionMigration.verification.values]
     );
     catalogMigrationSatisfied = verification.rows[0]?.satisfied === true;
+    for (const statement of tourStatusMigration.statements) await client.query(statement);
+    const tourStatusVerification = await client.query<{ satisfied: boolean }>(
+      tourStatusMigration.verification.sql,
+      [...tourStatusMigration.verification.values]
+    );
+    tourStatusMigrationSatisfied = tourStatusVerification.rows[0]?.satisfied === true;
 
     await client.query(`SET search_path TO ${schemaName}, public;`);
   }, 60_000);
@@ -109,6 +122,42 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
 
   it('applies and verifies the versioned source-revision migration against PostgreSQL', () => {
     expect(catalogMigrationSatisfied).toBe(true);
+    expect(tourStatusMigrationSatisfied).toBe(true);
+  });
+
+  it('keeps legacy active and the temporary tour status projection synchronized', async () => {
+    await client.query(`INSERT INTO waste_tours (id, name, active) VALUES ($1, 'Tour', TRUE);`, [
+      ids.tour,
+    ]);
+    await expect(
+      client.query<{ status: string; active: boolean }>(
+        'SELECT status, active FROM waste_tours WHERE id = $1;',
+        [ids.tour]
+      )
+    ).resolves.toMatchObject({ rows: [{ status: 'published', active: true }] });
+
+    await client.query(`UPDATE waste_tours SET status = 'archived' WHERE id = $1;`, [ids.tour]);
+    await expect(
+      client.query<{ status: string; active: boolean }>(
+        'SELECT status, active FROM waste_tours WHERE id = $1;',
+        [ids.tour]
+      )
+    ).resolves.toMatchObject({ rows: [{ status: 'archived', active: false }] });
+
+    await client.query(`UPDATE waste_tours SET active = TRUE WHERE id = $1;`, [ids.tour]);
+    await expect(
+      client.query<{ status: string; active: boolean }>(
+        'SELECT status, active FROM waste_tours WHERE id = $1;',
+        [ids.tour]
+      )
+    ).resolves.toMatchObject({ rows: [{ status: 'published', active: true }] });
+
+    await client.query(`UPDATE waste_tours SET status = 'archived' WHERE id = $1;`, [ids.tour]);
+    await expect(
+      client.query(`UPDATE waste_tours SET status = 'draft', active = TRUE WHERE id = $1;`, [
+        ids.tour,
+      ])
+    ).rejects.toThrow('waste_tour_status_active_conflict');
   });
 
   it('increments once for direct writes, ignores irrelevant updates, and advances on deletes', async () => {

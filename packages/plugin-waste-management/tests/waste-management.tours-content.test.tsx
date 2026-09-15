@@ -19,10 +19,14 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
-  usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
-    values ? `${key}:${Object.values(values).join('|')}` : key,
-}));
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
+      values ? `${key}:${Object.values(values).join('|')}` : key,
+  };
+});
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
   resolveTourShiftDetails: (
@@ -189,6 +193,20 @@ vi.mock('@sva/studio-ui-react', () => ({
   },
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
+  StudioField: ({
+    id,
+    label,
+    children,
+  }: {
+    readonly id: string;
+    readonly label: string;
+    readonly children: React.ReactNode;
+  }) => (
+    <div>
+      <label htmlFor={id}>{label}</label>
+      {children}
+    </div>
+  ),
   Dialog: ({ open, children }: { readonly open?: boolean; readonly children: React.ReactNode }) =>
     open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -274,6 +292,7 @@ const toursSearch = {
   page: 1,
   pageSize: 25,
   status: 'all' as const,
+  tourStatus: 'all' as const,
   tourValidityPeriod: 'all' as const,
   shiftContext: 'all' as const,
   fractionsSortBy: 'name' as const,
@@ -407,10 +426,7 @@ describe('WasteToursContent', () => {
     const onOpenEditAssignmentsDialog = vi.fn();
     const onOpenCalendar = vi.fn();
     const onOpenEditFraction = vi.fn();
-    const onToggleTourStatus = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce(undefined);
+    const onUpdateTourStatusBulk = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     const tour = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -422,7 +438,7 @@ describe('WasteToursContent', () => {
         { date: '2026-12-24', description: 'Weihnachten' },
         { date: '2026-12-31', description: '' },
       ],
-      active: true,
+      status: 'published',
     };
 
     render(
@@ -445,7 +461,7 @@ describe('WasteToursContent', () => {
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         onOpenCalendar={onOpenCalendar}
         onOpenEditFraction={onOpenEditFraction}
-        onToggleTourStatus={onToggleTourStatus}
+        onUpdateTourStatusBulk={onUpdateTourStatusBulk}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour
@@ -529,10 +545,8 @@ describe('WasteToursContent', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
     const statusButton = screen.getByRole('button', {
-      name: 'tours.actions.deactivateStatus:Restmüll Nord',
+      name: 'tours.actions.changeStatusAccessible:Restmüll Nord',
     });
-    expect(statusButton.className).toContain('min-h-11');
-    expect(statusButton.className).toContain('min-w-11');
     fireEvent.click(statusButton);
 
     expect(onOpenEditDialog).not.toHaveBeenCalled();
@@ -541,18 +555,26 @@ describe('WasteToursContent', () => {
     expect(onOpenEditFraction).not.toHaveBeenCalled();
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
     expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
-    expect(screen.getByText('tours.statusDialog.deactivateTitle')).toBeTruthy();
+    expect(screen.getByText('tours.bulkStatusDialog.singleTitle')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.statusDialog.confirm' }));
-    expect(onToggleTourStatus).toHaveBeenCalledWith(tour, false);
-    expect((await screen.findByRole('alert')).textContent).toContain('tours.statusDialog.error');
-    expect(screen.getByText('tours.statusDialog.deactivateTitle')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'tours.statusDialog.confirm' }));
-    await waitFor(() =>
-      expect(screen.queryByText('tours.statusDialog.deactivateTitle')).toBeNull()
+    fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.targetLabel'), {
+      target: { value: 'archived' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.apply' }));
+    expect(onUpdateTourStatusBulk).toHaveBeenCalledWith({
+      tourIds: ['tour-1'],
+      status: 'archived',
+    });
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'tours.bulkStatusDialog.error'
     );
-    expect(onToggleTourStatus).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('tours.bulkStatusDialog.singleTitle')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.apply' }));
+    await waitFor(() =>
+      expect(screen.queryByText('tours.bulkStatusDialog.singleTitle')).toBeNull()
+    );
+    expect(onUpdateTourStatusBulk).toHaveBeenCalledTimes(2);
   });
 
   it('renders a loading hint while the assignment context is still loading', () => {
@@ -571,7 +593,7 @@ describe('WasteToursContent', () => {
               wasteFractionIds: [],
               locationCount: 0,
               customDates: [],
-              active: true,
+              status: 'published',
             },
           ] as never
         }
@@ -584,7 +606,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onToggleTourStatus={vi.fn(async () => undefined)}
+        onUpdateTourStatusBulk={vi.fn(async () => true)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -628,7 +650,7 @@ describe('WasteToursContent', () => {
               wasteFractionIds: [],
               locationCount: 0,
               customDates: [],
-              active: true,
+              status: 'published',
             },
           ] as never
         }
@@ -645,7 +667,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onToggleTourStatus={vi.fn(async () => undefined)}
+        onUpdateTourStatusBulk={vi.fn(async () => true)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -729,7 +751,7 @@ describe('WasteToursContent', () => {
               wasteFractionIds: [],
               locationCount: 0,
               customDates: [],
-              active: true,
+              status: 'published',
             },
           ] as never
         }
@@ -747,7 +769,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onToggleTourStatus={vi.fn(async () => undefined)}
+        onUpdateTourStatusBulk={vi.fn(async () => true)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -780,7 +802,7 @@ describe('WasteToursContent', () => {
       target: { value: 'Papier' },
     });
     fireEvent.change(screen.getByLabelText('tours.filters.statusLabel'), {
-      target: { value: 'inactive' },
+      target: { value: 'archived' },
     });
     fireEvent.change(screen.getByLabelText('tours.filters.validityPeriodLabel'), {
       target: { value: 'next' },
@@ -803,7 +825,7 @@ describe('WasteToursContent', () => {
       target: { value: 'Papier' },
     });
     fireEvent.change(screen.getByLabelText('tours.filters.statusLabel'), {
-      target: { value: 'inactive' },
+      target: { value: 'archived' },
     });
     fireEvent.change(screen.getByLabelText('tours.filters.validityPeriodLabel'), {
       target: { value: 'current' },
@@ -821,7 +843,7 @@ describe('WasteToursContent', () => {
 
     expect(onFiltersChange).toHaveBeenCalledWith(
       'Papier',
-      'inactive',
+      'archived',
       'current',
       'fraction-1',
       '2026-02-01',
@@ -849,7 +871,7 @@ describe('WasteToursContent', () => {
               wasteFractionIds: [],
               locationCount: 0,
               customDates: [],
-              active: true,
+              status: 'published',
             },
           ] as never
         }
@@ -862,7 +884,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onToggleTourStatus={vi.fn(async () => undefined)}
+        onUpdateTourStatusBulk={vi.fn(async () => true)}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -870,7 +892,7 @@ describe('WasteToursContent', () => {
         page={1}
         pageSize={25}
         query="Bio"
-        status="active"
+        status="published"
         tourValidityPeriod="current"
         tourWasteFractionId={'fraction-2'}
         firstDateFrom={'2026-01-01'}

@@ -202,6 +202,9 @@ const repositoryMocks = vi.hoisted(() => ({
   updateWasteTourValidityBulk: vi.fn(
     async (input: { tourIds: readonly string[] }) => input.tourIds.length
   ),
+  updateWasteTourStatusBulk: vi.fn(
+    async (input: { tourIds: readonly string[] }) => input.tourIds.length
+  ),
   upsertWasteTour: vi.fn(async () => undefined),
   upsertWasteTourAssignment: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
@@ -728,6 +731,38 @@ describe('waste-management server loaders', () => {
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
   });
 
+  it('updates tour status atomically after locking every selected tour', async () => {
+    const result = await wasteManagementEntitySavers.updateWasteTourStatusBulk('tenant-a', {
+      tourIds: ['tour-1', 'tour-2'],
+      status: 'archived',
+    });
+
+    expect(result).toEqual({ updatedCount: 2 });
+    expect(repositoryMocks.lockWasteToursByIds).toHaveBeenCalledWith(['tour-1', 'tour-2']);
+    expect(repositoryMocks.updateWasteTourStatusBulk).toHaveBeenCalledWith({
+      tourIds: ['tour-1', 'tour-2'],
+      status: 'archived',
+    });
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('rolls back a bulk status update when one selected tour is missing', async () => {
+    repositoryMocks.lockWasteToursByIds.mockResolvedValueOnce([
+      { id: 'tour-1', recurrence: 'weekly', firstDate: '2026-01-01' },
+    ]);
+
+    await expect(
+      wasteManagementEntitySavers.updateWasteTourStatusBulk('tenant-a', {
+        tourIds: ['tour-1', 'tour-2'],
+        status: 'published',
+      })
+    ).rejects.toThrow('bulk_tour_status_not_found:tour-2');
+
+    expect(repositoryMocks.updateWasteTourStatusBulk).not.toHaveBeenCalled();
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
   it('creates the selected annual tour set under an advisory lock in one transaction', async () => {
     const sourceTour = {
       id: '11111111-1111-4111-8111-111111111111',
@@ -736,7 +771,7 @@ describe('waste-management server loaders', () => {
       recurrence: 'weekly' as const,
       firstDate: '2026-01-05',
       endDate: '2026-12-31',
-      active: true,
+      status: 'published',
       locationCount: 1,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-02-01T00:00:00.000Z',
@@ -788,7 +823,9 @@ describe('waste-management server loaders', () => {
     expect(result).toMatchObject({ sourceYear: 2026, targetYear: 2027, createdCount: 1 });
     const tourInsertCall = poolFactoryInstances
       .at(-1)
-      ?.query.mock.calls.find(([statement]) => String(statement).includes('INSERT INTO waste_tours'));
+      ?.query.mock.calls.find(([statement]) =>
+        String(statement).includes('INSERT INTO waste_tours')
+      );
     const [persistedTourRow] = JSON.parse(String(tourInsertCall?.[1]?.[0])) as Array<{
       id: string;
       name: string;
@@ -799,9 +836,10 @@ describe('waste-management server loaders', () => {
       first_date: string | null;
       end_date: string | null;
       custom_dates: readonly unknown[] | null;
+      status: 'draft';
       active: boolean;
     }>;
-    expect(persistedTourRow).toMatchObject({ name: 'Bio Nord', active: false });
+    expect(persistedTourRow).toMatchObject({ name: 'Bio Nord', status: 'draft', active: false });
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith(
       'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
       ['tenant-a', 'waste-annual-tour-transfer:2027']
@@ -821,7 +859,7 @@ describe('waste-management server loaders', () => {
       firstDate: persistedTourRow?.first_date ?? undefined,
       endDate: persistedTourRow?.end_date ?? undefined,
       customDates: persistedTourRow?.custom_dates ?? [],
-      active: persistedTourRow?.active ?? false,
+      status: persistedTourRow?.status ?? 'draft',
       locationCount: 1,
       createdAt: '2027-01-01T00:00:00.000Z',
       updatedAt: '2027-01-01T00:00:00.000Z',
@@ -877,7 +915,7 @@ describe('waste-management server loaders', () => {
       recurrence: 'weekly' as const,
       firstDate: '2026-01-05',
       endDate: '2026-12-31',
-      active: true,
+      status: 'published',
       locationCount: 101,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-02-01T00:00:00.000Z',
@@ -935,7 +973,7 @@ describe('waste-management server loaders', () => {
       recurrence: 'weekly' as const,
       firstDate: '2026-01-05',
       endDate: '2026-12-31',
-      active: true,
+      status: 'published',
       locationCount: 1,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-02-01T00:00:00.000Z',
@@ -1042,7 +1080,7 @@ describe('waste-management server loaders', () => {
         wasteFractionIds: ['fraction-1'],
         recurrence: null,
         customRecurrenceId: 'preset-10',
-        active: true,
+        status: 'published',
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T10:00:00.000Z',
       },
@@ -1080,7 +1118,7 @@ describe('waste-management server loaders', () => {
         wasteFractionIds: ['fraction-1'],
         recurrence: null,
         customRecurrenceId: 'preset-10',
-        active: true,
+        status: 'published',
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T10:00:00.000Z',
       },

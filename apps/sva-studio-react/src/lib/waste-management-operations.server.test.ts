@@ -139,6 +139,20 @@ describe('waste management operations runtime', () => {
     );
     expect(statements).toContain('waste_tours_custom_recurrence_id_fkey');
     expect(statements).toContain('idx_waste_tours_custom_recurrence_id');
+    expect(statements).toContain("status TEXT NOT NULL DEFAULT 'draft'");
+    expect(statements).toContain(
+      'ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS status TEXT'
+    );
+    expect(statements).toContain(
+      "UPDATE \"wm\".waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL"
+    );
+    expect(statements).toContain('waste_tours_status_check');
+    expect(statements).toContain('sync_waste_tour_status_active');
+    expect(statements).toContain('waste_tour_status_active_conflict');
+    expect(statements).toContain('idx_waste_tours_status');
+    expect(statements).toContain(
+      'AFTER UPDATE OF "waste_fraction_ids", "recurrence", "custom_recurrence_id", "first_date", "end_date", "custom_dates", "status", "active"'
+    );
     expect(statements).toContain("reminder_count TEXT NOT NULL DEFAULT 'none'");
     expect(statements).toContain(
       'ALTER TABLE "wm".waste_fractions ADD COLUMN IF NOT EXISTS reminder_count TEXT NOT NULL DEFAULT \'none\''
@@ -642,7 +656,7 @@ describe('waste management operations runtime', () => {
       firstDate: '2026-01-10',
       endDate: '2026-12-31',
       customDates: [{ date: '2026-01-10' }, { date: '2026-01-24' }],
-      active: true,
+      status: 'published',
     });
     expect(result.details).toMatchObject({
       operation: 'import-data',
@@ -692,7 +706,7 @@ describe('waste management operations runtime', () => {
       firstDate: undefined,
       endDate: undefined,
       customDates: undefined,
-      active: false,
+      status: 'draft',
     });
     expect(result.details).toMatchObject({
       operation: 'import-data',
@@ -793,7 +807,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
           locationCount: undefined,
           createdAt: '',
           updatedAt: '',
@@ -824,7 +838,7 @@ describe('waste management operations runtime', () => {
       expect.objectContaining({
         name: 'HM.3.3',
         wasteFractionIds: expect.any(Array),
-        active: true,
+        status: 'draft',
       })
     );
     expect(repository.upsertWasteCollectionLocation).toHaveBeenCalledTimes(2);
@@ -1059,8 +1073,8 @@ describe('waste management operations runtime', () => {
     const runtime = await createRuntimeWithRepositoryMock(
       createRepositoryMock(),
       await createWorkbookBytes([
-        ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'recurrence'],
-        ['tour-1', 'Restmüll Nord', 'rest|bio', 'true', 'monthly-ish'],
+        ['tour_id', 'tour_name', 'waste_fraction_ids', 'status', 'recurrence'],
+        ['tour-1', 'Restmüll Nord', 'rest|bio', 'published', 'monthly-ish'],
       ])
     );
 
@@ -1073,6 +1087,26 @@ describe('waste management operations runtime', () => {
         blobRef: 'fixture.xlsx',
       })
     ).rejects.toThrowError('invalid_recurrence:monthly-ish');
+  });
+
+  it('rejects unsupported tour statuses deterministically', async () => {
+    const runtime = await createRuntimeWithRepositoryMock(
+      createRepositoryMock(),
+      await createWorkbookBytes([
+        ['tour_id', 'tour_name', 'waste_fraction_ids', 'status'],
+        ['tour-1', 'Restmüll Nord', 'rest|bio', 'retired'],
+      ])
+    );
+
+    await expect(
+      runtime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.touren',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('invalid_tour_status:retired');
   });
 
   it('rejects invalid date shift rows deterministically', async () => {
@@ -1278,7 +1312,7 @@ const createToursWorkbookBytes = async (): Promise<Uint8Array> => {
       'tour_id',
       'tour_name',
       'waste_fraction_ids',
-      'active',
+      'status',
       'description',
       'recurrence',
       'first_date',
@@ -1289,7 +1323,7 @@ const createToursWorkbookBytes = async (): Promise<Uint8Array> => {
       'tour-1',
       'Restmüll Nord',
       'rest|bio',
-      'yes',
+      'published',
       'Standardtour Nord',
       'weekly',
       '2026-01-10',

@@ -8,6 +8,7 @@ import {
   parseWasteLocationTourPickupDateCsv,
   planWasteLocationTourPickupDateImport,
   wasteManagementMasterDataContract,
+  wasteTourStatuses,
   type StudioJobProgress,
   type WasteLocationTourPickupDateImportPlan,
   type WasteLocationTourPickupDateImportParseResult,
@@ -487,7 +488,7 @@ const persistLocationTourPickupDateImportPlan = async (
       firstDate: tour.firstDate,
       endDate: tour.endDate,
       customDates: tour.customDates,
-      active: tour.active,
+      status: tour.status,
     });
   });
   await persistStage(plan.upserts.assignments, async (assignment) => {
@@ -670,6 +671,18 @@ const executeToursImport = async (
   counts: { rows: number; upserts: number }
 ) => {
   for (const row of rows) {
+    const status = normalizeOptionalText(row.status);
+    const legacyActive = normalizeOptionalText(row.active);
+    const normalizedStatus =
+      status ??
+      (legacyActive === undefined
+        ? 'draft'
+        : parseBoolean(legacyActive, 'active')
+          ? 'published'
+          : 'draft');
+    if (!wasteTourStatuses.includes(normalizedStatus as (typeof wasteTourStatuses)[number])) {
+      throw new Error(`invalid_tour_status:${normalizedStatus}`);
+    }
     await repository.upsertWasteTour({
       id: row.tour_id,
       name: row.tour_name,
@@ -679,7 +692,7 @@ const executeToursImport = async (
       firstDate: normalizeOptionalText(row.first_date),
       endDate: normalizeOptionalText(row.end_date),
       customDates: parseCustomDates(row.custom_dates),
-      active: parseBoolean(row.active, 'active'),
+      status: normalizedStatus as (typeof wasteTourStatuses)[number],
     });
     counts.upserts += 1;
   }

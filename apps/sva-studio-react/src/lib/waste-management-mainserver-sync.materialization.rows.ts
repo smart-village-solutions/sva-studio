@@ -71,7 +71,7 @@ export const buildStudioRowsFromMaterialization = (
   return input.pickupDates.flatMap((pickupDate) => {
     const tour = tourById.get(pickupDate.tourId);
     const location = locationById.get(pickupDate.locationId);
-    if (!tour || !location?.active) return [];
+    if (tour?.status !== 'published' || !location?.active) return [];
 
     const cityRecord = cityById.get(location.cityId);
     const city = cityRecord?.name?.trim();
@@ -94,22 +94,24 @@ export const buildStudioRowsFromMaterialization = (
       if (!wasteType) return [];
       const note = buildPickupNoteHtml(tour.description, pickupDate.note);
 
-      return [{
-        pickupDate: pickupDate.pickupDate,
-        wasteType,
-        street,
-        ...(zip ? { zip } : {}),
-        city,
-        ...(note ? { note } : {}),
-        key: buildWasteSyncKey({
+      return [
+        {
           pickupDate: pickupDate.pickupDate,
           wasteType,
           street,
-          zip,
+          ...(zip ? { zip } : {}),
           city,
-          note,
-        }),
-      }];
+          ...(note ? { note } : {}),
+          key: buildWasteSyncKey({
+            pickupDate: pickupDate.pickupDate,
+            wasteType,
+            street,
+            zip,
+            city,
+            note,
+          }),
+        },
+      ];
     });
   });
 };

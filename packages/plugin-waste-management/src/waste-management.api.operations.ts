@@ -7,6 +7,7 @@ import type {
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateResult,
   WasteTourAssignmentRecord,
 } from '@sva/plugin-sdk';
@@ -29,6 +30,7 @@ import type {
   UpdateWasteManagementLocationTourPickupDateInput,
   UpdateWasteManagementTourDateShiftInput,
   UpdateWasteManagementTourInput,
+  UpdateWasteManagementTourStatusBulkInput,
   UpdateWasteManagementTourValidityBulkInput,
   UpdateWasteManagementTourAssignmentInput,
   WasteManagementSettingsInput,
@@ -60,6 +62,11 @@ export const updateWasteManagementTourValidityBulk = async (
   input: UpdateWasteManagementTourValidityBulkInput
 ): Promise<WasteTourValidityBulkUpdateResult> =>
   requestWasteManagementMutation('/api/v1/waste-management/tours/bulk-validity', input, 'PUT');
+
+export const updateWasteManagementTourStatusBulk = async (
+  input: UpdateWasteManagementTourStatusBulkInput
+): Promise<WasteTourStatusBulkUpdateResult> =>
+  requestWasteManagementMutation('/api/v1/waste-management/tours/bulk-status', input, 'PUT');
 
 export const deleteWasteManagementTour = async (
   tourId: string

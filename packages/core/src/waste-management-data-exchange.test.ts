@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  wasteManagementDataProfileIds,
-} from './waste-management-data-exchange.js';
+import { wasteManagementDataProfileIds } from './waste-management-data-exchange.js';
 import {
   wasteManagementDataProfiles,
   wasteManagementExcludedDataDomains,
@@ -49,7 +47,7 @@ const modelFields = {
     'firstDate',
     'endDate',
     'customDates',
-    'active',
+    'status',
     'locationCount',
     'createdAt',
     'updatedAt',

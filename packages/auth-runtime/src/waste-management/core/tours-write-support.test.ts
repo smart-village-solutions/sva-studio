@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  loggerInfo,
-  emitWasteAuditEvent,
-  updateWasteVisibleStatus,
-} = vi.hoisted(() => ({
+const { loggerInfo, emitWasteAuditEvent, updateWasteVisibleStatus } = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
   emitWasteAuditEvent: vi.fn(),
   updateWasteVisibleStatus: vi.fn(),
@@ -59,7 +55,7 @@ describe('waste tour write support', () => {
             description: '  Sondertermin  ',
           },
         ],
-        active: true,
+        status: 'published',
         locationCount: 4,
       })
     ).toEqual({
@@ -77,7 +73,7 @@ describe('waste tour write support', () => {
           description: 'Sondertermin',
         },
       ],
-      active: true,
+      status: 'published',
       locationCount: 4,
     });
 
@@ -90,7 +86,7 @@ describe('waste tour write support', () => {
         recurrence: 'monthly',
         customRecurrenceId: 'preset-1',
         customDates: [],
-        active: false,
+        status: 'archived',
         locationCount: undefined,
       })
     ).toEqual({
@@ -103,7 +99,7 @@ describe('waste tour write support', () => {
       firstDate: undefined,
       endDate: undefined,
       customDates: undefined,
-      active: false,
+      status: 'archived',
       locationCount: undefined,
     });
   });
@@ -335,7 +331,7 @@ describe('waste tour write support', () => {
       input: {
         id: 'tour-1',
         name: '  Restmuell Nord  ',
-        active: true,
+        status: 'draft',
         duplicateFromTourId: undefined,
         locationCount: 0,
         wasteFractionIds: ['fraction-1'],
@@ -370,7 +366,7 @@ describe('waste tour write support', () => {
       firstDate: '2026-01-01',
       endDate: undefined,
       customDates: undefined,
-      active: true,
+      status: 'draft',
       locationCount: 0,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
@@ -400,7 +396,7 @@ describe('waste tour write support', () => {
       input: {
         id: 'tour-1',
         name: ' Restmuell Nord ',
-        active: true,
+        status: 'draft',
         duplicateFromTourId: 'source-tour',
         firstDate: '2026-01-01',
         locationCount: 0,
@@ -424,7 +420,11 @@ describe('waste tour write support', () => {
         resourceId: 'tour-1',
       })
     );
-    expect(updateWasteVisibleStatus).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'success');
+    expect(updateWasteVisibleStatus).toHaveBeenCalledWith(
+      expect.any(Object),
+      'tenant-a',
+      'success'
+    );
     expect(loadSavedTour).toHaveBeenCalledWith('tenant-a', 'tour-1');
   });
 });

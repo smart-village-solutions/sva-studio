@@ -22,7 +22,7 @@ export const createWasteTourWriteInput = ({
   firstDate,
   endDate,
   customDates,
-  active,
+  status,
   locationCount,
 }: {
   readonly id: string;
@@ -34,7 +34,7 @@ export const createWasteTourWriteInput = ({
   readonly firstDate?: string;
   readonly endDate?: string;
   readonly customDates?: Parameters<typeof normalizeCustomTourDates>[0];
-  readonly active: boolean;
+  readonly status: SaveWasteTourInput['status'];
   readonly locationCount: number | undefined;
 }): SaveWasteTourInput => ({
   id,
@@ -46,7 +46,7 @@ export const createWasteTourWriteInput = ({
   firstDate,
   endDate,
   customDates: normalizeCustomTourDates(customDates),
-  active,
+  status,
   locationCount,
 });
 
@@ -81,13 +81,14 @@ export const duplicateWasteTourDependencies = async ({
   const deleteTour = requireDeps(deps.deleteWasteTour, 'deleteWasteTour');
 
   try {
-    const [sourceLinks, sourcePickupDates, sourceTourAssignments, sourceShifts] =
-      await Promise.all([
-      listLinks(instanceId, sourceTourId),
-      listPickupDates(instanceId, { tourId: sourceTourId }),
-      listTourAssignments(instanceId, { tourId: sourceTourId }),
-      listShifts(instanceId, sourceTourId),
-      ]);
+    const [sourceLinks, sourcePickupDates, sourceTourAssignments, sourceShifts] = await Promise.all(
+      [
+        listLinks(instanceId, sourceTourId),
+        listPickupDates(instanceId, { tourId: sourceTourId }),
+        listTourAssignments(instanceId, { tourId: sourceTourId }),
+        listShifts(instanceId, sourceTourId),
+      ]
+    );
 
     for (const sourceLink of sourceLinks) {
       await saveLink(instanceId, {

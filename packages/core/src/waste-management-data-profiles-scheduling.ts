@@ -2,6 +2,7 @@ import { wasteManagementDataProfileIds } from './waste-management-data-exchange.
 import type { WasteManagementDataProfileDefinition } from './waste-management-data-exchange.js';
 import {
   defaultable,
+  defaultableEnum,
   entity,
   excludedTargetTimestamps,
   optional,
@@ -18,7 +19,7 @@ import {
   wasteHolidayRuleConflictStatuses,
   wasteHolidayRuleSourceStatuses,
 } from './waste-management/master-data-holiday-rule-status.js';
-import { wasteTourRecurrences } from './waste-management/master-data-tours.js';
+import { wasteTourRecurrences, wasteTourStatuses } from './waste-management/master-data-tours.js';
 
 export const wasteManagementSchedulingDataProfiles = [
   {
@@ -26,47 +27,71 @@ export const wasteManagementSchedulingDataProfiles = [
     displayName: 'Touren',
     description: 'Tourstammdaten, Wiederholungen, Gültigkeit und individuelle Termine.',
     formatVersion: '1.0.0',
-    dependencies: [wasteManagementDataProfileIds.fractions, wasteManagementDataProfileIds.recurrencePresets],
+    dependencies: [
+      wasteManagementDataProfileIds.fractions,
+      wasteManagementDataProfileIds.recurrencePresets,
+    ],
     formats: ['application/json'],
-    entities: [entity('tour', [
-      required('id', 'string'), required('name', 'string'), optional('description', 'string'),
-      reference(requiredNonEmptyStringArray('wasteFractionIds'), 'fraction', true),
-      optionalEnum('recurrence', wasteTourRecurrences), reference(optional('customRecurrenceId', 'string'), 'recurrencePreset'),
-      optional('customRecurrenceName', 'string'), optional('customRecurrenceIntervalDays', 'integer'),
-      optional('firstDate', 'date'), optional('endDate', 'date'),
-      optionalStructured('customDates', 'custom-tour-dates'),
-      defaultable('active', 'boolean', true),
-      { key: 'locationCount', transfer: 'intentionally-excluded', reason: 'derived-value' },
-      ...excludedTargetTimestamps,
-    ])],
+    entities: [
+      entity('tour', [
+        required('id', 'string'),
+        required('name', 'string'),
+        optional('description', 'string'),
+        reference(requiredNonEmptyStringArray('wasteFractionIds'), 'fraction', true),
+        optionalEnum('recurrence', wasteTourRecurrences),
+        reference(optional('customRecurrenceId', 'string'), 'recurrencePreset'),
+        optional('customRecurrenceName', 'string'),
+        optional('customRecurrenceIntervalDays', 'integer'),
+        optional('firstDate', 'date'),
+        optional('endDate', 'date'),
+        optionalStructured('customDates', 'custom-tour-dates'),
+        defaultableEnum('status', wasteTourStatuses, 'draft'),
+        { key: 'locationCount', transfer: 'intentionally-excluded', reason: 'derived-value' },
+        ...excludedTargetTimestamps,
+      ]),
+    ],
   },
   {
     profileId: wasteManagementDataProfileIds.locationTourLinks,
     displayName: 'Abholort–Tour-Zuordnungen',
     description: 'Direkte Zuordnung von Abholorten zu Touren.',
     formatVersion: '1.0.0',
-    dependencies: [wasteManagementDataProfileIds.geographyCollectionLocations, wasteManagementDataProfileIds.tours],
+    dependencies: [
+      wasteManagementDataProfileIds.geographyCollectionLocations,
+      wasteManagementDataProfileIds.tours,
+    ],
     formats: ['application/json'],
-    entities: [entity('locationTourLink', [
-      required('id', 'string'), reference(required('locationId', 'string'), 'collectionLocation'),
-      reference(required('tourId', 'string'), 'tour'), ...excludedTargetTimestamps,
-    ])],
+    entities: [
+      entity('locationTourLink', [
+        required('id', 'string'),
+        reference(required('locationId', 'string'), 'collectionLocation'),
+        reference(required('tourId', 'string'), 'tour'),
+        ...excludedTargetTimestamps,
+      ]),
+    ],
   },
   {
     profileId: wasteManagementDataProfileIds.tourAssignments,
     displayName: 'Tour-Einsätze',
     description: 'Terminierte Tour-Einsätze mit einer oder mehreren Abholortreferenzen.',
     formatVersion: '1.0.0',
-    dependencies: [wasteManagementDataProfileIds.geographyCollectionLocations, wasteManagementDataProfileIds.tours],
+    dependencies: [
+      wasteManagementDataProfileIds.geographyCollectionLocations,
+      wasteManagementDataProfileIds.tours,
+    ],
     formats: ['application/json'],
     entities: [
       entity('tourAssignment', [
-        required('id', 'string'), reference(required('tourId', 'string'), 'tour'),
-        required('pickupDate', 'date'), optional('note', 'string'),
+        required('id', 'string'),
+        reference(required('tourId', 'string'), 'tour'),
+        required('pickupDate', 'date'),
+        optional('note', 'string'),
         reference(requiredNonEmptyStringArray('locationIds'), 'collectionLocation', true),
         ...excludedTargetTimestamps,
       ]),
-      entity('locationTourPickupDate', [{ key: '*', transfer: 'intentionally-excluded', reason: 'legacy-source' }]),
+      entity('locationTourPickupDate', [
+        { key: '*', transfer: 'intentionally-excluded', reason: 'legacy-source' },
+      ]),
     ],
   },
   {
@@ -78,16 +103,27 @@ export const wasteManagementSchedulingDataProfiles = [
     formats: ['application/json'],
     entities: [
       entity('globalDateShift', [
-        required('id', 'string'), required('originalDate', 'date'), required('actualDate', 'date'),
-        defaultable('hasYear', 'boolean', true), optionalEnum('reasonType', wasteManagementMasterDataContract.dateShiftReasonTypes), optional('reasonKey', 'string'),
-        optional('description', 'string'), reference(optional('tourIds', 'string-array'), 'tour', true),
+        required('id', 'string'),
+        required('originalDate', 'date'),
+        required('actualDate', 'date'),
+        defaultable('hasYear', 'boolean', true),
+        optionalEnum('reasonType', wasteManagementMasterDataContract.dateShiftReasonTypes),
+        optional('reasonKey', 'string'),
+        optional('description', 'string'),
+        reference(optional('tourIds', 'string-array'), 'tour', true),
         ...excludedTargetTimestamps,
       ]),
       entity('tourDateShift', [
-        required('id', 'string'), reference(required('tourId', 'string'), 'tour'),
-        required('originalDate', 'date'), required('actualDate', 'date'), defaultable('hasYear', 'boolean', true),
-        optionalEnum('reasonType', wasteManagementMasterDataContract.dateShiftReasonTypes), optional('reasonKey', 'string'), optionalEnum('followUpMode', wasteManagementMasterDataContract.followUpModes),
-        optional('description', 'string'), ...excludedTargetTimestamps,
+        required('id', 'string'),
+        reference(required('tourId', 'string'), 'tour'),
+        required('originalDate', 'date'),
+        required('actualDate', 'date'),
+        defaultable('hasYear', 'boolean', true),
+        optionalEnum('reasonType', wasteManagementMasterDataContract.dateShiftReasonTypes),
+        optional('reasonKey', 'string'),
+        optionalEnum('followUpMode', wasteManagementMasterDataContract.followUpModes),
+        optional('description', 'string'),
+        ...excludedTargetTimestamps,
       ]),
     ],
   },
@@ -98,14 +134,20 @@ export const wasteManagementSchedulingDataProfiles = [
     formatVersion: '1.0.0',
     dependencies: [],
     formats: ['application/json'],
-    entities: [entity('holidayRule', [
-      required('id', 'string'), required('holidayDate', 'date'), required('holidayName', 'string'),
-      required('year', 'integer'), requiredEnum('stateCode', wasteManagementMasterDataContract.holidayStateCodes),
-      requiredEnum('sourceStatus', wasteHolidayRuleSourceStatuses),
-      requiredEnum('configurationStatus', wasteHolidayRuleConfigurationStatuses),
-      requiredEnum('conflictStatus', wasteHolidayRuleConflictStatuses),
-      optionalEnum('scope', wasteManagementMasterDataContract.holidayRuleScopes),
-      optionalEnum('strategy', wasteManagementMasterDataContract.holidayRuleStrategies), ...excludedTargetTimestamps,
-    ])],
+    entities: [
+      entity('holidayRule', [
+        required('id', 'string'),
+        required('holidayDate', 'date'),
+        required('holidayName', 'string'),
+        required('year', 'integer'),
+        requiredEnum('stateCode', wasteManagementMasterDataContract.holidayStateCodes),
+        requiredEnum('sourceStatus', wasteHolidayRuleSourceStatuses),
+        requiredEnum('configurationStatus', wasteHolidayRuleConfigurationStatuses),
+        requiredEnum('conflictStatus', wasteHolidayRuleConflictStatuses),
+        optionalEnum('scope', wasteManagementMasterDataContract.holidayRuleScopes),
+        optionalEnum('strategy', wasteManagementMasterDataContract.holidayRuleStrategies),
+        ...excludedTargetTimestamps,
+      ]),
+    ],
   },
 ] as const satisfies readonly WasteManagementDataProfileDefinition[];

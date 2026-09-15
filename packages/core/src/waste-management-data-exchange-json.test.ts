@@ -77,13 +77,15 @@ describe('Waste data exchange JSON', () => {
       pluginId: 'waste-management',
       profileId: wasteManagementDataProfileIds.fractions,
       exportedAt,
-      records: [{
-        entityType: 'fraction',
-        id: 'fraction-1',
-        name: 'Bio',
-        pdfShortLabel: 'BIO',
-        color: '#00aa00',
-      }],
+      records: [
+        {
+          entityType: 'fraction',
+          id: 'fraction-1',
+          name: 'Bio',
+          pdfShortLabel: 'BIO',
+          color: '#00aa00',
+        },
+      ],
     };
 
     const createResult = parseWasteManagementDataExchangeJson(envelope);
@@ -98,6 +100,77 @@ describe('Waste data exchange JSON', () => {
 
     const updateResult = parseWasteManagementDataExchangeJson(envelope, { applyDefaults: false });
     expect(updateResult.ok && updateResult.envelope.records[0]).not.toHaveProperty('active');
+  });
+
+  it.each([
+    [true, 'published'],
+    [false, 'draft'],
+  ])('maps a legacy tour active=%s import to %s', (active, status) => {
+    const result = parseWasteManagementDataExchangeJson({
+      formatVersion: '1.0.0',
+      pluginId: 'waste-management',
+      profileId: wasteManagementDataProfileIds.tours,
+      exportedAt,
+      records: [
+        {
+          entityType: 'tour',
+          id: 'tour-1',
+          name: 'Tour 1',
+          wasteFractionIds: ['fraction-1'],
+          active,
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: { records: [{ status }] },
+    });
+    expect(result.ok && result.envelope.records[0]).not.toHaveProperty('active');
+  });
+
+  it('defaults a new tour without a status to draft', () => {
+    const result = parseWasteManagementDataExchangeJson({
+      formatVersion: '1.0.0',
+      pluginId: 'waste-management',
+      profileId: wasteManagementDataProfileIds.tours,
+      exportedAt,
+      records: [
+        {
+          entityType: 'tour',
+          id: 'tour-1',
+          name: 'Tour 1',
+          wasteFractionIds: ['fraction-1'],
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      envelope: { records: [{ status: 'draft' }] },
+      defaultedFields: ['records[0].status'],
+    });
+  });
+
+  it('serializes a tour status without the legacy active field', () => {
+    const serialized = serializeWasteManagementDataExchangeJson({
+      profileId: wasteManagementDataProfileIds.tours,
+      exportedAt,
+      records: [
+        {
+          entityType: 'tour',
+          id: 'tour-1',
+          name: 'Tour 1',
+          wasteFractionIds: ['fraction-1'],
+          status: 'archived',
+        },
+      ],
+    });
+
+    expect(JSON.parse(serialized)).toMatchObject({
+      records: [{ status: 'archived' }],
+    });
+    expect(serialized).not.toContain('"active"');
   });
 
   it('rejects excluded subscriber-style and technical fields', () => {
@@ -132,19 +205,26 @@ describe('Waste data exchange JSON', () => {
     ['omitted', {}],
     ['null', { pdfShortLabel: null }],
   ])('accepts an optional PDF short label when it is %s', (_label, optionalFields) => {
-    expect(parseWasteManagementDataExchangeJson({
-      formatVersion: '1.0.0',
-      pluginId: 'waste-management',
-      profileId: wasteManagementDataProfileIds.fractions,
-      exportedAt,
-      records: [{
-        entityType: 'fraction',
-        id: 'fraction-1',
-        name: 'Bio',
-        color: '#00aa00',
-        ...optionalFields,
-      }],
-    }, { applyDefaults: false })).toMatchObject({
+    expect(
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId: wasteManagementDataProfileIds.fractions,
+          exportedAt,
+          records: [
+            {
+              entityType: 'fraction',
+              id: 'fraction-1',
+              name: 'Bio',
+              color: '#00aa00',
+              ...optionalFields,
+            },
+          ],
+        },
+        { applyDefaults: false }
+      )
+    ).toMatchObject({
       ok: true,
     });
   });
@@ -224,7 +304,11 @@ describe('Waste data exchange JSON', () => {
     {
       profileId: wasteManagementDataProfileIds.fractions,
       record: {
-        entityType: 'fraction', id: 'fraction-1', name: 'Bio', pdfShortLabel: 'BIO', color: '#00aa00',
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        pdfShortLabel: 'BIO',
+        color: '#00aa00',
         translations: [],
       },
       path: 'records[0].translations',
@@ -232,7 +316,11 @@ describe('Waste data exchange JSON', () => {
     {
       profileId: wasteManagementDataProfileIds.fractions,
       record: {
-        entityType: 'fraction', id: 'fraction-1', name: 'Bio', pdfShortLabel: 'BIO', color: '#00aa00',
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        pdfShortLabel: 'BIO',
+        color: '#00aa00',
         reminderConfig: { reminderCount: 'once', channels: { push: true } },
       },
       path: 'records[0].reminderConfig',
@@ -240,7 +328,10 @@ describe('Waste data exchange JSON', () => {
     {
       profileId: wasteManagementDataProfileIds.tours,
       record: {
-        entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'],
+        entityType: 'tour',
+        id: 'tour-1',
+        name: 'Tour 1',
+        wasteFractionIds: ['fraction-1'],
         customDates: {},
       },
       path: 'records[0].customDates',
@@ -252,55 +343,68 @@ describe('Waste data exchange JSON', () => {
     },
   ])('rejects malformed structured or enumerated field at $path', ({ profileId, record, path }) => {
     expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId,
-        exportedAt,
-        records: [record],
-      }, { applyDefaults: false })
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId,
+          exportedAt,
+          records: [record],
+        },
+        { applyDefaults: false }
+      )
     ).toMatchObject({ ok: false, issues: [{ code: 'invalid_field_type', path }] });
   });
 
   it('accepts the canonical shapes of structured profile fields', () => {
     expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId: wasteManagementDataProfileIds.tours,
-        exportedAt,
-        records: [{
-          entityType: 'tour',
-          id: 'tour-1',
-          name: 'Tour 1',
-          wasteFractionIds: ['fraction-1'],
-          customDates: [{ date: '2026-08-16', description: 'Sonderleerung' }],
-        }],
-      }, { applyDefaults: false })
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId: wasteManagementDataProfileIds.tours,
+          exportedAt,
+          records: [
+            {
+              entityType: 'tour',
+              id: 'tour-1',
+              name: 'Tour 1',
+              wasteFractionIds: ['fraction-1'],
+              customDates: [{ date: '2026-08-16', description: 'Sonderleerung' }],
+            },
+          ],
+        },
+        { applyDefaults: false }
+      )
     ).toMatchObject({ ok: true });
 
     expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId: wasteManagementDataProfileIds.fractions,
-        exportedAt,
-        records: [{
-          entityType: 'fraction',
-          id: 'fraction-1',
-          name: 'Bio',
-          pdfShortLabel: 'BIO',
-          color: '#00aa00',
-          translations: { de: 'Biotonne', en: 'Organic waste' },
-          reminderConfig: {
-            reminderCount: 'once',
-            channels: { push: true, email: false, calendar: false },
-            push: {
-              slots: [{ id: 'first', maxLeadDays: 14, defaultLeadDays: 1 }],
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId: wasteManagementDataProfileIds.fractions,
+          exportedAt,
+          records: [
+            {
+              entityType: 'fraction',
+              id: 'fraction-1',
+              name: 'Bio',
+              pdfShortLabel: 'BIO',
+              color: '#00aa00',
+              translations: { de: 'Biotonne', en: 'Organic waste' },
+              reminderConfig: {
+                reminderCount: 'once',
+                channels: { push: true, email: false, calendar: false },
+                push: {
+                  slots: [{ id: 'first', maxLeadDays: 14, defaultLeadDays: 1 }],
+                },
+              },
             },
-          },
-        }],
-      }, { applyDefaults: false })
+          ],
+        },
+        { applyDefaults: false }
+      )
     ).toMatchObject({ ok: true });
   });
 
@@ -316,7 +420,13 @@ describe('Waste data exchange JSON', () => {
       ? wasteManagementDataProfileIds.tours
       : wasteManagementDataProfileIds.fractions;
     const record = isCustomDates
-      ? { entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'], [field]: value }
+      ? {
+          entityType: 'tour',
+          id: 'tour-1',
+          name: 'Tour 1',
+          wasteFractionIds: ['fraction-1'],
+          [field]: value,
+        }
       : {
           entityType: 'fraction',
           id: 'fraction-1',
@@ -327,60 +437,106 @@ describe('Waste data exchange JSON', () => {
         };
 
     expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId,
-        exportedAt,
-        records: [record],
-      }, { applyDefaults: false })
-    ).toMatchObject({ ok: false, issues: [{ code: 'invalid_field_type', path: `records[0].${field}` }] });
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId,
+          exportedAt,
+          records: [record],
+        },
+        { applyDefaults: false }
+      )
+    ).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_field_type', path: `records[0].${field}` }],
+    });
   });
 
   it.each([
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false }, unexpected: true },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false },
+      unexpected: true,
+    },
     { reminderCount: 'invalid', channels: { push: true, email: false, calendar: false } },
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false, unexpected: true } },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false, unexpected: true },
+    },
     { reminderCount: 'once', channels: { push: 'yes', email: false, calendar: false } },
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false }, push: { slots: 'invalid' } },
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false }, push: { slots: [null] } },
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false }, push: { slots: [{ id: '', maxLeadDays: 14, defaultLeadDays: 1 }] } },
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false }, push: { slots: [{ id: 'first', maxLeadDays: 0, defaultLeadDays: 1 }] } },
-    { reminderCount: 'once', channels: { push: true, email: false, calendar: false }, push: { slots: [{ id: 'first', maxLeadDays: 14, defaultLeadDays: 15 }] } },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false },
+      push: { slots: 'invalid' },
+    },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false },
+      push: { slots: [null] },
+    },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false },
+      push: { slots: [{ id: '', maxLeadDays: 14, defaultLeadDays: 1 }] },
+    },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false },
+      push: { slots: [{ id: 'first', maxLeadDays: 0, defaultLeadDays: 1 }] },
+    },
+    {
+      reminderCount: 'once',
+      channels: { push: true, email: false, calendar: false },
+      push: { slots: [{ id: 'first', maxLeadDays: 14, defaultLeadDays: 15 }] },
+    },
   ])('rejects invalid reminder config %#', (reminderConfig) => {
     expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId: wasteManagementDataProfileIds.fractions,
-        exportedAt,
-        records: [{
-          entityType: 'fraction', id: 'fraction-1', name: 'Bio', pdfShortLabel: 'BIO', color: '#00aa00', reminderConfig,
-        }],
-      }, { applyDefaults: false })
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId: wasteManagementDataProfileIds.fractions,
+          exportedAt,
+          records: [
+            {
+              entityType: 'fraction',
+              id: 'fraction-1',
+              name: 'Bio',
+              pdfShortLabel: 'BIO',
+              color: '#00aa00',
+              reminderConfig,
+            },
+          ],
+        },
+        { applyDefaults: false }
+      )
     ).toMatchObject({
       ok: false,
       issues: [{ code: 'invalid_field_type', path: 'records[0].reminderConfig' }],
     });
   });
 
-  it.each([
-    { wasteFractionIds: [] },
-    { wasteFractionIds: [''] },
-  ])('rejects domain-invalid required tour references: %#', (fields) => {
-    expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId: wasteManagementDataProfileIds.tours,
-        exportedAt,
-        records: [{ entityType: 'tour', id: 'tour-1', name: 'Tour 1', ...fields }],
-      }, { applyDefaults: false })
-    ).toMatchObject({
-      ok: false,
-      issues: [{ code: 'invalid_field_type', path: 'records[0].wasteFractionIds' }],
-    });
-  });
+  it.each([{ wasteFractionIds: [] }, { wasteFractionIds: [''] }])(
+    'rejects domain-invalid required tour references: %#',
+    (fields) => {
+      expect(
+        parseWasteManagementDataExchangeJson(
+          {
+            formatVersion: '1.0.0',
+            pluginId: 'waste-management',
+            profileId: wasteManagementDataProfileIds.tours,
+            exportedAt,
+            records: [{ entityType: 'tour', id: 'tour-1', name: 'Tour 1', ...fields }],
+          },
+          { applyDefaults: false }
+        )
+      ).toMatchObject({
+        ok: false,
+        issues: [{ code: 'invalid_field_type', path: 'records[0].wasteFractionIds' }],
+      });
+    }
+  );
 
   it.each([
     ['recurrence', 'daily'],
@@ -389,21 +545,34 @@ describe('Waste data exchange JSON', () => {
   ])('rejects unsupported scheduling enum %s=%s', (field, value) => {
     const isTour = field === 'recurrence';
     const record = isTour
-      ? { entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'], [field]: value }
+      ? {
+          entityType: 'tour',
+          id: 'tour-1',
+          name: 'Tour 1',
+          wasteFractionIds: ['fraction-1'],
+          [field]: value,
+        }
       : {
-          entityType: 'tourDateShift', id: 'shift-1', tourId: 'tour-1',
-          originalDate: '2026-08-16', actualDate: '2026-08-17', [field]: value,
+          entityType: 'tourDateShift',
+          id: 'shift-1',
+          tourId: 'tour-1',
+          originalDate: '2026-08-16',
+          actualDate: '2026-08-17',
+          [field]: value,
         };
     expect(
-      parseWasteManagementDataExchangeJson({
-        formatVersion: '1.0.0',
-        pluginId: 'waste-management',
-        profileId: isTour
-          ? wasteManagementDataProfileIds.tours
-          : wasteManagementDataProfileIds.dateShifts,
-        exportedAt,
-        records: [record],
-      }, { applyDefaults: false })
+      parseWasteManagementDataExchangeJson(
+        {
+          formatVersion: '1.0.0',
+          pluginId: 'waste-management',
+          profileId: isTour
+            ? wasteManagementDataProfileIds.tours
+            : wasteManagementDataProfileIds.dateShifts,
+          exportedAt,
+          records: [record],
+        },
+        { applyDefaults: false }
+      )
     ).toMatchObject({
       ok: false,
       issues: [{ code: 'invalid_field_type', path: `records[0].${field}` }],
@@ -420,12 +589,14 @@ describe('Waste data exchange JSON', () => {
             ['entityType', entity.entityType],
             ...entity.fields.flatMap((field) =>
               field.transfer === 'included' && field.input.kind === 'required'
-                ? [[
-                    field.key,
-                    field.valueType === 'string' && field.allowedValues?.[0]
-                      ? field.allowedValues[0]
-                      : exampleValue(field.valueType, field.key),
-                  ] as const]
+                ? [
+                    [
+                      field.key,
+                      field.valueType === 'string' && field.allowedValues?.[0]
+                        ? field.allowedValues[0]
+                        : exampleValue(field.valueType, field.key),
+                    ] as const,
+                  ]
                 : []
             ),
           ]),

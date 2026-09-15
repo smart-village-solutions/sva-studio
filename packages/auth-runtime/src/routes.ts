@@ -1,4 +1,5 @@
-export type AuthRoutePath = '/auth/login'
+export type AuthRoutePath =
+  | '/auth/login'
   | '/auth/account-action'
   | '/auth/dev-login'
   | '/auth/callback'
@@ -135,6 +136,7 @@ export type AuthRoutePath = '/auth/login'
   | '/api/v1/waste-management/tours/annual-transfer'
   | '/api/v1/waste-management/tours/annual-transfer/preview'
   | '/api/v1/waste-management/tours/bulk-validity'
+  | '/api/v1/waste-management/tours/bulk-status'
   | '/api/v1/waste-management/tours/$tourId'
   | '/api/v1/waste-management/settings'
   | '/api/v1/waste-management/settings/holiday-sync'
@@ -296,6 +298,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/tours/annual-transfer',
   '/api/v1/waste-management/tours/annual-transfer/preview',
   '/api/v1/waste-management/tours/bulk-validity',
+  '/api/v1/waste-management/tours/bulk-status',
   '/api/v1/waste-management/tours/$tourId',
   '/api/v1/waste-management/settings',
   '/api/v1/waste-management/settings/holiday-sync',

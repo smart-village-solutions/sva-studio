@@ -1,4 +1,8 @@
-import type { WasteTourListFilter, WasteTourRecord } from '@sva/core';
+import type {
+  WasteTourListFilter,
+  WasteTourRecord,
+  WasteTourStatusBulkUpdateInput,
+} from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -26,7 +30,7 @@ type WasteTourRow = {
   readonly first_date: string | null;
   readonly end_date: string | null;
   readonly custom_dates: unknown;
-  readonly active: boolean;
+  readonly status: WasteTourRecord['status'];
   readonly location_count?: number | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -44,7 +48,7 @@ const mapWasteTourRow = (row: WasteTourRow): WasteTourRecord => ({
   firstDate: row.first_date ?? undefined,
   endDate: row.end_date ?? undefined,
   customDates: normalizeCustomDates(row.custom_dates),
-  active: row.active,
+  status: row.status,
   locationCount: typeof row.location_count === 'number' ? row.location_count : undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -54,9 +58,9 @@ const buildTourListStatement = (filter: WasteTourListFilter = {}): SqlStatement 
   const values: SqlPrimitive[] = [];
   const conditions: string[] = [];
 
-  if (typeof filter.active === 'boolean') {
-    values.push(filter.active);
-    conditions.push(`t.active = $${values.length}`);
+  if (filter.status) {
+    values.push(filter.status);
+    conditions.push(`t.status = $${values.length}`);
   }
 
   if (filter.recurrence) {
@@ -88,7 +92,7 @@ SELECT
   t.first_date::text,
   t.end_date::text,
   t.custom_dates,
-  t.active,
+  t.status,
   COUNT(ltl.id)::int AS location_count,
   t.created_at::text,
   t.updated_at::text
@@ -119,7 +123,7 @@ SELECT
   t.first_date::text,
   t.end_date::text,
   t.custom_dates,
-  t.active,
+  t.status,
   COUNT(ltl.id)::int AS location_count,
   t.created_at::text,
   t.updated_at::text
@@ -149,9 +153,22 @@ INSERT INTO waste_tours (
   first_date,
   end_date,
   custom_dates,
+  status,
   active
 )
-VALUES ($1::uuid, $2, $3, $4::text[], $5, $6::uuid, $7::date, $8::date, $9::jsonb, $10)
+VALUES (
+  $1::uuid,
+  $2,
+  $3,
+  $4::text[],
+  $5,
+  $6::uuid,
+  $7::date,
+  $8::date,
+  $9::jsonb,
+  $10,
+  $10 = 'published'
+)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
     description = EXCLUDED.description,
@@ -161,6 +178,7 @@ SET name = EXCLUDED.name,
     first_date = EXCLUDED.first_date,
     end_date = EXCLUDED.end_date,
     custom_dates = EXCLUDED.custom_dates,
+    status = EXCLUDED.status,
     active = EXCLUDED.active,
     updated_at = NOW();
 `,
@@ -174,7 +192,7 @@ SET name = EXCLUDED.name,
     input.firstDate ?? null,
     input.endDate ?? null,
     input.customDates ? JSON.stringify(input.customDates) : null,
-    input.active,
+    input.status,
   ],
 });
 
@@ -186,6 +204,19 @@ WHERE id = $1::uuid;
   values: [id],
 });
 
+const buildTourStatusBulkUpdateStatement = (
+  input: WasteTourStatusBulkUpdateInput
+): SqlStatement => ({
+  text: `
+UPDATE waste_tours
+SET status = $2,
+    active = ($2 = 'published'),
+    updated_at = NOW()
+WHERE id = ANY($1::uuid[]);
+`,
+  values: [input.tourIds, input.status],
+});
+
 export const createWasteTourRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
@@ -194,6 +225,7 @@ export const createWasteTourRepositoryPart = (
   | 'getWasteTourById'
   | 'lockWasteToursByIds'
   | 'updateWasteTourValidityBulk'
+  | 'updateWasteTourStatusBulk'
   | 'upsertWasteTour'
   | 'deleteWasteTour'
 > => ({
@@ -215,6 +247,10 @@ export const createWasteTourRepositoryPart = (
     const result = await executor.execute(buildTourValidityBulkUpdateStatement(input));
     return result.rowCount;
   },
+  async updateWasteTourStatusBulk(input) {
+    const result = await executor.execute(buildTourStatusBulkUpdateStatement(input));
+    return result.rowCount;
+  },
   async upsertWasteTour(input) {
     await executor.execute(buildTourUpsertStatement(input));
   },
@@ -228,6 +264,7 @@ export const wasteTourStatements = {
   getWasteTourById: buildTourSelectStatement,
   lockWasteToursByIds: buildTourValidityLockStatement,
   updateWasteTourValidityBulk: buildTourValidityBulkUpdateStatement,
+  updateWasteTourStatusBulk: buildTourStatusBulkUpdateStatement,
   upsertWasteTour: buildTourUpsertStatement,
   deleteWasteTour: buildTourDeleteStatement,
 } as const;

@@ -204,6 +204,12 @@ describe('waste-management translation builders', () => {
     expect(tours.tours).not.toHaveProperty('assignments');
     expect(tours.tours).not.toHaveProperty('yearCalendar');
     expect(tours.tours.customDates.title).toBe('Individuelle Termine');
+    expect(wasteManagementPluginTranslationsDETours.tours.selection.selectFiltered).toContain(
+      'gefilterten Touren'
+    );
+    expect(wasteManagementPluginTranslationsDETours.tours.bulkStatusDialog.open).toBe(
+      'Status ändern'
+    );
     expect(createWasteManagementPluginTranslationLocale([tabs, tours])).toEqual({
       wasteManagement: {
         ...tabs,
@@ -404,8 +410,6 @@ describe('waste-management translation builders', () => {
             apply: 'Anwenden',
             status: {
               all: 'Alle',
-              active: 'Aktive Touren',
-              inactive: 'Inaktive Touren',
             },
             validityPeriod: {
               all: 'Alle Touren',
@@ -413,6 +417,11 @@ describe('waste-management translation builders', () => {
               current: 'Aktuelles Jahr ({{year}})',
               next: 'Nächstes Jahr ({{year}})',
             },
+          },
+          status: {
+            draft: 'Entwurf',
+            published: 'Veröffentlicht',
+            archived: 'Archiviert',
           },
         },
       },
@@ -457,8 +466,8 @@ describe('waste-management translation builders', () => {
           },
         },
         tours: {
-          statusDialog: {
-            confirm: 'Bestätigen',
+          bulkStatusDialog: {
+            apply: 'Status ändern',
             cancel: 'Abbrechen',
           },
         },

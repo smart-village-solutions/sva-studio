@@ -34,6 +34,7 @@ const searchState = {
   page: 3,
   pageSize: 50,
   status: 'active',
+  tourStatus: 'all',
   tourValidityPeriod: 'all',
   tourWasteFractionId: undefined,
   shiftContext: 'tour',

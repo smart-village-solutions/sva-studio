@@ -1,7 +1,8 @@
-import type {
-  WasteManagementDataExchangeEnvelope,
-  WasteManagementDataExchangeRecord,
-  WasteManagementDataProfileId,
+import {
+  wasteManagementDataProfileIds,
+  type WasteManagementDataExchangeEnvelope,
+  type WasteManagementDataExchangeRecord,
+  type WasteManagementDataProfileId,
 } from './waste-management-data-exchange.js';
 import { getWasteManagementDataProfile } from './waste-management-data-profiles.js';
 import {
@@ -20,12 +21,41 @@ export type {
   WasteManagementDataExchangeParseResult,
 } from './waste-management-data-exchange-json.types.js';
 
-const invalidEnvelope = (
-  message: string,
-  path = '$'
-): WasteManagementDataExchangeParseResult => ({
+type WasteManagementDataFormatVersion = WasteManagementDataExchangeEnvelope['formatVersion'];
+
+const normalizeLegacyTourStatus = (
+  profileId: WasteManagementDataProfileId,
+  formatVersion: WasteManagementDataFormatVersion,
+  value: unknown
+): unknown => {
+  if (
+    profileId !== wasteManagementDataProfileIds.tours ||
+    formatVersion !== '1.0.0' ||
+    !isObject(value) ||
+    value.entityType !== 'tour' ||
+    Object.prototype.hasOwnProperty.call(value, 'status') ||
+    typeof value.active !== 'boolean'
+  ) {
+    return value;
+  }
+  const { active, ...record } = value;
+  return { ...record, status: active ? 'published' : 'draft' };
+};
+
+const invalidEnvelope = (message: string, path = '$'): WasteManagementDataExchangeParseResult => ({
   ok: false,
   issues: [{ code: 'invalid_envelope', path, message }],
+});
+
+const unsupportedFormatVersion = (): WasteManagementDataExchangeParseResult => ({
+  ok: false,
+  issues: [
+    {
+      code: 'unsupported_format_version',
+      path: 'formatVersion',
+      message: 'Nicht unterstützte Formatversion.',
+    },
+  ],
 });
 
 const parseJsonSource = (source: string | unknown): unknown => {
@@ -56,16 +86,12 @@ export const parseWasteManagementDataExchangeJson = (
   options: Readonly<{ applyDefaults?: boolean }> = {}
 ): WasteManagementDataExchangeParseResult => {
   const value = parseJsonSource(source);
-  if (!isObject(value)) return invalidEnvelope(typeof source === 'string' ? 'Ungültiges JSON.' : 'JSON-Envelope fehlt.');
-  if (value.formatVersion !== '1.0.0') {
-    return {
-      ok: false,
-      issues: [{
-        code: 'unsupported_format_version',
-        path: 'formatVersion',
-        message: 'Nicht unterstützte Formatversion.',
-      }],
-    };
+  if (!isObject(value))
+    return invalidEnvelope(
+      typeof source === 'string' ? 'Ungültiges JSON.' : 'JSON-Envelope fehlt.'
+    );
+  if (value.formatVersion !== '1.0.0' && value.formatVersion !== '2.0.0') {
+    return unsupportedFormatVersion();
   }
   if (!hasValidEnvelopeShape(value)) return invalidEnvelope('JSON-Envelope ist unvollständig.');
 
@@ -73,8 +99,19 @@ export const parseWasteManagementDataExchangeJson = (
   if (profile === undefined) {
     return {
       ok: false,
-      issues: [{ code: 'unsupported_profile', path: 'profileId', message: 'Unbekanntes Waste-Datenprofil.' }],
+      issues: [
+        {
+          code: 'unsupported_profile',
+          path: 'profileId',
+          message: 'Unbekanntes Waste-Datenprofil.',
+        },
+      ],
     };
+  }
+  const isLegacyTourEnvelope =
+    profile.profileId === wasteManagementDataProfileIds.tours && value.formatVersion === '1.0.0';
+  if (value.formatVersion !== profile.formatVersion && !isLegacyTourEnvelope) {
+    return unsupportedFormatVersion();
   }
 
   const issues: WasteManagementDataExchangeIssue[] = [];
@@ -82,7 +119,11 @@ export const parseWasteManagementDataExchangeJson = (
   const records = value.records.flatMap((record, index) => {
     const normalized = normalizeWasteManagementRecord({
       profile,
-      value: record,
+      value: normalizeLegacyTourStatus(
+        profile.profileId,
+        value.formatVersion as WasteManagementDataFormatVersion,
+        record
+      ),
       index,
       applyDefaults: options.applyDefaults ?? true,
       issues,
@@ -96,7 +137,7 @@ export const parseWasteManagementDataExchangeJson = (
   return {
     ok: true,
     envelope: {
-      formatVersion: '1.0.0',
+      formatVersion: value.formatVersion as WasteManagementDataFormatVersion,
       pluginId: 'waste-management',
       profileId: profile.profileId,
       exportedAt: value.exportedAt,
@@ -136,35 +177,44 @@ const materializeSerializableRecords = (
 ): readonly Record<string, unknown>[] => {
   const profile = getWasteManagementDataProfile(envelope.profileId);
   if (profile === undefined) throw new Error(`unknown_waste_data_profile:${envelope.profileId}`);
-  return [...envelope.records].map((record) => {
-    const definition = profile.entities.find((entity) => entity.entityType === record.entityType);
-    if (definition === undefined) throw new Error(`unknown_waste_entity:${record.entityType}`);
-    const output: Record<string, unknown> = { entityType: record.entityType };
-    for (const field of definition.fields) {
-      if (field.transfer !== 'included') continue;
-      if (hasOwnProperty(record, field.key)) output[field.key] = record[field.key];
-      else if (field.input.kind === 'optional') output[field.key] = null;
-      else if (field.input.kind === 'defaultable') output[field.key] = field.input.defaultValue;
-    }
-    return output;
-  }).sort((left, right) => {
-    const typeOrder = String(left.entityType).localeCompare(String(right.entityType));
-    return typeOrder || String(left.id ?? '').localeCompare(String(right.id ?? ''));
-  });
+  return [...envelope.records]
+    .map((record) => {
+      const definition = profile.entities.find((entity) => entity.entityType === record.entityType);
+      if (definition === undefined) throw new Error(`unknown_waste_entity:${record.entityType}`);
+      const output: Record<string, unknown> = { entityType: record.entityType };
+      for (const field of definition.fields) {
+        if (field.transfer !== 'included') continue;
+        if (hasOwnProperty(record, field.key)) output[field.key] = record[field.key];
+        else if (field.input.kind === 'optional') output[field.key] = null;
+        else if (field.input.kind === 'defaultable') output[field.key] = field.input.defaultValue;
+      }
+      return output;
+    })
+    .sort((left, right) => {
+      const typeOrder = String(left.entityType).localeCompare(String(right.entityType));
+      return typeOrder || String(left.id ?? '').localeCompare(String(right.id ?? ''));
+    });
 };
 
-export const serializeWasteManagementDataExchangeJson = (input: Readonly<{
-  profileId: WasteManagementDataProfileId;
-  exportedAt: string;
-  records: readonly WasteManagementDataExchangeRecord[];
-}>): string => {
-  const parsed = parseWasteManagementDataExchangeJson({
-    formatVersion: '1.0.0',
-    pluginId: 'waste-management',
-    profileId: input.profileId,
-    exportedAt: input.exportedAt,
-    records: selectTransferableFields(input.profileId, input.records),
-  }, { applyDefaults: false });
+export const serializeWasteManagementDataExchangeJson = (
+  input: Readonly<{
+    profileId: WasteManagementDataProfileId;
+    exportedAt: string;
+    records: readonly WasteManagementDataExchangeRecord[];
+  }>
+): string => {
+  const profile = getWasteManagementDataProfile(input.profileId);
+  if (profile === undefined) throw new Error(`unknown_waste_data_profile:${input.profileId}`);
+  const parsed = parseWasteManagementDataExchangeJson(
+    {
+      formatVersion: profile.formatVersion,
+      pluginId: 'waste-management',
+      profileId: input.profileId,
+      exportedAt: input.exportedAt,
+      records: selectTransferableFields(input.profileId, input.records),
+    },
+    { applyDefaults: false }
+  );
   if (!parsed.ok) throw new Error(`invalid_waste_data_exchange:${parsed.issues[0]?.path ?? '$'}`);
   const records = materializeSerializableRecords(parsed.envelope);
   return `${JSON.stringify({ ...parsed.envelope, records }, null, 2)}\n`;

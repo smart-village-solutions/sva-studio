@@ -248,7 +248,7 @@ const materializeLinkedPickupDates = (input: {
 }): readonly MaterializedLocationTourPickupDateRecord[] => {
   const { link } = input;
   const tour = input.tourById.get(link.tourId);
-  if (!tour?.active) return [];
+  if (tour?.status !== 'published') return [];
 
   const locationTourKey = `${link.locationId}::${link.tourId}`;
   let dates: readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[] = [
@@ -299,7 +299,7 @@ const materializeAssignedPickupDates = (
   rules: readonly MaterializationRule[]
 ): readonly MaterializedLocationTourPickupDateRecord[] =>
   (assignments ?? []).flatMap((assignment) => {
-    if (!tourById.get(assignment.tourId)?.active) return [];
+    if (tourById.get(assignment.tourId)?.status !== 'published') return [];
     let dates: readonly Pick<WasteLocationTourPickupDateRecord, 'pickupDate' | 'note'>[] = [
       { pickupDate: assignment.pickupDate, note: assignment.note },
     ];

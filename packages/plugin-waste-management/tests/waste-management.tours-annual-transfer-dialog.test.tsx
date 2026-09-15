@@ -94,7 +94,7 @@ describe('WasteToursAnnualTransferDialog', () => {
       createdCount: 1,
       existingCount: 0,
       classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
-      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+      listTarget: { tourValidityPeriod: 'next', status: 'draft' },
     });
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0);
@@ -118,12 +118,12 @@ describe('WasteToursAnnualTransferDialog', () => {
       createdCount: 1,
       existingCount: 0,
       classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
-      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+      listTarget: { tourValidityPeriod: 'next', status: 'draft' },
     });
 
     expect(onFiltersChange).toHaveBeenCalledWith(
       '',
-      'inactive',
+      'draft',
       'next',
       undefined,
       undefined,
@@ -133,7 +133,7 @@ describe('WasteToursAnnualTransferDialog', () => {
     );
   });
 
-  it('shows the fixed following year and creates the confirmed selection as inactive', async () => {
+  it('shows the fixed following year and creates the confirmed selection as a draft', async () => {
     const onCreated = vi.fn(async () => undefined);
     render(
       <WasteToursAnnualTransferDialog
@@ -194,7 +194,7 @@ describe('WasteToursAnnualTransferDialog', () => {
       createdCount: 1,
       existingCount: 0,
       classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
-      listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+      listTarget: { tourValidityPeriod: 'next', status: 'draft' },
     });
     render(
       <WasteToursAnnualTransferDialog

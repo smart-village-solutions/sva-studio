@@ -58,7 +58,8 @@ type PlannerState = {
   };
 };
 
-const normalizeKeyPart = (value: string | undefined): string => (value ?? '').trim().toLocaleLowerCase('de-DE');
+const normalizeKeyPart = (value: string | undefined): string =>
+  (value ?? '').trim().toLocaleLowerCase('de-DE');
 const createEntitySummary = (): MutableEntitySummary => ({ existing: 0, created: 0 });
 const createRuntimeUuid = (): string => {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
@@ -84,14 +85,21 @@ const createPlanningSummary = () => ({
   assignments: createEntitySummary(),
 });
 
-const markExistingUsage = (bucket: MutableEntitySummary, key: string, touchedExisting: Set<string>) => {
+const markExistingUsage = (
+  bucket: MutableEntitySummary,
+  key: string,
+  touchedExisting: Set<string>
+) => {
   if (!touchedExisting.has(key)) {
     touchedExisting.add(key);
     bucket.existing += 1;
   }
 };
 
-const createState = (snapshot: WasteLocationTourPickupDateImportPlanningSnapshot, createId: () => string): PlannerState => ({
+const createState = (
+  snapshot: WasteLocationTourPickupDateImportPlanningSnapshot,
+  createId: () => string
+): PlannerState => ({
   createId,
   summary: createPlanningSummary(),
   touchedExisting: {
@@ -108,19 +116,30 @@ const createState = (snapshot: WasteLocationTourPickupDateImportPlanningSnapshot
   newFractions: new Set<string>(),
   existingTours: new Set<string>(),
   newTours: new Set<string>(),
-  assignmentKeys: new Set(snapshot.assignments.map((assignment) => `${assignment.locationId}::${assignment.tourId}`)),
-  fractionByKey: new Map(snapshot.fractions.map((fraction) => [normalizeKeyPart(fraction.name), fraction])),
+  assignmentKeys: new Set(
+    snapshot.assignments.map((assignment) => `${assignment.locationId}::${assignment.tourId}`)
+  ),
+  fractionByKey: new Map(
+    snapshot.fractions.map((fraction) => [normalizeKeyPart(fraction.name), fraction])
+  ),
   regionByKey: new Map(snapshot.regions.map((region) => [normalizeKeyPart(region.name), region])),
-  cityByKey: new Map(snapshot.cities.map((city) => [`${city.regionId ?? ''}::${normalizeKeyPart(city.name)}`, city])),
+  cityByKey: new Map(
+    snapshot.cities.map((city) => [`${city.regionId ?? ''}::${normalizeKeyPart(city.name)}`, city])
+  ),
   citiesByName: snapshot.cities.reduce<Map<string, WasteCityRecord[]>>((citiesByName, city) => {
     const cityKey = normalizeKeyPart(city.name);
     const existing = citiesByName.get(cityKey) ?? [];
     citiesByName.set(cityKey, [...existing, city]);
     return citiesByName;
   }, new Map()),
-  streetByKey: new Map(snapshot.streets.map((street) => [`${street.cityId}::${normalizeKeyPart(street.name)}`, street])),
+  streetByKey: new Map(
+    snapshot.streets.map((street) => [`${street.cityId}::${normalizeKeyPart(street.name)}`, street])
+  ),
   houseNumberByKey: new Map(
-    snapshot.houseNumbers.map((houseNumber) => [`${houseNumber.streetId}::${normalizeKeyPart(houseNumber.number)}`, houseNumber])
+    snapshot.houseNumbers.map((houseNumber) => [
+      `${houseNumber.streetId}::${normalizeKeyPart(houseNumber.number)}`,
+      houseNumber,
+    ])
   ),
   locationByKey: new Map(
     snapshot.locations.map((location) => [
@@ -141,7 +160,10 @@ const createState = (snapshot: WasteLocationTourPickupDateImportPlanningSnapshot
   },
 });
 
-const registerCreatedRecord = <T extends { readonly id: string }>(bucket: Map<string, T>, record: T): T => {
+const registerCreatedRecord = <T extends { readonly id: string }>(
+  bucket: Map<string, T>,
+  record: T
+): T => {
   bucket.set(record.id, record);
   return record;
 };
@@ -155,7 +177,10 @@ const registerCityByName = (bucket: Map<string, WasteCityRecord[]>, city: WasteC
 const createAmbiguousRegionlessCityMatchError = (cityName: string): Error =>
   new Error(`ambiguous_regionless_city_match:${cityName}`);
 
-const shouldCountAsExisting = <T extends { readonly id: string }>(bucket: Map<string, T>, id: string): boolean => {
+const shouldCountAsExisting = <T extends { readonly id: string }>(
+  bucket: Map<string, T>,
+  id: string
+): boolean => {
   return !bucket.has(id);
 };
 
@@ -184,7 +209,11 @@ const ensureRegion = (state: PlannerState, regionName: string | undefined): stri
   return region.id;
 };
 
-const ensureCity = (state: PlannerState, regionId: string | undefined, cityName: string): WasteCityRecord => {
+const ensureCity = (
+  state: PlannerState,
+  regionId: string | undefined,
+  cityName: string
+): WasteCityRecord => {
   const cityKey = `${regionId ?? ''}::${normalizeKeyPart(cityName)}`;
   const existingCity = state.cityByKey.get(cityKey);
   if (existingCity) {
@@ -224,7 +253,11 @@ const ensureCity = (state: PlannerState, regionId: string | undefined, cityName:
   return city;
 };
 
-const ensureStreet = (state: PlannerState, cityId: string, streetName: string): WasteStreetRecord => {
+const ensureStreet = (
+  state: PlannerState,
+  cityId: string,
+  streetName: string
+): WasteStreetRecord => {
   const streetKey = `${cityId}::${normalizeKeyPart(streetName)}`;
   const existingStreet = state.streetByKey.get(streetKey);
   if (existingStreet) {
@@ -246,12 +279,20 @@ const ensureStreet = (state: PlannerState, cityId: string, streetName: string): 
   return street;
 };
 
-const ensureHouseNumber = (state: PlannerState, streetId: string, houseNumberValue: string): WasteHouseNumberRecord => {
+const ensureHouseNumber = (
+  state: PlannerState,
+  streetId: string,
+  houseNumberValue: string
+): WasteHouseNumberRecord => {
   const houseNumberKey = `${streetId}::${normalizeKeyPart(houseNumberValue)}`;
   const existingHouseNumber = state.houseNumberByKey.get(houseNumberKey);
   if (existingHouseNumber) {
     if (shouldCountAsExisting(state.upserts.houseNumbers, existingHouseNumber.id)) {
-      markExistingUsage(state.summary.houseNumbers, existingHouseNumber.id, state.touchedExisting.houseNumbers);
+      markExistingUsage(
+        state.summary.houseNumbers,
+        existingHouseNumber.id,
+        state.touchedExisting.houseNumbers
+      );
     }
     return existingHouseNumber;
   }
@@ -270,13 +311,22 @@ const ensureHouseNumber = (state: PlannerState, streetId: string, houseNumberVal
 
 const ensureLocation = (
   state: PlannerState,
-  input: { readonly regionId: string | undefined; readonly cityId: string; readonly streetId: string; readonly houseNumberId: string }
+  input: {
+    readonly regionId: string | undefined;
+    readonly cityId: string;
+    readonly streetId: string;
+    readonly houseNumberId: string;
+  }
 ): WasteCollectionLocationRecord => {
   const locationKey = `${input.regionId ?? ''}::${input.cityId}::${input.streetId}::${input.houseNumberId}`;
   const existingLocation = state.locationByKey.get(locationKey);
   if (existingLocation) {
     if (shouldCountAsExisting(state.upserts.locations, existingLocation.id)) {
-      markExistingUsage(state.summary.locations, existingLocation.id, state.touchedExisting.locations);
+      markExistingUsage(
+        state.summary.locations,
+        existingLocation.id,
+        state.touchedExisting.locations
+      );
     }
     return existingLocation;
   }
@@ -301,7 +351,11 @@ const ensureFraction = (state: PlannerState, fractionName: string): WasteFractio
   const existingFraction = state.fractionByKey.get(fractionKey);
   if (existingFraction) {
     if (shouldCountAsExisting(state.upserts.fractions, existingFraction.id)) {
-      markExistingUsage(state.summary.fractions, existingFraction.id, state.touchedExisting.fractions);
+      markExistingUsage(
+        state.summary.fractions,
+        existingFraction.id,
+        state.touchedExisting.fractions
+      );
       state.existingFractions.add(existingFraction.name);
     }
     return existingFraction;
@@ -345,7 +399,7 @@ const ensureTour = (state: PlannerState, tourName: string, fractionId: string): 
       firstDate: undefined,
       endDate: undefined,
       customDates: undefined,
-      active: true,
+      status: 'draft',
       locationCount: undefined,
       createdAt: '',
       updatedAt: '',
@@ -410,9 +464,12 @@ const applyRowToPlan = (state: PlannerState, row: WasteLocationTourPickupDateImp
   }
 };
 
-const toReadonlySummary = (summary: PlannerState['summary']): WasteLocationTourPickupDateImportSummary => summary;
+const toReadonlySummary = (
+  summary: PlannerState['summary']
+): WasteLocationTourPickupDateImportSummary => summary;
 
-const sortNames = (values: Set<string>): readonly string[] => [...values].sort((left, right) => left.localeCompare(right, 'de'));
+const sortNames = (values: Set<string>): readonly string[] =>
+  [...values].sort((left, right) => left.localeCompare(right, 'de'));
 
 export const planWasteLocationTourPickupDateImport = (
   snapshot: WasteLocationTourPickupDateImportPlanningSnapshot,

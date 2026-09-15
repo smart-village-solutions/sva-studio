@@ -358,6 +358,9 @@ export type {
   WasteTourListFilter,
   WasteTourRecurrence,
   WasteTourRecord,
+  WasteTourStatus,
+  WasteTourStatusBulkUpdateInput,
+  WasteTourStatusBulkUpdateResult,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
@@ -370,6 +373,8 @@ export {
   isWasteTourValidityApplicable,
   resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,
+  wasteTourStatusBulkLimit,
+  wasteTourStatuses,
   WASTE_ALL_HOUSE_NUMBERS,
 } from './waste-management-master-data.js';
 export type { EffectiveWasteTourDateShift } from './waste-management-master-data.js';

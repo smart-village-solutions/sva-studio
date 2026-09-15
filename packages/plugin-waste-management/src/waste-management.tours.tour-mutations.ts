@@ -1,5 +1,4 @@
 import { startTransition, type FormEvent } from 'react';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
 import {
   createWasteManagementTour,
   createWasteManagementLocationTourPickupDate,
@@ -12,12 +11,12 @@ import { createWasteToursDeleteMutationHandlers } from './waste-management.tours
 import {
   createTourDateLocationAssignmentKey,
   isCustomDatesRecurrence,
-  mapTourToForm,
   normalizeTourDateLocationAssignments,
   toCreateTourInput,
   toUpdateTourInput,
 } from './waste-management.tours.shared.js';
 import { createUpdateTourValidityBulkHandler } from './waste-management.tours.validity-mutation.js';
+import { createUpdateTourStatusBulkHandler } from './waste-management.tours.status-mutation.js';
 import {
   validateTourAssignments,
   type WasteToursSubmissionContext,
@@ -133,47 +132,13 @@ const createSubmitTourHandler =
     }
   };
 
-const createToggleTourStatusHandler =
-  ({ state, pt, loadOverview }: WasteToursSubmissionContext) =>
-  async (tour: WasteTourRecord, nextActive: boolean) => {
-    state.setSaving(true);
-    state.setMessage(null);
-    state.setLastOutcome(null);
-    try {
-      const nextForm = {
-        ...mapTourToForm(tour),
-        active: nextActive,
-      };
-      await updateWasteManagementTour(tour.id, toUpdateTourInput(nextForm));
-      await loadOverview(true);
-      startTransition(() => {
-        state.setMessage({
-          kind: 'success',
-          text: pt('tours.messages.updateSuccess'),
-        });
-      });
-    } catch (saveError) {
-      const code = resolveApiErrorCode(saveError);
-      state.setMessage({
-        kind: 'error',
-        text:
-          code === 'forbidden'
-            ? pt('tours.messages.saveForbidden')
-            : pt('tours.messages.saveError'),
-      });
-      throw saveError;
-    } finally {
-      state.setSaving(false);
-    }
-  };
-
 export const createWasteToursTourMutationHandlers = ({
   state,
   pt,
   loadOverview,
 }: WasteToursSubmissionContext) => ({
   onSubmitTour: createSubmitTourHandler({ state, pt, loadOverview }),
-  onToggleTourStatus: createToggleTourStatusHandler({ state, pt, loadOverview }),
   ...createWasteToursDeleteMutationHandlers({ state, pt, loadOverview }),
   onUpdateTourValidityBulk: createUpdateTourValidityBulkHandler({ state, pt, loadOverview }),
+  onUpdateTourStatusBulk: createUpdateTourStatusBulkHandler({ state, pt, loadOverview }),
 });

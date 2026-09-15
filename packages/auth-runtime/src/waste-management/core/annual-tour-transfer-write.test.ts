@@ -15,7 +15,7 @@ const mappedTour = (index: number): WasteAnnualTourTransferMappedTour => ({
     firstDate: '2027-01-04',
     endDate: '2027-12-31',
     customDates: [],
-    active: false,
+    status: 'draft',
   },
   locationTourLinks: [],
   locationTourPickupDates: [],

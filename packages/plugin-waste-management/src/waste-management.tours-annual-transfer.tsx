@@ -10,7 +10,7 @@ export const showWasteAnnualTransferResult = (
 ): void => {
   onFiltersChange?.(
     '',
-    'inactive',
+    'draft',
     result.listTarget.tourValidityPeriod,
     undefined,
     undefined,

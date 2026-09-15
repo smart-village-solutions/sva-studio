@@ -8,6 +8,7 @@ import {
   normalizeWasteCollectionLocationSortMode,
 } from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
+import { normalizeTourStatus, type WasteManagementTourStatusFilter } from './search-params.tour-status.js';
 
 const wasteManagementTabs = [
   'fractions',
@@ -63,6 +64,7 @@ export type WasteManagementSearchParams = Readonly<{
   pageSize: number;
   fractionsStatus?: WasteManagementStatusFilter;
   status: WasteManagementStatusFilter;
+  tourStatus: WasteManagementTourStatusFilter;
   tourValidityPeriod: WasteManagementTourValidityPeriod;
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
@@ -220,6 +222,10 @@ export const normalizeWasteManagementSearchParams = (
     pageSize,
     fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
+    tourStatus: normalizeTourStatus(
+      search.tourStatus,
+      tab === 'tours' ? search.status : undefined
+    ),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),

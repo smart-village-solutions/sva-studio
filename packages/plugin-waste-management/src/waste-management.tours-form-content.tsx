@@ -143,6 +143,7 @@ export const WasteToursFormContent = (props: WasteToursFormContentProps) => {
           fractions={props.fractions}
           locations={props.locations}
           customRecurrencePresets={props.customRecurrencePresets}
+          statusReadOnly={props.mode === 'create'}
           pt={pt}
           onChange={props.onChange}
           schedulingAction={schedulingAction}

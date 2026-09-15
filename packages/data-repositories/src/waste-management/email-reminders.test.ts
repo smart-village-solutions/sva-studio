@@ -239,7 +239,9 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain('transport_id = EXCLUDED.transport_id');
     expect(statements[0]?.text).toContain('template_key = EXCLUDED.template_key');
     expect(statements[0]?.text).toContain('attempt_count > 0');
-    expect(statements[0]?.text).toContain('GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)');
+    expect(statements[0]?.text).toContain(
+      'GREATEST(waste_email_reminder_outbox.send_at, EXCLUDED.send_at)'
+    );
     expect(statements[0]?.text).toContain('payload = EXCLUDED.payload');
     expect(statements[0]?.text).toContain("WHERE waste_email_reminder_outbox.status = 'pending'");
     expect(statements[0]?.text).toContain('RETURNING id');
@@ -342,6 +344,24 @@ describe('waste email reminder repository', () => {
     expect(statements[2]?.text).toContain(
       "CASE WHEN $4::timestamptz IS NULL THEN 'failed' ELSE 'pending' END"
     );
+  });
+
+  it('cancels reminder outbox entries that are no longer materialized', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({ rowCount: 2, rows: [] });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.cancelInvalidReminderOutboxEntries({
+        validDedupeKeys: ['reminder:still-valid'],
+        now: '2026-06-15T06:00:00.000Z',
+      })
+    ).resolves.toBe(2);
+
+    expect(statements[0]?.text).toContain("message_kind = 'reminder'");
+    expect(statements[0]?.text).toContain("status IN ('pending', 'processing')");
+    expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
+    expect(statements[0]?.values).toEqual([['reminder:still-valid'], '2026-06-15T06:00:00.000Z']);
   });
 
   it('activates a pending subscription for a valid DOI token hash', async () => {

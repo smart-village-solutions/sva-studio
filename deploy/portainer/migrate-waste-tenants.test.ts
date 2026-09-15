@@ -13,6 +13,7 @@ const tourShiftMigrationId = '20260816_02_tour_date_shift_date_contract';
 const germanNumericCollationMigrationId = '20260824_01_add_german_numeric_collation';
 const mainserverRevisionMigrationId = '20260827_01_add_mainserver_source_revision';
 const disruptionSettingsMigrationId = '20260901_01_add_waste_disruption_settings';
+const wasteTourStatusMigrationId = '20260915_01_add_waste_tour_status';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -78,7 +79,7 @@ const createAdminClient = (rows: readonly object[]) => ({
 describe('Waste-Tenant-Migration', () => {
   it('contains the additive postal-code, tour-shift, collation, and source-revision contracts', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(5);
+    expect(wasteTenantMigrations).toHaveLength(6);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
       statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
@@ -132,6 +133,23 @@ describe('Waste-Tenant-Migration', () => {
       'disruption_all_locations_enabled BOOLEAN NOT NULL DEFAULT FALSE'
     );
     expect(wasteTenantMigrations[4]?.verification.sql).toContain("column_default = 'false'");
+    expect(wasteTenantMigrations[5]).toMatchObject({ id: wasteTourStatusMigrationId });
+    expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
+      "CASE WHEN active THEN 'published' ELSE 'draft' END"
+    );
+    expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
+      'waste_tours_sync_status_active'
+    );
+    expect(wasteTenantMigrations[5]?.statements).toContain(
+      'ALTER TABLE public.waste_tours ALTER COLUMN active SET DEFAULT FALSE;'
+    );
+    expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
+      'UPDATE OF waste_fraction_ids, recurrence, custom_recurrence_id, first_date, end_date, custom_dates, status, active'
+    );
+    expect(wasteTenantMigrations[5]?.verification.sql).toContain('idx_waste_tours_status');
+    expect(wasteTenantMigrations[5]?.verification.sql).toContain(
+      'sva_mainserver_revision_tours_update'
+    );
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -160,7 +178,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 10, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 12, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -202,6 +220,7 @@ describe('Waste-Tenant-Migration', () => {
         germanNumericCollationMigrationId,
         mainserverRevisionMigrationId,
         disruptionSettingsMigrationId,
+        wasteTourStatusMigrationId,
       ],
     });
 

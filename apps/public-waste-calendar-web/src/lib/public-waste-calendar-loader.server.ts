@@ -74,7 +74,7 @@ const loadLinkedTourRows = (context: CalendarQueryContext) =>
       LEFT JOIN ${context.schemaName}.waste_custom_recurrence_presets crp ON crp.id = t.custom_recurrence_id
       LEFT JOIN ${context.schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
       WHERE cl.active = true
-        AND t.active = true
+        AND t.status = 'published'
         AND cl.city_id = $1::uuid
         ${context.streetFilter.text}
         AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)
@@ -136,7 +136,7 @@ const loadTourAssignmentRows = (context: CalendarQueryContext) =>
       INNER JOIN ${context.schemaName}.waste_tours t ON t.id = assignment.tour_id
       LEFT JOIN ${context.schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
       WHERE cl.active = true
-        AND t.active = true
+        AND t.status = 'published'
         AND cl.city_id = $1::uuid
         ${context.streetFilter.text}
         AND ($4::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $4::uuid)

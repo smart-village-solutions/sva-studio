@@ -16,11 +16,10 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     shiftDateAccessible: 'Termin {{date}} der Tour {{name}} verschieben',
     opensInNewTab: 'Öffnet in neuem Tab',
     openAssignmentsAccessible: 'Zugeordnete Abholorte für {{name}} bearbeiten ({{count}})',
+    changeStatusAccessible: 'Status der Tour {{name}} ändern',
     edit: 'Bearbeiten',
     duplicate: 'Duplizieren',
     delete: 'Löschen',
-    activateStatus: 'Tour {{value}} aktivieren',
-    deactivateStatus: 'Tour {{value}} deaktivieren',
     cancel: 'Abbrechen',
     create: 'Tour speichern',
     save: 'Änderungen speichern',
@@ -36,7 +35,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     customDates: 'Individuelle Termine',
     wasteFractions: 'Abfallfraktionen',
     noFractionsAvailable: 'Es sind noch keine Abfallfraktionen vorhanden.',
-    active: 'Status',
+    status: 'Status',
   },
   filters: {
     open: 'Filtern',
@@ -57,8 +56,6 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     apply: 'Anwenden',
     status: {
       all: 'Alle',
-      active: 'Aktive Touren',
-      inactive: 'Inaktive Touren',
     },
     validityPeriod: {
       all: 'Alle Touren',
@@ -73,8 +70,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     scheduling: 'Terminlogik',
     schedulingHint:
       'Legen Sie fest, ob die Tour im festen Turnus läuft oder über einzelne Termine gepflegt wird.',
-    visibility: 'Sichtbarkeit',
-    visibilityHint: 'Steuern Sie, ob die Tour sofort aktiv im Studio verfügbar ist.',
+    visibility: 'Status',
+    visibilityHint: 'Steuern Sie die Veröffentlichung und Archivierung der Tour.',
   },
   fieldHints: {
     name: 'Vergeben Sie einen sprechenden Namen, damit die Tour später in Listen und Zuordnungen schnell gefunden wird.',
@@ -84,11 +81,16 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     customDates:
       'Pflegen Sie einzelne Abholtage im Jahreskalender und ordnen Sie je Termin die passenden Abholorte mit Freitext-Hinweis direkt in der Tour zu.',
     wasteFractions: 'Wählen Sie alle Fraktionen aus, die über diese Tour abgeholt werden.',
-    active: 'Aktive Touren stehen direkt für Zuordnungen und weitere Pflege zur Verfügung.',
+    status: 'Nur veröffentlichte Touren werden in öffentlichen und operativen Ausgaben verwendet.',
   },
   statusHints: {
-    active: 'Die Tour kann sofort in Zuordnungen und Terminpflege verwendet werden.',
-    inactive: 'Die Tour bleibt erhalten, steht aber nicht aktiv für den operativen Einsatz bereit.',
+    status: 'Entwürfe und archivierte Touren bleiben im Studio bearbeitbar.',
+    newTourDraft: 'Neue und duplizierte Touren werden zunächst als Entwurf gespeichert.',
+  },
+  status: {
+    draft: 'Entwurf',
+    published: 'Veröffentlicht',
+    archived: 'Archiviert',
   },
   dialog: {
     createTitle: 'Tour anlegen',
@@ -132,8 +134,6 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     noShifts: 'Keine Verschiebungen',
     noAssignments: 'Keine Zuordnungen',
     noCustomDates: 'Keine individuellen Termine',
-    active: 'Aktiv',
-    inactive: 'Inaktiv',
   },
   deleteDialog: {
     title: 'Tour löschen',
@@ -141,14 +141,30 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     confirm: 'Löschen',
     cancel: 'Abbrechen',
   },
-  statusDialog: {
-    activateTitle: 'Tour aktivieren',
-    activateDescription: 'Die Tour {{value}} wird aktiviert.',
-    deactivateTitle: 'Tour deaktivieren',
-    deactivateDescription: 'Die Tour {{value}} wird deaktiviert.',
-    confirm: 'Bestätigen',
+  selection: {
+    selectFilteredOne: 'Eine gefilterte Tour auswählen',
+    selectFilteredOther: 'Alle {{value}} gefilterten Touren auswählen',
+    deselectFiltered: 'Gefilterte Touren abwählen',
+    selectedCountOne: 'Eine Tour ausgewählt',
+    selectedCountOther: '{{value}} Touren ausgewählt',
+    hiddenSelectedCount: '{{value}} außerhalb des aktuellen Filters',
+    clear: 'Auswahl aufheben',
+  },
+  bulkStatusDialog: {
+    open: 'Status ändern',
+    title: 'Status der Touren ändern',
+    descriptionOne: 'Legen Sie den Zielstatus für eine ausgewählte Tour fest.',
+    descriptionOther: 'Legen Sie den Zielstatus für {{value}} ausgewählte Touren fest.',
+    singleTitle: 'Status der Tour ändern',
+    singleDescription: 'Legen Sie den Zielstatus für die Tour {{value}} fest.',
+    targetLabel: 'Zielstatus',
+    targetPlaceholder: 'Status auswählen',
+    apply: 'Status ändern',
     cancel: 'Abbrechen',
-    error: 'Der Status konnte nicht geändert werden. Bitte versuchen Sie es erneut.',
+    error: 'Der Status konnte nicht geändert werden.',
+    refreshError:
+      'Der Status wurde geändert, aber die Liste konnte nicht aktualisiert werden. Der Dialog bleibt für einen erneuten Versuch geöffnet.',
+    tooMany: 'Wählen Sie höchstens {{value}} Touren aus.',
   },
   bulkDeleteDialog: {
     title: 'Touren löschen',
@@ -189,7 +205,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     loadPreview: 'Vorschau erstellen',
     refreshPreview: 'Vorschau aktualisieren',
     review: 'Auswahl prüfen',
-    confirm: 'Inaktiv übernehmen',
+    confirm: 'Als Entwurf übernehmen',
     back: 'Zurück',
     cancel: 'Abbrechen',
     close: 'Schließen',
@@ -239,8 +255,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     createError: 'Der Tourensatz konnte nicht angelegt werden.',
     stale: 'Die Planung hat sich geändert. Bitte prüfen Sie die aktualisierte Vorschau erneut.',
     result:
-      '{{created}} Touren wurden inaktiv für {{year}} angelegt; {{existing}} bereits identische Touren wurden wiederverwendet.',
-    showResult: 'Inaktive Touren im Folgejahr anzeigen',
+      '{{created}} Touren wurden als Entwurf für {{year}} angelegt; {{existing}} bereits identische Touren wurden wiederverwendet.',
+    showResult: 'Tourentwürfe im Folgejahr anzeigen',
     steps: 'Schritt {{current}} von 3',
     weekdays: {
       sunday: 'Sonntag',
@@ -406,6 +422,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     updateSuccess: 'Die Abfall-Tour wurde aktualisiert.',
     validityUpdateSuccess: 'Der Gültigkeitszeitraum von {{value}} Touren wurde aktualisiert.',
     validityUpdateError: 'Die Gültigkeitszeiträume konnten nicht aktualisiert werden.',
+    statusBulkUpdateSuccess: 'Der Status von {{value}} Touren wurde aktualisiert.',
+    statusBulkUpdateError: 'Der Status der ausgewählten Touren konnte nicht aktualisiert werden.',
     duplicateHint:
       'Alle Abholort-Zuordnungen, Einzeltermine und tourbezogenen Datumsverschiebungen werden nach dem Speichern übernommen. Für die Zuordnungen gilt der Zeitraum der neuen Tour.',
     assignmentIncomplete:

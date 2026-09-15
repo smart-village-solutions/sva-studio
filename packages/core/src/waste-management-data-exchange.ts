@@ -88,11 +88,13 @@ export type WasteManagementDataProfileDefinition = {
   readonly profileId: WasteManagementDataProfileId;
   readonly displayName: string;
   readonly description: string;
-  readonly formatVersion: '1.0.0';
+  readonly formatVersion: WasteManagementDataFormatVersion;
   readonly dependencies: readonly WasteManagementDataProfileId[];
   readonly formats: readonly ['application/json'];
   readonly entities: readonly WasteManagementDataEntityDefinition[];
 };
+
+type WasteManagementDataFormatVersion = '1.0.0' | '2.0.0';
 
 export type WasteManagementDataExchangeRecord = Readonly<{
   entityType: string;
@@ -100,7 +102,7 @@ export type WasteManagementDataExchangeRecord = Readonly<{
 }>;
 
 export type WasteManagementDataExchangeEnvelope = Readonly<{
-  formatVersion: '1.0.0';
+  formatVersion: WasteManagementDataFormatVersion;
   pluginId: 'waste-management';
   profileId: WasteManagementDataProfileId;
   exportedAt: string;

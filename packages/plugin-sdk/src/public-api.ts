@@ -67,7 +67,7 @@ export type {
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
 } from '@sva/core';
-export type * from './waste-annual-tour-transfer.js';
+export * from './waste-tour-status-public-api.js';
 export type { BuildTimeRegistry, BuildTimeRegistryInput } from './build-time-registry.js';
 export { createBuildTimeRegistry } from './build-time-registry.js';
 export type { PluginGuardrailViolationCode, PluginGuardrailViolationInput } from './guardrails.js';

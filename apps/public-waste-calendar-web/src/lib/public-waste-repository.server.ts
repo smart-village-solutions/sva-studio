@@ -245,7 +245,7 @@ export const createPublicWasteRepository = (input: {
             INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
             WHERE cl.region_id = r.id
               AND cl.active = true
-              AND t.active = true
+              AND t.status = 'published'
           )
           ORDER BY label ASC;
         `,
@@ -276,7 +276,7 @@ export const createPublicWasteRepository = (input: {
               FROM ${schemaName}.waste_location_tour_links ltl
               INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
               WHERE ltl.location_id = cl.id
-                AND t.active = true
+                AND t.status = 'published'
             )
           ORDER BY
             r.name ASC NULLS FIRST,
@@ -311,7 +311,7 @@ export const createPublicWasteRepository = (input: {
           INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
           INNER JOIN ${schemaName}.waste_regions r ON r.id = cl.region_id
           WHERE cl.active = true
-            AND t.active = true
+            AND t.status = 'published'
           ORDER BY label ASC;
         `,
       });
@@ -337,7 +337,7 @@ export const createPublicWasteRepository = (input: {
             INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
             INNER JOIN ${schemaName}.waste_cities c ON c.id = cl.city_id
             WHERE cl.active = true
-              AND t.active = true
+              AND t.status = 'published'
               AND ($1::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $1::uuid)
             ORDER BY label ASC;
           `,
@@ -361,7 +361,7 @@ export const createPublicWasteRepository = (input: {
               INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
               INNER JOIN ${schemaName}.waste_streets s ON s.id = cl.street_id
               WHERE cl.active = true
-                AND t.active = true
+                AND t.status = 'published'
                 AND cl.city_id = $1::uuid
                 AND ($2::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $2::uuid)
               UNION
@@ -374,7 +374,7 @@ export const createPublicWasteRepository = (input: {
               INNER JOIN ${schemaName}.waste_location_tour_links ltl ON ltl.location_id = cl.id
               INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
               WHERE cl.active = true
-                AND t.active = true
+                AND t.status = 'published'
                 AND cl.city_id = $1::uuid
                 AND cl.street_id IS NULL
                 AND ($2::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $2::uuid)
@@ -404,7 +404,7 @@ export const createPublicWasteRepository = (input: {
           INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
           INNER JOIN ${schemaName}.waste_house_numbers hn ON hn.id = cl.house_number_id
           WHERE cl.active = true
-            AND t.active = true
+            AND t.status = 'published'
             AND cl.city_id = $1::uuid
             AND cl.street_id = $2::uuid
             AND ($3::uuid IS NULL OR cl.region_id IS NULL OR cl.region_id = $3::uuid)
@@ -500,7 +500,7 @@ export const createPublicWasteRepository = (input: {
           INNER JOIN ${schemaName}.waste_tours t ON t.id = ltl.tour_id
           INNER JOIN ${schemaName}.waste_fractions f ON f.id::text = ANY(t.waste_fraction_ids)
           WHERE cl.active = true
-            AND t.active = true
+            AND t.status = 'published'
             AND f.active = true
             AND cl.city_id = $1::uuid
             ${streetSelectionFilter.text}

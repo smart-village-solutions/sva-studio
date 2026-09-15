@@ -40,6 +40,7 @@ type WasteToursTableProps = {
   readonly onToggleSelectAllVisible: (checked: boolean) => void;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenStatusDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
@@ -48,7 +49,6 @@ type WasteToursTableProps = {
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 };
 
@@ -62,6 +62,7 @@ const WasteToursTableBody = ({
   saving,
   onToggleSelectedTour,
   onOpenCalendar,
+  onOpenStatusDialog,
   onOpenEditFraction,
   onOpenEditDialog,
   onOpenDuplicateDialog,
@@ -70,7 +71,6 @@ const WasteToursTableBody = ({
   canDuplicateTour,
   canManageScheduling,
   search,
-  onToggleTourStatus,
   onRequestDeleteTour,
 }: {
   readonly tours: readonly WasteTourRecord[];
@@ -82,6 +82,7 @@ const WasteToursTableBody = ({
   readonly saving: boolean;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenStatusDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
@@ -90,7 +91,6 @@ const WasteToursTableBody = ({
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => (
   <tbody>
@@ -106,6 +106,7 @@ const WasteToursTableBody = ({
         saving={saving}
         onToggleSelectedTour={onToggleSelectedTour}
         onOpenCalendar={onOpenCalendar}
+        onOpenStatusDialog={onOpenStatusDialog}
         onOpenEditFraction={onOpenEditFraction}
         onOpenEditDialog={onOpenEditDialog}
         onOpenDuplicateDialog={onOpenDuplicateDialog}
@@ -114,7 +115,6 @@ const WasteToursTableBody = ({
         canDuplicateTour={canDuplicateTour}
         canManageScheduling={canManageScheduling}
         search={search}
-        onToggleTourStatus={onToggleTourStatus}
         onRequestDeleteTour={onRequestDeleteTour}
       />
     ))}
@@ -161,6 +161,7 @@ export const WasteToursTable = (props: WasteToursTableProps) => {
             saving={props.saving}
             onToggleSelectedTour={props.onToggleSelectedTour}
             onOpenCalendar={props.onOpenCalendar}
+            onOpenStatusDialog={props.onOpenStatusDialog}
             onOpenEditFraction={props.onOpenEditFraction}
             onOpenEditDialog={props.onOpenEditDialog}
             onOpenDuplicateDialog={props.onOpenDuplicateDialog}
@@ -169,7 +170,6 @@ export const WasteToursTable = (props: WasteToursTableProps) => {
             canDuplicateTour={props.canDuplicateTour}
             canManageScheduling={props.canManageScheduling}
             search={props.search}
-            onToggleTourStatus={props.onToggleTourStatus}
             onRequestDeleteTour={props.onRequestDeleteTour}
           />
         </table>

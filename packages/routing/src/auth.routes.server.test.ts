@@ -268,6 +268,9 @@ const authServerMocks = vi.hoisted(() => {
       updateTourValidityBulk: vi.fn(async () =>
         response('updateWasteManagementTourValidityBulkHandler')
       ),
+      updateTourStatusBulk: vi.fn(async () =>
+        response('updateWasteManagementTourStatusBulkHandler')
+      ),
       updateTourAssignment: vi.fn(async () =>
         response('updateWasteManagementTourAssignmentHandler')
       ),
@@ -706,6 +709,9 @@ describe('auth.routes.server', () => {
     const tourValidityBulkHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tours/bulk-validity'
     );
+    const tourStatusBulkHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tours/bulk-status'
+    );
     const annualTourTransferHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tours/annual-transfer'
     );
@@ -988,6 +994,11 @@ describe('auth.routes.server', () => {
         method: 'PUT',
       }),
     });
+    await tourStatusBulkHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours/bulk-status', {
+        method: 'PUT',
+      }),
+    });
     await tourDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', {
         method: 'PUT',
@@ -1110,6 +1121,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.previewAnnualTourTransfer).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTourValidityBulk).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateTourStatusBulk).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();

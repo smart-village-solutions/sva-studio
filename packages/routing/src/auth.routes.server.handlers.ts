@@ -2,12 +2,11 @@ import * as authRuntimeRoutes from '@sva/auth-runtime/runtime-routes';
 
 import type { AuthHandlers, AuthRoutePath } from './auth.route-handlers.types.js';
 import { createMethodNotAllowedHandler } from './auth.route-runtime.server.js';
+import { wasteAuthHandlerMap } from './auth.route-handlers.waste.server.js';
 const routeHandler =
   (handler: (request: Request) => Promise<Response> | Response) =>
   async ({ request }: { request: Request }): Promise<Response> =>
     handler(request);
-
-const { getMainserverSyncStatus: getSyncStatus } = authRuntimeRoutes.wasteManagementHandlers;
 
 export const governanceAuthHandlerMap = {
   '/iam/governance/workflows': {
@@ -87,157 +86,7 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/master-data': {
     GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getMasterDataOverview),
   },
-  '/api/v1/waste-management/fractions': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createFraction),
-  },
-  '/api/v1/waste-management/fractions/$fractionId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteFraction),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateFraction),
-  },
-  '/api/v1/waste-management/regions': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createRegion),
-  },
-  '/api/v1/waste-management/regions/$regionId': {
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateRegion),
-  },
-  '/api/v1/waste-management/cities': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCity),
-  },
-  '/api/v1/waste-management/cities/$cityId': {
-    PATCH: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCity),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCity),
-  },
-  '/api/v1/waste-management/streets': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createStreet),
-  },
-  '/api/v1/waste-management/streets/$streetId': {
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateStreet),
-  },
-  '/api/v1/waste-management/house-numbers': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createHouseNumber),
-  },
-  '/api/v1/waste-management/house-numbers/$houseNumberId': {
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHouseNumber),
-  },
-  '/api/v1/waste-management/collection-locations': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getCollectionLocations),
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCollectionLocation),
-  },
-  '/api/v1/waste-management/collection-locations/selection': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getCollectionLocationIds),
-  },
-  '/api/v1/waste-management/collection-locations/$locationId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteCollectionLocation),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCollectionLocation),
-  },
-  '/api/v1/waste-management/location-tour-links': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourLink),
-  },
-  '/api/v1/waste-management/location-tour-links/bulk': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourLinksBulk),
-  },
-  '/api/v1/waste-management/location-tour-links/$linkId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteLocationTourLink),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourLink),
-  },
-  '/api/v1/waste-management/scheduling': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSchedulingOverview),
-  },
-  '/api/v1/waste-management/location-tour-pickup-dates': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourPickupDate),
-  },
-  '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteLocationTourPickupDate),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourPickupDate),
-  },
-  '/api/v1/waste-management/tour-assignments': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTourAssignment),
-  },
-  '/api/v1/waste-management/tour-assignments/$assignmentId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTourAssignment),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourAssignment),
-  },
-  '/api/v1/waste-management/global-date-shifts': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createGlobalDateShift),
-  },
-  '/api/v1/waste-management/global-date-shifts/$shiftId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteGlobalDateShift),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateGlobalDateShift),
-  },
-  '/api/v1/waste-management/holiday-rules/$holidayRuleId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteHolidayRule),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHolidayRule),
-  },
-  '/api/v1/waste-management/tour-date-shifts': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTourDateShift),
-  },
-  '/api/v1/waste-management/tour-date-shifts/$shiftId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTourDateShift),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourDateShift),
-  },
-  '/api/v1/waste-management/tours': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getToursOverview),
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTour),
-  },
-  '/api/v1/waste-management/tours/annual-transfer': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createAnnualTourTransfer),
-  },
-  '/api/v1/waste-management/tours/annual-transfer/preview': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.previewAnnualTourTransfer),
-  },
-  '/api/v1/waste-management/tours/bulk-validity': {
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourValidityBulk),
-  },
-  '/api/v1/waste-management/tours/$tourId': {
-    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTour),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTour),
-  },
-  '/api/v1/waste-management/settings': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSettings),
-    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateSettings),
-  },
-  '/api/v1/waste-management/settings/holiday-sync': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.runHolidaySync),
-  },
-  '/api/v1/waste-management/settings/provisioning/retry': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.retryProvisioning),
-  },
-  '/api/v1/waste-management/tools/initialize': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startInitialize),
-  },
-  '/api/v1/waste-management/tools/imports': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
-  },
-  '/api/v1/waste-management/tools/imports/upload': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.uploadImportSource),
-  },
-  '/api/v1/waste-management/tools/exports': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startExport),
-  },
-  '/api/v1/waste-management/tools/imports/preview': {
-    POST: routeHandler(
-      authRuntimeRoutes.wasteManagementHandlers.previewLocationTourPickupDateImport
-    ),
-  },
-  '/api/v1/waste-management/tools/migrations': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startMigrations),
-  },
-  '/api/v1/waste-management/tools/seed': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSeed),
-  },
-  '/api/v1/waste-management/tools/mainserver-sync': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startMainserverSync),
-  },
-  '/api/v1/waste-management/mainserver-sync-status': { GET: routeHandler(getSyncStatus) },
-  '/api/v1/waste-management/tools/sync-waste-types': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSyncWasteTypes),
-  },
-  '/api/v1/waste-management/tools/postal-codes/enrich': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startEnrichPostalCodes),
-  },
-  '/api/v1/waste-management/tools/reset': {
-    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startReset),
-  },
+  ...wasteAuthHandlerMap,
   '/api/v1/plugin-operations/jobs': {
     GET: routeHandler(authRuntimeRoutes.listPluginOperationJobsHandler),
     POST: routeHandler(authRuntimeRoutes.startPluginOperationJobHandler),

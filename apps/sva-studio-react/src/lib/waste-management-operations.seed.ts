@@ -14,11 +14,25 @@ export const baselineIds = {
   globalShift: '00000000-0000-4000-8000-00000000000b',
 } as const;
 
-export const seedWasteBaseline = async (repository: ReturnType<typeof createWasteMasterDataRepository>) => {
+export const seedWasteBaseline = async (
+  repository: ReturnType<typeof createWasteMasterDataRepository>
+) => {
   await repository.upsertWasteRegion({ id: baselineIds.region, name: 'Musterregion' });
-  await repository.upsertWasteCity({ id: baselineIds.city, name: 'Musterstadt', regionId: baselineIds.region });
-  await repository.upsertWasteStreet({ id: baselineIds.street, name: 'Hauptstraße', cityId: baselineIds.city });
-  await repository.upsertWasteHouseNumber({ id: baselineIds.houseNumber, number: '42', streetId: baselineIds.street });
+  await repository.upsertWasteCity({
+    id: baselineIds.city,
+    name: 'Musterstadt',
+    regionId: baselineIds.region,
+  });
+  await repository.upsertWasteStreet({
+    id: baselineIds.street,
+    name: 'Hauptstraße',
+    cityId: baselineIds.city,
+  });
+  await repository.upsertWasteHouseNumber({
+    id: baselineIds.houseNumber,
+    number: '42',
+    streetId: baselineIds.street,
+  });
   await repository.upsertWasteCollectionLocation({
     id: baselineIds.location,
     cityId: baselineIds.city,
@@ -70,7 +84,7 @@ export const seedWasteBaseline = async (repository: ReturnType<typeof createWast
     firstDate: '2026-01-12',
     endDate: '2026-12-31',
     customDates: undefined,
-    active: true,
+    status: 'draft',
   });
   await repository.upsertWasteLocationTourLink({
     id: baselineIds.link,

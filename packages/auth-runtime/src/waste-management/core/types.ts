@@ -46,6 +46,7 @@ import type { WasteCollectionLocationReadHandlerDeps } from './collection-locati
 import type { SaveWasteCustomRecurrencePresetsInput } from './custom-recurrence-deps.js';
 import type { WasteMainserverSyncStatusHandlerDeps } from './mainserver-sync-status-deps.js';
 import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
+import type { WasteTourStatusBulkHandlerDeps } from './tour-status-bulk-deps.js';
 
 type ResolveWasteActorInfoResult =
   | {
@@ -60,7 +61,7 @@ type ResolveWasteActorInfoResult =
       readonly error: Response;
     };
 
-type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & {
+type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulkHandlerDeps & {
   readonly getRequestId?: () => string | undefined;
   readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
   readonly loadDefaultInterfaceRecord?: (

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 
-export type WasteToursFilterStatus = WasteManagementSearchParams['status'];
+export type WasteToursFilterStatus = WasteManagementSearchParams['tourStatus'];
 export type WasteToursFilterValidityPeriod = WasteManagementSearchParams['tourValidityPeriod'];
 export type WasteToursFilterDate = WasteManagementSearchParams['firstDateFrom'];
 export type WasteToursFilterFraction = WasteManagementSearchParams['tourWasteFractionId'];

@@ -261,4 +261,119 @@ export const wasteTenantMigrations = Object.freeze([
       ]),
     }),
   }),
+  Object.freeze({
+    id: '20260915_01_add_waste_tour_status',
+    statements: Object.freeze([
+      'ALTER TABLE public.waste_tours ADD COLUMN IF NOT EXISTS status TEXT;',
+      "UPDATE public.waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL;",
+      "ALTER TABLE public.waste_tours ALTER COLUMN status SET DEFAULT 'draft';",
+      'ALTER TABLE public.waste_tours ALTER COLUMN status SET NOT NULL;',
+      'ALTER TABLE public.waste_tours ALTER COLUMN active SET DEFAULT FALSE;',
+      `DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint AS constraint_row
+          WHERE constraint_row.conrelid = 'public.waste_tours'::regclass
+            AND constraint_row.conname = 'waste_tours_status_check'
+        ) THEN
+          ALTER TABLE public.waste_tours
+            ADD CONSTRAINT waste_tours_status_check
+            CHECK (status IN ('draft', 'published', 'archived'));
+        END IF;
+      END $$;`,
+      `CREATE OR REPLACE FUNCTION public.sync_waste_tour_status_active()
+      RETURNS TRIGGER
+      LANGUAGE plpgsql
+      AS $waste_tour_status$
+      BEGIN
+        IF TG_OP = 'INSERT' THEN
+          IF NEW.status = 'draft' AND NEW.active IS TRUE THEN
+            NEW.status := 'published';
+          ELSIF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+            RAISE EXCEPTION 'waste_tour_status_active_conflict';
+          END IF;
+        ELSIF NEW.status IS DISTINCT FROM OLD.status AND NEW.active IS DISTINCT FROM OLD.active THEN
+          IF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+            RAISE EXCEPTION 'waste_tour_status_active_conflict';
+          END IF;
+        ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+          NEW.active := NEW.status = 'published';
+        ELSIF NEW.active IS DISTINCT FROM OLD.active THEN
+          NEW.status := CASE WHEN NEW.active THEN 'published' ELSE 'draft' END;
+        END IF;
+
+        RETURN NEW;
+      END;
+      $waste_tour_status$;`,
+      'DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON public.waste_tours;',
+      'CREATE TRIGGER waste_tours_sync_status_active BEFORE INSERT OR UPDATE OF status, active ON public.waste_tours FOR EACH ROW EXECUTE FUNCTION public.sync_waste_tour_status_active();',
+      'CREATE INDEX IF NOT EXISTS idx_waste_tours_status ON public.waste_tours(status);',
+      'DROP TRIGGER IF EXISTS sva_mainserver_revision_tours_update ON public.waste_tours;',
+      'CREATE TRIGGER sva_mainserver_revision_tours_update AFTER UPDATE OF waste_fraction_ids, recurrence, custom_recurrence_id, first_date, end_date, custom_dates, status, active ON public.waste_tours FOR EACH STATEMENT EXECUTE FUNCTION public.sva_bump_waste_mainserver_source_revision();',
+    ]),
+    verification: Object.freeze({
+      sql: `
+        WITH column_contract AS (
+          SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'waste_tours'
+              AND column_name = 'status'
+              AND data_type = 'text'
+              AND is_nullable = 'NO'
+              AND column_default = '''draft''::text'
+          ) AS satisfied
+        ), constraint_contract AS (
+          SELECT EXISTS (
+            SELECT 1
+            FROM pg_constraint AS constraint_row
+            WHERE constraint_row.conrelid = 'public.waste_tours'::regclass
+              AND constraint_row.conname = 'waste_tours_status_check'
+              AND constraint_row.convalidated
+          ) AS satisfied
+        ), active_compatibility_column_contract AS (
+          SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'waste_tours'
+              AND column_name = 'active'
+              AND data_type = 'boolean'
+              AND is_nullable = 'NO'
+              AND column_default = 'false'
+          ) AS satisfied
+        ), index_contract AS (
+          SELECT EXISTS (
+            SELECT 1
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename = 'waste_tours'
+              AND indexname = 'idx_waste_tours_status'
+          ) AS satisfied
+        ), compatibility_contract AS (
+          SELECT COUNT(*) = 2 AS satisfied
+          FROM pg_trigger AS trigger_row
+          INNER JOIN pg_class AS table_row ON table_row.oid = trigger_row.tgrelid
+          INNER JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+          WHERE namespace_row.nspname = 'public'
+            AND table_row.relname = 'waste_tours'
+            AND NOT trigger_row.tgisinternal
+            AND trigger_row.tgname IN (
+              'waste_tours_sync_status_active',
+              'sva_mainserver_revision_tours_update'
+            )
+        )
+        SELECT
+          (SELECT satisfied FROM column_contract)
+          AND (SELECT satisfied FROM active_compatibility_column_contract)
+          AND (SELECT satisfied FROM constraint_contract)
+          AND (SELECT satisfied FROM index_contract)
+          AND (SELECT satisfied FROM compatibility_contract)
+          AS satisfied;
+      `,
+      values: Object.freeze([]),
+    }),
+  }),
 ]);

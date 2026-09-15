@@ -538,7 +538,11 @@ describe('waste-management master-data branch handlers', () => {
         new Request('https://studio.test/api/v1/waste-management/tours/', {
           method: 'PUT',
           headers: createHeaders(),
-          body: JSON.stringify({ name: 'Tour A', wasteFractionIds: ['fraction-1'], active: true }),
+          body: JSON.stringify({
+            name: 'Tour A',
+            wasteFractionIds: ['fraction-1'],
+            status: 'published',
+          }),
         }),
       expectedMessage: 'tourId fehlt im Pfad.',
       deps: () => createDeps('waste-management.tours.manage'),
@@ -737,7 +741,7 @@ describe('waste-management master-data branch handlers', () => {
             wasteFractionIds: ['fraction-1'],
             recurrence: 'weekly',
             firstDate: '2026-05-01',
-            active: true,
+            status: 'published',
           }),
         }),
       deps: () => ({
@@ -1331,7 +1335,7 @@ describe('waste-management master-data branch handlers', () => {
             wasteFractionIds: ['fraction-1'],
             recurrence: 'weekly',
             firstDate: '2026-05-01',
-            active: true,
+            status: 'draft',
           }),
         }),
       deps: () => ({
@@ -1633,7 +1637,7 @@ describe('waste-management master-data branch handlers', () => {
             wasteFractionIds: ['fraction-1'],
             recurrence: 'weekly',
             firstDate: '2026-05-01',
-            active: true,
+            status: 'archived',
           }),
         }),
       deps: () => {
@@ -1645,7 +1649,7 @@ describe('waste-management master-data branch handlers', () => {
             wasteFractionIds: ['fraction-1'],
             recurrence: 'weekly',
             firstDate: '2026-05-01',
-            active: true,
+            status: 'published',
             locationCount: 3,
             createdAt: '',
             updatedAt: '',
@@ -1928,7 +1932,7 @@ describe('waste-management master-data branch handlers', () => {
             wasteFractionIds: ['fraction-1'],
             recurrence: 'weekly',
             firstDate: '2026-05-01',
-            active: true,
+            status: 'archived',
           }),
         }),
       deps: () => ({
@@ -1939,7 +1943,7 @@ describe('waste-management master-data branch handlers', () => {
           wasteFractionIds: ['fraction-1'],
           recurrence: 'weekly',
           firstDate: '2026-05-01',
-          active: true,
+          status: 'published',
           locationCount: 2,
           createdAt: '',
           updatedAt: '',
@@ -2221,7 +2225,7 @@ describe('waste-management master-data branch handlers', () => {
           id: 'tour-1',
           name: 'Restmüll Nord',
           wasteFractionIds: ['fraction-1'],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         })
@@ -2230,7 +2234,7 @@ describe('waste-management master-data branch handlers', () => {
           id: 'tour-1',
           name: 'Restmüll Nord',
           wasteFractionIds: ['fraction-1'],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         })
@@ -2238,7 +2242,7 @@ describe('waste-management master-data branch handlers', () => {
           id: 'tour-1',
           name: 'Restmüll Nord',
           wasteFractionIds: ['fraction-1'],
-          active: true,
+          status: 'published',
           createdAt: '2026-05-09T10:00:00.000Z',
           updatedAt: '2026-05-09T10:00:00.000Z',
         }),

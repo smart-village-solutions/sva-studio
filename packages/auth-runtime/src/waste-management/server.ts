@@ -69,6 +69,7 @@ const {
   updateWasteManagementTourDateShiftInternal,
   updateWasteManagementTourInternal,
   updateWasteManagementTourValidityBulkInternal,
+  updateWasteManagementTourStatusBulkInternal,
   updateWasteManagementTourAssignmentInternal,
 } = wasteManagementCoreHandlers;
 
@@ -132,6 +133,7 @@ const {
   saveWasteTour,
   createWasteAnnualTourTransfer,
   updateWasteTourValidityBulk,
+  updateWasteTourStatusBulk,
   saveWasteTourAssignment,
   deleteWasteTour,
   deleteWasteTourAssignment,
@@ -467,6 +469,13 @@ export const wasteManagementHandlers = {
       updateWasteManagementTourValidityBulkInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         updateWasteTourValidityBulk,
+      })
+    ),
+  updateTourStatusBulk: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      updateWasteManagementTourStatusBulkInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        updateWasteTourStatusBulk,
       })
     ),
   deleteTour: (request: Request): Promise<Response> =>

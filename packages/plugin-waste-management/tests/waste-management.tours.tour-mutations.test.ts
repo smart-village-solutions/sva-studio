@@ -7,6 +7,7 @@ const apiMocks = vi.hoisted(() => ({
   createWasteManagementTour: vi.fn(),
   updateWasteManagementTour: vi.fn(),
   updateWasteManagementTourValidityBulk: vi.fn(),
+  updateWasteManagementTourStatusBulk: vi.fn(),
   deleteWasteManagementTour: vi.fn(),
   createWasteManagementLocationTourPickupDate: vi.fn(),
   updateWasteManagementLocationTourPickupDate: vi.fn(),
@@ -55,7 +56,7 @@ const createState = () =>
           note: '11:00 bis 12:00 Uhr',
         },
       ],
-      active: true,
+      status: 'published',
     },
     schedulingOverview: {
       locationTourPickupDates: [
@@ -217,69 +218,19 @@ describe('createWasteToursTourMutationHandlers', () => {
     });
   });
 
-  it('updates tour status and reports delete success for single-tour deletion', async () => {
+  it('reports delete success for single-tour deletion', async () => {
     const state = createState();
     const loadOverview = vi.fn().mockResolvedValue(undefined);
-    apiMocks.updateWasteManagementTour.mockResolvedValue({});
     apiMocks.deleteWasteManagementTour.mockResolvedValue({});
 
     const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
 
-    await mutations.onToggleTourStatus(
-      {
-        id: 'tour-1',
-        name: 'Restmüll',
-        wasteFractionIds: [],
-        active: true,
-        recurrence: 'custom',
-        customDates: [],
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      } as never,
-      false
-    );
     await mutations.onDeleteTour({ id: 'tour-1' } as never);
 
-    expect(apiMocks.updateWasteManagementTour).toHaveBeenCalledWith(
-      'tour-1',
-      expect.objectContaining({ active: false })
-    );
-    expect(state.setMessage).toHaveBeenCalledWith({
-      kind: 'success',
-      text: 'tours.messages.updateSuccess',
-    });
     expect(state.setMessage).toHaveBeenCalledWith({
       kind: 'success',
       text: 'tours.messages.deleteSuccess',
     });
-  });
-
-  it('rejects a failed status update so the confirmation dialog can stay open', async () => {
-    const state = createState();
-    const loadOverview = vi.fn().mockResolvedValue(undefined);
-    const error = new Error('network');
-    apiMocks.updateWasteManagementTour.mockRejectedValue(error);
-    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
-
-    await expect(
-      mutations.onToggleTourStatus(
-        {
-          id: 'tour-1',
-          name: 'Restmüll',
-          wasteFractionIds: [],
-          active: true,
-          recurrence: 'custom',
-          customDates: [],
-        } as never,
-        false
-      )
-    ).rejects.toBe(error);
-
-    expect(state.setMessage).toHaveBeenCalledWith({
-      kind: 'error',
-      text: 'tours.messages.saveError',
-    });
-    expect(loadOverview).not.toHaveBeenCalled();
   });
 
   it('resolves with a warning when refresh fails after a successful tour deletion', async () => {
@@ -422,6 +373,57 @@ describe('createWasteToursTourMutationHandlers', () => {
       text: 'tours.messages.validityUpdateError',
     });
     expect(state.setSaving).toHaveBeenLastCalledWith(false);
+  });
+
+  it('updates tour status in bulk and retains retry state on failure', async () => {
+    const successState = createState();
+    const loadOverview = vi.fn().mockResolvedValue(undefined);
+    apiMocks.updateWasteManagementTourStatusBulk.mockResolvedValueOnce({ updatedCount: 2 });
+    const successMutations = createWasteToursTourMutationHandlers({
+      state: successState,
+      pt,
+      loadOverview,
+    });
+    const input = { tourIds: ['tour-1', 'tour-2'], status: 'archived' } as const;
+
+    await expect(successMutations.onUpdateTourStatusBulk(input)).resolves.toEqual({ ok: true });
+    expect(apiMocks.updateWasteManagementTourStatusBulk).toHaveBeenCalledWith(input);
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(successState.setMessage).toHaveBeenCalledWith({
+      kind: 'success',
+      text: 'tours.messages.statusBulkUpdateSuccess',
+    });
+
+    const failedState = createState();
+    apiMocks.updateWasteManagementTourStatusBulk.mockRejectedValueOnce(new Error('network'));
+    const failedMutations = createWasteToursTourMutationHandlers({
+      state: failedState,
+      pt,
+      loadOverview: vi.fn(),
+    });
+
+    await expect(failedMutations.onUpdateTourStatusBulk(input)).resolves.toEqual({
+      ok: false,
+      reason: 'write',
+    });
+    expect(failedState.setMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error' })
+    );
+
+    const staleState = createState();
+    apiMocks.updateWasteManagementTourStatusBulk.mockResolvedValueOnce({ updatedCount: 2 });
+    const staleMutations = createWasteToursTourMutationHandlers({
+      state: staleState,
+      pt,
+      loadOverview: vi.fn().mockRejectedValue(new Error('refresh')),
+    });
+    await expect(staleMutations.onUpdateTourStatusBulk(input)).resolves.toEqual({
+      ok: false,
+      reason: 'refresh',
+    });
+    expect(staleState.setMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'success' })
+    );
   });
 
   it('maps bulk delete failures and outer delete errors through the shared delete error helper', async () => {

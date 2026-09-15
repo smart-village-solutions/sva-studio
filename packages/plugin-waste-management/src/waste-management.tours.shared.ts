@@ -41,7 +41,7 @@ export const createDefaultTourForm = (): TourFormState => ({
   endDate: '',
   customDates: [],
   dateLocationAssignments: [],
-  active: true,
+  status: 'draft',
 });
 
 export const mapLocationTourLinkToForm = (
@@ -65,7 +65,7 @@ export const mapTourToForm = (tour: WasteTourRecord): TourFormState => ({
     left.date.localeCompare(right.date)
   ),
   dateLocationAssignments: [],
-  active: tour.active,
+  status: tour.status,
 });
 
 export const mapTourWithPickupDatesToForm = (
@@ -213,12 +213,14 @@ export const toCreateTourInput = (
   name: form.name.trim(),
   description: compactOptionalString(form.description),
   wasteFractionIds: form.wasteFractionIds,
-  duplicateFromTourId: duplicateFromTourId ? compactOptionalString(duplicateFromTourId) : undefined,
+  ...(duplicateFromTourId
+    ? { duplicateFromTourId: compactOptionalString(duplicateFromTourId) }
+    : {}),
   recurrence: form.customRecurrenceId ? undefined : form.recurrence || undefined,
   customRecurrenceId: compactOptionalString(form.customRecurrenceId),
   ...resolveRecurringDates(form),
   customDates: resolveCustomDates(form),
-  active: form.active,
+  status: 'draft',
 });
 
 export const toUpdateTourInput = (form: TourFormState): UpdateWasteManagementTourInput => ({
@@ -229,7 +231,7 @@ export const toUpdateTourInput = (form: TourFormState): UpdateWasteManagementTou
   customRecurrenceId: compactOptionalString(form.customRecurrenceId),
   ...resolveRecurringDates(form),
   customDates: resolveCustomDates(form),
-  active: form.active,
+  status: form.status,
 });
 
 export const resolveCustomRecurrencePreset = (
@@ -242,13 +244,13 @@ const matchesSearch = (value: string, query: string) =>
   value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 
 const matchesStatusFilter = (
-  status: WasteManagementSearchParams['status'],
-  active: boolean | undefined
+  status: WasteManagementSearchParams['tourStatus'],
+  tourStatus: WasteTourRecord['status']
 ): boolean => {
-  if (status === 'all' || active === undefined) {
+  if (status === 'all') {
     return true;
   }
-  return status === 'active' ? active : !active;
+  return status === tourStatus;
 };
 
 const matchesDateLowerBound = (
@@ -280,7 +282,7 @@ export const filterTours = (
     if (search.tourId && tour.id !== search.tourId) {
       return false;
     }
-    if (!matchesStatusFilter(search.status, tour.active)) {
+    if (!matchesStatusFilter(search.tourStatus, tour.status)) {
       return false;
     }
     if (search.tourWasteFractionId && !tour.wasteFractionIds.includes(search.tourWasteFractionId)) {

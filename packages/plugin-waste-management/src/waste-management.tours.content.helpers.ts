@@ -47,7 +47,7 @@ const resolveTourSortValue = ({
     case 'locations':
       return String(locationCountByTourId.get(tour.id) ?? 0).padStart(6, '0');
     case 'status':
-      return tour.active ? 'active' : 'inactive';
+      return tour.status;
   }
 };
 

@@ -52,7 +52,7 @@ type WasteTourState = {
   customRecurrenceIntervalDays?: number;
   firstDate?: string;
   endDate?: string;
-  active: boolean;
+  status: 'draft' | 'published' | 'archived';
   createdAt: string;
   updatedAt: string;
 };
@@ -111,6 +111,7 @@ type WasteHarness = {
     createdFractions: Array<Record<string, unknown>>;
     createdTours: Array<Record<string, unknown>>;
     tourValidityUpdates: Array<Record<string, unknown>>;
+    tourStatusUpdates: Array<Record<string, unknown>>;
     annualTourTransfers: Array<Record<string, unknown>>;
     exportInputs: Array<Record<string, unknown>>;
     startedJobTypes: string[];
@@ -196,6 +197,7 @@ const mockWasteFacade = async (
     createdFractions: [] as Array<Record<string, unknown>>,
     createdTours: [] as Array<Record<string, unknown>>,
     tourValidityUpdates: [] as Array<Record<string, unknown>>,
+    tourStatusUpdates: [] as Array<Record<string, unknown>>,
     annualTourTransfers: [] as Array<Record<string, unknown>>,
     exportInputs: [] as Array<Record<string, unknown>>,
     startedJobTypes: [] as string[],
@@ -340,7 +342,7 @@ const mockWasteFacade = async (
         recurrence: 'weekly',
         firstDate: '2027-01-04',
         endDate: '2027-12-31',
-        active: false,
+        status: 'draft',
         createdAt: '2026-08-23T12:00:00.000Z',
         updatedAt: '2026-08-23T12:00:00.000Z',
       });
@@ -355,7 +357,7 @@ const mockWasteFacade = async (
           createdCount: 1,
           existingCount: 0,
           classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
-          listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+          listTarget: { tourValidityPeriod: 'next', status: 'draft' },
         } satisfies WasteAnnualTourTransferResult),
       });
       return;
@@ -391,6 +393,37 @@ const mockWasteFacade = async (
         if (body.endDate?.mode === 'set') tour.endDate = body.endDate.value;
         if (body.endDate?.mode === 'clear') tour.endDate = undefined;
         tour.updatedAt = '2026-05-10T12:40:00.000Z';
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: createApiItem({ updatedCount: selectedTours.length }),
+      });
+      return;
+    }
+
+    if (method === 'PUT' && path === '/api/v1/waste-management/tours/bulk-status') {
+      const body = request.postDataJSON() as {
+        tourIds?: string[];
+        status?: WasteTourState['status'];
+      };
+      requests.tourStatusUpdates.push(body);
+      const selectedTours = toursState.filter((tour) => body.tourIds?.includes(tour.id));
+      if (
+        selectedTours.length !== body.tourIds?.length ||
+        !body.status ||
+        !['draft', 'published', 'archived'].includes(body.status)
+      ) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'invalid_request', message: 'Ungültige Tourauswahl.' }),
+        });
+        return;
+      }
+      for (const tour of selectedTours) {
+        tour.status = body.status;
+        tour.updatedAt = '2026-05-10T12:45:00.000Z';
       }
       await route.fulfill({
         status: 200,
@@ -523,7 +556,7 @@ const mockWasteFacade = async (
         customRecurrenceIntervalDays: preset?.intervalDays,
         firstDate: typeof body.firstDate === 'string' ? body.firstDate : undefined,
         endDate: typeof body.endDate === 'string' ? body.endDate : undefined,
-        active: body.active !== false,
+        status: 'draft',
         createdAt: '2026-05-10T12:30:00.000Z',
         updatedAt: '2026-05-10T12:30:00.000Z',
       };
@@ -697,7 +730,7 @@ test.describe('waste management plugin', () => {
           wasteFractionIds: [],
           recurrence: 'weekly',
           firstDate: '2026-05-12',
-          active: true,
+          status: 'published',
           createdAt: '2026-05-10T11:00:00.000Z',
           updatedAt: '2026-05-10T11:00:00.000Z',
         },
@@ -777,7 +810,7 @@ test.describe('waste management plugin', () => {
           wasteFractionIds: ['fraction-1'],
           recurrence: 'weekly',
           firstDate: '2026-05-12',
-          active: true,
+          status: 'published',
           createdAt: '2026-05-10T11:00:00.000Z',
           updatedAt: '2026-05-10T11:00:00.000Z',
         },
@@ -1075,7 +1108,7 @@ test.describe('waste management plugin', () => {
       customRecurrenceId: createdPresetIds[0],
       firstDate: '2026-06-01',
       endDate: '2026-08-31',
-      active: true,
+      status: 'draft',
     });
     expect(harness.requests.createdTours[0]).not.toHaveProperty('recurrence');
 
@@ -1150,7 +1183,7 @@ test.describe('waste management plugin', () => {
           recurrence: 'weekly',
           firstDate: '2026-01-01',
           endDate: '2026-12-31',
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -1161,7 +1194,7 @@ test.describe('waste management plugin', () => {
           recurrence: 'biweekly',
           firstDate: '2026-02-01',
           endDate: '2026-11-30',
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -1170,7 +1203,7 @@ test.describe('waste management plugin', () => {
           name: 'Schadstoffmobil',
           wasteFractionIds: [],
           recurrence: 'on-demand',
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -1206,7 +1239,70 @@ test.describe('waste management plugin', () => {
     expect(harness.requests.tourValidityUpdates).toHaveLength(1);
   });
 
-  test('previews and confirms the fixed following-year tour set as inactive', async ({ page }) => {
+  test('changes the status of every explicitly selected filtered tour across pages', async ({
+    page,
+  }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-bulk-tour-status',
+      permissionActions: ['waste-management.read', 'waste-management.tours.manage'],
+    });
+    const draftTours: WasteTourState[] = Array.from({ length: 11 }, (_, index) => ({
+      id: `tour-draft-${index + 1}`,
+      name: `Tourentwurf ${String(index + 1).padStart(2, '0')}`,
+      wasteFractionIds: [],
+      recurrence: 'weekly',
+      firstDate: '2026-01-01',
+      status: 'draft',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }));
+    const harness = await mockWasteFacade(page, {
+      instanceId: 'de-bulk-tour-status',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_bulk_status',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        ...draftTours,
+        {
+          id: 'tour-published',
+          name: 'Bereits veröffentlichte Tour',
+          wasteFractionIds: [],
+          recurrence: 'weekly',
+          firstDate: '2026-01-01',
+          status: 'published',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('combobox', { name: 'Zeige', exact: true }).selectOption('10');
+    await page.getByRole('button', { name: 'Filtern' }).click();
+    const filterDialog = page.getByRole('dialog');
+    await filterDialog.getByLabel('Status', { exact: true }).selectOption('draft');
+    await filterDialog.getByRole('button', { name: 'Anwenden' }).click();
+    await page.getByRole('button', { name: 'Alle 11 gefilterten Touren auswählen' }).click();
+    await expect(page.getByText('11 Touren ausgewählt')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Status ändern' }).click();
+    const statusDialog = page.getByRole('dialog');
+    await statusDialog.getByLabel('Zielstatus').selectOption('archived');
+    await statusDialog.getByRole('button', { name: 'Status ändern' }).click();
+
+    await expect(page.getByText('Der Status von 11 Touren wurde aktualisiert.')).toBeVisible();
+    expect(harness.requests.tourStatusUpdates).toEqual([
+      { tourIds: draftTours.map((tour) => tour.id), status: 'archived' },
+    ]);
+  });
+
+  test('previews and confirms the fixed following-year tour set as drafts', async ({ page }) => {
     await mockSharedShellRequests(page, {
       instanceId: 'de-annual-transfer',
       permissionActions: [
@@ -1233,7 +1329,7 @@ test.describe('waste management plugin', () => {
           recurrence: 'weekly',
           firstDate: '2026-01-05',
           endDate: '2026-12-31',
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -1247,10 +1343,10 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Vorschau erstellen' }).click();
     await expect(page.getByText('2026-01-05 (Montag) → 2027-01-04 (Montag)')).toBeVisible();
     await page.getByRole('button', { name: 'Auswahl prüfen' }).click();
-    await page.getByRole('button', { name: 'Inaktiv übernehmen' }).click();
+    await page.getByRole('button', { name: 'Als Entwurf übernehmen' }).click();
 
     await expect(page.getByRole('status')).toContainText(
-      '1 Touren wurden inaktiv für 2027 angelegt; 0 bereits identische Touren wurden wiederverwendet.'
+      '1 Touren wurden als Entwurf für 2027 angelegt; 0 bereits identische Touren wurden wiederverwendet.'
     );
     expect(harness.requests.annualTourTransfers).toEqual([
       expect.objectContaining({

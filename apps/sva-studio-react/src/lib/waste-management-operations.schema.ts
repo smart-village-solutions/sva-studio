@@ -146,6 +146,34 @@ BEGIN
 END $$;
 `.trim();
 
+const buildWasteTourStatusCompatibilityFunctionStatement = (schema: string): string =>
+  `
+CREATE OR REPLACE FUNCTION ${schema}.sync_waste_tour_status_active()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $waste_tour_status$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'draft' AND NEW.active IS TRUE THEN
+      NEW.status := 'published';
+    ELSIF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+      RAISE EXCEPTION 'waste_tour_status_active_conflict';
+    END IF;
+  ELSIF NEW.status IS DISTINCT FROM OLD.status AND NEW.active IS DISTINCT FROM OLD.active THEN
+    IF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+      RAISE EXCEPTION 'waste_tour_status_active_conflict';
+    END IF;
+  ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+    NEW.active := NEW.status = 'published';
+  ELSIF NEW.active IS DISTINCT FROM OLD.active THEN
+    NEW.status := CASE WHEN NEW.active THEN 'published' ELSE 'draft' END;
+  END IF;
+
+  RETURN NEW;
+END;
+$waste_tour_status$;
+`.trim();
+
 export const applySchemaStatements = (schemaName: string): readonly string[] => {
   const schema = quoteIdentifier(schemaName);
   return [
@@ -177,7 +205,16 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_first_reminder_max_lead_days_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_first_reminder_max_lead_days_check CHECK (first_reminder_max_lead_days IS NULL OR first_reminder_max_lead_days BETWEEN 1 AND 14); END IF; END $$;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_second_reminder_max_lead_days_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_second_reminder_max_lead_days_check CHECK (second_reminder_max_lead_days IS NULL OR second_reminder_max_lead_days BETWEEN 1 AND 14); END IF; END $$;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_custom_recurrence_presets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, description TEXT, interval_days INTEGER NOT NULL CHECK (interval_days > 0), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
-    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tours (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, description TEXT, waste_fraction_ids TEXT[] NOT NULL DEFAULT '{}', recurrence TEXT CHECK (recurrence IN ('weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom')), custom_recurrence_id UUID REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL, first_date DATE, end_date DATE, custom_dates JSONB, active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tours (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, description TEXT, waste_fraction_ids TEXT[] NOT NULL DEFAULT '{}', recurrence TEXT CHECK (recurrence IN ('weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom')), custom_recurrence_id UUID REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL, first_date DATE, end_date DATE, custom_dates JSONB, status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')), active BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS status TEXT;`,
+    `UPDATE ${schema}.waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL;`,
+    `ALTER TABLE ${schema}.waste_tours ALTER COLUMN status SET DEFAULT 'draft';`,
+    `ALTER TABLE ${schema}.waste_tours ALTER COLUMN status SET NOT NULL;`,
+    `ALTER TABLE ${schema}.waste_tours ALTER COLUMN active SET DEFAULT FALSE;`,
+    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_status_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_status_check CHECK (status IN ('draft', 'published', 'archived')); END IF; END $$;`,
+    buildWasteTourStatusCompatibilityFunctionStatement(schema),
+    `DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON ${schema}.waste_tours;`,
+    `CREATE TRIGGER waste_tours_sync_status_active BEFORE INSERT OR UPDATE OF status, active ON ${schema}.waste_tours FOR EACH ROW EXECUTE FUNCTION ${schema}.sync_waste_tour_status_active();`,
     `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_custom_recurrence_id_fkey' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_custom_recurrence_id_fkey FOREIGN KEY (custom_recurrence_id) REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL; END IF; END $$;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_location_tour_links (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), location_id UUID NOT NULL REFERENCES ${schema}.waste_collection_locations(id) ON DELETE CASCADE, tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
@@ -242,6 +279,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_custom_recurrence_presets_interval_days ON ${schema}.waste_custom_recurrence_presets(interval_days);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_name ON ${schema}.waste_tours(name);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_active ON ${schema}.waste_tours(active);`,
+    `CREATE INDEX IF NOT EXISTS idx_waste_tours_status ON ${schema}.waste_tours(status);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_recurrence ON ${schema}.waste_tours(recurrence);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_custom_recurrence_id ON ${schema}.waste_tours(custom_recurrence_id);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tours_waste_fraction_ids ON ${schema}.waste_tours USING GIN(waste_fraction_ids);`,

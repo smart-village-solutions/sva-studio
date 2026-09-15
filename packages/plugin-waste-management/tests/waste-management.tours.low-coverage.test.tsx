@@ -200,7 +200,7 @@ const createController = () =>
       endDate: '',
       customDates: [],
       dateLocationAssignments: [],
-      active: true,
+      status: 'published',
     },
     availableFractions: [{ id: 'fraction-1', name: 'Restmüll' }],
     locationOptions: [{ id: 'location-1', label: 'Rathausplatz' }],
@@ -555,7 +555,7 @@ describe('waste-management tours low coverage views', () => {
     ]);
   });
 
-  it('renders and updates weekly tour field branches for date ranges, fractions, and active state', () => {
+  it('renders and updates weekly tour field branches for date ranges, fractions, and status', () => {
     const onChange = vi.fn();
 
     render(
@@ -571,7 +571,7 @@ describe('waste-management tours low coverage views', () => {
           endDate: '',
           customDates: [],
           dateLocationAssignments: [],
-          active: true,
+          status: 'published',
         }}
         fractions={[{ id: 'fraction-1', name: 'Restmüll' } as never]}
         locations={[{ id: 'location-1', label: 'Rathausplatz' }]}
@@ -597,14 +597,16 @@ describe('waste-management tours low coverage views', () => {
     fireEvent.change(screen.getByLabelText('tours.fields.endDate'), {
       target: { value: '2026-08-31' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'tours.fields.active' }));
+    fireEvent.change(screen.getByLabelText('tours.fields.status'), {
+      target: { value: 'archived' },
+    });
 
     expect(onChange).toHaveBeenCalledWith({ name: 'Bio Nord' });
     expect(onChange).toHaveBeenCalledWith({ wasteFractionIds: ['fraction-2'] });
     expect(onChange).toHaveBeenCalledWith({ description: longDescription });
     expect(onChange).toHaveBeenCalledWith({ firstDate: '2026-08-01' });
     expect(onChange).toHaveBeenCalledWith({ endDate: '2026-08-31' });
-    expect(onChange).toHaveBeenCalledWith({ active: false });
+    expect(onChange).toHaveBeenCalledWith({ status: 'archived' });
   });
 
   it('shows custom date controls for custom tours and forwards custom date assignment patches', () => {
@@ -623,7 +625,7 @@ describe('waste-management tours low coverage views', () => {
           endDate: '',
           customDates: [],
           dateLocationAssignments: [],
-          active: false,
+          status: 'draft',
         }}
         fractions={[]}
         locations={[{ id: 'location-1', label: 'Rathausplatz' }]}

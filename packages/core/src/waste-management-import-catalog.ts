@@ -159,9 +159,9 @@ export const wasteManagementImportCatalog = [
       { key: 'tour_id', required: true, example: 'tour-restmuell-1' },
       { key: 'tour_name', required: true, example: 'Restmüll Nord' },
       { key: 'waste_fraction_ids', required: true, example: 'restmuell|bio' },
-      { key: 'active', required: true, example: 'true' },
     ],
     optionalColumns: [
+      { key: 'status', required: false, example: 'draft' },
       { key: 'description', required: false, example: 'Standardtour Nord' },
       { key: 'recurrence', required: false, example: 'weekly' },
       { key: 'first_date', required: false, example: '2026-01-10' },

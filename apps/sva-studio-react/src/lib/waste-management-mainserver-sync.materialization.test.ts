@@ -12,7 +12,7 @@ const buildTour = (override: Partial<WasteTourRecord> = {}): WasteTourRecord =>
     name: 'Testtour',
     wasteFractionIds: ['fraction-1'],
     recurrence: 'on-demand',
-    active: true,
+    status: 'published',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...override,
@@ -55,7 +55,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
           name: 'Schadstoffmobil',
           wasteFractionIds: ['fraction-1'],
           recurrence: null,
-          active: true,
+          status: 'published',
           createdAt: '',
           updatedAt: '',
         },
@@ -864,9 +864,14 @@ describe('waste-management-mainserver-sync.materialization', () => {
           customDates: [{ date: '2026-12-25' }],
         }),
         buildTour({
-          id: 'tour-inactive',
-          active: false,
+          id: 'tour-archived',
+          status: 'archived',
           customDates: [{ date: '2026-06-01' }],
+        }),
+        buildTour({
+          id: 'tour-draft',
+          status: 'draft',
+          customDates: [{ date: '2026-06-02' }],
         }),
       ],
       links: [
@@ -880,7 +885,14 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'link-2',
           locationId: 'location-1',
-          tourId: 'tour-inactive',
+          tourId: 'tour-archived',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'link-3',
+          locationId: 'location-1',
+          tourId: 'tour-draft',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -1241,8 +1253,6 @@ describe('waste-management-mainserver-sync.materialization', () => {
       ],
     });
 
-    expect(rows).toEqual([
-      expect.objectContaining({ note: '<p>Bereitstellung am Vorabend.</p>' }),
-    ]);
+    expect(rows).toEqual([expect.objectContaining({ note: '<p>Bereitstellung am Vorabend.</p>' })]);
   });
 });

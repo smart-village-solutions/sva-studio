@@ -112,6 +112,10 @@ export type WasteEmailReminderRepository = Readonly<{
   refreshPendingOutboxEntry: (
     input: WasteEmailReminderOutboxRefreshInput
   ) => Promise<boolean>;
+  cancelInvalidReminderOutboxEntries: (input: {
+    readonly validDedupeKeys: readonly string[];
+    readonly now: string;
+  }) => Promise<number>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
     readonly limit: number;
@@ -429,6 +433,23 @@ WHERE subscription_id = $1::uuid
   values: [input.subscriptionId, input.now],
 });
 
+const buildCancelInvalidReminderOutboxEntriesStatement = (input: {
+  readonly validDedupeKeys: readonly string[];
+  readonly now: string;
+}): SqlStatement => ({
+  text: `
+UPDATE waste_email_reminder_outbox
+SET status = 'cancelled',
+    leased_at = NULL,
+    updated_at = $2::timestamptz,
+    last_error = 'reminder_no_longer_applicable'
+WHERE message_kind = 'reminder'
+  AND status IN ('pending', 'processing')
+  AND NOT (dedupe_key = ANY($1::text[]));
+`,
+  values: [input.validDedupeKeys, input.now],
+});
+
 const buildMarkOutboxEntrySentStatement = (input: {
   readonly outboxId: string;
   readonly now: string;
@@ -582,6 +603,10 @@ export const createWasteEmailReminderRepository = (executor: SqlExecutor): Waste
     );
     return result.rows.length > 0;
   },
+  async cancelInvalidReminderOutboxEntries(input) {
+    const result = await executor.execute(buildCancelInvalidReminderOutboxEntriesStatement(input));
+    return result.rowCount;
+  },
   async leaseDueOutboxEntries(input) {
     const result = await executor.execute<LeasedOutboxRow>(buildLeaseDueOutboxEntriesStatement(input));
     return result.rows.map((row) => ({
@@ -679,6 +704,7 @@ export const wasteEmailReminderStatements = {
   markOutboxEntrySent: buildMarkOutboxEntrySentStatement,
   markOutboxEntryFailed: buildMarkOutboxEntryFailedStatement,
   cancelPendingReminderOutboxEntries: buildCancelPendingReminderOutboxEntriesStatement,
+  cancelInvalidReminderOutboxEntries: buildCancelInvalidReminderOutboxEntriesStatement,
   selectSubscriptionByDoiTokenHash: buildSelectSubscriptionByDoiTokenHashStatement,
   selectSubscriptionByUnsubscribeTokenHash: buildSelectSubscriptionByUnsubscribeTokenHashStatement,
   selectSubscriptionById: buildSelectSubscriptionByIdStatement,

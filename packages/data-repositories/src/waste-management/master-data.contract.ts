@@ -32,6 +32,7 @@ import type {
   WasteTourAssignmentRecord,
   WasteTourListFilter,
   WasteTourRecord,
+  WasteTourStatusBulkUpdateInput,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityRecord,
 } from '@sva/core';
@@ -152,6 +153,8 @@ export const wasteMasterDataRepositoryContract = {
     >(),
   updateWasteTourValidityBulk:
     defineRepositoryMethod<(input: WasteTourValidityBulkUpdateInput) => Promise<number>>(),
+  updateWasteTourStatusBulk:
+    defineRepositoryMethod<(input: WasteTourStatusBulkUpdateInput) => Promise<number>>(),
   upsertWasteTour:
     defineRepositoryMethod<
       (input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>) => Promise<void>

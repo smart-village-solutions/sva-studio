@@ -20,7 +20,7 @@ const createTour = (overrides: Partial<WasteTourRecord>): WasteTourRecord => ({
   id: 'tour-1',
   name: 'Tour',
   wasteFractionIds: [],
-  active: true,
+  status: 'published',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   ...overrides,
@@ -128,7 +128,7 @@ describe('waste-management tours content helpers', () => {
       onStatusChange,
       setFilterDialogOpen,
       draftQuery: 'Bio',
-      draftStatus: 'inactive',
+      draftStatus: 'draft',
       draftTourValidityPeriod: 'current',
       draftTourWasteFractionId: 'fraction-1',
       draftFirstDateFrom: '2026-01-01',
@@ -139,7 +139,7 @@ describe('waste-management tours content helpers', () => {
 
     expect(onFiltersChange).toHaveBeenCalledWith(
       'Bio',
-      'inactive',
+      'draft',
       'current',
       'fraction-1',
       '2026-01-01',
@@ -163,7 +163,7 @@ describe('waste-management tours content helpers', () => {
       onStatusChange,
       setFilterDialogOpen,
       draftQuery: 'Papier',
-      draftStatus: 'active',
+      draftStatus: 'published',
       draftTourValidityPeriod: 'all',
       draftTourWasteFractionId: undefined,
       draftFirstDateFrom: undefined,
@@ -173,7 +173,7 @@ describe('waste-management tours content helpers', () => {
     });
 
     expect(onQueryChange).toHaveBeenCalledWith('Papier');
-    expect(onStatusChange).toHaveBeenCalledWith('active');
+    expect(onStatusChange).toHaveBeenCalledWith('published');
     expect(setFilterDialogOpen).toHaveBeenCalledWith(false);
   });
 

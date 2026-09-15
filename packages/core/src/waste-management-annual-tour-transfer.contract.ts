@@ -128,6 +128,6 @@ export type WasteAnnualTourTransferResult = Readonly<{
   }>;
   listTarget: Readonly<{
     tourValidityPeriod: 'current' | 'next';
-    status: 'inactive';
+    status: 'draft';
   }>;
 }>;

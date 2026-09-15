@@ -10,7 +10,6 @@ import {
   shouldShowTourDateRangeFields,
 } from './waste-management.tours-form.support.js';
 import { WasteToursCustomDatesField } from './waste-management.tours-custom-dates.js';
-import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { WasteToursFractionSelection } from './waste-management.tours.fractions.js';
 import type { TourFormState } from './waste-management.tours.types.js';
 
@@ -40,6 +39,7 @@ export const WasteToursTourFields = ({
   locations,
   customRecurrencePresets,
   saving = false,
+  statusReadOnly = false,
   schedulingAction,
   pt,
   onChange,
@@ -49,6 +49,7 @@ export const WasteToursTourFields = ({
   readonly locations: readonly { id: string; label: string }[];
   readonly customRecurrencePresets: readonly WasteCustomRecurrencePresetRecord[];
   readonly saving?: boolean;
+  readonly statusReadOnly?: boolean;
   readonly schedulingAction?: ReactNode;
   readonly pt: Translate;
   readonly onChange: (patch: Partial<TourFormState>) => void;
@@ -187,21 +188,26 @@ export const WasteToursTourFields = ({
         title={pt('tours.sections.visibility')}
         description={pt('tours.sections.visibilityHint')}
       >
-        <div className="flex items-center gap-3">
-          <WasteManagementFormSwitch
-            checked={form.active}
-            ariaLabel={pt('tours.fields.active')}
-            onChange={(active) => onChange({ active })}
-          />
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              {form.active ? pt('common.active') : pt('common.inactive')}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {form.active ? pt('tours.statusHints.active') : pt('tours.statusHints.inactive')}
-            </p>
-          </div>
-        </div>
+        <StudioField
+          id="waste-tour-status"
+          label={pt('tours.fields.status')}
+          description={
+            statusReadOnly ? pt('tours.statusHints.newTourDraft') : pt('tours.statusHints.status')
+          }
+        >
+          <Select
+            id="waste-tour-status"
+            value={form.status}
+            disabled={saving || statusReadOnly}
+            onChange={(event) =>
+              onChange({ status: event.target.value as TourFormState['status'] })
+            }
+          >
+            <option value="draft">{pt('tours.status.draft')}</option>
+            <option value="published">{pt('tours.status.published')}</option>
+            <option value="archived">{pt('tours.status.archived')}</option>
+          </Select>
+        </StudioField>
       </TourSection>
     </div>
   );

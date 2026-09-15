@@ -426,6 +426,13 @@ gleichzeitig beeinflussen.
 - Der Termin-Dialog nutzt `role="dialog"` plus `aria-modal="true"` und trägt seinen Titel über `aria-labelledby`.
 - Der öffentliche Präferenzspeicher bleibt auf genau einen stabilen Standortschlüssel begrenzt; ungültige Cookies werden verworfen statt heuristisch repariert.
 
+### Waste-Tourstatus und fail-closed Veröffentlichung
+
+- `draft | published | archived` ist der gemeinsame fachliche Vertrag; `active` bleibt nur während der kontrollierten Expand-/Migrate-/Contract-Sequenz eine befristete Datenbankprojektion.
+- Ausschließlich `published` darf Public-Waste, PDF, iCal, Reminder, Abdeckungsprüfung, Mainserver-Materialisierung oder die Quellauswahl der Folgejahrübernahme speisen. Unbekannte oder ungültige Statuswerte werden abgewiesen und niemals als veröffentlicht interpretiert.
+- Statusänderungen arbeiten auf expliziten IDs und einem expliziten Zielstatus. Die Fachdatenbank sperrt und validiert die vollständige Auswahl, bevor sie atomar schreibt; Teilstände sind nicht zulässig.
+- Der Bestands-Backfill bildet `active = true` deterministisch auf `published` und `active = false` auf `draft` ab. `archived` wird nicht aus dem alten Boolean geraten.
+
 ### Explizite Waste-Einsätze und Ortsvererbung
 
 - Ein expliziter Einsatz gehört zu einer normalen Tour und besitzt ein Datum, einen optionalen gemeinsamen Hinweis sowie mindestens einen Abholort.

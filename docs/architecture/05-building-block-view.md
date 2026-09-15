@@ -160,6 +160,7 @@ Abhängigkeiten des aktuellen Systems.
 - kontextuelle Ausweichtermin-Aktionen in Tourenliste, Jahreskalender und Terminlogik verwenden dieselbe route-basierte Erfassungsansicht in einem neuen Browser-Tab; die reine Auswahl zwischen jährlicher Grundregel und jahresbezogener Ausnahme gehört framework-agnostisch zu `@sva/core`
 - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
+- verwaltet Touren mit dem gemeinsamen Statusvertrag `draft | published | archived`; Einzel- und atomare Mehrfachänderungen verwenden denselben expliziten Zielstatus, während nur `published` operative Verbraucher speist
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
 - deklariert `provision`, `reconcile` und `readiness` über den generischen Tenant-Lifecycle; `@sva/waste-management-runtime` adaptiert Provision und Reconcile auf den bestehenden Datenbank-Provisioner und prüft Readiness getrennt über den bestehenden Provisionierungsdatensatz und das pluginverwaltete PostgreSQL-Interface
 - stößt nach erfolgreichen Fraktionsmutationen asynchron den dedizierten Job `waste-management.sync-waste-types` an und degradiert reine Mainserver-Sync-Fehler bewusst zu einem Retry-Hinweis im Fraktionskontext
@@ -205,6 +206,7 @@ Abhängigkeiten des aktuellen Systems.
 - der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
 - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
+- `@sva/core`, Repository und Host-Fassade teilen den Tourstatusvertrag; Public-Waste, Reminder, Abdeckungsprüfung, Mainserver-Materialisierung und Folgejahr-Quellauswahl lesen ausschließlich `published`
 - der Mainserver-Terminabgleich liest seine tenantlokale Quellrevision zusammen mit allen Materialisierungstabellen in einem PostgreSQL-Snapshot; `iam.studio_jobs` bleibt alleinige Wahrheit für aktiven Lauf, letzten Erfolg, Progress und Fehler
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird

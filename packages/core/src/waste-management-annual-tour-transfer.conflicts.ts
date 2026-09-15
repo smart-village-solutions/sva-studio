@@ -120,7 +120,7 @@ const comparableExistingTour = (indexed: IndexedWasteAnnualTargetTour) =>
       firstDate: indexed.tour.firstDate,
       endDate: indexed.tour.endDate,
       customDates: indexed.tour.customDates,
-      active: indexed.tour.active,
+      status: indexed.tour.status,
       locationCount: indexed.tour.locationCount,
     },
     locationTourLinks: indexed.locationTourLinks,

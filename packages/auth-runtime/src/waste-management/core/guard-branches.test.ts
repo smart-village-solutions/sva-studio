@@ -498,7 +498,7 @@ describe('waste-management guard branches', () => {
             wasteFractionIds: ['fraction-1'],
             recurrence: 'custom',
             firstDate: '2026-05-01',
-            active: true,
+            status: 'draft',
             description: ' Beschreibung ',
             customDates: [{ date: '2026-05-08', description: ' Feiertag ' }],
           }),

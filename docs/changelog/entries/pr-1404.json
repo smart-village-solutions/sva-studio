@@ -1,0 +1,4 @@
+{
+  "prNumber": 1404,
+  "body": "Studio-Dienste starten nach Serverunterbrechungen zuverlässiger wieder\n\n- Anwendung, Bereitstellungsdienst, PostgreSQL und Redis werden nach einem Ausfall ohne feste Anzahl von Neustartversuchen erneut gestartet.\n- Regulär beendete Datenbank- und Cache-Dienste werden nach einer Serverwartung ebenfalls wiederhergestellt.\n- Einmalige Migrations- und Initialisierungsaufgaben bleiben von dieser Änderung ausgenommen."
+}

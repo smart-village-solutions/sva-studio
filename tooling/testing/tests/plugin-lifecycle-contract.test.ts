@@ -41,6 +41,8 @@ describe('plugin lifecycle database contract gate', () => {
     expect(harness).toContain('top01_persistent_job_key_after_crash');
     expect(harness).toContain('top01_original_scheduled_job_completed_after_restart');
     expect(harness).toContain('top01_clean_shutdown_not_restarted');
+    expect(harness).toContain('top01_existing_job_not_rerouted_to_current_queue');
+    expect(harness).toContain('top01-privileged-job-completed-while-default-queue-blocked');
     expect(harness).not.toContain("sva_enqueue_job('studio_job_execute_privileged'");
     expect(harness).toContain('packages/data/scripts/run-migrations.sh');
     expect(harness).toContain('assertPersistedTerminalOutcome');

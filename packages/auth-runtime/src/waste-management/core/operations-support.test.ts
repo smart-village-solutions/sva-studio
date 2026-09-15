@@ -124,8 +124,14 @@ describe('waste-management operations support', () => {
     });
 
     expect(response.status).toBe(202);
+    expect(createPluginOperationJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: 'waste-provisioning' })
+    );
     expect(queuePluginOperationJobMock).toHaveBeenCalledWith(
-      expect.objectContaining({ executionLane: 'privileged' })
+      expect.objectContaining({
+        queueName: 'waste-provisioning',
+        executionLane: 'privileged',
+      })
     );
   });
 

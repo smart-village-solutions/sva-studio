@@ -32,6 +32,7 @@ vi.mock('@sva/plugin-ssf/provisioning', () => ({
 }));
 
 const createPluginJobExecutionHandlersMock = vi.fn(() => ({
+  'waste-management.provision-tenant-database': vi.fn(),
   'waste-management.apply-migrations': vi.fn(),
   'waste-management.import-data': vi.fn(),
   'waste-management.initialize-data-source': vi.fn(),
@@ -52,7 +53,10 @@ const createBrowserPluginModuleExports = (jobTypeIds: readonly string[]) => ({
     routes: [],
     jobTypes: jobTypeIds.map((jobTypeId) => ({
       jobTypeId,
-      queue: 'plugin-operations',
+      queue:
+        jobTypeId === 'waste-management.provision-tenant-database'
+          ? 'waste-provisioning'
+          : 'plugin-operations',
       displayName: jobTypeId,
     })),
     translations: {},
@@ -60,6 +64,7 @@ const createBrowserPluginModuleExports = (jobTypeIds: readonly string[]) => ({
 });
 
 const declaredWasteJobTypeIds = [
+  'waste-management.provision-tenant-database',
   'waste-management.apply-migrations',
   'waste-management.import-data',
   'waste-management.initialize-data-source',
@@ -125,6 +130,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.apply-migrations',
       'waste-management.import-data',
       'waste-management.initialize-data-source',
+      'waste-management.provision-tenant-database',
       'waste-management.reset-data',
       'waste-management.seed-data',
       'waste-management.sync-mainserver',
@@ -136,6 +142,14 @@ describe('plugin operation runtime registration', () => {
     ]);
     expect(handlers['waste-management.sync-mainserver']).toMatchObject({
       supportsCancellation: true,
+    });
+    expect(handlers['waste-management.provision-tenant-database']).toMatchObject({
+      queueName: 'waste-provisioning',
+      executionLane: 'privileged',
+    });
+    expect(handlers['ssf.reconcile-authorization']).toMatchObject({
+      queueName: 'plugin-operations',
+      executionLane: 'default',
     });
     expect(handlers['waste-management.reset-data']).toMatchObject({
       supportsCancellation: false,
@@ -249,6 +263,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.apply-migrations',
       'waste-management.import-data',
       'waste-management.initialize-data-source',
+      'waste-management.provision-tenant-database',
       'waste-management.reset-data',
       'waste-management.seed-data',
       'waste-management.sync-mainserver',
@@ -543,7 +558,7 @@ describe('plugin operation runtime registration', () => {
         },
       })
     ).rejects.toThrowError(
-      'duplicate_plugin_operation_handler:waste-management.apply-migrations:waste-management:waste-management'
+      'duplicate_plugin_operation_handler:waste-management.provision-tenant-database:waste-management:waste-management'
     );
   });
 });

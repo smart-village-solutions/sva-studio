@@ -160,9 +160,7 @@ const studioPluginCatalogReport = await createStudioPluginCatalogReport({
       : resolveNodePluginModule(entry, manifest),
 });
 const studioDeclaredPluginOperationJobTypeIds =
-  studioPluginCatalogReport.snapshot.registry.jobTypes.map(
-    (jobType) => jobType.jobTypeId
-  ) as readonly string[];
+  studioPluginCatalogReport.snapshot.registry.jobTypes.map((jobType) => jobType.jobTypeId);
 const createWasteManagementHostOwnedJobModuleFactory: PluginJobModuleFactory = (runtime) =>
   createWasteManagementPluginJobExecutionHandlers(runtime as WasteManagementOperationRuntime);
 const hostOwnedPluginJobModuleDescriptors = [
@@ -339,7 +337,9 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
         jobTypeId,
         {
           handler,
-          queueName: 'plugin-operations',
+          queueName: studioPluginCatalogReport.snapshot.registry.jobTypes.find(
+            (jobType) => jobType.jobTypeId === jobTypeId
+          )!.queue,
           executionLane: jobTypeId === privilegedJobTypeId ? 'privileged' : 'default',
           supportsCancellation: cancellablePluginJobTypeIds.has(jobTypeId),
         },

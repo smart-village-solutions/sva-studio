@@ -82,13 +82,17 @@ export const startPluginOperationJobFromFacade = async (input: {
   };
 
   try {
+    const isPrivilegedProvisioningJob =
+      input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase;
     const job = await createPluginOperationJob({
       instanceId: input.instanceId,
       actorAccountId: input.actorAccountId,
       idempotencyKey: input.idempotencyKey,
       requestId: input.requestId,
       scheduledAt: input.scheduledAt,
-      queueName: wasteManagementOperationsContract.queueName,
+      queueName: isPrivilegedProvisioningJob
+        ? wasteManagementOperationsContract.provisioningQueueName
+        : wasteManagementOperationsContract.queueName,
       data: input.data,
     });
 
@@ -98,11 +102,7 @@ export const startPluginOperationJobFromFacade = async (input: {
         jobId: job.id,
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
-        executionLane:
-          input.data.jobTypeId ===
-          wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
-            ? 'privileged'
-            : 'default',
+        executionLane: isPrivilegedProvisioningJob ? 'privileged' : 'default',
       });
     } catch {
       await markPluginOperationEnqueueFailed({ instanceId: input.instanceId, job });

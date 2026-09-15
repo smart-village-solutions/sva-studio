@@ -7,6 +7,18 @@ import {
 } from '../src/job-definitions.js';
 
 describe('waste management contracts job definitions', () => {
+  it('isolates privileged tenant provisioning from the shared plugin operations queue', () => {
+    const jobTypes = createWasteManagementPluginJobTypes();
+
+    expect(
+      jobTypes.find(({ jobTypeId }) => jobTypeId === 'waste-management.provision-tenant-database')
+        ?.queue
+    ).toBe('waste-provisioning');
+    expect(
+      jobTypes.find(({ jobTypeId }) => jobTypeId === 'waste-management.tenant-readiness')?.queue
+    ).toBe('plugin-operations');
+  });
+
   it('exposes every job type declared by the Waste operations contract', () => {
     expect(createWasteManagementPluginJobTypes().map(({ jobTypeId }) => jobTypeId)).toEqual([
       'waste-management.provision-tenant-database',

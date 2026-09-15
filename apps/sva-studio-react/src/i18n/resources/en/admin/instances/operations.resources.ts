@@ -37,7 +37,7 @@ export const operationsInstancesAdminENResources = {
       existing: 'The SMTP password of the existing realm remains unchanged.',
       configured: 'An SMTP password is stored in Keycloak.',
       required:
-        'The SMTP defaults are configured; the password must be set once directly in Keycloak.',
+        'The SMTP defaults are configured; set the password once directly in Keycloak and then test the SMTP connection there.',
     },
   },
   new: {

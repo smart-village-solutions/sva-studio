@@ -39,7 +39,7 @@ const parseHttpsOrigin = (value: string): string => {
 const isTrustedHttpHostname = (hostname: string): boolean =>
   hostname === 'localhost' ||
   hostname === '[::1]' ||
-  hostname.startsWith('127.') ||
+  hostname === '127.0.0.1' ||
   hostname === 'keycloak';
 
 const parseKeycloakBaseUrl = (value: string, allowHttp: boolean): string => {

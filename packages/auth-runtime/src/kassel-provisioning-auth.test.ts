@@ -64,15 +64,18 @@ describe('Kassel provisioning auth issuer', () => {
     }
   );
 
-  it('rejects a public HTTP Keycloak base in production', () => {
-    expect(() =>
-      resolveProvisioningAuthIssuerUrl(input, {
-        tenantIngressMode: 'external',
-        keycloakBaseUrl: 'http://keycloak.example.org:38080',
-        nodeEnv: 'production',
-      })
-    ).toThrow('keycloak_admin_base_url_invalid');
-  });
+  it.each(['http://keycloak.example.org:38080', 'http://127.attacker.example:38080'])(
+    'rejects public HTTP Keycloak base %s in production',
+    (keycloakBaseUrl) => {
+      expect(() =>
+        resolveProvisioningAuthIssuerUrl(input, {
+          tenantIngressMode: 'external',
+          keycloakBaseUrl,
+          nodeEnv: 'production',
+        })
+      ).toThrow('keycloak_admin_base_url_invalid');
+    }
+  );
 
   it('derives the public issuer before provisioning in Kassel mode', () => {
     expect(

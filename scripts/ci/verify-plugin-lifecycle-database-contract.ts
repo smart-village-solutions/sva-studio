@@ -1121,6 +1121,45 @@ const runMatrix = async (
     );
   });
 
+  await reportCase('TOP-01-positive-existing-job-reroutes-to-current-queue', async () => {
+    await cleanLifecycle(adminPool);
+    configureRuntime(runtime, 'contract-1', 'ready', 'privileged', queueName);
+    const started = await startLifecycle(runtime);
+
+    configureRuntime(runtime, 'contract-1', 'ready', 'privileged', privilegedQueueName);
+    await runtime.ensure(instanceId);
+
+    assert(
+      (await scalar(
+        adminPool,
+        `SELECT (queue_name = $2)::text AS value
+         FROM graphile_worker.jobs
+         WHERE key = $1`,
+        [`studio-job:${started.job.id}`, privilegedQueueName]
+      )) === 'true',
+      'top01_existing_job_not_rerouted_to_current_queue'
+    );
+
+    const privilegedRunner = runTaskList(
+      { concurrency: 1, noHandleSignals: true },
+      runtime.createTaskList(runtime.registry, 'studio_job_execute_privileged'),
+      workerPool
+    );
+    try {
+      await waitFor(
+        'top01-existing-job-completed-after-queue-reroute',
+        async () =>
+          (await scalar(
+            adminPool,
+            "SELECT (status = 'succeeded')::text AS value FROM iam.studio_jobs WHERE id = $1",
+            [started.job.id]
+          )) === 'true'
+      );
+    } finally {
+      await privilegedRunner.gracefulShutdown();
+    }
+  });
+
   await reportCase(
     'TOP-01-positive-privileged-queue-progresses-while-default-queue-blocked',
     async () => {

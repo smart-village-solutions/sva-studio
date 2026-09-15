@@ -266,8 +266,9 @@ existierenden Default-/privilegierten Lanes.
    Idempotenzschlüssel oder Lane-Namen zu ändern.
 2. Bestehende `queued`, `running` und `retrying` Jobs werden anhand ihrer
    bestehenden Lifecycle-Metadaten eingeordnet. Ein Job mit passendem Claim
-   erhält idempotent Recovery- und Execution-Wake-up; ein Job ohne eindeutigen
-   Claim wird nicht ausgeführt und als reparierbarer Konflikt sichtbar.
+   erhält idempotent Recovery- und Execution-Wake-up über die aktuell
+   registrierte Queue und Worker-Lane; ein Job ohne eindeutigen Claim wird nicht
+   ausgeführt und als reparierbarer Konflikt sichtbar.
 3. Bestehende Terminaljobs werden niemals erneut ausgeführt. Fehlende
    Terminalevents dürfen ausschließlich idempotent aus dem Jobzustand
    materialisiert werden, wenn Ledger, Generation und Ergebnis eindeutig

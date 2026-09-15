@@ -75,7 +75,7 @@ export const reconcileClaimedLifecycleJob = async (input: {
         await enqueueStudioJob({
           instanceId: input.instanceId,
           jobId: job.id,
-          queueName: job.queueName,
+          queueName: registration.queueName,
           maxAttempts: job.maxAttempts,
           executionLane: registration.executionLane ?? 'default',
           runAt: new Date(),

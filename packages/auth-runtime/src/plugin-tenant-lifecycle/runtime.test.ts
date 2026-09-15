@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   withStudioJobLifecycleRepositories: vi.fn(),
   getLifecycle: vi.fn(),
   getJobById: vi.fn(),
+  registrationQueueName: 'plugin-operations',
   readinessChecks: [] as Array<{
     checkId: string;
     titleKey: string;
@@ -117,7 +118,7 @@ vi.mock('../plugin-operations/runner.js', () => ({
         'speech.provisionTenant',
         {
           handler: vi.fn(),
-          queueName: 'plugin-operations',
+          queueName: state.registrationQueueName,
           executionLane: 'privileged',
           supportsCancellation: false,
         },
@@ -213,6 +214,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
     state.createStudioJob.mockResolvedValue(job);
     state.getLifecycle.mockResolvedValue(null);
     state.getJobById.mockResolvedValue(job);
+    state.registrationQueueName = 'plugin-operations';
     state.readinessChecks = [];
     state.operations = [{ operation: 'provision' as const, jobTypeId: 'speech.provisionTenant' }];
     state.updateJobState.mockResolvedValue(job);
@@ -669,12 +671,13 @@ describe('configured plugin tenant lifecycle runtime', () => {
     expect(state.createStudioJob).not.toHaveBeenCalled();
   });
 
-  it('re-enqueues a claimed queued lifecycle job from the durable recovery task', async () => {
+  it('re-enqueues a claimed queued lifecycle job on the currently registered queue', async () => {
     state.getLifecycle.mockResolvedValue({
       ...lifecycleRecord,
       claimedGeneration: 3,
       activeJobId: job.id,
     });
+    state.registrationQueueName = 'waste-provisioning';
     const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
 
     await ensureConfiguredPluginTenantProvisioning('tenant-a');
@@ -684,7 +687,7 @@ describe('configured plugin tenant lifecycle runtime', () => {
       expect.objectContaining({
         instanceId: 'tenant-a',
         jobId: job.id,
-        queueName: 'plugin-operations',
+        queueName: 'waste-provisioning',
         maxAttempts: 5,
         executionLane: 'privileged',
         runAt: expect.any(Date),

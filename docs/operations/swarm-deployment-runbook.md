@@ -16,6 +16,8 @@ Direkte Portainer-, Docker- oder Quantum-Mutationen aus diesem Runbook sind kein
 
 Jeder Stack enthält mindestens App, PostgreSQL und Redis. Traefik routet den Root-Host und ausschließlich die in `deploy/compose.<umgebung>.yaml` explizit aufgeführten Tenant-Hosts über das öffentliche Overlay-Netz. Der vorhandene Certificate Resolver verwaltet dafür konkrete Einzelzertifikate; Wildcard-DNS, DNS-01 und ein generischer `HostRegexp`-Router gelten nicht als Tenant-Freigabe. Konkrete Docker-Netzwerk-IDs sind flüchtig und dürfen nicht dokumentiert oder wiederverwendet werden; vor jeder netzbezogenen Reparatur ist die aktuelle ID anhand des Namens live aufzulösen.
 
+Die langlebigen Services `app`, `provisioner`, `postgres` und `redis` verwenden `restart_policy.condition: any` ohne begrenzte `max_attempts`. Damit plant Swarm sie nach einem sauberen oder fehlerhaften Abbruch erneut ein, sobald der fest zugewiesene Node wieder verfügbar ist. Die einmaligen Services `candidate`, `migrate` und `bootstrap` behalten dagegen `condition: none`. Dieser Wiederanlaufvertrag ist keine Hochverfügbarkeit: Solange PostgreSQL und Redis an lokale Volumes und `node-005.sva` gebunden sind, kann ein dauerhaft verlorener Node nicht automatisch durch einen anderen ersetzt werden.
+
 ## Betriebsziele
 
 | Bereich                 | Zielwert     |

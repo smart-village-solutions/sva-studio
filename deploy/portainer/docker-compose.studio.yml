@@ -102,8 +102,6 @@ services:
       restart_policy:
         condition: any
         delay: 5s
-        max_attempts: 5
-        window: 120s
       resources:
         reservations:
           memory: 256M
@@ -201,8 +199,6 @@ services:
       restart_policy:
         condition: any
         delay: 5s
-        max_attempts: 5
-        window: 120s
       resources:
         reservations:
           memory: 128M
@@ -333,10 +329,8 @@ services:
         constraints:
           - node.hostname == node-005.sva
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 5s
-        max_attempts: 3
-        window: 60s
       resources:
         reservations:
           memory: 128M
@@ -368,10 +362,8 @@ services:
         constraints:
           - node.hostname == node-005.sva
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 5s
-        max_attempts: 3
-        window: 60s
       resources:
         reservations:
           memory: 256M

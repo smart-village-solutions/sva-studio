@@ -6,6 +6,13 @@ import { describe, expect, it } from 'vitest';
 const compose = readFileSync(resolve(import.meta.dirname, 'docker-compose.studio.yml'), 'utf8');
 const genericCompose = readFileSync(resolve(import.meta.dirname, 'docker-compose.yml'), 'utf8');
 const canonicalCompose = readFileSync(resolve(import.meta.dirname, '../../compose.yaml'), 'utf8');
+const environmentComposes = ['dev', 'staging', 'prod'].map((environment) => ({
+  environment,
+  source: readFileSync(
+    resolve(import.meta.dirname, `../../deploy/compose.${environment}.yaml`),
+    'utf8'
+  ),
+}));
 const entrypoint = readFileSync(resolve(import.meta.dirname, 'provisioner-entrypoint.sh'), 'utf8');
 const migrationEntrypoint = readFileSync(
   resolve(import.meta.dirname, 'migrate-entrypoint.sh'),
@@ -35,6 +42,14 @@ const genericMigrateSection = genericCompose.slice(
   genericCompose.indexOf('  bootstrap:')
 );
 const servicesSection = compose.slice(compose.indexOf('services:'), compose.indexOf('\nnetworks:'));
+
+const serviceSection = (source: string, serviceName: string) => {
+  const start = source.indexOf(`  ${serviceName}:`);
+  if (start === -1) throw new Error(`Service ${serviceName} fehlt im Compose-Vertrag.`);
+  const remaining = source.slice(start + 1);
+  const nextService = remaining.search(/\n {2}[a-z][a-z0-9-]+:/u);
+  return source.slice(start, nextService === -1 ? undefined : start + 1 + nextService);
+};
 
 describe('waste tenant database provisioning deployment', () => {
   it('keeps cluster credentials out of the normal app worker', () => {
@@ -87,11 +102,36 @@ describe('waste tenant database provisioning deployment', () => {
     );
     expect(provisionerSection).toContain('restart_policy:');
     expect(provisionerSection).toContain('condition: any');
-    expect(provisionerSection).toContain('max_attempts: 5');
-    expect(provisionerSection).toContain('window: 120s');
+    expect(provisionerSection).not.toContain('max_attempts:');
     expect(provisionerSection).toContain('- internal');
     expect(provisionerSection).not.toContain('traefik.enable');
     expect(provisionerSection).not.toContain('ports:');
+  });
+
+  it('restarts every long-running Studio service without an attempt limit', () => {
+    for (const serviceName of ['app', 'provisioner', 'redis', 'postgres']) {
+      const referenceSection = serviceSection(compose, serviceName);
+      expect(referenceSection, `${serviceName} reference restart condition`).toContain(
+        'condition: any'
+      );
+      expect(referenceSection, `${serviceName} reference restart limit`).not.toContain(
+        'max_attempts:'
+      );
+      expect(referenceSection, `${serviceName} reference restart window`).not.toContain('window:');
+
+      for (const { environment, source } of environmentComposes) {
+        const environmentSection = serviceSection(source, serviceName);
+        expect(environmentSection, `${environment} ${serviceName} restart condition`).toContain(
+          'condition: any'
+        );
+        expect(environmentSection, `${environment} ${serviceName} restart limit`).not.toContain(
+          'max_attempts:'
+        );
+        expect(environmentSection, `${environment} ${serviceName} restart window`).not.toContain(
+          'window:'
+        );
+      }
+    }
   });
 
   it('reconciles the least-privileged role before supervising both existing workers', () => {

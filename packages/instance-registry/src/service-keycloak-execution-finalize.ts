@@ -66,7 +66,8 @@ const loadRealmBaselineApplicability = async (
   return isRealmBaselineApplicable(
     instance.realmMode,
     await deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
-    instance.authRealm
+    instance.authRealm,
+    instance.authClientId
   );
 };
 
@@ -131,6 +132,7 @@ const appendFinalStatusSnapshot = async (
     details: {
       policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       authRealm: snapshotInstance.authRealm,
+      authClientId: snapshotInstance.authClientId,
       inputFingerprint: buildKeycloakSnapshotInputFingerprint(
         snapshotInstance,
         await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId),

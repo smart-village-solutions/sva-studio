@@ -282,7 +282,8 @@ export const createPlanKeycloakProvisioningHandler =
       realmBaselineApplicable: isRealmBaselineApplicable(
         loaded.instance.realmMode,
         runs,
-        loaded.instance.authRealm
+        loaded.instance.authRealm,
+        loaded.instance.authClientId
       ),
       preflight,
     });

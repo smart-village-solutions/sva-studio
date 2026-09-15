@@ -3218,6 +3218,7 @@ describe('instance registry service facade', () => {
               details: {
                 policyVersion: 3,
                 authRealm: managedInstance.authRealm,
+                authClientId: managedInstance.authClientId,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(managedInstance, {
                   authClientSecretCiphertext: 'auth-cipher',
                   tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
@@ -3492,6 +3493,7 @@ describe('instance registry service facade', () => {
               details: {
                 policyVersion: 3,
                 authRealm: managedInstance.authRealm,
+                authClientId: managedInstance.authClientId,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(
                   managedInstance,
                   secretVersions

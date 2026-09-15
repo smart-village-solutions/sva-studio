@@ -82,6 +82,7 @@ describe('service-keycloak-execution-finalize', () => {
       status: 'provisioning',
       realmMode: 'new',
       authRealm: 'demo',
+      authClientId: 'studio-client',
       updatedAt: '2026-09-11T10:00:01.000Z',
     };
     const realmUpdated = {
@@ -175,6 +176,7 @@ describe('service-keycloak-execution-finalize', () => {
         details: {
           policyVersion: 3,
           authRealm: realmUpdated.authRealm,
+          authClientId: realmUpdated.authClientId,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(
             realmUpdated as never,
             undefined,
@@ -292,6 +294,7 @@ describe('service-keycloak-execution-finalize', () => {
       status: 'active',
       realmMode: 'existing',
       authRealm: 'managed-realm',
+      authClientId: 'studio-client',
     } as const;
     const repository = {
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
@@ -307,6 +310,7 @@ describe('service-keycloak-execution-finalize', () => {
               details: {
                 policyVersion: 3,
                 authRealm: instance.authRealm,
+                authClientId: instance.authClientId,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(instance as never),
               },
             },

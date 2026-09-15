@@ -19,12 +19,13 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'current' },
+                details: { policyVersion: 3, authRealm: 'current', authClientId: 'current-client' },
               },
             ],
           },
         ] as never,
-        'current'
+        'current',
+        'current-client'
       )
     ).toBe(true);
   });
@@ -42,12 +43,45 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'previous-realm' },
+                details: {
+                  policyVersion: 3,
+                  authRealm: 'previous-realm',
+                  authClientId: 'current-client',
+                },
               },
             ],
           },
         ] as never,
-        'current-realm'
+        'current-realm',
+        'current-client'
+      )
+    ).toBe(false);
+  });
+
+  it('does not carry managed provenance to a different current client', () => {
+    expect(
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'succeeded',
+            steps: [
+              { stepKey: 'realm_baseline', status: 'done' },
+              {
+                stepKey: 'status_snapshot',
+                status: 'done',
+                details: {
+                  policyVersion: 3,
+                  authRealm: 'current',
+                  authClientId: 'previous-client',
+                },
+              },
+            ],
+          },
+        ] as never,
+        'current',
+        'current-client'
       )
     ).toBe(false);
   });
@@ -66,12 +100,13 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'current' },
+                details: { policyVersion: 3, authRealm: 'current', authClientId: 'current-client' },
               },
             ],
           },
         ] as never,
-        'current'
+        'current',
+        'current-client'
       )
     ).toBe(true);
   });
@@ -90,18 +125,19 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'current' },
+                details: { policyVersion: 3, authRealm: 'current', authClientId: 'current-client' },
               },
             ],
           },
         ] as never,
-        'current'
+        'current',
+        'current-client'
       )
     ).toBe(false);
   });
 
   it('does not treat imported existing realms as managed', () => {
-    expect(isRealmBaselineApplicable('existing', [], 'current')).toBe(false);
+    expect(isRealmBaselineApplicable('existing', [], 'current', 'current-client')).toBe(false);
   });
 });
 

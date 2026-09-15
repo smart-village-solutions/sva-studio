@@ -1,4 +1,4 @@
 {
   "prNumber": 1401,
-  "body": "Verständlichere SSF-Konfigurationsfehler\n\n- Fehlt die SSF-Datenbankverbindung, zeigt der Berechtigungsabgleich einen konkreten Konfigurationshinweis.\n- Der betroffene Auftrag wird bis zur Reparatur nicht automatisch wiederholt. Vorübergehende Verbindungsprobleme bleiben wiederholbar."
+  "body": "SSF nur bei ausdrücklicher Aktivierung\n\n- Neue Instanzen erhalten SSF nur noch bei ausdrücklicher Modulzuweisung.\n- Fehlt die SSF-Datenbankverbindung, zeigt der Berechtigungsabgleich einen konkreten Konfigurationshinweis.\n- Der betroffene Auftrag wird bis zur Reparatur nicht automatisch wiederholt. Vorübergehende Verbindungsprobleme bleiben wiederholbar."
 }

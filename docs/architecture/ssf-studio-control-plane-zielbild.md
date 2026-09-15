@@ -131,9 +131,13 @@ Aktivierungsrichtlinien:
 | `automatic` | aktiviert         |          Ja           |
 | `required`  | aktiviert         |         Nein          |
 
-Das SSF-Plugin verwendet zunächst `automatic`. Eine manuelle Deaktivierung
-eines automatisch aktivierten Plugins ist ein persistenter Sollzustand und darf
-durch Neustart oder Reconcile nicht aufgehoben werden.
+Das SSF-Plugin verwendet `optional`. Neue Tenants erhalten SSF nur durch eine
+explizite Modulzuweisung; ohne diese werden keine SSF-Provisionierungsaufträge
+angelegt. Manuelle Aktivierungen und Deaktivierungen sind persistente
+Sollzustände und werden durch Neustart oder Reconcile nicht aufgehoben.
+Vor dem Wechsel von `automatic` auf `optional` müssen weiter benötigte,
+bisher ausschließlich automatisch aktivierte SSF-Zuweisungen explizit
+bestätigt werden. Das gilt insbesondere für bestehende SSF-Installationen.
 
 Wird ein Plugin nachträglich installiert, gilt:
 

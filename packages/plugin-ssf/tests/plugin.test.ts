@@ -84,7 +84,7 @@ describe('SSF plugin metadata', () => {
       pluginId: 'ssf',
       manifestVersion: 1,
       extensionTier: 'admin',
-      tenantActivationPolicy: 'automatic',
+      tenantActivationPolicy: 'optional',
     });
     expect(manifest['hostCompatibility']).toMatchObject({
       requiredCapabilities: ['iam', 'server', 'jobs'],

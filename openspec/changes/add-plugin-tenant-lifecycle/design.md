@@ -110,6 +110,19 @@ Fachartefakte für die übergebene Sollgeneration. Das Lifecycle-Ledger enthält
 keine pluginfachlichen Ressourcen und ersetzt keine plugin-eigene
 Migrationshistorie.
 
+Die hostvalidierte Jobdefinition bleibt auch für die benannte Queue
+maßgeblich. Der Composition Root darf deklarierte Queues nicht pauschal auf
+eine gemeinsame Queue überschreiben, weil Graphile Jobs innerhalb einer
+benannten Queue seriell ausführt. Default- und privilegierte Lane verwenden
+daher getrennte Queues, sobald ein privilegierter Lifecycle-Job sonst durch
+Default-Retries blockiert werden könnte. Die Waste-Tenant-Provisionierung
+verwendet konkret `waste-provisioning`; andere Waste- und SSF-Jobs verbleiben
+auf `plugin-operations`. Die getrennten Task-Identifier bleiben als
+Principal- und Claim-Grenze unverändert bestehen. Der bestehende dedizierte
+Waste-Fassadenpfad verwendet denselben Queue-Namen aus dem gemeinsamen
+Operations-Vertrag, damit auch manuelle Provisionierungs-Retries nicht in die
+Default-Queue zurückfallen.
+
 ### Readiness ist ein gemeinsamer Ergebnisvertrag
 
 Plugins melden `pending`, `ready`, `degraded` oder `blocked` sowie namespaced

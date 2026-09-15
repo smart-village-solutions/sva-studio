@@ -24,6 +24,7 @@
 - [x] 4.1 Waste-Provisionierungsjob über einen Lifecycle-Adapter registrieren
 - [x] 4.2 Waste-Datenbanktopologie und Fachmigrationen unverändert plugin-owned lassen
 - [x] 4.3 Regressionstests für Claim, Reconcile, Readiness und Fehlerzustände ergänzen
+- [x] 4.4 Privilegierte Waste-Provisionierung auf eine deklarierte, von Default-Jobs unabhängige Queue legen und den Rückstaufall mit echtem Graphile Worker nachweisen
 
 ## 5. Dokumentation und Abnahme
 

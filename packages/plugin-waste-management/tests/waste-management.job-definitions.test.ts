@@ -13,7 +13,7 @@ describe('waste management job definitions', () => {
     ).toEqual([
       {
         jobTypeId: 'waste-management.provision-tenant-database',
-        queue: 'plugin-operations',
+        queue: 'waste-provisioning',
         displayName: 'Waste-Tenant-Datenbank provisionieren',
         progress: {
           phaseKeys: [

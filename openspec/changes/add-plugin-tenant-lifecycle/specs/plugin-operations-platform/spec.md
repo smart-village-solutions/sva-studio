@@ -17,3 +17,11 @@ Das System SHALL tenantbezogene Plugin-Lifecycle-Läufe als zentral persistente,
 - **WHEN** der Host den Execution-Context erzeugt
 - **THEN** enthält er ausschließlich die für den Beitrag freigegebenen Fähigkeiten
 - **AND** erhält das Plugin keinen direkten Zugriff auf Host-Runner-, Registry- oder fremde Secret-Interna
+
+#### Scenario: Privilegierter Lifecycle-Job bleibt von der Default-Queue unabhängig
+
+- **GIVEN** ein Default-Job hält seine deklarierte serielle Queue durch Ausführung oder Retry belegt
+- **AND** ein privilegierter Lifecycle-Job deklariert eine davon getrennte Queue
+- **WHEN** der Host beide Jobs an die zuständigen Worker-Lanes übergibt
+- **THEN** verwendet jede Ausführung die hostvalidierte Queue ihrer Jobdefinition
+- **AND** erreicht der privilegierte Lifecycle-Job seinen nächsten Verarbeitungsversuch innerhalb der zugesagten Konvergenzzeit ohne HTTP-Request oder manuellen Neustart

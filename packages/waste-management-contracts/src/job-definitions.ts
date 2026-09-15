@@ -12,7 +12,7 @@ const pluginNamespace = wasteManagementOperationsContract.pluginId;
 const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
-    queue: wasteManagementOperationsContract.queueName,
+    queue: wasteManagementOperationsContract.provisioningQueueName,
     displayName: 'Waste-Tenant-Datenbank provisionieren',
     progress: {
       phaseKeys: [

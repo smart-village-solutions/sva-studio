@@ -77,13 +77,13 @@ Für Uploads aus Content-Editoren gilt ergänzend:
 1. Ein Host- oder Fachclient ruft `POST /api/v1/plugin-operations/jobs` mit Plugin-ID, Jobtyp, optionalem Importprofil und fachlichem Input auf.
 2. `@sva/auth-runtime` prüft Session, Instanzkontext, Idempotency-Key und den generischen Request-Vertrag.
 3. Der Host legt über `@sva/data-repositories` einen führenden Studio-Jobdatensatz mit `source = 'plugin'` sowie das technische Initialevent `job.queued` im Studio-Postgres an.
-4. Die interne Worker-Anbindung queued den generischen Task `studio_job_execute` runner-agnostisch und baut für den fachlichen Handler einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger` und Request-/Actor-Bezug.
+4. Die interne Worker-Anbindung übernimmt die Queue aus der hostvalidierten Jobdefinition, queued den generischen Task `studio_job_execute` runner-agnostisch und baut für den fachlichen Handler einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger` und Request-/Actor-Bezug. Sie darf deklarierte Queue-Namen nicht pauschal auf eine gemeinsame Queue überschreiben.
 5. Laufende Worker-Schritte schreiben Progress, Heartbeat und technische Lifecycle-Events gegen denselben zentralen Host-Store zurück.
 6. Falls ein Fachhandler strukturierte Fortschrittsdetails wie `processedRows` und `totalRows` kennt, meldet er diese über denselben generischen Progress-Vertrag und nicht über einen separaten Plugin-Endpunkt.
 7. Der Client liest Status, Progress, Heartbeat und Verlauf über `GET /api/v1/plugin-operations/jobs/:jobId`.
 8. Der Detailvertrag liefert `availableActions`; `cancel` erscheint nur mit Schreibberechtigung für aktive Jobs ohne frühere Abbruchanforderung. `POST /api/v1/plugin-operations/jobs/:jobId/cancel` schreibt den Request konditional genau einmal; die kooperative Reaktion bleibt Worker-Verantwortung.
 9. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz `iam.studio_jobs` plus `iam.studio_job_events`.
-10. Der App-Principal reiht Jobs ausschließlich über den migrationsverwalteten, eingabevalidierenden `SECURITY DEFINER`-Wrapper `graphile_worker.sva_enqueue_job` ein; die Worker-Lane verarbeitet sie mit einem eigenen Principal und führt beim Start keine Schema-Migration aus.
+10. Der App-Principal reiht Jobs ausschließlich über den migrationsverwalteten, eingabevalidierenden `SECURITY DEFINER`-Wrapper `graphile_worker.sva_enqueue_job` ein; die Worker-Lane verarbeitet sie mit einem eigenen Principal und führt beim Start keine Schema-Migration aus. Weil Graphile benannte Queues seriell verarbeitet, verwenden Default- und privilegierte Lane bei konkurrierenden Jobs getrennte Queue-Namen und getrennte Task-Identifier. Die privilegierte Waste-Tenant-Provisionierung läuft auf `waste-provisioning`; normale Plugin-Jobs verbleiben auf `plugin-operations`.
 
 Fehlerpfad:
 

@@ -6,6 +6,7 @@ describe('waste-management-operations-contract', () => {
   it('defines the first stable waste job type set for generic plugin operations', () => {
     expect(wasteManagementOperationsContract.pluginId).toBe('waste-management');
     expect(wasteManagementOperationsContract.queueName).toBe('plugin-operations');
+    expect(wasteManagementOperationsContract.provisioningQueueName).toBe('waste-provisioning');
     expect(wasteManagementOperationsContract.jobTypeIds).toEqual({
       provisionTenantDatabase: 'waste-management.provision-tenant-database',
       tenantReadiness: 'waste-management.tenant-readiness',

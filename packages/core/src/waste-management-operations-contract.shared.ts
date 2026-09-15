@@ -16,6 +16,7 @@ import {
 const wasteManagementOperationsContract = {
   pluginId: 'waste-management',
   queueName: 'plugin-operations',
+  provisioningQueueName: 'waste-provisioning',
   jobTypeIds: wasteManagementJobTypeIds,
   resetConfirmationToken: wasteManagementResetConfirmationToken,
   importProfileIds: wasteManagementImportProfileIds,

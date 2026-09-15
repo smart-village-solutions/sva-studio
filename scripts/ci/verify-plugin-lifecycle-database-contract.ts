@@ -14,6 +14,7 @@ const activationPluginId = 'act-plugin';
 const observabilityOtherInstanceId = '00000000-0000-4000-8000-000000000041';
 const jobTypeId = 'fault-plugin.provision';
 const queueName = 'plugin-tenant-lifecycle-contract';
+const privilegedQueueName = 'plugin-tenant-lifecycle-privileged-contract';
 const contractWorkerProcesses = new Set<ReturnType<typeof spawn>>();
 let handlerAttempts = 0;
 let handlerEffectDatabase: QueryClient | undefined;
@@ -568,7 +569,8 @@ const configureRuntime = (
     | 'retry-once'
     | 'always-fail'
     | 'idempotent-effect' = 'ready',
-  executionLane: 'default' | 'privileged' = 'default'
+  executionLane: 'default' | 'privileged' = 'default',
+  registeredQueueName = queueName
 ): void => {
   handlerAttempts = 0;
   runtime.configure({
@@ -601,7 +603,7 @@ const configureRuntime = (
   });
   runtime.register({
     [jobTypeId]: {
-      queueName,
+      queueName: registeredQueueName,
       executionLane,
       handler: async () => {
         handlerAttempts += 1;
@@ -1118,6 +1120,73 @@ const runMatrix = async (
       'top01_privileged_worker_did_not_consume_job'
     );
   });
+
+  await reportCase(
+    'TOP-01-positive-privileged-queue-progresses-while-default-queue-blocked',
+    async () => {
+      await cleanLifecycle(adminPool);
+      configureRuntime(runtime, 'contract-1', 'ready', 'privileged', privilegedQueueName);
+
+      let defaultJobStarted = false;
+      let releaseDefaultJob = (): void => undefined;
+      const defaultJobRelease = new Promise<void>((resolve) => {
+        releaseDefaultJob = resolve;
+      });
+      await adminPool.query(
+        `SELECT graphile_worker.sva_enqueue_job(
+           'studio_job_execute', '{}'::json, $1, 1, 'studio-job:top01-default-blocker', now()
+         )`,
+        [queueName]
+      );
+      const defaultRunner = runTaskList(
+        { concurrency: 1, noHandleSignals: true },
+        {
+          studio_job_execute: async () => {
+            defaultJobStarted = true;
+            await defaultJobRelease;
+          },
+        },
+        workerPool
+      );
+      const privilegedWorkerPool = new Pool({
+        connectionString: `postgres://sva_job_worker:${workerPassword}@127.0.0.1:${port}/${database}`,
+        max: 2,
+        idleTimeoutMillis: 5_000,
+        statement_timeout: 10_000,
+        idle_in_transaction_session_timeout: 10_000,
+      });
+      let privilegedRunner: ContractRunner | undefined;
+      try {
+        await waitFor('top01-default-queue-blocker-started', async () => defaultJobStarted);
+        const started = await startLifecycle(runtime);
+        privilegedRunner = runTaskList(
+          { concurrency: 1, noHandleSignals: true },
+          runtime.createTaskList(runtime.registry, 'studio_job_execute_privileged'),
+          privilegedWorkerPool
+        );
+        await waitFor(
+          'top01-privileged-job-completed-while-default-queue-blocked',
+          async () =>
+            (await scalar(
+              adminPool,
+              "SELECT (status = 'succeeded')::text AS value FROM iam.studio_jobs WHERE id = $1",
+              [started.job.id]
+            )) === 'true'
+        );
+        assert(
+          defaultJobStarted,
+          'top01_privileged_job_completed_without_default_queue_contention'
+        );
+      } finally {
+        releaseDefaultJob();
+        await Promise.all([
+          privilegedRunner?.gracefulShutdown() ?? Promise.resolve(),
+          defaultRunner.gracefulShutdown(),
+        ]);
+        await privilegedWorkerPool.end();
+      }
+    }
+  );
 
   await reportCase('TOP-01-positive-crash-recovery-without-http-request', async () => {
     await cleanLifecycle(adminPool);

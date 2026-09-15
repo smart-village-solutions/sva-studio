@@ -59,8 +59,12 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
     selectedInstance.keycloakProvisioningRuns?.some(
       (run) =>
         run.mode === 'new' &&
-        run.overallStatus === 'succeeded' &&
-        run.steps.some((step) => step.stepKey === 'realm_baseline' && step.status === 'done')
+        run.steps.some((step) => step.stepKey === 'realm_baseline' && step.status === 'done') &&
+        (run.overallStatus === 'succeeded' ||
+          (run.overallStatus === 'failed' &&
+            run.steps.some(
+              (step) => step.stepKey === 'admin_bootstrap' && step.status === 'failed'
+            )))
     ) === true;
 
   return [

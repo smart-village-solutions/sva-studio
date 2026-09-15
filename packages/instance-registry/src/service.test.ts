@@ -3481,6 +3481,27 @@ describe('instance registry service facade', () => {
                   secretVersions
                 ),
                 status: snapshotStatus,
+                plan: {
+                  mode: 'existing',
+                  overallStatus: 'ready',
+                  generatedAt: '2026-01-01T00:00:00.000Z',
+                  driftSummary: 'Nur das SMTP-Passwort fehlt.',
+                  steps: [
+                    {
+                      stepKey: 'smtp_password',
+                      title: 'SMTP-Passwort manuell setzen',
+                      action: 'skip',
+                      status: 'ready',
+                      summary: 'SMTP-Passwort fehlt.',
+                      details: {
+                        applicable: true,
+                        configured: false,
+                        reasonCode: 'smtp_password_required',
+                        actionCode: 'set_smtp_password_in_keycloak',
+                      },
+                    },
+                  ],
+                },
               },
             },
           ],
@@ -3500,12 +3521,23 @@ describe('instance registry service facade', () => {
       ...snapshotStatus,
       smtpPasswordConfigured: true,
     });
+    const plan = await createPlanKeycloakProvisioningHandler(
+      createDeps(repository, { getKeycloakStatus })
+    )('demo');
+    expect(plan?.steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
+      summary: 'In Keycloak ist ein SMTP-Passwort hinterlegt.',
+      details: {
+        configured: true,
+        reasonCode: 'smtp_password_configured',
+        actionCode: 'none',
+      },
+    });
 
     getKeycloakStatus.mockRejectedValueOnce(new Error('tenant-admin-unavailable'));
     await expect(
       createGetKeycloakStatusHandler(createDeps(repository, { getKeycloakStatus }))('demo')
     ).resolves.toEqual(snapshotStatus);
-    expect(getKeycloakStatus).toHaveBeenCalledTimes(2);
+    expect(getKeycloakStatus).toHaveBeenCalledTimes(3);
   });
 
   it('ignores status snapshots from before ownership-aware role evaluation', async () => {

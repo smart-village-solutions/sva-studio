@@ -163,12 +163,11 @@ const buildRealmBaselineStep = (
   };
 };
 
-const buildSmtpPasswordStep = (
-  state: KeycloakReadState | undefined,
+export const buildSmtpPasswordPlanStep = (
+  configured: boolean,
   blocked: boolean,
   applicable: boolean
 ): KeycloakTenantPlan['steps'][number] => {
-  const configured = Boolean(state?.realm?.smtpPasswordConfigured);
   return {
     stepKey: 'smtp_password',
     title: 'SMTP-Passwort manuell setzen',
@@ -204,5 +203,5 @@ export const buildRealmBaselinePlanSteps = (
   applicable: boolean
 ): KeycloakTenantPlan['steps'] => [
   buildRealmBaselineStep(state, blocked, applicable),
-  buildSmtpPasswordStep(state, blocked, applicable),
+  buildSmtpPasswordPlanStep(Boolean(state?.realm?.smtpPasswordConfigured), blocked, applicable),
 ];

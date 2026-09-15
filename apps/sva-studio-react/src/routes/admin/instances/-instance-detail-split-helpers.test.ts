@@ -458,6 +458,26 @@ describe('instance detail split helpers', () => {
       false,
     ]);
 
+    const retainedManagedRealmEntries = getKeycloakStatusEntries({
+      realmMode: 'existing',
+      tenantAdminBootstrap: undefined,
+      keycloakStatus: createKeycloakStatusFixture({ smtpPasswordConfigured: false }),
+      keycloakProvisioningRuns: [
+        {
+          mode: 'new',
+          overallStatus: 'failed',
+          steps: [
+            { stepKey: 'realm_baseline', status: 'done' },
+            { stepKey: 'admin_bootstrap', status: 'failed' },
+          ],
+        },
+      ],
+    } as never);
+    expect(retainedManagedRealmEntries).toContainEqual([
+      'admin.instances.keycloakStatus.smtpPasswordConfigured',
+      false,
+    ]);
+
     for (const status of [
       'requested',
       'validated',

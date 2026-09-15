@@ -27,10 +27,28 @@ describe('isRealmBaselineApplicable', () => {
         {
           mode: 'new',
           overallStatus: 'failed',
-          steps: [{ stepKey: 'realm_baseline', status: 'done' }],
+          steps: [
+            { stepKey: 'realm_baseline', status: 'done' },
+            { stepKey: 'admin_bootstrap', status: 'failed' },
+          ],
         },
       ] as never)
     ).toBe(true);
+  });
+
+  it('does not keep compensated new-mode runs as managed provenance', () => {
+    expect(
+      isRealmBaselineApplicable('existing', [
+        {
+          mode: 'new',
+          overallStatus: 'failed',
+          steps: [
+            { stepKey: 'realm_baseline', status: 'done' },
+            { stepKey: 'worker_complete', status: 'failed' },
+          ],
+        },
+      ] as never)
+    ).toBe(false);
   });
 
   it('does not treat imported existing realms as managed', () => {

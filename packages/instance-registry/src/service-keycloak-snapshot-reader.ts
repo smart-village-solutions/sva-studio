@@ -1,7 +1,9 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
-import type { KeycloakTenantStatus } from './keycloak-types.js';
+import { buildSmtpPasswordPlanStep } from './keycloak-realm-baseline.js';
+import type { KeycloakTenantPlan, KeycloakTenantStatus } from './keycloak-types.js';
+import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js';
 import {
   decryptAuthClientSecret,
   decryptTenantAdminClientSecret,
@@ -18,6 +20,12 @@ const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak-snap
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const hasCompletedStep = (
+  run: ProvisioningRuns[number],
+  stepKey: string,
+  status: 'done' | 'failed'
+): boolean => run.steps.some((step) => step.stepKey === stepKey && step.status === status);
+
 export const isRealmBaselineApplicable = (
   realmMode: 'new' | 'existing',
   runs: ProvisioningRuns
@@ -26,7 +34,9 @@ export const isRealmBaselineApplicable = (
   runs.some(
     (run) =>
       run.mode === 'new' &&
-      run.steps.some((step) => step.stepKey === 'realm_baseline' && step.status === 'done')
+      hasCompletedStep(run, 'realm_baseline', 'done') &&
+      (run.overallStatus === 'succeeded' ||
+        (run.overallStatus === 'failed' && hasCompletedStep(run, 'admin_bootstrap', 'failed')))
   );
 
 export const refreshManagedRealmSmtpPasswordStatus = async (
@@ -101,4 +111,52 @@ export const readSnapshotFromRuns = <T>(
     }
   }
   return null;
+};
+
+export const readManagedRealmPlanSnapshot = async (
+  deps: InstanceRegistryServiceDeps,
+  instance: NonNullable<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>>,
+  runs: Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>,
+  secretVersions: Awaited<ReturnType<typeof loadPersistedSnapshotSecretVersions>>,
+  inputFingerprint: string
+): Promise<KeycloakTenantPlan | null> => {
+  const plan = readSnapshotFromRuns<KeycloakTenantPlan>(
+    runs,
+    ['status_snapshot', 'worker_plan_snapshot'],
+    'plan',
+    KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+    inputFingerprint
+  );
+  if (!plan) return null;
+
+  const status = readSnapshotFromRuns<KeycloakTenantStatus>(
+    runs,
+    ['status_snapshot'],
+    'status',
+    KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+    inputFingerprint
+  );
+  if (!status) return plan;
+
+  const refreshedStatus = await refreshManagedRealmSmtpPasswordStatus(
+    deps,
+    instance,
+    runs,
+    secretVersions,
+    status
+  );
+  if (refreshedStatus.smtpPasswordConfigured === status.smtpPasswordConfigured) return plan;
+
+  return {
+    ...plan,
+    steps: plan.steps.map((step) =>
+      step.stepKey === 'smtp_password'
+        ? buildSmtpPasswordPlanStep(
+            Boolean(refreshedStatus.smtpPasswordConfigured),
+            step.status === 'blocked',
+            step.details.applicable === true
+          )
+        : step
+    ),
+  };
 };

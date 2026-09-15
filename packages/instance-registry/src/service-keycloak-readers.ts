@@ -23,10 +23,10 @@ import {
 } from './service-keycloak-secrets.js';
 import {
   isRealmBaselineApplicable,
+  readManagedRealmPlanSnapshot,
   readSnapshotFromRuns,
   refreshManagedRealmSmtpPasswordStatus,
 } from './service-keycloak-snapshot-reader.js';
-
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 const buildLocalPreflight = (input: {
   realmMode: 'new' | 'existing';
@@ -254,11 +254,11 @@ export const createPlanKeycloakProvisioningHandler =
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
-    const snapshot = readSnapshotFromRuns<KeycloakTenantPlan>(
+    const snapshot = await readManagedRealmPlanSnapshot(
+      deps,
+      loaded.instance,
       runs,
-      ['status_snapshot', 'worker_plan_snapshot'],
-      'plan',
-      KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+      secretVersions,
       buildKeycloakSnapshotInputFingerprint(
         loaded.instance,
         secretVersions,

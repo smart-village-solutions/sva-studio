@@ -1,0 +1,4 @@
+{
+  "prNumber": 1399,
+  "body": "Öffentliche Abfallkalender bleiben nach einer erneuten Waste-Bereitstellung mit ihren bestehenden Datenbankzugängen erreichbar.\n\n- Normale Wiederholungsläufe ändern die Passwörter der Studio- und Public-Runtime nicht mehr.\n- Vorhandene Zugangsdaten werden vor dem Datenbankabgleich sicher entschlüsselt und geprüft.\n- Fehlende, unlesbare oder unerwartete Zugangsdaten brechen die Bereitstellung ohne Passwortänderung ab."
+}

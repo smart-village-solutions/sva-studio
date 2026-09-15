@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import {
   wasteTenantProvisioningContract,
   type ExternalInterfaceRecord,
@@ -21,6 +19,7 @@ import { Pool } from 'pg';
 
 import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
 import type { OperationSummary, WasteOperationSqlPool } from './waste-management-operations.types.js';
+import { buildWasteTenantDatabaseUrl, createWasteTenantDatabasePassword, readExistingWasteRuntimePasswords } from './waste-tenant-database-credentials.server.js';
 
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/server-runtime';
 
@@ -34,18 +33,6 @@ const quoteIdentifier = (value: string): string => {
 };
 
 const quoteLiteral = (value: string): string => `'${value.replaceAll("'", "''")}'`;
-const createPassword = (): string => randomBytes(32).toString('base64url');
-
-const buildDatabaseUrl = (
-  adminUrl: string,
-  input: { readonly database: string; readonly role: string; readonly password: string }
-): string => {
-  const url = new URL(adminUrl);
-  url.username = input.role;
-  url.password = input.password;
-  url.pathname = `/${input.database}`;
-  return url.toString();
-};
 
 type ProvisioningPool = WasteOperationSqlPool;
 
@@ -133,62 +120,6 @@ const createOrUpdateRoles = async (
   await client.query(
     `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH SET TRUE;`
   );
-};
-
-const readExistingRuntimePassword = (input: {
-  readonly databaseUrl: unknown;
-  readonly databaseName: string;
-  readonly roleName: string;
-}): string => {
-  if (typeof input.databaseUrl !== 'string' || input.databaseUrl.length === 0) {
-    throw new Error('waste_database_existing_secret_unreadable');
-  }
-  try {
-    const url = new URL(input.databaseUrl);
-    const username = decodeURIComponent(url.username);
-    const password = decodeURIComponent(url.password);
-    const databaseName = decodeURIComponent(url.pathname.replace(/^\//u, ''));
-    if (username !== input.roleName || databaseName !== input.databaseName || !password) {
-      throw new Error('waste_database_existing_secret_unreadable');
-    }
-    return password;
-  } catch {
-    throw new Error('waste_database_existing_secret_unreadable');
-  }
-};
-
-const readExistingRuntimePasswords = (input: {
-  readonly existing: ExternalInterfaceRecord;
-  readonly names: WasteTenantDatabaseNames;
-  readonly revealSecret?: WasteTenantDatabaseProvisionerDeps['revealSecret'];
-}): Readonly<{ app: string; publicApp: string }> => {
-  if (!input.existing.secretConfigCiphertext || !input.revealSecret) {
-    throw new Error('waste_database_existing_secret_unreadable');
-  }
-  const plaintext = input.revealSecret(
-    input.existing.secretConfigCiphertext,
-    buildExternalInterfaceSecretConfigAad(input.existing.id)
-  );
-  if (!plaintext) {
-    throw new Error('waste_database_existing_secret_unreadable');
-  }
-  try {
-    const config = JSON.parse(plaintext) as Record<string, unknown>;
-    return {
-      app: readExistingRuntimePassword({
-        databaseUrl: config.databaseUrl,
-        databaseName: input.names.database,
-        roleName: input.names.appRole,
-      }),
-      publicApp: readExistingRuntimePassword({
-        databaseUrl: config.publicDatabaseUrl,
-        databaseName: input.names.database,
-        roleName: input.names.publicAppRole,
-      }),
-    };
-  } catch {
-    throw new Error('waste_database_existing_secret_unreadable');
-  }
 };
 
 const ensureDatabase = async (
@@ -342,10 +273,10 @@ export const createProvisionTenantDatabaseOperation = (
     if (existing) {
       managedInterfaceForFailure = existing;
     }
-    const passwordFactory = deps.createPassword ?? createPassword;
+    const passwordFactory = deps.createPassword ?? createWasteTenantDatabasePassword;
     const migratorPassword = passwordFactory();
     const runtimePasswords = existing
-      ? readExistingRuntimePasswords({ existing, names, revealSecret: deps.revealSecret })
+      ? readExistingWasteRuntimePasswords({ existing, names, revealSecret: deps.revealSecret })
       : { app: passwordFactory(), publicApp: passwordFactory() };
     const passwords = { migrator: migratorPassword, ...runtimePasswords };
     const createPool = deps.createPool ?? defaultCreatePool;
@@ -362,9 +293,9 @@ export const createProvisionTenantDatabaseOperation = (
       await adminPool.end();
     }
 
-    const migratorUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.migratorRole, password: passwords.migrator });
-    const appUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.appRole, password: passwords.app });
-    const publicAppUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.publicAppRole, password: passwords.publicApp });
+    const migratorUrl = buildWasteTenantDatabaseUrl(adminUrl, { database: names.database, role: names.migratorRole, password: passwords.migrator });
+    const appUrl = buildWasteTenantDatabaseUrl(adminUrl, { database: names.database, role: names.appRole, password: passwords.app });
+    const publicAppUrl = buildWasteTenantDatabaseUrl(adminUrl, { database: names.database, role: names.publicAppRole, password: passwords.publicApp });
     const now = (deps.now ?? (() => new Date()))().toISOString();
     const ciphertext = deps.protectSecret(
       JSON.stringify({ databaseUrl: appUrl, publicDatabaseUrl: publicAppUrl }),

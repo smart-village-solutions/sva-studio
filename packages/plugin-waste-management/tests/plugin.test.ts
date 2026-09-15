@@ -251,7 +251,7 @@ describe('pluginWasteManagement contract', () => {
           'text/csv',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ],
-        schemaVersion: '1.0.0',
+        schemaVersion: '2.0.0',
         schemaStrategy: 'waste-management.touren.schema',
         mappingStrategy: 'waste-management.touren.mapping',
         validation: { mode: 'preflight-and-commit' },

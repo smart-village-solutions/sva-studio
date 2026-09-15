@@ -88,9 +88,7 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
   useEffect(() => {
     isMountedRef.current = true;
     void loadOverview();
-    return () => {
-      isMountedRef.current = false;
-    };
+    return () => void (isMountedRef.current = false);
   }, [loadOverview]);
 
   return loadOverview;

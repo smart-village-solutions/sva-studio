@@ -94,7 +94,7 @@ export type WasteManagementDataProfileDefinition = {
   readonly entities: readonly WasteManagementDataEntityDefinition[];
 };
 
-export type WasteManagementDataFormatVersion = '1.0.0' | '2.0.0';
+type WasteManagementDataFormatVersion = '1.0.0' | '2.0.0';
 
 export type WasteManagementDataExchangeRecord = Readonly<{
   entityType: string;

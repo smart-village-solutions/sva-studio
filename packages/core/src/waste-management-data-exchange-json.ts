@@ -1,7 +1,6 @@
 import {
   wasteManagementDataProfileIds,
   type WasteManagementDataExchangeEnvelope,
-  type WasteManagementDataFormatVersion,
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
 } from './waste-management-data-exchange.js';
@@ -21,6 +20,8 @@ export type {
   WasteManagementDataExchangeIssue,
   WasteManagementDataExchangeParseResult,
 } from './waste-management-data-exchange-json.types.js';
+
+type WasteManagementDataFormatVersion = WasteManagementDataExchangeEnvelope['formatVersion'];
 
 const normalizeLegacyTourStatus = (
   profileId: WasteManagementDataProfileId,
@@ -44,6 +45,17 @@ const normalizeLegacyTourStatus = (
 const invalidEnvelope = (message: string, path = '$'): WasteManagementDataExchangeParseResult => ({
   ok: false,
   issues: [{ code: 'invalid_envelope', path, message }],
+});
+
+const unsupportedFormatVersion = (): WasteManagementDataExchangeParseResult => ({
+  ok: false,
+  issues: [
+    {
+      code: 'unsupported_format_version',
+      path: 'formatVersion',
+      message: 'Nicht unterstützte Formatversion.',
+    },
+  ],
 });
 
 const parseJsonSource = (source: string | unknown): unknown => {
@@ -79,16 +91,7 @@ export const parseWasteManagementDataExchangeJson = (
       typeof source === 'string' ? 'Ungültiges JSON.' : 'JSON-Envelope fehlt.'
     );
   if (value.formatVersion !== '1.0.0' && value.formatVersion !== '2.0.0') {
-    return {
-      ok: false,
-      issues: [
-        {
-          code: 'unsupported_format_version',
-          path: 'formatVersion',
-          message: 'Nicht unterstützte Formatversion.',
-        },
-      ],
-    };
+    return unsupportedFormatVersion();
   }
   if (!hasValidEnvelopeShape(value)) return invalidEnvelope('JSON-Envelope ist unvollständig.');
 
@@ -108,16 +111,7 @@ export const parseWasteManagementDataExchangeJson = (
   const isLegacyTourEnvelope =
     profile.profileId === wasteManagementDataProfileIds.tours && value.formatVersion === '1.0.0';
   if (value.formatVersion !== profile.formatVersion && !isLegacyTourEnvelope) {
-    return {
-      ok: false,
-      issues: [
-        {
-          code: 'unsupported_format_version',
-          path: 'formatVersion',
-          message: 'Nicht unterstützte Formatversion.',
-        },
-      ],
-    };
+    return unsupportedFormatVersion();
   }
 
   const issues: WasteManagementDataExchangeIssue[] = [];

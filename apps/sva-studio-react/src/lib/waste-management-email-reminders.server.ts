@@ -113,6 +113,7 @@ export const createMaterializeEmailRemindersOperation = (
     let createdOutboxCount = 0;
     let duplicateOutboxCount = 0;
     let skippedPickupCount = 0;
+    const validDedupeKeys = new Set<string>();
     for (const subscription of subscriptions) {
       const matchingLocations = matchSelectionLocations(locations, subscription);
       if (matchingLocations.length === 0) {
@@ -162,6 +163,7 @@ export const createMaterializeEmailRemindersOperation = (
               unsubscribeTokenSecret: unsubscribeSigningSecret,
             }),
           };
+          validDedupeKeys.add(outboxEntry.dedupeKey);
           if (new Date(sendAt).getTime() < referenceTime.getTime()) {
             const refreshed = await reminderRepository.refreshPendingOutboxEntry(outboxEntry);
             const refreshCounts = countOverdueReminderRefresh(refreshed);
@@ -185,6 +187,10 @@ export const createMaterializeEmailRemindersOperation = (
         }
       }
     }
+    const cancelledOutboxCount = await reminderRepository.cancelInvalidReminderOutboxEntries({
+      validDedupeKeys: [...validDedupeKeys],
+      now: referenceTime.toISOString(),
+    });
 
     return {
       operation: 'materialize-email-reminders',
@@ -193,6 +199,7 @@ export const createMaterializeEmailRemindersOperation = (
       createdOutboxCount,
       duplicateOutboxCount,
       skippedPickupCount,
+      cancelledOutboxCount,
     };
   });
 
@@ -224,6 +231,10 @@ export const createProcessEmailReminderOutboxOperation = (
   if (Number.isNaN(referenceTime.getTime())) {
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
+  await createMaterializeEmailRemindersOperation(deps)(instanceId, {
+    operation: 'materialize-email-reminders',
+    referenceTime: referenceTime.toISOString(),
+  });
   const reminderConfig = reminderSettings.config;
   const transportConfigs = await loadMailTransportConfigs(deps, instanceId);
   if (transportConfigs.size === 0) {

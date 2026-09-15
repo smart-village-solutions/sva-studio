@@ -13,6 +13,8 @@ import {
   StudioField,
 } from '@sva/studio-ui-react';
 
+import type { WasteTourStatusUpdateResult } from './waste-management.tours.status-mutation.js';
+
 type StatusTarget = '' | WasteTourStatus;
 
 type WasteToursStatusBulkDialogProps = Readonly<{
@@ -21,7 +23,7 @@ type WasteToursStatusBulkDialogProps = Readonly<{
   tourName?: string;
   saving: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: WasteTourStatusBulkUpdateInput) => Promise<boolean>;
+  onSubmit: (input: WasteTourStatusBulkUpdateInput) => Promise<WasteTourStatusUpdateResult>;
   onUpdated: () => void;
 }>;
 
@@ -107,7 +109,12 @@ const WasteToursStatusBulkForm = ({
         <DialogDescription>
           {tourName
             ? pt('tours.bulkStatusDialog.singleDescription', { value: tourName })
-            : pt('tours.bulkStatusDialog.description', { value: selectedTourIds.length })}
+            : pt(
+                selectedTourIds.length === 1
+                  ? 'tours.bulkStatusDialog.descriptionOne'
+                  : 'tours.bulkStatusDialog.descriptionOther',
+                { value: selectedTourIds.length }
+              )}
         </DialogDescription>
       </DialogHeader>
       <WasteToursStatusTargetField
@@ -153,9 +160,20 @@ export const WasteToursStatusBulkDialog = ({
     event.preventDefault();
     if (!target || saving || selectedTourIds.length === 0 || exceedsLimit) return;
     setError(null);
-    const succeeded = await onSubmit({ tourIds: selectedTourIds, status: target });
-    if (succeeded) onUpdated();
-    else setError(pt('tours.bulkStatusDialog.error'));
+    const result = await onSubmit({ tourIds: selectedTourIds, status: target });
+    if (result.ok) {
+      onUpdated();
+      return;
+    }
+    setError(
+      result.reason === 'forbidden'
+        ? pt('tours.messages.saveForbidden')
+        : pt(
+            result.reason === 'refresh'
+              ? 'tours.bulkStatusDialog.refreshError'
+              : 'tours.bulkStatusDialog.error'
+          )
+    );
   };
 
   return (

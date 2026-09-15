@@ -43,7 +43,7 @@ describe('WasteToursStatusBulkDialog', () => {
   afterEach(() => cleanup());
 
   it('requires an explicit target status and submits every selected ID', async () => {
-    const onSubmit = vi.fn().mockResolvedValue(true);
+    const onSubmit = vi.fn().mockResolvedValue({ ok: true });
     const onUpdated = vi.fn();
     render(
       <WasteToursStatusBulkDialog
@@ -73,7 +73,7 @@ describe('WasteToursStatusBulkDialog', () => {
   });
 
   it('keeps the dialog open and reports a failed update', async () => {
-    const onSubmit = vi.fn().mockResolvedValue(false);
+    const onSubmit = vi.fn().mockResolvedValue({ ok: false, reason: 'write' });
     const onUpdated = vi.fn();
     render(
       <WasteToursStatusBulkDialog
@@ -95,6 +95,29 @@ describe('WasteToursStatusBulkDialog', () => {
       'tours.bulkStatusDialog.error'
     );
     expect(onUpdated).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes a completed write whose overview refresh failed', async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ ok: false, reason: 'refresh' });
+    render(
+      <WasteToursStatusBulkDialog
+        open
+        selectedTourIds={['tour-1']}
+        saving={false}
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+        onUpdated={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('tours.bulkStatusDialog.targetLabel'), {
+      target: { value: 'published' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'tours.bulkStatusDialog.apply' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'tours.bulkStatusDialog.refreshError'
+    );
   });
 
   it('closes without submitting when the operation is cancelled', () => {

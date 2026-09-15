@@ -37,9 +37,9 @@ behandeln und SHALL `draft` sowie `archived` weiterhin im Studio bearbeitbar hal
 
 #### Scenario: Legacy-Import enthält einen Aktivstatus
 
-- **WHEN** ein unterstütztes Legacy-Datenaustauschprofil `active` statt `status` enthält
+- **WHEN** die unterstützte Tourprofilversion `1.0.0` `active` statt `status` enthält
 - **THEN** übernimmt der Import `true` als `published` und `false` als `draft`
-- **AND** schreibt ein neuer Export ausschließlich `status`
+- **AND** schreibt ein neuer Export mit Tourprofilversion `2.0.0` ausschließlich `status`
 
 ### Requirement: Waste-Management ändert den Status ausgewählter Touren atomar
 

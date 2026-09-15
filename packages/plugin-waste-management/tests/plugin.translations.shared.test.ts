@@ -204,7 +204,7 @@ describe('waste-management translation builders', () => {
     expect(tours.tours).not.toHaveProperty('assignments');
     expect(tours.tours).not.toHaveProperty('yearCalendar');
     expect(tours.tours.customDates.title).toBe('Individuelle Termine');
-    expect(wasteManagementPluginTranslationsDETours.tours.selection.selectFiltered).toContain(
+    expect(wasteManagementPluginTranslationsDETours.tours.selection.selectFilteredOther).toContain(
       'gefilterten Touren'
     );
     expect(wasteManagementPluginTranslationsDETours.tours.bulkStatusDialog.open).toBe(

@@ -16,6 +16,9 @@ const actor: AuthenticatedRequestContext = {
   user: { id: 'user-1', instanceId: 'tenant-a', roles: ['system_admin'] },
 };
 
+const tourIdOne = '11111111-1111-4111-8111-111111111111';
+const tourIdTwo = '22222222-2222-4222-8222-222222222222';
+
 const createRequest = (body: Record<string, unknown>) =>
   new Request('https://studio.test/api/v1/waste-management/tours/bulk-status', {
     method: 'PUT',
@@ -44,7 +47,7 @@ describe('waste-management tour status bulk handler', () => {
     const deps = createDeps();
     const response =
       await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
-        createRequest({ tourIds: [' tour-1 ', 'tour-2'], status: 'archived' }),
+        createRequest({ tourIds: [` ${tourIdOne} `, tourIdTwo], status: 'archived' }),
         actor,
         deps
       );
@@ -52,7 +55,7 @@ describe('waste-management tour status bulk handler', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ data: { updatedCount: 2 } });
     expect(deps.updateWasteTourStatusBulk).toHaveBeenCalledWith('tenant-a', {
-      tourIds: ['tour-1', 'tour-2'],
+      tourIds: [tourIdOne, tourIdTwo],
       status: 'archived',
     });
     expect(deps.emitAuditEvent).toHaveBeenCalledWith(
@@ -71,14 +74,17 @@ describe('waste-management tour status bulk handler', () => {
     const deps = createDeps();
     const duplicateResponse =
       await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
-        createRequest({ tourIds: ['tour-1', ' tour-1 '], status: 'published' }),
+        createRequest({ tourIds: [tourIdOne, ` ${tourIdOne} `], status: 'published' }),
         actor,
         deps
       );
     const oversizedResponse =
       await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
         createRequest({
-          tourIds: Array.from({ length: 1_001 }, (_, index) => `tour-${index}`),
+          tourIds: Array.from(
+            { length: 1_001 },
+            (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`
+          ),
           status: 'published',
         }),
         actor,
@@ -90,14 +96,27 @@ describe('waste-management tour status bulk handler', () => {
     expect(deps.updateWasteTourStatusBulk).not.toHaveBeenCalled();
   });
 
+  it('rejects malformed tour IDs before they reach the UUID database cast', async () => {
+    const deps = createDeps();
+    const response =
+      await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
+        createRequest({ tourIds: ['not-a-uuid'], status: 'published' }),
+        actor,
+        deps
+      );
+
+    expect(response.status).toBe(400);
+    expect(deps.updateWasteTourStatusBulk).not.toHaveBeenCalled();
+  });
+
   it('maps a missing tour to 404 and keeps infrastructure errors fail closed', async () => {
     const missingDeps = createDeps();
     missingDeps.updateWasteTourStatusBulk.mockRejectedValueOnce(
-      new Error('bulk_tour_status_not_found:tour-2')
+      new Error(`bulk_tour_status_not_found:${tourIdTwo}`)
     );
     const missingResponse =
       await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
-        createRequest({ tourIds: ['tour-1', 'tour-2'], status: 'draft' }),
+        createRequest({ tourIds: [tourIdOne, tourIdTwo], status: 'draft' }),
         actor,
         missingDeps
       );
@@ -106,7 +125,7 @@ describe('waste-management tour status bulk handler', () => {
     failingDeps.updateWasteTourStatusBulk.mockRejectedValueOnce(new Error('db down'));
     const failingResponse =
       await wasteManagementTourStatusBulkHandlers.updateWasteManagementTourStatusBulkInternal(
-        createRequest({ tourIds: ['tour-1'], status: 'published' }),
+        createRequest({ tourIds: [tourIdOne], status: 'published' }),
         actor,
         failingDeps
       );

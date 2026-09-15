@@ -168,9 +168,33 @@ describe('Waste data exchange JSON', () => {
     });
 
     expect(JSON.parse(serialized)).toMatchObject({
+      formatVersion: '2.0.0',
       records: [{ status: 'archived' }],
     });
     expect(serialized).not.toContain('"active"');
+  });
+
+  it('does not accept the legacy active field in the current tour profile version', () => {
+    expect(
+      parseWasteManagementDataExchangeJson({
+        formatVersion: '2.0.0',
+        pluginId: 'waste-management',
+        profileId: wasteManagementDataProfileIds.tours,
+        exportedAt,
+        records: [
+          {
+            entityType: 'tour',
+            id: 'tour-1',
+            name: 'Tour 1',
+            wasteFractionIds: ['fraction-1'],
+            active: true,
+          },
+        ],
+      })
+    ).toMatchObject({
+      ok: false,
+      issues: [{ code: 'unknown_field', path: 'records[0].active' }],
+    });
   });
 
   it('rejects excluded subscriber-style and technical fields', () => {

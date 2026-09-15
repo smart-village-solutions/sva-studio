@@ -458,7 +458,7 @@ const updateWasteTourValidityBulkSchema = z
 
 const updateWasteTourStatusBulkSchema = z
   .object({
-    tourIds: z.array(z.string().trim().min(1)).min(1).max(wasteTourStatusBulkLimit),
+    tourIds: z.array(z.string().trim().uuid()).min(1).max(wasteTourStatusBulkLimit),
     status: z.enum(wasteTourStatuses),
   })
   .strict()

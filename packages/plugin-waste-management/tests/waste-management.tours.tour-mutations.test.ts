@@ -386,7 +386,7 @@ describe('createWasteToursTourMutationHandlers', () => {
     });
     const input = { tourIds: ['tour-1', 'tour-2'], status: 'archived' } as const;
 
-    await expect(successMutations.onUpdateTourStatusBulk(input)).resolves.toBe(true);
+    await expect(successMutations.onUpdateTourStatusBulk(input)).resolves.toEqual({ ok: true });
     expect(apiMocks.updateWasteManagementTourStatusBulk).toHaveBeenCalledWith(input);
     expect(loadOverview).toHaveBeenCalledWith(true);
     expect(successState.setMessage).toHaveBeenCalledWith({
@@ -402,11 +402,28 @@ describe('createWasteToursTourMutationHandlers', () => {
       loadOverview: vi.fn(),
     });
 
-    await expect(failedMutations.onUpdateTourStatusBulk(input)).resolves.toBe(false);
-    expect(failedState.setMessage).toHaveBeenCalledWith({
-      kind: 'error',
-      text: 'tours.messages.statusBulkUpdateError',
+    await expect(failedMutations.onUpdateTourStatusBulk(input)).resolves.toEqual({
+      ok: false,
+      reason: 'write',
     });
+    expect(failedState.setMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error' })
+    );
+
+    const staleState = createState();
+    apiMocks.updateWasteManagementTourStatusBulk.mockResolvedValueOnce({ updatedCount: 2 });
+    const staleMutations = createWasteToursTourMutationHandlers({
+      state: staleState,
+      pt,
+      loadOverview: vi.fn().mockRejectedValue(new Error('refresh')),
+    });
+    await expect(staleMutations.onUpdateTourStatusBulk(input)).resolves.toEqual({
+      ok: false,
+      reason: 'refresh',
+    });
+    expect(staleState.setMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'success' })
+    );
   });
 
   it('maps bulk delete failures and outer delete errors through the shared delete error helper', async () => {

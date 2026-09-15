@@ -42,12 +42,22 @@ const WasteToursSelectionActions = ({
       >
         {allFilteredSelected
           ? pt('tours.selection.deselectFiltered')
-          : pt('tours.selection.selectFiltered', { value: filteredCount })}
+          : pt(
+              filteredCount === 1
+                ? 'tours.selection.selectFilteredOne'
+                : 'tours.selection.selectFilteredOther',
+              { value: filteredCount }
+            )}
       </Button>
       {selectedCount > 0 ? (
         <>
           <span className="text-sm font-medium" aria-live="polite">
-            {pt('tours.selection.selectedCount', { value: selectedCount })}
+            {pt(
+              selectedCount === 1
+                ? 'tours.selection.selectedCountOne'
+                : 'tours.selection.selectedCountOther',
+              { value: selectedCount }
+            )}
             {hiddenSelectedCount > 0
               ? ` · ${pt('tours.selection.hiddenSelectedCount', { value: hiddenSelectedCount })}`
               : null}

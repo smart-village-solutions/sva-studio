@@ -82,8 +82,9 @@ erfolgreichen Veröffentlichungszustand melden.
 
 Manuelles Anlegen, Duplizieren und Folgejahrübernahme erzeugen immer `draft`. Ein regulärer Import
 ohne Status erzeugt ebenfalls `draft`. Ein expliziter Status in einem aktuellen Austauschprofil
-wird als übertragener Fachdatenwert erhalten; ein Legacy-`active` wird wie bei der Datenmigration
-abgebildet. Neue Exporte enthalten nur `status`.
+wird als übertragener Fachdatenwert erhalten; ein Legacy-`active` aus Tourprofilversion `1.0.0`
+wird wie bei der Datenmigration abgebildet. Neue Tour-Exporte verwenden wegen des brechenden
+Feldwechsels die Profilversion `2.0.0` und enthalten nur `status`.
 
 ### 5. Einzel- und Bulk-Aktion teilen denselben Zielstatusvertrag
 

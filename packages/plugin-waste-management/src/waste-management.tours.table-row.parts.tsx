@@ -126,10 +126,13 @@ export const WasteToursRowStatusCell = ({
       <div className="flex items-start justify-center">
         <StudioTableValueAction
           type="button"
+          className="min-h-11 min-w-11 items-center justify-center"
           aria-label={pt('tours.actions.changeStatusAccessible', { name: tour.name })}
           onClick={() => onOpenStatusDialog(tour)}
         >
-          <StudioStatusBadge tone={tone}>{pt(`tours.status.${tour.status}`)}</StudioStatusBadge>
+          <StudioStatusBadge tone={tone} editable>
+            {pt(`tours.status.${tour.status}`)}
+          </StudioStatusBadge>
         </StudioTableValueAction>
       </div>
     </td>

@@ -5,7 +5,10 @@ import {
   getWasteManagementToursOverview,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-import { loadWasteToursAssignmentOverview, loadWasteToursSchedulingOverview } from './waste-management.tours-overview.parts.js';
+import {
+  loadWasteToursAssignmentOverview,
+  loadWasteToursSchedulingOverview,
+} from './waste-management.tours-overview.parts.js';
 import type { WasteToursState } from './use-waste-tours-state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -26,7 +29,7 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
   } = state;
 
   const loadOverview = useCallback(
-    async () => {
+    async (propagateError = false) => {
       try {
         const [toursResponse, fractionsResponse] = await Promise.all([
           getWasteManagementToursOverview(),
@@ -51,13 +54,21 @@ export const useWasteToursOverview = (state: WasteToursState, pt: Translate) => 
           setSchedulingOverview,
         });
       } catch (loadError) {
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current) {
+          if (propagateError) throw loadError;
+          return;
+        }
+        if (propagateError) throw loadError;
         const code = resolveApiErrorCode(loadError);
         setMasterDataOverview(null);
         setCustomRecurrencePresets([]);
         setAssignmentContextLoading(false);
         setSchedulingOverview(null);
-        setError(code === 'forbidden' ? ptRef.current('tours.messages.loadForbidden') : ptRef.current('tours.messages.loadError'));
+        setError(
+          code === 'forbidden'
+            ? ptRef.current('tours.messages.loadForbidden')
+            : ptRef.current('tours.messages.loadError')
+        );
       } finally {
         if (isMountedRef.current) setLoading(false);
       }

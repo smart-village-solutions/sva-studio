@@ -6,10 +6,11 @@
       Bestandswerte deterministisch von `active` migrieren.
 - [x] 1.3 Für den getrennten Studio-/Public-Waste-Rollout eine befristete, getestete
       `active`-Kompatibilität mit eindeutigem Konfliktverhalten bereitstellen.
-- [x] 1.4 JSON-Import und -Export auf `status` umstellen, Legacy-`active` beim Lesen unterstützen und
-      fehlende Statuswerte als `draft` behandeln.
-- [x] 1.5 Schema- und Datenaustauschtests für Default, Backfill, alle drei Werte, ungültige Werte und
-      Roundtrip ergänzen.
+- [x] 1.4 JSON-Import und -Export auf `status` umstellen, neue Tour-Exporte als Profilversion
+      `2.0.0` kennzeichnen, Legacy-`active` aus `1.0.0` beim Lesen unterstützen und fehlende
+      Statuswerte als `draft` behandeln.
+- [x] 1.5 Schema- und Datenaustauschtests für Default, echten PostgreSQL-Backfill aus Legacy-Daten,
+      alle drei Werte, ungültige Werte, Versionsvertrag und Roundtrip ergänzen.
 
 ## 2. Atomare Servermutationen
 

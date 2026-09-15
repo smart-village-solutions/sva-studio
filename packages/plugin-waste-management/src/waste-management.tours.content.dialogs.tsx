@@ -37,6 +37,7 @@ const WasteToursStatusDialogs = ({
   setBulkStatusOpen,
   tourPendingStatusChange,
   setTourPendingStatusChange,
+  fallbackFocusRef,
 }: WasteToursContentDialogsProps) => (
   <>
     {bulkStatusOpen ? (
@@ -49,6 +50,7 @@ const WasteToursStatusDialogs = ({
         onUpdated={() => {
           setSelectedTourIds([]);
           setBulkStatusOpen(false);
+          window.setTimeout(() => fallbackFocusRef.current?.focus(), 0);
         }}
       />
     ) : null}
@@ -60,7 +62,10 @@ const WasteToursStatusDialogs = ({
         saving={saving}
         onOpenChange={(open) => !open && setTourPendingStatusChange(null)}
         onSubmit={onUpdateTourStatusBulk}
-        onUpdated={() => setTourPendingStatusChange(null)}
+        onUpdated={() => {
+          setTourPendingStatusChange(null);
+          window.setTimeout(() => fallbackFocusRef.current?.focus(), 0);
+        }}
       />
     ) : null}
   </>

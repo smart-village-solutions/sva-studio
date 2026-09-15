@@ -16,6 +16,7 @@ import type {
 } from './waste-management.tours.filter-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
+import type { WasteTourStatusUpdateResult } from './waste-management.tours.status-mutation.js';
 
 export const createTourAssignmentSelectionSummary = ({
   filteredLocationIds,
@@ -179,7 +180,9 @@ export type WasteToursActionsProps = {
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<WasteBulkDeleteResult>;
   readonly onUpdateTourValidityBulk: (input: WasteTourValidityBulkUpdateInput) => Promise<boolean>;
-  readonly onUpdateTourStatusBulk: (input: WasteTourStatusBulkUpdateInput) => Promise<boolean>;
+  readonly onUpdateTourStatusBulk: (
+    input: WasteTourStatusBulkUpdateInput
+  ) => Promise<WasteTourStatusUpdateResult>;
 };
 
 export type WasteToursCapabilitiesProps = {

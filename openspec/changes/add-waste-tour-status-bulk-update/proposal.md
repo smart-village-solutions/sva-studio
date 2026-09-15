@@ -27,8 +27,8 @@ Statusmodell erweitert werden.
   Expand-/Migrate-/Contract-Sequenz ausgeführt. Eine zeitlich begrenzte, deterministisch
   synchronisierte `active`-Kompatibilität bleibt nur bis zur nachgewiesenen Umstellung aller
   Verbraucher bestehen und wird anschließend im selben Change entfernt.
-- Legacy-Datenaustausch mit `active` bleibt lesbar; neue Exporte schreiben ausschließlich
-  `status`.
+- Legacy-Datenaustausch in Tourprofilversion `1.0.0` mit `active` bleibt lesbar; neue Exporte
+  verwenden die Tourprofilversion `2.0.0` und schreiben ausschließlich `status`.
 
 ## Non-Goals
 

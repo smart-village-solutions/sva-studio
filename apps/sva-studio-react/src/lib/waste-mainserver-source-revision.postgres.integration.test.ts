@@ -14,6 +14,7 @@ const pool = new Pool({ connectionString: databaseUrl, max: 1 });
 let client: PoolClient;
 let catalogMigrationSatisfied = false;
 let tourStatusMigrationSatisfied = false;
+let migratedLegacyTours: readonly Readonly<{ active: boolean; status: string }>[] = [];
 
 const sourceRevisionMigration = wasteTenantMigrations.find(
   ({ id }) => id === '20260827_01_add_mainserver_source_revision'
@@ -36,6 +37,8 @@ const ids = {
   houseNumber: '40000000-0000-4000-8000-000000000001',
   location: '50000000-0000-4000-8000-000000000001',
   tour: '60000000-0000-4000-8000-000000000001',
+  legacyActiveTour: '60000000-0000-4000-8000-000000000002',
+  legacyInactiveTour: '60000000-0000-4000-8000-000000000003',
   link: '70000000-0000-4000-8000-000000000001',
 } as const;
 
@@ -78,7 +81,20 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       END $$;
       DROP FUNCTION IF EXISTS public.sva_bump_waste_mainserver_source_revision();
       DROP TABLE IF EXISTS public.waste_mainserver_source_state;
+      DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON public.waste_tours;
+      DROP FUNCTION IF EXISTS public.sync_waste_tour_status_active();
+      DROP INDEX IF EXISTS public.idx_waste_tours_status;
+      ALTER TABLE public.waste_tours DROP COLUMN IF EXISTS status;
+      ALTER TABLE public.waste_tours ALTER COLUMN active SET DEFAULT TRUE;
     `);
+    await client.query('DELETE FROM public.waste_tours WHERE id = ANY($1::uuid[]);', [
+      [ids.legacyActiveTour, ids.legacyInactiveTour],
+    ]);
+    await client.query(
+      `INSERT INTO public.waste_tours (id, name, active)
+       VALUES ($1, 'Legacy active', TRUE), ($2, 'Legacy inactive', FALSE);`,
+      [ids.legacyActiveTour, ids.legacyInactiveTour]
+    );
     for (const statement of sourceRevisionMigration.statements) await client.query(statement);
     const verification = await client.query<{ satisfied: boolean }>(
       sourceRevisionMigration.verification.sql,
@@ -91,6 +107,17 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       [...tourStatusMigration.verification.values]
     );
     tourStatusMigrationSatisfied = tourStatusVerification.rows[0]?.satisfied === true;
+    const migratedLegacyTourResult = await client.query<{ active: boolean; status: string }>(
+      `SELECT active, status
+       FROM public.waste_tours
+       WHERE id = ANY($1::uuid[])
+       ORDER BY id;`,
+      [[ids.legacyActiveTour, ids.legacyInactiveTour]]
+    );
+    migratedLegacyTours = migratedLegacyTourResult.rows;
+    await client.query('DELETE FROM public.waste_tours WHERE id = ANY($1::uuid[]);', [
+      [ids.legacyActiveTour, ids.legacyInactiveTour],
+    ]);
 
     await client.query(`SET search_path TO ${schemaName}, public;`);
   }, 60_000);
@@ -123,6 +150,10 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
   it('applies and verifies the versioned source-revision migration against PostgreSQL', () => {
     expect(catalogMigrationSatisfied).toBe(true);
     expect(tourStatusMigrationSatisfied).toBe(true);
+    expect(migratedLegacyTours).toEqual([
+      { active: true, status: 'published' },
+      { active: false, status: 'draft' },
+    ]);
   });
 
   it('keeps legacy active and the temporary tour status projection synchronized', async () => {

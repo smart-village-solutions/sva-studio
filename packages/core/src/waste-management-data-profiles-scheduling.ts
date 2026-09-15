@@ -27,7 +27,7 @@ export const wasteManagementSchedulingDataProfiles = [
     profileId: wasteManagementDataProfileIds.tours,
     displayName: 'Touren',
     description: 'Tourstammdaten, Wiederholungen, Gültigkeit und individuelle Termine.',
-    formatVersion: '1.0.0',
+    formatVersion: '2.0.0',
     dependencies: [
       wasteManagementDataProfileIds.fractions,
       wasteManagementDataProfileIds.recurrencePresets,

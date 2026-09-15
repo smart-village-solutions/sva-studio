@@ -1,6 +1,7 @@
 import {
   wasteManagementDataProfileIds,
   type WasteManagementDataExchangeEnvelope,
+  type WasteManagementDataFormatVersion,
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
 } from './waste-management-data-exchange.js';
@@ -23,10 +24,12 @@ export type {
 
 const normalizeLegacyTourStatus = (
   profileId: WasteManagementDataProfileId,
+  formatVersion: WasteManagementDataFormatVersion,
   value: unknown
 ): unknown => {
   if (
     profileId !== wasteManagementDataProfileIds.tours ||
+    formatVersion !== '1.0.0' ||
     !isObject(value) ||
     value.entityType !== 'tour' ||
     Object.prototype.hasOwnProperty.call(value, 'status') ||
@@ -75,7 +78,7 @@ export const parseWasteManagementDataExchangeJson = (
     return invalidEnvelope(
       typeof source === 'string' ? 'Ungültiges JSON.' : 'JSON-Envelope fehlt.'
     );
-  if (value.formatVersion !== '1.0.0') {
+  if (value.formatVersion !== '1.0.0' && value.formatVersion !== '2.0.0') {
     return {
       ok: false,
       issues: [
@@ -102,13 +105,31 @@ export const parseWasteManagementDataExchangeJson = (
       ],
     };
   }
+  const isLegacyTourEnvelope =
+    profile.profileId === wasteManagementDataProfileIds.tours && value.formatVersion === '1.0.0';
+  if (value.formatVersion !== profile.formatVersion && !isLegacyTourEnvelope) {
+    return {
+      ok: false,
+      issues: [
+        {
+          code: 'unsupported_format_version',
+          path: 'formatVersion',
+          message: 'Nicht unterstützte Formatversion.',
+        },
+      ],
+    };
+  }
 
   const issues: WasteManagementDataExchangeIssue[] = [];
   const defaultedFields: string[] = [];
   const records = value.records.flatMap((record, index) => {
     const normalized = normalizeWasteManagementRecord({
       profile,
-      value: normalizeLegacyTourStatus(profile.profileId, record),
+      value: normalizeLegacyTourStatus(
+        profile.profileId,
+        value.formatVersion as WasteManagementDataFormatVersion,
+        record
+      ),
       index,
       applyDefaults: options.applyDefaults ?? true,
       issues,
@@ -122,7 +143,7 @@ export const parseWasteManagementDataExchangeJson = (
   return {
     ok: true,
     envelope: {
-      formatVersion: '1.0.0',
+      formatVersion: value.formatVersion as WasteManagementDataFormatVersion,
       pluginId: 'waste-management',
       profileId: profile.profileId,
       exportedAt: value.exportedAt,
@@ -188,9 +209,11 @@ export const serializeWasteManagementDataExchangeJson = (
     records: readonly WasteManagementDataExchangeRecord[];
   }>
 ): string => {
+  const profile = getWasteManagementDataProfile(input.profileId);
+  if (profile === undefined) throw new Error(`unknown_waste_data_profile:${input.profileId}`);
   const parsed = parseWasteManagementDataExchangeJson(
     {
-      formatVersion: '1.0.0',
+      formatVersion: profile.formatVersion,
       pluginId: 'waste-management',
       profileId: input.profileId,
       exportedAt: input.exportedAt,

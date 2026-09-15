@@ -426,7 +426,10 @@ describe('WasteToursContent', () => {
     const onOpenEditAssignmentsDialog = vi.fn();
     const onOpenCalendar = vi.fn();
     const onOpenEditFraction = vi.fn();
-    const onUpdateTourStatusBulk = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const onUpdateTourStatusBulk = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, reason: 'write' })
+      .mockResolvedValueOnce({ ok: true });
     const tour = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -574,6 +577,9 @@ describe('WasteToursContent', () => {
     await waitFor(() =>
       expect(screen.queryByText('tours.bulkStatusDialog.singleTitle')).toBeNull()
     );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('region', { name: 'tabs.tours.title' }))
+    );
     expect(onUpdateTourStatusBulk).toHaveBeenCalledTimes(2);
   });
 
@@ -606,7 +612,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onUpdateTourStatusBulk={vi.fn(async () => true)}
+        onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -667,7 +673,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onUpdateTourStatusBulk={vi.fn(async () => true)}
+        onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -769,7 +775,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onUpdateTourStatusBulk={vi.fn(async () => true)}
+        onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
@@ -884,7 +890,7 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
-        onUpdateTourStatusBulk={vi.fn(async () => true)}
+        onUpdateTourStatusBulk={vi.fn(async () => ({ ok: true }))}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}

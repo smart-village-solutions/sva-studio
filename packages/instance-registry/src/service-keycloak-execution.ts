@@ -222,10 +222,7 @@ const finalizeProvisionedRun = async (
     await runInstanceRegistryStep('secret_sync', () =>
       syncClientSecretAfterProvisioning(deps, run, loaded)
     );
-    await runInstanceRegistryStep('admin_bootstrap', () =>
-      syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded)
-    );
-    return await runInstanceRegistryStep('worker_complete', () =>
+    const finalRunStatus = await runInstanceRegistryStep('worker_complete', () =>
       completeRun(deps, {
         loaded,
         runId: run.id,
@@ -236,6 +233,12 @@ const finalizeProvisionedRun = async (
         pluginOidcClients: provisioningInput.pluginOidcClients,
       })
     );
+    if (finalRunStatus === 'succeeded') {
+      await runInstanceRegistryStep('admin_bootstrap', () =>
+        syncTenantAdminBootstrapAccountAfterProvisioning(deps, run, loaded)
+      );
+    }
+    return finalRunStatus;
   } catch (error) {
     await cleanupNewRealmAfterPostProvisioningFailure(deps, provisioningInput, error);
     throw error;

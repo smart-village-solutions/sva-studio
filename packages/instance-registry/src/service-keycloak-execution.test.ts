@@ -778,6 +778,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+          syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           deleteProvisionedRealm,
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
@@ -814,6 +815,7 @@ describe('service-keycloak-execution', () => {
         {
           repository: repository as never,
           provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+          syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
           deleteProvisionedRealm,
           readKeycloakStateViaProvisioner: vi.fn(),
           getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
@@ -826,6 +828,55 @@ describe('service-keycloak-execution', () => {
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'failed' });
 
     expect(deleteProvisionedRealm).toHaveBeenCalledWith('tenant');
+    expect(state.syncTenantAdminBootstrapAccount).not.toHaveBeenCalled();
+    expect(state.failRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ runId: 'run-1', error: expect.any(Error) })
+    );
+  });
+
+  it('does not delete an accepted new realm when the later local bootstrap sync fails', async () => {
+    const { processClaimedKeycloakProvisioningRun } =
+      await import('./service-keycloak-execution.js');
+    const deleteProvisionedRealm = vi.fn();
+    const loaded = createLoaded();
+    state.loadInstanceWithSecret
+      .mockResolvedValueOnce(loaded)
+      .mockResolvedValueOnce({
+        ...loaded,
+        instance: { ...loaded.instance, realmMode: 'existing' },
+      });
+    state.buildProvisioningInput.mockReturnValue({
+      instanceId: 'instance-1',
+      authRealm: 'tenant',
+      realmMode: 'new',
+    });
+    state.completeRun.mockResolvedValue('succeeded');
+    state.syncTenantAdminBootstrapAccount.mockRejectedValue(new Error('local-bootstrap-failed'));
+
+    await processClaimedKeycloakProvisioningRun(
+      {
+        repository: {
+          getKeycloakProvisioningRun: vi
+            .fn()
+            .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+        } as never,
+        provisionInstanceAuth: vi.fn().mockResolvedValue(undefined),
+        syncTenantAdminBootstrapAccount: state.syncTenantAdminBootstrapAccount,
+        deleteProvisionedRealm,
+        readKeycloakStateViaProvisioner: vi.fn(),
+        getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ok' }),
+        planKeycloakProvisioning: vi
+          .fn()
+          .mockResolvedValue({ overallStatus: 'ok', driftSummary: 'ok' }),
+      } as never,
+      createRun()
+    );
+
+    expect(state.completeRun.mock.invocationCallOrder[0]).toBeLessThan(
+      state.syncTenantAdminBootstrapAccount.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(deleteProvisionedRealm).not.toHaveBeenCalled();
     expect(state.failRun).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ runId: 'run-1', error: expect.any(Error) })

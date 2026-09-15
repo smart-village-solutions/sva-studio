@@ -35,6 +35,9 @@ werden.
   Operation von `new` auf `existing`. Status- und Plan-Evidenz behalten dabei
   die Herkunft als Studio-verwalteter Realm, damit die offene SMTP-Nacharbeit
   sichtbar bleibt.
+- Der lokale Bootstrap-Account wird erst nach erfolgreicher Realm-Abnahme
+  synchronisiert. Ein vorheriger Abschlussfehler kann dadurch keinen lokalen
+  privilegierten Account für einen anschließend kompensierten Realm hinterlassen.
 
 ## Folgen
 

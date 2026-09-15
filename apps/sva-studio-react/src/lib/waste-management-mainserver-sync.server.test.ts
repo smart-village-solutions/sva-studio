@@ -10,7 +10,7 @@ type WasteSyncClientState = {
     wasteFractionIds: readonly string[];
     recurrence: string;
     customDates: readonly { date: string }[];
-    active: true | false;
+    status: 'draft' | 'published' | 'archived';
     createdAt: string;
     updatedAt: string;
   }[];
@@ -626,7 +626,7 @@ describe('waste-management-mainserver-sync.server', () => {
           wasteFractionIds: ['fraction-1'],
           recurrence: 'on-demand',
           customDates: [],
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -739,7 +739,7 @@ describe('waste-management-mainserver-sync.server', () => {
           wasteFractionIds: ['fraction-1'],
           recurrence: 'on-demand',
           customDates: [{ date: '2026-01-06' }, { date: '2026-01-13' }],
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
@@ -884,7 +884,7 @@ describe('waste-management-mainserver-sync.server', () => {
           wasteFractionIds: ['fraction-1'],
           recurrence: 'on-demand',
           customDates: [{ date: '2026-01-06' }, { date: '2026-01-13' }, { date: '2026-01-20' }],
-          active: true,
+          status: 'published',
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },

@@ -77,7 +77,7 @@ const buildSmtpPasswordCompletionStep = (status: KeycloakTenantStatus): Completi
   title: 'SMTP-Passwort manuell setzen',
   summary: status.smtpPasswordConfigured
     ? 'In Keycloak ist ein SMTP-Passwort hinterlegt.'
-    : 'Die SMTP-Grundkonfiguration ist vorhanden; das Passwort muss einmalig direkt in Keycloak gesetzt werden.',
+    : 'Die SMTP-Grundkonfiguration ist vorhanden; setzen Sie das Passwort einmalig direkt in Keycloak und testen Sie dort anschließend die SMTP-Verbindung.',
   details: {
     configured: status.smtpPasswordConfigured ?? false,
     reasonCode: status.smtpPasswordConfigured

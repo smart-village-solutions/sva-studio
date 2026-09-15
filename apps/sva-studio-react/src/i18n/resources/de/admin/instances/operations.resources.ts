@@ -38,7 +38,7 @@ export const operationsInstancesAdminDEResources = {
       existing: 'Das SMTP-Passwort des Bestands-Realm bleibt unverändert.',
       configured: 'In Keycloak ist ein SMTP-Passwort hinterlegt.',
       required:
-        'Die SMTP-Grundkonfiguration ist vorhanden; das Passwort muss einmalig direkt in Keycloak gesetzt werden.',
+        'Die SMTP-Grundkonfiguration ist vorhanden; setzen Sie das Passwort einmalig direkt in Keycloak und testen Sie dort anschließend die SMTP-Verbindung.',
     },
   },
   new: {

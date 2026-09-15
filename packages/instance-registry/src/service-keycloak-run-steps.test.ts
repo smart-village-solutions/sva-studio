@@ -173,6 +173,8 @@ describe('service-keycloak-run-steps', () => {
     expect(steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
       ok: true,
       status: 'pending',
+      summary:
+        'Die SMTP-Grundkonfiguration ist vorhanden; setzen Sie das Passwort einmalig direkt in Keycloak und testen Sie dort anschließend die SMTP-Verbindung.',
       details: {
         configured: false,
         reasonCode: 'smtp_password_required',

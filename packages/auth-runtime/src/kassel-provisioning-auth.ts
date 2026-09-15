@@ -36,6 +36,12 @@ const parseHttpsOrigin = (value: string): string => {
   return url.origin;
 };
 
+const isTrustedHttpHostname = (hostname: string): boolean =>
+  hostname === 'localhost' ||
+  hostname === '[::1]' ||
+  hostname.startsWith('127.') ||
+  hostname === 'keycloak';
+
 const parseKeycloakBaseUrl = (value: string, allowHttp: boolean): string => {
   let url: URL;
   try {
@@ -43,8 +49,10 @@ const parseKeycloakBaseUrl = (value: string, allowHttp: boolean): string => {
   } catch {
     throw new Error('keycloak_admin_base_url_invalid');
   }
+  const httpAllowed =
+    url.protocol === 'http:' && (allowHttp || isTrustedHttpHostname(url.hostname));
   if (
-    (url.protocol !== 'https:' && !(allowHttp && url.protocol === 'http:')) ||
+    (url.protocol !== 'https:' && !httpAllowed) ||
     url.username ||
     url.password ||
     url.search ||

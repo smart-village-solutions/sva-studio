@@ -122,7 +122,7 @@ Bei `realmMode = new` setzt der Provisioner zusätzlich:
 - den `instanceId`-Mapper am Login-Client
 - die freigegebenen nicht geheimen SMTP-Werte
 
-Das SMTP-Passwort wird bewusst weder in der Baseline noch in Registry, Snapshot, Status oder Browserantworten gespeichert. Nach dem Provisioning muss nur dieses Passwort direkt in Keycloak gesetzt und die Verbindung dort getestet werden. Bestands-Realms werden durch diesen Ablauf nicht automatisch verändert.
+Das SMTP-Passwort wird bewusst weder in der Baseline noch in Registry, Snapshot, Status oder Browserantworten gespeichert. Der Detailstatus liest bei Studio-erstellten Realms lediglich den Booleschen Nachweis live nach, ob ein Passwort gesetzt ist. Nach dem Provisioning muss nur dieses Passwort direkt in Keycloak gesetzt und die Verbindung dort getestet werden. Bestands-Realms werden durch diesen Ablauf nicht automatisch verändert.
 
 ## Login-Theme
 

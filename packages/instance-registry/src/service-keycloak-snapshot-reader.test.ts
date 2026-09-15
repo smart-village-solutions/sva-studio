@@ -21,19 +21,19 @@ describe('isRealmBaselineApplicable', () => {
     ).toBe(true);
   });
 
-  it('does not treat failed or imported existing realms as managed', () => {
+  it('keeps a retained realm managed after a post-baseline local failure', () => {
     expect(
-      isRealmBaselineApplicable(
-        'existing',
-        [
-          {
-            mode: 'new',
-            overallStatus: 'failed',
-            steps: [{ stepKey: 'realm_baseline', status: 'done' }],
-          },
-        ] as never
-      )
-    ).toBe(false);
+      isRealmBaselineApplicable('existing', [
+        {
+          mode: 'new',
+          overallStatus: 'failed',
+          steps: [{ stepKey: 'realm_baseline', status: 'done' }],
+        },
+      ] as never)
+    ).toBe(true);
+  });
+
+  it('does not treat imported existing realms as managed', () => {
     expect(isRealmBaselineApplicable('existing', [])).toBe(false);
   });
 });

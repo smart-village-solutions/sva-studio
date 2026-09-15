@@ -24,6 +24,7 @@ import {
 import {
   isRealmBaselineApplicable,
   readSnapshotFromRuns,
+  refreshManagedRealmSmtpPasswordStatus,
 } from './service-keycloak-snapshot-reader.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
@@ -164,8 +165,15 @@ export const createGetKeycloakStatusHandler =
       )
     );
     if (status) {
+      const refreshedStatus = await refreshManagedRealmSmtpPasswordStatus(
+        deps,
+        instance,
+        runs,
+        secretVersions,
+        status
+      );
       logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
-      return status;
+      return refreshedStatus;
     }
 
     let authClientSecret: string | undefined;

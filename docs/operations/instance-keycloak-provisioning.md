@@ -63,6 +63,10 @@ Wichtig:
 Die folgende Checkliste ergänzt den login-blockierenden Mindestzustand um den betrieblichen Zielzustand eines neuen Realms. Sie beschreibt zugleich den aktuellen Automatisierungsstand. `Manuell` bedeutet nicht optional: Der Punkt muss nach dem Provisioning ausdrücklich als Nacharbeit angezeigt und vor der Freigabe geprüft werden. Ob eine offene Nacharbeit die Aktivierung blockiert oder nur als Warnung bestehen darf, richtet sich nach der Spalte `Freigabe`.
 
 Für neue Realms zeigt Plan, Run-Protokoll und Detailstatus die automatische Baseline und die verbleibende manuelle SMTP-Passwort-Nacharbeit. Bestands-Realms werden nur gelesen und nicht auf diese Baseline migriert.
+Beim Laden des Detailstatus wird für Studio-erstellte Realms ausschließlich der
+Boolesche Nachweis, ob ein SMTP-Passwort gesetzt ist, tenantlokal live
+aktualisiert. Ist dieser Read nicht möglich, bleibt der letzte Snapshot
+konservativ sichtbar; ein Passwortwert wird weder gelesen noch gespeichert.
 
 | Bereich              | Zielzustand im neuen Realm                                                                                                                            | Behandlung bei `realmMode = new`                                                                                                                                    | Freigabe                                                                                                               |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |

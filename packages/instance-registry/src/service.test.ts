@@ -3413,6 +3413,101 @@ describe('instance registry service facade', () => {
     expect(getTenantAdminClientSecretCiphertext).toHaveBeenCalledWith('demo');
   });
 
+  it('refreshes the externally managed SMTP password flag for Studio-created realms', async () => {
+    const managedInstance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+    };
+    const secretVersions = {
+      authClientSecretCiphertext: 'auth-ciphertext',
+      tenantAdminClientSecretCiphertext: 'tenant-admin-ciphertext',
+    };
+    const snapshotStatus = {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      pluginOidcClientsAligned: true,
+      realmBaselineAligned: true,
+      userProfileBaselineAligned: true,
+      instanceIdMapperAligned: true,
+      smtpPasswordConfigured: false,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant' as const,
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => managedInstance),
+      getAuthClientSecretCiphertext: vi.fn(async () => secretVersions.authClientSecretCiphertext),
+      getTenantAdminClientSecretCiphertext: vi.fn(
+        async () => secretVersions.tenantAdminClientSecretCiphertext
+      ),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'managed-keycloak-run',
+          instanceId: 'demo',
+          mode: 'new',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'realm_baseline',
+              title: 'Realm-Baseline',
+              status: 'done',
+              summary: 'Applied',
+              details: {},
+            },
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Final',
+              details: {
+                policyVersion: 3,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+                  managedInstance,
+                  secretVersions
+                ),
+                status: snapshotStatus,
+              },
+            },
+          ],
+        },
+      ]),
+    });
+    const getKeycloakStatus = vi.fn(async () => ({
+      ...snapshotStatus,
+      smtpPasswordConfigured: true,
+    }));
+
+    const status = await createGetKeycloakStatusHandler(
+      createDeps(repository, { getKeycloakStatus })
+    )('demo');
+
+    expect(status).toEqual({
+      ...snapshotStatus,
+      smtpPasswordConfigured: true,
+    });
+
+    getKeycloakStatus.mockRejectedValueOnce(new Error('tenant-admin-unavailable'));
+    await expect(
+      createGetKeycloakStatusHandler(createDeps(repository, { getKeycloakStatus }))('demo')
+    ).resolves.toEqual(snapshotStatus);
+    expect(getKeycloakStatus).toHaveBeenCalledTimes(2);
+  });
+
   it('ignores status snapshots from before ownership-aware role evaluation', async () => {
     const repository = createRepository({
       listKeycloakProvisioningRuns: vi.fn(async () => [

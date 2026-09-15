@@ -33,9 +33,10 @@ werden.
   übernommene Realms werden nicht gelöscht.
 - Nach erfolgreichem Abschluss wechselt die Registry erst als letzte fallible
   Operation von `new` auf `existing`. Status- und Plan-Evidenz behalten dabei
-  anhand eines erfolgreich abgeschlossenen Keycloak-Laufs im Modus `new` auch
-  bei späteren Keycloak-Läufen und nach Konfigurationsänderungen die Herkunft
-  als Studio-verwalteter Realm, damit die offene SMTP-Nacharbeit sichtbar bleibt.
+  anhand eines im Modus `new` abgeschlossenen Baseline-Schritts auch bei
+  späteren Keycloak-Läufen, nach Konfigurationsänderungen und nach einem
+  nachgelagerten lokalen Bootstrap-Fehler die Herkunft als Studio-verwalteter
+  Realm, damit die offene SMTP-Nacharbeit sichtbar bleibt.
 - Der lokale Bootstrap-Account wird erst nach erfolgreicher Realm-Abnahme
   synchronisiert. Ein vorheriger Abschlussfehler kann dadurch keinen lokalen
   privilegierten Account für einen anschließend kompensierten Realm hinterlassen.

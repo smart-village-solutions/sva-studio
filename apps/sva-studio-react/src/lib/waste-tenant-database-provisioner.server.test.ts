@@ -10,10 +10,21 @@ import { requiredWasteTables } from './waste-management-operations.shared.js';
 const createProvisioningPool = (options: {
   readonly missingTables?: boolean;
   readonly invalidRuntimeUrlPart?: string;
+  readonly existingRoleNames?: readonly string[];
+  readonly statements?: string[];
 } = {}) => (url: string) => ({
   connect: async () => ({
     query: async <TRow>(text: string) => {
-      if (text.includes('FROM pg_roles')) return { rowCount: 0, rows: [] as TRow[] };
+      options.statements?.push(text);
+      if (text.includes('FROM pg_roles')) {
+        const rows = (options.existingRoleNames ?? []).map((rolname) => ({
+          rolname,
+          rolsuper: false,
+          rolreplication: false,
+          rolbypassrls: false,
+        })) as TRow[];
+        return { rowCount: rows.length, rows };
+      }
       if (text.includes('FROM pg_database')) {
         return { rowCount: 1, rows: [{ exists: true }] as TRow[] };
       }
@@ -495,6 +506,41 @@ describe('waste tenant database provisioner', () => {
         updatedAt: '2026-08-02T10:00:00.000Z',
       })
     );
+  });
+
+  it('sets generated passwords when retrying orphaned roles without saved credentials', async () => {
+    const names = deriveWasteTenantDatabaseNames('tenant-a');
+    const statements: string[] = [];
+    const createPassword = vi.fn(() => 'recovered-secret');
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPassword,
+        createPool: createProvisioningPool({
+          existingRoleNames: [
+            names.ownerRole,
+            names.migratorRole,
+            names.appRole,
+            names.publicAppRole,
+          ],
+          statements,
+        }),
+      })
+    );
+
+    await operation(
+      'tenant-a',
+      { operation: 'provision-tenant-database', desiredGeneration: 2 },
+      { jobId: 'job-2' }
+    );
+
+    const alteredRoles = statements.filter((statement) => statement.startsWith('ALTER ROLE '));
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.appRole}"`))).toContain(
+      "PASSWORD 'recovered-secret'"
+    );
+    expect(
+      alteredRoles.find((statement) => statement.includes(`"${names.publicAppRole}"`))
+    ).toContain("PASSWORD 'recovered-secret'");
+    expect(createPassword).toHaveBeenCalledTimes(3);
   });
 
   it('reconciles a partially provisioned tenant without rotating runtime credentials or deleting data', async () => {

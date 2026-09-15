@@ -19,20 +19,9 @@ import { Pool } from 'pg';
 
 import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
 import type { OperationSummary, WasteOperationSqlPool } from './waste-management-operations.types.js';
-import { buildWasteTenantDatabaseUrl, createWasteTenantDatabasePassword, readExistingWasteRuntimePasswords } from './waste-tenant-database-credentials.server.js';
+import { buildWasteTenantDatabaseUrl, createOrUpdateWasteTenantRoles, createWasteTenantDatabasePassword, quoteWasteTenantIdentifier as quoteIdentifier, readExistingWasteRuntimePasswords } from './waste-tenant-database-credentials.server.js';
 
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/server-runtime';
-
-const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
-
-const quoteIdentifier = (value: string): string => {
-  if (!identifierPattern.test(value)) {
-    throw new Error('waste_tenant_identifier_invalid');
-  }
-  return `"${value}"`;
-};
-
-const quoteLiteral = (value: string): string => `'${value.replaceAll("'", "''")}'`;
 
 type ProvisioningPool = WasteOperationSqlPool;
 
@@ -54,73 +43,6 @@ const defaultCreatePool = (databaseUrl: string): ProvisioningPool =>
   new Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 10_000 });
 
 type ProvisioningClient = Awaited<ReturnType<ProvisioningPool['connect']>>;
-
-const createOrUpdateRoles = async (
-  client: ProvisioningClient,
-  input: {
-    readonly names: WasteTenantDatabaseNames;
-    readonly passwords: Readonly<{ migrator: string; app: string; publicApp: string }>;
-  }
-): Promise<void> => {
-  const roleSpecs = [
-    {
-      name: input.names.ownerRole,
-      createAttributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
-      reconcileAttributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
-    },
-    {
-      name: input.names.migratorRole,
-      createAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-      reconcileAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-    },
-    {
-      name: input.names.appRole,
-      createAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-      // Runtime credentials have independent consumers and rotate only through an explicit cutover.
-      reconcileAttributes: 'LOGIN NOCREATEDB NOCREATEROLE NOINHERIT',
-    },
-    {
-      name: input.names.publicAppRole,
-      createAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-      reconcileAttributes: 'LOGIN NOCREATEDB NOCREATEROLE NOINHERIT',
-    },
-  ] as const;
-  const existing = await client.query<{
-    rolname: string;
-    rolsuper: boolean;
-    rolreplication: boolean;
-    rolbypassrls: boolean;
-  }>(
-    'SELECT rolname, rolsuper, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = ANY($1::text[]);',
-    [roleSpecs.map((role) => role.name)]
-  );
-  // PostgreSQL 16 restricts ALTER of these attributes even when setting their negative forms.
-  // Reject privileged existing roles before changing any credentials or database grants.
-  if (
-    existing.rows.some(
-      (role) =>
-        role.rolsuper !== false || role.rolreplication !== false || role.rolbypassrls !== false
-    )
-  ) {
-    throw new Error('waste_tenant_role_privilege_drift');
-  }
-  const existingNames = new Set(existing.rows.map((row) => row.rolname));
-  for (const role of roleSpecs) {
-    const roleExists = existingNames.has(role.name);
-    const attributes = roleExists ? role.reconcileAttributes : role.createAttributes;
-    await client.query(
-      roleExists
-        ? `ALTER ROLE ${quoteIdentifier(role.name)} WITH ${attributes};`
-        : `CREATE ROLE ${quoteIdentifier(role.name)} WITH ${attributes} NOSUPERUSER NOREPLICATION NOBYPASSRLS;`
-    );
-  }
-  await client.query(
-    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO ${quoteIdentifier(input.names.migratorRole)};`
-  );
-  await client.query(
-    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH SET TRUE;`
-  );
-};
 
 const ensureDatabase = async (
   client: ProvisioningClient,
@@ -284,7 +206,11 @@ export const createProvisionTenantDatabaseOperation = (
     try {
       const adminClient = await adminPool.connect();
       try {
-        await createOrUpdateRoles(adminClient, { names, passwords });
+        await createOrUpdateWasteTenantRoles(adminClient, {
+          names,
+          passwords,
+          preserveRuntimeCredentials: existing !== null,
+        });
         await ensureDatabase(adminClient, names);
       } finally {
         adminClient.release();

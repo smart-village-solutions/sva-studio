@@ -85,6 +85,26 @@ describe('SSF authorization lifecycle job', () => {
     });
   });
 
+  it('stops retries when the SSF root database is not configured', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      readiness: vi.fn(),
+      reconcile: vi.fn().mockRejectedValue(new Error('ssf_root_database_not_configured')),
+    })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
+
+    await expect(
+      handler?.({
+        job: { instanceId: 'tenant-a' },
+        tenantLifecycle: { operation: 'reconcile', generation: 4 },
+        throwIfCancellationRequested: vi.fn(),
+      } as never)
+    ).rejects.toMatchObject({
+      cause: {
+        code: 'ssf.root-database-not-configured',
+        retry: { kind: 'terminal' },
+      },
+    });
+  });
+
   it('classifies runtime failures as retryable', async () => {
     const handler = createPluginJobExecutionHandlers({
       readiness: vi.fn(),

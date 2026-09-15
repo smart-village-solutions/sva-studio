@@ -1,0 +1,4 @@
+{
+  "prNumber": 1401,
+  "body": "SSF nur bei ausdrücklicher Aktivierung\n\n- Neue Instanzen erhalten SSF nur noch bei ausdrücklicher Modulzuweisung.\n- Bei fehlender SSF-Datenbankverbindung wird der Berechtigungsabgleich bis zur Konfigurationsreparatur nicht automatisch wiederholt. Vorübergehende Verbindungsprobleme bleiben wiederholbar."
+}

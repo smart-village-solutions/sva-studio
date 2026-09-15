@@ -2,7 +2,7 @@
   "pluginId": "ssf",
   "manifestVersion": 1,
   "extensionTier": "admin",
-  "tenantActivationPolicy": "automatic",
+  "tenantActivationPolicy": "optional",
   "version": "0.0.1",
   "sdkVersion": "0.0.1",
   "hostCompatibility": {

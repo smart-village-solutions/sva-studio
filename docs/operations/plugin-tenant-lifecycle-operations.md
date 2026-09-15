@@ -90,6 +90,31 @@ Payloads, Fehlertexte, Datenbank-URLs und Secrets werden dabei nicht selektiert 
 
 ## Entscheidungspfad
 
+### SSF ohne konfigurierte Plugin-Datenbank
+
+SSF ist im Plugin-Manifest `optional`: Neue Instanzen erhalten das Modul nur
+durch explizite Zuweisung. Vor einem Update von der bisherigen Richtlinie
+`automatic` auf `optional` sind bestehende, weiter benötigte SSF-Zuweisungen
+über die Modulverwaltung ausdrücklich zu aktivieren (`manualOverride=enabled`).
+Bestehende manuelle Deaktivierungen bleiben erhalten. Der reguläre Studio-Server
+betreibt SSF nicht; dort darf das Modul bei der Instanzanlage nicht ausgewählt
+werden.
+
+Der Fehler `ssf.root-database-not-configured` bezeichnet eine fehlende
+`SVA_STUDIO_SSF_ROOT_DATABASE_URL`. Dieser Konfigurationsfehler beendet den
+SSF-Reconcile-Auftrag terminal; automatische Wiederholungen können die fehlende
+Konfiguration nicht herstellen. Vorübergehende Datenbank- oder Netzwerkfehler
+bleiben davon unabhängig wiederholbar. Die SSF-Readiness bleibt gesperrt.
+
+Zuerst prüfen, ob SSF auf der betroffenen Installation vorgesehen ist. Falls ja,
+Plugin-Datenbank und Verbindungswerte über den regulären Rollout bereitstellen
+und anschließend die autorisierte Lifecycle-Reparatur für den aktuellen
+Sollzustand auslösen. Falls SSF dort nicht vorgesehen ist, die zuständige
+Aktivierungsrichtlinie korrigieren. Historische Jobzeilen werden dabei nicht
+gelöscht oder direkt umgeschrieben.
+
+### Allgemeine Recovery
+
 1. **Abwarten:** Bei einem frischen Heartbeat, einer noch nicht fälligen Deadline oder innerhalb des dokumentierten 150-Sekunden-Recovery-Budgets keine zweite Arbeit anlegen.
 2. **Gezielt erneut einplanen:** Erst nach Ablauf des Recovery-Budgets und nur über die vorhandene autorisierte Retry-/Repair-Aktion. Die Aktion erzeugt eine neue Generation beziehungsweise reconciliert idempotent; sie manipuliert keine Queue-Zeile direkt.
 3. **Eskalieren:** Bei wiederholtem Lane-Fail-fast, fehlendem Terminalevent, widersprüchlicher Generation, unbekanntem `reason_code`, fehlender Migration/Funktionsberechtigung oder nicht eindeutig ableitbarem Key. Vor einer Änderung Logs und Traces redigiert sichern.

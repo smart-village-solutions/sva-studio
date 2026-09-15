@@ -34,6 +34,8 @@ const de = {
     },
     errors: {
       authorizationReconcileUnavailable: 'Die SSF-Berechtigungen konnten nicht abgeglichen werden.',
+      rootDatabaseNotConfigured:
+        'Die SSF-Datenbankverbindung ist nicht konfiguriert. Bitte die Konfiguration vervollständigen und den Abgleich erneut starten.',
       invalidAuthorizationReconcileContext:
         'Der SSF-Berechtigungsabgleich wurde ungültig aufgerufen.',
     },
@@ -100,6 +102,8 @@ const en = {
     },
     errors: {
       authorizationReconcileUnavailable: 'SSF permissions could not be reconciled.',
+      rootDatabaseNotConfigured:
+        'The SSF database connection is not configured. Complete the configuration and restart reconciliation.',
       invalidAuthorizationReconcileContext:
         'The SSF permission reconciliation was invoked incorrectly.',
     },

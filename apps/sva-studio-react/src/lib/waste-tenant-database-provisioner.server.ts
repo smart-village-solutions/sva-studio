@@ -53,6 +53,7 @@ export type WasteTenantDatabaseProvisionerDeps = Readonly<{
   getProvisionerDatabaseUrl?: () => string | undefined;
   createPool?: (databaseUrl: string) => ProvisioningPool;
   protectSecret?: (plaintext: string, aad: string) => string | null;
+  revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | undefined;
   loadManagedInterface?: typeof loadExternalInterfaceRecordByAlias;
   saveManagedInterface?: typeof saveExternalInterfaceRecord;
   claimProvisioning?: typeof claimWasteTenantProvisioning;
@@ -77,19 +78,24 @@ const createOrUpdateRoles = async (
   const roleSpecs = [
     {
       name: input.names.ownerRole,
-      attributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
+      createAttributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
+      reconcileAttributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
     },
     {
       name: input.names.migratorRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
+      createAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
+      reconcileAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
     },
     {
       name: input.names.appRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOCREATEDB NOCREATEROLE NOINHERIT`,
+      createAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOCREATEDB NOCREATEROLE NOINHERIT`,
+      // Runtime credentials have independent consumers and rotate only through an explicit cutover.
+      reconcileAttributes: 'LOGIN NOCREATEDB NOCREATEROLE NOINHERIT',
     },
     {
       name: input.names.publicAppRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOCREATEDB NOCREATEROLE NOINHERIT`,
+      createAttributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOCREATEDB NOCREATEROLE NOINHERIT`,
+      reconcileAttributes: 'LOGIN NOCREATEDB NOCREATEROLE NOINHERIT',
     },
   ] as const;
   const existing = await client.query<{
@@ -113,10 +119,12 @@ const createOrUpdateRoles = async (
   }
   const existingNames = new Set(existing.rows.map((row) => row.rolname));
   for (const role of roleSpecs) {
+    const roleExists = existingNames.has(role.name);
+    const attributes = roleExists ? role.reconcileAttributes : role.createAttributes;
     await client.query(
-      existingNames.has(role.name)
-        ? `ALTER ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes};`
-        : `CREATE ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes} NOSUPERUSER NOREPLICATION NOBYPASSRLS;`
+      roleExists
+        ? `ALTER ROLE ${quoteIdentifier(role.name)} WITH ${attributes};`
+        : `CREATE ROLE ${quoteIdentifier(role.name)} WITH ${attributes} NOSUPERUSER NOREPLICATION NOBYPASSRLS;`
     );
   }
   await client.query(
@@ -125,6 +133,62 @@ const createOrUpdateRoles = async (
   await client.query(
     `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH SET TRUE;`
   );
+};
+
+const readExistingRuntimePassword = (input: {
+  readonly databaseUrl: unknown;
+  readonly databaseName: string;
+  readonly roleName: string;
+}): string => {
+  if (typeof input.databaseUrl !== 'string' || input.databaseUrl.length === 0) {
+    throw new Error('waste_database_existing_secret_unreadable');
+  }
+  try {
+    const url = new URL(input.databaseUrl);
+    const username = decodeURIComponent(url.username);
+    const password = decodeURIComponent(url.password);
+    const databaseName = decodeURIComponent(url.pathname.replace(/^\//u, ''));
+    if (username !== input.roleName || databaseName !== input.databaseName || !password) {
+      throw new Error('waste_database_existing_secret_unreadable');
+    }
+    return password;
+  } catch {
+    throw new Error('waste_database_existing_secret_unreadable');
+  }
+};
+
+const readExistingRuntimePasswords = (input: {
+  readonly existing: ExternalInterfaceRecord;
+  readonly names: WasteTenantDatabaseNames;
+  readonly revealSecret?: WasteTenantDatabaseProvisionerDeps['revealSecret'];
+}): Readonly<{ app: string; publicApp: string }> => {
+  if (!input.existing.secretConfigCiphertext || !input.revealSecret) {
+    throw new Error('waste_database_existing_secret_unreadable');
+  }
+  const plaintext = input.revealSecret(
+    input.existing.secretConfigCiphertext,
+    buildExternalInterfaceSecretConfigAad(input.existing.id)
+  );
+  if (!plaintext) {
+    throw new Error('waste_database_existing_secret_unreadable');
+  }
+  try {
+    const config = JSON.parse(plaintext) as Record<string, unknown>;
+    return {
+      app: readExistingRuntimePassword({
+        databaseUrl: config.databaseUrl,
+        databaseName: input.names.database,
+        roleName: input.names.appRole,
+      }),
+      publicApp: readExistingRuntimePassword({
+        databaseUrl: config.publicDatabaseUrl,
+        databaseName: input.names.database,
+        roleName: input.names.publicAppRole,
+      }),
+    };
+  } catch {
+    throw new Error('waste_database_existing_secret_unreadable');
+  }
 };
 
 const ensureDatabase = async (
@@ -266,8 +330,24 @@ export const createProvisionTenantDatabaseOperation = (
       throw new Error('waste_database_secret_protection_missing');
     }
     const names = deriveWasteTenantDatabaseNames(instanceId);
+    const interfaceId = `waste-management:${instanceId}`;
+    const existing = await (deps.loadManagedInterface ?? loadExternalInterfaceRecordByAlias)(
+      instanceId,
+      'postgresql',
+      wasteTenantProvisioningContract.interfaceAlias
+    );
+    if (existing && (existing.ownerKind !== 'plugin' || existing.ownerId !== wasteTenantProvisioningContract.interfaceOwnerId)) {
+      throw new Error('waste_managed_interface_owner_conflict');
+    }
+    if (existing) {
+      managedInterfaceForFailure = existing;
+    }
     const passwordFactory = deps.createPassword ?? createPassword;
-    const passwords = { migrator: passwordFactory(), app: passwordFactory(), publicApp: passwordFactory() };
+    const migratorPassword = passwordFactory();
+    const runtimePasswords = existing
+      ? readExistingRuntimePasswords({ existing, names, revealSecret: deps.revealSecret })
+      : { app: passwordFactory(), publicApp: passwordFactory() };
+    const passwords = { migrator: migratorPassword, ...runtimePasswords };
     const createPool = deps.createPool ?? defaultCreatePool;
     const adminPool = createPool(adminUrl);
     try {
@@ -285,7 +365,6 @@ export const createProvisionTenantDatabaseOperation = (
     const migratorUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.migratorRole, password: passwords.migrator });
     const appUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.appRole, password: passwords.app });
     const publicAppUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.publicAppRole, password: passwords.publicApp });
-    const interfaceId = `waste-management:${instanceId}`;
     const now = (deps.now ?? (() => new Date()))().toISOString();
     const ciphertext = deps.protectSecret(
       JSON.stringify({ databaseUrl: appUrl, publicDatabaseUrl: publicAppUrl }),
@@ -315,14 +394,6 @@ export const createProvisionTenantDatabaseOperation = (
       updatedAt: now,
     };
     managedInterfaceForFailure = baseRecord;
-    const existing = await (deps.loadManagedInterface ?? loadExternalInterfaceRecordByAlias)(
-      instanceId,
-      'postgresql',
-      wasteTenantProvisioningContract.interfaceAlias
-    );
-    if (existing && (existing.ownerKind !== 'plugin' || existing.ownerId !== wasteTenantProvisioningContract.interfaceOwnerId)) {
-      throw new Error('waste_managed_interface_owner_conflict');
-    }
     await (deps.saveManagedInterface ?? saveExternalInterfaceRecord)({
       ...baseRecord,
       ...(existing?.createdAt ? { createdAt: existing.createdAt } : {}),

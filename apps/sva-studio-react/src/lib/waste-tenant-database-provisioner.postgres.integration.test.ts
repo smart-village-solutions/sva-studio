@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
+import type { ExternalInterfaceRecord } from '@sva/core';
 
 import { createProvisionTenantDatabaseOperation, deriveWasteTenantDatabaseNames } from './waste-tenant-database-provisioner.server.js';
 
@@ -29,17 +30,39 @@ describe('Waste provisioning with a restricted PostgreSQL principal', () => {
     provisionerUrl.password = password;
     const completeProvisioning = vi.fn(async (input) => ({ ...input, status: 'ready' } as never));
     const failProvisioning = vi.fn(async () => null);
+    const state: { managedInterface: ExternalInterfaceRecord | null } = {
+      managedInterface: null,
+    };
     const operation = createProvisionTenantDatabaseOperation({
       getProvisionerDatabaseUrl: () => provisionerUrl.toString(),
-      protectSecret: () => 'test-ciphertext',
+      protectSecret: (plaintext) => plaintext,
+      revealSecret: (ciphertext) => ciphertext ?? undefined,
       claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
       completeProvisioning,
       failProvisioning,
-      loadManagedInterface: vi.fn(async () => null),
-      saveManagedInterface: vi.fn(async () => undefined),
+      loadManagedInterface: vi.fn(async () => state.managedInterface),
+      saveManagedInterface: vi.fn(async (record) => {
+        state.managedInterface = record;
+      }),
     });
-    for (const generation of [1, 2]) {
-      await operation(instanceId, { operation: 'provision-tenant-database', desiredGeneration: generation }, { jobId: randomUUID() });
+    await operation(instanceId, { operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: randomUUID() });
+    const firstSecret = JSON.parse(state.managedInterface?.secretConfigCiphertext ?? '{}') as {
+      publicDatabaseUrl?: string;
+    };
+    expect(firstSecret.publicDatabaseUrl).toBeTruthy();
+
+    await operation(instanceId, { operation: 'provision-tenant-database', desiredGeneration: 2 }, { jobId: randomUUID() });
+    const reconciledSecret = JSON.parse(state.managedInterface?.secretConfigCiphertext ?? '{}') as {
+      publicDatabaseUrl?: string;
+    };
+    expect(reconciledSecret.publicDatabaseUrl).toBe(firstSecret.publicDatabaseUrl);
+    const publicConsumer = new Pool({ connectionString: firstSecret.publicDatabaseUrl, max: 1 });
+    try {
+      await expect(
+        publicConsumer.query('SELECT COUNT(*)::int AS count FROM public.waste_regions')
+      ).resolves.toMatchObject({ rowCount: 1 });
+    } finally {
+      await publicConsumer.end();
     }
     expect(completeProvisioning).toHaveBeenCalledTimes(2);
     expect(failProvisioning).not.toHaveBeenCalled();

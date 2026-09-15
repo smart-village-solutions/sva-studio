@@ -31,6 +31,7 @@ export const createWasteManagementOperationRuntime = (
     getProvisionerDatabaseUrl: () => process.env.WASTE_DATABASE_PROVISIONER_URL,
     createPool: deps.createPool,
     protectSecret: deps.protectSecret,
+    revealSecret: deps.revealSecret,
     now: deps.now,
   }),
   initializeDataSource: createInitializeDataSourceOperation(deps),

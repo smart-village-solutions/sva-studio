@@ -160,14 +160,7 @@ const studioPluginCatalogReport = await createStudioPluginCatalogReport({
       : resolveNodePluginModule(entry, manifest),
 });
 const studioDeclaredPluginOperationJobTypeIds =
-  studioPluginCatalogReport.snapshot.registry.jobTypes.map(
-    (jobType) => jobType.jobTypeId
-  ) as readonly string[];
-const studioPluginOperationQueueNames = new Map(
-  studioPluginCatalogReport.snapshot.registry.jobTypes.map(
-    (jobType) => [jobType.jobTypeId, jobType.queue] as const
-  )
-);
+  studioPluginCatalogReport.snapshot.registry.jobTypes.map((jobType) => jobType.jobTypeId);
 const createWasteManagementHostOwnedJobModuleFactory: PluginJobModuleFactory = (runtime) =>
   createWasteManagementPluginJobExecutionHandlers(runtime as WasteManagementOperationRuntime);
 const hostOwnedPluginJobModuleDescriptors = [
@@ -187,14 +180,6 @@ const studioPluginJobSources = studioPluginCatalogReport.snapshot.pluginSources.
       entry.manifest.entryPoints.jobs || getHostOwnedPluginJobModuleDescriptor(entry.pluginId)
     )
 );
-
-const resolveStudioPluginOperationQueueName = (jobTypeId: string): string => {
-  const queueName = studioPluginOperationQueueNames.get(jobTypeId);
-  if (!queueName) {
-    throw new Error(`missing_plugin_operation_job_definition:${jobTypeId}`);
-  }
-  return queueName;
-};
 
 const normalizeEntryPath = (value: string): string => value.replace(/^[.][/]/, '').trim();
 
@@ -352,7 +337,9 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
         jobTypeId,
         {
           handler,
-          queueName: resolveStudioPluginOperationQueueName(jobTypeId),
+          queueName: studioPluginCatalogReport.snapshot.registry.jobTypes.find(
+            (jobType) => jobType.jobTypeId === jobTypeId
+          )!.queue,
           executionLane: jobTypeId === privilegedJobTypeId ? 'privileged' : 'default',
           supportsCancellation: cancellablePluginJobTypeIds.has(jobTypeId),
         },

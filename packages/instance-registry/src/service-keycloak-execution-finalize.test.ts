@@ -337,6 +337,7 @@ describe('service-keycloak-execution-finalize', () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };

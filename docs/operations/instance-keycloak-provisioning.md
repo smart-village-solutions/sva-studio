@@ -67,7 +67,9 @@ Beim Laden von Detailstatus und Plan wird für Studio-erstellte Realms
 ausschließlich der Boolesche Nachweis, ob ein SMTP-Passwort gesetzt ist,
 tenantlokal live aktualisiert. Ist dieser Read nicht möglich, bleibt der letzte
 Snapshot konservativ sichtbar; ein Passwortwert wird weder gelesen noch
-gespeichert.
+gespeichert. Reine Sternmasken gelten nicht als erfolgreicher Nachweis. Die
+Zuordnung als Studio-erstellter Realm bleibt nur erhalten, solange der
+zugehörige Status-Snapshot zum aktuellen `authRealm` passt.
 
 | Bereich              | Zielzustand im neuen Realm                                                                                                                            | Behandlung bei `realmMode = new`                                                                                                                                    | Freigabe                                                                                                               |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |

@@ -445,13 +445,9 @@ describe('instance detail split helpers', () => {
       realmMode: 'existing',
       tenantAdminBootstrap: undefined,
       keycloakStatus: createKeycloakStatusFixture({ smtpPasswordConfigured: false }),
-      keycloakProvisioningRuns: [
-        {
-          mode: 'new',
-          overallStatus: 'succeeded',
-          steps: [{ stepKey: 'realm_baseline', status: 'done' }],
-        },
-      ],
+      keycloakPlan: {
+        steps: [{ stepKey: 'realm_baseline', details: { applicable: true } }],
+      },
     } as never);
     expect(managedExistingRealmEntries).toContainEqual([
       'admin.instances.keycloakStatus.smtpPasswordConfigured',
@@ -462,16 +458,9 @@ describe('instance detail split helpers', () => {
       realmMode: 'existing',
       tenantAdminBootstrap: undefined,
       keycloakStatus: createKeycloakStatusFixture({ smtpPasswordConfigured: false }),
-      keycloakProvisioningRuns: [
-        {
-          mode: 'new',
-          overallStatus: 'failed',
-          steps: [
-            { stepKey: 'realm_baseline', status: 'done' },
-            { stepKey: 'admin_bootstrap', status: 'failed' },
-          ],
-        },
-      ],
+      keycloakPlan: {
+        steps: [{ stepKey: 'realm_baseline', details: { applicable: true } }],
+      },
     } as never);
     expect(retainedManagedRealmEntries).toContainEqual([
       'admin.instances.keycloakStatus.smtpPasswordConfigured',

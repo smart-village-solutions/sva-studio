@@ -56,15 +56,8 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
   }
   const managedRealmBaseline =
     selectedInstance.realmMode === 'new' ||
-    selectedInstance.keycloakProvisioningRuns?.some(
-      (run) =>
-        run.mode === 'new' &&
-        run.steps.some((step) => step.stepKey === 'realm_baseline' && step.status === 'done') &&
-        (run.overallStatus === 'succeeded' ||
-          (run.overallStatus === 'failed' &&
-            run.steps.some(
-              (step) => step.stepKey === 'admin_bootstrap' && step.status === 'failed'
-            )))
+    selectedInstance.keycloakPlan?.steps.some(
+      (step) => step.stepKey === 'realm_baseline' && step.details.applicable === true
     ) === true;
 
   return [

@@ -81,6 +81,7 @@ describe('service-keycloak-execution-finalize', () => {
       instanceId: 'instance-1',
       status: 'provisioning',
       realmMode: 'new',
+      authRealm: 'demo',
       updatedAt: '2026-09-11T10:00:01.000Z',
     };
     const realmUpdated = {
@@ -173,6 +174,7 @@ describe('service-keycloak-execution-finalize', () => {
         status: 'done',
         details: {
           policyVersion: 3,
+          authRealm: realmUpdated.authRealm,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(
             realmUpdated as never,
             undefined,
@@ -284,13 +286,31 @@ describe('service-keycloak-execution-finalize', () => {
 
   it('keeps the realm baseline applicable after a managed realm transitioned to existing', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
+    const instance = {
+      instanceId: 'managed-instance',
+      status: 'active',
+      realmMode: 'existing',
+      authRealm: 'managed-realm',
+    } as const;
     const repository = {
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
       listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
         {
           mode: 'new',
           overallStatus: 'succeeded',
-          steps: [{ stepKey: 'realm_baseline', status: 'done' }],
+          steps: [
+            { stepKey: 'realm_baseline', status: 'done' },
+            {
+              stepKey: 'status_snapshot',
+              status: 'done',
+              details: {
+                policyVersion: 3,
+                authRealm: instance.authRealm,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(instance as never),
+              },
+            },
+          ],
         },
       ]),
       setInstanceStatus: vi.fn(),
@@ -313,11 +333,7 @@ describe('service-keycloak-execution-finalize', () => {
         } as never,
         {
           loaded: {
-            instance: {
-              instanceId: 'managed-instance',
-              status: 'active',
-              realmMode: 'existing',
-            },
+            instance,
           } as never,
           runId: 'later-keycloak-run',
           intent: 'provision',

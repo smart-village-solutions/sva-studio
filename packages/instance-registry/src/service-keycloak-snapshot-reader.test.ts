@@ -14,45 +14,94 @@ describe('isRealmBaselineApplicable', () => {
           {
             mode: 'new',
             overallStatus: 'succeeded',
-            steps: [{ stepKey: 'realm_baseline', status: 'done' }],
+            steps: [
+              { stepKey: 'realm_baseline', status: 'done' },
+              {
+                stepKey: 'status_snapshot',
+                status: 'done',
+                details: { policyVersion: 3, authRealm: 'current' },
+              },
+            ],
           },
-        ] as never
+        ] as never,
+        'current'
       )
     ).toBe(true);
   });
 
+  it('does not carry managed provenance to a different current realm', () => {
+    expect(
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'succeeded',
+            steps: [
+              { stepKey: 'realm_baseline', status: 'done' },
+              {
+                stepKey: 'status_snapshot',
+                status: 'done',
+                details: { policyVersion: 3, authRealm: 'previous-realm' },
+              },
+            ],
+          },
+        ] as never,
+        'current-realm'
+      )
+    ).toBe(false);
+  });
+
   it('keeps a retained realm managed after a post-baseline local failure', () => {
     expect(
-      isRealmBaselineApplicable('existing', [
-        {
-          mode: 'new',
-          overallStatus: 'failed',
-          steps: [
-            { stepKey: 'realm_baseline', status: 'done' },
-            { stepKey: 'admin_bootstrap', status: 'failed' },
-          ],
-        },
-      ] as never)
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'failed',
+            steps: [
+              { stepKey: 'realm_baseline', status: 'done' },
+              { stepKey: 'admin_bootstrap', status: 'failed' },
+              {
+                stepKey: 'status_snapshot',
+                status: 'done',
+                details: { policyVersion: 3, authRealm: 'current' },
+              },
+            ],
+          },
+        ] as never,
+        'current'
+      )
     ).toBe(true);
   });
 
   it('does not keep compensated new-mode runs as managed provenance', () => {
     expect(
-      isRealmBaselineApplicable('existing', [
-        {
-          mode: 'new',
-          overallStatus: 'failed',
-          steps: [
-            { stepKey: 'realm_baseline', status: 'done' },
-            { stepKey: 'worker_complete', status: 'failed' },
-          ],
-        },
-      ] as never)
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'failed',
+            steps: [
+              { stepKey: 'realm_baseline', status: 'done' },
+              { stepKey: 'worker_complete', status: 'failed' },
+              {
+                stepKey: 'status_snapshot',
+                status: 'done',
+                details: { policyVersion: 3, authRealm: 'current' },
+              },
+            ],
+          },
+        ] as never,
+        'current'
+      )
     ).toBe(false);
   });
 
   it('does not treat imported existing realms as managed', () => {
-    expect(isRealmBaselineApplicable('existing', [])).toBe(false);
+    expect(isRealmBaselineApplicable('existing', [], 'current')).toBe(false);
   });
 });
 

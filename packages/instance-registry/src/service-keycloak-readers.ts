@@ -153,24 +153,19 @@ export const createGetKeycloakStatusHandler =
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
+    const inputFingerprint = buildKeycloakSnapshotInputFingerprint(
+      instance, secretVersions, deps.readPluginOidcClientRequirements?.()
+    );
     const status = readSnapshotFromRuns<KeycloakTenantStatus>(
       runs,
       ['status_snapshot'],
       'status',
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
-      buildKeycloakSnapshotInputFingerprint(
-        instance,
-        secretVersions,
-        deps.readPluginOidcClientRequirements?.()
-      )
+      inputFingerprint
     );
     if (status) {
       const refreshedStatus = await refreshManagedRealmSmtpPasswordStatus(
-        deps,
-        instance,
-        runs,
-        secretVersions,
-        status
+        deps, instance, runs, secretVersions, status
       );
       logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
       return refreshedStatus;
@@ -254,16 +249,15 @@ export const createPlanKeycloakProvisioningHandler =
       KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       instanceId
     );
+    const inputFingerprint = buildKeycloakSnapshotInputFingerprint(
+      loaded.instance, secretVersions, deps.readPluginOidcClientRequirements?.()
+    );
     const snapshot = await readManagedRealmPlanSnapshot(
       deps,
       loaded.instance,
       runs,
       secretVersions,
-      buildKeycloakSnapshotInputFingerprint(
-        loaded.instance,
-        secretVersions,
-        deps.readPluginOidcClientRequirements?.()
-      )
+      inputFingerprint
     );
     if (snapshot) {
       logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });
@@ -285,7 +279,11 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
       pluginOidcClients: deps.readPluginOidcClientRequirements?.(),
-      realmBaselineApplicable: isRealmBaselineApplicable(loaded.instance.realmMode, runs),
+      realmBaselineApplicable: isRealmBaselineApplicable(
+        loaded.instance.realmMode,
+        runs,
+        loaded.instance.authRealm
+      ),
       preflight,
     });
     logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });

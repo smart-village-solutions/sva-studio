@@ -24,7 +24,8 @@ werden.
   tenant-spezifische Daten werden nicht aus einem Referenz-Realm kopiert.
 - Die nicht geheimen SMTP-Werte gehören zur Baseline. Das SMTP-Passwort bleibt
   eine sichtbare manuelle Nacharbeit und wird niemals als Platzhalterwert an
-  Keycloak übertragen oder in Nachweisen persistiert.
+  Keycloak übertragen oder in Nachweisen persistiert. Eine von Keycloak
+  gelieferte reine Sternmaske gilt nicht als Nachweis eines gesetzten Passworts.
 - Die Baseline gilt automatisch nur für von Studio neu angelegte Realms.
   Importierte Bestands-Realms werden nicht stillschweigend migriert.
 - Schlägt die Provisionierung eines in diesem Lauf neu angelegten Realms fehl,
@@ -35,9 +36,10 @@ werden.
   Operation von `new` auf `existing`. Status- und Plan-Evidenz behalten dabei
   anhand eines im Modus `new` erfolgreich abgeschlossenen Laufs oder eines erst
   beim nachgelagerten lokalen `admin_bootstrap` fehlgeschlagenen Laufs die
-  Herkunft als Studio-verwalteter Realm. Kompensierte Läufe zählen nicht als
-  Herkunftsnachweis; spätere Keycloak-Läufe und Konfigurationsänderungen
-  erhalten den Nachweis und damit die sichtbare SMTP-Nacharbeit.
+  Herkunft als Studio-verwalteter Realm, sofern dessen Status-Snapshot zum
+  aktuellen `authRealm` gehört. Kompensierte Läufe und frühere Realm-Ziele
+  zählen nicht als Herkunftsnachweis; spätere Keycloak-Läufe am unveränderten
+  Realm erhalten den Nachweis und damit die sichtbare SMTP-Nacharbeit.
 - Der lokale Bootstrap-Account wird erst nach erfolgreicher Realm-Abnahme
   synchronisiert. Ein vorheriger Abschlussfehler kann dadurch keinen lokalen
   privilegierten Account für einen anschließend kompensierten Realm hinterlassen.

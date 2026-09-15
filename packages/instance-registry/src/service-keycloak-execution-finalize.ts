@@ -65,7 +65,8 @@ const loadRealmBaselineApplicability = async (
   if (instance.realmMode === 'new') return true;
   return isRealmBaselineApplicable(
     instance.realmMode,
-    await deps.repository.listKeycloakProvisioningRuns(instance.instanceId)
+    await deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
+    instance.authRealm
   );
 };
 
@@ -129,6 +130,7 @@ const appendFinalStatusSnapshot = async (
     summary: 'Der Worker hat den Keycloak-Istzustand nach dem Lauf gespeichert.',
     details: {
       policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+      authRealm: snapshotInstance.authRealm,
       inputFingerprint: buildKeycloakSnapshotInputFingerprint(
         snapshotInstance,
         await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId),

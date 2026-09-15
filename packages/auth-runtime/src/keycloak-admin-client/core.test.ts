@@ -685,7 +685,7 @@ describe('Keycloak admin client', () => {
     );
   });
 
-  it('redacts the SMTP password from realm reads', async () => {
+  it('redacts a masked SMTP password without accepting it as configured evidence', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -707,7 +707,7 @@ describe('Keycloak admin client', () => {
         realm: 'demo',
         loginTheme: 'sva-kern2',
         smtpServer: { host: 'mail.example.org' },
-        smtpPasswordConfigured: true,
+        smtpPasswordConfigured: false,
       })
     );
     expect(realm).not.toHaveProperty('smtpServer.password');

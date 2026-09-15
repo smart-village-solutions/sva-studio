@@ -3186,11 +3186,12 @@ describe('instance registry service facade', () => {
   });
 
   it('keeps the managed-realm baseline in a fallback plan after an update-to-new run', async () => {
+    const managedInstance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+    };
     const repository = createRepository({
-      getInstanceById: vi.fn(async () => ({
-        ...baseInstance,
-        realmMode: 'existing' as const,
-      })),
+      getInstanceById: vi.fn(async () => managedInstance),
       listKeycloakProvisioningRuns: vi.fn(async () => [
         {
           id: 'managed-realm-run',
@@ -3208,6 +3209,20 @@ describe('instance registry service facade', () => {
               status: 'done',
               summary: 'Baseline applied',
               details: {},
+            },
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Final snapshot',
+              details: {
+                policyVersion: 3,
+                authRealm: managedInstance.authRealm,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(managedInstance, {
+                  authClientSecretCiphertext: 'auth-cipher',
+                  tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
+                }),
+              },
             },
           ],
         },
@@ -3476,6 +3491,7 @@ describe('instance registry service facade', () => {
               summary: 'Final',
               details: {
                 policyVersion: 3,
+                authRealm: managedInstance.authRealm,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(
                   managedInstance,
                   secretVersions

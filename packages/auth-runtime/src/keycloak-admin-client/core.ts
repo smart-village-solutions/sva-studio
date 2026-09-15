@@ -1370,6 +1370,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         operation: 'get_realm',
       });
       const smtpServer = realm.smtpServer ?? {};
+      const smtpPassword = smtpServer.password?.trim();
       return {
         realm: realm.realm,
         loginTheme: realm.loginTheme,
@@ -1387,7 +1388,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         smtpServer: Object.fromEntries(
           Object.entries(smtpServer).filter(([key]) => key !== 'password')
         ),
-        smtpPasswordConfigured: Boolean(smtpServer.password),
+        smtpPasswordConfigured: Boolean(smtpPassword && !/^\*+$/.test(smtpPassword)),
       };
     } catch (error) {
       if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {

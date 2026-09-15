@@ -26,15 +26,30 @@ const hasCompletedStep = (
   status: 'done' | 'failed'
 ): boolean => run.steps.some((step) => step.stepKey === stepKey && step.status === status);
 
+const hasCurrentStatusSnapshot = (
+  run: ProvisioningRuns[number],
+  authRealm: string
+): boolean =>
+  run.steps.some(
+    (step) =>
+      step.stepKey === 'status_snapshot' &&
+      step.status === 'done' &&
+      isRecord(step.details) &&
+      step.details.policyVersion === KEYCLOAK_SNAPSHOT_POLICY_VERSION &&
+      step.details.authRealm === authRealm
+  );
+
 export const isRealmBaselineApplicable = (
   realmMode: 'new' | 'existing',
-  runs: ProvisioningRuns
+  runs: ProvisioningRuns,
+  authRealm: string
 ): boolean =>
   realmMode === 'new' ||
   runs.some(
     (run) =>
       run.mode === 'new' &&
       hasCompletedStep(run, 'realm_baseline', 'done') &&
+      hasCurrentStatusSnapshot(run, authRealm) &&
       (run.overallStatus === 'succeeded' ||
         (run.overallStatus === 'failed' && hasCompletedStep(run, 'admin_bootstrap', 'failed')))
   );
@@ -49,7 +64,7 @@ export const refreshManagedRealmSmtpPasswordStatus = async (
   if (
     !deps.getKeycloakStatus ||
     !deps.revealSecret ||
-    !isRealmBaselineApplicable(instance.realmMode, runs)
+    !isRealmBaselineApplicable(instance.realmMode, runs, instance.authRealm)
   ) {
     return status;
   }

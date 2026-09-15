@@ -627,6 +627,10 @@ export type IamInstanceKeycloakStatus = {
   readonly tenantAdminClientSecretReadable: boolean;
   readonly tenantAdminClientSecretAligned: boolean;
   readonly runtimeSecretSource: 'tenant' | 'global';
+  readonly realmBaselineAligned?: boolean;
+  readonly userProfileBaselineAligned?: boolean;
+  readonly instanceIdMapperAligned?: boolean;
+  readonly smtpPasswordConfigured?: boolean;
 };
 
 export const instanceAuditCheckStatuses = ['pass', 'fail', 'warn', 'skip'] as const;

@@ -137,6 +137,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
     intent: input.intent,
     usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
     requireTenantAdmin,
+    requireRealmBaseline: input.loaded.instance.realmMode === 'new',
   });
 
   const completionSatisfied = completionSteps.every((step) => step.ok);

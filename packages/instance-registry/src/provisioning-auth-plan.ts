@@ -26,6 +26,77 @@ const buildRealmStep = (
   };
 };
 
+const buildRealmBaselineStep = (
+  realmMode: InstanceRealmMode,
+  state: KeycloakReadState | undefined,
+  blocked: boolean
+): KeycloakTenantPlan['steps'][number] => {
+  if (realmMode === 'existing') {
+    return {
+      stepKey: 'realm_baseline',
+      title: 'Realm-Baseline prüfen',
+      action: 'skip',
+      status: blocked ? 'blocked' : 'ready',
+      summary: 'Bestands-Realms werden nicht automatisch auf die New-Realm-Baseline umgestellt.',
+      details: { applicable: false },
+    };
+  }
+
+  const realmBaselineAligned = Boolean(state?.realmBaselineAligned);
+  const userProfileBaselineAligned = Boolean(state?.userProfileBaselineAligned);
+  const instanceIdMapperAligned = Boolean(
+    (state?.protocolMappers ?? []).some((mapper) => mapper.name === 'instanceId')
+  );
+  const aligned = realmBaselineAligned && userProfileBaselineAligned && instanceIdMapperAligned;
+
+  return {
+    stepKey: 'realm_baseline',
+    title: 'Realm-Baseline anwenden',
+    action: state?.realm ? (aligned ? 'verify' : 'update') : 'create',
+    status: blocked ? 'blocked' : 'ready',
+    summary: aligned
+      ? 'Realm-Einstellungen, Benutzerprofil und instanceId-Mapper entsprechen der Baseline.'
+      : 'Theme, deutsche Lokalisierung, Events, E-Mail-Grundkonfiguration, Benutzerprofil und Mapper werden automatisch eingerichtet.',
+    details: {
+      applicable: true,
+      realmBaselineAligned,
+      userProfileBaselineAligned,
+      instanceIdMapperAligned,
+    },
+  };
+};
+
+const buildSmtpPasswordStep = (
+  realmMode: InstanceRealmMode,
+  state: KeycloakReadState | undefined,
+  blocked: boolean
+): KeycloakTenantPlan['steps'][number] => {
+  const applicable = realmMode === 'new';
+  const configured = Boolean(state?.realm?.smtpPasswordConfigured);
+  return {
+    stepKey: 'smtp_password',
+    title: 'SMTP-Passwort manuell setzen',
+    action: 'skip',
+    status: blocked ? 'blocked' : 'ready',
+    summary:
+      realmMode === 'existing'
+        ? 'Das SMTP-Passwort des Bestands-Realm bleibt unverändert.'
+        : configured
+          ? 'In Keycloak ist ein SMTP-Passwort hinterlegt.'
+          : 'Nach der automatischen Grundkonfiguration muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.',
+    details: {
+      applicable,
+      configured,
+      reasonCode: !applicable
+        ? 'new_realm_baseline_not_applicable'
+        : configured
+          ? 'smtp_password_configured'
+          : 'smtp_password_required',
+      actionCode: !applicable || configured ? 'none' : 'set_smtp_password_in_keycloak',
+    },
+  };
+};
+
 const resolveRealmSummary = (realmMode: InstanceRealmMode, realmExists: boolean): string => {
   if (realmMode === 'new') {
     return realmExists
@@ -255,6 +326,8 @@ export const buildPlan = (input: {
 
   const steps: KeycloakTenantPlan['steps'] = [
     buildRealmStep(input.realmMode, input.state, blocked),
+    buildRealmBaselineStep(input.realmMode, input.state, blocked),
+    buildSmtpPasswordStep(input.realmMode, input.state, blocked),
     buildClientStep({
       blocked,
       clientExists: Boolean(alignment.clientRepresentation),

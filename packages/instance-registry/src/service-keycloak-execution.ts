@@ -11,6 +11,7 @@ import {
 } from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
 import {
+  assertQueuedRealmBaselineCurrent,
   buildProvisioningInput,
   completeRun,
   createQueuedRun,
@@ -307,6 +308,7 @@ export const processClaimedKeycloakProvisioningRun = async (
       run.id,
       queueStep?.details
     );
+    assertQueuedRealmBaselineCurrent(queueStep?.details, loaded.instance.realmMode);
     const baseProvisioningInput = buildProvisioningInput(loaded);
     const pluginOidcClients = readQueuedPluginOidcClientRequirements(
       queueStep?.details,

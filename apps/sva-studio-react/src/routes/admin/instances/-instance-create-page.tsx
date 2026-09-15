@@ -323,7 +323,20 @@ export const InstanceCreatePage = () => {
                     type="radio"
                     name="instance-realm-mode"
                     checked={formValues.realmMode === 'new'}
-                    onChange={() => updateForm((current) => ({ ...current, realmMode: 'new' }))}
+                    onChange={() =>
+                      updateForm((current) => ({
+                        ...current,
+                        realmMode: 'new',
+                        authRealm: current.instanceId,
+                        authClientId: 'sva-studio-login',
+                        authIssuerUrl: '',
+                        authClientSecret: '',
+                        tenantAdminClient: {
+                          clientId: 'sva-studio-realm-admin',
+                          secret: '',
+                        },
+                      }))
+                    }
                   />
                   <span>{t('admin.instances.flow.realmModeNew')}</span>
                 </label>
@@ -353,7 +366,8 @@ export const InstanceCreatePage = () => {
                       updateForm((current) => ({
                         ...current,
                         instanceId: event.target.value,
-                        authRealm: current.authRealm ? current.authRealm : event.target.value,
+                        authRealm:
+                          current.realmMode === 'new' ? event.target.value : current.authRealm,
                       }))
                     }
                   />
@@ -393,115 +407,131 @@ export const InstanceCreatePage = () => {
 
           {currentStep === 'auth' ? (
             <div className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-auth-realm"
-                    label={t('admin.instances.form.authRealm')}
-                    helpKey="authRealm"
-                  />
-                  <Input
-                    id="instance-auth-realm"
-                    value={formValues.authRealm}
-                    onChange={(event) =>
-                      updateForm((current) => ({ ...current, authRealm: event.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-auth-client-id"
-                    label={t('admin.instances.form.authClientId')}
-                    helpKey="authClientId"
-                  />
-                  <Input
-                    id="instance-auth-client-id"
-                    value={formValues.authClientId}
-                    onChange={(event) =>
-                      updateForm((current) => ({ ...current, authClientId: event.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-tenant-admin-client-id"
-                    label={t('admin.instances.form.tenantAdminClientId')}
-                    helpKey="tenantAdminClientId"
-                  />
-                  <Input
-                    id="instance-tenant-admin-client-id"
-                    value={formValues.tenantAdminClient.clientId}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        tenantAdminClient: {
-                          ...current.tenantAdminClient,
-                          clientId: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-tenant-admin-client-secret"
-                    label={t('admin.instances.form.tenantAdminClientSecret')}
-                    helpKey="tenantAdminClientSecret"
-                  />
-                  <Input
-                    id="instance-tenant-admin-client-secret"
-                    type="password"
-                    disabled={!tenantSecretUserInputRequired}
-                    placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
-                    value={formValues.tenantAdminClient.secret}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        tenantAdminClient: {
-                          ...current.tenantAdminClient,
-                          secret: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <FormLabelWithHelp
-                  htmlFor="instance-auth-issuer-url"
-                  label={t('admin.instances.form.authIssuerUrl')}
-                  helpKey="authIssuerUrl"
-                />
-                <Input
-                  id="instance-auth-issuer-url"
-                  value={formValues.authIssuerUrl}
-                  onChange={(event) =>
-                    updateForm((current) => ({ ...current, authIssuerUrl: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <FormLabelWithHelp
-                  htmlFor="instance-auth-client-secret"
-                  label={t('admin.instances.form.authClientSecret')}
-                  helpKey="authClientSecret"
-                />
-                <Input
-                  id="instance-auth-client-secret"
-                  type="password"
-                  disabled={!tenantSecretUserInputRequired}
-                  placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
-                  value={formValues.authClientSecret}
-                  onChange={(event) =>
-                    updateForm((current) => ({ ...current, authClientSecret: event.target.value }))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  {readAuthSecretHint(tenantSecretUserInputRequired)}
-                </p>
-              </div>
+              {formValues.realmMode === 'new' ? (
+                <Alert>
+                  <AlertDescription>
+                    {t('admin.instances.wizard.newRealmBaselineSummary')}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <FormLabelWithHelp
+                        htmlFor="instance-auth-realm"
+                        label={t('admin.instances.form.authRealm')}
+                        helpKey="authRealm"
+                      />
+                      <Input
+                        id="instance-auth-realm"
+                        value={formValues.authRealm}
+                        onChange={(event) =>
+                          updateForm((current) => ({ ...current, authRealm: event.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <FormLabelWithHelp
+                        htmlFor="instance-auth-client-id"
+                        label={t('admin.instances.form.authClientId')}
+                        helpKey="authClientId"
+                      />
+                      <Input
+                        id="instance-auth-client-id"
+                        value={formValues.authClientId}
+                        onChange={(event) =>
+                          updateForm((current) => ({
+                            ...current,
+                            authClientId: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <FormLabelWithHelp
+                        htmlFor="instance-tenant-admin-client-id"
+                        label={t('admin.instances.form.tenantAdminClientId')}
+                        helpKey="tenantAdminClientId"
+                      />
+                      <Input
+                        id="instance-tenant-admin-client-id"
+                        value={formValues.tenantAdminClient.clientId}
+                        onChange={(event) =>
+                          updateForm((current) => ({
+                            ...current,
+                            tenantAdminClient: {
+                              ...current.tenantAdminClient,
+                              clientId: event.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <FormLabelWithHelp
+                        htmlFor="instance-tenant-admin-client-secret"
+                        label={t('admin.instances.form.tenantAdminClientSecret')}
+                        helpKey="tenantAdminClientSecret"
+                      />
+                      <Input
+                        id="instance-tenant-admin-client-secret"
+                        type="password"
+                        disabled={!tenantSecretUserInputRequired}
+                        placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
+                        value={formValues.tenantAdminClient.secret}
+                        onChange={(event) =>
+                          updateForm((current) => ({
+                            ...current,
+                            tenantAdminClient: {
+                              ...current.tenantAdminClient,
+                              secret: event.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="instance-auth-issuer-url"
+                      label={t('admin.instances.form.authIssuerUrl')}
+                      helpKey="authIssuerUrl"
+                    />
+                    <Input
+                      id="instance-auth-issuer-url"
+                      value={formValues.authIssuerUrl}
+                      onChange={(event) =>
+                        updateForm((current) => ({ ...current, authIssuerUrl: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <FormLabelWithHelp
+                      htmlFor="instance-auth-client-secret"
+                      label={t('admin.instances.form.authClientSecret')}
+                      helpKey="authClientSecret"
+                    />
+                    <Input
+                      id="instance-auth-client-secret"
+                      type="password"
+                      disabled={!tenantSecretUserInputRequired}
+                      placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
+                      value={formValues.authClientSecret}
+                      onChange={(event) =>
+                        updateForm((current) => ({
+                          ...current,
+                          authClientSecret: event.target.value,
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {readAuthSecretHint(tenantSecretUserInputRequired)}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           ) : null}
 
@@ -615,6 +645,13 @@ export const InstanceCreatePage = () => {
                   {t('admin.instances.wizard.reviewSubtitle')}
                 </p>
               </div>
+              {formValues.realmMode === 'new' ? (
+                <Alert>
+                  <AlertDescription>
+                    {t('admin.instances.wizard.newRealmBaselineSummary')}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
               <div className="grid gap-3 md:grid-cols-2">
                 <ReviewRow
                   label={t('admin.instances.form.instanceId')}

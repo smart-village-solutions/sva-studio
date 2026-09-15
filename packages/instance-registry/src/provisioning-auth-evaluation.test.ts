@@ -102,6 +102,14 @@ describe('provisioning-auth-evaluation', () => {
     expect(plan.steps.find((step) => step.stepKey === 'tenant_admin')).toMatchObject({
       action: 'skip',
     });
+    expect(plan.steps.find((step) => step.stepKey === 'realm_baseline')).toMatchObject({
+      action: 'skip',
+      details: { applicable: false },
+    });
+    expect(plan.steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
+      action: 'skip',
+      details: { applicable: false, actionCode: 'none' },
+    });
     expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
   });
 

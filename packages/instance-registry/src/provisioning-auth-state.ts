@@ -17,6 +17,11 @@ import {
   readPluginOidcClientAlignment,
   readPluginOidcClientRequirements,
 } from './provisioning-auth-plugin-clients.js';
+import {
+  isKeycloakRealmBaselineAligned,
+  KEYCLOAK_REALM_BASELINE,
+  type KeycloakRealmBaselineSettings,
+} from './keycloak-realm-baseline.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -52,9 +57,12 @@ type KeycloakAdminUser = {
 };
 
 export type KeycloakProvisioningClient = {
-  ensureRealm(input: { displayName?: string }): Promise<boolean>;
+  ensureRealm(input: {
+    displayName?: string;
+    settings?: KeycloakRealmBaselineSettings;
+  }): Promise<boolean>;
   deleteRealm(): Promise<void>;
-  getRealm(): Promise<{ realm: string } | null>;
+  getRealm(): Promise<KeycloakReadState['realm']>;
   getOidcClientByClientId(clientId: string): Promise<KeycloakClientRepresentation>;
   getOidcClientSecretValue(clientId: string): Promise<string | null>;
   ensureOidcClient(input: {
@@ -98,6 +106,12 @@ export type KeycloakProvisioningClient = {
     userAttribute: string;
     claimName: string;
   }): Promise<void>;
+  ensureAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
+  ): Promise<void>;
+  hasAdminOnlyUserProfileAttributes(
+    attributes: readonly Readonly<{ name: string; multivalued: boolean }>[]
+  ): Promise<boolean>;
   ensureAudienceProtocolMapper(input: {
     clientId: string;
     name: string;
@@ -299,6 +313,8 @@ export const createReadKeycloakState =
         keycloakClientSecret: null,
         tenantAdminClientSecret: null,
         systemAdminRole: null,
+        realmBaselineAligned: false,
+        userProfileBaselineAligned: false,
       };
     }
 
@@ -328,6 +344,10 @@ export const createReadKeycloakState =
       ? await client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
       : null;
     const systemAdminRole = await client.getRoleByName(SYSTEM_ADMIN_ROLE);
+    const realmBaselineAligned = isKeycloakRealmBaselineAligned(realm);
+    const userProfileBaselineAligned = await client.hasAdminOnlyUserProfileAttributes(
+      KEYCLOAK_REALM_BASELINE.userProfileAttributes
+    );
 
     return {
       client,
@@ -342,6 +362,8 @@ export const createReadKeycloakState =
       keycloakClientSecret,
       tenantAdminClientSecret,
       systemAdminRole,
+      realmBaselineAligned,
+      userProfileBaselineAligned,
     };
   };
 
@@ -428,7 +450,13 @@ export const createProvisionInstanceAuthArtifacts =
 
     let createdRealm = false;
     if (input.realmMode === 'new') {
-      createdRealm = await client.ensureRealm({ displayName: input.instanceId });
+      createdRealm = await client.ensureRealm({
+        displayName: input.instanceId,
+        settings: KEYCLOAK_REALM_BASELINE.realm,
+      });
+      if (!createdRealm) {
+        throw new Error(`Keycloak realm ${input.authRealm} already exists`);
+      }
     } else {
       const realm = await client.getRealm();
       if (!realm) {
@@ -440,6 +468,53 @@ export const createProvisionInstanceAuthArtifacts =
         ...input,
         pluginOidcClients: pluginOidcClientRequirements,
       });
+      if (reconcileAuthClient) {
+        await client.ensureOidcClient({
+          clientId: input.authClientId,
+          redirectUris: expectedClient.redirectUris,
+          postLogoutRedirectUris: expectedClient.postLogoutRedirectUris,
+          webOrigins: expectedClient.webOrigins,
+          rootUrl: expectedClient.rootUrl,
+          clientSecret: input.authClientSecret,
+          rotateClientSecret: input.rotateClientSecret,
+        });
+        if (input.realmMode === 'new') {
+          await client.ensureAdminOnlyUserProfileAttributes(
+            KEYCLOAK_REALM_BASELINE.userProfileAttributes
+          );
+          await client.ensureUserAttributeProtocolMapper({
+            clientId: input.authClientId,
+            ...KEYCLOAK_REALM_BASELINE.instanceIdMapper,
+          });
+        }
+      }
+
+      if (input.tenantAdminClient?.clientId && reconcileTenantAdminClient) {
+        const expectedTenantAdminClient = buildExpectedTenantAdminClientConfig(
+          input.primaryHostname
+        );
+        await client.ensureOidcClient({
+          clientId: input.tenantAdminClient.clientId,
+          redirectUris: expectedTenantAdminClient.redirectUris,
+          postLogoutRedirectUris: expectedTenantAdminClient.postLogoutRedirectUris,
+          webOrigins: expectedTenantAdminClient.webOrigins,
+          rootUrl: expectedTenantAdminClient.rootUrl,
+          clientSecret: input.tenantAdminClientSecret,
+          standardFlowEnabled: expectedTenantAdminClient.standardFlowEnabled,
+          directAccessGrantsEnabled: expectedTenantAdminClient.directAccessGrantsEnabled,
+          serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
+        });
+        await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
+      }
+      await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId, {
+        allowLegacyRealmRoleMigration: input.allowLegacyRealmRoleMigration,
+      });
+      if (input.tenantAdminBootstrap) {
+        await ensureTenantAdmin(client, {
+          ...input.tenantAdminBootstrap,
+          temporaryPassword: input.tenantAdminTemporaryPassword,
+        });
+      }
     } catch (error) {
       if (!createdRealm) {
         throw error;
@@ -468,41 +543,5 @@ export const createProvisionInstanceAuthArtifacts =
         throw manualActionError;
       }
       rethrowAfterSuccessfulRealmCleanup(error);
-    }
-    if (reconcileAuthClient) {
-      await client.ensureOidcClient({
-        clientId: input.authClientId,
-        redirectUris: expectedClient.redirectUris,
-        postLogoutRedirectUris: expectedClient.postLogoutRedirectUris,
-        webOrigins: expectedClient.webOrigins,
-        rootUrl: expectedClient.rootUrl,
-        clientSecret: input.authClientSecret,
-        rotateClientSecret: input.rotateClientSecret,
-      });
-    }
-
-    if (input.tenantAdminClient?.clientId && reconcileTenantAdminClient) {
-      const expectedTenantAdminClient = buildExpectedTenantAdminClientConfig(input.primaryHostname);
-      await client.ensureOidcClient({
-        clientId: input.tenantAdminClient.clientId,
-        redirectUris: expectedTenantAdminClient.redirectUris,
-        postLogoutRedirectUris: expectedTenantAdminClient.postLogoutRedirectUris,
-        webOrigins: expectedTenantAdminClient.webOrigins,
-        rootUrl: expectedTenantAdminClient.rootUrl,
-        clientSecret: input.tenantAdminClientSecret,
-        standardFlowEnabled: expectedTenantAdminClient.standardFlowEnabled,
-        directAccessGrantsEnabled: expectedTenantAdminClient.directAccessGrantsEnabled,
-        serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
-      });
-      await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
-    }
-    await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId, {
-      allowLegacyRealmRoleMigration: input.allowLegacyRealmRoleMigration,
-    });
-    if (input.tenantAdminBootstrap) {
-      await ensureTenantAdmin(client, {
-        ...input.tenantAdminBootstrap,
-        temporaryPassword: input.tenantAdminTemporaryPassword,
-      });
     }
   };

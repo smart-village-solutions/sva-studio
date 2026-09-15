@@ -1,6 +1,10 @@
 import { buildPrimaryHostname, normalizeHost } from '@sva/core';
 
-import { createInstanceSchema, updateInstanceSchema } from './http-contracts.js';
+import {
+  createInstanceSchema,
+  resolveCreateInstanceDefaults,
+  updateInstanceSchema,
+} from './http-contracts.js';
 import {
   buildCreateInstanceProvisioningInput,
   buildUpdateInstanceInput,
@@ -56,10 +60,7 @@ export const createCreateInstanceHandler =
       return idempotencyResult.error;
     }
 
-    const payloadResult = await deps.parseRequestBody<CreateInstancePayload>(
-      request,
-      createInstanceSchema
-    );
+    const payloadResult = await deps.parseRequestBody(request, createInstanceSchema);
     if (!payloadResult.ok) {
       return deps.createApiError(
         400,
@@ -68,7 +69,8 @@ export const createCreateInstanceHandler =
         deps.getRequestId()
       );
     }
-    const reservedClientError = rejectReservedOidcClientId(deps, payloadResult.data);
+    const payload = resolveCreateInstanceDefaults(payloadResult.data);
+    const reservedClientError = rejectReservedOidcClientId(deps, payload);
     if (reservedClientError) {
       return reservedClientError;
     }
@@ -78,20 +80,20 @@ export const createCreateInstanceHandler =
     try {
       const executeCreate = (service: InstanceRegistryService) =>
         service.createProvisioningRequest(
-          buildCreateInstanceProvisioningInput(payloadResult.data, {
+          buildCreateInstanceProvisioningInput(payload, {
             idempotencyKey: idempotencyResult.key,
             actorId: actor.id,
             requestId: deps.getRequestId(),
           })
         );
       result = deps.withRegistryCreateService
-        ? await deps.withRegistryCreateService(payloadResult.data.instanceId, executeCreate)
+        ? await deps.withRegistryCreateService(payload.instanceId, executeCreate)
         : await deps.withRegistryService(executeCreate);
     } catch (error) {
       return deps.mapMutationError(error, {
         operation: 'create_instance',
         requestId: deps.getRequestId(),
-        instanceId: payloadResult.data.instanceId,
+        instanceId: payload.instanceId,
       });
     }
 

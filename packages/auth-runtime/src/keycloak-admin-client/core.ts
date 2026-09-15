@@ -172,6 +172,29 @@ type KeycloakUserProfileConfig = Readonly<{
   [key: string]: unknown;
 }>;
 
+type KeycloakRealmRepresentation = Readonly<{
+  realm: string;
+  loginTheme?: string;
+  internationalizationEnabled?: boolean;
+  supportedLocales?: readonly string[];
+  defaultLocale?: string;
+  eventsEnabled?: boolean;
+  eventsListeners?: readonly string[];
+  eventsExpiration?: number;
+  adminEventsEnabled?: boolean;
+  adminEventsDetailsEnabled?: boolean;
+  resetPasswordAllowed?: boolean;
+  verifyEmail?: boolean;
+  attributes?: Readonly<Record<string, string>>;
+  smtpServer?: Readonly<Record<string, string>>;
+}>;
+
+export type KeycloakRealmSettings = Omit<KeycloakRealmRepresentation, 'realm'>;
+
+export type KeycloakRealmReadRepresentation = KeycloakRealmRepresentation & {
+  readonly smtpPasswordConfigured: boolean;
+};
+
 const isJsonRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -1268,7 +1291,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
-  async ensureRealm(input: { displayName?: string }): Promise<boolean> {
+  async ensureRealm(input: {
+    displayName?: string;
+    settings?: KeycloakRealmSettings;
+  }): Promise<boolean> {
     await this.assertWriteAvailability();
     try {
       await this.executeWithResilience<void>({
@@ -1278,6 +1304,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           realm: this.realm,
           enabled: true,
           displayName: input.displayName,
+          ...input.settings,
         }),
         operation: 'create_realm',
       });
@@ -1329,7 +1356,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  async getRealm(): Promise<{ realm: string } | null> {
+  async getRealm(): Promise<KeycloakRealmReadRepresentation | null> {
     if (this.isCircuitOpen()) {
       throw new KeycloakAdminUnavailableError(
         'Keycloak unavailable and realm lookup is temporarily disabled.'
@@ -1337,12 +1364,31 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
 
     try {
-      const realm = await this.executeWithResilience<{ realm: string }>({
+      const realm = await this.executeWithResilience<KeycloakRealmRepresentation>({
         method: 'GET',
         path: `/admin/realms/${encodePathSegment(this.realm)}`,
         operation: 'get_realm',
       });
-      return realm;
+      const smtpServer = realm.smtpServer ?? {};
+      return {
+        realm: realm.realm,
+        loginTheme: realm.loginTheme,
+        internationalizationEnabled: realm.internationalizationEnabled,
+        supportedLocales: realm.supportedLocales,
+        defaultLocale: realm.defaultLocale,
+        eventsEnabled: realm.eventsEnabled,
+        eventsListeners: realm.eventsListeners,
+        eventsExpiration: realm.eventsExpiration,
+        adminEventsEnabled: realm.adminEventsEnabled,
+        adminEventsDetailsEnabled: realm.adminEventsDetailsEnabled,
+        resetPasswordAllowed: realm.resetPasswordAllowed,
+        verifyEmail: realm.verifyEmail,
+        attributes: realm.attributes,
+        smtpServer: Object.fromEntries(
+          Object.entries(smtpServer).filter(([key]) => key !== 'password')
+        ),
+        smtpPasswordConfigured: Boolean(smtpServer.password),
+      };
     } catch (error) {
       if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
         return null;

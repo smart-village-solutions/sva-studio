@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   loadInstanceWithSecret: vi.fn(),
   loadKeycloakSnapshotSecretVersions: vi.fn(),
   appendRunStep: vi.fn(),
+  assertQueuedRealmBaselineCurrent: vi.fn(),
   buildProvisioningInput: vi.fn(),
   completeRun: vi.fn(),
   createQueuedRun: vi.fn(),
@@ -39,6 +40,7 @@ vi.mock('./service-keycloak-run-steps.js', () => ({
 }));
 
 vi.mock('./service-keycloak-execution-shared.js', () => ({
+  assertQueuedRealmBaselineCurrent: state.assertQueuedRealmBaselineCurrent,
   buildProvisioningInput: state.buildProvisioningInput,
   completeRun: state.completeRun,
   createQueuedRun: state.createQueuedRun,
@@ -94,6 +96,7 @@ describe('service-keycloak-execution', () => {
     state.loadInstanceWithSecret.mockReset();
     state.loadKeycloakSnapshotSecretVersions.mockReset();
     state.appendRunStep.mockReset();
+    state.assertQueuedRealmBaselineCurrent.mockReset();
     state.buildProvisioningInput.mockReset();
     state.completeRun.mockReset();
     state.createQueuedRun.mockReset();

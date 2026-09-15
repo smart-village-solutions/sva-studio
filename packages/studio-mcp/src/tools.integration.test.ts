@@ -80,7 +80,7 @@ describe('Studio MCP tools', () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const response = await client.callTool({ name: 'studio_instances_create', arguments: {
-      instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+      instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new',
     } });
     expect(response.structuredContent).toMatchObject({ ok: true });
     expect(request).toHaveBeenCalledWith(expect.objectContaining({
@@ -112,7 +112,7 @@ describe('Studio MCP tools', () => {
 
     const response = await client.callTool({ name: 'studio_instance_process', arguments: {
       mode: 'create', instanceId: 'demo', create: {
-        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'sva-studio-login',
       },
     } });
 
@@ -149,7 +149,7 @@ describe('Studio MCP tools', () => {
 
     const response = await client.callTool({ name: 'studio_instance_process', arguments: {
       mode: 'create', instanceId: 'demo', create: {
-        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'sva-studio-login',
       },
     } });
 
@@ -168,7 +168,7 @@ describe('Studio MCP tools', () => {
 
     const response = await client.callTool({ name: 'studio_instance_process', arguments: {
       mode: 'create', instanceId: 'demo', create: {
-        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'sva-studio-login',
       },
     } });
 
@@ -339,7 +339,7 @@ describe('Studio MCP tools', () => {
   it('rejects unknown fields in a process create payload', () => {
     expect(schemas.process.safeParse({
       mode: 'create', instanceId: 'demo', create: {
-        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio', unexpected: true,
+        instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'sva-studio-login', unexpected: true,
       },
     }).success).toBe(false);
   });
@@ -402,7 +402,7 @@ describe('Studio MCP tools', () => {
     await client.callTool({ name: 'studio_instance_keycloak_preflight', arguments: { instanceId: 'demo' } });
     await client.callTool({ name: 'studio_instance_provisioning_run_get', arguments: { instanceId: 'demo', runId: 'run-1' } });
     await client.callTool({ name: 'studio_instance_update', arguments: {
-      instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'studio',
+      instanceId: 'demo', displayName: 'Demo', parentDomain: 'example.org', realmMode: 'new', authRealm: 'demo', authClientId: 'sva-studio-login',
     } });
     await client.callTool({ name: 'studio_instance_provisioning_plan', arguments: { instanceId: 'demo' } });
     await client.callTool({ name: 'studio_instance_provisioning_execute', arguments: { instanceId: 'demo', intent: 'provision' } });

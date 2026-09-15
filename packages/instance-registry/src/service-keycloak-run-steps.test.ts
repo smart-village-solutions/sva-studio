@@ -145,6 +145,42 @@ describe('service-keycloak-run-steps', () => {
     );
   });
 
+  it('requires the automatic baseline but keeps the SMTP password as a manual follow-up', () => {
+    const steps = buildFinalRunSteps({
+      status: {
+        realmExists: true,
+        realmBaselineAligned: true,
+        userProfileBaselineAligned: true,
+        instanceIdMapperAligned: true,
+        smtpPasswordConfigured: false,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretAligned: true,
+        systemAdminRoleExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminExists: true,
+      } as never,
+      intent: 'provision',
+      usedTemporaryPassword: false,
+      requireRealmBaseline: true,
+    });
+
+    expect(steps.find((step) => step.stepKey === 'realm_baseline')).toMatchObject({ ok: true });
+    expect(steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
+      ok: true,
+      details: {
+        configured: false,
+        reasonCode: 'smtp_password_required',
+        actionCode: 'set_smtp_password_in_keycloak',
+        titleKey: 'iam.provisioning.steps.smtp_password.title',
+      },
+    });
+  });
+
   it('fails the roles step when the assigned same-named role is not owned by the instance', () => {
     const steps = buildFinalRunSteps({
       status: {

@@ -2,15 +2,18 @@ import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
-export const appendRunStep = async (deps: InstanceRegistryServiceDeps, input: {
-  runId: string;
-  stepKey: string;
-  title: string;
-  status: 'pending' | 'running' | 'done' | 'failed' | 'skipped' | 'unchanged';
-  summary: string;
-  details?: Readonly<Record<string, unknown>>;
-  requestId?: string;
-}) => {
+export const appendRunStep = async (
+  deps: InstanceRegistryServiceDeps,
+  input: {
+    runId: string;
+    stepKey: string;
+    title: string;
+    status: 'pending' | 'running' | 'done' | 'failed' | 'skipped' | 'unchanged';
+    summary: string;
+    details?: Readonly<Record<string, unknown>>;
+    requestId?: string;
+  }
+) => {
   const now = new Date().toISOString();
   const isTerminal = ['done', 'failed', 'skipped', 'unchanged'].includes(input.status);
 
@@ -43,11 +46,53 @@ const buildRealmCompletionStep = (status: KeycloakTenantStatus): CompletionStep 
   ok: status.realmExists,
 });
 
+const buildRealmBaselineCompletionStep = (status: KeycloakTenantStatus): CompletionStep => {
+  const aligned = Boolean(
+    status.realmBaselineAligned &&
+    status.userProfileBaselineAligned &&
+    status.instanceIdMapperAligned
+  );
+  return {
+    stepKey: 'realm_baseline',
+    title: 'Realm-Baseline anwenden',
+    summary: aligned
+      ? 'Realm-Einstellungen, Benutzerprofil und instanceId-Mapper entsprechen der Baseline.'
+      : 'Die automatische Realm-Baseline konnte nicht vollständig bestätigt werden.',
+    details: {
+      realmBaselineAligned: status.realmBaselineAligned,
+      userProfileBaselineAligned: status.userProfileBaselineAligned,
+      instanceIdMapperAligned: status.instanceIdMapperAligned,
+      titleKey: 'iam.provisioning.steps.realm_baseline.title',
+    },
+    ok: aligned,
+  };
+};
+
+const buildSmtpPasswordCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
+  stepKey: 'smtp_password',
+  title: 'SMTP-Passwort manuell setzen',
+  summary: status.smtpPasswordConfigured
+    ? 'In Keycloak ist ein SMTP-Passwort hinterlegt.'
+    : 'Die SMTP-Grundkonfiguration ist vorhanden; das Passwort muss einmalig direkt in Keycloak gesetzt werden.',
+  details: {
+    configured: status.smtpPasswordConfigured ?? false,
+    reasonCode: status.smtpPasswordConfigured
+      ? 'smtp_password_configured'
+      : 'smtp_password_required',
+    actionCode: status.smtpPasswordConfigured ? 'none' : 'set_smtp_password_in_keycloak',
+    titleKey: 'iam.provisioning.steps.smtp_password.title',
+  },
+  ok: true,
+});
+
 const buildClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
   stepKey: 'client',
   title: 'OIDC-Client abgleichen',
   summary:
-    status.clientExists && status.redirectUrisMatch && status.logoutUrisMatch && status.webOriginsMatch
+    status.clientExists &&
+    status.redirectUrisMatch &&
+    status.logoutUrisMatch &&
+    status.webOriginsMatch
       ? 'Der OIDC-Client entspricht dem Sollzustand.'
       : 'Der OIDC-Client weicht weiterhin vom Sollzustand ab.',
   details: {
@@ -57,7 +102,11 @@ const buildClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep
     webOriginsMatch: status.webOriginsMatch,
     titleKey: 'iam.provisioning.steps.client.title',
   },
-  ok: status.clientExists && status.redirectUrisMatch && status.logoutUrisMatch && status.webOriginsMatch,
+  ok:
+    status.clientExists &&
+    status.redirectUrisMatch &&
+    status.logoutUrisMatch &&
+    status.webOriginsMatch,
 });
 
 const buildTenantAdminClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
@@ -79,11 +128,16 @@ const buildSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep
   summary: status.clientSecretAligned
     ? 'Das Tenant-Secret ist mit Keycloak abgeglichen.'
     : 'Das Tenant-Secret ist weiterhin nicht mit Keycloak abgeglichen.',
-  details: { clientSecretAligned: status.clientSecretAligned, titleKey: 'iam.provisioning.steps.secret.title' },
+  details: {
+    clientSecretAligned: status.clientSecretAligned,
+    titleKey: 'iam.provisioning.steps.secret.title',
+  },
   ok: status.clientSecretAligned,
 });
 
-const buildTenantAdminClientSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
+const buildTenantAdminClientSecretCompletionStep = (
+  status: KeycloakTenantStatus
+): CompletionStep => ({
   stepKey: 'tenant_admin_client_secret',
   title: 'Tenant-Admin-Client-Secret abgleichen',
   summary: status.tenantAdminClientSecretAligned
@@ -102,10 +156,9 @@ const buildRolesCompletionStep = (
 ): CompletionStep => ({
   stepKey: 'roles',
   title: 'Realm-Rollen sicherstellen',
-  summary:
-    !status.systemAdminRoleExists
-      ? 'Die geschützte Realm-Rolle system_admin fehlt.'
-      : requireTenantAdmin
+  summary: !status.systemAdminRoleExists
+    ? 'Die geschützte Realm-Rolle system_admin fehlt.'
+    : requireTenantAdmin
       ? status.tenantAdminHasSystemAdmin
         ? 'Die Tenant-Admin-Rollen entsprechen dem Minimalprofil.'
         : 'Die Tenant-Admin-Rollen weichen vom Minimalprofil ab.'
@@ -115,9 +168,7 @@ const buildRolesCompletionStep = (
     systemAdminRoleExists: status.systemAdminRoleExists,
     titleKey: 'iam.provisioning.steps.roles.title',
   },
-  ok:
-    status.systemAdminRoleExists &&
-    (!requireTenantAdmin || status.tenantAdminHasSystemAdmin),
+  ok: status.systemAdminRoleExists && (!requireTenantAdmin || status.tenantAdminHasSystemAdmin),
 });
 
 const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
@@ -139,7 +190,10 @@ const buildTenantAdminPasswordStep = (usedTemporaryPassword: boolean): Completio
   summary: usedTemporaryPassword
     ? 'Das temporäre Passwort wurde gesetzt und UPDATE_PASSWORD markiert.'
     : 'Es wurde kein temporäres Passwort übergeben.',
-  details: { usedTemporaryPassword, titleKey: 'iam.provisioning.steps.tenant_admin_password.title' },
+  details: {
+    usedTemporaryPassword,
+    titleKey: 'iam.provisioning.steps.tenant_admin_password.title',
+  },
   ok: usedTemporaryPassword,
 });
 
@@ -148,6 +202,7 @@ export const buildFinalRunSteps = (input: {
   intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
   usedTemporaryPassword: boolean;
   requireTenantAdmin?: boolean;
+  requireRealmBaseline?: boolean;
 }): CompletionStep[] => {
   if (input.intent === 'reset_tenant_admin') {
     return [
@@ -161,6 +216,12 @@ export const buildFinalRunSteps = (input: {
   const requireTenantAdmin = input.requireTenantAdmin !== false;
   const steps: CompletionStep[] = [
     buildRealmCompletionStep(input.status),
+    ...(input.requireRealmBaseline
+      ? [
+          buildRealmBaselineCompletionStep(input.status),
+          buildSmtpPasswordCompletionStep(input.status),
+        ]
+      : []),
     buildClientCompletionStep(input.status),
     buildTenantAdminClientCompletionStep(input.status),
     buildSecretCompletionStep(input.status),

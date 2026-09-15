@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  assertQueuedRealmBaselineCurrent,
   createQueuedRun,
   readQueuedPluginOidcClientRequirements,
 } from './service-keycloak-execution-payload.js';
+import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
 
 const loaded = {
   instance: {
@@ -90,6 +95,22 @@ describe('service-keycloak-execution-payload', () => {
     expect(() => readQueuedPluginOidcClientRequirements(undefined, provisioningInput)).toThrow(
       'queued_plugin_oidc_client_requirements_missing_or_invalid'
     );
+  });
+
+  it('pins new-realm jobs to the compiled baseline', () => {
+    expect(() =>
+      assertQueuedRealmBaselineCurrent(
+        {
+          realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+          realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+        },
+        'new'
+      )
+    ).not.toThrow();
+    expect(() => assertQueuedRealmBaselineCurrent({}, 'new')).toThrow(
+      'queued_realm_baseline_missing_or_changed'
+    );
+    expect(() => assertQueuedRealmBaselineCurrent(undefined, 'existing')).not.toThrow();
   });
 
   it('rejects a newly created run when the app snapshot dependency is not wired', async () => {

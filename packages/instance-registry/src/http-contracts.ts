@@ -1,5 +1,6 @@
 import { instanceStatuses, isReservedTenantHostname } from '@sva/core';
 import { z } from 'zod';
+import { KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
 const optionalUrlSchema = z
   .string()
@@ -55,36 +56,97 @@ export const listQuerySchema = z.object({
   status: z.enum(instanceStatuses).optional(),
 });
 
-export const createInstanceSchema = z.object({
+const instanceWriteSchemaFields = {
   instanceId: instanceIdSchema,
   displayName: z.string().trim().min(1),
   parentDomain: z.string().trim().min(1),
   realmMode: z.enum(['new', 'existing']),
-  authRealm: authRealmSchema,
-  authClientId: z.string().trim().min(1),
   authIssuerUrl: optionalUrlSchema,
   authClientSecret: z.string().trim().min(1).optional(),
-  tenantAdminClient: tenantAdminClientSchema,
   tenantAdminBootstrap: tenantAdminBootstrapSchema,
   themeKey: z.string().trim().min(1).optional(),
   mainserverConfigRef: z.string().trim().min(1).optional(),
   featureFlags: z.record(z.string(), z.boolean()).optional(),
-});
+} as const;
 
-export const updateInstanceSchema = createInstanceSchema.omit({
-  instanceId: true,
+export const createInstanceSchema = z
+  .object({
+    ...instanceWriteSchemaFields,
+    authRealm: authRealmSchema.optional(),
+    authClientId: z.string().trim().min(1).optional(),
+    tenantAdminClient: tenantAdminClientSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (value.realmMode === 'existing') {
+      if (!value.authRealm) {
+        ctx.addIssue({ code: 'custom', path: ['authRealm'], message: 'Auth-Realm fehlt' });
+      }
+      if (!value.authClientId) {
+        ctx.addIssue({ code: 'custom', path: ['authClientId'], message: 'Auth-Client-ID fehlt' });
+      }
+      return;
+    }
+
+    const conflicts = [
+      value.authRealm && value.authRealm !== value.instanceId ? 'authRealm' : undefined,
+      value.authClientId && value.authClientId !== KEYCLOAK_REALM_BASELINE.loginClientId
+        ? 'authClientId'
+        : undefined,
+      value.tenantAdminClient?.clientId &&
+      value.tenantAdminClient.clientId !== KEYCLOAK_REALM_BASELINE.tenantAdminClientId
+        ? 'tenantAdminClient'
+        : undefined,
+    ].filter((field): field is string => Boolean(field));
+    for (const field of conflicts) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [field],
+        message: 'Widerspricht der serverseitigen New-Realm-Baseline',
+      });
+    }
+  });
+
+export const resolveCreateInstanceDefaults = (value: z.output<typeof createInstanceSchema>) =>
+  value.realmMode === 'new'
+    ? {
+        ...value,
+        authRealm: value.instanceId,
+        authClientId: KEYCLOAK_REALM_BASELINE.loginClientId,
+        tenantAdminClient: {
+          ...value.tenantAdminClient,
+          clientId: KEYCLOAK_REALM_BASELINE.tenantAdminClientId,
+        },
+      }
+    : {
+        ...value,
+        authRealm: value.authRealm!,
+        authClientId: value.authClientId!,
+      };
+
+export const updateInstanceSchema = z.object({
+  ...instanceWriteSchemaFields,
+  authRealm: authRealmSchema,
+  authClientId: z.string().trim().min(1),
+  tenantAdminClient: tenantAdminClientSchema,
 });
 
 export const statusMutationSchema = z.object({
   status: z.enum(['active', 'suspended', 'archived']),
 });
 
-export const reconcileKeycloakSchema = z.object({
-  tenantAdminTemporaryPassword: z.string().min(1).optional(),
-}).strict();
+export const reconcileKeycloakSchema = z
+  .object({
+    tenantAdminTemporaryPassword: z.string().min(1).optional(),
+  })
+  .strict();
 
 export const executeKeycloakProvisioningSchema = z.object({
-  intent: z.enum(['provision', 'provision_admin_client', 'reset_tenant_admin', 'rotate_client_secret']),
+  intent: z.enum([
+    'provision',
+    'provision_admin_client',
+    'reset_tenant_admin',
+    'rotate_client_secret',
+  ]),
   tenantAdminTemporaryPassword: z.string().min(1).optional(),
 });
 

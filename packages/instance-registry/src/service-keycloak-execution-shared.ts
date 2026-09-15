@@ -1,5 +1,6 @@
 export { completeRun } from './service-keycloak-execution-finalize.js';
 export {
+  assertQueuedRealmBaselineCurrent,
   buildKeycloakProvisioningPayloadFingerprint,
   buildProvisioningInput,
   createQueuedRun,

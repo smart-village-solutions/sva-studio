@@ -1,6 +1,10 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
-import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import type {
+  KeycloakProvisioningInput,
+  KeycloakReadState,
+  TenantAdminBootstrap,
+} from './provisioning-auth-types.js';
 import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
 import { readPluginOidcClientAlignment } from './provisioning-auth-plugin-clients.js';
 import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
@@ -30,6 +34,10 @@ export const buildMissingRealmStatus = (
   tenantAdminClientSecretReadable: Boolean(tenantAdminClientSecret),
   tenantAdminClientSecretAligned: false,
   runtimeSecretSource: authClientSecret ? 'tenant' : 'global',
+  realmBaselineAligned: false,
+  userProfileBaselineAligned: false,
+  instanceIdMapperAligned: false,
+  smtpPasswordConfigured: false,
 });
 
 const isTenantSecretRequired = (realmMode: InstanceRealmMode): boolean => realmMode === 'existing';
@@ -135,7 +143,10 @@ const resolveTenantSecretSummary = (
     : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
 };
 
-const buildTenantAdminCheck = (realmMode: InstanceRealmMode, tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
+const buildTenantAdminCheck = (
+  realmMode: InstanceRealmMode,
+  tenantAdminBootstrap?: TenantAdminBootstrap
+): InstanceKeycloakPreflightCheck => {
   const configured = Boolean(tenantAdminBootstrap?.username);
   const missingStatus = realmMode === 'existing' ? 'warning' : 'blocked';
   return createPreflightCheck(
@@ -192,7 +203,12 @@ export const buildPreflightChecks = (input: {
   accessError?: string;
 }): readonly InstanceKeycloakPreflightCheck[] => {
   const checks: InstanceKeycloakPreflightCheck[] = [
-    createPreflightCheck('platform_access', 'Plattformzugriff', 'ready', 'Der aufrufende Benutzer ist für die Root-Host-Instanzverwaltung autorisiert.'),
+    createPreflightCheck(
+      'platform_access',
+      'Plattformzugriff',
+      'ready',
+      'Der aufrufende Benutzer ist für die Root-Host-Instanzverwaltung autorisiert.'
+    ),
   ];
 
   if (input.accessError) {
@@ -260,12 +276,14 @@ export const buildKeycloakStatus = (
   }
 ): KeycloakTenantStatus => {
   const clientSecretAligned = Boolean(
-    input.authClientSecret && input.state.keycloakClientSecret && input.authClientSecret === input.state.keycloakClientSecret
+    input.authClientSecret &&
+    input.state.keycloakClientSecret &&
+    input.authClientSecret === input.state.keycloakClientSecret
   );
   const tenantAdminClientSecretAligned = Boolean(
     input.tenantAdminClientSecret &&
-      input.state.tenantAdminClientSecret &&
-      input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
+    input.state.tenantAdminClientSecret &&
+    input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
   );
 
   return {
@@ -277,14 +295,20 @@ export const buildKeycloakStatus = (
       input.instanceId
     ),
     ...input.state.tenantAdminStatus,
-    redirectUrisMatch: equalSets(input.state.clientRepresentation?.redirectUris ?? [], input.state.expectedClient.redirectUris),
+    redirectUrisMatch: equalSets(
+      input.state.clientRepresentation?.redirectUris ?? [],
+      input.state.expectedClient.redirectUris
+    ),
     logoutUrisMatch: equalSets(
       readPostLogoutUris(input.state.clientRepresentation?.attributes),
       input.state.expectedClient.postLogoutRedirectUris
     ),
-    webOriginsMatch: equalSets(input.state.clientRepresentation?.webOrigins ?? [], input.state.expectedClient.webOrigins),
-    pluginOidcClientsAligned: input.state.pluginOidcClients.every(({ requirement, ...state }) =>
-      readPluginOidcClientAlignment(requirement, state).aligned
+    webOriginsMatch: equalSets(
+      input.state.clientRepresentation?.webOrigins ?? [],
+      input.state.expectedClient.webOrigins
+    ),
+    pluginOidcClientsAligned: input.state.pluginOidcClients.every(
+      ({ requirement, ...state }) => readPluginOidcClientAlignment(requirement, state).aligned
     ),
     clientSecretConfigured: input.authClientSecretConfigured,
     tenantClientSecretReadable: Boolean(input.authClientSecret),
@@ -293,5 +317,11 @@ export const buildKeycloakStatus = (
     tenantAdminClientSecretReadable: Boolean(input.tenantAdminClientSecret),
     tenantAdminClientSecretAligned,
     runtimeSecretSource: input.authClientSecret ? 'tenant' : 'global',
+    realmBaselineAligned: input.state.realmBaselineAligned,
+    userProfileBaselineAligned: input.state.userProfileBaselineAligned,
+    instanceIdMapperAligned: (input.state.protocolMappers ?? []).some(
+      (mapper) => mapper.name === 'instanceId'
+    ),
+    smtpPasswordConfigured: input.state.realm?.smtpPasswordConfigured ?? false,
   };
 };

@@ -1,6 +1,42 @@
 import { describe, expect, it } from 'vitest';
 
-import { readSnapshotFromRuns } from './service-keycloak-snapshot-reader.js';
+import {
+  isRealmBaselineApplicable,
+  readSnapshotFromRuns,
+} from './service-keycloak-snapshot-reader.js';
+
+describe('isRealmBaselineApplicable', () => {
+  it('recognizes a realm created by any successful new-mode Keycloak run', () => {
+    expect(
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'succeeded',
+            steps: [{ stepKey: 'realm_baseline', status: 'done' }],
+          },
+        ] as never
+      )
+    ).toBe(true);
+  });
+
+  it('does not treat failed or imported existing realms as managed', () => {
+    expect(
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'failed',
+            steps: [{ stepKey: 'realm_baseline', status: 'done' }],
+          },
+        ] as never
+      )
+    ).toBe(false);
+    expect(isRealmBaselineApplicable('existing', [])).toBe(false);
+  });
+});
 
 describe('readSnapshotFromRuns', () => {
   it('uses the newest matching worker snapshot when an older final snapshot has stale inputs', () => {

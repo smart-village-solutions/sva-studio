@@ -21,7 +21,10 @@ import {
   loadRepositoryAuthClientSecret,
   loadRepositoryTenantAdminClientSecret,
 } from './service-keycloak-secrets.js';
-import { readSnapshotFromRuns } from './service-keycloak-snapshot-reader.js';
+import {
+  isRealmBaselineApplicable,
+  readSnapshotFromRuns,
+} from './service-keycloak-snapshot-reader.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 const buildLocalPreflight = (input: {
@@ -274,6 +277,7 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
       pluginOidcClients: deps.readPluginOidcClientRequirements?.(),
+      realmBaselineApplicable: isRealmBaselineApplicable(loaded.instance.realmMode, runs),
       preflight,
     });
     logger.info('keycloak_plan_completed', { operation: 'plan_keycloak_provisioning', instance_id: instanceId });

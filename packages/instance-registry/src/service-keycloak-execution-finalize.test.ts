@@ -228,6 +228,7 @@ describe('service-keycloak-execution-finalize', () => {
     };
     const repository = {
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn(),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -284,12 +285,12 @@ describe('service-keycloak-execution-finalize', () => {
   it('keeps the realm baseline applicable after a managed realm transitioned to existing', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
-      listProvisioningRuns: vi.fn().mockResolvedValue([
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
         {
-          operation: 'create',
-          status: 'active',
-          desiredSnapshot: { realmMode: 'new' },
-          childKeycloakRunId: 'initial-keycloak-run',
+          mode: 'new',
+          overallStatus: 'succeeded',
+          steps: [{ stepKey: 'realm_baseline', status: 'done' }],
         },
       ]),
       setInstanceStatus: vi.fn(),

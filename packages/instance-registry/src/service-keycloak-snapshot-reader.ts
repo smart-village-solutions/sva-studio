@@ -7,6 +7,18 @@ type ProvisioningRuns = readonly Awaited<
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+export const isRealmBaselineApplicable = (
+  realmMode: 'new' | 'existing',
+  runs: ProvisioningRuns
+): boolean =>
+  realmMode === 'new' ||
+  runs.some(
+    (run) =>
+      run.mode === 'new' &&
+      run.overallStatus === 'succeeded' &&
+      run.steps.some((step) => step.stepKey === 'realm_baseline' && step.status === 'done')
+  );
+
 export const readSnapshotFromRuns = <T>(
   runs: ProvisioningRuns,
   stepKeys: readonly string[],

@@ -3185,6 +3185,54 @@ describe('instance registry service facade', () => {
     });
   });
 
+  it('keeps the managed-realm baseline in a fallback plan after an update-to-new run', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        realmMode: 'existing' as const,
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'managed-realm-run',
+          instanceId: 'demo',
+          mode: 'new',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-09-10T00:00:00.000Z',
+          updatedAt: '2026-09-10T00:01:00.000Z',
+          steps: [
+            {
+              stepKey: 'realm_baseline',
+              title: 'Realm-Baseline',
+              status: 'done',
+              summary: 'Baseline applied',
+              details: {},
+            },
+          ],
+        },
+      ]),
+    });
+
+    const plan = await createPlanKeycloakProvisioningHandler(createDeps(repository))('demo');
+
+    expect(plan?.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stepKey: 'realm_baseline',
+          details: expect.objectContaining({ applicable: true }),
+        }),
+        expect.objectContaining({
+          stepKey: 'smtp_password',
+          details: expect.objectContaining({
+            applicable: true,
+            actionCode: 'set_smtp_password_in_keycloak',
+          }),
+        }),
+      ])
+    );
+  });
+
   it('returns a local fallback keycloak status without decrypting secrets when revealSecret is unavailable', async () => {
     const getAuthClientSecretCiphertext = vi.fn(async () => 'cipher-auth');
     const getTenantAdminClientSecretCiphertext = vi.fn(async () => 'cipher-admin');

@@ -33,4 +33,5 @@ Die aktuelle Instanz-Provisionierung erstellt Realm, Clients, Secrets, Rollen un
   - `apps/sva-studio-react/src/routes/admin/instances/`
   - `apps/sva-studio-react/src/i18n/resources/{de,en}/admin/instances/`
   - `docs/architecture/{05-building-block-view,06-runtime-view}.md`
+  - `docs/adr/ADR-064-serverseitige-keycloak-realm-baseline.md`
 - Database: keine Schemaänderung vorgesehen; Baseline-Version und Nachweise verwenden die vorhandenen Snapshot- und Run-Details.

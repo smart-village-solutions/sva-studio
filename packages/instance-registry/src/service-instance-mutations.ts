@@ -27,10 +27,7 @@ import {
   resolveConcurrentIdempotentCreateRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
-import {
-  isValidKeycloakRealmName,
-  KEYCLOAK_REALM_BASELINE,
-} from './keycloak-realm-baseline.js';
+import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
 const applyNewRealmUpdateDefaults = (input: UpdateInstanceInput): UpdateInstanceInput => {
   if (input.realmMode !== 'new') return input;
@@ -54,7 +51,7 @@ export const createProvisioningRequestHandler =
     const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
       parentDomain: input.parentDomain,
       authRealm: input.authRealm,
-      authIssuerUrl: input.authIssuerUrl,
+      authIssuerUrl: input.realmMode === 'new' ? undefined : input.authIssuerUrl,
     });
     const effectiveInput = authIssuerUrl ? { ...input, authIssuerUrl } : input;
     assertOidcClientIdsNotReserved(deps, effectiveInput);
@@ -199,7 +196,7 @@ export const createUpdateInstanceHandler =
     const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
       parentDomain: normalizedParentDomain,
       authRealm: effectiveInput.authRealm,
-      authIssuerUrl: effectiveInput.authIssuerUrl,
+      authIssuerUrl: effectiveInput.realmMode === 'new' ? undefined : effectiveInput.authIssuerUrl,
     });
     const primaryHostname =
       normalizeHost(existing.parentDomain) === normalizedParentDomain

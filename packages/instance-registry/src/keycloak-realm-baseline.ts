@@ -1,5 +1,3 @@
-import type { InstanceRealmMode } from '@sva/core';
-
 import type { KeycloakTenantPlan } from './keycloak-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { KeycloakReadState } from './provisioning-auth-types.js';
@@ -120,11 +118,11 @@ export const isInstanceIdMapperAligned = (
   mapper.config?.['userinfo.token.claim'] === 'true';
 
 const buildRealmBaselineStep = (
-  realmMode: InstanceRealmMode,
   state: KeycloakReadState | undefined,
-  blocked: boolean
+  blocked: boolean,
+  applicable: boolean
 ): KeycloakTenantPlan['steps'][number] => {
-  if (realmMode === 'existing') {
+  if (!applicable) {
     return {
       stepKey: 'realm_baseline',
       title: 'Realm-Baseline prüfen',
@@ -166,23 +164,21 @@ const buildRealmBaselineStep = (
 };
 
 const buildSmtpPasswordStep = (
-  realmMode: InstanceRealmMode,
   state: KeycloakReadState | undefined,
-  blocked: boolean
+  blocked: boolean,
+  applicable: boolean
 ): KeycloakTenantPlan['steps'][number] => {
-  const applicable = realmMode === 'new';
   const configured = Boolean(state?.realm?.smtpPasswordConfigured);
   return {
     stepKey: 'smtp_password',
     title: 'SMTP-Passwort manuell setzen',
     action: 'skip',
     status: blocked ? 'blocked' : 'ready',
-    summary:
-      realmMode === 'existing'
-        ? 'Das SMTP-Passwort des Bestands-Realm bleibt unverändert.'
-        : configured
-          ? 'In Keycloak ist ein SMTP-Passwort hinterlegt.'
-          : 'Nach der automatischen Grundkonfiguration muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.',
+    summary: !applicable
+      ? 'Das SMTP-Passwort des Bestands-Realm bleibt unverändert.'
+      : configured
+        ? 'In Keycloak ist ein SMTP-Passwort hinterlegt.'
+        : 'Nach der automatischen Grundkonfiguration muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.',
     details: {
       applicable,
       configured,
@@ -203,10 +199,10 @@ const buildSmtpPasswordStep = (
 };
 
 export const buildRealmBaselinePlanSteps = (
-  realmMode: InstanceRealmMode,
   state: KeycloakReadState | undefined,
-  blocked: boolean
+  blocked: boolean,
+  applicable: boolean
 ): KeycloakTenantPlan['steps'] => [
-  buildRealmBaselineStep(realmMode, state, blocked),
-  buildSmtpPasswordStep(realmMode, state, blocked),
+  buildRealmBaselineStep(state, blocked, applicable),
+  buildSmtpPasswordStep(state, blocked, applicable),
 ];

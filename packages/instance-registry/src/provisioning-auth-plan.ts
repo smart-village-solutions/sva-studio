@@ -232,10 +232,12 @@ export const buildPlan = (input: {
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
+  realmBaselineApplicable?: boolean;
   preflight: KeycloakTenantPreflight;
   state?: KeycloakReadState;
 }): KeycloakTenantPlan => {
   const blocked = input.preflight.overallStatus === 'blocked';
+  const realmBaselineApplicable = input.realmBaselineApplicable ?? input.realmMode === 'new';
   const requireTenantAdmin = isInstanceTenantAdminRequired(input);
   const alignment = readClientAlignment(input.state);
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
@@ -256,7 +258,7 @@ export const buildPlan = (input: {
 
   const steps: KeycloakTenantPlan['steps'] = [
     buildRealmStep(input.realmMode, input.state, blocked),
-    ...buildRealmBaselinePlanSteps(input.realmMode, input.state, blocked),
+    ...buildRealmBaselinePlanSteps(input.state, blocked, realmBaselineApplicable),
     buildClientStep({
       blocked,
       clientExists: Boolean(alignment.clientRepresentation),

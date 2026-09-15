@@ -157,7 +157,11 @@ describe('service-keycloak-execution-finalize', () => {
       expect.objectContaining({ state: finalState })
     );
     expect(state.buildPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ state: finalState, pluginOidcClients })
+      expect.objectContaining({
+        state: finalState,
+        pluginOidcClients,
+        realmBaselineApplicable: true,
+      })
     );
     expect(state.buildProvisioningInput).toHaveBeenCalled();
     expect(state.appendRunStep).toHaveBeenNthCalledWith(

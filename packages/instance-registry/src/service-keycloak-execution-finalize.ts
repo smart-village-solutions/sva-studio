@@ -105,6 +105,7 @@ const appendFinalStatusSnapshot = async (
     tenantAdminClientSecret: finalProvisioningInput.tenantAdminClientSecret,
     tenantAdminBootstrap: finalProvisioningInput.tenantAdminBootstrap,
     pluginOidcClients: finalProvisioningInput.pluginOidcClients,
+    realmBaselineApplicable: input.loaded.instance.realmMode === 'new',
     preflight,
     state,
   });

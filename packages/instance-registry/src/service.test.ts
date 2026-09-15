@@ -1515,12 +1515,12 @@ describe('instance registry service facade', () => {
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
 
-  it('persists the environment-resolved public issuer in the create snapshot', async () => {
+  it('derives and persists the new-realm issuer instead of accepting a submitted issuer', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
     });
     const resolveProvisioningAuthIssuerUrl = vi.fn(
-      () => 'https://auth.dialog.kassel.de/realms/smartcity'
+      () => 'https://auth.dialog.kassel.de/realms/new-tenant'
     );
     const service = createInstanceRegistryService(
       createDeps(repository, { resolveProvisioningAuthIssuerUrl })
@@ -1530,20 +1530,21 @@ describe('instance registry service facade', () => {
       instanceId: 'new-tenant',
       displayName: 'Neuer Mandant',
       parentDomain: 'dialog.kassel.de',
-      realmMode: 'existing',
-      authRealm: 'smartcity',
+      realmMode: 'new',
+      authRealm: 'new-tenant',
       authClientId: 'sva-studio-login',
+      authIssuerUrl: 'https://auth.example.org/realms/old-realm',
       idempotencyKey: 'idem-kassel-1',
     });
 
     expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
       parentDomain: 'dialog.kassel.de',
-      authRealm: 'smartcity',
+      authRealm: 'new-tenant',
       authIssuerUrl: undefined,
     });
     expect(repository.createInstance).toHaveBeenCalledWith(
       expect.objectContaining({
-        authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+        authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
       })
     );
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
@@ -1552,10 +1553,10 @@ describe('instance registry service facade', () => {
           instanceId: 'new-tenant',
           displayName: 'Neuer Mandant',
           parentDomain: 'dialog.kassel.de',
-          realmMode: 'existing',
-          authRealm: 'smartcity',
+          realmMode: 'new',
+          authRealm: 'new-tenant',
           authClientId: 'sva-studio-login',
-          authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+          authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
           idempotencyKey: 'idem-kassel-1',
         }),
       })
@@ -1856,12 +1857,15 @@ describe('instance registry service facade', () => {
       realmMode: 'new',
       authRealm: 'custom-realm',
       authClientId: 'custom-login',
+      authIssuerUrl: 'https://auth.example.org/realms/old-realm',
       tenantAdminClient: { clientId: 'custom-admin' },
     });
 
-    expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ authRealm: 'demo' })
-    );
+    expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
+      parentDomain: 'studio.example.org',
+      authRealm: 'demo',
+      authIssuerUrl: undefined,
+    });
     expect(repository.updateInstance).toHaveBeenCalledWith(
       expect.objectContaining({
         realmMode: 'new',

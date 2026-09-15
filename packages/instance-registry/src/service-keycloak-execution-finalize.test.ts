@@ -178,6 +178,7 @@ describe('service-keycloak-execution-finalize', () => {
       intent: 'provision',
       usedTemporaryPassword: true,
       requireTenantAdmin: true,
+      requireRealmBaseline: true,
     });
     expect(repository.setInstanceStatus).toHaveBeenCalledWith({
       instanceId: 'instance-1',
@@ -249,6 +250,7 @@ describe('service-keycloak-execution-finalize', () => {
       intent: 'provision',
       usedTemporaryPassword: false,
       requireTenantAdmin: false,
+      requireRealmBaseline: false,
     });
     expect(state.areAllRequirementsSatisfied).toHaveBeenCalledWith(status, {
       requireTenantAdmin: false,

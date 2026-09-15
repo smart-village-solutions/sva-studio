@@ -36,6 +36,16 @@ type CompleteRunInput = {
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
+const resolveFinalSnapshotInstance = (
+  input: CompleteRunInput,
+  snapshotInstance: InstanceRegistryRecord,
+  finalRunStatus: 'succeeded' | 'failed',
+  transitionNewRealm: boolean
+): InstanceRegistryRecord | undefined => {
+  if (finalRunStatus === 'failed' && input.loaded.instance.realmMode === 'new') return undefined;
+  return transitionNewRealm ? { ...snapshotInstance, realmMode: 'existing' } : snapshotInstance;
+};
+
 const assertParentProvisioningRunActive = async (
   deps: InstanceRegistryServiceDeps,
   input: CompleteRunInput
@@ -147,6 +157,10 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
       areAllInstanceKeycloakRequirementsSatisfied(status, { requireTenantAdmin }))
       ? 'succeeded'
       : 'failed';
+  const transitionNewRealm =
+    finalRunStatus === 'succeeded' &&
+    input.intent !== 'reset_tenant_admin' &&
+    input.loaded.instance.realmMode === 'new';
 
   await assertParentProvisioningRunActive(deps, input);
 
@@ -162,7 +176,15 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
       })) ?? snapshotInstance;
   }
 
-  await appendFinalStatusSnapshot(deps, input, snapshotInstance, state);
+  const finalSnapshotInstance = resolveFinalSnapshotInstance(
+    input,
+    snapshotInstance,
+    finalRunStatus,
+    transitionNewRealm
+  );
+  if (finalSnapshotInstance) {
+    await appendFinalStatusSnapshot(deps, input, finalSnapshotInstance, state);
+  }
 
   for (const step of completionSteps) {
     await appendRunStep(deps, {
@@ -185,11 +207,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
         : 'Provisioning abgeschlossen, aber einzelne Sollzustände weichen weiterhin ab.',
   });
 
-  if (
-    finalRunStatus === 'succeeded' &&
-    input.intent !== 'reset_tenant_admin' &&
-    input.loaded.instance.realmMode === 'new'
-  ) {
+  if (transitionNewRealm) {
     await deps.repository.setInstanceRealmMode({
       instanceId: input.loaded.instance.instanceId,
       realmMode: 'existing',

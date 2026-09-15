@@ -170,7 +170,7 @@ describe('service-keycloak-execution-finalize', () => {
         details: {
           policyVersion: 3,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(
-            statusUpdated as never,
+            realmUpdated as never,
             undefined,
             pluginOidcClients
           ),
@@ -365,6 +365,10 @@ describe('service-keycloak-execution-finalize', () => {
     ).resolves.toBe('failed');
     expect(repository.setInstanceRealmMode).not.toHaveBeenCalled();
     expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+    expect(state.appendRunStep).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ stepKey: 'status_snapshot' })
+    );
   });
 
   it('does not let a late child completion revive a failed parent run', async () => {

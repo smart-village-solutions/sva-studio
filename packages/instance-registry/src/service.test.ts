@@ -1872,6 +1872,24 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('rejects an invalid realm name derived during a mode update', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.updateInstance({
+        instanceId: 'tenant+foo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'valid-realm',
+        authClientId: 'sva-studio-login',
+      })
+    ).rejects.toThrow('invalid_new_realm_instance_id');
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
   it('updates instances and returns detail projections', async () => {
     const updated = {
       ...baseInstance,

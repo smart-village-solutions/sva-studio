@@ -26,6 +26,15 @@ describe('Kassel provisioning auth issuer', () => {
     ).toBe('https://keycloak.example.org/auth/realms/smartcity');
   });
 
+  it('removes all trailing slashes before deriving the issuer', () => {
+    expect(
+      resolveProvisioningAuthIssuerUrl(input, {
+        tenantIngressMode: 'external',
+        keycloakBaseUrl: 'https://keycloak.example.org///',
+      })
+    ).toBe('https://keycloak.example.org/realms/smartcity');
+  });
+
   it('fails closed without an issuer source outside Kassel mode', () => {
     expect(() =>
       resolveProvisioningAuthIssuerUrl(input, { tenantIngressMode: 'external' })

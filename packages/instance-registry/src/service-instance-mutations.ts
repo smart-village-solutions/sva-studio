@@ -27,20 +27,26 @@ import {
   resolveConcurrentIdempotentCreateRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
-import { KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
+import {
+  isValidKeycloakRealmName,
+  KEYCLOAK_REALM_BASELINE,
+} from './keycloak-realm-baseline.js';
 
-const applyNewRealmUpdateDefaults = (input: UpdateInstanceInput): UpdateInstanceInput =>
-  input.realmMode === 'new'
-    ? {
-        ...input,
-        authRealm: input.instanceId,
-        authClientId: KEYCLOAK_REALM_BASELINE.loginClientId,
-        tenantAdminClient: {
-          ...input.tenantAdminClient,
-          clientId: KEYCLOAK_REALM_BASELINE.tenantAdminClientId,
-        },
-      }
-    : input;
+const applyNewRealmUpdateDefaults = (input: UpdateInstanceInput): UpdateInstanceInput => {
+  if (input.realmMode !== 'new') return input;
+  if (!isValidKeycloakRealmName(input.instanceId)) {
+    throw new Error('invalid_new_realm_instance_id');
+  }
+  return {
+    ...input,
+    authRealm: input.instanceId,
+    authClientId: KEYCLOAK_REALM_BASELINE.loginClientId,
+    tenantAdminClient: {
+      ...input.tenantAdminClient,
+      clientId: KEYCLOAK_REALM_BASELINE.tenantAdminClientId,
+    },
+  };
+};
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>

@@ -56,6 +56,9 @@ export type KeycloakRealmBaselineSettings = typeof KEYCLOAK_REALM_BASELINE.realm
 
 export const KEYCLOAK_REALM_BASELINE_FINGERPRINT = buildPayloadFingerprint(KEYCLOAK_REALM_BASELINE);
 
+export const isValidKeycloakRealmName = (value: string): boolean =>
+  /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value);
+
 const equalStringArrays = (
   actual: readonly string[] | undefined,
   expected: readonly string[]

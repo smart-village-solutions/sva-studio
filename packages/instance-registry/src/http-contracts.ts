@@ -1,6 +1,9 @@
 import { instanceStatuses, isReservedTenantHostname } from '@sva/core';
 import { z } from 'zod';
-import { KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
+import {
+  isValidKeycloakRealmName,
+  KEYCLOAK_REALM_BASELINE,
+} from './keycloak-realm-baseline.js';
 
 const optionalUrlSchema = z
   .string()
@@ -22,7 +25,7 @@ const authRealmSchema = z
   .string()
   .trim()
   .min(1)
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, 'Ungültiger Realm-Name');
+  .refine(isValidKeycloakRealmName, 'Ungültiger Realm-Name');
 
 const tenantAdminBootstrapSchema = z
   .object({

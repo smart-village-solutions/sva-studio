@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import {
   wasteTenantProvisioningContract,
   type ExternalInterfaceRecord,
@@ -21,31 +19,9 @@ import { Pool } from 'pg';
 
 import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
 import type { OperationSummary, WasteOperationSqlPool } from './waste-management-operations.types.js';
+import { buildWasteTenantDatabaseUrl, createOrUpdateWasteTenantRoles, createWasteTenantDatabasePassword, quoteWasteTenantIdentifier as quoteIdentifier, readExistingWasteRuntimePasswords } from './waste-tenant-database-credentials.server.js';
 
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/server-runtime';
-
-const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
-
-const quoteIdentifier = (value: string): string => {
-  if (!identifierPattern.test(value)) {
-    throw new Error('waste_tenant_identifier_invalid');
-  }
-  return `"${value}"`;
-};
-
-const quoteLiteral = (value: string): string => `'${value.replaceAll("'", "''")}'`;
-const createPassword = (): string => randomBytes(32).toString('base64url');
-
-const buildDatabaseUrl = (
-  adminUrl: string,
-  input: { readonly database: string; readonly role: string; readonly password: string }
-): string => {
-  const url = new URL(adminUrl);
-  url.username = input.role;
-  url.password = input.password;
-  url.pathname = `/${input.database}`;
-  return url.toString();
-};
 
 type ProvisioningPool = WasteOperationSqlPool;
 
@@ -53,6 +29,7 @@ export type WasteTenantDatabaseProvisionerDeps = Readonly<{
   getProvisionerDatabaseUrl?: () => string | undefined;
   createPool?: (databaseUrl: string) => ProvisioningPool;
   protectSecret?: (plaintext: string, aad: string) => string | null;
+  revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | undefined;
   loadManagedInterface?: typeof loadExternalInterfaceRecordByAlias;
   saveManagedInterface?: typeof saveExternalInterfaceRecord;
   claimProvisioning?: typeof claimWasteTenantProvisioning;
@@ -66,66 +43,6 @@ const defaultCreatePool = (databaseUrl: string): ProvisioningPool =>
   new Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 10_000 });
 
 type ProvisioningClient = Awaited<ReturnType<ProvisioningPool['connect']>>;
-
-const createOrUpdateRoles = async (
-  client: ProvisioningClient,
-  input: {
-    readonly names: WasteTenantDatabaseNames;
-    readonly passwords: Readonly<{ migrator: string; app: string; publicApp: string }>;
-  }
-): Promise<void> => {
-  const roleSpecs = [
-    {
-      name: input.names.ownerRole,
-      attributes: 'NOLOGIN NOCREATEDB NOCREATEROLE',
-    },
-    {
-      name: input.names.migratorRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.migrator)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-    },
-    {
-      name: input.names.appRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.app)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-    },
-    {
-      name: input.names.publicAppRole,
-      attributes: `LOGIN PASSWORD ${quoteLiteral(input.passwords.publicApp)} NOCREATEDB NOCREATEROLE NOINHERIT`,
-    },
-  ] as const;
-  const existing = await client.query<{
-    rolname: string;
-    rolsuper: boolean;
-    rolreplication: boolean;
-    rolbypassrls: boolean;
-  }>(
-    'SELECT rolname, rolsuper, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = ANY($1::text[]);',
-    [roleSpecs.map((role) => role.name)]
-  );
-  // PostgreSQL 16 restricts ALTER of these attributes even when setting their negative forms.
-  // Reject privileged existing roles before changing any credentials or database grants.
-  if (
-    existing.rows.some(
-      (role) =>
-        role.rolsuper !== false || role.rolreplication !== false || role.rolbypassrls !== false
-    )
-  ) {
-    throw new Error('waste_tenant_role_privilege_drift');
-  }
-  const existingNames = new Set(existing.rows.map((row) => row.rolname));
-  for (const role of roleSpecs) {
-    await client.query(
-      existingNames.has(role.name)
-        ? `ALTER ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes};`
-        : `CREATE ROLE ${quoteIdentifier(role.name)} WITH ${role.attributes} NOSUPERUSER NOREPLICATION NOBYPASSRLS;`
-    );
-  }
-  await client.query(
-    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO ${quoteIdentifier(input.names.migratorRole)};`
-  );
-  await client.query(
-    `GRANT ${quoteIdentifier(input.names.ownerRole)} TO CURRENT_USER WITH SET TRUE;`
-  );
-};
 
 const ensureDatabase = async (
   client: ProvisioningClient,
@@ -266,14 +183,34 @@ export const createProvisionTenantDatabaseOperation = (
       throw new Error('waste_database_secret_protection_missing');
     }
     const names = deriveWasteTenantDatabaseNames(instanceId);
-    const passwordFactory = deps.createPassword ?? createPassword;
-    const passwords = { migrator: passwordFactory(), app: passwordFactory(), publicApp: passwordFactory() };
+    const interfaceId = `waste-management:${instanceId}`;
+    const existing = await (deps.loadManagedInterface ?? loadExternalInterfaceRecordByAlias)(
+      instanceId,
+      'postgresql',
+      wasteTenantProvisioningContract.interfaceAlias
+    );
+    if (existing && (existing.ownerKind !== 'plugin' || existing.ownerId !== wasteTenantProvisioningContract.interfaceOwnerId)) {
+      throw new Error('waste_managed_interface_owner_conflict');
+    }
+    if (existing) {
+      managedInterfaceForFailure = existing;
+    }
+    const passwordFactory = deps.createPassword ?? createWasteTenantDatabasePassword;
+    const migratorPassword = passwordFactory();
+    const runtimePasswords = existing
+      ? readExistingWasteRuntimePasswords({ existing, names, revealSecret: deps.revealSecret })
+      : { app: passwordFactory(), publicApp: passwordFactory() };
+    const passwords = { migrator: migratorPassword, ...runtimePasswords };
     const createPool = deps.createPool ?? defaultCreatePool;
     const adminPool = createPool(adminUrl);
     try {
       const adminClient = await adminPool.connect();
       try {
-        await createOrUpdateRoles(adminClient, { names, passwords });
+        await createOrUpdateWasteTenantRoles(adminClient, {
+          names,
+          passwords,
+          preserveRuntimeCredentials: existing !== null,
+        });
         await ensureDatabase(adminClient, names);
       } finally {
         adminClient.release();
@@ -282,10 +219,9 @@ export const createProvisionTenantDatabaseOperation = (
       await adminPool.end();
     }
 
-    const migratorUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.migratorRole, password: passwords.migrator });
-    const appUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.appRole, password: passwords.app });
-    const publicAppUrl = buildDatabaseUrl(adminUrl, { database: names.database, role: names.publicAppRole, password: passwords.publicApp });
-    const interfaceId = `waste-management:${instanceId}`;
+    const migratorUrl = buildWasteTenantDatabaseUrl(adminUrl, { database: names.database, role: names.migratorRole, password: passwords.migrator });
+    const appUrl = buildWasteTenantDatabaseUrl(adminUrl, { database: names.database, role: names.appRole, password: passwords.app });
+    const publicAppUrl = buildWasteTenantDatabaseUrl(adminUrl, { database: names.database, role: names.publicAppRole, password: passwords.publicApp });
     const now = (deps.now ?? (() => new Date()))().toISOString();
     const ciphertext = deps.protectSecret(
       JSON.stringify({ databaseUrl: appUrl, publicDatabaseUrl: publicAppUrl }),
@@ -315,14 +251,6 @@ export const createProvisionTenantDatabaseOperation = (
       updatedAt: now,
     };
     managedInterfaceForFailure = baseRecord;
-    const existing = await (deps.loadManagedInterface ?? loadExternalInterfaceRecordByAlias)(
-      instanceId,
-      'postgresql',
-      wasteTenantProvisioningContract.interfaceAlias
-    );
-    if (existing && (existing.ownerKind !== 'plugin' || existing.ownerId !== wasteTenantProvisioningContract.interfaceOwnerId)) {
-      throw new Error('waste_managed_interface_owner_conflict');
-    }
     await (deps.saveManagedInterface ?? saveExternalInterfaceRecord)({
       ...baseRecord,
       ...(existing?.createdAt ? { createdAt: existing.createdAt } : {}),

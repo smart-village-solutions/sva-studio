@@ -10,10 +10,21 @@ import { requiredWasteTables } from './waste-management-operations.shared.js';
 const createProvisioningPool = (options: {
   readonly missingTables?: boolean;
   readonly invalidRuntimeUrlPart?: string;
+  readonly existingRoleNames?: readonly string[];
+  readonly statements?: string[];
 } = {}) => (url: string) => ({
   connect: async () => ({
     query: async <TRow>(text: string) => {
-      if (text.includes('FROM pg_roles')) return { rowCount: 0, rows: [] as TRow[] };
+      options.statements?.push(text);
+      if (text.includes('FROM pg_roles')) {
+        const rows = (options.existingRoleNames ?? []).map((rolname) => ({
+          rolname,
+          rolsuper: false,
+          rolreplication: false,
+          rolbypassrls: false,
+        })) as TRow[];
+        return { rowCount: rows.length, rows };
+      }
       if (text.includes('FROM pg_database')) {
         return { rowCount: 1, rows: [{ exists: true }] as TRow[] };
       }
@@ -51,6 +62,7 @@ const createReadyDeps = (overrides: Record<string, unknown> = {}) => ({
   createPool: createProvisioningPool(),
   createPassword: () => 'test-secret',
   protectSecret: (plaintext: string) => `encrypted:${plaintext}`,
+  revealSecret: (ciphertext: string | null | undefined) => ciphertext?.replace(/^encrypted:/u, ''),
   claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
   completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
   failProvisioning: vi.fn(async () => null),
@@ -59,6 +71,36 @@ const createReadyDeps = (overrides: Record<string, unknown> = {}) => ({
   now: () => new Date('2026-08-02T10:00:00.000Z'),
   ...overrides,
 });
+
+const createManagedInterface = (
+  instanceId: string,
+  overrides: Partial<ExternalInterfaceRecord> = {}
+): ExternalInterfaceRecord => {
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  return {
+    id: `waste-management:${instanceId}`,
+    instanceId,
+    typeKey: 'postgresql',
+    ownerKind: 'plugin',
+    ownerId: 'waste-management',
+    displayName: 'Waste PostgreSQL',
+    alias: 'waste-management',
+    enabled: true,
+    isDefault: true,
+    category: 'database',
+    authMode: 'database_credentials',
+    publicConfig: { schemaName: 'public', databaseName: names.database, managed: true },
+    secretConfigCiphertext: `encrypted:${JSON.stringify({
+      databaseUrl: `postgresql://${names.appRole}:stable-app@postgres:5432/${names.database}`,
+      publicDatabaseUrl: `postgresql://${names.publicAppRole}:stable-public@postgres:5432/${names.database}`,
+    })}`,
+    statusCheckKind: 'postgresql',
+    visibleStatus: 'ok',
+    createdAt: '2026-08-01T08:00:00.000Z',
+    updatedAt: '2026-08-01T08:00:00.000Z',
+    ...overrides,
+  };
+};
 
 describe('waste tenant database provisioner', () => {
   it.each(['rolsuper', 'rolreplication', 'rolbypassrls'] as const)(
@@ -302,7 +344,7 @@ describe('waste tenant database provisioner', () => {
     expect(saveManagedInterface).not.toHaveBeenCalled();
   });
 
-  it('rejects an alias owned outside the Waste plugin and records the failed interface', async () => {
+  it('rejects an alias owned outside the Waste plugin without overwriting it', async () => {
     const saveManagedInterface = vi.fn(async () => undefined);
     const operation = createProvisionTenantDatabaseOperation(
       createReadyDeps({
@@ -321,9 +363,64 @@ describe('waste tenant database provisioner', () => {
         { jobId: 'job-1' }
       )
     ).rejects.toThrow('waste_managed_interface_owner_conflict');
-    expect(saveManagedInterface).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: false, visibleStatus: 'error' })
+    expect(saveManagedInterface).not.toHaveBeenCalled();
+  });
+
+  it('fails before touching PostgreSQL when existing runtime credentials cannot be revealed', async () => {
+    const createPool = vi.fn();
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const existing = createManagedInterface('tenant-a', {
+      secretConfigCiphertext: 'unreadable-ciphertext',
+    });
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPool,
+        revealSecret: () => undefined,
+        loadManagedInterface: vi.fn(async () => existing),
+        saveManagedInterface,
+      })
     );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 2 },
+        { jobId: 'job-2' }
+      )
+    ).rejects.toThrow('waste_database_existing_secret_unreadable');
+    expect(createPool).not.toHaveBeenCalled();
+    expect(saveManagedInterface).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: existing.id,
+        secretConfigCiphertext: 'unreadable-ciphertext',
+        enabled: false,
+        visibleStatus: 'error',
+        lastCheckErrorCode: 'waste_database_existing_secret_unreadable',
+      })
+    );
+  });
+
+  it('rejects runtime credentials for a different role before touching PostgreSQL', async () => {
+    const names = deriveWasteTenantDatabaseNames('tenant-a');
+    const createPool = vi.fn();
+    const existing = createManagedInterface('tenant-a', {
+      secretConfigCiphertext: `encrypted:${JSON.stringify({
+        databaseUrl: `postgresql://wrong_role:stable-app@postgres:5432/${names.database}`,
+        publicDatabaseUrl: `postgresql://${names.publicAppRole}:stable-public@postgres:5432/${names.database}`,
+      })}`,
+    });
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ createPool, loadManagedInterface: vi.fn(async () => existing) })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 2 },
+        { jobId: 'job-2' }
+      )
+    ).rejects.toThrow('waste_database_existing_secret_unreadable');
+    expect(createPool).not.toHaveBeenCalled();
   });
 
   it('fails closed when migrations leave the Waste schema incomplete', async () => {
@@ -411,10 +508,50 @@ describe('waste tenant database provisioner', () => {
     );
   });
 
-  it('reconciles a partially provisioned tenant without recreating or deleting its database data', async () => {
+  it('sets generated passwords when retrying orphaned roles without saved credentials', async () => {
+    const names = deriveWasteTenantDatabaseNames('tenant-a');
+    const statements: string[] = [];
+    const createPassword = vi.fn(() => 'recovered-secret');
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPassword,
+        createPool: createProvisioningPool({
+          existingRoleNames: [
+            names.ownerRole,
+            names.migratorRole,
+            names.appRole,
+            names.publicAppRole,
+          ],
+          statements,
+        }),
+      })
+    );
+
+    await operation(
+      'tenant-a',
+      { operation: 'provision-tenant-database', desiredGeneration: 2 },
+      { jobId: 'job-2' }
+    );
+
+    const alteredRoles = statements.filter((statement) => statement.startsWith('ALTER ROLE '));
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.appRole}"`))).toContain(
+      "PASSWORD 'recovered-secret'"
+    );
+    expect(
+      alteredRoles.find((statement) => statement.includes(`"${names.publicAppRole}"`))
+    ).toContain("PASSWORD 'recovered-secret'");
+    expect(createPassword).toHaveBeenCalledTimes(3);
+  });
+
+  it('reconciles a partially provisioned tenant without rotating runtime credentials or deleting data', async () => {
     const names = deriveWasteTenantDatabaseNames('bb-prignitz');
     const statements: string[] = [];
     const savedInterfaces: Record<string, unknown>[] = [];
+    const existing = createManagedInterface('bb-prignitz', {
+      enabled: false,
+      visibleStatus: 'error',
+    });
+    const createPassword = vi.fn(() => 'rotated-migrator');
     const createPool = (url: string) => ({
       connect: async () => ({
         query: async <TRow>(text: string) => {
@@ -445,7 +582,7 @@ describe('waste tenant database provisioner', () => {
               rows: [
                 {
                   can_select: true,
-                  can_insert: url.includes('_app:rotated-app@'),
+                  can_insert: url.includes(`${names.appRole}:stable-app@`),
                   can_insert_subscription: true,
                 },
               ] as TRow[],
@@ -461,35 +598,13 @@ describe('waste tenant database provisioner', () => {
       getProvisionerDatabaseUrl: () =>
         'postgresql://provisioner:admin@postgres:5432/sva_studio',
       createPool,
-      createPassword: vi
-        .fn()
-        .mockReturnValueOnce('rotated-migrator')
-        .mockReturnValueOnce('rotated-app')
-        .mockReturnValueOnce('rotated-public'),
+      createPassword,
       protectSecret: (plaintext) => `encrypted:${plaintext}`,
+      revealSecret: (ciphertext) => ciphertext?.replace(/^encrypted:/u, ''),
       claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
       completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
       failProvisioning: vi.fn(async () => null),
-      loadManagedInterface: vi.fn(
-        async () =>
-          ({
-            id: 'waste-management:bb-prignitz',
-            instanceId: 'bb-prignitz',
-            typeKey: 'postgresql',
-            ownerKind: 'plugin',
-            ownerId: 'waste-management',
-            displayName: 'Waste PostgreSQL',
-            alias: 'waste-management',
-            enabled: false,
-            isDefault: true,
-            category: 'database',
-            publicConfig: { schemaName: 'public', databaseName: names.database, managed: true },
-            statusCheckKind: 'postgresql',
-            visibleStatus: 'error',
-            createdAt: '2026-08-01T08:00:00.000Z',
-            updatedAt: '2026-08-01T08:00:00.000Z',
-          }) satisfies ExternalInterfaceRecord
-      ),
+      loadManagedInterface: vi.fn(async () => existing),
       saveManagedInterface: vi.fn(async (record) => {
         savedInterfaces.push(record as unknown as Record<string, unknown>);
       }),
@@ -502,12 +617,17 @@ describe('waste tenant database provisioner', () => {
       { jobId: '00000000-0000-4000-8000-000000000003' }
     );
 
-    expect(statements.filter((text) => text.startsWith('ALTER ROLE '))).toHaveLength(4);
-    for (const statement of statements.filter((text) => text.startsWith('ALTER ROLE '))) {
+    const alteredRoles = statements.filter((text) => text.startsWith('ALTER ROLE '));
+    expect(alteredRoles).toHaveLength(4);
+    for (const statement of alteredRoles) {
       // PostgreSQL 16 rejects even negative privileged attributes for a CREATEROLE principal.
       expect(statement).not.toMatch(/\b(?:NOSUPERUSER|NOREPLICATION|NOBYPASSRLS)\b/u);
       expect(statement).toContain('NOCREATEDB NOCREATEROLE');
     }
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.appRole}"`))).not.toContain('PASSWORD');
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.publicAppRole}"`))).not.toContain('PASSWORD');
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.migratorRole}"`))).toContain("PASSWORD 'rotated-migrator'");
+    expect(createPassword).toHaveBeenCalledOnce();
     expect(statements.some((text) => text.startsWith('CREATE ROLE '))).toBe(false);
     expect(statements.some((text) => text.startsWith('CREATE DATABASE '))).toBe(false);
     expect(
@@ -519,6 +639,7 @@ describe('waste tenant database provisioner', () => {
       enabled: false,
     });
     expect(savedInterfaces[1]).toMatchObject({ enabled: true, visibleStatus: 'ok' });
+    expect(savedInterfaces[1]?.secretConfigCiphertext).toBe(existing.secretConfigCiphertext);
   });
 
   it('activates additional tenants with the same deployment contract and isolated databases', async () => {

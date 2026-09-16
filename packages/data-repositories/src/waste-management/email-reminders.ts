@@ -437,7 +437,10 @@ SET status = 'cancelled',
 WHERE subscription_id = $1::uuid
   AND message_kind = 'reminder'
   AND status IN ('pending', 'processing')
-  AND last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}';
+  AND (
+    last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
+    OR leased_at <= $2::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+  );
 `,
   values: [input.subscriptionId, input.now],
 });
@@ -454,7 +457,10 @@ SET status = 'cancelled',
     last_error = 'reminder_no_longer_applicable'
 WHERE message_kind = 'reminder'
   AND status IN ('pending', 'processing')
-  AND last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
+  AND (
+    last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
+    OR leased_at <= $2::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+  )
   AND NOT (dedupe_key = ANY($1::text[]));
 `,
   values: [input.validDedupeKeys, input.now],

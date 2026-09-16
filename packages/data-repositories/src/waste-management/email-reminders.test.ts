@@ -381,6 +381,7 @@ describe('waste email reminder repository', () => {
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status IN ('pending', 'processing')");
     expect(statements[0]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
+    expect(statements[0]?.text).toContain("leased_at <= $2::timestamptz - INTERVAL '15 minutes'");
     expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
     expect(statements[0]?.values).toEqual([['reminder:still-valid'], '2026-06-15T06:00:00.000Z']);
   });
@@ -543,6 +544,7 @@ describe('waste email reminder repository', () => {
     expect(statements[2]?.text).toContain("message_kind = 'reminder'");
     expect(statements[2]?.text).toContain("SET status = 'cancelled'");
     expect(statements[2]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
+    expect(statements[2]?.text).toContain("leased_at <= $2::timestamptz - INTERVAL '15 minutes'");
   });
 
   it('returns invalid or already_unsubscribed for non-unsubscribable token hashes', async () => {

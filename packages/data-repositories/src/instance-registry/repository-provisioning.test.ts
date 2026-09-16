@@ -594,4 +594,22 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.values?.[5]).toBe('{"pluginSnapshotVersion":"1.0"}');
     expect(statements[0]?.values?.[6]).toBe(true);
   });
+
+  it('preserves new-realm transition evidence when a retry does not require OIDC reconcile', async () => {
+    const { executor, statements } = createQueuedExecutor([[provisioningRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await repository.retryProvisioningRun({
+      instanceId: 'tenant-a',
+      idempotencyKey: 'idem-1',
+      deadlineAt: '2026-01-01T01:00:00.000Z',
+      desiredSnapshot: { realmMode: 'new' },
+      keycloakReconcileRequired: false,
+    });
+
+    expect(statements[0]?.text).toContain(
+      "WHEN $6::jsonb ->> 'realmMode' = 'new' THEN child_keycloak_run_id"
+    );
+    expect(statements[0]?.values?.[6]).toBe(false);
+  });
 });

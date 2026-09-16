@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
+import {
   isRealmBaselineApplicable,
   readSnapshotFromRuns,
 } from './service-keycloak-snapshot-reader.js';
+
+const currentRealmBaselineIdentity = {
+  realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+  realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+};
 
 describe('isRealmBaselineApplicable', () => {
   it('recognizes a realm created by any successful new-mode Keycloak run', () => {
@@ -19,7 +28,12 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'current', authClientId: 'current-client' },
+                details: {
+                  policyVersion: 3,
+                  authRealm: 'current',
+                  authClientId: 'current-client',
+                  ...currentRealmBaselineIdentity,
+                },
               },
             ],
           },
@@ -47,6 +61,7 @@ describe('isRealmBaselineApplicable', () => {
                   policyVersion: 3,
                   authRealm: 'previous-realm',
                   authClientId: 'current-client',
+                  ...currentRealmBaselineIdentity,
                 },
               },
             ],
@@ -75,6 +90,7 @@ describe('isRealmBaselineApplicable', () => {
                   policyVersion: 3,
                   authRealm: 'current',
                   authClientId: 'previous-client',
+                  ...currentRealmBaselineIdentity,
                 },
               },
             ],
@@ -100,7 +116,12 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'current', authClientId: 'current-client' },
+                details: {
+                  policyVersion: 3,
+                  authRealm: 'current',
+                  authClientId: 'current-client',
+                  ...currentRealmBaselineIdentity,
+                },
               },
             ],
           },
@@ -125,7 +146,12 @@ describe('isRealmBaselineApplicable', () => {
               {
                 stepKey: 'status_snapshot',
                 status: 'done',
-                details: { policyVersion: 3, authRealm: 'current', authClientId: 'current-client' },
+                details: {
+                  policyVersion: 3,
+                  authRealm: 'current',
+                  authClientId: 'current-client',
+                  ...currentRealmBaselineIdentity,
+                },
               },
             ],
           },
@@ -138,6 +164,36 @@ describe('isRealmBaselineApplicable', () => {
 
   it('does not treat imported existing realms as managed', () => {
     expect(isRealmBaselineApplicable('existing', [], 'current', 'current-client')).toBe(false);
+  });
+
+  it('does not apply a superseded realm baseline identity', () => {
+    expect(
+      isRealmBaselineApplicable(
+        'existing',
+        [
+          {
+            mode: 'new',
+            overallStatus: 'succeeded',
+            steps: [
+              { stepKey: 'realm_baseline', status: 'done' },
+              {
+                stepKey: 'status_snapshot',
+                status: 'done',
+                details: {
+                  policyVersion: 3,
+                  authRealm: 'current',
+                  authClientId: 'current-client',
+                  realmBaselineVersion: 'outdated',
+                  realmBaselineFingerprint: 'outdated',
+                },
+              },
+            ],
+          },
+        ] as never,
+        'current',
+        'current-client'
+      )
+    ).toBe(false);
   });
 });
 

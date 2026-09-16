@@ -293,6 +293,8 @@ describe('service-keycloak-execution-finalize', () => {
   it('keeps the realm baseline applicable after a managed realm transitioned to existing', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
+    const { KEYCLOAK_REALM_BASELINE, KEYCLOAK_REALM_BASELINE_FINGERPRINT } =
+      await import('./keycloak-realm-baseline.js');
     const instance = {
       instanceId: 'managed-instance',
       status: 'active',
@@ -315,6 +317,8 @@ describe('service-keycloak-execution-finalize', () => {
                 policyVersion: 3,
                 authRealm: instance.authRealm,
                 authClientId: instance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(instance as never),
               },
             },

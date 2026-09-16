@@ -19,6 +19,10 @@ import { createInstanceRegistryService } from './service.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
 import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
+import {
   createGetKeycloakPreflightHandler,
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
@@ -3254,6 +3258,8 @@ describe('instance registry service facade', () => {
                 policyVersion: 3,
                 authRealm: managedInstance.authRealm,
                 authClientId: managedInstance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(managedInstance, {
                   authClientSecretCiphertext: 'auth-cipher',
                   tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
@@ -3529,6 +3535,8 @@ describe('instance registry service facade', () => {
                 policyVersion: 3,
                 authRealm: managedInstance.authRealm,
                 authClientId: managedInstance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
                 inputFingerprint: buildKeycloakSnapshotInputFingerprint(
                   managedInstance,
                   secretVersions

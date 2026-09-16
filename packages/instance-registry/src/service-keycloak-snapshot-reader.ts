@@ -1,7 +1,11 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
-import { buildSmtpPasswordPlanStep } from './keycloak-realm-baseline.js';
+import {
+  buildSmtpPasswordPlanStep,
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
 import type { KeycloakTenantPlan, KeycloakTenantStatus } from './keycloak-types.js';
 import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js';
 import {
@@ -38,7 +42,9 @@ const hasCurrentStatusSnapshot = (
       isRecord(step.details) &&
       step.details.policyVersion === KEYCLOAK_SNAPSHOT_POLICY_VERSION &&
       step.details.authRealm === authRealm &&
-      step.details.authClientId === authClientId
+      step.details.authClientId === authClientId &&
+      step.details.realmBaselineVersion === KEYCLOAK_REALM_BASELINE.version &&
+      step.details.realmBaselineFingerprint === KEYCLOAK_REALM_BASELINE_FINGERPRINT
   );
 
 export const isRealmBaselineApplicable = (

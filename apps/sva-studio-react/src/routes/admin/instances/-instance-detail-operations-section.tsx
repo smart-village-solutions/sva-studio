@@ -78,41 +78,46 @@ const WorkflowCard = ({
       <p className="text-xs text-muted-foreground">{t('admin.instances.workflow.subtitle')}</p>
     </div>
     <div className="grid gap-2">
-      {getSetupWorkflowSteps(selectedInstance, mutationError).map((step) => (
-        <div key={step.key} className="rounded-lg border border-border p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="font-medium text-foreground">{step.title}</div>
-              <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
+      {getSetupWorkflowSteps(selectedInstance, mutationError)
+        .filter(
+          (step) => selectedInstance.realmMode !== 'new' || step.action !== 'reset_tenant_admin'
+        )
+        .map((step) => (
+          <div key={step.key} className="rounded-lg border border-border p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-medium text-foreground">{step.title}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
+              </div>
+              <WorkflowStatusBadge status={step.status} />
             </div>
-            <WorkflowStatusBadge status={step.status} />
+            {step.action && step.actionLabel ? (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void onTriggerWorkflowAction(step.action as WorkflowAction)}
+                  disabled={statusLoading}
+                >
+                  {step.actionLabel}
+                </Button>
+              </div>
+            ) : null}
           </div>
-          {step.action && step.actionLabel ? (
-            <div className="mt-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void onTriggerWorkflowAction(step.action as WorkflowAction)}
-                disabled={statusLoading}
-              >
-                {step.actionLabel}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ))}
+        ))}
     </div>
   </Card>
 );
 
 const ExecuteProvisioningCard = ({
+  selectedInstance,
   detailFormValues,
   setDetailFormValues,
   onExecuteProvisioning,
 }: Pick<
   OperationsSectionProps,
-  'detailFormValues' | 'setDetailFormValues' | 'onExecuteProvisioning'
+  'selectedInstance' | 'detailFormValues' | 'setDetailFormValues' | 'onExecuteProvisioning'
 >) => (
   <Card className="space-y-3 p-4">
     <div className="space-y-1">
@@ -148,13 +153,15 @@ const ExecuteProvisioningCard = ({
       >
         {t('admin.instances.actions.provisionAdminClient')}
       </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => void onExecuteProvisioning('reset_tenant_admin')}
-      >
-        {t('admin.instances.actions.resetTenantAdmin')}
-      </Button>
+      {selectedInstance.realmMode === 'existing' ? (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => void onExecuteProvisioning('reset_tenant_admin')}
+        >
+          {t('admin.instances.actions.resetTenantAdmin')}
+        </Button>
+      ) : null}
       <Button
         type="button"
         variant="secondary"
@@ -299,6 +306,7 @@ export const InstanceDetailOperationsSection = (props: OperationsSectionProps) =
       statusLoading={props.statusLoading}
     />
     <ExecuteProvisioningCard
+      selectedInstance={props.selectedInstance}
       detailFormValues={props.detailFormValues}
       setDetailFormValues={props.setDetailFormValues}
       onExecuteProvisioning={props.onExecuteProvisioning}

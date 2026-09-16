@@ -59,6 +59,7 @@ const WasteToursStatusDialogs = ({
         open
         selectedTourIds={[tourPendingStatusChange.id]}
         tourName={tourPendingStatusChange.name}
+        currentStatus={tourPendingStatusChange.status}
         saving={saving}
         onOpenChange={(open) => !open && setTourPendingStatusChange(null)}
         onSubmit={onUpdateTourStatusBulk}

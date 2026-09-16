@@ -156,7 +156,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     descriptionOne: 'Legen Sie den Zielstatus für eine ausgewählte Tour fest.',
     descriptionOther: 'Legen Sie den Zielstatus für {{value}} ausgewählte Touren fest.',
     singleTitle: 'Status der Tour ändern',
-    singleDescription: 'Legen Sie den Zielstatus für die Tour {{value}} fest.',
+    singleDescription:
+      'Die Tour {{value}} hat aktuell den Status {{status}}. Legen Sie den Zielstatus fest.',
     targetLabel: 'Zielstatus',
     targetPlaceholder: 'Status auswählen',
     apply: 'Status ändern',

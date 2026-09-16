@@ -72,6 +72,27 @@ describe('WasteToursStatusBulkDialog', () => {
     expect(onUpdated).toHaveBeenCalledOnce();
   });
 
+  it('shows the current status when changing a single tour', () => {
+    render(
+      <WasteToursStatusBulkDialog
+        open
+        selectedTourIds={['tour-1']}
+        tourName="Tour 1"
+        currentStatus="published"
+        saving={false}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        onUpdated={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        /tours\.bulkStatusDialog\.singleDescription:Tour 1\|tours\.status\.published/
+      )
+    ).toBeTruthy();
+  });
+
   it('keeps the dialog open and reports a failed update', async () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: false, reason: 'write' });
     const onUpdated = vi.fn();

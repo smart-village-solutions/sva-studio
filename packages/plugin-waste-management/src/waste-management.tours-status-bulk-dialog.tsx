@@ -21,6 +21,7 @@ type WasteToursStatusBulkDialogProps = Readonly<{
   open: boolean;
   selectedTourIds: readonly string[];
   tourName?: string;
+  currentStatus?: WasteTourStatus;
   saving: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: WasteTourStatusBulkUpdateInput) => Promise<WasteTourStatusUpdateResult>;
@@ -83,6 +84,7 @@ const WasteToursStatusFeedback = ({
 const WasteToursStatusBulkForm = ({
   selectedTourIds,
   tourName,
+  currentStatus,
   saving,
   target,
   error,
@@ -90,7 +92,10 @@ const WasteToursStatusBulkForm = ({
   onTargetChange,
   onCancel,
   onSubmit,
-}: Pick<WasteToursStatusBulkDialogProps, 'selectedTourIds' | 'tourName' | 'saving'> & {
+}: Pick<
+  WasteToursStatusBulkDialogProps,
+  'selectedTourIds' | 'tourName' | 'currentStatus' | 'saving'
+> & {
   readonly target: StatusTarget;
   readonly error: string | null;
   readonly exceedsLimit: boolean;
@@ -108,7 +113,10 @@ const WasteToursStatusBulkForm = ({
         </DialogTitle>
         <DialogDescription>
           {tourName
-            ? pt('tours.bulkStatusDialog.singleDescription', { value: tourName })
+            ? pt('tours.bulkStatusDialog.singleDescription', {
+                value: tourName,
+                status: currentStatus ? pt(`tours.status.${currentStatus}`) : '',
+              })
             : pt(
                 selectedTourIds.length === 1
                   ? 'tours.bulkStatusDialog.descriptionOne'
@@ -139,6 +147,7 @@ export const WasteToursStatusBulkDialog = ({
   open,
   selectedTourIds,
   tourName,
+  currentStatus,
   saving,
   onOpenChange,
   onSubmit,
@@ -182,6 +191,7 @@ export const WasteToursStatusBulkDialog = ({
         <WasteToursStatusBulkForm
           selectedTourIds={selectedTourIds}
           tourName={tourName}
+          currentStatus={currentStatus}
           saving={saving}
           target={target}
           error={error}

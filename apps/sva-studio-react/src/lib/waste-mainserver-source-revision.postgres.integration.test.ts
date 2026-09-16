@@ -39,6 +39,7 @@ const ids = {
   tour: '60000000-0000-4000-8000-000000000001',
   legacyActiveTour: '60000000-0000-4000-8000-000000000002',
   legacyInactiveTour: '60000000-0000-4000-8000-000000000003',
+  statusOnlyTour: '60000000-0000-4000-8000-000000000004',
   link: '70000000-0000-4000-8000-000000000001',
 } as const;
 
@@ -164,6 +165,17 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       client.query<{ status: string; active: boolean }>(
         'SELECT status, active FROM waste_tours WHERE id = $1;',
         [ids.tour]
+      )
+    ).resolves.toMatchObject({ rows: [{ status: 'published', active: true }] });
+
+    await client.query(
+      `INSERT INTO waste_tours (id, name, status) VALUES ($1, 'Status-only tour', 'published');`,
+      [ids.statusOnlyTour]
+    );
+    await expect(
+      client.query<{ status: string; active: boolean }>(
+        'SELECT status, active FROM waste_tours WHERE id = $1;',
+        [ids.statusOnlyTour]
       )
     ).resolves.toMatchObject({ rows: [{ status: 'published', active: true }] });
 

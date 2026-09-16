@@ -154,7 +154,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     descriptionOne: 'Set the target status for one selected tour.',
     descriptionOther: 'Set the target status for {{value}} selected tours.',
     singleTitle: 'Change tour status',
-    singleDescription: 'Set the target status for tour {{value}}.',
+    singleDescription: 'Tour {{value}} currently has status {{status}}. Select the target status.',
     targetLabel: 'Target status',
     targetPlaceholder: 'Select status',
     apply: 'Change status',

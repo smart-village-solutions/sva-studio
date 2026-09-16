@@ -154,7 +154,9 @@ LANGUAGE plpgsql
 AS $waste_tour_status$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    IF NEW.status = 'draft' AND NEW.active IS TRUE THEN
+    IF NEW.active IS NULL THEN
+      NEW.active := NEW.status = 'published';
+    ELSIF NEW.status = 'draft' AND NEW.active IS TRUE THEN
       NEW.status := 'published';
     ELSIF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
       RAISE EXCEPTION 'waste_tour_status_active_conflict';
@@ -205,12 +207,12 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_first_reminder_max_lead_days_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_first_reminder_max_lead_days_check CHECK (first_reminder_max_lead_days IS NULL OR first_reminder_max_lead_days BETWEEN 1 AND 14); END IF; END $$;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_fractions_second_reminder_max_lead_days_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_fractions') THEN ALTER TABLE ${schema}.waste_fractions ADD CONSTRAINT waste_fractions_second_reminder_max_lead_days_check CHECK (second_reminder_max_lead_days IS NULL OR second_reminder_max_lead_days BETWEEN 1 AND 14); END IF; END $$;`,
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_custom_recurrence_presets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, description TEXT, interval_days INTEGER NOT NULL CHECK (interval_days > 0), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
-    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tours (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, description TEXT, waste_fraction_ids TEXT[] NOT NULL DEFAULT '{}', recurrence TEXT CHECK (recurrence IN ('weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom')), custom_recurrence_id UUID REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL, first_date DATE, end_date DATE, custom_dates JSONB, status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')), active BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tours (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, description TEXT, waste_fraction_ids TEXT[] NOT NULL DEFAULT '{}', recurrence TEXT CHECK (recurrence IN ('weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom')), custom_recurrence_id UUID REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL, first_date DATE, end_date DATE, custom_dates JSONB, status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')), active BOOLEAN NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS status TEXT;`,
     `UPDATE ${schema}.waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL;`,
     `ALTER TABLE ${schema}.waste_tours ALTER COLUMN status SET DEFAULT 'draft';`,
     `ALTER TABLE ${schema}.waste_tours ALTER COLUMN status SET NOT NULL;`,
-    `ALTER TABLE ${schema}.waste_tours ALTER COLUMN active SET DEFAULT FALSE;`,
+    `ALTER TABLE ${schema}.waste_tours ALTER COLUMN active DROP DEFAULT;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_status_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_status_check CHECK (status IN ('draft', 'published', 'archived')); END IF; END $$;`,
     buildWasteTourStatusCompatibilityFunctionStatement(schema),
     `DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON ${schema}.waste_tours;`,

@@ -147,6 +147,7 @@ describe('waste management operations runtime', () => {
       "UPDATE \"wm\".waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL"
     );
     expect(statements).toContain('waste_tours_status_check');
+    expect(statements).toContain('ALTER TABLE "wm".waste_tours ALTER COLUMN active DROP DEFAULT');
     expect(statements).toContain('sync_waste_tour_status_active');
     expect(statements).toContain('waste_tour_status_active_conflict');
     expect(statements).toContain('idx_waste_tours_status');

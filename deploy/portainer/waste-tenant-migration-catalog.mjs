@@ -268,7 +268,7 @@ export const wasteTenantMigrations = Object.freeze([
       "UPDATE public.waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL;",
       "ALTER TABLE public.waste_tours ALTER COLUMN status SET DEFAULT 'draft';",
       'ALTER TABLE public.waste_tours ALTER COLUMN status SET NOT NULL;',
-      'ALTER TABLE public.waste_tours ALTER COLUMN active SET DEFAULT FALSE;',
+      'ALTER TABLE public.waste_tours ALTER COLUMN active DROP DEFAULT;',
       `DO $$
       BEGIN
         IF NOT EXISTS (
@@ -288,7 +288,9 @@ export const wasteTenantMigrations = Object.freeze([
       AS $waste_tour_status$
       BEGIN
         IF TG_OP = 'INSERT' THEN
-          IF NEW.status = 'draft' AND NEW.active IS TRUE THEN
+          IF NEW.active IS NULL THEN
+            NEW.active := NEW.status = 'published';
+          ELSIF NEW.status = 'draft' AND NEW.active IS TRUE THEN
             NEW.status := 'published';
           ELSIF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
             RAISE EXCEPTION 'waste_tour_status_active_conflict';
@@ -342,7 +344,7 @@ export const wasteTenantMigrations = Object.freeze([
               AND column_name = 'active'
               AND data_type = 'boolean'
               AND is_nullable = 'NO'
-              AND column_default = 'false'
+              AND column_default IS NULL
           ) AS satisfied
         ), index_contract AS (
           SELECT EXISTS (

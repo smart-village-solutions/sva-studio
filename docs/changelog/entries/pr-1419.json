@@ -1,0 +1,4 @@
+{
+  "prNumber": 1419,
+  "body": "Die Kasseler Mandantenanlage weist ungültige Instanz-IDs nun vor dem Speichern zurück und beendet nicht behebbare SSF-, TLS- und Readiness-Fehler nachvollziehbar, statt sie endlos erneut zu versuchen."
+}

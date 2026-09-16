@@ -1873,8 +1873,9 @@ describe('instance registry service facade', () => {
   });
 
   it('normalizes updates entering new realm mode to the server baseline', async () => {
+    const existing = { ...baseInstance, realmMode: 'existing' as const };
     const repository = createRepository({
-      getInstanceById: vi.fn(async () => baseInstance),
+      getInstanceById: vi.fn(async () => existing),
       updateInstance: vi.fn(async () => baseInstance),
     });
     const resolveProvisioningAuthIssuerUrl = vi.fn(() => 'https://auth.example.org/realms/demo');
@@ -1904,6 +1905,8 @@ describe('instance registry service facade', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio-login',
         tenantAdminClient: expect.objectContaining({ clientId: 'sva-studio-realm-admin' }),
+        keepExistingAuthClientSecret: false,
+        keepExistingTenantAdminClientSecret: false,
       })
     );
   });

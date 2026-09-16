@@ -200,6 +200,7 @@ export const createUpdateInstanceHandler =
       return null;
     }
     await assertNoActiveTenantProvisioning(deps.repository, effectiveInput.instanceId);
+    const enteringNewRealm = existing.realmMode !== 'new' && effectiveInput.realmMode === 'new';
     const normalizedParentDomain = normalizeHost(effectiveInput.parentDomain);
     const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
       parentDomain: normalizedParentDomain,
@@ -225,7 +226,8 @@ export const createUpdateInstanceHandler =
         effectiveInput.instanceId,
         effectiveInput.authClientSecret
       ),
-      keepExistingAuthClientSecret: !effectiveInput.authClientSecret?.trim(),
+      keepExistingAuthClientSecret:
+        !enteringNewRealm && !effectiveInput.authClientSecret?.trim(),
       tenantAdminClient: effectiveInput.tenantAdminClient
         ? {
             clientId: effectiveInput.tenantAdminClient.clientId,
@@ -236,7 +238,8 @@ export const createUpdateInstanceHandler =
             ),
           }
         : undefined,
-      keepExistingTenantAdminClientSecret: !effectiveInput.tenantAdminClient?.secret?.trim(),
+      keepExistingTenantAdminClientSecret:
+        !enteringNewRealm && !effectiveInput.tenantAdminClient?.secret?.trim(),
       tenantAdminBootstrap: effectiveInput.tenantAdminBootstrap ?? existing.tenantAdminBootstrap,
       actorId: effectiveInput.actorId,
       requestId: effectiveInput.requestId,

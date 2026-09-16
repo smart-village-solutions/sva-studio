@@ -76,6 +76,8 @@ describe('service-keycloak-execution-finalize', () => {
   it('marks successful runs, snapshots the status and updates the instance status', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
+    const { KEYCLOAK_REALM_BASELINE, KEYCLOAK_REALM_BASELINE_FINGERPRINT } =
+      await import('./keycloak-realm-baseline.js');
     const status = { realmExists: true };
     const statusUpdated = {
       instanceId: 'instance-1',
@@ -177,6 +179,8 @@ describe('service-keycloak-execution-finalize', () => {
           policyVersion: 3,
           authRealm: realmUpdated.authRealm,
           authClientId: realmUpdated.authClientId,
+          realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+          realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(
             realmUpdated as never,
             undefined,

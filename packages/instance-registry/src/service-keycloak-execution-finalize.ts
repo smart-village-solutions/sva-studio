@@ -8,6 +8,10 @@ import {
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
+import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import {
   loadInstanceWithSecret,
@@ -133,6 +137,8 @@ const appendFinalStatusSnapshot = async (
       policyVersion: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
       authRealm: snapshotInstance.authRealm,
       authClientId: snapshotInstance.authClientId,
+      realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+      realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
       inputFingerprint: buildKeycloakSnapshotInputFingerprint(
         snapshotInstance,
         await loadKeycloakSnapshotSecretVersions(deps.repository, snapshotInstance.instanceId),

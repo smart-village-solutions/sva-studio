@@ -89,6 +89,20 @@ const completeActivationPolicyFollowUp = async (
   runActivationPolicyFollowUp(deps, input);
 };
 
+const completeScopedActivationPolicyFollowUp = async (
+  deps: InstanceRegistryRuntimeDeps,
+  instanceId: string,
+  reconcileResult: Readonly<{ changedModuleIds: readonly string[] }> | null,
+  awaitFollowUp: boolean
+): Promise<void> => {
+  if (!reconcileResult) return;
+  await completeActivationPolicyFollowUp(
+    deps,
+    { instanceId, changedModuleIds: reconcileResult.changedModuleIds },
+    awaitFollowUp
+  );
+};
+
 const beginLockedTransaction = async (
   client: InstanceRegistryQueryClient,
   instanceId: string
@@ -128,6 +142,24 @@ const withInstanceTransaction = async <T>(
   } finally {
     client.release();
   }
+};
+
+const runScopedRegistryService = async <T>(
+  repository: InstanceRegistryRepository,
+  deps: InstanceRegistryRuntimeDeps,
+  instanceId: string,
+  work: (service: InstanceRegistryService) => Promise<T>,
+  options: ScopedRegistryServiceOptions
+) => {
+  const serviceDeps = { repository, ...deps.serviceDeps };
+  const service = createInstanceRegistryService(serviceDeps);
+  const shouldReconcile = (await options.shouldReconcileActivationPolicies?.(service)) ?? true;
+  if (!shouldReconcile) return { reconcileResult: null, result: await work(service) };
+  const reconcileResult = await createReconcileModuleActivationPoliciesHandler(
+    serviceDeps,
+    options
+  )({ instanceId });
+  return { reconcileResult, result: await work(service) };
 };
 
 export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps) => {
@@ -178,27 +210,15 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (service: InstanceRegistryService) => Promise<T>,
     options: ScopedRegistryServiceOptions = {}
   ): Promise<T> => {
-    const scopedResult = await withScopedRegistryRepository(instanceId, async (repository) => {
-      const serviceDeps = { repository, ...deps.serviceDeps };
-      const service = createInstanceRegistryService(serviceDeps);
-      const shouldReconcile =
-        (await options.shouldReconcileActivationPolicies?.(service)) ?? true;
-      if (!shouldReconcile) {
-        return { reconcileResult: null, result: await work(service) };
-      }
-      const reconcileResult = await createReconcileModuleActivationPoliciesHandler(
-        serviceDeps,
-        options
-      )({ instanceId });
-      return { reconcileResult, result: await work(service) };
-    });
-    if (scopedResult.reconcileResult) {
-      await completeActivationPolicyFollowUp(
-        deps,
-        { instanceId, changedModuleIds: scopedResult.reconcileResult.changedModuleIds },
-        options.awaitActivationPolicyFollowUp === true
-      );
-    }
+    const scopedResult = await withScopedRegistryRepository(instanceId, (repository) =>
+      runScopedRegistryService(repository, deps, instanceId, work, options)
+    );
+    await completeScopedActivationPolicyFollowUp(
+      deps,
+      instanceId,
+      scopedResult.reconcileResult,
+      options.awaitActivationPolicyFollowUp === true
+    );
     return scopedResult.result;
   };
   const getProvisioningWorkerServiceDeps = (

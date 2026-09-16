@@ -4,19 +4,25 @@ import {
   assignModuleSchema,
   bootstrapAdminStructureSchema,
   createInstanceSchema,
+  resolveCreateInstanceDefaults,
   revokeModuleSchema,
   reconcileKeycloakSchema,
   readDetailInstanceId,
   readKeycloakRunId,
   seedIamBaselineSchema,
+  updateInstanceSchema,
 } from './http-contracts.js';
 
 describe('http-contracts', () => {
   it('extracts detail instance ids from nested routes', () => {
     expect(
-      readDetailInstanceId(new Request('https://studio.example.org/api/v1/iam/instances/demo/activate'))
+      readDetailInstanceId(
+        new Request('https://studio.example.org/api/v1/iam/instances/demo/activate')
+      )
     ).toBe('demo');
-    expect(readDetailInstanceId(new Request('https://studio.example.org/api/v1/iam/users'))).toBeUndefined();
+    expect(
+      readDetailInstanceId(new Request('https://studio.example.org/api/v1/iam/users'))
+    ).toBeUndefined();
   });
 
   it.each(['studio', 'auth', 'STUDIO', 'Auth'])(
@@ -42,7 +48,7 @@ describe('http-contracts', () => {
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
       authRealm: 'de-test',
-      authClientId: 'sva-studio',
+      authClientId: 'sva-studio-login',
       authIssuerUrl: 'not-a-url',
     });
 
@@ -55,11 +61,23 @@ describe('http-contracts', () => {
       displayName: 'Demo',
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
-      authRealm: 'Bitte ein Tenant-Client-Secret angeben. Bitte ein Tenant-Admin-Client-Secret angeben.',
+      authRealm:
+        'Bitte ein Tenant-Client-Secret angeben. Bitte ein Tenant-Admin-Client-Secret angeben.',
       authClientId: 'sva-studio',
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('rejects an invalid instance id when it would become the new realm name', () => {
+    expect(
+      createInstanceSchema.safeParse({
+        instanceId: 'tenant/foo',
+        displayName: 'Demo',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'new',
+      }).success
+    ).toBe(false);
   });
 
   it('allows create requests without a tenant admin client contract', () => {
@@ -69,10 +87,59 @@ describe('http-contracts', () => {
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
       authRealm: 'de-test',
-      authClientId: 'sva-studio',
+      authClientId: 'sva-studio-login',
     });
 
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(resolveCreateInstanceDefaults(result.data)).toMatchObject({
+        authRealm: 'de-test',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+      });
+    }
+  });
+
+  it('derives new-realm technical defaults when clients omit them', () => {
+    const result = createInstanceSchema.safeParse({
+      instanceId: 'de-test',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'new',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(resolveCreateInstanceDefaults(result.data)).toMatchObject({
+        authRealm: 'de-test',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+      });
+    }
+  });
+
+  it('rejects conflicting new-realm technical defaults', () => {
+    expect(
+      createInstanceSchema.safeParse({
+        instanceId: 'de-test',
+        displayName: 'Demo',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'new',
+        authClientId: 'custom-login',
+      }).success
+    ).toBe(false);
+  });
+
+  it('keeps the instance id in the update URL instead of requiring it in the body', () => {
+    expect(
+      updateInstanceSchema.safeParse({
+        displayName: 'Demo',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'de-test',
+        authClientId: 'sva-studio-login',
+      }).success
+    ).toBe(true);
   });
 
   it('rejects reserved instance ids for audit routes', () => {
@@ -82,7 +149,7 @@ describe('http-contracts', () => {
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
       authRealm: 'de-test',
-      authClientId: 'sva-studio',
+      authClientId: 'sva-studio-login',
     });
 
     expect(result.success).toBe(false);
@@ -95,7 +162,7 @@ describe('http-contracts', () => {
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
       authRealm: 'de-test',
-      authClientId: 'sva-studio',
+      authClientId: 'sva-studio-login',
       wasteManagementSettings: {
         provider: 'supabase',
         projectUrl: 'https://tenant-a.supabase.co',
@@ -116,7 +183,7 @@ describe('http-contracts', () => {
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
       authRealm: 'de-test',
-      authClientId: 'sva-studio',
+      authClientId: 'sva-studio-login',
       wasteManagementSettings: {
         provider: 'supabase',
         projectUrl: 'not-a-url',
@@ -155,7 +222,10 @@ describe('http-contracts', () => {
 
   it('rejects secret rotation on the non-critical reconcile route', () => {
     expect(reconcileKeycloakSchema.safeParse({ rotateClientSecret: true }).success).toBe(false);
-    expect(reconcileKeycloakSchema.safeParse({ tenantAdminTemporaryPassword: 'temporary-password' }).success).toBe(true);
+    expect(
+      reconcileKeycloakSchema.safeParse({ tenantAdminTemporaryPassword: 'temporary-password' })
+        .success
+    ).toBe(true);
   });
 
   it('accepts empty reseed payloads', () => {
@@ -166,7 +236,11 @@ describe('http-contracts', () => {
 
   it('accepts bootstrap payloads with optional module ids', () => {
     expect(bootstrapAdminStructureSchema.safeParse({}).success).toBe(true);
-    expect(bootstrapAdminStructureSchema.safeParse({ moduleIds: ['news', 'events'] }).success).toBe(true);
-    expect(bootstrapAdminStructureSchema.safeParse({ moduleIds: [' ', 'news'] }).success).toBe(false);
+    expect(bootstrapAdminStructureSchema.safeParse({ moduleIds: ['news', 'events'] }).success).toBe(
+      true
+    );
+    expect(bootstrapAdminStructureSchema.safeParse({ moduleIds: [' ', 'news'] }).success).toBe(
+      false
+    );
   });
 });

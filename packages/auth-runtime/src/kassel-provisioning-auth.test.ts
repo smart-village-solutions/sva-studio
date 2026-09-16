@@ -17,6 +17,66 @@ describe('Kassel provisioning auth issuer', () => {
     ).toBe('https://auth.example.org/realms/demo');
   });
 
+  it('derives a new realm issuer from the configured Keycloak base URL', () => {
+    expect(
+      resolveProvisioningAuthIssuerUrl(input, {
+        tenantIngressMode: 'external',
+        keycloakBaseUrl: 'https://keycloak.example.org/auth/',
+      })
+    ).toBe('https://keycloak.example.org/auth/realms/smartcity');
+  });
+
+  it('removes all trailing slashes before deriving the issuer', () => {
+    expect(
+      resolveProvisioningAuthIssuerUrl(input, {
+        tenantIngressMode: 'external',
+        keycloakBaseUrl: 'https://keycloak.example.org///',
+      })
+    ).toBe('https://keycloak.example.org/realms/smartcity');
+  });
+
+  it('fails closed without an issuer source outside Kassel mode', () => {
+    expect(() =>
+      resolveProvisioningAuthIssuerUrl(input, { tenantIngressMode: 'external' })
+    ).toThrow('keycloak_admin_base_url_missing');
+  });
+
+  it('supports configured HTTP Keycloak bases outside production', () => {
+    expect(
+      resolveProvisioningAuthIssuerUrl(input, {
+        tenantIngressMode: 'external',
+        keycloakBaseUrl: 'http://keycloak:38080',
+        nodeEnv: 'development',
+      })
+    ).toBe('http://keycloak:38080/realms/smartcity');
+  });
+
+  it.each(['http://keycloak:38080', 'http://127.0.0.1:38080'])(
+    'supports trusted HTTP Keycloak base %s in production',
+    (keycloakBaseUrl) => {
+      expect(
+        resolveProvisioningAuthIssuerUrl(input, {
+          tenantIngressMode: 'external',
+          keycloakBaseUrl,
+          nodeEnv: 'production',
+        })
+      ).toBe(`${keycloakBaseUrl}/realms/smartcity`);
+    }
+  );
+
+  it.each(['http://keycloak.example.org:38080', 'http://127.attacker.example:38080'])(
+    'rejects public HTTP Keycloak base %s in production',
+    (keycloakBaseUrl) => {
+      expect(() =>
+        resolveProvisioningAuthIssuerUrl(input, {
+          tenantIngressMode: 'external',
+          keycloakBaseUrl,
+          nodeEnv: 'production',
+        })
+      ).toThrow('keycloak_admin_base_url_invalid');
+    }
+  );
+
   it('derives the public issuer before provisioning in Kassel mode', () => {
     expect(
       resolveProvisioningAuthIssuerUrl(

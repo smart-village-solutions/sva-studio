@@ -383,7 +383,7 @@ describe('instance detail split sections', () => {
 
       return (
         <InstanceDetailOperationsSection
-          selectedInstance={createDetailFixture()}
+          selectedInstance={createDetailFixture({ realmMode: 'existing' })}
           detailFormValues={detailFormValues}
           effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
           mutationError={null}
@@ -438,6 +438,24 @@ describe('instance detail split sections', () => {
     expect(onExecuteProvisioning).toHaveBeenCalledWith('reset_tenant_admin');
     expect(onExecuteProvisioning).toHaveBeenCalledWith('rotate_client_secret');
     expect(latestValues.tenantAdminTemporaryPassword).toBe('TempPasswort123!');
+  });
+
+  it('hides tenant-admin reset actions while the realm is new', () => {
+    render(
+      <InstanceDetailOperationsSection
+        selectedInstance={createDetailFixture({ realmMode: 'new' })}
+        detailFormValues={createDetailFormValues()}
+        effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
+        mutationError={null}
+        statusLoading={false}
+        setDetailFormValues={vi.fn() as OperationsSectionProps['setDetailFormValues']}
+        onTriggerWorkflowAction={vi.fn().mockResolvedValue(undefined)}
+        onExecuteProvisioning={vi.fn().mockResolvedValue(undefined)}
+        onSeedIamBaseline={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Tenant-Admin neu setzen' })).toBeNull();
   });
 
   it('renders the module transparency table with fallback descriptions for missing or empty translation values', () => {

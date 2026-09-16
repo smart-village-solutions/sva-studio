@@ -18,4 +18,8 @@ export const keycloakStatusInstancesAdminENResources = {
   clientSecretAligned: 'Tenant client secret aligned with Keycloak',
   tenantAdminClientSecretAligned: 'Tenant admin client secret aligned with Keycloak',
   runtimeSecretSourceTenant: 'Runtime uses tenant secret',
+  realmBaselineAligned: 'Realm baseline matches',
+  userProfileBaselineAligned: 'User profile attributes match',
+  instanceIdMapperAligned: 'instanceId mapper matches',
+  smtpPasswordConfigured: 'SMTP password is set in Keycloak',
 } as const;

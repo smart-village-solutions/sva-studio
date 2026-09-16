@@ -102,7 +102,39 @@ describe('provisioning-auth-evaluation', () => {
     expect(plan.steps.find((step) => step.stepKey === 'tenant_admin')).toMatchObject({
       action: 'skip',
     });
+    expect(plan.steps.find((step) => step.stepKey === 'realm_baseline')).toMatchObject({
+      action: 'skip',
+      details: { applicable: false },
+    });
+    expect(plan.steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
+      action: 'skip',
+      details: { applicable: false, actionCode: 'none' },
+    });
     expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
+  });
+
+  it('keeps manual SMTP follow-up in the post-transition plan of a managed realm', () => {
+    const plan = buildPlan({
+      instanceId: 'managed',
+      realmMode: 'existing',
+      realmBaselineApplicable: true,
+      preflight: { overallStatus: 'ready', checkedAt: '2026-09-15T00:00:00Z', checks: [] },
+      state: {
+        realm: { realm: 'managed', smtpPasswordConfigured: false },
+        pluginOidcClients: [],
+      } as never,
+    });
+
+    expect(plan.steps.find((step) => step.stepKey === 'realm_baseline')).toMatchObject({
+      details: { applicable: true },
+    });
+    expect(plan.steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
+      details: {
+        applicable: true,
+        actionCode: 'set_smtp_password_in_keycloak',
+        reasonCode: 'smtp_password_required',
+      },
+    });
   });
 
   it('plans role creation when the same-named role belongs to another instance', () => {

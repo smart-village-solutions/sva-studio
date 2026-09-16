@@ -23,6 +23,23 @@ export const operationsInstancesAdminENResources = {
     erfolgreich: 'Successful',
     fehlgeschlagen: 'Failed',
   },
+  keycloakSteps: {
+    realmBaseline: {
+      title: 'Apply realm baseline',
+      existing: 'Existing realms are not migrated to the new-realm baseline automatically.',
+      aligned: 'Realm settings, user profile, and instanceId mapper match the baseline.',
+      pending:
+        'Theme, German localization, events, email defaults, user profile, and mapper are configured automatically.',
+      failed: 'The automatic realm baseline could not be confirmed completely.',
+    },
+    smtpPassword: {
+      title: 'Set SMTP password manually',
+      existing: 'The SMTP password of the existing realm remains unchanged.',
+      configured: 'An SMTP password is stored in Keycloak.',
+      required:
+        'The SMTP defaults are configured; set the password once directly in Keycloak and then test the SMTP connection there.',
+    },
+  },
   new: {
     title: 'Build new realm',
     stepsTitle: 'Realm bootstrap step chain',

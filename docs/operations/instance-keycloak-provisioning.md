@@ -32,27 +32,75 @@ Wichtig:
 
 ## Verbindliche Soll-/Ist-Checkliste
 
-Die Instanzverwaltung und der Provisioning-Worker verwenden für den fachlichen Mindestzustand dieselbe kompakte Checkliste. Jeder Punkt muss im Detailstatus und nach dem letzten erfolgreichen Run grün sein.
+Die Instanzverwaltung und der Provisioning-Worker verwenden für den fachlichen Mindestzustand dieselbe kompakte Checkliste. Jeder login-blockierende Punkt muss im Detailstatus und nach dem letzten erfolgreichen Run grün sein; ausdrücklich nicht blockierende Interop-Punkte dürfen als Warnung bestehen bleiben.
 
-| Pflichtpunkt                         | Führende Quelle in Studio/Registry              | Zielartefakt in Keycloak                      | Prüfkriterium                                                                                                                                              | Automatische Aktion                                                 |
-| ------------------------------------ | ----------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Realm                                | `realmMode`, `authRealm`                        | Realm `<authRealm>`                           | Realm existiert oder darf im Modus `new` erstellt werden                                                                                                   | Realm anlegen oder Bestands-Realm validieren                        |
-| OIDC-Client                          | `authClientId`                                  | Client `<authClientId>`                       | Client existiert                                                                                                                                           | Client anlegen oder aktualisieren                                   |
-| Redirect-URIs                        | `instanceId`, `parentDomain`, `primaryHostname` | `client.redirectUris`                         | Redirect-Ziele stimmen exakt                                                                                                                               | Client-URLs abgleichen                                              |
-| Logout-URIs                          | `instanceId`, `parentDomain`, `primaryHostname` | `client.attributes.post.logout.redirect.uris` | Logout-Ziele stimmen exakt                                                                                                                                 | Client-URLs abgleichen                                              |
-| Web-Origins                          | `instanceId`, `parentDomain`, `primaryHostname` | `client.webOrigins`                           | Origins stimmen exakt                                                                                                                                      | Client-URLs abgleichen                                              |
-| `instanceId`-Mapper                  | `instanceId`                                    | Protocol Mapper `instanceId`                  | Optionaler Interop-Hinweis; Mapper existiert oder fehlt sichtbar als Warnung                                                                               | Mapper anlegen oder korrigieren                                     |
-| Tenant-Secret                        | `authClientSecret`                              | Client-Secret des Login-Clients               | `existing`: Registry-Secret und Keycloak-Secret sind identisch. `new`: Secret wird beim Provisioning erzeugt und danach in die Registry zurückgeschrieben. | Secret setzen, erzeugen, rotieren und Rückschreiben in die Registry |
-| Tenant-Admin                         | `tenantAdminBootstrap.*`                        | User `<username>`                             | User existiert                                                                                                                                             | User anlegen oder aktualisieren                                     |
-| Rolle `system_admin`                 | `tenantAdminBootstrap.username`                 | Realm-Rolle auf Tenant-Admin                  | Rolle vorhanden                                                                                                                                            | Rollen synchronisieren                                              |
-| Ausschluss `instance_registry_admin` | `tenantAdminBootstrap.username`                 | Realm-Rolle auf Tenant-Admin                  | Rolle ist nicht zugewiesen                                                                                                                                 | Rollen synchronisieren                                              |
-| User-Attribut `instanceId`           | `instanceId`, `tenantAdminBootstrap.username`   | `attributes.instanceId` am Tenant-Admin       | Optionaler Interop-Hinweis; Attribut entspricht der Instanz-ID oder fehlt sichtbar als Warnung                                                             | User-Attribute aktualisieren                                        |
+| Pflichtpunkt                         | Führende Quelle in Studio/Registry              | Zielartefakt in Keycloak                      | Prüfkriterium                                                                                                                                              | Automatische Aktion beziehungsweise Fallback                                         |
+| ------------------------------------ | ----------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Realm                                | `realmMode`, `authRealm`                        | Realm `<authRealm>`                           | Realm existiert oder darf im Modus `new` erstellt werden                                                                                                   | Realm anlegen oder Bestands-Realm validieren                                         |
+| OIDC-Client                          | `authClientId`                                  | Client `<authClientId>`                       | Client existiert                                                                                                                                           | Client anlegen oder aktualisieren                                                    |
+| Tenant-Admin-Client                  | `tenantAdminClient.clientId`                    | Client `<tenantAdminClient.clientId>`         | Technischer Client existiert und ist auf tenantlokale Administration begrenzt                                                                              | Client anlegen oder aktualisieren und Service-Account-Rechte abgleichen              |
+| Redirect-URIs                        | `instanceId`, `parentDomain`, `primaryHostname` | `client.redirectUris`                         | Redirect-Ziele stimmen exakt                                                                                                                               | Client-URLs abgleichen                                                               |
+| Logout-URIs                          | `instanceId`, `parentDomain`, `primaryHostname` | `client.attributes.post.logout.redirect.uris` | Logout-Ziele stimmen exakt                                                                                                                                 | Client-URLs abgleichen                                                               |
+| Web-Origins                          | `instanceId`, `parentDomain`, `primaryHostname` | `client.webOrigins`                           | Origins stimmen exakt                                                                                                                                      | Client-URLs abgleichen                                                               |
+| Plugin-OIDC-Clients                  | OIDC-Verträge der zugewiesenen Plugins          | Plugin-Clients und Audience-Mapper            | Alle für aktive Module deklarierten Clients und Mapper stimmen mit ihren Verträgen überein                                                                 | Vertragsgebunden anlegen oder aktualisieren; ohne aktiven Vertrag nichts kopieren    |
+| Tenant-Secret                        | `authClientSecret`                              | Client-Secret des Login-Clients               | `existing`: Registry-Secret und Keycloak-Secret sind identisch. `new`: Secret wird beim Provisioning erzeugt und danach in die Registry zurückgeschrieben. | Secret setzen, erzeugen, rotieren und Rückschreiben in die Registry                  |
+| Tenant-Admin-Client-Secret           | `tenantAdminClient.secretConfigured`            | Client-Secret des Tenant-Admin-Clients        | Registry-Secret und Keycloak-Secret sind identisch                                                                                                         | Secret erzeugen oder abgleichen und ausschließlich verschlüsselt speichern           |
+| Tenant-Admin                         | `tenantAdminBootstrap.*`                        | User `<username>`                             | User existiert und ist aktiviert                                                                                                                           | User anlegen oder aktualisieren                                                      |
+| Rolle `system_admin`                 | `instanceId`, `tenantAdminBootstrap.username`   | Realm-Rolle und Rollenzuweisung               | Rolle existiert mit korrekter Instanzzuordnung und ist dem Tenant-Admin zugewiesen                                                                         | Rolle und Zuweisung synchronisieren                                                  |
+| Ausschluss `instance_registry_admin` | `tenantAdminBootstrap.username`                 | Realm-Rolle auf Tenant-Admin                  | Rolle ist nicht zugewiesen                                                                                                                                 | Unzulässige Plattformrolle nicht vergeben beziehungsweise entfernen                  |
+| `instanceId`-Mapper                  | `instanceId`                                    | Protocol Mapper `instanceId`                  | Mapper existiert am Login-Client                                                                                                                           | Bei neuen Realms automatisch anlegen oder korrigieren; Bestands-Realms nur prüfen    |
+| User-Attribut `instanceId`           | `instanceId`, `tenantAdminBootstrap.username`   | `attributes.instanceId` am Tenant-Admin       | Optionales, nicht für den New-Realm-Zielzustand erforderliches Interop-Artefakt                                                                              | Nur bei einem konkreten Integrationsvertrag pflegen                                  |
 
 Wichtig:
 
 - Diese Checkliste ist bewusst klein. Realm, Client, URLs, Secrets, Tenant-Admin und Rollen sind login-blockierend; Mapper und User-Attribut bleiben sichtbare Interop-/Diagnosepunkte.
 - Die UI-Schritte `Realm`, `Client`, `Mapper`, `Tenant-Secret` und `Tenant-Admin` gruppieren jeweils genau diese Pflichtpunkte.
 - Ein Provisioning-Lauf gilt für den Login-Pfad als erfolgreich, wenn alle login-blockierenden Punkte erfüllt sind. Optionale Interop-Hinweise dürfen danach weiter sichtbar bleiben.
+- Bei `realmMode = new` darf kein Punkt des erweiterten Realm-Zielzustands stillschweigend entfallen: Entweder stellt das Provisioning ihn automatisch her oder Plan, Run-Protokoll und Detailstatus nennen ihn als konkrete manuelle Nacharbeit.
+
+## Erweiterte Ziel-Checkliste für neue Realms
+
+Die folgende Checkliste ergänzt den login-blockierenden Mindestzustand um den betrieblichen Zielzustand eines neuen Realms. Sie beschreibt zugleich den aktuellen Automatisierungsstand. `Manuell` bedeutet nicht optional: Der Punkt muss nach dem Provisioning ausdrücklich als Nacharbeit angezeigt und vor der Freigabe geprüft werden. Ob eine offene Nacharbeit die Aktivierung blockiert oder nur als Warnung bestehen darf, richtet sich nach der Spalte `Freigabe`.
+
+Für neue Realms zeigt Plan, Run-Protokoll und Detailstatus die automatische Baseline und die verbleibende manuelle SMTP-Passwort-Nacharbeit. Bestands-Realms werden nur gelesen und nicht auf diese Baseline migriert.
+Beim Laden von Detailstatus und Plan wird für Studio-erstellte Realms
+ausschließlich der Boolesche Nachweis, ob ein SMTP-Passwort gesetzt ist,
+tenantlokal live aktualisiert. Ist dieser Read nicht möglich, bleibt der letzte
+Snapshot konservativ sichtbar; ein Passwortwert wird weder gelesen noch
+gespeichert. Reine Sternmasken gelten nicht als erfolgreicher Nachweis. Die
+Zuordnung als Studio-erstellter Realm bleibt nur erhalten, solange der
+zugehörige Status-Snapshot zum aktuellen `authRealm` passt.
+
+| Bereich              | Zielzustand im neuen Realm                                                                                                                            | Behandlung bei `realmMode = new`                                                                                                                                    | Freigabe                                                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Realm-Basis          | Realm ist aktiviert und besitzt einen nachvollziehbaren Anzeigenamen.                                                                                 | Automatisch; Realmname und technischer Anzeigename werden aus der `instanceId` abgeleitet.                                                                          | Blockierend.                                                                                                           |
+| Login-Client         | Vertraulicher OIDC-Client mit Standard Flow, exakten Tenant-URLs und ohne fremde oder Wildcard-Redirects.                                             | Automatisch aus `authClientId`, `instanceId`, `parentDomain` und `primaryHostname`.                                                                                 | Blockierend.                                                                                                           |
+| Tenant-Admin-Client  | Separater Service-Account-Client mit ausschließlich tenantlokalen Admin-Rechten.                                                                      | Automatisch, sofern der Client-Vertrag in der Registry vollständig ist. Fehlende Registry-Pflichtwerte blockieren den Preflight.                                    | Blockierend für tenantlokale IAM-Administration.                                                                       |
+| Plugin-OIDC-Clients  | Nur Clients und Audience-Mapper der tatsächlich zugewiesenen Module sind vorhanden.                                                                   | Automatisch aus den Plugin-Verträgen; keine Übernahme aus einem Referenz-Realm.                                                                                     | Blockierend für das betroffene aktive Modul, sonst nicht anwendbar.                                                    |
+| Secrets              | Login- und Tenant-Admin-Client-Secrets stimmen zwischen Keycloak und Registry überein.                                                                | Automatisch erzeugen oder abgleichen und ausschließlich verschlüsselt speichern. Maskierte Werte wie `********` niemals übernehmen.                                 | Blockierend.                                                                                                           |
+| Tenant-Admin         | Aktiver Bootstrap-Benutzer mit vollständigem Profil und `system_admin`, ohne `instance_registry_admin`.                                               | Automatisch aus `tenantAdminBootstrap.*`; lokale Studio-Rollenbindung im selben Provisionierungsablauf nachziehen.                                                  | Blockierend.                                                                                                           |
+| Benutzerprofil       | Die Attribute `instanceId`, `mainserverUserApplicationId` und `mainserverUserApplicationSecret` sind administrativ geschützt.                         | Bei neuen Realms automatisch additiv ergänzen; fremde und Keycloak-eigene Attribute bleiben erhalten.                                                               | Blockierend für den automatischen Baseline-Abschluss.                                                                  |
+| `instanceId`-Interop | Der `instanceId`-Mapper am Login-Client ist vorhanden.                                                                                                | Bei neuen Realms automatisch anlegen oder korrigieren. Bestands-Realms bleiben unverändert.                                                                         | Blockierend für den automatischen Baseline-Abschluss.                                                                  |
+| Login-Theme          | Das Login-Theme `sva-kern2` ist gesetzt.                                                                                                              | Bei neuen Realms automatisch setzen. Die Theme-Dateien selbst werden serverseitig mit der Keycloak-Installation ausgeliefert.                                       | Blockierend für den automatischen Baseline-Abschluss.                                                                  |
+| Dark Mode            | Das Realm-Attribut `darkMode` ist aktiviert.                                                                                                          | Bei neuen Realms automatisch setzen.                                                                                                                                | Blockierend für den automatischen Baseline-Abschluss.                                                                  |
+| Lokalisierung        | Internationalisierung ist aktiviert; einzige und standardmäßige Sprache ist `de`.                                                                     | Bei neuen Realms automatisch setzen.                                                                                                                                | Blockierend für den automatischen Baseline-Abschluss.                                                                  |
+| Keycloak-E-Mail      | Nicht geheime SMTP-Werte entsprechen der Baseline; das Passwort ist pro Realm gesetzt.                                                                | Host, Port, Absender, Benutzername und Transportwerte automatisch setzen. Nur das Passwort einmalig direkt in Keycloak eintragen; es wird nie in Studio übernommen. | Das fehlende Passwort bleibt als manuelle Nacharbeit sichtbar, blockiert den technischen Provisioning-Lauf aber nicht. |
+| Account Recovery     | Passwort-Reset ist aktiviert, E-Mail-Verifizierung bleibt gemäß Baseline deaktiviert.                                                                 | Bei neuen Realms automatisch setzen. Nach dem manuellen SMTP-Passwort sollte die Verbindung operativ in Keycloak getestet werden.                                   | Baseline blockierend; SMTP-Funktionstest ist betriebliche Abnahme.                                                     |
+| Events und Audit     | User- und Admin-Events sind aktiv, Details deaktiviert und die Aufbewahrung beträgt sieben Tage.                                                      | Bei neuen Realms automatisch setzen.                                                                                                                                | Blockierend für den automatischen Baseline-Abschluss.                                                                  |
+| Sicherheitshärtung   | Passwort-Policy, Brute-Force-Schutz, MFA/WebAuthn, Session-/Token-Laufzeiten und Schlüsselrotation entsprechen einem gesondert freigegebenen Vertrag. | Nicht Teil dieser Baseline und daher keine manuelle Standardnacharbeit; niemals ungeprüft aus `bb-guben` ableiten.                                                  | Nur bei gesondertem Vertrag relevant.                                                                                  |
+| Externe Identitäten  | Identity Provider und User Federation existieren nur bei einem freigegebenen Tenant-Vertrag.                                                          | Nicht Teil dieser Baseline und daher keine manuelle Standardnacharbeit; niemals aus einem anderen Realm kopieren.                                                   | Nur bei gesondertem Vertrag relevant.                                                                                  |
+
+### Anforderungen an Hinweise zu manuellen Nacharbeiten
+
+Solange ein Zielpunkt nicht automatisiert werden kann, müssen Plan, Run-Protokoll und Detailstatus mindestens enthalten:
+
+- den betroffenen Zielpunkt,
+- den Grund, warum keine automatische Änderung erfolgt,
+- die konkrete manuelle Aktion ohne Secret-Werte,
+- die Einstufung als `blockierend`, `Warnung` oder `nicht anwendbar`,
+- den Hinweis, dass nach der manuellen Änderung ein Readback beziehungsweise Smoke-Nachweis erforderlich ist.
+
+Ein technischer Erfolg des automatischen Provisioning-Anteils darf offene blockierende Nacharbeiten nicht als vollständig betriebsbereiten Realm darstellen. Warnungen dürfen bestehen bleiben, müssen aber vor der Aktivierung bewusst geprüft und dokumentiert werden.
 
 ## Vorbedingungen
 
@@ -80,7 +128,7 @@ Sollverhalten:
 - Realm wird erstellt
 - Login-Client wird erstellt oder vollständig eingerichtet
 - Client-Secret wird von Keycloak erzeugt und anschließend in der Registry gespeichert
-- optionaler `instanceId`-Mapper wird angelegt
+- `instanceId`-Mapper wird bei neuen Realms automatisch angelegt
 - Realm-Rollen werden sichergestellt
 - Tenant-Admin wird angelegt oder aktualisiert
 
@@ -130,7 +178,7 @@ Diese Kurzfassung ist der empfohlene operative Standardpfad für neue oder zu re
    - `instanceId`
    - `parentDomain`
    - `authRealm`
-   - `authClientId = sva-studio`
+   - `authClientId` entspricht dem für die Instanz vorgesehenen Login-Client
 4. Tenant-Admin-Stammdaten vollständig pflegen:
    - `username`
    - `email`
@@ -141,10 +189,11 @@ Diese Kurzfassung ist der empfohlene operative Standardpfad für neue oder zu re
 7. `Check preflight` ausführen.
 8. `Load provisioning preview` ausführen.
 9. `Execute provisioning` ausführen.
-10. Wenn `Tenant client secret aligned with Keycloak` noch nicht grün ist:
+10. Das SMTP-Passwort einmalig direkt in Keycloak setzen und die Verbindung dort testen.
+11. Wenn `Tenant client secret aligned with Keycloak` noch nicht grün ist:
     - `Rotate client secret`
     - danach Status erneut laden und nur bei weiterem Drift erneut provisionieren
-11. Erst wenn alle login-blockierenden Checklistenpunkte grün sind:
+12. Erst wenn alle login-blockierenden Checklistenpunkte und manuellen Blocker grün sind:
     - `Activate`
 
 ## Validierte Fallstricke aus dem Live-Betrieb
@@ -171,7 +220,7 @@ Typische Planschritte:
 - Realm erstellen oder vorhandenen Realm validieren
 - OIDC-Client abgleichen
 - Redirect-/Logout-/Origin-Werte korrigieren
-- optionalen `instanceId`-Mapper sicherstellen
+- `instanceId`-Mapper bei neuen Realms automatisch sicherstellen
 - Tenant-Secret abgleichen
 - Realm-Rollen sicherstellen
 - Tenant-Admin erstellen oder aktualisieren

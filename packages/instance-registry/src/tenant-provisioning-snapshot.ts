@@ -2,6 +2,10 @@ import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core'
 
 import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
+import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
 import type {
   InstanceRegistryServiceDeps,
   ProvisioningPluginTenantLifecycleContract,
@@ -127,6 +131,9 @@ export const buildTenantProvisioningSnapshot = (
   authClientSecretRequired: Boolean(input.authClientSecret?.trim()),
   tenantAdminClientSecretRequired: Boolean(input.tenantAdminClient?.secret?.trim()),
   automationMode,
+  realmBaselineVersion: instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
+  realmBaselineFingerprint:
+    instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE_FINGERPRINT : undefined,
   pluginSnapshotVersion: '1.0',
   pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
   pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
@@ -182,9 +189,7 @@ export const rebaseTenantProvisioningPluginSnapshot = (
   const pluginSnapshot = buildConfiguredTenantProvisioningPluginSnapshot(deps, assignedModules);
   const currentOidcClientIds = new Set(pluginSnapshot.oidcClients.map(({ clientId }) => clientId));
   if (
-    previousPluginSnapshot.oidcClients.some(
-      ({ clientId }) => !currentOidcClientIds.has(clientId)
-    )
+    previousPluginSnapshot.oidcClients.some(({ clientId }) => !currentOidcClientIds.has(clientId))
   ) {
     throw new Error('provisioning_retry_conflict');
   }
@@ -229,12 +234,17 @@ export const assertTenantProvisioningSnapshotCurrent = (
     (snapshot.authClientSecretRequired !== true || instance.authClientSecretConfigured) &&
     (snapshot.tenantAdminClientSecretRequired !== true ||
       instance.tenantAdminClient?.secretConfigured === true);
+  const realmBaselineCurrent =
+    snapshot.realmMode !== 'new' ||
+    (snapshot.realmBaselineVersion === KEYCLOAK_REALM_BASELINE.version &&
+      snapshot.realmBaselineFingerprint === KEYCLOAK_REALM_BASELINE_FINGERPRINT);
   if (
     run.snapshotVersion !== '2.0' ||
     snapshot.automationMode !== 'kassel-traefik-file' ||
     snapshot.registryFingerprint !== registryFingerprint ||
     snapshot.payloadFingerprint !== run.payloadFingerprint ||
-    !secretRequirementsMet
+    !secretRequirementsMet ||
+    !realmBaselineCurrent
   ) {
     throw new Error('provisioning_snapshot_drift');
   }

@@ -19,6 +19,10 @@ import { createInstanceRegistryService } from './service.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
 import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
+import {
   createGetKeycloakPreflightHandler,
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
@@ -33,11 +37,11 @@ const baseInstance = {
   primaryHostname: 'demo.studio.example.org',
   realmMode: 'new' as const,
   authRealm: 'demo',
-  authClientId: 'studio-client',
+  authClientId: 'sva-studio-login',
   authIssuerUrl: 'https://auth.example.org/realms/demo',
   authClientSecretConfigured: true,
   tenantAdminClient: {
-    clientId: 'tenant-admin',
+    clientId: 'sva-studio-realm-admin',
     secretConfigured: true,
   },
   tenantAdminBootstrap: {
@@ -70,7 +74,8 @@ const latestRun = {
     parentDomain: 'studio.example.org',
     realmMode: 'new',
     authRealm: 'demo',
-    authClientId: 'studio-client',
+    authClientId: 'sva-studio-login',
+    tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
     idempotencyKey: 'idem-1',
   }),
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -99,8 +104,9 @@ const latestRunWithAuthSecret = {
     parentDomain: 'studio.example.org',
     realmMode: 'new',
     authRealm: 'demo',
-    authClientId: 'studio-client',
+    authClientId: 'sva-studio-login',
     authClientSecret: 'original-secret',
+    tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
     idempotencyKey: 'idem-1',
   }),
 };
@@ -108,7 +114,7 @@ const latestRunWithAuthSecret = {
 const idempotentInstance = {
   ...baseInstance,
   authClientSecretConfigured: false,
-  tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+  tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
 };
 
 const createRepository = (
@@ -619,7 +625,7 @@ describe('instance registry service facade', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
-        realmMode: 'new',
+        realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'ssf',
         idempotencyKey: 'idem-reserved-create',
@@ -802,7 +808,8 @@ describe('instance registry service facade', () => {
         parentDomain: 'dialog.kassel.de',
         realmMode: 'new',
         authRealm: 'demo',
-        authClientId: 'studio-client',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
         idempotencyKey: 'idem-1',
       }),
     };
@@ -889,7 +896,7 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({
         ...baseInstance,
-        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
       })),
       getAuthClientSecretCiphertext,
       listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
@@ -921,7 +928,7 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({
         ...baseInstance,
-        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
       })),
       getAuthClientSecretCiphertext,
       listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
@@ -1023,7 +1030,8 @@ describe('instance registry service facade', () => {
         parentDomain: 'dialog.kassel.de',
         realmMode: 'new',
         authRealm: 'demo',
-        authClientId: 'studio-client',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
         idempotencyKey: 'idem-1',
       }),
       errorCode: 'kassel_login_probe_failed',
@@ -1392,7 +1400,7 @@ describe('instance registry service facade', () => {
         primaryHostname: 'demo.studio.example.org',
         authClientSecretCiphertext: 'protected:iam.instances.auth_client_secret:demo:auth-secret',
         tenantAdminClient: {
-          clientId: 'tenant-admin',
+          clientId: 'sva-studio-realm-admin',
           secretCiphertext: 'protected:iam.instances.tenant_admin_client_secret:demo:tenant-secret',
         },
       })
@@ -1515,12 +1523,12 @@ describe('instance registry service facade', () => {
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
 
-  it('persists the environment-resolved public issuer in the create snapshot', async () => {
+  it('applies the server baseline before deriving and persisting a new-realm issuer', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
     });
     const resolveProvisioningAuthIssuerUrl = vi.fn(
-      () => 'https://auth.dialog.kassel.de/realms/smartcity'
+      () => 'https://auth.dialog.kassel.de/realms/new-tenant'
     );
     const service = createInstanceRegistryService(
       createDeps(repository, { resolveProvisioningAuthIssuerUrl })
@@ -1530,20 +1538,25 @@ describe('instance registry service facade', () => {
       instanceId: 'new-tenant',
       displayName: 'Neuer Mandant',
       parentDomain: 'dialog.kassel.de',
-      realmMode: 'existing',
-      authRealm: 'smartcity',
-      authClientId: 'sva-studio-login',
+      realmMode: 'new',
+      authRealm: 'operator-realm',
+      authClientId: 'operator-client',
+      authIssuerUrl: 'https://auth.example.org/realms/old-realm',
       idempotencyKey: 'idem-kassel-1',
+      tenantAdminClient: { clientId: 'operator-admin' },
     });
 
     expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
       parentDomain: 'dialog.kassel.de',
-      authRealm: 'smartcity',
+      authRealm: 'new-tenant',
       authIssuerUrl: undefined,
     });
     expect(repository.createInstance).toHaveBeenCalledWith(
       expect.objectContaining({
-        authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+        authRealm: 'new-tenant',
+        authClientId: 'sva-studio-login',
+        authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
+        tenantAdminClient: expect.objectContaining({ clientId: 'sva-studio-realm-admin' }),
       })
     );
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
@@ -1552,14 +1565,38 @@ describe('instance registry service facade', () => {
           instanceId: 'new-tenant',
           displayName: 'Neuer Mandant',
           parentDomain: 'dialog.kassel.de',
-          realmMode: 'existing',
-          authRealm: 'smartcity',
+          realmMode: 'new',
+          authRealm: 'new-tenant',
           authClientId: 'sva-studio-login',
-          authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
+          authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
           idempotencyKey: 'idem-kassel-1',
+          tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
         }),
       })
     );
+  });
+
+  it('rejects an invalid realm name derived during a new-realm create', async () => {
+    const repository = createRepository();
+    const resolveProvisioningAuthIssuerUrl = vi.fn();
+    const service = createInstanceRegistryService(
+      createDeps(repository, { resolveProvisioningAuthIssuerUrl })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'tenant+foo',
+        displayName: 'Tenant',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'valid-realm',
+        authClientId: 'operator-client',
+        idempotencyKey: 'idem-invalid-realm',
+      })
+    ).rejects.toThrow('invalid_new_realm_instance_id');
+    expect(resolveProvisioningAuthIssuerUrl).not.toHaveBeenCalled();
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -1837,6 +1874,63 @@ describe('instance registry service facade', () => {
         authIssuerUrl: 'https://auth.dialog.kassel.de/realms/smartcity',
       })
     );
+  });
+
+  it('normalizes updates entering new realm mode to the server baseline', async () => {
+    const existing = { ...baseInstance, realmMode: 'existing' as const };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => existing),
+      updateInstance: vi.fn(async () => baseInstance),
+    });
+    const resolveProvisioningAuthIssuerUrl = vi.fn(() => 'https://auth.example.org/realms/demo');
+    const service = createInstanceRegistryService(
+      createDeps(repository, { resolveProvisioningAuthIssuerUrl })
+    );
+
+    await service.updateInstance({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.example.org',
+      realmMode: 'new',
+      authRealm: 'custom-realm',
+      authClientId: 'custom-login',
+      authIssuerUrl: 'https://auth.example.org/realms/old-realm',
+      tenantAdminClient: { clientId: 'custom-admin' },
+    });
+
+    expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
+      parentDomain: 'studio.example.org',
+      authRealm: 'demo',
+      authIssuerUrl: undefined,
+    });
+    expect(repository.updateInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: expect.objectContaining({ clientId: 'sva-studio-realm-admin' }),
+        keepExistingAuthClientSecret: false,
+        keepExistingTenantAdminClientSecret: false,
+      })
+    );
+  });
+
+  it('rejects an invalid realm name derived during a mode update', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.updateInstance({
+        instanceId: 'tenant+foo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'valid-realm',
+        authClientId: 'sva-studio-login',
+      })
+    ).rejects.toThrow('invalid_new_realm_instance_id');
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.updateInstance).not.toHaveBeenCalled();
   });
 
   it('updates instances and returns detail projections', async () => {
@@ -2972,6 +3066,10 @@ describe('instance registry service facade', () => {
       tenantClientSecretReadable: false,
       clientSecretAligned: false,
       pluginOidcClientsAligned: false,
+      realmBaselineAligned: false,
+      userProfileBaselineAligned: false,
+      instanceIdMapperAligned: false,
+      smtpPasswordConfigured: false,
       tenantAdminClientSecretConfigured: false,
       tenantAdminClientSecretReadable: false,
       tenantAdminClientSecretAligned: false,
@@ -3126,6 +3224,72 @@ describe('instance registry service facade', () => {
     });
   });
 
+  it('keeps the managed-realm baseline in a fallback plan after an update-to-new run', async () => {
+    const managedInstance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => managedInstance),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'managed-realm-run',
+          instanceId: 'demo',
+          mode: 'new',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-09-10T00:00:00.000Z',
+          updatedAt: '2026-09-10T00:01:00.000Z',
+          steps: [
+            {
+              stepKey: 'realm_baseline',
+              title: 'Realm-Baseline',
+              status: 'done',
+              summary: 'Baseline applied',
+              details: {},
+            },
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Final snapshot',
+              details: {
+                policyVersion: 3,
+                authRealm: managedInstance.authRealm,
+                authClientId: managedInstance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(managedInstance, {
+                  authClientSecretCiphertext: 'auth-cipher',
+                  tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
+                }),
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const plan = await createPlanKeycloakProvisioningHandler(createDeps(repository))('demo');
+
+    expect(plan?.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stepKey: 'realm_baseline',
+          details: expect.objectContaining({ applicable: true }),
+        }),
+        expect.objectContaining({
+          stepKey: 'smtp_password',
+          details: expect.objectContaining({
+            applicable: true,
+            actionCode: 'set_smtp_password_in_keycloak',
+          }),
+        }),
+      ])
+    );
+  });
+
   it('returns a local fallback keycloak status without decrypting secrets when revealSecret is unavailable', async () => {
     const getAuthClientSecretCiphertext = vi.fn(async () => 'cipher-auth');
     const getTenantAdminClientSecretCiphertext = vi.fn(async () => 'cipher-admin');
@@ -3161,6 +3325,10 @@ describe('instance registry service facade', () => {
       tenantClientSecretReadable: false,
       clientSecretAligned: false,
       pluginOidcClientsAligned: false,
+      realmBaselineAligned: false,
+      userProfileBaselineAligned: false,
+      instanceIdMapperAligned: false,
+      smtpPasswordConfigured: false,
       tenantAdminClientSecretConfigured: true,
       tenantAdminClientSecretReadable: false,
       tenantAdminClientSecretAligned: false,
@@ -3300,6 +3468,137 @@ describe('instance registry service facade', () => {
     });
     expect(getAuthClientSecretCiphertext).toHaveBeenCalledWith('demo');
     expect(getTenantAdminClientSecretCiphertext).toHaveBeenCalledWith('demo');
+  });
+
+  it('refreshes the externally managed SMTP password flag for Studio-created realms', async () => {
+    const managedInstance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+    };
+    const secretVersions = {
+      authClientSecretCiphertext: 'auth-ciphertext',
+      tenantAdminClientSecretCiphertext: 'tenant-admin-ciphertext',
+    };
+    const snapshotStatus = {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      pluginOidcClientsAligned: true,
+      realmBaselineAligned: true,
+      userProfileBaselineAligned: true,
+      instanceIdMapperAligned: true,
+      smtpPasswordConfigured: false,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant' as const,
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => managedInstance),
+      getAuthClientSecretCiphertext: vi.fn(async () => secretVersions.authClientSecretCiphertext),
+      getTenantAdminClientSecretCiphertext: vi.fn(
+        async () => secretVersions.tenantAdminClientSecretCiphertext
+      ),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'managed-keycloak-run',
+          instanceId: 'demo',
+          mode: 'new',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'realm_baseline',
+              title: 'Realm-Baseline',
+              status: 'done',
+              summary: 'Applied',
+              details: {},
+            },
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Final',
+              details: {
+                policyVersion: 3,
+                authRealm: managedInstance.authRealm,
+                authClientId: managedInstance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(
+                  managedInstance,
+                  secretVersions
+                ),
+                status: snapshotStatus,
+                plan: {
+                  mode: 'existing',
+                  overallStatus: 'ready',
+                  generatedAt: '2026-01-01T00:00:00.000Z',
+                  driftSummary: 'Nur das SMTP-Passwort fehlt.',
+                  steps: [
+                    {
+                      stepKey: 'smtp_password',
+                      title: 'SMTP-Passwort manuell setzen',
+                      action: 'skip',
+                      status: 'ready',
+                      summary: 'SMTP-Passwort fehlt.',
+                      details: {
+                        applicable: true,
+                        configured: false,
+                        reasonCode: 'smtp_password_required',
+                        actionCode: 'set_smtp_password_in_keycloak',
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+    const getKeycloakStatus = vi.fn(async () => ({
+      ...snapshotStatus,
+      smtpPasswordConfigured: true,
+    }));
+
+    const status = await createGetKeycloakStatusHandler(
+      createDeps(repository, { getKeycloakStatus })
+    )('demo');
+
+    expect(status).toEqual({
+      ...snapshotStatus,
+      smtpPasswordConfigured: true,
+    });
+    const plan = await createPlanKeycloakProvisioningHandler(
+      createDeps(repository, { getKeycloakStatus })
+    )('demo');
+    expect(plan?.steps.find((step) => step.stepKey === 'smtp_password')).toMatchObject({
+      summary: 'In Keycloak ist ein SMTP-Passwort hinterlegt.',
+      details: {
+        configured: true,
+        reasonCode: 'smtp_password_configured',
+        actionCode: 'none',
+      },
+    });
+
+    getKeycloakStatus.mockRejectedValueOnce(new Error('tenant-admin-unavailable'));
+    await expect(
+      createGetKeycloakStatusHandler(createDeps(repository, { getKeycloakStatus }))('demo')
+    ).resolves.toEqual(snapshotStatus);
+    expect(getKeycloakStatus).toHaveBeenCalledTimes(3);
   });
 
   it('ignores status snapshots from before ownership-aware role evaluation', async () => {

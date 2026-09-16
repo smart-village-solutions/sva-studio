@@ -76,16 +76,20 @@ describe('service-keycloak-execution-finalize', () => {
   it('marks successful runs, snapshots the status and updates the instance status', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
+    const { KEYCLOAK_REALM_BASELINE, KEYCLOAK_REALM_BASELINE_FINGERPRINT } =
+      await import('./keycloak-realm-baseline.js');
     const status = { realmExists: true };
-    const realmUpdated = {
+    const statusUpdated = {
       instanceId: 'instance-1',
-      status: 'draft',
-      realmMode: 'existing',
+      status: 'provisioning',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
       updatedAt: '2026-09-11T10:00:01.000Z',
     };
-    const statusUpdated = {
-      ...realmUpdated,
-      status: 'provisioning',
+    const realmUpdated = {
+      ...statusUpdated,
+      realmMode: 'existing',
       updatedAt: '2026-09-11T10:00:02.000Z',
     };
     const repository = {
@@ -103,6 +107,13 @@ describe('service-keycloak-execution-finalize', () => {
         ok: true,
         summary: 'ok',
         details: { scope: 'roles' },
+      },
+      {
+        stepKey: 'smtp_password',
+        title: 'SMTP-Passwort manuell setzen',
+        ok: true,
+        status: 'pending',
+        summary: 'manuell offen',
       },
     ]);
     state.areAllRequirementsSatisfied.mockReturnValue(true);
@@ -150,7 +161,11 @@ describe('service-keycloak-execution-finalize', () => {
       expect.objectContaining({ state: finalState })
     );
     expect(state.buildPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ state: finalState, pluginOidcClients })
+      expect.objectContaining({
+        state: finalState,
+        pluginOidcClients,
+        realmBaselineApplicable: true,
+      })
     );
     expect(state.buildProvisioningInput).toHaveBeenCalled();
     expect(state.appendRunStep).toHaveBeenNthCalledWith(
@@ -162,8 +177,12 @@ describe('service-keycloak-execution-finalize', () => {
         status: 'done',
         details: {
           policyVersion: 3,
+          authRealm: realmUpdated.authRealm,
+          authClientId: realmUpdated.authClientId,
+          realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+          realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
           inputFingerprint: buildKeycloakSnapshotInputFingerprint(
-            statusUpdated as never,
+            realmUpdated as never,
             undefined,
             pluginOidcClients
           ),
@@ -178,6 +197,7 @@ describe('service-keycloak-execution-finalize', () => {
       intent: 'provision',
       usedTemporaryPassword: true,
       requireTenantAdmin: true,
+      requireRealmBaseline: true,
     });
     expect(repository.setInstanceStatus).toHaveBeenCalledWith({
       instanceId: 'instance-1',
@@ -196,6 +216,14 @@ describe('service-keycloak-execution-finalize', () => {
       overallStatus: 'succeeded',
       driftSummary: 'Provisioning erfolgreich abgeschlossen.',
     });
+    expect(repository.updateKeycloakProvisioningRun.mock.invocationCallOrder[0]).toBeLessThan(
+      repository.setInstanceRealmMode.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(state.appendRunStep).toHaveBeenNthCalledWith(
+      3,
+      expect.anything(),
+      expect.objectContaining({ stepKey: 'smtp_password', status: 'pending' })
+    );
   });
 
   it('completes an existing realm repair without an optional bootstrap admin', async () => {
@@ -208,6 +236,7 @@ describe('service-keycloak-execution-finalize', () => {
     };
     const repository = {
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn(),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -227,7 +256,9 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi
+            .fn()
+            .mockResolvedValue({ realm: { realm: 'demo' } }),
         } as never,
         {
           loaded: {
@@ -249,6 +280,7 @@ describe('service-keycloak-execution-finalize', () => {
       intent: 'provision',
       usedTemporaryPassword: false,
       requireTenantAdmin: false,
+      requireRealmBaseline: false,
     });
     expect(state.areAllRequirementsSatisfied).toHaveBeenCalledWith(status, {
       requireTenantAdmin: false,
@@ -258,10 +290,82 @@ describe('service-keycloak-execution-finalize', () => {
     );
   });
 
+  it('keeps the realm baseline applicable after a managed realm transitioned to existing', async () => {
+    const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+    const { buildKeycloakSnapshotInputFingerprint } = await import('./provisioning-auth-policy.js');
+    const { KEYCLOAK_REALM_BASELINE, KEYCLOAK_REALM_BASELINE_FINGERPRINT } =
+      await import('./keycloak-realm-baseline.js');
+    const instance = {
+      instanceId: 'managed-instance',
+      status: 'active',
+      realmMode: 'existing',
+      authRealm: 'managed-realm',
+      authClientId: 'studio-client',
+    } as const;
+    const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          mode: 'new',
+          overallStatus: 'succeeded',
+          steps: [
+            { stepKey: 'realm_baseline', status: 'done' },
+            {
+              stepKey: 'status_snapshot',
+              status: 'done',
+              details: {
+                policyVersion: 3,
+                authRealm: instance.authRealm,
+                authClientId: instance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(instance as never),
+              },
+            },
+          ],
+        },
+      ]),
+      setInstanceStatus: vi.fn(),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+    const status = { realmExists: true };
+    state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.buildFinalRunSteps.mockReturnValue([
+      { stepKey: 'realm_baseline', title: 'Realm-Baseline', ok: true, summary: 'ok' },
+    ]);
+    state.areAllRequirementsSatisfied.mockReturnValue(true);
+    state.buildKeycloakStatus.mockReturnValue(status);
+    state.appendRunStep.mockResolvedValue(undefined);
+
+    await expect(
+      completeRun(
+        {
+          repository: repository as never,
+          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
+        } as never,
+        {
+          loaded: {
+            instance,
+          } as never,
+          runId: 'later-keycloak-run',
+          intent: 'provision',
+        }
+      )
+    ).resolves.toBe('succeeded');
+
+    expect(state.buildFinalRunSteps).toHaveBeenCalledWith(
+      expect.objectContaining({ requireRealmBaseline: true })
+    );
+    expect(state.buildPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ realmBaselineApplicable: true })
+    );
+  });
+
   it('marks failed runs without changing already active instances', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const repository = {
       listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn().mockResolvedValue(undefined),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
     };
@@ -348,6 +452,10 @@ describe('service-keycloak-execution-finalize', () => {
     ).resolves.toBe('failed');
     expect(repository.setInstanceRealmMode).not.toHaveBeenCalled();
     expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+    expect(state.appendRunStep).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ stepKey: 'status_snapshot' })
+    );
   });
 
   it('does not let a late child completion revive a failed parent run', async () => {

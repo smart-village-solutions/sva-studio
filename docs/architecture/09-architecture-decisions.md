@@ -61,6 +61,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-060 Keycloak-Serviceidentitäten und Doctor-Evidenz trennen](../adr/ADR-060-keycloak-serviceidentitaeten-und-doctor-evidenz.md)
 - [ADR-061 Instanzgebundene Keycloak-Provisioning-Ownership und -Serialisierung](../adr/ADR-061-instanzgebundene-keycloak-provisioning-ownership-und-serialisierung.md)
 - [ADR-063 Fleet-Reconcile-Ownership und begrenzte Retry-Semantik](../adr/ADR-063-fleet-reconcile-ownership-und-begrenzte-retry-semantik.md)
+- [ADR-064 Serverseitige Keycloak-Realm-Baseline](../adr/ADR-064-serverseitige-keycloak-realm-baseline.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -73,6 +74,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
 - Abschnitt 04/05/06/07/08/10/11 (Serviceidentitäten, Doctor-Evidenz und Least Privilege): ADR-060
 - Abschnitt 04/05/06/08/09/10/11 (Provisioning-Ownership, Serialisierung und Recovery): ADR-061
+- Abschnitt 05/06/08/09/10/11 (Realm-Baseline, Secret-Grenze und Compensation): ADR-064
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
 - Abschnitt 03/05/06/08/09/10/11 (Kontext/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-051
@@ -667,3 +669,16 @@ verwenden den kürzeren Retry-Takt und unerwartete Abbrüche bleiben fail-closed
 Zuordnung:
 
 - Abschnitt 04/05/06/08/09: ADR-063
+
+### Fortschreibung 2026-09: Serverseitige Keycloak-Realm-Baseline
+
+[ADR-064](../adr/ADR-064-serverseitige-keycloak-realm-baseline.md) legt den
+versionierten, serverseitigen Sollzustand für neu angelegte Tenant-Realms fest.
+Sie begrenzt den automatischen Abgleich auf nicht geheime Realm-, Profil- und
+Mapper-Einstellungen, hält das SMTP-Passwort als sichtbare manuelle Nacharbeit
+fest und beschränkt die destruktive Compensation auf den im selben Lauf neu
+angelegten Realm.
+
+Zuordnung:
+
+- Abschnitt 05/06/08/09/10/11: ADR-064

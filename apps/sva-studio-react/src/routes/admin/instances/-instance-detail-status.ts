@@ -54,18 +54,57 @@ export const getKeycloakStatusEntries = (selectedInstance: SelectedInstance) => 
   if (!status) {
     return [];
   }
+  const managedRealmBaseline =
+    selectedInstance.realmMode === 'new' ||
+    selectedInstance.keycloakPlan?.steps.some(
+      (step) => step.stepKey === 'realm_baseline' && step.details.applicable === true
+    ) === true;
 
   return [
     ...getApplicableInstanceKeycloakRequirements({
       requireTenantAdmin: isInstanceTenantAdminRequired(selectedInstance),
-    }).map((requirement) => [
-      KEYCLOAK_STATUS_LABELS[requirement.statusField],
-      isInstanceKeycloakRequirementSatisfied(status, requirement),
-    ] as const),
+    }).map(
+      (requirement) =>
+        [
+          KEYCLOAK_STATUS_LABELS[requirement.statusField],
+          isInstanceKeycloakRequirementSatisfied(status, requirement),
+        ] as const
+    ),
     ['admin.instances.keycloakStatus.clientSecretConfigured', status.clientSecretConfigured],
-    ['admin.instances.keycloakStatus.tenantClientSecretReadable', status.tenantClientSecretReadable],
-    ['admin.instances.keycloakStatus.tenantAdminClientSecretConfigured', status.tenantAdminClientSecretConfigured],
-    ['admin.instances.keycloakStatus.tenantAdminClientSecretReadable', status.tenantAdminClientSecretReadable],
-    ['admin.instances.keycloakStatus.runtimeSecretSourceTenant', status.runtimeSecretSource === 'tenant'],
+    [
+      'admin.instances.keycloakStatus.tenantClientSecretReadable',
+      status.tenantClientSecretReadable,
+    ],
+    [
+      'admin.instances.keycloakStatus.tenantAdminClientSecretConfigured',
+      status.tenantAdminClientSecretConfigured,
+    ],
+    [
+      'admin.instances.keycloakStatus.tenantAdminClientSecretReadable',
+      status.tenantAdminClientSecretReadable,
+    ],
+    [
+      'admin.instances.keycloakStatus.runtimeSecretSourceTenant',
+      status.runtimeSecretSource === 'tenant',
+    ],
+    ...(!managedRealmBaseline || status.realmBaselineAligned === undefined
+      ? []
+      : [[KEYCLOAK_STATUS_LABELS.realmBaselineAligned, status.realmBaselineAligned] as const]),
+    ...(!managedRealmBaseline || status.userProfileBaselineAligned === undefined
+      ? []
+      : [
+          [
+            KEYCLOAK_STATUS_LABELS.userProfileBaselineAligned,
+            status.userProfileBaselineAligned,
+          ] as const,
+        ]),
+    ...(!managedRealmBaseline || status.instanceIdMapperAligned === undefined
+      ? []
+      : [
+          [KEYCLOAK_STATUS_LABELS.instanceIdMapperAligned, status.instanceIdMapperAligned] as const,
+        ]),
+    ...(!managedRealmBaseline || status.smtpPasswordConfigured === undefined
+      ? []
+      : [[KEYCLOAK_STATUS_LABELS.smtpPasswordConfigured, status.smtpPasswordConfigured] as const]),
   ] as const;
 };

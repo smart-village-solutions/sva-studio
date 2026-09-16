@@ -52,6 +52,8 @@ export const wizardInstancesAdminDEResources = {
     'Das Tenant-Client-Secret ist für bestehende Realms stark empfohlen, damit Status- und Drift-Prüfungen vollständig laufen.',
   authSecretGeneratedHint:
     'Für neue Realms müssen Sie hier kein Secret kennen. Studio erzeugt es beim Provisioning und speichert es anschließend.',
+  newRealmBaselineSummary:
+    'Studio leitet Realm und Clients automatisch ab und richtet Theme, Dark Mode, ausschließlich Deutsch, Events, Benutzerprofil, instanceId-Mapper und die E-Mail-Grundkonfiguration serverseitig ein. Danach muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.',
   tenantAdminOptional:
     'Diese Angaben sind optional, solange der Tenant-Admin nicht direkt beim ersten Provisioning neu gesetzt werden muss.',
   reviewTitle: 'Eingaben prüfen',

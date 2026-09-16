@@ -83,6 +83,8 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       DROP FUNCTION IF EXISTS public.sva_bump_waste_mainserver_source_revision();
       DROP TABLE IF EXISTS public.waste_mainserver_source_state;
       DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON public.waste_tours;
+      DROP TRIGGER IF EXISTS waste_tours_a_validate_status_write ON public.waste_tours;
+      DROP TRIGGER IF EXISTS waste_tours_a_validate_active_write ON public.waste_tours;
       DROP FUNCTION IF EXISTS public.sync_waste_tour_status_active();
       DROP INDEX IF EXISTS public.idx_waste_tours_status;
       ALTER TABLE public.waste_tours DROP COLUMN IF EXISTS status;

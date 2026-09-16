@@ -844,6 +844,7 @@ Das System MUST bei Tenant-Erstellung, explizitem IAM-Baseline-Reconcile und kon
 - **AND** erfindet es keine Permissions oder Grants für das unbekannte Modul
 - **AND** entfernt es bestehende modulbezogene Grants eines dabei deaktivierten unbekannten Moduls
 - **AND** weist es den Reconcile als unvollständig mit `unknown_module_contract:<moduleId>` aus
+- **AND** bewahrt der Browser die betroffenen Modul-IDs und Diagnosecodes als allowlist-validierte sichere Details und zeigt sie dem Operator an
 - **AND** bleiben Modulzuweisung, Modulentzug und Admin-Bootstrap weiterhin atomar und fail-closed
 
 ### Requirement: Interne Realm-Operationsprojektion bleibt bei Refactorings semantikgleich

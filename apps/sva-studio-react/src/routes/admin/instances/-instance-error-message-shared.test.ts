@@ -43,6 +43,22 @@ describe('getInstanceErrorMessage', () => {
       } as never),
     ).toContain('Abgleich');
 
+    expect(
+      getInstanceErrorMessage({
+        name: 'IamHttpError',
+        status: 409,
+        code: 'unknown_module_contract',
+        message: 'fehlt',
+        classification: 'registry_or_provisioning_drift',
+        safeDetails: {
+          moduleIds: ['legacy-module'],
+          errorCodes: ['unknown_module_contract:legacy-module'],
+        },
+      } as never)
+    ).toBe(
+      'Für folgende Module fehlt der IAM-Vertrag: legacy-module. Diagnosecodes: unknown_module_contract:legacy-module.'
+    );
+
     expect(getInstanceErrorMessage(null)).toBe('Die Instanzverwaltung konnte nicht geladen werden.');
   });
 });

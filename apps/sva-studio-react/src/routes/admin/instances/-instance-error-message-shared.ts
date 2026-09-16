@@ -13,6 +13,13 @@ export const getInstanceErrorMessage = (error: IamHttpError | null) => {
     return t('admin.instances.errors.recoveryRunning');
   }
 
+  if (error.code === 'unknown_module_contract' && error.safeDetails?.moduleIds?.length) {
+    return t('admin.instances.errors.unknownModuleContract', {
+      moduleIds: error.safeDetails.moduleIds.join(', '),
+      errorCodes: error.safeDetails.errorCodes?.join(', ') ?? error.code,
+    });
+  }
+
   switch (error.classification) {
     case 'registry_or_provisioning_drift':
       return t('admin.instances.errors.registryOrProvisioningDrift');

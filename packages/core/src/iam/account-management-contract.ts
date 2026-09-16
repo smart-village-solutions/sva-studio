@@ -130,6 +130,8 @@ export type IamRuntimeSafeDetails = Readonly<{
   recovery_step?: string;
   sync_state?: string;
   sync_error_code?: string;
+  moduleIds?: readonly string[];
+  errorCodes?: readonly string[];
 }>;
 
 export type IamRuntimeDiagnostics = {

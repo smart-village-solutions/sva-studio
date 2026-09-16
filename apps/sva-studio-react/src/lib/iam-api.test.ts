@@ -800,6 +800,31 @@ describe('iam-api organization helpers', () => {
     });
   });
 
+  it('preserves validated unknown-module diagnostics from structured IAM errors', async () => {
+    await expect(
+      readIamErrorResponse(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'unknown_module_contract',
+              message: 'Der IAM-Vertrag fehlt.',
+              details: {
+                moduleIds: ['legacy-module'],
+                errorCodes: ['unknown_module_contract:legacy-module'],
+              },
+            },
+          }),
+          { status: 409, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    ).resolves.toMatchObject({
+      safeDetails: {
+        moduleIds: ['legacy-module'],
+        errorCodes: ['unknown_module_contract:legacy-module'],
+      },
+    });
+  });
+
   it('preserves validated permission denial details from flat IAM errors', async () => {
     await expect(
       readIamErrorResponse(

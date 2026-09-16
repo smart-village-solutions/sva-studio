@@ -59,6 +59,16 @@ const readErrorDetailsRecord = (
 const readStringDetail = (source: Record<string, unknown>, key: string): string | undefined =>
   typeof source[key] === 'string' ? (source[key] as string) : undefined;
 
+const readStringArrayDetail = (
+  source: Record<string, unknown>,
+  key: string
+): readonly string[] | undefined => {
+  const value = source[key];
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.length > 0)
+    ? value
+    : undefined;
+};
+
 const readSyncState = (source: Record<string, unknown>): string | undefined =>
   readStringDetail(source, 'sync_state') ?? readStringDetail(source, 'syncState');
 
@@ -74,8 +84,10 @@ const readSyncErrorCode = (source: Record<string, unknown>): string | undefined 
   readStringDetail(source, 'syncErrorCode') ??
   readStringDetail(readSyncErrorRecord(source) ?? {}, 'code');
 
-const hasStringValues = (details: IamRuntimeSafeDetails): boolean =>
-  Object.values(details).some((value) => typeof value === 'string');
+const hasDiagnosticValues = (details: IamRuntimeSafeDetails): boolean =>
+  Object.values(details).some(
+    (value) => typeof value === 'string' || (Array.isArray(value) && value.length > 0)
+  );
 
 const normalizeRuntimeDiagnosticClassification = (
   value: unknown,
@@ -179,9 +191,11 @@ export const readSafeDiagnosticDetails = (
     return_to: readStringDetail(source, 'return_to'),
     sync_state: readSyncState(source),
     sync_error_code: readSyncErrorCode(source),
+    moduleIds: readStringArrayDetail(source, 'moduleIds'),
+    errorCodes: readStringArrayDetail(source, 'errorCodes'),
   };
 
-  return hasStringValues(safeDetails) ? safeDetails : undefined;
+  return hasDiagnosticValues(safeDetails) ? safeDetails : undefined;
 };
 
 export const readRuntimeDiagnostics = (

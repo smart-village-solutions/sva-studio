@@ -119,6 +119,7 @@ test('instance create flow bootstraps tenant admin structure with selected modul
 
   await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
   await navigateClientSide(page, '/admin/instances/new');
+  await page.getByRole('radio', { name: /Bestehender Realm:/u }).check();
   await page.locator('#instance-id').fill('demo');
   await page.locator('#instance-display-name').fill('Demo');
   await page.locator('#instance-parent-domain').fill('studio.example.org');

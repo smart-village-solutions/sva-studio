@@ -2873,6 +2873,7 @@ describe('instance registry service facade', () => {
 
     expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledOnce();
     expect(repository.reconcileModuleActivationPolicies).toHaveBeenCalledOnce();
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledOnce();
     expect(repository.syncAssignedModuleIam).toHaveBeenLastCalledWith(
       expect.objectContaining({
         instanceId: 'demo',

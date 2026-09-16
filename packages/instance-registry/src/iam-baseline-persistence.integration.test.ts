@@ -22,7 +22,7 @@ const createExecutor = (client: Pool | PoolClient) => ({
 });
 
 integrationDescribe('IAM baseline persistence', () => {
-  it('commits core and known module grants while reporting a missing module contract', async () => {
+  it('commits known grants and removes unknown grants across activation-policy outcomes', async () => {
     expect(databaseName).toBeTruthy();
     if (!databaseName) throw new Error('integration_database_required');
 
@@ -57,7 +57,8 @@ INSERT INTO iam.instance_modules (
   instance_id, module_id, activation_origin, effective_active, manual_override
 )
 VALUES ($1, 'ssf', 'manual', false, 'disabled'),
-       ($1, 'legacy-module', 'manual', true, 'enabled');
+       ($1, 'legacy-module', 'manual', true, 'enabled'),
+       ($1, 'removed-module', 'manual', true, 'enabled');
 `,
         [instanceId]
       );
@@ -73,13 +74,18 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
               description: 'Legacy module permission',
               resourceType: 'legacy-module',
             },
+            {
+              key: 'removed-module.read',
+              description: 'Removed module permission',
+              resourceType: 'removed-module',
+            },
           ],
           grantPermissionKeys: [],
         },
       });
       await repository.syncAssignedModuleIam({
         instanceId,
-        managedModuleIds: ['legacy-module'],
+        managedModuleIds: ['legacy-module', 'removed-module'],
         contracts: [
           {
             moduleId: 'legacy-module',
@@ -92,6 +98,18 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
               },
             ],
             systemRoles: [{ roleName: 'system_admin', permissionIds: ['legacy-module.read'] }],
+          },
+          {
+            moduleId: 'removed-module',
+            permissionIds: ['removed-module.read'],
+            permissions: [
+              {
+                key: 'removed-module.read',
+                description: 'Removed module permission',
+                resourceType: 'removed-module',
+              },
+            ],
+            systemRoles: [{ roleName: 'system_admin', permissionIds: ['removed-module.read'] }],
           },
         ],
       });
@@ -143,6 +161,12 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
                 manifestVersion: 1,
                 policyRevision: 'ssf-1',
               },
+              {
+                moduleId: 'legacy-module',
+                activationPolicy: 'required',
+                manifestVersion: 2,
+                policyRevision: 'legacy-2',
+              },
             ],
           }),
         },
@@ -163,16 +187,21 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
       ).resolves.toEqual({
         ok: false,
         reason: 'module_contract_missing',
-        moduleIds: ['legacy-module'],
-        errorCodes: ['unknown_module_contract:legacy-module'],
+        moduleIds: ['legacy-module', 'removed-module'],
+        errorCodes: [
+          'unknown_module_contract:legacy-module',
+          'unknown_module_contract:removed-module',
+        ],
       });
 
       const persisted = await pool.query<{
         core_grants: string;
         known_module_grants: string;
         unknown_module_grants: string;
+        removed_module_grants: string;
         ssf_active: boolean;
         legacy_active: boolean;
+        removed_active: boolean;
       }>(
         `
 SELECT
@@ -187,6 +216,9 @@ SELECT
   COUNT(*) FILTER (
     WHERE role_permission.grant_origin_module_id = 'legacy-module'
   )::text AS unknown_module_grants,
+  COUNT(*) FILTER (
+    WHERE role_permission.grant_origin_module_id = 'removed-module'
+  )::text AS removed_module_grants,
   (
     SELECT effective_active
     FROM iam.instance_modules
@@ -196,7 +228,12 @@ SELECT
     SELECT effective_active
     FROM iam.instance_modules
     WHERE instance_id = $1 AND module_id = 'legacy-module'
-  ) AS legacy_active
+  ) AS legacy_active,
+  (
+    SELECT effective_active
+    FROM iam.instance_modules
+    WHERE instance_id = $1 AND module_id = 'removed-module'
+  ) AS removed_active
 FROM iam.roles role
 JOIN iam.role_permissions role_permission
   ON role_permission.instance_id = role.instance_id
@@ -213,8 +250,10 @@ WHERE role.instance_id = $1 AND role.role_key = 'system_admin';
         core_grants: '1',
         known_module_grants: '1',
         unknown_module_grants: '0',
+        removed_module_grants: '0',
         ssf_active: true,
-        legacy_active: false,
+        legacy_active: true,
+        removed_active: false,
       });
     } finally {
       await pool.end();

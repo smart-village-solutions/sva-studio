@@ -456,15 +456,17 @@ export const createSeedIamBaselineHandler =
     const assignedModuleIdsBeforeReconcile = await deps.repository.listAssignedModules(
       input.instanceId
     );
-    const missingModuleIds = assignedModuleIdsBeforeReconcile
-      .filter((moduleId) => !registry.has(moduleId))
-      .sort((left, right) => left.localeCompare(right, 'de'));
-    await createReconcileModuleActivationPoliciesHandler(deps)({
+    await createReconcileModuleActivationPoliciesHandler(deps, { deferIamSync: true })({
       instanceId: input.instanceId,
       actorId: input.actorId,
       requestId: input.requestId,
     });
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    const missingModuleIds = [
+      ...new Set([...assignedModuleIdsBeforeReconcile, ...assignedModuleIds]),
+    ]
+      .filter((moduleId) => !registry.has(moduleId))
+      .sort((left, right) => left.localeCompare(right, 'de'));
     const knownAssignedModuleIds = assignedModuleIds.filter((moduleId) => registry.has(moduleId));
     const errorCodes = missingModuleIds.map((moduleId) => `unknown_module_contract:${moduleId}`);
     const corePermissionReconcile = await syncProtectedSystemAdminPermissions(

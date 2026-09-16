@@ -146,6 +146,38 @@ describe('instance module activation policy reconcile', () => {
     });
   });
 
+  it('defers IAM synchronization while retaining activation lifecycle and audit evidence', async () => {
+    const { deps, repository, invalidatePermissionSnapshots } = createDeps();
+
+    await expect(
+      createReconcileModuleActivationPoliciesHandler(deps, { deferIamSync: true })({
+        instanceId: 'tenant-a',
+        actorId: 'system',
+        requestId: 'request-deferred',
+      })
+    ).resolves.toEqual({
+      changedModuleIds: ['events'],
+      conflictModuleIds: [],
+      unchangedModuleIds: [],
+    });
+
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledOnce();
+    expect(invalidatePermissionSnapshots).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      trigger: 'instance_module_policy_reconciled',
+    });
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        eventType: 'instance_module_policy_reconciled',
+        actorId: 'system',
+        requestId: 'request-deferred',
+        details: expect.objectContaining({ permissionReconcile: null }),
+      })
+    );
+  });
+
   it('fails closed before IAM synchronization when policy reconciliation loses a lock', async () => {
     const { deps, repository, invalidatePermissionSnapshots } = createDeps({
       changedModuleIds: [],

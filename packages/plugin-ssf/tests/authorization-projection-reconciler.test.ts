@@ -180,6 +180,42 @@ describe('SSF authorization projection reconciler', () => {
     );
   });
 
+  it('preserves an invalid tenant id from runtime baseline preparation', async () => {
+    const desired = projection('Labor');
+    const { lockedStore, target, reconcile } = fixtures(desired);
+    target.prepareRuntimeBaseline.mockRejectedValue(new Error('ssf_tenant_instance_id_invalid'));
+
+    await expect(reconcile(desired)).resolves.toEqual({
+      status: 'blocked',
+      generation: 1,
+      reason: 'tenant_instance_id_invalid',
+    });
+    expect(lockedStore.markBlocked).toHaveBeenCalledWith({
+      instanceId: 'Labor',
+      generation: 1,
+      desiredRevision: createSsfAuthorizationRevision(desired),
+      errorCode: 'tenant_instance_id_invalid',
+    });
+  });
+
+  it('classifies a rejected final readiness probe as tenant readiness failure', async () => {
+    const desired = projection();
+    const { lockedStore, target, reconcile } = fixtures(desired);
+    target.isReady.mockRejectedValue(new TypeError('upstream response missing'));
+
+    await expect(reconcile(desired)).resolves.toEqual({
+      status: 'blocked',
+      generation: 1,
+      reason: 'tenant_readiness_failed',
+    });
+    expect(lockedStore.markBlocked).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      generation: 1,
+      desiredRevision: createSsfAuthorizationRevision(desired),
+      errorCode: 'tenant_readiness_failed',
+    });
+  });
+
   it('persists a profile preservation failure as a target integrity blocker', async () => {
     const desired = projection();
     const { lockedStore, target, reconcile } = fixtures(desired);

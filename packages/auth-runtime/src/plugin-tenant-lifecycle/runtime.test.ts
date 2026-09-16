@@ -388,6 +388,23 @@ describe('configured plugin tenant lifecycle runtime', () => {
     );
   });
 
+  it('does not reschedule an unchanged terminal generation', async () => {
+    state.getLifecycle.mockResolvedValueOnce({
+      ...lifecycleRecord,
+      readinessStatus: 'blocked',
+      desiredGeneration: 3,
+      completedGeneration: 2,
+      retryKind: 'terminal',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.requestLifecycle).not.toHaveBeenCalled();
+    expect(state.createStudioJob).not.toHaveBeenCalled();
+    expect(state.queuePluginOperationJob).not.toHaveBeenCalled();
+  });
+
   it('keeps degraded access without creating a pending generation before the retry deadline', async () => {
     state.getLifecycle.mockResolvedValue({
       ...lifecycleRecord,

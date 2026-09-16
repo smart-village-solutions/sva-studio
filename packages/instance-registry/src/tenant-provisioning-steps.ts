@@ -1,5 +1,5 @@
 import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
-import { createSdkLogger, redactObject } from '@sva/server-runtime';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { createExecuteKeycloakProvisioningHandler } from './service-keycloak-execution.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -13,6 +13,7 @@ import {
 import type { ParentStep } from './tenant-provisioning-state.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
+import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -42,26 +43,10 @@ const readProperty = (value: unknown, key: string): unknown => {
 };
 
 const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
-const SAFE_DIAGNOSTIC_ERROR_TYPES = new Set([
-  'AggregateError',
-  'DatabaseError',
-  'Error',
-  'RangeError',
-  'ReferenceError',
-  'SyntaxError',
-  'SystemError',
-  'TypeError',
-  'URIError',
-]);
 
 const readDiagnosticString = (value: unknown, key: string): string | undefined => {
   const candidate = readProperty(value, key);
   return typeof candidate === 'string' ? candidate : undefined;
-};
-
-export const readDiagnosticErrorType = (error: unknown): string => {
-  const name = readDiagnosticString(error, 'name');
-  return name && SAFE_DIAGNOSTIC_ERROR_TYPES.has(name) ? name : typeof error;
 };
 
 const readDiagnosticErrorCode = (error: unknown): string => {
@@ -71,39 +56,6 @@ const readDiagnosticErrorCode = (error: unknown): string => {
   return message && /^[a-z][a-z0-9_:-]{2,100}$/u.test(message)
     ? message
     : INGRESS_FAILURE_CLASSIFICATION;
-};
-
-export const buildProvisioningFailureDiagnostics = (
-  error: unknown,
-  options: { includeNodeSystemFields?: boolean } = {}
-): Readonly<Record<string, unknown>> => {
-  const code = readDiagnosticString(error, 'code');
-  const syscall = readDiagnosticString(error, 'syscall');
-  const isNodeSystemError = Boolean(code && /^E[A-Z0-9_]{1,99}$/u.test(code) && syscall);
-  if (options.includeNodeSystemFields && isNodeSystemError) {
-    return redactObject({
-      diagnostic_error: {
-        name: readDiagnosticErrorType(error),
-        code,
-        syscall,
-        path: readDiagnosticString(error, 'path'),
-        dest: readDiagnosticString(error, 'dest'),
-      },
-    });
-  }
-  if (code && /^[0-9A-Z]{5}$/u.test(code)) {
-    return redactObject({
-      diagnostic_error: {
-        name: readDiagnosticErrorType(error),
-        code,
-      },
-    });
-  }
-  return redactObject({
-    diagnostic_error: {
-      name: readDiagnosticErrorType(error),
-    },
-  });
 };
 
 const registryStep: StepHandler = async ({
@@ -210,6 +162,9 @@ const ingressStep: StepHandler = async ({
     } catch {
       // Diagnostic logging must never replace the provisioning failure.
     }
+    if (readDiagnosticErrorType(error) === 'TypeError') {
+      throw Object.assign(new Error('tenant_ingress_publish_invalid'), { cause: error });
+    }
     throw error;
   }
   assertExecutionActive();
@@ -226,17 +181,30 @@ const probeStep =
     if (typeof expectedRouterName !== 'string' || typeof expectedConfigHash !== 'string') {
       throw new Error('kassel_ingress_evidence_missing');
     }
-    const evidence = await requireDependency(
-      deps.probeTenantEndpoint,
-      'dependency_missing_probeTenantEndpoint'
-    )({
-      kind,
-      primaryHostname: instance.primaryHostname,
-      authIssuerUrl: instance.authIssuerUrl,
-      authClientId: instance.authClientId,
-      expectedRouterName,
-      expectedConfigHash,
-    });
+    let evidence: Awaited<ReturnType<NonNullable<typeof deps.probeTenantEndpoint>>>;
+    try {
+      evidence = await requireDependency(
+        deps.probeTenantEndpoint,
+        'dependency_missing_probeTenantEndpoint'
+      )({
+        kind,
+        primaryHostname: instance.primaryHostname,
+        authIssuerUrl: instance.authIssuerUrl,
+        authClientId: instance.authClientId,
+        expectedRouterName,
+        expectedConfigHash,
+      });
+    } catch (error) {
+      if (readDiagnosticErrorType(error) === 'TypeError') {
+        throw Object.assign(
+          new Error(
+            kind === 'ingress' ? 'tenant_ingress_probe_invalid' : 'tenant_login_probe_invalid'
+          ),
+          { cause: error }
+        );
+      }
+      throw error;
+    }
     assertExecutionActive();
     return continueAt(deps, run, workerId, next, now, { terminalEvidence: evidence });
   };
@@ -250,15 +218,27 @@ const moduleReadinessStep: StepHandler = async ({
   assertExecutionActive,
 }) => {
   assertExecutionActive();
-  const readiness = await requireDependency(
-    deps.readProvisioningModuleReadiness,
-    'dependency_missing_readProvisioningModuleReadiness'
-  )({
-    instanceId: instance.instanceId,
-    lifecycles: readTenantProvisioningPluginSnapshot(run).lifecycles,
-  });
+  let readiness: Awaited<ReturnType<NonNullable<typeof deps.readProvisioningModuleReadiness>>>;
+  try {
+    readiness = await requireDependency(
+      deps.readProvisioningModuleReadiness,
+      'dependency_missing_readProvisioningModuleReadiness'
+    )({
+      instanceId: instance.instanceId,
+      lifecycles: readTenantProvisioningPluginSnapshot(run).lifecycles,
+    });
+  } catch (error) {
+    if (readDiagnosticErrorType(error) === 'TypeError') {
+      throw Object.assign(new Error('module_readiness_probe_invalid'), { cause: error });
+    }
+    throw error;
+  }
   assertExecutionActive();
-  if (readiness.status === 'blocked') throw new Error('module_readiness_blocked');
+  if (readiness.status === 'blocked') {
+    throw Object.assign(new Error(readiness.errorCode ?? 'module_readiness_blocked'), {
+      tenantProvisioningTerminal: true,
+    });
+  }
   const pending = readiness.status === 'pending';
   return continueAt(deps, run, workerId, pending ? 'module_readiness' : 'login', now, {
     terminalEvidence: readiness.evidence,

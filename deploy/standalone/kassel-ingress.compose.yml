@@ -15,6 +15,12 @@ services:
     environment:
       SVA_TENANT_INGRESS_MODE: 'kassel-traefik-file'
       SVA_KASSEL_PUBLIC_AUTH_ORIGIN: ${SVA_KASSEL_PUBLIC_AUTH_ORIGIN:-https://auth.dialog.kassel.de}
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: ssf-backend_default
+      traefik.http.services.sva-studio-ssf.loadbalancer.server.port: '3000'
+    networks:
+      - ssf-edge
 
   provisioner:
     depends_on:

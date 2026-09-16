@@ -125,7 +125,7 @@
 - [x] 8.2 Server-Runtime-Gate für betroffene serverseitige Packages ausführen
 - [x] 8.3 OpenSpec strict, Dateiplatzierung, DB-Schema-Snapshot, Doku-Checks und
       relevante Deployment-Vertragstests ausführen
-- [ ] 8.4 Vor dem initialen Code-Push den affected Scope messen und den
+- [x] 8.4 Vor dem initialen Code-Push den affected Scope messen und den
       passenden PR-Gate-Pfad ausführen
 - [ ] 8.5 Beide Repository-PRs am exakten HEAD auf Checks, Reviews und offene
       Threads prüfen
@@ -150,3 +150,21 @@
       Provisioner-Abbruch und Retry live fail-closed prüfen
 - [ ] 9.8 Terminalzustand, erhaltene Artefakte, Audit-Evidenz und Rollback
       dokumentieren
+
+## 10. Incident-Korrektur #1415, #1416 und #1417
+
+- [x] 10.1 Create und Update vor jeder Persistenz mit dem kanonischen
+      Instanz-ID-Validator absichern und `Labor` als Regression testen
+- [x] 10.2 Konkrete unveränderliche SSF-Ursachen durch Projektion, Lifecycle
+      und Job-Evidenz erhalten und terminal klassifizieren
+- [x] 10.3 Scheduler-Regression ergänzen, die eine unveränderte terminale
+      Generation nicht erneut einstellt
+- [x] 10.4 TLS-/Readiness-Deadline und unbekannte Boundary-Fehler mit stabilem
+      Schritt, Code, Zeitbudget und redigierter Abhängigkeitsevidenz speichern
+- [x] 10.5 Kasseler Compose-/Ingress-Vertrag für Service, Netzwerk, Port und
+      bounded Startup-Konvergenz testen
+- [x] 10.6 `Labor` nach verifiziertem Backup und Artefaktinventar vollständig
+      über die vorhandenen Owner-Pfade entfernen und jede Ebene read-back-prüfen
+- [ ] 10.7 App und Provisioner auf demselben geprüften Digest ausrollen und
+      Router, TLS, Readiness, terminale Jobs sowie ausbleibende Retry-Loops live
+      verifizieren

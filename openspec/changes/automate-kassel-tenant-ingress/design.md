@@ -273,6 +273,48 @@ wieder aufgenommenen Lauf zurück.
 Parallele Create-/Retry-Anfragen für dieselbe Instanz dürfen höchstens einen
 wirksamen Elternlauf besitzen.
 
+### 8. Incident-Korrektur für ungültige IDs und unveränderte Blocker
+
+Die gemeinsame Instanz-ID-Validierung aus `@sva/core` ist die einzige
+fachliche Definition des zulässigen Formats. Create und Update lehnen eine ID
+vor jeder Persistenz ab, wenn sie kein kleingeschriebenes DNS-Label ist.
+Insbesondere wird `Labor` nicht zu `labor` normalisiert, weil Realm, Hostname,
+Lifecycle- und Fremdschlüsselartefakte sonst auseinanderlaufen könnten.
+
+Der SSF-Projektionspfad darf Fehler aus der Runtime-Baseline nicht pauschal zu
+`runtime_baseline_preparation_failed` verdichten. Bekannte unveränderliche
+Ursachen wie `ssf_tenant_instance_id_invalid` werden als eigener stabiler
+Lifecycle-Fehler bis in Job, Lifecycle-Zustand und Elternlauf bewahrt und
+terminal klassifiziert. Die Retry-Entscheidung erfolgt zentral aus dem
+stabilen Fehlercode; unbekannte fachliche Blocker sind nicht standardmäßig
+transient. Eine Generation mit `retry_kind = terminal` oder unverändertem
+terminalem Fehler wird vom Scheduler nicht erneut eingestellt.
+
+TLS- und Readiness-Probes bleiben nur während ihrer begrenzten Deadline
+retryable. Eine ausgeschöpfte Deadline ist terminal und speichert Schritt,
+verstrichene Zeit sowie den letzten redigierten Abhängigkeitszustand. Ein
+unbekannter `TypeError` wird nicht als eigene Retry-Klasse behandelt, sondern
+an der verursachenden Boundary in einen stabilen, sicheren Fehlercode
+übersetzt.
+
+Die providerqualifizierte Referenz `sva-studio-ssf@docker` bleibt der
+freigegebene Kasseler Vertrag. Einzelne Unknown-Service-Meldungen während des
+Traefik-Starts sind kein hinreichender Fehlernachweis, wenn Docker Provider,
+dynamischer Router und öffentlicher Readiness-Probe anschließend innerhalb
+der Frist konvergieren. Maßgeblich sind die bounded Postconditions. Der
+Repository-Compose-Vertrag und seine Tests müssen den Service-Namen, das
+gemeinsame Netzwerk und den Port explizit zusammenhalten.
+
+Für den bereits fehlerhaft angelegten Test-Tenant `Labor` wird keine
+Cross-System-Rename-Migration gebaut. Nach verifiziertem Studio- und
+Keycloak-Backup wird zunächst der aktive Retry gestoppt. Danach werden nur die
+eindeutig zu `Labor` beziehungsweise seinem dedizierten Realm und Host
+gehörenden Registry-, Job-, Lifecycle-, SSF-, Keycloak- und Routerartefakte
+über vorhandene Owner-Pfade entfernt. Jeder Löschschritt wird unmittelbar
+read-back-verifiziert; fremde oder nicht eindeutig zuordenbare Artefakte sind
+ein Sicherheitsstopp. Ein später benötigter Tenant wird regulär mit einer
+neuen kleingeschriebenen ID angelegt.
+
 ## Bestandsmigration
 
 Die bestehenden statischen Hosts werden ohne Unterbrechung einzeln übernommen:

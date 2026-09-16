@@ -106,4 +106,23 @@ describe('http-instance-read-handlers', () => {
       requestId: 'req-1',
     });
   });
+
+  it('allows operators to inspect a persisted legacy instance id', async () => {
+    deps.withRegistryService.mockImplementationOnce(async (work) =>
+      work({
+        getInstanceDetail: vi.fn().mockResolvedValue({ instanceId: 'Labor', status: 'failed' }),
+      })
+    );
+
+    const handler = createGetInstanceHandler(deps as never);
+    const response = await handler(
+      new Request('https://studio.example.test/api/v1/iam/instances/Labor'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    await expect(readBody(response)).resolves.toMatchObject({
+      data: { instanceId: 'Labor', status: 'failed' },
+    });
+  });
 });

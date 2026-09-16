@@ -252,4 +252,27 @@ describe('runtime wiring', () => {
       })
     ).rejects.toThrow('queue unavailable');
   });
+
+  it('skips activation reconciliation and follow-up when the locked guard rejects it', async () => {
+    const afterModuleActivationPolicyReconcile = vi.fn();
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => createClient() }),
+      createRepository: () => ({}) as InstanceRegistryRepository,
+      serviceDeps: {
+        invalidateHost: vi.fn(),
+      },
+      afterModuleActivationPolicyReconcile,
+    });
+    const work = vi.fn(async () => 'skipped');
+
+    await expect(
+      runtime.withScopedRegistryService('tenant-a', work, {
+        shouldReconcileActivationPolicies: async () => false,
+        awaitActivationPolicyFollowUp: true,
+      })
+    ).resolves.toBe('skipped');
+
+    expect(work).toHaveBeenCalledOnce();
+    expect(afterModuleActivationPolicyReconcile).not.toHaveBeenCalled();
+  });
 });

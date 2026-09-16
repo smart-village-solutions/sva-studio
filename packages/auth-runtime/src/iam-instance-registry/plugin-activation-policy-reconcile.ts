@@ -151,15 +151,23 @@ const reconcileCapturedPluginActivationPoliciesForAllInstances = async (
   const failures: PluginActivationPolicyFleetReconcileFailure[] = [];
 
   try {
-    const instances = await withRegistryService((service) => service.listInstances());
+    const instances = (await withRegistryService((service) => service.listInstances())).filter(
+      (instance) => instance.status !== 'archived'
+    );
     instanceCount = instances.length;
     for (const instance of instances) {
       try {
+        let reconciled = false;
         await withScopedRegistryService(instance.instanceId, async () => undefined, {
           forceIamSync: true,
           awaitActivationPolicyFollowUp: true,
+          shouldReconcileActivationPolicies: async (repository) => {
+            const currentInstance = await repository.getInstanceById(instance.instanceId);
+            reconciled = currentInstance !== null && currentInstance.status !== 'archived';
+            return reconciled;
+          },
         });
-        reconciledInstanceCount += 1;
+        if (reconciled) reconciledInstanceCount += 1;
       } catch (error) {
         failures.push({
           instanceId: instance.instanceId,

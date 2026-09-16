@@ -75,7 +75,24 @@ const configureRegistryService = () => {
       })
   );
   mocks.withScopedRegistryService.mockImplementation(
-    async (instanceId: string, operation: (service: unknown) => Promise<unknown>) => {
+    async (
+      instanceId: string,
+      operation: (service: unknown) => Promise<unknown>,
+      options?: {
+        shouldReconcileActivationPolicies?: (repository: {
+          getInstanceById: (targetInstanceId: string) => Promise<unknown>;
+        }) => Promise<boolean>;
+      }
+    ) => {
+      const repository = {
+        getInstanceById: async (targetInstanceId: string) => ({
+          instanceId: targetInstanceId,
+          status: 'active',
+        }),
+      };
+      if ((await options?.shouldReconcileActivationPolicies?.(repository)) === false) {
+        return operation({});
+      }
       await mocks.reconcileModuleActivationPolicies({ instanceId });
       return operation({});
     }
@@ -145,13 +162,13 @@ describe('plugin activation policy fleet reconcile', () => {
       1,
       'instance-a',
       expect.any(Function),
-      { forceIamSync: true, awaitActivationPolicyFollowUp: true }
+      expect.objectContaining({ forceIamSync: true, awaitActivationPolicyFollowUp: true })
     );
     expect(mocks.withScopedRegistryService).toHaveBeenNthCalledWith(
       2,
       'instance-b',
       expect.any(Function),
-      { forceIamSync: true, awaitActivationPolicyFollowUp: true }
+      expect.objectContaining({ forceIamSync: true, awaitActivationPolicyFollowUp: true })
     );
     expect(report).toEqual(
       expect.objectContaining({
@@ -163,6 +180,52 @@ describe('plugin activation policy fleet reconcile', () => {
       })
     );
     expect(readPluginActivationPolicyFleetReconcileReport()).toBe(report);
+  });
+
+  it('does not reactivate plugin lifecycles for archived instances', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([
+      { instanceId: 'active-instance', status: 'active' },
+      { instanceId: 'archived-instance', status: 'archived' },
+    ]);
+    mocks.reconcileModuleActivationPolicies.mockResolvedValue({ changed: false });
+
+    const report = await reconcileConfiguredPluginActivationPoliciesForAllInstances({
+      revision: 'catalog-1',
+    });
+
+    expect(mocks.withScopedRegistryService).toHaveBeenCalledOnce();
+    expect(mocks.withScopedRegistryService).toHaveBeenCalledWith(
+      'active-instance',
+      expect.any(Function),
+      expect.objectContaining({ forceIamSync: true, awaitActivationPolicyFollowUp: true })
+    );
+    expect(report).toEqual(
+      expect.objectContaining({ instanceCount: 1, reconciledInstanceCount: 1 })
+    );
+  });
+
+  it('does not reconcile an instance archived after the fleet snapshot', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a', status: 'active' }]);
+    mocks.withScopedRegistryService.mockImplementation(async (_instanceId, operation, options) => {
+      const repository = {
+        getInstanceById: vi.fn(async () => ({ instanceId: 'instance-a', status: 'archived' })),
+      };
+      if ((await options.shouldReconcileActivationPolicies(repository)) === false) {
+        return operation({});
+      }
+      throw new Error('archived instance must not be reconciled');
+    });
+
+    const report = await reconcileConfiguredPluginActivationPoliciesForAllInstances({
+      revision: 'catalog-1',
+    });
+
+    expect(mocks.reconcileModuleActivationPolicies).not.toHaveBeenCalled();
+    expect(report).toEqual(
+      expect.objectContaining({ instanceCount: 1, reconciledInstanceCount: 0, status: 'ready' })
+    );
   });
 
   it('does not publish a result from an obsolete runtime snapshot generation', async () => {

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1420,
+  "body": "Der Kasseler Standalone-Rollout kann den Migrationshelfer nun über das bestehende externe Netz laden; archivierte Instanzen erzeugen beim Fleet-Abgleich keine neuen Plugin-Lifecycle-Jobs mehr."
+}

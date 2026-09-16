@@ -1,0 +1,4 @@
+{
+  "prNumber": 1421,
+  "body": "Der explizite IAM-Baseline-Abgleich behält Core- und bekannte Modulrechte jetzt auch dann bei, wenn einer historischen Modulzuweisung der IAM-Vertrag fehlt. Fehlende Verträge bleiben klar sichtbar und erhalten keine erfundenen Berechtigungen."
+}

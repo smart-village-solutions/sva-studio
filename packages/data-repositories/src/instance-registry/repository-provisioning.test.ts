@@ -247,7 +247,13 @@ describe('instance registry repository provisioning', () => {
   });
 
   it('creates and updates instances with hostname side effects', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], [], [instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [{ hostname: 'tenant-a.example.test' }],
+      [instanceRow],
+      [],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(
@@ -281,7 +287,7 @@ describe('instance registry repository provisioning', () => {
 
     expect(
       statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(statements[0]?.text).toContain('$18::jsonb, $19, $20, $20');
     expect(statements[0]?.values.at(17)).toBe('{"preview":true}');
     expect(statements[0]?.values.at(18)).toBe('mainserver-ref');
@@ -593,5 +599,23 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain('desired_snapshot = $6::jsonb');
     expect(statements[0]?.values?.[5]).toBe('{"pluginSnapshotVersion":"1.0"}');
     expect(statements[0]?.values?.[6]).toBe(true);
+  });
+
+  it('preserves new-realm transition evidence when a retry does not require OIDC reconcile', async () => {
+    const { executor, statements } = createQueuedExecutor([[provisioningRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await repository.retryProvisioningRun({
+      instanceId: 'tenant-a',
+      idempotencyKey: 'idem-1',
+      deadlineAt: '2026-01-01T01:00:00.000Z',
+      desiredSnapshot: { realmMode: 'new' },
+      keycloakReconcileRequired: false,
+    });
+
+    expect(statements[0]?.text).toContain(
+      "WHEN $6::jsonb ->> 'realmMode' = 'new' THEN child_keycloak_run_id"
+    );
+    expect(statements[0]?.values?.[6]).toBe(false);
   });
 });

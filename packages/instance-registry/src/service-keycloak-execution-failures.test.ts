@@ -93,6 +93,27 @@ describe('service-keycloak-execution-failures', () => {
     );
   });
 
+  it('classifies accepted new realms as retry-safe when only the local follow-up fails', async () => {
+    const repository = {
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-retry-safe',
+      instanceId: 'demo',
+      intent: 'provision',
+      error: new Error('new_realm_accepted_post_provisioning_sync_failed_retry_safe'),
+    });
+
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: { reasonCode: 'NEW_REALM_ACCEPTED_RETRY_SAFE' },
+        summary: expect.stringContaining('sicher wiederholt'),
+      })
+    );
+  });
+
   it('marks failed realm compensation as requiring manual cleanup', async () => {
     const repository = {
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),

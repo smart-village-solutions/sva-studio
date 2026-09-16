@@ -57,6 +57,13 @@ describe('mutation-errors', () => {
     });
   });
 
+  it('classifies tenant hosts owned by another instance as conflicts', () => {
+    expect(classifyInstanceMutationError(new Error('tenant_hostname_conflict'))).toEqual({
+      status: 409,
+      code: 'tenant_hostname_conflict',
+    });
+  });
+
   it('classifies reserved OIDC client ids as invalid requests', () => {
     expect(classifyInstanceMutationError(new Error('oidc_client_id_reserved'))).toEqual({
       status: 400,

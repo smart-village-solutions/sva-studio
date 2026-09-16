@@ -12,6 +12,8 @@ export const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = 
     'Die OIDC-Client-ID ist für einen installierten Plugin-Vertrag reserviert.',
   tenant_hostname_reserved:
     'Der Hostname ist für den Studio-Root oder einen Infrastruktur-Dienst reserviert.',
+  tenant_hostname_conflict:
+    'Der Hostname ist bereits einer anderen Studio-Instanz zugeordnet.',
   auth_realm_conflict: 'Der Keycloak-Realm ist bereits einer anderen Studio-Instanz zugeordnet.',
   instance_configuration_change_blocked:
     'Die Instanzkonfiguration kann während eines geplanten oder laufenden Provisionings nicht geändert werden. Bitte versuchen Sie es danach erneut.',

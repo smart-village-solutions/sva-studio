@@ -165,6 +165,29 @@ describe('plugin activation policy fleet reconcile', () => {
     expect(readPluginActivationPolicyFleetReconcileReport()).toBe(report);
   });
 
+  it('does not reactivate plugin lifecycles for archived instances', async () => {
+    configureRegistryService();
+    mocks.listInstances.mockResolvedValue([
+      { instanceId: 'active-instance', status: 'active' },
+      { instanceId: 'archived-instance', status: 'archived' },
+    ]);
+    mocks.reconcileModuleActivationPolicies.mockResolvedValue({ changed: false });
+
+    const report = await reconcileConfiguredPluginActivationPoliciesForAllInstances({
+      revision: 'catalog-1',
+    });
+
+    expect(mocks.withScopedRegistryService).toHaveBeenCalledOnce();
+    expect(mocks.withScopedRegistryService).toHaveBeenCalledWith(
+      'active-instance',
+      expect.any(Function),
+      { forceIamSync: true, awaitActivationPolicyFollowUp: true }
+    );
+    expect(report).toEqual(
+      expect.objectContaining({ instanceCount: 1, reconciledInstanceCount: 1 })
+    );
+  });
+
   it('does not publish a result from an obsolete runtime snapshot generation', async () => {
     let completeInstanceList: ((instances: readonly never[]) => void) | undefined;
     configureRegistryService();

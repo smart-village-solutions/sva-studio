@@ -151,7 +151,9 @@ const reconcileCapturedPluginActivationPoliciesForAllInstances = async (
   const failures: PluginActivationPolicyFleetReconcileFailure[] = [];
 
   try {
-    const instances = await withRegistryService((service) => service.listInstances());
+    const instances = (await withRegistryService((service) => service.listInstances())).filter(
+      (instance) => instance.status !== 'archived'
+    );
     instanceCount = instances.length;
     for (const instance of instances) {
       try {

@@ -235,7 +235,9 @@ const moduleReadinessStep: StepHandler = async ({
   }
   assertExecutionActive();
   if (readiness.status === 'blocked') {
-    throw new Error(readiness.errorCode ?? 'module_readiness_blocked');
+    throw Object.assign(new Error(readiness.errorCode ?? 'module_readiness_blocked'), {
+      tenantProvisioningTerminal: true,
+    });
   }
   const pending = readiness.status === 'pending';
   return continueAt(deps, run, workerId, pending ? 'module_readiness' : 'login', now, {

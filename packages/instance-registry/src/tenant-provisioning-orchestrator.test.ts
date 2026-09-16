@@ -496,7 +496,11 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
   });
 
-  it('preserves a terminal module cause in the parent provisioning run', async () => {
+  it.each([
+    'ssf.tenant-instance-id-invalid',
+    'ssf.root-database-not-configured',
+    'ssf.authorization-profile-integrity-failed',
+  ])('preserves terminal module cause %s in the parent provisioning run', async (errorCode) => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {
       status: 'provisioning',
@@ -505,17 +509,17 @@ describe('tenant provisioning parent orchestrator', () => {
     vi.mocked(harness.deps.readProvisioningModuleReadiness).mockResolvedValueOnce({
       status: 'blocked',
       evidence: { moduleStatus: 'blocked' },
-      errorCode: 'ssf.tenant-instance-id-invalid',
+      errorCode,
     });
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
       status: 'failed',
-      errorCode: 'ssf.tenant-instance-id-invalid',
+      errorCode,
       terminalEvidence: {
         failedStep: 'module_readiness',
-        errorCode: 'ssf.tenant-instance-id-invalid',
+        errorCode,
       },
     });
   });

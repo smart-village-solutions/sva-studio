@@ -55,7 +55,13 @@ const TERMINAL_ERROR_CODES = new Set([
 
 const isTerminalError = (error: unknown): boolean => {
   const code = error instanceof Error ? error.message : String(error);
-  return TERMINAL_ERROR_CODES.has(code);
+  return (
+    TERMINAL_ERROR_CODES.has(code) ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'tenantProvisioningTerminal' in error &&
+      error.tenantProvisioningTerminal === true)
+  );
 };
 
 const errorCode = (error: unknown): string => {

@@ -2,6 +2,8 @@ import { IconCalendarTime, IconFilter, IconToggleRight, IconTrash } from '@table
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, cn } from '@sva/studio-ui-react';
 
+const wasteTourValidityBulkLimit = 100;
+
 type WasteToursToolbarActionsProps = {
   readonly selectedCount: number;
   readonly hiddenSelectedCount: number;
@@ -83,6 +85,7 @@ const WasteToursBulkActions = ({
   onOpenBulkStatus,
 }: WasteToursToolbarActionsProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const validitySelectionExceedsLimit = selectedCount > wasteTourValidityBulkLimit;
   return (
     <>
       <Button
@@ -99,12 +102,17 @@ const WasteToursBulkActions = ({
         type="button"
         variant="secondary"
         className="h-10 rounded-lg px-3"
-        disabled={selectedCount === 0}
+        disabled={selectedCount === 0 || validitySelectionExceedsLimit}
         onClick={onOpenBulkValidity}
       >
         <IconCalendarTime aria-hidden="true" className="h-4 w-4" />
         {pt('tours.bulkValidityDialog.title')}
       </Button>
+      {validitySelectionExceedsLimit ? (
+        <span className="text-sm font-medium text-destructive" role="status">
+          {pt('tours.bulkValidityDialog.tooMany', { value: wasteTourValidityBulkLimit })}
+        </span>
+      ) : null}
       <Button
         type="button"
         variant="tertiary"

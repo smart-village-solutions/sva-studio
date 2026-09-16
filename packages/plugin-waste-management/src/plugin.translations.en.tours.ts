@@ -174,6 +174,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     title: 'Change validity period',
     description: 'Change the tour-wide validity period for {{value}} selected tours.',
     selectedCount: '{{value}} tours selected',
+    tooMany: 'Validity can be changed for no more than {{value}} tours at once.',
     inapplicableTitle: 'Inapplicable tours',
     inapplicableDescription:
       'Custom or on-demand tours do not have a recurrence validity period. Remove these tours from the selection: {{value}}',

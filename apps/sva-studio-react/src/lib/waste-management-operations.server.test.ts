@@ -139,10 +139,11 @@ describe('waste management operations runtime', () => {
     );
     expect(statements).toContain('waste_tours_custom_recurrence_id_fkey');
     expect(statements).toContain('idx_waste_tours_custom_recurrence_id');
-    expect(statements).toContain("status TEXT NOT NULL DEFAULT 'draft'");
+    expect(statements).toContain('status TEXT NOT NULL CHECK');
     expect(statements).toContain(
       'ALTER TABLE "wm".waste_tours ADD COLUMN IF NOT EXISTS status TEXT'
     );
+    expect(statements).toContain('ALTER TABLE "wm".waste_tours ALTER COLUMN status DROP DEFAULT');
     expect(statements).toContain(
       "UPDATE \"wm\".waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL"
     );

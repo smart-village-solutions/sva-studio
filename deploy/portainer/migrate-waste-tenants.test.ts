@@ -143,6 +143,9 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[5]?.statements).toContain(
       'ALTER TABLE public.waste_tours ALTER COLUMN active DROP DEFAULT;'
     );
+    expect(wasteTenantMigrations[5]?.statements).toContain(
+      'ALTER TABLE public.waste_tours ALTER COLUMN status DROP DEFAULT;'
+    );
     expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
       'UPDATE OF waste_fraction_ids, recurrence, custom_recurrence_id, first_date, end_date, custom_dates, status, active'
     );

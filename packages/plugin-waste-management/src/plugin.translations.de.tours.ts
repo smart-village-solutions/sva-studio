@@ -177,6 +177,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     title: 'Gültigkeitszeitraum ändern',
     description: 'Ändern Sie den tourweiten Gültigkeitszeitraum für {{value}} ausgewählte Touren.',
     selectedCount: '{{value}} Touren ausgewählt',
+    tooMany: 'Die Gültigkeit kann für höchstens {{value}} Touren gleichzeitig geändert werden.',
     inapplicableTitle: 'Nicht anwendbare Touren',
     inapplicableDescription:
       'Individuelle oder bedarfsabhängige Touren besitzen keinen turnusbasierten Gültigkeitszeitraum. Entfernen Sie diese Touren aus der Auswahl: {{value}}',

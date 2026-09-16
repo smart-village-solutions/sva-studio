@@ -266,7 +266,7 @@ export const wasteTenantMigrations = Object.freeze([
     statements: Object.freeze([
       'ALTER TABLE public.waste_tours ADD COLUMN IF NOT EXISTS status TEXT;',
       "UPDATE public.waste_tours SET status = CASE WHEN active THEN 'published' ELSE 'draft' END WHERE status IS NULL;",
-      "ALTER TABLE public.waste_tours ALTER COLUMN status SET DEFAULT 'draft';",
+      'ALTER TABLE public.waste_tours ALTER COLUMN status DROP DEFAULT;',
       'ALTER TABLE public.waste_tours ALTER COLUMN status SET NOT NULL;',
       'ALTER TABLE public.waste_tours ALTER COLUMN active DROP DEFAULT;',
       `DO $$
@@ -288,10 +288,13 @@ export const wasteTenantMigrations = Object.freeze([
       AS $waste_tour_status$
       BEGIN
         IF TG_OP = 'INSERT' THEN
-          IF NEW.active IS NULL THEN
+          IF NEW.status IS NULL AND NEW.active IS NULL THEN
+            NEW.status := 'draft';
+            NEW.active := FALSE;
+          ELSIF NEW.status IS NULL THEN
+            NEW.status := CASE WHEN NEW.active THEN 'published' ELSE 'draft' END;
+          ELSIF NEW.active IS NULL THEN
             NEW.active := NEW.status = 'published';
-          ELSIF NEW.status = 'draft' AND NEW.active IS TRUE THEN
-            NEW.status := 'published';
           ELSIF NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
             RAISE EXCEPTION 'waste_tour_status_active_conflict';
           END IF;
@@ -325,7 +328,7 @@ export const wasteTenantMigrations = Object.freeze([
               AND column_name = 'status'
               AND data_type = 'text'
               AND is_nullable = 'NO'
-              AND column_default = '''draft''::text'
+              AND column_default IS NULL
           ) AS satisfied
         ), constraint_contract AS (
           SELECT EXISTS (

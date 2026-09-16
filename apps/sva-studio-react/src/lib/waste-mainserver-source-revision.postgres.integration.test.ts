@@ -179,6 +179,12 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
       )
     ).resolves.toMatchObject({ rows: [{ status: 'published', active: true }] });
 
+    await expect(
+      client.query(
+        `INSERT INTO waste_tours (name, status, active) VALUES ('Contradictory tour', 'draft', TRUE);`
+      )
+    ).rejects.toThrow('waste_tour_status_active_conflict');
+
     await client.query(`UPDATE waste_tours SET status = 'archived' WHERE id = $1;`, [ids.tour]);
     await expect(
       client.query<{ status: string; active: boolean }>(

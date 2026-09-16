@@ -126,6 +126,8 @@ test('instance create flow bootstraps tenant admin structure with selected modul
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.locator('#instance-auth-realm').fill('demo');
   await page.locator('#instance-auth-client-id').fill('tenant-client');
+  await page.locator('#instance-auth-client-secret').fill('tenant-client-secret');
+  await page.locator('#instance-tenant-admin-client-secret').fill('tenant-admin-client-secret');
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.locator('#instance-admin-username').fill('setup-admin');
   await page.locator('#instance-admin-email').fill('admin@example.org');

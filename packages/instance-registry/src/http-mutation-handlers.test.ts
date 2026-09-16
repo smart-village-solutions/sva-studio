@@ -734,6 +734,37 @@ describe('http mutation handlers', () => {
     expect(deps.requireFreshReauth).not.toHaveBeenCalled();
   });
 
+  it('seedIamBaseline exposes missing module contracts after committing the core baseline', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: {} });
+    vi.mocked(deps.withScopedRegistryService).mockImplementationOnce(async (_instanceId, work) =>
+      work({
+        seedIamBaseline: vi.fn(async () => ({
+          ok: false,
+          reason: 'module_contract_missing',
+          moduleIds: ['ssf'],
+          errorCodes: ['unknown_module_contract:ssf'],
+        })),
+      } as never)
+    );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.seedIamBaseline(
+      new Request('http://localhost/api/instances/inst-1/modules/seed-iam-baseline', {
+        method: 'POST',
+      }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(readBody(response)).resolves.toMatchObject({
+      code: 'unknown_module_contract',
+      details: {
+        moduleIds: ['ssf'],
+        errorCodes: ['unknown_module_contract:ssf'],
+      },
+    });
+  });
+
   it('bootstrapAdminStructure returns invalid_request for unknown modules', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
       ok: true,

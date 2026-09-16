@@ -173,10 +173,26 @@ export const createSeedIamBaselineHandler = <TContext>(
           requestId: input.requestId,
         })
       ),
-    respond: (result, state) =>
-      result.ok
-        ? deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId))
-        : deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', state.requestId),
+    respond: (result, state) => {
+      if (result.ok) {
+        return deps.jsonResponse(200, deps.asApiItem(result.instance, state.requestId));
+      }
+      if (result.reason === 'module_contract_missing') {
+        return deps.createApiError(
+          409,
+          'unknown_module_contract',
+          'Mindestens einem zugewiesenen Modul fehlt der IAM-Vertrag.',
+          state.requestId,
+          { moduleIds: result.moduleIds, errorCodes: result.errorCodes }
+        );
+      }
+      return deps.createApiError(
+        404,
+        'not_found',
+        'Instanz wurde nicht gefunden.',
+        state.requestId
+      );
+    },
     mapMutationError,
   });
 

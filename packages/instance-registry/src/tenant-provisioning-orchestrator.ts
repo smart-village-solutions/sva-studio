@@ -25,10 +25,7 @@ const KASSEL_PARENT_DOMAIN = 'dialog.kassel.de';
 const LEASE_MILLISECONDS = 30_000;
 const LEASE_HEARTBEAT_MILLISECONDS = 10_000;
 type TenantProvisioningFailurePhase =
-  | 'execution_guard'
-  | 'instance_validation'
-  | 'snapshot_validation'
-  | 'step_execution';
+  'execution_guard' | 'instance_validation' | 'snapshot_validation' | 'step_execution';
 const TERMINAL_ERROR_CODES = new Set([
   'instance_not_found',
   'kassel_auth_issuer_missing',
@@ -40,6 +37,7 @@ const TERMINAL_ERROR_CODES = new Set([
   'kassel_traefik_dynamic_dir_missing',
   'keycloak_provisioning_failed',
   'module_readiness_blocked',
+  'module_readiness_probe_invalid',
   'provisioning_step_invalid',
   'provisioning_snapshot_drift',
   'provisioning_plugin_snapshot_missing',
@@ -50,8 +48,12 @@ const TERMINAL_ERROR_CODES = new Set([
   'tenant_ingress_hostname_outside_parent_domain',
   'tenant_ingress_hostname_punycode_rejected',
   'tenant_ingress_hostname_reserved',
+  'tenant_ingress_probe_invalid',
+  'tenant_ingress_publish_invalid',
   'tenant_ingress_instance_hostname_mismatch',
   'tenant_ingress_service_invalid',
+  'tenant_login_probe_invalid',
+  'ssf.tenant-instance-id-invalid',
 ]);
 
 const isTerminalError = (error: unknown): boolean => {
@@ -61,7 +63,7 @@ const isTerminalError = (error: unknown): boolean => {
 
 const errorCode = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
-  return /^[a-z][a-z0-9_:-]{2,100}$/u.test(message) ? message : 'tenant_provisioning_step_failed';
+  return /^[a-z][a-z0-9_.:-]{2,100}$/u.test(message) ? message : 'tenant_provisioning_step_failed';
 };
 
 const bindWorkerCallbacksToLockedDeps = (
@@ -151,7 +153,12 @@ const failRun = async (
     stepKey,
     errorCode: code,
     errorMessage: 'Mandanten-Provisionierung fehlgeschlagen.',
-    terminalEvidence: { failedStep: stepKey, errorCode: code },
+    terminalEvidence: {
+      failedStep: stepKey,
+      errorCode: code,
+      deadlineAt: run.deadlineAt,
+      elapsedMs: Math.max(0, now.getTime() - new Date(run.createdAt).getTime()),
+    },
     completedAt: now.toISOString(),
   });
 };
@@ -205,8 +212,7 @@ export const processNextTenantProvisioningRun = async (
     } catch (error) {
       const code = errorCode(error);
       if (code === 'provisioning_claim_lost') throw error;
-      const stepKey =
-        code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
+      const stepKey = code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
       try {
         logger.warn('tenant_provisioning_step_exception', {
           operation: 'create_instance',

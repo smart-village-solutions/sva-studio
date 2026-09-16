@@ -42,7 +42,11 @@ export const readProvisioningModuleReadiness = async (input: {
         (model.status === 'blocked' && model.error?.retryKind !== 'retryable')
     )
   ) {
-    return { status: 'blocked' as const, evidence };
+    return {
+      status: 'blocked' as const,
+      evidence,
+      errorCode: models.find((model) => model.error?.retryKind === 'terminal')?.error?.code,
+    };
   }
   if (models.some((model) => model.status !== 'ready' || model.evidenceState !== 'valid')) {
     return { status: 'pending' as const, evidence };

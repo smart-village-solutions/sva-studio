@@ -110,6 +110,25 @@ describe('instance provisioning worker routing', () => {
     });
   });
 
+  it('preserves the terminal module error code for the parent provisioning run', async () => {
+    mocks.readReadiness.mockResolvedValue([
+      {
+        pluginId: 'ssf',
+        status: 'blocked',
+        evidenceState: 'missing',
+        revision: 1,
+        error: { code: 'ssf.tenant-instance-id-invalid', retryKind: 'terminal' },
+      },
+    ]);
+
+    await expect(
+      readModuleReadiness({ instanceId: 'tenant-a', lifecycles })
+    ).resolves.toMatchObject({
+      status: 'blocked',
+      errorCode: 'ssf.tenant-instance-id-invalid',
+    });
+  });
+
   it('fails closed when the persisted worker composition is empty', async () => {
     await expect(readModuleReadiness({ instanceId: 'tenant-a', lifecycles: [] })).rejects.toThrow(
       'provisioning_plugin_snapshot_missing'

@@ -198,6 +198,7 @@ export type InstanceRegistryServiceDeps = {
     Readonly<{
       status: 'ready' | 'pending' | 'blocked';
       evidence: Readonly<Record<string, unknown>>;
+      errorCode?: string;
     }>
   >;
   readonly reservedHostnames?: readonly string[] | (() => readonly string[]);

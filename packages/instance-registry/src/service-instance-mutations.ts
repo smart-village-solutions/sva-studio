@@ -1,4 +1,9 @@
-import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
+import {
+  buildPrimaryHostname,
+  canTransitionInstanceStatus,
+  isValidInstanceId,
+  normalizeHost,
+} from '@sva/core';
 
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
@@ -29,7 +34,17 @@ import {
 } from './service-instance-create.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
-function applyNewRealmDefaults(input: CreateInstanceProvisioningInput): CreateInstanceProvisioningInput;
+const assertValidInstanceId = (input: { instanceId: string; realmMode: string }): void => {
+  if (!isValidInstanceId(input.instanceId)) {
+    throw new Error(
+      input.realmMode === 'new' ? 'invalid_new_realm_instance_id' : 'invalid_instance_id'
+    );
+  }
+};
+
+function applyNewRealmDefaults(
+  input: CreateInstanceProvisioningInput
+): CreateInstanceProvisioningInput;
 function applyNewRealmDefaults(input: UpdateInstanceInput): UpdateInstanceInput;
 function applyNewRealmDefaults(
   input: CreateInstanceProvisioningInput | UpdateInstanceInput
@@ -52,6 +67,7 @@ function applyNewRealmDefaults(
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
+    assertValidInstanceId(input);
     const normalizedInput = applyNewRealmDefaults(input);
     const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
       parentDomain: normalizedInput.parentDomain,
@@ -59,9 +75,7 @@ export const createProvisioningRequestHandler =
       authIssuerUrl:
         normalizedInput.realmMode === 'new' ? undefined : normalizedInput.authIssuerUrl,
     });
-    const effectiveInput = authIssuerUrl
-      ? { ...normalizedInput, authIssuerUrl }
-      : normalizedInput;
+    const effectiveInput = authIssuerUrl ? { ...normalizedInput, authIssuerUrl } : normalizedInput;
     assertOidcClientIdsNotReserved(deps, effectiveInput);
     assertTenantHostnameAvailable(
       deps,
@@ -187,6 +201,7 @@ export const createChangeStatusHandler =
 export const createUpdateInstanceHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['updateInstance'] =>
   async (input: UpdateInstanceInput) => {
+    assertValidInstanceId(input);
     const effectiveInput = applyNewRealmDefaults(input);
     assertOidcClientIdsNotReserved(deps, effectiveInput);
     instanceRegistryServiceLogger.info('instance_update_started', {
@@ -226,8 +241,7 @@ export const createUpdateInstanceHandler =
         effectiveInput.instanceId,
         effectiveInput.authClientSecret
       ),
-      keepExistingAuthClientSecret:
-        !enteringNewRealm && !effectiveInput.authClientSecret?.trim(),
+      keepExistingAuthClientSecret: !enteringNewRealm && !effectiveInput.authClientSecret?.trim(),
       tenantAdminClient: effectiveInput.tenantAdminClient
         ? {
             clientId: effectiveInput.tenantAdminClient.clientId,

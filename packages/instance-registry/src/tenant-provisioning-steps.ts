@@ -210,6 +210,9 @@ const ingressStep: StepHandler = async ({
     } catch {
       // Diagnostic logging must never replace the provisioning failure.
     }
+    if (readDiagnosticErrorType(error) === 'TypeError') {
+      throw Object.assign(new Error('tenant_ingress_publish_invalid'), { cause: error });
+    }
     throw error;
   }
   assertExecutionActive();
@@ -226,17 +229,30 @@ const probeStep =
     if (typeof expectedRouterName !== 'string' || typeof expectedConfigHash !== 'string') {
       throw new Error('kassel_ingress_evidence_missing');
     }
-    const evidence = await requireDependency(
-      deps.probeTenantEndpoint,
-      'dependency_missing_probeTenantEndpoint'
-    )({
-      kind,
-      primaryHostname: instance.primaryHostname,
-      authIssuerUrl: instance.authIssuerUrl,
-      authClientId: instance.authClientId,
-      expectedRouterName,
-      expectedConfigHash,
-    });
+    let evidence: Awaited<ReturnType<NonNullable<typeof deps.probeTenantEndpoint>>>;
+    try {
+      evidence = await requireDependency(
+        deps.probeTenantEndpoint,
+        'dependency_missing_probeTenantEndpoint'
+      )({
+        kind,
+        primaryHostname: instance.primaryHostname,
+        authIssuerUrl: instance.authIssuerUrl,
+        authClientId: instance.authClientId,
+        expectedRouterName,
+        expectedConfigHash,
+      });
+    } catch (error) {
+      if (readDiagnosticErrorType(error) === 'TypeError') {
+        throw Object.assign(
+          new Error(
+            kind === 'ingress' ? 'tenant_ingress_probe_invalid' : 'tenant_login_probe_invalid'
+          ),
+          { cause: error }
+        );
+      }
+      throw error;
+    }
     assertExecutionActive();
     return continueAt(deps, run, workerId, next, now, { terminalEvidence: evidence });
   };
@@ -250,15 +266,25 @@ const moduleReadinessStep: StepHandler = async ({
   assertExecutionActive,
 }) => {
   assertExecutionActive();
-  const readiness = await requireDependency(
-    deps.readProvisioningModuleReadiness,
-    'dependency_missing_readProvisioningModuleReadiness'
-  )({
-    instanceId: instance.instanceId,
-    lifecycles: readTenantProvisioningPluginSnapshot(run).lifecycles,
-  });
+  let readiness: Awaited<ReturnType<NonNullable<typeof deps.readProvisioningModuleReadiness>>>;
+  try {
+    readiness = await requireDependency(
+      deps.readProvisioningModuleReadiness,
+      'dependency_missing_readProvisioningModuleReadiness'
+    )({
+      instanceId: instance.instanceId,
+      lifecycles: readTenantProvisioningPluginSnapshot(run).lifecycles,
+    });
+  } catch (error) {
+    if (readDiagnosticErrorType(error) === 'TypeError') {
+      throw Object.assign(new Error('module_readiness_probe_invalid'), { cause: error });
+    }
+    throw error;
+  }
   assertExecutionActive();
-  if (readiness.status === 'blocked') throw new Error('module_readiness_blocked');
+  if (readiness.status === 'blocked') {
+    throw new Error(readiness.errorCode ?? 'module_readiness_blocked');
+  }
   const pending = readiness.status === 'pending';
   return continueAt(deps, run, workerId, pending ? 'module_readiness' : 'login', now, {
     terminalEvidence: readiness.evidence,

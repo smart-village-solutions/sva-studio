@@ -1599,6 +1599,25 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
+  it('rejects a mixed-case instance id before any create-side effect', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'Labor',
+        displayName: 'Labor',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'existing',
+        authRealm: 'labor',
+        authClientId: 'sva-studio-login',
+        idempotencyKey: 'idem-invalid-instance-id',
+      })
+    ).rejects.toThrow('invalid_instance_id');
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
+  });
+
   it.each([
     [
       'registry_lookup',
@@ -1929,6 +1948,24 @@ describe('instance registry service facade', () => {
         authClientId: 'sva-studio-login',
       })
     ).rejects.toThrow('invalid_new_realm_instance_id');
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
+  it('rejects a mixed-case instance id before any update-side effect', async () => {
+    const repository = createRepository();
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.updateInstance({
+        instanceId: 'Labor',
+        displayName: 'Labor',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'existing',
+        authRealm: 'labor',
+        authClientId: 'sva-studio-login',
+      })
+    ).rejects.toThrow('invalid_instance_id');
     expect(repository.getInstanceById).not.toHaveBeenCalled();
     expect(repository.updateInstance).not.toHaveBeenCalled();
   });

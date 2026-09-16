@@ -8,6 +8,22 @@ export { ssfPlugin };
 const lifecycleError = (message: string, cause: Readonly<Record<string, unknown>>): Error =>
   Object.assign(new Error(message), { cause });
 
+const terminalBlockedProjection = (reason: string) => {
+  if (reason === 'target_integrity_failed') {
+    return {
+      code: 'ssf.authorization-profile-integrity-failed',
+      messageKey: 'ssf.errors.authorizationReconcileUnavailable',
+    };
+  }
+  if (reason === 'tenant_instance_id_invalid') {
+    return {
+      code: 'ssf.tenant-instance-id-invalid',
+      messageKey: 'ssf.errors.tenantInstanceIdInvalid',
+    };
+  }
+  return null;
+};
+
 const executeReadiness = async (
   runtime: SsfAuthorizationProjectionRuntime,
   context: Parameters<PluginJobExecutionHandler>[0]
@@ -74,14 +90,12 @@ export const createPluginJobExecutionHandlers = (
       });
     }
     if (result.status !== 'ready') {
-      const targetIntegrityFailure =
-        result.status === 'blocked' && result.reason === 'target_integrity_failed';
+      const terminalFailure =
+        result.status === 'blocked' ? terminalBlockedProjection(result.reason) : null;
       throw lifecycleError(`ssf_authorization_reconcile_${result.status}`, {
-        code: targetIntegrityFailure
-          ? 'ssf.authorization-profile-integrity-failed'
-          : 'ssf.authorization-reconcile-unavailable',
-        messageKey: 'ssf.errors.authorizationReconcileUnavailable',
-        retry: { kind: targetIntegrityFailure ? 'terminal' : 'retryable' },
+        code: terminalFailure?.code ?? 'ssf.authorization-reconcile-unavailable',
+        messageKey: terminalFailure?.messageKey ?? 'ssf.errors.authorizationReconcileUnavailable',
+        retry: { kind: terminalFailure ? 'terminal' : 'retryable' },
         details: {
           status: result.status,
           generation: result.generation,

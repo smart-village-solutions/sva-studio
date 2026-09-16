@@ -80,6 +80,22 @@ describe('http-contracts', () => {
     ).toBe(false);
   });
 
+  it.each(['Labor', 'tenant/foo', 'xn--bcher-kva', 'bad_label'])(
+    'rejects the invalid canonical instance id %s before realm-mode handling',
+    (instanceId) => {
+      expect(
+        createInstanceSchema.safeParse({
+          instanceId,
+          displayName: 'Demo',
+          parentDomain: 'studio.smart-village.app',
+          realmMode: 'existing',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+        }).success
+      ).toBe(false);
+    }
+  );
+
   it('allows create requests without a tenant admin client contract', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',

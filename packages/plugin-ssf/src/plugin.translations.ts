@@ -36,6 +36,8 @@ const de = {
       authorizationReconcileUnavailable: 'Die SSF-Berechtigungen konnten nicht abgeglichen werden.',
       rootDatabaseNotConfigured:
         'Die SSF-Datenbankverbindung ist nicht konfiguriert. Bitte die Konfiguration vervollständigen und den Abgleich erneut starten.',
+      tenantInstanceIdInvalid:
+        'Die Mandanten-ID ist ungültig. Entfernen Sie den fehlerhaften Mandanten und legen Sie ihn mit einer kleingeschriebenen ID neu an.',
       invalidAuthorizationReconcileContext:
         'Der SSF-Berechtigungsabgleich wurde ungültig aufgerufen.',
     },
@@ -104,6 +106,8 @@ const en = {
       authorizationReconcileUnavailable: 'SSF permissions could not be reconciled.',
       rootDatabaseNotConfigured:
         'The SSF database connection is not configured. Complete the configuration and restart reconciliation.',
+      tenantInstanceIdInvalid:
+        'The tenant ID is invalid. Remove the invalid tenant and recreate it with a lowercase ID.',
       invalidAuthorizationReconcileContext:
         'The SSF permission reconciliation was invoked incorrectly.',
     },

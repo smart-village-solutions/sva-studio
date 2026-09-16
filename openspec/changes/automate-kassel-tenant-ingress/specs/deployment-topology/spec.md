@@ -40,6 +40,13 @@ Docker-Socket oder DNS-/ACME-Zugangsdaten erhalten.
 - **AND** bleibt der bestehende Docker Provider für Bestandsrouter funktionsfähig
 - **AND** kann Traefik keine Routerdateien in den Writer-Ordner zurückschreiben
 
+#### Scenario: Traefik und der Studio-Service starten in unterschiedlicher Reihenfolge
+
+- **WHEN** der File Provider einen Tenant-Router vor der Docker-Provider-Registrierung des Studio-Service liest
+- **THEN** bewertet die Kasseler Abnahme nicht die einzelne Startup-Meldung, sondern die begrenzte Konvergenz des exakten providerqualifizierten Service
+- **AND** bestätigt sie anschließend Routerauswahl, öffentliches TLS und Studio-Readiness für den Tenant-Host
+- **AND** endet der Lauf terminal, wenn diese Postconditions innerhalb der Frist nicht erreicht werden
+
 ### Requirement: Kasseler Ingress-Automatisierung bleibt umgebungsspezifisch
 
 Das System SHALL den dynamischen File-Provider-Writer nur bei expliziter

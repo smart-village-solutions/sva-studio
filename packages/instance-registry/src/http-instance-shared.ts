@@ -1,4 +1,4 @@
-import type { InstanceStatus } from '@sva/core';
+import { isValidInstanceId, type InstanceStatus } from '@sva/core';
 import type { z } from 'zod';
 
 import { readDetailInstanceId } from './http-contracts.js';
@@ -90,10 +90,15 @@ export const readInstanceIdOrError = <TContext>(
   request: Request
 ): string | Response => {
   const instanceId = readDetailInstanceId(request);
-  return (
-    instanceId ??
-    deps.createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', deps.getRequestId())
-  );
+  if (!instanceId || !isValidInstanceId(instanceId)) {
+    return deps.createApiError(
+      400,
+      'invalid_instance_id',
+      instanceId ? 'Instanz-ID ist ungültig.' : 'Instanz-ID fehlt.',
+      deps.getRequestId()
+    );
+  }
+  return instanceId;
 };
 
 export type InstanceRegistryStatusMutation = Extract<

@@ -275,4 +275,70 @@ describe('runtime wiring', () => {
     expect(work).toHaveBeenCalledOnce();
     expect(afterModuleActivationPolicyReconcile).not.toHaveBeenCalled();
   });
+
+  it('runs the post-commit follow-up for activation reconciliation performed inside the work', async () => {
+    const events: string[] = [];
+    const client = createClient();
+    vi.mocked(client.query).mockImplementation(async (text) => {
+      events.push(text);
+      return { rowCount: 1, rows: [{ id: 'row-1' }] };
+    });
+    const repository = {
+      reconcileModuleActivationPolicies: vi.fn(async () => ({
+        changedModuleIds: ['events'],
+        conflictModuleIds: [],
+        unchangedModuleIds: [],
+      })),
+      listAssignedModules: vi.fn(async () => ['events']),
+      syncAssignedModuleIam: vi.fn(async () => ({
+        permissionsInserted: 0,
+        permissionsUpdated: 0,
+        permissionsUnchanged: 1,
+        grantsInserted: 0,
+        grantsUnchanged: 1,
+      })),
+      persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => ['events']),
+      appendAuditEvent: vi.fn(async () => undefined),
+    } as unknown as InstanceRegistryRepository;
+    const afterModuleActivationPolicyReconcile = vi.fn(async () => {
+      events.push('follow-up');
+    });
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: () => repository,
+      serviceDeps: {
+        invalidateHost: vi.fn(),
+        moduleIamRegistry: new Map([
+          ['events', { moduleId: 'events', permissionIds: ['events.read'] }],
+        ]),
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [
+            {
+              moduleId: 'events',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'events-1',
+            },
+          ],
+        }),
+      },
+      afterModuleActivationPolicyReconcile,
+    });
+
+    await runtime.withScopedRegistryService(
+      'tenant-a',
+      (service) => service.reconcileModuleActivationPolicies({ instanceId: 'tenant-a' }),
+      {
+        shouldReconcileActivationPolicies: async () => false,
+        awaitActivationPolicyFollowUp: true,
+      }
+    );
+
+    expect(events.indexOf('follow-up')).toBeGreaterThan(events.indexOf('COMMIT'));
+    expect(afterModuleActivationPolicyReconcile).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      changedModuleIds: ['events'],
+    });
+  });
 });

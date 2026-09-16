@@ -1,6 +1,6 @@
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { Pool, type PoolClient } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 
@@ -35,6 +35,7 @@ integrationDescribe('IAM baseline persistence', () => {
       max: 2,
     });
     const repository = createInstanceRegistryRepository(createExecutor(pool));
+    const afterModuleActivationPolicyReconcile = vi.fn(async () => undefined);
 
     try {
       const created = await repository.createInstance({
@@ -170,6 +171,7 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
             ],
           }),
         },
+        afterModuleActivationPolicyReconcile,
       });
 
       await expect(
@@ -182,7 +184,10 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
               actorId: 'integration-test',
               requestId: 'integration-iam-baseline-partial',
             }),
-          { shouldReconcileActivationPolicies: async () => false }
+          {
+            shouldReconcileActivationPolicies: async () => false,
+            awaitActivationPolicyFollowUp: true,
+          }
         )
       ).resolves.toEqual({
         ok: false,
@@ -192,6 +197,10 @@ VALUES ($1, 'ssf', 'manual', false, 'disabled'),
           'unknown_module_contract:legacy-module',
           'unknown_module_contract:removed-module',
         ],
+      });
+      expect(afterModuleActivationPolicyReconcile).toHaveBeenCalledWith({
+        instanceId,
+        changedModuleIds: expect.arrayContaining(['ssf', 'legacy-module', 'removed-module']),
       });
 
       const persisted = await pool.query<{

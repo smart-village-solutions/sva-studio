@@ -838,6 +838,7 @@ Das System MUST bei Tenant-Erstellung, explizitem IAM-Baseline-Reconcile und kon
 - **WHEN** der explizite IAM-Baseline-Reconcile ausgeführt wird
 - **THEN** erfasst das System die fehlenden Verträge vor und nach dem regulären Reconcile der Modulaktivierungsregeln
 - **AND** verschiebt es dessen IAM-Synchronisation in den anschließenden expliziten Baseline-Schritt
+- **AND** führt es den bestehenden Lifecycle-Folgelauf nach dem Commit mit dem intern ermittelten Reconcile-Ergebnis aus
 - **AND** verwendet es für die IAM-Basis anschließend ausschließlich die nach diesem Reconcile aktiven Module
 - **AND** persistiert das System die Core-Basis und die IAM-Basis aller danach aktiven Module mit bekanntem Vertrag
 - **AND** erfindet es keine Permissions oder Grants für das unbekannte Modul

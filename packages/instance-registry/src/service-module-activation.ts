@@ -34,6 +34,7 @@ export const createReconcileModuleActivationPoliciesHandler =
     if (result.conflictModuleIds.length > 0) {
       throw new Error(`plugin_activation_state_conflict:${result.conflictModuleIds.join(',')}`);
     }
+    deps.captureModuleActivationPolicyReconcileResult?.(result);
     if (result.changedModuleIds.length === 0 && !options.forceIamSync) {
       return result;
     }

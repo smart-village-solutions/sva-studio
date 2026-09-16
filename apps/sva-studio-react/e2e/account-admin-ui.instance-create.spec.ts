@@ -119,12 +119,15 @@ test('instance create flow bootstraps tenant admin structure with selected modul
 
   await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
   await navigateClientSide(page, '/admin/instances/new');
+  await page.getByRole('radio', { name: /Bestehender Realm:/u }).check();
   await page.locator('#instance-id').fill('demo');
   await page.locator('#instance-display-name').fill('Demo');
   await page.locator('#instance-parent-domain').fill('studio.example.org');
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.locator('#instance-auth-realm').fill('demo');
   await page.locator('#instance-auth-client-id').fill('tenant-client');
+  await page.locator('#instance-auth-client-secret').fill('tenant-client-secret');
+  await page.locator('#instance-tenant-admin-client-secret').fill('tenant-admin-client-secret');
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.locator('#instance-admin-username').fill('setup-admin');
   await page.locator('#instance-admin-email').fill('admin@example.org');

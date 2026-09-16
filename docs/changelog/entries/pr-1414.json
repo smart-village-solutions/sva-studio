@@ -1,0 +1,4 @@
+{
+  "prNumber": 1414,
+  "body": "Der Main-App-Browsertest für die Instanzanlage folgt wieder zuverlässig dem geprüften Pfad für bestehende Keycloak-Realms und blockiert dadurch geschützte Rollouts nicht mehr mit einer veralteten Formularannahme."
+}

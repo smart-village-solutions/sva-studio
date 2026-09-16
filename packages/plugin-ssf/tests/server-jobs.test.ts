@@ -85,6 +85,32 @@ describe('SSF authorization lifecycle job', () => {
     });
   });
 
+  it('stops retries for an invalid tenant instance id', async () => {
+    const handler = createPluginJobExecutionHandlers({
+      readiness: vi.fn(),
+      reconcile: vi.fn().mockResolvedValue({
+        status: 'blocked',
+        generation: 4,
+        reason: 'tenant_instance_id_invalid',
+      }),
+    })[SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID];
+
+    await expect(
+      handler?.({
+        job: { instanceId: 'Labor' },
+        tenantLifecycle: { operation: 'reconcile', generation: 4 },
+        throwIfCancellationRequested: vi.fn(),
+      } as never)
+    ).rejects.toMatchObject({
+      cause: {
+        code: 'ssf.tenant-instance-id-invalid',
+        messageKey: 'ssf.errors.tenantInstanceIdInvalid',
+        retry: { kind: 'terminal' },
+        details: { reason: 'tenant_instance_id_invalid' },
+      },
+    });
+  });
+
   it('stops retries when the SSF root database is not configured', async () => {
     const handler = createPluginJobExecutionHandlers({
       readiness: vi.fn(),

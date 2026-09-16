@@ -499,6 +499,14 @@ describe('http-instance-handlers', () => {
     );
     expect(missingId.status).toBe(400);
 
+    const invalidId = await handlers.updateInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances/Labor', { method: 'PATCH' }),
+      ctx
+    );
+    expect(invalidId.status).toBe(400);
+    expect(await readBody(invalidId)).toMatchObject({ code: 'invalid_instance_id' });
+    expect(service.updateInstance).not.toHaveBeenCalled();
+
     deps.parseRequestBody.mockResolvedValueOnce({
       ok: false,
       message: 'invalid update',

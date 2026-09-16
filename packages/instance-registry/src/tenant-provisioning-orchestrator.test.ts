@@ -234,67 +234,89 @@ describe('tenant provisioning parent orchestrator', () => {
     { step: 'login', next: 'tenant_iam_roles', callback: 'probeTenantEndpoint' },
     { step: 'tenant_iam_roles', next: 'tenant_iam_access', callback: 'reconcileTenantIamRoles' },
     { step: 'tenant_iam_access', next: 'activate', callback: 'probeTenantIamAccess' },
-  ] as const)('preserves $callback across the real runtime lock for $step', async ({ step, next, callback }) => {
-    const harness = createHarness();
-    harness.setReadiness('ready');
-    Object.assign(harness.getRun(), {
-      status: 'provisioning',
-      stepKey: step,
-      terminalEvidence: {
-        routerName: 'studio-tenant-tenant-a',
-        configHash: 'sha256:router',
-      },
-    });
-    const globalRepository = {
-      ...harness.repository,
-      getInstanceById: vi.fn<InstanceRegistryRepository['getInstanceById']>(),
-      listProvisioningRuns: vi.fn<InstanceRegistryRepository['listProvisioningRuns']>(),
-      updateProvisioningRun: vi.fn<InstanceRegistryRepository['updateProvisioningRun']>(),
-    };
-    const scopedRepository = {
-      ...harness.repository,
-      renewProvisioningRunLease: vi.fn<InstanceRegistryRepository['renewProvisioningRunLease']>(),
-    };
-    const globalClient = { query: vi.fn(async () => ({ rowCount: 0, rows: [] })), release: vi.fn() };
-    const scopedClient = { query: vi.fn(async () => ({ rowCount: 0, rows: [] })), release: vi.fn() };
-    const connect = vi.fn().mockResolvedValueOnce(globalClient).mockResolvedValueOnce(scopedClient);
-    const runtime = createInstanceRegistryRuntime({
-      resolvePool: () => ({ connect }),
-      createRepository: vi.fn().mockReturnValueOnce(globalRepository).mockReturnValueOnce(scopedRepository),
-      serviceDeps: { invalidateHost: vi.fn() },
-    });
+  ] as const)(
+    'preserves $callback across the real runtime lock for $step',
+    async ({ step, next, callback }) => {
+      const harness = createHarness();
+      harness.setReadiness('ready');
+      Object.assign(harness.getRun(), {
+        status: 'provisioning',
+        stepKey: step,
+        terminalEvidence: {
+          routerName: 'studio-tenant-tenant-a',
+          configHash: 'sha256:router',
+        },
+      });
+      const globalRepository = {
+        ...harness.repository,
+        getInstanceById: vi.fn<InstanceRegistryRepository['getInstanceById']>(),
+        listProvisioningRuns: vi.fn<InstanceRegistryRepository['listProvisioningRuns']>(),
+        updateProvisioningRun: vi.fn<InstanceRegistryRepository['updateProvisioningRun']>(),
+      };
+      const scopedRepository = {
+        ...harness.repository,
+        renewProvisioningRunLease: vi.fn<InstanceRegistryRepository['renewProvisioningRunLease']>(),
+      };
+      const globalClient = {
+        query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+        release: vi.fn(),
+      };
+      const scopedClient = {
+        query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+        release: vi.fn(),
+      };
+      const connect = vi
+        .fn()
+        .mockResolvedValueOnce(globalClient)
+        .mockResolvedValueOnce(scopedClient);
+      const runtime = createInstanceRegistryRuntime({
+        resolvePool: () => ({ connect }),
+        createRepository: vi
+          .fn()
+          .mockReturnValueOnce(globalRepository)
+          .mockReturnValueOnce(scopedRepository),
+        serviceDeps: { invalidateHost: vi.fn() },
+      });
 
-    await runtime.withRegistryProvisioningWorkerDeps((workerDeps) =>
-      processNextTenantProvisioningRun({
-        ...workerDeps,
-        publishTenantIngress: harness.deps.publishTenantIngress,
-        probeTenantEndpoint: harness.deps.probeTenantEndpoint,
-        readProvisioningModuleReadiness: harness.deps.readProvisioningModuleReadiness,
-        reconcileTenantIamRoles: harness.deps.reconcileTenantIamRoles,
-        probeTenantIamAccess: harness.deps.probeTenantIamAccess,
-      }, { workerId: 'worker-1', now })
-    );
+      await runtime.withRegistryProvisioningWorkerDeps((workerDeps) =>
+        processNextTenantProvisioningRun(
+          {
+            ...workerDeps,
+            publishTenantIngress: harness.deps.publishTenantIngress,
+            probeTenantEndpoint: harness.deps.probeTenantEndpoint,
+            readProvisioningModuleReadiness: harness.deps.readProvisioningModuleReadiness,
+            reconcileTenantIamRoles: harness.deps.reconcileTenantIamRoles,
+            probeTenantIamAccess: harness.deps.probeTenantIamAccess,
+          },
+          { workerId: 'worker-1', now }
+        )
+      );
 
-    expect(harness.deps[callback]).toHaveBeenCalledOnce();
-    expect(harness.getRun()).toMatchObject({ status: 'provisioning', stepKey: next, errorCode: undefined });
-    expect(scopedRepository.getInstanceById).toHaveBeenCalledWith('tenant-a');
-    expect(scopedRepository.listProvisioningRuns).toHaveBeenCalledWith('tenant-a');
-    expect(scopedRepository.updateProvisioningRun).toHaveBeenCalledOnce();
-    expect(globalRepository.getInstanceById).not.toHaveBeenCalled();
-    expect(globalRepository.listProvisioningRuns).not.toHaveBeenCalled();
-    expect(globalRepository.updateProvisioningRun).not.toHaveBeenCalled();
-    expect(globalRepository.renewProvisioningRunLease).toHaveBeenCalledOnce();
-    expect(scopedRepository.renewProvisioningRunLease).not.toHaveBeenCalled();
-    expect(scopedClient.query.mock.calls).toEqual([
-      ['BEGIN'],
-      ['SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', ['tenant-a']],
-      ['SET LOCAL ROLE iam_app;'],
-      ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
-      ['COMMIT'],
-    ]);
-    expect(globalClient.release).toHaveBeenCalledOnce();
-    expect(scopedClient.release).toHaveBeenCalledOnce();
-  });
+      expect(harness.deps[callback]).toHaveBeenCalledOnce();
+      expect(harness.getRun()).toMatchObject({
+        status: 'provisioning',
+        stepKey: next,
+        errorCode: undefined,
+      });
+      expect(scopedRepository.getInstanceById).toHaveBeenCalledWith('tenant-a');
+      expect(scopedRepository.listProvisioningRuns).toHaveBeenCalledWith('tenant-a');
+      expect(scopedRepository.updateProvisioningRun).toHaveBeenCalledOnce();
+      expect(globalRepository.getInstanceById).not.toHaveBeenCalled();
+      expect(globalRepository.listProvisioningRuns).not.toHaveBeenCalled();
+      expect(globalRepository.updateProvisioningRun).not.toHaveBeenCalled();
+      expect(globalRepository.renewProvisioningRunLease).toHaveBeenCalledOnce();
+      expect(scopedRepository.renewProvisioningRunLease).not.toHaveBeenCalled();
+      expect(scopedClient.query.mock.calls).toEqual([
+        ['BEGIN'],
+        ['SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', ['tenant-a']],
+        ['SET LOCAL ROLE iam_app;'],
+        ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
+        ['COMMIT'],
+      ]);
+      expect(globalClient.release).toHaveBeenCalledOnce();
+      expect(scopedClient.release).toHaveBeenCalledOnce();
+    }
+  );
 
   it('reaches terminal success only after Keycloak, ingress, login, module readiness, and tenant IAM postflight', async () => {
     const harness = createHarness();
@@ -474,11 +496,44 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.deps.publishTenantIngress).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'ssf.tenant-instance-id-invalid',
+    'ssf.root-database-not-configured',
+    'ssf.authorization-profile-integrity-failed',
+  ])('preserves terminal module cause %s in the parent provisioning run', async (errorCode) => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'module_readiness',
+    });
+    vi.mocked(harness.deps.readProvisioningModuleReadiness).mockResolvedValueOnce({
+      status: 'blocked',
+      evidence: { moduleStatus: 'blocked' },
+      errorCode,
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      errorCode,
+      terminalEvidence: {
+        failedStep: 'module_readiness',
+        errorCode,
+      },
+    });
+  });
+
   it('fails a recovered nonterminal run after its deadline', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {
       stepKey: 'login',
       deadlineAt: now.toISOString(),
+      errorCode: 'kassel_login_probe_failed',
+      terminalEvidence: {
+        loginStatus: 503,
+        loginClassification: 'upstream_unavailable',
+      },
     });
 
     await processNextTenantProvisioningRun(harness.deps, {
@@ -491,6 +546,14 @@ describe('tenant provisioning parent orchestrator', () => {
       stepKey: 'login',
       errorCode: 'provisioning_deadline_exceeded',
       completedAt: now.toISOString(),
+      terminalEvidence: {
+        loginStatus: 503,
+        loginClassification: 'upstream_unavailable',
+        errorCode: 'provisioning_deadline_exceeded',
+        lastDependencyErrorCode: 'kassel_login_probe_failed',
+        deadlineAt: now.toISOString(),
+        elapsedMs: 0,
+      },
     });
   });
 
@@ -553,6 +616,35 @@ describe('tenant provisioning parent orchestrator', () => {
     });
     expect(harness.getInstance().status).toBe('requested');
   });
+
+  it.each([
+    ['ingress', 'publishTenantIngress', 'tenant_ingress_publish_invalid'],
+    ['tls', 'probeTenantEndpoint', 'tenant_ingress_probe_invalid'],
+    ['login', 'probeTenantEndpoint', 'tenant_login_probe_invalid'],
+    ['module_readiness', 'readProvisioningModuleReadiness', 'module_readiness_probe_invalid'],
+  ] as const)(
+    'terminalizes an invalid %s boundary result',
+    async (stepKey, callback, expectedErrorCode) => {
+      const harness = createHarness();
+      Object.assign(harness.getRun(), {
+        status: 'provisioning',
+        stepKey,
+        terminalEvidence: {
+          routerName: 'studio-tenant-tenant-a',
+          configHash: 'sha256:router',
+        },
+      });
+      vi.mocked(harness.deps[callback]).mockRejectedValueOnce(new TypeError('invalid response'));
+
+      await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+      expect(harness.getRun()).toMatchObject({
+        status: 'failed',
+        stepKey,
+        errorCode: expectedErrorCode,
+      });
+    }
+  );
 
   it('logs redacted primitive diagnostics at the tenant ingress publish boundary', async () => {
     const harness = createHarness();
@@ -720,7 +812,9 @@ describe('tenant provisioning parent orchestrator', () => {
   it('preserves the scheduled retry when outer diagnostic logging throws', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
-    vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(new Error('update failed'));
+    vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
+      new Error('update failed')
+    );
     state.logger.warn.mockImplementationOnce(() => {
       throw new Error('logging_failed');
     });

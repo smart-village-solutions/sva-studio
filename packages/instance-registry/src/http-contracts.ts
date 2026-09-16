@@ -1,9 +1,6 @@
-import { instanceStatuses, isReservedTenantHostname } from '@sva/core';
+import { instanceStatuses, isReservedTenantHostname, isValidInstanceId } from '@sva/core';
 import { z } from 'zod';
-import {
-  isValidKeycloakRealmName,
-  KEYCLOAK_REALM_BASELINE,
-} from './keycloak-realm-baseline.js';
+import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
 const optionalUrlSchema = z
   .string()
@@ -47,8 +44,8 @@ const reservedInstanceIds = new Set(['audit']);
 
 const instanceIdSchema = z
   .string()
-  .trim()
   .min(1)
+  .refine(isValidInstanceId, 'Ungültige Instanz-ID')
   .refine(
     (value) => !reservedInstanceIds.has(value) && !isReservedTenantHostname(value),
     'Reservierte Instanz-ID'

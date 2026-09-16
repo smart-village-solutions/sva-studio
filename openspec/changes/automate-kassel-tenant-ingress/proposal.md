@@ -56,6 +56,17 @@ Verträge ausgerichtet.
 - Der Kassel-Modus ist explizit und standardmäßig aus. Dev, Staging, Production
   und andere Studio-Installationen behalten ihren vorhandenen Ingress- und
   Promote-Vertrag.
+- Instanz-IDs werden an Create- und Update-Grenzen vor Registry-, Realm-,
+  Hostname- oder Lifecycle-Persistenz gegen den kanonischen kleingeschriebenen
+  DNS-Label-Vertrag geprüft. Ungültige IDs werden nicht still normalisiert.
+- Unveränderliche Lifecycle-Blocker bewahren ihren konkreten Fehlercode und
+  enden terminal. Eine unveränderte terminale Generation darf nicht erneut
+  durch `plugin_tenant_lifecycle_retry` eingestellt werden; nur explizit als
+  transient klassifizierte Fehler erhalten begrenzte Wiederholungen.
+- Der fehlerhafte Kasseler Test-Tenant `Labor` wird nach einem verifizierten
+  Backup vollständig und korreliert aus Studio, Keycloak, SSF und dynamischem
+  Ingress entfernt. Eine Rename-Migration oder Erhaltung seiner Identität ist
+  ausdrücklich nicht erforderlich.
 
 ## Current Baseline
 

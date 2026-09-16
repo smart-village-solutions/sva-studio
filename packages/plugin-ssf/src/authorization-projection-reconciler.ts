@@ -47,6 +47,18 @@ export interface SsfAuthorizationProjectionTarget {
   resumeTokenIssuance(instanceId: string): Promise<void>;
 }
 
+type SsfProjectionFailureReason =
+  | 'login_client_preparation_failed'
+  | 'runtime_baseline_preparation_failed'
+  | 'tenant_instance_id_invalid'
+  | 'tenant_readiness_failed'
+  | 'token_issuance_suspend_failed'
+  | 'target_integrity_failed'
+  | 'target_write_failed'
+  | 'target_readback_failed'
+  | 'target_readback_mismatch'
+  | 'token_issuance_resume_failed';
+
 export type SsfAuthorizationProjectionReconcileResult =
   | Readonly<{
       status: 'ready';
@@ -61,30 +73,11 @@ export type SsfAuthorizationProjectionReconcileResult =
   | Readonly<{
       status: 'blocked';
       generation: number;
-      reason:
-        | 'login_client_preparation_failed'
-        | 'runtime_baseline_preparation_failed'
-        | 'tenant_readiness_failed'
-        | 'token_issuance_suspend_failed'
-        | 'target_integrity_failed'
-        | 'target_write_failed'
-        | 'target_readback_failed'
-        | 'target_readback_mismatch'
-        | 'token_issuance_resume_failed';
+      reason: SsfProjectionFailureReason;
     }>;
 
 class SsfProjectionPhaseError extends Error {
-  constructor(
-    readonly reason:
-      | 'login_client_preparation_failed'
-      | 'runtime_baseline_preparation_failed'
-      | 'tenant_readiness_failed'
-      | 'token_issuance_suspend_failed'
-      | 'target_integrity_failed'
-      | 'target_write_failed'
-      | 'target_readback_failed'
-      | 'token_issuance_resume_failed'
-  ) {
+  constructor(readonly reason: SsfProjectionFailureReason) {
     super(reason);
     this.name = 'SsfProjectionPhaseError';
   }
@@ -107,8 +100,12 @@ const prepareRuntimeBaseline = async (
 ): Promise<void> => {
   try {
     await target.prepareRuntimeBaseline(instanceId);
-  } catch {
-    throw new SsfProjectionPhaseError('runtime_baseline_preparation_failed');
+  } catch (error) {
+    throw new SsfProjectionPhaseError(
+      error instanceof Error && error.message === 'ssf_tenant_instance_id_invalid'
+        ? 'tenant_instance_id_invalid'
+        : 'runtime_baseline_preparation_failed'
+    );
   }
 };
 
@@ -121,6 +118,19 @@ const prepareLoginClients = async (
   } catch {
     throw new SsfProjectionPhaseError('login_client_preparation_failed');
   }
+};
+
+const requireTenantReadiness = async (
+  target: SsfAuthorizationProjectionTarget,
+  instanceId: string,
+  desiredRevision: string
+): Promise<void> => {
+  try {
+    if (await target.isReady(instanceId, desiredRevision)) return;
+  } catch {
+    // The same stable phase error applies to a negative and a rejected readiness probe.
+  }
+  throw new SsfProjectionPhaseError('tenant_readiness_failed');
 };
 
 const reconcileClaimedProjection = async (
@@ -169,9 +179,7 @@ const reconcileClaimedProjection = async (
     } catch {
       throw new SsfProjectionPhaseError('token_issuance_resume_failed');
     }
-    if (!(await dependencies.target.isReady(staged.instanceId, staged.desiredRevision))) {
-      throw new SsfProjectionPhaseError('tenant_readiness_failed');
-    }
+    await requireTenantReadiness(dependencies.target, staged.instanceId, staged.desiredRevision);
     const published = await store.markReady({
       instanceId: staged.instanceId,
       generation: staged.generation,

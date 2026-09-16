@@ -112,6 +112,25 @@ nachgewiesenen Stufe fortsetzen.
 - **THEN** akzeptiert das System höchstens einen wirksamen Elternlauf
 - **AND** referenziert oder verwirft die konkurrierende Anforderung gemäß dem bestehenden Idempotenzvertrag
 
+#### Scenario: Eine Instanz-ID verletzt den kanonischen DNS-Label-Vertrag
+
+- **WHEN** Create oder Update eine nicht kleingeschriebene oder anderweitig ungültige Instanz-ID wie `Labor` erhält
+- **THEN** lehnt das System die Eingabe vor Registry-, Realm-, Hostname-, Ingress- und Lifecycle-Persistenz ab
+- **AND** normalisiert es die ID nicht still auf einen anderen Wert
+
+#### Scenario: Eine SSF-Projektion trifft auf einen unveränderlichen Blocker
+
+- **WHEN** die Runtime-Baseline wegen einer ungültigen Instanz-ID oder einer anderen stabil klassifizierten Ursache nicht erzeugt werden kann
+- **THEN** bewahrt das System den konkreten Fehlercode in Job, Lifecycle und korrelierter Provisioning-Evidenz
+- **AND** klassifiziert es die aktuelle Generation terminal
+- **AND** stellt der Retry-Scheduler dieselbe unveränderte Generation nicht erneut ein
+
+#### Scenario: Eine transiente Abhängigkeit überschreitet ihre Deadline
+
+- **WHEN** ein TLS- oder Readiness-Probe seine begrenzte Deadline ausschöpft
+- **THEN** endet der betroffene Lauf terminal mit Schritt, Fehlercode, verstrichener Zeit und redigiertem letztem Abhängigkeitszustand
+- **AND** erzeugt das System keinen weiteren kurzfristigen Retry ohne explizite Operator-Aktion oder neue Generation
+
 #### Scenario: Ein älterer Kindlauf war erfolgreich
 
 - **WHEN** ein spezialisierter Kindlauf erfolgreich ist, aber nicht zum aktuellen Sollsnapshot des Elternlaufs gehört

@@ -50,6 +50,22 @@ describe('Kassel tenant public probes', () => {
     );
   });
 
+  it.each([
+    ['ingress', 'kassel_ingress_probe_failed'],
+    ['login', 'kassel_login_probe_failed'],
+  ] as const)('keeps %s transport failures on the retryable probe path', async (kind, code) => {
+    vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
+
+    await expect(
+      probeKasselTenantEndpoint(
+        { ...input, kind },
+        vi.fn(async () => {
+          throw new TypeError('fetch failed');
+        })
+      )
+    ).rejects.toMatchObject({ message: code, cause: expect.any(TypeError) });
+  });
+
   it('rejects ingress responses without the expected login redirect', async () => {
     vi.stubEnv('SVA_TENANT_INGRESS_MODE', 'kassel-traefik-file');
     const localRedirect = new Response(null, {

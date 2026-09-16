@@ -110,11 +110,21 @@ export const probeKasselTenantEndpoint = async (
   fetcher: typeof fetch = fetch
 ): Promise<Readonly<Record<string, unknown>>> => {
   requireKasselMode();
-  const response = await fetcher(`https://${input.primaryHostname}/auth/login`, {
-    redirect: 'manual',
-    signal: AbortSignal.timeout(10_000),
-    headers: { 'User-Agent': 'sva-studio-kassel-provisioner/1.0' },
-  });
+  let response: Response;
+  try {
+    response = await fetcher(`https://${input.primaryHostname}/auth/login`, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10_000),
+      headers: { 'User-Agent': 'sva-studio-kassel-provisioner/1.0' },
+    });
+  } catch (error) {
+    throw Object.assign(
+      new Error(
+        input.kind === 'ingress' ? 'kassel_ingress_probe_failed' : 'kassel_login_probe_failed'
+      ),
+      { cause: error }
+    );
+  }
   requireExpectedRouter(response, input);
   const loginEvidence = requireValidLoginRedirect(response, input);
   if (input.kind === 'login') return loginEvidence;

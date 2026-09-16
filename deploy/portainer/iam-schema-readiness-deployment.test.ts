@@ -90,6 +90,18 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneRunbook).toContain('ps app provisioner');
   });
 
+  it('pins the Kassel app to the Traefik docker service contract', () => {
+    expect(standaloneKasselIngress).toContain("traefik.enable: 'true'");
+    expect(standaloneKasselIngress).toContain('traefik.docker.network: ssf-backend_default');
+    expect(standaloneKasselIngress).toContain(
+      "traefik.http.services.sva-studio-ssf.loadbalancer.server.port: '3000'"
+    );
+    expect(standaloneKasselIngress).toContain('- ssf-edge');
+    expect(standaloneKasselIngress).toContain(
+      'SVA_KASSEL_TRAEFIK_SERVICE: ${SVA_KASSEL_TRAEFIK_SERVICE:-sva-studio-ssf@docker}'
+    );
+  });
+
   it('ships the SSF migrator and migrations in every Studio runtime image', () => {
     for (const dockerfile of dockerfiles) {
       expect(dockerfile).toContain(

@@ -1,3 +1,5 @@
+import { redactObject } from '@sva/server-runtime';
+
 export type InstanceRegistryFailureContext = {
   readonly operation: string;
   readonly requestId?: string;
@@ -22,6 +24,63 @@ const readSafeString = (value: unknown, key: string): string | undefined => {
   if (value === null || typeof value !== 'object') return undefined;
   const candidate = (value as Record<string, unknown>)[key];
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
+};
+
+const readProperty = (value: unknown, key: string): unknown => {
+  if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
+    return undefined;
+  }
+  try {
+    return Reflect.get(value, key);
+  } catch {
+    return undefined;
+  }
+};
+
+const SAFE_DIAGNOSTIC_ERROR_TYPES = new Set([
+  'AggregateError',
+  'DatabaseError',
+  'Error',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'SystemError',
+  'TypeError',
+  'URIError',
+]);
+
+const readDiagnosticString = (value: unknown, key: string): string | undefined => {
+  const candidate = readProperty(value, key);
+  return typeof candidate === 'string' ? candidate : undefined;
+};
+
+export const readDiagnosticErrorType = (error: unknown): string => {
+  const name = readDiagnosticString(error, 'name');
+  return name && SAFE_DIAGNOSTIC_ERROR_TYPES.has(name) ? name : typeof error;
+};
+
+export const buildProvisioningFailureDiagnostics = (
+  error: unknown,
+  options: { includeNodeSystemFields?: boolean } = {}
+): Readonly<Record<string, unknown>> => {
+  const code = readDiagnosticString(error, 'code');
+  const syscall = readDiagnosticString(error, 'syscall');
+  const isNodeSystemError = Boolean(code && /^E[A-Z0-9_]{1,99}$/u.test(code) && syscall);
+  if (options.includeNodeSystemFields && isNodeSystemError) {
+    return redactObject({
+      diagnostic_error: {
+        name: readDiagnosticErrorType(error),
+        code,
+        syscall,
+        path: readDiagnosticString(error, 'path'),
+        dest: readDiagnosticString(error, 'dest'),
+      },
+    });
+  }
+  if (code && /^[0-9A-Z]{5}$/u.test(code)) {
+    return redactObject({ diagnostic_error: { name: readDiagnosticErrorType(error), code } });
+  }
+  return redactObject({ diagnostic_error: { name: readDiagnosticErrorType(error) } });
 };
 
 const stepKeys = new Set([
@@ -62,7 +121,10 @@ export const annotateInstanceRegistryError = (error: unknown, stepKey: string): 
   return error;
 };
 
-export const runInstanceRegistryStep = async <T>(stepKey: string, work: () => Promise<T>): Promise<T> => {
+export const runInstanceRegistryStep = async <T>(
+  stepKey: string,
+  work: () => Promise<T>
+): Promise<T> => {
   try {
     return await work();
   } catch (error) {
@@ -91,7 +153,11 @@ export const buildInstanceRegistryFailureLog = (
     ...(stepKey ? { step_key: stepKey } : {}),
     ...(context.dependency ? { dependency: context.dependency } : {}),
     ...(readSafeString(error, 'table') ? { database_table: readSafeString(error, 'table') } : {}),
-    ...(readSafeString(error, 'column') ? { database_column: readSafeString(error, 'column') } : {}),
-    ...(readSafeString(error, 'constraint') ? { database_constraint: readSafeString(error, 'constraint') } : {}),
+    ...(readSafeString(error, 'column')
+      ? { database_column: readSafeString(error, 'column') }
+      : {}),
+    ...(readSafeString(error, 'constraint')
+      ? { database_constraint: readSafeString(error, 'constraint') }
+      : {}),
   };
 };

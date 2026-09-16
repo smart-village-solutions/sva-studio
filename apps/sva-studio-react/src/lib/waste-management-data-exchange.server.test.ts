@@ -383,7 +383,7 @@ describe('Waste data exchange operations', () => {
         id: 'tour-package',
         name: 'Bio-Tour',
         wasteFractionIds: ['fraction-package'],
-        active: true,
+        status: 'published',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       },

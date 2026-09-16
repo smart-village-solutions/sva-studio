@@ -17,9 +17,33 @@ describe('planWasteLocationTourPickupDateImport', () => {
           },
         ],
         regions: [{ id: 'region-existing', name: 'Prignitz', createdAt: '', updatedAt: '' }],
-        cities: [{ id: 'city-existing', name: 'Perleberg', regionId: 'region-existing', createdAt: '', updatedAt: '' }],
-        streets: [{ id: 'street-existing', name: 'Ackerstr.', cityId: 'city-existing', createdAt: '', updatedAt: '' }],
-        houseNumbers: [{ id: 'house-existing', number: 'Alle Hausnummern', streetId: 'street-existing', createdAt: '', updatedAt: '' }],
+        cities: [
+          {
+            id: 'city-existing',
+            name: 'Perleberg',
+            regionId: 'region-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        streets: [
+          {
+            id: 'street-existing',
+            name: 'Ackerstr.',
+            cityId: 'city-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        houseNumbers: [
+          {
+            id: 'house-existing',
+            number: 'Alle Hausnummern',
+            streetId: 'street-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
         locations: [
           {
             id: 'location-existing',
@@ -38,7 +62,7 @@ describe('planWasteLocationTourPickupDateImport', () => {
             name: 'PPK.7.2',
             wasteFractionIds: ['fraction-existing'],
             recurrence: null,
-            active: true,
+            status: 'published',
             createdAt: '',
             updatedAt: '',
           },
@@ -128,9 +152,33 @@ describe('planWasteLocationTourPickupDateImport', () => {
           },
         ],
         regions: [{ id: 'region-existing', name: 'Prignitz', createdAt: '', updatedAt: '' }],
-        cities: [{ id: 'city-existing', name: 'Perleberg', regionId: 'region-existing', createdAt: '', updatedAt: '' }],
-        streets: [{ id: 'street-existing', name: 'Ackerstraße', cityId: 'city-existing', createdAt: '', updatedAt: '' }],
-        houseNumbers: [{ id: 'house-existing', number: 'Alle Hausnummern', streetId: 'street-existing', createdAt: '', updatedAt: '' }],
+        cities: [
+          {
+            id: 'city-existing',
+            name: 'Perleberg',
+            regionId: 'region-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        streets: [
+          {
+            id: 'street-existing',
+            name: 'Ackerstraße',
+            cityId: 'city-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        houseNumbers: [
+          {
+            id: 'house-existing',
+            number: 'Alle Hausnummern',
+            streetId: 'street-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
         locations: [
           {
             id: 'location-existing',
@@ -149,7 +197,7 @@ describe('planWasteLocationTourPickupDateImport', () => {
             name: 'Gemischt.1',
             wasteFractionIds: ['fraction-paper'],
             recurrence: null,
-            active: true,
+            status: 'published',
             createdAt: '',
             updatedAt: '',
           },
@@ -300,9 +348,33 @@ describe('planWasteLocationTourPickupDateImport', () => {
       {
         fractions: [],
         regions: [{ id: 'region-existing', name: 'Prignitz', createdAt: '', updatedAt: '' }],
-        cities: [{ id: 'city-existing', name: 'Perleberg', regionId: 'region-existing', createdAt: '', updatedAt: '' }],
-        streets: [{ id: 'street-existing', name: 'Alle Straßen', cityId: 'city-existing', createdAt: '', updatedAt: '' }],
-        houseNumbers: [{ id: 'house-existing', number: 'Alle Hausnummern', streetId: 'street-existing', createdAt: '', updatedAt: '' }],
+        cities: [
+          {
+            id: 'city-existing',
+            name: 'Perleberg',
+            regionId: 'region-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        streets: [
+          {
+            id: 'street-existing',
+            name: 'Alle Straßen',
+            cityId: 'city-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        houseNumbers: [
+          {
+            id: 'house-existing',
+            number: 'Alle Hausnummern',
+            streetId: 'street-existing',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
         locations: [
           {
             id: 'location-existing',

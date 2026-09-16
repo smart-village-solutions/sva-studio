@@ -12,6 +12,13 @@ import type { SqlClient, WasteOperationSqlPool } from './waste-management-operat
 const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
 const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn());
 
+const withReminderReconciliation = <T extends object>(repository: T) => ({
+  listActiveSubscriptions: vi.fn(async () => []),
+  cancelInvalidReminderOutboxEntries: vi.fn(async () => 0),
+  claimOutboxEntryForDispatch: vi.fn(async () => true),
+  ...repository,
+});
+
 const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
   id: 'iface-1',
   instanceId: 'instance-1',
@@ -120,7 +127,9 @@ describe('waste management operations runtime', () => {
       },
     ]);
     const markOutboxEntrySent = vi.fn(async () => undefined);
+    const listActiveSubscriptions = vi.fn(async () => []);
     const reminderRepository = {
+      listActiveSubscriptions,
       leaseDueOutboxEntries,
       markOutboxEntrySent,
       markOutboxEntryFailed: vi.fn(async () => undefined),
@@ -130,7 +139,9 @@ describe('waste management operations runtime', () => {
       const actual = await importOriginal<typeof import('@sva/data-repositories')>();
       return {
         ...actual,
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -192,13 +203,87 @@ describe('waste management operations runtime', () => {
     expect(markOutboxEntrySent).toHaveBeenCalledWith({
       outboxId: 'outbox-1',
       now: '2026-06-15T06:00:00.000Z',
+      leasedAt: '2026-06-15T06:00:00.000Z',
       providerMessageId: 'provider-1',
     });
+    expect(
+      listActiveSubscriptions.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    ).toBeLessThan(leaseDueOutboxEntries.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
     expect(result.details).toMatchObject({
       operation: 'process-email-reminder-outbox',
       mode: 'executed',
       leasedCount: 1,
       sentCount: 1,
+      retryScheduledCount: 0,
+      failedCount: 0,
+    });
+  });
+
+  it('does not dispatch a reminder when its lease can no longer be claimed', async () => {
+    const dispatchMail = vi.fn();
+    const claimOutboxEntryForDispatch = vi.fn(async () => false);
+    const markOutboxEntrySent = vi.fn();
+    const markOutboxEntryFailed = vi.fn();
+    const reminderRepository = {
+      leaseDueOutboxEntries: vi.fn(async () => [
+        {
+          id: 'outbox-cancelled',
+          transportId: 'transport-smtp',
+          attemptCount: 0,
+          payload: {},
+        },
+      ]),
+      claimOutboxEntryForDispatch,
+      markOutboxEntrySent,
+      markOutboxEntryFailed,
+    };
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        createInterfaceRecordWithEmailReminderConfig(),
+        createMailTransportInterfaceRecord(),
+      ]),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      dispatchMail,
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(claimOutboxEntryForDispatch).toHaveBeenCalledWith({
+      outboxId: 'outbox-cancelled',
+      leasedAt: '2026-06-15T06:00:00.000Z',
+    });
+    expect(dispatchMail).not.toHaveBeenCalled();
+    expect(markOutboxEntrySent).not.toHaveBeenCalled();
+    expect(markOutboxEntryFailed).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'process-email-reminder-outbox',
+      leasedCount: 1,
+      sentCount: 0,
       retryScheduledCount: 0,
       failedCount: 0,
     });
@@ -242,6 +327,15 @@ describe('waste management operations runtime', () => {
       await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
       dispatchMail: vi.fn(),
     });
 
@@ -335,7 +429,9 @@ describe('waste management operations runtime', () => {
       const actual = await importOriginal<typeof import('@sva/data-repositories')>();
       return {
         ...actual,
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -405,7 +501,9 @@ describe('waste management operations runtime', () => {
       const actual = await importOriginal<typeof import('@sva/data-repositories')>();
       return {
         ...actual,
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -512,7 +610,9 @@ describe('waste management operations runtime', () => {
       const actual = await importOriginal<typeof import('@sva/data-repositories')>();
       return {
         ...actual,
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -574,6 +674,7 @@ describe('waste management operations runtime', () => {
     expect(markOutboxEntrySent).toHaveBeenCalledWith({
       outboxId: 'outbox-legacy-transport',
       now: '2026-06-15T06:00:00.000Z',
+      leasedAt: '2026-06-15T06:00:00.000Z',
       providerMessageId: 'provider-2',
     });
     expect(result.details).toMatchObject({
@@ -585,6 +686,19 @@ describe('waste management operations runtime', () => {
 
   it('materializes reminders for explicit assignments even when public signup is disabled', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const listWasteTours = vi.fn(async () => [
+      {
+        id: 'tour-1',
+        name: 'Biotour',
+        description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
+        wasteFractionIds: ['fraction-bio'],
+        recurrence: null,
+        firstDate: undefined,
+        endDate: undefined,
+        customDates: undefined,
+        status: 'published' as const,
+      },
+    ]);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
         {
@@ -619,19 +733,7 @@ describe('waste management operations runtime', () => {
           updatedAt: '',
         },
       ]),
-      listWasteTours: vi.fn(async () => [
-        {
-          id: 'tour-1',
-          name: 'Biotour',
-          description: '<p>Behälter <strong>am Vorabend</strong> bereitstellen.</p>',
-          wasteFractionIds: ['fraction-bio'],
-          recurrence: null,
-          firstDate: undefined,
-          endDate: undefined,
-          customDates: undefined,
-          active: true,
-        },
-      ]),
+      listWasteTours,
       listWasteLocationTourLinks: vi.fn(async () => []),
       listWasteCollectionLocations: vi.fn(async () => [
         {
@@ -663,7 +765,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -699,6 +803,7 @@ describe('waste management operations runtime', () => {
       referenceTime: '2026-06-15T06:00:00.000Z',
     });
 
+    expect(listWasteTours).toHaveBeenCalledWith({ status: 'published' });
     expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
     expect(enqueueOutboxEntry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -765,7 +870,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -799,7 +904,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -880,7 +987,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -909,7 +1016,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -1000,6 +1109,7 @@ describe('waste management operations runtime', () => {
 
   it('counts every subscription item as skipped when no matching collection location is active', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
+    const cancelInvalidReminderOutboxEntries = vi.fn(async () => 1);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
         {
@@ -1018,6 +1128,7 @@ describe('waste management operations runtime', () => {
         },
       ]),
       enqueueOutboxEntry,
+      cancelInvalidReminderOutboxEntries,
     };
     const repository = createRepositoryMock({
       listWasteFractions: vi.fn(async () => [
@@ -1053,7 +1164,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -1079,10 +1192,15 @@ describe('waste management operations runtime', () => {
     });
 
     expect(enqueueOutboxEntry).not.toHaveBeenCalled();
+    expect(cancelInvalidReminderOutboxEntries).toHaveBeenCalledWith({
+      validDedupeKeys: [],
+      now: '2026-06-15T06:00:00.000Z',
+    });
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',
       skippedPickupCount: 2,
+      cancelledOutboxCount: 1,
     });
   });
 
@@ -1154,7 +1272,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1181,7 +1299,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -1273,7 +1393,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1302,7 +1422,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -1405,7 +1527,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1432,7 +1554,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -1546,7 +1670,7 @@ describe('waste management operations runtime', () => {
           name: 'Biotour',
           wasteFractionIds: ['fraction-bio'],
           recurrence: 'weekly',
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1563,7 +1687,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 
@@ -1706,7 +1832,7 @@ describe('waste management operations runtime', () => {
           firstDate: undefined,
           endDate: undefined,
           customDates: undefined,
-          active: true,
+          status: 'published',
         },
       ]),
       listWasteLocationTourLinks: vi.fn(async () => [
@@ -1733,7 +1859,9 @@ describe('waste management operations runtime', () => {
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
-        createWasteEmailReminderRepository: vi.fn(() => reminderRepository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
       };
     });
 

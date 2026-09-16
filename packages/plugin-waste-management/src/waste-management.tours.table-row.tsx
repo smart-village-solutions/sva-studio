@@ -35,10 +35,7 @@ const WasteToursRowSummaryCell = ({
   <td className="w-[150px] px-3 py-3">
     {search ? (
       <StudioTableValueAction emphasis="primary" asChild>
-        <Link
-          to="/plugins/waste-management"
-          search={toWasteTourEditSearch(search, tour.id)}
-        >
+        <Link to="/plugins/waste-management" search={toWasteTourEditSearch(search, tour.id)}>
           {tour.name}
         </Link>
       </StudioTableValueAction>
@@ -103,6 +100,7 @@ type WasteToursTableRowProps = {
   readonly saving: boolean;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenStatusDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
@@ -111,7 +109,6 @@ type WasteToursTableRowProps = {
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 };
 
@@ -171,11 +168,7 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
         onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
       />
-      <WasteToursRowStatusCell
-        tour={tour}
-        disabled={props.assignmentContextLoading || props.saving}
-        onToggleTourStatus={props.onToggleTourStatus}
-      />
+      <WasteToursRowStatusCell tour={tour} onOpenStatusDialog={props.onOpenStatusDialog} />
       <WasteToursRowActionsCell
         tour={tour}
         onOpenCalendar={props.onOpenCalendar}

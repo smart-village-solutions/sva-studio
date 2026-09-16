@@ -68,17 +68,17 @@ export const toToursQuerySearch = (
 
 export const toToursStatusSearch = (
   search: WasteManagementSearchParams,
-  status: WasteManagementSearchParams['status']
+  status: WasteManagementSearchParams['tourStatus']
 ): WasteManagementSearchParams => ({
   ...search,
-  status,
+  tourStatus: status,
   page: 1,
 });
 
 export const toToursFiltersSearch = (
   search: WasteManagementSearchParams,
   q: string,
-  status: WasteManagementSearchParams['status'],
+  status: WasteManagementSearchParams['tourStatus'],
   tourValidityPeriod: WasteManagementSearchParams['tourValidityPeriod'],
   tourWasteFractionId: WasteManagementSearchParams['tourWasteFractionId'],
   firstDateFrom: WasteManagementSearchParams['firstDateFrom'],
@@ -88,7 +88,7 @@ export const toToursFiltersSearch = (
 ): WasteManagementSearchParams => ({
   ...search,
   q,
-  status,
+  tourStatus: status,
   tourValidityPeriod,
   tourWasteFractionId,
   firstDateFrom,
@@ -137,6 +137,7 @@ const createToursFormNavigation = (
       ...mapTourWithPickupDatesToForm(tour, []),
       id: createDefaultTourForm().id,
       name: `${tour.name} (Kopie)`,
+      status: 'draft',
     });
     void navigate({
       to: '/plugins/waste-management',
@@ -161,7 +162,7 @@ const createToursPagingNavigation = (search: WasteManagementSearchParams, naviga
     }),
   setQuery: (q: string) =>
     void navigate({ to: '/plugins/waste-management', search: toToursQuerySearch(search, q) }),
-  setStatus: (status: WasteManagementSearchParams['status']) =>
+  setStatus: (status: WasteManagementSearchParams['tourStatus']) =>
     void navigate({
       to: '/plugins/waste-management',
       search: toToursStatusSearch(search, status),
@@ -185,7 +186,7 @@ export const useWasteToursListNavigation = (
     },
     setFilters: (
       q: string,
-      status: WasteManagementSearchParams['status'],
+      status: WasteManagementSearchParams['tourStatus'],
       tourValidityPeriod: WasteManagementSearchParams['tourValidityPeriod'],
       tourWasteFractionId: WasteManagementSearchParams['tourWasteFractionId'],
       firstDateFrom: WasteManagementSearchParams['firstDateFrom'],

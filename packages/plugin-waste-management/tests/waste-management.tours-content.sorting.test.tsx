@@ -147,8 +147,8 @@ describe('WasteToursContent sorting and delete flows', () => {
         assignmentContextLoading={false}
         message={null}
         tours={[
-          { id: 'tour-1', name: 'Tour Eins', recurrence: 'weekly', active: true } as never,
-          { id: 'tour-2', name: 'Tour Zwei', recurrence: 'monthly', active: false } as never,
+          { id: 'tour-1', name: 'Tour Eins', recurrence: 'weekly', status: 'published' } as never,
+          { id: 'tour-2', name: 'Tour Zwei', recurrence: 'monthly', status: 'archived' } as never,
         ]}
         fractions={[] as never}
         masterDataOverview={

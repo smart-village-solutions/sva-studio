@@ -123,6 +123,9 @@ const coreHandlerMocks = vi.hoisted(() => ({
   updateWasteManagementTourValidityBulkInternal: vi.fn(
     async () => new Response('update-tour-validity-bulk')
   ),
+  updateWasteManagementTourStatusBulkInternal: vi.fn(
+    async () => new Response('update-tour-status-bulk')
+  ),
   updateWasteManagementTourAssignmentInternal: vi.fn(
     async () => new Response('update-tour-assignment')
   ),
@@ -185,6 +188,7 @@ const saverMocks = vi.hoisted(() => ({
   saveWasteTour: vi.fn(async () => null),
   createWasteAnnualTourTransfer: vi.fn(async () => null),
   updateWasteTourValidityBulk: vi.fn(async () => ({ updatedCount: 1 })),
+  updateWasteTourStatusBulk: vi.fn(async () => ({ updatedCount: 1 })),
   saveWasteTourAssignment: vi.fn(async () => null),
   deleteWasteTour: vi.fn(async () => null),
   deleteWasteTourAssignment: vi.fn(async () => null),
@@ -261,6 +265,7 @@ vi.mock('./server-loaders.js', () => ({
     saveWasteTour: saverMocks.saveWasteTour,
     createWasteAnnualTourTransfer: saverMocks.createWasteAnnualTourTransfer,
     updateWasteTourValidityBulk: saverMocks.updateWasteTourValidityBulk,
+    updateWasteTourStatusBulk: saverMocks.updateWasteTourStatusBulk,
     saveWasteTourAssignment: saverMocks.saveWasteTourAssignment,
     deleteWasteTour: saverMocks.deleteWasteTour,
     deleteWasteTourAssignment: saverMocks.deleteWasteTourAssignment,
@@ -588,6 +593,14 @@ describe('wasteManagementHandlers', () => {
         deps: {
           ...sharedWasteManagementDepsMock,
           updateWasteTourValidityBulk: saverMocks.updateWasteTourValidityBulk,
+        },
+      },
+      {
+        handlerKey: 'updateTourStatusBulk',
+        internal: coreHandlerMocks.updateWasteManagementTourStatusBulkInternal,
+        deps: {
+          ...sharedWasteManagementDepsMock,
+          updateWasteTourStatusBulk: saverMocks.updateWasteTourStatusBulk,
         },
       },
       {

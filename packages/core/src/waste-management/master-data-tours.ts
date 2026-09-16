@@ -1,5 +1,12 @@
+import type { WasteTourStatus } from './master-data-tour-status.js';
+
 export const wasteTourRecurrences = [
-  'weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom',
+  'weekly',
+  'biweekly',
+  'fourweekly',
+  'yearly',
+  'on-demand',
+  'custom',
 ] as const;
 
 export type WasteTourRecurrence = (typeof wasteTourRecurrences)[number];
@@ -30,14 +37,14 @@ export type WasteTourRecord = {
   readonly firstDate?: string;
   readonly endDate?: string;
   readonly customDates?: readonly WasteCustomTourDate[];
-  readonly active: boolean;
+  readonly status: WasteTourStatus;
   readonly locationCount?: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
 
 export type WasteTourListFilter = {
-  readonly active?: boolean;
+  readonly status?: WasteTourStatus;
   readonly recurrence?: WasteTourRecurrence;
   readonly wasteFractionId?: string;
   readonly search?: string;

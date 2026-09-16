@@ -113,35 +113,27 @@ export const WasteToursRowDatesCell = ({
 
 export const WasteToursRowStatusCell = ({
   tour,
-  disabled,
-  onToggleTourStatus,
+  onOpenStatusDialog,
 }: {
   readonly tour: WasteTourRecord;
-  readonly disabled: boolean;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
+  readonly onOpenStatusDialog: (tour: WasteTourRecord) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const tone = tour.status === 'published' ? 'success' : 'neutral';
 
   return (
     <td className="w-[92px] px-3 py-3">
       <div className="flex items-start justify-center">
-        <button
+        <StudioTableValueAction
           type="button"
-          aria-label={
-            tour.active
-              ? pt('tours.actions.deactivateStatus', { value: tour.name })
-              : pt('tours.actions.activateStatus', { value: tour.name })
-          }
-          disabled={disabled}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          onClick={() => {
-            void onToggleTourStatus(tour, !tour.active);
-          }}
+          className="min-h-11 min-w-11 items-center justify-center"
+          aria-label={pt('tours.actions.changeStatusAccessible', { name: tour.name })}
+          onClick={() => onOpenStatusDialog(tour)}
         >
-          <StudioStatusBadge editable tone={tour.active ? 'success' : 'neutral'}>
-            {tour.active ? pt('tours.table.active') : pt('tours.table.inactive')}
+          <StudioStatusBadge tone={tone} editable>
+            {pt(`tours.status.${tour.status}`)}
           </StudioStatusBadge>
-        </button>
+        </StudioTableValueAction>
       </div>
     </td>
   );

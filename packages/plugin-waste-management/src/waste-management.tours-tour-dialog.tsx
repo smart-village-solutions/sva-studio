@@ -64,6 +64,7 @@ export const TourDialog = ({
             locations={locations}
             customRecurrencePresets={customRecurrencePresets}
             saving={saving}
+            statusReadOnly={mode === 'create'}
             pt={pt}
             onChange={onChange}
           />

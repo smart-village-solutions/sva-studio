@@ -229,7 +229,7 @@ export const mapWasteAnnualTour = async (
         date: item.mappedDate as string,
         description: item.description,
       })),
-      active: false,
+      status: 'draft',
       locationCount: links.length,
     },
     locationTourLinks: await Promise.all(

@@ -139,6 +139,7 @@ describe('pluginWasteManagement contract', () => {
       pageSize: 25,
       fractionsStatus: 'all',
       status: 'all',
+      tourStatus: 'all',
       tourValidityPeriod: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -175,6 +176,7 @@ describe('pluginWasteManagement contract', () => {
       pageSize: 25,
       fractionsStatus: 'all',
       status: 'all',
+      tourStatus: 'all',
       tourValidityPeriod: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
@@ -249,7 +251,7 @@ describe('pluginWasteManagement contract', () => {
           'text/csv',
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ],
-        schemaVersion: '1.0.0',
+        schemaVersion: '2.0.0',
         schemaStrategy: 'waste-management.touren.schema',
         mappingStrategy: 'waste-management.touren.mapping',
         validation: { mode: 'preflight-and-commit' },
@@ -402,6 +404,10 @@ describe('pluginWasteManagement contract', () => {
       {
         eventType: 'waste-management.tour.validity-bulk-updated',
         titleKey: 'wasteManagement.audit.tourValidityBulkUpdated',
+      },
+      {
+        eventType: 'waste-management.tour.status-bulk-updated',
+        titleKey: 'wasteManagement.audit.tourStatusBulkUpdated',
       },
       {
         eventType: 'waste-management.annual-tour-transfer.created',

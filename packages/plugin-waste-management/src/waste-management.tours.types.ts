@@ -17,7 +17,7 @@ export type TourFormState = {
   readonly endDate: string;
   readonly customDates: readonly WasteCustomTourDate[];
   readonly dateLocationAssignments: readonly TourDateLocationAssignmentFormState[];
-  readonly active: boolean;
+  readonly status: WasteTourRecord['status'];
 };
 
 export type TourDateLocationAssignmentFormState = {

@@ -25,7 +25,7 @@ describe('public waste repository', () => {
     expect(execute.mock.calls[0]?.[0].text).toContain('WHERE EXISTS');
     expect(execute.mock.calls[0]?.[0].text).not.toContain('SELECT DISTINCT');
     expect(execute.mock.calls[0]?.[0].text).toContain('cl.active = true');
-    expect(execute.mock.calls[0]?.[0].text).toContain('t.active = true');
+    expect(execute.mock.calls[0]?.[0].text).toContain("t.status = 'published'");
   });
 
   it('projects, deduplicates and sorts active public collection locations', async () => {
@@ -126,7 +126,7 @@ describe('public waste repository', () => {
         text: expect.stringContaining('WHERE cl.active = true'),
       })
     );
-    expect(execute.mock.calls[0]?.[0].text).toContain('t.active = true');
+    expect(execute.mock.calls[0]?.[0].text).toContain("t.status = 'published'");
     expect(execute.mock.calls[0]?.[0].text).not.toContain('waste_email_reminder');
   });
 

@@ -1,4 +1,8 @@
-import type { WasteTourRecord, WasteTourValidityBulkUpdateInput } from '@sva/plugin-sdk';
+import type {
+  WasteTourRecord,
+  WasteTourStatusBulkUpdateInput,
+  WasteTourValidityBulkUpdateInput,
+} from '@sva/plugin-sdk';
 
 import type {
   WasteManagementMasterDataOverview,
@@ -12,6 +16,7 @@ import type {
 } from './waste-management.tours.filter-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
+import type { WasteTourStatusUpdateResult } from './waste-management.tours.status-mutation.js';
 
 export const createTourAssignmentSelectionSummary = ({
   filteredLocationIds,
@@ -34,6 +39,27 @@ export const createTourAssignmentSelectionSummary = ({
       (locationId) => !visibleLocationIdSet.has(locationId)
     ).length,
     visibleLocationIdSet,
+  };
+};
+
+export const createWasteToursSelectionSummary = ({
+  filteredTourIds,
+  selectedTourIds,
+}: {
+  readonly filteredTourIds: readonly string[];
+  readonly selectedTourIds: readonly string[];
+}) => {
+  const filteredTourIdSet = new Set(filteredTourIds);
+  const selectedTourIdSet = new Set(selectedTourIds);
+  const selectedFilteredCount = filteredTourIds.filter((tourId) =>
+    selectedTourIdSet.has(tourId)
+  ).length;
+
+  return {
+    allFilteredSelected:
+      filteredTourIds.length > 0 && selectedFilteredCount === filteredTourIds.length,
+    someFilteredSelected: selectedFilteredCount > 0,
+    hiddenSelectedCount: selectedTourIds.filter((tourId) => !filteredTourIdSet.has(tourId)).length,
   };
 };
 
@@ -136,6 +162,7 @@ export type WasteToursDataProps = {
   readonly assignmentContextLoading: boolean;
   readonly message: import('./waste-management.page.support.js').StatusMessage | null;
   readonly tours: readonly WasteTourRecord[];
+  readonly allTours?: readonly WasteTourRecord[];
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly masterDataOverview: WasteManagementMasterDataOverview | null;
   readonly schedulingOverview: WasteManagementSchedulingOverview | null;
@@ -150,10 +177,12 @@ export type WasteToursActionsProps = {
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<WasteBulkDeleteResult>;
   readonly onUpdateTourValidityBulk: (input: WasteTourValidityBulkUpdateInput) => Promise<boolean>;
+  readonly onUpdateTourStatusBulk: (
+    input: WasteTourStatusBulkUpdateInput
+  ) => Promise<WasteTourStatusUpdateResult>;
 };
 
 export type WasteToursCapabilitiesProps = {

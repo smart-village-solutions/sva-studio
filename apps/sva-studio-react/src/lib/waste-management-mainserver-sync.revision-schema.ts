@@ -26,6 +26,7 @@ export const wasteMainserverRevisionTriggerSpecs = [
       'first_date',
       'end_date',
       'custom_dates',
+      'status',
       'active',
     ],
   },

@@ -31,6 +31,7 @@ const createSearch = (): WasteManagementSearchParams => ({
   page: 3,
   pageSize: 25,
   status: 'active',
+  tourStatus: 'published',
   tourValidityPeriod: 'all',
   tourWasteFractionId: 'fraction-1',
   firstDateFrom: '2026-01-01',
@@ -109,9 +110,9 @@ describe('waste-management.tours-list-view.navigation', () => {
       page: 1,
     });
 
-    expect(toToursStatusSearch(search, 'inactive')).toEqual({
+    expect(toToursStatusSearch(search, 'archived')).toEqual({
       ...search,
-      status: 'inactive',
+      tourStatus: 'archived',
       page: 1,
     });
 
@@ -119,7 +120,7 @@ describe('waste-management.tours-list-view.navigation', () => {
       toToursFiltersSearch(
         search,
         'papier',
-        'inactive',
+        'draft',
         search.tourValidityPeriod,
         search.tourWasteFractionId,
         search.firstDateFrom,
@@ -130,7 +131,7 @@ describe('waste-management.tours-list-view.navigation', () => {
     ).toEqual({
       ...search,
       q: 'papier',
-      status: 'inactive',
+      tourStatus: 'draft',
       tourWasteFractionId: 'fraction-1',
       page: 1,
     });
@@ -139,7 +140,7 @@ describe('waste-management.tours-list-view.navigation', () => {
       toToursFiltersSearch(
         search,
         'papier',
-        'inactive',
+        'archived',
         'current',
         'fraction-2',
         '2026-02-01',
@@ -150,7 +151,7 @@ describe('waste-management.tours-list-view.navigation', () => {
     ).toEqual({
       ...search,
       q: 'papier',
-      status: 'inactive',
+      tourStatus: 'archived',
       tourValidityPeriod: 'current',
       tourWasteFractionId: 'fraction-2',
       firstDateFrom: '2026-02-01',
@@ -195,7 +196,7 @@ describe('waste-management.tours-list-view.navigation', () => {
         firstDate: '2026-01-07',
         endDate: '2026-12-31',
         customDates: [],
-        active: true,
+        status: 'published',
         createdAt: '',
         updatedAt: '',
       } as never);
@@ -209,6 +210,7 @@ describe('waste-management.tours-list-view.navigation', () => {
         firstDate: '2026-01-07',
         endDate: '2026-12-31',
         customDates: [],
+        status: 'draft',
       })
     );
 

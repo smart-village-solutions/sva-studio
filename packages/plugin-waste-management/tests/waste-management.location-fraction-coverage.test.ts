@@ -22,14 +22,14 @@ const tour = (
   wasteFractionIds: readonly string[],
   firstDate?: string,
   endDate?: string,
-  active = true
+  status: WasteTourRecord['status'] = 'published'
 ): WasteTourRecord => ({
   id,
   name: id,
   wasteFractionIds,
   firstDate,
   endDate,
-  active,
+  status,
   createdAt: timestamp,
   updatedAt: timestamp,
 });
@@ -132,19 +132,22 @@ describe('checkLocationFractionCoverage', () => {
     expect(check([location('inactive', false)], [], [])).toEqual([]);
   });
 
-  it('does not treat inactive tours as fraction coverage', () => {
-    expect(
-      check(
-        [location('only-inactive')],
-        [tour('inactive-paper', ['paper'], '2027-01-01', '2027-12-31', false)],
-        [link('link-inactive', 'only-inactive', 'inactive-paper')]
-      )
-    ).toEqual([
-      {
-        locationId: 'only-inactive',
-        kind: 'missing',
-        gaps: [{ startDate: '2027-01-01', endDate: '2027-12-31' }],
-      },
-    ]);
-  });
+  it.each(['draft', 'archived'] as const)(
+    'does not treat %s tours as fraction coverage',
+    (status) => {
+      expect(
+        check(
+          [location(`only-${status}`)],
+          [tour(`${status}-paper`, ['paper'], '2027-01-01', '2027-12-31', status)],
+          [link(`link-${status}`, `only-${status}`, `${status}-paper`)]
+        )
+      ).toEqual([
+        {
+          locationId: `only-${status}`,
+          kind: 'missing',
+          gaps: [{ startDate: '2027-01-01', endDate: '2027-12-31' }],
+        },
+      ]);
+    }
+  );
 });

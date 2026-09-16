@@ -55,7 +55,7 @@ const result: WasteAnnualTourTransferResult = {
   createdCount: 1,
   existingCount: 0,
   classificationCounts: { transferable: 1, alreadyEffective: 0, blocked: 0 },
-  listTarget: { tourValidityPeriod: 'next', status: 'inactive' },
+  listTarget: { tourValidityPeriod: 'next', status: 'draft' },
 };
 
 const permissions = vi.fn(async () => ({
@@ -260,9 +260,7 @@ describe('annual tour transfer handlers', () => {
         idempotencyKey: 'idem-1',
       })
     );
-    expect(emitAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ requestId: 'idem-1' })
-    );
+    expect(emitAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ requestId: 'idem-1' }));
     expect(idempotency.complete).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 })
     );

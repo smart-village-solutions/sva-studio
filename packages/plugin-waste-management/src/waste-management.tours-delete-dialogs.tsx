@@ -1,66 +1,20 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioConfirmDialog, StudioDestructiveActionDialog } from '@sva/studio-ui-react';
+import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import { useState, type RefObject } from 'react';
 import type { WasteBulkDeleteResult } from './waste-management.page.support.js';
 
 type WasteToursDeleteDialogsProps = Readonly<{
   tourPendingDelete: WasteTourRecord | null;
-  tourPendingStatusChange: {
-    readonly tour: WasteTourRecord;
-    readonly nextActive: boolean;
-  } | null;
   bulkDeleteOpen: boolean;
   selectedTourIds: readonly string[];
   onCancelSingle: () => void;
-  onCancelStatusChange: () => void;
   onCancelBulk: () => void;
-  onConfirmStatusChange: () => Promise<void>;
-  statusChangePending: boolean;
-  statusChangeError: string | null;
   onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   onDeleteTours: (tourIds: readonly string[]) => Promise<WasteBulkDeleteResult>;
   onAfterBulkDelete: (failedIds: readonly string[]) => void;
   fallbackFocusRef?: RefObject<HTMLElement | null>;
 }>;
-
-const WasteTourStatusDialog = ({
-  change,
-  pending,
-  errorMessage,
-  onCancel,
-  onConfirm,
-}: Readonly<{
-  change: WasteToursDeleteDialogsProps['tourPendingStatusChange'];
-  pending: boolean;
-  errorMessage: string | null;
-  onCancel: () => void;
-  onConfirm: () => Promise<void>;
-}>) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const prefix = change?.nextActive ? 'activate' : 'deactivate';
-  return (
-    <StudioConfirmDialog
-      open={change !== null}
-      title={pt(`tours.statusDialog.${prefix}Title`)}
-      description={pt(`tours.statusDialog.${prefix}Description`, {
-        value: change?.tour.name ?? '',
-      })}
-      confirmLabel={pt('tours.statusDialog.confirm')}
-      cancelLabel={pt('tours.statusDialog.cancel')}
-      onCancel={onCancel}
-      confirmDisabled={pending}
-      cancelDisabled={pending}
-      onConfirm={() => void onConfirm()}
-    >
-      {errorMessage ? (
-        <p role="alert" className="text-sm text-destructive">
-          {errorMessage}
-        </p>
-      ) : null}
-    </StudioConfirmDialog>
-  );
-};
 
 const WasteTourDeleteDialog = ({
   open,
@@ -138,15 +92,10 @@ const useTourDeleteFeedback = (
 
 export const WasteToursDeleteDialogs = ({
   tourPendingDelete,
-  tourPendingStatusChange,
   bulkDeleteOpen,
   selectedTourIds,
   onCancelSingle,
-  onCancelStatusChange,
   onCancelBulk,
-  onConfirmStatusChange,
-  statusChangePending,
-  statusChangeError,
   onDeleteTour,
   onDeleteTours,
   onAfterBulkDelete,
@@ -158,13 +107,6 @@ export const WasteToursDeleteDialogs = ({
 
   return (
     <>
-      <WasteTourStatusDialog
-        change={tourPendingStatusChange}
-        pending={statusChangePending}
-        errorMessage={statusChangeError}
-        onCancel={onCancelStatusChange}
-        onConfirm={onConfirmStatusChange}
-      />
       <WasteTourDeleteDialog
         open={tourPendingDelete !== null}
         title={pt('tours.deleteDialog.title')}

@@ -55,7 +55,7 @@ describe('Waste annual tour transfer against PostgreSQL', () => {
       recurrence: 'weekly',
       firstDate: '2026-01-05',
       endDate: '2026-12-31',
-      active: true,
+      status: 'published',
     });
     await repository.upsertWasteTour({
       id: staleSourceTourId,
@@ -64,7 +64,7 @@ describe('Waste annual tour transfer against PostgreSQL', () => {
       recurrence: 'biweekly',
       firstDate: '2026-01-12',
       endDate: '2026-12-31',
-      active: true,
+      status: 'published',
     });
   }, 60_000);
 
@@ -72,7 +72,7 @@ describe('Waste annual tour transfer against PostgreSQL', () => {
     await pool.end();
   });
 
-  it('commits an inactive following-year tour atomically and replays its stable identity', async () => {
+  it('commits a draft following-year tour atomically and replays its stable identity', async () => {
     const { preview, mappedTour } = await previewTour(sourceTourId);
     const create = {
       sourceYear: 2026,
@@ -99,7 +99,7 @@ describe('Waste annual tour transfer against PostgreSQL', () => {
     await expect(
       repository.getWasteTourById(mappedTour?.targetTour.id as string)
     ).resolves.toMatchObject({
-      active: false,
+      status: 'draft',
       firstDate: mappedTour?.targetTour.firstDate,
       endDate: '2027-12-31',
     });

@@ -1044,7 +1044,7 @@ describe('waste master data repository', () => {
         first_date: '2026-01-15',
         end_date: null,
         custom_dates: [{ date: '2026-01-15', description: 'Sonderleerung' }],
-        active: true,
+        status: 'published',
         location_count: 3,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
@@ -1053,7 +1053,7 @@ describe('waste master data repository', () => {
 
     await expect(
       createWasteMasterDataRepository(list.executor).listWasteTours({
-        active: true,
+        status: 'published',
         recurrence: 'custom',
         wasteFractionId: 'fraction-1',
         search: 'Nord',
@@ -1071,14 +1071,14 @@ describe('waste master data repository', () => {
         firstDate: '2026-01-15',
         endDate: undefined,
         customDates: [{ date: '2026-01-15', description: 'Sonderleerung' }],
-        active: true,
+        status: 'published',
         locationCount: 3,
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T11:00:00.000Z',
       },
     ]);
 
-    expect(list.statements[0]?.values).toEqual([true, 'custom', 'fraction-1', '%Nord%']);
+    expect(list.statements[0]?.values).toEqual(['published', 'custom', 'fraction-1', '%Nord%']);
     expect(list.statements[0]?.text).toContain('FROM waste_tours t');
     expect(list.statements[0]?.text).toContain('COUNT(ltl.id)::int AS location_count');
 
@@ -1095,7 +1095,7 @@ describe('waste master data repository', () => {
         first_date: null,
         end_date: '2026-12-31',
         custom_dates: [{ invalid: true }],
-        active: false,
+        status: 'archived',
         location_count: null,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
@@ -1116,7 +1116,7 @@ describe('waste master data repository', () => {
       firstDate: undefined,
       endDate: '2026-12-31',
       customDates: [],
-      active: false,
+      status: 'archived',
       locationCount: undefined,
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T11:00:00.000Z',
@@ -1135,7 +1135,7 @@ describe('waste master data repository', () => {
       firstDate: '2026-02-01',
       endDate: undefined,
       customDates: [{ date: '2026-02-01' }],
-      active: true,
+      status: 'published',
       locationCount: undefined,
     });
 
@@ -1149,7 +1149,7 @@ describe('waste master data repository', () => {
       '2026-02-01',
       null,
       JSON.stringify([{ date: '2026-02-01' }]),
-      true,
+      'published',
     ]);
   });
 
@@ -1220,6 +1220,27 @@ describe('waste master data repository', () => {
         endDate: { mode: 'set', value: '2027-12-31' },
       }).values
     ).toEqual([['tour-1', 'tour-2'], 'set', '2027-01-01', 'set', '2027-12-31']);
+  });
+
+  it('updates only the status of selected tours in bulk', async () => {
+    const database = createExecutor([{}]);
+    const repository = createWasteMasterDataRepository(database.executor);
+
+    await expect(
+      repository.updateWasteTourStatusBulk({ tourIds: ['tour-1', 'tour-2'], status: 'archived' })
+    ).resolves.toBe(1);
+
+    expect(database.statements[0]?.text).toContain('UPDATE waste_tours');
+    expect(database.statements[0]?.text).toContain('SET status = $2');
+    expect(database.statements[0]?.text).toContain("active = ($2 = 'published')");
+    expect(database.statements[0]?.text).not.toContain('name =');
+    expect(database.statements[0]?.values).toEqual([['tour-1', 'tour-2'], 'archived']);
+    expect(
+      wasteMasterDataStatements.updateWasteTourStatusBulk({
+        tourIds: ['tour-3'],
+        status: 'published',
+      }).values
+    ).toEqual([['tour-3'], 'published']);
   });
 
   it('lists, reads and upserts custom recurrence presets', async () => {

@@ -10,7 +10,7 @@ export const isWasteAnnualTourRelevant = (
   year: number,
   source: WasteAnnualTourTransferSource
 ): boolean =>
-  tour.active &&
+  tour.status === 'published' &&
   (wasteAnnualTourOverlapsYear(tour, year) ||
     (tour.customDates ?? []).some((item) => isWasteAnnualDateInYear(item.date, year)) ||
     wasteAnnualRelationshipsFor(source.locationTourPickupDates, tour.id).some((item) =>

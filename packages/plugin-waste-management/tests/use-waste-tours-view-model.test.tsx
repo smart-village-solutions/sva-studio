@@ -31,7 +31,7 @@ const state = vi.hoisted(() => ({
       wasteFractionIds: [],
       recurrence: 'custom',
       customDates: [{ date: '2026-08-18' }],
-      active: true,
+      status: 'published',
       createdAt: '2026-06-14T10:00:00.000Z',
       updatedAt: '2026-06-14T10:00:00.000Z',
     },
@@ -42,7 +42,9 @@ const state = vi.hoisted(() => ({
     setTourForm: vi.fn((updater: unknown) => {
       state.current.tourForm =
         typeof updater === 'function'
-          ? (updater as (current: typeof state.current.tourForm) => typeof state.current.tourForm)(state.current.tourForm)
+          ? (updater as (current: typeof state.current.tourForm) => typeof state.current.tourForm)(
+              state.current.tourForm
+            )
           : (updater as typeof state.current.tourForm);
     }),
   },

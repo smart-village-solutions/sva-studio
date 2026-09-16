@@ -20,7 +20,7 @@ import { WasteToursToolbar } from './waste-management.tours.toolbar.js';
 export type WasteToursFilterViewModel = {
   readonly filterDialogOpen: boolean;
   readonly query: string;
-  readonly status: 'all' | 'active' | 'inactive';
+  readonly status: 'all' | WasteTourRecord['status'];
   readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
@@ -28,7 +28,7 @@ export type WasteToursFilterViewModel = {
   readonly endDateFrom: string | undefined;
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
-  readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftStatus: 'all' | WasteTourRecord['status'];
   readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
@@ -39,7 +39,7 @@ export type WasteToursFilterViewModel = {
   readonly onOpenFilterDialog: () => void;
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onDraftQueryChange: (value: string) => void;
-  readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftStatusChange: (value: 'all' | WasteTourRecord['status']) => void;
   readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
@@ -58,6 +58,9 @@ export type WasteToursTableViewModel = {
   readonly assignmentContextLoading: boolean;
   readonly allVisibleSelected: boolean;
   readonly someVisibleSelected: boolean;
+  readonly allFilteredSelected: boolean;
+  readonly someFilteredSelected: boolean;
+  readonly hiddenSelectedCount: number;
   readonly saving: boolean;
   readonly sortField: WasteToursSortField | null;
   readonly sortDirection: WasteToursSortDirection;
@@ -68,8 +71,11 @@ export type WasteToursTableViewModel = {
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onSortChange: (field: WasteToursSortField) => void;
   readonly toggleSelectAllVisible: (checked: boolean) => void;
+  readonly toggleSelectAllFiltered: (checked: boolean) => void;
+  readonly clearSelection: () => void;
   readonly toggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenStatusDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
@@ -78,7 +84,6 @@ export type WasteToursTableViewModel = {
   readonly canDuplicateTour: boolean;
   readonly canManageScheduling: boolean;
   readonly search?: WasteManagementSearchParams;
-  readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly setTourPendingDelete: Dispatch<SetStateAction<WasteTourRecord | null>>;
 };
 
@@ -87,6 +92,7 @@ type WasteToursContentBodyProps = {
   readonly onOpenCreateDialog: () => void;
   readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
   readonly setBulkValidityOpen: Dispatch<SetStateAction<boolean>>;
+  readonly setBulkStatusOpen: Dispatch<SetStateAction<boolean>>;
   readonly onOpenAnnualTransfer: () => void;
   readonly filters: WasteToursFilterViewModel;
   readonly table: WasteToursTableViewModel;
@@ -99,6 +105,7 @@ export const WasteToursContentBody = ({
   onOpenCreateDialog,
   setBulkDeleteOpen,
   setBulkValidityOpen,
+  setBulkStatusOpen,
   onOpenAnnualTransfer,
   filters,
   table,
@@ -115,6 +122,10 @@ export const WasteToursContentBody = ({
       <WasteToursToolbar
         filterDialogOpen={filters.filterDialogOpen}
         selectedCount={table.selectedTourIds.length}
+        hiddenSelectedCount={table.hiddenSelectedCount}
+        filteredCount={table.tours.length}
+        allFilteredSelected={table.allFilteredSelected}
+        someFilteredSelected={table.someFilteredSelected}
         query={filters.query}
         status={filters.status}
         tourValidityPeriod={filters.tourValidityPeriod}
@@ -140,6 +151,9 @@ export const WasteToursContentBody = ({
         onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
         onOpenBulkDelete={() => setBulkDeleteOpen(true)}
         onOpenBulkValidity={() => setBulkValidityOpen(true)}
+        onOpenBulkStatus={() => setBulkStatusOpen(true)}
+        onToggleSelectAllFiltered={table.toggleSelectAllFiltered}
+        onClearSelection={table.clearSelection}
         onDraftQueryChange={filters.onDraftQueryChange}
         onDraftStatusChange={filters.onDraftStatusChange}
         onDraftTourValidityPeriodChange={filters.onDraftTourValidityPeriodChange}

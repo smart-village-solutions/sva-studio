@@ -13,6 +13,8 @@ import type {
   WasteManagementImportSourceFormat,
   WasteTourDateShiftFollowUpMode,
   WasteTourRecurrence,
+  WasteTourStatus,
+  WasteTourStatusBulkUpdateInput,
   WasteTourValidityBulkUpdateInput,
   WasteAnnualTourTransferCreateInput,
 } from '@sva/plugin-sdk';
@@ -55,7 +57,7 @@ export type CreateWasteManagementTourInput = Readonly<{
   firstDate?: string;
   endDate?: string;
   customDates?: readonly WasteCustomTourDate[];
-  active: boolean;
+  status: 'draft';
 }>;
 
 export type UpdateWasteManagementTourInput = Readonly<{
@@ -67,10 +69,11 @@ export type UpdateWasteManagementTourInput = Readonly<{
   firstDate?: string;
   endDate?: string;
   customDates?: readonly WasteCustomTourDate[];
-  active: boolean;
+  status: WasteTourStatus;
 }>;
 
 export type UpdateWasteManagementTourValidityBulkInput = WasteTourValidityBulkUpdateInput;
+export type UpdateWasteManagementTourStatusBulkInput = WasteTourStatusBulkUpdateInput;
 
 export type PreviewWasteAnnualTourTransferInput = Readonly<{
   sourceYear: number;

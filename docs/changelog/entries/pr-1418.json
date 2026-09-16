@@ -1,4 +1,4 @@
 {
   "prNumber": 1418,
-  "body": "Primary-Hostnamen von Studio-Instanzen lassen sich jetzt ohne Konflikt wechseln. Bereits erfolgreich angelegte Keycloak-Realms bleiben bei einem späteren lokalen Fehler erhalten und können sicher weiterverarbeitet werden."
+  "body": "Primary-Hostnamen von Studio-Instanzen lassen sich jetzt sicher wechseln; bereits einer anderen Instanz zugeordnete Hostnamen werden abgelehnt. Erfolgreich angelegte Keycloak-Realms bleiben bei einem späteren lokalen Fehler erhalten und können sicher weiterverarbeitet werden."
 }

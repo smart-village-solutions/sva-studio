@@ -231,13 +231,81 @@ INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_b
 VALUES ('new.example.test', 'integration-hostname-switch', true, 'integration-test')
 ON CONFLICT (hostname) DO UPDATE
 SET
-  instance_id = EXCLUDED.instance_id,
-  is_primary = EXCLUDED.is_primary;
+  is_primary = EXCLUDED.is_primary
+WHERE iam.instance_hostnames.instance_id = EXCLUDED.instance_id
+RETURNING hostname;
 COMMIT;
+
+INSERT INTO iam.instances (
+  id,
+  display_name,
+  status,
+  parent_domain,
+  primary_hostname,
+  auth_realm,
+  auth_client_id,
+  tenant_admin_client_id,
+  feature_flags
+)
+VALUES (
+  'integration-hostname-owner',
+  'Hostname Owner Integration',
+  'active',
+  'example.test',
+  'owner.example.test',
+  'integration-hostname-owner',
+  'sva-studio',
+  'sva-studio-realm-admin',
+  '{}'::jsonb
+);
+
+INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+VALUES
+  ('owner.example.test', 'integration-hostname-owner', true, 'integration-test'),
+  ('owned.example.test', 'integration-hostname-owner', false, 'integration-test');
+
+DO $$
+DECLARE
+  claimed_count integer;
+BEGIN
+  BEGIN
+    UPDATE iam.instances
+    SET primary_hostname = 'owned.example.test'
+    WHERE id = 'integration-hostname-switch';
+
+    UPDATE iam.instance_hostnames
+    SET is_primary = false
+    WHERE instance_id = 'integration-hostname-switch'
+      AND is_primary = true
+      AND hostname <> 'owned.example.test';
+
+    WITH claimed AS (
+      INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+      VALUES ('owned.example.test', 'integration-hostname-switch', true, 'integration-test')
+      ON CONFLICT (hostname) DO UPDATE
+      SET is_primary = EXCLUDED.is_primary
+      WHERE iam.instance_hostnames.instance_id = EXCLUDED.instance_id
+      RETURNING hostname
+    )
+    SELECT COUNT(*) INTO claimed_count FROM claimed;
+
+    IF claimed_count = 0 THEN
+      RAISE EXCEPTION 'tenant_hostname_conflict';
+    END IF;
+    RAISE EXCEPTION 'expected tenant_hostname_conflict';
+  EXCEPTION
+    WHEN raise_exception THEN
+      IF SQLERRM <> 'tenant_hostname_conflict' THEN
+        RAISE;
+      END IF;
+  END;
+END $$;
 SQL
 
 assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'integration-hostname-switch' AND is_primary = true AND hostname = 'new.example.test';" "1" "new primary hostname"
 assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'integration-hostname-switch' AND is_primary = false AND hostname = 'old.example.test';" "1" "preserved previous hostname alias"
 assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'integration-hostname-switch' AND is_primary = true;" "1" "single primary hostname after switch"
+assert_count "SELECT COUNT(*) FROM iam.instances WHERE id = 'integration-hostname-switch' AND primary_hostname = 'new.example.test';" "1" "hostname conflict rolls back instance update"
+assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE hostname = 'owned.example.test' AND instance_id = 'integration-hostname-owner' AND is_primary = false;" "1" "foreign hostname ownership preserved"
 
 echo "Seed idempotency integration test passed."

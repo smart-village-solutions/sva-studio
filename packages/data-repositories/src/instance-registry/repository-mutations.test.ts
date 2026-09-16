@@ -41,7 +41,10 @@ const expectSqlValues = (
 
 describe('instance registry mutation SQL values', () => {
   it('maps a minimal create input to the exact 20-value contract and upserts the hostname second', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.createInstance(minimalCreateInput)).resolves.toMatchObject({ instanceId: 'tenant-a' });
@@ -72,11 +75,19 @@ describe('instance registry mutation SQL values', () => {
       'system',
     ]);
     expect(statements[1]?.text).toContain('INSERT INTO iam.instance_hostnames');
+    expect(statements[1]?.text).not.toMatch(/^\s*instance_id = EXCLUDED\.instance_id/m);
+    expect(statements[1]?.text).toContain(
+      'iam.instance_hostnames.instance_id = EXCLUDED.instance_id'
+    );
+    expect(statements[1]?.text).toContain('RETURNING hostname');
     expect(statements[1]?.values).toStrictEqual(['tenant-a.example.test', 'tenant-a', 'system']);
   });
 
   it('maps a fully populated create input to the exact 20-value contract', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await repository.createInstance({
@@ -121,7 +132,10 @@ describe('instance registry mutation SQL values', () => {
   });
 
   it('normalizes partial tenant-admin runtime objects without shifting create positions', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
     const partialInput = {
       ...minimalCreateInput,
@@ -143,7 +157,11 @@ describe('instance registry mutation SQL values', () => {
   });
 
   it('maps a minimal update input to the exact 21-value contract and switches the primary hostname safely', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], [], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.updateInstance(minimalUpdateInput)).resolves.toMatchObject({ instanceId: 'tenant-a' });
@@ -184,7 +202,11 @@ describe('instance registry mutation SQL values', () => {
   });
 
   it('maps a fully populated update input to the exact 21-value contract', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await repository.updateInstance({
@@ -232,7 +254,11 @@ describe('instance registry mutation SQL values', () => {
   });
 
   it('normalizes partial tenant-admin runtime objects without shifting update positions', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
     const partialInput = {
       ...minimalUpdateInput,
@@ -366,6 +392,24 @@ describe('instance registry mutation result and error contracts', () => {
     expect(statements[1]?.text).toContain('SELECT EXISTS');
     expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
     expect(statements[0]?.text).not.toContain('(auth_realm = $6 AND realm_mode = $5)');
+  });
+
+  it('rejects a hostname already owned by another instance', async () => {
+    const { executor } = createQueuedExecutor([[instanceRow], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.createInstance(minimalCreateInput)).rejects.toThrow(
+      'tenant_hostname_conflict'
+    );
+  });
+
+  it('rejects a foreign hostname after demotion during update', async () => {
+    const { executor } = createQueuedExecutor([[instanceRow], [], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.updateInstance(minimalUpdateInput)).rejects.toThrow(
+      'tenant_hostname_conflict'
+    );
   });
 
   it('preserves insert and update database error identity', async () => {

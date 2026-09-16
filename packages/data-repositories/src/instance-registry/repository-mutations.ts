@@ -49,10 +49,13 @@ const upsertPrimaryHostname = async (
   instanceId: string,
   actorId: string | undefined
 ): Promise<void> => {
-  await executor.execute({
+  const result = await executor.execute<{ readonly hostname: string }>({
     text: upsertPrimaryHostnameSql,
     values: [hostname, instanceId, resolveInstanceMutationActorId(actorId)],
   });
+  if (result.rowCount === 0) {
+    throw new Error('tenant_hostname_conflict');
+  }
 };
 
 const demotePreviousPrimaryHostname = async (

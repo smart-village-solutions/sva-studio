@@ -8,6 +8,7 @@ export type InstanceMutationErrorCode =
   | 'idempotency_key_reuse'
   | 'oidc_client_id_reserved'
   | 'tenant_hostname_reserved'
+  | 'tenant_hostname_conflict'
   | 'auth_realm_conflict'
   | 'instance_configuration_change_blocked'
   | 'provisioning_retry_mode_invalid'
@@ -32,6 +33,7 @@ export type InstanceMutationErrorClassification = {
 const stableConflictCodes = [
   'idempotency_key_reuse',
   'auth_realm_conflict',
+  'tenant_hostname_conflict',
   'instance_configuration_change_blocked',
   'provisioning_retry_mode_invalid',
   'provisioning_retry_instance_status_invalid',

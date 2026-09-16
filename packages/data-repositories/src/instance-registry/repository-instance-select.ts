@@ -41,8 +41,9 @@ INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_b
 VALUES ($1, $2, true, $3)
 ON CONFLICT (hostname) DO UPDATE
 SET
-  instance_id = EXCLUDED.instance_id,
-  is_primary = EXCLUDED.is_primary;
+  is_primary = EXCLUDED.is_primary
+WHERE iam.instance_hostnames.instance_id = EXCLUDED.instance_id
+RETURNING hostname;
 `;
 
 export const demotePreviousPrimaryHostnameSql = `

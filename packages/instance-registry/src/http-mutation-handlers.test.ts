@@ -471,7 +471,11 @@ describe('http mutation handlers', () => {
     );
     const body = await readBody(response);
 
-    expect(deps.withScopedRegistryService).toHaveBeenCalledWith('inst-1', expect.any(Function));
+    expect(deps.withScopedRegistryService).toHaveBeenCalledWith(
+      'inst-1',
+      expect.any(Function),
+      undefined
+    );
     expect(response.status).toBe(503);
     expect(body.code).toBe('database_unavailable');
   });

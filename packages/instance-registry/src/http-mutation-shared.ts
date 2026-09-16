@@ -141,10 +141,7 @@ export const withScopedRegistryMutation = <TContext, TResult>(
   instanceId: string,
   work: (service: InstanceRegistryService) => Promise<TResult>,
   options?: ScopedRegistryServiceOptions
-): Promise<TResult> =>
-  options
-    ? deps.withScopedRegistryService(instanceId, work, options)
-    : deps.withScopedRegistryService(instanceId, work);
+): Promise<TResult> => deps.withScopedRegistryService(instanceId, work, options);
 
 type ScopedExecutionState<TContext, TData> = {
   readonly request: Request;
@@ -218,9 +215,7 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
   >({
     prepare: ({ request, context }: { readonly request: Request; readonly context: TContext }) => {
       const instanceId = readInstanceIdOrError(deps, request);
-      if (instanceId instanceof Response) {
-        return instanceId;
-      }
+      if (instanceId instanceof Response) return instanceId;
 
       return {
         requestId: deps.getRequestId(),
@@ -298,13 +293,9 @@ export const requireMutationGuards = <TContext>(
 ): Response | null => {
   void _options;
   const accessError = deps.ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
+  if (accessError) return accessError;
   const csrfError = deps.validateCsrf(request, deps.getRequestId());
-  if (csrfError) {
-    return csrfError;
-  }
+  if (csrfError) return csrfError;
   return null;
 };
 

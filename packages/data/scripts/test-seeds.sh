@@ -308,4 +308,11 @@ assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'i
 assert_count "SELECT COUNT(*) FROM iam.instances WHERE id = 'integration-hostname-switch' AND primary_hostname = 'new.example.test';" "1" "hostname conflict rolls back instance update"
 assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE hostname = 'owned.example.test' AND instance_id = 'integration-hostname-owner' AND is_primary = false;" "1" "foreign hostname ownership preserved"
 
+echo "Verify persisted tenant provisioning recovery after accepted Keycloak realm creation..."
+INSTANCE_PROVISIONING_INTEGRATION_DB="${TEST_DB_NAME}" \
+  POSTGRES_HOST="127.0.0.1" \
+  pnpm nx run instance-registry:test:unit \
+    --testFiles=src/tenant-provisioning-recovery.integration.test.ts \
+    --skip-nx-cache
+
 echo "Seed idempotency integration test passed."

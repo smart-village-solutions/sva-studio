@@ -24,12 +24,10 @@ export type InstanceRegistryPool = {
   connect(): Promise<InstanceRegistryQueryClient>;
 };
 
-type ScopedRegistryServiceOptions = Readonly<{
+export type ScopedRegistryServiceOptions = Readonly<{
   forceIamSync?: boolean;
   awaitActivationPolicyFollowUp?: boolean;
-  shouldReconcileActivationPolicies?: (
-    repository: InstanceRegistryRepository
-  ) => Promise<boolean>;
+  shouldReconcileActivationPolicies?: (repository: InstanceRegistryRepository) => Promise<boolean>;
 }>;
 
 export type InstanceRegistryRuntimeDeps = {
@@ -155,8 +153,7 @@ const runScopedRegistryService = async <T>(
 ) => {
   const serviceDeps = { repository, ...deps.serviceDeps };
   const service = createInstanceRegistryService(serviceDeps);
-  const shouldReconcile =
-    (await options.shouldReconcileActivationPolicies?.(repository)) ?? true;
+  const shouldReconcile = (await options.shouldReconcileActivationPolicies?.(repository)) ?? true;
   if (!shouldReconcile) return { reconcileResult: null, result: await work(service) };
   const reconcileResult = await createReconcileModuleActivationPoliciesHandler(
     serviceDeps,

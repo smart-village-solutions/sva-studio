@@ -163,6 +163,9 @@ export const createSeedIamBaselineHandler = <TContext>(
 ) =>
   createScopedRegistryMutationHandler(deps, {
     operation: 'seed_instance_iam_baseline',
+    scopedServiceOptions: {
+      shouldReconcileActivationPolicies: async () => false,
+    },
     parse: (request) =>
       deps.parseRequestBody<Record<string, never>>(request, seedIamBaselineSchema),
     execute: (service, input) =>

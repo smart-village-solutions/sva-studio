@@ -26,6 +26,7 @@ export type ApiErrorCode =
   | 'idempotency_in_progress'
   | 'plugin_activation_required_cannot_disable'
   | 'plugin_activation_state_conflict'
+  | 'unknown_module_contract'
   | 'plugin_tenant_lifecycle_not_declared'
   | 'plugin_tenant_lifecycle_inactive'
   | 'plugin_tenant_lifecycle_operation_not_declared'

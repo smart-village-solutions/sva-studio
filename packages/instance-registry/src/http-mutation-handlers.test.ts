@@ -763,6 +763,11 @@ describe('http mutation handlers', () => {
         errorCodes: ['unknown_module_contract:ssf'],
       },
     });
+    expect(deps.withScopedRegistryService).toHaveBeenCalledWith(
+      'inst-1',
+      expect.any(Function),
+      expect.objectContaining({ shouldReconcileActivationPolicies: expect.any(Function) })
+    );
   });
 
   it('bootstrapAdminStructure returns invalid_request for unknown modules', async () => {

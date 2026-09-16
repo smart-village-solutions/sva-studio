@@ -88,6 +88,7 @@ const DATABASE_MAPPING_REASON_CODES = new Set([
 const ACTOR_RESOLUTION_CODES = new Set(['missing_actor_account', 'missing_instance_membership']);
 
 const REGISTRY_DRIFT_INPUT_CODES = new Set([
+  'unknown_module_contract',
   'tenant_auth_client_secret_missing',
   'tenant_admin_client_not_configured',
   'tenant_admin_client_secret_missing',

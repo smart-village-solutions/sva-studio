@@ -2,7 +2,7 @@ import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
-import { createInstanceRegistryService } from './service.js';
+import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 
 const databaseName = process.env.INSTANCE_PROVISIONING_INTEGRATION_DB;
 const integrationDescribe = databaseName ? describe : describe.skip;
@@ -62,12 +62,24 @@ VALUES ($1, 'ssf', 'manual', true, 'enabled'),
         [instanceId]
       );
 
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        const transactionalRepository = createInstanceRegistryRepository(createExecutor(client));
-        const service = createInstanceRegistryService({
-          repository: transactionalRepository,
+      const runtime = createInstanceRegistryRuntime({
+        resolvePool: () => ({
+          connect: async () => {
+            const client = await pool.connect();
+            return {
+              query: async <TRow = Record<string, unknown>>(
+                text: string,
+                values?: readonly unknown[]
+              ) => {
+                const result = await client.query<TRow>(text, [...(values ?? [])]);
+                return { rowCount: result.rowCount ?? result.rows.length, rows: result.rows };
+              },
+              release: () => client.release(),
+            };
+          },
+        }),
+        createRepository: (executor) => createInstanceRegistryRepository(executor),
+        serviceDeps: {
           invalidateHost: () => undefined,
           invalidatePermissionSnapshots: async () => undefined,
           moduleIamRegistry: new Map([
@@ -75,10 +87,7 @@ VALUES ($1, 'ssf', 'manual', true, 'enabled'),
               'ssf',
               {
                 moduleId: 'ssf',
-                permissionIds: [
-                  'ssf.configuration.tenant.read',
-                  'ssf.configuration.tenant.manage',
-                ],
+                permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
                 systemRoles: [
                   {
                     roleName: 'system_admin',
@@ -91,28 +100,27 @@ VALUES ($1, 'ssf', 'manual', true, 'enabled'),
               },
             ],
           ]),
-        });
+        },
+      });
 
-        await expect(
-          service.seedIamBaseline({
-            instanceId,
-            idempotencyKey: 'integration-iam-baseline-partial',
-            actorId: 'integration-test',
-            requestId: 'integration-iam-baseline-partial',
-          })
-        ).resolves.toEqual({
-          ok: false,
-          reason: 'module_contract_missing',
-          moduleIds: ['legacy-module'],
-          errorCodes: ['unknown_module_contract:legacy-module'],
-        });
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
+      await expect(
+        runtime.withScopedRegistryService(
+          instanceId,
+          (service) =>
+            service.seedIamBaseline({
+              instanceId,
+              idempotencyKey: 'integration-iam-baseline-partial',
+              actorId: 'integration-test',
+              requestId: 'integration-iam-baseline-partial',
+            }),
+          { shouldReconcileActivationPolicies: async () => false }
+        )
+      ).resolves.toEqual({
+        ok: false,
+        reason: 'module_contract_missing',
+        moduleIds: ['legacy-module'],
+        errorCodes: ['unknown_module_contract:legacy-module'],
+      });
 
       const persisted = await pool.query<{
         core_grants: string;

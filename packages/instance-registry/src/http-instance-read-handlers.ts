@@ -1,5 +1,8 @@
 import { listQuerySchema } from './http-contracts.js';
-import { readInstanceIdOrError, type InstanceRegistryHttpDeps } from './http-instance-shared.js';
+import {
+  readExistingInstanceIdOrError,
+  type InstanceRegistryHttpDeps,
+} from './http-instance-shared.js';
 
 export const createListInstancesHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
@@ -34,7 +37,7 @@ export const createGetInstanceHandler =
       return accessError;
     }
 
-    const instanceId = readInstanceIdOrError(deps, request);
+    const instanceId = readExistingInstanceIdOrError(deps, request);
     if (instanceId instanceof Response) {
       return instanceId;
     }

@@ -80,7 +80,7 @@ describe('http-contracts', () => {
     ).toBe(false);
   });
 
-  it.each(['Labor', 'tenant/foo', 'xn--bcher-kva', 'bad_label'])(
+  it.each(['Labor', 'tenant/foo', 'xn--bcher-kva', 'bad_label', 'tenant-a ', ' tenant-a'])(
     'rejects the invalid canonical instance id %s before realm-mode handling',
     (instanceId) => {
       expect(

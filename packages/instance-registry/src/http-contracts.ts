@@ -44,7 +44,6 @@ const reservedInstanceIds = new Set(['audit']);
 
 const instanceIdSchema = z
   .string()
-  .trim()
   .min(1)
   .refine(isValidInstanceId, 'Ungültige Instanz-ID')
   .refine(

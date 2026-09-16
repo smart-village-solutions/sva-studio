@@ -101,6 +101,17 @@ export const readInstanceIdOrError = <TContext>(
   return instanceId;
 };
 
+export const readExistingInstanceIdOrError = <TContext>(
+  deps: InstanceRegistryHttpDeps<TContext>,
+  request: Request
+): string | Response => {
+  const instanceId = readDetailInstanceId(request);
+  return (
+    instanceId ??
+    deps.createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', deps.getRequestId())
+  );
+};
+
 export type InstanceRegistryStatusMutation = Extract<
   InstanceStatus,
   'active' | 'suspended' | 'archived'

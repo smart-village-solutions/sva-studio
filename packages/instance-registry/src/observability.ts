@@ -1,5 +1,3 @@
-import type { InstanceMutationErrorClassification } from './mutation-errors.js';
-
 export type InstanceRegistryFailureContext = {
   readonly operation: string;
   readonly requestId?: string;
@@ -8,6 +6,11 @@ export type InstanceRegistryFailureContext = {
   readonly intent?: string;
   readonly stepKey?: string;
   readonly dependency?: string;
+};
+
+type InstanceRegistryFailureClassification = {
+  readonly code: string;
+  readonly status: number;
 };
 
 export type InstanceRegistryMutationErrorMapper = (
@@ -70,7 +73,7 @@ export const runInstanceRegistryStep = async <T>(stepKey: string, work: () => Pr
 export const buildInstanceRegistryFailureLog = (
   error: unknown,
   context: InstanceRegistryFailureContext,
-  classification: InstanceMutationErrorClassification
+  classification: InstanceRegistryFailureClassification
 ): Record<string, unknown> => {
   const stepKey = context.stepKey ?? readInstanceRegistryStepKey(error);
   return {

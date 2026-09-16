@@ -9,11 +9,8 @@ import {
   updateClaimedRun,
 } from './tenant-provisioning-state.js';
 import type { ParentStep } from './tenant-provisioning-state.js';
-import {
-  buildProvisioningFailureDiagnostics,
-  readDiagnosticErrorType,
-  runTenantProvisioningStep,
-} from './tenant-provisioning-steps.js';
+import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
+import { runTenantProvisioningStep } from './tenant-provisioning-steps.js';
 import { assertTenantProvisioningSnapshotCurrent } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({

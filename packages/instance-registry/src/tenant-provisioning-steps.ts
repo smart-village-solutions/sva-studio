@@ -1,5 +1,5 @@
 import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
-import { createSdkLogger, redactObject } from '@sva/server-runtime';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { createExecuteKeycloakProvisioningHandler } from './service-keycloak-execution.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -13,6 +13,7 @@ import {
 import type { ParentStep } from './tenant-provisioning-state.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
+import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -42,26 +43,10 @@ const readProperty = (value: unknown, key: string): unknown => {
 };
 
 const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
-const SAFE_DIAGNOSTIC_ERROR_TYPES = new Set([
-  'AggregateError',
-  'DatabaseError',
-  'Error',
-  'RangeError',
-  'ReferenceError',
-  'SyntaxError',
-  'SystemError',
-  'TypeError',
-  'URIError',
-]);
 
 const readDiagnosticString = (value: unknown, key: string): string | undefined => {
   const candidate = readProperty(value, key);
   return typeof candidate === 'string' ? candidate : undefined;
-};
-
-export const readDiagnosticErrorType = (error: unknown): string => {
-  const name = readDiagnosticString(error, 'name');
-  return name && SAFE_DIAGNOSTIC_ERROR_TYPES.has(name) ? name : typeof error;
 };
 
 const readDiagnosticErrorCode = (error: unknown): string => {
@@ -71,39 +56,6 @@ const readDiagnosticErrorCode = (error: unknown): string => {
   return message && /^[a-z][a-z0-9_:-]{2,100}$/u.test(message)
     ? message
     : INGRESS_FAILURE_CLASSIFICATION;
-};
-
-export const buildProvisioningFailureDiagnostics = (
-  error: unknown,
-  options: { includeNodeSystemFields?: boolean } = {}
-): Readonly<Record<string, unknown>> => {
-  const code = readDiagnosticString(error, 'code');
-  const syscall = readDiagnosticString(error, 'syscall');
-  const isNodeSystemError = Boolean(code && /^E[A-Z0-9_]{1,99}$/u.test(code) && syscall);
-  if (options.includeNodeSystemFields && isNodeSystemError) {
-    return redactObject({
-      diagnostic_error: {
-        name: readDiagnosticErrorType(error),
-        code,
-        syscall,
-        path: readDiagnosticString(error, 'path'),
-        dest: readDiagnosticString(error, 'dest'),
-      },
-    });
-  }
-  if (code && /^[0-9A-Z]{5}$/u.test(code)) {
-    return redactObject({
-      diagnostic_error: {
-        name: readDiagnosticErrorType(error),
-        code,
-      },
-    });
-  }
-  return redactObject({
-    diagnostic_error: {
-      name: readDiagnosticErrorType(error),
-    },
-  });
 };
 
 const registryStep: StepHandler = async ({

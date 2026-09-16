@@ -259,6 +259,7 @@ describe('runMutationCommand', () => {
       '--instance-id=demo',
       '--display-name=Demo',
       '--parent-domain=example.test',
+      '--realm-mode=existing',
       '--auth-client-id=ssf',
       '--auth-realm=demo',
     ]);

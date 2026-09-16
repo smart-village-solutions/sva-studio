@@ -18,4 +18,8 @@ export const keycloakStatusInstancesAdminDEResources = {
   clientSecretAligned: 'Tenant-Client-Secret mit Keycloak abgeglichen',
   tenantAdminClientSecretAligned: 'Tenant-Admin-Client-Secret mit Keycloak abgeglichen',
   runtimeSecretSourceTenant: 'Runtime nutzt Tenant-Secret',
+  realmBaselineAligned: 'Realm-Grundeinstellungen stimmen',
+  userProfileBaselineAligned: 'Benutzerprofilattribute stimmen',
+  instanceIdMapperAligned: 'instanceId-Mapper stimmt',
+  smtpPasswordConfigured: 'SMTP-Passwort in Keycloak gesetzt',
 } as const;

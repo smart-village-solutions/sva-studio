@@ -144,6 +144,34 @@ describe('http-instance-handlers', () => {
     });
   });
 
+  it('derives the technical contract for new realms before creating the instance', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'bb-demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+      },
+    });
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    expect(service.createProvisioningRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'bb-demo',
+        authRealm: 'bb-demo',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+      })
+    );
+  });
+
   it('uses the locked create transaction adapter when available', async () => {
     deps.parseRequestBody.mockResolvedValueOnce({
       ok: true,

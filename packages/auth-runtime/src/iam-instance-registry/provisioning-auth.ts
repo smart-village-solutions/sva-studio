@@ -5,6 +5,7 @@ import {
 } from '@sva/instance-registry/provisioning-auth';
 
 import {
+  deleteProvisionedRealmViaProvisioner,
   provisionInstanceAuthArtifacts,
   provisionInstanceAuthArtifactsViaProvisioner,
   readKeycloakAccessError,
@@ -13,7 +14,11 @@ import {
   readKeycloakStateViaProvisioner,
 } from './provisioning-auth-state.js';
 
-export { provisionInstanceAuthArtifacts, provisionInstanceAuthArtifactsViaProvisioner };
+export {
+  deleteProvisionedRealmViaProvisioner,
+  provisionInstanceAuthArtifacts,
+  provisionInstanceAuthArtifactsViaProvisioner,
+};
 
 const createInstanceKeycloakReaders = (
   readState: typeof readKeycloakState
@@ -22,11 +27,17 @@ const createInstanceKeycloakReaders = (
   getInstanceKeycloakPlan: ReturnType<typeof createInstanceKeycloakPlanReader>;
   getInstanceKeycloakStatus: ReturnType<typeof createInstanceKeycloakStatusReader>;
 }> => {
-  const getInstanceKeycloakPreflight = createInstanceKeycloakPreflightReader(readState, readKeycloakAccessError);
+  const getInstanceKeycloakPreflight = createInstanceKeycloakPreflightReader(
+    readState,
+    readKeycloakAccessError
+  );
 
   return {
     getInstanceKeycloakPreflight,
-    getInstanceKeycloakPlan: createInstanceKeycloakPlanReader(readState, getInstanceKeycloakPreflight),
+    getInstanceKeycloakPlan: createInstanceKeycloakPlanReader(
+      readState,
+      getInstanceKeycloakPreflight
+    ),
     getInstanceKeycloakStatus: createInstanceKeycloakStatusReader(readState),
   };
 };
@@ -36,7 +47,8 @@ const tenantAdminReaders = createInstanceKeycloakReaders(readKeycloakStateViaTen
 const provisionerReaders = createInstanceKeycloakReaders(readKeycloakStateViaProvisioner);
 
 export const getInstanceKeycloakPreflight = defaultReaders.getInstanceKeycloakPreflight;
-export const getInstanceKeycloakPreflightViaProvisioner = provisionerReaders.getInstanceKeycloakPreflight;
+export const getInstanceKeycloakPreflightViaProvisioner =
+  provisionerReaders.getInstanceKeycloakPreflight;
 export const getInstanceKeycloakPlan = defaultReaders.getInstanceKeycloakPlan;
 export const getInstanceKeycloakPlanViaProvisioner = provisionerReaders.getInstanceKeycloakPlan;
 export const getInstanceKeycloakStatus = defaultReaders.getInstanceKeycloakStatus;

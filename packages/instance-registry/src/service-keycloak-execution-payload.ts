@@ -5,6 +5,10 @@ import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
+import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
 
 const buildTempPasswordAad = (runId: string): string =>
   `iam.instances.keycloak_run_temp_password:${runId}`;
@@ -80,6 +84,19 @@ export const readQueuedPluginOidcClientRequirements = (
   });
 };
 
+export const assertQueuedRealmBaselineCurrent = (
+  details: Readonly<Record<string, unknown>> | undefined,
+  realmMode: 'new' | 'existing'
+): void => {
+  if (realmMode !== 'new') return;
+  if (
+    details?.realmBaselineVersion !== KEYCLOAK_REALM_BASELINE.version ||
+    details.realmBaselineFingerprint !== KEYCLOAK_REALM_BASELINE_FINGERPRINT
+  ) {
+    throw new Error('queued_realm_baseline_missing_or_changed');
+  }
+};
+
 export const createQueuedRun = async (
   deps: InstanceRegistryServiceDeps,
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
@@ -124,6 +141,10 @@ export const createQueuedRun = async (
         authRealm: loaded.instance.authRealm,
         authClientId: loaded.instance.authClientId,
         primaryHostname: loaded.instance.primaryHostname,
+        realmBaselineVersion:
+          loaded.instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
+        realmBaselineFingerprint:
+          loaded.instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE_FINGERPRINT : undefined,
         pluginOidcSnapshotVersion: '1.0',
         pluginOidcClients,
         tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword

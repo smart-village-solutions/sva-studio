@@ -1,0 +1,4 @@
+{
+  "prNumber": 1406,
+  "body": "Keycloak-Grundeinstellungen für neue Instanzen automatisieren\n\n- Neue Realms erhalten Theme, deutsche Sprache, Benutzerattribute, Mapper und E-Mail-Grundeinstellungen automatisch.\n- Beim Anlegen einer Instanz müssen die gleichbleibenden technischen Keycloak-Werte nicht mehr eingegeben werden.\n- Nur das SMTP-Passwort bleibt als klar ausgewiesener manueller Schritt offen."
+}

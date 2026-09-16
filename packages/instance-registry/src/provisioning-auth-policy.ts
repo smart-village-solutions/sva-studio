@@ -2,6 +2,10 @@ import type {
   KeycloakProvisioningInput,
   KeycloakReadState,
 } from './provisioning-auth-types.js';
+import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
@@ -35,6 +39,8 @@ export const buildKeycloakSnapshotInputFingerprint = (instance: {
     tenantAdminBootstrap: instance.tenantAdminBootstrap,
     authClientSecretCiphertext: secrets?.authClientSecretCiphertext ?? null,
     tenantAdminClientSecretCiphertext: secrets?.tenantAdminClientSecretCiphertext ?? null,
+    realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+    realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
     pluginOidcClients: [...pluginOidcClients].sort((left, right) =>
       left.pluginId.localeCompare(right.pluginId) || left.clientId.localeCompare(right.clientId)
     ),

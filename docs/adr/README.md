@@ -103,6 +103,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 061 | [Instanzgebundene Keycloak-Provisioning-Ownership und -Serialisierung](./ADR-061-instanzgebundene-keycloak-provisioning-ownership-und-serialisierung.md)                      | ✅     | 2026-09-11         | IAM / Keycloak / Provisioning     |
 | 062 | [Kasseler Mandanten-Provisionierung mit Traefik File Provider](./ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md)                                     | ⏳     | 2026-09-12         | Provisioning / Traefik / SSF      |
 | 063 | [Fleet-Reconcile-Ownership und begrenzte Retry-Semantik](./ADR-063-fleet-reconcile-ownership-und-begrenzte-retry-semantik.md)                                                 | 📋     | 2026-09-13         | Plugins / IAM / Observability     |
+| 064 | [Serverseitige Keycloak-Realm-Baseline](./ADR-064-serverseitige-keycloak-realm-baseline.md)                                                                                   | ✅     | 2026-09-15         | IAM / Keycloak / Provisioning     |
 
 ### Kanonischer Ablageort
 

@@ -26,7 +26,7 @@ export const schemas = {
   }).strict(),
   run: z.object({ instanceId, runId: z.string().trim().min(1) }).strict(),
   diagnose: z.object({ instanceId }).strict(),
-  create: createInstanceSchema.extend(mutationMeta).strict(),
+  create: createInstanceSchema.safeExtend(mutationMeta).strict(),
   update: updateInstanceSchema.extend({ instanceId, ...mutationMeta }).strict(),
   plan: instanceMutationInput,
   execute: executeKeycloakProvisioningSchema

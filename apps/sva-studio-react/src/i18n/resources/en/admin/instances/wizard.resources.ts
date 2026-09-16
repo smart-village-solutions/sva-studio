@@ -50,6 +50,8 @@ export const wizardInstancesAdminENResources = {
     'The tenant client secret is strongly recommended for existing realms so status and drift checks can run completely.',
   authSecretGeneratedHint:
     'For new realms, you do not need to know a secret here. Studio generates it during provisioning and stores it afterwards.',
+  newRealmBaselineSummary:
+    'Studio derives the realm and clients automatically and configures theme, dark mode, German only, events, user profile, instanceId mapper, and the non-secret email settings on the server. Afterwards, only the SMTP password must be set directly in Keycloak.',
   tenantAdminOptional:
     'These values are optional as long as the tenant admin does not need to be reset during the first provisioning run.',
   reviewTitle: 'Review input',

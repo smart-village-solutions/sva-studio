@@ -660,12 +660,57 @@ describe('Keycloak admin client', () => {
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBe(true);
+    await expect(
+      client.ensureRealm({
+        displayName: 'Demo Realm',
+        settings: {
+          loginTheme: 'sva-kern2',
+          supportedLocales: ['de'],
+          smtpServer: { host: 'mail.example.org' },
+        },
+      })
+    ).resolves.toBe(true);
     await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBe(false);
+    expect(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))).toEqual({
+      realm: 'demo',
+      enabled: true,
+      displayName: 'Demo Realm',
+      loginTheme: 'sva-kern2',
+      supportedLocales: ['de'],
+      smtpServer: { host: 'mail.example.org' },
+    });
     expect(state.logger.info).toHaveBeenCalledWith(
       'create_realm',
       expect.objectContaining({ operation: 'create_realm', realm: 'demo' })
     );
+  });
+
+  it('redacts a masked SMTP password without accepting it as configured evidence', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          realm: 'demo',
+          loginTheme: 'sva-kern2',
+          smtpServer: {
+            host: 'mail.example.org',
+            password: '********',
+          },
+        })
+      );
+    const client = await createClient(fetchImpl);
+
+    const realm = await client.getRealm();
+    expect(realm).toEqual(
+      expect.objectContaining({
+        realm: 'demo',
+        loginTheme: 'sva-kern2',
+        smtpServer: { host: 'mail.example.org' },
+        smtpPasswordConfigured: false,
+      })
+    );
+    expect(realm).not.toHaveProperty('smtpServer.password');
   });
 
   it('refreshes the cached token after creating a realm before reading clients in that realm', async () => {
@@ -1071,7 +1116,9 @@ describe('Keycloak admin client', () => {
       (call) => String(call[0]).includes('/clients/client-1') && call[1]?.method === 'DELETE'
     );
     expect(deleteCall).toBeDefined();
-    await expect(client.getRealm()).resolves.toEqual({ realm: 'demo' });
+    await expect(client.getRealm()).resolves.toEqual(
+      expect.objectContaining({ realm: 'demo', smtpPasswordConfigured: false })
+    );
   });
 
   it('retries transient failures while deleting a failed strict client creation', async () => {

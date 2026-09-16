@@ -243,6 +243,7 @@ export type InstanceRegistryServiceDeps = {
     reconcileAuthClient?: boolean;
     reconcileTenantAdminClient?: boolean;
   }) => Promise<void>;
+  readonly deleteProvisionedRealm?: (authRealm: string) => Promise<void>;
   readonly getKeycloakPreflight?: (
     input: KeycloakProvisioningContext
   ) => Promise<KeycloakTenantPreflight>;

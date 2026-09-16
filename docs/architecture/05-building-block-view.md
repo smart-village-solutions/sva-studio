@@ -172,6 +172,7 @@ Abhängigkeiten des aktuellen Systems.
 - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
 - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
 - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
+- Die serverseitige New-Realm-Baseline besitzt ausschließlich nicht geheime, installationsweit einheitliche Realm-, Theme-, Locale-, Event-, SMTP-, Benutzerprofil- und Mapper-Werte. Der konfigurierte Keycloak-Endpunkt liefert den Issuer; das SMTP-Passwort bleibt außerhalb von Quellcode, Registry und Browservertrag eine sichtbare manuelle Nacharbeit.
 - Root-Entry exportiert bewusst nur die stabile Capability-Fläche; interne Service-, HTTP- und Provisioning-Helfer bleiben auf Subpath- oder interne Module begrenzt
 - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
 - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz

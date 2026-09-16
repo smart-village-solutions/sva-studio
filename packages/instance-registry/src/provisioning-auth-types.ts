@@ -72,15 +72,38 @@ export type KeycloakReadState = {
   readonly expectedTenantAdminClient: ReturnType<
     typeof buildExpectedTenantAdminClientConfig
   > | null;
-  readonly realm: { realm: string } | null;
+  readonly realm: {
+    readonly realm: string;
+    readonly loginTheme?: string;
+    readonly internationalizationEnabled?: boolean;
+    readonly supportedLocales?: readonly string[];
+    readonly defaultLocale?: string;
+    readonly eventsEnabled?: boolean;
+    readonly eventsListeners?: readonly string[];
+    readonly eventsExpiration?: number;
+    readonly adminEventsEnabled?: boolean;
+    readonly adminEventsDetailsEnabled?: boolean;
+    readonly resetPasswordAllowed?: boolean;
+    readonly verifyEmail?: boolean;
+    readonly attributes?: Readonly<Record<string, string>>;
+    readonly smtpServer?: Readonly<Record<string, string>>;
+    readonly smtpPasswordConfigured?: boolean;
+  } | null;
   readonly clientRepresentation: KeycloakClientRepresentation;
   readonly tenantAdminClientRepresentation: KeycloakClientRepresentation;
   readonly pluginOidcClients: readonly PluginOidcClientState[];
-  readonly protocolMappers: readonly { name: string }[];
+  readonly protocolMappers: readonly {
+    readonly name: string;
+    readonly protocol?: string;
+    readonly protocolMapper?: string;
+    readonly config?: Readonly<Record<string, string>>;
+  }[];
   readonly tenantAdminStatus: TenantAdminStatus;
   readonly keycloakClientSecret: string | null;
   readonly tenantAdminClientSecret: string | null;
   readonly systemAdminRole: KeycloakRoleRepresentation;
+  readonly realmBaselineAligned?: boolean;
+  readonly userProfileBaselineAligned?: boolean;
 };
 
 export type KeycloakProvisioningInput = {

@@ -95,6 +95,8 @@ const createClient = (
   ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
   listClientProtocolMappers: vi.fn(async () => [{ name: 'instanceId' }]),
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
+  ensureAdminOnlyUserProfileAttributes: vi.fn(async () => undefined),
+  hasAdminOnlyUserProfileAttributes: vi.fn(async () => true),
   ensureAudienceProtocolMapper: vi.fn(async () => undefined),
   ensureRealmRole: vi.fn(async () => undefined),
   getRoleByName: vi.fn(async (externalName: string) => ({
@@ -213,7 +215,15 @@ describe('provisioning-auth-state', () => {
       tenantAdminTemporaryPassword: 'tmp-password',
     });
 
-    expect(client.ensureRealm).toHaveBeenCalledWith({ displayName: 'demo' });
+    expect(client.ensureRealm).toHaveBeenCalledWith({
+      displayName: 'demo',
+      settings: expect.objectContaining({
+        loginTheme: 'sva-kern2',
+        supportedLocales: ['de'],
+        defaultLocale: 'de',
+        smtpServer: expect.not.objectContaining({ password: expect.anything() }),
+      }),
+    });
     expect(client.deleteRealm).not.toHaveBeenCalled();
     expect(client.ensureOidcClient).toHaveBeenCalledWith(
       expect.objectContaining({ clientId: 'sva-studio' })
@@ -222,7 +232,17 @@ describe('provisioning-auth-state', () => {
       expect.objectContaining({ clientId: 'tenant-admin' })
     );
     expect(client.ensureTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
-    expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
+    expect(client.ensureAdminOnlyUserProfileAttributes).toHaveBeenCalledWith([
+      { name: 'instanceId', multivalued: false },
+      { name: 'mainserverUserApplicationId', multivalued: false },
+      { name: 'mainserverUserApplicationSecret', multivalued: false },
+    ]);
+    expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith({
+      clientId: 'sva-studio',
+      name: 'instanceId',
+      userAttribute: 'instanceId',
+      claimName: 'instanceId',
+    });
     expect(client.createUser).toHaveBeenCalledWith(
       expect.objectContaining({
         username: 'tenant-admin',
@@ -475,6 +495,50 @@ describe('provisioning-auth-state', () => {
     );
     expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
     expect(client.deleteRealm).toHaveBeenCalledOnce();
+  });
+
+  it('does not modify a realm that appears between preflight and creation', async () => {
+    const client = createClient({
+      ensureRealm: vi.fn(async () => false),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+      })
+    ).rejects.toThrow('Keycloak realm demo already exists');
+
+    expect(client.ensureOidcClient).not.toHaveBeenCalled();
+    expect(client.ensureAdminOnlyUserProfileAttributes).not.toHaveBeenCalled();
+    expect(client.deleteRealm).not.toHaveBeenCalled();
+  });
+
+  it('removes a newly created realm when baseline reconciliation fails', async () => {
+    const baselineError = new Error('user_profile_update_failed');
+    const client = createClient({
+      ensureAdminOnlyUserProfileAttributes: vi.fn(async () => {
+        throw baselineError;
+      }),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+      })
+    ).rejects.toThrow('user_profile_update_failed');
+
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
+    expect(client.ensureRealmRole).not.toHaveBeenCalled();
   });
 
   it('requires manual cleanup when compensating a newly created realm fails', async () => {
@@ -745,5 +809,8 @@ describe('provisioning-auth-state', () => {
     expect(resolveConfig).toHaveBeenCalledWith('demo');
     expect(createClientFromConfig).toHaveBeenCalledWith({ realm: 'demo' });
     expect(typeof adapters.provisionInstanceAuthArtifacts).toBe('function');
+
+    await adapters.deleteKeycloakRealm('demo');
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
   });
 });

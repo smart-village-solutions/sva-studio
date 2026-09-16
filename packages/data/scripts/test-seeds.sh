@@ -3,6 +3,7 @@ set -euo pipefail
 
 POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
 POSTGRES_USER="${POSTGRES_USER:-sva}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-sva_local_dev_password}"
 POSTGRES_READY_DB="${POSTGRES_READY_DB:-postgres}"
 POSTGRES_WAIT_TIMEOUT_SECONDS="${POSTGRES_WAIT_TIMEOUT_SECONDS:-120}"
 POSTGRES_HOST_PORT="${POSTGRES_HOST_PORT:-5432}"
@@ -11,6 +12,7 @@ PROTECTED_DB_NAMES_REGEX="${PROTECTED_DB_NAMES_REGEX:-^(sva_studio|postgres)$}"
 
 export POSTGRES_HOST_PORT
 export POSTGRES_PORT
+export POSTGRES_PASSWORD
 
 if ! docker compose config --services >/tmp/data-compose-services.txt 2>/tmp/data-compose-services.err; then
   echo "Failed to read docker compose services:"

@@ -129,6 +129,25 @@ describe('instance provisioning worker routing', () => {
     });
   });
 
+  it('preserves an implicitly terminal blocked module error code', async () => {
+    mocks.readReadiness.mockResolvedValue([
+      {
+        pluginId: 'ssf',
+        status: 'blocked',
+        evidenceState: 'invalid',
+        revision: 1,
+        error: { code: 'plugin_tenant_readiness_evidence_invalid' },
+      },
+    ]);
+
+    await expect(
+      readModuleReadiness({ instanceId: 'tenant-a', lifecycles })
+    ).resolves.toMatchObject({
+      status: 'blocked',
+      errorCode: 'plugin_tenant_readiness_evidence_invalid',
+    });
+  });
+
   it('fails closed when the persisted worker composition is empty', async () => {
     await expect(readModuleReadiness({ instanceId: 'tenant-a', lifecycles: [] })).rejects.toThrow(
       'provisioning_plugin_snapshot_missing'

@@ -35,17 +35,16 @@ export const readProvisioningModuleReadiness = async (input: {
       errorCode: model.error?.code,
     })),
   };
-  if (
-    models.some(
-      (model) =>
-        model.error?.retryKind === 'terminal' ||
-        (model.status === 'blocked' && model.error?.retryKind !== 'retryable')
-    )
-  ) {
+  const terminalModel = models.find(
+    (model) =>
+      model.error?.retryKind === 'terminal' ||
+      (model.status === 'blocked' && model.error?.retryKind !== 'retryable')
+  );
+  if (terminalModel) {
     return {
       status: 'blocked' as const,
       evidence,
-      errorCode: models.find((model) => model.error?.retryKind === 'terminal')?.error?.code,
+      errorCode: terminalModel.error?.code,
     };
   }
   if (models.some((model) => model.status !== 'ready' || model.evidenceState !== 'valid')) {

@@ -33,11 +33,11 @@ const baseInstance = {
   primaryHostname: 'demo.studio.example.org',
   realmMode: 'new' as const,
   authRealm: 'demo',
-  authClientId: 'studio-client',
+  authClientId: 'sva-studio-login',
   authIssuerUrl: 'https://auth.example.org/realms/demo',
   authClientSecretConfigured: true,
   tenantAdminClient: {
-    clientId: 'tenant-admin',
+    clientId: 'sva-studio-realm-admin',
     secretConfigured: true,
   },
   tenantAdminBootstrap: {
@@ -70,7 +70,8 @@ const latestRun = {
     parentDomain: 'studio.example.org',
     realmMode: 'new',
     authRealm: 'demo',
-    authClientId: 'studio-client',
+    authClientId: 'sva-studio-login',
+    tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
     idempotencyKey: 'idem-1',
   }),
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -99,8 +100,9 @@ const latestRunWithAuthSecret = {
     parentDomain: 'studio.example.org',
     realmMode: 'new',
     authRealm: 'demo',
-    authClientId: 'studio-client',
+    authClientId: 'sva-studio-login',
     authClientSecret: 'original-secret',
+    tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
     idempotencyKey: 'idem-1',
   }),
 };
@@ -108,7 +110,7 @@ const latestRunWithAuthSecret = {
 const idempotentInstance = {
   ...baseInstance,
   authClientSecretConfigured: false,
-  tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+  tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
 };
 
 const createRepository = (
@@ -619,7 +621,7 @@ describe('instance registry service facade', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
-        realmMode: 'new',
+        realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'ssf',
         idempotencyKey: 'idem-reserved-create',
@@ -802,7 +804,8 @@ describe('instance registry service facade', () => {
         parentDomain: 'dialog.kassel.de',
         realmMode: 'new',
         authRealm: 'demo',
-        authClientId: 'studio-client',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
         idempotencyKey: 'idem-1',
       }),
     };
@@ -889,7 +892,7 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({
         ...baseInstance,
-        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
       })),
       getAuthClientSecretCiphertext,
       listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
@@ -921,7 +924,7 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({
         ...baseInstance,
-        tenantAdminClient: { clientId: 'tenant-admin', secretConfigured: false },
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
       })),
       getAuthClientSecretCiphertext,
       listProvisioningRuns: vi.fn(async () => [latestRunWithAuthSecret]),
@@ -1023,7 +1026,8 @@ describe('instance registry service facade', () => {
         parentDomain: 'dialog.kassel.de',
         realmMode: 'new',
         authRealm: 'demo',
-        authClientId: 'studio-client',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
         idempotencyKey: 'idem-1',
       }),
       errorCode: 'kassel_login_probe_failed',
@@ -1392,7 +1396,7 @@ describe('instance registry service facade', () => {
         primaryHostname: 'demo.studio.example.org',
         authClientSecretCiphertext: 'protected:iam.instances.auth_client_secret:demo:auth-secret',
         tenantAdminClient: {
-          clientId: 'tenant-admin',
+          clientId: 'sva-studio-realm-admin',
           secretCiphertext: 'protected:iam.instances.tenant_admin_client_secret:demo:tenant-secret',
         },
       })
@@ -1515,7 +1519,7 @@ describe('instance registry service facade', () => {
     expect(retryProvisioningRun).not.toHaveBeenCalled();
   });
 
-  it('derives and persists the new-realm issuer instead of accepting a submitted issuer', async () => {
+  it('applies the server baseline before deriving and persisting a new-realm issuer', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
     });
@@ -1531,10 +1535,11 @@ describe('instance registry service facade', () => {
       displayName: 'Neuer Mandant',
       parentDomain: 'dialog.kassel.de',
       realmMode: 'new',
-      authRealm: 'new-tenant',
-      authClientId: 'sva-studio-login',
+      authRealm: 'operator-realm',
+      authClientId: 'operator-client',
       authIssuerUrl: 'https://auth.example.org/realms/old-realm',
       idempotencyKey: 'idem-kassel-1',
+      tenantAdminClient: { clientId: 'operator-admin' },
     });
 
     expect(resolveProvisioningAuthIssuerUrl).toHaveBeenCalledWith({
@@ -1544,7 +1549,10 @@ describe('instance registry service facade', () => {
     });
     expect(repository.createInstance).toHaveBeenCalledWith(
       expect.objectContaining({
+        authRealm: 'new-tenant',
+        authClientId: 'sva-studio-login',
         authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
+        tenantAdminClient: expect.objectContaining({ clientId: 'sva-studio-realm-admin' }),
       })
     );
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
@@ -1558,9 +1566,33 @@ describe('instance registry service facade', () => {
           authClientId: 'sva-studio-login',
           authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
           idempotencyKey: 'idem-kassel-1',
+          tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
         }),
       })
     );
+  });
+
+  it('rejects an invalid realm name derived during a new-realm create', async () => {
+    const repository = createRepository();
+    const resolveProvisioningAuthIssuerUrl = vi.fn();
+    const service = createInstanceRegistryService(
+      createDeps(repository, { resolveProvisioningAuthIssuerUrl })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'tenant+foo',
+        displayName: 'Tenant',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        authRealm: 'valid-realm',
+        authClientId: 'operator-client',
+        idempotencyKey: 'idem-invalid-realm',
+      })
+    ).rejects.toThrow('invalid_new_realm_instance_id');
+    expect(resolveProvisioningAuthIssuerUrl).not.toHaveBeenCalled();
+    expect(repository.getInstanceById).not.toHaveBeenCalled();
+    expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
   it.each([

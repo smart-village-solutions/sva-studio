@@ -29,7 +29,11 @@ import {
 } from './service-instance-create.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
-const applyNewRealmUpdateDefaults = (input: UpdateInstanceInput): UpdateInstanceInput => {
+function applyNewRealmDefaults(input: CreateInstanceProvisioningInput): CreateInstanceProvisioningInput;
+function applyNewRealmDefaults(input: UpdateInstanceInput): UpdateInstanceInput;
+function applyNewRealmDefaults(
+  input: CreateInstanceProvisioningInput | UpdateInstanceInput
+): CreateInstanceProvisioningInput | UpdateInstanceInput {
   if (input.realmMode !== 'new') return input;
   if (!isValidKeycloakRealmName(input.instanceId)) {
     throw new Error('invalid_new_realm_instance_id');
@@ -43,17 +47,21 @@ const applyNewRealmUpdateDefaults = (input: UpdateInstanceInput): UpdateInstance
       clientId: KEYCLOAK_REALM_BASELINE.tenantAdminClientId,
     },
   };
-};
+}
 
 export const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
+    const normalizedInput = applyNewRealmDefaults(input);
     const authIssuerUrl = deps.resolveProvisioningAuthIssuerUrl?.({
-      parentDomain: input.parentDomain,
-      authRealm: input.authRealm,
-      authIssuerUrl: input.realmMode === 'new' ? undefined : input.authIssuerUrl,
+      parentDomain: normalizedInput.parentDomain,
+      authRealm: normalizedInput.authRealm,
+      authIssuerUrl:
+        normalizedInput.realmMode === 'new' ? undefined : normalizedInput.authIssuerUrl,
     });
-    const effectiveInput = authIssuerUrl ? { ...input, authIssuerUrl } : input;
+    const effectiveInput = authIssuerUrl
+      ? { ...normalizedInput, authIssuerUrl }
+      : normalizedInput;
     assertOidcClientIdsNotReserved(deps, effectiveInput);
     assertTenantHostnameAvailable(
       deps,
@@ -179,7 +187,7 @@ export const createChangeStatusHandler =
 export const createUpdateInstanceHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['updateInstance'] =>
   async (input: UpdateInstanceInput) => {
-    const effectiveInput = applyNewRealmUpdateDefaults(input);
+    const effectiveInput = applyNewRealmDefaults(input);
     assertOidcClientIdsNotReserved(deps, effectiveInput);
     instanceRegistryServiceLogger.info('instance_update_started', {
       operation: 'update_instance',

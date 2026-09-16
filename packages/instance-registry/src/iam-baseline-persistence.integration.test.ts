@@ -56,11 +56,45 @@ integrationDescribe('IAM baseline persistence', () => {
 INSERT INTO iam.instance_modules (
   instance_id, module_id, activation_origin, effective_active, manual_override
 )
-VALUES ($1, 'ssf', 'manual', true, 'enabled'),
+VALUES ($1, 'ssf', 'manual', false, 'disabled'),
        ($1, 'legacy-module', 'manual', true, 'enabled');
 `,
         [instanceId]
       );
+      await repository.syncProtectedSystemRolePermissions({
+        instanceId,
+        role: {
+          roleKey: 'system_admin',
+          displayName: 'System Administrator',
+          roleLevel: 100,
+          permissions: [
+            {
+              key: 'legacy-module.read',
+              description: 'Legacy module permission',
+              resourceType: 'legacy-module',
+            },
+          ],
+          grantPermissionKeys: [],
+        },
+      });
+      await repository.syncAssignedModuleIam({
+        instanceId,
+        managedModuleIds: ['legacy-module'],
+        contracts: [
+          {
+            moduleId: 'legacy-module',
+            permissionIds: ['legacy-module.read'],
+            permissions: [
+              {
+                key: 'legacy-module.read',
+                description: 'Legacy module permission',
+                resourceType: 'legacy-module',
+              },
+            ],
+            systemRoles: [{ roleName: 'system_admin', permissionIds: ['legacy-module.read'] }],
+          },
+        ],
+      });
 
       const runtime = createInstanceRegistryRuntime({
         resolvePool: () => ({
@@ -100,6 +134,17 @@ VALUES ($1, 'ssf', 'manual', true, 'enabled'),
               },
             ],
           ]),
+          readModuleActivationPolicySnapshot: () => ({
+            revision: 'integration-catalog-1',
+            modules: [
+              {
+                moduleId: 'ssf',
+                activationPolicy: 'required',
+                manifestVersion: 1,
+                policyRevision: 'ssf-1',
+              },
+            ],
+          }),
         },
       });
 
@@ -126,6 +171,8 @@ VALUES ($1, 'ssf', 'manual', true, 'enabled'),
         core_grants: string;
         known_module_grants: string;
         unknown_module_grants: string;
+        ssf_active: boolean;
+        legacy_active: boolean;
       }>(
         `
 SELECT
@@ -139,7 +186,17 @@ SELECT
   )::text AS known_module_grants,
   COUNT(*) FILTER (
     WHERE role_permission.grant_origin_module_id = 'legacy-module'
-  )::text AS unknown_module_grants
+  )::text AS unknown_module_grants,
+  (
+    SELECT effective_active
+    FROM iam.instance_modules
+    WHERE instance_id = $1 AND module_id = 'ssf'
+  ) AS ssf_active,
+  (
+    SELECT effective_active
+    FROM iam.instance_modules
+    WHERE instance_id = $1 AND module_id = 'legacy-module'
+  ) AS legacy_active
 FROM iam.roles role
 JOIN iam.role_permissions role_permission
   ON role_permission.instance_id = role.instance_id
@@ -156,6 +213,8 @@ WHERE role.instance_id = $1 AND role.role_key = 'system_admin';
         core_grants: '1',
         known_module_grants: '1',
         unknown_module_grants: '0',
+        ssf_active: true,
+        legacy_active: false,
       });
     } finally {
       await pool.end();

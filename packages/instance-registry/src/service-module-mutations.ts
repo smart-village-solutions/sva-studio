@@ -3,6 +3,7 @@ import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
 
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import { createGetInstanceDetail } from './service-detail.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import {
   invalidateInstancePermissionSnapshots,
   requireModuleIamRegistry,
@@ -452,10 +453,18 @@ export const createSeedIamBaselineHandler =
     await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
-    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-    const missingModuleIds = assignedModuleIds
+    const assignedModuleIdsBeforeReconcile = await deps.repository.listAssignedModules(
+      input.instanceId
+    );
+    const missingModuleIds = assignedModuleIdsBeforeReconcile
       .filter((moduleId) => !registry.has(moduleId))
       .sort((left, right) => left.localeCompare(right, 'de'));
+    await createReconcileModuleActivationPoliciesHandler(deps)({
+      instanceId: input.instanceId,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
     const knownAssignedModuleIds = assignedModuleIds.filter((moduleId) => registry.has(moduleId));
     const errorCodes = missingModuleIds.map((moduleId) => `unknown_module_contract:${moduleId}`);
     const corePermissionReconcile = await syncProtectedSystemAdminPermissions(
@@ -464,7 +473,7 @@ export const createSeedIamBaselineHandler =
     );
     const modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
-      managedModuleIds: [...registry.keys()],
+      managedModuleIds: [...new Set([...registry.keys(), ...missingModuleIds])],
       managedContracts: resolveManagedModuleContracts(deps),
       contracts: resolveAssignedModuleContracts(deps, knownAssignedModuleIds),
     });

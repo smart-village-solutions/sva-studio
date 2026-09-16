@@ -836,8 +836,11 @@ Das System MUST bei Tenant-Erstellung, explizitem IAM-Baseline-Reconcile und kon
 
 - **GIVEN** einer Instanz ist mindestens ein Modul ohne registrierten IAM-Vertrag zugewiesen
 - **WHEN** der explizite IAM-Baseline-Reconcile ausgeführt wird
-- **THEN** persistiert das System die Core-Basis und die IAM-Basis aller zugewiesenen Module mit bekanntem Vertrag
+- **THEN** erfasst das System die fehlenden Verträge vor dem regulären Reconcile der Modulaktivierungsregeln
+- **AND** verwendet es für die IAM-Basis anschließend ausschließlich die nach diesem Reconcile aktiven Module
+- **AND** persistiert das System die Core-Basis und die IAM-Basis aller danach aktiven Module mit bekanntem Vertrag
 - **AND** erfindet es keine Permissions oder Grants für das unbekannte Modul
+- **AND** entfernt es bestehende modulbezogene Grants eines dabei deaktivierten unbekannten Moduls
 - **AND** weist es den Reconcile als unvollständig mit `unknown_module_contract:<moduleId>` aus
 - **AND** bleiben Modulzuweisung, Modulentzug und Admin-Bootstrap weiterhin atomar und fail-closed
 

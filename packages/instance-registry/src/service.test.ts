@@ -2769,7 +2769,7 @@ describe('instance registry service facade', () => {
         .mockResolvedValueOnce(['news', 'events'])
         .mockResolvedValueOnce(['categories', 'events', 'news'])
         .mockResolvedValueOnce(['categories', 'events'])
-        .mockResolvedValueOnce(['categories', 'events']),
+        .mockResolvedValue(['categories', 'events']),
     });
     const deps = createDeps(repository);
     const service = createInstanceRegistryService(deps);
@@ -2832,9 +2832,29 @@ describe('instance registry service facade', () => {
 
   it('keeps the core IAM baseline and reports assigned modules without a contract', async () => {
     const repository = createRepository({
-      listAssignedModules: vi.fn(async () => ['news', 'legacy-module']),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news', 'legacy-module'])
+        .mockResolvedValue(['news']),
+      reconcileModuleActivationPolicies: vi.fn(async () => ({
+        changedModuleIds: ['legacy-module', 'news'],
+        conflictModuleIds: [],
+        unchangedModuleIds: [],
+      })),
     });
-    const deps = createDeps(repository);
+    const deps = createDeps(repository, {
+      readModuleActivationPolicySnapshot: () => ({
+        revision: 'catalog-1',
+        modules: [
+          {
+            moduleId: 'news',
+            activationPolicy: 'required',
+            manifestVersion: 1,
+            policyRevision: 'news-1',
+          },
+        ],
+      }),
+    });
     const service = createInstanceRegistryService(deps);
 
     await expect(
@@ -2852,9 +2872,11 @@ describe('instance registry service facade', () => {
     });
 
     expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledOnce();
-    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+    expect(repository.reconcileModuleActivationPolicies).toHaveBeenCalledOnce();
+    expect(repository.syncAssignedModuleIam).toHaveBeenLastCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
+        managedModuleIds: expect.arrayContaining(['news', 'legacy-module']),
         contracts: [expect.objectContaining({ moduleId: 'news' })],
       })
     );

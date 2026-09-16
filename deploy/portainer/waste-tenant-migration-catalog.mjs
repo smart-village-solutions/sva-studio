@@ -287,7 +287,18 @@ export const wasteTenantMigrations = Object.freeze([
       LANGUAGE plpgsql
       AS $waste_tour_status$
       BEGIN
-        IF TG_OP = 'INSERT' THEN
+        IF TG_OP = 'UPDATE' AND TG_NARGS = 1 THEN
+          IF TG_ARGV[0] = 'status'
+            AND NEW.active IS DISTINCT FROM OLD.active
+            AND NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+            RAISE EXCEPTION 'waste_tour_status_active_conflict';
+          ELSIF TG_ARGV[0] = 'active'
+            AND NEW.status IS DISTINCT FROM OLD.status
+            AND NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+            RAISE EXCEPTION 'waste_tour_status_active_conflict';
+          END IF;
+          RETURN NEW;
+        ELSIF TG_OP = 'INSERT' THEN
           IF NEW.status IS NULL AND NEW.active IS NULL THEN
             NEW.status := 'draft';
             NEW.active := FALSE;
@@ -312,6 +323,10 @@ export const wasteTenantMigrations = Object.freeze([
       END;
       $waste_tour_status$;`,
       'DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON public.waste_tours;',
+      'DROP TRIGGER IF EXISTS waste_tours_a_validate_status_write ON public.waste_tours;',
+      "CREATE TRIGGER waste_tours_a_validate_status_write BEFORE UPDATE OF status ON public.waste_tours FOR EACH ROW EXECUTE FUNCTION public.sync_waste_tour_status_active('status');",
+      'DROP TRIGGER IF EXISTS waste_tours_a_validate_active_write ON public.waste_tours;',
+      "CREATE TRIGGER waste_tours_a_validate_active_write BEFORE UPDATE OF active ON public.waste_tours FOR EACH ROW EXECUTE FUNCTION public.sync_waste_tour_status_active('active');",
       'CREATE TRIGGER waste_tours_sync_status_active BEFORE INSERT OR UPDATE OF status, active ON public.waste_tours FOR EACH ROW EXECUTE FUNCTION public.sync_waste_tour_status_active();',
       'CREATE INDEX IF NOT EXISTS idx_waste_tours_status ON public.waste_tours(status);',
       'DROP TRIGGER IF EXISTS sva_mainserver_revision_tours_update ON public.waste_tours;',
@@ -358,7 +373,7 @@ export const wasteTenantMigrations = Object.freeze([
               AND indexname = 'idx_waste_tours_status'
           ) AS satisfied
         ), compatibility_contract AS (
-          SELECT COUNT(*) = 2 AS satisfied
+          SELECT COUNT(*) = 4 AS satisfied
           FROM pg_trigger AS trigger_row
           INNER JOIN pg_class AS table_row ON table_row.oid = trigger_row.tgrelid
           INNER JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
@@ -366,6 +381,8 @@ export const wasteTenantMigrations = Object.freeze([
             AND table_row.relname = 'waste_tours'
             AND NOT trigger_row.tgisinternal
             AND trigger_row.tgname IN (
+              'waste_tours_a_validate_active_write',
+              'waste_tours_a_validate_status_write',
               'waste_tours_sync_status_active',
               'sva_mainserver_revision_tours_update'
             )

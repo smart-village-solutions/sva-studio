@@ -153,7 +153,18 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $waste_tour_status$
 BEGIN
-  IF TG_OP = 'INSERT' THEN
+  IF TG_OP = 'UPDATE' AND TG_NARGS = 1 THEN
+    IF TG_ARGV[0] = 'status'
+      AND NEW.active IS DISTINCT FROM OLD.active
+      AND NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+      RAISE EXCEPTION 'waste_tour_status_active_conflict';
+    ELSIF TG_ARGV[0] = 'active'
+      AND NEW.status IS DISTINCT FROM OLD.status
+      AND NEW.active IS DISTINCT FROM (NEW.status = 'published') THEN
+      RAISE EXCEPTION 'waste_tour_status_active_conflict';
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'INSERT' THEN
     IF NEW.status IS NULL AND NEW.active IS NULL THEN
       NEW.status := 'draft';
       NEW.active := FALSE;
@@ -219,6 +230,10 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_status_check' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_status_check CHECK (status IN ('draft', 'published', 'archived')); END IF; END $$;`,
     buildWasteTourStatusCompatibilityFunctionStatement(schema),
     `DROP TRIGGER IF EXISTS waste_tours_sync_status_active ON ${schema}.waste_tours;`,
+    `DROP TRIGGER IF EXISTS waste_tours_a_validate_status_write ON ${schema}.waste_tours;`,
+    `CREATE TRIGGER waste_tours_a_validate_status_write BEFORE UPDATE OF status ON ${schema}.waste_tours FOR EACH ROW EXECUTE FUNCTION ${schema}.sync_waste_tour_status_active('status');`,
+    `DROP TRIGGER IF EXISTS waste_tours_a_validate_active_write ON ${schema}.waste_tours;`,
+    `CREATE TRIGGER waste_tours_a_validate_active_write BEFORE UPDATE OF active ON ${schema}.waste_tours FOR EACH ROW EXECUTE FUNCTION ${schema}.sync_waste_tour_status_active('active');`,
     `CREATE TRIGGER waste_tours_sync_status_active BEFORE INSERT OR UPDATE OF status, active ON ${schema}.waste_tours FOR EACH ROW EXECUTE FUNCTION ${schema}.sync_waste_tour_status_active();`,
     `ALTER TABLE ${schema}.waste_tours ADD COLUMN IF NOT EXISTS custom_recurrence_id UUID;`,
     `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint constraint_ref JOIN pg_class table_ref ON table_ref.oid = constraint_ref.conrelid JOIN pg_namespace schema_ref ON schema_ref.oid = table_ref.relnamespace WHERE constraint_ref.conname = 'waste_tours_custom_recurrence_id_fkey' AND schema_ref.nspname = '${schemaName}' AND table_ref.relname = 'waste_tours') THEN ALTER TABLE ${schema}.waste_tours ADD CONSTRAINT waste_tours_custom_recurrence_id_fkey FOREIGN KEY (custom_recurrence_id) REFERENCES ${schema}.waste_custom_recurrence_presets(id) ON DELETE SET NULL; END IF; END $$;`,

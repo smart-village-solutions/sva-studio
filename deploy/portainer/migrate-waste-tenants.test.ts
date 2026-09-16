@@ -140,6 +140,12 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
       'waste_tours_sync_status_active'
     );
+    expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
+      'waste_tours_a_validate_status_write'
+    );
+    expect(wasteTenantMigrations[5]?.statements.join('\n')).toContain(
+      'waste_tours_a_validate_active_write'
+    );
     expect(wasteTenantMigrations[5]?.statements).toContain(
       'ALTER TABLE public.waste_tours ALTER COLUMN active DROP DEFAULT;'
     );

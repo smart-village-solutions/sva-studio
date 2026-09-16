@@ -207,6 +207,18 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
         ids.tour,
       ])
     ).rejects.toThrow('waste_tour_status_active_conflict');
+
+    await client.query(`UPDATE waste_tours SET status = 'draft' WHERE id = $1;`, [ids.tour]);
+    await expect(
+      client.query(`UPDATE waste_tours SET status = 'draft', active = TRUE WHERE id = $1;`, [
+        ids.tour,
+      ])
+    ).rejects.toThrow('waste_tour_status_active_conflict');
+    await expect(
+      client.query(`UPDATE waste_tours SET status = 'published', active = FALSE WHERE id = $1;`, [
+        ids.tour,
+      ])
+    ).rejects.toThrow('waste_tour_status_active_conflict');
   });
 
   it('increments once for direct writes, ignores irrelevant updates, and advances on deletes', async () => {

@@ -15,6 +15,7 @@ const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn()
 const withReminderReconciliation = <T extends object>(repository: T) => ({
   listActiveSubscriptions: vi.fn(async () => []),
   cancelInvalidReminderOutboxEntries: vi.fn(async () => 0),
+  claimOutboxEntryForDispatch: vi.fn(async () => true),
   ...repository,
 });
 
@@ -202,6 +203,7 @@ describe('waste management operations runtime', () => {
     expect(markOutboxEntrySent).toHaveBeenCalledWith({
       outboxId: 'outbox-1',
       now: '2026-06-15T06:00:00.000Z',
+      leasedAt: '2026-06-15T06:00:00.000Z',
       providerMessageId: 'provider-1',
     });
     expect(
@@ -212,6 +214,76 @@ describe('waste management operations runtime', () => {
       mode: 'executed',
       leasedCount: 1,
       sentCount: 1,
+      retryScheduledCount: 0,
+      failedCount: 0,
+    });
+  });
+
+  it('does not dispatch a reminder when its lease can no longer be claimed', async () => {
+    const dispatchMail = vi.fn();
+    const claimOutboxEntryForDispatch = vi.fn(async () => false);
+    const markOutboxEntrySent = vi.fn();
+    const markOutboxEntryFailed = vi.fn();
+    const reminderRepository = {
+      leaseDueOutboxEntries: vi.fn(async () => [
+        {
+          id: 'outbox-cancelled',
+          transportId: 'transport-smtp',
+          attemptCount: 0,
+          payload: {},
+        },
+      ]),
+      claimOutboxEntryForDispatch,
+      markOutboxEntrySent,
+      markOutboxEntryFailed,
+    };
+
+    vi.doMock('@sva/data-repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+      return {
+        ...actual,
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation(reminderRepository)
+        ),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        createInterfaceRecordWithEmailReminderConfig(),
+        createMailTransportInterfaceRecord(),
+      ]),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(
+          createSqlClientMock(async () => ({
+            rowCount: 0,
+            rows: [],
+          }))
+        )
+      ),
+      dispatchMail,
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(claimOutboxEntryForDispatch).toHaveBeenCalledWith({
+      outboxId: 'outbox-cancelled',
+      leasedAt: '2026-06-15T06:00:00.000Z',
+    });
+    expect(dispatchMail).not.toHaveBeenCalled();
+    expect(markOutboxEntrySent).not.toHaveBeenCalled();
+    expect(markOutboxEntryFailed).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({
+      operation: 'process-email-reminder-outbox',
+      leasedCount: 1,
+      sentCount: 0,
       retryScheduledCount: 0,
       failedCount: 0,
     });
@@ -602,6 +674,7 @@ describe('waste management operations runtime', () => {
     expect(markOutboxEntrySent).toHaveBeenCalledWith({
       outboxId: 'outbox-legacy-transport',
       now: '2026-06-15T06:00:00.000Z',
+      leasedAt: '2026-06-15T06:00:00.000Z',
       providerMessageId: 'provider-2',
     });
     expect(result.details).toMatchObject({

@@ -269,6 +269,14 @@ export const createProcessEmailReminderOutboxOperation = (
     let retryScheduledCount = 0;
     let failedCount = 0;
     for (const entry of leased) {
+      const leasedAt = referenceTime.toISOString();
+      const dispatchClaimed = await reminderRepository.claimOutboxEntryForDispatch({
+        outboxId: entry.id,
+        leasedAt,
+      });
+      if (!dispatchClaimed) {
+        continue;
+      }
       try {
         const transport = transportConfigs.get(entry.transportId);
         if (!transport?.enabled) {
@@ -288,6 +296,7 @@ export const createProcessEmailReminderOutboxOperation = (
         await reminderRepository.markOutboxEntrySent({
           outboxId: entry.id,
           now: referenceTime.toISOString(),
+          leasedAt,
           ...(result.providerMessageId ? { providerMessageId: result.providerMessageId } : {}),
         });
         sentCount += 1;
@@ -297,6 +306,7 @@ export const createProcessEmailReminderOutboxOperation = (
         await reminderRepository.markOutboxEntryFailed({
           outboxId: entry.id,
           now: referenceTime.toISOString(),
+          leasedAt,
           errorMessage,
           ...(shouldRetry
             ? { retryAt: new Date(referenceTime.getTime() + retryDelayMinutes * 60 * 1000).toISOString() }

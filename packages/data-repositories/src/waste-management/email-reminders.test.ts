@@ -324,26 +324,46 @@ describe('waste email reminder repository', () => {
       }),
     ]);
 
-    await repository.markOutboxEntrySent({
+    queuedResults.push(
+      { rowCount: 1, rows: [{ id: 'outbox-1' }] },
+      { rowCount: 1, rows: [{ id: 'outbox-1' }] },
+      { rowCount: 1, rows: [{ id: 'outbox-2' }] }
+    );
+
+    await expect(
+      repository.claimOutboxEntryForDispatch({
+        outboxId: 'outbox-1',
+        leasedAt: '2026-06-14T19:00:00.000Z',
+      })
+    ).resolves.toBe(true);
+
+    await expect(repository.markOutboxEntrySent({
       outboxId: 'outbox-1',
       now: '2026-06-14T19:05:00.000Z',
+      leasedAt: '2026-06-14T19:00:00.000Z',
       providerMessageId: 'provider-1',
-    });
+    })).resolves.toBe(true);
 
-    await repository.markOutboxEntryFailed({
+    await expect(repository.markOutboxEntryFailed({
       outboxId: 'outbox-2',
       now: '2026-06-14T19:10:00.000Z',
+      leasedAt: '2026-06-14T19:00:00.000Z',
       errorMessage: 'smtp_down',
       retryAt: '2026-06-14T19:25:00.000Z',
-    });
+    })).resolves.toBe(true);
 
     expect(statements[0]?.text).toContain('FOR UPDATE SKIP LOCKED');
     expect(statements[0]?.text).toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('leased_at');
-    expect(statements[1]?.text).toContain("SET status = 'sent'");
-    expect(statements[2]?.text).toContain(
+    expect(statements[0]?.text).toContain('last_error = NULL');
+    expect(statements[1]?.text).toContain("SET last_error = 'dispatch_claimed'");
+    expect(statements[1]?.text).toContain('leased_at = $2::timestamptz');
+    expect(statements[2]?.text).toContain("SET status = 'sent'");
+    expect(statements[2]?.text).toContain("last_error = 'dispatch_claimed'");
+    expect(statements[3]?.text).toContain(
       "CASE WHEN $4::timestamptz IS NULL THEN 'failed' ELSE 'pending' END"
     );
+    expect(statements[3]?.text).toContain("last_error = 'dispatch_claimed'");
   });
 
   it('cancels reminder outbox entries that are no longer materialized', async () => {
@@ -360,6 +380,7 @@ describe('waste email reminder repository', () => {
 
     expect(statements[0]?.text).toContain("message_kind = 'reminder'");
     expect(statements[0]?.text).toContain("status IN ('pending', 'processing')");
+    expect(statements[0]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
     expect(statements[0]?.text).toContain('NOT (dedupe_key = ANY($1::text[]))');
     expect(statements[0]?.values).toEqual([['reminder:still-valid'], '2026-06-15T06:00:00.000Z']);
   });
@@ -521,6 +542,7 @@ describe('waste email reminder repository', () => {
     expect(statements[1]?.text).toContain("SET status = 'unsubscribed'");
     expect(statements[2]?.text).toContain("message_kind = 'reminder'");
     expect(statements[2]?.text).toContain("SET status = 'cancelled'");
+    expect(statements[2]?.text).toContain("last_error IS DISTINCT FROM 'dispatch_claimed'");
   });
 
   it('returns invalid or already_unsubscribed for non-unsubscribable token hashes', async () => {

@@ -1,7 +1,11 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
-import { buildInstanceSelectColumns, upsertPrimaryHostnameSql } from './repository-instance-select.js';
+import {
+  buildInstanceSelectColumns,
+  demotePreviousPrimaryHostnameSql,
+  upsertPrimaryHostnameSql,
+} from './repository-instance-select.js';
 import { mapInstance } from './repository-mappers.js';
 import {
   createInstanceValues,
@@ -48,6 +52,17 @@ const upsertPrimaryHostname = async (
   await executor.execute({
     text: upsertPrimaryHostnameSql,
     values: [hostname, instanceId, resolveInstanceMutationActorId(actorId)],
+  });
+};
+
+const demotePreviousPrimaryHostname = async (
+  executor: SqlExecutor,
+  instanceId: string,
+  hostname: string
+): Promise<void> => {
+  await executor.execute({
+    text: demotePreviousPrimaryHostnameSql,
+    values: [instanceId, hostname],
   });
 };
 
@@ -134,7 +149,12 @@ ${buildInstanceSelectColumns()};
     }
     return null;
   }
-  await upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId);
+  await runMutationStep('previous_primary_hostname_demote', () =>
+    demotePreviousPrimaryHostname(executor, input.instanceId, input.primaryHostname)
+  );
+  await runMutationStep('primary_hostname_upsert', () =>
+    upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId)
+  );
   return mapInstance(rows[0]);
 };
 

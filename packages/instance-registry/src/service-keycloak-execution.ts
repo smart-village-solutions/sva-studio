@@ -26,7 +26,11 @@ import {
   ensureReconcilePreconditions,
   resolveReconcileIntent,
 } from './service-keycloak-reconcile-helpers.js';
-import { runInstanceRegistryStep } from './observability.js';
+import {
+  annotateInstanceRegistryError,
+  readInstanceRegistryStepKey,
+  runInstanceRegistryStep,
+} from './observability.js';
 import {
   buildKeycloakSnapshotInputFingerprint,
   KEYCLOAK_SNAPSHOT_POLICY_VERSION,
@@ -192,7 +196,18 @@ const cleanupNewRealmAfterPostProvisioningFailure = async (
     cleanupUnverified.cause = stateError;
     throw cleanupUnverified;
   }
-  if (!current || current.instance.realmMode !== 'new') return;
+  if (!current) return;
+  if (current.instance.realmMode === 'existing') {
+    const retrySafeFailure = new Error(
+      'new_realm_accepted_post_provisioning_sync_failed_retry_safe'
+    ) as Error & { cause?: unknown };
+    retrySafeFailure.cause = failure;
+    throw annotateInstanceRegistryError(
+      retrySafeFailure,
+      readInstanceRegistryStepKey(failure) ?? 'admin_bootstrap'
+    );
+  }
+  if (current.instance.realmMode !== 'new') return;
   if (!deps.deleteProvisionedRealm) {
     const cleanupUnavailable = new Error(
       'new_realm_post_provisioning_cleanup_unavailable_requires_manual_action'

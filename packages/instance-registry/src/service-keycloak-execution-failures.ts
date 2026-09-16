@@ -42,6 +42,13 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
           'Die nach dem Provisioning erwarteten Tenant-Client-Secrets sind nicht lesbar.',
       };
     }
+    if (message.includes('new_realm_accepted_post_provisioning_sync_failed_retry_safe')) {
+      return {
+        reasonCode: 'NEW_REALM_ACCEPTED_RETRY_SAFE',
+        safeSummary:
+          'Das neue Keycloak-Realm wurde technisch abgenommen und bleibt erhalten. Der lokale Nachlauf kann sicher wiederholt werden.',
+      };
+    }
     if (
       message.includes('queued_plugin_oidc_client_requirements_missing_or_invalid') ||
       message.includes('plugin_oidc_client_requirement_invalid')
@@ -114,7 +121,7 @@ export const failRun = async (
         dependency,
       },
       {
-        code: 'internal_unclassified',
+        code: reasonCode,
         status: 500,
       }
     )

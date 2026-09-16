@@ -24,6 +24,7 @@ const readSafeString = (value: unknown, key: string): string | undefined => {
 const stepKeys = new Set([
   'registry_lookup',
   'registry_insert',
+  'previous_primary_hostname_demote',
   'primary_hostname_upsert',
   'provisioning_run_insert',
   'audit_event_insert',

@@ -171,4 +171,73 @@ assert_count "SELECT COUNT(*) FROM iam.role_permissions rp JOIN iam.roles r ON r
 assert_count "SELECT COUNT(*) FROM iam.role_permissions rp JOIN iam.roles r ON r.id = rp.role_id AND r.instance_id = rp.instance_id WHERE rp.instance_id = 'de-musterhausen' AND r.role_key = 'instance_registry_admin';" "0" "tenant instance registry admin role permissions"
 assert_count "SELECT COUNT(*) FROM iam.role_permissions WHERE instance_id = 'de-musterhausen' AND grant_origin_module_id IS NOT NULL;" "0" "module-owned role permissions in seeds"
 
+echo "Reproduce and verify the primary-hostname switch contract..."
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${TEST_DB_NAME}" <<'SQL'
+INSERT INTO iam.instances (
+  id,
+  display_name,
+  status,
+  parent_domain,
+  primary_hostname,
+  auth_realm,
+  auth_client_id,
+  tenant_admin_client_id,
+  feature_flags
+)
+VALUES (
+  'integration-hostname-switch',
+  'Hostname Switch Integration',
+  'active',
+  'example.test',
+  'old.example.test',
+  'integration-hostname-switch',
+  'sva-studio',
+  'sva-studio-realm-admin',
+  '{}'::jsonb
+);
+
+INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+VALUES ('old.example.test', 'integration-hostname-switch', true, 'integration-test');
+
+DO $$
+DECLARE
+  violated_constraint text;
+BEGIN
+  BEGIN
+    INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+    VALUES ('new.example.test', 'integration-hostname-switch', true, 'integration-test');
+    RAISE EXCEPTION 'expected primary-hostname unique violation';
+  EXCEPTION
+    WHEN unique_violation THEN
+      GET STACKED DIAGNOSTICS violated_constraint = CONSTRAINT_NAME;
+      IF violated_constraint <> 'uq_instance_hostnames_primary_per_instance' THEN
+        RAISE EXCEPTION 'unexpected unique constraint: %', violated_constraint;
+      END IF;
+  END;
+END $$;
+
+BEGIN;
+UPDATE iam.instances
+SET primary_hostname = 'new.example.test'
+WHERE id = 'integration-hostname-switch';
+
+UPDATE iam.instance_hostnames
+SET is_primary = false
+WHERE instance_id = 'integration-hostname-switch'
+  AND is_primary = true
+  AND hostname <> 'new.example.test';
+
+INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
+VALUES ('new.example.test', 'integration-hostname-switch', true, 'integration-test')
+ON CONFLICT (hostname) DO UPDATE
+SET
+  instance_id = EXCLUDED.instance_id,
+  is_primary = EXCLUDED.is_primary;
+COMMIT;
+SQL
+
+assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'integration-hostname-switch' AND is_primary = true AND hostname = 'new.example.test';" "1" "new primary hostname"
+assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'integration-hostname-switch' AND is_primary = false AND hostname = 'old.example.test';" "1" "preserved previous hostname alias"
+assert_count "SELECT COUNT(*) FROM iam.instance_hostnames WHERE instance_id = 'integration-hostname-switch' AND is_primary = true;" "1" "single primary hostname after switch"
+
 echo "Seed idempotency integration test passed."

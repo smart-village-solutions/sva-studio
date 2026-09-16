@@ -281,7 +281,7 @@ describe('instance registry repository provisioning', () => {
 
     expect(
       statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(statements[0]?.text).toContain('$18::jsonb, $19, $20, $20');
     expect(statements[0]?.values.at(17)).toBe('{"preview":true}');
     expect(statements[0]?.values.at(18)).toBe('mainserver-ref');

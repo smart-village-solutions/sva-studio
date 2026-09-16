@@ -883,7 +883,14 @@ describe('service-keycloak-execution', () => {
     expect(deleteProvisionedRealm).not.toHaveBeenCalled();
     expect(state.failRun).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ runId: 'run-1', error: expect.any(Error) })
+      expect.objectContaining({
+        runId: 'run-1',
+        error: expect.objectContaining({
+          message: 'new_realm_accepted_post_provisioning_sync_failed_retry_safe',
+          cause: expect.objectContaining({ message: 'local-bootstrap-failed' }),
+          instanceRegistryStep: 'admin_bootstrap',
+        }),
+      })
     );
   });
 

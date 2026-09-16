@@ -44,3 +44,11 @@ SET
   instance_id = EXCLUDED.instance_id,
   is_primary = EXCLUDED.is_primary;
 `;
+
+export const demotePreviousPrimaryHostnameSql = `
+UPDATE iam.instance_hostnames
+SET is_primary = false
+WHERE instance_id = $1
+  AND is_primary = true
+  AND hostname <> $2;
+`;

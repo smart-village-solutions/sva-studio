@@ -161,8 +161,8 @@ const reconcileCapturedPluginActivationPoliciesForAllInstances = async (
         await withScopedRegistryService(instance.instanceId, async () => undefined, {
           forceIamSync: true,
           awaitActivationPolicyFollowUp: true,
-          shouldReconcileActivationPolicies: async (service) => {
-            const currentInstance = await service.getInstanceDetail(instance.instanceId);
+          shouldReconcileActivationPolicies: async (repository) => {
+            const currentInstance = await repository.getInstanceById(instance.instanceId);
             reconciled = currentInstance !== null && currentInstance.status !== 'archived';
             return reconciled;
           },

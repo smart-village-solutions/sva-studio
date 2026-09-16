@@ -79,22 +79,22 @@ const configureRegistryService = () => {
       instanceId: string,
       operation: (service: unknown) => Promise<unknown>,
       options?: {
-        shouldReconcileActivationPolicies?: (service: {
-          getInstanceDetail: (targetInstanceId: string) => Promise<unknown>;
+        shouldReconcileActivationPolicies?: (repository: {
+          getInstanceById: (targetInstanceId: string) => Promise<unknown>;
         }) => Promise<boolean>;
       }
     ) => {
-      const service = {
-        getInstanceDetail: async (targetInstanceId: string) => ({
+      const repository = {
+        getInstanceById: async (targetInstanceId: string) => ({
           instanceId: targetInstanceId,
           status: 'active',
         }),
       };
-      if ((await options?.shouldReconcileActivationPolicies?.(service)) === false) {
-        return operation(service);
+      if ((await options?.shouldReconcileActivationPolicies?.(repository)) === false) {
+        return operation({});
       }
       await mocks.reconcileModuleActivationPolicies({ instanceId });
-      return operation(service);
+      return operation({});
     }
   );
 };
@@ -209,11 +209,11 @@ describe('plugin activation policy fleet reconcile', () => {
     configureRegistryService();
     mocks.listInstances.mockResolvedValue([{ instanceId: 'instance-a', status: 'active' }]);
     mocks.withScopedRegistryService.mockImplementation(async (_instanceId, operation, options) => {
-      const service = {
-        getInstanceDetail: vi.fn(async () => ({ instanceId: 'instance-a', status: 'archived' })),
+      const repository = {
+        getInstanceById: vi.fn(async () => ({ instanceId: 'instance-a', status: 'archived' })),
       };
-      if ((await options.shouldReconcileActivationPolicies(service)) === false) {
-        return operation(service);
+      if ((await options.shouldReconcileActivationPolicies(repository)) === false) {
+        return operation({});
       }
       throw new Error('archived instance must not be reconciled');
     });

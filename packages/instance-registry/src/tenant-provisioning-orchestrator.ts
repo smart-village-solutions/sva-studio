@@ -137,6 +137,10 @@ const failRun = async (
   now: Date
 ) => {
   const code = errorCode(error);
+  const lastDependencyErrorCode =
+    code === 'provisioning_deadline_exceeded' && run.errorCode
+      ? errorCode(run.errorCode)
+      : undefined;
   await deps.repository.setInstanceStatus({
     instanceId: run.instanceId,
     status: 'failed',
@@ -157,8 +161,10 @@ const failRun = async (
     errorCode: code,
     errorMessage: 'Mandanten-Provisionierung fehlgeschlagen.',
     terminalEvidence: {
+      ...run.terminalEvidence,
       failedStep: stepKey,
       errorCode: code,
+      ...(lastDependencyErrorCode ? { lastDependencyErrorCode } : {}),
       deadlineAt: run.deadlineAt,
       elapsedMs: Math.max(0, now.getTime() - new Date(run.createdAt).getTime()),
     },

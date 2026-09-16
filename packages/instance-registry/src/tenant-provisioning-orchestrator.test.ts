@@ -529,6 +529,11 @@ describe('tenant provisioning parent orchestrator', () => {
     Object.assign(harness.getRun(), {
       stepKey: 'login',
       deadlineAt: now.toISOString(),
+      errorCode: 'kassel_login_probe_failed',
+      terminalEvidence: {
+        loginStatus: 503,
+        loginClassification: 'upstream_unavailable',
+      },
     });
 
     await processNextTenantProvisioningRun(harness.deps, {
@@ -542,6 +547,10 @@ describe('tenant provisioning parent orchestrator', () => {
       errorCode: 'provisioning_deadline_exceeded',
       completedAt: now.toISOString(),
       terminalEvidence: {
+        loginStatus: 503,
+        loginClassification: 'upstream_unavailable',
+        errorCode: 'provisioning_deadline_exceeded',
+        lastDependencyErrorCode: 'kassel_login_probe_failed',
         deadlineAt: now.toISOString(),
         elapsedMs: 0,
       },

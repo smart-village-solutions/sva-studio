@@ -27,6 +27,7 @@ export type InstanceRegistryPool = {
 type ScopedRegistryServiceOptions = Readonly<{
   forceIamSync?: boolean;
   awaitActivationPolicyFollowUp?: boolean;
+  shouldReconcileActivationPolicies?: (service: InstanceRegistryService) => Promise<boolean>;
 }>;
 
 export type InstanceRegistryRuntimeDeps = {
@@ -180,17 +181,24 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     const scopedResult = await withScopedRegistryRepository(instanceId, async (repository) => {
       const serviceDeps = { repository, ...deps.serviceDeps };
       const service = createInstanceRegistryService(serviceDeps);
+      const shouldReconcile =
+        (await options.shouldReconcileActivationPolicies?.(service)) ?? true;
+      if (!shouldReconcile) {
+        return { reconcileResult: null, result: await work(service) };
+      }
       const reconcileResult = await createReconcileModuleActivationPoliciesHandler(
         serviceDeps,
         options
       )({ instanceId });
       return { reconcileResult, result: await work(service) };
     });
-    await completeActivationPolicyFollowUp(
-      deps,
-      { instanceId, changedModuleIds: scopedResult.reconcileResult.changedModuleIds },
-      options.awaitActivationPolicyFollowUp === true
-    );
+    if (scopedResult.reconcileResult) {
+      await completeActivationPolicyFollowUp(
+        deps,
+        { instanceId, changedModuleIds: scopedResult.reconcileResult.changedModuleIds },
+        options.awaitActivationPolicyFollowUp === true
+      );
+    }
     return scopedResult.result;
   };
   const getProvisioningWorkerServiceDeps = (

@@ -369,6 +369,10 @@ describe('service-keycloak-execution', () => {
     expect(planKeycloakProvisioning).toHaveBeenCalledWith(
       expect.objectContaining({ pluginOidcClients })
     );
+    expect(state.assertQueuedRealmBaselineCurrent).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginOidcSnapshotVersion: '1.0' }),
+      'new'
+    );
     expect(state.completeRun).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ pluginOidcClients })

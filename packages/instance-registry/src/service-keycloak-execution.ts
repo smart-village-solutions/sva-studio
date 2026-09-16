@@ -384,7 +384,7 @@ export const processClaimedKeycloakProvisioningRun = async (
       run.id,
       queueStep?.details
     );
-    assertQueuedRealmBaselineCurrent(queueStep?.details, loaded.instance.realmMode);
+    assertQueuedRealmBaselineCurrent(queueStep?.details, run.mode);
     const baseProvisioningInput = buildProvisioningInput(loaded);
     const pluginOidcClients = readQueuedPluginOidcClientRequirements(
       queueStep?.details,

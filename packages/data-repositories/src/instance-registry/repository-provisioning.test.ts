@@ -247,7 +247,13 @@ describe('instance registry repository provisioning', () => {
   });
 
   it('creates and updates instances with hostname side effects', async () => {
-    const { executor, statements } = createQueuedExecutor([[instanceRow], [], [instanceRow], []]);
+    const { executor, statements } = createQueuedExecutor([
+      [instanceRow],
+      [{ hostname: 'tenant-a.example.test' }],
+      [instanceRow],
+      [],
+      [{ hostname: 'tenant-a.example.test' }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(

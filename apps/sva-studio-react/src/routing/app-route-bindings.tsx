@@ -10,7 +10,7 @@ import {
   type IamContentOwnershipTarget,
   type IamOrganizationContextOption,
 } from '@sva/core';
-import { CategoriesPage } from '@sva/plugin-categories';
+import { CategoriesPage, type CategoryDataTypeOption } from '@sva/plugin-categories';
 import {
   CockpitCardsCreatePage,
   CockpitCardsEditPage,
@@ -43,6 +43,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
+import { studioBuildTimeRegistry } from '../lib/plugins';
 import { getContent } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
 import { AccountProfilePage } from '../routes/account/-account-profile-page';
@@ -83,6 +84,12 @@ const readStringParam = (value: unknown, fallback = ''): string => {
 };
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
+
+const categoryDataTypeOptions: readonly CategoryDataTypeOption[] = [
+  ...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries(),
+].map(([value, label]) => ({ value, label }));
+
+const CategoriesRoutePage = () => <CategoriesPage dataTypeOptions={categoryDataTypeOptions} />;
 
 export type MainserverPrincipalResolution =
   | Readonly<{ kind: 'ready'; control: MainserverPrincipalControlModel }>
@@ -957,7 +964,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   surveysEditor: SurveyCreateRoutePage,
   media: MediaPage,
   adminMedia: MediaPage,
-  categories: CategoriesPage,
+  categories: CategoriesRoutePage,
   app: AppPlaceholderRoutePage,
   interfaces: InterfacesRoutePage,
   help: HelpPlaceholderRoutePage,

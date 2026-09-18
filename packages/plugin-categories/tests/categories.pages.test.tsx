@@ -4,14 +4,14 @@ import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  listCategories: vi.fn(),
+  listCategoryManagement: vi.fn(),
 }));
 
 vi.mock('../src/categories.api.js', async () => {
   const actual = await vi.importActual<typeof import('../src/categories.api.js')>('../src/categories.api.js');
   return {
     ...actual,
-    listCategories: state.listCategories,
+    listCategoryManagement: state.listCategoryManagement,
   };
 });
 
@@ -19,7 +19,7 @@ import { CategoriesPage } from '../src/categories.pages.js';
 
 describe('CategoriesPage', () => {
   beforeEach(() => {
-    state.listCategories.mockReset();
+    state.listCategoryManagement.mockReset();
     registerPluginTranslationResolver((key, variables) => {
       const labels: Record<string, string> = {
         'categories.navigation.title': 'Kategorien',
@@ -68,17 +68,19 @@ describe('CategoriesPage', () => {
   });
 
   it('renders loading and then the flat categories table with disabled actions', async () => {
-    state.listCategories.mockResolvedValueOnce([
+    state.listCategoryManagement.mockResolvedValueOnce([
       {
         id: 'cat-root',
         name: 'Service',
         position: 1,
         tagList: 'amt, buerger',
+        dataTypes: ['amt', 'buerger'],
       },
       {
         id: 'cat-child',
         name: 'Buergerbuero',
         tagList: '',
+        dataTypes: [],
         parent: {
           name: 'Service',
         },
@@ -107,7 +109,7 @@ describe('CategoriesPage', () => {
   });
 
   it('renders an error state and retries into the empty state', async () => {
-    state.listCategories.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([]);
+    state.listCategoryManagement.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([]);
 
     render(<CategoriesPage />);
 
@@ -124,7 +126,7 @@ describe('CategoriesPage', () => {
   });
 
   it('renders a specific guidance message for missing Mainserver credentials', async () => {
-    state.listCategories.mockRejectedValueOnce(
+    state.listCategoryManagement.mockRejectedValueOnce(
       Object.assign(new Error('Für die aktive Organisation fehlen Mainserver-Credentials.'), {
         code: 'organization_mainserver_credentials_missing',
         name: 'CategoriesApiError',
@@ -143,7 +145,7 @@ describe('CategoriesPage', () => {
   });
 
   it('renders dedicated load guidance for the remaining known categories error codes', async () => {
-    state.listCategories
+    state.listCategoryManagement
       .mockRejectedValueOnce(Object.assign(new Error('integration disabled'), { code: 'integration_disabled' }))
       .mockRejectedValueOnce(Object.assign(new Error('missing config'), { code: 'config_not_found' }))
       .mockRejectedValueOnce(Object.assign(new Error('forbidden'), { code: 'forbidden' }));

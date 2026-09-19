@@ -194,6 +194,12 @@ const createRepository = (
       status: 'failed' as const,
       leaseOwner,
     })),
+    renewProvisioningRetryReservation: vi.fn(async ({ leaseOwner, leaseExpiresAt }) => ({
+      ...latestRun,
+      status: 'failed' as const,
+      leaseOwner,
+      leaseExpiresAt,
+    })),
     releaseProvisioningRetryReservation: vi.fn(async () => ({
       ...latestRun,
       status: 'failed' as const,
@@ -1352,6 +1358,102 @@ describe('instance registry service facade', () => {
       })
     );
     expect(retryProvisioningRun).not.toHaveBeenCalled();
+  });
+
+  it('renews the retry reservation while IAM preparation is still running', async () => {
+    vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+    try {
+      const failedInstance = { ...baseInstance, status: 'failed' as const };
+      const failedRun = {
+        ...latestRun,
+        status: 'failed' as const,
+        desiredSnapshot: {
+          automationMode: 'kassel-traefik-file',
+          assignedModules: ['news'],
+          ...kasselPluginSnapshot,
+        },
+      };
+      const syncProtectedSystemRolePermissions = vi.fn(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 15_000))
+      );
+      const renewProvisioningRetryReservation = vi.fn(async ({ leaseOwner, leaseExpiresAt }) => ({
+        ...failedRun,
+        leaseOwner,
+        leaseExpiresAt,
+      }));
+      const repository = createRepository({
+        getInstanceById: vi.fn(async () => failedInstance),
+        listProvisioningRuns: vi.fn(async () => [failedRun]),
+        reserveProvisioningRetryRun: vi.fn(async ({ leaseOwner }: { leaseOwner: string }) => ({
+          ...failedRun,
+          leaseOwner,
+        })),
+        renewProvisioningRetryReservation,
+        syncProtectedSystemRolePermissions,
+        retryProvisioningRun: vi.fn(async () => ({
+          ...failedRun,
+          status: 'requested' as const,
+          stepKey: 'registry',
+        })),
+        setInstanceStatus: vi.fn(async () => ({ ...failedInstance, status: 'requested' as const })),
+      });
+      const retry = createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+        instanceId: 'demo',
+      });
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(retry).resolves.toMatchObject({ status: 'requested' });
+      expect(renewProvisioningRetryReservation).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stops retry preparation after losing its reservation heartbeat', async () => {
+    vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
+    try {
+      const failedInstance = { ...baseInstance, status: 'failed' as const };
+      const failedRun = {
+        ...latestRun,
+        status: 'failed' as const,
+        desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      };
+      const syncProtectedSystemRolePermissions = vi.fn(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 15_000))
+      );
+      const reconcileModuleActivationPolicies = vi.fn(async () => ({
+        changedModuleIds: [],
+        conflictModuleIds: [],
+        unchangedModuleIds: [],
+      }));
+      const retryProvisioningRun = vi.fn();
+      const repository = createRepository({
+        getInstanceById: vi.fn(async () => failedInstance),
+        listProvisioningRuns: vi.fn(async () => [failedRun]),
+        reserveProvisioningRetryRun: vi.fn(async ({ leaseOwner }: { leaseOwner: string }) => ({
+          ...failedRun,
+          leaseOwner,
+        })),
+        renewProvisioningRetryReservation: vi
+          .fn()
+          .mockResolvedValueOnce(failedRun)
+          .mockResolvedValueOnce(null),
+        syncProtectedSystemRolePermissions,
+        reconcileModuleActivationPolicies,
+        retryProvisioningRun,
+      });
+      const retry = createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+        instanceId: 'demo',
+      });
+      const rejected = expect(retry).rejects.toThrow('provisioning_retry_conflict');
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      await rejected;
+      expect(reconcileModuleActivationPolicies).not.toHaveBeenCalled();
+      expect(retryProvisioningRun).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not requeue when a current lifecycle reconcile intent is still active', async () => {

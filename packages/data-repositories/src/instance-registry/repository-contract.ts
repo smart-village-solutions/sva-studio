@@ -360,6 +360,12 @@ export type InstanceRegistryRepository = {
     leaseOwner: string;
     leaseExpiresAt: string;
   }) => Promise<InstanceProvisioningRun | null>;
+  readonly renewProvisioningRetryReservation: (input: {
+    instanceId: string;
+    idempotencyKey: string;
+    leaseOwner: string;
+    leaseExpiresAt: string;
+  }) => Promise<InstanceProvisioningRun | null>;
   readonly releaseProvisioningRetryReservation: (input: {
     instanceId: string;
     idempotencyKey: string;

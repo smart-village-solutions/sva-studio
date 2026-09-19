@@ -14,6 +14,17 @@ const usageEntries = (usage: CategoryUsage, pt: Translator) =>
     [pt('deleteDialog.usage.notificationConfigurations'), usage.notificationConfigurations],
   ] as const;
 
+const deleteErrorMessage = (code: string | undefined, pt: Translator): string => {
+  switch (code) {
+    case 'CATEGORY_IN_USE':
+      return pt('messages.deleteBlocked');
+    case 'CATEGORY_NOT_FOUND':
+      return pt('messages.categoryNotFound');
+    default:
+      return pt('messages.deleteError');
+  }
+};
+
 const useDeleteController = (
   props: Readonly<{
     category: CategoryManagementItem | null;
@@ -42,7 +53,7 @@ const useDeleteController = (
         if (result.errors.some((entry) => entry.code === 'CATEGORY_NOT_FOUND')) {
           await props.reload();
         }
-        setError(result.errors[0]?.message ?? props.pt('messages.deleteBlocked'));
+        setError(deleteErrorMessage(result.errors[0]?.code, props.pt));
         setUsage(result.usage);
         return;
       }

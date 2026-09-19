@@ -252,7 +252,7 @@ describe('CategoriesPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     fireEvent.click(screen.getByRole('button', { name: 'Kategorie löschen' }));
 
-    expect(await screen.findByText('In Verwendung')).toBeTruthy();
+    expect(await screen.findByText('Löschen blockiert.')).toBeTruthy();
     for (const value of [
       'Unterkategorien',
       'Inhaltszuordnungen',

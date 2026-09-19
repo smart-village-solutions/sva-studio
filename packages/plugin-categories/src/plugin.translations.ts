@@ -68,6 +68,7 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
     nameRequired: 'Bitte geben Sie einen Kategorienamen an.',
     positionInvalid: 'Die Position muss eine ganze Zahl ab 0 sein.',
     emailInvalid: 'Bitte geben Sie genau eine gültige E-Mail-Adresse an.',
+    deleteError: 'Die Kategorie konnte nicht gelöscht werden.',
     deleteBlocked: 'Die Kategorie kann wegen bestehender Verwendungen nicht gelöscht werden.',
     saved: 'Die Kategorie wurde gespeichert.',
     savedWithDescendants:
@@ -186,6 +187,7 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
     nameRequired: 'Enter a category name.',
     positionInvalid: 'Position must be an integer greater than or equal to 0.',
     emailInvalid: 'Enter exactly one valid email address.',
+    deleteError: 'The category could not be deleted.',
     deleteBlocked: 'The category cannot be deleted because it is in use.',
     saved: 'The category was saved.',
     savedWithDescendants: 'The category and {{count}} affected subcategories were saved.',

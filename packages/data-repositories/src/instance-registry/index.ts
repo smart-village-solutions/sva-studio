@@ -17,6 +17,7 @@ import type {
 import { createModuleIamRepository } from './repository-module-iam.js';
 import { createMutationRepository } from './repository-mutations.js';
 import { createProvisioningRepository } from './repository-provisioning.js';
+import { createProvisioningRetryRepository } from './repository-provisioning-retry.js';
 import { createReadRepository } from './repository-reads.js';
 import { createWasteProvisioningRepository } from './repository-waste-provisioning.js';
 import { createPermissionCacheRevisionRepository } from '../iam/permission-cache-revisions.js';
@@ -43,6 +44,7 @@ export const createInstanceRegistryRepository = (
     ...createReadRepository(executor),
     ...createModuleIamRepository(executor),
     ...createProvisioningRepository(executor),
+    ...createProvisioningRetryRepository(executor),
     ...createMutationRepository(executor),
     ...createKeycloakProvisioningRepository(executor),
     ...createWasteProvisioningRepository(executor),

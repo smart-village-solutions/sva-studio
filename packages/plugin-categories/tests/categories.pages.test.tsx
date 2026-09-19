@@ -198,12 +198,14 @@ describe('CategoriesPage', () => {
     createCategory();
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
     await screen.findByText('Kategorien konnten nicht geladen werden.');
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neu geändert' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(state.save).toHaveBeenCalledTimes(2));
 
     expect(state.save.mock.calls[0]?.[0].idempotencyKey).toBe(
       state.save.mock.calls[1]?.[0].idempotencyKey
     );
+    expect(state.save.mock.calls[1]?.[0].category.name).toBe('Neu geändert');
   });
 
   it('starts a new create attempt after a terminal structured failure', async () => {

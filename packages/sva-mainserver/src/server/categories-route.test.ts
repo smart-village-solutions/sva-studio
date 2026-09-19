@@ -337,10 +337,17 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     });
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({
-        endpoint: 'POST:/api/v1/mainserver/categories',
+        endpoint:
+          'POST:/api/v1/mainserver/categories#organization:22222222-2222-2222-8222-222222222222',
         idempotencyKey: 'category-create-1',
         responseStatus: 201,
         status: 'COMPLETED',
+      })
+    );
+    expect(state.reserveIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          'POST:/api/v1/mainserver/categories#organization:22222222-2222-2222-8222-222222222222',
       })
     );
     expect(response?.status).toBe(201);

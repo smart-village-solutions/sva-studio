@@ -60,19 +60,14 @@ const mappedErrors = (errors: readonly CategoryMutationError[], pt: Translator) 
   return fields;
 };
 
-const attemptKey = (
-  attempt: React.MutableRefObject<{ signature: string; key: string } | null>,
-  value: Draft
-) => {
-  const signature = JSON.stringify(value);
-  if (attempt.current?.signature !== signature)
-    attempt.current = { signature, key: crypto.randomUUID() };
+const attemptKey = (attempt: React.MutableRefObject<{ key: string } | null>) => {
+  attempt.current ??= { key: crypto.randomUUID() };
   return attempt.current.key;
 };
 
 const usePersistCategory = (input: {
   props: CategoryEditorProps;
-  attempt: React.MutableRefObject<{ signature: string; key: string } | null>;
+  attempt: React.MutableRefObject<{ key: string } | null>;
   setPending: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setFieldErrors: React.Dispatch<React.SetStateAction<DraftErrors>>;
@@ -85,7 +80,7 @@ const usePersistCategory = (input: {
       try {
         const result = await saveCategory({
           id: input.props.category?.id,
-          idempotencyKey: input.props.category ? undefined : attemptKey(input.attempt, value),
+          idempotencyKey: input.props.category ? undefined : attemptKey(input.attempt),
           category: value,
         });
         if (!result.category || result.errors.length) {
@@ -123,7 +118,7 @@ export const useCategoryEditorController = (props: CategoryEditorProps) => {
   const [error, setError] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<DraftErrors>({});
   const [confirmationDraft, setConfirmationDraft] = React.useState<Draft | null>(null);
-  const attempt = React.useRef<{ signature: string; key: string } | null>(null);
+  const attempt = React.useRef<{ key: string } | null>(null);
   React.useEffect(() => {
     setDraft(props.category ? categoryDraft(props.category) : initialDraft(props.parentId));
     setError(null);

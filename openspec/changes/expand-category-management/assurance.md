@@ -9,10 +9,10 @@
 
 ## Lokale Prüfgrundlage am 19. September 2026
 
-- `packages/sva-mainserver/src/server/categories-route.test.ts`: 18/18 Tests im vollständigen Lauf erfolgreich, einschließlich vollständiger Nullable-Felder und Datentyp-Identifier-Validierung vor dem Upstream-Aufruf.
+- `packages/sva-mainserver/src/server/categories-route.test.ts`: 18/18 Tests im vollständigen Lauf erfolgreich, einschließlich vollständiger Nullable-Felder, Datentyp-Identifier-Validierung vor dem Upstream-Aufruf und organisationsgebundener Create-Idempotenz.
 - `packages/sva-mainserver/src/server/service.test.ts`: vier fokussierte Tests gegen automatischen Mutation-Retry, für den getrennten Upstream-Management-Fehler sowie für Update- und Delete-ID-Bindung erfolgreich.
-- `packages/plugin-categories/tests`: 26/26 Tests im vollständigen Lauf erfolgreich, einschließlich lokalisierter Fehler, Idempotenz-Lebenszyklus und fail-closed Capability-Retry.
-- Capability-Hook 4/4 Tests sowie fokussierter App-Routenadapter-Test für Registry-ID/-Label und den Capability-Zustand erfolgreich.
+- `packages/plugin-categories/tests`: 26/26 Tests im vollständigen Lauf erfolgreich, einschließlich lokalisierter Fehler, stabiler Create-Idempotenz nach unklarem Ausgang und Draft-Änderung sowie fail-closed Capability-Retry.
+- Capability-Hook 4/4 Tests sowie fokussierte App-Routenadapter-Tests für Registry-ID/-Label, Capability-Zustand und das Verwerfen des Kategorienzustands beim Organisationswechsel erfolgreich.
 - `plugin-categories:test:types`, `sva-mainserver:test:types`, `sva-studio-react:test:types`, `pnpm check:server-runtime`, die drei betroffenen Lint-Ziele und der Complexity-Gate erfolgreich.
 - Diese Evidenz belegt den lokalen PR-Arbeitsstand. GitHub-Gates für den finalen Commit sowie Vertrags-, Credential- und Browserabnahme in der Zielumgebung bleiben getrennte Freigabevoraussetzungen.
 

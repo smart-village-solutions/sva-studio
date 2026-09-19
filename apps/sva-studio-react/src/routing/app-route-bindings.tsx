@@ -87,6 +87,7 @@ const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
 const CategoriesRoutePage = () => {
   const mutationCapabilities = useMainserverMutationCapabilities();
+  const organizationContext = useOrganizationContext();
   const dataTypeOptions: readonly CategoryDataTypeOption[] = [
     ...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries(),
   ].map(([value, contentType]) => {
@@ -100,8 +101,11 @@ const CategoriesRoutePage = () => {
         : (definition?.displayName ?? contentType),
     };
   });
+  if (organizationContext.isLoading || organizationContext.isUpdating)
+    return <StudioLoadingState>{t('content.principal.contextLoading')}</StudioLoadingState>;
   return (
     <CategoriesPage
+      key={organizationContext.context?.activeOrganizationId ?? 'personal'}
       dataTypeOptions={dataTypeOptions}
       enabledMutationActions={mutationCapabilities.enabledActions}
       mutationActionsError={mutationCapabilities.error !== null}

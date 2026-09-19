@@ -642,6 +642,23 @@ describe('appRouteBindings', () => {
     }
   );
 
+  it('unmounts categories while the organization context changes', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.organizationContext.activeOrganizationId = 'organization-1';
+    const view = render(<appRouteBindings.categories />);
+    expect(screen.getByTestId('categories-page')).toBeTruthy();
+
+    routeState.organizationContextIsUpdating = true;
+    view.rerender(<appRouteBindings.categories />);
+    expect(screen.queryByTestId('categories-page')).toBeNull();
+    expect(screen.getByText('Author context loading')).toBeTruthy();
+
+    routeState.organizationContextIsUpdating = false;
+    routeState.organizationContext.activeOrganizationId = 'organization-2';
+    view.rerender(<appRouteBindings.categories />);
+    expect(screen.getByTestId('categories-page')).toBeTruthy();
+  });
+
   it('renders the concrete modules binding instead of the system placeholder', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 

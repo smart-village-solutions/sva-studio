@@ -34,7 +34,10 @@ type CategoriesActor = {
   readonly keycloakSubject: string;
   readonly activeOrganizationId?: string;
 };
-type CategoryIdempotency = Readonly<{ actorAccountId: string; key: string }>;
+type CategoryIdempotency = Readonly<{ actorAccountId: string; endpoint: string; key: string }>;
+
+const categoryCreateEndpoint = (actor: CategoriesActor): string =>
+  `POST:/api/v1/mainserver/categories#organization:${actor.activeOrganizationId ?? 'personal'}`;
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
@@ -86,10 +89,11 @@ const reserveCategoryCreate = async (
     return 'error' in actorInfo
       ? actorInfo.error
       : errorJson(403, 'forbidden', 'Keine Berechtigung für diese Kategorienoperation.');
+  const endpoint = categoryCreateEndpoint(actor);
   const reservation = await reserveIdempotency({
     instanceId: actor.instanceId,
     actorAccountId: actorInfo.actor.actorAccountId,
-    endpoint: 'POST:/api/v1/mainserver/categories',
+    endpoint,
     idempotencyKey: key,
     payloadHash: createHash('sha256')
       .update(await request.clone().text())
@@ -99,7 +103,7 @@ const reserveCategoryCreate = async (
     return json(reservation.responseBody, reservation.responseStatus);
   if (reservation.status === 'conflict')
     return errorJson(409, 'idempotency_key_reuse', reservation.message);
-  return { actorAccountId: actorInfo.actor.actorAccountId, key };
+  return { actorAccountId: actorInfo.actor.actorAccountId, endpoint, key };
 };
 
 const saveCategory = async (
@@ -122,7 +126,7 @@ const saveCategory = async (
     await completeIdempotency({
       instanceId: actor.instanceId,
       actorAccountId: idempotency.actorAccountId,
-      endpoint: 'POST:/api/v1/mainserver/categories',
+      endpoint: idempotency.endpoint,
       idempotencyKey: idempotency.key,
       responseBody: result,
       responseStatus: status,

@@ -267,6 +267,31 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid category identifiers before the upstream call', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.create');
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'invalid-identifiers', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: ['news_item', 'invalid\nvalue'],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+  });
+
   it('creates a category once and stores its terminal response for idempotent replay', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     allow('categories.create');

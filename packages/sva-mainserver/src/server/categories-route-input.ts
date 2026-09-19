@@ -1,6 +1,8 @@
 import type { SvaMainserverSaveCategoryInput } from '../types.js';
 import { errorJson, parseJsonObjectBody } from './content-route-core.js';
 
+const DATA_TYPE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/u;
+
 const stringOrNull = (value: unknown, field: string): string | null | Response => {
   if (value === null) return null;
   if (typeof value !== 'string')
@@ -27,14 +29,16 @@ const hasInvalidSaveFields = (input: {
       !Number.isInteger(input.position) ||
       input.position < 0)) ||
   !Array.isArray(input.dataTypes) ||
-  input.dataTypes.some((entry) => typeof entry !== 'string' || !entry.trim());
+  input.dataTypes.some(
+    (entry) => typeof entry !== 'string' || !DATA_TYPE_IDENTIFIER_PATTERN.test(entry.trim())
+  );
 
 const isIncompleteUpdate = (body: Record<string, unknown>, id?: string): boolean =>
   Boolean(
     id &&
-      ['parentId', 'position', 'iconName', 'email'].some(
-        (field) => !Object.prototype.hasOwnProperty.call(body, field)
-      )
+    ['parentId', 'position', 'iconName', 'email'].some(
+      (field) => !Object.prototype.hasOwnProperty.call(body, field)
+    )
   );
 
 export const parseCategorySaveInput = async (

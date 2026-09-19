@@ -1,6 +1,11 @@
 import React from 'react';
 import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
-import { Button, StudioFormSummary, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioFormSummary,
+  StudioLoadingState,
+  StudioOverviewPageTemplate,
+} from '@sva/studio-ui-react';
 
 import { CategoryDeleteDialog } from './categories.delete-dialog.js';
 import { CategoryEditor } from './categories.editor.js';
@@ -32,6 +37,32 @@ const Toolbar = ({
   </div>
 );
 
+const MutationActionsStatus = ({
+  error,
+  loading,
+  pt,
+  onReload,
+}: Readonly<{
+  error: boolean;
+  loading: boolean;
+  pt: Translator;
+  onReload: (() => void) | undefined;
+}>) => {
+  if (loading)
+    return <StudioLoadingState>{pt('messages.mutationActionsLoading')}</StudioLoadingState>;
+  if (!error) return null;
+  return (
+    <div className="space-y-3">
+      <StudioFormSummary kind="error">{pt('messages.mutationActionsLoadError')}</StudioFormSummary>
+      {onReload ? (
+        <Button type="button" variant="secondary" onClick={onReload}>
+          {pt('actions.reload')}
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
 const usePageSelection = () => {
   const [editing, setEditing] = React.useState<CategoryManagementItem | null>(null);
   const [creatingParent, setCreatingParent] = React.useState<string | null | undefined>(undefined);
@@ -52,25 +83,35 @@ const usePageSelection = () => {
   };
 };
 
-export function CategoriesPage({
-  dataTypeOptions = [],
-  enabledMutationActions,
-}: Readonly<{
-  dataTypeOptions?: readonly CategoryDataTypeOption[];
-  enabledMutationActions?: readonly string[];
-}>) {
-  const pt = useTranslator();
+const useCategoryMutationAccess = (enabledMutationActions?: readonly string[]) => {
   const access = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
+  return (action: string) =>
+    access.permissionActions.includes(action) &&
+    (enabledMutationActions === undefined || enabledMutationActions.includes(action));
+};
+
+export function CategoriesPage({
+  dataTypeOptions = [],
+  enabledMutationActions,
+  mutationActionsError = false,
+  mutationActionsLoading = false,
+  onReloadMutationActions,
+}: Readonly<{
+  dataTypeOptions?: readonly CategoryDataTypeOption[];
+  enabledMutationActions?: readonly string[];
+  mutationActionsError?: boolean;
+  mutationActionsLoading?: boolean;
+  onReloadMutationActions?: () => void;
+}>) {
+  const pt = useTranslator();
+  const can = useCategoryMutationAccess(enabledMutationActions);
   const state = useCategoryPageState(pt);
   const selection = usePageSelection();
   const [notice, setNotice] = React.useState<string | null>(null);
-  const can = (action: string) =>
-    access.permissionActions.includes(action) &&
-    (enabledMutationActions === undefined || enabledMutationActions.includes(action));
   const reloadAfterSave = async (affectedIds: readonly string[]) => {
     const reloaded = await state.reload();
     const key = reloaded
@@ -94,6 +135,12 @@ export function CategoriesPage({
       }
     >
       {notice ? <StudioFormSummary kind="success">{notice}</StudioFormSummary> : null}
+      <MutationActionsStatus
+        error={mutationActionsError}
+        loading={mutationActionsLoading}
+        pt={pt}
+        onReload={onReloadMutationActions}
+      />
       <CategoriesTableView
         {...state}
         can={can}

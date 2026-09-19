@@ -104,6 +104,9 @@ const CategoriesRoutePage = () => {
     <CategoriesPage
       dataTypeOptions={dataTypeOptions}
       enabledMutationActions={mutationCapabilities.enabledActions}
+      mutationActionsError={mutationCapabilities.error !== null}
+      mutationActionsLoading={mutationCapabilities.isLoading}
+      onReloadMutationActions={mutationCapabilities.reload}
     />
   );
 };

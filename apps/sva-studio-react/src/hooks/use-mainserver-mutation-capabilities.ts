@@ -8,6 +8,7 @@ export type UseMainserverMutationCapabilitiesResult = Readonly<{
   enabledActions: readonly string[];
   isLoading: boolean;
   error: IamHttpError | null;
+  reload: () => void;
 }>;
 
 export const useMainserverMutationCapabilities = (): UseMainserverMutationCapabilitiesResult => {
@@ -16,6 +17,8 @@ export const useMainserverMutationCapabilities = (): UseMainserverMutationCapabi
   const [enabledActions, setEnabledActions] = React.useState<readonly string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
+  const [requestVersion, setRequestVersion] = React.useState(0);
+  const reload = React.useCallback(() => setRequestVersion((version) => version + 1), []);
 
   React.useEffect(() => {
     if (!hasResolvedSession || !userId) {
@@ -50,7 +53,7 @@ export const useMainserverMutationCapabilities = (): UseMainserverMutationCapabi
     return () => {
       active = false;
     };
-  }, [hasResolvedSession, userId]);
+  }, [hasResolvedSession, requestVersion, userId]);
 
-  return { enabledActions, isLoading, error };
+  return { enabledActions, isLoading, error, reload };
 };

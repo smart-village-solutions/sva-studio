@@ -90,6 +90,8 @@ const label = (key: string, variables?: Readonly<Record<string, string | number>
     'categories.actions.reload': 'Erneut laden',
     'categories.messages.loading': 'Kategorien werden geladen.',
     'categories.messages.loadError': 'Kategorien konnten nicht geladen werden.',
+    'categories.messages.mutationActionsLoading': 'Schreibaktionen werden geprüft.',
+    'categories.messages.mutationActionsLoadError': 'Schreibaktionen konnten nicht geprüft werden.',
     'categories.messages.nameRequired': 'Bitte geben Sie einen Kategorienamen an.',
     'categories.messages.nameTaken': 'Dieser Kategoriename ist bereits vergeben.',
     'categories.messages.invalidParent': 'Die übergeordnete Kategorie ist ungültig.',
@@ -169,6 +171,23 @@ describe('CategoriesPage', () => {
     expect(screen.getAllByRole('button', { name: 'Löschen' })[0]?.hasAttribute('disabled')).toBe(
       true
     );
+  });
+
+  it('keeps mutations fail-closed and exposes a retry when capabilities cannot be loaded', async () => {
+    const reloadMutationActions = vi.fn();
+    render(
+      <CategoriesPage
+        enabledMutationActions={[]}
+        mutationActionsError
+        onReloadMutationActions={reloadMutationActions}
+      />
+    );
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    expect(screen.getByText('Schreibaktionen konnten nicht geprüft werden.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Kategorie anlegen' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
+    expect(reloadMutationActions).toHaveBeenCalledTimes(1);
   });
 
   it('reuses the create idempotency key when the same attempt is retried', async () => {

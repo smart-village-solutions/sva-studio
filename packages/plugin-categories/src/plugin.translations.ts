@@ -52,6 +52,9 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
   messages: {
     loading: 'Kategorien werden geladen.',
     loadError: 'Kategorien konnten nicht geladen werden.',
+    mutationActionsLoading: 'Verfügbare Schreibaktionen werden geprüft.',
+    mutationActionsLoadError:
+      'Die verfügbaren Schreibaktionen konnten nicht geprüft werden. Die Kategorien bleiben bis zum erneuten Laden schreibgeschützt.',
     loadErrorMissingCredentials:
       'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.',
     loadErrorIntegrationDisabled:
@@ -171,6 +174,9 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
   messages: {
     loading: 'Loading categories.',
     loadError: 'Categories could not be loaded.',
+    mutationActionsLoading: 'Checking available write actions.',
+    mutationActionsLoadError:
+      'Available write actions could not be checked. Categories remain read-only until reloaded.',
     loadErrorMissingCredentials:
       'Mainserver credentials are missing for the current context. Select an organization with configured Mainserver credentials or store personal Mainserver credentials.',
     loadErrorIntegrationDisabled:

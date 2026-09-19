@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,6 +27,9 @@ const routeState = vi.hoisted(() => ({
   organizationContextIsUpdating: false,
   organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
+  mutationCapabilitiesError: null as null | { code: string },
+  mutationCapabilitiesIsLoading: false,
+  reloadMutationCapabilities: vi.fn(),
   getContent: vi.fn(),
   requestMainserverJson: vi.fn(),
   faqLabel: 'FAQ',
@@ -152,8 +155,9 @@ vi.mock('../hooks/use-organization-context', () => ({
 vi.mock('../hooks/use-mainserver-mutation-capabilities', () => ({
   useMainserverMutationCapabilities: () => ({
     enabledActions: routeState.enabledMainserverMutationActions,
-    isLoading: false,
-    error: null,
+    isLoading: routeState.mutationCapabilitiesIsLoading,
+    error: routeState.mutationCapabilitiesError,
+    reload: routeState.reloadMutationCapabilities,
   }),
 }));
 
@@ -503,17 +507,30 @@ vi.mock('@sva/plugin-categories', () => ({
   CategoriesPage: ({
     dataTypeOptions,
     enabledMutationActions,
+    mutationActionsError,
+    mutationActionsLoading,
+    onReloadMutationActions,
   }: {
     dataTypeOptions?: unknown;
     enabledMutationActions?: unknown;
+    mutationActionsError?: boolean;
+    mutationActionsLoading?: boolean;
+    onReloadMutationActions?: () => void;
   }) => (
-    <div
-      data-actions={JSON.stringify(enabledMutationActions)}
-      data-options={JSON.stringify(dataTypeOptions)}
-      data-testid="categories-page"
-    >
-      plugin categories
-    </div>
+    <>
+      <div
+        data-actions={JSON.stringify(enabledMutationActions)}
+        data-actions-error={String(mutationActionsError)}
+        data-actions-loading={String(mutationActionsLoading)}
+        data-options={JSON.stringify(dataTypeOptions)}
+        data-testid="categories-page"
+      >
+        plugin categories
+      </div>
+      <button type="button" onClick={onReloadMutationActions}>
+        reload capabilities
+      </button>
+    </>
   ),
 }));
 
@@ -533,6 +550,9 @@ describe('appRouteBindings', () => {
     routeState.organizationContextIsUpdating = false;
     routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
+    routeState.mutationCapabilitiesError = null;
+    routeState.mutationCapabilitiesIsLoading = false;
+    routeState.reloadMutationCapabilities.mockReset();
     routeState.faqLabel = 'FAQ';
     routeState.getContent.mockReset();
     routeState.requestMainserverJson.mockReset();
@@ -610,6 +630,14 @@ describe('appRouteBindings', () => {
       expect(
         JSON.parse(screen.getByTestId('categories-page').getAttribute('data-actions') ?? '[]')
       ).toEqual([]);
+      expect(screen.getByTestId('categories-page').getAttribute('data-actions-error')).toBe(
+        'false'
+      );
+      expect(screen.getByTestId('categories-page').getAttribute('data-actions-loading')).toBe(
+        'false'
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'reload capabilities' }));
+      expect(routeState.reloadMutationCapabilities).toHaveBeenCalledTimes(1);
       expect(screen.queryByTestId('placeholder-page')).toBeNull();
     }
   );

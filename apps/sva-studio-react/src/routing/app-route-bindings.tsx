@@ -103,6 +103,12 @@ const CategoriesRoutePage = () => {
   });
   if (organizationContext.isLoading || organizationContext.isUpdating)
     return <StudioLoadingState>{t('content.principal.contextLoading')}</StudioLoadingState>;
+  if (organizationContext.context === null || organizationContext.error !== null)
+    return (
+      <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+        <AlertDescription>{t('content.principal.contextUnavailable')}</AlertDescription>
+      </Alert>
+    );
   return (
     <CategoriesPage
       key={organizationContext.context?.activeOrganizationId ?? 'personal'}

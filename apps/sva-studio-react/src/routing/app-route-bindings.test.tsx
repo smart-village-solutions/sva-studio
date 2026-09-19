@@ -659,6 +659,18 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('categories-page')).toBeTruthy();
   });
 
+  it('blocks categories while the organization context is unavailable', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.organizationContextError = new Error('unavailable');
+    const view = render(<appRouteBindings.categories />);
+    expect(screen.queryByTestId('categories-page')).toBeNull();
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+
+    routeState.organizationContextError = null;
+    view.rerender(<appRouteBindings.categories />);
+    expect(screen.getByTestId('categories-page')).toBeTruthy();
+  });
+
   it('renders the concrete modules binding instead of the system placeholder', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 

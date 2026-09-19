@@ -29,24 +29,27 @@ const hasInvalidSaveFields = (input: {
   !Array.isArray(input.dataTypes) ||
   input.dataTypes.some((entry) => typeof entry !== 'string' || !entry.trim());
 
+const isIncompleteUpdate = (body: Record<string, unknown>, id?: string): boolean =>
+  Boolean(
+    id &&
+      ['parentId', 'position', 'iconName', 'email'].some(
+        (field) => !Object.prototype.hasOwnProperty.call(body, field)
+      )
+  );
+
 export const parseCategorySaveInput = async (
   request: Request,
   id?: string
 ): Promise<SvaMainserverSaveCategoryInput | Response> => {
   const body = await parseJsonObjectBody(request, 'Kategorienanfrage muss ein Objekt enthalten.');
   if (body instanceof Response) return body;
-  if ((id && body.id !== undefined && body.id !== id) || (!id && body.id !== undefined))
+  if (body.id !== undefined && (id === undefined || body.id !== id))
     return errorJson(
       400,
       'category_management_invalid_request',
       'Die Kategorien-ID darf nicht manipuliert werden.'
     );
-  if (
-    id &&
-    ['parentId', 'position', 'iconName', 'email'].some(
-      (field) => !Object.prototype.hasOwnProperty.call(body, field)
-    )
-  )
+  if (isIncompleteUpdate(body, id))
     return errorJson(
       400,
       'category_management_invalid_request',

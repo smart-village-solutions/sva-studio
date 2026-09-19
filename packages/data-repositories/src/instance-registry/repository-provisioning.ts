@@ -24,6 +24,8 @@ type ProvisioningRepository = Pick<
   | 'claimNextProvisioningRun'
   | 'renewProvisioningRunLease'
   | 'updateProvisioningRun'
+  | 'reserveProvisioningRetryRun'
+  | 'releaseProvisioningRetryReservation'
   | 'retryProvisioningRun'
   | 'appendAuditEvent'
 >;
@@ -204,6 +206,7 @@ SET status = 'requested',
     actor_id = COALESCE($3, actor_id), request_id = COALESCE($4, request_id), updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
   AND snapshot_version = '2.0' AND status = 'failed'
+  AND lease_owner = $8 AND lease_expires_at > now()
 RETURNING ${provisioningColumns};
 `,
       [
@@ -214,7 +217,49 @@ RETURNING ${provisioningColumns};
         input.deadlineAt,
         JSON.stringify(input.desiredSnapshot),
         input.keycloakReconcileRequired,
+        input.leaseOwner,
       ]
+    )
+  );
+  return rows[0] ? mapProvisioningRun(rows[0]) : null;
+};
+
+const reserveProvisioningRetryRun = async (
+  executor: SqlExecutor,
+  input: Parameters<ProvisioningRepository['reserveProvisioningRetryRun']>[0]
+) => {
+  const rows = await queryRows<ProvisioningRow>(
+    executor,
+    statement(
+      `
+UPDATE iam.instance_provisioning_runs
+SET lease_owner = $3, lease_expires_at = $4::timestamptz, updated_at = now()
+WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
+  AND snapshot_version = '2.0' AND status = 'failed'
+  AND (lease_expires_at IS NULL OR lease_expires_at <= now())
+RETURNING ${provisioningColumns};
+`,
+      [input.instanceId, input.idempotencyKey, input.leaseOwner, input.leaseExpiresAt]
+    )
+  );
+  return rows[0] ? mapProvisioningRun(rows[0]) : null;
+};
+
+const releaseProvisioningRetryReservation = async (
+  executor: SqlExecutor,
+  input: Parameters<ProvisioningRepository['releaseProvisioningRetryReservation']>[0]
+) => {
+  const rows = await queryRows<ProvisioningRow>(
+    executor,
+    statement(
+      `
+UPDATE iam.instance_provisioning_runs
+SET lease_owner = NULL, lease_expires_at = NULL, updated_at = now()
+WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
+  AND snapshot_version = '2.0' AND status = 'failed' AND lease_owner = $3
+RETURNING ${provisioningColumns};
+`,
+      [input.instanceId, input.idempotencyKey, input.leaseOwner]
     )
   );
   return rows[0] ? mapProvisioningRun(rows[0]) : null;
@@ -250,6 +295,9 @@ export const createProvisioningRepository = (executor: SqlExecutor): Provisionin
   claimNextProvisioningRun: (input) => claimNextProvisioningRun(executor, input),
   renewProvisioningRunLease: (input) => renewProvisioningRunLease(executor, input),
   updateProvisioningRun: (input) => updateProvisioningRun(executor, input),
+  reserveProvisioningRetryRun: (input) => reserveProvisioningRetryRun(executor, input),
+  releaseProvisioningRetryReservation: (input) =>
+    releaseProvisioningRetryReservation(executor, input),
   retryProvisioningRun: (input) => retryProvisioningRun(executor, input),
   appendAuditEvent: (input) => appendAuditEvent(executor, input),
 });

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { buildPrimaryHostname, normalizeHost } from '@sva/core';
 import type { InstanceRegistryRecord } from '@sva/core';
 
@@ -25,6 +27,8 @@ import {
   readTenantProvisioningPluginSnapshot,
   rebaseTenantProvisioningPluginSnapshot,
 } from './tenant-provisioning-snapshot.js';
+
+const RETRY_RESERVATION_MILLISECONDS = 5 * 60 * 1000;
 
 const prepareProvisioningRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -56,6 +60,68 @@ const prepareProvisioningRetry = async (
     throw new Error('provisioning_retry_conflict');
   }
   return { desiredSnapshot, keycloakReconcileRequired };
+};
+
+const releaseProvisioningRetryReservation = async (
+  deps: InstanceRegistryServiceDeps,
+  input: {
+    readonly instanceId: string;
+    readonly idempotencyKey: string;
+    readonly leaseOwner: string;
+  }
+): Promise<void> => {
+  try {
+    await deps.repository.releaseProvisioningRetryReservation(input);
+  } catch {
+    // The expiring reservation keeps a failed retry safely recoverable if release is unavailable.
+  }
+};
+
+const reserveAndPrepareProvisioningRetry = async (
+  deps: InstanceRegistryServiceDeps,
+  run: Parameters<typeof readTenantProvisioningPluginSnapshot>[0],
+  attribution: { readonly actorId?: string; readonly requestId?: string }
+) => {
+  const leaseOwner = `retry:${randomUUID()}`;
+  const reservedRun = await deps.repository.reserveProvisioningRetryRun({
+    instanceId: run.instanceId,
+    idempotencyKey: run.idempotencyKey,
+    leaseOwner,
+    leaseExpiresAt: new Date(Date.now() + RETRY_RESERVATION_MILLISECONDS).toISOString(),
+  });
+  if (!reservedRun) throw new Error('provisioning_retry_conflict');
+
+  try {
+    return {
+      ...(await prepareProvisioningRetry(deps, run, attribution)),
+      leaseOwner,
+    };
+  } catch (error) {
+    await releaseProvisioningRetryReservation(deps, {
+      instanceId: run.instanceId,
+      idempotencyKey: run.idempotencyKey,
+      leaseOwner,
+    });
+    throw error;
+  }
+};
+
+const retryReservedProvisioningRun = async (
+  deps: InstanceRegistryServiceDeps,
+  input: Parameters<InstanceRegistryServiceDeps['repository']['retryProvisioningRun']>[0]
+) => {
+  let retriedRun: Awaited<
+    ReturnType<InstanceRegistryServiceDeps['repository']['retryProvisioningRun']>
+  >;
+  try {
+    retriedRun = await deps.repository.retryProvisioningRun(input);
+  } catch (error) {
+    await releaseProvisioningRetryReservation(deps, input);
+    throw error;
+  }
+  if (retriedRun) return retriedRun;
+  await releaseProvisioningRetryReservation(deps, input);
+  throw new Error('provisioning_retry_conflict');
 };
 
 const assertIdempotentCreateRetry = async (
@@ -108,21 +174,18 @@ export const resolveIdempotentCreateRetry = async (
   ) {
     throw new Error('provisioning_retry_mode_invalid');
   }
-  const { desiredSnapshot, keycloakReconcileRequired } = await prepareProvisioningRetry(
-    deps,
-    matchingRun,
-    input
-  );
-  const retriedRun = await deps.repository.retryProvisioningRun({
+  const { desiredSnapshot, keycloakReconcileRequired, leaseOwner } =
+    await reserveAndPrepareProvisioningRetry(deps, matchingRun, input);
+  const retriedRun = await retryReservedProvisioningRun(deps, {
     instanceId: instance.instanceId,
     idempotencyKey: input.idempotencyKey,
+    leaseOwner,
     actorId: input.actorId,
     requestId: input.requestId,
     deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     desiredSnapshot,
     keycloakReconcileRequired,
   });
-  if (!retriedRun) throw new Error('provisioning_retry_conflict');
   const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
   const requestedInstance =
     (await deps.repository.setInstanceStatus({
@@ -187,21 +250,18 @@ export const createRetryTenantProvisioningHandler =
       throw new Error('provisioning_retry_instance_status_invalid');
     }
 
-    const { desiredSnapshot, keycloakReconcileRequired } = await prepareProvisioningRetry(
-      deps,
-      latestCreateRun,
-      input
-    );
-    const retriedRun = await deps.repository.retryProvisioningRun({
+    const { desiredSnapshot, keycloakReconcileRequired, leaseOwner } =
+      await reserveAndPrepareProvisioningRetry(deps, latestCreateRun, input);
+    const retriedRun = await retryReservedProvisioningRun(deps, {
       instanceId: instance.instanceId,
       idempotencyKey: latestCreateRun.idempotencyKey,
+      leaseOwner,
       actorId: input.actorId,
       requestId: input.requestId,
       deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       desiredSnapshot,
       keycloakReconcileRequired,
     });
-    if (!retriedRun) throw new Error('provisioning_retry_conflict');
     const resumedStatus = retriedRun.stepKey === 'registry' ? 'requested' : 'provisioning';
     const requestedInstance = await deps.repository.setInstanceStatus({
       instanceId: instance.instanceId,

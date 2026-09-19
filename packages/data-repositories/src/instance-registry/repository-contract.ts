@@ -354,9 +354,21 @@ export type InstanceRegistryRepository = {
     terminalEvidence?: Readonly<Record<string, unknown>>;
     completedAt?: string;
   }) => Promise<InstanceProvisioningRun | null>;
+  readonly reserveProvisioningRetryRun: (input: {
+    instanceId: string;
+    idempotencyKey: string;
+    leaseOwner: string;
+    leaseExpiresAt: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly releaseProvisioningRetryReservation: (input: {
+    instanceId: string;
+    idempotencyKey: string;
+    leaseOwner: string;
+  }) => Promise<InstanceProvisioningRun | null>;
   readonly retryProvisioningRun: (input: {
     instanceId: string;
     idempotencyKey: string;
+    leaseOwner: string;
     actorId?: string;
     requestId?: string;
     deadlineAt: string;

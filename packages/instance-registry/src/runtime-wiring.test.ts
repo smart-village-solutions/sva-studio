@@ -144,6 +144,30 @@ describe('runtime wiring', () => {
     expect(client.query).toHaveBeenNthCalledWith(7, 'COMMIT');
   });
 
+  it.each([
+    ['after the instance insert', ['insert instance']],
+    ['after IAM preparation', ['insert instance', 'prepare IAM']],
+    ['during provisioning artifact creation', ['insert instance', 'prepare IAM', 'create artifacts']],
+  ])('rolls back the complete create lifecycle when it fails %s', async (_description, steps) => {
+    const client = createClient();
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({ connect: async () => client }),
+      createRepository: () => ({} as InstanceRegistryRepository),
+      serviceDeps: { invalidateHost: vi.fn() },
+    });
+
+    await expect(
+      runtime.withRegistryCreateService('tenant-a', async () => {
+        for (const step of steps) await client.query(step);
+        throw new Error('create lifecycle failed');
+      })
+    ).rejects.toThrow('create lifecycle failed');
+
+    expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
+    expect(client.query).not.toHaveBeenCalledWith('COMMIT');
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
   it('serializes provisioning worker work in the scoped instance transaction', async () => {
     const client = createClient();
     const realmAssignments = [{ instanceId: 'tenant-a', authRealm: 'realm-a' }];

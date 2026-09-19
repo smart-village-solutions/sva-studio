@@ -53,6 +53,10 @@ describe('http-instance-handlers', () => {
     withRegistryService: vi.fn(
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     ),
+    withRegistryCreateService: vi.fn(
+      async (_instanceId: string, work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
+        work(service)
+    ),
     withScopedRegistryService: vi.fn(
       async (
         _instanceId: string,
@@ -74,6 +78,7 @@ describe('http-instance-handlers', () => {
     deps.withRegistryService.mockImplementation(
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     );
+    deps.withRegistryCreateService.mockImplementation(async (_instanceId, work) => work(service));
     deps.withScopedRegistryService.mockImplementation(async (_instanceId, work) => work(service));
     vi.mocked(service.listInstances).mockResolvedValue([
       { instanceId: 'demo', status: 'active' },
@@ -142,6 +147,35 @@ describe('http-instance-handlers', () => {
       primaryHostname: 'demo.studio.example.org',
       actorId: 'admin-1',
     });
+    expect(deps.withRegistryCreateService).toHaveBeenCalledWith('demo', expect.any(Function));
+    expect(deps.withRegistryService).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to an unscoped registry service when the atomic adapter is absent at runtime', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      },
+    });
+    const handlers = createInstanceRegistryHttpHandlers({
+      ...deps,
+      withRegistryCreateService: undefined as never,
+    });
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(502);
+    expect(deps.withRegistryService).not.toHaveBeenCalled();
+    expect(service.createProvisioningRequest).not.toHaveBeenCalled();
   });
 
   it('derives the technical contract for new realms before creating the instance', async () => {

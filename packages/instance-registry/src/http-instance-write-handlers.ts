@@ -86,9 +86,7 @@ export const createCreateInstanceHandler =
             requestId: deps.getRequestId(),
           })
         );
-      result = deps.withRegistryCreateService
-        ? await deps.withRegistryCreateService(payload.instanceId, executeCreate)
-        : await deps.withRegistryService(executeCreate);
+      result = await deps.withRegistryCreateService(payload.instanceId, executeCreate);
     } catch (error) {
       return deps.mapMutationError(error, {
         operation: 'create_instance',
@@ -138,9 +136,7 @@ export const createRetryTenantProvisioningHandler =
           actorId: actor.id,
           requestId: deps.getRequestId(),
         });
-      const result = deps.withRegistryCreateService
-        ? await deps.withRegistryCreateService(instanceId, retry)
-        : await deps.withRegistryService(retry);
+      const result = await deps.withRegistryCreateService(instanceId, retry);
       if (!result) {
         return deps.createApiError(
           404,

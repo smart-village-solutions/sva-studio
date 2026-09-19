@@ -93,22 +93,72 @@ export const buildAcceptanceIngressConsistencyCheck = async (
   }
 };
 
-export const isExpectedOidcRedirect = (location: string, env: NodeJS.ProcessEnv) => {
-  if (location.length === 0) {
+export type OidcAuthorizationRedirectExpectation = Readonly<{
+  clientId?: string;
+  issuerUrl?: string;
+  redirectUri?: string;
+}>;
+
+const hasOpenIdScope = (scope: string | null) => scope?.split(/\s+/u).includes('openid') ?? false;
+
+const resolveRedirectUri = (env: NodeJS.ProcessEnv) => {
+  const configured = env.SVA_AUTH_REDIRECT_URI?.trim();
+  if (configured) return configured;
+
+  const baseUrl = env.SVA_PUBLIC_BASE_URL?.trim();
+  return baseUrl ? new URL('/auth/callback', baseUrl).toString() : undefined;
+};
+
+const isTrustedIssuerUrl = (issuer: URL) =>
+  issuer.protocol === 'https:' &&
+  issuer.username.length === 0 &&
+  issuer.password.length === 0 &&
+  issuer.search.length === 0 &&
+  issuer.hash.length === 0;
+
+const isExpectedAuthorizationEndpoint = (authorizationUrl: URL, issuer: URL) => {
+  const expectedPath = `${issuer.pathname.replace(/\/+$/u, '')}/protocol/openid-connect/auth`;
+  return authorizationUrl.protocol === 'https:' &&
+    authorizationUrl.username.length === 0 &&
+    authorizationUrl.password.length === 0 &&
+    authorizationUrl.origin === issuer.origin &&
+    authorizationUrl.pathname === expectedPath &&
+    authorizationUrl.hash.length === 0;
+};
+
+const hasExpectedAuthorizationParameters = (
+  params: URLSearchParams,
+  expectation: Required<Pick<OidcAuthorizationRedirectExpectation, 'clientId' | 'redirectUri'>>,
+) =>
+  params.get('client_id') === expectation.clientId &&
+  params.get('response_type') === 'code' &&
+  params.get('response_mode') === 'query' &&
+  params.get('redirect_uri') === expectation.redirectUri &&
+  params.get('code_challenge_method') === 'S256' &&
+  (params.get('code_challenge')?.length ?? 0) > 0 &&
+  (params.get('state')?.length ?? 0) > 0 &&
+  (params.get('nonce')?.length ?? 0) > 0 &&
+  hasOpenIdScope(params.get('scope'));
+
+export const isExpectedOidcRedirect = (
+  location: string,
+  env: NodeJS.ProcessEnv,
+  expectation: OidcAuthorizationRedirectExpectation = {},
+) => {
+  const issuerValue = expectation.issuerUrl?.trim() || env.SVA_AUTH_ISSUER?.trim();
+  const clientId = expectation.clientId?.trim() || env.SVA_AUTH_CLIENT_ID?.trim();
+  const redirectUri = expectation.redirectUri?.trim() || resolveRedirectUri(env);
+  if (!issuerValue || !clientId || !redirectUri || location.length === 0) return false;
+
+  try {
+    const issuer = new URL(issuerValue);
+    const authorizationUrl = new URL(location);
+    return isTrustedIssuerUrl(issuer)
+      && isExpectedAuthorizationEndpoint(authorizationUrl, issuer)
+      && hasExpectedAuthorizationParameters(authorizationUrl.searchParams, { clientId, redirectUri });
+  } catch {
     return false;
   }
-
-  const authIssuer = env.SVA_AUTH_ISSUER?.trim().replace(/\/+$/u, '');
-  if (authIssuer && location.startsWith(authIssuer)) {
-    return true;
-  }
-
-  const keycloakAdminBaseUrl = env.KEYCLOAK_ADMIN_BASE_URL?.trim();
-  if (keycloakAdminBaseUrl && location.startsWith(`${keycloakAdminBaseUrl.replace(/\/+$/u, '')}/realms/`)) {
-    return true;
-  }
-
-  return location.includes('/realms/') && location.includes('/protocol/openid-connect/auth');
 };
 
 export const buildAppPrincipalReadinessCheck = async (

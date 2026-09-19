@@ -5,6 +5,7 @@ import type {
   TenantRuntimeTargetResolution,
 } from '../runtime-env.shared.ts';
 import { createStudioImageVerifyEvidenceReaders } from './studio-image-verify-evidence.ts';
+import { studioIngressContracts } from './tenant-ingress-hosts.ts';
 
 type RemoteVerificationDeps = {
   commandExists: (commandName: string) => boolean;
@@ -45,6 +46,7 @@ export const mergeExplicitTenantTargetsWithRegistry = (
     return registryTarget
       ? {
           ...target,
+          ...(registryTarget.authClientId ? { authClientId: registryTarget.authClientId } : {}),
           authRealm: registryTarget.authRealm,
           ...(registryTarget.authIssuerUrl ? { authIssuerUrl: registryTarget.authIssuerUrl } : {}),
         }
@@ -140,7 +142,7 @@ const selectReleaseBlockingTenantTargets = (
   tenantTargets: readonly TenantRuntimeTarget[],
 ): readonly TenantRuntimeTarget[] =>
   runtimeProfile === 'studio'
-    ? tenantTargets.filter((target) => target.instanceId === 'de-studio-sandbox')
+    ? tenantTargets.filter((target) => target.instanceId === studioIngressContracts.prod.releaseBlockingTenantId)
     : tenantTargets;
 
 export const shouldUseStudioReleaseBlockingTenantScope = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
@@ -157,7 +159,7 @@ const selectSmokeTenantTargets = (
   if (blockingTargets.length > 0) return blockingTargets;
 
   throw new Error(
-    `Release-blockierender Tenant de-studio-sandbox fehlt im Scope (${options.source}). ` +
+    `Release-blockierender Tenant ${studioIngressContracts.prod.releaseBlockingTenantId} fehlt im Scope (${options.source}). ` +
       'Pruefe Instanz-Registry oder Tenant-Scope-Konfiguration.',
   );
 };

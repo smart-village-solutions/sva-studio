@@ -14,6 +14,7 @@ Die Plattform löst Tenant-Hosts bereits über die Instanz-Registry auf, nutzt f
 
 - Jede produktive Instanz besitzt genau einen eigenen Keycloak-Realm.
 - Tenant-Hosts starten Login, Callback und Logout selbst.
+- Browser-Login verwendet den Authorization-Code-Flow mit `response_mode=query`; `/auth/callback` akzeptiert deshalb ausschließlich `GET`.
 - Die Instanz-Registry ist die führende Quelle für `authRealm`, `authClientId` und optional `authIssuerUrl`.
 - Provisioning erzeugt Realm und Standard-Client aktiv in Keycloak.
 - Produktive Admin-Pfade lösen den Ziel-Realm aus der angefragten Instanz statt aus `KEYCLOAK_ADMIN_REALM` auf.
@@ -34,5 +35,5 @@ Die Plattform löst Tenant-Hosts bereits über die Instanz-Registry auf, nutzt f
 
 ## Verwandte ADRs
 
-- [ADR-020](ADR-020-kanonischer-auth-host-multi-host-grenze.md)
+- [ADR-020](ADR-020-kanonischer-auth-host-multi-host-grenze.md) (abgelöst)
 - [ADR-030](ADR-030-registry-basierte-instance-freigabe-und-provisioning.md)

@@ -59,6 +59,7 @@ export type DoctorReport = {
 };
 
 export type TenantRuntimeTarget = Readonly<{
+  authClientId?: string;
   authIssuerUrl?: string;
   authRealm: string;
   host: string;

@@ -53,6 +53,13 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
 - Plugin-Distributionsartefakte als eigener Betriebsgegenstand neben dem App-Image; sie werden über Manifest plus gebaute Artefakte aktiviert, nicht über Core-Codeänderungen
 
+### Hostgebundener OIDC-Vertrag
+
+- Root- und Tenant-Hosts starten ihren Login selbst; Authorization-Redirect, Callback und Post-Logout-Redirect bleiben auf exakt diesem Host.
+- Der Browser-Client nutzt Authorization Code mit PKCE S256 und `response_mode=query`; `/auth/callback` ist daher ausschließlich ein `GET`-Endpunkt.
+- Technische Doctor-, Provisioning- und Admin-Pfade verwenden ausschließlich ihre vorgesehenen Service-Clients. Browser-Clients erhalten keinen `client_credentials`-Probe-Pfad.
+- Der Production-Release-Smoke prüft zusätzlich `de-musterhausen`; der Tenant muss vor dem ersten Rollout vollständig provisioniert sein.
+
 Der PR-Gate-Workflow veröffentlicht einen einmal berechneten, versionierten
 Base-/Head-Scope und verwendet ihn für alle PR-Gates. Der Main-/Nightly-
 Workflow führt die vollständigen nicht deploymentbezogenen Gates ohne

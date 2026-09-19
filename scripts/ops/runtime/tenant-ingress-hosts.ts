@@ -78,9 +78,16 @@ const tenantIds: Readonly<Record<StudioIngressEnvironment, readonly string[]>> =
   staging: ['de-studio-sandbox'],
 };
 
+const releaseBlockingTenantIds: Readonly<Record<StudioIngressEnvironment, string>> = {
+  dev: 'de-teststadt-dev',
+  prod: 'de-musterhausen',
+  staging: 'de-studio-sandbox',
+};
+
 type StudioIngressContract = Readonly<{
   environment: StudioIngressEnvironment;
   hosts: readonly string[];
+  releaseBlockingTenantId: string;
   rootHost: string;
   tenantIds: readonly string[];
   unknownHost: string;
@@ -91,6 +98,7 @@ const createStudioIngressContract = (environment: StudioIngressEnvironment): Stu
   return {
     environment,
     hosts: [rootHost, ...tenantIds[environment].map((instanceId) => `${instanceId}.${rootHost}`)],
+    releaseBlockingTenantId: releaseBlockingTenantIds[environment],
     rootHost,
     tenantIds: tenantIds[environment],
     unknownHost: `unknown-ingress-smoke.${rootHost}`,

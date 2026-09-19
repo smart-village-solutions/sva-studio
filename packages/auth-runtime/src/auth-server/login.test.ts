@@ -63,6 +63,7 @@ describe('createLoginUrl', () => {
       expect.objectContaining({
         prompt: 'login',
         max_age: '0',
+        response_mode: 'query',
       })
     );
   });
@@ -77,6 +78,7 @@ describe('createLoginUrl', () => {
       expect.anything(),
       expect.objectContaining({
         prompt: 'none',
+        response_mode: 'query',
       })
     );
   });

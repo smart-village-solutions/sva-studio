@@ -1,0 +1,4 @@
+{
+  "prNumber": 1427,
+  "body": "Zuverlässigere Anmeldung für Studio und Mandanten\n\n- Anmelde-Weiterleitungen prüfen Callback, Sicherheitsparameter und den jeweils aufgerufenen Host jetzt strenger.\n- Technische Prüfungen verwenden keine Browser-Anmeldeclients mehr.\n- Abweichende Login-, Logout- und Origin-Einstellungen werden vor einem Rollout erkannt."
+}

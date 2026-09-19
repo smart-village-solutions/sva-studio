@@ -5,6 +5,61 @@ import { acceptanceOptions, createDeps } from './acceptance-runtime-checks.test-
 
 describe('acceptance runtime checks live spec and readiness', () => {
   it.each([
+    'SVA_AUTH_ISSUER',
+    'SVA_AUTH_CLIENT_ID',
+    'SVA_AUTH_REDIRECT_URI',
+    'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
+    'IAM_CSRF_ALLOWED_ORIGINS',
+  ])('fails closed when %s differs from the live contract', async (key) => {
+    const deps = createDeps();
+    const live = await deps.inspectRemoteServiceContract({}, {
+      quantumEndpoint: 'https://quantum.example.test', serviceName: 'app', stackName: 'studio',
+    });
+    if (!live) throw new Error('Test fixture missing');
+    deps.inspectRemoteServiceContract = vi.fn(async () => ({
+      ...live,
+      env: { ...live.env, [key]: 'live-value' },
+    }));
+
+    const check = await buildAcceptanceLiveSpecCheck(deps, 'studio', {
+      ...live.env,
+      [key]: 'expected-value',
+    }, acceptanceOptions);
+
+    expect(check.code).toBe('live_spec_differs');
+    expect(check.details).toMatchObject({ configDrift: [key] });
+  });
+
+  it('checks SVA_PUBLIC_HOST through the rendered ingress label instead of container environment', async () => {
+    const fixtureDeps = createDeps();
+    const live = await fixtureDeps.inspectRemoteServiceContract({}, {
+      quantumEndpoint: 'https://quantum.example.test', serviceName: 'app', stackName: 'studio',
+    });
+    if (!live) throw new Error('Test fixture missing');
+    const deps = createDeps({
+      assertComposeServiceNetworks: vi.fn(() => ({
+        labels: { 'traefik.http.routers.sva-studio-public.rule': 'Host(`studio.expected.test`)' },
+        networks: ['internal', 'network-node-005'],
+      })),
+      inspectRemoteServiceContract: vi.fn(async () => ({
+        ...live,
+        labels: { 'traefik.http.routers.sva-studio-public.rule': 'Host(`studio.live.test`)' },
+      })),
+    });
+
+    const check = await buildAcceptanceLiveSpecCheck(deps, 'studio', {
+      ...live.env,
+      SVA_PUBLIC_HOST: 'studio.expected.test',
+    }, acceptanceOptions);
+
+    expect(check.code).toBe('live_spec_differs');
+    expect(check.details).toMatchObject({
+      configDrift: [],
+      missingIngressLabels: ['traefik.http.routers.sva-studio-public.rule'],
+    });
+  });
+
+  it.each([
     [undefined, 'studio.dialog.kassel.de', true],
     ['old.dialog.kassel.de', 'studio.dialog.kassel.de', true],
     ['studio.dialog.kassel.de', 'studio.dialog.kassel.de', false],

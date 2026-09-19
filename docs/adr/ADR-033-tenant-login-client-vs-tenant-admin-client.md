@@ -22,7 +22,8 @@ Mit der Registry-basierten Instanzverwaltung ist `iam.instances` der kanonische 
 2. Das Secret fuer `tenantAdminClient` wird separat tenantgebunden verschluesselt gespeichert und ausschliesslich ueber `iam.instances.tenant_admin_client_secret:{instanceId}` aufgeloest.
 3. Normale Tenant-Mutationen fuer Nutzer, Rollen, Gruppen und Reconcile laufen ausschliesslich ueber `tenantAdminClient`.
 4. Fehlt `tenantAdminClient` oder sein Secret, reagieren Tenant-Mutationen fail-closed; Login ueber `authClientId` bleibt davon getrennt.
-5. Plattformpfade, Root-Host-Control-Plane und explizite Break-Glass-Operationen bleiben separat markiert und duerfen tenant-lokale Admin-Mutationen nicht implizit uebernehmen.
+5. Browser-Clients werden ausschließlich für interaktive Authorization-Code-Login-Flows verwendet und nie per `client_credentials` gegen den Token-Endpoint geprüft.
+6. Plattformpfade, Root-Host-Control-Plane und explizite Break-Glass-Operationen bleiben separat markiert und duerfen tenant-lokale Admin-Mutationen nicht implizit uebernehmen.
 
 ## Konsequenzen
 

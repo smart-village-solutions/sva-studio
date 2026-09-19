@@ -28,6 +28,7 @@ describe('remote verification helpers', () => {
     ];
     const registryTargets: readonly TenantRuntimeTarget[] = [
       {
+        authClientId: 'tenant-login-client',
         authRealm: 'saas-hb-demo',
         host: 'hb-demo.studio.example.org',
         instanceId: 'hb-demo',
@@ -36,6 +37,7 @@ describe('remote verification helpers', () => {
 
     expect(mergeExplicitTenantTargetsWithRegistry(explicitTargets, registryTargets)).toEqual([
       {
+        authClientId: 'tenant-login-client',
         authRealm: 'saas-hb-demo',
         host: 'hb-demo.studio.example.org',
         instanceId: 'hb-demo',

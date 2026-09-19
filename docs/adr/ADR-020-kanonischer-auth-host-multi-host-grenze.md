@@ -1,6 +1,6 @@
 # ADR-020: Kanonischer Auth-Host und Multi-Host-Grenze
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-031](ADR-031-tenant-spezifisches-realm-auth-routing.md) and [ADR-033](ADR-033-tenant-login-client-vs-tenant-admin-client.md)
 **Entscheidungsdatum:** 2026-03-12
 **Entschieden durch:** IAM/Plattform Team
 **GitHub Issue:** TBD
@@ -111,4 +111,4 @@ Für das aktuelle Nutzungsmodell (Wechsel zwischen Instanzen durch Betriebsperso
 
 ## Gültigkeitsdauer
 
-Diese ADR ist gültig, bis ein alternatives Auth-Hosting-Modell (z. B. pro-Instanz-IdP) beschlossen wird.
+Diese ADR wurde durch tenant-spezifische Realm- und Client-Verträge abgelöst. Sie bleibt als historische Begründung für die frühere Root-Host-Grenze erhalten.

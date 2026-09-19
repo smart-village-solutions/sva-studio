@@ -105,7 +105,7 @@ mit Bezug auf die arc42-Abschnitte.
   ergänzt den redigierten, ingestion-toleranten Loki-Gate. Das release-blockierende Gate wertet nur
   strukturell vollständige Loki-Streams-Antworten als Evidenz; malformed Payloads bleiben fail-closed.
 - Abschnitt 05/07/08 (Bausteine/Deployment/Querschnitt): ADR-011 (Fortschreibung: Subdomain-Ableitung)
-- Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-020
+- Abschnitt 07/08/10 (Deployment/Querschnitt/Qualität): ADR-020 (historisch), ADR-031 und ADR-033
 
 ### Fortschreibung 2026-09: Issuer-gebundene Tenant-Login-Probe ohne neue ADR
 
@@ -114,7 +114,8 @@ mit Bezug auf die arc42-Abschnitte.
   betrieblichen Probe fail-closed.
 - Der vollständige Registry-Issuer ist die primäre Vertrauensquelle. Runtime-Fallbacks gelten nur
   für Altziele ohne diesen Wert; ein Redirect darf Origin und Authorization-Pfad des aufgelösten
-  Issuers nicht verlassen.
+  Issuers nicht verlassen und muss Client, Query-Response-Mode, hostgebundene Redirect-URI,
+  State, Nonce und PKCE S256 vollständig ausweisen.
 - ADR-060 bleibt für die Grenze der Doctor-Evidenz maßgeblich: Die Probe erhält keine zusätzliche
   privilegierte Identität und veröffentlicht keine Redirect-URLs, Query-Werte, Cookies oder Tokens.
 
@@ -366,13 +367,13 @@ Zuordnung:
 - `ADR-011` (Fortschreibung)
   - Ergänzt den bestehenden `instanceId`-Scope um die Subdomain-Ableitung (`<instanceId>.<SVA_PARENT_DOMAIN>`), lokale bzw. migrationsbezogene Allowlist-Fallbacks und den IDN/Punycode-Ausschluss.
 - `ADR-020-kanonischer-auth-host-multi-host-grenze.md`
-  - Definiert die Root-Domain als kanonischen Auth-Host für OIDC-Flows mit fail-closed-Grenze für Instanz-Hosts.
+  - Historische Entscheidung zum kanonischen Root-Auth-Host; durch ADR-031 und ADR-033 für tenant-gebundene OIDC-Flows abgelöst.
 
 Zuordnung:
 
-- Abschnitt 07 (Deployment): ADR-019, ADR-020
+- Abschnitt 07 (Deployment): ADR-019, ADR-031, ADR-033; ADR-020 nur historisch
 - Abschnitt 05/08 (Bausteine/Querschnitt): ADR-011 Fortschreibung
-- Abschnitt 10/11 (Qualität/Risiken): ADR-020 (fail-closed, Host-Enumeration)
+- Abschnitt 10/11 (Qualität/Risiken): ADR-031, ADR-033 (fail-closed, Host- und Client-Bindung)
 
 ### Fortschreibung 2026-03: Per-User-SVA-Mainserver-Delegation
 
@@ -534,7 +535,7 @@ Zuordnung:
 - `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
   - definiert Postgres als führende Registry für Instanzfreigabe, Hostnamen, Status und Audit
   - konkretisiert den gemeinsamen Provisioning-Vertrag für HTTP, Studio-Control-Plane und Ops-CLI
-  - hält den Root-Host als einzige globale Instanzverwaltung fest und belässt ADR-020 als gültige Auth-Grenze
+  - hält den Root-Host als einzige globale Instanzverwaltung fest; der frühere Auth-Host-Teil von ADR-020 wurde später durch ADR-031 und ADR-033 abgelöst
 
 Zuordnung:
 

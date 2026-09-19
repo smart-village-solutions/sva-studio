@@ -1101,18 +1101,18 @@ describe('selectReleaseBlockingTenantTargets', () => {
       instanceId: 'hb-meinquartier',
     },
     {
-      authRealm: 'de-studio-sandbox',
-      host: 'de-studio-sandbox.studio.smart-village.app',
-      instanceId: 'de-studio-sandbox',
+      authRealm: 'de-musterhausen',
+      host: 'de-musterhausen.studio.smart-village.app',
+      instanceId: 'de-musterhausen',
     },
   ] as const;
 
-  it('keeps only de-studio-sandbox as a release-blocking tenant on studio', () => {
+  it('keeps only de-musterhausen as a release-blocking tenant on studio', () => {
     expect(selectReleaseBlockingTenantTargets('studio', tenantTargets)).toEqual([
       {
-        authRealm: 'de-studio-sandbox',
-        host: 'de-studio-sandbox.studio.smart-village.app',
-        instanceId: 'de-studio-sandbox',
+        authRealm: 'de-musterhausen',
+        host: 'de-musterhausen.studio.smart-village.app',
+        instanceId: 'de-musterhausen',
       },
     ]);
   });
@@ -1130,9 +1130,9 @@ describe('selectSmokeTenantTargets', () => {
       instanceId: 'bb-guben',
     },
     {
-      authRealm: 'de-studio-sandbox',
-      host: 'de-studio-sandbox.studio.smart-village.app',
-      instanceId: 'de-studio-sandbox',
+      authRealm: 'de-musterhausen',
+      host: 'de-musterhausen.studio.smart-village.app',
+      instanceId: 'de-musterhausen',
     },
     {
       authRealm: 'saas-hb-meinquartier',
@@ -1152,7 +1152,7 @@ describe('selectSmokeTenantTargets', () => {
     ).toEqual(tenantTargets);
   });
 
-  it('keeps only de-studio-sandbox as a blocking tenant for studio acceptance release runs', () => {
+  it('keeps only de-musterhausen as a blocking tenant for studio acceptance release runs', () => {
     expect(
       selectSmokeTenantTargets('studio', tenantTargets, {
         env: {
@@ -1162,9 +1162,9 @@ describe('selectSmokeTenantTargets', () => {
       })
     ).toEqual([
       {
-        authRealm: 'de-studio-sandbox',
-        host: 'de-studio-sandbox.studio.smart-village.app',
-        instanceId: 'de-studio-sandbox',
+        authRealm: 'de-musterhausen',
+        host: 'de-musterhausen.studio.smart-village.app',
+        instanceId: 'de-musterhausen',
       },
     ]);
   });
@@ -1187,7 +1187,7 @@ describe('selectSmokeTenantTargets', () => {
           source: 'registry',
         }
       )
-    ).toThrow(/de-studio-sandbox/u);
+    ).toThrow(/de-musterhausen/u);
   });
 });
 

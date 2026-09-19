@@ -1,5 +1,6 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { DoctorCheck, RemoteRuntimeProfile, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
+import { isExpectedOidcRedirect } from './acceptance-runtime-checks-core.ts';
 import {
   buildOidcClientSecretProbes,
   evaluateOidcClientSecretProbeResponse,
@@ -114,6 +115,13 @@ export const buildExpectedLiveRuntimeFlags = (
   ...(env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim()
     ? { SVA_ENABLE_SERVER_CONSOLE_LOGS: env.SVA_ENABLE_SERVER_CONSOLE_LOGS.trim() }
     : {}),
+  ...(env.SVA_AUTH_ISSUER?.trim() ? { SVA_AUTH_ISSUER: env.SVA_AUTH_ISSUER.trim() } : {}),
+  ...(env.SVA_AUTH_CLIENT_ID?.trim() ? { SVA_AUTH_CLIENT_ID: env.SVA_AUTH_CLIENT_ID.trim() } : {}),
+  ...(env.SVA_AUTH_REDIRECT_URI?.trim() ? { SVA_AUTH_REDIRECT_URI: env.SVA_AUTH_REDIRECT_URI.trim() } : {}),
+  ...(env.SVA_AUTH_POST_LOGOUT_REDIRECT_URI?.trim()
+    ? { SVA_AUTH_POST_LOGOUT_REDIRECT_URI: env.SVA_AUTH_POST_LOGOUT_REDIRECT_URI.trim() }
+    : {}),
+  ...(env.IAM_CSRF_ALLOWED_ORIGINS?.trim() ? { IAM_CSRF_ALLOWED_ORIGINS: env.IAM_CSRF_ALLOWED_ORIGINS.trim() } : {}),
   SVA_RUNTIME_PROFILE: runtimeProfile,
 });
 
@@ -132,7 +140,7 @@ const buildLiveRuntimeEnvCheck = async (
       ? deps.toDoctorCheck('runtime-env-live', 'error', 'runtime_env_live_mismatch', 'Die effektive Container-Umgebung weicht von den erwarteten Runtime-Flags ab.', { expectedFlags, liveFlags, mismatches })
       : deps.toDoctorCheck('runtime-env-live', 'ok', 'runtime_env_live_match', 'Die effektive Container-Umgebung entspricht den erwarteten Runtime-Flags.', { channel: 'portainer-api', expectedFlags, liveFlags });
   } catch (error) {
-    return deps.toDoctorCheck('runtime-env-live', 'warn', 'runtime_env_live_unavailable', error instanceof Error ? error.message : String(error));
+    return deps.toDoctorCheck('runtime-env-live', 'error', 'runtime_env_live_unavailable', error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -262,7 +270,12 @@ const probeTenantAuthRedirects = async (
     const authorizationUrl = response.status === 302
       ? parseTenantAuthorizationUrl(location, issuerUrl)
       : null;
-    if (!authorizationUrl) {
+    const expectedRedirectUri = `${baseProtocol}//${tenantTarget.host}/auth/callback`;
+    if (!authorizationUrl || !isExpectedOidcRedirect(location, env, {
+      clientId: tenantTarget.authClientId,
+      issuerUrl: issuerUrl.href,
+      redirectUri: expectedRedirectUri,
+    })) {
       return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source, status: response.status }) };
     }
     try {

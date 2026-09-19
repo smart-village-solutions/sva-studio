@@ -89,6 +89,7 @@ const usePersistCategory = (input: {
           category: value,
         });
         if (!result.category || result.errors.length) {
+          input.attempt.current = null;
           const fields = mappedErrors(result.errors, input.props.pt);
           input.setFieldErrors(fields);
           const globalError = result.errors.find((error) => !errorField(error.field));

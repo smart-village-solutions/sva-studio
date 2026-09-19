@@ -594,6 +594,54 @@ describe('createSvaMainserverService', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  it('rejects an update response for a different category id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            saveCategory: {
+              category: {
+                id: 'cat-other',
+                name: 'Neu',
+                active: true,
+                children: [],
+                dataTypes: [],
+              },
+              affectedDescendantIds: [],
+              errors: [],
+            },
+          },
+        })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.saveCategory({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        category: {
+          id: 'cat-1',
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'category_management_invalid_response',
+      statusCode: 502,
+    });
+  });
+
   it('distinguishes missing Mainserver category-management access from local Studio permissions', async () => {
     const fetchImpl = vi
       .fn()

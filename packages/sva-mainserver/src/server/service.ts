@@ -509,7 +509,8 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       !errors ||
       !affectedDescendantIds ||
       affectedDescendantIds.some((id) => !id) ||
-      (payload.category && !category)
+      (payload.category && !category) ||
+      (errors.length === 0 && input.category.id && category?.id !== input.category.id)
     )
       throw invalidCategoryManagementResponse();
     return {

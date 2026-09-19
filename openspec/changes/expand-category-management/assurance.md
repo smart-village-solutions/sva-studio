@@ -10,8 +10,8 @@
 ## Lokale Prüfgrundlage am 19. September 2026
 
 - `packages/sva-mainserver/src/server/categories-route.test.ts`: 16/16 Tests erfolgreich, einschließlich CSRF-Abweisung und Body-Validierung vor Idempotenz-Reservation.
-- `packages/sva-mainserver/src/server/service.test.ts`: zwei fokussierte Tests gegen automatischen Mutation-Retry und für den getrennten Upstream-Management-Fehler erfolgreich.
-- `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 24/24 Tests erfolgreich.
+- `packages/sva-mainserver/src/server/service.test.ts`: drei fokussierte Tests gegen automatischen Mutation-Retry, für den getrennten Upstream-Management-Fehler und für die Update-ID-Bindung erfolgreich.
+- `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 24/24 Tests im vollständigen Lauf erfolgreich; die danach ergänzten fokussierten Tests für lokalisiertes Delete sowie terminale und unklare Create-Versuche ebenfalls erfolgreich.
 - App-Routenadapter: fokussierter Test für Registry-ID/-Label und bestätigte Mutation-Capabilities erfolgreich.
 - `plugin-categories:test:types`, `sva-mainserver:test:types`, `sva-studio-react:test:types`, `pnpm check:server-runtime`, die drei betroffenen Lint-Ziele und der Complexity-Gate erfolgreich.
 - Diese Evidenz belegt den lokalen PR-Arbeitsstand. GitHub-Gates für den finalen Commit sowie Vertrags-, Credential- und Browserabnahme in der Zielumgebung bleiben getrennte Freigabevoraussetzungen.
@@ -99,7 +99,7 @@
   - Integrationstest für Statuswechsel mit mehreren Hierarchieebenen.
   - UI-Test für Kaskadenbestätigung und Ergebnisfeedback.
 - Nachweisstatus: lokal teilnachgewiesen
-- Ausgeführte Evidenz und Ergebnis: Komponententest für explizite Kaskadenbestätigung und Route-/Parsertests für vollständige Save-Inputs erfolgreich.
+- Ausgeführte Evidenz und Ergebnis: Komponententest für explizite Kaskadenbestätigung und Route-/Parsertests für vollständige Save-Inputs erfolgreich; ein Service-Test weist eine fremde Update-Resultat-ID als ungültige Vertragsantwort zurück.
 - Offene Nachweislücken: reale Mainserver-Kaskade muss in einer Zielumgebung verifiziert werden.
 - Restrisiko und Entscheidung: vor Merge nicht akzeptiert.
 
@@ -149,7 +149,7 @@
   - API-Test, dass der Client denselben Schlüssel für den Retry desselben Anlegeversuchs verwendet.
   - Route-Test, dass ein terminales Replay kein zweites `saveCategory` ausführt, eine nichtterminale Reservation einen Re-Read verlangt und ein abweichender Payload fail-closed kollidiert.
 - Nachweisstatus: lokal nachgewiesen
-- Ausgeführte Evidenz und Ergebnis: Service-Test verhindert Retry nach unklarem Mutationstransportfehler; Route-Tests belegen Validierung vor Reservation und terminales Replay ohne zweiten Upstream-Aufruf; Komponententests belegen stabilen Schlüssel sowie Management-Re-Read nach unklarem Create- und Update-Ausgang.
+- Ausgeführte Evidenz und Ergebnis: Service-Test verhindert Retry nach unklarem Mutationstransportfehler; Route-Tests belegen Validierung vor Reservation und terminales Replay ohne zweiten Upstream-Aufruf; Komponententests belegen stabilen Schlüssel und Management-Re-Read bei unklarem Ausgang sowie einen neuen Versuchsschlüssel nach explizitem terminalem Fehler.
 - Offene Nachweislücken: Verhalten mit produktiver Idempotenz-Persistenz bleibt Teil der Zielumgebungsabnahme.
 - Restrisiko und Entscheidung: vor Merge nicht akzeptiert.
 

@@ -187,6 +187,30 @@ describe('CategoriesPage', () => {
     );
   });
 
+  it('starts a new create attempt after a terminal structured failure', async () => {
+    state.save
+      .mockResolvedValueOnce({
+        affectedDescendantIds: [],
+        errors: [{ code: 'CATEGORY_NAME_TAKEN', field: 'name', message: 'Name vergeben' }],
+      })
+      .mockResolvedValueOnce({
+        category: { ...categories[0], id: 'cat-new' },
+        affectedDescendantIds: [],
+        errors: [],
+      });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    createCategory();
+    await screen.findByText('Dieser Kategoriename ist bereits vergeben.');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(2));
+
+    expect(state.save.mock.calls[0]?.[0].idempotencyKey).not.toBe(
+      state.save.mock.calls[1]?.[0].idempotencyKey
+    );
+  });
+
   it('reloads the management snapshot after an indeterminate update result', async () => {
     state.save.mockRejectedValue(new Error('response lost'));
     render(<CategoriesPage />);

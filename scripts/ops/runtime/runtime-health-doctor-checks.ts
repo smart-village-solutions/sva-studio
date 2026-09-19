@@ -115,6 +115,13 @@ export const buildExpectedLiveRuntimeFlags = (
   ...(env.SVA_ENABLE_SERVER_CONSOLE_LOGS?.trim()
     ? { SVA_ENABLE_SERVER_CONSOLE_LOGS: env.SVA_ENABLE_SERVER_CONSOLE_LOGS.trim() }
     : {}),
+  ...(env.SVA_AUTH_ISSUER?.trim() ? { SVA_AUTH_ISSUER: env.SVA_AUTH_ISSUER.trim() } : {}),
+  ...(env.SVA_AUTH_CLIENT_ID?.trim() ? { SVA_AUTH_CLIENT_ID: env.SVA_AUTH_CLIENT_ID.trim() } : {}),
+  ...(env.SVA_AUTH_REDIRECT_URI?.trim() ? { SVA_AUTH_REDIRECT_URI: env.SVA_AUTH_REDIRECT_URI.trim() } : {}),
+  ...(env.SVA_AUTH_POST_LOGOUT_REDIRECT_URI?.trim()
+    ? { SVA_AUTH_POST_LOGOUT_REDIRECT_URI: env.SVA_AUTH_POST_LOGOUT_REDIRECT_URI.trim() }
+    : {}),
+  ...(env.IAM_CSRF_ALLOWED_ORIGINS?.trim() ? { IAM_CSRF_ALLOWED_ORIGINS: env.IAM_CSRF_ALLOWED_ORIGINS.trim() } : {}),
   SVA_RUNTIME_PROFILE: runtimeProfile,
 });
 

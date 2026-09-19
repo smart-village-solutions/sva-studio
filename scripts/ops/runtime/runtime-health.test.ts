@@ -210,9 +210,19 @@ describe('runtime-health helpers', () => {
     });
     expect(buildExpectedLiveRuntimeFlags('studio', {
       ENABLE_OTEL: 'false',
+      IAM_CSRF_ALLOWED_ORIGINS: 'https://studio.example.test',
+      SVA_AUTH_CLIENT_ID: 'studio-bff',
+      SVA_AUTH_ISSUER: 'https://keycloak.example.test/realms/platform',
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://studio.example.test',
+      SVA_AUTH_REDIRECT_URI: 'https://studio.example.test/auth/callback',
       SVA_ENABLE_SERVER_CONSOLE_LOGS: 'true',
     })).toEqual({
       ENABLE_OTEL: 'false',
+      IAM_CSRF_ALLOWED_ORIGINS: 'https://studio.example.test',
+      SVA_AUTH_CLIENT_ID: 'studio-bff',
+      SVA_AUTH_ISSUER: 'https://keycloak.example.test/realms/platform',
+      SVA_AUTH_POST_LOGOUT_REDIRECT_URI: 'https://studio.example.test',
+      SVA_AUTH_REDIRECT_URI: 'https://studio.example.test/auth/callback',
       SVA_ENABLE_SERVER_CONSOLE_LOGS: 'true',
       SVA_RUNTIME_PROFILE: 'studio',
     });

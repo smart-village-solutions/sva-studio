@@ -33,6 +33,11 @@ export const parseLiveRuntimeFlags = (raw: string): LiveRuntimeFlags => {
 
   return {
     ENABLE_OTEL: entries.get('ENABLE_OTEL') ?? '',
+    IAM_CSRF_ALLOWED_ORIGINS: entries.get('IAM_CSRF_ALLOWED_ORIGINS') ?? '',
+    SVA_AUTH_CLIENT_ID: entries.get('SVA_AUTH_CLIENT_ID') ?? '',
+    SVA_AUTH_ISSUER: entries.get('SVA_AUTH_ISSUER') ?? '',
+    SVA_AUTH_POST_LOGOUT_REDIRECT_URI: entries.get('SVA_AUTH_POST_LOGOUT_REDIRECT_URI') ?? '',
+    SVA_AUTH_REDIRECT_URI: entries.get('SVA_AUTH_REDIRECT_URI') ?? '',
     SVA_ENABLE_SERVER_CONSOLE_LOGS: entries.get('SVA_ENABLE_SERVER_CONSOLE_LOGS') ?? '',
     SVA_RUNTIME_PROFILE: entries.get('SVA_RUNTIME_PROFILE') ?? '',
   };

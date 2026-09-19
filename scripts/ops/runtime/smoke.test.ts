@@ -70,6 +70,7 @@ describe('smoke helpers', () => {
     ['PROMOTE_READINESS_NOT_READY', 'public-ready', 'person@example.test'],
     ['PROMOTE_SMOKE_REALM_MISMATCH', 'public-auth-login-tenant', 'Tenant-Realm stimmt nicht: https://internal.example.test/realm'],
     ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login-tenant', 'Tenant-Redirect-URI stimmt nicht: first line\nsecond line'],
+    ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login-tenant', 'Tenant-OIDC-Redirect-Vertrag stimmt nicht'],
     ['PROMOTE_INTERNAL_ERROR', 'public-home', 'secret-key=should-not-leak'],
   ] as const)('records canonical %s evidence without probe diagnostics', async (code, name, message) => {
     const directory = mkdtempSync(join(tmpdir(), 'runtime-smoke-failure-'));

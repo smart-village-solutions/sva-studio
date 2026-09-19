@@ -16,7 +16,12 @@ export type HttpHealthResult = {
 };
 
 export type LiveRuntimeFlags = {
+  IAM_CSRF_ALLOWED_ORIGINS: string;
   ENABLE_OTEL: string;
+  SVA_AUTH_CLIENT_ID: string;
+  SVA_AUTH_ISSUER: string;
+  SVA_AUTH_POST_LOGOUT_REDIRECT_URI: string;
+  SVA_AUTH_REDIRECT_URI: string;
   SVA_ENABLE_SERVER_CONSOLE_LOGS: string;
   SVA_RUNTIME_PROFILE: string;
 };

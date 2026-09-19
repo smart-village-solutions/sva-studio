@@ -61,7 +61,6 @@ export type AcceptanceRuntimeCheckDeps = {
 export const runtimeContractComparisonKeys = [
   'SVA_RUNTIME_PROFILE',
   'SVA_PUBLIC_BASE_URL',
-  'SVA_PUBLIC_HOST',
   'SVA_PARENT_DOMAIN',
   'SVA_STUDIO_ROOT_HOST',
   'SVA_ALLOWED_INSTANCE_IDS',

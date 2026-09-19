@@ -56,7 +56,7 @@ export const classifyRuntimeSmokeFailure = (probe: AcceptanceProbeResult): Promo
     ? 'PROMOTE_READINESS_NOT_READY'
     : probe.message.includes('Realm stimmt nicht') || probe.message.includes('erwarteten Realm')
       ? 'PROMOTE_SMOKE_REALM_MISMATCH'
-      : probe.message.includes('Redirect-URI') || probe.message.includes('Rückkehr-Host')
+      : probe.message.includes('Redirect-URI') || probe.message.includes('Rückkehr-Host') || probe.message.includes('OIDC-Redirect-Vertrag')
         ? 'PROMOTE_SMOKE_CALLBACK_MISMATCH'
         : 'PROMOTE_INTERNAL_ERROR';
 
@@ -113,7 +113,7 @@ const tenantAuthLoginProbe = (deps: RuntimeSmokeDeps, base: URL, env: NodeJS.Pro
       if (response.status !== 302) return `Erwartet Redirect fuer Tenant ${tenantTarget.instanceId}, erhalten ${response.status}.`;
       return deps.isExpectedOidcRedirect(location, env, tenantOidcExpectation(base, tenantTarget, env))
         ? null
-        : `Tenant-OIDC-Vertrag stimmt nicht fuer ${tenantTarget.instanceId}.`;
+        : `Tenant-OIDC-Redirect-Vertrag stimmt nicht fuer ${tenantTarget.instanceId}.`;
     },
   });
 
@@ -189,7 +189,10 @@ const baseExternalProbes = (deps: RuntimeSmokeDeps, baseUrl: string, env: NodeJS
 const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const base = new URL(baseUrl);
-  const tenantOptions = deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env) ? undefined : { limit: 2 };
+  const tenantOptions = deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env)
+    || resolveStudioIngressContract(baseUrl)
+    ? undefined
+    : { limit: 2 };
   const tenantResolution = await deps.resolveTenantRuntimeTargets(runtimeProfile, env, tenantOptions);
   const tenantTargets = deps.selectSmokeTenantTargets(runtimeProfile, tenantResolution.targets, { env, source: tenantResolution.source });
   const tenantProbes = tenantTargets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, env, tenantTarget));

@@ -133,6 +133,15 @@ const classificationCases: readonly DiagnosticCase[] = [
     },
   },
   {
+    name: 'missing module IAM contract',
+    input: { code: 'unknown_module_contract', status: 409 },
+    expected: {
+      classification: 'registry_or_provisioning_drift',
+      recommendedAction: 'provisioning_pruefen',
+      status: 'degradiert',
+    },
+  },
+  {
     name: 'Keycloak reconcile',
     input: {
       code: 'internal_error',

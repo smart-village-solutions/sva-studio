@@ -10,6 +10,10 @@ import { createInstanceRegistryService } from './service.js';
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
+type ModuleActivationPolicyReconcileResult = Awaited<
+  ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
+>;
+
 const logger = createSdkLogger({ component: 'iam-instance-registry-runtime', level: 'info' });
 
 export type InstanceRegistryQueryClient = {
@@ -24,12 +28,10 @@ export type InstanceRegistryPool = {
   connect(): Promise<InstanceRegistryQueryClient>;
 };
 
-type ScopedRegistryServiceOptions = Readonly<{
+export type ScopedRegistryServiceOptions = Readonly<{
   forceIamSync?: boolean;
   awaitActivationPolicyFollowUp?: boolean;
-  shouldReconcileActivationPolicies?: (
-    repository: InstanceRegistryRepository
-  ) => Promise<boolean>;
+  shouldReconcileActivationPolicies?: (repository: InstanceRegistryRepository) => Promise<boolean>;
 }>;
 
 export type InstanceRegistryRuntimeDeps = {
@@ -153,11 +155,23 @@ const runScopedRegistryService = async <T>(
   work: (service: InstanceRegistryService) => Promise<T>,
   options: ScopedRegistryServiceOptions
 ) => {
-  const serviceDeps = { repository, ...deps.serviceDeps };
+  let nestedReconcileResult: ModuleActivationPolicyReconcileResult | null = null;
+  const serviceDeps = {
+    repository,
+    ...deps.serviceDeps,
+    captureModuleActivationPolicyReconcileResult: (
+      result: ModuleActivationPolicyReconcileResult
+    ) => {
+      nestedReconcileResult = result;
+      deps.serviceDeps.captureModuleActivationPolicyReconcileResult?.(result);
+    },
+  };
   const service = createInstanceRegistryService(serviceDeps);
-  const shouldReconcile =
-    (await options.shouldReconcileActivationPolicies?.(repository)) ?? true;
-  if (!shouldReconcile) return { reconcileResult: null, result: await work(service) };
+  const shouldReconcile = (await options.shouldReconcileActivationPolicies?.(repository)) ?? true;
+  if (!shouldReconcile) {
+    const result = await work(service);
+    return { reconcileResult: nestedReconcileResult, result };
+  }
   const reconcileResult = await createReconcileModuleActivationPoliciesHandler(
     serviceDeps,
     options

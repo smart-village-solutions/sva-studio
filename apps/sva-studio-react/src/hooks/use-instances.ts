@@ -389,6 +389,17 @@ export const useInstances = () => {
             instance_id: instanceId,
           });
         }
+        if (
+          operation === 'seed_instance_iam_baseline' &&
+          resolvedError.code === 'unknown_module_contract'
+        ) {
+          requestEffectiveAccessInvalidation();
+          await refreshSession();
+          await Promise.all([
+            refetch(),
+            ...(instanceId ? [loadInstance(instanceId), refreshInstanceAudit(instanceId)] : []),
+          ]);
+        }
         setMutationError(resolvedError);
         logBrowserOperationFailure(instancesLogger, 'instance_mutation_failed', resolvedError, {
           operation,

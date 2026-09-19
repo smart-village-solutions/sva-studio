@@ -317,4 +317,11 @@ INSTANCE_PROVISIONING_INTEGRATION_DB="${TEST_DB_NAME}" \
     --testFiles=src/tenant-provisioning-recovery.integration.test.ts \
     --skip-nx-cache
 
+echo "Verify persisted IAM baseline after a missing module contract..."
+INSTANCE_PROVISIONING_INTEGRATION_DB="${TEST_DB_NAME}" \
+  POSTGRES_HOST="127.0.0.1" \
+  pnpm nx run instance-registry:test:unit \
+    --testFiles=src/iam-baseline-persistence.integration.test.ts \
+    --skip-nx-cache
+
 echo "Seed idempotency integration test passed."

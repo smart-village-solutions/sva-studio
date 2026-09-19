@@ -847,6 +847,31 @@ describe('useInstances', () => {
     expect(authMockValue.refreshSession).toHaveBeenCalledTimes(3);
   });
 
+  it('refreshes persisted state when IAM baseline seeding reports a missing module contract', async () => {
+    seedInstanceIamBaselineMock.mockRejectedValueOnce({
+      status: 409,
+      code: 'unknown_module_contract',
+      message: 'missing module contract',
+    });
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      expect(await result.current.seedIamBaseline('demo')).toBeNull();
+    });
+
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
+    expect(listInstancesMock).toHaveBeenCalledTimes(2);
+    expect(getInstanceMock).toHaveBeenCalledWith('demo');
+    expect(getSingleInstanceAuditRunMock).toHaveBeenCalledWith('demo');
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 409, code: 'unknown_module_contract' })
+    );
+  });
+
   it('keeps the current selected instance until the post-mutation reload finishes', async () => {
     const reloadedDetail = createDeferred<{
       data: {

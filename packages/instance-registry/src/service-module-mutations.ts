@@ -3,6 +3,7 @@ import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
 
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import { createGetInstanceDetail } from './service-detail.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import {
   invalidateInstancePermissionSnapshots,
   requireModuleIamRegistry,
@@ -452,21 +453,38 @@ export const createSeedIamBaselineHandler =
     await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
+    const assignedModuleIdsBeforeReconcile = await deps.repository.listAssignedModules(
+      input.instanceId
+    );
+    await createReconcileModuleActivationPoliciesHandler(deps, { deferIamSync: true })({
+      instanceId: input.instanceId,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    const missingModuleIds = [
+      ...new Set([...assignedModuleIdsBeforeReconcile, ...assignedModuleIds]),
+    ]
+      .filter((moduleId) => !registry.has(moduleId))
+      .sort((left, right) => left.localeCompare(right, 'de'));
+    const knownAssignedModuleIds = assignedModuleIds.filter((moduleId) => registry.has(moduleId));
+    const errorCodes = missingModuleIds.map((moduleId) => `unknown_module_contract:${moduleId}`);
     const corePermissionReconcile = await syncProtectedSystemAdminPermissions(
       deps,
       input.instanceId
     );
     const modulePermissionReconcile = await deps.repository.syncAssignedModuleIam({
       instanceId: input.instanceId,
-      managedModuleIds: [...registry.keys()],
+      managedModuleIds: [...new Set([...registry.keys(), ...missingModuleIds])],
       managedContracts: resolveManagedModuleContracts(deps),
-      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+      contracts: resolveAssignedModuleContracts(deps, knownAssignedModuleIds),
     });
     await invalidateInstancePermissionSnapshots(
       deps,
       input.instanceId,
-      'instance_module_iam_seeded'
+      missingModuleIds.length > 0
+        ? 'instance_module_iam_seeded_partial'
+        : 'instance_module_iam_seeded'
     );
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
@@ -479,9 +497,19 @@ export const createSeedIamBaselineHandler =
           modulePermissionReconcile,
           corePermissionReconcile
         ),
-        outcome: 'seeded',
+        outcome: missingModuleIds.length > 0 ? 'partial' : 'seeded',
+        ...(missingModuleIds.length > 0 ? { missingModuleIds, errorCodes } : {}),
       },
     });
+
+    if (missingModuleIds.length > 0) {
+      return {
+        ok: false,
+        reason: 'module_contract_missing',
+        moduleIds: missingModuleIds,
+        errorCodes,
+      };
+    }
 
     const detail = await createGetInstanceDetail(deps)(input.instanceId);
     return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };

@@ -13,6 +13,8 @@ export const errorsInstancesAdminDEResources = {
     'Die Instanzverwaltung ist derzeit wegen einer Datenbank- oder Migrationsabweichung eingeschränkt.',
   registryOrProvisioningDrift:
     'Für diese Instanz liegt ein Registry- oder Provisioning-Drift vor. Bitte Keycloak-Status, Preflight und letzten Run gemeinsam prüfen.',
+  unknownModuleContract:
+    'Für folgende Module fehlt der IAM-Vertrag: {{moduleIds}}. Diagnosecodes: {{errorCodes}}.',
   keycloakReconcile:
     'Der Keycloak-Abgleich ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund mit Request-ID prüfen.',
   tenantAuthClientSecretMissing: 'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',

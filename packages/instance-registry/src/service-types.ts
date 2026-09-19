@@ -43,6 +43,10 @@ import type {
   PrepareInstanceConfirmationChallengeInput,
 } from './confirmation-challenges.js';
 
+type ModuleActivationPolicyReconcileResult = Awaited<
+  ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
+>;
+
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
@@ -271,6 +275,9 @@ export type InstanceRegistryServiceDeps = {
     ProvisioningPluginTenantLifecycleContract
   >;
   readonly readModuleActivationPolicySnapshot?: () => TenantModuleActivationPolicySnapshot;
+  readonly captureModuleActivationPolicyReconcileResult?: (
+    result: ModuleActivationPolicyReconcileResult
+  ) => void;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;
     authClientId?: string;

@@ -832,6 +832,21 @@ Das System MUST bei Tenant-Erstellung, explizitem IAM-Baseline-Reconcile und kon
 - **THEN** wird die Instanz als nicht erfolgreich reconciled ausgewiesen
 - **AND** wird der Fehler ohne freie SQL-Reparatur über den bestehenden Diagnose- und Rollout-Vertrag behandelt
 
+#### Scenario: Zugewiesenem Modul fehlt beim expliziten Reconcile der IAM-Vertrag
+
+- **GIVEN** einer Instanz ist mindestens ein Modul ohne registrierten IAM-Vertrag zugewiesen
+- **WHEN** der explizite IAM-Baseline-Reconcile ausgeführt wird
+- **THEN** erfasst das System die fehlenden Verträge vor und nach dem regulären Reconcile der Modulaktivierungsregeln
+- **AND** verschiebt es dessen IAM-Synchronisation in den anschließenden expliziten Baseline-Schritt
+- **AND** führt es den bestehenden Lifecycle-Folgelauf nach dem Commit mit dem intern ermittelten Reconcile-Ergebnis aus
+- **AND** verwendet es für die IAM-Basis anschließend ausschließlich die nach diesem Reconcile aktiven Module
+- **AND** persistiert das System die Core-Basis und die IAM-Basis aller danach aktiven Module mit bekanntem Vertrag
+- **AND** erfindet es keine Permissions oder Grants für das unbekannte Modul
+- **AND** entfernt es bestehende modulbezogene Grants eines dabei deaktivierten unbekannten Moduls
+- **AND** weist es den Reconcile als unvollständig mit `unknown_module_contract:<moduleId>` aus
+- **AND** bewahrt der Browser die betroffenen Modul-IDs und Diagnosecodes als allowlist-validierte sichere Details und zeigt sie dem Operator an
+- **AND** bleiben Modulzuweisung, Modulentzug und Admin-Bootstrap weiterhin atomar und fail-closed
+
 ### Requirement: Interne Realm-Operationsprojektion bleibt bei Refactorings semantikgleich
 
 Das System SHALL bei internen Refactorings der Instanz-Detailprojektion die

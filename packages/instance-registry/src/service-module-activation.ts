@@ -15,7 +15,7 @@ const emptyResult = {
 export const createReconcileModuleActivationPoliciesHandler =
   (
     deps: InstanceRegistryServiceDeps,
-    options: Readonly<{ forceIamSync?: boolean }> = {}
+    options: Readonly<{ forceIamSync?: boolean; deferIamSync?: boolean }> = {}
   ): InstanceRegistryService['reconcileModuleActivationPolicies'] =>
   async ({ instanceId, actorId, requestId }) => {
     const snapshot = deps.readModuleActivationPolicySnapshot?.();
@@ -34,18 +34,21 @@ export const createReconcileModuleActivationPoliciesHandler =
     if (result.conflictModuleIds.length > 0) {
       throw new Error(`plugin_activation_state_conflict:${result.conflictModuleIds.join(',')}`);
     }
+    deps.captureModuleActivationPolicyReconcileResult?.(result);
     if (result.changedModuleIds.length === 0 && !options.forceIamSync) {
       return result;
     }
 
     const assignedModuleIds = await deps.repository.listAssignedModules(instanceId);
     const managedModuleIds = [...new Set([...registry.keys(), ...result.changedModuleIds])];
-    const permissionReconcile = await deps.repository.syncAssignedModuleIam({
-      instanceId,
-      managedModuleIds,
-      managedContracts: resolveManagedModuleContracts(deps),
-      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
-    });
+    const permissionReconcile = options.deferIamSync
+      ? null
+      : await deps.repository.syncAssignedModuleIam({
+          instanceId,
+          managedModuleIds,
+          managedContracts: resolveManagedModuleContracts(deps),
+          contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+        });
     const lifecycleIntents = await deps.repository.persistPluginTenantLifecycleReconcileIntents({
       instanceId,
       lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],

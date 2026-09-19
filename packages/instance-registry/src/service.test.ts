@@ -2769,7 +2769,7 @@ describe('instance registry service facade', () => {
         .mockResolvedValueOnce(['news', 'events'])
         .mockResolvedValueOnce(['categories', 'events', 'news'])
         .mockResolvedValueOnce(['categories', 'events'])
-        .mockResolvedValueOnce(['categories', 'events']),
+        .mockResolvedValue(['categories', 'events']),
     });
     const deps = createDeps(repository);
     const service = createInstanceRegistryService(deps);
@@ -2828,6 +2828,74 @@ describe('instance registry service facade', () => {
       instanceId: 'demo',
       trigger: 'instance_module_iam_seeded',
     });
+  });
+
+  it('keeps the core IAM baseline and reports assigned modules without a contract', async () => {
+    const repository = createRepository({
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news', 'legacy-module'])
+        .mockResolvedValue(['news']),
+      reconcileModuleActivationPolicies: vi.fn(async () => ({
+        changedModuleIds: ['legacy-module', 'news'],
+        conflictModuleIds: [],
+        unchangedModuleIds: [],
+      })),
+    });
+    const deps = createDeps(repository, {
+      readModuleActivationPolicySnapshot: () => ({
+        revision: 'catalog-1',
+        modules: [
+          {
+            moduleId: 'news',
+            activationPolicy: 'required',
+            manifestVersion: 1,
+            policyRevision: 'news-1',
+          },
+        ],
+      }),
+    });
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.seedIamBaseline({
+        instanceId: 'demo',
+        idempotencyKey: 'idem-module-partial-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-partial-1',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      reason: 'module_contract_missing',
+      moduleIds: ['legacy-module'],
+      errorCodes: ['unknown_module_contract:legacy-module'],
+    });
+
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledOnce();
+    expect(repository.reconcileModuleActivationPolicies).toHaveBeenCalledOnce();
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledOnce();
+    expect(repository.syncAssignedModuleIam).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: expect.arrayContaining(['news', 'legacy-module']),
+        contracts: [expect.objectContaining({ moduleId: 'news' })],
+      })
+    );
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      trigger: 'instance_module_iam_seeded_partial',
+    });
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        eventType: 'instance_module_iam_seeded',
+        details: expect.objectContaining({
+          outcome: 'partial',
+          missingModuleIds: ['legacy-module'],
+          errorCodes: ['unknown_module_contract:legacy-module'],
+        }),
+      })
+    );
   });
 
   it('assigns the host-owned media module when it is present in the module registry', async () => {

@@ -9,6 +9,7 @@ import {
   type InstanceRegistryMutationErrorMapper,
 } from './observability.js';
 import type { InstanceRegistryService } from './service-types.js';
+import type { ScopedRegistryServiceOptions } from './runtime-wiring.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-http', level: 'info' });
 
@@ -55,7 +56,8 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
   ) => Promise<T>;
   readonly withScopedRegistryService: <T>(
     instanceId: string,
-    work: (service: InstanceRegistryService) => Promise<T>
+    work: (service: InstanceRegistryService) => Promise<T>,
+    options?: ScopedRegistryServiceOptions
   ) => Promise<T>;
   readonly confirmCriticalMutation?: (input: {
     readonly service: InstanceRegistryService;
@@ -91,6 +93,7 @@ type ScopedRegistryMutationExecuteInput<TData> = {
 
 type ScopedRegistryMutationHandlerOptions<TContext, TData, TResult> = {
   readonly operation: string;
+  readonly scopedServiceOptions?: ScopedRegistryServiceOptions;
   readonly criticalActionId?: string;
   readonly resolveCriticalModuleId?: (payload: TData) => string | undefined;
   readonly parse: (request: Request) => Promise<ParsedRequestBody<TData>>;
@@ -136,8 +139,9 @@ export const createInstanceMutationErrorMapper =
 export const withScopedRegistryMutation = <TContext, TResult>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
   instanceId: string,
-  work: (service: InstanceRegistryService) => Promise<TResult>
-): Promise<TResult> => deps.withScopedRegistryService(instanceId, work);
+  work: (service: InstanceRegistryService) => Promise<TResult>,
+  options?: ScopedRegistryServiceOptions
+): Promise<TResult> => deps.withScopedRegistryService(instanceId, work, options);
 
 type ScopedExecutionState<TContext, TData> = {
   readonly request: Request;
@@ -154,37 +158,42 @@ const executeScopedMutation = <TContext, TData, TResult>(
   options: ScopedRegistryMutationHandlerOptions<TContext, TData, TResult>,
   state: ScopedExecutionState<TContext, TData>
 ): Promise<TResult | Response> =>
-  withScopedRegistryMutation(deps, state.instanceId, async (service) => {
-    if (options.criticalActionId) {
-      if (!deps.confirmCriticalMutation) {
-        return deps.createApiError(
-          500,
-          'internal_error',
-          'Bestätigungsprüfung für kritische Aktion ist nicht verfügbar.',
-          state.requestId
-        );
+  withScopedRegistryMutation(
+    deps,
+    state.instanceId,
+    async (service) => {
+      if (options.criticalActionId) {
+        if (!deps.confirmCriticalMutation) {
+          return deps.createApiError(
+            500,
+            'internal_error',
+            'Bestätigungsprüfung für kritische Aktion ist nicht verfügbar.',
+            state.requestId
+          );
+        }
+        const moduleId = options.resolveCriticalModuleId?.(state.input);
+        const confirmationError = await deps.confirmCriticalMutation({
+          service,
+          request: state.request,
+          context: state.context,
+          instanceId: state.instanceId,
+          actorId: state.actorId,
+          idempotencyKey: state.idempotencyKey,
+          actionId: options.criticalActionId,
+          ...(moduleId ? { moduleId } : {}),
+        });
+        if (confirmationError) return confirmationError;
       }
-      const moduleId = options.resolveCriticalModuleId?.(state.input);
-      const confirmationError = await deps.confirmCriticalMutation({
-        service,
-        request: state.request,
-        context: state.context,
+      return options.execute(service, {
         instanceId: state.instanceId,
+        payload: state.input,
         actorId: state.actorId,
         idempotencyKey: state.idempotencyKey,
-        actionId: options.criticalActionId,
-        ...(moduleId ? { moduleId } : {}),
+        requestId: state.requestId,
       });
-      if (confirmationError) return confirmationError;
-    }
-    return options.execute(service, {
-      instanceId: state.instanceId,
-      payload: state.input,
-      actorId: state.actorId,
-      idempotencyKey: state.idempotencyKey,
-      requestId: state.requestId,
-    });
-  });
+    },
+    options.scopedServiceOptions
+  );
 
 export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
@@ -206,9 +215,7 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
   >({
     prepare: ({ request, context }: { readonly request: Request; readonly context: TContext }) => {
       const instanceId = readInstanceIdOrError(deps, request);
-      if (instanceId instanceof Response) {
-        return instanceId;
-      }
+      if (instanceId instanceof Response) return instanceId;
 
       return {
         requestId: deps.getRequestId(),
@@ -286,13 +293,9 @@ export const requireMutationGuards = <TContext>(
 ): Response | null => {
   void _options;
   const accessError = deps.ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
+  if (accessError) return accessError;
   const csrfError = deps.validateCsrf(request, deps.getRequestId());
-  if (csrfError) {
-    return csrfError;
-  }
+  if (csrfError) return csrfError;
   return null;
 };
 

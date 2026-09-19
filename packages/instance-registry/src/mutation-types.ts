@@ -127,4 +127,10 @@ export type InstanceModuleMutationResult =
       readonly ok: false;
       readonly reason:
         'not_found' | 'unknown_module' | 'conflict' | 'plugin_activation_required_cannot_disable';
+    }
+  | {
+      readonly ok: false;
+      readonly reason: 'module_contract_missing';
+      readonly moduleIds: readonly string[];
+      readonly errorCodes: readonly string[];
     };

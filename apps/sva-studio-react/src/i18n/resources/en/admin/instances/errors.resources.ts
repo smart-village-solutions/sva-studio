@@ -10,6 +10,8 @@ export const errorsInstancesAdminENResources = {
     'Instance management is currently degraded because of a database or migration mismatch.',
   registryOrProvisioningDrift:
     'Registry or provisioning drift was detected for this instance. Please review Keycloak status, preflight, and the latest run together.',
+  unknownModuleContract:
+    'The IAM contract is missing for these modules: {{moduleIds}}. Diagnostic codes: {{errorCodes}}.',
   keycloakReconcile:
     'The Keycloak reconcile failed or needs manual follow-up. Please inspect the reconcile finding with the request ID.',
   tenantAuthClientSecretMissing: 'No tenant client secret has been stored for this instance yet.',

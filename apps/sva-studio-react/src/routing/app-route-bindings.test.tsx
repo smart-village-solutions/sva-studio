@@ -500,8 +500,18 @@ vi.mock('@sva/plugin-surveys', () => ({
 }));
 
 vi.mock('@sva/plugin-categories', () => ({
-  CategoriesPage: ({ dataTypeOptions }: { dataTypeOptions?: unknown }) => (
-    <div data-options={JSON.stringify(dataTypeOptions)} data-testid="categories-page">
+  CategoriesPage: ({
+    dataTypeOptions,
+    enabledMutationActions,
+  }: {
+    dataTypeOptions?: unknown;
+    enabledMutationActions?: unknown;
+  }) => (
+    <div
+      data-actions={JSON.stringify(enabledMutationActions)}
+      data-options={JSON.stringify(dataTypeOptions)}
+      data-testid="categories-page"
+    >
       plugin categories
     </div>
   ),
@@ -597,6 +607,9 @@ describe('appRouteBindings', () => {
         value: 'FAQ',
         label: 'Frequently asked questions',
       });
+      expect(
+        JSON.parse(screen.getByTestId('categories-page').getAttribute('data-actions') ?? '[]')
+      ).toEqual([]);
       expect(screen.queryByTestId('placeholder-page')).toBeNull();
     }
   );

@@ -35,6 +35,8 @@ export const messageFor = (error: unknown, pt: Translator) => {
       return pt('messages.loadErrorConfigMissing');
     case 'forbidden':
       return pt('messages.loadErrorForbidden');
+    case 'category_management_access_denied':
+      return pt('messages.loadErrorManagementAccess');
     case 'category_management_invalid_response':
     case 'category_management_contract_unavailable':
       return pt('messages.contractError');

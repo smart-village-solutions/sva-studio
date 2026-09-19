@@ -19,6 +19,7 @@ const MAINSERVER_ERROR_STATUS_BY_CODE = {
   graphql_error: 502,
   invalid_response: 502,
   category_management_invalid_response: 502,
+  category_management_access_denied: 403,
 } satisfies Record<string, number>;
 
 export const toMainserverErrorResponse = (error: unknown, fallbackMessage: string): Response => {

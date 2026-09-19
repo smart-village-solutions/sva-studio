@@ -3,6 +3,7 @@ import {
   completeIdempotency,
   reserveIdempotency,
   resolveActorInfo,
+  validateCsrf,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
@@ -107,13 +108,13 @@ const saveCategory = async (
   ctx: AuthenticatedRequestContext,
   actor: CategoriesActor
 ): Promise<Response> => {
-  const idempotency = await reserveCategoryCreate(request, ctx, actor);
-  if (idempotency instanceof Response) return idempotency;
   const category = await parseCategorySaveInput(
-    request,
+    request.clone(),
     matched.kind === 'item' ? matched.id : undefined
   );
   if (category instanceof Response) return category;
+  const idempotency = await reserveCategoryCreate(request, ctx, actor);
+  if (idempotency instanceof Response) return idempotency;
   const result = await saveSvaMainserverCategory({ ...actor, category });
   const succeeded = Boolean(result.category) && result.errors.length === 0;
   const status = succeeded && request.method === 'POST' ? 201 : 200;
@@ -143,6 +144,10 @@ const dispatchAuthenticated = async (
       'Methode wird für Mainserver-Kategorien nicht unterstützt.'
     );
   try {
+    if (request.method !== 'GET') {
+      const csrfFailure = validateCsrf(request, getWorkspaceContext().requestId);
+      if (csrfFailure) return csrfFailure;
+    }
     const contractFailure = categoryManagementContractFailure(request, action);
     if (contractFailure) return contractFailure;
     const actor = await authorize(ctx, action);

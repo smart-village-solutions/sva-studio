@@ -19,6 +19,7 @@ export type SvaMainserverErrorCode =
   | 'graphql_error'
   | 'invalid_response'
   | 'category_management_invalid_response'
+  | 'category_management_access_denied'
   | 'not_found';
 
 export type SvaMainserverInstanceConfig = {

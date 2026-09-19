@@ -54,7 +54,11 @@ const usePageSelection = () => {
 
 export function CategoriesPage({
   dataTypeOptions = [],
-}: Readonly<{ dataTypeOptions?: readonly CategoryDataTypeOption[] }>) {
+  enabledMutationActions,
+}: Readonly<{
+  dataTypeOptions?: readonly CategoryDataTypeOption[];
+  enabledMutationActions?: readonly string[];
+}>) {
   const pt = useTranslator();
   const access = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
@@ -64,7 +68,9 @@ export function CategoriesPage({
   const state = useCategoryPageState(pt);
   const selection = usePageSelection();
   const [notice, setNotice] = React.useState<string | null>(null);
-  const can = (action: string) => access.permissionActions.includes(action);
+  const can = (action: string) =>
+    access.permissionActions.includes(action) &&
+    (enabledMutationActions === undefined || enabledMutationActions.includes(action));
   const reloadAfterSave = async (affectedIds: readonly string[]) => {
     const reloaded = await state.reload();
     const key = reloaded
@@ -106,7 +112,7 @@ export function CategoriesPage({
           pt={pt}
           onClose={selection.closeEditor}
           onSaved={reloadAfterSave}
-          onUncertainCreate={async () => {
+          onUncertainSave={async () => {
             await state.reload();
           }}
         />

@@ -377,7 +377,9 @@ describe('plugin-categories api', () => {
     ).resolves.toMatchObject({ category: { id: 'cat-1' }, errors: [] });
     const [, request] = fetchImpl.mock.calls[0] ?? [];
     expect(request).toMatchObject({ method: 'POST' });
-    expect(new Headers((request as RequestInit).headers).get('Idempotency-Key')).toBe('create-1');
+    const headers = new Headers((request as RequestInit).headers);
+    expect(headers.get('Idempotency-Key')).toBe('create-1');
+    expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
   });
 
   it('preserves structured delete usage and rejects malformed mutation payloads', async () => {
@@ -406,6 +408,9 @@ describe('plugin-categories api', () => {
       usage: { children: 1, resourceAssignments: 2, notificationConfigurations: 3 },
       errors: [{ code: 'CATEGORY_IN_USE', field: 'id' }],
     });
+    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('X-Requested-With')).toBe(
+      'XMLHttpRequest'
+    );
     await expect(
       saveCategory({
         id: 'cat-1',

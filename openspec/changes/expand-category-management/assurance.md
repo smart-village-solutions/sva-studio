@@ -9,22 +9,22 @@
 
 ## Lokale Prüfgrundlage am 19. September 2026
 
-- `packages/sva-mainserver/src/server/categories-route.test.ts`: 14/14 Tests erfolgreich.
-- `packages/sva-mainserver/src/server/service.test.ts`: fokussierter Test gegen automatischen Mutation-Retry erfolgreich; ein nicht betroffener Paginationstest der vollständigen Datei lief lokal in sein bestehendes Timeout.
-- `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 22/22 Tests erfolgreich.
-- App-Routenadapter: vollständige betroffene Route-Testdatei mit 26/26 Tests erfolgreich; der neue Registry-ID-/Label-Fall ist enthalten.
-- `plugin-categories:build`, `sva-mainserver:test:types`, `pnpm check:server-runtime`, `sva-studio-react:check:i18n`, `pnpm check:file-placement`, Complexity-Gate und strikte OpenSpec-Validierung erfolgreich.
+- `packages/sva-mainserver/src/server/categories-route.test.ts`: 16/16 Tests erfolgreich, einschließlich CSRF-Abweisung und Body-Validierung vor Idempotenz-Reservation.
+- `packages/sva-mainserver/src/server/service.test.ts`: zwei fokussierte Tests gegen automatischen Mutation-Retry und für den getrennten Upstream-Management-Fehler erfolgreich.
+- `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 24/24 Tests erfolgreich.
+- App-Routenadapter: fokussierter Test für Registry-ID/-Label und bestätigte Mutation-Capabilities erfolgreich.
+- `plugin-categories:test:types`, `sva-mainserver:test:types`, `sva-studio-react:test:types`, `pnpm check:server-runtime`, die drei betroffenen Lint-Ziele und der Complexity-Gate erfolgreich.
 - Diese Evidenz belegt den lokalen PR-Arbeitsstand. GitHub-Gates für den finalen Commit sowie Vertrags-, Credential- und Browserabnahme in der Zielumgebung bleiben getrennte Freigabevoraussetzungen.
 
 ## Systemgrenzen und Verbraucher
 
 | ID     | Eintritts-/Ausführungsgrenze                      | Vorbedingung                                                      | Durchsetzung                                                                                                       | Recheck                                            | Verbraucher         |
 | ------ | ------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ------------------- |
-| BND-01 | Browser → Studio-Kategorienroute                  | Authentifizierte Session, aktiver Instanz-/Organisationskontext   | Request-Parser und actionspezifische IAM-Prüfung                                                                   | Unmittelbar vor jedem Upstream-Aufruf              | `plugin-categories` |
+| BND-01 | Browser → Studio-Kategorienroute                  | Authentifizierte Session, aktiver Instanz-/Organisationskontext   | Gemeinsame CSRF-Prüfung, Request-Parser und actionspezifische IAM-Prüfung                                          | Unmittelbar vor jedem Upstream-Aufruf              | `plugin-categories` |
 | BND-02 | Studio → Mainserver GraphQL                       | Verifizierter Schema-Vertrag und effektive Management-Credentials | Server-only Adapter, Credential-Auflösung und Runtime-Response-Parser                                              | Bei jedem Request                                  | Kategorienroute     |
 | BND-03 | Plugin-/Content-Type-Registry → Kategorieformular | Validierter Build-time-Snapshot                                   | App-Adapter projiziert `mainserverGenericTypeRegistry` in Options-Props; Plugin ergänzt nur statische Legacy-Typen | Beim Öffnen beziehungsweise Neuladen des Formulars | Datentypauswahl     |
 | BND-04 | Mainserver-Mutationsergebnis → UI-Erfolg          | Erwartete Resultat-ID und leere fachliche Fehlerliste             | Payload-Parser und Ergebnisnormalisierung                                                                          | Vor Erfolgsfeedback und Listen-Reload              | Kategorienseite     |
-| BND-05 | Browser-Create → Host-Idempotenz                  | Operationsgebundener `Idempotency-Key`                            | Vorhandene Reservation, Payload-Bindung, Replay und Completion                                                     | Vor jedem Create-Upstream-Aufruf                   | Kategorienroute     |
+| BND-05 | Browser-Create → Host-Idempotenz                  | Valider Body und operationsgebundener `Idempotency-Key`           | Body-Validierung vor vorhandener Reservation, Payload-Bindung, Replay und Completion                               | Vor jedem Create-Upstream-Aufruf                   | Kategorienroute     |
 
 ## Zustände und Übergänge
 
@@ -125,7 +125,7 @@
 - Kritikalität: kritisch
 - Geltungsbereich: UI-Verfügbarkeit und Serverausführung.
 - Verletzungsszenarien: `categories.read` erlaubt Save, Create erlaubt Update, ausgeblendeter Button ersetzt Serverprüfung.
-- Prävention: feste Methoden-/Action-Matrix und erneute Autorisierung im Serverdispatcher.
+- Prävention: feste Methoden-/Action-Matrix, Schnittmenge aus Session-Actions und bestätigten Mainserver-Capabilities in der UI sowie erneute Autorisierung im Serverdispatcher.
 - Erkennung: vollständige Positiv-/Negativmatrix über Read/Create/Update/Delete.
 - Recovery: Denial vor Upstream-Aufruf; keine fachliche Mutation.
 - Geplante direkte Evidenz:
@@ -133,7 +133,7 @@
   - UI-Tests für unabhängig sichtbare Aktionen.
   - Audit-/Logtest für die tatsächlich geprüfte Action.
 - Nachweisstatus: lokal teilnachgewiesen
-- Ausgeführte Evidenz und Ergebnis: Route-Tests belegen getrennte Actions für Read, Create, Update und Delete sowie Nichtaufruf des Services bei lokalem Denial; der Komponententest belegt unabhängige Aktionsverfügbarkeit.
+- Ausgeführte Evidenz und Ergebnis: Route-Tests belegen getrennte Actions für Read, Create, Update und Delete sowie Nichtaufruf des Services bei lokalem Denial; Komponententests belegen unabhängige Aktionsverfügbarkeit und die Capability-Schnittmenge.
 - Offene Nachweislücken: vollständige Positiv-/Negativmatrix und Audit-/Lognachweis bleiben offen.
 - Restrisiko und Entscheidung: vor Merge nicht akzeptiert.
 
@@ -142,30 +142,30 @@
 - Kritikalität: hoch
 - Geltungsbereich: Browser-Create, Kategorienroute und Aufruf von `saveCategory`.
 - Verletzungsszenarien: Die Upstream-Mutation war erfolgreich, aber die Antwort geht verloren; der Benutzer oder Client wiederholt Create.
-- Prävention: ein pro Anlegeversuch stabiler `Idempotency-Key` und Wiederverwendung des vorhandenen Host-Reservierungs-, Payload-Bindungs- und Replay-Pfads vor dem Upstream-Aufruf. Nur terminal gespeicherte Ergebnisse werden replayed; eine nichtterminale Reservation wird nicht als sicher wiederholbar behandelt.
+- Prävention: Body-Validierung vor der Reservation, ein pro Anlegeversuch stabiler `Idempotency-Key` und Wiederverwendung des vorhandenen Host-Reservierungs-, Payload-Bindungs- und Replay-Pfads vor dem Upstream-Aufruf. Nur terminal gespeicherte Ergebnisse werden replayed; eine nichtterminale Reservation wird nicht als sicher wiederholbar behandelt.
 - Erkennung: Route-Tests für Reservation, terminales Replay, nichtterminalen Ausgang, Payload-Konflikt und nicht verfügbare Idempotenz-Persistenz.
 - Recovery: terminales Replay mit demselben Schlüssel oder Management-Re-Read vor jeder neuen Create-Entscheidung; kein automatischer Retry einer nichtterminalen Reservation.
 - Geplante direkte Evidenz:
   - API-Test, dass der Client denselben Schlüssel für den Retry desselben Anlegeversuchs verwendet.
   - Route-Test, dass ein terminales Replay kein zweites `saveCategory` ausführt, eine nichtterminale Reservation einen Re-Read verlangt und ein abweichender Payload fail-closed kollidiert.
 - Nachweisstatus: lokal nachgewiesen
-- Ausgeführte Evidenz und Ergebnis: Service-Test verhindert Retry nach unklarem Mutationstransportfehler; Route-Tests belegen Reservation und terminales Replay ohne zweiten Upstream-Aufruf; Komponententest belegt stabilen Schlüssel beim Retry desselben Anlegeversuchs und Management-Re-Read vor der Retry-Entscheidung.
+- Ausgeführte Evidenz und Ergebnis: Service-Test verhindert Retry nach unklarem Mutationstransportfehler; Route-Tests belegen Validierung vor Reservation und terminales Replay ohne zweiten Upstream-Aufruf; Komponententests belegen stabilen Schlüssel sowie Management-Re-Read nach unklarem Create- und Update-Ausgang.
 - Offene Nachweislücken: Verhalten mit produktiver Idempotenz-Persistenz bleibt Teil der Zielumgebungsabnahme.
 - Restrisiko und Entscheidung: vor Merge nicht akzeptiert.
 
 ## Failure-Mode- und Evidenzmatrix
 
-| Fehler-/Konkurrenzfall                               | Betroffene Invarianten | Erwartetes Ergebnis                                                      | Evidenz                     | Status  |
-| ---------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------ | --------------------------- | ------- |
-| Fremde Kategorie- oder Parent-ID                     | INV-01, INV-04         | Fail-closed ohne fremde Metadaten oder Upstream-Write                    | Route-/Integrationstest     | geplant |
-| Management-Rolle fehlt upstream                      | INV-01, INV-06         | Getrennter Readiness-/Forbidden-Fehler, kein Active-only-Fallback        | Contract- und Umgebungstest | geplant |
-| Registry-Typ fehlt nach dem Öffnen                   | INV-03                 | Gespeicherter Wert bleibt im Save-Input                                  | Form-Roundtrip-Test         | geplant |
-| Kategorie wird zwischen Snapshot und Save verschoben | INV-04                 | Mainserver entscheidet atomar; UI lädt bestätigten Zustand neu           | Integrationstest            | geplant |
-| Referenz entsteht unmittelbar vor Delete             | INV-05                 | Delete wird blockiert; keine Referenz wird entfernt                      | Integrationstest            | geplant |
-| Response enthält HTTP 200 mit Payloadfehler          | INV-04, INV-05         | Kein Erfolgsfeedback; stabiler fachlicher Fehler                         | Adaptertest                 | geplant |
-| Benutzer besitzt nur `categories.read`               | INV-06                 | Management-Read möglich, alle Mutationen serverseitig abgelehnt          | Permission-Matrix           | geplant |
-| Management-Reload scheitert nach bestätigtem Save    | INV-03, INV-04         | Save bleibt als erfolgreich bestätigt; Reload ist wiederholbar           | UI-/Adaptertest             | geplant |
-| Create-Antwort geht nach Upstream-Erfolg verloren    | INV-07                 | Terminales Replay oder fail-closed Re-Read vor neuer Create-Entscheidung | API-/Route-Test             | geplant |
+| Fehler-/Konkurrenzfall                               | Betroffene Invarianten | Erwartetes Ergebnis                                                      | Evidenz                 | Status                 |
+| ---------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------ | ----------------------- | ---------------------- |
+| Fremde Kategorie- oder Parent-ID                     | INV-01, INV-04         | Fail-closed ohne fremde Metadaten oder Upstream-Write                    | Route-/Integrationstest | geplant                |
+| Management-Rolle fehlt upstream                      | INV-01, INV-06         | Getrennter Readiness-/Forbidden-Fehler, kein Active-only-Fallback        | Service-/Umgebungstest  | lokal teilnachgewiesen |
+| Registry-Typ fehlt nach dem Öffnen                   | INV-03                 | Gespeicherter Wert bleibt im Save-Input                                  | Form-Roundtrip-Test     | geplant                |
+| Kategorie wird zwischen Snapshot und Save verschoben | INV-04                 | Mainserver entscheidet atomar; UI lädt bestätigten Zustand neu           | Integrationstest        | geplant                |
+| Referenz entsteht unmittelbar vor Delete             | INV-05                 | Delete wird blockiert; keine Referenz wird entfernt                      | Integrationstest        | geplant                |
+| Response enthält HTTP 200 mit Payloadfehler          | INV-04, INV-05         | Kein Erfolgsfeedback; stabiler fachlicher Fehler                         | Adaptertest             | lokal nachgewiesen     |
+| Benutzer besitzt nur `categories.read`               | INV-06                 | Management-Read möglich, alle Mutationen serverseitig abgelehnt          | Permission-Matrix       | lokal teilnachgewiesen |
+| Management-Reload scheitert nach bestätigtem Save    | INV-03, INV-04         | Save bleibt als erfolgreich bestätigt; Reload ist wiederholbar           | UI-/Adaptertest         | lokal nachgewiesen     |
+| Create-Antwort geht nach Upstream-Erfolg verloren    | INV-07                 | Terminales Replay oder fail-closed Re-Read vor neuer Create-Entscheidung | API-/Route-Test         | lokal nachgewiesen     |
 
 ## Freigabe der Implementierung
 

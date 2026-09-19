@@ -594,6 +594,28 @@ describe('createSvaMainserverService', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  it('distinguishes missing Mainserver category-management access from local Studio permissions', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(403, { error: 'forbidden' }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategoryManagement({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
+    ).rejects.toMatchObject({
+      code: 'category_management_access_denied',
+      statusCode: 403,
+    });
+  });
+
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
     const item = {
       id: 'news-1',

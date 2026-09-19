@@ -1,4 +1,4 @@
-import { requestMainserverJson } from '@sva/plugin-sdk';
+import { createMainserverJsonRequestHeaders, requestMainserverJson } from '@sva/plugin-sdk';
 
 import {
   CategoriesApiError,
@@ -62,10 +62,9 @@ export const saveCategory = async (input: {
       : '/api/v1/mainserver/categories',
     init: {
       method: input.id ? 'PUT' : 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      headers: createMainserverJsonRequestHeaders({
         ...(input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : {}),
-      },
+      }),
       body: JSON.stringify(input.category),
     },
     ...(input.fetch ? { fetch: input.fetch } : {}),
@@ -80,7 +79,7 @@ export const deleteCategory = async (
 ): Promise<CategoryDeleteResponse> => {
   const response = await requestMainserverJson<unknown, CategoriesApiError>({
     url: `/api/v1/mainserver/categories/${encodeURIComponent(id)}`,
-    init: { method: 'DELETE' },
+    init: { method: 'DELETE', headers: createMainserverJsonRequestHeaders() },
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
     errorFactory: (code, message) => new CategoriesApiError(code, message),
   });

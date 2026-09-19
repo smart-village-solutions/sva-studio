@@ -14,7 +14,11 @@ import {
   type DraftField,
   type Translator,
 } from './categories.page-support.js';
-import type { CategoryDataTypeOption, CategoryManagementItem } from './categories.types.js';
+import type {
+  CategoryDataTypeOption,
+  CategoryManagementItem,
+  CategoryMutationError,
+} from './categories.types.js';
 
 export type CategoryEditorProps = Readonly<{
   category: CategoryManagementItem | null;
@@ -24,7 +28,7 @@ export type CategoryEditorProps = Readonly<{
   pt: Translator;
   onClose: () => void;
   onSaved: (affectedDescendantIds: readonly string[]) => Promise<void>;
-  onUncertainCreate: () => Promise<void>;
+  onUncertainSave: () => Promise<void>;
 }>;
 
 const errorField = (field?: string): DraftField | undefined => {
@@ -34,11 +38,24 @@ const errorField = (field?: string): DraftField | undefined => {
     : undefined;
 };
 
-const mappedErrors = (errors: readonly Readonly<{ field?: string; message: string }>[]) => {
+const mutationErrorMessage = (error: CategoryMutationError, pt: Translator): string => {
+  switch (error.code) {
+    case 'CATEGORY_NAME_TAKEN':
+      return pt('messages.nameTaken');
+    case 'CATEGORY_INVALID_PARENT':
+      return pt('messages.invalidParent');
+    case 'CATEGORY_NOT_FOUND':
+      return pt('messages.categoryNotFound');
+    default:
+      return pt('messages.mutationError');
+  }
+};
+
+const mappedErrors = (errors: readonly CategoryMutationError[], pt: Translator) => {
   const fields: DraftErrors = {};
   for (const error of errors) {
     const field = errorField(error.field);
-    if (field && !fields[field]) fields[field] = error.message;
+    if (field && !fields[field]) fields[field] = mutationErrorMessage(error, pt);
   }
   return fields;
 };
@@ -72,11 +89,15 @@ const usePersistCategory = (input: {
           category: value,
         });
         if (!result.category || result.errors.length) {
-          const fields = mappedErrors(result.errors);
+          const fields = mappedErrors(result.errors, input.props.pt);
           input.setFieldErrors(fields);
+          const globalError = result.errors.find((error) => !errorField(error.field));
           input.setError(
-            result.errors.find((error) => !errorField(error.field))?.message ??
-              (Object.keys(fields).length ? null : input.props.pt('messages.mutationError'))
+            globalError
+              ? mutationErrorMessage(globalError, input.props.pt)
+              : Object.keys(fields).length
+                ? null
+                : input.props.pt('messages.mutationError')
           );
           return;
         }
@@ -84,7 +105,7 @@ const usePersistCategory = (input: {
         await input.props.onSaved(result.affectedDescendantIds);
         input.props.onClose();
       } catch (caught) {
-        if (!input.props.category) await input.props.onUncertainCreate();
+        await input.props.onUncertainSave();
         input.setError(messageFor(caught, input.props.pt));
       } finally {
         input.setPending(false);

@@ -77,6 +77,7 @@ import {
   toSvaMainserverError,
   unwrapSettledResult,
   type CredentialValue,
+  type GraphqlOperationInput,
   type SvaMainserverListInput,
 } from './service-internals/shared.js';
 
@@ -336,6 +337,24 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     fetchWithRetry,
     loadAccessToken,
   });
+  const executeCategoryManagementGraphql = async <TResult>(
+    operation: GraphqlOperationInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<TResult> => {
+    try {
+      return await executeGraphqlWithConfig<TResult>(operation, config);
+    } catch (error) {
+      const normalized = normalizeUnexpectedError(error);
+      if (normalized.code === 'forbidden' || normalized.code === 'unauthorized')
+        throw toSvaMainserverError({
+          code: 'category_management_access_denied',
+          message:
+            'Die Mainserver-Zugangsdaten sind nicht für die Kategorienverwaltung berechtigt.',
+          statusCode: 403,
+        });
+      throw error;
+    }
+  };
   const loadDataProviderIdentityWithConfig = createDataProviderIdentityOperation({
     fetchWithRetry,
     loadAccessToken,
@@ -448,7 +467,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
 
   const listCategoryManagement = async (input: SvaMainserverConnectionInput) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const response = await executeGraphqlWithConfig<SvaMainserverCategoriesListQuery>(
+    const response = await executeCategoryManagementGraphql<SvaMainserverCategoriesListQuery>(
       {
         ...input,
         document: svaMainserverCategoriesManagementDocument,
@@ -466,7 +485,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     input: SvaMainserverConnectionInput & { readonly category: SvaMainserverSaveCategoryInput }
   ): Promise<SvaMainserverSaveCategoryResult> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const response = await executeGraphqlWithConfig<SvaMainserverSaveCategoryMutation>(
+    const response = await executeCategoryManagementGraphql<SvaMainserverSaveCategoryMutation>(
       {
         ...input,
         document: svaMainserverSaveCategoryDocument,
@@ -504,7 +523,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     input: SvaMainserverConnectionInput & { readonly categoryId: string }
   ): Promise<SvaMainserverDeleteCategoryResult> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const response = await executeGraphqlWithConfig<SvaMainserverDeleteCategoryMutation>(
+    const response = await executeCategoryManagementGraphql<SvaMainserverDeleteCategoryMutation>(
       {
         ...input,
         document: svaMainserverDeleteCategoryDocument,

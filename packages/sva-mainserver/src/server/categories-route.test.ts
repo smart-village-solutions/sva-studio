@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   resolveActorInfo: vi.fn(),
   reserveIdempotency: vi.fn(),
   completeIdempotency: vi.fn(),
+  validateCsrf: vi.fn(),
   listSvaMainserverCategories: vi.fn(),
   listSvaMainserverCategoryManagement: vi.fn(),
   saveSvaMainserverCategory: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   resolveActorInfo: state.resolveActorInfo,
   reserveIdempotency: state.reserveIdempotency,
   completeIdempotency: state.completeIdempotency,
+  validateCsrf: state.validateCsrf,
 }));
 
 vi.mock('./service.js', async (importOriginal) => {
@@ -51,6 +53,7 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
   beforeEach(() => {
     process.env[confirmedCapabilitiesEnvironment] =
       'categories.read,categories.create,categories.update,categories.delete';
+    state.validateCsrf.mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -228,6 +231,40 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       error: 'idempotency_key_required',
       message: 'Header Idempotency-Key ist erforderlich.',
     });
+  });
+
+  it('rejects mutations that fail the shared CSRF validation before authorization', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(
+      new Response(JSON.stringify({ error: 'csrf_validation_failed' }), { status: 403 })
+    );
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories/cat-1', {
+        method: 'DELETE',
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.deleteSvaMainserverCategory).not.toHaveBeenCalled();
+  });
+
+  it('validates a create body before reserving its idempotency key', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.create');
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'invalid-create', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '', active: true, dataTypes: [] }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
   });
 
   it('creates a category once and stores its terminal response for idempotent replay', async () => {

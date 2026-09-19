@@ -91,6 +91,9 @@ const label = (key: string, variables?: Readonly<Record<string, string | number>
     'categories.messages.loading': 'Kategorien werden geladen.',
     'categories.messages.loadError': 'Kategorien konnten nicht geladen werden.',
     'categories.messages.nameRequired': 'Bitte geben Sie einen Kategorienamen an.',
+    'categories.messages.nameTaken': 'Dieser Kategoriename ist bereits vergeben.',
+    'categories.messages.invalidParent': 'Die übergeordnete Kategorie ist ungültig.',
+    'categories.messages.categoryNotFound': 'Die Kategorie ist nicht mehr vorhanden.',
     'categories.messages.savedReloadFailed': 'Gespeichert, aber Neuladen fehlgeschlagen.',
     'categories.messages.saved': 'Die Kategorie wurde gespeichert.',
     'categories.messages.deleteBlocked': 'Löschen blockiert.',
@@ -152,6 +155,22 @@ describe('CategoriesPage', () => {
     );
   });
 
+  it('intersects mutation permissions with confirmed Mainserver capabilities', async () => {
+    render(<CategoriesPage enabledMutationActions={['categories.update']} />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    expect(screen.queryByRole('button', { name: 'Kategorie anlegen' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]?.hasAttribute('disabled')).toBe(
+      false
+    );
+    expect(
+      screen.getAllByRole('button', { name: 'Neue Unterkategorie' })[0]?.hasAttribute('disabled')
+    ).toBe(true);
+    expect(screen.getAllByRole('button', { name: 'Löschen' })[0]?.hasAttribute('disabled')).toBe(
+      true
+    );
+  });
+
   it('reuses the create idempotency key when the same attempt is retried', async () => {
     state.save.mockRejectedValue(new Error('response lost'));
     render(<CategoriesPage />);
@@ -166,6 +185,17 @@ describe('CategoriesPage', () => {
     expect(state.save.mock.calls[0]?.[0].idempotencyKey).toBe(
       state.save.mock.calls[1]?.[0].idempotencyKey
     );
+  });
+
+  it('reloads the management snapshot after an indeterminate update result', async () => {
+    state.save.mockRejectedValue(new Error('response lost'));
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(state.list).toHaveBeenCalledTimes(2));
   });
 
   it('requires an explicit confirmation before changing a parent status', async () => {
@@ -200,7 +230,7 @@ describe('CategoriesPage', () => {
       errors: [{ code: 'CATEGORY_NAME_TAKEN', field: 'name', message: 'Name vergeben' }],
     });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-    expect(await screen.findByText('Name vergeben')).toBeTruthy();
+    expect(await screen.findByText('Dieser Kategoriename ist bereits vergeben.')).toBeTruthy();
     expect(screen.getByLabelText('Name').getAttribute('aria-describedby')).toBe(
       'category-name-error'
     );

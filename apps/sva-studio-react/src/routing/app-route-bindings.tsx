@@ -86,6 +86,7 @@ const readStringParam = (value: unknown, fallback = ''): string => {
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
 const CategoriesRoutePage = () => {
+  const mutationCapabilities = useMainserverMutationCapabilities();
   const dataTypeOptions: readonly CategoryDataTypeOption[] = [
     ...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries(),
   ].map(([value, contentType]) => {
@@ -99,7 +100,12 @@ const CategoriesRoutePage = () => {
         : (definition?.displayName ?? contentType),
     };
   });
-  return <CategoriesPage dataTypeOptions={dataTypeOptions} />;
+  return (
+    <CategoriesPage
+      dataTypeOptions={dataTypeOptions}
+      enabledMutationActions={mutationCapabilities.enabledActions}
+    />
+  );
 };
 
 export type MainserverPrincipalResolution =

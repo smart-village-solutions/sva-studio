@@ -546,6 +546,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       !errors ||
       !usage ||
       (!deletedCategoryId && payload.deletedCategoryId) ||
+      (deletedCategoryId !== undefined && deletedCategoryId !== input.categoryId) ||
       ![
         usage.children,
         usage.resourceAssignments,

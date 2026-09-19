@@ -417,6 +417,29 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
   });
 
+  it('rejects full updates that omit nullable fields instead of clearing them implicitly', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.update');
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories/cat-1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Neu',
+          active: true,
+          dataTypes: [],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'category_management_invalid_request',
+    });
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+  });
+
   it('updates and deletes only after their distinct actions have been authorized', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     allow('categories.update');

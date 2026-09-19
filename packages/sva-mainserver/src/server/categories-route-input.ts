@@ -41,6 +41,17 @@ export const parseCategorySaveInput = async (
       'category_management_invalid_request',
       'Die Kategorien-ID darf nicht manipuliert werden.'
     );
+  if (
+    id &&
+    ['parentId', 'position', 'iconName', 'email'].some(
+      (field) => !Object.prototype.hasOwnProperty.call(body, field)
+    )
+  )
+    return errorJson(
+      400,
+      'category_management_invalid_request',
+      'Vollständige Updates müssen alle löschbaren Kategorienfelder enthalten.'
+    );
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const active = body.active === undefined && !id ? true : body.active;
   const parentId = stringOrNull(body.parentId ?? null, 'parentId');

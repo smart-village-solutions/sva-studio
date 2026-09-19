@@ -642,6 +642,45 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('rejects a delete response for a different category id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            deleteCategory: {
+              deletedCategoryId: 'cat-other',
+              usage: {
+                children: 0,
+                resourceAssignments: 0,
+                externalServiceAssignments: 0,
+                dataResourceSettings: 0,
+                notificationConfigurations: 0,
+              },
+              errors: [],
+            },
+          },
+        })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.deleteCategory({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        categoryId: 'cat-1',
+      })
+    ).rejects.toMatchObject({
+      code: 'category_management_invalid_response',
+      statusCode: 502,
+    });
+  });
+
   it('distinguishes missing Mainserver category-management access from local Studio permissions', async () => {
     const fetchImpl = vi
       .fn()

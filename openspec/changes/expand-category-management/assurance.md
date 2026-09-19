@@ -9,8 +9,8 @@
 
 ## Lokale Prüfgrundlage am 19. September 2026
 
-- `packages/sva-mainserver/src/server/categories-route.test.ts`: 16/16 Tests erfolgreich, einschließlich CSRF-Abweisung und Body-Validierung vor Idempotenz-Reservation.
-- `packages/sva-mainserver/src/server/service.test.ts`: drei fokussierte Tests gegen automatischen Mutation-Retry, für den getrennten Upstream-Management-Fehler und für die Update-ID-Bindung erfolgreich.
+- `packages/sva-mainserver/src/server/categories-route.test.ts`: 16/16 Tests im vollständigen Lauf erfolgreich; der danach ergänzte fokussierte Test für vollständige Nullable-Felder bei Updates ebenfalls erfolgreich.
+- `packages/sva-mainserver/src/server/service.test.ts`: vier fokussierte Tests gegen automatischen Mutation-Retry, für den getrennten Upstream-Management-Fehler sowie für Update- und Delete-ID-Bindung erfolgreich.
 - `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 24/24 Tests im vollständigen Lauf erfolgreich; die danach ergänzten fokussierten Tests für lokalisiertes Delete sowie terminale und unklare Create-Versuche ebenfalls erfolgreich.
 - App-Routenadapter: fokussierter Test für Registry-ID/-Label und bestätigte Mutation-Capabilities erfolgreich.
 - `plugin-categories:test:types`, `sva-mainserver:test:types`, `sva-studio-react:test:types`, `pnpm check:server-runtime`, die drei betroffenen Lint-Ziele und der Complexity-Gate erfolgreich.
@@ -116,7 +116,7 @@
   - UI-Test für strukturierte Usage-Darstellung.
   - Dev-/Staging-Negativtest mit Kind und referenziertem Inhalt.
 - Nachweisstatus: lokal teilnachgewiesen
-- Ausgeführte Evidenz und Ergebnis: API- und Komponententests erhalten und zeigen alle strukturierten Usage-Zahlen; fachliche Payloadfehler werden nicht als Mutationserfolg normalisiert.
+- Ausgeführte Evidenz und Ergebnis: API- und Komponententests erhalten und zeigen alle strukturierten Usage-Zahlen; fachliche Payloadfehler und eine fremde `deletedCategoryId` werden nicht als Mutationserfolg normalisiert.
 - Offene Nachweislücken: konkurrierend entstehende Referenz und reale Mainserver-Blockade müssen in der Zielumgebung geprüft werden.
 - Restrisiko und Entscheidung: vor Merge nicht akzeptiert.
 

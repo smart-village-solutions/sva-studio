@@ -217,7 +217,7 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         })
       ).resolves.toMatchObject({ status: 'requested' });
     } finally {
-      await pool.query('DELETE FROM iam.instances WHERE instance_id = $1', [
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [
         retryReservationInstanceId,
       ]);
       await pool.end();

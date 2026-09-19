@@ -233,6 +233,16 @@ describe('CategoriesPage', () => {
       expect(screen.getByText(value)).toBeTruthy();
   });
 
+  it('reloads the management snapshot after an indeterminate delete result', async () => {
+    state.remove.mockRejectedValue(new Error('response lost'));
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie löschen' }));
+
+    await waitFor(() => expect(state.list).toHaveBeenCalledTimes(2));
+  });
+
   it('keeps confirmed save success distinct from a failed management reload', async () => {
     state.list.mockResolvedValueOnce(categories).mockRejectedValueOnce(new Error('reload failed'));
     state.save.mockResolvedValue({

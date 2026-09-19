@@ -29,6 +29,7 @@ const routeState = vi.hoisted(() => ({
   enabledMainserverMutationActions: [] as string[],
   getContent: vi.fn(),
   requestMainserverJson: vi.fn(),
+  faqLabel: 'FAQ',
 }));
 
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
@@ -102,7 +103,7 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.sections.dataManagement': 'Data management',
         'shell.sidebar.media': 'Media',
         'shell.sidebar.categories': 'Categories',
-        'faq.navigation.title': 'FAQ',
+        'faq.navigation.title': routeState.faqLabel,
         'cockpitCards.navigation.title': 'Cockpit cards',
         'projects.navigation.title': 'Projects',
         'shell.sidebar.sections.applications': 'Applications',
@@ -522,6 +523,7 @@ describe('appRouteBindings', () => {
     routeState.organizationContextIsUpdating = false;
     routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
+    routeState.faqLabel = 'FAQ';
     routeState.getContent.mockReset();
     routeState.requestMainserverJson.mockReset();
     routeState.requestMainserverJson.mockResolvedValue({
@@ -578,7 +580,7 @@ describe('appRouteBindings', () => {
     async () => {
       const { appRouteBindings } = await import('./app-route-bindings');
 
-      render(<appRouteBindings.categories />);
+      const view = render(<appRouteBindings.categories />);
 
       expect(screen.getByTestId('categories-page').textContent).toBe('plugin categories');
       expect(
@@ -586,6 +588,14 @@ describe('appRouteBindings', () => {
       ).toContainEqual({
         value: 'FAQ',
         label: 'FAQ',
+      });
+      routeState.faqLabel = 'Frequently asked questions';
+      view.rerender(<appRouteBindings.categories />);
+      expect(
+        JSON.parse(screen.getByTestId('categories-page').getAttribute('data-options') ?? '[]')
+      ).toContainEqual({
+        value: 'FAQ',
+        label: 'Frequently asked questions',
       });
       expect(screen.queryByTestId('placeholder-page')).toBeNull();
     }

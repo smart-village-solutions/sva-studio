@@ -39,6 +39,9 @@ const useDeleteController = (
     try {
       const result = await deleteCategory(props.category.id);
       if (!result.deletedCategoryId || result.errors.length) {
+        if (result.errors.some((entry) => entry.code === 'CATEGORY_NOT_FOUND')) {
+          await props.reload();
+        }
         setError(result.errors[0]?.message ?? props.pt('messages.deleteBlocked'));
         setUsage(result.usage);
         return;
@@ -47,6 +50,7 @@ const useDeleteController = (
       props.onNotice(props.pt(reloaded ? 'messages.deleted' : 'messages.deletedReloadFailed'));
       close();
     } catch (caught) {
+      await props.reload();
       setError(messageFor(caught, props.pt));
     } finally {
       setPending(false);

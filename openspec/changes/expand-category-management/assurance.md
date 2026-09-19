@@ -11,7 +11,7 @@
 
 - `packages/sva-mainserver/src/server/categories-route.test.ts`: 14/14 Tests erfolgreich.
 - `packages/sva-mainserver/src/server/service.test.ts`: fokussierter Test gegen automatischen Mutation-Retry erfolgreich; ein nicht betroffener Paginationstest der vollständigen Datei lief lokal in sein bestehendes Timeout.
-- `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 21/21 Tests erfolgreich.
+- `packages/plugin-categories/tests/categories.api.test.ts` und `categories.pages.test.tsx`: 22/22 Tests erfolgreich.
 - App-Routenadapter: vollständige betroffene Route-Testdatei mit 26/26 Tests erfolgreich; der neue Registry-ID-/Label-Fall ist enthalten.
 - `plugin-categories:build`, `sva-mainserver:test:types`, `pnpm check:server-runtime`, `sva-studio-react:check:i18n`, `pnpm check:file-placement`, Complexity-Gate und strikte OpenSpec-Validierung erfolgreich.
 - Diese Evidenz belegt den lokalen PR-Arbeitsstand. GitHub-Gates für den finalen Commit sowie Vertrags-, Credential- und Browserabnahme in der Zielumgebung bleiben getrennte Freigabevoraussetzungen.

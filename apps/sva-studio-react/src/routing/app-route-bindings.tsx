@@ -85,19 +85,22 @@ const readStringParam = (value: unknown, fallback = ''): string => {
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
-const categoryDataTypeOptions: readonly CategoryDataTypeOption[] = [
-  ...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries(),
-].map(([value, contentType]) => {
-  const definition = studioBuildTimeRegistry.contentTypes.find(
-    (candidate) => candidate.contentType === contentType
-  );
-  return {
-    value,
-    label: definition?.titleKey ? t(definition.titleKey) : (definition?.displayName ?? contentType),
-  };
-});
-
-const CategoriesRoutePage = () => <CategoriesPage dataTypeOptions={categoryDataTypeOptions} />;
+const CategoriesRoutePage = () => {
+  const dataTypeOptions: readonly CategoryDataTypeOption[] = [
+    ...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries(),
+  ].map(([value, contentType]) => {
+    const definition = studioBuildTimeRegistry.contentTypes.find(
+      (candidate) => candidate.contentType === contentType
+    );
+    return {
+      value,
+      label: definition?.titleKey
+        ? t(definition.titleKey)
+        : (definition?.displayName ?? contentType),
+    };
+  });
+  return <CategoriesPage dataTypeOptions={dataTypeOptions} />;
+};
 
 export type MainserverPrincipalResolution =
   | Readonly<{ kind: 'ready'; control: MainserverPrincipalControlModel }>

@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CategoriesApiError,
+  deleteCategory,
+  flattenCategoryManagementForTable,
   flattenCategoriesForTable,
+  listCategoryManagement,
   listCategories,
+  saveCategory,
   type CategoryListItem,
 } from '../src/categories.api.js';
 
@@ -166,10 +170,7 @@ describe('plugin-categories api', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: [
-          sampleCategories[0],
-          { id: 'broken-node' },
-        ],
+        data: [sampleCategories[0], { id: 'broken-node' }],
       }),
     } as Response);
 
@@ -298,5 +299,132 @@ describe('plugin-categories api', () => {
         tagsDisplay: '—',
       },
     ]);
+  });
+
+  it('loads and stably flattens active and inactive management categories', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'cat-b',
+            name: 'Beratung',
+            active: false,
+            children: [],
+            dataTypes: ['news_item'],
+            position: 2,
+            createdAt: '2026-09-01T08:00:00.000Z',
+            updatedAt: '2026-09-02T09:00:00.000Z',
+          },
+          {
+            id: 'cat-a',
+            name: 'Allgemein',
+            active: true,
+            children: [],
+            dataTypes: [],
+            position: 2,
+          },
+        ],
+      }),
+    } as Response);
+
+    const categories = await listCategoryManagement();
+    expect(categories).toHaveLength(2);
+    expect(categories[0]).toMatchObject({
+      createdAt: '2026-09-01T08:00:00.000Z',
+      updatedAt: '2026-09-02T09:00:00.000Z',
+    });
+    expect(flattenCategoryManagementForTable(categories).map((entry) => entry.id)).toEqual([
+      'cat-a',
+      'cat-b',
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/mainserver/categories?view=management',
+      expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
+  it('normalizes category save responses and sends a create idempotency key', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        category: {
+          id: 'cat-1',
+          name: 'Neu',
+          active: true,
+          children: [],
+          dataTypes: ['news_item'],
+        },
+        affectedDescendantIds: [],
+        errors: [],
+      }),
+    } as Response);
+
+    await expect(
+      saveCategory({
+        category: {
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: ['news_item'],
+        },
+        idempotencyKey: 'create-1',
+        fetch: fetchImpl,
+      })
+    ).resolves.toMatchObject({ category: { id: 'cat-1' }, errors: [] });
+    const [, request] = fetchImpl.mock.calls[0] ?? [];
+    expect(request).toMatchObject({ method: 'POST' });
+    const headers = new Headers((request as RequestInit).headers);
+    expect(headers.get('Idempotency-Key')).toBe('create-1');
+    expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+  });
+
+  it('preserves structured delete usage and rejects malformed mutation payloads', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          deletedCategoryId: null,
+          usage: {
+            children: 1,
+            resourceAssignments: 2,
+            externalServiceAssignments: 0,
+            dataResourceSettings: 0,
+            notificationConfigurations: 3,
+          },
+          errors: [{ code: 'CATEGORY_IN_USE', field: 'id', message: 'In Verwendung' }],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ category: { id: 'cat-1' }, affectedDescendantIds: [], errors: [] }),
+      } as Response);
+
+    await expect(deleteCategory('cat-1', fetchImpl)).resolves.toMatchObject({
+      usage: { children: 1, resourceAssignments: 2, notificationConfigurations: 3 },
+      errors: [{ code: 'CATEGORY_IN_USE', field: 'id' }],
+    });
+    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('X-Requested-With')).toBe(
+      'XMLHttpRequest'
+    );
+    await expect(
+      saveCategory({
+        id: 'cat-1',
+        category: {
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        },
+        fetch: fetchImpl,
+      })
+    ).rejects.toMatchObject({ code: 'invalid_categories_payload' });
   });
 });

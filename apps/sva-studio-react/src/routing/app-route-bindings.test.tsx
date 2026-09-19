@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -27,8 +27,12 @@ const routeState = vi.hoisted(() => ({
   organizationContextIsUpdating: false,
   organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
+  mutationCapabilitiesError: null as null | { code: string },
+  mutationCapabilitiesIsLoading: false,
+  reloadMutationCapabilities: vi.fn(),
   getContent: vi.fn(),
   requestMainserverJson: vi.fn(),
+  faqLabel: 'FAQ',
 }));
 
 vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
@@ -91,6 +95,10 @@ vi.mock('@sva/routing/route-search', () => ({
 }));
 
 vi.mock('../i18n', () => ({
+  i18nResources: {},
+  mergeI18nResources: vi.fn(),
+  resetMergedI18nResources: vi.fn(),
+  resetTranslatorCache: vi.fn(),
   t: (key: string) =>
     (
       ({
@@ -98,6 +106,9 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.sections.dataManagement': 'Data management',
         'shell.sidebar.media': 'Media',
         'shell.sidebar.categories': 'Categories',
+        'faq.navigation.title': routeState.faqLabel,
+        'cockpitCards.navigation.title': 'Cockpit cards',
+        'projects.navigation.title': 'Projects',
         'shell.sidebar.sections.applications': 'Applications',
         'shell.sidebar.app': 'App',
         'shell.sidebar.sections.system': 'System',
@@ -115,6 +126,13 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.license': 'License',
       }) as Record<string, string>
     )[key] ?? key,
+}));
+
+vi.mock('../lib/plugins', () => ({
+  studioBuildTimeRegistry: {
+    contentTypes: [{ contentType: 'faq', titleKey: 'faq.navigation.title' }],
+    mainserverGenericTypeRegistry: new Map([['FAQ', 'faq']]),
+  },
 }));
 
 vi.mock('../providers/auth-provider', () => ({
@@ -137,8 +155,9 @@ vi.mock('../hooks/use-organization-context', () => ({
 vi.mock('../hooks/use-mainserver-mutation-capabilities', () => ({
   useMainserverMutationCapabilities: () => ({
     enabledActions: routeState.enabledMainserverMutationActions,
-    isLoading: false,
-    error: null,
+    isLoading: routeState.mutationCapabilitiesIsLoading,
+    error: routeState.mutationCapabilitiesError,
+    reload: routeState.reloadMutationCapabilities,
   }),
 }));
 
@@ -485,7 +504,34 @@ vi.mock('@sva/plugin-surveys', () => ({
 }));
 
 vi.mock('@sva/plugin-categories', () => ({
-  CategoriesPage: () => <div data-testid="categories-page">plugin categories</div>,
+  CategoriesPage: ({
+    dataTypeOptions,
+    enabledMutationActions,
+    mutationActionsError,
+    mutationActionsLoading,
+    onReloadMutationActions,
+  }: {
+    dataTypeOptions?: unknown;
+    enabledMutationActions?: unknown;
+    mutationActionsError?: boolean;
+    mutationActionsLoading?: boolean;
+    onReloadMutationActions?: () => void;
+  }) => (
+    <>
+      <div
+        data-actions={JSON.stringify(enabledMutationActions)}
+        data-actions-error={String(mutationActionsError)}
+        data-actions-loading={String(mutationActionsLoading)}
+        data-options={JSON.stringify(dataTypeOptions)}
+        data-testid="categories-page"
+      >
+        plugin categories
+      </div>
+      <button type="button" onClick={onReloadMutationActions}>
+        reload capabilities
+      </button>
+    </>
+  ),
 }));
 
 describe('appRouteBindings', () => {
@@ -504,6 +550,10 @@ describe('appRouteBindings', () => {
     routeState.organizationContextIsUpdating = false;
     routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
+    routeState.mutationCapabilitiesError = null;
+    routeState.mutationCapabilitiesIsLoading = false;
+    routeState.reloadMutationCapabilities.mockReset();
+    routeState.faqLabel = 'FAQ';
     routeState.getContent.mockReset();
     routeState.requestMainserverJson.mockReset();
     routeState.requestMainserverJson.mockResolvedValue({
@@ -554,13 +604,71 @@ describe('appRouteBindings', () => {
     });
   });
 
-  it('renders the concrete categories plugin page instead of the placeholder', async () => {
+  it(
+    'renders the concrete categories plugin page instead of the placeholder',
+    { timeout: 60_000 },
+    async () => {
+      const { appRouteBindings } = await import('./app-route-bindings');
+
+      const view = render(<appRouteBindings.categories />);
+
+      expect(screen.getByTestId('categories-page').textContent).toBe('plugin categories');
+      expect(
+        JSON.parse(screen.getByTestId('categories-page').getAttribute('data-options') ?? '[]')
+      ).toContainEqual({
+        value: 'FAQ',
+        label: 'FAQ',
+      });
+      routeState.faqLabel = 'Frequently asked questions';
+      view.rerender(<appRouteBindings.categories />);
+      expect(
+        JSON.parse(screen.getByTestId('categories-page').getAttribute('data-options') ?? '[]')
+      ).toContainEqual({
+        value: 'FAQ',
+        label: 'Frequently asked questions',
+      });
+      expect(
+        JSON.parse(screen.getByTestId('categories-page').getAttribute('data-actions') ?? '[]')
+      ).toEqual([]);
+      expect(screen.getByTestId('categories-page').getAttribute('data-actions-error')).toBe(
+        'false'
+      );
+      expect(screen.getByTestId('categories-page').getAttribute('data-actions-loading')).toBe(
+        'false'
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'reload capabilities' }));
+      expect(routeState.reloadMutationCapabilities).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('placeholder-page')).toBeNull();
+    }
+  );
+
+  it('unmounts categories while the organization context changes', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.organizationContext.activeOrganizationId = 'organization-1';
+    const view = render(<appRouteBindings.categories />);
+    expect(screen.getByTestId('categories-page')).toBeTruthy();
 
-    render(<appRouteBindings.categories />);
+    routeState.organizationContextIsUpdating = true;
+    view.rerender(<appRouteBindings.categories />);
+    expect(screen.queryByTestId('categories-page')).toBeNull();
+    expect(screen.getByText('Author context loading')).toBeTruthy();
 
-    expect(screen.getByTestId('categories-page').textContent).toBe('plugin categories');
-    expect(screen.queryByTestId('placeholder-page')).toBeNull();
+    routeState.organizationContextIsUpdating = false;
+    routeState.organizationContext.activeOrganizationId = 'organization-2';
+    view.rerender(<appRouteBindings.categories />);
+    expect(screen.getByTestId('categories-page')).toBeTruthy();
+  });
+
+  it('blocks categories while the organization context is unavailable', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+    routeState.organizationContextError = new Error('unavailable');
+    const view = render(<appRouteBindings.categories />);
+    expect(screen.queryByTestId('categories-page')).toBeNull();
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+
+    routeState.organizationContextError = null;
+    view.rerender(<appRouteBindings.categories />);
+    expect(screen.getByTestId('categories-page')).toBeTruthy();
   });
 
   it('renders the concrete modules binding instead of the system placeholder', async () => {

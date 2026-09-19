@@ -399,6 +399,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Kategorienverwaltung arbeitet zusätzlich capability- und action-spezifisch fail-closed. Active-only-Auswahl und Management-Sicht teilen weder ihren Response-Vertrag noch ihren UI-Zustand; Create verwendet einen stabilen Idempotenzschlüssel, und Create/Update/Delete werden vom GraphQL-Transport nicht automatisch wiederholt.
 - Das Versenden einer News-Push-Benachrichtigung ist mit `news.pushNotification` von `news.create`, `news.update`, `content.publish` und `content.changeStatus` getrennt. UI und Server werten dieses Recht eigenständig aus; bei `pushNotification = true` erfolgt die zusätzliche Prüfung vor jedem Mainserver-Aufruf. Der unmittelbare Push-Parameter ist ausschließlich für sofort veröffentlichte News zulässig; Entwürfe und Veröffentlichungen mit einem Zeitpunkt in der Zukunft werden bereits vor dem Upstream-Aufruf abgewiesen.
 - Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Technische Entflechtung ist für serverseitige Integrationspfade verbindlich: öffentliche Host-Fassaden bleiben stabil, während Transport-, Cache- und Fachlogik in getrennten internen Modulen liegen und nicht wieder in Sammeldateien zusammengeführt werden
@@ -819,7 +820,7 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 
 ## Einheitliche Content-Editoren
 
-FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, Formularfehler, Pagination und destruktive Bestätigungen die Primitives aus `@sva/studio-ui-react`. News, Events und POIs nutzen denselben destruktiven Dialog- und Navigationsergebnisvertrag. Surveys verwenden ihn für lokale Entwurfsentfernungen; Waste zusätzlich für Einzel-, Bulk- und Reset-Löschungen unter Erhalt fachlicher Hürden wie des Reset-Bestätigungstokens. Die Plugins teilen damit die UI-Semantik, kopieren aber keine fachlichen Mapper, Feldpfade oder Mainserver-Verträge.
+FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, Formularfehler, Pagination und destruktive Bestätigungen die Primitives aus `@sva/studio-ui-react`. Die Kategorienverwaltung nutzt dieselben Feld-, Bestätigungs- und Fehlerprimitives für Statuskaskaden und Safe-Delete-Usage. News, Events und POIs nutzen denselben destruktiven Dialog- und Navigationsergebnisvertrag. Surveys verwenden ihn für lokale Entwurfsentfernungen; Waste zusätzlich für Einzel-, Bulk- und Reset-Löschungen unter Erhalt fachlicher Hürden wie des Reset-Bestätigungstokens. Die Plugins teilen damit die UI-Semantik, kopieren aber keine fachlichen Mapper, Feldpfade oder Mainserver-Verträge.
 
 ### Resilienz- und Erhaltungsvertrag
 

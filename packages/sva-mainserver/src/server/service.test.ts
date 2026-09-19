@@ -548,6 +548,161 @@ describe('createSvaMainserverService', () => {
     expect(categoriesRequest.query).not.toContain('children {');
   });
 
+  it('does not retry category mutations after an ambiguous transport failure', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockRejectedValueOnce(new TypeError('response lost'))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            saveCategory: {
+              category: {
+                id: 'cat-1',
+                name: 'Neu',
+                active: true,
+                children: [],
+                dataTypes: [],
+              },
+              affectedDescendantIds: [],
+              errors: [],
+            },
+          },
+        })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.saveCategory({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        category: {
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        },
+      })
+    ).rejects.toMatchObject({ code: 'network_error' });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects an update response for a different category id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            saveCategory: {
+              category: {
+                id: 'cat-other',
+                name: 'Neu',
+                active: true,
+                children: [],
+                dataTypes: [],
+              },
+              affectedDescendantIds: [],
+              errors: [],
+            },
+          },
+        })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.saveCategory({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        category: {
+          id: 'cat-1',
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'category_management_invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it('rejects a delete response for a different category id', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            deleteCategory: {
+              deletedCategoryId: 'cat-other',
+              usage: {
+                children: 0,
+                resourceAssignments: 0,
+                externalServiceAssignments: 0,
+                dataResourceSettings: 0,
+                notificationConfigurations: 0,
+              },
+              errors: [],
+            },
+          },
+        })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.deleteCategory({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        categoryId: 'cat-1',
+      })
+    ).rejects.toMatchObject({
+      code: 'category_management_invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it('distinguishes missing Mainserver category-management access from local Studio permissions', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(403, { error: 'forbidden' }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategoryManagement({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
+    ).rejects.toMatchObject({
+      code: 'category_management_access_denied',
+      statusCode: 403,
+    });
+  });
+
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
     const item = {
       id: 'news-1',

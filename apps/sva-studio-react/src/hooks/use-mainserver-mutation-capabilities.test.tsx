@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -25,6 +25,9 @@ const CapabilitiesProbe = () => {
       <span data-testid="actions">{capabilities.enabledActions.join(',')}</span>
       <span data-testid="loading">{String(capabilities.isLoading)}</span>
       <span data-testid="error">{capabilities.error?.code ?? ''}</span>
+      <button type="button" onClick={capabilities.reload}>
+        reload
+      </button>
     </div>
   );
 };
@@ -70,6 +73,27 @@ describe('useMainserverMutationCapabilities', () => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
       expect(screen.getByTestId('actions').textContent).toBe('');
       expect(screen.getByTestId('error').textContent).toBe('http_503');
+    });
+  });
+
+  it('reloads capabilities after a failed request', async () => {
+    state.auth = { hasResolvedSession: true, user: { id: 'user-1' } };
+    state.getCapabilities
+      .mockRejectedValueOnce({ code: 'http_503', status: 503 })
+      .mockResolvedValueOnce({ data: { enabledActions: ['categories.update'] } });
+
+    render(<CapabilitiesProbe />);
+    await waitFor(() => {
+      expect(screen.getByTestId('error').textContent).toBe('http_503');
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'reload' }));
+
+    await waitFor(() => {
+      expect(state.getCapabilities).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('actions').textContent).toBe('categories.update');
+      expect(screen.getByTestId('error').textContent).toBe('');
     });
   });
 });

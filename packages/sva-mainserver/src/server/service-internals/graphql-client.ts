@@ -27,6 +27,7 @@ export const createFetchWithRetry = (input: {
     input: connection,
     operationName,
     hop,
+    allowRetry = true,
   }: UpstreamRequestInput): Promise<Response> => {
     const executeRequest = async (): Promise<Response> =>
       input.fetchImpl(url, {
@@ -36,6 +37,10 @@ export const createFetchWithRetry = (input: {
           ? AbortSignal.any([init.signal, AbortSignal.timeout(input.upstreamTimeoutMs)])
           : AbortSignal.timeout(input.upstreamTimeoutMs),
       });
+
+    if (!allowRetry) {
+      return executeRequest();
+    }
 
     try {
       const firstResponse = await executeRequest();
@@ -104,6 +109,7 @@ export const createGraphqlExecutor = (input: {
             input: operation,
             operationName: operation.operationName,
             hop: 'graphql',
+            allowRetry: operation.allowRetry,
             init: {
               method: 'POST',
               headers: {

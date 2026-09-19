@@ -1,0 +1,4 @@
+{
+  "prNumber": 1422,
+  "body": "Kategorien vollständig verwalten\n\n- Kategorien lassen sich mit Hierarchie, Status, Position, Kontakt und Datentypen anlegen und bearbeiten.\n- Statusänderungen mit Unterkategorien müssen ausdrücklich bestätigt werden.\n- Beim sicheren Löschen werden bestehende Verwendungen verständlich nach Art und Anzahl angezeigt."
+}

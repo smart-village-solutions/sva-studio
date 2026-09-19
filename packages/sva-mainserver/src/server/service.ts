@@ -7,12 +7,21 @@ import {
   type SvaMainserverQueryRootTypenameQuery,
 } from '../generated/diagnostics.js';
 import {
+  svaMainserverCategoriesManagementDocument,
   svaMainserverCategoriesListDocument,
+  svaMainserverDeleteCategoryDocument,
+  svaMainserverSaveCategoryDocument,
+  type SvaMainserverDeleteCategoryMutation,
   type SvaMainserverCategoriesListQuery,
+  type SvaMainserverSaveCategoryMutation,
 } from '../generated/categories.js';
 import type {
   SvaMainserverCategoriesListItem,
+  SvaMainserverCategoryManagementItem,
+  SvaMainserverCategoryMutationError,
+  SvaMainserverCategoryUsage,
   SvaMainserverConnectionInput,
+  SvaMainserverDeleteCategoryResult,
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
   SvaMainserverGenericItemInput,
@@ -27,6 +36,8 @@ import type {
   SvaMainserverStaticContentInput,
   SvaMainserverSurveyInput,
   SvaMainserverSurveyListInput,
+  SvaMainserverSaveCategoryInput,
+  SvaMainserverSaveCategoryResult,
 } from '../types.js';
 import { loadSvaMainserverInstanceConfig } from './config-store.js';
 import { createAccessTokenProvider } from './service-internals/access-token-provider.js';
@@ -66,6 +77,7 @@ import {
   toSvaMainserverError,
   unwrapSettledResult,
   type CredentialValue,
+  type GraphqlOperationInput,
   type SvaMainserverListInput,
 } from './service-internals/shared.js';
 
@@ -181,6 +193,91 @@ const normalizeCategoryListItem = (value: unknown): SvaMainserverCategoriesListI
   };
 };
 
+const readCategoryManagementErrors = (
+  value: unknown
+): readonly SvaMainserverCategoryMutationError[] | null => {
+  if (!Array.isArray(value)) return null;
+  const errors: SvaMainserverCategoryMutationError[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) return null;
+    const code = readRequiredCategoryField(entry.code);
+    const message = readRequiredCategoryField(entry.message);
+    const field = readOptionalCategoryField(entry.field);
+    if (!code || !message || field === null) return null;
+    errors.push({ code, message, ...(field ? { field } : {}) });
+  }
+  return errors;
+};
+
+const normalizeManagementCategory = (
+  value: unknown
+): SvaMainserverCategoryManagementItem | null => {
+  if (!isRecord(value)) return null;
+  const id = readRequiredCategoryField(value.id);
+  const name = readRequiredCategoryField(value.name);
+  const active = value.active;
+  const position = readOptionalPosition(value.position);
+  const iconName = readOptionalCategoryField(value.iconName);
+  const createdAt = readOptionalCategoryField(value.createdAt);
+  const updatedAt = readOptionalCategoryField(value.updatedAt);
+  const dataTypes = value.dataTypes;
+  const children = value.children;
+  if (
+    !id ||
+    !name ||
+    typeof active !== 'boolean' ||
+    position === null ||
+    iconName === null ||
+    createdAt === null ||
+    updatedAt === null ||
+    !Array.isArray(dataTypes) ||
+    !Array.isArray(children)
+  )
+    return null;
+  const parent =
+    value.parent === null || value.parent === undefined
+      ? undefined
+      : isRecord(value.parent)
+        ? {
+            id: readRequiredCategoryField(value.parent.id),
+            name: readRequiredCategoryField(value.parent.name),
+          }
+        : null;
+  if (parent === null || (parent && (!parent.id || !parent.name))) return null;
+  const normalizedTypes = dataTypes.map(readRequiredCategoryField);
+  const normalizedChildren = children.map((child) =>
+    isRecord(child) ? readRequiredCategoryField(child.id) : null
+  );
+  if (normalizedTypes.some((entry) => !entry) || normalizedChildren.some((entry) => !entry))
+    return null;
+  const email = isRecord(value.contact)
+    ? readOptionalCategoryField(value.contact.email)
+    : value.contact === null || value.contact === undefined
+      ? undefined
+      : null;
+  if (email === null) return null;
+  return {
+    id,
+    name,
+    active,
+    children: normalizedChildren.map((child) => ({ id: child! })),
+    dataTypes: normalizedTypes as string[],
+    ...(parent ? { parent: parent as { id: string; name: string } } : {}),
+    ...(position !== undefined ? { position } : {}),
+    ...(iconName ? { iconName } : {}),
+    ...(email ? { email } : {}),
+    ...(createdAt ? { createdAt } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
+  };
+};
+
+const invalidCategoryManagementResponse = () =>
+  toSvaMainserverError({
+    code: 'category_management_invalid_response',
+    message: 'Der Mainserver lieferte eine ungültige Kategorienverwaltungsantwort.',
+    statusCode: 502,
+  });
+
 export const createSvaMainserverService = (options: SvaMainserverServiceOptions = {}) => {
   const loadInstanceConfig = options.loadInstanceConfig ?? loadSvaMainserverInstanceConfig;
   const readCredentials = options.readCredentials ?? createDefaultCredentialReader();
@@ -240,6 +337,24 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     fetchWithRetry,
     loadAccessToken,
   });
+  const executeCategoryManagementGraphql = async <TResult>(
+    operation: GraphqlOperationInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<TResult> => {
+    try {
+      return await executeGraphqlWithConfig<TResult>(operation, config);
+    } catch (error) {
+      const normalized = normalizeUnexpectedError(error);
+      if (normalized.code === 'forbidden' || normalized.code === 'unauthorized')
+        throw toSvaMainserverError({
+          code: 'category_management_access_denied',
+          message:
+            'Die Mainserver-Zugangsdaten sind nicht für die Kategorienverwaltung berechtigt.',
+          statusCode: 403,
+        });
+      throw error;
+    }
+  };
   const loadDataProviderIdentityWithConfig = createDataProviderIdentityOperation({
     fetchWithRetry,
     loadAccessToken,
@@ -348,6 +463,104 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     }
 
     return categories;
+  };
+
+  const listCategoryManagement = async (input: SvaMainserverConnectionInput) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const response = await executeCategoryManagementGraphql<SvaMainserverCategoriesListQuery>(
+      {
+        ...input,
+        document: svaMainserverCategoriesManagementDocument,
+        operationName: 'SvaMainserverCategoriesManagement',
+      },
+      config
+    );
+    if (!Array.isArray(response.categories)) throw invalidCategoryManagementResponse();
+    const categories = response.categories.map(normalizeManagementCategory);
+    if (categories.some((category) => !category)) throw invalidCategoryManagementResponse();
+    return categories as readonly SvaMainserverCategoryManagementItem[];
+  };
+
+  const saveCategory = async (
+    input: SvaMainserverConnectionInput & { readonly category: SvaMainserverSaveCategoryInput }
+  ): Promise<SvaMainserverSaveCategoryResult> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const response = await executeCategoryManagementGraphql<SvaMainserverSaveCategoryMutation>(
+      {
+        ...input,
+        document: svaMainserverSaveCategoryDocument,
+        operationName: 'SvaMainserverSaveCategory',
+        variables: { input: input.category },
+        allowRetry: false,
+      },
+      config
+    );
+    const payload = response.saveCategory;
+    if (!payload) throw invalidCategoryManagementResponse();
+    const errors = readCategoryManagementErrors(payload.errors);
+    const affectedDescendantIds = Array.isArray(payload.affectedDescendantIds)
+      ? payload.affectedDescendantIds.map(readRequiredCategoryField)
+      : null;
+    const category =
+      payload.category === null || payload.category === undefined
+        ? undefined
+        : normalizeManagementCategory(payload.category);
+    if (
+      !errors ||
+      !affectedDescendantIds ||
+      affectedDescendantIds.some((id) => !id) ||
+      (payload.category && !category) ||
+      (errors.length === 0 && input.category.id && category?.id !== input.category.id)
+    )
+      throw invalidCategoryManagementResponse();
+    return {
+      ...(category ? { category } : {}),
+      affectedDescendantIds: affectedDescendantIds as readonly string[],
+      errors,
+    };
+  };
+
+  const deleteCategory = async (
+    input: SvaMainserverConnectionInput & { readonly categoryId: string }
+  ): Promise<SvaMainserverDeleteCategoryResult> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const response = await executeCategoryManagementGraphql<SvaMainserverDeleteCategoryMutation>(
+      {
+        ...input,
+        document: svaMainserverDeleteCategoryDocument,
+        operationName: 'SvaMainserverDeleteCategory',
+        variables: { id: input.categoryId },
+        allowRetry: false,
+      },
+      config
+    );
+    const payload = response.deleteCategory;
+    const errors = payload ? readCategoryManagementErrors(payload.errors) : null;
+    const usage = payload?.usage;
+    const deletedCategoryId =
+      payload?.deletedCategoryId === null || payload?.deletedCategoryId === undefined
+        ? undefined
+        : readRequiredCategoryField(payload.deletedCategoryId);
+    if (
+      !payload ||
+      !errors ||
+      !usage ||
+      (!deletedCategoryId && payload.deletedCategoryId) ||
+      (deletedCategoryId !== undefined && deletedCategoryId !== input.categoryId) ||
+      ![
+        usage.children,
+        usage.resourceAssignments,
+        usage.externalServiceAssignments,
+        usage.dataResourceSettings,
+        usage.notificationConfigurations,
+      ].every((value) => typeof value === 'number' && Number.isInteger(value) && value >= 0)
+    )
+      throw invalidCategoryManagementResponse();
+    return {
+      ...(deletedCategoryId ? { deletedCategoryId } : {}),
+      usage: usage as SvaMainserverCategoryUsage,
+      errors,
+    };
   };
 
   const listNews = async (input: SvaMainserverConnectionInput & SvaMainserverNewsListInput) => {
@@ -752,6 +965,9 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     getSurvey,
     getSurveyResults,
     listCategories,
+    listCategoryManagement,
+    saveCategory,
+    deleteCategory,
     loadDataProviderIdentity,
     listEvents,
     listGenericItems,
@@ -794,6 +1010,17 @@ export const getSvaMainserverMutationRootTypename = (input: SvaMainserverConnect
 
 export const listSvaMainserverCategories = (input: SvaMainserverConnectionInput) =>
   getDefaultService().listCategories(input);
+
+export const listSvaMainserverCategoryManagement = (input: SvaMainserverConnectionInput) =>
+  getDefaultService().listCategoryManagement(input);
+
+export const saveSvaMainserverCategory = (
+  input: SvaMainserverConnectionInput & { readonly category: SvaMainserverSaveCategoryInput }
+) => getDefaultService().saveCategory(input);
+
+export const deleteSvaMainserverCategory = (
+  input: SvaMainserverConnectionInput & { readonly categoryId: string }
+) => getDefaultService().deleteCategory(input);
 
 export const loadSvaMainserverDataProviderIdentity = (input: SvaMainserverConnectionInput) =>
   getDefaultService().loadDataProviderIdentity(input);

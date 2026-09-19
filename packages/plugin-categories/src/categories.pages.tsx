@@ -1,242 +1,176 @@
 import React from 'react';
-import { translatePluginKey } from '@sva/plugin-sdk';
+import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
 import {
   Button,
-  StudioDataTable,
-  StudioEmptyState,
-  StudioErrorState,
+  StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
-  type StudioColumnDef,
-  type StudioDataTableLabels,
 } from '@sva/studio-ui-react';
 
-import { flattenCategoriesForTable, listCategories, type CategoryTableRow } from './categories.api.js';
+import { CategoryDeleteDialog } from './categories.delete-dialog.js';
+import { CategoryEditor } from './categories.editor.js';
+import { useCategoryPageState } from './categories.page-state.js';
+import { useTranslator, type Translator } from './categories.page-support.js';
+import { CategoriesTableView } from './categories.table.js';
+import type { CategoryDataTypeOption, CategoryManagementItem } from './categories.types.js';
 
-type PluginTranslator = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-type CategoriesPageState = {
-  readonly rows: readonly CategoryTableRow[];
-  readonly isLoading: boolean;
-  readonly error: string | null;
-  readonly reload: () => Promise<void>;
-};
+export type { CategoryDataTypeOption } from './categories.types.js';
 
-const createTableLabels = (
-  pt: PluginTranslator
-): StudioDataTableLabels => ({
-  selectionColumn: pt('fields.actions'),
-  actionsColumn: pt('fields.actions'),
-  loading: pt('messages.loading'),
-  selectAllRows: (label) => label,
-  selectRow: ({ label }) => label,
-  selectMobileRow: ({ label }) => label,
-});
+const Toolbar = ({
+  count,
+  canCreate,
+  pt,
+  onCreate,
+}: Readonly<{
+  count: number;
+  canCreate: boolean;
+  pt: Translator;
+  onCreate: () => void;
+}>) => (
+  <div className="flex items-center gap-3">
+    <span className="text-xs text-muted-foreground">{pt('table.countLabel', { count })}</span>
+    {canCreate ? (
+      <Button type="button" onClick={onCreate}>
+        {pt('actions.create')}
+      </Button>
+    ) : null}
+  </div>
+);
 
-const renderTags = (row: CategoryTableRow, emptyLabel: string) => {
-  if (row.tags.length === 0) {
-    return emptyLabel;
-  }
-
+const MutationActionsStatus = ({
+  error,
+  loading,
+  pt,
+  onReload,
+}: Readonly<{
+  error: boolean;
+  loading: boolean;
+  pt: Translator;
+  onReload: (() => void) | undefined;
+}>) => {
+  if (loading)
+    return <StudioLoadingState>{pt('messages.mutationActionsLoading')}</StudioLoadingState>;
+  if (!error) return null;
   return (
-    <div className="flex flex-wrap gap-1">
-      {row.tags.map((tag) => (
-        <span
-          key={`${row.id}:${tag}`}
-          className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground"
-        >
-          {tag}
-        </span>
-      ))}
+    <div className="space-y-3">
+      <StudioFormSummary kind="error">{pt('messages.mutationActionsLoadError')}</StudioFormSummary>
+      {onReload ? (
+        <Button type="button" variant="secondary" onClick={onReload}>
+          {pt('actions.reload')}
+        </Button>
+      ) : null}
     </div>
   );
 };
 
-const renderDisabledActions = (row: CategoryTableRow, pt: PluginTranslator) => (
-  <div data-action-target-id={row.actionTargetId} className="flex justify-end gap-2">
-    <Button type="button" size="sm" variant="secondary" disabled>
-      {pt('actions.edit')}
-    </Button>
-    <Button type="button" size="sm" variant="secondary" disabled>
-      {pt('actions.createChild')}
-    </Button>
-    <Button type="button" size="sm" variant="destructive" disabled>
-      {pt('actions.delete')}
-    </Button>
-  </div>
-);
-
-const usePluginTranslator = (): PluginTranslator =>
-  React.useCallback<PluginTranslator>((key, variables) => translatePluginKey('categories', key, variables), []);
-
-const readCategoriesErrorCode = (error: unknown): string | null => {
-  if (typeof error !== 'object' || error === null) {
-    return null;
-  }
-
-  const { code } = error as { code?: unknown };
-  return typeof code === 'string' && code.trim().length > 0 ? code : null;
-};
-
-const resolveLoadErrorMessage = (error: unknown, pt: PluginTranslator): string => {
-  switch (readCategoriesErrorCode(error)) {
-    case 'missing_credentials':
-    case 'organization_mainserver_credentials_missing':
-      return pt('messages.loadErrorMissingCredentials');
-    case 'integration_disabled':
-      return pt('messages.loadErrorIntegrationDisabled');
-    case 'config_not_found':
-      return pt('messages.loadErrorConfigMissing');
-    case 'forbidden':
-      return pt('messages.loadErrorForbidden');
-    default:
-      return pt('messages.loadError');
-  }
-};
-
-const useCategoryColumns = (pt: PluginTranslator): readonly StudioColumnDef<CategoryTableRow>[] =>
-  React.useMemo(
-    () => [
-      {
-        id: 'name',
-        header: pt('fields.name'),
-        cell: (row) => row.name,
-      },
-      {
-        id: 'id',
-        header: pt('fields.id'),
-        cell: (row) => row.categoryId || pt('values.notAvailable'),
-      },
-      {
-        id: 'hierarchy',
-        header: pt('fields.hierarchy'),
-        cell: (row) => row.hierarchyLabel,
-      },
-      {
-        id: 'position',
-        header: pt('fields.position'),
-        cell: (row) => row.position ?? pt('values.notAvailable'),
-      },
-      {
-        id: 'tags',
-        header: pt('fields.tags'),
-        cell: (row) => renderTags(row, pt('values.notAvailable')),
-      },
-    ],
-    [pt]
-  );
-
-const useCategoriesPageState = (pt: PluginTranslator): CategoriesPageState => {
-  const [rows, setRows] = React.useState<readonly CategoryTableRow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const reload = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const categories = await listCategories();
-      setRows(flattenCategoriesForTable(categories));
-    } catch (error) {
-      setRows([]);
-      setError(resolveLoadErrorMessage(error, pt));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pt]);
-
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
-
+const usePageSelection = () => {
+  const [editing, setEditing] = React.useState<CategoryManagementItem | null>(null);
+  const [creatingParent, setCreatingParent] = React.useState<string | null | undefined>(undefined);
+  const [deleting, setDeleting] = React.useState<CategoryManagementItem | null>(null);
+  const closeEditor = () => {
+    setEditing(null);
+    setCreatingParent(undefined);
+  };
   return {
-    rows,
-    isLoading,
-    error,
-    reload,
+    editing,
+    creatingParent,
+    deleting,
+    setEditing,
+    setDeleting,
+    createRoot: () => setCreatingParent(null),
+    createChild: (item: CategoryManagementItem) => setCreatingParent(item.id),
+    closeEditor,
   };
 };
 
-const CategoriesPageToolbar = ({
-  pt,
-  count,
-}: {
-  readonly pt: PluginTranslator;
-  readonly count: number;
-}) => (
-  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-    <span>{pt('table.countLabel', { count })}</span>
-    <span>{pt('values.readOnlyHint')}</span>
-  </div>
-);
-
-const CategoriesPageContent = ({
-  pt,
-  state,
-  tableLabels,
-  columns,
-}: {
-  readonly pt: PluginTranslator;
-  readonly state: CategoriesPageState;
-  readonly tableLabels: StudioDataTableLabels;
-  readonly columns: readonly StudioColumnDef<CategoryTableRow>[];
-}) => {
-  if (state.isLoading) {
-    return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
-  }
-
-  if (state.error) {
-    return (
-      <div className="space-y-3">
-        <StudioErrorState>{state.error}</StudioErrorState>
-        <Button type="button" variant="secondary" onClick={() => void state.reload()}>
-          {pt('actions.reload')}
-        </Button>
-      </div>
-    );
-  }
-
-  if (state.rows.length === 0) {
-    return (
-      <StudioEmptyState>
-        <h2 className="text-lg font-medium">{pt('empty.title')}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{pt('empty.description')}</p>
-      </StudioEmptyState>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">{pt('messages.actionsHint')}</p>
-      <StudioDataTable
-        sorting={{ mode: 'disabled' }}
-        ariaLabel={pt('table.ariaLabel')}
-        caption={pt('table.caption')}
-        labels={tableLabels}
-        data={state.rows}
-        columns={columns}
-        rowActions={(row) => renderDisabledActions(row, pt)}
-        emptyState={null}
-        getRowId={(row) => row.id}
-        selectionMode="none"
-      />
-    </div>
+const useCategoryMutationAccess = (enabledMutationActions?: readonly string[]) => {
+  const access = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
   );
+  return (action: string) =>
+    access.permissionActions.includes(action) &&
+    (enabledMutationActions === undefined || enabledMutationActions.includes(action));
 };
 
-export function CategoriesPage() {
-  const pt = usePluginTranslator();
-  const tableLabels = React.useMemo(() => createTableLabels(pt), [pt]);
-  const columns = useCategoryColumns(pt);
-  const state = useCategoriesPageState(pt);
-
+export function CategoriesPage({
+  dataTypeOptions = [],
+  enabledMutationActions,
+  mutationActionsError = false,
+  mutationActionsLoading = false,
+  onReloadMutationActions,
+}: Readonly<{
+  dataTypeOptions?: readonly CategoryDataTypeOption[];
+  enabledMutationActions?: readonly string[];
+  mutationActionsError?: boolean;
+  mutationActionsLoading?: boolean;
+  onReloadMutationActions?: () => void;
+}>) {
+  const pt = useTranslator();
+  const can = useCategoryMutationAccess(enabledMutationActions);
+  const state = useCategoryPageState(pt);
+  const selection = usePageSelection();
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const reloadAfterSave = async (affectedIds: readonly string[]) => {
+    const reloaded = await state.reload();
+    const key = reloaded
+      ? affectedIds.length
+        ? 'messages.savedWithDescendants'
+        : 'messages.saved'
+      : 'messages.savedReloadFailed';
+    setNotice(pt(key, { count: affectedIds.length }));
+  };
   return (
     <StudioOverviewPageTemplate
       title={pt('list.title')}
       description={pt('list.description')}
-      toolbar={<CategoriesPageToolbar pt={pt} count={state.rows.length} />}
+      toolbar={
+        <Toolbar
+          count={state.rows.length}
+          canCreate={can('categories.create')}
+          pt={pt}
+          onCreate={selection.createRoot}
+        />
+      }
     >
-      <CategoriesPageContent pt={pt} state={state} tableLabels={tableLabels} columns={columns} />
+      {notice ? <StudioFormSummary kind="success">{notice}</StudioFormSummary> : null}
+      <MutationActionsStatus
+        error={mutationActionsError}
+        loading={mutationActionsLoading}
+        pt={pt}
+        onReload={onReloadMutationActions}
+      />
+      <CategoriesTableView
+        {...state}
+        can={can}
+        pt={pt}
+        onReload={() => void state.reload()}
+        onEdit={selection.setEditing}
+        onCreateChild={selection.createChild}
+        onDelete={selection.setDeleting}
+      />
+      {selection.editing || selection.creatingParent !== undefined ? (
+        <CategoryEditor
+          category={selection.editing}
+          parentId={selection.creatingParent ?? null}
+          categories={state.categories}
+          options={dataTypeOptions}
+          pt={pt}
+          onClose={selection.closeEditor}
+          onSaved={reloadAfterSave}
+          onUncertainSave={async () => {
+            await state.reload();
+          }}
+        />
+      ) : null}
+      <CategoryDeleteDialog
+        category={selection.deleting}
+        pt={pt}
+        reload={state.reload}
+        onClose={() => selection.setDeleting(null)}
+        onNotice={setNotice}
+      />
     </StudioOverviewPageTemplate>
   );
 }

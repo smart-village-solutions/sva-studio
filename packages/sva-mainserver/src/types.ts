@@ -18,6 +18,8 @@ export type SvaMainserverErrorCode =
   | 'network_error'
   | 'graphql_error'
   | 'invalid_response'
+  | 'category_management_invalid_response'
+  | 'category_management_access_denied'
   | 'not_found';
 
 export type SvaMainserverInstanceConfig = {
@@ -228,6 +230,52 @@ export type SvaMainserverCategoriesListItem = Omit<SvaMainserverCategory, 'id' |
   readonly parent?: {
     readonly name: string;
   };
+};
+
+export type SvaMainserverCategoryManagementItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly parent?: { readonly id: string; readonly name: string };
+  readonly children: readonly { readonly id: string }[];
+  readonly position?: number;
+  readonly iconName?: string;
+  readonly email?: string;
+  readonly dataTypes: readonly string[];
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
+};
+export type SvaMainserverSaveCategoryInput = {
+  readonly id?: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly parentId: string | null;
+  readonly position: number | null;
+  readonly iconName: string | null;
+  readonly email: string | null;
+  readonly dataTypes: readonly string[];
+};
+export type SvaMainserverCategoryMutationError = {
+  readonly code: string;
+  readonly field?: string;
+  readonly message: string;
+};
+export type SvaMainserverCategoryUsage = {
+  readonly children: number;
+  readonly resourceAssignments: number;
+  readonly externalServiceAssignments: number;
+  readonly dataResourceSettings: number;
+  readonly notificationConfigurations: number;
+};
+export type SvaMainserverSaveCategoryResult = {
+  readonly category?: SvaMainserverCategoryManagementItem;
+  readonly affectedDescendantIds: readonly string[];
+  readonly errors: readonly SvaMainserverCategoryMutationError[];
+};
+export type SvaMainserverDeleteCategoryResult = {
+  readonly deletedCategoryId?: string;
+  readonly usage: SvaMainserverCategoryUsage;
+  readonly errors: readonly SvaMainserverCategoryMutationError[];
 };
 
 export type SvaMainserverMediaContentInput = {

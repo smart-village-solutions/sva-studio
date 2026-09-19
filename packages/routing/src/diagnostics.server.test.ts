@@ -33,6 +33,7 @@ describe('readRoutingDiagnosticsContextFromRequest', () => {
     expect(
       readRoutingDiagnosticsContextFromRequest(new Request('https://studio.example/auth/me'))
     ).toEqual({
+      request_host: 'studio.example',
       workspace_id: 'ambient-workspace',
       request_id: 'ambient-request',
       trace_id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -53,6 +54,7 @@ describe('readRoutingDiagnosticsContextFromRequest', () => {
     });
 
     expect(readRoutingDiagnosticsContextFromRequest(request)).toEqual({
+      request_host: 'studio.example',
       workspace_id: 'query-workspace',
       request_id: 'header-request',
       trace_id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',

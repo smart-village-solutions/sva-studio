@@ -91,6 +91,10 @@ vi.mock('@sva/routing/route-search', () => ({
 }));
 
 vi.mock('../i18n', () => ({
+  i18nResources: {},
+  mergeI18nResources: vi.fn(),
+  resetMergedI18nResources: vi.fn(),
+  resetTranslatorCache: vi.fn(),
   t: (key: string) =>
     (
       ({
@@ -98,6 +102,9 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.sections.dataManagement': 'Data management',
         'shell.sidebar.media': 'Media',
         'shell.sidebar.categories': 'Categories',
+        'faq.navigation.title': 'FAQ',
+        'cockpitCards.navigation.title': 'Cockpit cards',
+        'projects.navigation.title': 'Projects',
         'shell.sidebar.sections.applications': 'Applications',
         'shell.sidebar.app': 'App',
         'shell.sidebar.sections.system': 'System',
@@ -115,6 +122,13 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.license': 'License',
       }) as Record<string, string>
     )[key] ?? key,
+}));
+
+vi.mock('../lib/plugins', () => ({
+  studioBuildTimeRegistry: {
+    contentTypes: [{ contentType: 'faq', titleKey: 'faq.navigation.title' }],
+    mainserverGenericTypeRegistry: new Map([['FAQ', 'faq']]),
+  },
 }));
 
 vi.mock('../providers/auth-provider', () => ({
@@ -485,7 +499,11 @@ vi.mock('@sva/plugin-surveys', () => ({
 }));
 
 vi.mock('@sva/plugin-categories', () => ({
-  CategoriesPage: () => <div data-testid="categories-page">plugin categories</div>,
+  CategoriesPage: ({ dataTypeOptions }: { dataTypeOptions?: unknown }) => (
+    <div data-options={JSON.stringify(dataTypeOptions)} data-testid="categories-page">
+      plugin categories
+    </div>
+  ),
 }));
 
 describe('appRouteBindings', () => {
@@ -554,14 +572,24 @@ describe('appRouteBindings', () => {
     });
   });
 
-  it('renders the concrete categories plugin page instead of the placeholder', async () => {
-    const { appRouteBindings } = await import('./app-route-bindings');
+  it(
+    'renders the concrete categories plugin page instead of the placeholder',
+    { timeout: 60_000 },
+    async () => {
+      const { appRouteBindings } = await import('./app-route-bindings');
 
-    render(<appRouteBindings.categories />);
+      render(<appRouteBindings.categories />);
 
-    expect(screen.getByTestId('categories-page').textContent).toBe('plugin categories');
-    expect(screen.queryByTestId('placeholder-page')).toBeNull();
-  });
+      expect(screen.getByTestId('categories-page').textContent).toBe('plugin categories');
+      expect(
+        JSON.parse(screen.getByTestId('categories-page').getAttribute('data-options') ?? '[]')
+      ).toContainEqual({
+        value: 'FAQ',
+        label: 'FAQ',
+      });
+      expect(screen.queryByTestId('placeholder-page')).toBeNull();
+    }
+  );
 
   it('renders the concrete modules binding instead of the system placeholder', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');

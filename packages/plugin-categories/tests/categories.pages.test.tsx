@@ -4,166 +4,247 @@ import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  listCategoryManagement: vi.fn(),
+  list: vi.fn(),
+  save: vi.fn(),
+  remove: vi.fn(),
+  access: {
+    isResolved: true,
+    assignedModules: ['categories'],
+    permissionActions: [
+      'categories.read',
+      'categories.create',
+      'categories.update',
+      'categories.delete',
+    ],
+    roles: [],
+  },
 }));
 
 vi.mock('../src/categories.api.js', async () => {
-  const actual = await vi.importActual<typeof import('../src/categories.api.js')>('../src/categories.api.js');
+  const actual = await vi.importActual<typeof import('../src/categories.api.js')>(
+    '../src/categories.api.js'
+  );
   return {
     ...actual,
-    listCategoryManagement: state.listCategoryManagement,
+    deleteCategory: state.remove,
+    listCategoryManagement: state.list,
+    saveCategory: state.save,
+  };
+});
+
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+    readSessionAccessSnapshot: () => state.access,
+    subscribeSessionAccessSnapshot: () => () => undefined,
   };
 });
 
 import { CategoriesPage } from '../src/categories.pages.js';
 
+const categories = [
+  {
+    id: 'cat-root',
+    name: 'Service',
+    active: true,
+    position: 1,
+    children: [{ id: 'cat-child' }],
+    dataTypes: ['news_item'],
+  },
+  {
+    id: 'cat-child',
+    name: 'Bürgerbüro',
+    active: true,
+    children: [],
+    dataTypes: [],
+    parent: { id: 'cat-root', name: 'Service' },
+  },
+] as const;
+
+const label = (key: string, variables?: Readonly<Record<string, string | number>>) => {
+  const labels: Record<string, string> = {
+    'categories.list.title': 'Kategorien',
+    'categories.list.description': 'Kategorien verwalten',
+    'categories.fields.actions': 'Aktionen',
+    'categories.fields.status': 'Status',
+    'categories.fields.name': 'Name',
+    'categories.fields.hierarchy': 'Hierarchie',
+    'categories.fields.position': 'Position',
+    'categories.fields.parent': 'Übergeordnete Kategorie',
+    'categories.fields.icon': 'Icon',
+    'categories.fields.email': 'E-Mail',
+    'categories.fields.dataTypes': 'Datentypen',
+    'categories.fields.active': 'Aktiv',
+    'categories.values.active': 'Aktiv',
+    'categories.values.inactive': 'Inaktiv',
+    'categories.values.notAvailable': '—',
+    'categories.values.root': 'Keine übergeordnete Kategorie',
+    'categories.actions.edit': 'Bearbeiten',
+    'categories.actions.createChild': 'Neue Unterkategorie',
+    'categories.actions.create': 'Kategorie anlegen',
+    'categories.actions.save': 'Speichern',
+    'categories.actions.saving': 'Wird gespeichert',
+    'categories.actions.cancel': 'Abbrechen',
+    'categories.actions.delete': 'Löschen',
+    'categories.actions.reload': 'Erneut laden',
+    'categories.messages.loading': 'Kategorien werden geladen.',
+    'categories.messages.loadError': 'Kategorien konnten nicht geladen werden.',
+    'categories.messages.nameRequired': 'Bitte geben Sie einen Kategorienamen an.',
+    'categories.messages.savedReloadFailed': 'Gespeichert, aber Neuladen fehlgeschlagen.',
+    'categories.messages.saved': 'Die Kategorie wurde gespeichert.',
+    'categories.messages.deleteBlocked': 'Löschen blockiert.',
+    'categories.empty.title': 'Keine Kategorien',
+    'categories.empty.description': 'Noch keine Kategorien vorhanden.',
+    'categories.table.ariaLabel': 'Kategorien-Tabelle',
+    'categories.table.caption': 'Kategorien',
+    'categories.form.createTitle': 'Kategorie anlegen',
+    'categories.form.editTitle': 'Kategorie bearbeiten',
+    'categories.form.description': 'Kategoriedaten',
+    'categories.deleteDialog.title': 'Kategorie löschen',
+    'categories.deleteDialog.confirm': 'Kategorie löschen',
+    'categories.deleteDialog.pending': 'Kategorie wird gelöscht',
+    'categories.deleteDialog.usage.children': 'Unterkategorien',
+    'categories.deleteDialog.usage.resourceAssignments': 'Inhaltszuordnungen',
+    'categories.deleteDialog.usage.externalServiceAssignments': 'Externe Dienste',
+    'categories.deleteDialog.usage.dataResourceSettings': 'Datenquellen',
+    'categories.deleteDialog.usage.notificationConfigurations': 'Benachrichtigungen',
+    'categories.cascadeDialog.title': 'Statusänderung bestätigen',
+    'categories.cascadeDialog.confirm': 'Status ändern',
+  };
+  if (key === 'categories.table.countLabel') return `${variables?.count ?? 0} Kategorien`;
+  if (key === 'categories.deleteDialog.description') return `${variables?.target ?? ''} löschen?`;
+  if (key === 'categories.cascadeDialog.description')
+    return `${variables?.count ?? 0} Unterkategorien betroffen`;
+  if (key === 'categories.messages.savedWithDescendants')
+    return `${variables?.count ?? 0} Unterkategorien gespeichert`;
+  return labels[key] ?? key;
+};
+
+const createCategory = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Kategorie anlegen' }));
+  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neu' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+};
+
 describe('CategoriesPage', () => {
   beforeEach(() => {
-    state.listCategoryManagement.mockReset();
-    registerPluginTranslationResolver((key, variables) => {
-      const labels: Record<string, string> = {
-        'categories.navigation.title': 'Kategorien',
-        'categories.list.title': 'Kategorien',
-        'categories.list.description': 'Lesen Sie die Kategorien aus dem Mainserver in einer schreibgeschützten Übersicht.',
-        'categories.fields.actions': 'Aktionen',
-        'categories.fields.name': 'Name',
-        'categories.fields.id': 'ID',
-        'categories.fields.hierarchy': 'Hierarchie',
-        'categories.fields.position': 'Position',
-        'categories.fields.tags': 'Tags',
-        'categories.fields.createdAt': 'Erstellt am',
-        'categories.values.notAvailable': '—',
-        'categories.values.readOnlyHint': 'Aktionen werden in einem späteren Schritt freigeschaltet.',
-        'categories.actions.edit': 'Bearbeiten',
-        'categories.actions.createChild': 'Neue Unterkategorie',
-        'categories.actions.delete': 'Löschen',
-        'categories.actions.reload': 'Erneut laden',
-        'categories.empty.title': 'Aktuell wurden keine Kategorien aus dem Mainserver geladen.',
-        'categories.empty.description': 'Sobald Kategorien vorhanden sind, erscheinen sie hier als flache Tabelle.',
-        'categories.messages.loading': 'Kategorien werden geladen.',
-        'categories.messages.loadError': 'Kategorien konnten nicht geladen werden.',
-        'categories.messages.loadErrorMissingCredentials':
-          'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.',
-        'categories.messages.loadErrorIntegrationDisabled':
-          'Die Mainserver-Integration ist für diese Instanz derzeit nicht aktiv.',
-        'categories.messages.loadErrorConfigMissing':
-          'Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.',
-        'categories.messages.loadErrorForbidden':
-          'Zum Laden der Kategorien fehlt die Berechtigung categories.read.',
-        'categories.messages.actionsHint': 'Die Seite ist vorerst read-only.',
-        'categories.table.ariaLabel': 'Kategorien-Tabelle',
-        'categories.table.caption': 'Flache Ansicht der Mainserver-Kategorien',
-      };
-
-      if (key === 'categories.table.countLabel') {
-        return `${variables?.count ?? 0} Kategorien`;
-      }
-
-      return labels[key] ?? key;
-    });
+    state.list.mockReset().mockResolvedValue(categories);
+    state.save.mockReset();
+    state.remove.mockReset();
+    registerPluginTranslationResolver(label);
   });
 
-  afterEach(() => {
-    cleanup();
-  });
+  afterEach(cleanup);
 
-  it('renders loading and then the flat categories table with disabled actions', async () => {
-    state.listCategoryManagement.mockResolvedValueOnce([
-      {
-        id: 'cat-root',
-        name: 'Service',
-        position: 1,
-        tagList: 'amt, buerger',
-        dataTypes: ['amt', 'buerger'],
-      },
-      {
-        id: 'cat-child',
-        name: 'Buergerbuero',
-        tagList: '',
-        dataTypes: [],
-        parent: {
-          name: 'Service',
-        },
-      },
-    ]);
-
+  it('renders the management table and enables actions from their distinct permissions', async () => {
     render(<CategoriesPage />);
-
     expect(screen.getByText('Kategorien werden geladen.')).toBeTruthy();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Kategorien' })).toBeTruthy();
-      expect(screen.getByRole('table', { name: 'Kategorien-Tabelle' })).toBeTruthy();
-      expect(screen.getAllByText('Service').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('amt').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('buerger').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-      expect(screen.queryByRole('columnheader', { name: 'Icon' })).toBeNull();
-      expect(screen.queryByRole('columnheader', { name: 'Aktualisiert' })).toBeNull();
-    });
-
-    expect(screen.getAllByRole('button', { name: 'Bearbeiten' }).at(0)?.hasAttribute('disabled')).toBe(true);
-    expect(screen.getAllByRole('button', { name: 'Neue Unterkategorie' }).at(0)?.hasAttribute('disabled')).toBe(true);
-    expect(screen.getAllByRole('button', { name: 'Löschen' }).at(0)?.hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText('2 Kategorien')).toBeTruthy();
-  });
-
-  it('renders an error state and retries into the empty state', async () => {
-    state.listCategoryManagement.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([]);
-
-    render(<CategoriesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Kategorien konnten nicht geladen werden.')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Aktuell wurden keine Kategorien aus dem Mainserver geladen.')).toBeTruthy();
-      expect(screen.getByText('Sobald Kategorien vorhanden sind, erscheinen sie hier als flache Tabelle.')).toBeTruthy();
-    });
-  });
-
-  it('renders a specific guidance message for missing Mainserver credentials', async () => {
-    state.listCategoryManagement.mockRejectedValueOnce(
-      Object.assign(new Error('Für die aktive Organisation fehlen Mainserver-Credentials.'), {
-        code: 'organization_mainserver_credentials_missing',
-        name: 'CategoriesApiError',
-      })
+    expect(await screen.findByRole('table', { name: 'Kategorien-Tabelle' })).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]?.hasAttribute('disabled')).toBe(
+      false
     );
-
-    render(<CategoriesPage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.'
-        )
-      ).toBeTruthy();
-    });
+    expect(
+      screen.getAllByRole('button', { name: 'Neue Unterkategorie' })[0]?.hasAttribute('disabled')
+    ).toBe(false);
+    expect(screen.getAllByRole('button', { name: 'Löschen' })[0]?.hasAttribute('disabled')).toBe(
+      false
+    );
   });
 
-  it('renders dedicated load guidance for the remaining known categories error codes', async () => {
-    state.listCategoryManagement
-      .mockRejectedValueOnce(Object.assign(new Error('integration disabled'), { code: 'integration_disabled' }))
-      .mockRejectedValueOnce(Object.assign(new Error('missing config'), { code: 'config_not_found' }))
-      .mockRejectedValueOnce(Object.assign(new Error('forbidden'), { code: 'forbidden' }));
-
+  it('reuses the create idempotency key when the same attempt is retried', async () => {
+    state.save.mockRejectedValue(new Error('response lost'));
     render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
 
-    await waitFor(() => {
-      expect(screen.getByText('Die Mainserver-Integration ist für diese Instanz derzeit nicht aktiv.')).toBeTruthy();
-    });
+    createCategory();
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
+    await screen.findByText('Kategorien konnten nicht geladen werden.');
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(2));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
-    await waitFor(() => {
-      expect(screen.getByText('Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.')).toBeTruthy();
-    });
+    expect(state.save.mock.calls[0]?.[0].idempotencyKey).toBe(
+      state.save.mock.calls[1]?.[0].idempotencyKey
+    );
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
-    await waitFor(() => {
-      expect(screen.getByText('Zum Laden der Kategorien fehlt die Berechtigung categories.read.')).toBeTruthy();
+  it('requires an explicit confirmation before changing a parent status', async () => {
+    state.save.mockResolvedValue({
+      category: categories[0],
+      affectedDescendantIds: ['cat-child'],
+      errors: [],
     });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]!);
+    fireEvent.click(screen.getByLabelText('Aktiv'));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    expect(state.save).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Statusänderung bestätigen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Status ändern' }));
+    await waitFor(() => expect(state.save).toHaveBeenCalledTimes(1));
+  });
+
+  it('associates local and upstream validation errors with their fields', async () => {
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie anlegen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
+    expect(state.save).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Doppelt' } });
+    state.save.mockResolvedValue({
+      affectedDescendantIds: [],
+      errors: [{ code: 'CATEGORY_NAME_TAKEN', field: 'name', message: 'Name vergeben' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText('Name vergeben')).toBeTruthy();
+    expect(screen.getByLabelText('Name').getAttribute('aria-describedby')).toBe(
+      'category-name-error'
+    );
+  });
+
+  it('shows all returned usage counts when safe-delete is blocked', async () => {
+    state.remove.mockResolvedValue({
+      usage: {
+        children: 1,
+        resourceAssignments: 2,
+        externalServiceAssignments: 3,
+        dataResourceSettings: 4,
+        notificationConfigurations: 5,
+      },
+      errors: [{ code: 'CATEGORY_IN_USE', message: 'In Verwendung' }],
+    });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie löschen' }));
+
+    expect(await screen.findByText('In Verwendung')).toBeTruthy();
+    for (const value of [
+      'Unterkategorien',
+      'Inhaltszuordnungen',
+      'Externe Dienste',
+      'Datenquellen',
+      'Benachrichtigungen',
+    ])
+      expect(screen.getByText(value)).toBeTruthy();
+  });
+
+  it('keeps confirmed save success distinct from a failed management reload', async () => {
+    state.list.mockResolvedValueOnce(categories).mockRejectedValueOnce(new Error('reload failed'));
+    state.save.mockResolvedValue({
+      category: { ...categories[0], id: 'cat-new' },
+      affectedDescendantIds: [],
+      errors: [],
+    });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    createCategory();
+
+    expect(await screen.findByText('Gespeichert, aber Neuladen fehlgeschlagen.')).toBeTruthy();
+    expect(screen.getByText('Kategorien konnten nicht geladen werden.')).toBeTruthy();
   });
 });

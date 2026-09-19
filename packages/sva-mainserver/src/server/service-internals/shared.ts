@@ -32,12 +32,14 @@ export type UpstreamRequestInput = {
   readonly input: SvaMainserverConnectionInput;
   readonly operationName: string;
   readonly hop: Extract<ServiceHop, 'oauth2' | 'graphql' | 'identity'>;
+  readonly allowRetry?: boolean;
 };
 
 export type GraphqlOperationInput = SvaMainserverConnectionInput & {
   readonly document: string;
   readonly operationName: string;
   readonly variables?: Record<string, unknown>;
+  readonly allowRetry?: boolean;
 };
 
 export type GraphqlExecutor = <TResult>(

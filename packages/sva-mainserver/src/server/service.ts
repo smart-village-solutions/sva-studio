@@ -472,6 +472,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         document: svaMainserverSaveCategoryDocument,
         operationName: 'SvaMainserverSaveCategory',
         variables: { input: input.category },
+        allowRetry: false,
       },
       config
     );
@@ -509,6 +510,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         document: svaMainserverDeleteCategoryDocument,
         operationName: 'SvaMainserverDeleteCategory',
         variables: { id: input.categoryId },
+        allowRetry: false,
       },
       config
     );

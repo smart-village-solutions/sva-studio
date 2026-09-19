@@ -3,16 +3,18 @@
 ## `categories.overview` – Kategorien
 
 - **Route / Typ / Owner:** `/categories`, Übersicht, Host.
-- **Nutzerziel:** Mainserver-Kategorien und ihre Hierarchie prüfen.
-- **Produktfakten:** Die aktuelle Seite ist schreibgeschützt. Sie zeigt eine flache Tabelle mit
-  Name, ID, Hierarchie, Position und Tags. Bearbeiten, Unterkategorie anlegen und Löschen sind zwar
-  sichtbar, aber deaktiviert. Die Liste kann neu geladen werden.
+- **Nutzerziel:** Mainserver-Kategorien und ihre Hierarchie verwalten.
+- **Produktfakten:** Die Seite zeigt aktive und inaktive Kategorien mit Hierarchie, Position und
+  Datentypen. Je nach Berechtigung lassen sich Kategorien anlegen, bearbeiten, als Unterkategorie
+  einordnen und nach einer Bestätigung sicher löschen. Statusänderungen mit Unterkategorien werden
+  vor dem Speichern bestätigt; bestehende Verwendungen blockieren das Löschen und werden nach Art
+  und Anzahl angezeigt.
 - **Kontextabhängig:** Laden erfordert `categories.read`, aktive Mainserver-Integration und passende
   persönliche oder organisatorische Credentials.
-- **Redaktionelle Leitfragen:** Wie liest man die flache Hierarchiedarstellung? Wo werden Kategorien
-  derzeit tatsächlich gepflegt? Welche Credentials fehlen bei einer leeren oder fehlerhaften Sicht?
-- **Stichwörter / Querverweise:** Kategorie, Hierarchie, Tags, Mainserver, schreibgeschützt; weiter zu
-  Inhaltstypen mit Kategorieauswahl.
+- **Redaktionelle Leitfragen:** Wie liest man die flache Hierarchiedarstellung? Welche Auswirkungen
+  hat eine Statusänderung auf Unterkategorien? Welche Zuordnungen blockieren das Löschen?
+- **Stichwörter / Querverweise:** Kategorie, Hierarchie, Datentyp, Status, Mainserver, Safe-Delete;
+  weiter zu Inhaltstypen mit Kategorieauswahl.
 - **Evidenz:** `packages/plugin-categories/src/categories.pages.tsx`,
   `packages/plugin-categories/src/plugin.translations.ts`.
 

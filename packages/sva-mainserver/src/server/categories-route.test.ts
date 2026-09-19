@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
@@ -46,7 +46,15 @@ const ctx = {
 };
 
 describe('dispatchSvaMainserverCategoriesRequest', () => {
+  const confirmedCapabilitiesEnvironment = 'SVA_MAINSERVER_CONFIRMED_CAPABILITIES';
+
+  beforeEach(() => {
+    process.env[confirmedCapabilitiesEnvironment] =
+      'categories.read,categories.create,categories.update,categories.delete';
+  });
+
   afterEach(() => {
+    delete process.env[confirmedCapabilitiesEnvironment];
     vi.resetAllMocks();
   });
 
@@ -65,6 +73,15 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
   it('ignores unrelated routes without touching auth', async () => {
     const response = await dispatchSvaMainserverCategoriesRequest(
       new Request('https://studio.test/api/v1/mainserver/news')
+    );
+
+    expect(response).toBeNull();
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
+  it('ignores malformed category item paths without throwing', async () => {
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories/%zz')
     );
 
     expect(response).toBeNull();
@@ -167,6 +184,23 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     await expect(response?.json()).resolves.toEqual({
       data: [{ id: 'inactive', name: 'Archiv', active: false }],
     });
+  });
+
+  it('fails closed before authorization when the category management contract is unconfirmed', async () => {
+    delete process.env[confirmedCapabilitiesEnvironment];
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?view=management')
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'category_management_contract_unavailable',
+      message: 'Der Mainserver-Vertrag für diese Kategorienoperation ist nicht bestätigt.',
+    });
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.listSvaMainserverCategoryManagement).not.toHaveBeenCalled();
   });
 
   it('rejects a create request before the upstream call when its idempotency key is missing', async () => {
@@ -280,6 +314,70 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
 
     expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
     expect(response?.status).toBe(201);
+  });
+
+  it('returns structured save failures as a typed terminal response', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.create');
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { actorAccountId: '33333333-3333-3333-8333-333333333333' },
+    });
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.saveSvaMainserverCategory.mockResolvedValue({
+      affectedDescendantIds: [],
+      errors: [{ code: 'CATEGORY_INVALID_PARENT', field: 'parentId', message: 'Ungültig' }],
+    });
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'category-create-error', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Neu',
+          active: true,
+          parentId: 'missing',
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toEqual({
+      affectedDescendantIds: [],
+      errors: [{ code: 'CATEGORY_INVALID_PARENT', field: 'parentId', message: 'Ungültig' }],
+    });
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({ responseStatus: 200, status: 'FAILED' })
+    );
+  });
+
+  it('rejects updates without an explicit active value before the upstream call', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.update');
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories/cat-1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Neu',
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'category_management_invalid_request',
+    });
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
   });
 
   it('updates and deletes only after their distinct actions have been authorized', async () => {

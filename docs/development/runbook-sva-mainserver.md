@@ -84,11 +84,15 @@ Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der 
 
 ## Kategorien
 
-Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host schützt `/api/v1/mainserver/categories` über die eigenständige Instanz-Permission `categories.read`, damit sowohl die Kategorienseite als auch Facheditoren dieselbe fachliche Freigabe verwenden.
+Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host hält die Active-only-Auswahl für Facheditoren getrennt von der expliziten Management-Sicht und prüft jede Operation mit ihrer eigenen `categories.*`-Permission. Die Management-Pfade bleiben bis zur bestätigten Mainserver-Capability fail-closed.
 
-| Studio-Methode                      | Lokale Primitive  | Mainserver-Operation | Hinweis                                                                                                                                                          |
-| ----------------------------------- | ----------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/mainserver/categories` | `categories.read` | `categories`         | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
+| Studio-Methode                                      | Lokale Primitive    | Mainserver-Operation          | Hinweis                                                                                                                                              |
+| --------------------------------------------------- | ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/mainserver/categories`                 | `categories.read`   | `categories`                  | Liefert weiterhin ausschließlich aktive Kategorien für Editor-Auswahllisten.                                                                         |
+| `GET /api/v1/mainserver/categories?view=management` | `categories.read`   | `categories(includeInactive)` | Liefert das vollständige Management-Modell; ein fehlender Vertrag führt zu `category_management_contract_unavailable`, nie zum Active-only-Fallback. |
+| `POST /api/v1/mainserver/categories`                | `categories.create` | `saveCategory`                | Verlangt einen versuchsgebundenen `Idempotency-Key`; der GraphQL-Transport wiederholt Mutationen nicht automatisch.                                  |
+| `PUT /api/v1/mainserver/categories/$categoryId`     | `categories.update` | `saveCategory`                | Übernimmt die ID nur aus dem Pfad und speichert das vollständige Modell.                                                                             |
+| `DELETE /api/v1/mainserver/categories/$categoryId`  | `categories.delete` | `deleteCategory`              | Löscht nur ungenutzte Kategorien und liefert andernfalls strukturierte Usage-Zahlen.                                                                 |
 
 Die Content-Editoren für Veranstaltungen, News, POIs und generische Inhalte verwenden diese Liste als
 abschließenden Auswahlkatalog. Redakteurinnen und Redakteure können eine oder mehrere vorhandene Kategorien

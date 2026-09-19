@@ -110,6 +110,13 @@ Abhängigkeiten des aktuellen Systems.
 - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
 - hält für Surveys einen expliziten Adapter zwischen Studio-Domäne und Mainserver-`SurveyPoll`: Query-Argumente folgen dem Snapshot, Studio-only-Felder werden im Write-Pfad kontrolliert in `payload` serialisiert und im Read-Pfad daraus rekonstruiert
+- kapselt Kategorien-Management-Read, vollständigen Save und Safe-Delete einschließlich Runtime-Validierung, Capability-Gate und mutationsspezifisch deaktiviertem Transport-Retry
+
+10a. Plugin Categories (`packages/plugin-categories`)
+
+- besitzt Tabelle, Formularzustand, Statuskaskaden-Bestätigung, Datentypauswahl und strukturierte Delete-Usage; der Browser spricht ausschließlich die hostgeführte Kategorien-Fassade
+- hält Management- und Active-only-Verbraucher getrennt und lädt nach einem bestätigten Save den führenden Mainserver-Zustand neu
+- verwendet den Build-time-Registry-Snapshot für bekannte Datentypen und ergänzt nur die bestätigten Legacy-Typen; unbekannte gespeicherte Werte bleiben bis zur ausdrücklichen Entfernung erhalten
 
 11. Plugin News (`packages/plugin-news`)
 

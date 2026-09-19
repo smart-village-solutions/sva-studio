@@ -336,6 +336,14 @@ Fehlerpfad:
 25. Der History-Read löst externe IDs nach Möglichkeit über die Provider-Referenz auf, autorisiert `content.readHistory` und liefert kein `snapshot_json` aus. Fehlt für einen typisierten Mainserver-Inhalt der lokale History-Core, bleibt der Inhalt vollständig nutzbar und die Studio-History ist leer mit `coverage = studio_mutations`.
 26. Nach erfolgreichen Updates zeigen News, Events, POI, Generic Items, Projects, FAQ, Surveys und Cockpit Cards den Erfolg für zwei Sekunden am gemeinsamen Save-Button. Seitengebundene Create-Flows navigieren auf ihre erzeugte Detailroute und übergeben den datensatzgebundenen Erfolg einmalig im Router-History-State; Delete bleibt ein eigener Rücknavigationspfad.
 
+### Szenario 4aa: Kategorienverwaltung
+
+1. `/categories` lädt die explizite Management-Sicht einschließlich inaktiver Kategorien; normale Content-Editoren verwenden unverändert den getrennten Active-only-Read.
+2. Der Host prüft `categories.read`, `categories.create`, `categories.update` oder `categories.delete` unmittelbar an der jeweiligen Route und ruft den Mainserver nur bei bestätigter Capability auf.
+3. Create reserviert den versuchsgebundenen Idempotenzschlüssel vor `saveCategory`; Kategorie-Mutationen werden nach unklarem Transportausgang nicht automatisch wiederholt.
+4. Statusänderungen mit bekannten Nachfahren benötigen eine UI-Bestätigung. Save-Erfolg setzt eine Kategorie und eine leere Fehlerliste voraus; danach lädt die UI den Management-Zustand neu und behandelt einen Reload-Fehler getrennt vom bestätigten Save.
+5. Delete gilt nur mit `deletedCategoryId` und leerer Fehlerliste als erfolgreich. Bei `CATEGORY_IN_USE` bleibt die Kategorie bestehen und die UI zeigt alle gelieferten Usage-Zähler.
+
 ### Szenario 4b: Kontextgebundener Save-Lifecycle
 
 1. Das Host- oder Plugin-Formular validiert die Eingaben feldnah und startet eine zulässige Mutation über `useStudioSaveFeedback.beginSaving()`.

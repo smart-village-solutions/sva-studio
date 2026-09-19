@@ -548,6 +548,52 @@ describe('createSvaMainserverService', () => {
     expect(categoriesRequest.query).not.toContain('children {');
   });
 
+  it('does not retry category mutations after an ambiguous transport failure', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockRejectedValueOnce(new TypeError('response lost'))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            saveCategory: {
+              category: {
+                id: 'cat-1',
+                name: 'Neu',
+                active: true,
+                children: [],
+                dataTypes: [],
+              },
+              affectedDescendantIds: [],
+              errors: [],
+            },
+          },
+        })
+      );
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.saveCategory({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        category: {
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          position: null,
+          iconName: null,
+          email: null,
+          dataTypes: [],
+        },
+      })
+    ).rejects.toMatchObject({ code: 'network_error' });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
     const item = {
       id: 'news-1',

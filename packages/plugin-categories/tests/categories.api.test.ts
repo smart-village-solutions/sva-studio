@@ -313,6 +313,8 @@ describe('plugin-categories api', () => {
             children: [],
             dataTypes: ['news_item'],
             position: 2,
+            createdAt: '2026-09-01T08:00:00.000Z',
+            updatedAt: '2026-09-02T09:00:00.000Z',
           },
           {
             id: 'cat-a',
@@ -328,6 +330,10 @@ describe('plugin-categories api', () => {
 
     const categories = await listCategoryManagement();
     expect(categories).toHaveLength(2);
+    expect(categories[0]).toMatchObject({
+      createdAt: '2026-09-01T08:00:00.000Z',
+      updatedAt: '2026-09-02T09:00:00.000Z',
+    });
     expect(flattenCategoryManagementForTable(categories).map((entry) => entry.id)).toEqual([
       'cat-a',
       'cat-b',

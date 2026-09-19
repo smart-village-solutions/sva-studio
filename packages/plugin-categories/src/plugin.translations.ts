@@ -61,7 +61,17 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
     mutationError: 'Die Kategorie konnte nicht gespeichert werden.',
     contractError: 'Der Mainserver lieferte eine ungültige Kategorienantwort.',
     nameRequired: 'Bitte geben Sie einen Kategorienamen an.',
+    positionInvalid: 'Die Position muss eine ganze Zahl ab 0 sein.',
+    emailInvalid: 'Bitte geben Sie genau eine gültige E-Mail-Adresse an.',
     deleteBlocked: 'Die Kategorie kann wegen bestehender Verwendungen nicht gelöscht werden.',
+    saved: 'Die Kategorie wurde gespeichert.',
+    savedWithDescendants:
+      'Die Kategorie und {{count}} betroffene Unterkategorien wurden gespeichert.',
+    savedReloadFailed:
+      'Die Kategorie wurde gespeichert, der aktuelle Stand konnte aber nicht neu geladen werden.',
+    deleted: 'Die Kategorie wurde gelöscht.',
+    deletedReloadFailed:
+      'Die Kategorie wurde gelöscht, der aktuelle Stand konnte aber nicht neu geladen werden.',
   },
   values: {
     active: 'Aktiv',
@@ -69,6 +79,12 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
     notAvailable: '—',
     root: 'Keine übergeordnete Kategorie',
     unavailableType: '{{value}} (nicht mehr verfügbar)',
+  },
+  dataTypes: {
+    eventRecord: 'Veranstaltungen',
+    newsItem: 'Neuigkeiten',
+    pointOfInterest: 'Orte',
+    tour: 'Touren',
   },
   table: {
     ariaLabel: 'Kategorien-Tabelle',
@@ -86,6 +102,19 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
       'Möchten Sie „{{target}}“ wirklich löschen? Bestehende Verwendungen können das Löschen blockieren.',
     confirm: 'Kategorie löschen',
     pending: 'Kategorie wird gelöscht',
+    usage: {
+      children: 'Unterkategorien',
+      resourceAssignments: 'Inhaltszuordnungen',
+      externalServiceAssignments: 'External-Service-Zuordnungen',
+      dataResourceSettings: 'Data-Resource-Einstellungen',
+      notificationConfigurations: 'Benachrichtigungskonfigurationen',
+    },
+  },
+  cascadeDialog: {
+    title: 'Statusänderung bestätigen',
+    description:
+      'Die Statusänderung kann {{count}} Unterkategorien betreffen. Möchten Sie fortfahren?',
+    confirm: 'Status ändern',
   },
 });
 
@@ -145,7 +174,14 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
     mutationError: 'The category could not be saved.',
     contractError: 'Mainserver returned an invalid category response.',
     nameRequired: 'Enter a category name.',
+    positionInvalid: 'Position must be an integer greater than or equal to 0.',
+    emailInvalid: 'Enter exactly one valid email address.',
     deleteBlocked: 'The category cannot be deleted because it is in use.',
+    saved: 'The category was saved.',
+    savedWithDescendants: 'The category and {{count}} affected subcategories were saved.',
+    savedReloadFailed: 'The category was saved, but the current state could not be reloaded.',
+    deleted: 'The category was deleted.',
+    deletedReloadFailed: 'The category was deleted, but the current state could not be reloaded.',
   },
   values: {
     active: 'Active',
@@ -153,6 +189,12 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
     notAvailable: '—',
     root: 'No parent category',
     unavailableType: '{{value}} (no longer available)',
+  },
+  dataTypes: {
+    eventRecord: 'Events',
+    newsItem: 'News',
+    pointOfInterest: 'Points of interest',
+    tour: 'Tours',
   },
   table: {
     ariaLabel: 'Categories table',
@@ -169,6 +211,18 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
     description: 'Do you really want to delete “{{target}}”? Existing use may block deletion.',
     confirm: 'Delete category',
     pending: 'Deleting category',
+    usage: {
+      children: 'Subcategories',
+      resourceAssignments: 'Content assignments',
+      externalServiceAssignments: 'External service assignments',
+      dataResourceSettings: 'Data resource settings',
+      notificationConfigurations: 'Notification configurations',
+    },
+  },
+  cascadeDialog: {
+    title: 'Confirm status change',
+    description: 'The status change may affect {{count}} subcategories. Do you want to continue?',
+    confirm: 'Change status',
   },
 });
 

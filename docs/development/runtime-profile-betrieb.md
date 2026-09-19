@@ -343,7 +343,7 @@ Zusatzprüfungen:
 
 Im Profil `studio` prüfen die externen Smokes zusätzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope für gezielte Operator-Läufe explizit übersteuern.
 
-Für Acceptance-Release-Läufe mit gesetztem `SVA_ACCEPTANCE_RELEASE_MODE` bleibt davon abweichend nur `de-studio-sandbox` release-blockierend. Die Registry wird in diesem Pfad ohne künstliches Tenant-Limit ausgewertet; fehlt `de-studio-sandbox` im effektiven Scope, bricht der externe Smoke deterministisch mit einem Konfigurationsfehler ab statt stillschweigend ohne Tenant-Login-Probe zu bestehen.
+Für Acceptance-Release-Läufe mit gesetztem `SVA_ACCEPTANCE_RELEASE_MODE` bleibt davon abweichend nur `de-musterhausen` release-blockierend. Die Registry wird in diesem Pfad ohne künstliches Tenant-Limit ausgewertet; fehlt `de-musterhausen` im effektiven Scope, bricht der externe Smoke deterministisch mit einem Konfigurationsfehler ab statt stillschweigend ohne Tenant-Login-Probe zu bestehen. Vor dem ersten Production-Rollout muss sein Realm inklusive Login-Client, Redirect- und Logout-URIs sowie Origins provisioniert sein.
 
 Für `studio` gilt bei Tenant-Smokes zusätzlich:
 

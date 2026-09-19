@@ -137,6 +137,7 @@ describe('tenant secret registry', () => {
     const runSql = vi.fn(() => 'registry-payload');
     const registryPayload = [
       {
+        authClientId: 'tenant-login-client',
         authIssuerUrl: 'https://tenant-id.example.test/keycloak/realms/tenant-a',
         authRealm: 'tenant-a',
         host: 'tenant-a.studio.example.test',
@@ -158,6 +159,7 @@ describe('tenant secret registry', () => {
 
     expect(ops.loadRegistryTenantTargets('studio', {})).toEqual([
       {
+        authClientId: 'tenant-login-client',
         authIssuerUrl: 'https://tenant-id.example.test/keycloak/realms/tenant-a',
         authRealm: 'tenant-a',
         host: 'tenant-a.studio.example.test',
@@ -170,5 +172,6 @@ describe('tenant secret registry', () => {
       },
     ]);
     expect(runSql).toHaveBeenCalledWith(expect.stringContaining('instance.auth_issuer_url'));
+    expect(runSql).toHaveBeenCalledWith(expect.stringContaining('instance.auth_client_id'));
   });
 });

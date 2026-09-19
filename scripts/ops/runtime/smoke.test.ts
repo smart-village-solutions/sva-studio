@@ -12,6 +12,7 @@ import {
   shouldRetryInternalVerify,
 } from './smoke.ts';
 import { createRuntimeSmokeOps } from './smoke-runtime.ts';
+import { isExpectedOidcRedirect } from './acceptance-runtime-checks-core.ts';
 import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
@@ -48,7 +49,7 @@ describe('smoke helpers', () => {
       buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
       buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
       doctorRuntime: async () => createDoctorReport({}),
-      isExpectedOidcRedirect: () => true,
+      isExpectedOidcRedirect,
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
@@ -195,11 +196,11 @@ describe('smoke helpers', () => {
       buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
       buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
       doctorRuntime: async () => createDoctorReport({}),
-      isExpectedOidcRedirect: () => true,
+      isExpectedOidcRedirect,
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({
         source: 'registry',
-        targets: [{ authRealm: 'custom-teststadt-realm', host: 'de-teststadt-dev.studio-dev.smart-village.app', instanceId: 'de-teststadt-dev' }],
+        targets: [{ authClientId: 'tenant-client', authRealm: 'custom-teststadt-realm', host: 'de-teststadt-dev.studio-dev.smart-village.app', instanceId: 'de-teststadt-dev' }],
       }),
       runHttpProbe: async (input) => {
         if (input.name === 'public-ingress-login-de-teststadt-dev.studio-dev.smart-village.app') loginExpectation = input.expect;
@@ -210,15 +211,20 @@ describe('smoke helpers', () => {
       wait: async () => undefined,
     });
 
-    await ops.runExternalSmoke('studio', { SVA_PUBLIC_BASE_URL: 'https://studio-dev.smart-village.app' });
+    await ops.runExternalSmoke('studio', {
+      KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+      SVA_AUTH_CLIENT_ID: 'root-client',
+      SVA_AUTH_ISSUER: 'https://keycloak.example/realms/root',
+      SVA_PUBLIC_BASE_URL: 'https://studio-dev.smart-village.app',
+    });
 
     expect(loginExpectation).toBeDefined();
     expect(loginExpectation?.(new Response(null, {
-      headers: { location: `https://keycloak.example/realms/wrong-realm/protocol/openid-connect/auth?redirect_uri=${encodeURIComponent('https://de-teststadt-dev.studio-dev.smart-village.app/auth/callback')}` },
+      headers: { location: `https://keycloak.example/realms/wrong-realm/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=${encodeURIComponent('https://de-teststadt-dev.studio-dev.smart-village.app/auth/callback')}&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid` },
       status: 302,
-    }), null)).toContain('custom-teststadt-realm');
+    }), null)).toContain('OIDC-Redirect-Vertrag');
     expect(loginExpectation?.(new Response(null, {
-      headers: { location: `https://keycloak.example/realms/custom-teststadt-realm/protocol/openid-connect/auth?redirect_uri=${encodeURIComponent('https://de-teststadt-dev.studio-dev.smart-village.app/auth/callback')}` },
+      headers: { location: `https://keycloak.example/realms/custom-teststadt-realm/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=${encodeURIComponent('https://de-teststadt-dev.studio-dev.smart-village.app/auth/callback')}&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid` },
       status: 302,
     }), null)).toBeNull();
   });
@@ -261,7 +267,7 @@ describe('smoke helpers', () => {
   it.each([
     'public-home',
     'public-iam-context',
-    'public-ingress-https-de-studio-sandbox.studio-staging.smart-village.app',
+    'public-ingress-https-de-musterhausen.studio.smart-village.app',
   ])('keeps %s release-blocking', async (name) => {
     const ops = createRuntimeSmokeOps({
       buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
@@ -289,6 +295,15 @@ describe('smoke helpers', () => {
 
   it('returns no ingress contract for an invalid base URL', () => {
     expect(resolveStudioIngressContract('https://')).toBeNull();
+  });
+
+  it('pins the production release blocker to de-musterhausen while staging retains its sandbox tenant', () => {
+    expect(resolveStudioIngressContract('https://studio.smart-village.app')).toMatchObject({
+      releaseBlockingTenantId: 'de-musterhausen',
+    });
+    expect(resolveStudioIngressContract('https://studio-staging.smart-village.app')).toMatchObject({
+      releaseBlockingTenantId: 'de-studio-sandbox',
+    });
   });
 
   it('caps derived internal verify attempts when retry delay is zero or negative', () => {

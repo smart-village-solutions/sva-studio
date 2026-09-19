@@ -146,6 +146,7 @@ SELECT COALESCE(
     json_build_object(
       'instanceId', scoped.instance_id,
       'host', scoped.primary_hostname,
+      'authClientId', scoped.auth_client_id,
       'authRealm', scoped.auth_realm,
       'authIssuerUrl', scoped.auth_issuer_url
     )
@@ -157,6 +158,7 @@ FROM (
   SELECT
     instance.id AS instance_id,
     instance.primary_hostname,
+    NULLIF(instance.auth_client_id, '') AS auth_client_id,
     COALESCE(NULLIF(instance.auth_realm, ''), instance.id) AS auth_realm,
     NULLIF(instance.auth_issuer_url, '') AS auth_issuer_url
   FROM iam.instances instance
@@ -178,11 +180,13 @@ const isTenantRuntimeTarget = (entry: unknown): entry is SerializedTenantRuntime
     typeof target.instanceId === 'string' &&
     typeof target.host === 'string' &&
     typeof target.authRealm === 'string' &&
+    (target.authClientId === undefined || typeof target.authClientId === 'string') &&
     (target.authIssuerUrl === null || target.authIssuerUrl === undefined || typeof target.authIssuerUrl === 'string')
   );
 };
 
 const normalizeTenantRuntimeTarget = (target: SerializedTenantRuntimeTarget): TenantRuntimeTarget => ({
+  ...(typeof target.authClientId === 'string' ? { authClientId: target.authClientId } : {}),
   authRealm: target.authRealm,
   ...(typeof target.authIssuerUrl === 'string' ? { authIssuerUrl: target.authIssuerUrl } : {}),
   host: target.host,

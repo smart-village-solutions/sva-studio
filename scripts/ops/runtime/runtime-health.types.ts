@@ -28,7 +28,6 @@ export type RemoteStackEvidence = {
 };
 
 export type OidcClientSecretProbe = Readonly<{
-  allowClientAuthOnly?: boolean;
   clientId: string;
   clientSecret: string;
   issuerUrl: string;

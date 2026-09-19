@@ -169,6 +169,7 @@ export const emitMethodNotAllowedDiagnostic = (
         reason: 'method-not-allowed',
         method: request.method.toUpperCase(),
         allow,
+        ...(route === '/auth/callback' ? { expected_oidc_response_mode: 'query' as const } : {}),
         ...context,
       },
       {

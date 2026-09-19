@@ -5,6 +5,33 @@ import { acceptanceOptions, createDeps } from './acceptance-runtime-checks.test-
 
 describe('acceptance runtime checks live spec and readiness', () => {
   it.each([
+    'SVA_PUBLIC_HOST',
+    'SVA_AUTH_ISSUER',
+    'SVA_AUTH_CLIENT_ID',
+    'SVA_AUTH_REDIRECT_URI',
+    'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
+    'IAM_CSRF_ALLOWED_ORIGINS',
+  ])('fails closed when %s differs from the live contract', async (key) => {
+    const deps = createDeps();
+    const live = await deps.inspectRemoteServiceContract({}, {
+      quantumEndpoint: 'https://quantum.example.test', serviceName: 'app', stackName: 'studio',
+    });
+    if (!live) throw new Error('Test fixture missing');
+    deps.inspectRemoteServiceContract = vi.fn(async () => ({
+      ...live,
+      env: { ...live.env, [key]: 'live-value' },
+    }));
+
+    const check = await buildAcceptanceLiveSpecCheck(deps, 'studio', {
+      ...live.env,
+      [key]: 'expected-value',
+    }, acceptanceOptions);
+
+    expect(check.code).toBe('live_spec_differs');
+    expect(check.details).toMatchObject({ configDrift: [key] });
+  });
+
+  it.each([
     [undefined, 'studio.dialog.kassel.de', true],
     ['old.dialog.kassel.de', 'studio.dialog.kassel.de', true],
     ['studio.dialog.kassel.de', 'studio.dialog.kassel.de', false],

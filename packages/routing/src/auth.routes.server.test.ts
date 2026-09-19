@@ -1429,6 +1429,34 @@ describe('auth.routes.server', () => {
     );
   });
 
+  it('rejects POST callbacks without invoking the callback handler and logs only safe contract metadata', async () => {
+    const response = await dispatchAuthRouteRequest(
+      new Request('https://tenant.example.test/auth/callback?code=secret-code&state=secret-state', {
+        method: 'POST',
+        body: 'code=secret-code&state=secret-state',
+      })
+    );
+
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('Allow')).toBe('GET');
+    expect(authServerMocks.callbackHandler).not.toHaveBeenCalled();
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Unsupported HTTP method for route handler',
+      expect.objectContaining({
+        event: 'routing.handler.method_not_allowed',
+        route: '/auth/callback',
+        method: 'POST',
+        allow: 'GET',
+        request_host: 'tenant.example.test',
+        expected_oidc_response_mode: 'query',
+      })
+    );
+    expect(routingLogger.warn).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ code: 'secret-code' })
+    );
+  });
+
   it('sorts allowed methods alphabetically for multi-method auth routes', async () => {
     const response = await dispatchAuthRouteRequest(
       new Request('http://localhost/api/v1/iam/users/test-user', {

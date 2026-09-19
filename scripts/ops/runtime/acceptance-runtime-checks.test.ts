@@ -80,26 +80,20 @@ describe('acceptance runtime checks', () => {
     expect(checkHttpHealth).toHaveBeenNthCalledWith(2, 'https://studio.smart-village.app/health/live');
   });
 
-  it('accepts expected oidc redirects from configured issuers and fallback realm paths', () => {
-    expect(isExpectedOidcRedirect('https://issuer.example.test/protocol/openid-connect/auth', {})).toBe(false);
-    expect(
-      isExpectedOidcRedirect('https://issuer.example.test/protocol/openid-connect/auth', {
-        SVA_AUTH_ISSUER: 'https://issuer.example.test',
-      }),
-    ).toBe(true);
-    expect(
-      isExpectedOidcRedirect('https://issuer.example.test/protocol/openid-connect/auth', {
-        SVA_AUTH_ISSUER: 'https://issuer.example.test/',
-      }),
-    ).toBe(true);
-    expect(
-      isExpectedOidcRedirect('https://keycloak.example.test/realms/studio/protocol/openid-connect/auth', {
-        KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example.test/',
-      }),
-    ).toBe(true);
-    expect(
-      isExpectedOidcRedirect('https://id.example.test/realms/studio/protocol/openid-connect/auth?client_id=web', {}),
-    ).toBe(true);
+  it('accepts only complete query-mode oidc authorization redirects', () => {
+    const env = {
+      SVA_AUTH_CLIENT_ID: 'studio-client',
+      SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/studio',
+      SVA_AUTH_REDIRECT_URI: 'https://studio.example.test/auth/callback',
+    };
+    const location = 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=studio-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Fstudio.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid%20profile';
+
+    expect(isExpectedOidcRedirect(location, env)).toBe(true);
+    expect(isExpectedOidcRedirect(location.replace('response_mode=query', 'response_mode=form_post'), env)).toBe(false);
+    expect(isExpectedOidcRedirect(location.replace('studio-client', 'service-client'), env)).toBe(false);
+    expect(isExpectedOidcRedirect(location.replace('state=state', 'state='), env)).toBe(false);
+    expect(isExpectedOidcRedirect(location.replace('code_challenge_method=S256', 'code_challenge_method=plain'), env)).toBe(false);
+    expect(isExpectedOidcRedirect(location.replace('realms/studio/protocol', 'realms/other/protocol'), env)).toBe(false);
   });
 
   it('returns payload details when a probe expectation fails', async () => {

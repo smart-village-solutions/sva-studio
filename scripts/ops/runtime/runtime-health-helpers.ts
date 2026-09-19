@@ -62,9 +62,6 @@ const buildOidcIssuerUrl = (keycloakBaseUrl: string, realm: string) =>
 
 export const buildOidcClientSecretProbes = (env: NodeJS.ProcessEnv): readonly OidcClientSecretProbe[] => {
   const keycloakBaseUrl = env.KEYCLOAK_ADMIN_BASE_URL?.trim();
-  const authIssuer = env.SVA_AUTH_ISSUER?.trim();
-  const authClientId = env.SVA_AUTH_CLIENT_ID?.trim();
-  const authClientSecret = env.SVA_AUTH_CLIENT_SECRET?.trim();
   const adminRealm = env.KEYCLOAK_ADMIN_REALM?.trim();
   const adminClientId = env.KEYCLOAK_ADMIN_CLIENT_ID?.trim();
   const adminClientSecret = env.KEYCLOAK_ADMIN_CLIENT_SECRET?.trim();
@@ -73,7 +70,6 @@ export const buildOidcClientSecretProbes = (env: NodeJS.ProcessEnv): readonly Oi
   const provisionerClientSecret = env.KEYCLOAK_PROVISIONER_CLIENT_SECRET?.trim();
   const probes: OidcClientSecretProbe[] = [];
 
-  if (authIssuer && authClientId && authClientSecret) probes.push({ allowClientAuthOnly: true, clientId: authClientId, clientSecret: authClientSecret, issuerUrl: authIssuer, name: 'auth-client' });
   if (keycloakBaseUrl && adminRealm && adminClientId && adminClientSecret) probes.push({ clientId: adminClientId, clientSecret: adminClientSecret, issuerUrl: buildOidcIssuerUrl(keycloakBaseUrl, adminRealm), name: 'admin-client' });
   if (keycloakBaseUrl && provisionerRealm && provisionerClientId && provisionerClientSecret) probes.push({ clientId: provisionerClientId, clientSecret: provisionerClientSecret, issuerUrl: buildOidcIssuerUrl(keycloakBaseUrl, provisionerRealm), name: 'provisioner-client' });
 
@@ -101,10 +97,6 @@ export const evaluateOidcClientSecretProbeResponse = (
 
   const oauthError = typeof payload.error === 'string' ? payload.error : '';
   const oauthDescription = typeof payload.error_description === 'string' ? payload.error_description : '';
-  if (probe.allowClientAuthOnly && response.status < 500 && oauthError.length > 0 && oauthError !== 'invalid_client') {
-    return { mode: 'authenticated', name: probe.name, reason: oauthDescription || oauthError, status: 'ok' };
-  }
-
   throw new Error(
     `${probe.name}: Client-Secret-Pruefung fehlgeschlagen (${response.status}${oauthError ? ` ${oauthError}` : ''}${oauthDescription ? `: ${oauthDescription}` : ''}).`,
   );

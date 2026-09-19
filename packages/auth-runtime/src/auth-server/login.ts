@@ -48,6 +48,7 @@ export const createLoginUrl = async (input?: {
 
   const url = client.buildAuthorizationUrl(config, {
     redirect_uri: authConfig.redirectUri,
+    response_mode: 'query',
     scope: authConfig.scopes,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',

@@ -218,7 +218,7 @@ describe('runtime-health helpers', () => {
     });
   });
 
-  it('builds all configured oidc client-secret probes', () => {
+  it('builds token probes only for technical oidc clients', () => {
     expect(
       buildOidcClientSecretProbes({
         KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example/',
@@ -234,13 +234,6 @@ describe('runtime-health helpers', () => {
       }),
     ).toEqual([
       {
-        allowClientAuthOnly: true,
-        clientId: 'studio-bff',
-        clientSecret: 'auth-secret',
-        issuerUrl: 'https://keycloak.example/realms/platform',
-        name: 'auth-client',
-      },
-      {
         clientId: 'iam-service',
         clientSecret: 'admin-secret',
         issuerUrl: 'https://keycloak.example/realms/master',
@@ -253,30 +246,6 @@ describe('runtime-health helpers', () => {
         name: 'provisioner-client',
       },
     ]);
-  });
-
-  it('accepts unauthorized_client for auth-only probes', () => {
-    expect(
-      evaluateOidcClientSecretProbeResponse(
-        {
-          allowClientAuthOnly: true,
-          clientId: 'studio-bff',
-          clientSecret: 'auth-secret',
-          issuerUrl: 'https://keycloak.example/realms/platform',
-          name: 'auth-client',
-        },
-        { ok: false, status: 400 },
-        {
-          error: 'unauthorized_client',
-          error_description: 'Client not enabled to retrieve service account',
-        },
-      ),
-    ).toEqual({
-      mode: 'authenticated',
-      name: 'auth-client',
-      reason: 'Client not enabled to retrieve service account',
-      status: 'ok',
-    });
   });
 
   it('rejects invalid client secrets', () => {
@@ -320,9 +289,9 @@ describe('runtime-health helpers', () => {
         const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
         fetchCalls.push(url);
 
-        if (url.includes('tenant.example.test')) {
+        if (new URL(url).hostname === 'tenant.example.test') {
           return new Response(null, {
-            headers: { location: 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth' },
+            headers: { location: 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid' },
             status: 302,
           });
         }
@@ -358,7 +327,7 @@ describe('runtime-health helpers', () => {
       readRemoteStackEvidence: vi.fn(),
       resolveTenantRuntimeTargets: vi.fn(async () => ({
         source: 'registry' as const,
-        targets: [{ authIssuerUrl: 'https://issuer.example.test/realms/studio', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+        targets: [{ authClientId: 'tenant-client', authIssuerUrl: 'https://issuer.example.test/realms/studio', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
       })),
       runCapture: vi.fn(),
       runSchemaGuard: vi.fn(),
@@ -392,7 +361,7 @@ describe('runtime-health helpers', () => {
     expect(lokiQueries).toContain(
       '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"',
     );
-    expect(fetchCalls).toContain('https://issuer.example.test/realms/studio/protocol/openid-connect/auth');
+    expect(fetchCalls).toContain('https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid');
   });
 
   it('fails observability readiness when Keycloak reports an insecure cookie context', async () => {
@@ -620,7 +589,7 @@ describe('runtime-health helpers', () => {
   });
 
   it('follows the tenant authorization redirect without exposing its URL', async () => {
-    const sensitiveAuthorizationUrl = 'https://tenant-issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const sensitiveAuthorizationUrl = 'https://tenant-issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=sensitive-state&nonce=nonce&scope=openid';
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, {
@@ -645,7 +614,7 @@ describe('runtime-health helpers', () => {
       readRemoteStackEvidence: vi.fn(),
       resolveTenantRuntimeTargets: vi.fn(async () => ({
         source: 'registry' as const,
-        targets: [{ authIssuerUrl: 'https://tenant-issuer.example.test/keycloak/realms/studio', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+        targets: [{ authClientId: 'tenant-client', authIssuerUrl: 'https://tenant-issuer.example.test/keycloak/realms/studio', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
       })),
       runCapture: vi.fn(),
       runSchemaGuard: vi.fn(),
@@ -745,7 +714,7 @@ describe('runtime-health helpers', () => {
   });
 
   it('uses SVA_AUTH_ISSUER for tenant targets without an issuer or admin base URL', async () => {
-    const authorizationUrl = 'https://issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?state=sensitive-state';
+    const authorizationUrl = 'https://issuer.example.test/keycloak/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=sensitive-state&nonce=nonce&scope=openid';
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, {
@@ -757,7 +726,7 @@ describe('runtime-health helpers', () => {
     const ops = createDoctorTestOps({
       resolveTenantRuntimeTargets: vi.fn(async () => ({
         source: 'registry' as const,
-        targets: [{ authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
+        targets: [{ authClientId: 'tenant-client', authRealm: 'studio', host: 'tenant.example.test', instanceId: 'de-musterhausen' }],
       })),
     });
 

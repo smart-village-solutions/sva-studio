@@ -1,5 +1,6 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import type { DoctorCheck, RemoteRuntimeProfile, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
+import { isExpectedOidcRedirect } from './acceptance-runtime-checks-core.ts';
 import {
   buildOidcClientSecretProbes,
   evaluateOidcClientSecretProbeResponse,
@@ -262,7 +263,12 @@ const probeTenantAuthRedirects = async (
     const authorizationUrl = response.status === 302
       ? parseTenantAuthorizationUrl(location, issuerUrl)
       : null;
-    if (!authorizationUrl) {
+    const expectedRedirectUri = `${baseProtocol}//${tenantTarget.host}/auth/callback`;
+    if (!authorizationUrl || !isExpectedOidcRedirect(location, env, {
+      clientId: tenantTarget.authClientId,
+      issuerUrl: issuerUrl.href,
+      redirectUri: expectedRedirectUri,
+    })) {
       return { failedCheck: deps.toDoctorCheck('tenant-auth-proof', 'error', 'tenant_auth_redirect_failed', `Tenant-Login fuer ${tenantTarget.instanceId} liefert keinen korrekten Realm-Redirect.`, { authRealm: tenantTarget.authRealm, host: tenantTarget.host, instanceId: tenantTarget.instanceId, source: tenantTargetResolution.source, status: response.status }) };
     }
     try {

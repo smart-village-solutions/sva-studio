@@ -10,6 +10,7 @@ import {
 import { createRoutingDiagnosticsLogger, registerServerFallbackLogger } from './diagnostics.js';
 
 export type RoutingRequestDiagnosticsContext = {
+  readonly request_host?: string;
   readonly request_id?: string;
   readonly trace_id?: string;
   readonly workspace_id?: string;
@@ -32,6 +33,7 @@ export const readRoutingDiagnosticsContextFromRequest = (request: Request): Rout
       : context.workspaceId ?? 'default');
 
   return {
+    request_host: url.hostname,
     request_id: extractRequestIdFromHeaders(headers) ?? context.requestId,
     trace_id: extractTraceIdFromHeaders(headers) ?? context.traceId,
     workspace_id: workspaceId,

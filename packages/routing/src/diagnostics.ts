@@ -6,6 +6,7 @@ export type RoutingDenyReason =
   | 'method-not-allowed';
 
 type RoutingDiagnosticBase = {
+  readonly request_host?: string;
   readonly route: string;
   readonly request_id?: string;
   readonly trace_id?: string;
@@ -48,6 +49,7 @@ export type RoutingDiagnosticEvent =
       readonly reason: 'method-not-allowed';
       readonly method: string;
       readonly allow: string;
+      readonly expected_oidc_response_mode?: 'query';
     })
   | (RoutingDiagnosticBase & {
       readonly level: 'error';
@@ -122,6 +124,7 @@ const getRoutingDiagnosticMeta = (event: RoutingDiagnosticEvent): Record<string,
   route: event.route,
   reason: 'reason' in event ? event.reason : undefined,
   request_id: event.request_id,
+  request_host: event.request_host,
   trace_id: event.trace_id,
   workspace_id: event.workspace_id,
   redirect_target: 'redirect_target' in event ? event.redirect_target : undefined,
@@ -131,6 +134,7 @@ const getRoutingDiagnosticMeta = (event: RoutingDiagnosticEvent): Record<string,
   unsupported_guard: 'unsupported_guard' in event ? event.unsupported_guard : undefined,
   method: 'method' in event ? event.method : undefined,
   allow: 'allow' in event ? event.allow : undefined,
+  expected_oidc_response_mode: 'expected_oidc_response_mode' in event ? event.expected_oidc_response_mode : undefined,
   status_code: 'status_code' in event ? event.status_code : undefined,
   duration_ms: 'duration_ms' in event ? event.duration_ms : undefined,
   handler_name: 'handler_name' in event ? event.handler_name : undefined,

@@ -139,13 +139,13 @@ Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis all
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
 2. Zuerst Service-Update und Tasks innerhalb des eigenen Swarm-Zeitfensters prüfen; `PROMOTE_SWARM_CONVERGENCE_TIMEOUT` beziehungsweise `PROMOTE_INTERNAL_ERROR` verhindert jeden externen Smoke.
-3. In Production danach `health/live`, `health/ready`, den Release-Blocking-Tenant-Login-Redirect (`de-studio-sandbox`) und den Live-Digest erneut prüfen. Weitere Tenant-Redirects bleiben operativ überwacht, blockieren aber nicht. Staging verwendet den allgemeinen Runtime-Smoke ohne verpflichtenden Tenant-Scope.
+3. In Production danach `health/live`, `health/ready`, den Release-Blocking-Tenant-Login-Redirect (`de-musterhausen`) und den Live-Digest erneut prüfen. Weitere Tenant-Redirects bleiben operativ überwacht, blockieren aber nicht. Staging verwendet den allgemeinen Runtime-Smoke ohne verpflichtenden Tenant-Scope.
 4. Bleibt ein Fehler bestehen, ist der Rollout rot und wird diagnostiziert oder auf den vorherigen Digest zurückgeführt.
 5. Ein Workflow-Retry ist erst nach dokumentierter Ursache beziehungsweise bestätigtem reinen Konvergenzfehler zulässig.
 
 Fehlgeschlagene Migration-, Bootstrap- und Candidate-One-shots werden weiterhin terminal bereinigt. Vor dem Cleanup wird jedoch eine redigierte Evidenz mit Jobart, Failure-Klasse, Stack-/Task-ID, Terminalzustand und Exit-Code geschrieben. Freie Task-Messages, Container-Logs, SQL-Text, URLs, PII und Secret-Werte bleiben ausgeschlossen. Bei einer fehlgeschlagenen Migration muss vor jedem Retry zunächst der bereits erreichte Datenbank- und Ledgerstand festgestellt werden.
 
-Ein regulärer Production-Rollout ist nur erfolgreich, wenn der GitHub-Workflow grün ist, der erwartete Digest live läuft, `live` und `ready` HTTP 200 liefern und der Release-Blocking-Tenant-Smoke für `de-studio-sandbox` bestanden ist. Weitere Tenant-Smokes sind operative Signale und keine Release-Blocker.
+Ein regulärer Production-Rollout ist nur erfolgreich, wenn der GitHub-Workflow grün ist, der erwartete Digest live läuft, `live` und `ready` HTTP 200 liefern und der Release-Blocking-Tenant-Smoke für `de-musterhausen` bestanden ist. Weitere Tenant-Smokes sind operative Signale und keine Release-Blocker.
 
 Ein kontrollierter Datenbankrestore besitzt strengere Nachbedingungen als ein regulärer Rollout: Der Backup-Agent muss die statischen ACLs des Runtime-Principals rekonstruiert und datenbanknah validiert haben. Nach dem Neustart muss der Restore-Workflow zusätzlich mit dem geschützten Restore-Smoke-Zugang einen nicht degradierten `/auth/me`-Zustand und HTTP 200 für `/iam/me/permissions` nachweisen. Fehlt einer dieser Nachweise, bleibt der Restore rot und die Anwendung wird wieder stillgelegt.
 

@@ -1,7 +1,8 @@
 import type { AcceptanceProbeResult, DoctorReport, RemoteRuntimeProfile, RuntimeProfile, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
+import type { OidcAuthorizationRedirectExpectation } from './acceptance-runtime-checks-core.ts';
 import { buildPromoteFailure, PromoteContractError, writePromoteFailureRecord, type PromoteErrorCode, type PromoteEnvironment } from '../../ci/promote-result.ts';
 import { deriveInternalVerifyMaxAttempts, shouldRetryExternalSmoke, shouldRetryInternalVerifyAttempt, summarizeExternalSmokeAttempt } from './smoke-retry.ts';
-import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
+import { resolveStudioIngressContract, studioIngressContracts } from './tenant-ingress-hosts.ts';
 
 type RunHttpProbeInput = {
   expect: (response: Response, payload: unknown) => string | null;
@@ -14,7 +15,7 @@ export type RuntimeSmokeDeps = {
   buildSwarmAppTaskProbe: (env: NodeJS.ProcessEnv) => AcceptanceProbeResult;
   buildSwarmServicePresenceProbe: (env: NodeJS.ProcessEnv) => AcceptanceProbeResult;
   doctorRuntime: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorReport>;
-  isExpectedOidcRedirect: (location: string, env: NodeJS.ProcessEnv) => boolean;
+  isExpectedOidcRedirect: (location: string, env: NodeJS.ProcessEnv, expectation?: OidcAuthorizationRedirectExpectation) => boolean;
   parseRuntimeProfile: (value: RuntimeProfile | undefined) => RuntimeProfile | undefined;
   resolveTenantRuntimeTargets: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv, options?: { readonly limit?: number }) => Promise<TenantRuntimeTargetResolution>;
   runHttpProbe: (input: RunHttpProbeInput) => Promise<AcceptanceProbeResult>;
@@ -90,7 +91,19 @@ const runInternalVerify = async (deps: RuntimeSmokeDeps, runtimeProfile: RemoteR
   return { doctorReport: lastDoctorReport ?? (await deps.doctorRuntime(runtimeProfile, env)), probes: lastProbes };
 };
 
-const tenantAuthLoginProbe = (deps: RuntimeSmokeDeps, base: URL, tenantTarget: TenantRuntimeTargetResolution['targets'][number]) =>
+const tenantOidcExpectation = (
+  base: URL,
+  tenantTarget: TenantRuntimeTargetResolution['targets'][number],
+  env: NodeJS.ProcessEnv,
+): OidcAuthorizationRedirectExpectation => ({
+  clientId: tenantTarget.authClientId ?? env.SVA_AUTH_CLIENT_ID,
+  issuerUrl: tenantTarget.authIssuerUrl ?? (env.KEYCLOAK_ADMIN_BASE_URL
+    ? `${env.KEYCLOAK_ADMIN_BASE_URL.replace(/\/+$/u, '')}/realms/${tenantTarget.authRealm}`
+    : env.SVA_AUTH_ISSUER),
+  redirectUri: `${base.protocol}//${tenantTarget.host}/auth/callback`,
+});
+
+const tenantAuthLoginProbe = (deps: RuntimeSmokeDeps, base: URL, env: NodeJS.ProcessEnv, tenantTarget: TenantRuntimeTargetResolution['targets'][number]) =>
   deps.runHttpProbe({
     name: `public-auth-login-${tenantTarget.instanceId}`,
     scope: 'external',
@@ -98,15 +111,16 @@ const tenantAuthLoginProbe = (deps: RuntimeSmokeDeps, base: URL, tenantTarget: T
     expect: (response) => {
       const location = response.headers.get('location') ?? '';
       if (response.status !== 302) return `Erwartet Redirect fuer Tenant ${tenantTarget.instanceId}, erhalten ${response.status}.`;
-      if (!location.includes(`/realms/${tenantTarget.authRealm}/`)) return `Tenant-Realm stimmt nicht fuer ${tenantTarget.instanceId}: ${location}`;
-      const encodedRedirect = encodeURIComponent(`${base.protocol}//${tenantTarget.host}/auth/callback`);
-      return location.includes(`redirect_uri=${encodedRedirect}`) ? null : `Tenant-Redirect-URI stimmt nicht fuer ${tenantTarget.instanceId}: ${location}`;
+      return deps.isExpectedOidcRedirect(location, env, tenantOidcExpectation(base, tenantTarget, env))
+        ? null
+        : `Tenant-OIDC-Vertrag stimmt nicht fuer ${tenantTarget.instanceId}.`;
     },
   });
 
 const explicitIngressHostProbes = (
   deps: RuntimeSmokeDeps,
   base: URL,
+  env: NodeJS.ProcessEnv,
   tenantTargets: TenantRuntimeTargetResolution['targets'],
 ) => {
   const contract = resolveStudioIngressContract(base.toString());
@@ -115,7 +129,7 @@ const explicitIngressHostProbes = (
   const tenantTargetsByHost = new Map(tenantTargets.map((target) => [target.host, target] as const));
   const allowedHostProbes = contract.tenantIds.flatMap((instanceId) => {
     const host = `${instanceId}.${contract.rootHost}`;
-    const authRealm = tenantTargetsByHost.get(host)?.authRealm ?? instanceId;
+    const tenantTarget = tenantTargetsByHost.get(host) ?? { authRealm: instanceId, host, instanceId };
     return [
     deps.runHttpProbe({
       name: `public-ingress-https-${host}`,
@@ -130,9 +144,9 @@ const explicitIngressHostProbes = (
       expect: (response) => {
         const location = response.headers.get('location') ?? '';
         if (response.status !== 302) return `Login auf ${host} antwortet mit ${response.status}.`;
-        if (!location.includes(`/realms/${authRealm}/`)) return `Login auf ${host} verwendet nicht den erwarteten Realm ${authRealm}: ${location}`;
-        const encodedRedirect = encodeURIComponent(`${base.protocol}//${host}/auth/callback`);
-        return location.includes(`redirect_uri=${encodedRedirect}`) ? null : `Login auf ${host} behält den Rückkehr-Host nicht bei: ${location}`;
+        return deps.isExpectedOidcRedirect(location, env, tenantOidcExpectation(base, tenantTarget, env))
+          ? null
+          : `Login auf ${host} verletzt den OIDC-Redirect-Vertrag.`;
       },
     }),
     ];
@@ -165,7 +179,7 @@ const baseExternalProbes = (deps: RuntimeSmokeDeps, baseUrl: string, env: NodeJS
     target: new URL('/auth/login', baseUrl).toString(),
     expect: (response) => {
       const location = response.headers.get('location') ?? '';
-      return response.status !== 302 ? `Erwartet Redirect, erhalten ${response.status}.` : deps.isExpectedOidcRedirect(location, env) ? null : `OIDC-Redirect stimmt nicht: ${location}`;
+      return response.status !== 302 ? `Erwartet Redirect, erhalten ${response.status}.` : deps.isExpectedOidcRedirect(location, env) ? null : 'OIDC-Redirect verletzt den erwarteten Vertrag.';
     },
   }),
   deps.runHttpProbe({ name: 'public-iam-context', scope: 'external', target: new URL('/api/v1/iam/me/context', baseUrl).toString(), expect: (response, payload) => ([200, 401, 403].includes(response.status) && !(typeof payload === 'string' && payload.toLowerCase().includes('<html'))) ? null : `Unerwarteter IAM-Kontext-Status ${response.status}.` }),
@@ -178,9 +192,9 @@ const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeP
   const tenantOptions = deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env) ? undefined : { limit: 2 };
   const tenantResolution = await deps.resolveTenantRuntimeTargets(runtimeProfile, env, tenantOptions);
   const tenantTargets = deps.selectSmokeTenantTargets(runtimeProfile, tenantResolution.targets, { env, source: tenantResolution.source });
-  const tenantProbes = tenantTargets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, tenantTarget));
+  const tenantProbes = tenantTargets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, env, tenantTarget));
 
-  return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base, tenantResolution.targets), ...tenantProbes]);
+  return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base, env, tenantResolution.targets), ...tenantProbes]);
 };
 
 const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
@@ -222,8 +236,9 @@ export const isBlockingSmokeProbe = (
   if (!isExplicitIngressProbe) return true;
   if (!usesReleaseBlockingTenantScope) return true;
 
-  return probe.name.startsWith('public-ingress-https-de-studio-sandbox.')
-    || probe.name.startsWith('public-ingress-login-de-studio-sandbox.');
+  const releaseBlockingTenantId = studioIngressContracts.prod.releaseBlockingTenantId;
+  return probe.name.startsWith(`public-ingress-https-${releaseBlockingTenantId}.`)
+    || probe.name.startsWith(`public-ingress-login-${releaseBlockingTenantId}.`);
 };
 
 export const reportNonBlockingSmokeFailures = (

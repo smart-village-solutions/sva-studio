@@ -140,7 +140,7 @@ const buildLiveRuntimeEnvCheck = async (
       ? deps.toDoctorCheck('runtime-env-live', 'error', 'runtime_env_live_mismatch', 'Die effektive Container-Umgebung weicht von den erwarteten Runtime-Flags ab.', { expectedFlags, liveFlags, mismatches })
       : deps.toDoctorCheck('runtime-env-live', 'ok', 'runtime_env_live_match', 'Die effektive Container-Umgebung entspricht den erwarteten Runtime-Flags.', { channel: 'portainer-api', expectedFlags, liveFlags });
   } catch (error) {
-    return deps.toDoctorCheck('runtime-env-live', 'warn', 'runtime_env_live_unavailable', error instanceof Error ? error.message : String(error));
+    return deps.toDoctorCheck('runtime-env-live', 'error', 'runtime_env_live_unavailable', error instanceof Error ? error.message : String(error));
   }
 };
 

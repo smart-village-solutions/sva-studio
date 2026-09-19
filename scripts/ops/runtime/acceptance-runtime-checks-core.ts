@@ -109,6 +109,37 @@ const resolveRedirectUri = (env: NodeJS.ProcessEnv) => {
   return baseUrl ? new URL('/auth/callback', baseUrl).toString() : undefined;
 };
 
+const isTrustedIssuerUrl = (issuer: URL) =>
+  issuer.protocol === 'https:' &&
+  issuer.username.length === 0 &&
+  issuer.password.length === 0 &&
+  issuer.search.length === 0 &&
+  issuer.hash.length === 0;
+
+const isExpectedAuthorizationEndpoint = (authorizationUrl: URL, issuer: URL) => {
+  const expectedPath = `${issuer.pathname.replace(/\/+$/u, '')}/protocol/openid-connect/auth`;
+  return authorizationUrl.protocol === 'https:' &&
+    authorizationUrl.username.length === 0 &&
+    authorizationUrl.password.length === 0 &&
+    authorizationUrl.origin === issuer.origin &&
+    authorizationUrl.pathname === expectedPath &&
+    authorizationUrl.hash.length === 0;
+};
+
+const hasExpectedAuthorizationParameters = (
+  params: URLSearchParams,
+  expectation: Required<Pick<OidcAuthorizationRedirectExpectation, 'clientId' | 'redirectUri'>>,
+) =>
+  params.get('client_id') === expectation.clientId &&
+  params.get('response_type') === 'code' &&
+  params.get('response_mode') === 'query' &&
+  params.get('redirect_uri') === expectation.redirectUri &&
+  params.get('code_challenge_method') === 'S256' &&
+  (params.get('code_challenge')?.length ?? 0) > 0 &&
+  (params.get('state')?.length ?? 0) > 0 &&
+  (params.get('nonce')?.length ?? 0) > 0 &&
+  hasOpenIdScope(params.get('scope'));
+
 export const isExpectedOidcRedirect = (
   location: string,
   env: NodeJS.ProcessEnv,
@@ -122,28 +153,9 @@ export const isExpectedOidcRedirect = (
   try {
     const issuer = new URL(issuerValue);
     const authorizationUrl = new URL(location);
-    const expectedPath = `${issuer.pathname.replace(/\/+$/u, '')}/protocol/openid-connect/auth`;
-    const params = authorizationUrl.searchParams;
-    return issuer.protocol === 'https:'
-      && issuer.username.length === 0
-      && issuer.password.length === 0
-      && issuer.search.length === 0
-      && issuer.hash.length === 0
-      && authorizationUrl.protocol === 'https:'
-      && authorizationUrl.username.length === 0
-      && authorizationUrl.password.length === 0
-      && authorizationUrl.origin === issuer.origin
-      && authorizationUrl.pathname === expectedPath
-      && authorizationUrl.hash.length === 0
-      && params.get('client_id') === clientId
-      && params.get('response_type') === 'code'
-      && params.get('response_mode') === 'query'
-      && params.get('redirect_uri') === redirectUri
-      && params.get('code_challenge_method') === 'S256'
-      && (params.get('code_challenge')?.length ?? 0) > 0
-      && (params.get('state')?.length ?? 0) > 0
-      && (params.get('nonce')?.length ?? 0) > 0
-      && hasOpenIdScope(params.get('scope'));
+    return isTrustedIssuerUrl(issuer)
+      && isExpectedAuthorizationEndpoint(authorizationUrl, issuer)
+      && hasExpectedAuthorizationParameters(authorizationUrl.searchParams, { clientId, redirectUri });
   } catch {
     return false;
   }

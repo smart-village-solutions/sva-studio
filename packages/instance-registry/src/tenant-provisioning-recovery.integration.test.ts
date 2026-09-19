@@ -171,6 +171,7 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         status: 'failed',
         stepKey: 'login',
         idempotencyKey: 'integration-retry-reservation',
+        payloadFingerprint: 'integration-retry-reservation-payload',
         snapshotVersion: '2.0',
         desiredSnapshot: { automationMode: 'kassel-traefik-file' },
       });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1425,
+  "body": "Das Anlegen und erneute Starten einer Mandanten-Provisionierung läuft jetzt immer innerhalb einer gemeinsamen Datenbanktransaktion. Bei Fehlern bleiben keine unvollständigen Instanzen ohne wiederholbaren Provisioning-Lauf zurück."
+}

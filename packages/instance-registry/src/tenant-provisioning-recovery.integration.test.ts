@@ -137,6 +137,94 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
 };
 
 integrationDescribe('tenant provisioning recovery persistence', () => {
+  it('allows exactly one concurrent retry reservation and requires its lease to requeue', async () => {
+    assert(databaseName);
+    const retryReservationInstanceId = 'integration-retry-reservation';
+    const pool = new Pool({
+      host: process.env.POSTGRES_HOST ?? '127.0.0.1',
+      port: Number.parseInt(process.env.POSTGRES_HOST_PORT ?? '5432', 10),
+      database: databaseName,
+      user: process.env.POSTGRES_USER ?? 'sva',
+      password: process.env.POSTGRES_PASSWORD,
+      max: 4,
+    });
+    const repository = createInstanceRegistryRepository(createExecutor(pool));
+
+    try {
+      const created = await repository.createInstance({
+        instanceId: retryReservationInstanceId,
+        displayName: 'Integration Retry Reservation',
+        status: 'failed',
+        parentDomain: 'dialog.kassel.de',
+        primaryHostname: `${retryReservationInstanceId}.dialog.kassel.de`,
+        realmMode: 'existing',
+        authRealm: retryReservationInstanceId,
+        authClientId: 'sva-studio',
+        authIssuerUrl: `https://auth.example.invalid/realms/${retryReservationInstanceId}`,
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        featureFlags: {},
+      });
+      assert(created);
+      await repository.createProvisioningRun({
+        instanceId: retryReservationInstanceId,
+        operation: 'create',
+        status: 'failed',
+        stepKey: 'login',
+        idempotencyKey: 'integration-retry-reservation',
+        payloadFingerprint: 'integration-retry-reservation-payload',
+        snapshotVersion: '2.0',
+        desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      });
+
+      const reservationInput = (leaseOwner: string) => ({
+        instanceId: retryReservationInstanceId,
+        idempotencyKey: 'integration-retry-reservation',
+        leaseOwner,
+        leaseExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      });
+      const [firstReservation, secondReservation] = await Promise.all([
+        repository.reserveProvisioningRetryRun(reservationInput('retry-reservation-first')),
+        repository.reserveProvisioningRetryRun(reservationInput('retry-reservation-second')),
+      ]);
+      const reservations = [firstReservation, secondReservation].filter(
+        (reservation): reservation is NonNullable<typeof reservation> => reservation !== null
+      );
+      expect(reservations).toHaveLength(1);
+      const winner = reservations[0];
+      assert(winner);
+
+      const losingLeaseOwner =
+        winner.leaseOwner === 'retry-reservation-first'
+          ? 'retry-reservation-second'
+          : 'retry-reservation-first';
+      await expect(
+        repository.retryProvisioningRun({
+          instanceId: retryReservationInstanceId,
+          idempotencyKey: 'integration-retry-reservation',
+          leaseOwner: losingLeaseOwner,
+          deadlineAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+          desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+          keycloakReconcileRequired: false,
+        })
+      ).resolves.toBeNull();
+      await expect(
+        repository.retryProvisioningRun({
+          instanceId: retryReservationInstanceId,
+          idempotencyKey: 'integration-retry-reservation',
+          leaseOwner: winner.leaseOwner ?? '',
+          deadlineAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+          desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+          keycloakReconcileRequired: false,
+        })
+      ).resolves.toMatchObject({ status: 'requested' });
+    } finally {
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [
+        retryReservationInstanceId,
+      ]);
+      await pool.end();
+    }
+  });
+
   it('keeps correlated realm evidence through a local failure and replaces it on retry', async () => {
     assert(databaseName);
     const pool = new Pool({
@@ -277,9 +365,18 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         errorCode: 'keycloak_provisioning_failed',
       });
 
+      const retryLeaseOwner = 'integration-parent-retry-reservation';
+      const reservedRetry = await repository.reserveProvisioningRetryRun({
+        instanceId,
+        idempotencyKey: 'integration-parent',
+        leaseOwner: retryLeaseOwner,
+        leaseExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+      });
+      assert(reservedRetry);
       const retried = await repository.retryProvisioningRun({
         instanceId,
         idempotencyKey: 'integration-parent',
+        leaseOwner: retryLeaseOwner,
         deadlineAt: new Date(Date.now() + 30 * 60_000).toISOString(),
         desiredSnapshot,
         keycloakReconcileRequired: false,

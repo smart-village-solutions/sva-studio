@@ -575,6 +575,7 @@ describe('instance registry repository provisioning', () => {
       repository.retryProvisioningRun({
         instanceId: 'tenant-a',
         idempotencyKey: 'idem-1',
+        leaseOwner: 'retry-lease-1',
         actorId: 'actor-2',
         requestId: 'request-2',
         deadlineAt: '2026-01-01T01:00:00.000Z',
@@ -587,6 +588,7 @@ describe('instance registry repository provisioning', () => {
       terminalEvidence: { failedStep: 'login' },
     });
     expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain('lease_owner = $8 AND lease_expires_at > now()');
     expect(statements[0]?.text).toContain(
       "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
     );
@@ -599,6 +601,7 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain('desired_snapshot = $6::jsonb');
     expect(statements[0]?.values?.[5]).toBe('{"pluginSnapshotVersion":"1.0"}');
     expect(statements[0]?.values?.[6]).toBe(true);
+    expect(statements[0]?.values?.[7]).toBe('retry-lease-1');
   });
 
   it('preserves new-realm transition evidence when a retry does not require OIDC reconcile', async () => {
@@ -608,6 +611,7 @@ describe('instance registry repository provisioning', () => {
     await repository.retryProvisioningRun({
       instanceId: 'tenant-a',
       idempotencyKey: 'idem-1',
+      leaseOwner: 'retry-lease-2',
       deadlineAt: '2026-01-01T01:00:00.000Z',
       desiredSnapshot: { realmMode: 'new' },
       keycloakReconcileRequired: false,
@@ -617,5 +621,90 @@ describe('instance registry repository provisioning', () => {
       "WHEN $6::jsonb ->> 'realmMode' = 'new' THEN child_keycloak_run_id"
     );
     expect(statements[0]?.values?.[6]).toBe(false);
+  });
+
+  it('reserves only an unleased failed versioned create run before retry preparation', async () => {
+    const reservedRow = {
+      ...provisioningRow,
+      snapshot_version: '2.0',
+      status: 'failed',
+      lease_owner: 'retry-lease-1',
+      lease_expires_at: '2026-01-01T00:05:00.000Z',
+    };
+    const { executor, statements } = createQueuedExecutor([[reservedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.reserveProvisioningRetryRun({
+        instanceId: 'tenant-a',
+        idempotencyKey: 'idem-1',
+        leaseOwner: 'retry-lease-1',
+        leaseExpiresAt: '2026-01-01T00:05:00.000Z',
+      })
+    ).resolves.toMatchObject({ status: 'failed', leaseOwner: 'retry-lease-1' });
+
+    expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain(
+      '(lease_expires_at IS NULL OR lease_expires_at <= now())'
+    );
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'idem-1',
+      'retry-lease-1',
+      '2026-01-01T00:05:00.000Z',
+    ]);
+  });
+
+  it('releases a failed retry reservation only for its owner', async () => {
+    const releasedRow = {
+      ...provisioningRow,
+      snapshot_version: '2.0',
+      status: 'failed',
+      lease_owner: null,
+      lease_expires_at: null,
+    };
+    const { executor, statements } = createQueuedExecutor([[releasedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.releaseProvisioningRetryReservation({
+        instanceId: 'tenant-a',
+        idempotencyKey: 'idem-1',
+        leaseOwner: 'retry-lease-1',
+      })
+    ).resolves.toMatchObject({ status: 'failed', leaseOwner: undefined });
+
+    expect(statements[0]?.text).toContain("status = 'failed' AND lease_owner = $3");
+    expect(statements[0]?.values).toEqual(['tenant-a', 'idem-1', 'retry-lease-1']);
+  });
+
+  it('renews a failed retry reservation only while its owner still holds it', async () => {
+    const renewedRow = {
+      ...provisioningRow,
+      snapshot_version: '2.0',
+      status: 'failed',
+      lease_owner: 'retry-lease-1',
+      lease_expires_at: '2026-01-01T00:10:00.000Z',
+    };
+    const { executor, statements } = createQueuedExecutor([[renewedRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.renewProvisioningRetryReservation({
+        instanceId: 'tenant-a',
+        idempotencyKey: 'idem-1',
+        leaseOwner: 'retry-lease-1',
+        leaseExpiresAt: '2026-01-01T00:10:00.000Z',
+      })
+    ).resolves.toMatchObject({ status: 'failed', leaseOwner: 'retry-lease-1' });
+
+    expect(statements[0]?.text).toContain("status = 'failed'");
+    expect(statements[0]?.text).toContain('lease_owner = $3 AND lease_expires_at > now()');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'idem-1',
+      'retry-lease-1',
+      '2026-01-01T00:10:00.000Z',
+    ]);
   });
 });

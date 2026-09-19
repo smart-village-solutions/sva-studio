@@ -24,7 +24,6 @@ type ProvisioningRepository = Pick<
   | 'claimNextProvisioningRun'
   | 'renewProvisioningRunLease'
   | 'updateProvisioningRun'
-  | 'retryProvisioningRun'
   | 'appendAuditEvent'
 >;
 
@@ -172,54 +171,6 @@ RETURNING ${provisioningColumns};
   return rows[0] ? mapProvisioningRun(rows[0]) : null;
 };
 
-const retryProvisioningRun = async (
-  executor: SqlExecutor,
-  input: Parameters<ProvisioningRepository['retryProvisioningRun']>[0]
-) => {
-  const rows = await queryRows<ProvisioningRow>(
-    executor,
-    statement(
-      `
-UPDATE iam.instance_provisioning_runs
-SET status = 'requested',
-    step_key = CASE
-      WHEN $7::boolean THEN 'registry'
-      WHEN step_key IN ('registry', 'keycloak') THEN 'registry'
-      WHEN step_key = 'tls' THEN 'tls'
-      WHEN step_key IN (
-        'module_readiness', 'login', 'tenant_iam_roles', 'tenant_iam_access', 'activate'
-      ) THEN 'lifecycle'
-      ELSE step_key
-    END,
-    child_keycloak_run_id = CASE
-      WHEN $7::boolean THEN child_keycloak_run_id
-      WHEN $6::jsonb ->> 'realmMode' = 'new' THEN child_keycloak_run_id
-      WHEN step_key IN ('registry', 'keycloak') THEN NULL
-      ELSE child_keycloak_run_id
-    END,
-    lease_owner = NULL, lease_expires_at = NULL, next_attempt_at = now(),
-    deadline_at = $5::timestamptz, completed_at = NULL,
-    desired_snapshot = $6::jsonb,
-    error_code = NULL, error_message = NULL,
-    actor_id = COALESCE($3, actor_id), request_id = COALESCE($4, request_id), updated_at = now()
-WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
-  AND snapshot_version = '2.0' AND status = 'failed'
-RETURNING ${provisioningColumns};
-`,
-      [
-        input.instanceId,
-        input.idempotencyKey,
-        input.actorId ?? null,
-        input.requestId ?? null,
-        input.deadlineAt,
-        JSON.stringify(input.desiredSnapshot),
-        input.keycloakReconcileRequired,
-      ]
-    )
-  );
-  return rows[0] ? mapProvisioningRun(rows[0]) : null;
-};
-
 const appendAuditEvent = async (
   executor: SqlExecutor,
   input: Parameters<ProvisioningRepository['appendAuditEvent']>[0]
@@ -250,6 +201,5 @@ export const createProvisioningRepository = (executor: SqlExecutor): Provisionin
   claimNextProvisioningRun: (input) => claimNextProvisioningRun(executor, input),
   renewProvisioningRunLease: (input) => renewProvisioningRunLease(executor, input),
   updateProvisioningRun: (input) => updateProvisioningRun(executor, input),
-  retryProvisioningRun: (input) => retryProvisioningRun(executor, input),
   appendAuditEvent: (input) => appendAuditEvent(executor, input),
 });

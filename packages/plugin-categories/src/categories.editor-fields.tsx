@@ -1,4 +1,3 @@
-import React from 'react';
 import { Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
 
 import type { Draft, DraftErrors, DraftField, Translator } from './categories.page-support.js';

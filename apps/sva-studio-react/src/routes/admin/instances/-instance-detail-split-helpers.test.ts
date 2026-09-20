@@ -343,7 +343,7 @@ describe('instance detail split helpers', () => {
     expect(registryState.overallSummary).toBe('Tenant-IAM ist betriebsbereit.');
   });
 
-  it('selects split cockpit primary actions for activation, tenant access probing, and reconcile', () => {
+  it('selects split cockpit primary actions from server readiness', () => {
     expect(
       buildInstanceDetailCockpitModel(
         createDetailFixture({
@@ -372,6 +372,19 @@ describe('instance detail split helpers', () => {
         null
       ).primaryAction.action
     ).toBe('activate_instance');
+
+    expect(
+      buildInstanceDetailCockpitModel(
+        createDetailFixture({
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.secret.rotate', retryClass: 'conditional' },
+          },
+        }),
+        null
+      ).primaryAction.action
+    ).toBe('rotate_client_secret');
 
     expect(
       buildInstanceDetailCockpitModel(

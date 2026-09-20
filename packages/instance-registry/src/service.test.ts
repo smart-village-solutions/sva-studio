@@ -175,7 +175,7 @@ const createRepository = (
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
-    resolvePrimaryHostname: vi.fn(async () => baseInstance),
+    resolvePrimaryHostname: vi.fn(async () => null),
     listProvisioningRuns: vi.fn(async () => [latestRun]),
     listLatestProvisioningRuns: vi.fn(async () => ({ demo: latestRun })),
     listAuditEvents: vi.fn(async () => []),
@@ -690,12 +690,15 @@ describe('instance registry service facade', () => {
     expect(repository.updateInstance).not.toHaveBeenCalled();
   });
 
-  it('resumes policy reconciliation for an idempotent create retry', async () => {
+  it('resumes an idempotent create before rechecking fresh-draft readiness', async () => {
     const reconcileModuleActivationPolicies = vi.fn(async () => ({
       changedModuleIds: [],
       conflictModuleIds: [],
       unchangedModuleIds: ['news'],
     }));
+    const readKeycloakStateViaProvisioner = vi.fn(async () => {
+      throw new Error('fresh_draft_readiness_must_not_run');
+    });
     const repository = createRepository({
       getInstanceById: vi.fn(async () => idempotentInstance),
       listProvisioningRuns: vi.fn(async () => [latestRun]),
@@ -703,6 +706,7 @@ describe('instance registry service facade', () => {
     });
     const service = createInstanceRegistryService(
       createDeps(repository, {
+        readKeycloakStateViaProvisioner,
         pluginTenantLifecycleRegistry: new Map([
           ['news', { pluginId: 'news', contractRevision: 'news-1:1' }],
         ]),
@@ -754,6 +758,7 @@ describe('instance registry service facade', () => {
       })
     );
     expect(repository.createInstance).not.toHaveBeenCalled();
+    expect(readKeycloakStateViaProvisioner).not.toHaveBeenCalled();
   });
 
   it('commits the durable provisioning run without transactional module IAM follow-ups', async () => {
@@ -804,7 +809,11 @@ describe('instance registry service facade', () => {
 
   it('resolves a concurrent identical create after losing the instance insert race', async () => {
     const repository = createRepository({
-      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(idempotentInstance),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue(idempotentInstance),
       createInstance: vi.fn(async () => null),
       listProvisioningRuns: vi.fn(async () => [latestRun]),
     });
@@ -1734,7 +1743,7 @@ describe('instance registry service facade', () => {
 
   it('does not advertise automated provisioning when the environment mode is external', async () => {
     const repository = createRepository({
-      getInstanceById: vi.fn().mockResolvedValueOnce(null).mockResolvedValue(baseInstance),
+      getInstanceById: vi.fn(async () => null),
     });
     const service = createInstanceRegistryService(
       createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => false })

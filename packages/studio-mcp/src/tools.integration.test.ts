@@ -313,10 +313,55 @@ describe('Studio MCP tools', () => {
       progress: {
         currentStep: 'keycloak_plan',
         completedSteps: ['registry_created_or_idempotently_reused'],
+        idempotencyKey: expect.any(String),
       },
     });
     expect(request.mock.calls.map(([value]) => value.path)).not.toContain(
       '/api/v1/iam/instances/demo/keycloak/execute'
+    );
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('preserves a generated create key when plan loading fails after registry creation', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockRejectedValueOnce(new StudioApiError(503, { code: 'keycloak_unavailable' }, 'req-plan'));
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'example.org',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'keycloak_unavailable' },
+      progress: {
+        currentStep: 'keycloak_plan',
+        completedSteps: ['registry_created_or_idempotently_reused'],
+        idempotencyKey: expect.any(String),
+        nextAction: { actionId: 'instance.process.resume' },
+      },
+    });
+    expect(request.mock.calls[0]?.[0].idempotencyKey).toBe(
+      (response.structuredContent as { progress: { idempotencyKey: string } }).progress
+        .idempotencyKey
     );
     await Promise.all([client.close(), server.close()]);
   });

@@ -43,6 +43,7 @@ describe('authoritative create readiness', () => {
   it('fails closed before persistence when the authoritative Keycloak reader is missing', async () => {
     const repository = {
       getInstanceById: vi.fn(async () => null),
+      resolvePrimaryHostname: vi.fn(async () => null),
       createInstance: vi.fn(),
       createProvisioningRun: vi.fn(),
       appendAuditEvent: vi.fn(),
@@ -62,6 +63,7 @@ describe('authoritative create readiness', () => {
   it('does not persist anything when current Keycloak access is blocked', async () => {
     const repository = {
       getInstanceById: vi.fn(async () => null),
+      resolvePrimaryHostname: vi.fn(async () => null),
       createInstance: vi.fn(),
       createProvisioningRun: vi.fn(),
       appendAuditEvent: vi.fn(),
@@ -90,6 +92,7 @@ describe('authoritative create readiness', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ instanceId: 'other', authRealm: 'demo' }]),
       getInstanceById: vi.fn(async () => null),
+      resolvePrimaryHostname: vi.fn(async () => null),
       createInstance: vi.fn(),
       createProvisioningRun: vi.fn(),
       appendAuditEvent: vi.fn(),

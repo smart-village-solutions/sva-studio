@@ -40,11 +40,18 @@ const readState = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const createRepository = (overrides: Record<string, unknown> = {}) => ({
+  getInstanceById: vi.fn(async () => null),
+  resolvePrimaryHostname: vi.fn(async () => null),
+  listInstances: vi.fn(async () => []),
+  ...overrides,
+});
+
 describe('draft readiness', () => {
   it('keeps an absent imported-realm secret out of create blockers', async () => {
     const readiness = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner: vi.fn(async () => readState()),
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
     } as never)(input);
 
     expect(readiness.createBlockers).toEqual([]);
@@ -67,13 +74,13 @@ describe('draft readiness', () => {
     );
     const master = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner,
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
     } as never)({ ...input, authRealm: 'master' });
     const assigned = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner,
-      repository: {
+      repository: createRepository({
         listInstances: vi.fn(async () => [{ instanceId: 'other', authRealm: 'demo' }]),
-      },
+      }),
     } as never)(input);
 
     expect(master.createBlockers).toEqual(
@@ -94,6 +101,29 @@ describe('draft readiness', () => {
     );
   });
 
+  it('reports existing instance ids and primary hostnames as create blockers', async () => {
+    const readiness = await createDraftReadinessHandler({
+      readKeycloakStateViaProvisioner: vi.fn(async () => readState()),
+      repository: createRepository({
+        getInstanceById: vi.fn(async () => ({ instanceId: 'demo' })),
+        resolvePrimaryHostname: vi.fn(async () => ({ instanceId: 'other' })),
+      }),
+    } as never)(input);
+
+    expect(readiness.createBlockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          checkKey: 'registry_instance_id',
+          details: expect.objectContaining({ reasonCode: 'instance_id_already_exists' }),
+        }),
+        expect.objectContaining({
+          checkKey: 'registry_hostname',
+          details: expect.objectContaining({ reasonCode: 'primary_hostname_already_exists' }),
+        }),
+      ])
+    );
+  });
+
   it('requires manual resolution for an unowned same-named client', async () => {
     const readiness = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner: vi.fn(async () =>
@@ -107,7 +137,7 @@ describe('draft readiness', () => {
           },
         })
       ),
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
     } as never)(input);
 
     expect(readiness.createBlockers).toEqual(
@@ -132,7 +162,7 @@ describe('draft readiness', () => {
       readKeycloakStateViaProvisioner: vi.fn(async () => {
         throw error;
       }),
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
     } as never)(input);
 
     expect(JSON.stringify(readiness)).not.toContain('realm secret leaked');
@@ -159,7 +189,7 @@ describe('draft readiness', () => {
       readKeycloakStateViaProvisioner: vi.fn(async () => {
         throw providerError;
       }),
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
     } as never)(input);
 
     expect(readiness.createBlockers).toEqual(
@@ -179,7 +209,7 @@ describe('draft readiness', () => {
     const readiness = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner: stateReader,
       readKeycloakRealmCreateCapability: vi.fn(async () => true),
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
     } as never)({ ...input, realmMode: 'new' });
 
     expect(readiness.createBlockers).toEqual(
@@ -192,7 +222,7 @@ describe('draft readiness', () => {
 
   it('requires an explicit non-mutating realm-create capability for new realms', async () => {
     const newRealmInput = { ...input, realmMode: 'new' as const };
-    const repository = { listInstances: vi.fn(async () => []) };
+    const repository = createRepository();
     const stateReader = vi.fn(async () => readState({ realm: null }));
     const denied = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner: stateReader,
@@ -237,7 +267,7 @@ describe('draft readiness', () => {
   it('projects profile-specific ingress and plugin capabilities without blocking create', async () => {
     const readiness = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner: vi.fn(async () => readState()),
-      repository: { listInstances: vi.fn(async () => []) },
+      repository: createRepository(),
       isAutomatedTenantProvisioningEnabled: vi.fn(() => true),
       publishTenantIngress: vi.fn(),
       probeTenantEndpoint: vi.fn(),

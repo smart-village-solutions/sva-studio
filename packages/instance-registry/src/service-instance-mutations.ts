@@ -80,18 +80,6 @@ export const createProvisioningRequestHandler =
       deps,
       buildPrimaryHostname(effectiveInput.instanceId, effectiveInput.parentDomain)
     );
-    const readiness = await createDraftReadinessHandler(deps)(effectiveInput);
-    if (readiness.createBlockers.length > 0) {
-      throw new Error(
-        `keycloak_create_readiness_blocked:${readiness.createBlockers.map((blocker) => blocker.checkKey).join(',')}`
-      );
-    }
-    instanceRegistryServiceLogger.info('instance_create_requested', {
-      operation: 'create_instance',
-      instance_id: effectiveInput.instanceId,
-      request_id: effectiveInput.requestId,
-      actor_id: effectiveInput.actorId,
-    });
     const existing = await runInstanceRegistryStep('registry_lookup', () =>
       deps.repository.getInstanceById(effectiveInput.instanceId)
     );
@@ -105,7 +93,29 @@ export const createProvisioningRequestHandler =
       });
       return { ok: false, reason: 'already_exists' as const };
     }
-
+    const readiness = await createDraftReadinessHandler(deps)(effectiveInput);
+    if (readiness.createBlockers.length > 0) {
+      const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>
+        deps.repository.getInstanceById(effectiveInput.instanceId)
+      );
+      if (concurrentInstance) {
+        const retry = await resolveConcurrentIdempotentCreateRetry(
+          deps,
+          effectiveInput,
+          concurrentInstance
+        );
+        if (retry) return retry;
+      }
+      throw new Error(
+        `keycloak_create_readiness_blocked:${readiness.createBlockers.map((blocker) => blocker.checkKey).join(',')}`
+      );
+    }
+    instanceRegistryServiceLogger.info('instance_create_requested', {
+      operation: 'create_instance',
+      instance_id: effectiveInput.instanceId,
+      request_id: effectiveInput.requestId,
+      actor_id: effectiveInput.actorId,
+    });
     const instance = await runInstanceRegistryStep('registry_insert', () =>
       createRequestedInstance(deps, effectiveInput)
     );
@@ -193,10 +203,7 @@ export const createChangeStatusHandler =
       if (detail.tenantIamStatus?.overall.status !== 'ready') {
         blockers.push('tenant_iam_not_ready');
       }
-      if (
-        detail.assignedModules.length > 0 &&
-        detail.moduleIamStatus?.overall.status !== 'ready'
-      ) {
+      if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
         blockers.push('module_readiness_not_ready');
       }
       if (shouldExposeAutomatedProvisioning(deps, current)) {

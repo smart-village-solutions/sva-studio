@@ -426,6 +426,7 @@ export const runStudioInstanceProcess = async (
           'Den korrelierten Fehler prüfen und den Prozess ab dem ersten nicht nachgewiesenen Schritt fortsetzen.',
       },
       requestId,
+      idempotencyKey,
     });
   }
 };

@@ -251,6 +251,11 @@ export const createDraftReadinessHandler =
   async (input: CreateInstanceProvisioningInput): Promise<InstanceDraftReadiness> => {
     if (!deps.readKeycloakStateViaProvisioner) return createDependencyFailure(deps, input);
     const provisioningInput = toProvisioningInput(input, deps);
+    const primaryHostname = buildPrimaryHostname(input.instanceId, input.parentDomain);
+    const [instanceIdCollision, hostnameCollision] = await Promise.all([
+      deps.repository.getInstanceById(input.instanceId),
+      deps.repository.resolvePrimaryHostname(primaryHostname),
+    ]);
     let state: KeycloakReadState | undefined;
     let accessError: string | undefined;
     try {
@@ -284,6 +289,31 @@ export const createDraftReadinessHandler =
         ? { ...check, status: 'warning' as const }
         : check
     );
+    if (instanceIdCollision) {
+      checks.push({
+        checkKey: 'registry_instance_id',
+        title: 'Instanz-ID',
+        status: 'blocked',
+        summary: 'Die Instanz-ID ist bereits in der Registry vergeben.',
+        details: {
+          reasonCode: 'instance_id_already_exists',
+          conflictingInstanceId: instanceIdCollision.instanceId,
+        },
+      });
+    }
+    if (hostnameCollision) {
+      checks.push({
+        checkKey: 'registry_hostname',
+        title: 'Primärer Hostname',
+        status: 'blocked',
+        summary: 'Der primäre Hostname ist bereits einer Registry-Instanz zugeordnet.',
+        details: {
+          reasonCode: 'primary_hostname_already_exists',
+          conflictingInstanceId: hostnameCollision.instanceId,
+          primaryHostname,
+        },
+      });
+    }
     if (input.realmMode === 'new') {
       let capable: boolean;
       try {
@@ -340,6 +370,8 @@ export const createDraftReadinessHandler =
         check.status === 'blocked' &&
         [
           'keycloak_admin_access',
+          'registry_instance_id',
+          'registry_hostname',
           'realm_mode',
           'realm_selection',
           'realm_ownership',

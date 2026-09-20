@@ -49,10 +49,15 @@ export const reconcileInstanceIamRolesInternal = async (
       return createApiError(404, 'not_found', 'Instanz nicht gefunden.', requestId);
     }
     const latestRun = detail.latestKeycloakProvisioningRun;
+    const currentPlan = await withRegistryService((service) =>
+      service.planKeycloakProvisioning(instanceId)
+    );
     const confirmedPlanFingerprint = latestRun?.steps.find(({ stepKey }) => stepKey === 'queued')
       ?.details.confirmedPlanFingerprint;
     if (
       latestRun?.overallStatus !== 'succeeded' ||
+      currentPlan?.overallStatus !== 'ready' ||
+      currentPlan.fingerprint !== parsed.data.planFingerprint ||
       confirmedPlanFingerprint !== parsed.data.planFingerprint
     ) {
       return createApiError(

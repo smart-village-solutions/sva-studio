@@ -80,6 +80,13 @@ const readRunId = (detail: Record<string, unknown>): string | undefined => {
   return typeof firstRun.id === 'string' ? firstRun.id : undefined;
 };
 
+const readParentRun = (detail: Record<string, unknown>, runId: string): Record<string, unknown> => {
+  const latestRun = unwrap(detail.latestProvisioningRun);
+  if (latestRun.id === runId) return latestRun;
+  const runs = Array.isArray(detail.provisioningRuns) ? detail.provisioningRuns : [];
+  return unwrap(runs.find((candidate) => unwrap(candidate).id === runId));
+};
+
 const request = (client: StudioApiClient, input: StudioApiRequest) => client.request(input);
 
 const mutation = (
@@ -123,6 +130,28 @@ const waitForRun = async (
     delayMs = Math.min(delayMs * 2, 5_000);
   }
   return run;
+};
+
+const waitForParentProvisioning = async (
+  client: StudioApiClient,
+  basePath: string,
+  runId: string,
+  requestId: string,
+  timeoutMs: number
+): Promise<Record<string, unknown>> => {
+  const deadline = Date.now() + timeoutMs;
+  let detail = unwrap(await request(client, { path: basePath, requestId }));
+  let delayMs = 1_000;
+  while (Date.now() < deadline) {
+    const run = readParentRun(detail, runId);
+    if (run.completedAt !== undefined || run.status === 'failed') break;
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, Math.min(delayMs, Math.max(0, deadline - Date.now())))
+    );
+    detail = unwrap(await request(client, { path: basePath, requestId }));
+    delayMs = Math.min(delayMs * 2, 5_000);
+  }
+  return detail;
 };
 
 const assignMissingModules = async (input: {
@@ -245,12 +274,63 @@ export const runStudioInstanceProcess = async (
   let currentStep = input.mode === 'create' ? 'registry_create' : 'keycloak_plan';
 
   try {
+    let automatedParentRunId: string | undefined;
     if (input.mode === 'create') {
-      await request(
-        client,
-        mutation('/api/v1/iam/instances', input.create, requestId, idempotencyKey)
+      const created = unwrap(
+        await request(
+          client,
+          mutation('/api/v1/iam/instances', input.create, requestId, idempotencyKey)
+        )
       );
+      const parentRun = unwrap(created.latestProvisioningRun);
+      automatedParentRunId = typeof parentRun.id === 'string' ? parentRun.id : undefined;
       completedSteps.push('registry_created_or_idempotently_reused');
+    }
+
+    if (automatedParentRunId) {
+      currentStep = 'parent_provisioning';
+      const detail = await waitForParentProvisioning(
+        client,
+        basePath,
+        automatedParentRunId,
+        requestId,
+        options.timeoutMs
+      );
+      const parentRun = readParentRun(detail, automatedParentRunId);
+      if (parentRun.status === 'failed') {
+        return {
+          completed: false,
+          status: 'blocked',
+          instanceId: input.instanceId,
+          currentStep,
+          completedSteps,
+          openSteps: [currentStep],
+          doctor: parentRun,
+          nextAction: {
+            actionId: 'instance.provisioning.retry',
+            summary: 'Den automatischen Provisioning-Lauf prüfen und gezielt fortsetzen.',
+          },
+          requestId,
+        };
+      }
+      if (parentRun.completedAt === undefined) {
+        return {
+          completed: false,
+          status: 'in_progress',
+          instanceId: input.instanceId,
+          currentStep,
+          completedSteps,
+          openSteps: [currentStep],
+          doctor: parentRun,
+          nextAction: {
+            actionId: 'instance.readiness.refresh',
+            summary: 'Der automatische Provisioning-Lauf wird serverseitig weitergeführt.',
+          },
+          requestId,
+        };
+      }
+      completedSteps.push('parent_provisioning_completed');
+      return evaluateDoctor({ detail, instanceId: input.instanceId, completedSteps, requestId });
     }
 
     let runId: string | undefined = input.keycloakRunId;

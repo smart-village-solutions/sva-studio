@@ -295,6 +295,74 @@ describe('Studio MCP tools', () => {
     }
   );
 
+  it('follows the automated create run without starting a second Keycloak run', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'provisioning' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          status: 'validated',
+          assignedModules: [],
+          latestProvisioningRun: {
+            id: 'parent-run-1',
+            status: 'validated',
+            completedAt: '2026-09-21T10:00:00.000Z',
+          },
+          keycloakStatus: { realmExists: true, clientExists: true },
+          tenantIamStatus: { overall: { status: 'ready' } },
+          moduleIamStatus: { overall: { status: 'unknown' } },
+          provisioningReadiness: {
+            state: 'awaiting_activation',
+            nextAction: { action: 'instance.status.activate' },
+          },
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'awaiting_human_action',
+        currentStep: 'activation',
+        completedSteps: [
+          'registry_created_or_idempotently_reused',
+          'parent_provisioning_completed',
+        ],
+      },
+    });
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).not.toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' })
+    );
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('rejects a stale confirmed plan while preserving completed registry progress', async () => {
     const request = vi
       .fn()

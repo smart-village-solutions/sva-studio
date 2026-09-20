@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
       ],
     },
   })),
+  plan: vi.fn(async () => ({ overallStatus: 'ready', fingerprint: 'a'.repeat(64) })),
 }));
 
 vi.mock('@sva/instance-registry/http-contracts', () => ({
@@ -53,14 +54,19 @@ vi.mock('./service-token.js', () => ({ isAuthenticatedRegistryServiceRequest: ()
 vi.mock('./http.js', () => ({ ensurePlatformAccess: () => null }));
 vi.mock('./request-parsing.js', () => ({ parseRegistryRequestBody: state.parseBody }));
 vi.mock('./repository.js', () => ({
-  withRegistryService: (run: (service: { getInstanceDetail: typeof state.detail }) => unknown) =>
-    run({ getInstanceDetail: state.detail }),
+  withRegistryService: (
+    run: (service: {
+      getInstanceDetail: typeof state.detail;
+      planKeycloakProvisioning: typeof state.plan;
+    }) => unknown
+  ) => run({ getInstanceDetail: state.detail, planKeycloakProvisioning: state.plan }),
 }));
 
 describe('reconcileInstanceIamRolesInternal', () => {
   beforeEach(() => {
     state.reconcile.mockReset();
     state.detail.mockClear();
+    state.plan.mockClear();
     state.parseBody.mockClear();
   });
 
@@ -118,6 +124,21 @@ describe('reconcileInstanceIamRolesInternal', () => {
         details: { reason_code: 'keycloak_plan_fingerprint_stale' },
       },
     });
+    expect(state.reconcile).not.toHaveBeenCalled();
+  });
+
+  it('rejects role changes when the current Keycloak plan has drifted', async () => {
+    state.plan.mockResolvedValueOnce({ overallStatus: 'ready', fingerprint: 'b'.repeat(64) });
+    const { reconcileInstanceIamRolesInternal } = await import('./role-reconcile.js');
+
+    const response = await reconcileInstanceIamRolesInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/tenant-iam/roles/reconcile', {
+        method: 'POST',
+      }),
+      { user: { id: 'service-account' } } as never
+    );
+
+    expect(response.status).toBe(409);
     expect(state.reconcile).not.toHaveBeenCalled();
   });
 });

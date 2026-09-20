@@ -5,6 +5,7 @@ import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import {
+  createGetKeycloakPreflightHandler,
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
 } from './service-keycloak-readers.js';
@@ -56,6 +57,23 @@ const assertProvisioningIntentAllowed = (
   if (realmMode === 'new' && intent === 'reset_tenant_admin') {
     throw new Error('reset_tenant_admin_requires_existing_realm');
   }
+};
+
+const canRecoverMissingTenantSecret = async (
+  deps: InstanceRegistryServiceDeps,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
+  intent: ExecuteInstanceKeycloakProvisioningInput['intent']
+): Promise<boolean> => {
+  if (
+    intent !== 'rotate_client_secret' ||
+    loaded.instance.realmMode !== 'existing' ||
+    loaded.authClientSecret
+  ) {
+    return false;
+  }
+  const preflight = await createGetKeycloakPreflightHandler(deps)(loaded.instance.instanceId);
+  const blockers = preflight?.checks.filter((check) => check.status === 'blocked') ?? [];
+  return blockers.length > 0 && blockers.every((check) => check.checkKey === 'tenant_secret');
 };
 
 const loadClaimedRunInstance = async (
@@ -484,7 +502,8 @@ export const createExecuteKeycloakProvisioningHandler =
     }
 
     const currentPlan = await createPlanKeycloakProvisioningHandler(deps)(input.instanceId);
-    if (!currentPlan || currentPlan.overallStatus === 'blocked') {
+    const missingSecretRecovery = await canRecoverMissingTenantSecret(deps, loaded, input.intent);
+    if (!currentPlan || (currentPlan.overallStatus === 'blocked' && !missingSecretRecovery)) {
       throw new Error('keycloak_plan_blocked');
     }
     if (currentPlan.fingerprint !== input.planFingerprint) {
@@ -516,11 +535,16 @@ export const createReconcileKeycloakHandler =
     }
     await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
-    await ensureReconcilePreconditions(deps, loaded);
-
     const intent = resolveReconcileIntent(loaded, input.rotateClientSecret);
+    const missingSecretRecovery =
+      intent === 'rotate_client_secret' &&
+      loaded.instance.realmMode === 'existing' &&
+      !loaded.authClientSecret;
+    await ensureReconcilePreconditions(deps, loaded, {
+      allowMissingTenantSecret: missingSecretRecovery,
+    });
     const currentPlan = await createPlanKeycloakProvisioningHandler(deps)(input.instanceId);
-    if (!currentPlan || currentPlan.overallStatus === 'blocked') {
+    if (!currentPlan || (currentPlan.overallStatus === 'blocked' && !missingSecretRecovery)) {
       throw new Error('keycloak_plan_blocked');
     }
     if (currentPlan.fingerprint !== input.planFingerprint) {
@@ -530,6 +554,7 @@ export const createReconcileKeycloakHandler =
     if (
       loaded.instance.realmMode === 'existing' &&
       intent !== 'provision_admin_client' &&
+      intent !== 'rotate_client_secret' &&
       !loaded.authClientSecret
     ) {
       throw new Error('tenant_auth_client_secret_missing');

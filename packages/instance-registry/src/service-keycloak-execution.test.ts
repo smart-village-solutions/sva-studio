@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   syncTenantAdminBootstrapAccount: vi.fn(),
   failClaimedRun: vi.fn(),
   failRun: vi.fn(),
+  createGetKeycloakPreflightHandler: vi.fn(),
   createPlanKeycloakProvisioningHandler: vi.fn(),
 }));
 
@@ -29,6 +30,7 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('./service-keycloak-readers.js', () => ({
   createGetKeycloakStatusHandler: vi.fn(),
+  createGetKeycloakPreflightHandler: state.createGetKeycloakPreflightHandler,
   createPlanKeycloakProvisioningHandler: state.createPlanKeycloakProvisioningHandler,
 }));
 
@@ -111,6 +113,7 @@ describe('service-keycloak-execution', () => {
     state.syncTenantAdminBootstrapAccount.mockReset();
     state.failClaimedRun.mockReset();
     state.failRun.mockReset();
+    state.createGetKeycloakPreflightHandler.mockReset();
     state.createPlanKeycloakProvisioningHandler.mockReset();
 
     state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
@@ -127,6 +130,9 @@ describe('service-keycloak-execution', () => {
     state.syncTenantAdminBootstrapAccount.mockResolvedValue(undefined);
     state.failClaimedRun.mockResolvedValue(undefined);
     state.failRun.mockResolvedValue(undefined);
+    state.createGetKeycloakPreflightHandler.mockReturnValue(
+      vi.fn(async () => ({ overallStatus: 'ready', checks: [] }))
+    );
     state.createPlanKeycloakProvisioningHandler.mockReturnValue(
       vi.fn(async () => ({
         contractVersion: '1.0',
@@ -1035,6 +1041,92 @@ describe('service-keycloak-execution', () => {
         planFingerprint: 'b'.repeat(64),
       })
     ).rejects.toThrow('keycloak_plan_fingerprint_stale');
+    expect(state.createQueuedRun).not.toHaveBeenCalled();
+  });
+
+  it('enqueues missing-secret recovery when tenant_secret is the only blocker', async () => {
+    const { createExecuteKeycloakProvisioningHandler } =
+      await import('./service-keycloak-execution.js');
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...createLoaded(),
+      instance: { ...createLoaded().instance, realmMode: 'existing' },
+      authClientSecret: undefined,
+    });
+    state.createGetKeycloakPreflightHandler.mockReturnValue(
+      vi.fn(async () => ({
+        overallStatus: 'blocked',
+        checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
+      }))
+    );
+    state.createPlanKeycloakProvisioningHandler.mockReturnValue(
+      vi.fn(async () => ({
+        contractVersion: '1.0',
+        fingerprint: confirmedPlanFingerprint,
+        overallStatus: 'blocked',
+      }))
+    );
+    state.createQueuedRun.mockResolvedValue({ run: { id: 'run-1' } });
+    const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      getKeycloakProvisioningRun: vi
+        .fn()
+        .mockResolvedValue({ id: 'run-1', overallStatus: 'queued' }),
+    };
+
+    await expect(
+      createExecuteKeycloakProvisioningHandler({ repository: repository as never } as never)({
+        instanceId: 'instance-1',
+        idempotencyKey: 'idem-1',
+        requestId: 'request-1',
+        actorId: 'actor-1',
+        intent: 'rotate_client_secret',
+        planFingerprint: confirmedPlanFingerprint,
+      })
+    ).resolves.toEqual({ id: 'run-1', overallStatus: 'queued' });
+
+    expect(state.createQueuedRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ intent: 'rotate_client_secret' })
+    );
+  });
+
+  it('keeps missing-secret recovery blocked when another preflight blocker exists', async () => {
+    const { createExecuteKeycloakProvisioningHandler } =
+      await import('./service-keycloak-execution.js');
+    state.loadInstanceWithSecret.mockResolvedValue({
+      ...createLoaded(),
+      instance: { ...createLoaded().instance, realmMode: 'existing' },
+      authClientSecret: undefined,
+    });
+    state.createGetKeycloakPreflightHandler.mockReturnValue(
+      vi.fn(async () => ({
+        overallStatus: 'blocked',
+        checks: [
+          { checkKey: 'tenant_secret', status: 'blocked' },
+          { checkKey: 'realm', status: 'blocked' },
+        ],
+      }))
+    );
+    state.createPlanKeycloakProvisioningHandler.mockReturnValue(
+      vi.fn(async () => ({
+        contractVersion: '1.0',
+        fingerprint: confirmedPlanFingerprint,
+        overallStatus: 'blocked',
+      }))
+    );
+    const repository = { listProvisioningRuns: vi.fn().mockResolvedValue([]) };
+
+    await expect(
+      createExecuteKeycloakProvisioningHandler({ repository: repository as never } as never)({
+        instanceId: 'instance-1',
+        idempotencyKey: 'idem-1',
+        requestId: 'request-1',
+        actorId: 'actor-1',
+        intent: 'rotate_client_secret',
+        planFingerprint: confirmedPlanFingerprint,
+      })
+    ).rejects.toThrow('keycloak_plan_blocked');
     expect(state.createQueuedRun).not.toHaveBeenCalled();
   });
 

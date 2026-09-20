@@ -12,8 +12,12 @@ type LoadedInstanceForReconcile = {
 };
 
 const buildBlockingSummary = (
-  preflight: Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['getKeycloakPreflight']>>> | undefined,
-  plan: Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['planKeycloakProvisioning']>>> | undefined
+  preflight:
+    | Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['getKeycloakPreflight']>>>
+    | undefined,
+  plan:
+    | Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['planKeycloakProvisioning']>>>
+    | undefined
 ) => {
   if (preflight?.overallStatus === 'blocked') {
     return preflight.checks
@@ -30,7 +34,9 @@ const buildBlockingSummary = (
   return '';
 };
 
-export const buildProvisioningExecutionOptions = (intent: 'provision' | 'provision_admin_client' | 'rotate_client_secret' | 'reset_tenant_admin') => ({
+export const buildProvisioningExecutionOptions = (
+  intent: 'provision' | 'provision_admin_client' | 'rotate_client_secret' | 'reset_tenant_admin'
+) => ({
   reconcileAuthClient: intent !== 'reset_tenant_admin',
   reconcileTenantAdminClient: intent !== 'reset_tenant_admin',
 });
@@ -61,7 +67,8 @@ export const resolveReconcileIntent = (
 
 export const ensureReconcilePreconditions = async (
   deps: InstanceRegistryServiceDeps,
-  loaded: Parameters<typeof buildProvisioningInput>[0]
+  loaded: Parameters<typeof buildProvisioningInput>[0],
+  options: { readonly allowMissingTenantSecret?: boolean } = {}
 ): Promise<void> => {
   const provisioningInput = buildProvisioningInput(loaded);
   const [preflight, plan] = await Promise.all([
@@ -69,7 +76,25 @@ export const ensureReconcilePreconditions = async (
     deps.planKeycloakProvisioning?.(provisioningInput),
   ]);
 
-  if (preflight?.overallStatus === 'blocked' || plan?.overallStatus === 'blocked') {
+  const blockingChecks =
+    preflight?.checks.filter(
+      (check) =>
+        check.status === 'blocked' &&
+        !(options.allowMissingTenantSecret && check.checkKey === 'tenant_secret')
+    ) ?? [];
+  const missingTenantSecretIsOnlyBlocker =
+    options.allowMissingTenantSecret &&
+    preflight?.overallStatus === 'blocked' &&
+    preflight.checks.some(
+      (check) => check.status === 'blocked' && check.checkKey === 'tenant_secret'
+    ) &&
+    blockingChecks.length === 0;
+
+  if (
+    blockingChecks.length > 0 ||
+    (preflight?.overallStatus === 'blocked' && !missingTenantSecretIsOnlyBlocker) ||
+    (plan?.overallStatus === 'blocked' && !missingTenantSecretIsOnlyBlocker)
+  ) {
     throw new Error(
       `registry_or_provisioning_drift_blocked:${buildBlockingSummary(preflight, plan) || 'Provisioning blockiert.'}`
     );

@@ -27,7 +27,7 @@ import {
 } from './service-active-provisioning.js';
 import {
   createRequestedInstance,
-  resolveConcurrentIdempotentCreateRetry,
+  resolveConcurrentIdempotentCreateRetry as resolveConcurrentRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
 import { createDraftReadinessHandler } from './service-draft-readiness.js';
@@ -99,11 +99,7 @@ export const createProvisioningRequestHandler =
         deps.repository.getInstanceById(effectiveInput.instanceId)
       );
       if (concurrentInstance) {
-        const retry = await resolveConcurrentIdempotentCreateRetry(
-          deps,
-          effectiveInput,
-          concurrentInstance
-        );
+        const retry = await resolveConcurrentRetry(deps, effectiveInput, concurrentInstance);
         if (retry) return retry;
       }
       throw new Error(
@@ -124,11 +120,7 @@ export const createProvisioningRequestHandler =
         deps.repository.getInstanceById(effectiveInput.instanceId)
       );
       if (concurrentInstance) {
-        const retry = await resolveConcurrentIdempotentCreateRetry(
-          deps,
-          effectiveInput,
-          concurrentInstance
-        );
+        const retry = await resolveConcurrentRetry(deps, effectiveInput, concurrentInstance);
         if (retry) return retry;
       }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {

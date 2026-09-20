@@ -406,7 +406,7 @@ Abhängigkeiten des aktuellen Systems.
 - hält die Kalender-Repository-Fassade stabil, trennt darunter aber parametrisierte SQL-/I/O-Ownership in `public-waste-calendar-loader.server.ts` von der I/O-freien Normalisierung in `public-waste-calendar-loader.projection.ts` und der Einsatz-Zusammenführung in `public-waste-calendar-loader.assignments.ts`; die zeilenförmigen internen Datenverträge bleiben app-lokal
 - erweitert diese Runtime um den öffentlichen Reminder-Flow mit CTA im finalen Standortkontext, Formularabsendung, Double-Opt-In-Bestätigung und Abmeldeseiten unter derselben App-URL
 - persistiert Pending- und aktive Reminder-Abos sowie DOI-Aufträge über gemeinsame Waste-Repositories, ohne selbst technische Mail-Credentials zu kennen
-- wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `web-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
+- wird betrieblich über ein dediziertes Image und getrennte Portainer-Stacks für Prignitz (`web-waste-calendar`) sowie Frankfurt (Oder) (`web-waste-calendar-frankfurt-oder`) ausgerollt. Ein separater Git-Tag-Releasepfad `waste-web-vX.Y.Z` baut das Image einmal und aktualisiert beide Stacks über getrennte GitHub-Environments, ohne den normalen Studio-Releasevertrag mitzubenutzen
 - liest explizite Tour-Einsätze mit mehreren Abholorten direkt aus der Waste-Fachdatenbank, löst übergeordnete Abholorte hierarchisch auf und übernimmt Fraktionen ausschließlich aus der normalen Tourzuordnung
 - verwendet tenantgenau die abgeleitete Public-Rolle mit Leserechten und eng begrenzten Schreibrechten auf Reminder-, Double-Opt-In-, Abmelde- und Outbox-Tabellen
 

@@ -8,7 +8,7 @@ mitverändern.
 ## Zielbild
 
 - eigenes Image: `ghcr.io/smart-village-solutions/public-waste-calendar-web`
-- eigener Stack: `web-waste-calendar`
+- eigene Stacks: `web-waste-calendar` (Prignitz) und `web-waste-calendar-frankfurt-oder` (Frankfurt (Oder))
 - eigene Compose-Datei: `deploy/portainer/docker-compose.public-waste.yml`
 - eigener Workflow: `.github/workflows/public-waste-web-release.yml`
 - eigener Trigger: Git-Tag `waste-web-vX.Y.Z`
@@ -50,16 +50,19 @@ benötigt:
 Empfohlener Wert für `PUBLIC_WASTE_STACK_NAME`:
 
 - `web-waste-calendar`
+- `web-waste-calendar-frankfurt-oder`
 
 ## Normaler Releasepfad
 
 1. Änderungen für `public-waste-calendar-web` auf `main` bringen.
 2. SemVer-Tag erzeugen, zum Beispiel `waste-web-v1.2.3`.
 3. Tag pushen.
-4. GitHub baut und publiziert das Image `ghcr.io/smart-village-solutions/public-waste-calendar-web:v1.2.3`.
-5. Der Workflow aktualisiert in Portainer nur `PUBLIC_WASTE_IMAGE_TAG=v1.2.3`.
-6. Der Stack `web-waste-calendar` wird neu ausgerollt.
-7. Smoke-Checks gegen `/health/live`, `/` und `/api/public-waste/selection` bestätigen den Rollout.
+4. GitHub baut und publiziert das Image `ghcr.io/smart-village-solutions/public-waste-calendar-web:v1.2.3` genau einmal.
+5. Getrennte, an `web-waste-calendar` beziehungsweise `web-waste-calendar-frankfurt-oder` gebundene Deploy-Jobs aktualisieren in Portainer jeweils nur `PUBLIC_WASTE_IMAGE_TAG=v1.2.3` ihres Zielstacks.
+6. Die Stacks `web-waste-calendar` und `web-waste-calendar-frankfurt-oder` werden unabhängig neu ausgerollt.
+7. Jeder Zieljob prüft seine eigene Basis-URL mit `/health/live`, `/` und `/api/public-waste/selection`.
+
+Ein Fehlschlag eines Zieljobs macht den Release rot. Ein bereits erfolgreich aktualisierter anderer Zielstack bleibt unverändert auf dem neuen Tag; ein Rollback oder Retry erfolgt anschließend nur nach der Ursacheanalyse gezielt für den betroffenen Stack.
 
 ## Kanonische Domain umstellen
 
@@ -149,7 +152,8 @@ Dann in Portainer:
 ## Betriebsgrenzen
 
 - Der Waste-Web-Workflow darf weder `SVA_IMAGE_TAG` noch `SVA_IMAGE_REF` oder `SVA_IMAGE_DIGEST` verändern.
-- Der Stack `web-waste-calendar` darf nicht aus dem Studio-Stack abgeleitet werden.
+- Die Stacks `web-waste-calendar` und `web-waste-calendar-frankfurt-oder` dürfen nicht aus dem Studio-Stack abgeleitet werden.
+- Jeder Deploy-Job ist an genau ein GitHub-Environment gebunden und verwendet weder Variablen noch Secrets des anderen Zielstacks.
 - Änderungen an diesem Pfad betreffen nur die öffentliche Abfallkalender-Webversion, nicht das normale Studio.
 
 ## Referenzen

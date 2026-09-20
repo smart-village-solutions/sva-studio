@@ -241,13 +241,13 @@ Referenzen:
 
 - Die produktive Waste-Webversion besitzt einen eigenen Node-Laufzeitpfad unter `apps/public-waste-calendar-web/src/server/**`; der Build erzeugt ein gekapseltes Artefakt aus statischen Assets plus kleinem HTTP-Server.
 - Die Runtime erreicht die für ihre kanonische Studio-Instanz provisionierte Waste-Datenbank über das externe Overlay-Netz `studio_internal`; der Browser erhält zu keinem Zeitpunkt Datenbankzugang. Studio, Migration, öffentliche App und Owner verwenden tenantbezogene Rollen mit minimalen Rechten.
-- Der produktive Stack läuft getrennt vom Studio-Stack als `web-waste-calendar` mit `deploy/portainer/docker-compose.public-waste.yml`.
+- Die produktiven Stacks laufen getrennt vom Studio-Stack als `web-waste-calendar` für Prignitz und `web-waste-calendar-frankfurt-oder` für Frankfurt (Oder), beide mit `deploy/portainer/docker-compose.public-waste.yml`.
 - Das zugehörige Container-Image wird getrennt unter `ghcr.io/smart-village-solutions/public-waste-calendar-web:<tag>` gebaut; Studio-Image, Studio-Stack und Studio-Workflows bleiben unberührt.
 - Die produktive Runtime-Konfiguration nutzt führend getrennte `PUBLIC_WASTE_*`-Variablen (`PUBLIC_WASTE_IMAGE_TAG`, `PUBLIC_WASTE_PUBLIC_HOST`, `PUBLIC_WASTE_BASE_URL`, `PUBLIC_WASTE_INSTANCE_ID`, `PUBLIC_WASTE_DATABASE_URL`, `PUBLIC_WASTE_SCHEMA_NAME`).
 - Der explizite Traefik-Router leitet seinen Host aus `PUBLIC_WASTE_PUBLIC_HOST` ab und bindet den vorhandenen ACME-Resolver `default` für automatisch erneuerte Einzelzertifikate ein.
 - Die Server-Runtime validiert Datenbankname und Public-Runtime-Rolle aus `PUBLIC_WASTE_DATABASE_URL` deterministisch gegen `PUBLIC_WASTE_INSTANCE_ID` und akzeptiert ausschließlich das Schema `public`; eine tenantfremde oder privilegiertere Verbindung verhindert den Bootstrap fail-closed.
 - `PUBLIC_WASTE_CONFIG_JSON` bleibt nur als lokaler oder kompatibilitätsbezogener Fallbackpfad erhalten und ist kein produktionsführender Betriebsvertrag.
-- Der Releasepfad wird ausschließlich über Git-Tags `waste-web-vX.Y.Z` ausgelöst. GitHub baut damit nur das Waste-Web-Image und aktualisiert im Portainer-Stack ausschließlich `PUBLIC_WASTE_IMAGE_TAG`.
+- Der Releasepfad wird ausschließlich über Git-Tags `waste-web-vX.Y.Z` ausgelöst. GitHub baut damit nur ein Waste-Web-Image und aktualisiert `PUBLIC_WASTE_IMAGE_TAG` in getrennten, GitHub-environment-gebundenen Deploy-Jobs für Prignitz und Frankfurt (Oder). Ein teilweiser Fehlschlag bleibt rot; ein bereits erfolgreich aktualisierter Zielstack wird nicht automatisch zurückgerollt.
 - Rollback folgt bewusst demselben einfachen Modell: vorigen SemVer-Tag in `PUBLIC_WASTE_IMAGE_TAG` eintragen und den Stack erneut deployen.
 
 ### Noch offen (Stand heute)

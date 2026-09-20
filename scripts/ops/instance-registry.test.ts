@@ -171,6 +171,7 @@ describe('runInstanceRegistryCli', () => {
       },
     ]);
     const updateInstance = vi.fn(async () => ({ instanceId: 'demo' }));
+    const planKeycloakProvisioning = vi.fn(async () => ({ fingerprint: 'a'.repeat(64) }));
     const executeKeycloakProvisioning = vi.fn(async () => ({ id: 'run-1' }));
     const getInstanceDetail = vi.fn(async () => ({
       instanceId: 'demo',
@@ -188,7 +189,12 @@ describe('runInstanceRegistryCli', () => {
       mainserverConfigRef: null,
     }));
     const withTransactionSpy = vi.fn(async (_instanceId: string, work: (service: unknown) => Promise<unknown>) =>
-      work({ getInstanceDetail, updateInstance, executeKeycloakProvisioning })
+      work({
+        getInstanceDetail,
+        updateInstance,
+        planKeycloakProvisioning,
+        executeKeycloakProvisioning,
+      })
     );
     const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (instanceId, work) =>
       withTransactionSpy(instanceId, work as (service: unknown) => Promise<unknown>) as Promise<
@@ -217,7 +223,10 @@ describe('runInstanceRegistryCli', () => {
       parentDomain: 'current.example.test',
       authRealm: 'current-demo',
     }));
-    expect(executeKeycloakProvisioning).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'demo' }));
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
+    expect(executeKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', planFingerprint: 'a'.repeat(64) })
+    );
     consoleSpy.mockRestore();
   });
 });

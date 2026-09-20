@@ -53,11 +53,16 @@ export const runBackfillAdminClientCommand = async (
         return null;
       }
 
+      const plan = await service.planKeycloakProvisioning(instance.instanceId);
+      if (!plan) {
+        throw new Error(`keycloak_plan_missing:${instance.instanceId}`);
+      }
       const provisioningRun = await service.executeKeycloakProvisioning({
         actorId: options.actorId,
         idempotencyKey: `${options.idempotencyKey}:${instance.instanceId}:provision-admin-client`,
         instanceId: instance.instanceId,
         intent: 'provision_admin_client',
+        planFingerprint: plan.fingerprint,
         requestId: toRequestId(options.idempotencyKey),
       });
 

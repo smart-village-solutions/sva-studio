@@ -1,10 +1,12 @@
 import { strict as assert } from 'node:assert';
 
+import type { KeycloakTenantPlan } from '@sva/core';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-execution.js';
+import { createPlanKeycloakProvisioningHandler } from './service-keycloak-readers.js';
 import { createInstanceRegistryService } from './service.js';
 import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -516,6 +518,7 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
     const syncTenantAdminBootstrapAccount = vi.fn(async () => {
       throw new Error('local_admin_sync_failed');
     });
+    let confirmedWorkerPlan: KeycloakTenantPlan | undefined;
     const baseDeps = {
       invalidateHost: () => undefined,
       readPluginOidcClientRequirements: () => [],
@@ -534,13 +537,10 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         checkedAt: new Date().toISOString(),
         checks: [],
       }),
-      planKeycloakProvisioning: async () => ({
-        contractVersion: '1.0' as const,
-        fingerprint: 'a'.repeat(64),
-        overallStatus: 'ready',
-        driftSummary: 'ready',
-        steps: [],
-      }),
+      planKeycloakProvisioning: async () => {
+        assert(confirmedWorkerPlan);
+        return confirmedWorkerPlan;
+      },
       syncTenantAdminBootstrapAccount,
       listProvisioningRealmAssignments: async () => [{ instanceId, authRealm: instanceId }],
     } satisfies Omit<InstanceRegistryServiceDeps, 'repository' | 'withInstanceProvisioningLock'>;
@@ -615,6 +615,9 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       const parentAfterQueue = (await repository.listProvisioningRuns(instanceId))[0];
       assert(parentAfterQueue?.childKeycloakRunId);
       const originalChildRunId = parentAfterQueue.childKeycloakRunId;
+      confirmedWorkerPlan =
+        (await createPlanKeycloakProvisioningHandler(deps)(instanceId)) ?? undefined;
+      assert(confirmedWorkerPlan);
 
       await processNextQueuedKeycloakProvisioningRun(deps);
 

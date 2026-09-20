@@ -382,6 +382,30 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('saves registry configuration while the optional Keycloak plan is unavailable', async () => {
+    const updateInstance = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        updateInstance,
+        selectedInstance: createSelectedInstance({ keycloakPlan: undefined }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    await activateTab('Einstellungen');
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
+      target: { value: 'Demo ohne Plan' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
+
+    await waitFor(() =>
+      expect(updateInstance).toHaveBeenCalledWith(
+        'demo',
+        expect.objectContaining({ displayName: 'Demo ohne Plan' })
+      )
+    );
+  });
+
   it('offers a retry action for a failed automated Kassel create run', async () => {
     const retryTenantProvisioning = vi.fn().mockResolvedValue(true);
     useInstancesMock.mockReturnValue(

@@ -17,9 +17,11 @@ import { SearchableSelect } from '../../../components/ui/searchable-select';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import {
+  asIamError,
   getInstanceDraftReadiness,
   listInstanceRealmCatalog,
   type CreateInstancePayload,
+  type IamHttpError,
 } from '../../../lib/iam-api';
 import { useStudioBranding } from '../../../providers/studio-branding-provider';
 import { FieldHelp } from './-field-help';
@@ -118,6 +120,7 @@ export const InstanceCreatePage = () => {
   const [realmCatalog, setRealmCatalog] = React.useState<readonly IamInstanceRealmCatalogEntry[]>(
     []
   );
+  const [realmCatalogError, setRealmCatalogError] = React.useState<IamHttpError | null>(null);
   const [draftReadiness, setDraftReadiness] = React.useState<IamInstanceDraftReadiness | null>(
     null
   );
@@ -143,16 +146,20 @@ export const InstanceCreatePage = () => {
   React.useEffect(() => {
     if (formValues.realmMode !== 'existing') {
       setRealmCatalog([]);
+      setRealmCatalogError(null);
       return;
     }
     let current = true;
     const timer = globalThis.setTimeout(() => {
       void listInstanceRealmCatalog({ search: realmSearch.trim() || undefined, pageSize: 100 })
         .then((catalog) => {
-          if (current) setRealmCatalog(catalog.data);
+          if (current) {
+            setRealmCatalog(catalog.data);
+            setRealmCatalogError(null);
+          }
         })
-        .catch(() => {
-          if (current) setRealmCatalog([]);
+        .catch((error: unknown) => {
+          if (current) setRealmCatalogError(asIamError(error));
         });
     }, 200);
     return () => {
@@ -514,6 +521,12 @@ export const InstanceCreatePage = () => {
                       }
                     />
                     {renderFieldError('instance-auth-realm')}
+                    {realmCatalogError ? (
+                      <StudioPersistentFormError
+                        message={getErrorMessage(realmCatalogError)}
+                        details={<IamRuntimeDiagnosticDetails error={realmCatalogError} />}
+                      />
+                    ) : null}
                   </div>
                   <details className="rounded-lg border border-border p-3">
                     <summary className="cursor-pointer text-sm font-medium text-foreground">

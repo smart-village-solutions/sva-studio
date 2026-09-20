@@ -287,7 +287,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   const onUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedInstance || !detailFormValues || !selectedInstance.keycloakPlan) {
+    if (!selectedInstance || !detailFormValues) {
       return;
     }
 

@@ -21,6 +21,7 @@ vi.mock('../../../hooks/use-instances', () => ({
 }));
 
 vi.mock('../../../lib/iam-api', () => ({
+  asIamError: (error: unknown) => error,
   getInstanceDraftReadiness: (...args: unknown[]) => getDraftReadinessMock(...args),
   listInstanceRealmCatalog: (...args: unknown[]) => listRealmCatalogMock(...args),
 }));
@@ -187,6 +188,25 @@ describe('InstanceCreatePage', () => {
     );
     expect(screen.queryByLabelText('Tenant-Client-Secret')).toBeNull();
     expect(screen.queryByLabelText('Tenant-Admin-Client-Secret')).toBeNull();
+  });
+
+  it('surfaces realm catalog failures instead of presenting an empty result', async () => {
+    listRealmCatalogMock.mockRejectedValue({
+      code: 'keycloak_unavailable',
+      requestId: 'req-realm-catalog',
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
+    fillBasics('existing-demo');
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Keycloak konnte nicht erreicht oder nicht abgeglichen werden.'
+    );
+    expect(screen.getByRole('alert').textContent).toContain('Request-ID: req-realm-catalog');
   });
 
   it('keeps creation disabled and renders grouped authoritative blockers', async () => {

@@ -15,7 +15,7 @@ import type { ParentStep } from './tenant-provisioning-state.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
 import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
-import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import { reconcileProvisioningModuleActivationPolicies } from './service-module-activation.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -135,14 +135,7 @@ const lifecycleStep: StepHandler = async ({
   assertExecutionActive,
 }) => {
   assertExecutionActive();
-  const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
-  if (pluginSnapshot.lifecycles.length > 0) {
-    await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-      instanceId: instance.instanceId,
-      actorId: run.actorId,
-      requestId: run.requestId,
-    });
-  }
+  await reconcileProvisioningModuleActivationPolicies(deps, run);
   assertExecutionActive();
   return continueAt(deps, run, workerId, 'ingress', now);
 };

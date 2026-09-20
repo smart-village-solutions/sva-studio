@@ -5,6 +5,8 @@ import {
   resolveManagedModuleContracts,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import type { InstanceProvisioningRun } from '@sva/core';
+import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 
 const emptyResult = {
   changedModuleIds: [] as readonly string[],
@@ -15,10 +17,17 @@ const emptyResult = {
 export const createReconcileModuleActivationPoliciesHandler =
   (
     deps: InstanceRegistryServiceDeps,
-    options: Readonly<{ forceIamSync?: boolean; deferIamSync?: boolean }> = {}
+    options: Readonly<{
+      forceIamSync?: boolean;
+      deferIamSync?: boolean;
+      policySnapshot?: ReturnType<
+        NonNullable<InstanceRegistryServiceDeps['readModuleActivationPolicySnapshot']>
+      >;
+      lifecycleRegistry?: InstanceRegistryServiceDeps['pluginTenantLifecycleRegistry'];
+    }> = {}
   ): InstanceRegistryService['reconcileModuleActivationPolicies'] =>
   async ({ instanceId, actorId, requestId }) => {
-    const snapshot = deps.readModuleActivationPolicySnapshot?.();
+    const snapshot = options.policySnapshot ?? deps.readModuleActivationPolicySnapshot?.();
     if (!snapshot || !snapshot.revision) {
       return emptyResult;
     }
@@ -51,7 +60,9 @@ export const createReconcileModuleActivationPoliciesHandler =
         });
     const lifecycleIntents = await deps.repository.persistPluginTenantLifecycleReconcileIntents({
       instanceId,
-      lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
+      lifecycles: [
+        ...((options.lifecycleRegistry ?? deps.pluginTenantLifecycleRegistry)?.values() ?? []),
+      ],
       forcePluginIds: result.changedModuleIds,
     });
     await invalidateInstancePermissionSnapshots(
@@ -77,3 +88,25 @@ export const createReconcileModuleActivationPoliciesHandler =
 
     return result;
   };
+
+export const reconcileProvisioningModuleActivationPolicies = async (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceProvisioningRun
+) => {
+  const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
+  if (pluginSnapshot.lifecycles.length === 0) return emptyResult;
+  return createReconcileModuleActivationPoliciesHandler(deps, {
+    forceIamSync: true,
+    policySnapshot: {
+      revision: `provisioning:${run.id}`,
+      modules: pluginSnapshot.activationPolicies,
+    },
+    lifecycleRegistry: new Map(
+      pluginSnapshot.lifecycles.map((lifecycle) => [lifecycle.pluginId, lifecycle])
+    ),
+  })({
+    instanceId: run.instanceId,
+    actorId: run.actorId,
+    requestId: run.requestId,
+  });
+};

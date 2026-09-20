@@ -125,6 +125,7 @@ export const InstanceCreatePage = () => {
     null
   );
   const [readinessLoading, setReadinessLoading] = React.useState(false);
+  const readinessRequestRef = React.useRef(0);
   const errorSummaryRef = React.useRef<HTMLDivElement | null>(null);
   const saveFeedback = useStudioSaveFeedback();
 
@@ -137,6 +138,7 @@ export const InstanceCreatePage = () => {
   }, []);
 
   const updateForm = (updater: (current: CreateFormValues) => CreateFormValues) => {
+    readinessRequestRef.current += 1;
     saveFeedback.markDirty();
     setFormValues((current) => updater(current));
     setStepErrors([]);
@@ -169,19 +171,20 @@ export const InstanceCreatePage = () => {
   }, [formValues.realmMode, realmSearch]);
 
   const refreshDraftReadiness = React.useCallback(async () => {
+    const requestSequence = ++readinessRequestRef.current;
     const validationMessages = getCreateStepValidationMessages('review', formValues);
     if (validationMessages.length > 0) {
-      setDraftReadiness(null);
+      if (requestSequence === readinessRequestRef.current) setDraftReadiness(null);
       return;
     }
     setReadinessLoading(true);
     try {
       const response = await getInstanceDraftReadiness(buildCreatePayload(formValues));
-      setDraftReadiness(response.data);
+      if (requestSequence === readinessRequestRef.current) setDraftReadiness(response.data);
     } catch {
-      setDraftReadiness(null);
+      if (requestSequence === readinessRequestRef.current) setDraftReadiness(null);
     } finally {
-      setReadinessLoading(false);
+      if (requestSequence === readinessRequestRef.current) setReadinessLoading(false);
     }
   }, [formValues]);
 

@@ -504,6 +504,7 @@ describe('Studio MCP tools', () => {
         instanceId: 'demo',
         moduleIds: ['news'],
         keycloakRunId: 'run-1',
+        planFingerprint: confirmedPlanFingerprint,
         idempotencyKey: 'x'.repeat(200),
       },
     });
@@ -604,7 +605,12 @@ describe('Studio MCP tools', () => {
 
     const response = await client.callTool({
       name: 'studio_instance_process',
-      arguments: { mode: 'adapt', instanceId: 'demo', keycloakRunId: 'run-1' },
+      arguments: {
+        mode: 'adapt',
+        instanceId: 'demo',
+        keycloakRunId: 'run-1',
+        planFingerprint: confirmedPlanFingerprint,
+      },
     });
 
     expect(response.structuredContent).toMatchObject({
@@ -630,7 +636,12 @@ describe('Studio MCP tools', () => {
 
     const response = await client.callTool({
       name: 'studio_instance_process',
-      arguments: { mode: 'adapt', instanceId: 'demo', keycloakRunId: 'run-1' },
+      arguments: {
+        mode: 'adapt',
+        instanceId: 'demo',
+        keycloakRunId: 'run-1',
+        planFingerprint: confirmedPlanFingerprint,
+      },
     });
 
     expect(response.structuredContent).toMatchObject({
@@ -673,7 +684,12 @@ describe('Studio MCP tools', () => {
 
     const response = await client.callTool({
       name: 'studio_instance_process',
-      arguments: { mode: 'adapt', instanceId: 'demo', keycloakRunId: 'run-1' },
+      arguments: {
+        mode: 'adapt',
+        instanceId: 'demo',
+        keycloakRunId: 'run-1',
+        planFingerprint: confirmedPlanFingerprint,
+      },
     });
 
     expect(response.structuredContent).toMatchObject({
@@ -717,6 +733,7 @@ describe('Studio MCP tools', () => {
         instanceId: 'demo',
         moduleIds: ['news'],
         keycloakRunId: 'run-1',
+        planFingerprint: confirmedPlanFingerprint,
       },
     });
 
@@ -921,7 +938,7 @@ describe('Studio MCP tools', () => {
     });
     await client.callTool({
       name: 'studio_instance_iam_roles_reconcile',
-      arguments: { instanceId: 'demo' },
+      arguments: { instanceId: 'demo', planFingerprint: confirmedPlanFingerprint },
     });
     await client.callTool({
       name: 'studio_instance_admin_bootstrap',
@@ -1003,7 +1020,7 @@ describe('Studio MCP tools', () => {
       14,
       expect.objectContaining({
         path: '/api/v1/iam/instances/demo/tenant-iam/roles/reconcile',
-        body: {},
+        body: { planFingerprint: confirmedPlanFingerprint },
       })
     );
     expect(request).toHaveBeenNthCalledWith(

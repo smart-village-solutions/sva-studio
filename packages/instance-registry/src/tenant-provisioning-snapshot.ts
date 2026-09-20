@@ -1,4 +1,8 @@
-import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+import type {
+  InstanceProvisioningRun,
+  InstanceRegistryRecord,
+  TenantModuleActivationPolicyDescriptor,
+} from '@sva/core';
 
 import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
@@ -18,6 +22,7 @@ type PluginOidcClients = NonNullable<
 type TenantProvisioningPluginSnapshot = Readonly<{
   lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
   oidcClients: PluginOidcClients;
+  activationPolicies: readonly TenantModuleActivationPolicyDescriptor[];
 }>;
 
 const copyLifecycle = (lifecycle: ProvisioningPluginTenantLifecycleContract) => ({
@@ -32,11 +37,14 @@ const copyOidcClient = (client: PluginOidcClients[number]) => ({
   ...('webOrigins' in client ? { webOrigins: [...client.webOrigins] } : {}),
 });
 
+const copyActivationPolicy = (policy: TenantModuleActivationPolicyDescriptor) => ({ ...policy });
+
 export const buildConfiguredTenantProvisioningPluginSnapshot = (
   deps: InstanceRegistryServiceDeps,
   assignedModuleIds: readonly string[]
 ): TenantProvisioningPluginSnapshot => {
   const assignedModules = new Set(assignedModuleIds);
+  const activationPolicies = deps.readModuleActivationPolicySnapshot?.().modules ?? [];
   return {
     lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])]
       .filter(({ pluginId }) => assignedModules.has(pluginId))
@@ -44,6 +52,9 @@ export const buildConfiguredTenantProvisioningPluginSnapshot = (
     oidcClients: [...(deps.readPluginOidcClientRequirements?.() ?? [])]
       .filter(({ pluginId }) => assignedModules.has(pluginId))
       .sort((left, right) => left.clientId.localeCompare(right.clientId)),
+    activationPolicies: activationPolicies
+      .filter(({ moduleId }) => assignedModules.has(moduleId))
+      .sort((left, right) => left.moduleId.localeCompare(right.moduleId)),
   };
 };
 
@@ -102,6 +113,15 @@ const isPluginOidcClient = (value: unknown): value is PluginOidcClients[number] 
       Array.isArray(value.webOrigins) &&
       value.webOrigins.every((origin) => typeof origin === 'string')));
 
+const isActivationPolicy = (value: unknown): value is TenantModuleActivationPolicyDescriptor =>
+  isRecord(value) &&
+  typeof value.moduleId === 'string' &&
+  ['optional', 'automatic', 'required'].includes(String(value.activationPolicy)) &&
+  typeof value.manifestVersion === 'number' &&
+  Number.isInteger(value.manifestVersion) &&
+  typeof value.policyRevision === 'string' &&
+  value.policyRevision.length > 0;
+
 const registryConfiguration = (instance: InstanceRegistryRecord) => ({
   instanceId: instance.instanceId,
   displayName: instance.displayName,
@@ -131,7 +151,11 @@ export const buildTenantProvisioningSnapshot = (
   input: CreateInstanceProvisioningInput,
   payloadFingerprint: string,
   automationMode: 'external' | 'kassel-traefik-file' = 'external',
-  pluginSnapshot: TenantProvisioningPluginSnapshot = { lifecycles: [], oidcClients: [] }
+  pluginSnapshot: TenantProvisioningPluginSnapshot = {
+    lifecycles: [],
+    oidcClients: [],
+    activationPolicies: [],
+  }
 ) => ({
   ...registryConfiguration(instance),
   registryFingerprint: buildPayloadFingerprint(registryFingerprintConfiguration(instance)),
@@ -144,6 +168,7 @@ export const buildTenantProvisioningSnapshot = (
   pluginSnapshotVersion: '1.0',
   pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
   pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
+  pluginActivationPolicies: pluginSnapshot.activationPolicies.map(copyActivationPolicy),
   payloadFingerprint,
 });
 
@@ -152,6 +177,7 @@ export const readTenantProvisioningPluginSnapshot = (
 ): Readonly<{
   lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
   oidcClients: PluginOidcClients;
+  activationPolicies: readonly TenantModuleActivationPolicyDescriptor[];
 }> => {
   const snapshot = run.desiredSnapshot;
   if (
@@ -164,13 +190,24 @@ export const readTenantProvisioningPluginSnapshot = (
     !Array.isArray(snapshot.pluginOidcClients) ||
     !snapshot.pluginOidcClients.every(isPluginOidcClient) ||
     new Set(snapshot.pluginOidcClients.map(({ clientId }) => clientId)).size !==
-      snapshot.pluginOidcClients.length
+      snapshot.pluginOidcClients.length ||
+    !Array.isArray(snapshot.pluginActivationPolicies) ||
+    !snapshot.pluginActivationPolicies.every(isActivationPolicy) ||
+    new Set(snapshot.pluginActivationPolicies.map(({ moduleId }) => moduleId)).size !==
+      snapshot.pluginActivationPolicies.length
   ) {
+    throw new Error('provisioning_plugin_snapshot_missing');
+  }
+  const activationPolicyModuleIds = new Set(
+    snapshot.pluginActivationPolicies.map(({ moduleId }) => moduleId)
+  );
+  if (snapshot.pluginLifecycles.some(({ pluginId }) => !activationPolicyModuleIds.has(pluginId))) {
     throw new Error('provisioning_plugin_snapshot_missing');
   }
   return {
     lifecycles: snapshot.pluginLifecycles,
     oidcClients: snapshot.pluginOidcClients,
+    activationPolicies: snapshot.pluginActivationPolicies,
   };
 };
 
@@ -216,6 +253,7 @@ export const rebaseTenantProvisioningPluginSnapshot = (
       ...run.desiredSnapshot,
       pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
       pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
+      pluginActivationPolicies: pluginSnapshot.activationPolicies.map(copyActivationPolicy),
     },
     lifecycles: pluginSnapshot.lifecycles,
     keycloakReconcileRequired:

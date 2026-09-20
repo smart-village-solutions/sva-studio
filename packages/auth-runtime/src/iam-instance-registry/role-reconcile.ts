@@ -1,7 +1,12 @@
 import { readDetailInstanceId } from '@sva/instance-registry/http-contracts';
 import { getWorkspaceContext } from '@sva/server-runtime';
+import { z } from 'zod';
 
-import { asApiItem, createApiError, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
+import {
+  asApiItem,
+  createApiError,
+  requireIdempotencyKey,
+} from '../iam-account-management/api-helpers.js';
 import { validateCsrf as validateSessionCsrf } from '../iam-account-management/csrf.js';
 import { runRoleCatalogReconciliation } from '../iam-account-management/reconcile-core.js';
 import { mapRoleSyncErrorCode } from '../iam-account-management/role-audit.js';
@@ -9,6 +14,12 @@ import { jsonResponse } from '../db.js';
 import type { RegistryRequestContext } from './auth-context.js';
 import { isAuthenticatedRegistryServiceRequest } from './service-token.js';
 import { ensurePlatformAccess } from './http.js';
+import { parseRegistryRequestBody } from './request-parsing.js';
+import { withRegistryService } from './repository.js';
+
+const reconcileTenantIamRolesSchema = z
+  .object({ planFingerprint: z.string().regex(/^[a-f0-9]{64}$/) })
+  .strict();
 
 export const reconcileInstanceIamRolesInternal = async (
   request: Request,
@@ -27,8 +38,31 @@ export const reconcileInstanceIamRolesInternal = async (
   }
   const idempotency = requireIdempotencyKey(request, requestId);
   if ('error' in idempotency) return idempotency.error;
+  const parsed = await parseRegistryRequestBody(request, reconcileTenantIamRolesSchema);
+  if (!parsed.ok) {
+    return createApiError(400, 'invalid_request', parsed.message, requestId);
+  }
 
   try {
+    const detail = await withRegistryService((service) => service.getInstanceDetail(instanceId));
+    if (!detail) {
+      return createApiError(404, 'not_found', 'Instanz nicht gefunden.', requestId);
+    }
+    const latestRun = detail.latestKeycloakProvisioningRun;
+    const confirmedPlanFingerprint = latestRun?.steps.find(({ stepKey }) => stepKey === 'queued')
+      ?.details.confirmedPlanFingerprint;
+    if (
+      latestRun?.overallStatus !== 'succeeded' ||
+      confirmedPlanFingerprint !== parsed.data.planFingerprint
+    ) {
+      return createApiError(
+        409,
+        'conflict',
+        'Der bestätigte Keycloak-Plan ist nicht mehr aktuell.',
+        requestId,
+        { reason_code: 'keycloak_plan_fingerprint_stale' }
+      );
+    }
     const report = await runRoleCatalogReconciliation({ instanceId, requestId });
     return jsonResponse(200, asApiItem(report, requestId));
   } catch (error) {

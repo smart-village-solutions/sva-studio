@@ -38,6 +38,14 @@ const pluginSnapshot = {
     },
   ],
   oidcClients: [],
+  activationPolicies: [
+    {
+      moduleId: 'ssf',
+      activationPolicy: 'automatic' as const,
+      manifestVersion: 1,
+      policyRevision: 'ssf-1',
+    },
+  ],
 };
 
 const instance: InstanceRegistryRecord = {
@@ -111,6 +119,17 @@ const createHarness = () => {
   let currentInstance = instance;
   let keycloakStatus: InstanceKeycloakProvisioningRun['overallStatus'] = 'planned';
   let readiness: 'ready' | 'pending' | 'blocked' = 'pending';
+  let activationPolicies = {
+    revision: 'catalog-1',
+    modules: [
+      {
+        moduleId: 'ssf',
+        activationPolicy: 'automatic' as const,
+        manifestVersion: 1,
+        policyRevision: 'ssf-1',
+      },
+    ],
+  };
 
   const repository = {
     claimNextProvisioningRun: vi.fn(async ({ workerId, leaseExpiresAt }) => {
@@ -207,17 +226,7 @@ const createHarness = () => {
     pluginTenantLifecycleRegistry: new Map([
       ['ssf', { pluginId: 'ssf', contractRevision: 'ssf-1:contract' }],
     ]),
-    readModuleActivationPolicySnapshot: () => ({
-      revision: 'catalog-1',
-      modules: [
-        {
-          moduleId: 'ssf',
-          activationPolicy: 'automatic',
-          manifestVersion: 1,
-          policyRevision: 'ssf-1',
-        },
-      ],
-    }),
+    readModuleActivationPolicySnapshot: () => activationPolicies,
     readPluginOidcClientRequirements: vi.fn(() => []),
     publishTenantIngress: vi.fn(async () => ({
       routerName: 'studio-tenant-tenant-a',
@@ -257,6 +266,21 @@ const createHarness = () => {
     },
     setReadiness: (status: typeof readiness) => {
       readiness = status;
+    },
+    addLiveActivationPolicy: () => {
+      activationPolicies = {
+        ...activationPolicies,
+        revision: 'catalog-2',
+        modules: [
+          ...activationPolicies.modules,
+          {
+            moduleId: 'news',
+            activationPolicy: 'automatic',
+            manifestVersion: 1,
+            policyRevision: 'news-1',
+          },
+        ],
+      };
     },
     changeInstance: (changes: Partial<InstanceRegistryRecord>) => {
       currentInstance = { ...currentInstance, ...changes };
@@ -383,9 +407,14 @@ describe('tenant provisioning parent orchestrator', () => {
     );
     harness.setKeycloakStatus('succeeded');
     await iterate();
+    harness.addLiveActivationPolicy();
     await iterate();
     expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
-      expect.objectContaining({ instanceId: 'tenant-a', reconcileId: 'catalog-1' })
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        reconcileId: 'provisioning:00000000-0000-4000-8000-000000000001',
+        policies: [expect.objectContaining({ moduleId: 'ssf' })],
+      })
     );
     expect(harness.repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'tenant-a' })

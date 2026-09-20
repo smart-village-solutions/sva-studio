@@ -147,6 +147,9 @@ describe('service-provisioning', () => {
           pluginSnapshotVersion: '1.0',
           pluginLifecycles: [lifecycle],
           pluginOidcClients: [oidcClient],
+          pluginActivationPolicies: [
+            expect.objectContaining({ moduleId: 'ssf', policyRevision: 'ssf-1' }),
+          ],
         }),
       })
     );

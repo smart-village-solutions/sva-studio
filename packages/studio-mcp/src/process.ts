@@ -363,6 +363,26 @@ export const runStudioInstanceProcess = async (
     }
     completedSteps.push('keycloak_provisioned');
 
+    if (!input.planFingerprint) {
+      currentStep = 'keycloak_plan_confirmation';
+      return {
+        completed: false,
+        status: 'awaiting_human_action',
+        instanceId: input.instanceId,
+        currentStep,
+        completedSteps,
+        openSteps: ['keycloak_plan_confirmation', 'tenant_iam_roles_reconcile'],
+        doctor: { keycloakRun: run },
+        nextAction: {
+          actionId: 'instance.keycloak.plan.confirm',
+          summary:
+            'Den am abgeschlossenen Keycloak-Lauf bestätigten Plan-Fingerprint für die Rollenänderung erneut übergeben.',
+        },
+        requestId,
+        idempotencyKey,
+      };
+    }
+
     currentStep = 'modules_and_iam';
     if (
       await assignMissingModules({
@@ -382,7 +402,7 @@ export const runStudioInstanceProcess = async (
         client,
         mutation(
           `${basePath}/tenant-iam/roles/reconcile`,
-          {},
+          { planFingerprint: input.planFingerprint },
           requestId,
           deriveIdempotencyKey(idempotencyKey, 'roles-reconcile')
         )

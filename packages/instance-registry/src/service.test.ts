@@ -103,6 +103,14 @@ const kasselPluginSnapshot = {
   pluginSnapshotVersion: '1.0',
   pluginLifecycles: [currentNewsLifecycle],
   pluginOidcClients: [],
+  pluginActivationPolicies: [
+    {
+      moduleId: 'news',
+      activationPolicy: 'automatic' as const,
+      manifestVersion: 1,
+      policyRevision: 'news-1',
+    },
+  ],
 };
 
 const latestRunWithAuthSecret = {

@@ -597,6 +597,14 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
             },
           ],
           oidcClients: [],
+          activationPolicies: [
+            {
+              moduleId: 'integration-plugin',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: '1',
+            },
+          ],
         }
       );
       await repository.createProvisioningRun({

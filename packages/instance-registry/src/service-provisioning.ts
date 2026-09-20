@@ -33,7 +33,7 @@ export const createProvisioningArtifacts = async (
             .filter((module) => resolveTenantModuleEffectiveActivation(module))
             .map(({ moduleId }) => moduleId)
         )
-      : { lifecycles: [], oidcClients: [] };
+      : { lifecycles: [], oidcClients: [], activationPolicies: [] };
   const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
     repository.createProvisioningRun({
       instanceId: instance.instanceId,

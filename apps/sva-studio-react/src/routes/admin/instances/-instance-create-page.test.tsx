@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -235,6 +235,56 @@ describe('InstanceCreatePage', () => {
 
     await waitFor(() => expect(screen.getByText('Der Realm ist bereits zugeordnet.')).toBeTruthy());
     expect(screen.getByText('Vor der Anlage zu beheben')).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Instanz anlegen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
+  });
+
+  it('ignores an obsolete readiness response after the draft changed', async () => {
+    let resolveFirst: (value: { data: Record<string, unknown> }) => void = () => undefined;
+    let resolveSecond: (value: { data: Record<string, unknown> }) => void = () => undefined;
+    getDraftReadinessMock
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveFirst = resolve as typeof resolveFirst))
+      )
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveSecond = resolve as typeof resolveSecond))
+      );
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fillBasics();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fillAdministrator();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => expect(getDraftReadinessMock).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    fireEvent.change(
+      screen.getByLabelText('Admin-Nachname', { selector: '#instance-admin-last-name' }),
+      { target: { value: 'Changed' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => expect(getDraftReadinessMock).toHaveBeenCalledTimes(2));
+
+    const currentBlocker = {
+      ...readyDraft,
+      createBlockers: [
+        {
+          checkKey: 'realm_selection',
+          title: 'Realm-Auswahl',
+          status: 'blocked',
+          summary: 'Aktueller Entwurf ist blockiert.',
+          details: {},
+        },
+      ],
+    };
+    await act(async () => resolveSecond({ data: currentBlocker }));
+    await waitFor(() => expect(screen.getByText('Aktueller Entwurf ist blockiert.')).toBeTruthy());
+
+    await act(async () => resolveFirst({ data: readyDraft }));
+    expect(screen.getByText('Aktueller Entwurf ist blockiert.')).toBeTruthy();
     expect(
       (screen.getByRole('button', { name: 'Instanz anlegen' }) as HTMLButtonElement).disabled
     ).toBe(true);

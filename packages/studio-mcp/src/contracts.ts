@@ -57,7 +57,13 @@ export const schemas = {
   bootstrap: bootstrapAdminStructureSchema.extend({ instanceId, ...mutationMeta }).strict(),
   seed: instanceMutationInput,
   accessProbe: instanceMutationInput,
-  roleReconcile: instanceMutationInput,
+  roleReconcile: z
+    .object({
+      instanceId,
+      planFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      ...mutationMeta,
+    })
+    .strict(),
   prepareCritical: z
     .object({
       instanceId,

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1443,
+  "body": "Zuverlässigere Kategorienverwaltung\n\n- Ungültige Positionen, Icons und Datentypen werden vor dem Speichern verständlich zurückgewiesen.\n- Fehlende Berechtigungen nennen die konkret betroffene Aktion.\n- Nach einer unterbrochenen Löschantwort gleicht das Studio den tatsächlichen Kategorienbestand ab."
+}

@@ -6,6 +6,7 @@ import {
   BRANDING_BOX,
   buildBrandingImageCommand,
   createBrandingImageResource,
+  getContrastingTextColor,
   getEntryLabelWidth,
   truncateHelveticaText,
   pad2,
@@ -312,6 +313,7 @@ const renderDayEntries = (
       fontSize: 7.5,
       text: entry.code,
       fontName: 'F1',
+      color: getContrastingTextColor(entry.fillColor),
     });
     if (entry.isShifted) {
       drawText({
@@ -375,6 +377,7 @@ const renderLegend = (
         fontSize: 7.2,
         text: entry.code,
         fontName: 'F1',
+        color: getContrastingTextColor(entry.fillColor),
       });
       drawText({
         commands,

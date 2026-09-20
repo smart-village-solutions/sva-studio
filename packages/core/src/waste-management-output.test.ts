@@ -449,4 +449,35 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('/F2 9.00 Tf 0.780 0.050 0.050 rg 1 0 0 1 38.00 109.28 Tm (*) Tj ET');
     expect(pdfText).toContain('1 0 0 1 50.00 109.78 Tm (= Ausweichtermin) Tj ET');
   });
+
+  it('uses contrasting text for colored calendar labels and their legend entries', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bärensprung',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [
+              { id: 'dark', label: 'Dunkel', shortLabel: 'D', color: '#111111' },
+              { id: 'light', label: 'Hell', shortLabel: 'H', color: '#EEEEEE' },
+            ],
+          },
+        ],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toMatch(
+      /\/F1 7\.50 Tf 1\.000 1\.000 1\.000 rg 1 0 0 1 [\d.]+ [\d.]+ Tm \(D\) Tj ET/
+    );
+    expect(pdfText).toMatch(
+      /\/F1 7\.50 Tf 0\.000 0\.000 0\.000 rg 1 0 0 1 [\d.]+ [\d.]+ Tm \(H\) Tj ET/
+    );
+    expect(pdfText).toMatch(
+      /\/F1 7\.20 Tf 1\.000 1\.000 1\.000 rg 1 0 0 1 [\d.]+ [\d.]+ Tm \(D\) Tj ET/
+    );
+    expect(pdfText).toMatch(
+      /\/F1 7\.20 Tf 0\.000 0\.000 0\.000 rg 1 0 0 1 [\d.]+ [\d.]+ Tm \(H\) Tj ET/
+    );
+  });
 });

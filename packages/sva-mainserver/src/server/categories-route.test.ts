@@ -337,6 +337,35 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['a position above GraphQL Int', { position: 2_147_483_648, iconName: null }],
+    ['an icon name containing whitespace', { position: null, iconName: 'invalid icon' }],
+    ['an overlong icon name', { position: null, iconName: 'a'.repeat(256) }],
+    ['an unsupported icon URL protocol', { position: null, iconName: 'ftp://icons.test/icon.svg' }],
+  ])('rejects %s before idempotency or the upstream call', async (_label, invalidFields) => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.create');
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'invalid-fields', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Neu',
+          active: true,
+          parentId: null,
+          email: null,
+          dataTypes: [],
+          ...invalidFields,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.saveSvaMainserverCategory).not.toHaveBeenCalled();
+  });
+
   it('creates a category once and stores its terminal response for idempotent replay', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     allow('categories.create');
@@ -358,8 +387,8 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
           name: ' Neu ',
           active: true,
           parentId: null,
-          position: null,
-          iconName: null,
+          position: 2_147_483_647,
+          iconName: 'https://icons.example.test/town-hall.svg',
           email: null,
           dataTypes: ['news_item'],
         }),
@@ -374,8 +403,8 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
         name: 'Neu',
         active: true,
         parentId: null,
-        position: null,
-        iconName: null,
+        position: 2_147_483_647,
+        iconName: 'https://icons.example.test/town-hall.svg',
         email: null,
         dataTypes: ['news_item'],
       },

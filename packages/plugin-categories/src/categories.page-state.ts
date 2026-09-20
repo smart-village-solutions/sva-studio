@@ -12,12 +12,13 @@ export const useCategoryPageState = (pt: Translator) => {
     setLoading(true);
     setError(null);
     try {
-      setCategories(await listCategoryManagement());
-      return true;
+      const snapshot = await listCategoryManagement();
+      setCategories(snapshot);
+      return snapshot;
     } catch (caught) {
       setCategories([]);
       setError(messageFor(caught, pt));
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }

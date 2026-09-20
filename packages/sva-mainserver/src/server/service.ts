@@ -40,6 +40,7 @@ import type {
   SvaMainserverSaveCategoryResult,
 } from '../types.js';
 import { loadSvaMainserverInstanceConfig } from './config-store.js';
+import { isCategoryDataTypeIdentifier } from './categories-fields.js';
 import { createAccessTokenProvider } from './service-internals/access-token-provider.js';
 import { createDataProviderIdentityOperation } from './service-internals/data-provider-identity.js';
 import {
@@ -259,7 +260,10 @@ const normalizeManagementCategory = (
   const normalizedChildren = children.map((child) =>
     isRecord(child) ? readRequiredCategoryField(child.id) : null
   );
-  if (normalizedTypes.some((entry) => !entry) || normalizedChildren.some((entry) => !entry))
+  if (
+    normalizedTypes.some((entry) => !entry || !isCategoryDataTypeIdentifier(entry)) ||
+    normalizedChildren.some((entry) => !entry)
+  )
     return null;
   const email = isRecord(value.contact)
     ? readOptionalCategoryField(value.contact.email)

@@ -96,8 +96,14 @@ const label = (key: string, variables?: Readonly<Record<string, string | number>
     'categories.messages.nameTaken': 'Dieser Kategoriename ist bereits vergeben.',
     'categories.messages.invalidParent': 'Die übergeordnete Kategorie ist ungültig.',
     'categories.messages.categoryNotFound': 'Die Kategorie ist nicht mehr vorhanden.',
+    'categories.messages.positionInvalid': 'Position ungültig.',
+    'categories.messages.iconInvalid': 'Icon ungültig.',
+    'categories.messages.createForbidden': 'categories.create fehlt.',
+    'categories.messages.updateForbidden': 'categories.update fehlt.',
+    'categories.messages.deleteForbidden': 'categories.delete fehlt.',
     'categories.messages.savedReloadFailed': 'Gespeichert, aber Neuladen fehlgeschlagen.',
     'categories.messages.saved': 'Die Kategorie wurde gespeichert.',
+    'categories.messages.deleted': 'Die Kategorie wurde gelöscht.',
     'categories.messages.deleteBlocked': 'Löschen blockiert.',
     'categories.empty.title': 'Keine Kategorien',
     'categories.empty.description': 'Noch keine Kategorien vorhanden.',
@@ -281,6 +287,76 @@ describe('CategoriesPage', () => {
     );
   });
 
+  it('rejects positions outside GraphQL Int and malformed icon names before saving', async () => {
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie anlegen' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neu' } });
+    const position = screen.getByLabelText('Position');
+    expect(position.getAttribute('max')).toBe('2147483647');
+    fireEvent.change(position, { target: { value: '2147483648' } });
+    fireEvent.change(screen.getByLabelText('Icon'), { target: { value: 'invalid icon' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    expect(screen.getByText('Position ungültig.')).toBeTruthy();
+    expect(screen.getByText('Icon ungültig.')).toBeTruthy();
+    expect(state.save).not.toHaveBeenCalled();
+  });
+
+  it('accepts the maximum position and consumer-supported icon forms', async () => {
+    state.save.mockResolvedValue({
+      category: { ...categories[0], id: 'cat-new' },
+      affectedDescendantIds: [],
+      errors: [],
+    });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie anlegen' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neu' } });
+    fireEvent.change(screen.getByLabelText('Position'), { target: { value: '2147483647' } });
+    fireEvent.change(screen.getByLabelText('Icon'), {
+      target: { value: 'https://icons.example.test/town-hall.svg' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() =>
+      expect(state.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: expect.objectContaining({
+            position: 2_147_483_647,
+            iconName: 'https://icons.example.test/town-hall.svg',
+          }),
+        })
+      )
+    );
+  });
+
+  it('localizes forbidden category mutations for their attempted actions', async () => {
+    state.save.mockRejectedValueOnce({ code: 'forbidden' }).mockRejectedValueOnce({
+      code: 'forbidden',
+    });
+    state.remove.mockRejectedValue({ code: 'forbidden' });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    createCategory();
+    expect(await screen.findByText('categories.create fehlt.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    const editButton = screen.getAllByRole('button', { name: 'Bearbeiten' })[0];
+    if (!editButton) throw new Error('Expected an edit button');
+    fireEvent.click(editButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText('categories.update fehlt.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+
+    const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0];
+    if (!deleteButton) throw new Error('Expected a delete button');
+    fireEvent.click(deleteButton);
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie löschen' }));
+    expect(await screen.findByText('categories.delete fehlt.')).toBeTruthy();
+  });
+
   it('shows all returned usage counts when safe-delete is blocked', async () => {
     state.remove.mockResolvedValue({
       usage: {
@@ -308,7 +384,10 @@ describe('CategoriesPage', () => {
       expect(screen.getByText(value)).toBeTruthy();
   });
 
-  it('reloads the management snapshot after an indeterminate delete result', async () => {
+  it('closes an indeterminate delete after the authoritative reread no longer contains it', async () => {
+    state.list
+      .mockResolvedValueOnce(categories)
+      .mockResolvedValueOnce(categories.filter((category) => category.id !== 'cat-root'));
     state.remove.mockRejectedValue(new Error('response lost'));
     render(<CategoriesPage />);
     await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
@@ -316,6 +395,8 @@ describe('CategoriesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Kategorie löschen' }));
 
     await waitFor(() => expect(state.list).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alertdialog', { name: 'Kategorie löschen' })).toBeNull();
+    expect(screen.getByText('Die Kategorie wurde gelöscht.')).toBeTruthy();
   });
 
   it('keeps confirmed save success distinct from a failed management reload', async () => {

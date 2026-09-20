@@ -30,7 +30,7 @@ Das System MUST Kategorien mit Name, Aktivstatus, optionalem Parent, optionaler 
 
 Leere optionale Werte MUST ihre bestehende Zuordnung entfernen. Nach einem bestätigten Save MUST das Studio den führenden Management-Zustand neu laden und darf einen Erfolg nur bei leerer fachlicher Fehlerliste behaupten.
 
-Name und optionale Textwerte MUST getrimmt werden. Der Name MUST nicht leer sein, die optionale Position MUST eine Ganzzahl ab `0` sein, und die optionale E-Mail MUST genau eine syntaktisch gültige Adresse enthalten. Icon- und Datentyp-Identifier MUST die bestätigten Vertragsgrenzen einhalten. Neue Kategorien MUST standardmäßig aktiv sein. Gleiche Positionen innerhalb derselben Hierarchieebene dürfen bestehen bleiben und MUST stabil nach Position, Name und ID dargestellt werden.
+Name und optionale Textwerte MUST getrimmt werden. Der Name MUST nicht leer sein, die optionale Position MUST eine Ganzzahl im GraphQL-`Int`-Bereich `0..2147483647` sein, und die optionale E-Mail MUST genau eine syntaktisch gültige Adresse enthalten. Ein Datentyp-Identifier MUST aus 1 bis 128 Zeichen bestehen, mit einem Buchstaben oder einer Ziffer beginnen und danach ausschließlich Buchstaben, Ziffern, Punkt, Unterstrich oder Bindestrich enthalten. Ein optionales Icon MUST entweder ein nach derselben Zeichenklasse gebildeter Name mit höchstens 255 Zeichen oder eine syntaktisch gültige absolute HTTP(S)-URL mit höchstens 255 sichtbaren ASCII-Zeichen sein. Neue Kategorien MUST standardmäßig aktiv sein. Gleiche Positionen innerhalb derselben Hierarchieebene dürfen bestehen bleiben und MUST stabil nach Position, Name und ID dargestellt werden.
 
 #### Scenario: Kategorie wird mit allen Feldern angelegt
 
@@ -77,6 +77,12 @@ Name und optionale Textwerte MUST getrimmt werden. Der Name MUST nicht leer sein
 - **WHEN** Name leer, Position negativ oder nicht ganzzahlig, E-Mail syntaktisch ungültig oder ein Identifier außerhalb der bestätigten Vertragsgrenzen ist
 - **THEN** blockiert das Studio den Upstream-Aufruf
 - **AND** zeigt es einen lokalisierten feldbezogenen Fehler
+
+#### Scenario: Wert überschreitet die lokale Vertragsgrenze
+
+- **WHEN** die Position größer als `2147483647`, ein Icon-Name syntaktisch ungültig oder ein Icon-Wert länger als 255 Zeichen ist
+- **THEN** markieren Client und Host das betroffene Feld als ungültig
+- **AND** erreicht der Wert weder die Idempotenz-Reservation noch den Mainserver
 
 #### Scenario: Geschwister besitzen dieselbe Position
 
@@ -161,6 +167,12 @@ Das Studio MUST die zurückgegebenen Usage-Zahlen verständlich darstellen und d
 - **THEN** ist die Mainserver-Entscheidung zum Mutationszeitpunkt maßgeblich
 - **AND** zeigt das Studio die aktualisierte Blockade statt eines erfundenen Erfolgs
 
+#### Scenario: Delete-Antwort geht nach erfolgreicher Mutation verloren
+
+- **WHEN** der Ausgang von `deleteCategory` mehrdeutig ist und der anschließende erfolgreiche Management-Read die ausgewählte Kategorie nicht mehr enthält
+- **THEN** schließt das Studio den Löschdialog
+- **AND** meldet es die autoritativ bestätigte Entfernung statt eines Delete-Fehlers
+
 ### Requirement: Kategorienaktionen sind getrennt autorisiert und zugänglich bedienbar
 
 Das System MUST Read, Create, Update und Delete jeweils mit `categories.read`, `categories.create`, `categories.update` und `categories.delete` autorisieren. UI-Verfügbarkeit und Serverausführung MUST dieselbe Action-Semantik verwenden; die serverseitige Prüfung bleibt verbindlich.
@@ -179,6 +191,12 @@ Alle Kategorienformulare, Auswahlfelder, Dialoge, Statusmeldungen und Fehler MUS
 - **WHEN** ein Benutzer beispielsweise `categories.update`, aber nicht `categories.create` oder `categories.delete` besitzt
 - **THEN** bietet die UI ausschließlich die Update-Aktion an
 - **AND** akzeptiert der Server keine Create- oder Delete-Mutation mit dem Update-Recht
+
+#### Scenario: Lokale Mutationsberechtigung wird konkurrierend entzogen
+
+- **WHEN** eine sichtbare Create-, Update- oder Delete-Aktion serverseitig mit `forbidden` abgelehnt wird
+- **THEN** nennt die lokalisierte Rückmeldung die tatsächlich fehlende Action `categories.create`, `categories.update` beziehungsweise `categories.delete`
+- **AND** verwendet sie nicht die read-spezifische Meldung für `categories.read`
 
 #### Scenario: Formular enthält Fehler
 

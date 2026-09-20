@@ -18,7 +18,7 @@
 - [x] 2.1 Die bestehende Kategorienroute um die explizite Management-Sicht erweitern, ohne den parameterlosen Active-only-Vertrag zu verändern.
 - [x] 2.2 `POST` für Create, `PUT /:id` für vollständiges Update und `DELETE /:id` für Safe-Delete an den bestehenden Dispatcher anbinden.
 - [x] 2.3 Für Create den vorhandenen Host-Idempotenzpfad mit einem pro Anlegeversuch stabilen `Idempotency-Key` wiederverwenden; Reservation, terminales Replay, nichtterminalen Ausgang ohne automatischen zweiten Upstream-Aufruf, Payload-Konflikt und Ausfall vor dem Upstream-Aufruf testen, ohne neue Persistenz einzuführen.
-- [x] 2.4 Request-Bodies und Pfadparameter vor GraphQL validieren; insbesondere Create-IDs, widersprüchliche Update-IDs, leere Namen, negative oder nicht ganzzahlige Positionen, ungültige E-Mail-Adressen und ungültige Datentyp-Identifier ablehnen.
+- [x] 2.4 Request-Bodies und Pfadparameter vor GraphQL validieren; insbesondere Create-IDs, widersprüchliche Update-IDs, leere Namen, Positionen außerhalb `0..2147483647`, ungültige E-Mail-Adressen, Icon-Namen/-URLs außerhalb des bestätigten 255-Zeichen-Vertrags und ungültige Datentyp-Identifier ablehnen.
 - [x] 2.5 `categories.read`, `categories.create`, `categories.update` und `categories.delete` je Operation unmittelbar vor dem Upstream-Aufruf prüfen.
 - [x] 2.6 Credential-, Vertrags-, Validierungs-, Payload- und Transportfehler auf stabile PII-arme Studio-Fehlercodes abbilden.
 - [ ] 2.7 Route-Tests für die vollständige Permission-Matrix, Organisationskontext, fremde IDs, Methoden, Logging und Nichtaufruf des Upstreams bei Denial ergänzen.

@@ -32,6 +32,12 @@ Plugins dürfen den Mainserver weder direkt aufrufen noch rohe GraphQL-Payloads 
 - **AND** behauptet die Integration keinen fachlichen Erfolg
 - **AND** protokolliert sie keine vollständige GraphQL-Antwort oder Kategorie-PII
 
+#### Scenario: Management-Antwort enthält einen ungültigen Datentyp-Identifier
+
+- **WHEN** eine Management-Query oder Mutation einen Datentyp-Identifier außerhalb des bestätigten 1-bis-128-Zeichen-Vertrags liefert
+- **THEN** verwirft der Runtime-Parser die gesamte Antwort mit `category_management_invalid_response`
+- **AND** übernimmt das Studio den ungültigen Wert nicht in einen editierbaren Kategorie-Draft
+
 ### Requirement: Die Kategorienroute trennt Auswahl-, Management- und Mutationsoperationen
 
 Die Mainserver-Integration MUST den bestehenden parameterlosen Active-only-Read kompatibel erhalten und eine explizite Management-Sicht bereitstellen. Create, Update und Delete MUST getrennte HTTP-Operationen mit strikt validierten Pfad- und Body-Verträgen verwenden.

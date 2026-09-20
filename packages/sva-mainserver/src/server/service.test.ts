@@ -713,6 +713,53 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it.each(['invalid value', 'a'.repeat(129)])(
+    'rejects invalid data type identifier %s in management responses',
+    async (dataType) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        )
+        .mockResolvedValueOnce(
+          createJsonResponse(200, {
+            data: {
+              categories: [
+                {
+                  id: 'cat-1',
+                  name: 'Allgemein',
+                  active: true,
+                  position: null,
+                  iconName: null,
+                  dataTypes: [dataType],
+                  createdAt: null,
+                  updatedAt: null,
+                  parent: null,
+                  children: [],
+                  contact: null,
+                },
+              ],
+            },
+          })
+        );
+      const service = createSvaMainserverService({
+        loadInstanceConfig: async () => baseConfig,
+        readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+        fetchImpl,
+      });
+
+      await expect(
+        service.listCategoryManagement({
+          instanceId: baseConfig.instanceId,
+          keycloakSubject: 'subject-1',
+        })
+      ).rejects.toMatchObject({
+        code: 'category_management_invalid_response',
+        statusCode: 502,
+      });
+    }
+  );
+
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
     const item = {
       id: 'news-1',

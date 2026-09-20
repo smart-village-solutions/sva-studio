@@ -76,6 +76,25 @@ describe('critical registry confirmation', () => {
     expect(first).toBe(second);
   });
 
+  it('binds confirmations to the stable Keycloak plan fingerprint, not its generation time', async () => {
+    const { fingerprintInstanceConfirmationState } = await import('./confirmation.js');
+    const first = fingerprintInstanceConfirmationState({
+      ...detail,
+      keycloakPlan: { fingerprint: 'a'.repeat(64), generatedAt: '2026-07-13T10:00:00.000Z' },
+    });
+    const regenerated = fingerprintInstanceConfirmationState({
+      ...detail,
+      keycloakPlan: { fingerprint: 'a'.repeat(64), generatedAt: '2026-07-13T10:01:00.000Z' },
+    });
+    const changed = fingerprintInstanceConfirmationState({
+      ...detail,
+      keycloakPlan: { fingerprint: 'b'.repeat(64), generatedAt: '2026-07-13T10:01:00.000Z' },
+    });
+
+    expect(regenerated).toBe(first);
+    expect(changed).not.toBe(first);
+  });
+
   it('keeps all five critical actions static and requires a module for revoke prepare', async () => {
     const { CRITICAL_REGISTRY_ACTIONS, validateConfirmationModuleId } =
       await import('./confirmation.js');

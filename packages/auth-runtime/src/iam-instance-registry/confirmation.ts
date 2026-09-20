@@ -46,6 +46,13 @@ export const fingerprintInstanceConfirmationState = (instance: {
   const featureFlags = Object.fromEntries(
     Object.entries(instance.featureFlags).sort(([left], [right]) => left.localeCompare(right))
   );
+  const keycloakPlanFingerprint =
+    typeof instance.keycloakPlan === 'object' &&
+    instance.keycloakPlan !== null &&
+    'fingerprint' in instance.keycloakPlan &&
+    typeof instance.keycloakPlan.fingerprint === 'string'
+      ? instance.keycloakPlan.fingerprint
+      : undefined;
   const stableState = {
     instanceId: instance.instanceId,
     updatedAt: instance.updatedAt,
@@ -60,7 +67,7 @@ export const fingerprintInstanceConfirmationState = (instance: {
     tenantAdminClient: instance.tenantAdminClient,
     provisioningReadiness: instance.provisioningReadiness,
     keycloakStatus: instance.keycloakStatus,
-    keycloakPlan: instance.keycloakPlan,
+    keycloakPlanFingerprint,
     latestKeycloakProvisioningRun: instance.latestKeycloakProvisioningRun,
     tenantIamStatus: instance.tenantIamStatus,
     moduleIamStatus: instance.moduleIamStatus,

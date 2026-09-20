@@ -200,6 +200,7 @@ describe('Studio MCP tools', () => {
         completed: false,
         status: 'awaiting_human_action',
         currentStep: 'keycloak_plan_confirmation',
+        idempotencyKey: expect.any(String),
         nextAction: { actionId: 'instance.keycloak.plan.confirm' },
       },
     });

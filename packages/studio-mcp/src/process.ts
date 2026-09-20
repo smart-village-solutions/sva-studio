@@ -15,6 +15,7 @@ export type StudioInstanceProcessResult = {
   readonly doctor: unknown;
   readonly nextAction: { readonly actionId: string; readonly summary: string };
   readonly requestId: string;
+  readonly idempotencyKey?: string;
 };
 
 export class StudioInstanceProcessError extends Error {
@@ -274,6 +275,7 @@ export const runStudioInstanceProcess = async (
               'Den aktuellen Keycloak-Plan prüfen und seinen Fingerprint ausdrücklich bestätigen.',
           },
           requestId,
+          idempotencyKey,
         };
       }
       if (planFingerprint !== input.planFingerprint) {

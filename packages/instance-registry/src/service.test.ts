@@ -2095,12 +2095,17 @@ describe('instance registry service facade', () => {
   );
 
   it.each([
-    ['standard', false],
-    ['kassel', true],
+    ['standard', false, ['news']],
+    ['kassel', true, ['news']],
+    ['moduleless', false, []],
   ] as const)(
     'activates the %s profile only with current successful postflight and IAM evidence',
-    async (profile, automated) => {
-      const suspendedInstance = { ...baseInstance, status: 'suspended' as const };
+    async (profile, automated, assignedModules) => {
+      const suspendedInstance = {
+        ...baseInstance,
+        status: 'suspended' as const,
+        assignedModules: [...assignedModules],
+      };
       const inputFingerprint = buildKeycloakSnapshotInputFingerprint(suspendedInstance, {
         authClientSecretCiphertext: 'auth-cipher',
         tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
@@ -2130,6 +2135,7 @@ describe('instance registry service facade', () => {
       };
       const repository = createRepository({
         getInstanceById: vi.fn(async () => suspendedInstance),
+        listAssignedModules: vi.fn(async () => assignedModules),
         setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
         listProvisioningRuns: vi.fn(async () => [
           {

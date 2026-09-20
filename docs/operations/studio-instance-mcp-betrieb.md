@@ -109,7 +109,7 @@ Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical
 ### Tenant sicher anlegen
 
 1. Mit `studio_instance_process` im Modus `create` den vollständigen Registry-Vertrag einschließlich Tenant-Admin-Profil und der gewünschten `moduleIds` übergeben.
-2. Bei `status: awaiting_human_action` zuerst den aktuellen Zustand mit `studio_instance_get` prüfen.
+2. Bei der Planbestätigung den zurückgegebenen `planFingerprint` und `idempotencyKey` unverändert an den nächsten Aufruf übergeben; anschließend den aktuellen Zustand mit `studio_instance_get` prüfen.
 3. `instance.status.activate` über `studio_instance_critical_action_prepare` vorbereiten und anschließend mit `studio_instance_activate` bestätigen.
 4. Mit `studio_instance_diagnose` oder den gezielten Status- und Preflight-Tools die Abnahme dokumentieren.
 
@@ -131,6 +131,7 @@ Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical
 Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, instanzgebundenen Rollenabgleich, Rechteprobe und Detaildiagnose auf. Der Rollenabgleich verwendet die dedizierte Action `instance.iam.roles.reconcile`; eine Browser-Session oder eine pauschale IAM-Admin-Berechtigung ist dafür nicht erforderlich.
 
 - `create` verlangt zusätzlich den bestehenden Create-Vertrag und legt die Registry-Instanz idempotent an.
+- Unterbricht `create` für die menschliche Planbestätigung, gibt der Prozess den dabei verwendeten `idempotencyKey` zurück. Der bestätigende Folgeaufruf muss ihn zusammen mit dem `planFingerprint` wiederverwenden.
 - `repair` arbeitet auf einer vorhandenen Instanz über den bestehenden Reconcile-Vertrag; `adapt` ergänzt nur fehlende Module einschließlich ihrer IAM-Basis und Admin-Struktur.
 - Der Prozess verfolgt den gestarteten Keycloak-Run nur innerhalb seines lokalen Zeitbudgets mit gedrosseltem Backoff und gibt bei noch laufendem oder fehlgeschlagenem Run einen handlungsfähigen Zwischen- beziehungsweise Blockierungszustand zurück.
 - Nach einem erfolgreichen Run gleicht er zuerst den instanzgebundenen Rollen-Katalog ab, führt dann eine tenantlokale Rechteprobe aus und liest den aktuellen Detail-/Doctor-Zustand. Historische Preflight-Evidenz ist kein Abschlussnachweis.

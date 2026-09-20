@@ -193,7 +193,10 @@ export const createChangeStatusHandler =
       if (detail.tenantIamStatus?.overall.status !== 'ready') {
         blockers.push('tenant_iam_not_ready');
       }
-      if (detail.moduleIamStatus?.overall.status !== 'ready') {
+      if (
+        detail.assignedModules.length > 0 &&
+        detail.moduleIamStatus?.overall.status !== 'ready'
+      ) {
         blockers.push('module_readiness_not_ready');
       }
       if (shouldExposeAutomatedProvisioning(deps, current)) {

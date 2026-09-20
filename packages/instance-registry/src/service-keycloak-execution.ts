@@ -49,38 +49,6 @@ type QueuedProvisioningInput = ReturnType<typeof buildProvisioningInput> & {
   pluginOidcClients: NonNullable<KeycloakProvisioningInput['pluginOidcClients']>;
 };
 
-const isConfirmedPlanProgress = (
-  plan: Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['planKeycloakProvisioning']>>>,
-  queueDetails: Readonly<Record<string, unknown>> | undefined
-): boolean => {
-  if (
-    queueDetails?.confirmedPlanContractVersion !== plan.contractVersion ||
-    !Array.isArray(queueDetails.confirmedPlanSteps) ||
-    plan.overallStatus === 'blocked'
-  ) {
-    return false;
-  }
-  const confirmedSteps = new Map(
-    queueDetails.confirmedPlanSteps.flatMap((value) => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
-      const step = value as Record<string, unknown>;
-      return typeof step.stepKey === 'string' ? [[step.stepKey, step] as const] : [];
-    })
-  );
-  return plan.steps.every((current) => {
-    const confirmed = confirmedSteps.get(current.stepKey);
-    if (!confirmed || confirmed.status !== current.status) return false;
-    if (confirmed.action === current.action) {
-      return JSON.stringify(confirmed.details) === JSON.stringify(current.details);
-    }
-    return (
-      (confirmed.action === 'create' || confirmed.action === 'update') &&
-      current.action === 'verify' &&
-      current.status === 'ready'
-    );
-  });
-};
-
 const assertProvisioningIntentAllowed = (
   realmMode: KeycloakProvisioningInput['realmMode'],
   intent: ExecuteInstanceKeycloakProvisioningInput['intent']
@@ -301,8 +269,7 @@ const executeClaimedRun = async (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
   tenantAdminTemporaryPassword: string | undefined,
   provisioningInput: QueuedProvisioningInput,
-  confirmedPlanFingerprint: string,
-  queueDetails: Readonly<Record<string, unknown>> | undefined
+  confirmedPlanFingerprint: string
 ) => {
   assertProvisioningIntentAllowed(provisioningInput.realmMode, run.intent);
   const secretVersions = await loadKeycloakSnapshotSecretVersions(
@@ -320,10 +287,7 @@ const executeClaimedRun = async (
   const plan = await runInstanceRegistryStep('worker_plan', () =>
     appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
-  if (
-    plan.fingerprint !== confirmedPlanFingerprint &&
-    !isConfirmedPlanProgress(plan, queueDetails)
-  ) {
+  if (plan.fingerprint !== confirmedPlanFingerprint) {
     throw new Error('keycloak_plan_fingerprint_stale');
   }
 
@@ -470,8 +434,7 @@ export const processClaimedKeycloakProvisioningRun = async (
       loaded,
       tenantAdminTemporaryPassword,
       provisioningInput,
-      confirmedPlanFingerprint,
-      queueStep?.details
+      confirmedPlanFingerprint
     );
   } catch (error) {
     await failRun(deps, {

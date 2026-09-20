@@ -52,11 +52,11 @@ Codex nach der Änderung neu starten oder die MCP-Serverkonfiguration neu laden.
 
 ## Umgebungen und Keycloak
 
-| Umgebung | Root-Realm | Client-ID |
-| --- | --- | --- |
-| Entwicklung | `studio-dev` | `sva-studio-mcp` |
-| Staging | `studio-staging` | `sva-studio-mcp` |
-| Produktion | `sva-studio` | `sva-studio-mcp` |
+| Umgebung    | Root-Realm       | Client-ID        |
+| ----------- | ---------------- | ---------------- |
+| Entwicklung | `studio-dev`     | `sva-studio-mcp` |
+| Staging     | `studio-staging` | `sva-studio-mcp` |
+| Produktion  | `sva-studio`     | `sva-studio-mcp` |
 
 Je Realm gilt:
 
@@ -92,17 +92,18 @@ Für gezielte Betriebsprüfungen stehen neben der aggregierten Diagnose eigenst�
 
 ## Tool-Übersicht und benötigte Actions
 
-| Bereich | MCP-Tools | Erforderliche Studio-Action |
-| --- | --- | --- |
-| Bestand und Evidenz | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit` | `instance.list`, `instance.read`, `instance.audit.read` |
-| Diagnose | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight` | `instance.diagnose` |
-| Provisioning | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile` | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile` |
+| Bereich                  | MCP-Tools                                                                                                                                                    | Erforderliche Studio-Action                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Bestand und Evidenz      | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit`                                                            | `instance.list`, `instance.read`, `instance.audit.read`                                                                  |
+| Diagnose                 | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight`                                                          | `instance.diagnose`                                                                                                      |
+| Provisioning             | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile`             | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile`             |
 | Konfiguration und Module | `studio_instances_create`, `studio_instance_update`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | `instance.create`, `instance.update`, `instance.module.assign`, `instance.iam.baseline.seed`, `instance.admin.bootstrap` |
-| Tenant-IAM | `studio_instance_tenant_iam_access_probe`, `studio_instance_iam_roles_reconcile` | `instance.diagnose`, `instance.iam.roles.reconcile` |
-| Kritische Aktionen | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate` | jeweilige Action plus `instance.confirmation.prepare` |
-| Geführter Ablauf | `studio_instance_process` | Kombination der für die gewählte Aktion benötigten Actions |
+| Tenant-IAM               | `studio_instance_tenant_iam_access_probe`, `studio_instance_iam_roles_reconcile`                                                                             | `instance.diagnose`, `instance.iam.roles.reconcile`                                                                      |
+| Kritische Aktionen       | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate`           | jeweilige Action plus `instance.confirmation.prepare`                                                                    |
+| Geführter Ablauf         | `studio_instance_process`                                                                                                                                    | Kombination der für die gewählte Aktion benötigten Actions                                                               |
 
 Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical_action_prepare`. Dessen `challengeId` und die zurückgegebene Bestätigungsphrase werden unverändert an das eigentliche Tool übergeben. Challenges sind kurzlebig, zustandsgebunden und nur einmal verwendbar.
+Für `studio_instance_secret_rotate` muss zusätzlich der unmittelbar zuvor mit `studio_instance_provisioning_plan` gelesene `planFingerprint` übergeben werden.
 
 ## Häufige Abläufe
 

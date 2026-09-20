@@ -88,6 +88,15 @@ export const schemas = {
       idempotencyKey: z.string().trim().min(8).max(200),
     })
     .strict(),
+  secretRotate: z
+    .object({
+      instanceId,
+      challengeId: z.string().trim().min(1),
+      confirmationPhrase: z.string().min(1),
+      idempotencyKey: z.string().trim().min(8).max(200),
+      planFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .strict(),
   revoke: z
     .object({
       instanceId,

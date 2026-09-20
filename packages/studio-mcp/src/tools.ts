@@ -508,11 +508,19 @@ export const registerStudioTools = (
         })
       )
   );
-  critical(
+  register(
     'studio_instance_secret_rotate',
     'Client-Secret rotieren',
-    'instance.secret.rotate',
-    (p) => `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/rotate-secret`,
-    { intent: 'rotate_client_secret' }
+    'Rotiert das Client-Secret nach bestätigtem Keycloak-Plan und gültiger serverseitiger Challenge.',
+    schemas.secretRotate,
+    criticalAnnotations,
+    (p) =>
+      call(
+        client,
+        mutation(
+          `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/keycloak/rotate-secret`,
+          { ...p, intent: 'rotate_client_secret' }
+        )
+      )
   );
 };

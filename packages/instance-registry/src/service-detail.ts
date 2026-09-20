@@ -137,7 +137,7 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakPlan?.overallStatus === 'ready' &&
     !keycloakPlanHasMutations &&
     tenantIamStatus.overall.status === 'ready' &&
-    moduleIamStatus?.overall.status === 'ready' &&
+    (instance.assignedModules.length === 0 || moduleIamStatus?.overall.status === 'ready') &&
     hostReadinessSatisfied;
   const retryableCreateRun =
     createRun?.snapshotVersion === '2.0' &&

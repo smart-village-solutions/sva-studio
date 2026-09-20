@@ -2200,6 +2200,19 @@ describe('instance registry service facade', () => {
       });
       const service = createInstanceRegistryService(deps);
 
+      if (profile === 'moduleless') {
+        await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+          expect.objectContaining({
+            moduleIamStatus: expect.objectContaining({
+              overall: expect.objectContaining({ status: 'unknown' }),
+            }),
+            provisioningReadiness: expect.objectContaining({
+              nextAction: { action: 'instance.status.activate', retryClass: 'never' },
+            }),
+          })
+        );
+      }
+
       await expect(
         service.changeStatus({
           instanceId: 'demo',

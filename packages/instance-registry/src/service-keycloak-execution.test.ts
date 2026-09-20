@@ -1056,12 +1056,39 @@ describe('service-keycloak-execution', () => {
         readKeycloakStateViaProvisioner: vi.fn(),
         getKeycloakPreflight: vi.fn().mockResolvedValue({ overallStatus: 'ready', checks: [] }),
         planKeycloakProvisioning: vi.fn().mockResolvedValue({
+          contractVersion: '1.0',
           overallStatus: 'ready',
           driftSummary: 'changed',
           fingerprint: 'b'.repeat(64),
+          steps: [
+            {
+              stepKey: 'realm',
+              action: 'verify',
+              status: 'ready',
+              details: { realm: 'tenant' },
+            },
+          ],
         }),
       } as never,
-      createRun()
+      createRun({
+        steps: [
+          {
+            stepKey: 'queued',
+            details: {
+              confirmedPlanFingerprint,
+              confirmedPlanContractVersion: '1.0',
+              confirmedPlanSteps: [
+                {
+                  stepKey: 'realm',
+                  action: 'create',
+                  status: 'ready',
+                  details: { realm: 'tenant' },
+                },
+              ],
+            },
+          },
+        ],
+      })
     );
 
     expect(state.failRun).toHaveBeenCalledWith(

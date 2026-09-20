@@ -759,6 +759,7 @@ describe('Studio MCP tools', () => {
         challengeId: 'challenge-1',
         confirmationPhrase: 'ROTATE SECRET FOR demo',
         idempotencyKey: 'request-1',
+        planFingerprint: confirmedPlanFingerprint,
       },
     });
     expect(request).toHaveBeenCalledTimes(3);
@@ -779,7 +780,7 @@ describe('Studio MCP tools', () => {
       3,
       expect.objectContaining({
         path: '/api/v1/iam/instances/demo/keycloak/rotate-secret',
-        body: { intent: 'rotate_client_secret' },
+        body: { intent: 'rotate_client_secret', planFingerprint: confirmedPlanFingerprint },
       })
     );
     await Promise.all([client.close(), server.close()]);

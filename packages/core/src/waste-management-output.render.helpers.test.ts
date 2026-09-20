@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   abbreviateHolidayLabel,
   createBrandingImageResource,
+  getContrastingTextColor,
   getEntryLabelWidth,
   pad2,
   splitLegendLabel,
@@ -32,6 +33,12 @@ describe('waste-management-output.render.helpers', () => {
     expect(getEntryLabelWidth('A')).toBe(18);
     expect(getEntryLabelWidth('ABC')).toBe(22);
     expect(getEntryLabelWidth('ABCD')).toBe(26);
+  });
+
+  it('chooses black or white text according to the greater contrast', () => {
+    expect(getContrastingTextColor([0.1, 0.1, 0.1])).toEqual([1, 1, 1]);
+    expect(getContrastingTextColor([0.9, 0.9, 0.9])).toEqual([0, 0, 0]);
+    expect(getContrastingTextColor([0.5, 0.5, 0.5])).toEqual([0, 0, 0]);
   });
 
   it('passes raw image dictionary entries to the pdf builder without nested brackets', () => {

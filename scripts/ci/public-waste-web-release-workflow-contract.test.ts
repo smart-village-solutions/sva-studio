@@ -26,6 +26,12 @@ describe('public Waste Web release workflow', () => {
     expect(workflow).toContain('environment: ${{ matrix.target.environment }}');
     expect(workflow).toContain('label: Prignitz');
     expect(workflow).toContain('label: Frankfurt (Oder)');
+    expect(workflow).toContain('base_url: https://prignitz.abfallkalender.pro');
+    expect(workflow).toContain('base_url: https://frankfurt-oder.abfallkalender.pro');
+    expect(workflow).toContain('stack_name: web-waste-calendar');
+    expect(workflow).toContain('stack_name: web-waste-calendar-frankfurt-oder');
+    expect(workflow).toContain('instance_id: bb-prignitz');
+    expect(workflow).toContain('instance_id: bb-frankfurt-oder');
     expect(workflow).toContain('PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}');
     expect(workflow).toContain('PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME }}');
     expect(workflow).not.toContain("vars.PUBLIC_WASTE_STACK_NAME || 'web-waste-calendar'");
@@ -37,14 +43,15 @@ describe('public Waste Web release workflow', () => {
     expect(workflow.indexOf('Verify target deployment contract')).toBeLessThan(
       workflow.indexOf('Update Portainer stack image tag')
     );
-    expect(workflow).toContain('PUBLIC_WASTE_BASE_URL');
-    expect(workflow).toContain('PUBLIC_WASTE_STACK_NAME');
+    expect(workflow).toContain('PUBLIC_WASTE_BASE_URL passt nicht zum Ziel');
+    expect(workflow).toContain('PUBLIC_WASTE_STACK_NAME passt nicht zum Ziel');
     expect(workflow).toContain('QUANTUM_ENDPOINT_ID');
     expect(workflow).toContain('QUANTUM_HOST');
     expect(workflow).toContain('QUANTUM_API_KEY');
     expect(workflow).toContain('pnpm exec tsx scripts/ops/public-waste/portainer-release.ts');
     expect(workflow).toContain('scripts/ci/public-waste-web-release-workflow-contract.test.ts');
     expect(workflow).toContain('${base_url}/health/live');
+    expect(workflow).toContain('.instanceId == $instance_id');
     expect(workflow).toContain('${base_url}/api/public-waste/selection');
     expect(workflow).not.toContain('SVA_IMAGE_TAG');
     expect(workflow).not.toContain('quantum-cli stacks deploy');

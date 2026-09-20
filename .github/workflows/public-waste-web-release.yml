@@ -90,8 +90,14 @@ jobs:
         target:
           - environment: web-waste-calendar
             label: Prignitz
+            base_url: https://prignitz.abfallkalender.pro
+            stack_name: web-waste-calendar
+            instance_id: bb-prignitz
           - environment: web-waste-calendar-frankfurt-oder
             label: Frankfurt (Oder)
+            base_url: https://frankfurt-oder.abfallkalender.pro
+            stack_name: web-waste-calendar-frankfurt-oder
+            instance_id: bb-frankfurt-oder
     environment: ${{ matrix.target.environment }}
     env:
       PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}
@@ -123,8 +129,6 @@ jobs:
         run: |
           set -euo pipefail
           for key in \
-            PUBLIC_WASTE_BASE_URL \
-            PUBLIC_WASTE_STACK_NAME \
             QUANTUM_ENDPOINT_ID \
             QUANTUM_HOST \
             QUANTUM_API_KEY; do
@@ -133,6 +137,14 @@ jobs:
               exit 1
             fi
           done
+          if [ "${PUBLIC_WASTE_BASE_URL%/}" != "${{ matrix.target.base_url }}" ]; then
+            echo "PUBLIC_WASTE_BASE_URL passt nicht zum Ziel ${{ matrix.target.label }}." >&2
+            exit 1
+          fi
+          if [ "${PUBLIC_WASTE_STACK_NAME}" != "${{ matrix.target.stack_name }}" ]; then
+            echo "PUBLIC_WASTE_STACK_NAME passt nicht zum Ziel ${{ matrix.target.label }}." >&2
+            exit 1
+          fi
 
       - name: Update Portainer stack image tag
         run: pnpm exec tsx scripts/ops/public-waste/portainer-release.ts
@@ -154,7 +166,11 @@ jobs:
             sleep 10
           done
 
-          curl --fail --silent --show-error "${base_url}/health/live"
+          health_response="$(curl --fail --silent --show-error "${base_url}/health/live")"
+          printf '%s' "${health_response}" | jq -e \
+            --arg instance_id '${{ matrix.target.instance_id }}' \
+            '.status == "ok" and .app == "public-waste-calendar-web" and .instanceId == $instance_id' \
+            >/dev/null
           curl --fail --silent --show-error "${base_url}/" | grep -q '<div id="root"></div>'
           curl --fail --silent --show-error "${base_url}/api/public-waste/selection" >/dev/null
 

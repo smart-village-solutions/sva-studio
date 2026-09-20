@@ -10,6 +10,7 @@ Das System SHALL für jeden konfigurierten öffentlichen Waste-Web-Stack einen e
 - **THEN** baut und publiziert das System die öffentliche Waste-Web-Runtime genau einmal mit dem Image-Tag `v1.2.3`
 - **AND** deployt getrennte Jobs den identischen Image-Tag nach Prignitz und Frankfurt (Oder)
 - **AND** jeder Job verwendet ausschließlich sein eigenes GitHub-Environment, seinen eigenen Stack und seine eigene Basis-URL
+- **AND** jeder Job prüft vor der Stack-Mutation die erwartete Basis-URL und den erwarteten Stacknamen seines Ziels sowie nach dem Rollout dessen erwartete Runtime-`instanceId`
 - **AND** der normale Studio-Releasepfad bleibt unberührt
 
 #### Scenario: Ein Zielstack scheitert ohne Cross-Target-Mutation

@@ -9,8 +9,8 @@ Der Workflow erhält einen Build-Job ohne Deployment-Environment und einen matri
 ## Invariants
 
 1. Ein Release-Tag erzeugt genau einen Image-Tag und beide Zielstacks referenzieren diesen identischen Tag.
-2. Ein Deploy-Job kann weder Variablen noch Secret eines anderen Environments lesen oder dessen Stacknamen verwenden.
-3. Prignitz- und Frankfurt-Smokes verwenden stets die URL des jeweiligen Environment-Jobs.
+2. Ein Deploy-Job kann weder Variablen noch Secret eines anderen Environments lesen oder dessen Stacknamen verwenden; vor der Mutation muss seine Environment-Konfiguration mit der festgelegten Ziel-URL und dem Stacknamen übereinstimmen.
+3. Prignitz- und Frankfurt-Smokes verwenden stets die URL des jeweiligen Environment-Jobs und bestätigen dessen erwartete `instanceId`.
 4. Ein Fehlschlag eines Zieljobs ist terminal und sichtbar; bereits erfolgreiche Zieljobs werden nicht automatisch verändert oder zurückgerollt.
 5. Der normale Studio-Build/-Promote-Pfad bleibt unverändert.
 

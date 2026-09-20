@@ -212,71 +212,88 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
-  it('continues the confirmed create plan and stops at manual activation', async () => {
-    const request = vi
-      .fn()
-      .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
-      .mockResolvedValueOnce({ data: { fingerprint: confirmedPlanFingerprint, steps: [] } })
-      .mockResolvedValueOnce({ data: { id: 'run-1' } })
-      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
-      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
-      .mockResolvedValueOnce({ data: { seeded: true } })
-      .mockResolvedValueOnce({ data: { outcome: 'success' } })
-      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
-      .mockResolvedValueOnce({
-        data: {
+  it.each([
+    [
+      'completed parent provisioning',
+      { state: 'awaiting_activation', nextAction: { action: 'instance.status.activate' } },
+      'awaiting_human_action',
+      'activation',
+    ],
+    [
+      'incomplete parent provisioning',
+      { state: 'provisioning_waiting', nextAction: { action: 'instance.readiness.refresh' } },
+      'blocked',
+      'doctor_validation',
+    ],
+  ] as const)(
+    'continues the confirmed create plan and respects %s',
+    async (_case, provisioningReadiness, expectedStatus, expectedStep) => {
+      const request = vi
+        .fn()
+        .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+        .mockResolvedValueOnce({ data: { fingerprint: confirmedPlanFingerprint, steps: [] } })
+        .mockResolvedValueOnce({ data: { id: 'run-1' } })
+        .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+        .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+        .mockResolvedValueOnce({ data: { seeded: true } })
+        .mockResolvedValueOnce({ data: { outcome: 'success' } })
+        .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+        .mockResolvedValueOnce({
+          data: {
+            instanceId: 'demo',
+            status: 'requested',
+            assignedModules: [],
+            keycloakStatus: { realmExists: true, clientExists: true },
+            tenantIamStatus: { overall: { status: 'ready' } },
+            moduleIamStatus: { overall: { status: 'unknown' } },
+            provisioningReadiness,
+          },
+        });
+      const server = createStudioMcpServer({ request }, config);
+      const client = new Client({ name: 'test-client', version: '1' });
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+      const response = await client.callTool({
+        name: 'studio_instance_process',
+        arguments: {
+          mode: 'create',
           instanceId: 'demo',
-          status: 'requested',
-          assignedModules: [],
-          keycloakStatus: { realmExists: true, clientExists: true },
-          tenantIamStatus: { overall: { status: 'ready' } },
-          moduleIamStatus: { overall: { status: 'unknown' } },
+          planFingerprint: confirmedPlanFingerprint,
+          create: {
+            instanceId: 'demo',
+            displayName: 'Demo',
+            parentDomain: 'example.org',
+            realmMode: 'new',
+            authRealm: 'demo',
+            authClientId: 'sva-studio-login',
+            ...completeTenantCreateFields,
+          },
         },
       });
-    const server = createStudioMcpServer({ request }, config);
-    const client = new Client({ name: 'test-client', version: '1' });
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
-    const response = await client.callTool({
-      name: 'studio_instance_process',
-      arguments: {
-        mode: 'create',
-        instanceId: 'demo',
-        planFingerprint: confirmedPlanFingerprint,
-        create: {
-          instanceId: 'demo',
-          displayName: 'Demo',
-          parentDomain: 'example.org',
-          realmMode: 'new',
-          authRealm: 'demo',
-          authClientId: 'sva-studio-login',
-          ...completeTenantCreateFields,
+      expect(response.structuredContent).toMatchObject({
+        ok: true,
+        data: {
+          status: expectedStatus,
+          currentStep: expectedStep,
+          completedSteps: expect.arrayContaining([
+            'registry_created_or_idempotently_reused',
+            'keycloak_provisioned',
+            'tenant_iam_roles_reconciled',
+          ]),
         },
-      },
-    });
-
-    expect(response.structuredContent).toMatchObject({
-      ok: true,
-      data: {
-        status: 'awaiting_human_action',
-        currentStep: 'activation',
-        completedSteps: expect.arrayContaining([
-          'registry_created_or_idempotently_reused',
-          'keycloak_provisioned',
-          'tenant_iam_roles_reconciled',
-        ]),
-      },
-    });
-    expect(request).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
-        path: '/api/v1/iam/instances/demo/keycloak/execute',
-        body: { intent: 'provision', planFingerprint: confirmedPlanFingerprint },
-      })
-    );
-    await Promise.all([client.close(), server.close()]);
-  });
+      });
+      expect(request).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          path: '/api/v1/iam/instances/demo/keycloak/execute',
+          body: { intent: 'provision', planFingerprint: confirmedPlanFingerprint },
+        })
+      );
+      await Promise.all([client.close(), server.close()]);
+    }
+  );
 
   it('rejects a stale confirmed plan while preserving completed registry progress', async () => {
     const request = vi

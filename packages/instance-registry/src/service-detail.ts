@@ -14,7 +14,7 @@ import {
 import { buildBackgroundProvisioningCapabilities } from './service-draft-readiness.js';
 import {
   isTenantProvisioningFailureRetryable,
-  shouldExposeAutomatedProvisioning,
+  requiresAutomatedProvisioningEvidence,
 } from './service-active-provisioning.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
@@ -125,7 +125,8 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakPlan?.steps.some((step) => step.action === 'create' || step.action === 'update') ??
     false;
   const hostReadinessSatisfied =
-    !shouldExposeAutomatedProvisioning(deps, instance) ||
+    !createRun ||
+    !requiresAutomatedProvisioningEvidence(createRun) ||
     Boolean(
       createRun?.status === 'validated' &&
       createRun.stepKey === 'completed' &&

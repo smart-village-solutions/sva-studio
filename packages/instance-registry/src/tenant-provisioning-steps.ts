@@ -15,6 +15,7 @@ import type { ParentStep } from './tenant-provisioning-state.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
 import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
+import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -31,7 +32,6 @@ const logger = createSdkLogger({
   component: 'iam-instance-registry-tenant-provisioning',
   level: 'info',
 });
-
 const readProperty = (value: unknown, key: string): unknown => {
   if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
     return undefined;
@@ -126,9 +126,24 @@ const keycloakStep: StepHandler = async ({
   });
 };
 
-const lifecycleStep: StepHandler = async ({ deps, run, workerId, now, assertExecutionActive }) => {
+const lifecycleStep: StepHandler = async ({
+  deps,
+  run,
+  instance,
+  workerId,
+  now,
+  assertExecutionActive,
+}) => {
   assertExecutionActive();
-  readTenantProvisioningPluginSnapshot(run);
+  const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
+  if (pluginSnapshot.lifecycles.length > 0) {
+    await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
+      instanceId: instance.instanceId,
+      actorId: run.actorId,
+      requestId: run.requestId,
+    });
+  }
+  assertExecutionActive();
   return continueAt(deps, run, workerId, 'ingress', now);
 };
 

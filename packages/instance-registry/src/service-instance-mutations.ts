@@ -23,6 +23,7 @@ import {
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 import {
   assertNoActiveTenantProvisioning,
+  requiresAutomatedProvisioningEvidence,
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
 import {
@@ -198,10 +199,11 @@ export const createChangeStatusHandler =
       if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
         blockers.push('module_readiness_not_ready');
       }
-      if (shouldExposeAutomatedProvisioning(deps, current)) {
+      if (detail.provisioningRuns.some(requiresAutomatedProvisioningEvidence)) {
         const completedCreateRun = detail.provisioningRuns.find(
           (run) =>
             run.operation === 'create' &&
+            requiresAutomatedProvisioningEvidence(run) &&
             run.status === 'validated' &&
             run.stepKey === 'completed' &&
             Boolean(run.completedAt)

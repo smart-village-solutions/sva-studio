@@ -166,6 +166,20 @@ const createHarness = () => {
     })),
     getKeycloakProvisioningRun: vi.fn(async () => childRun(keycloakStatus)),
     listKeycloakProvisioningRuns: vi.fn(async () => []),
+    reconcileModuleActivationPolicies: vi.fn(async () => ({
+      changedModuleIds: ['ssf'],
+      conflictModuleIds: [],
+      unchangedModuleIds: [],
+    })),
+    listAssignedModules: vi.fn(async () => ['ssf']),
+    syncAssignedModuleIam: vi.fn(async () => ({
+      permissionsInserted: 1,
+      permissionsUpdated: 0,
+      permissionsUnchanged: 0,
+      grantsInserted: 1,
+      grantsUnchanged: 0,
+    })),
+    persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => ['ssf']),
     appendAuditEvent: vi.fn(async () => undefined),
     setInstanceStatus: vi.fn(async ({ status }) => {
       currentInstance = { ...currentInstance, status };
@@ -177,6 +191,33 @@ const createHarness = () => {
     repository,
     invalidateHost: vi.fn(),
     revealSecret: vi.fn(() => undefined),
+    invalidatePermissionSnapshots: vi.fn(async () => undefined),
+    moduleIamRegistry: new Map([
+      [
+        'ssf',
+        {
+          moduleId: 'ssf',
+          permissionIds: ['ssf.configuration.tenant.read'],
+          tenantBootstrapRoles: [
+            { roleName: 'system_admin', permissionIds: ['ssf.configuration.tenant.read'] },
+          ],
+        },
+      ],
+    ]),
+    pluginTenantLifecycleRegistry: new Map([
+      ['ssf', { pluginId: 'ssf', contractRevision: 'ssf-1:contract' }],
+    ]),
+    readModuleActivationPolicySnapshot: () => ({
+      revision: 'catalog-1',
+      modules: [
+        {
+          moduleId: 'ssf',
+          activationPolicy: 'automatic',
+          manifestVersion: 1,
+          policyRevision: 'ssf-1',
+        },
+      ],
+    }),
     readPluginOidcClientRequirements: vi.fn(() => []),
     publishTenantIngress: vi.fn(async () => ({
       routerName: 'studio-tenant-tenant-a',
@@ -343,6 +384,12 @@ describe('tenant provisioning parent orchestrator', () => {
     harness.setKeycloakStatus('succeeded');
     await iterate();
     await iterate();
+    expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'tenant-a', reconcileId: 'catalog-1' })
+    );
+    expect(harness.repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'tenant-a' })
+    );
     await iterate();
     await iterate();
 

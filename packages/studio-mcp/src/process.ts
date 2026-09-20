@@ -40,7 +40,14 @@ const isDoctorReady = (detail: Record<string, unknown>): boolean => {
   const tenantIam = unwrap(detail.tenantIamStatus);
   const moduleIam = unwrap(detail.moduleIamStatus);
   const status = unwrap(detail.keycloakStatus);
+  const provisioningReadiness = unwrap(detail.provisioningReadiness);
+  const provisioningNextAction = unwrap(provisioningReadiness.nextAction);
+  const provisioningAllowsActivation =
+    Object.keys(provisioningReadiness).length === 0 ||
+    detail.status === 'active' ||
+    provisioningNextAction.action === 'instance.status.activate';
   return (
+    provisioningAllowsActivation &&
     status.realmExists === true &&
     status.clientExists === true &&
     tenantIam.overall !== undefined &&
@@ -175,6 +182,7 @@ const evaluateDoctor = (input: {
     keycloakStatus: input.detail.keycloakStatus,
     tenantIamStatus: input.detail.tenantIamStatus,
     moduleIamStatus: input.detail.moduleIamStatus,
+    provisioningReadiness: input.detail.provisioningReadiness,
   };
   if (!isDoctorReady(input.detail)) {
     return {

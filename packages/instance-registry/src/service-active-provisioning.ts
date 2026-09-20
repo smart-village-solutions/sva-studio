@@ -53,3 +53,9 @@ export const shouldExposeAutomatedProvisioning = (
   deps: InstanceRegistryServiceDeps,
   input: { readonly parentDomain: string }
 ): boolean => deps.isAutomatedTenantProvisioningEnabled?.(input) === true;
+
+export const requiresAutomatedProvisioningEvidence = (run: {
+  readonly snapshotVersion?: string;
+  readonly desiredSnapshot: Readonly<{ automationMode?: string }>;
+}): boolean =>
+  run.snapshotVersion === '2.0' && run.desiredSnapshot.automationMode === 'kassel-traefik-file';

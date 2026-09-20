@@ -2104,12 +2104,13 @@ describe('instance registry service facade', () => {
   );
 
   it.each([
-    ['standard', false, ['news']],
-    ['kassel', true, ['news']],
-    ['moduleless', false, []],
+    ['standard', false, ['news'], false],
+    ['kassel', true, ['news'], false],
+    ['moduleless', false, [], false],
+    ['kassel-disabled-runtime', false, ['news'], true],
   ] as const)(
     'activates the %s profile only with current successful postflight and IAM evidence',
-    async (profile, automated, assignedModules) => {
+    async (profile, automated, assignedModules, hostReadinessMissing) => {
       const suspendedInstance = {
         ...baseInstance,
         status: 'suspended' as const,
@@ -2149,9 +2150,12 @@ describe('instance registry service facade', () => {
         listProvisioningRuns: vi.fn(async () => [
           {
             ...latestRun,
-            status: 'validated' as const,
-            stepKey: 'completed',
-            completedAt: '2026-01-01T00:05:00.000Z',
+            status: hostReadinessMissing ? ('failed' as const) : ('validated' as const),
+            stepKey: hostReadinessMissing ? 'ingress' : 'completed',
+            completedAt: hostReadinessMissing ? undefined : '2026-01-01T00:05:00.000Z',
+            desiredSnapshot: {
+              automationMode: hostReadinessMissing ? 'kassel-traefik-file' : 'external',
+            },
           },
         ]),
         listKeycloakProvisioningRuns: vi.fn(async () => [
@@ -2220,6 +2224,20 @@ describe('instance registry service facade', () => {
             }),
           })
         );
+      }
+
+      if (hostReadinessMissing) {
+        await expect(
+          service.changeStatus({
+            instanceId: 'demo',
+            nextStatus: 'active',
+            idempotencyKey: `idem-activate-ready-${profile}`,
+            actorId: 'actor-1',
+            requestId: 'request-ready',
+          })
+        ).rejects.toThrow('activation_readiness_blocked:host_readiness_missing');
+        expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+        return;
       }
 
       await expect(

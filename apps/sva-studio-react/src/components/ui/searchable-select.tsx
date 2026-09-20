@@ -55,10 +55,12 @@ const findEnabledOptionIndex = (
   start: number,
   direction: 1 | -1
 ): number => {
-  for (let index = start; index >= 0 && index < options.length; index += direction) {
+  if (options.length === 0) return -1;
+  for (let offset = 0; offset < options.length; offset += 1) {
+    const index = (start + offset * direction + options.length) % options.length;
     if (!options[index]?.disabled) return index;
   }
-  return Math.max(0, Math.min(start, options.length - 1));
+  return -1;
 };
 
 export const filterSearchableSelectOptions = (

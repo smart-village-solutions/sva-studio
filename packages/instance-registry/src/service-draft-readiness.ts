@@ -285,7 +285,7 @@ export const createDraftReadinessHandler =
         : check
     );
     if (input.realmMode === 'new') {
-      let capable = false;
+      let capable: boolean;
       try {
         capable = (await deps.readKeycloakRealmCreateCapability?.()) === true;
       } catch {

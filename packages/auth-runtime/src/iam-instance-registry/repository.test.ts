@@ -132,6 +132,8 @@ vi.mock('./provisioning-auth.js', () => ({
 }));
 
 vi.mock('./provisioning-auth-state.js', () => ({
+  listKeycloakRealmsViaProvisioner: vi.fn(),
+  readKeycloakRealmCreateCapabilityViaProvisioner: vi.fn(),
   readKeycloakStateViaProvisioner: vi.fn(),
 }));
 
@@ -264,7 +266,13 @@ describe('iam instance registry repository wiring', () => {
     expect(runtimeConfig?.serviceDeps.getKeycloakStatus).not.toBe(
       runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus
     );
-    expect(runtimeConfig?.serviceDeps).not.toHaveProperty('readKeycloakStateViaProvisioner');
+    expect(runtimeConfig?.serviceDeps).toEqual(
+      expect.objectContaining({
+        readKeycloakStateViaProvisioner: expect.any(Function),
+        listKeycloakRealms: expect.any(Function),
+        readKeycloakRealmCreateCapability: expect.any(Function),
+      })
+    );
     expect(runtimeConfig?.provisioningWorkerServiceDeps).toEqual(
       expect.objectContaining({ readKeycloakStateViaProvisioner: expect.any(Function) })
     );

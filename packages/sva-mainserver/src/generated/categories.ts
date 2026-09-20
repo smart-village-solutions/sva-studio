@@ -7,6 +7,7 @@ export type SvaMainserverCategoryFragment = {
   } | null;
   readonly position?: number | null;
   readonly tagList?: string | null;
+  readonly dataTypes?: readonly string[] | null;
 };
 
 export type SvaMainserverCategoryManagementFragment = {
@@ -38,6 +39,7 @@ const categoryFields = `
   }
   position
   tagList
+  dataTypes
 `;
 
 export const svaMainserverCategoriesListDocument = `

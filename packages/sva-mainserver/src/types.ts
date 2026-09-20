@@ -227,6 +227,7 @@ export type SvaMainserverCategory = {
 
 export type SvaMainserverCategoriesListItem = Omit<SvaMainserverCategory, 'id' | 'children'> & {
   readonly id: string;
+  readonly dataTypes: readonly string[];
   readonly parent?: {
     readonly name: string;
   };

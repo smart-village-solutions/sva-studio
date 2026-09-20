@@ -416,6 +416,11 @@ describe('createSvaMainserverService', () => {
   it.each([
     ['a non-object category', 'invalid-category'],
     ['a non-numeric position', { id: 'cat-1', name: 'Allgemein', position: 'first' }],
+    ['missing data types', { id: 'cat-1', name: 'Allgemein', position: 1, tagList: '' }],
+    [
+      'a non-string data type',
+      { id: 'cat-1', name: 'Allgemein', position: 1, dataTypes: ['news_item', 42] },
+    ],
     ['a non-string tag list', { id: 'cat-1', name: 'Allgemein', tagList: ['amt'] }],
     ['a non-object parent', { id: 'cat-1', name: 'Allgemein', parent: 'cat-root' }],
     ['a parent with a non-string name', { id: 'cat-1', name: 'Allgemein', parent: { name: 42 } }],
@@ -495,6 +500,7 @@ describe('createSvaMainserverService', () => {
                 name: 'Allgemein',
                 position: 1,
                 tagList: 'amt, buerger',
+                dataTypes: [],
                 parent: null,
               },
               {
@@ -502,6 +508,7 @@ describe('createSvaMainserverService', () => {
                 name: 'Unterkategorie',
                 position: 2,
                 tagList: 'vor-ort',
+                dataTypes: ['event_record', 'news_item'],
                 parent: {
                   name: 'Allgemein',
                 },
@@ -523,12 +530,14 @@ describe('createSvaMainserverService', () => {
       {
         id: 'cat-root',
         name: 'Allgemein',
+        dataTypes: [],
         position: 1,
         tagList: 'amt, buerger',
       },
       {
         id: 'cat-child',
         name: 'Unterkategorie',
+        dataTypes: ['event_record', 'news_item'],
         position: 2,
         tagList: 'vor-ort',
         parent: {
@@ -545,6 +554,7 @@ describe('createSvaMainserverService', () => {
     expect(categoriesRequest.operationName).toBe('SvaMainserverCategoriesList');
     expect(categoriesRequest.variables).toBeUndefined();
     expect(categoriesRequest.query).toContain('parent {');
+    expect(categoriesRequest.query).toContain('dataTypes');
     expect(categoriesRequest.query).not.toContain('children {');
   });
 
@@ -3899,7 +3909,7 @@ describe('createSvaMainserverService', () => {
           case 'SvaMainserverMutationRootTypename':
             return { __typename: 'Mutation' };
           case 'SvaMainserverCategoriesList':
-            return { categories: [{ id: 'category-1', name: 'Kultur' }] };
+            return { categories: [{ id: 'category-1', name: 'Kultur', dataTypes: [] }] };
           case 'SvaMainserverNewsProjectionList':
             return { newsItems: [] };
           case 'SvaMainserverChangeNewsVisibility':
@@ -3952,7 +3962,7 @@ describe('createSvaMainserverService', () => {
       __typename: 'Mutation',
     });
     await expect(listSvaMainserverCategories(connection)).resolves.toEqual([
-      { id: 'category-1', name: 'Kultur' },
+      { id: 'category-1', name: 'Kultur', dataTypes: [] },
     ]);
     await expect(
       listSvaMainserverProjection({

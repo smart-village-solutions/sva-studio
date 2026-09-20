@@ -77,7 +77,7 @@ export const listEventCategories = async (): Promise<readonly EventCategoryOptio
     { readonly data: readonly EventCategoryOption[] },
     EventsApiError
   >({
-    url: '/api/v1/mainserver/categories',
+    url: '/api/v1/mainserver/categories?dataType=event_record',
     errorFactory: (code, message) => new EventsApiError(code, message),
   });
   return response.data;

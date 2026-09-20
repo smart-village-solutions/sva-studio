@@ -178,15 +178,26 @@ const normalizeCategoryListItem = (value: unknown): SvaMainserverCategoriesListI
   const name = readRequiredCategoryField(value.name);
   const position = readOptionalPosition(value.position);
   const tagList = readOptionalTagList(value.tagList);
+  const dataTypes = value.dataTypes;
   const parent = readOptionalCategoryParent(value.parent);
 
-  if (!id || !name || position === null || tagList === null || parent === null) {
+  if (
+    !id ||
+    !name ||
+    position === null ||
+    tagList === null ||
+    !Array.isArray(dataTypes) ||
+    parent === null
+  ) {
     return null;
   }
+  const normalizedDataTypes = dataTypes.map(readRequiredCategoryField);
+  if (normalizedDataTypes.some((dataType) => !dataType)) return null;
 
   return {
     id,
     name,
+    dataTypes: normalizedDataTypes as string[],
     ...(parent ? { parent } : {}),
     ...(position !== undefined ? { position } : {}),
     ...(tagList !== undefined ? { tagList } : {}),

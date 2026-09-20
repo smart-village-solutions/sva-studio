@@ -53,7 +53,7 @@ describe('poi api', () => {
 
     await expect(listPoiCategories()).resolves.toEqual([{ id: 'cat-1', name: 'Verwaltung' }]);
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/mainserver/categories',
+      '/api/v1/mainserver/categories?dataType=point_of_interest',
       expect.objectContaining({ credentials: 'include' })
     );
   });

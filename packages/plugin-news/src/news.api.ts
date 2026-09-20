@@ -87,7 +87,7 @@ export const listNewsCategories = async (): Promise<readonly NewsCategoryOption[
     { readonly data: readonly NewsCategoryOption[] },
     NewsApiError
   >({
-    url: '/api/v1/mainserver/categories',
+    url: '/api/v1/mainserver/categories?dataType=news_item',
     errorFactory: (code, message) => new NewsApiError(code, message),
   });
   return response.data;

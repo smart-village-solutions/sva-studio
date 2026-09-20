@@ -148,7 +148,9 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       },
       permissions: [],
     });
-    state.listSvaMainserverCategories.mockResolvedValue([{ id: 'cat-1', name: 'Allgemein' }]);
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: 'cat-1', name: 'Allgemein', dataTypes: [] },
+    ]);
 
     const response = await dispatchSvaMainserverCategoriesRequest(
       new Request('https://studio.test/api/v1/mainserver/categories')
@@ -164,6 +166,49 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     });
     await expect(response?.json()).resolves.toEqual({
       data: [{ id: 'cat-1', name: 'Allgemein' }],
+    });
+  });
+
+  it('filters active categories for a requested content data type while keeping universal categories', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+    state.listSvaMainserverCategories.mockResolvedValue([
+      { id: 'universal', name: 'Allgemein', dataTypes: [] },
+      { id: 'news', name: 'Presse', dataTypes: ['news_item'] },
+      { id: 'event', name: 'Kultur', dataTypes: ['event_record'] },
+      { id: 'multi', name: 'Amtlich', dataTypes: ['news_item', 'event_record'] },
+      { id: 'poi', name: 'Ort', dataTypes: ['point_of_interest'] },
+    ]);
+
+    const response = await dispatchSvaMainserverCategoriesRequest(
+      new Request('https://studio.test/api/v1/mainserver/categories?dataType=event_record')
+    );
+
+    expect(state.listSvaMainserverCategories).toHaveBeenCalledTimes(1);
+    await expect(response?.json()).resolves.toEqual({
+      data: [
+        { id: 'universal', name: 'Allgemein' },
+        { id: 'event', name: 'Kultur' },
+        { id: 'multi', name: 'Amtlich' },
+      ],
+    });
+  });
+
+  it.each([
+    'https://studio.test/api/v1/mainserver/categories?dataType=unknown',
+    'https://studio.test/api/v1/mainserver/categories?dataType=',
+    'https://studio.test/api/v1/mainserver/categories?dataType=news_item&dataType=event_record',
+  ])('rejects invalid category data type filters before the upstream read', async (url) => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    allow('categories.read');
+
+    const response = await dispatchSvaMainserverCategoriesRequest(new Request(url));
+
+    expect(state.listSvaMainserverCategories).not.toHaveBeenCalled();
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'invalid_request',
+      message: 'Der Kategorien-Datentypfilter ist ungültig.',
     });
   });
 

@@ -174,7 +174,7 @@ export const mockSharedShellRequests = async (page: Page) => {
       body: JSON.stringify({ data: [] }),
     })
   );
-  await page.route('**/api/v1/mainserver/categories', async (route) =>
+  await page.route('**/api/v1/mainserver/categories*', async (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',

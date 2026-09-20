@@ -363,6 +363,54 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('returns the generated key while automated parent provisioning is pending', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'provisioning' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'provisioning' },
+        },
+      });
+    const server = createStudioMcpServer({ request }, { ...config, processTimeoutMs: 0 });
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'in_progress',
+        currentStep: 'parent_provisioning',
+        idempotencyKey: expect.any(String),
+      },
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('rejects a stale confirmed plan while preserving completed registry progress', async () => {
     const request = vi
       .fn()

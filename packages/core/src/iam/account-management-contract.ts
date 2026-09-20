@@ -844,6 +844,7 @@ export type IamInstanceProvisioningReadiness = {
     action:
       | 'instance.readiness.refresh'
       | 'instance.keycloak.execute'
+      | 'instance.secret.rotate'
       | 'instance.provisioning.retry'
       | 'instance.tenant-iam.probe'
       | 'instance.tenant-iam.reconcile'

@@ -3716,6 +3716,74 @@ describe('instance registry service facade', () => {
     });
   });
 
+  it('recommends secret rotation before tenant IAM when it is the only blocker', async () => {
+    const importedInstance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+      authClientSecretConfigured: false,
+      tenantAdminClient: undefined,
+      tenantAdminBootstrap: undefined,
+    };
+    const inputFingerprint = buildKeycloakSnapshotInputFingerprint(importedInstance, {
+      authClientSecretCiphertext: null,
+      tenantAdminClientSecretCiphertext: null,
+    });
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => importedInstance),
+      getAuthClientSecretCiphertext: vi.fn(async () => null),
+      getTenantAdminClientSecretCiphertext: vi.fn(async () => null),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Missing secret',
+              details: {
+                policyVersion: 3,
+                inputFingerprint,
+                preflight: {
+                  overallStatus: 'blocked',
+                  checkedAt: '2026-09-21T00:00:00.000Z',
+                  checks: [
+                    {
+                      checkKey: 'tenant_secret',
+                      title: 'Tenant-Client-Secret',
+                      status: 'blocked',
+                      summary: 'Tenant-Secret fehlt.',
+                      details: {},
+                    },
+                  ],
+                },
+                plan: {
+                  contractVersion: '1.0',
+                  fingerprint: 'a'.repeat(64),
+                  mode: 'existing',
+                  overallStatus: 'blocked',
+                  generatedAt: '2026-09-21T00:00:00.000Z',
+                  driftSummary: 'Tenant-Secret fehlt.',
+                  steps: [],
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).getInstanceDetail('demo')
+    ).resolves.toEqual(
+      expect.objectContaining({
+        provisioningReadiness: expect.objectContaining({
+          nextAction: { action: 'instance.secret.rotate', retryClass: 'conditional' },
+        }),
+      })
+    );
+  });
+
   it('invalidates a preflight snapshot after the instance contract changes', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => ({

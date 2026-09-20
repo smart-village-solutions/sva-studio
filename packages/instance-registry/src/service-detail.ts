@@ -124,6 +124,13 @@ export const loadKeycloakDetailArtifacts = async (
   const keycloakPlanHasMutations =
     keycloakPlan?.steps.some((step) => step.action === 'create' || step.action === 'update') ??
     false;
+  const blockedPreflightChecks =
+    keycloakPreflight?.checks.filter((check) => check.status === 'blocked') ?? [];
+  const missingTenantSecretIsOnlyBlocker =
+    instance.realmMode === 'existing' &&
+    !instance.authClientSecretConfigured &&
+    blockedPreflightChecks.length > 0 &&
+    blockedPreflightChecks.every((check) => check.checkKey === 'tenant_secret');
   const hostReadinessSatisfied =
     !createRun ||
     !requiresAutomatedProvisioningEvidence(createRun) ||
@@ -169,13 +176,15 @@ export const loadKeycloakDetailArtifacts = async (
                 retryClass: 'safe',
                 runId: retryableCreateRun.id,
               } as const)
-            : keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations
-              ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
-              : tenantIamStatus.access.status !== 'ready'
-                ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
-                : tenantIamStatus.reconcile.status !== 'ready'
-                  ? ({ action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const)
-                  : ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const),
+            : missingTenantSecretIsOnlyBlocker
+              ? ({ action: 'instance.secret.rotate', retryClass: 'conditional' } as const)
+              : keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations
+                ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
+                : tenantIamStatus.access.status !== 'ready'
+                  ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
+                  : tenantIamStatus.reconcile.status !== 'ready'
+                    ? ({ action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const)
+                    : ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const),
   };
 
   return buildInstanceDetail(

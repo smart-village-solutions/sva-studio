@@ -311,6 +311,7 @@ export const runStudioInstanceProcess = async (
             summary: 'Den automatischen Provisioning-Lauf prüfen und gezielt fortsetzen.',
           },
           requestId,
+          idempotencyKey,
         };
       }
       if (parentRun.completedAt === undefined) {
@@ -327,6 +328,7 @@ export const runStudioInstanceProcess = async (
             summary: 'Der automatische Provisioning-Lauf wird serverseitig weitergeführt.',
           },
           requestId,
+          idempotencyKey,
         };
       }
       completedSteps.push('parent_provisioning_completed');

@@ -113,7 +113,7 @@ export function CategoriesPage({
   const selection = usePageSelection();
   const [notice, setNotice] = React.useState<string | null>(null);
   const reloadAfterSave = async (affectedIds: readonly string[]) => {
-    const reloaded = await state.reload();
+    const reloaded = (await state.reload()) !== null;
     const key = reloaded
       ? affectedIds.length
         ? 'messages.savedWithDescendants'

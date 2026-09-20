@@ -102,7 +102,13 @@ const usePersistCategory = (input: {
         input.props.onClose();
       } catch (caught) {
         await input.props.onUncertainSave();
-        input.setError(messageFor(caught, input.props.pt));
+        input.setError(
+          messageFor(
+            caught,
+            input.props.pt,
+            input.props.category ? 'categories.update' : 'categories.create'
+          )
+        );
       } finally {
         input.setPending(false);
       }

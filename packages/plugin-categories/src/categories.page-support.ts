@@ -14,11 +14,38 @@ export type Translator = (
 export type Draft = CategorySaveInput;
 export type DraftField = 'name' | 'parentId' | 'position' | 'iconName' | 'email' | 'dataTypes';
 export type DraftErrors = Partial<Record<DraftField, string>>;
+export type CategoryAction =
+  'categories.read' | 'categories.create' | 'categories.update' | 'categories.delete';
+
+const CATEGORY_POSITION_MAX = 2_147_483_647;
+const CATEGORY_ICON_NAME_MAX_LENGTH = 255;
+
+const ICON_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
+const DATA_TYPE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/u;
+const VISIBLE_ASCII_PATTERN = /^[\x21-\x7E]+$/u;
+
+const isHttpIconUrl = (value: string): boolean => {
+  if (!VISIBLE_ASCII_PATTERN.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const isCategoryIconName = (value: string): boolean =>
+  value.length <= CATEGORY_ICON_NAME_MAX_LENGTH &&
+  (ICON_NAME_PATTERN.test(value) || isHttpIconUrl(value));
 
 export const useTranslator = (): Translator =>
   React.useCallback((key, variables) => translatePluginKey('categories', key, variables), []);
 
-export const messageFor = (error: unknown, pt: Translator) => {
+export const messageFor = (
+  error: unknown,
+  pt: Translator,
+  action: CategoryAction = 'categories.read'
+) => {
   const code =
     typeof error === 'object' &&
     error !== null &&
@@ -34,7 +61,16 @@ export const messageFor = (error: unknown, pt: Translator) => {
     case 'config_not_found':
       return pt('messages.loadErrorConfigMissing');
     case 'forbidden':
-      return pt('messages.loadErrorForbidden');
+      switch (action) {
+        case 'categories.create':
+          return pt('messages.createForbidden');
+        case 'categories.update':
+          return pt('messages.updateForbidden');
+        case 'categories.delete':
+          return pt('messages.deleteForbidden');
+        default:
+          return pt('messages.loadErrorForbidden');
+      }
     case 'category_management_access_denied':
       return pt('messages.loadErrorManagementAccess');
     case 'category_management_invalid_response':
@@ -104,11 +140,19 @@ export const normalizeDraft = (
   const iconName = draft.iconName?.trim() || null;
   const errors: DraftErrors = {};
   if (!name) errors.name = pt('messages.nameRequired');
-  if (draft.position !== null && (!Number.isInteger(draft.position) || draft.position < 0))
+  if (
+    draft.position !== null &&
+    (!Number.isInteger(draft.position) ||
+      draft.position < 0 ||
+      draft.position > CATEGORY_POSITION_MAX)
+  )
     errors.position = pt('messages.positionInvalid');
+  if (iconName && !isCategoryIconName(iconName)) errors.iconName = pt('messages.iconInvalid');
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email))
     errors.email = pt('messages.emailInvalid');
   const dataTypes = [...new Set(draft.dataTypes.map((value) => value.trim()).filter(Boolean))];
+  if (dataTypes.some((value) => !DATA_TYPE_IDENTIFIER_PATTERN.test(value)))
+    errors.dataTypes = pt('messages.dataTypeInvalid');
   return {
     value: { ...draft, name, email, iconName, dataTypes },
     errors,

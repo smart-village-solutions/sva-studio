@@ -1,7 +1,10 @@
 import type { SvaMainserverSaveCategoryInput } from '../types.js';
+import {
+  CATEGORY_POSITION_MAX,
+  isCategoryDataTypeIdentifier,
+  isCategoryIconName,
+} from './categories-fields.js';
 import { errorJson, parseJsonObjectBody } from './content-route-core.js';
-
-const DATA_TYPE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/u;
 
 const stringOrNull = (value: unknown, field: string): string | null | Response => {
   if (value === null) return null;
@@ -23,14 +26,16 @@ const hasInvalidSaveFields = (input: {
   typeof input.active !== 'boolean' ||
   input.parentId instanceof Response ||
   input.iconName instanceof Response ||
+  (typeof input.iconName === 'string' && !isCategoryIconName(input.iconName)) ||
   input.email instanceof Response ||
   (input.position !== null &&
     (typeof input.position !== 'number' ||
       !Number.isInteger(input.position) ||
-      input.position < 0)) ||
+      input.position < 0 ||
+      input.position > CATEGORY_POSITION_MAX)) ||
   !Array.isArray(input.dataTypes) ||
   input.dataTypes.some(
-    (entry) => typeof entry !== 'string' || !DATA_TYPE_IDENTIFIER_PATTERN.test(entry.trim())
+    (entry) => typeof entry !== 'string' || !isCategoryDataTypeIdentifier(entry.trim())
   );
 
 const isIncompleteUpdate = (body: Record<string, unknown>, id?: string): boolean =>

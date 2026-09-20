@@ -29,7 +29,7 @@ const useDeleteController = (
   props: Readonly<{
     category: CategoryManagementItem | null;
     pt: Translator;
-    reload: () => Promise<boolean>;
+    reload: () => Promise<readonly CategoryManagementItem[] | null>;
     onClose: () => void;
     onNotice: (notice: string) => void;
   }>
@@ -44,6 +44,14 @@ const useDeleteController = (
   };
   const remove = async () => {
     if (!props.category) return;
+    const categoryId = props.category.id;
+    const reconcile = async () => {
+      const snapshot = await props.reload();
+      if (!snapshot || snapshot.some((category) => category.id === categoryId)) return false;
+      props.onNotice(props.pt('messages.deleted'));
+      close();
+      return true;
+    };
     setPending(true);
     setError(null);
     setUsage(null);
@@ -51,18 +59,18 @@ const useDeleteController = (
       const result = await deleteCategory(props.category.id);
       if (!result.deletedCategoryId || result.errors.length) {
         if (result.errors.some((entry) => entry.code === 'CATEGORY_NOT_FOUND')) {
-          await props.reload();
+          if (await reconcile()) return;
         }
         setError(deleteErrorMessage(result.errors[0]?.code, props.pt));
         setUsage(result.usage);
         return;
       }
-      const reloaded = await props.reload();
+      const reloaded = (await props.reload()) !== null;
       props.onNotice(props.pt(reloaded ? 'messages.deleted' : 'messages.deletedReloadFailed'));
       close();
     } catch (caught) {
-      await props.reload();
-      setError(messageFor(caught, props.pt));
+      if (await reconcile()) return;
+      setError(messageFor(caught, props.pt, 'categories.delete'));
     } finally {
       setPending(false);
     }
@@ -74,7 +82,7 @@ export function CategoryDeleteDialog(
   props: Readonly<{
     category: CategoryManagementItem | null;
     pt: Translator;
-    reload: () => Promise<boolean>;
+    reload: () => Promise<readonly CategoryManagementItem[] | null>;
     onClose: () => void;
     onNotice: (notice: string) => void;
   }>

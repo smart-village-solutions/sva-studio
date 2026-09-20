@@ -3,6 +3,9 @@ import { Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
 import type { Draft, DraftErrors, DraftField, Translator } from './categories.page-support.js';
 import type { CategoryDataTypeOption, CategoryManagementItem } from './categories.types.js';
 
+const CATEGORY_POSITION_MAX = 2_147_483_647;
+const CATEGORY_ICON_NAME_MAX_LENGTH = 255;
+
 export const categoryFieldIds: Record<DraftField, string> = {
   name: 'category-name',
   parentId: 'category-parent',
@@ -84,6 +87,7 @@ export function CategoryIdentityFields({
         <Input
           type="number"
           min="0"
+          max={CATEGORY_POSITION_MAX}
           step="1"
           value={draft.position ?? ''}
           disabled={pending}
@@ -114,6 +118,7 @@ export function CategoryOptionalFields({
       >
         <Input
           value={draft.iconName ?? ''}
+          maxLength={CATEGORY_ICON_NAME_MAX_LENGTH}
           disabled={pending}
           onChange={(event) => update({ iconName: event.target.value || null })}
         />

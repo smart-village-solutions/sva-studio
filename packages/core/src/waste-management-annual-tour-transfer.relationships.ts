@@ -195,7 +195,9 @@ export const findWasteAnnualRelationshipCollisions = (
       resourceIds: [item.source.id],
     })),
     ...mapped.assignments.map((item) => ({
-      key: `assignment:${[...item.source.locationIds].sort().join(',')}:${item.mappedDate}`,
+      key: `assignment:${[...item.source.locationIds]
+        .sort((left, right) => left.localeCompare(right))
+        .join(',')}:${item.mappedDate}`,
       resourceIds: [item.source.id],
     })),
     ...mapped.shifts.map((item) => ({

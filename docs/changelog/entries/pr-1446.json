@@ -1,0 +1,4 @@
+{
+  "prNumber": 1446,
+  "body": "Zuverlässigere interne Sortierung\n\n- Plugin-Bereitschaft, Berechtigungsprojektionen und Jahresüberträge sortieren Kennungen jetzt mit expliziten Stringvergleichen.\n- Die bestehende fachliche Reihenfolge und Verarbeitung bleiben unverändert."
+}

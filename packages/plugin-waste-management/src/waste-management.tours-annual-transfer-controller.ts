@@ -70,7 +70,9 @@ const conflictIdentity = (tour: WasteAnnualTourTransferTourPreview | undefined):
       .map((conflict) => ({
         kind: conflict.kind,
         targetTourId: conflict.targetTourId,
-        matchingFeatures: [...conflict.matchingFeatures].sort(),
+        matchingFeatures: [...conflict.matchingFeatures].sort((left, right) =>
+          left.localeCompare(right)
+        ),
       }))
       .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
   );

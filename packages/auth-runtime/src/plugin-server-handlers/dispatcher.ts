@@ -199,8 +199,8 @@ export const assertPluginServerHandlerCoverage = (input: {
     }
     endpoints.set(endpointKey, descriptor.id);
   }
-  const declared = [...input.descriptors.keys()].sort();
-  const registered = Object.keys(input.handlers).sort();
+  const declared = [...input.descriptors.keys()].sort((left, right) => left.localeCompare(right));
+  const registered = Object.keys(input.handlers).sort((left, right) => left.localeCompare(right));
   const missing = declared.filter((handlerId) => !registered.includes(handlerId));
   if (missing.length > 0) {
     throw new Error(`missing_plugin_server_handlers:${missing.join(',')}`);
@@ -239,7 +239,7 @@ export const createPluginServerHandlerDispatcher = (input: {
         headers: {
           Allow: pathDescriptors
             .map((entry) => entry.method)
-            .sort()
+            .sort((left, right) => left.localeCompare(right))
             .join(', '),
         },
       });

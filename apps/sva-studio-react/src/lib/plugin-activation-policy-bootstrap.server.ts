@@ -103,13 +103,13 @@ const resolveFleetFailure = (
     : 'degraded';
   const reasonCodes = [
     ...new Set(report.failures.map((failure) => failure.reasonCode).filter(Boolean)),
-  ].sort();
+  ].sort((left, right) => left.localeCompare(right));
   const signature = report.failures
     .map(
       (failure) =>
         `${failure.instanceId ?? '-'}:${failure.stage}:${failure.reasonCode}:${failure.retryClass}`
     )
-    .sort()
+    .sort((left, right) => left.localeCompare(right))
     .join('|');
   return { retryClass, reasonCodes, signature };
 };

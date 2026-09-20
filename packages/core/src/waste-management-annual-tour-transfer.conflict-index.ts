@@ -25,8 +25,10 @@ export const wasteAnnualPlanningSignature = (
 ): string => {
   const intervalDays = wasteAnnualIntervalForTour(tour);
   return stableWasteAnnualSerialize({
-    wasteFractionIds: [...new Set(wasteFractionIds)].sort(),
-    locations: [...new Set(locations)].sort(),
+    wasteFractionIds: [...new Set(wasteFractionIds)].sort((left, right) =>
+      left.localeCompare(right)
+    ),
+    locations: [...new Set(locations)].sort((left, right) => left.localeCompare(right)),
     cadence:
       intervalDays === null
         ? `recurrence:${tour.recurrence ?? `custom:${tour.customRecurrenceId ?? 'unspecified'}`}`

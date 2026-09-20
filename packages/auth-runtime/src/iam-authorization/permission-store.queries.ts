@@ -104,7 +104,10 @@ WHERE a.instance_id = $1
   AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
 ORDER BY a.keycloak_subject, r.role_name, p.permission_key
 `,
-    [input.instanceId, [...new Set(input.permissionIds)].sort()]
+    [
+      input.instanceId,
+      [...new Set(input.permissionIds)].sort((left, right) => left.localeCompare(right)),
+    ]
   );
 
   const projectionBySubject = new Map<
@@ -122,8 +125,8 @@ ORDER BY a.keycloak_subject, r.role_name, p.permission_key
   }
   return [...projectionBySubject].map(([keycloakSubject, projection]) => ({
     keycloakSubject,
-    roleNames: [...projection.roleNames].sort(),
-    permissionIds: [...projection.permissionIds].sort(),
+    roleNames: [...projection.roleNames].sort((left, right) => left.localeCompare(right)),
+    permissionIds: [...projection.permissionIds].sort((left, right) => left.localeCompare(right)),
   }));
 };
 

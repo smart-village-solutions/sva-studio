@@ -117,7 +117,7 @@ const previewTour = async (input: PreviewTourInput): Promise<InternalTourPreview
         mappedResult.mapped.tourDateShifts,
         input.targetYear
       ),
-    ].sort()[0],
+    ].sort((left, right) => left.localeCompare(right))[0],
     relationshipCounts: { ...counts, excluded: mappedResult.excluded },
     replacementResourceIds: replacements.resourceIds,
     replacementTargetYears: replacements.targetYears,
@@ -221,7 +221,7 @@ export const buildWasteAnnualTourTransferPreview = async (input: {
     instanceId: input.instanceId,
     sourceYear: input.sourceYear,
     targetYear,
-    selectedTourIds: [...selected].sort(),
+    selectedTourIds: [...selected].sort((left, right) => left.localeCompare(right)),
     replacementDates: sortWasteAnnualItems(
       input.replacementDates ?? [],
       (item) => item.sourceResourceId

@@ -42,7 +42,7 @@ export const usePluginTenantReadiness = (instanceId: string) => {
             (item) =>
               `${item.pluginId}:${evaluatePluginTenantAccess(item).allowed ? 'allowed' : 'denied'}`
           )
-          .sort()
+          .sort((left, right) => left.localeCompare(right))
           .join('\u0000');
         const shouldRefreshAuthSnapshot =
           authenticatedInstanceId.current === instanceId &&

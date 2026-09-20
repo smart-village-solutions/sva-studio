@@ -238,7 +238,7 @@ export const ensureConfiguredPluginTenantProvisioning = async (
   if (pendingDefinitions.length > 0) {
     const pendingPluginIds = pendingDefinitions
       .map(({ definition }) => definition.pluginId)
-      .sort()
+      .sort((left, right) => left.localeCompare(right))
       .join(',');
     throw new Error(`plugin_tenant_lifecycle_schedule_exhausted:${instanceId}:${pendingPluginIds}`);
   }

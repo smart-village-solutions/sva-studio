@@ -106,9 +106,9 @@ gleichzeitig beeinflussen.
 
 ### Öffentlicher Waste-Web-Releasevertrag
 
-- Die öffentliche Waste-Webversion ist betriebsseitig strikt vom Studio-Releasepfad getrennt: eigenes Image, eigener Stack, eigener Workflow, eigener Variablenraum.
+- Die öffentliche Waste-Webversion ist betriebsseitig strikt vom Studio-Releasepfad getrennt: eigenes Image, eigene Zielstacks, eigener Workflow und eigene, GitHub-environment-getrennte Variablenräume.
 - Produktive Konfiguration für diesen Pfad wird ausschließlich über getrennte `PUBLIC_WASTE_*`-Variablen modelliert; ein zusammengefasster JSON-Blob ist nur noch lokaler Fallback.
-- Git-Tags `waste-web-vX.Y.Z` sind die kanonische Freigabe für diese Bürgeroberfläche; andere Branch- oder Studio-Releases dürfen den Stack `web-waste-calendar` nicht mitverändern.
+- Git-Tags `waste-web-vX.Y.Z` sind die kanonische Freigabe für diese Bürgeroberfläche; ein Tag baut das Image einmal und verteilt denselben Tag über getrennte Jobs auf `web-waste-calendar` und `web-waste-calendar-frankfurt-oder`. Andere Branch- oder Studio-Releases dürfen diese Stacks nicht mitverändern.
 - Der Portainer-Updatepfad verändert ausschließlich `PUBLIC_WASTE_IMAGE_TAG` und belässt alle übrigen Stack-Variablen unverändert, damit Host, Datenbankpfad und PDF-Konfiguration operativ getrennt steuerbar bleiben.
 - Für diesen speziellen Bürger-Frontend-Stack ist bewusst das einfache SemVer-Tag-Modell führend; Digest-Pinning des Studio-Referenzpfads wird hier nicht auf den Waste-Web-Stack übertragen.
 

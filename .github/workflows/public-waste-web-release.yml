@@ -14,17 +14,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Release Public Waste Web
+  build-public-waste-image:
+    name: Build Public Waste Web image
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: web-waste-calendar
-    env:
-      PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}
-      PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME || 'web-waste-calendar' }}
-      QUANTUM_ENDPOINT_ID: ${{ vars.QUANTUM_ENDPOINT_ID }}
-      QUANTUM_HOST: ${{ vars.QUANTUM_HOST }}
-      QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
+    timeout-minutes: 20
+    outputs:
+      image_tag: ${{ steps.release.outputs.image_tag }}
+      image_name: ${{ steps.release.outputs.image_name }}
 
     steps:
       - name: Checkout
@@ -52,7 +48,9 @@ jobs:
 
       - name: Verify release script contract
         run: |
-          pnpm exec vitest run scripts/ops/public-waste/portainer-release.test.ts
+          pnpm exec vitest run \
+            scripts/ci/public-waste-web-release-workflow-contract.test.ts \
+            scripts/ops/public-waste/portainer-release.test.ts
           pnpm exec tsc -p tsconfig.scripts.json --noEmit
 
       - name: Build public waste app
@@ -81,6 +79,73 @@ jobs:
             --push \
             .
 
+  deploy-public-waste-stack:
+    name: Release Public Waste Web (${{ matrix.target.label }})
+    needs: build-public-waste-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - environment: web-waste-calendar
+            label: Prignitz
+            base_url: https://prignitz.abfallkalender.pro
+            stack_name: web-waste-calendar
+            instance_id: bb-prignitz
+          - environment: web-waste-calendar-frankfurt-oder
+            label: Frankfurt (Oder)
+            base_url: https://frankfurt-oder.abfallkalender.pro
+            stack_name: web-waste-calendar-frankfurt-oder
+            instance_id: bb-frankfurt-oder
+    environment: ${{ matrix.target.environment }}
+    env:
+      PUBLIC_WASTE_BASE_URL: ${{ vars.PUBLIC_WASTE_BASE_URL }}
+      PUBLIC_WASTE_STACK_NAME: ${{ vars.PUBLIC_WASTE_STACK_NAME }}
+      QUANTUM_ENDPOINT_ID: ${{ vars.QUANTUM_ENDPOINT_ID }}
+      QUANTUM_HOST: ${{ vars.QUANTUM_HOST }}
+      QUANTUM_API_KEY: ${{ secrets.QUANTUM_API_KEY }}
+      PUBLIC_WASTE_IMAGE_TAG: ${{ needs.build-public-waste-image.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          filter: tree:0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Verify image tag from single build
+        run: |
+          set -euo pipefail
+          expected_tag="v${GITHUB_REF_NAME#waste-web-v}"
+          if [ "${PUBLIC_WASTE_IMAGE_TAG}" != "${expected_tag}" ]; then
+            echo "Image-Tag stimmt nicht mit dem Release-Tag überein." >&2
+            exit 1
+          fi
+
+      - name: Verify target deployment contract
+        run: |
+          set -euo pipefail
+          for key in \
+            QUANTUM_ENDPOINT_ID \
+            QUANTUM_HOST \
+            QUANTUM_API_KEY; do
+            if [ -z "${!key:-}" ]; then
+              echo "${key} fehlt im GitHub-Environment ${{ matrix.target.environment }}." >&2
+              exit 1
+            fi
+          done
+          if [ "${PUBLIC_WASTE_BASE_URL%/}" != "${{ matrix.target.base_url }}" ]; then
+            echo "PUBLIC_WASTE_BASE_URL passt nicht zum Ziel ${{ matrix.target.label }}." >&2
+            exit 1
+          fi
+          if [ "${PUBLIC_WASTE_STACK_NAME}" != "${{ matrix.target.stack_name }}" ]; then
+            echo "PUBLIC_WASTE_STACK_NAME passt nicht zum Ziel ${{ matrix.target.label }}." >&2
+            exit 1
+          fi
+
       - name: Update Portainer stack image tag
         run: pnpm exec tsx scripts/ops/public-waste/portainer-release.ts
 
@@ -101,7 +166,11 @@ jobs:
             sleep 10
           done
 
-          curl --fail --silent --show-error "${base_url}/health/live"
+          health_response="$(curl --fail --silent --show-error "${base_url}/health/live")"
+          printf '%s' "${health_response}" | jq -e \
+            --arg instance_id '${{ matrix.target.instance_id }}' \
+            '.status == "ok" and .app == "public-waste-calendar-web" and .instanceId == $instance_id' \
+            >/dev/null
           curl --fail --silent --show-error "${base_url}/" | grep -q '<div id="root"></div>'
           curl --fail --silent --show-error "${base_url}/api/public-waste/selection" >/dev/null
 
@@ -110,7 +179,7 @@ jobs:
         run: |
           echo 'Public-Waste-Web-Release abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           echo "Git-Tag: \`${GITHUB_REF_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Image-Tag: \`${{ steps.release.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image-Tag: \`${PUBLIC_WASTE_IMAGE_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "Stack: \`${PUBLIC_WASTE_STACK_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "${PUBLIC_WASTE_BASE_URL}" ]; then
             echo "Smoke-URL: \`${PUBLIC_WASTE_BASE_URL}\`" >> "$GITHUB_STEP_SUMMARY"

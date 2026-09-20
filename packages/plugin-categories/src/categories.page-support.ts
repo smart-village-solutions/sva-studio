@@ -17,8 +17,8 @@ export type DraftErrors = Partial<Record<DraftField, string>>;
 export type CategoryAction =
   'categories.read' | 'categories.create' | 'categories.update' | 'categories.delete';
 
-export const CATEGORY_POSITION_MAX = 2_147_483_647;
-export const CATEGORY_ICON_NAME_MAX_LENGTH = 255;
+const CATEGORY_POSITION_MAX = 2_147_483_647;
+const CATEGORY_ICON_NAME_MAX_LENGTH = 255;
 
 const ICON_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
 const VISIBLE_ASCII_PATTERN = /^[\x21-\x7E]+$/u;

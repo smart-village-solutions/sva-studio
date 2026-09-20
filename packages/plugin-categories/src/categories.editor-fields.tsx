@@ -1,14 +1,10 @@
 import { Checkbox, Input, Select, StudioField } from '@sva/studio-ui-react';
 
-import {
-  CATEGORY_ICON_NAME_MAX_LENGTH,
-  CATEGORY_POSITION_MAX,
-  type Draft,
-  type DraftErrors,
-  type DraftField,
-  type Translator,
-} from './categories.page-support.js';
+import type { Draft, DraftErrors, DraftField, Translator } from './categories.page-support.js';
 import type { CategoryDataTypeOption, CategoryManagementItem } from './categories.types.js';
+
+const CATEGORY_POSITION_MAX = 2_147_483_647;
+const CATEGORY_ICON_NAME_MAX_LENGTH = 255;
 
 export const categoryFieldIds: Record<DraftField, string> = {
   name: 'category-name',

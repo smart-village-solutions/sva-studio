@@ -19,5 +19,5 @@
 ## 3. Dokumentation und Abschlussgates
 
 - [x] 3.1 Betroffene Nutzer- oder Vertragsdokumentation aktualisieren, sofern sie den Kategorien-Read oder die Editor-Auswahl beschreibt; die Studio-only-Grenze ausdrücklich beibehalten.
-- [ ] 3.2 Einen nutzerverständlichen Changelog-Eintrag zur gefilterten Kategorieauswahl ergänzen.
+- [x] 3.2 Einen nutzerverständlichen Changelog-Eintrag zur gefilterten Kategorieauswahl ergänzen.
 - [x] 3.3 Früh die kleinsten gezielten Unit-/Type-Gates der geänderten Projekte sowie für das Studio-Serverpackage `pnpm check:server-runtime` ausführen; vor PR-Freigabe zusätzlich `pnpm check:file-placement`, den strikten OpenSpec-Check und die proportionalen Nx-Gates gemäß `DEVELOPMENT_RULES.md` ausführen.

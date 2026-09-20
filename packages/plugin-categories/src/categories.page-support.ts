@@ -21,6 +21,7 @@ const CATEGORY_POSITION_MAX = 2_147_483_647;
 const CATEGORY_ICON_NAME_MAX_LENGTH = 255;
 
 const ICON_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
+const DATA_TYPE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/u;
 const VISIBLE_ASCII_PATTERN = /^[\x21-\x7E]+$/u;
 
 const isHttpIconUrl = (value: string): boolean => {
@@ -150,6 +151,8 @@ export const normalizeDraft = (
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email))
     errors.email = pt('messages.emailInvalid');
   const dataTypes = [...new Set(draft.dataTypes.map((value) => value.trim()).filter(Boolean))];
+  if (dataTypes.some((value) => !DATA_TYPE_IDENTIFIER_PATTERN.test(value)))
+    errors.dataTypes = pt('messages.dataTypeInvalid');
   return {
     value: { ...draft, name, email, iconName, dataTypes },
     errors,

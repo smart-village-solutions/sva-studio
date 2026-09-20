@@ -42,6 +42,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 });
 
 import { CategoriesPage } from '../src/categories.pages.js';
+import { initialDraft, normalizeDraft } from '../src/categories.page-support.js';
 
 const categories = [
   {
@@ -98,6 +99,7 @@ const label = (key: string, variables?: Readonly<Record<string, string | number>
     'categories.messages.categoryNotFound': 'Die Kategorie ist nicht mehr vorhanden.',
     'categories.messages.positionInvalid': 'Position ungültig.',
     'categories.messages.iconInvalid': 'Icon ungültig.',
+    'categories.messages.dataTypeInvalid': 'Datentyp ungültig.',
     'categories.messages.createForbidden': 'categories.create fehlt.',
     'categories.messages.updateForbidden': 'categories.update fehlt.',
     'categories.messages.deleteForbidden': 'categories.delete fehlt.',
@@ -329,6 +331,15 @@ describe('CategoriesPage', () => {
         })
       )
     );
+  });
+
+  it('rejects invalid data type identifiers before saving', () => {
+    const result = normalizeDraft(
+      { ...initialDraft(), name: 'Neu', dataTypes: ['invalid value'] },
+      (key, variables) => label(`categories.${key}`, variables)
+    );
+
+    expect(result.errors.dataTypes).toBe('Datentyp ungültig.');
   });
 
   it('localizes forbidden category mutations for their attempted actions', async () => {

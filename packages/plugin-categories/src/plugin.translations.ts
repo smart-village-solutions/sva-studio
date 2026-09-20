@@ -53,8 +53,7 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
     loading: 'Kategorien werden geladen.',
     loadError: 'Kategorien konnten nicht geladen werden.',
     mutationActionsLoading: 'Verfügbare Schreibaktionen werden geprüft.',
-    mutationActionsLoadError:
-      'Die verfügbaren Schreibaktionen konnten nicht geprüft werden. Die Kategorien bleiben bis zum erneuten Laden schreibgeschützt.',
+    mutationActionsLoadError: 'Schreibaktionen konnten nicht geprüft werden und bleiben gesperrt.',
     loadErrorMissingCredentials:
       'Für den aktuellen Kontext fehlen Mainserver-Zugangsdaten. Bitte wählen Sie eine Organisation mit gepflegten Mainserver-Credentials oder hinterlegen Sie persönliche Mainserver-Zugangsdaten.',
     loadErrorIntegrationDisabled:
@@ -73,8 +72,8 @@ const categoriesTranslationsDe = createCategoriesLocaleTranslations({
     contractError: 'Der Mainserver lieferte eine ungültige Kategorienantwort.',
     nameRequired: 'Bitte geben Sie einen Kategorienamen an.',
     positionInvalid: 'Die Position muss eine ganze Zahl zwischen 0 und 2147483647 sein.',
-    iconInvalid:
-      'Das Icon muss ein gültiger Name oder eine HTTP(S)-URL mit höchstens 255 Zeichen sein.',
+    iconInvalid: 'Das Icon muss ein gültiger Name oder eine HTTP(S)-URL bis 255 Zeichen sein.',
+    dataTypeInvalid: 'Mindestens ein Datentyp-Identifier ist ungültig.',
     emailInvalid: 'Bitte geben Sie genau eine gültige E-Mail-Adresse an.',
     deleteError: 'Die Kategorie konnte nicht gelöscht werden.',
     deleteBlocked: 'Die Kategorie kann wegen bestehender Verwendungen nicht gelöscht werden.',
@@ -201,6 +200,7 @@ const categoriesTranslationsEn = createCategoriesLocaleTranslations({
     nameRequired: 'Enter a category name.',
     positionInvalid: 'Position must be an integer between 0 and 2147483647.',
     iconInvalid: 'Icon must be a valid name or HTTP(S) URL with no more than 255 characters.',
+    dataTypeInvalid: 'At least one data type identifier is invalid.',
     emailInvalid: 'Enter exactly one valid email address.',
     deleteError: 'The category could not be deleted.',
     deleteBlocked: 'The category cannot be deleted because it is in use.',

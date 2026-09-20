@@ -1,8 +1,16 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
-import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+import type {
+  KeycloakProvisioningInput,
+  KeycloakReadState,
+  TenantAdminBootstrap,
+} from './provisioning-auth-types.js';
 import { isInstanceIdMapperAligned } from './keycloak-realm-baseline.js';
-import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
+import {
+  isSystemAdminRoleOwnedByInstance,
+  readStudioOwnedClient,
+  readStudioOwnedUser,
+} from './provisioning-auth-policy.js';
 import { readPluginOidcClientAlignment } from './provisioning-auth-plugin-clients.js';
 import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
 export { buildPlan } from './provisioning-auth-plan.js';
@@ -140,19 +148,25 @@ const resolveTenantSecretSummary = (
     : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
 };
 
-const buildTenantAdminCheck = (realmMode: InstanceRealmMode, tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
-  const configured = Boolean(tenantAdminBootstrap?.username);
-  const missingStatus = realmMode === 'existing' ? 'warning' : 'blocked';
+const buildTenantAdminCheck = (
+  _realmMode: InstanceRealmMode,
+  tenantAdminBootstrap?: TenantAdminBootstrap
+): InstanceKeycloakPreflightCheck => {
+  const missingFields = [
+    !tenantAdminBootstrap?.username ? 'username' : undefined,
+    !tenantAdminBootstrap?.email ? 'email' : undefined,
+    !tenantAdminBootstrap?.firstName ? 'firstName' : undefined,
+    !tenantAdminBootstrap?.lastName ? 'lastName' : undefined,
+  ].filter((field): field is string => Boolean(field));
+  const configured = missingFields.length === 0;
   return createPreflightCheck(
     'tenant_admin_profile',
     'Tenant-Admin-Profil',
-    configured ? 'ready' : missingStatus,
+    configured ? 'ready' : 'blocked',
     configured
       ? 'Die Stammdaten für den Tenant-Admin sind gepflegt.'
-      : realmMode === 'existing'
-        ? 'Für den importierten Realm ist kein Tenant-Admin-Bootstrap konfiguriert; technische Reparaturen bleiben möglich.'
-        : 'Für den Tenant-Admin fehlen die erforderlichen Stammdaten.',
-    { configured }
+      : 'Für den Tenant-Admin fehlen vollständige Stammdaten.',
+    { configured, missingFields }
   );
 };
 
@@ -187,6 +201,7 @@ const resolveTenantAdminClientSummary = (configured: boolean, readable: boolean)
 };
 
 export const buildPreflightChecks = (input: {
+  instanceId?: string;
   realmMode: InstanceRealmMode;
   authClientSecretConfigured: boolean;
   authClientSecret?: string;
@@ -197,7 +212,12 @@ export const buildPreflightChecks = (input: {
   accessError?: string;
 }): readonly InstanceKeycloakPreflightCheck[] => {
   const checks: InstanceKeycloakPreflightCheck[] = [
-    createPreflightCheck('platform_access', 'Plattformzugriff', 'ready', 'Der aufrufende Benutzer ist für die Root-Host-Instanzverwaltung autorisiert.'),
+    createPreflightCheck(
+      'platform_access',
+      'Plattformzugriff',
+      'ready',
+      'Der aufrufende Benutzer ist für die Root-Host-Instanzverwaltung autorisiert.'
+    ),
   ];
 
   if (input.accessError) {
@@ -233,6 +253,69 @@ export const buildPreflightChecks = (input: {
     }),
     buildTenantAdminCheck(input.realmMode, input.tenantAdminBootstrap)
   );
+
+  if (input.realmMode === 'existing' && input.instanceId && input.state?.realm) {
+    const conflicts: string[] = [];
+    if (
+      input.state.clientRepresentation &&
+      readStudioOwnedClient(input.state.clientRepresentation, input.instanceId, 'login_client') !==
+        'owned'
+    ) {
+      conflicts.push('login_client');
+    }
+    if (
+      input.state.tenantAdminClientRepresentation &&
+      readStudioOwnedClient(
+        input.state.tenantAdminClientRepresentation,
+        input.instanceId,
+        'tenant_admin_client'
+      ) !== 'owned'
+    ) {
+      conflicts.push('tenant_admin_client');
+    }
+    for (const pluginClient of input.state.pluginOidcClients) {
+      if (
+        pluginClient.clientRepresentation &&
+        readStudioOwnedClient(
+          pluginClient.clientRepresentation,
+          input.instanceId,
+          `plugin_client:${pluginClient.requirement.pluginId}`
+        ) !== 'owned'
+      ) {
+        conflicts.push(`plugin_client:${pluginClient.requirement.pluginId}`);
+      }
+    }
+    if (
+      input.state.systemAdminRole &&
+      !isSystemAdminRoleOwnedByInstance(input.state.systemAdminRole, input.instanceId)
+    ) {
+      conflicts.push('system_admin_role');
+    }
+    if (
+      input.state.tenantAdminRepresentation &&
+      readStudioOwnedUser(
+        input.state.tenantAdminRepresentation,
+        input.instanceId,
+        'tenant_admin'
+      ) !== 'owned'
+    ) {
+      conflicts.push('tenant_admin');
+    }
+    checks.push(
+      createPreflightCheck(
+        'realm_ownership',
+        'Studio-Eigentum der Realm-Artefakte',
+        conflicts.length > 0 ? 'blocked' : 'ready',
+        conflicts.length > 0
+          ? 'Mindestens ein gleichnamiges Artefakt ist nicht eindeutig dieser Studio-Instanz zugeordnet.'
+          : 'Vorhandene Studio-Artefakte sind eindeutig dieser Instanz zugeordnet; fehlende Artefakte können ergänzt werden.',
+        {
+          reasonCode: conflicts.length > 0 ? 'artifact_ownership_conflict' : 'ownership_verified',
+          conflictingArtifactKeys: conflicts,
+        }
+      )
+    );
+  }
 
   return checks;
 };

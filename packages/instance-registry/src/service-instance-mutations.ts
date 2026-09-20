@@ -16,8 +16,6 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
-import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
-import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 import {
   assertOidcClientIdsNotReserved,
   assertTenantHostnameAvailable,
@@ -32,6 +30,7 @@ import {
   resolveConcurrentIdempotentCreateRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
+import { createDraftReadinessHandler } from './service-draft-readiness.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
 const assertValidInstanceId = (input: { instanceId: string; realmMode: string }): void => {
@@ -81,6 +80,12 @@ export const createProvisioningRequestHandler =
       deps,
       buildPrimaryHostname(effectiveInput.instanceId, effectiveInput.parentDomain)
     );
+    const readiness = await createDraftReadinessHandler(deps)(effectiveInput);
+    if (readiness.createBlockers.length > 0) {
+      throw new Error(
+        `keycloak_create_readiness_blocked:${readiness.createBlockers.map((blocker) => blocker.checkKey).join(',')}`
+      );
+    }
     instanceRegistryServiceLogger.info('instance_create_requested', {
       operation: 'create_instance',
       instance_id: effectiveInput.instanceId,
@@ -124,18 +129,10 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    await syncProtectedSystemAdminPermissions(deps, instance.instanceId);
-    await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-      instanceId: instance.instanceId,
-      actorId: effectiveInput.actorId,
-      requestId: effectiveInput.requestId,
-    });
-    const reconciledInstance =
-      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
-    const automated = shouldExposeAutomatedProvisioning(deps, reconciledInstance);
+    const automated = shouldExposeAutomatedProvisioning(deps, instance);
     const provisioningRun = await createProvisioningArtifacts(
       deps,
-      reconciledInstance,
+      instance,
       effectiveInput,
       automated ? 'kassel-traefik-file' : 'external'
     );
@@ -152,7 +149,7 @@ export const createProvisioningRequestHandler =
     });
     return {
       ok: true,
-      instance: toListItem(reconciledInstance, automated ? provisioningRun : undefined),
+      instance: toListItem(instance, automated ? provisioningRun : undefined),
     };
   };
 
@@ -174,6 +171,44 @@ export const createChangeStatusHandler =
         request_id: input.requestId,
       });
       return { ok: false, reason: 'invalid_transition' as const, currentStatus: current.status };
+    }
+
+    if (input.nextStatus === 'active' && current.status !== 'active') {
+      const detail = await createGetInstanceDetail(deps)(input.instanceId);
+      if (!detail) return { ok: false, reason: 'not_found' as const };
+      const blockers: string[] = [];
+      if (detail.latestKeycloakProvisioningRun?.overallStatus !== 'succeeded') {
+        blockers.push('keycloak_postflight_missing');
+      }
+      if (detail.keycloakPlan?.overallStatus !== 'ready') {
+        blockers.push('keycloak_plan_not_ready');
+      }
+      if (
+        detail.keycloakPlan?.steps.some(
+          (step) => step.action === 'create' || step.action === 'update'
+        )
+      ) {
+        blockers.push('keycloak_drift_present');
+      }
+      if (detail.tenantIamStatus?.overall.status !== 'ready') {
+        blockers.push('tenant_iam_not_ready');
+      }
+      if (detail.moduleIamStatus?.overall.status !== 'ready') {
+        blockers.push('module_readiness_not_ready');
+      }
+      if (shouldExposeAutomatedProvisioning(deps, current)) {
+        const completedCreateRun = detail.provisioningRuns.find(
+          (run) =>
+            run.operation === 'create' &&
+            run.status === 'validated' &&
+            run.stepKey === 'completed' &&
+            Boolean(run.completedAt)
+        );
+        if (!completedCreateRun) blockers.push('host_readiness_missing');
+      }
+      if (blockers.length > 0) {
+        throw new Error(`activation_readiness_blocked:${blockers.join(',')}`);
+      }
     }
 
     const updated = await deps.repository.setInstanceStatus({

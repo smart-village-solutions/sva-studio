@@ -66,6 +66,16 @@ export type TenantAdminStatus = {
   readonly tenantAdminHasSystemAdmin: boolean;
 };
 
+export type TenantAdminRepresentation = Readonly<{
+  id: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  enabled?: boolean;
+  attributes?: Readonly<Record<string, readonly string[]>>;
+}>;
+
 export type KeycloakReadState = {
   readonly client: unknown;
   readonly expectedClient: ReturnType<typeof buildExpectedClientConfig>;
@@ -99,6 +109,7 @@ export type KeycloakReadState = {
     readonly config?: Readonly<Record<string, string>>;
   }[];
   readonly tenantAdminStatus: TenantAdminStatus;
+  readonly tenantAdminRepresentation?: TenantAdminRepresentation | null;
   readonly keycloakClientSecret: string | null;
   readonly tenantAdminClientSecret: string | null;
   readonly systemAdminRole: KeycloakRoleRepresentation;

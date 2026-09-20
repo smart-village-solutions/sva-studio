@@ -165,6 +165,7 @@ const createHarness = () => {
       details: {},
     })),
     getKeycloakProvisioningRun: vi.fn(async () => childRun(keycloakStatus)),
+    listKeycloakProvisioningRuns: vi.fn(async () => []),
     appendAuditEvent: vi.fn(async () => undefined),
     setInstanceStatus: vi.fn(async ({ status }) => {
       currentInstance = { ...currentInstance, status };
@@ -382,7 +383,7 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun()).toMatchObject({
-      status: 'active',
+      status: 'validated',
       stepKey: 'completed',
       completedAt: now.toISOString(),
       terminalEvidence: {
@@ -400,6 +401,10 @@ describe('tenant provisioning parent orchestrator', () => {
         },
       },
     });
+    expect(harness.getInstance().status).toBe('validated');
+    expect(harness.repository.setInstanceStatus).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active' })
+    );
   });
 
   it('keeps the instance fail-closed when tenant IAM role reconciliation is incomplete', async () => {
@@ -687,10 +692,10 @@ describe('tenant provisioning parent orchestrator', () => {
     const logged = JSON.stringify(state.logger.warn.mock.calls);
     expect(logged).not.toContain('outer-secret');
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
-      completedAt: undefined,
+      completedAt: now.toISOString(),
     });
   });
 
@@ -769,13 +774,13 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(logged).not.toContain('database-parameter-secret');
     expect(logged).not.toContain('database-stack-secret');
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
     });
   });
 
-  it('excludes untrusted provider details from outer diagnostics without changing the retry', async () => {
+  it('excludes untrusted provider details and fails an unknown error without retry', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
     vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
@@ -801,15 +806,14 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(logged).not.toContain('user@example.org');
     expect(logged).not.toContain('provider_user_example');
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
-      nextAttemptAt: new Date(now.getTime() + 5_000).toISOString(),
-      completedAt: undefined,
+      completedAt: now.toISOString(),
     });
   });
 
-  it('preserves the scheduled retry when outer diagnostic logging throws', async () => {
+  it('preserves fail-closed handling when outer diagnostic logging throws', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
     vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
@@ -822,10 +826,10 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
-      nextAttemptAt: new Date(now.getTime() + 5_000).toISOString(),
+      completedAt: now.toISOString(),
     });
   });
 
@@ -1049,7 +1053,7 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   });
 
-  it('propagates claim loss after activation so the enclosing transaction rolls back', async () => {
+  it('propagates claim loss after final validation so the enclosing transaction rolls back', async () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
@@ -1065,7 +1069,7 @@ describe('tenant provisioning parent orchestrator', () => {
         .mockResolvedValueOnce(harness.getRun())
         .mockResolvedValueOnce(null);
       vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
-        if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));
+        if (status === 'validated') await new Promise((resolve) => setTimeout(resolve, 15_000));
         harness.changeInstance({ status });
         return harness.getInstance();
       });
@@ -1083,7 +1087,7 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   });
 
-  it('rechecks the actual deadline before committing activation', async () => {
+  it('rechecks the actual deadline before committing final validation', async () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
@@ -1097,7 +1101,7 @@ describe('tenant provisioning parent orchestrator', () => {
         },
       });
       vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
-        if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));
+        if (status === 'validated') await new Promise((resolve) => setTimeout(resolve, 15_000));
         harness.changeInstance({ status });
         return harness.getInstance();
       });

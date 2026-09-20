@@ -57,7 +57,6 @@ import { IamGovernanceDetailPage } from '../routes/admin/-iam-governance-detail-
 import { GroupCreatePage } from '../routes/admin/groups/-group-create-page';
 import { InstanceCreatePage } from '../routes/admin/instances/-instance-create-page';
 import { InstanceDetailPage } from '../routes/admin/instances/-instance-detail-page';
-import { InstanceSetupPage } from '../routes/admin/instances/-instance-setup-page';
 import { InstancesPage } from '../routes/admin/instances/-instances-page';
 import { LegalTextCreatePage } from '../routes/admin/legal-texts/-legal-text-create-page';
 import { LegalTextDetailPage } from '../routes/admin/legal-texts/-legal-text-detail-page';
@@ -916,11 +915,6 @@ const InstanceDetailRoutePage = () => {
   return <InstanceDetailPage instanceId={readStringParam(params.instanceId)} />;
 };
 
-const InstanceSetupRoutePage = () => {
-  const params = useParams({ strict: false });
-  return <InstanceSetupPage instanceId={readStringParam(params.instanceId)} />;
-};
-
 const RoleDetailRoutePage = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
@@ -1008,7 +1002,6 @@ export const appRouteBindings: StudioAppRouteBindings = {
   adminOrganizationDetail: OrganizationDetailRoutePage,
   adminInstances: InstancesPage,
   adminInstanceCreate: InstanceCreatePage,
-  adminInstanceSetup: InstanceSetupRoutePage,
   adminInstanceDetail: InstanceDetailRoutePage,
   adminRoles: RolesRoutePage,
   adminRoleCreate: RoleCreatePage,

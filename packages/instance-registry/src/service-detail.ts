@@ -11,6 +11,11 @@ import {
   buildModuleIamStatus,
   buildTenantIamStatus,
 } from './service-helpers.js';
+import { buildBackgroundProvisioningCapabilities } from './service-draft-readiness.js';
+import {
+  isTenantProvisioningFailureRetryable,
+  shouldExposeAutomatedProvisioning,
+} from './service-active-provisioning.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
@@ -109,6 +114,68 @@ export const loadKeycloakDetailArtifacts = async (
     instance.assignedModules,
     deps.moduleIamRegistry ?? new Map()
   );
+  const backgroundCapabilities = buildBackgroundProvisioningCapabilities(
+    deps,
+    instance,
+    'instance_detail'
+  );
+  const createRun = provisioningRuns.find((run) => run.operation === 'create');
+  const latestKeycloakRun = keycloakProvisioningRuns[0];
+  const keycloakPlanHasMutations =
+    keycloakPlan?.steps.some((step) => step.action === 'create' || step.action === 'update') ??
+    false;
+  const hostReadinessSatisfied =
+    !shouldExposeAutomatedProvisioning(deps, instance) ||
+    Boolean(
+      createRun?.status === 'validated' &&
+      createRun.stepKey === 'completed' &&
+      createRun.completedAt
+    );
+  const activationReady =
+    instance.status !== 'active' &&
+    latestKeycloakRun?.overallStatus === 'succeeded' &&
+    keycloakPlan?.overallStatus === 'ready' &&
+    !keycloakPlanHasMutations &&
+    tenantIamStatus.overall.status === 'ready' &&
+    moduleIamStatus?.overall.status === 'ready' &&
+    hostReadinessSatisfied;
+  const retryableCreateRun =
+    createRun?.snapshotVersion === '2.0' &&
+    createRun.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
+    isTenantProvisioningFailureRetryable(createRun)
+      ? createRun
+      : undefined;
+  const provisioningReadiness = {
+    state:
+      instance.status === 'active'
+        ? ('ready' as const)
+        : createRun?.status === 'failed'
+          ? ('provisioning_blocked' as const)
+          : instance.status === 'validated' && createRun?.completedAt
+            ? ('awaiting_activation' as const)
+            : createRun && !createRun.completedAt
+              ? ('provisioning_waiting' as const)
+              : ('unknown' as const),
+    capabilities: backgroundCapabilities,
+    nextAction:
+      instance.status === 'active'
+        ? null
+        : activationReady
+          ? ({ action: 'instance.status.activate', retryClass: 'never' } as const)
+          : retryableCreateRun
+            ? ({
+                action: 'instance.provisioning.retry',
+                retryClass: 'safe',
+                runId: retryableCreateRun.id,
+              } as const)
+            : keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations
+              ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
+              : tenantIamStatus.access.status !== 'ready'
+                ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
+                : tenantIamStatus.reconcile.status !== 'ready'
+                  ? ({ action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const)
+                  : ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const),
+  };
 
   return buildInstanceDetail(
     instance,
@@ -121,7 +188,8 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakProvisioningRuns,
     tenantIamStatus,
     moduleIamStatus,
-    wasteManagementSettings ?? undefined
+    wasteManagementSettings ?? undefined,
+    provisioningReadiness
   );
 };
 

@@ -2,6 +2,7 @@ import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core'
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { createExecuteKeycloakProvisioningHandler } from './service-keycloak-execution.js';
+import { createPlanKeycloakProvisioningHandler } from './service-keycloak-readers.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import {
   continueAt,
@@ -76,14 +77,20 @@ const registryStep: StepHandler = async ({
   assertExecutionActive();
   if (!provisioning) throw new Error('instance_not_found');
   const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
-  const child = await createExecuteKeycloakProvisioningHandler(
-    { ...deps, readPluginOidcClientRequirements: () => pluginSnapshot.oidcClients },
-    {
-      allowActiveTenantProvisioning: true,
-    }
-  )({
+  const executionDeps = {
+    ...deps,
+    readPluginOidcClientRequirements: () => pluginSnapshot.oidcClients,
+  };
+  const plan = await createPlanKeycloakProvisioningHandler(executionDeps)(instance.instanceId);
+  if (!plan || plan.overallStatus === 'blocked') {
+    throw new Error('keycloak_plan_blocked');
+  }
+  const child = await createExecuteKeycloakProvisioningHandler(executionDeps, {
+    allowActiveTenantProvisioning: true,
+  })({
     instanceId: instance.instanceId,
     intent: 'provision',
+    planFingerprint: plan.fingerprint,
     idempotencyKey: `parent:${run.id}:keycloak:${run.deadlineAt}`,
     actorId: run.actorId,
     requestId: run.requestId,
@@ -261,16 +268,19 @@ const activateStep: StepHandler = async ({
   ) {
     return continueAt(deps, run, workerId, 'tenant_iam_roles', now);
   }
-  const activated = await deps.repository.setInstanceStatus({
+  // Technical provisioning must never make a tenant reachable. `validated` is
+  // the existing non-traffic lifecycle state from which the explicitly
+  // confirmed status action can move to `active`.
+  const validated = await deps.repository.setInstanceStatus({
     instanceId: instance.instanceId,
-    status: 'active',
+    status: 'validated',
     actorId: run.actorId,
     requestId: run.requestId,
   });
   assertExecutionActive();
-  if (!activated) throw new Error('instance_not_found');
+  if (!validated) throw new Error('instance_not_found');
   return updateClaimedRun(deps, run, workerId, {
-    status: 'active',
+    status: 'validated',
     stepKey: 'completed',
     completedAt: now.toISOString(),
   });

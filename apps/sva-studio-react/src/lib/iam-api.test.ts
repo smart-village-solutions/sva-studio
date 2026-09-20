@@ -1479,13 +1479,16 @@ describe('iam-api instance helpers', () => {
     const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ data: { id: 'run-rotate' } }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await rotateInstanceSecret('demo');
+    await rotateInstanceSecret('demo', 'a'.repeat(64));
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/iam/instances/demo/keycloak/rotate-secret',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ intent: 'rotate_client_secret' }),
+        body: JSON.stringify({
+          intent: 'rotate_client_secret',
+          planFingerprint: 'a'.repeat(64),
+        }),
       })
     );
   });
@@ -1539,10 +1542,12 @@ describe('iam-api instance helpers', () => {
     await planInstanceKeycloakProvisioning('demo');
     await executeInstanceKeycloakProvisioning('demo', {
       intent: 'provision',
+      planFingerprint: 'a'.repeat(64),
       tenantAdminTemporaryPassword: 'test-temp-password',
     });
     await getInstanceKeycloakProvisioningRun('demo', 'run-1');
     await reconcileInstanceKeycloak('demo', {
+      planFingerprint: 'a'.repeat(64),
       tenantAdminTemporaryPassword: 'test-temp-password',
     });
     await probeTenantIamAccess('demo');

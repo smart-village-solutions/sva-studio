@@ -47,7 +47,6 @@ export type AppRouteBindings = {
   readonly adminOrganizationDetail: RouteComponent;
   readonly adminInstances: RouteComponent;
   readonly adminInstanceCreate: RouteComponent;
-  readonly adminInstanceSetup: RouteComponent;
   readonly adminInstanceDetail: RouteComponent;
   readonly adminRoles: RouteComponent;
   readonly adminRoleCreate: RouteComponent;

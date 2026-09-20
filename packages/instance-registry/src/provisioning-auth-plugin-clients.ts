@@ -6,6 +6,7 @@ import type {
   PluginOidcClientState,
 } from './provisioning-auth-types.js';
 import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
+import { readStudioOwnedClient } from './provisioning-auth-policy.js';
 
 const pluginClientIdentifierPattern = /^[a-z][a-z0-9-]{0,62}$/u;
 const requirementKeys = new Set(['contractVersion', 'pluginId', 'clientId', 'audience', 'enabled']);
@@ -169,21 +170,36 @@ export const findPluginOidcClientState = (
 export const buildPluginOidcClientStep = (
   requirement: PluginOidcClientRequirement,
   state: KeycloakReadState | undefined,
-  blocked: boolean
+  blocked: boolean,
+  instanceId?: string
 ): KeycloakTenantPlan['steps'][number] => {
   const alignment = readPluginOidcClientAlignment(
     requirement,
     findPluginOidcClientState(requirement, state)
   );
   const clientExists = Boolean(alignment.client);
+  const ownershipConflict =
+    Boolean(alignment.client && instanceId) &&
+    readStudioOwnedClient(
+      alignment.client,
+      instanceId ?? '',
+      `plugin_client:${requirement.pluginId}`
+    ) !== 'owned';
 
   return {
     stepKey: `plugin_client_${requirement.clientId}`,
     title: `Plugin-Client ${requirement.pluginId} abgleichen`,
-    action: !clientExists ? 'create' : alignment.aligned ? 'verify' : 'update',
+    action: ownershipConflict
+      ? 'skip'
+      : !clientExists
+        ? 'create'
+        : alignment.aligned
+          ? 'verify'
+          : 'update',
     status: blocked ? 'blocked' : 'ready',
-    summary:
-      requirement.contractVersion === '2.0'
+    summary: ownershipConflict
+      ? 'Der gleichnamige Plugin-Client ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
+      : requirement.contractVersion === '2.0'
         ? 'Der Plugin-Client und sein Audience-Mapper werden auf den sicheren Sollzustand abgeglichen.'
         : !clientExists
           ? 'Der deaktivierte Plugin-Client wird ohne Callback- oder Origin-Freigaben angelegt.'
@@ -196,6 +212,7 @@ export const buildPluginOidcClientStep = (
       clientExists,
       clientEnabled: alignment.client?.enabled,
       audienceMapperMatches: alignment.audienceMapperMatches,
+      ownershipConflict,
     },
   };
 };

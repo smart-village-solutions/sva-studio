@@ -42,6 +42,8 @@ import type {
   InstanceConfirmationChallenge,
   PrepareInstanceConfirmationChallengeInput,
 } from './confirmation-challenges.js';
+import type { InstanceDraftReadiness } from './service-draft-readiness.js';
+import type { RealmCatalog } from './service-realm-catalog.js';
 
 type ModuleActivationPolicyReconcileResult = Awaited<
   ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
@@ -121,6 +123,12 @@ export type InstanceRegistryService = {
   createProvisioningRequest(
     input: CreateInstanceProvisioningInput
   ): Promise<CreateInstanceProvisioningResult>;
+  getDraftReadiness(input: CreateInstanceProvisioningInput): Promise<InstanceDraftReadiness>;
+  listRealmCatalog(input?: {
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<RealmCatalog>;
   retryTenantProvisioning(input: RetryTenantProvisioningInput): Promise<IamInstanceListItem | null>;
   updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
@@ -224,6 +232,8 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
+  readonly listKeycloakRealms?: () => Promise<readonly { readonly realm: string }[]>;
+  readonly readKeycloakRealmCreateCapability?: () => Promise<boolean>;
   readonly readPluginOidcClientRequirements?: () => KeycloakProvisioningInput['pluginOidcClients'];
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput

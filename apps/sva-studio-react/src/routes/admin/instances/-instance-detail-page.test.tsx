@@ -171,6 +171,11 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     reconcile: { status: 'degraded', summary: 'Backlog vorhanden', source: 'role_reconcile' },
     overall: { status: 'degraded', summary: 'Eingeschränkt', source: 'role_reconcile' },
   },
+  provisioningReadiness: {
+    state: 'unknown',
+    capabilities: [],
+    nextAction: { action: 'instance.tenant-iam.probe', retryClass: 'safe' },
+  },
   ...overrides,
 });
 
@@ -270,7 +275,6 @@ describe('InstanceDetailPage', () => {
 
     expect(screen.getByText('Überblick')).toBeTruthy();
     expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
-    expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
     expect(screen.getByText('Validieren')).toBeTruthy();
     expect(
       screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' }).length
@@ -385,6 +389,15 @@ describe('InstanceDetailPage', () => {
         retryTenantProvisioning,
         selectedInstance: createSelectedInstance({
           status: 'failed',
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: {
+              action: 'instance.provisioning.retry',
+              retryClass: 'safe',
+              runId: 'create-run-1',
+            },
+          },
           provisioningRuns: [
             {
               id: 'create-run-1',
@@ -419,31 +432,15 @@ describe('InstanceDetailPage', () => {
     });
   });
 
-  it('shows a visible tenant-admin reset action inside the doctor repair step and triggers the existing repair intent', async () => {
-    const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
-    const loadInstance = vi.fn().mockResolvedValue(true);
-
-    useInstancesMock.mockReturnValue(
-      createInstancesApiState({
-        executeKeycloakProvisioning,
-        loadInstance,
-      })
-    );
+  it('does not expose tenant-admin reset as a parallel cockpit action', async () => {
+    useInstancesMock.mockReturnValue(createInstancesApiState());
 
     render(<InstanceDetailPage instanceId="demo" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
     expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen' }));
-
-    await waitFor(() => {
-      expect(executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
-        intent: 'reset_tenant_admin',
-        tenantAdminTemporaryPassword: undefined,
-      });
-    });
-    expect(loadInstance).toHaveBeenCalledWith('demo');
+    expect(screen.queryByRole('button', { name: 'Tenant-Admin neu setzen' })).toBeNull();
   });
 
   it('shows a visible warning when a provisioning run stays queued without a worker', async () => {
@@ -616,6 +613,11 @@ describe('InstanceDetailPage', () => {
           keycloakStatus: undefined,
           latestKeycloakProvisioningRun: undefined,
           keycloakProvisioningRuns: [],
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+          },
         }),
         refreshKeycloakPreflight,
       })
@@ -910,6 +912,11 @@ describe('InstanceDetailPage', () => {
           },
           latestKeycloakProvisioningRun: undefined,
           keycloakProvisioningRuns: [],
+          provisioningReadiness: {
+            state: 'provisioning_waiting',
+            capabilities: [],
+            nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+          },
         }),
       })
     );
@@ -975,6 +982,11 @@ describe('InstanceDetailPage', () => {
           keycloakPlan: undefined,
           latestKeycloakProvisioningRun: undefined,
           keycloakProvisioningRuns: [],
+          provisioningReadiness: {
+            state: 'provisioning_waiting',
+            capabilities: [],
+            nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+          },
         }),
       })
     );
@@ -987,7 +999,7 @@ describe('InstanceDetailPage', () => {
     await activateTab('Einstellungen');
 
     await waitFor(() => {
-      expect(screen.getByText('Konfiguration vorbereitet')).toBeTruthy();
+      expect(screen.getAllByText('Konfiguration vorbereitet').length).toBeGreaterThan(0);
     });
     expect(screen.queryByText('Konkrete Blocker')).toBeNull();
 

@@ -94,7 +94,9 @@ const PrimaryActionsCard = ({
       {t('admin.instances.cockpit.primaryAction')}
     </div>
     <div className="mt-3 space-y-3">
-      <div className="text-lg font-semibold text-foreground">{t('admin.instances.cockpit.primaryActionTitle')}</div>
+      <div className="text-lg font-semibold text-foreground">
+        {t('admin.instances.cockpit.primaryActionTitle')}
+      </div>
       <p className="text-sm text-muted-foreground">{cockpitModel.overallSummary}</p>
       <Button
         type="button"
@@ -104,10 +106,10 @@ const PrimaryActionsCard = ({
       >
         {cockpitModel.primaryAction.label}
       </Button>
-      <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {t('admin.instances.cockpit.secondaryActions')}
-        </div>
+      <details className="space-y-2">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t('admin.instances.wizard.technicalDetails')}
+        </summary>
         <div className="flex flex-wrap gap-2">
           {cockpitModel.secondaryActions.map((action) => (
             <Button
@@ -122,7 +124,7 @@ const PrimaryActionsCard = ({
             </Button>
           ))}
         </div>
-      </div>
+      </details>
     </div>
   </div>
 );
@@ -131,10 +133,16 @@ const AnomalyQueueCard = ({ cockpitModel }: Pick<CockpitSectionProps, 'cockpitMo
   <div className="rounded-lg border border-border/70 bg-background/90 p-4 shadow-shell">
     <div className="flex items-center justify-between gap-3">
       <div>
-        <div className="text-sm font-semibold text-foreground">{t('admin.instances.cockpit.anomaliesTitle')}</div>
-        <p className="text-sm text-muted-foreground">{t('admin.instances.cockpit.anomaliesSubtitle')}</p>
+        <div className="text-sm font-semibold text-foreground">
+          {t('admin.instances.cockpit.anomaliesTitle')}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {t('admin.instances.cockpit.anomaliesSubtitle')}
+        </p>
       </div>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{cockpitModel.anomalyQueue.length} / 3</div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        {cockpitModel.anomalyQueue.length} / 3
+      </div>
     </div>
     <div className="mt-4 grid gap-3">
       {cockpitModel.anomalyQueue.length > 0 ? (
@@ -153,7 +161,11 @@ const AnomalyQueueCard = ({ cockpitModel }: Pick<CockpitSectionProps, 'cockpitMo
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>{item.sourceLabel}</span>
               {item.checkedAt ? (
-                <span>{t('admin.instances.cockpit.checkedAt', { value: formatDateTime(item.checkedAt) })}</span>
+                <span>
+                  {t('admin.instances.cockpit.checkedAt', {
+                    value: formatDateTime(item.checkedAt),
+                  })}
+                </span>
               ) : null}
               {item.requestId ? (
                 <span>{t('admin.instances.tenantIam.requestId', { value: item.requestId })}</span>
@@ -176,25 +188,45 @@ const EvidenceCard = ({
   mutationError,
 }: Pick<CockpitSectionProps, 'selectedInstance' | 'cockpitModel' | 'mutationError'>) => (
   <div className="rounded-lg border border-border/70 bg-background/90 p-4 shadow-shell">
-    <div className="text-sm font-semibold text-foreground">{t('admin.instances.cockpit.evidenceTitle')}</div>
-    <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.cockpit.evidenceSubtitle')}</p>
+    <div className="text-sm font-semibold text-foreground">
+      {t('admin.instances.cockpit.evidenceTitle')}
+    </div>
+    <p className="mt-1 text-sm text-muted-foreground">
+      {t('admin.instances.cockpit.evidenceSubtitle')}
+    </p>
     <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{cockpitModel.dominantEvidence.label}</div>
-      <div className="mt-2 text-lg font-semibold text-foreground">{cockpitModel.dominantEvidence.sourceLabel}</div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        {cockpitModel.dominantEvidence.label}
+      </div>
+      <div className="mt-2 text-lg font-semibold text-foreground">
+        {cockpitModel.dominantEvidence.sourceLabel}
+      </div>
       <div className="mt-3 space-y-1 text-sm text-muted-foreground">
         {cockpitModel.dominantEvidence.checkedAt ? (
-          <div>{t('admin.instances.cockpit.checkedAt', { value: formatDateTime(cockpitModel.dominantEvidence.checkedAt) })}</div>
+          <div>
+            {t('admin.instances.cockpit.checkedAt', {
+              value: formatDateTime(cockpitModel.dominantEvidence.checkedAt),
+            })}
+          </div>
         ) : (
           <div>{t('admin.instances.cockpit.noEvidenceTimestamp')}</div>
         )}
         {cockpitModel.dominantEvidence.requestId ? (
-          <div>{t('admin.instances.tenantIam.requestId', { value: cockpitModel.dominantEvidence.requestId })}</div>
+          <div>
+            {t('admin.instances.tenantIam.requestId', {
+              value: cockpitModel.dominantEvidence.requestId,
+            })}
+          </div>
         ) : null}
       </div>
     </div>
     <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-4">
-      <div className="text-sm font-medium text-foreground">{getStatusGuidance(selectedInstance).title}</div>
-      <p className="mt-1 text-sm text-muted-foreground">{getStatusGuidance(selectedInstance).body}</p>
+      <div className="text-sm font-medium text-foreground">
+        {getStatusGuidance(selectedInstance).title}
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {getStatusGuidance(selectedInstance).body}
+      </p>
     </div>
     {mutationError?.code === 'keycloak_unavailable' ? (
       <div className="mt-4 rounded-md border border-border p-3 text-sm text-muted-foreground">
@@ -221,8 +253,12 @@ export const InstanceDetailCockpitSection = ({
               {t('admin.instances.cockpit.eyebrow')}
             </div>
             <div>
-              <h2 className="text-2xl font-semibold text-foreground">{t('admin.instances.cockpit.title')}</h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t('admin.instances.cockpit.subtitle')}</p>
+              <h2 className="text-2xl font-semibold text-foreground">
+                {t('admin.instances.cockpit.title')}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                {t('admin.instances.cockpit.subtitle')}
+              </p>
             </div>
           </div>
           <CockpitMetrics
@@ -233,12 +269,20 @@ export const InstanceDetailCockpitSection = ({
             overallSummary={cockpitModel.overallSummary}
           />
         </div>
-        <PrimaryActionsCard cockpitModel={cockpitModel} onRunDetailAction={onRunDetailAction} statusLoading={statusLoading} />
+        <PrimaryActionsCard
+          cockpitModel={cockpitModel}
+          onRunDetailAction={onRunDetailAction}
+          statusLoading={statusLoading}
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
         <AnomalyQueueCard cockpitModel={cockpitModel} />
-        <EvidenceCard selectedInstance={selectedInstance} cockpitModel={cockpitModel} mutationError={mutationError} />
+        <EvidenceCard
+          selectedInstance={selectedInstance}
+          cockpitModel={cockpitModel}
+          mutationError={mutationError}
+        />
       </div>
     </div>
   </Card>

@@ -534,6 +534,46 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.values[1]).toBe('worker-1');
   });
 
+  it('records a safe post-commit wake-up failure without making the run unclaimable', async () => {
+    const failedWakeupRow = {
+      ...provisioningRow,
+      status: 'requested',
+      error_code: 'post_commit_wakeup_failed',
+      error_message: 'Post-Commit-Wake-up fehlgeschlagen.',
+      terminal_evidence: {
+        postCommitWakeup: {
+          status: 'failed',
+          code: 'post_commit_wakeup_failed',
+          checkedAt: '2026-01-01T00:00:10.000Z',
+        },
+      },
+    };
+    const { executor, statements } = createQueuedExecutor([[failedWakeupRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.recordProvisioningWakeupFailure({
+        instanceId: 'tenant-a',
+        errorCode: 'post_commit_wakeup_failed',
+        errorMessage: 'Post-Commit-Wake-up fehlgeschlagen.',
+        occurredAt: '2026-01-01T00:00:10.000Z',
+      })
+    ).resolves.toMatchObject({
+      status: 'requested',
+      errorCode: 'post_commit_wakeup_failed',
+    });
+    expect(statements[0]?.text).toContain("status IN ('requested', 'validated', 'provisioning')");
+    expect(statements[0]?.text).toContain('next_attempt_at = LEAST(run.next_attempt_at, now())');
+    expect(statements[0]?.text).toContain("'postCommitWakeup'");
+    expect(statements[0]?.text).not.toContain('lease_owner = NULL');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'post_commit_wakeup_failed',
+      'Post-Commit-Wake-up fehlgeschlagen.',
+      '2026-01-01T00:00:10.000Z',
+    ]);
+  });
+
   it('renews only a still-active parent-run lease owned by the worker', async () => {
     const renewedRow = {
       ...provisioningRow,

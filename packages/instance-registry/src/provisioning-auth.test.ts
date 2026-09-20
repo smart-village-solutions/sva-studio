@@ -30,6 +30,9 @@ const input: KeycloakProvisioningInput = {
   tenantAdminClientSecret: 'tenant-secret',
   tenantAdminBootstrap: {
     username: 'tenant-admin',
+    email: 'tenant-admin@example.org',
+    firstName: 'Tenant',
+    lastName: 'Admin',
   },
   pluginOidcClients: [ssfClientRequirement],
 };
@@ -58,6 +61,9 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
     redirectUris: ['https://demo.example.org/*'],
     attributes: {
       'post.logout.redirect.uris': 'https://demo.example.org/*',
+      managed_by: 'studio',
+      instance_id: 'demo',
+      artifact_key: 'login_client',
     },
     webOrigins: ['https://demo.example.org'],
     rootUrl: 'https://demo.example.org',
@@ -68,6 +74,9 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
     redirectUris: ['https://demo.example.org/*'],
     attributes: {
       'post.logout.redirect.uris': 'https://demo.example.org/*',
+      managed_by: 'studio',
+      instance_id: 'demo',
+      artifact_key: 'tenant_admin_client',
     },
     webOrigins: ['https://demo.example.org'],
     rootUrl: 'https://demo.example.org',
@@ -91,7 +100,12 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
         implicitFlowEnabled: false,
         directAccessGrantsEnabled: false,
         serviceAccountsEnabled: false,
-        attributes: { 'post.logout.redirect.uris': '' },
+        attributes: {
+          'post.logout.redirect.uris': '',
+          managed_by: 'studio',
+          instance_id: 'demo',
+          artifact_key: 'plugin_client:ssf',
+        },
       },
       protocolMappers: [
         {
@@ -124,6 +138,11 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
   tenantAdminStatus: {
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
+  },
+  tenantAdminRepresentation: {
+    id: 'tenant-admin-user',
+    username: 'tenant-admin',
+    attributes: { managed_by: ['studio'], instance_id: ['demo'], artifact_key: ['tenant_admin'] },
   },
   keycloakClientSecret: 'secret',
   tenantAdminClientSecret: 'tenant-secret',
@@ -217,6 +236,9 @@ describe('provisioning-auth readers', () => {
         redirectUris: ['https://legacy.example.org/callback'],
         attributes: {
           'post.logout.redirect.uris': 'https://legacy.example.org/logout',
+          managed_by: 'studio',
+          instance_id: 'demo',
+          artifact_key: 'tenant_admin_client',
         },
         webOrigins: ['https://legacy.example.org'],
         rootUrl: 'https://legacy.example.org',

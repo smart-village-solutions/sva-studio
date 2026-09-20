@@ -127,15 +127,11 @@ describe('instance detail split module exports', () => {
       },
     } as any;
 
-    const operationsModel = buildExistingRealmOperationsModel(instance, null);
-    const primaryAction = buildOperationsPrimaryAction(operationsModel);
     const configurationAssessment = evaluateInstanceConfiguration(instance, null);
     const doctorModel = buildInstanceDoctorModel({
       instance,
       configurationAssessment,
       mutationError: null,
-      operationsModel,
-      primaryAction,
       requiredPluginReadiness: {
         status: 'blocked',
         summary: 'Pflicht-Plugin speech-flow ist noch nicht betriebsbereit.',

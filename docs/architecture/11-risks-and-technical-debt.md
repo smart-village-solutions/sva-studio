@@ -685,3 +685,16 @@ Referenzen:
   Betriebsmonitoring.
 - Der credentialgebundene Browserpfad bleibt ein geschütztes Enablement-Gate und
   ist nicht Teil der automatischen Create-Credentials.
+
+### Fortschreibung 2026-09: Tenant-Readiness und manuelle Aktivierung
+
+- Legacy-Keycloak-Artefakte ohne eindeutige Ownership-Marker bleiben manuelle
+  Konflikte. Eine automatische Übernahme nur anhand des Namens ist untersagt.
+- Für Worker und Callbacks gibt es nicht in jedem Prozess einen belastbaren
+  Heartbeat. Der Vertrag projiziert dies als `unknown`; der dauerhafte Auftrag
+  und Recovery-Pfad begrenzen das Ausfallrisiko.
+- Die manuelle Aktivierung verlängert den operativen Ablauf bewusst. Dafür
+  verhindert sie, dass ein Worker, Retry oder veralteter Readback produktiven
+  Tenant-Verkehr freigibt.
+- Die Bestätigung schützt die Entscheidung, ersetzt aber keine aktuelle
+  serverseitige Readiness-Prüfung unmittelbar vor dem Statuswechsel.

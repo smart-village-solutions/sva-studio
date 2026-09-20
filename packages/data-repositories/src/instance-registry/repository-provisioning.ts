@@ -24,6 +24,7 @@ type ProvisioningRepository = Pick<
   | 'claimNextProvisioningRun'
   | 'renewProvisioningRunLease'
   | 'updateProvisioningRun'
+  | 'recordProvisioningWakeupFailure'
   | 'appendAuditEvent'
 >;
 
@@ -171,6 +172,42 @@ RETURNING ${provisioningColumns};
   return rows[0] ? mapProvisioningRun(rows[0]) : null;
 };
 
+const recordProvisioningWakeupFailure = async (
+  executor: SqlExecutor,
+  input: Parameters<ProvisioningRepository['recordProvisioningWakeupFailure']>[0]
+) => {
+  const rows = await queryRows<ProvisioningRow>(
+    executor,
+    statement(
+      `
+WITH candidate AS (
+  SELECT id
+  FROM iam.instance_provisioning_runs
+  WHERE instance_id = $1
+    AND operation = 'create'
+    AND status IN ('requested', 'validated', 'provisioning')
+  ORDER BY created_at DESC, id DESC
+  LIMIT 1
+)
+UPDATE iam.instance_provisioning_runs AS run
+SET error_code = $2,
+    error_message = $3,
+    terminal_evidence = run.terminal_evidence || jsonb_build_object(
+      'postCommitWakeup',
+      jsonb_build_object('status', 'failed', 'code', $2, 'checkedAt', $4::timestamptz)
+    ),
+    next_attempt_at = LEAST(run.next_attempt_at, now()),
+    updated_at = now()
+FROM candidate
+WHERE run.id = candidate.id
+RETURNING ${provisioningColumns};
+`,
+      [input.instanceId, input.errorCode, input.errorMessage, input.occurredAt]
+    )
+  );
+  return rows[0] ? mapProvisioningRun(rows[0]) : null;
+};
+
 const appendAuditEvent = async (
   executor: SqlExecutor,
   input: Parameters<ProvisioningRepository['appendAuditEvent']>[0]
@@ -201,5 +238,6 @@ export const createProvisioningRepository = (executor: SqlExecutor): Provisionin
   claimNextProvisioningRun: (input) => claimNextProvisioningRun(executor, input),
   renewProvisioningRunLease: (input) => renewProvisioningRunLease(executor, input),
   updateProvisioningRun: (input) => updateProvisioningRun(executor, input),
+  recordProvisioningWakeupFailure: (input) => recordProvisioningWakeupFailure(executor, input),
   appendAuditEvent: (input) => appendAuditEvent(executor, input),
 });

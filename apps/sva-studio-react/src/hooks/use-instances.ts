@@ -534,7 +534,7 @@ export const useInstances = () => {
         async () => {
           const response =
             payload.intent === 'rotate_client_secret'
-              ? await rotateInstanceSecret(instanceId)
+              ? await rotateInstanceSecret(instanceId, payload.planFingerprint)
               : await executeInstanceKeycloakProvisioning(instanceId, payload);
           updateSelectedForInstance(instanceId, (current) => {
             const keycloakProvisioningRuns = mergeProvisioningRuns(

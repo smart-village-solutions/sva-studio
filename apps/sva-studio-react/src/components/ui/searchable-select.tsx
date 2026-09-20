@@ -19,6 +19,8 @@ type SearchableSelectBaseProps = {
   readonly emptyText: string;
   readonly options: readonly SearchableSelectOption[];
   readonly disabled?: boolean;
+  readonly ariaInvalid?: boolean;
+  readonly describedBy?: string;
   readonly selectedOption?: SearchableSelectOption | null;
   readonly onValueChange: (value: string) => void;
 };
@@ -48,12 +50,27 @@ export const matchesSearchableSelectOption = (option: SearchableSelectOption, se
   );
 };
 
-export const filterSearchableSelectOptions = (options: readonly SearchableSelectOption[], searchValue: string) =>
-  options.filter((option) => matchesSearchableSelectOption(option, searchValue));
+const findEnabledOptionIndex = (
+  options: readonly SearchableSelectOption[],
+  start: number,
+  direction: 1 | -1
+): number => {
+  for (let index = start; index >= 0 && index < options.length; index += direction) {
+    if (!options[index]?.disabled) return index;
+  }
+  return Math.max(0, Math.min(start, options.length - 1));
+};
+
+export const filterSearchableSelectOptions = (
+  options: readonly SearchableSelectOption[],
+  searchValue: string
+) => options.filter((option) => matchesSearchableSelectOption(option, searchValue));
 
 const SearchableSelectTrigger = ({
   close,
   disabled,
+  ariaInvalid,
+  describedBy,
   label,
   listboxId,
   open,
@@ -65,6 +82,8 @@ const SearchableSelectTrigger = ({
 }: Readonly<{
   close: () => void;
   disabled: boolean;
+  ariaInvalid?: boolean;
+  describedBy?: string;
   id: string;
   label: string;
   listboxId: string;
@@ -90,11 +109,16 @@ const SearchableSelectTrigger = ({
       id={id}
       type="button"
       variant="secondary"
-      className={cn('h-10 w-full justify-between px-3 text-sm font-normal', !selectedLabel ? 'text-muted-foreground' : undefined)}
+      className={cn(
+        'h-10 w-full justify-between px-3 text-sm font-normal',
+        !selectedLabel ? 'text-muted-foreground' : undefined
+      )}
       aria-label={label}
       aria-expanded={open}
       aria-haspopup="listbox"
       aria-controls={open ? listboxId : undefined}
+      aria-invalid={ariaInvalid || undefined}
+      aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => (open ? close() : openWithActiveOption())}
       onKeyDown={onTriggerKeyDown}
@@ -134,7 +158,9 @@ const useSearchableSelectState = ({
       return;
     }
 
-    setActiveIndex((current) => Math.min(current, filteredOptions.length - 1));
+    setActiveIndex((current) =>
+      findEnabledOptionIndex(filteredOptions, Math.min(current, filteredOptions.length - 1), 1)
+    );
   }, [filteredOptions]);
 
   const setSearch = React.useCallback(
@@ -160,7 +186,9 @@ const useSearchableSelectState = ({
 
   const openWithActiveOption = React.useCallback(() => {
     const selectedIndex = filteredOptions.findIndex((option) => option.value === value);
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    setActiveIndex(
+      selectedIndex >= 0 ? selectedIndex : findEnabledOptionIndex(filteredOptions, 0, 1)
+    );
     setOpen(true);
   }, [filteredOptions, setOpen, value]);
 
@@ -217,7 +245,7 @@ const SearchableSelectPopover = ({
       if (event.key === 'Enter') {
         event.preventDefault();
         const activeOption = filteredOptions[activeIndex];
-        if (!activeOption) {
+        if (!activeOption || activeOption.disabled) {
           return;
         }
 
@@ -232,16 +260,15 @@ const SearchableSelectPopover = ({
 
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        setActiveIndex((current) => Math.min(current + 1, filteredOptions.length - 1));
+        setActiveIndex((current) => findEnabledOptionIndex(filteredOptions, current + 1, 1));
         return;
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        setActiveIndex((current) => Math.max(current - 1, 0));
+        setActiveIndex((current) => findEnabledOptionIndex(filteredOptions, current - 1, -1));
         return;
       }
-
     },
     [activeIndex, close, filteredOptions, onValueChange, setActiveIndex]
   );
@@ -283,6 +310,8 @@ export const SearchableSelect = ({
   emptyText,
   options,
   disabled = false,
+  ariaInvalid,
+  describedBy,
   selectedOption,
   searchValue,
   onSearchValueChange,
@@ -294,9 +323,17 @@ export const SearchableSelect = ({
   const triggerRef = React.useRef<HTMLButtonElement | null>(null);
   const listboxId = `${id}-listbox`;
   const searchInputId = `${id}-search-input`;
-  const effectiveSelectedOption = selectedOption ?? options.find((option) => option.value === value) ?? null;
-  const { activeIndex, close, effectiveSearchValue, filteredOptions, openWithActiveOption, setActiveIndex, setSearch } =
-    useSearchableSelectState({ onSearchValueChange, options, searchValue, setOpen, value });
+  const effectiveSelectedOption =
+    selectedOption ?? options.find((option) => option.value === value) ?? null;
+  const {
+    activeIndex,
+    close,
+    effectiveSearchValue,
+    filteredOptions,
+    openWithActiveOption,
+    setActiveIndex,
+    setSearch,
+  } = useSearchableSelectState({ onSearchValueChange, options, searchValue, setOpen, value });
 
   React.useEffect(() => {
     if (!open) {
@@ -339,6 +376,8 @@ export const SearchableSelect = ({
           close();
         }}
         disabled={disabled}
+        ariaInvalid={ariaInvalid}
+        describedBy={describedBy}
         id={id}
         label={label}
         listboxId={listboxId}

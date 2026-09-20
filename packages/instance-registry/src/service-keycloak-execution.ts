@@ -4,7 +4,10 @@ import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.
 import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
-import { createGetKeycloakStatusHandler } from './service-keycloak-readers.js';
+import {
+  createGetKeycloakStatusHandler,
+  createPlanKeycloakProvisioningHandler,
+} from './service-keycloak-readers.js';
 import {
   loadInstanceWithSecret,
   loadKeycloakSnapshotSecretVersions,
@@ -44,6 +47,38 @@ import {
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 type QueuedProvisioningInput = ReturnType<typeof buildProvisioningInput> & {
   pluginOidcClients: NonNullable<KeycloakProvisioningInput['pluginOidcClients']>;
+};
+
+const isConfirmedPlanProgress = (
+  plan: Awaited<ReturnType<NonNullable<InstanceRegistryServiceDeps['planKeycloakProvisioning']>>>,
+  queueDetails: Readonly<Record<string, unknown>> | undefined
+): boolean => {
+  if (
+    queueDetails?.confirmedPlanContractVersion !== plan.contractVersion ||
+    !Array.isArray(queueDetails.confirmedPlanSteps) ||
+    plan.overallStatus === 'blocked'
+  ) {
+    return false;
+  }
+  const confirmedSteps = new Map(
+    queueDetails.confirmedPlanSteps.flatMap((value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+      const step = value as Record<string, unknown>;
+      return typeof step.stepKey === 'string' ? [[step.stepKey, step] as const] : [];
+    })
+  );
+  return plan.steps.every((current) => {
+    const confirmed = confirmedSteps.get(current.stepKey);
+    if (!confirmed || confirmed.status !== current.status) return false;
+    if (confirmed.action === current.action) {
+      return JSON.stringify(confirmed.details) === JSON.stringify(current.details);
+    }
+    return (
+      (confirmed.action === 'create' || confirmed.action === 'update') &&
+      current.action === 'verify' &&
+      current.status === 'ready'
+    );
+  });
 };
 
 const assertProvisioningIntentAllowed = (
@@ -265,7 +300,9 @@ const executeClaimedRun = async (
   run: InstanceKeycloakProvisioningRun,
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
   tenantAdminTemporaryPassword: string | undefined,
-  provisioningInput: QueuedProvisioningInput
+  provisioningInput: QueuedProvisioningInput,
+  confirmedPlanFingerprint: string,
+  queueDetails: Readonly<Record<string, unknown>> | undefined
 ) => {
   assertProvisioningIntentAllowed(provisioningInput.realmMode, run.intent);
   const secretVersions = await loadKeycloakSnapshotSecretVersions(
@@ -283,6 +320,12 @@ const executeClaimedRun = async (
   const plan = await runInstanceRegistryStep('worker_plan', () =>
     appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
+  if (
+    plan.fingerprint !== confirmedPlanFingerprint &&
+    !isConfirmedPlanProgress(plan, queueDetails)
+  ) {
+    throw new Error('keycloak_plan_fingerprint_stale');
+  }
 
   const rotatingMissingTenantSecret =
     run.intent === 'rotate_client_secret' && !loaded.authClientSecret;
@@ -394,6 +437,13 @@ export const processClaimedKeycloakProvisioningRun = async (
     const queueStep = run.steps.find(
       (step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued'
     );
+    const confirmedPlanFingerprint = queueStep?.details.confirmedPlanFingerprint;
+    if (
+      typeof confirmedPlanFingerprint !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(confirmedPlanFingerprint)
+    ) {
+      throw new Error('keycloak_plan_confirmation_missing');
+    }
     const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(
       deps,
       run.id,
@@ -419,7 +469,9 @@ export const processClaimedKeycloakProvisioningRun = async (
       run,
       loaded,
       tenantAdminTemporaryPassword,
-      provisioningInput
+      provisioningInput,
+      confirmedPlanFingerprint,
+      queueStep?.details
     );
   } catch (error) {
     await failRun(deps, {
@@ -468,8 +520,17 @@ export const createExecuteKeycloakProvisioningHandler =
       await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
     }
 
+    const currentPlan = await createPlanKeycloakProvisioningHandler(deps)(input.instanceId);
+    if (!currentPlan || currentPlan.overallStatus === 'blocked') {
+      throw new Error('keycloak_plan_blocked');
+    }
+    if (currentPlan.fingerprint !== input.planFingerprint) {
+      throw new Error('keycloak_plan_fingerprint_stale');
+    }
+
     const { run } = await createQueuedRun(deps, loaded, {
       ...input,
+      confirmedPlan: currentPlan,
       mutation: 'executeKeycloakProvisioning',
     });
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);
@@ -482,6 +543,7 @@ export const createReconcileKeycloakHandler =
     idempotencyKey: string;
     actorId: string;
     requestId: string;
+    planFingerprint: string;
     tenantAdminTemporaryPassword?: string;
     rotateClientSecret?: boolean;
   }) => {
@@ -494,6 +556,13 @@ export const createReconcileKeycloakHandler =
     await ensureReconcilePreconditions(deps, loaded);
 
     const intent = resolveReconcileIntent(loaded, input.rotateClientSecret);
+    const currentPlan = await createPlanKeycloakProvisioningHandler(deps)(input.instanceId);
+    if (!currentPlan || currentPlan.overallStatus === 'blocked') {
+      throw new Error('keycloak_plan_blocked');
+    }
+    if (currentPlan.fingerprint !== input.planFingerprint) {
+      throw new Error('keycloak_plan_fingerprint_stale');
+    }
 
     if (
       loaded.instance.realmMode === 'existing' &&
@@ -511,6 +580,8 @@ export const createReconcileKeycloakHandler =
       tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword,
       rotateClientSecret: input.rotateClientSecret,
       intent,
+      planFingerprint: input.planFingerprint,
+      confirmedPlan: currentPlan,
       mutation: 'reconcileKeycloak',
     });
 

@@ -121,6 +121,11 @@ const registryConfiguration = (instance: InstanceRegistryRecord) => ({
   mainserverConfigRef: instance.mainserverConfigRef,
 });
 
+const registryFingerprintConfiguration = (instance: InstanceRegistryRecord) => {
+  const { assignedModules: _assignedModules, ...configuration } = registryConfiguration(instance);
+  return configuration;
+};
+
 export const buildTenantProvisioningSnapshot = (
   instance: InstanceRegistryRecord,
   input: CreateInstanceProvisioningInput,
@@ -129,7 +134,7 @@ export const buildTenantProvisioningSnapshot = (
   pluginSnapshot: TenantProvisioningPluginSnapshot = { lifecycles: [], oidcClients: [] }
 ) => ({
   ...registryConfiguration(instance),
-  registryFingerprint: buildPayloadFingerprint(registryConfiguration(instance)),
+  registryFingerprint: buildPayloadFingerprint(registryFingerprintConfiguration(instance)),
   authClientSecretRequired: Boolean(input.authClientSecret?.trim()),
   tenantAdminClientSecretRequired: Boolean(input.tenantAdminClient?.secret?.trim()),
   automationMode,
@@ -231,7 +236,9 @@ export const assertTenantProvisioningSnapshotCurrent = (
   const fingerprintInput = expectedRealmTransition
     ? { ...instance, realmMode: 'new' as const }
     : instance;
-  const registryFingerprint = buildPayloadFingerprint(registryConfiguration(fingerprintInput));
+  const registryFingerprint = buildPayloadFingerprint(
+    registryFingerprintConfiguration(fingerprintInput)
+  );
   const secretRequirementsMet =
     (snapshot.authClientSecretRequired !== true || instance.authClientSecretConfigured) &&
     (snapshot.tenantAdminClientSecretRequired !== true ||

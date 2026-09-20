@@ -55,6 +55,8 @@ export const getDetailActionLabel = (action: DetailWorkflowAction) => {
       return t('admin.instances.actions.resetTenantAdmin');
     case 'activate_instance':
       return t('admin.instances.actions.activate');
+    case 'retry_tenant_provisioning':
+      return t('admin.instances.feedback.provisioningRetryAction');
     case 'rotate_client_secret':
       return t('admin.instances.actions.rotateClientSecret');
     case 'probeTenantIamAccess':

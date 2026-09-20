@@ -124,3 +124,10 @@ Studio besitzt den fachlichen Elternlauf; der eigenständige Provisioner darf
 ausschließlich den Kasseler Traefik-File-Provider beschreiben. Reguläre
 Studio-Umgebungen und ein allgemeiner Ingress-Vertrag bleiben außerhalb dieses
 Zuschnitts. Details legt [ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md) fest.
+
+Die fachliche Tenant-Anlage verwendet profilübergreifend dieselbe Grenze:
+Browser und MCP lesen Realm-Katalog und Draft-Readiness über Studio, die
+Registry persistiert Tenant, Audit und dauerhaften Auftrag atomar, und Keycloak
+bleibt ein externes Nachbarsystem mit read-only Preflight vor dem Commit.
+Kassel ergänzt nur technische Ingress-/TLS-Schritte. Weder Kassel-Provisioner
+noch ein anderes Nachbarsystem darf eine Instanz aktivieren.

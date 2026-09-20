@@ -13,21 +13,23 @@ export type InstanceMutationErrorCode =
   | 'instance_configuration_change_blocked'
   | 'provisioning_retry_mode_invalid'
   | 'provisioning_retry_instance_status_invalid'
+  | 'provisioning_retry_not_safe'
   | 'provisioning_retry_conflict'
   | 'database_unavailable'
   | 'encryption_not_configured'
   | 'keycloak_unavailable'
+  | 'keycloak_create_readiness_blocked'
+  | 'keycloak_plan_blocked'
+  | 'keycloak_plan_confirmation_missing'
+  | 'keycloak_plan_fingerprint_stale'
+  | 'activation_readiness_blocked'
   | 'plugin_activation_state_conflict'
   | 'internal_unclassified';
 
 export type InstanceMutationErrorClassification = {
   readonly status: 400 | 409 | 500 | 502 | 503;
   readonly code: InstanceMutationErrorCode;
-  readonly details?: {
-    readonly dependency: 'keycloak';
-    readonly reason_code: 'registry_or_provisioning_drift_blocked';
-    readonly drift_summary?: string;
-  };
+  readonly details?: Readonly<Record<string, unknown>>;
 };
 
 const stableConflictCodes = [
@@ -37,6 +39,7 @@ const stableConflictCodes = [
   'instance_configuration_change_blocked',
   'provisioning_retry_mode_invalid',
   'provisioning_retry_instance_status_invalid',
+  'provisioning_retry_not_safe',
   'provisioning_retry_conflict',
 ] as const;
 
@@ -92,6 +95,10 @@ export const classifyInstanceMutationError = (
     return {
       status: 409,
       code: stableConflictCode,
+      details: {
+        reason_code: stableConflictCode,
+        retry_class: stableConflictCode === 'provisioning_retry_conflict' ? 'safe' : 'never',
+      },
     };
   }
   if (message === 'tenant_hostname_reserved') {
@@ -127,6 +134,66 @@ export const classifyInstanceMutationError = (
       code: 'tenant_auth_client_secret_missing',
     };
   }
+  if (message.startsWith('keycloak_create_readiness_blocked:')) {
+    return {
+      status: 503,
+      code: 'keycloak_create_readiness_blocked',
+      details: {
+        dependency: 'keycloak',
+        reason_code: 'keycloak_create_readiness_blocked',
+        step: 'create_preflight',
+        impact: 'create_blocked',
+        remediation: 'draft_readiness_recheck',
+        responsibility: 'studio_admin_or_platform_operator',
+        next_check: 'draft_readiness',
+        retry_class: 'conditional',
+        errorCodes: message
+          .slice('keycloak_create_readiness_blocked:'.length)
+          .split(',')
+          .filter(Boolean),
+      },
+    };
+  }
+  if (message.includes('keycloak_plan_confirmation_missing')) {
+    return { status: 409, code: 'keycloak_plan_confirmation_missing' };
+  }
+  if (message.includes('keycloak_plan_fingerprint_stale')) {
+    return {
+      status: 409,
+      code: 'keycloak_plan_fingerprint_stale',
+      details: {
+        reason_code: 'keycloak_plan_fingerprint_stale',
+        step: 'keycloak_plan_confirmation',
+        impact: 'provisioning_blocked',
+        remediation: 'plan_recheck_and_confirm',
+        responsibility: 'studio_admin',
+        next_check: 'keycloak_plan',
+        retry_class: 'never',
+      },
+    };
+  }
+  if (message.includes('keycloak_plan_blocked')) {
+    return { status: 409, code: 'keycloak_plan_blocked' };
+  }
+  if (message.startsWith('activation_readiness_blocked:')) {
+    return {
+      status: 409,
+      code: 'activation_readiness_blocked',
+      details: {
+        reason_code: 'activation_readiness_blocked',
+        step: 'activation_preflight',
+        impact: 'activation_blocked',
+        remediation: 'instance_detail_recheck',
+        responsibility: 'studio_admin_or_platform_operator',
+        next_check: 'instance_detail',
+        retry_class: 'never',
+        errorCodes: message
+          .slice('activation_readiness_blocked:'.length)
+          .split(',')
+          .filter(Boolean),
+      },
+    };
+  }
   if (message.startsWith('pii_encryption_required')) {
     return {
       status: 503,
@@ -145,8 +212,28 @@ export const classifyInstanceMutationError = (
       code: 'database_unavailable',
     };
   }
+  if (message.includes('keycloak_unavailable')) {
+    return {
+      status: 502,
+      code: 'keycloak_unavailable',
+      details: {
+        dependency: 'keycloak',
+        reason_code: 'keycloak_unavailable',
+        remediation: 'keycloak_recheck',
+        responsibility: 'platform_operator',
+        next_check: 'keycloak_preflight',
+        retry_class: 'conditional',
+      },
+    };
+  }
   return {
     status: 500,
     code: 'internal_unclassified',
+    details: {
+      reason_code: 'internal_unclassified',
+      remediation: 'request_id_inspect',
+      responsibility: 'platform_operator',
+      retry_class: 'never',
+    },
   };
 };

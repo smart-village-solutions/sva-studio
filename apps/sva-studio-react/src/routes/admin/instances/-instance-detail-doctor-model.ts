@@ -6,7 +6,6 @@ import {
   mapConfigurationStatusToCockpitStatus,
 } from './-instance-detail-cockpit-helpers';
 import { getEffectiveTenantIamStatus } from './-instance-detail-tenant-iam';
-import { getOperationsActionLabel } from './-instances-shared';
 
 import type {
   DetailWorkflowAction,
@@ -18,10 +17,6 @@ import type {
   IamTenantIamAxisStatus,
   IamTenantIamEvidenceClassification,
 } from '@sva/core';
-import type {
-  OperationsPrimaryAction,
-  RealmOperationsModel,
-} from './-instance-detail-operations-types';
 import type { RequiredPluginReadinessAssessment } from './-instance-required-plugin-readiness';
 
 export type InstanceDoctorCheck = {
@@ -46,8 +41,6 @@ export type InstanceDoctorAction = {
 export type InstanceDoctorModel = {
   readonly checks: readonly InstanceDoctorCheck[];
   readonly recommendedAction: InstanceDoctorAction & { readonly summary: string };
-  readonly repairActions: readonly InstanceDoctorAction[];
-  readonly validationActions: readonly InstanceDoctorAction[];
   readonly validationState: 'ready' | 'blocked' | 'degraded';
   readonly warning: {
     readonly tone: 'blocked' | 'degraded';
@@ -81,17 +74,6 @@ const mapRunStatus = (status?: string): IamTenantIamAxisStatus => {
     default:
       return 'unknown';
   }
-};
-
-const dedupeActions = (actions: readonly InstanceDoctorAction[]) => {
-  const seen = new Set<string>();
-  return actions.filter((action) => {
-    if (seen.has(action.action)) {
-      return false;
-    }
-    seen.add(action.action);
-    return true;
-  });
 };
 
 const getClassificationLabel = (
@@ -270,9 +252,7 @@ const readValidationSummary = (validationState: InstanceDoctorModel['validationS
   }
 };
 
-const toDoctorAction = (
-  action: OperationsPrimaryAction | InstanceDoctorAction
-): InstanceDoctorAction => ({
+const toDoctorAction = (action: InstanceDoctorAction): InstanceDoctorAction => ({
   action: action.action,
   label: action.label,
 });
@@ -281,15 +261,11 @@ export const buildInstanceDoctorModel = ({
   instance,
   configurationAssessment,
   mutationError,
-  operationsModel,
-  primaryAction,
   requiredPluginReadiness = null,
 }: {
   instance: IamInstanceDetail;
   configurationAssessment: InstanceConfigurationAssessment;
   mutationError: IamHttpError | null;
-  operationsModel: RealmOperationsModel;
-  primaryAction: OperationsPrimaryAction;
   requiredPluginReadiness?: RequiredPluginReadinessAssessment | null;
 }): InstanceDoctorModel => {
   const checks = buildChecks(instance, configurationAssessment, requiredPluginReadiness);
@@ -303,52 +279,13 @@ export const buildInstanceDoctorModel = ({
   const firstNonReadyCheck = checks.find((check) => check.status !== 'ready');
 
   const recommendedAction = {
-    ...toDoctorAction(primaryAction),
+    ...toDoctorAction(cockpitModel.primaryAction),
     summary: firstNonReadyCheck?.summary ?? cockpitModel.overallSummary,
   };
-
-  const repairActions = dedupeActions([
-    toDoctorAction(primaryAction),
-    ...(instance.tenantAdminBootstrap?.username?.trim()
-      ? [
-          {
-            action: 'reset_tenant_admin' as const,
-            label: getOperationsActionLabel('reset_tenant_admin'),
-          },
-        ]
-      : []),
-    ...(operationsModel.mode === 'new'
-      ? [
-          {
-            action: 'execute_provisioning' as const,
-            label: getOperationsActionLabel('execute_provisioning'),
-          },
-        ]
-      : [
-          {
-            action: 'reconcileKeycloak' as const,
-            label: getOperationsActionLabel('reconcileKeycloak'),
-          },
-        ]),
-  ]);
-
-  const validationActions = dedupeActions([
-    { action: 'check_preflight' as const, label: getOperationsActionLabel('check_preflight') },
-    {
-      action: 'check_keycloak_status' as const,
-      label: getOperationsActionLabel('check_keycloak_status'),
-    },
-    {
-      action: 'probeTenantIamAccess' as const,
-      label: getOperationsActionLabel('probeTenantIamAccess'),
-    },
-  ]);
 
   return {
     checks,
     recommendedAction,
-    repairActions,
-    validationActions,
     validationState,
     warning:
       validationState === 'ready'

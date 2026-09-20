@@ -14,15 +14,23 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
   getWorkspaceContext: () => ({ requestId: 'req-confirm' }),
 }));
 
-vi.mock('../iam-account-management/api-helpers.js', () => ({ createApiError: state.createApiError }));
+vi.mock('../iam-account-management/api-helpers.js', () => ({
+  createApiError: state.createApiError,
+}));
 vi.mock('../db.js', () => ({ jsonResponse: state.jsonResponse }));
 vi.mock('./http.js', () => ({ ensurePlatformAccess: state.ensurePlatformAccess }));
 vi.mock('./repository.js', () => ({ withScopedRegistryService: state.withScopedRegistryService }));
 
 describe('critical registry confirmation', () => {
   const detail = {
-    instanceId: 'demo', updatedAt: '2026-07-13T00:00:00.000Z', status: 'active', assignedModules: ['news'],
-    featureFlags: { beta: true }, realmMode: 'existing', authRealm: 'demo', authClientId: 'studio',
+    instanceId: 'demo',
+    updatedAt: '2026-07-13T00:00:00.000Z',
+    status: 'active',
+    assignedModules: ['news'],
+    featureFlags: { beta: true },
+    realmMode: 'existing',
+    authRealm: 'demo',
+    authClientId: 'studio',
     authClientSecretConfigured: true,
   } as const;
 
@@ -31,28 +39,52 @@ describe('critical registry confirmation', () => {
     state.ensurePlatformAccess.mockReturnValue(null);
   });
 
-  it('fingerprints stable registry state and ignores volatile diagnostic evidence', async () => {
+  it('fingerprints stable registry state, ignores audit history, and binds readiness evidence', async () => {
     const { fingerprintInstanceConfirmationState } = await import('./confirmation.js');
-    const first = fingerprintInstanceConfirmationState({ ...detail, auditEvents: [{ id: 'a' }] } as never);
-    const second = fingerprintInstanceConfirmationState({ ...detail, auditEvents: [{ id: 'b' }], keycloakStatus: { realmExists: false } } as never);
-    const changed = fingerprintInstanceConfirmationState({ ...detail, status: 'suspended' } as never);
+    const first = fingerprintInstanceConfirmationState({
+      ...detail,
+      auditEvents: [{ id: 'a' }],
+    } as never);
+    const second = fingerprintInstanceConfirmationState({
+      ...detail,
+      auditEvents: [{ id: 'b' }],
+    } as never);
+    const evidenceChanged = fingerprintInstanceConfirmationState({
+      ...detail,
+      keycloakStatus: { realmExists: false },
+    } as never);
+    const changed = fingerprintInstanceConfirmationState({
+      ...detail,
+      status: 'suspended',
+    } as never);
     expect(first).toBe(second);
+    expect(evidenceChanged).not.toBe(first);
     expect(changed).not.toBe(first);
   });
 
   it('fingerprints assigned modules independently of their input order', async () => {
     const { fingerprintInstanceConfirmationState } = await import('./confirmation.js');
-    const first = fingerprintInstanceConfirmationState({ ...detail, assignedModules: ['news', 'events'] });
-    const second = fingerprintInstanceConfirmationState({ ...detail, assignedModules: ['events', 'news'] });
+    const first = fingerprintInstanceConfirmationState({
+      ...detail,
+      assignedModules: ['news', 'events'],
+    });
+    const second = fingerprintInstanceConfirmationState({
+      ...detail,
+      assignedModules: ['events', 'news'],
+    });
 
     expect(first).toBe(second);
   });
 
   it('keeps all five critical actions static and requires a module for revoke prepare', async () => {
-    const { CRITICAL_REGISTRY_ACTIONS, validateConfirmationModuleId } = await import('./confirmation.js');
+    const { CRITICAL_REGISTRY_ACTIONS, validateConfirmationModuleId } =
+      await import('./confirmation.js');
     expect(CRITICAL_REGISTRY_ACTIONS).toEqual([
-      'instance.status.activate', 'instance.status.suspend', 'instance.status.archive',
-      'instance.module.revoke', 'instance.secret.rotate',
+      'instance.status.activate',
+      'instance.status.suspend',
+      'instance.status.archive',
+      'instance.module.revoke',
+      'instance.secret.rotate',
     ]);
     expect(validateConfirmationModuleId('instance.module.revoke')).toBe(false);
     expect(validateConfirmationModuleId('instance.module.revoke', '  ')).toBe(false);
@@ -67,7 +99,9 @@ describe('critical registry confirmation', () => {
       service: service as never,
       request: new Request('https://studio.example/api'),
       context: { authKind: 'session', sessionId: 's1', user: { id: 'u1', roles: [] } },
-      instanceId: 'demo', actorId: 'u1', actionId: 'instance.status.archive',
+      instanceId: 'demo',
+      actorId: 'u1',
+      actionId: 'instance.status.archive',
     });
     expect(response).toBeNull();
     expect(service.consumeConfirmationChallenge).not.toHaveBeenCalled();
@@ -82,21 +116,37 @@ describe('critical registry confirmation', () => {
     };
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
-      request: new Request('https://studio.example/api', { headers: {
-        'x-confirmation-challenge-id': 'challenge-1',
-        'x-confirmation-phrase': 'ARCHIVE demo',
-      } }),
-      context: { authKind: 'keycloak_service', actionId: 'instance.status.archive', user: { id: 'keycloak-service:mcp', roles: ['instance_registry_admin'] } },
-      instanceId: 'demo', actorId: 'keycloak-service:mcp', actionId: 'instance.status.archive',
+      request: new Request('https://studio.example/api', {
+        headers: {
+          'x-confirmation-challenge-id': 'challenge-1',
+          'x-confirmation-phrase': 'ARCHIVE demo',
+        },
+      }),
+      context: {
+        authKind: 'keycloak_service',
+        actionId: 'instance.status.archive',
+        user: { id: 'keycloak-service:mcp', roles: ['instance_registry_admin'] },
+      },
+      instanceId: 'demo',
+      actorId: 'keycloak-service:mcp',
+      actionId: 'instance.status.archive',
     });
     expect(response).toBeNull();
-    expect(service.consumeConfirmationChallenge).toHaveBeenCalledWith(expect.objectContaining({
-      challengeId: 'challenge-1', instanceId: 'demo', actorId: 'keycloak-service:mcp',
-      actionId: 'instance.status.archive', confirmationPhrase: 'ARCHIVE demo',
-    }));
+    expect(service.consumeConfirmationChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        challengeId: 'challenge-1',
+        instanceId: 'demo',
+        actorId: 'keycloak-service:mcp',
+        actionId: 'instance.status.archive',
+        confirmationPhrase: 'ARCHIVE demo',
+      })
+    );
     expect(service.recordConfirmationAttempt).toHaveBeenCalledWith({
-      instanceId: 'demo', actorId: 'keycloak-service:mcp', actionId: 'instance.status.archive',
-      outcome: 'accepted', requestId: 'req-confirm',
+      instanceId: 'demo',
+      actorId: 'keycloak-service:mcp',
+      actionId: 'instance.status.archive',
+      outcome: 'accepted',
+      requestId: 'req-confirm',
     });
   });
 
@@ -111,16 +161,25 @@ describe('critical registry confirmation', () => {
 
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
-      request: new Request('https://studio.example/api', { headers: {
-        'x-confirmation-challenge-id': 'challenge-1', 'x-confirmation-phrase': 'ROTATE SECRET FOR demo',
-      } }),
+      request: new Request('https://studio.example/api', {
+        headers: {
+          'x-confirmation-challenge-id': 'challenge-1',
+          'x-confirmation-phrase': 'ROTATE SECRET FOR demo',
+        },
+      }),
       context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
-      instanceId: 'demo', actorId: 'service', actionId: 'instance.secret.rotate', idempotencyKey: 'idem-rotate',
+      instanceId: 'demo',
+      actorId: 'service',
+      actionId: 'instance.secret.rotate',
+      idempotencyKey: 'idem-rotate',
     });
 
     expect(response).toBeNull();
     expect(service.hasKeycloakProvisioningRun).toHaveBeenCalledWith({
-      instanceId: 'demo', mutation: 'executeKeycloakProvisioning', intent: 'rotate_client_secret', idempotencyKey: 'idem-rotate',
+      instanceId: 'demo',
+      mutation: 'executeKeycloakProvisioning',
+      intent: 'rotate_client_secret',
+      idempotencyKey: 'idem-rotate',
     });
     expect(service.consumeConfirmationChallenge).not.toHaveBeenCalled();
     expect(service.recordConfirmationAttempt).not.toHaveBeenCalled();
@@ -130,32 +189,61 @@ describe('critical registry confirmation', () => {
     const { confirmCriticalRegistryMutation } = await import('./confirmation.js');
     const service = {
       getInstanceDetail: vi.fn(async () => detail),
-      consumeConfirmationChallenge: vi.fn(async (input: { moduleId?: string }) => input.moduleId === 'news'),
+      consumeConfirmationChallenge: vi.fn(
+        async (input: { moduleId?: string }) => input.moduleId === 'news'
+      ),
       recordConfirmationAttempt: vi.fn(async () => undefined),
     };
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
-      request: new Request('https://studio.example/api', { headers: {
-        'x-confirmation-challenge-id': 'challenge-1', 'x-confirmation-phrase': 'REVOKE events FROM demo',
-      } }),
-      context: { authKind: 'keycloak_service', actionId: 'instance.module.revoke', user: { id: 'keycloak-service:mcp', roles: ['instance_registry_admin'] } },
-      instanceId: 'demo', actorId: 'keycloak-service:mcp', actionId: 'instance.module.revoke', moduleId: 'events',
+      request: new Request('https://studio.example/api', {
+        headers: {
+          'x-confirmation-challenge-id': 'challenge-1',
+          'x-confirmation-phrase': 'REVOKE events FROM demo',
+        },
+      }),
+      context: {
+        authKind: 'keycloak_service',
+        actionId: 'instance.module.revoke',
+        user: { id: 'keycloak-service:mcp', roles: ['instance_registry_admin'] },
+      },
+      instanceId: 'demo',
+      actorId: 'keycloak-service:mcp',
+      actionId: 'instance.module.revoke',
+      moduleId: 'events',
     });
     expect(response?.status).toBe(409);
-    expect(service.consumeConfirmationChallenge).toHaveBeenCalledWith(expect.objectContaining({ moduleId: 'events' }));
-    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({
-      actionId: 'instance.module.revoke', moduleId: 'events', outcome: 'rejected', reason: 'invalid_confirmation',
-    }));
+    expect(service.consumeConfirmationChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({ moduleId: 'events' })
+    );
+    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionId: 'instance.module.revoke',
+        moduleId: 'events',
+        outcome: 'rejected',
+        reason: 'invalid_confirmation',
+      })
+    );
   });
 
   it.each([
     ['missing confirmation headers', {}, 403, 'confirmation_required'],
-    ['missing instance state', { 'x-confirmation-challenge-id': 'challenge', 'x-confirmation-phrase': 'ARCHIVE demo' }, 404, 'not_found'],
-    ['expired confirmation challenge', { 'x-confirmation-challenge-id': 'challenge', 'x-confirmation-phrase': 'ARCHIVE demo' }, 409, 'invalid_confirmation'],
+    [
+      'missing instance state',
+      { 'x-confirmation-challenge-id': 'challenge', 'x-confirmation-phrase': 'ARCHIVE demo' },
+      404,
+      'not_found',
+    ],
+    [
+      'expired confirmation challenge',
+      { 'x-confirmation-challenge-id': 'challenge', 'x-confirmation-phrase': 'ARCHIVE demo' },
+      409,
+      'invalid_confirmation',
+    ],
   ])('returns a structured error for %s', async (_label, headers, status, code) => {
     const { confirmCriticalRegistryMutation } = await import('./confirmation.js');
     const service = {
-      getInstanceDetail: vi.fn(async () => code === 'not_found' ? null : detail),
+      getInstanceDetail: vi.fn(async () => (code === 'not_found' ? null : detail)),
       consumeConfirmationChallenge: vi.fn(async () => false),
       recordConfirmationAttempt: vi.fn(async () => undefined),
     };
@@ -163,16 +251,23 @@ describe('critical registry confirmation', () => {
       service: service as never,
       request: new Request('https://studio.example/api', { headers }),
       context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
-      instanceId: 'demo', actorId: 'service', actionId: 'instance.module.revoke', moduleId: 'news',
+      instanceId: 'demo',
+      actorId: 'service',
+      actionId: 'instance.module.revoke',
+      moduleId: 'news',
     });
     expect(response?.status).toBe(status);
     expect(await response?.json()).toMatchObject({ error: { code } });
     if (code === 'not_found') {
       expect(service.recordConfirmationAttempt).not.toHaveBeenCalled();
     } else {
-      expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({
-        outcome: 'rejected', reason: code === 'confirmation_required' ? 'confirmation_required' : 'invalid_confirmation',
-      }));
+      expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          outcome: 'rejected',
+          reason:
+            code === 'confirmation_required' ? 'confirmation_required' : 'invalid_confirmation',
+        })
+      );
     }
   });
 
@@ -187,7 +282,9 @@ describe('critical registry confirmation', () => {
       service: service as never,
       request: new Request('https://studio.example/api'),
       context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
-      instanceId: 'missing', actorId: 'service', actionId: 'instance.status.archive',
+      instanceId: 'missing',
+      actorId: 'service',
+      actionId: 'instance.status.archive',
     });
 
     expect(response?.status).toBe(403);
@@ -203,15 +300,24 @@ describe('critical registry confirmation', () => {
 
     const response = await confirmCriticalRegistryMutation({
       service: service as never,
-      request: new Request('https://studio.example/api', { headers: { 'x-confirmation-challenge-id': 'challenge-1' } }),
+      request: new Request('https://studio.example/api', {
+        headers: { 'x-confirmation-challenge-id': 'challenge-1' },
+      }),
       context: { authKind: 'keycloak_service', user: { id: 'service', roles: [] } },
-      instanceId: 'demo', actorId: 'service', actionId: 'instance.module.revoke', moduleId: 'news',
+      instanceId: 'demo',
+      actorId: 'service',
+      actionId: 'instance.module.revoke',
+      moduleId: 'news',
     });
 
     expect(response?.status).toBe(403);
-    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(expect.objectContaining({
-      actionId: 'instance.module.revoke', moduleId: 'news', reason: 'confirmation_required',
-    }));
+    expect(service.recordConfirmationAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionId: 'instance.module.revoke',
+        moduleId: 'news',
+        reason: 'confirmation_required',
+      })
+    );
   });
 
   it('prepares a state-bound module revoke challenge for service callers', async () => {
@@ -219,20 +325,33 @@ describe('critical registry confirmation', () => {
       getInstanceDetail: vi.fn(async () => detail),
       prepareConfirmationChallenge: vi.fn(async () => ({ challengeId: 'challenge-1' })),
     };
-    state.withScopedRegistryService.mockImplementation(async (_instanceId, callback) => callback(service));
+    state.withScopedRegistryService.mockImplementation(async (_instanceId, callback) =>
+      callback(service)
+    );
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const response = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.module.revoke/confirmation?moduleId=news'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.module.revoke/confirmation?moduleId=news'
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
     expect(response.status).toBe(201);
-    expect(await response.json()).toMatchObject({ data: {
-      challengeId: 'challenge-1', actionId: 'instance.module.revoke', instanceId: 'demo',
-      moduleId: 'news', confirmationPhrase: 'REVOKE news FROM demo',
-    } });
-    expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(expect.objectContaining({
-      instanceId: 'demo', actorId: 'service', moduleId: 'news',
-    }));
+    expect(await response.json()).toMatchObject({
+      data: {
+        challengeId: 'challenge-1',
+        actionId: 'instance.module.revoke',
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmationPhrase: 'REVOKE news FROM demo',
+      },
+    });
+    expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        actorId: 'service',
+        moduleId: 'news',
+      })
+    );
   });
 
   it.each([
@@ -244,22 +363,30 @@ describe('critical registry confirmation', () => {
       getInstanceDetail: vi.fn(async () => detail),
       prepareConfirmationChallenge: vi.fn(async () => ({ challengeId: 'challenge-1' })),
     };
-    state.withScopedRegistryService.mockImplementation(async (_instanceId, callback) => callback(service));
+    state.withScopedRegistryService.mockImplementation(async (_instanceId, callback) =>
+      callback(service)
+    );
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const response = await prepareInstanceConfirmationInternal(
-      new Request(`https://studio.example/api/v1/iam/instances/demo/actions/${actionId}/confirmation`),
+      new Request(
+        `https://studio.example/api/v1/iam/instances/demo/actions/${actionId}/confirmation`
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
 
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ data: { actionId, confirmationPhrase } });
-    expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(expect.objectContaining({ actionId, confirmationPhrase }));
+    expect(service.prepareConfirmationChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({ actionId, confirmationPhrase })
+    );
   });
 
   it('rejects invalid preparation requests before accessing the registry', async () => {
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const response = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.module.revoke/confirmation'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.module.revoke/confirmation'
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
     expect(response.status).toBe(400);
@@ -269,7 +396,9 @@ describe('critical registry confirmation', () => {
   it('returns invalid_request for malformed percent-encoding in a preparation route', async () => {
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const response = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.%/confirmation'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.status.%/confirmation'
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
 
@@ -281,12 +410,16 @@ describe('critical registry confirmation', () => {
   it('rejects confirmation preparation without machine authentication or platform access', async () => {
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const sessionResponse = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'
+      ),
       { authKind: 'session', user: { id: 'admin', roles: [] } } as never
     );
     state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
     const accessResponse = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
     expect(sessionResponse.status).toBe(403);
@@ -297,14 +430,20 @@ describe('critical registry confirmation', () => {
   it('rejects unknown actions and missing instances during confirmation preparation', async () => {
     const { prepareInstanceConfirmationInternal } = await import('./confirmation.js');
     const invalidResponse = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.unknown/confirmation'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.unknown/confirmation'
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
-    state.withScopedRegistryService.mockImplementationOnce(async (_instanceId, callback) => callback({
-      getInstanceDetail: vi.fn(async () => null),
-    }));
+    state.withScopedRegistryService.mockImplementationOnce(async (_instanceId, callback) =>
+      callback({
+        getInstanceDetail: vi.fn(async () => null),
+      })
+    );
     const missingResponse = await prepareInstanceConfirmationInternal(
-      new Request('https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'),
+      new Request(
+        'https://studio.example/api/v1/iam/instances/demo/actions/instance.status.archive/confirmation'
+      ),
       { authKind: 'keycloak_service', user: { id: 'service', roles: [] } } as never
     );
     expect(invalidResponse.status).toBe(400);

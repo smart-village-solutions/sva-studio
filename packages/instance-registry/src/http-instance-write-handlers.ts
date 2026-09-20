@@ -116,6 +116,41 @@ export const createCreateInstanceHandler =
     return deps.jsonResponse(201, deps.asApiItem(result.instance, deps.getRequestId()));
   };
 
+export const createDraftReadinessHandler =
+  <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
+  async (request: Request, ctx: TContext): Promise<Response> => {
+    const guardError = requireMutationGuards(deps, request, ctx, { requireFreshReauth: false });
+    if (guardError) return guardError;
+    const payloadResult = await deps.parseRequestBody(request, createInstanceSchema);
+    if (!payloadResult.ok) {
+      return deps.createApiError(
+        400,
+        'invalid_request',
+        payloadResult.message,
+        deps.getRequestId()
+      );
+    }
+    const payload = resolveCreateInstanceDefaults(payloadResult.data);
+    try {
+      const readiness = await deps.withRegistryService((service) =>
+        service.getDraftReadiness(
+          buildCreateInstanceProvisioningInput(payload, {
+            idempotencyKey: 'draft-readiness',
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+      return deps.jsonResponse(200, deps.asApiItem(readiness, deps.getRequestId()));
+    } catch (error) {
+      return deps.mapMutationError(error, {
+        operation: 'get_instance_draft_readiness',
+        requestId: deps.getRequestId(),
+        instanceId: payload.instanceId,
+      });
+    }
+  };
+
 export const createRetryTenantProvisioningHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
   async (request: Request, ctx: TContext): Promise<Response> => {

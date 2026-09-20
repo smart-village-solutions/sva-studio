@@ -40,11 +40,13 @@ describe('mutation-errors', () => {
   });
 
   it('classifies idempotency payload reuse as conflict', () => {
-    expect(classifyInstanceMutationError(new Error('idempotency_key_reuse'))).toEqual({
+    expect(classifyInstanceMutationError(new Error('idempotency_key_reuse'))).toMatchObject({
       status: 409,
       code: 'idempotency_key_reuse',
     });
-    expect(classifyInstanceMutationError(new Error('instance_configuration_change_blocked'))).toEqual({
+    expect(
+      classifyInstanceMutationError(new Error('instance_configuration_change_blocked'))
+    ).toMatchObject({
       status: 409,
       code: 'instance_configuration_change_blocked',
     });
@@ -58,7 +60,7 @@ describe('mutation-errors', () => {
   });
 
   it('classifies tenant hosts owned by another instance as conflicts', () => {
-    expect(classifyInstanceMutationError(new Error('tenant_hostname_conflict'))).toEqual({
+    expect(classifyInstanceMutationError(new Error('tenant_hostname_conflict'))).toMatchObject({
       status: 409,
       code: 'tenant_hostname_conflict',
     });
@@ -88,7 +90,7 @@ describe('mutation-errors', () => {
           constraint: 'instances_auth_realm_unique',
         })
       )
-    ).toEqual({ status: 409, code: 'auth_realm_conflict' });
+    ).toMatchObject({ status: 409, code: 'auth_realm_conflict' });
   });
 
   it('classifies tenant RLS and schema write failures as database failures', () => {
@@ -103,7 +105,7 @@ describe('mutation-errors', () => {
   });
 
   it('keeps unknown failures explicitly unclassified instead of claiming a Keycloak failure', () => {
-    expect(classifyInstanceMutationError(new Error('boom'))).toEqual({
+    expect(classifyInstanceMutationError(new Error('boom'))).toMatchObject({
       status: 500,
       code: 'internal_unclassified',
     });

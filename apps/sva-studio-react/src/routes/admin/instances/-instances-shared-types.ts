@@ -1,7 +1,4 @@
-import type {
-  IamInstanceDetail,
-  IamTenantIamAxisStatus,
-} from '@sva/core';
+import type { IamInstanceDetail, IamTenantIamAxisStatus } from '@sva/core';
 
 import type { useInstances } from '../../../hooks/use-instances';
 
@@ -61,6 +58,7 @@ export type InstanceSetupStatusItem = {
 
 export type DetailWorkflowAction =
   | NonNullable<SetupWorkflowStep['action']>
+  | 'retry_tenant_provisioning'
   | 'rotate_client_secret'
   | 'probeTenantIamAccess'
   | 'reconcileKeycloak';

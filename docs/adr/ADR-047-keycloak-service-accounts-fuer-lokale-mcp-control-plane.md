@@ -18,6 +18,18 @@ Die MCP-Fläche reicht von risikoarmen Reads bis zu Archivierung, Modulentzug un
 4. Reads benötigen nur Read-Actions. Kontrollierte Mutationen benötigen eine eigene Action und Idempotenz. Kritische Mutationen benötigen zusätzlich eine kurzlebige, einmalig verwendbare und an Action, Instanz sowie aktuellen Zustand gebundene Confirmation-Challenge mit exakter Phrase.
 5. Client-Secrets werden ausschließlich lokal über OS-Keychain oder nicht versionierte Umgebungsvariablen verteilt. Studio benötigt für die JWT-Prüfung kein MCP-Client-Secret. Tokens und Secrets erscheinen weder in Antworten, Logs, Auditdetails noch Telemetrie.
 6. Ein serverseitiger Environment-Kill-Switch ermöglicht die sofortige Deaktivierung des Maschinenpfads, ohne den Browser-/Session-Pfad zu verändern.
+7. Eine Aktivierungs-Challenge bindet den Akteur, `instance.status.activate`,
+   die Instanzrevision und den Fingerprint der aktuellen technischen
+   Readiness-Evidenz. Browser und MCP verwenden denselben fachlichen
+   Aktivierungsvertrag, aber kanalgeeignete Authentisierung: Der Browser behält
+   Session, CSRF und Fresh-Reauth; der MCP-Service-Account verwendet die
+   einmalige Phrase-Challenge. Maschinenidentitäten müssen keine Browser-
+   Fresh-Reauth emulieren.
+8. `create`, `repair` und `adapt` dürfen einen Keycloak-Plan lesen, halten vor
+   seiner Mutation jedoch mit `awaiting_human_action` an. Die Fortsetzung muss
+   den bestätigten Plan-Fingerprint verwenden und liest bei Timeout oder
+   Kanalwechsel denselben Run weiter; ein generischer HTTP-409 gilt nicht als
+   idempotenter Erfolg.
 
 ## Konsequenzen
 
@@ -33,6 +45,8 @@ Die MCP-Fläche reicht von risikoarmen Reads bis zu Archivierung, Modulentzug un
 - Keycloak-Client-, Rollen- und Audience-Konfiguration muss in drei Realms synchron gehalten und geprüft werden.
 - JWKS-Cache, Key-Rotation und Keycloak-Ausfälle erweitern die Authentisierungs-Testmatrix.
 - Kritische Aktionen benötigen persistente oder gleichwertig atomare Challenge-Zustände.
+- Menschen müssen Plan- und Aktivierungsentscheidungen ausdrücklich bestätigen;
+  dadurch entstehen bewusst zusätzliche, aber wiederaufnehmbare Prozessstopps.
 
 ## Verworfen
 
@@ -50,7 +64,7 @@ Für die erste Ausbaustufe verworfen, um den lokalen Betrieb überschaubar zu ha
 
 ## Betrieb und Verifikation
 
-Der Rollout erfolgt in der Reihenfolge `studio-dev`, `studio-staging`, `sva-studio`. Jede Stufe verlangt Read-only-Smoke, kontrollierte Mutation an einer Testinstanz, eine Challenge-geschützte Mutation sowie Audit- und OTEL-Evidenz. Die Rotation verwendet ein kurzes Overlap-Fenster und widerruft das alte Secret erst nach erfolgreichem Smoke mit dem neuen Credential.
+Der Rollout erfolgt in der Reihenfolge `studio-dev`, `studio-staging`, `sva-studio`. Jede Stufe verlangt Read-only-Smoke, Planstopp vor Mutation, kontrollierte Mutation an einer Testinstanz, eine evidenzgebundene Challenge-Aktivierung sowie Audit- und OTEL-Evidenz. Die Rotation verwendet ein kurzes Overlap-Fenster und widerruft das alte Secret erst nach erfolgreichem Smoke mit dem neuen Credential.
 
 Rollback bedeutet: Kill-Switch deaktivieren, betroffene Clients oder Credentials widerrufen und lokale MCP-Konfiguration entfernen. Der vorherige Studio-Image-Digest bleibt der App-Rollback-Pfad; additive Challenge-Daten bleiben während eines Incidents ungenutzt bestehen.
 
@@ -61,3 +75,4 @@ Rollback bedeutet: Kill-Switch deaktivieren, betroffene Clients oder Credentials
 - [ADR-030: Registry-basierte Instanzfreigabe und Provisioning](./ADR-030-registry-basierte-instance-freigabe-und-provisioning.md)
 - [ADR-046: Plattform- vs. Tenant-Rollenmodell](./ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md)
 - `openspec/changes/add-studio-instance-create-mcp/`
+- `openspec/changes/refactor-tenant-creation-readiness/`

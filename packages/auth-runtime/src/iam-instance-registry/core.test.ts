@@ -39,8 +39,22 @@ const state = vi.hoisted(() => {
     parseRegistryRequestBody: vi.fn(),
     scheduleConfiguredPluginTenantProvisioning: vi.fn(),
     withRegistryCreateService: vi.fn(),
+    withRegistryRepository: vi.fn(
+      async (
+        work: (repository: {
+          recordProvisioningWakeupFailure: (input: unknown) => Promise<null>;
+        }) => Promise<unknown>
+      ) => work({ recordProvisioningWakeupFailure: vi.fn(async () => null) })
+    ),
     withRegistryService: vi.fn(),
-    withScopedRegistryService: vi.fn(),
+    withScopedRegistryService: vi.fn(
+      async (
+        _instanceId: string,
+        work: (service: {
+          getInstanceDetail: (instanceId: string) => Promise<null>;
+        }) => Promise<unknown>
+      ) => work({ getInstanceDetail: vi.fn(async () => null) })
+    ),
     readInstanceRegistryPluginOidcClientRequirements: vi.fn<() => readonly { clientId: string }[]>(
       () => []
     ),
@@ -96,6 +110,7 @@ vi.mock('./request-parsing.js', () => ({
 vi.mock('./repository.js', () => ({
   scheduleConfiguredPluginTenantProvisioning: state.scheduleConfiguredPluginTenantProvisioning,
   withRegistryCreateService: state.withRegistryCreateService,
+  withRegistryRepository: state.withRegistryRepository,
   withRegistryService: state.withRegistryService,
   withScopedRegistryService: state.withScopedRegistryService,
 }));
@@ -140,7 +155,13 @@ describe('iam-instance-registry core handlers', () => {
       actorId: 'actor-1',
     });
 
-    expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('instance-1');
+    await vi.waitFor(() => {
+      expect(state.withScopedRegistryService).toHaveBeenCalledWith(
+        'instance-1',
+        expect.any(Function)
+      );
+    });
+    expect(state.scheduleConfiguredPluginTenantProvisioning).not.toHaveBeenCalled();
 
     const logger = state.createSdkLogger.mock.results[0]?.value;
     expect(logger.info).toHaveBeenCalledWith(
@@ -172,6 +193,35 @@ describe('iam-instance-registry core handlers', () => {
     expect(state.handlers.createInstance).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.retryTenantProvisioning).toHaveBeenCalledWith(request, ctx);
     expect(state.handlers.updateInstance).toHaveBeenCalledWith(request, ctx);
+  });
+
+  it('persists safe evidence when the post-create wake-up fails', async () => {
+    state.withScopedRegistryService.mockRejectedValueOnce(new Error('provider detail'));
+    const recordProvisioningWakeupFailure = vi.fn(async () => null);
+    state.withRegistryRepository.mockImplementationOnce(async (work) =>
+      work({ recordProvisioningWakeupFailure })
+    );
+    await import('./core.js');
+    const config = state.createInstanceRegistryHttpHandlers.mock.calls[0]?.[0];
+
+    config.onInstanceProvisioningRequested({
+      instanceId: 'instance-1',
+      primaryHostname: 'tenant.example.test',
+      actorId: 'actor-1',
+    });
+
+    await vi.waitFor(() => {
+      expect(recordProvisioningWakeupFailure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: 'instance-1',
+          errorCode: 'post_commit_wakeup_failed',
+          errorMessage: 'Post-Commit-Wake-up fehlgeschlagen.',
+        })
+      );
+    });
+    expect(JSON.stringify(recordProvisioningWakeupFailure.mock.calls)).not.toContain(
+      'provider detail'
+    );
   });
 
   it('forwards status and module mutations to the dedicated mutation helpers', async () => {

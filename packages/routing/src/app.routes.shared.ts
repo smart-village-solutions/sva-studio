@@ -10,7 +10,11 @@ import {
 } from './admin-resource-route-conflicts.js';
 import type { AppRouteBindings } from './app-route-bindings.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import { collectLegacyContentAliasDefinitions, createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
+import {
+  collectLegacyContentAliasDefinitions,
+  createAdminResourceRouteFactories,
+  createLegacyContentAliasFactories,
+} from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 export { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
 import type { RouteGuardContext } from './protected.routes.js';
@@ -53,15 +57,30 @@ const excluded = (
 
 const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home, documentation: page('home.overview', 'overview') },
-  { binding: 'account', path: uiRoutePaths.account, guard: 'account', documentation: page('account.profile', 'overview') },
-  { binding: 'accountPrivacy', path: uiRoutePaths.accountPrivacy, guard: 'accountPrivacy', documentation: page('account.privacy', 'overview') },
+  {
+    binding: 'account',
+    path: uiRoutePaths.account,
+    guard: 'account',
+    documentation: page('account.profile', 'overview'),
+  },
+  {
+    binding: 'accountPrivacy',
+    path: uiRoutePaths.accountPrivacy,
+    guard: 'accountPrivacy',
+    documentation: page('account.privacy', 'overview'),
+  },
   {
     binding: 'accountPrivacyDetail',
     path: uiRoutePaths.accountPrivacyDetail,
     guard: 'accountPrivacyDetail',
     documentation: page('account.privacy-detail', 'detail'),
   },
-  { binding: 'accountRules', path: uiRoutePaths.accountRules, guard: 'accountRules', documentation: page('account.rules', 'overview') },
+  {
+    binding: 'accountRules',
+    path: uiRoutePaths.accountRules,
+    guard: 'accountRules',
+    documentation: page('account.rules', 'overview'),
+  },
   {
     binding: 'mediaUsage',
     path: uiRoutePaths.mediaUsage,
@@ -86,7 +105,12 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     requiredPermissions: ['categories.read'],
     documentation: page('categories.overview', 'overview'),
   },
-  { binding: 'app', path: uiRoutePaths.app, guard: 'account', documentation: page('app.overview', 'overview') },
+  {
+    binding: 'app',
+    path: uiRoutePaths.app,
+    guard: 'account',
+    documentation: page('app.overview', 'overview'),
+  },
   {
     binding: 'interfaces',
     path: uiRoutePaths.interfaces,
@@ -97,9 +121,24 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'help', path: uiRoutePaths.help, documentation: excluded('help-page') },
   { binding: 'support', path: uiRoutePaths.support, documentation: excluded('help-page') },
   { binding: 'license', path: uiRoutePaths.license, documentation: excluded('help-page') },
-  { binding: 'adminUsers', path: uiRoutePaths.adminUsers, guard: 'adminUsers', documentation: page('admin.users.list', 'list') },
-  { binding: 'adminUserCreate', path: uiRoutePaths.adminUserCreate, guard: 'adminUserCreate', documentation: page('admin.users.create', 'create') },
-  { binding: 'adminUserDetail', path: uiRoutePaths.adminUserDetail, guard: 'adminUserDetail', documentation: page('admin.users.detail', 'detail') },
+  {
+    binding: 'adminUsers',
+    path: uiRoutePaths.adminUsers,
+    guard: 'adminUsers',
+    documentation: page('admin.users.list', 'list'),
+  },
+  {
+    binding: 'adminUserCreate',
+    path: uiRoutePaths.adminUserCreate,
+    guard: 'adminUserCreate',
+    documentation: page('admin.users.create', 'create'),
+  },
+  {
+    binding: 'adminUserDetail',
+    path: uiRoutePaths.adminUserDetail,
+    guard: 'adminUserDetail',
+    documentation: page('admin.users.detail', 'detail'),
+  },
   {
     binding: 'adminOrganizations',
     path: uiRoutePaths.adminOrganizations,
@@ -121,22 +160,36 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
       tab: normalizeOrganizationDetailTab(search.tab),
     }),
   },
-  { binding: 'adminInstances', path: uiRoutePaths.adminInstances, guard: 'adminInstances', documentation: page('admin.instances.list', 'list') },
+  {
+    binding: 'adminInstances',
+    path: uiRoutePaths.adminInstances,
+    guard: 'adminInstances',
+    documentation: page('admin.instances.list', 'list'),
+  },
   {
     binding: 'adminInstanceCreate',
     path: uiRoutePaths.adminInstanceCreate,
     guard: 'adminInstances',
     documentation: page('admin.instances.create', 'create'),
   },
-  { binding: 'adminInstanceSetup', path: uiRoutePaths.adminInstanceSetup, guard: 'adminInstances', documentation: page('admin.instances.setup', 'setup') },
   {
     binding: 'adminInstanceDetail',
     path: uiRoutePaths.adminInstanceDetail,
     guard: 'adminInstances',
     documentation: page('admin.instances.detail', 'detail'),
   },
-  { binding: 'adminRoles', path: uiRoutePaths.adminRoles, guard: 'adminRoles', documentation: page('admin.roles.list', 'list') },
-  { binding: 'adminRoleCreate', path: uiRoutePaths.adminRoleCreate, guard: 'adminRoleCreate', documentation: page('admin.roles.create', 'create') },
+  {
+    binding: 'adminRoles',
+    path: uiRoutePaths.adminRoles,
+    guard: 'adminRoles',
+    documentation: page('admin.roles.list', 'list'),
+  },
+  {
+    binding: 'adminRoleCreate',
+    path: uiRoutePaths.adminRoleCreate,
+    guard: 'adminRoleCreate',
+    documentation: page('admin.roles.create', 'create'),
+  },
   {
     binding: 'adminRoleDetail',
     path: uiRoutePaths.adminRoleDetail,
@@ -146,10 +199,30 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
       tab: normalizeRoleDetailTab(search.tab),
     }),
   },
-  { binding: 'adminGroups', path: uiRoutePaths.adminGroups, guard: 'adminGroups', documentation: page('admin.groups.list', 'list') },
-  { binding: 'adminGroupCreate', path: uiRoutePaths.adminGroupCreate, guard: 'adminGroupCreate', documentation: page('admin.groups.create', 'create') },
-  { binding: 'adminGroupDetail', path: uiRoutePaths.adminGroupDetail, guard: 'adminGroupDetail', documentation: page('admin.groups.detail', 'detail') },
-  { binding: 'adminLegalTexts', path: uiRoutePaths.adminLegalTexts, guard: 'adminLegalTexts', documentation: page('admin.legal-texts.list', 'list') },
+  {
+    binding: 'adminGroups',
+    path: uiRoutePaths.adminGroups,
+    guard: 'adminGroups',
+    documentation: page('admin.groups.list', 'list'),
+  },
+  {
+    binding: 'adminGroupCreate',
+    path: uiRoutePaths.adminGroupCreate,
+    guard: 'adminGroupCreate',
+    documentation: page('admin.groups.create', 'create'),
+  },
+  {
+    binding: 'adminGroupDetail',
+    path: uiRoutePaths.adminGroupDetail,
+    guard: 'adminGroupDetail',
+    documentation: page('admin.groups.detail', 'detail'),
+  },
+  {
+    binding: 'adminLegalTexts',
+    path: uiRoutePaths.adminLegalTexts,
+    guard: 'adminLegalTexts',
+    documentation: page('admin.legal-texts.list', 'list'),
+  },
   {
     binding: 'adminLegalTextCreate',
     path: uiRoutePaths.adminLegalTextCreate,
@@ -175,17 +248,41 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     guard: 'adminIam',
     documentation: page('admin.iam.governance-detail', 'detail'),
   },
-  { binding: 'adminIamDsrDetail', path: uiRoutePaths.adminIamDsrDetail, guard: 'adminIam', documentation: page('admin.iam.dsr-detail', 'detail') },
-  { binding: 'modules', path: uiRoutePaths.modules, guard: 'modules', documentation: page('modules.overview', 'overview') },
-  { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'monitoring', documentation: page('monitoring.overview', 'overview') },
-  { binding: 'monitoringJobs', path: uiRoutePaths.monitoringJobs, guard: 'monitoringJobs', documentation: page('monitoring.jobs-list', 'list') },
+  {
+    binding: 'adminIamDsrDetail',
+    path: uiRoutePaths.adminIamDsrDetail,
+    guard: 'adminIam',
+    documentation: page('admin.iam.dsr-detail', 'detail'),
+  },
+  {
+    binding: 'modules',
+    path: uiRoutePaths.modules,
+    guard: 'modules',
+    documentation: page('modules.overview', 'overview'),
+  },
+  {
+    binding: 'monitoring',
+    path: uiRoutePaths.monitoring,
+    guard: 'monitoring',
+    documentation: page('monitoring.overview', 'overview'),
+  },
+  {
+    binding: 'monitoringJobs',
+    path: uiRoutePaths.monitoringJobs,
+    guard: 'monitoringJobs',
+    documentation: page('monitoring.jobs-list', 'list'),
+  },
   {
     binding: 'monitoringJobDetail',
     path: uiRoutePaths.monitoringJobDetail,
     guard: 'monitoringJobDetail',
     documentation: page('monitoring.job-detail', 'detail'),
   },
-  { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test, documentation: excluded('technical') },
+  {
+    binding: 'adminApiPhase1Test',
+    path: uiRoutePaths.adminApiPhase1Test,
+    documentation: excluded('technical'),
+  },
 ] as const;
 
 const resolveUiRouteDefinitions = (

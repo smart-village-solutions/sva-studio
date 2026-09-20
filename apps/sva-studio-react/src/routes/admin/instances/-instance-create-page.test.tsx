@@ -5,41 +5,44 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InstanceCreatePage } from './-instance-create-page';
 
 const useInstancesMock = vi.fn();
+const navigateMock = vi.fn();
+const getDraftReadinessMock = vi.fn();
+const listRealmCatalogMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    children,
-    to,
-    params,
-    ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-    to: string;
-    params?: Record<string, string>;
-  }) => (
-    <a href={params?.instanceId ? to.replace('$instanceId', params.instanceId) : to} {...props}>
-      {children}
-    </a>
+  Link: ({ children, to }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+    <a href={to}>{children}</a>
   ),
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
 }));
 
-const createCreatedInstance = (overrides: Record<string, unknown> = {}) => ({
-  instanceId: 'demo',
-  displayName: 'Demo',
-  status: 'requested',
-  parentDomain: 'studio.example.org',
-  primaryHostname: 'demo.studio.example.org',
-  realmMode: 'new',
-  authRealm: 'demo',
-  authClientId: 'sva-studio-login',
-  authIssuerUrl: undefined,
-  authClientSecretConfigured: false,
-  hostnames: [],
-  ...overrides,
-});
+vi.mock('../../../lib/iam-api', () => ({
+  getInstanceDraftReadiness: (...args: unknown[]) => getDraftReadinessMock(...args),
+  listInstanceRealmCatalog: (...args: unknown[]) => listRealmCatalogMock(...args),
+}));
+
+const readyDraft = {
+  checkedAt: '2026-09-20T12:00:00.000Z',
+  contractVersion: '1.0',
+  draftFingerprint: 'a'.repeat(64),
+  normalizedDraft: {
+    instanceId: 'demo',
+    primaryHostname: 'demo.dialog.kassel.de',
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'sva-studio-login',
+    authClientSecretConfigured: false,
+  },
+  createBlockers: [],
+  provisioningBlockers: [],
+  activationBlockers: [],
+  backgroundCapabilities: [],
+  preflight: { overallStatus: 'ready', checkedAt: '2026-09-20T12:00:00.000Z', checks: [] },
+};
 
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   instances: [],
@@ -49,374 +52,171 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   statusLoading: false,
   error: null,
   mutationError: null,
-  filters: {
-    search: '',
-    status: 'all',
-  },
-  setSearch: vi.fn(),
-  setStatus: vi.fn(),
-  refetch: vi.fn(),
-  loadInstance: vi.fn().mockResolvedValue(true),
-  clearSelectedInstance: vi.fn(),
-  clearMutationError: vi.fn(),
-  createInstance: vi.fn().mockResolvedValue(createCreatedInstance()),
-  bootstrapAdminStructure: vi.fn().mockResolvedValue({
-    instanceId: 'demo',
-    displayName: 'Demo',
-    status: 'requested',
-    parentDomain: 'studio.example.org',
-    primaryHostname: 'demo.studio.example.org',
-    hostnames: [],
-    provisioningRuns: [],
-    keycloakProvisioningRuns: [],
-    auditEvents: [],
-    assignedModules: [],
-  }),
-  updateInstance: vi.fn().mockResolvedValue(true),
-  refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
-  reconcileKeycloak: vi.fn().mockResolvedValue(true),
-  activateInstance: vi.fn().mockResolvedValue(true),
-  suspendInstance: vi.fn().mockResolvedValue(true),
-  archiveInstance: vi.fn().mockResolvedValue(true),
+  createInstance: vi.fn().mockResolvedValue({ instanceId: 'demo' }),
   ...overrides,
 });
+
+const fillBasics = (instanceId = 'demo') => {
+  fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), {
+    target: { value: instanceId },
+  });
+  fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+    target: { value: 'Demo' },
+  });
+};
+
+const fillAdministrator = () => {
+  fireEvent.change(
+    screen.getByLabelText('Admin-Benutzername', { selector: '#instance-admin-username' }),
+    { target: { value: 'tenant-admin' } }
+  );
+  fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#instance-admin-email' }), {
+    target: { value: 'tenant-admin@example.org' },
+  });
+  fireEvent.change(
+    screen.getByLabelText('Admin-Vorname', { selector: '#instance-admin-first-name' }),
+    { target: { value: 'Tenant' } }
+  );
+  fireEvent.change(
+    screen.getByLabelText('Admin-Nachname', { selector: '#instance-admin-last-name' }),
+    { target: { value: 'Admin' } }
+  );
+};
 
 describe('InstanceCreatePage', () => {
   let parentDomainMeta: HTMLMetaElement;
 
-  afterEach(() => {
-    parentDomainMeta.remove();
-    cleanup();
-  });
-
   beforeEach(() => {
     useInstancesMock.mockReset();
+    navigateMock.mockReset();
+    getDraftReadinessMock.mockReset().mockResolvedValue({ data: readyDraft });
+    listRealmCatalogMock
+      .mockReset()
+      .mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 100, total: 0 } });
     parentDomainMeta = document.createElement('meta');
     parentDomainMeta.name = 'sva-studio-parent-domain';
     parentDomainMeta.content = 'dialog.kassel.de';
     document.head.append(parentDomainMeta);
   });
 
-  it('guides through the wizard and shows the next steps after creation', async () => {
-    const createInstance = vi.fn().mockResolvedValue(
-      createCreatedInstance({
-        instanceId: 'demo',
-        authRealm: 'saas-demo',
-      })
-    );
-    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance }));
-    window.history.replaceState({}, '', '/admin/instances/new');
+  afterEach(() => {
+    parentDomainMeta.remove();
+    cleanup();
+  });
 
+  it('creates a complete new-realm draft and opens the shared cockpit', async () => {
+    const createInstance = vi.fn().mockResolvedValue({ instanceId: 'demo' });
+    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance }));
     render(<InstanceCreatePage />);
 
-    const parentDomainInput = screen.getByLabelText('Parent-Domain', {
-      selector: '#instance-parent-domain',
-    }) as HTMLInputElement;
-    expect(parentDomainInput.value).toBe('dialog.kassel.de');
-    expect(parentDomainInput.placeholder).toBe('dialog.kassel.de');
-    expect((screen.getByRole('radio', { name: /Neuer Realm:/u }) as HTMLInputElement).checked).toBe(
-      true
-    );
-    expect(
-      screen.getByText(
-        'Neuer Realm: Der Provisioning-Lauf legt den Realm an und blockiert, wenn er bereits existiert.'
-      )
-    ).toBeTruthy();
-
-    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), {
-      target: { value: ' demo ' },
-    });
-    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
-      target: { value: ' Demo ' },
-    });
-    fireEvent.change(parentDomainInput, { target: { value: ' studio.example.org ' } });
+    expect(screen.getByText('Smart Village App')).toBeTruthy();
+    fillBasics();
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(screen.getByText('Keycloak-Zuordnung')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Studio leitet Realm und Clients automatisch ab und richtet Theme, Dark Mode, ausschließlich Deutsch, Events, Benutzerprofil, instanceId-Mapper und die E-Mail-Grundkonfiguration serverseitig ein. Danach muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.'
-      )
-    ).toBeTruthy();
-    expect(screen.queryByLabelText('Auth-Realm')).toBeNull();
     expect(screen.queryByLabelText('Tenant-Client-Secret')).toBeNull();
+    expect(screen.getByText('Technische Details')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fillAdministrator();
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
-    expect(screen.getByText('Tenant-Admin')).toBeTruthy();
-    fireEvent.change(
-      screen.getByLabelText('Admin-Benutzername', { selector: '#instance-admin-username' }),
-      {
-        target: { value: ' setup-admin ' },
-      }
-    );
-    fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#instance-admin-email' }), {
-      target: { value: ' admin@example.org ' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => expect(getDraftReadinessMock).toHaveBeenCalledOnce());
+    const createButton = screen.getByRole('button', { name: 'Instanz anlegen' });
+    await waitFor(() => expect((createButton as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(createButton);
 
-    expect(screen.getByText('Eingaben prüfen')).toBeTruthy();
-    expect(screen.getByText('Neuer Realm')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Studio leitet Realm und Clients automatisch ab und richtet Theme, Dark Mode, ausschließlich Deutsch, Events, Benutzerprofil, instanceId-Mapper und die E-Mail-Grundkonfiguration serverseitig ein. Danach muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.'
-      )
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.'
-      )
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
-
-    await waitFor(() => {
+    await waitFor(() =>
       expect(createInstance).toHaveBeenCalledWith({
         instanceId: 'demo',
         displayName: 'Demo',
-        parentDomain: 'studio.example.org',
+        parentDomain: 'dialog.kassel.de',
         realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio-login',
         authIssuerUrl: undefined,
         authClientSecret: undefined,
-        tenantAdminClient: {
-          clientId: 'sva-studio-realm-admin',
-          secret: undefined,
-        },
-        tenantAdminBootstrap: {
-          username: 'setup-admin',
-          email: 'admin@example.org',
-          firstName: undefined,
-          lastName: undefined,
-        },
-      });
-    });
-
-    expect(screen.getByText('Instanz gespeichert')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Die Instanz demo wurde in der Registry angelegt. Aktueller Status: Angefordert.'
-      )
-    ).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Setup abschließen' }).getAttribute('href')).toBe(
-      '/admin/instances/demo/setup'
-    );
-    expect(
-      screen.getByText(
-        'Öffnen Sie danach den Setup-Flow, um Provisioning, Aktivierung und Tenant-Admin-Struktur abzuschließen.'
-      )
-    ).toBeTruthy();
-    expect(
-      screen.getByText('Führen Sie dort den Keycloak-Abgleich für Realm saas-demo aus.')
-    ).toBeTruthy();
-    expect(
-      screen.queryByRole('button', { name: 'Tenant-Admin-Struktur jetzt anlegen' })
-    ).toBeNull();
-  });
-
-  it('shows step validation before moving on', () => {
-    useInstancesMock.mockReturnValue(createInstancesApiState());
-
-    render(<InstanceCreatePage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(screen.getByRole('alert').textContent).toContain('Bitte eine Instanz-ID angeben.');
-    expect(screen.getByRole('alert').textContent).toContain('Bitte einen Anzeigenamen angeben.');
-    expect(screen.getByRole('alert').textContent).not.toContain(
-      'Bitte eine Parent-Domain angeben.'
-    );
-  });
-
-  it('does not require a tenant secret for new realms and explains generation during provisioning', async () => {
-    const createInstance = vi.fn().mockResolvedValue(
-      createCreatedInstance({
-        instanceId: 'demo-new',
-        realmMode: 'new',
-        authRealm: 'demo-new',
-        authClientSecretConfigured: false,
-      })
-    );
-    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance }));
-
-    render(<InstanceCreatePage />);
-
-    fireEvent.click(screen.getAllByRole('radio')[0]!);
-    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), {
-      target: { value: 'demo-new' },
-    });
-    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
-      target: { value: 'Demo New' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(
-      screen.getByText(
-        'Studio leitet Realm und Clients automatisch ab und richtet Theme, Dark Mode, ausschließlich Deutsch, Events, Benutzerprofil, instanceId-Mapper und die E-Mail-Grundkonfiguration serverseitig ein. Danach muss nur das SMTP-Passwort direkt in Keycloak gesetzt werden.'
-      )
-    ).toBeTruthy();
-    expect(screen.queryByLabelText('Auth-Realm')).toBeNull();
-    expect(screen.queryByLabelText('Tenant-Client-Secret')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(
-      screen.getByText(
-        'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.'
-      )
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
-
-    await waitFor(() => {
-      expect(createInstance).toHaveBeenCalledWith({
-        instanceId: 'demo-new',
-        displayName: 'Demo New',
-        parentDomain: 'dialog.kassel.de',
-        realmMode: 'new',
-        authRealm: 'demo-new',
-        authClientId: 'sva-studio-login',
-        authIssuerUrl: undefined,
-        authClientSecret: undefined,
-        tenantAdminClient: {
-          clientId: 'sva-studio-realm-admin',
-          secret: undefined,
-        },
-        tenantAdminBootstrap: undefined,
-      });
-    });
-  });
-
-  it('requires secrets for existing realms and submits the optional issuer and tenant-admin fields', async () => {
-    const createInstance = vi.fn().mockResolvedValue(
-      createCreatedInstance({
-        instanceId: 'demo-existing',
-        realmMode: 'existing',
-        authRealm: 'tenant-existing',
-        authClientSecretConfigured: true,
-      })
-    );
-    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance }));
-
-    render(<InstanceCreatePage />);
-
-    fireEvent.click(screen.getAllByRole('radio')[1]!);
-    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), {
-      target: { value: 'demo-existing' },
-    });
-    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
-      target: { value: 'Demo Existing' },
-    });
-    fireEvent.change(
-      screen.getByLabelText('Parent-Domain', { selector: '#instance-parent-domain' }),
-      {
-        target: { value: 'studio.example.org' },
-      }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    const authClientSecretInput = screen.getByLabelText('Tenant-Client-Secret', {
-      selector: '#instance-auth-client-secret',
-    }) as HTMLInputElement;
-    const tenantAdminSecretInput = screen.getByLabelText('Tenant-Admin-Client-Secret', {
-      selector: '#instance-tenant-admin-client-secret',
-    }) as HTMLInputElement;
-    expect(authClientSecretInput.disabled).toBe(false);
-    expect(tenantAdminSecretInput.disabled).toBe(false);
-    expect(
-      screen.getByText(
-        'Das Tenant-Client-Secret ist für bestehende Realms stark empfohlen, damit Status- und Drift-Prüfungen vollständig laufen.'
-      )
-    ).toBeTruthy();
-
-    fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#instance-auth-realm' }), {
-      target: { value: 'tenant-existing' },
-    });
-    fireEvent.change(
-      screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }),
-      {
-        target: { value: 'tenant-client' },
-      }
-    );
-    fireEvent.change(authClientSecretInput, { target: { value: ' tenant-secret ' } });
-    fireEvent.change(
-      screen.getByLabelText('Tenant-Admin-Client-ID', {
-        selector: '#instance-tenant-admin-client-id',
-      }),
-      {
-        target: { value: ' tenant-admin-client ' },
-      }
-    );
-    fireEvent.change(tenantAdminSecretInput, { target: { value: ' tenant-admin-secret ' } });
-    fireEvent.change(
-      screen.getByLabelText('Auth-Issuer-URL', { selector: '#instance-auth-issuer-url' }),
-      {
-        target: { value: ' https://auth.example.org/realms/tenant-existing ' },
-      }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    fireEvent.change(
-      screen.getByLabelText('Admin-Benutzername', { selector: '#instance-admin-username' }),
-      {
-        target: { value: ' tenant-admin ' },
-      }
-    );
-    fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#instance-admin-email' }), {
-      target: { value: ' tenant-admin@example.org ' },
-    });
-    fireEvent.change(
-      screen.getByLabelText('Admin-Vorname', { selector: '#instance-admin-first-name' }),
-      {
-        target: { value: ' Tina ' },
-      }
-    );
-    fireEvent.change(
-      screen.getByLabelText('Admin-Nachname', { selector: '#instance-admin-last-name' }),
-      {
-        target: { value: ' Admin ' },
-      }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(screen.getByText('Bestehender Realm')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
-
-    await waitFor(() => {
-      expect(createInstance).toHaveBeenCalledWith({
-        instanceId: 'demo-existing',
-        displayName: 'Demo Existing',
-        parentDomain: 'studio.example.org',
-        realmMode: 'existing',
-        authRealm: 'tenant-existing',
-        authClientId: 'tenant-client',
-        authIssuerUrl: 'https://auth.example.org/realms/tenant-existing',
-        authClientSecret: 'tenant-secret',
-        tenantAdminClient: {
-          clientId: 'tenant-admin-client',
-          secret: 'tenant-admin-secret',
-        },
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin', secret: undefined },
         tenantAdminBootstrap: {
           username: 'tenant-admin',
           email: 'tenant-admin@example.org',
-          firstName: 'Tina',
+          firstName: 'Tenant',
           lastName: 'Admin',
         },
-      });
+      })
+    );
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/admin/instances/$instanceId',
+      params: { instanceId: 'demo' },
     });
   });
 
-  it('renders mutation errors', () => {
-    useInstancesMock.mockReturnValue(
-      createInstancesApiState({
-        mutationError: { status: 503, code: 'encryption_not_configured', message: 'kaputt' },
-      })
-    );
-
+  it('links field errors and exposes accessible invalid-state metadata', () => {
+    useInstancesMock.mockReturnValue(createInstancesApiState());
     render(<InstanceCreatePage />);
 
-    expect(screen.getByRole('alert').textContent).toContain(
-      'Die notwendige Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.'
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const instanceId = screen.getByLabelText('Instanz-ID', { selector: '#instance-id' });
+    expect(instanceId.getAttribute('aria-invalid')).toBe('true');
+    expect(instanceId.getAttribute('aria-describedby')).toBe('instance-id-error');
+    expect(screen.getByRole('alert').querySelector('a')?.getAttribute('href')).toBe('#instance-id');
+  });
+
+  it('selects only eligible existing realms and defers secret capture', async () => {
+    listRealmCatalogMock.mockResolvedValue({
+      data: [
+        { realm: 'master', status: 'disabled', reasonCode: 'system_realm' },
+        { realm: 'occupied', status: 'disabled', reasonCode: 'already_assigned' },
+        { realm: 'tenant-existing', status: 'selectable' },
+      ],
+      pagination: { page: 1, pageSize: 100, total: 3 },
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
+    fillBasics('existing-demo');
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
+    fireEvent.click(document.querySelector('#instance-auth-realm') as HTMLButtonElement);
+
+    expect(screen.getByRole('option', { name: /master/u }).getAttribute('aria-disabled')).toBe(
+      'true'
     );
+    fireEvent.click(screen.getByRole('option', { name: 'tenant-existing' }));
+    expect(document.querySelector('#instance-auth-realm')?.textContent).toContain(
+      'tenant-existing'
+    );
+    expect(screen.queryByLabelText('Tenant-Client-Secret')).toBeNull();
+    expect(screen.queryByLabelText('Tenant-Admin-Client-Secret')).toBeNull();
+  });
+
+  it('keeps creation disabled and renders grouped authoritative blockers', async () => {
+    getDraftReadinessMock.mockResolvedValue({
+      data: {
+        ...readyDraft,
+        createBlockers: [
+          {
+            checkKey: 'realm_selection',
+            title: 'Realm-Auswahl',
+            status: 'blocked',
+            summary: 'Der Realm ist bereits zugeordnet.',
+            details: {},
+          },
+        ],
+      },
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fillBasics();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fillAdministrator();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    await waitFor(() => expect(screen.getByText('Der Realm ist bereits zugeordnet.')).toBeTruthy());
+    expect(screen.getByText('Vor der Anlage zu beheben')).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Instanz anlegen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
   });
 });

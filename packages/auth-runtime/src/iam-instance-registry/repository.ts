@@ -22,7 +22,11 @@ import {
   getInstanceKeycloakStatusViaProvisioner,
   provisionInstanceAuthArtifactsViaProvisioner,
 } from './provisioning-auth.js';
-import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
+import {
+  listKeycloakRealmsViaProvisioner,
+  readKeycloakRealmCreateCapabilityViaProvisioner,
+  readKeycloakStateViaProvisioner,
+} from './provisioning-auth-state.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
@@ -130,6 +134,9 @@ const registryRuntime = createInstanceRegistryRuntime({
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
+    readKeycloakStateViaProvisioner,
+    listKeycloakRealms: listKeycloakRealmsViaProvisioner,
+    readKeycloakRealmCreateCapability: readKeycloakRealmCreateCapabilityViaProvisioner,
     protectSecret: protectField,
     revealSecret: revealField,
     loadWasteDataSourceRecord,

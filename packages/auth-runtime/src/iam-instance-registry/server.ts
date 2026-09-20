@@ -26,6 +26,8 @@ import {
   archiveInstanceInternal,
   bootstrapInstanceAdminStructureInternal,
   createInstanceInternal,
+  getInstanceDraftReadinessInternal,
+  listInstanceRealmsInternal,
   getInstanceInternal,
   listInstancesInternal,
   revokeInstanceModuleInternal,
@@ -140,6 +142,10 @@ export const instanceRegistryHandlers = {
     ),
   createInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.create', createInstanceInternal),
+  getInstanceDraftReadiness: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, 'instance.create', getInstanceDraftReadinessInternal),
+  listInstanceRealms: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, 'instance.create', listInstanceRealmsInternal),
   retryTenantProvisioning: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.create', retryTenantProvisioningInternal),
   updateInstance: async (request: Request): Promise<Response> =>

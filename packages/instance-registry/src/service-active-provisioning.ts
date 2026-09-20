@@ -1,7 +1,28 @@
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
-const activeCreateStatuses = new Set(['requested', 'validated', 'provisioning']);
+const activeCreateStatuses = new Set(['requested', 'provisioning']);
+
+const SAFE_TENANT_PROVISIONING_RETRY_CODES = new Set([
+  'post_commit_wakeup_failed',
+  'kassel_ingress_probe_failed',
+  'kassel_login_probe_failed',
+  'tenant_iam_unavailable',
+  'tenant_iam_access_not_ready',
+  'tenant_iam_roles_reconcile_not_ready',
+  'kassel_traefik_dynamic_dir_missing',
+]);
+
+export const isTenantProvisioningFailureRetryable = (run: {
+  readonly status: string;
+  readonly errorCode?: string;
+}): boolean =>
+  run.status === 'failed' &&
+  Boolean(
+    run.errorCode &&
+    (SAFE_TENANT_PROVISIONING_RETRY_CODES.has(run.errorCode) ||
+      run.errorCode.startsWith('dependency_missing_'))
+  );
 
 const isActiveRetryReservation = (run: {
   readonly status: string;
@@ -21,7 +42,9 @@ export const assertNoActiveTenantProvisioning = async (
       run.operation === 'create' &&
       run.snapshotVersion === '2.0' &&
       run.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
-      (activeCreateStatuses.has(run.status) || isActiveRetryReservation(run))
+      (activeCreateStatuses.has(run.status) ||
+        (run.status === 'validated' && !run.completedAt) ||
+        isActiveRetryReservation(run))
   );
   if (activeRun) throw new Error('instance_configuration_change_blocked');
 };

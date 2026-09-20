@@ -36,8 +36,16 @@ export const fingerprintInstanceConfirmationState = (instance: {
   readonly authIssuerUrl?: string;
   readonly authClientSecretConfigured: boolean;
   readonly tenantAdminClient?: { readonly clientId: string; readonly secretConfigured: boolean };
+  readonly provisioningReadiness?: unknown;
+  readonly keycloakStatus?: unknown;
+  readonly keycloakPlan?: unknown;
+  readonly latestKeycloakProvisioningRun?: unknown;
+  readonly tenantIamStatus?: unknown;
+  readonly moduleIamStatus?: unknown;
 }): string => {
-  const featureFlags = Object.fromEntries(Object.entries(instance.featureFlags).sort(([left], [right]) => left.localeCompare(right)));
+  const featureFlags = Object.fromEntries(
+    Object.entries(instance.featureFlags).sort(([left], [right]) => left.localeCompare(right))
+  );
   const stableState = {
     instanceId: instance.instanceId,
     updatedAt: instance.updatedAt,
@@ -50,18 +58,32 @@ export const fingerprintInstanceConfirmationState = (instance: {
     authIssuerUrl: instance.authIssuerUrl,
     authClientSecretConfigured: instance.authClientSecretConfigured,
     tenantAdminClient: instance.tenantAdminClient,
+    provisioningReadiness: instance.provisioningReadiness,
+    keycloakStatus: instance.keycloakStatus,
+    keycloakPlan: instance.keycloakPlan,
+    latestKeycloakProvisioningRun: instance.latestKeycloakProvisioningRun,
+    tenantIamStatus: instance.tenantIamStatus,
+    moduleIamStatus: instance.moduleIamStatus,
   };
   return createHash('sha256').update(JSON.stringify(stableState)).digest('hex');
 };
 
-const phraseFor = (actionId: CriticalRegistryAction, instanceId: string, moduleId?: string): string => {
-  if (actionId === 'instance.module.revoke') return `REVOKE ${moduleId ?? 'MODULE'} FROM ${instanceId}`;
+const phraseFor = (
+  actionId: CriticalRegistryAction,
+  instanceId: string,
+  moduleId?: string
+): string => {
+  if (actionId === 'instance.module.revoke')
+    return `REVOKE ${moduleId ?? 'MODULE'} FROM ${instanceId}`;
   if (actionId === 'instance.secret.rotate') return `ROTATE SECRET FOR ${instanceId}`;
   const segments = actionId.split('.');
   return `${segments[segments.length - 1]?.toUpperCase()} ${instanceId}`;
 };
 
-const loadFingerprint = async (service: InstanceRegistryService, instanceId: string): Promise<string | null> => {
+const loadFingerprint = async (
+  service: InstanceRegistryService,
+  instanceId: string
+): Promise<string | null> => {
   const instance = await service.getInstanceDetail(instanceId);
   return instance ? fingerprintInstanceConfirmationState(instance) : null;
 };
@@ -102,9 +124,15 @@ export const confirmCriticalRegistryMutation = async (input: {
         requestId,
       });
     }
-    return createApiError(403, 'confirmation_required' as Parameters<typeof createApiError>[1], 'Bestätigung für kritische Aktion erforderlich.', requestId);
+    return createApiError(
+      403,
+      'confirmation_required' as Parameters<typeof createApiError>[1],
+      'Bestätigung für kritische Aktion erforderlich.',
+      requestId
+    );
   }
-  if (!stateFingerprint) return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
+  if (!stateFingerprint)
+    return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
   if (input.actionId === 'instance.secret.rotate' && input.idempotencyKey) {
     const replayExists = await input.service.hasKeycloakProvisioningRun({
       instanceId: input.instanceId,
@@ -132,7 +160,14 @@ export const confirmCriticalRegistryMutation = async (input: {
     ...(!consumed ? { reason: 'invalid_confirmation' as const } : {}),
     requestId,
   });
-  return consumed ? null : createApiError(409, 'invalid_confirmation' as Parameters<typeof createApiError>[1], 'Bestätigung ist ungültig oder abgelaufen.', requestId);
+  return consumed
+    ? null
+    : createApiError(
+        409,
+        'invalid_confirmation' as Parameters<typeof createApiError>[1],
+        'Bestätigung ist ungültig oder abgelaufen.',
+        requestId
+      );
 };
 
 export const prepareInstanceConfirmationInternal = async (
@@ -155,11 +190,17 @@ export const prepareInstanceConfirmationInternal = async (
   const rawModuleId = url.searchParams.get('moduleId') ?? undefined;
   const moduleId = rawModuleId?.trim() || undefined;
   if (!validateConfirmationModuleId(actionId, moduleId)) {
-    return createApiError(400, 'invalid_request', 'Modul-ID ist für den Modulentzug erforderlich.', requestId);
+    return createApiError(
+      400,
+      'invalid_request',
+      'Modul-ID ist für den Modulentzug erforderlich.',
+      requestId
+    );
   }
   return withScopedRegistryService(instanceId, async (service) => {
     const stateFingerprint = await loadFingerprint(service, instanceId);
-    if (!stateFingerprint) return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
+    if (!stateFingerprint)
+      return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', requestId);
     const confirmationPhrase = phraseFor(actionId as CriticalRegistryAction, instanceId, moduleId);
     const expiresAt = new Date(Date.now() + 5 * 60_000).toISOString();
     const challenge = await service.prepareConfirmationChallenge({

@@ -23,7 +23,10 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { shouldExposeAutomatedProvisioning } from './service-active-provisioning.js';
+import {
+  isTenantProvisioningFailureRetryable,
+  shouldExposeAutomatedProvisioning,
+} from './service-active-provisioning.js';
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -74,6 +77,9 @@ export const resolveIdempotentCreateRetry = async (
     !shouldExposeAutomatedProvisioning(deps, instance)
   ) {
     throw new Error('provisioning_retry_mode_invalid');
+  }
+  if (!isTenantProvisioningFailureRetryable(matchingRun)) {
+    throw new Error('provisioning_retry_not_safe');
   }
   const { desiredSnapshot, keycloakReconcileRequired, leaseOwner } =
     await reserveAndPrepareProvisioningRetry(deps, matchingRun, input);
@@ -140,7 +146,6 @@ export const createRetryTenantProvisioningHandler =
     ) {
       throw new Error('provisioning_retry_mode_invalid');
     }
-
     if (
       (latestCreateRun.status === 'requested' || latestCreateRun.status === 'provisioning') &&
       (instance.status === 'requested' || instance.status === 'provisioning')
@@ -149,6 +154,9 @@ export const createRetryTenantProvisioningHandler =
     }
     if (latestCreateRun.status !== 'failed' || instance.status !== 'failed') {
       throw new Error('provisioning_retry_instance_status_invalid');
+    }
+    if (!isTenantProvisioningFailureRetryable(latestCreateRun)) {
+      throw new Error('provisioning_retry_not_safe');
     }
 
     const { desiredSnapshot, keycloakReconcileRequired, leaseOwner } =

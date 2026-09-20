@@ -4,16 +4,24 @@ import type { McpError } from './contracts.js';
 import { diagnoseInstance } from './diagnostics.js';
 
 const error = (category: McpError['category']): McpError => ({
-  version: '1', code: category === 'internal' ? 'internal_unclassified' : 'test', category,
-  retryable: false, summary: 'test', recommendedAction: 'inspect',
+  version: '1',
+  code: category === 'internal' ? 'internal_unclassified' : 'test',
+  category,
+  retryable: false,
+  retryClass: 'never',
+  summary: 'test',
+  recommendedAction: 'inspect',
 });
 
 describe('create failure diagnostics', () => {
-  it.each(['validation', 'authentication', 'authorization', 'internal'] as const)('does not call dependencies for %s', async (category) => {
-    const request = vi.fn();
-    await diagnoseInstance({ request }, 'demo', 1_000, error(category));
-    expect(request).not.toHaveBeenCalled();
-  });
+  it.each(['validation', 'authentication', 'authorization', 'internal'] as const)(
+    'does not call dependencies for %s',
+    async (category) => {
+      const request = vi.fn();
+      await diagnoseInstance({ request }, 'demo', 1_000, error(category));
+      expect(request).not.toHaveBeenCalled();
+    }
+  );
 
   it('only reads the instance after a conflict', async () => {
     const request = vi.fn().mockResolvedValue({ data: { instanceId: 'demo' } });
@@ -24,7 +32,12 @@ describe('create failure diagnostics', () => {
 
   it('only reads readiness for platform failures', async () => {
     const request = vi.fn().mockResolvedValue({ status: 'ready' });
-    await diagnoseInstance({ request } as StudioApiClient, 'demo', 1_000, error('platform_readiness'));
+    await diagnoseInstance(
+      { request } as StudioApiClient,
+      'demo',
+      1_000,
+      error('platform_readiness')
+    );
     expect(request).toHaveBeenCalledTimes(1);
     expect(request.mock.calls[0]?.[0].path).toBe('/api/v1/iam/health/ready');
   });

@@ -1996,18 +1996,6 @@
       "status": "open",
       "summary": "Admin-Module-Seite in kleinere UI-Sections und View-Model-Helfer zerlegen"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-setup-page.tsx:cyclomaticComplexity": {
-      "ticketId": "QUAL-FRONTEND-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Setup-Seite in kleinere Workflow-Actions und Render-Sections zerlegen"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-setup-page.tsx:functionLines": {
-      "ticketId": "QUAL-FRONTEND-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Setup-Seite in kleinere Workflow-Actions und Render-Sections zerlegen"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/monitoring/-jobs-page.tsx:functionLines": {
       "ticketId": "QUAL-PLUGIN-OPS-003",
       "ticketSystem": "backlog",

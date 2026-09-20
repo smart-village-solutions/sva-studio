@@ -143,6 +143,8 @@ const authServerMocks = vi.hoisted(() => {
       startPluginTenantLifecycle: vi.fn(async () => response('startPluginTenantLifecycleHandler')),
       getSingleInstanceAuditRun: vi.fn(async () => response('getSingleInstanceAuditRunHandler')),
       createInstance: vi.fn(async () => response('createInstanceHandler')),
+      getInstanceDraftReadiness: vi.fn(async () => response('getInstanceDraftReadinessHandler')),
+      listInstanceRealms: vi.fn(async () => response('listInstanceRealmsHandler')),
       retryTenantProvisioning: vi.fn(async () => response('retryTenantProvisioningHandler')),
       updateInstance: vi.fn(async () => response('updateInstanceHandler')),
       getInstanceKeycloakStatus: vi.fn(async () => response('getInstanceKeycloakStatusHandler')),

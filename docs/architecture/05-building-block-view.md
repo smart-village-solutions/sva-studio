@@ -986,8 +986,8 @@ von lokalen IAM-Rollen dar und besitzt keine eigene Rollen-Allowlist.
 
 ### Kasseler Provisioning-Bausteine
 
-- `@sva/instance-registry` besitzt Elternlauf, Sollsnapshot, Lease, Retry und
-  terminale Aktivierung.
+- `@sva/instance-registry` besitzt Elternlauf, Sollsnapshot, Lease, Retry,
+  Draft-Readiness und das manuelle Aktivierungs-Gate.
 - `@sva/auth-runtime` bindet beim Create die effektiv aktiven Lifecycle- und
   OIDC-Verträge an den Lauf und bewertet im separaten Worker nur diese
   persistierte Composition.
@@ -1001,3 +1001,10 @@ von lokalen IAM-Rollen dar und besitzt keine eigene Rollen-Allowlist.
   persistieren dafür einen ausfallsicheren Reconcile-Intent.
 
 Die Bausteine und ihre Trust Boundaries sind in [ADR-062](../adr/ADR-062-kasseler-mandanten-provisionierung-mit-traefik-file-provider.md) verbindlich abgegrenzt.
+
+Der gemeinsame Tenant-Flow verteilt keine zweite Fachlogik auf UI oder MCP:
+`@sva/auth-runtime` bindet HTTP-Autorisierung, Session/Fresh-Reauth oder
+Service-Account-Challenge an dieselben Serviceverträge;
+`@sva/studio-mcp` bleibt API-Client. Die React-App zeigt genau die vom Server
+projizierte nächste Hauptaktion und legt Diagnose-Readbacks unter technischen
+Details offen.

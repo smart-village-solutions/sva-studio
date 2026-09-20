@@ -363,6 +363,11 @@ describe('instance detail split helpers', () => {
             reconcile: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
             overall: { status: 'ready', summary: 'ok', source: 'registry' },
           },
+          provisioningReadiness: {
+            state: 'awaiting_activation',
+            capabilities: [],
+            nextAction: { action: 'instance.status.activate', retryClass: 'never' },
+          },
         }),
         null
       ).primaryAction.action
@@ -377,6 +382,11 @@ describe('instance detail split helpers', () => {
             reconcile: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
             overall: { status: 'degraded', summary: 'Probe ausstehend', source: 'access_probe' },
           },
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.tenant-iam.probe', retryClass: 'safe' },
+          },
         }),
         null
       ).primaryAction.action
@@ -390,6 +400,11 @@ describe('instance detail split helpers', () => {
             access: { status: 'ready', summary: 'ok', source: 'access_probe' },
             reconcile: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
             overall: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
+          },
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.tenant-iam.reconcile', retryClass: 'safe' },
           },
         }),
         null

@@ -586,6 +586,42 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     this.sleep = config.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
+  async listRealms(): Promise<readonly { readonly realm: string }[]> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and realm listing is temporarily disabled.'
+      );
+    }
+    const realms = await this.executeWithResilience<readonly KeycloakRealmRepresentation[]>({
+      method: 'GET',
+      path: '/admin/realms',
+      operation: 'list_realms',
+    });
+    return realms.map(({ realm }) => ({ realm }));
+  }
+
+  async hasRealmCreateCapability(): Promise<boolean> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and realm-create capability inspection is temporarily disabled.'
+      );
+    }
+    const token = await this.getAccessToken();
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return false;
+    try {
+      const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8')) as {
+        realm_access?: { roles?: unknown };
+      };
+      const roles = Array.isArray(payload.realm_access?.roles)
+        ? payload.realm_access.roles.filter((role): role is string => typeof role === 'string')
+        : [];
+      return roles.includes('admin') || roles.includes('create-realm');
+    } catch {
+      return false;
+    }
+  }
+
   async createUser(input: CreateIdentityUserInput): Promise<IdentityUser> {
     await this.assertWriteAvailability();
     const payload = {
@@ -1446,10 +1482,25 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     publicClient?: boolean;
     pkceCodeChallengeMethod?: 'S256';
     accessTokenLifespan?: 900;
+    ownership?: Readonly<{ instanceId: string; artifactKey: string }>;
   }): Promise<void> {
     this.assertValidOidcClientInput(input);
     await this.assertWriteAvailability();
     const existing = await this.getOidcClientByClientId(input.clientId);
+    if (existing && input.ownership) {
+      const owned =
+        existing.attributes?.managed_by === 'studio' &&
+        existing.attributes.instance_id === input.ownership.instanceId &&
+        existing.attributes.artifact_key === input.ownership.artifactKey;
+      if (!owned) {
+        throw new KeycloakAdminRequestError({
+          message: `Keycloak client ${input.clientId} has conflicting or incomplete Studio ownership metadata.`,
+          statusCode: 409,
+          code: 'client_ownership_conflict',
+          retryable: false,
+        });
+      }
+    }
     const payload = {
       clientId: input.clientId,
       name: input.clientId,
@@ -1470,6 +1521,13 @@ export class KeycloakAdminClient implements IdentityProviderPort {
           : mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
       attributes: {
         ...existing?.attributes,
+        ...(input.ownership
+          ? {
+              managed_by: 'studio',
+              instance_id: input.ownership.instanceId,
+              artifact_key: input.ownership.artifactKey,
+            }
+          : {}),
         ...(input.pkceCodeChallengeMethod
           ? { 'pkce.code.challenge.method': input.pkceCodeChallengeMethod }
           : {}),

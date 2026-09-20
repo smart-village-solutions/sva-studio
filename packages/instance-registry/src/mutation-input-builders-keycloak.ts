@@ -9,12 +9,14 @@ import type {
 } from './mutation-input-builders-internal.js';
 
 export type ReconcileKeycloakPayload = {
+  readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
   readonly rotateClientSecret?: boolean;
 };
 
 export type ExecuteKeycloakProvisioningPayload = {
   readonly intent: ExecuteKeycloakProvisioningIntent;
+  readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
 };
 
@@ -29,6 +31,7 @@ export const buildReconcileInstanceKeycloakInput = (
   instanceId,
   actorId: context.actorId,
   requestId: context.requestId,
+  planFingerprint: payload.planFingerprint,
   tenantAdminTemporaryPassword: payload.tenantAdminTemporaryPassword,
   rotateClientSecret: payload.rotateClientSecret,
 });
@@ -43,6 +46,7 @@ export const buildExecuteInstanceKeycloakProvisioningInput = (
   actorId: context.actorId,
   requestId: context.requestId,
   intent: payload.intent,
+  planFingerprint: payload.planFingerprint,
   tenantAdminTemporaryPassword: payload.tenantAdminTemporaryPassword,
 });
 

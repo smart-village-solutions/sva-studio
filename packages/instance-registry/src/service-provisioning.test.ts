@@ -9,7 +9,7 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 type ProvisioningRepositoryMock = Pick<
   InstanceRegistryRepository,
-  'appendAuditEvent' | 'createProvisioningRun' | 'listModuleActivations' | 'setInstanceStatus'
+  'appendAuditEvent' | 'createProvisioningRun' | 'setInstanceStatus'
 >;
 
 const asRepository = (
@@ -102,15 +102,6 @@ describe('service-provisioning', () => {
     const repository = {
       createProvisioningRun: vi.fn(async () => createRun('requested')),
       appendAuditEvent: vi.fn(async () => undefined),
-      listModuleActivations: vi.fn(async () => [
-        {
-          instanceId: 'de-test',
-          moduleId: 'ssf',
-          activationPolicy: 'default_on' as const,
-          effectiveActive: true,
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ]),
     } satisfies Partial<ProvisioningRepositoryMock>;
     const lifecycle = {
       pluginId: 'ssf',
@@ -132,6 +123,17 @@ describe('service-provisioning', () => {
         repository: asRepository(repository),
         invalidateHost: vi.fn(),
         pluginTenantLifecycleRegistry: new Map([['ssf', lifecycle]]),
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [
+            {
+              moduleId: 'ssf',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'ssf-1',
+            },
+          ],
+        }),
         readPluginOidcClientRequirements: () => [oidcClient],
       },
       { ...baseInstance, assignedModules: ['ssf'] },

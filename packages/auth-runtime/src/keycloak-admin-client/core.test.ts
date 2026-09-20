@@ -63,6 +63,37 @@ describe('Keycloak admin client', () => {
     vi.unstubAllEnvs();
   });
 
+  it('proves realm creation capability from the provisioner token without mutating Keycloak', async () => {
+    const token = `header.${Buffer.from(
+      JSON.stringify({
+        realm_access: { roles: ['create-realm'] },
+      })
+    ).toString('base64url')}.signature`;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: token, expires_in: 120 }));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.hasRealmCreateCapability()).resolves.toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]?.[1]?.method).toBe('POST');
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain('/protocol/openid-connect/token');
+  });
+
+  it('fails closed when the provisioner token has no realm-create role', async () => {
+    const token = `header.${Buffer.from(
+      JSON.stringify({
+        realm_access: { roles: ['query-realms'] },
+      })
+    ).toString('base64url')}.signature`;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: token, expires_in: 120 }));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.hasRealmCreateCapability()).resolves.toBe(false);
+  });
+
   it('creates users from the location header', async () => {
     const { KeycloakAdminClient } = await import('./core.js');
     const fetchImpl = vi
@@ -823,6 +854,65 @@ describe('Keycloak admin client', () => {
 
     const rotateCall = fetchImpl.mock.calls[5];
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
+  });
+
+  it('marks newly created provisioning clients with instance ownership', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'web-app',
+      redirectUris: ['https://tenant.example/callback'],
+      postLogoutRedirectUris: ['https://tenant.example/logout'],
+      webOrigins: ['https://tenant.example'],
+      rootUrl: 'https://tenant.example',
+      ownership: { instanceId: 'demo', artifactKey: 'login_client' },
+    });
+
+    expect(JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body))).toMatchObject({
+      attributes: {
+        managed_by: 'studio',
+        instance_id: 'demo',
+        artifact_key: 'login_client',
+      },
+    });
+  });
+
+  it('refuses to update an unowned same-named provisioning client', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          {
+            id: 'foreign-client',
+            clientId: 'web-app',
+            attributes: {},
+          },
+        ])
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.ensureOidcClient({
+        clientId: 'web-app',
+        redirectUris: ['https://tenant.example/callback'],
+        postLogoutRedirectUris: ['https://tenant.example/logout'],
+        webOrigins: ['https://tenant.example'],
+        rootUrl: 'https://tenant.example',
+        ownership: { instanceId: 'demo', artifactKey: 'login_client' },
+      })
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: 'client_ownership_conflict',
+      retryable: false,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('changes an OIDC client enabled state idempotently', async () => {

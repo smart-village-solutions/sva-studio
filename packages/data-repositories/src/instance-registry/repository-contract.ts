@@ -354,6 +354,12 @@ export type InstanceRegistryRepository = {
     terminalEvidence?: Readonly<Record<string, unknown>>;
     completedAt?: string;
   }) => Promise<InstanceProvisioningRun | null>;
+  readonly recordProvisioningWakeupFailure: (input: {
+    instanceId: string;
+    errorCode: string;
+    errorMessage: string;
+    occurredAt: string;
+  }) => Promise<InstanceProvisioningRun | null>;
   readonly reserveProvisioningRetryRun: (input: {
     instanceId: string;
     idempotencyKey: string;

@@ -78,6 +78,8 @@ const createClientWithAlignedSsf = () =>
 const createClient = (
   overrides?: Partial<KeycloakProvisioningClient>
 ): KeycloakProvisioningClient => ({
+  listRealms: vi.fn(async () => []),
+  hasRealmCreateCapability: vi.fn(async () => true),
   ensureRealm: vi.fn(async () => true),
   deleteRealm: vi.fn(async () => undefined),
   getRealm: vi.fn(async () => ({ realm: 'demo' })),
@@ -295,7 +297,7 @@ describe('provisioning-auth-state', () => {
       });
     }
 
-    for (const client of clients.values()) {
+    for (const [instanceId, client] of clients) {
       expect(client.ensureOidcClient).toHaveBeenCalledWith({
         clientId: 'ssf',
         redirectUris: [],
@@ -308,6 +310,7 @@ describe('provisioning-auth-state', () => {
         directAccessGrantsEnabled: false,
         serviceAccountsEnabled: false,
         uriPolicy: 'replace',
+        ownership: { instanceId, artifactKey: 'plugin_client:ssf' },
       });
       expect(client.ensureAudienceProtocolMapper).toHaveBeenCalledWith({
         clientId: 'ssf',
@@ -638,6 +641,11 @@ describe('provisioning-auth-state', () => {
       findUserByUsername: vi.fn(async () => ({
         id: 'user-1',
         enabled: false,
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['demo'],
+          artifact_key: ['tenant_admin'],
+        },
       })),
     });
     const provision = createProvisionInstanceAuthArtifacts(() => client);
@@ -663,6 +671,31 @@ describe('provisioning-auth-state', () => {
       })
     );
     expect(client.syncRoles).toHaveBeenCalledWith('user-1', ['system_admin']);
+  });
+
+  it('does not adopt an unowned same-named tenant admin', async () => {
+    const client = createClient({
+      findUserByUsername: vi.fn(async () => ({
+        id: 'foreign-user',
+        enabled: true,
+        attributes: {},
+      })),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      })
+    ).rejects.toThrow('tenant_admin_ownership_conflict');
+
+    expect(client.updateUser).not.toHaveBeenCalled();
+    expect(client.syncRoles).not.toHaveBeenCalled();
   });
 
   it('skips client reconciliation for tenant-admin-only reset flows', async () => {
@@ -733,7 +766,15 @@ describe('provisioning-auth-state', () => {
     const findUserByUsername = vi
       .fn()
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'tenant-user', enabled: true });
+      .mockResolvedValueOnce({
+        id: 'tenant-user',
+        enabled: true,
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['demo'],
+          artifact_key: ['tenant_admin'],
+        },
+      });
     const client = createClient({
       findUserByUsername,
       createUser: vi.fn(async () => {
@@ -764,11 +805,19 @@ describe('provisioning-auth-state', () => {
 
   it('preserves the raced username identity email when no bootstrap email is configured', async () => {
     const client = createClient({
-      findUserByUsername: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
-        id: 'tenant-user',
-        email: 'preserved@example.org',
-        enabled: true,
-      }),
+      findUserByUsername: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 'tenant-user',
+          email: 'preserved@example.org',
+          enabled: true,
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            artifact_key: ['tenant_admin'],
+          },
+        }),
       createUser: vi.fn(async () => {
         throw Object.assign(new Error('conflict'), { statusCode: 409 });
       }),

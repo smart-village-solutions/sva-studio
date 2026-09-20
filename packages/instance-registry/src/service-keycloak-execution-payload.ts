@@ -3,6 +3,7 @@ import { readPluginOidcClientRequirements } from './provisioning-auth-plugin-cli
 import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import type { KeycloakTenantPlan } from './keycloak-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
 import {
@@ -19,15 +20,18 @@ export const buildKeycloakProvisioningPayloadFingerprint = (input: {
   readonly mutation: KeycloakProvisioningMutation;
   readonly intent?: ExecuteInstanceKeycloakProvisioningInput['intent'];
   readonly rotateClientSecret?: boolean;
+  readonly planFingerprint?: string;
   readonly tenantAdminTemporaryPassword?: string;
 }): string => {
   const payload =
     input.mutation === 'executeKeycloakProvisioning'
       ? {
           intent: input.intent,
+          planFingerprint: input.planFingerprint,
         }
       : {
           rotateClientSecret: input.rotateClientSecret ?? false,
+          planFingerprint: input.planFingerprint,
         };
   return buildPayloadFingerprint(payload);
 };
@@ -103,6 +107,7 @@ export const createQueuedRun = async (
   input: ExecuteInstanceKeycloakProvisioningInput & {
     readonly mutation: KeycloakProvisioningMutation;
     readonly rotateClientSecret?: boolean;
+    readonly confirmedPlan?: KeycloakTenantPlan;
   }
 ) => {
   const provisioningInput = buildProvisioningInput(loaded);
@@ -141,6 +146,9 @@ export const createQueuedRun = async (
         authRealm: loaded.instance.authRealm,
         authClientId: loaded.instance.authClientId,
         primaryHostname: loaded.instance.primaryHostname,
+        confirmedPlanFingerprint: input.planFingerprint,
+        confirmedPlanContractVersion: input.confirmedPlan?.contractVersion,
+        confirmedPlanSteps: input.confirmedPlan?.steps,
         realmBaselineVersion:
           loaded.instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
         realmBaselineFingerprint:

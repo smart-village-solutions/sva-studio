@@ -12,6 +12,7 @@ import type { ParentStep } from './tenant-provisioning-state.js';
 import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
 import { runTenantProvisioningStep } from './tenant-provisioning-steps.js';
 import { assertTenantProvisioningSnapshotCurrent } from './tenant-provisioning-snapshot.js';
+import { isTenantProvisioningFailureRetryable } from './service-active-provisioning.js';
 
 const logger = createSdkLogger({
   component: 'iam-instance-registry-tenant-provisioning',
@@ -241,7 +242,9 @@ export const processNextTenantProvisioningRun = async (
       }
       const failureTime = currentTime();
       const terminal =
-        isTerminalError(error) || failureTime.getTime() >= new Date(current.deadlineAt).getTime();
+        isTerminalError(error) ||
+        !isTenantProvisioningFailureRetryable({ status: 'failed', errorCode: code }) ||
+        failureTime.getTime() >= new Date(current.deadlineAt).getTime();
       if (terminal) {
         return failRun(lockedDeps, current, input.workerId, stepKey, error, failureTime);
       }

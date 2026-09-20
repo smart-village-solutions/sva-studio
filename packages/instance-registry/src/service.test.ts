@@ -29,6 +29,13 @@ import {
 } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
+const completeTenantAdminBootstrap = {
+  username: 'tenant-admin',
+  email: 'tenant-admin@example.invalid',
+  firstName: 'Tenant',
+  lastName: 'Admin',
+};
+
 const baseInstance = {
   instanceId: 'demo',
   displayName: 'Demo',
@@ -44,16 +51,17 @@ const baseInstance = {
     clientId: 'sva-studio-realm-admin',
     secretConfigured: true,
   },
-  tenantAdminBootstrap: {
-    username: 'tenant-admin',
-    email: 'tenant-admin@example.invalid',
-  },
+  tenantAdminBootstrap: completeTenantAdminBootstrap,
   themeKey: 'default',
   assignedModules: ['news'],
   featureFlags: { beta: true },
   mainserverConfigRef: 'mainserver',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-02T00:00:00.000Z',
+};
+
+const completeCreateIdentity = {
+  tenantAdminBootstrap: completeTenantAdminBootstrap,
 };
 
 const latestRun = {
@@ -76,6 +84,7 @@ const latestRun = {
     authRealm: 'demo',
     authClientId: 'sva-studio-login',
     tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+    tenantAdminBootstrap: completeTenantAdminBootstrap,
     idempotencyKey: 'idem-1',
   }),
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -107,6 +116,7 @@ const latestRunWithAuthSecret = {
     authClientId: 'sva-studio-login',
     authClientSecret: 'original-secret',
     tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+    tenantAdminBootstrap: completeTenantAdminBootstrap,
     idempotencyKey: 'idem-1',
   }),
 };
@@ -332,6 +342,19 @@ const createDeps = (
   ]),
   pluginTenantLifecycleRegistry: new Map([['news', currentNewsLifecycle]]),
   readPluginOidcClientRequirements: () => [],
+  readKeycloakStateViaProvisioner: vi.fn(async (input) => ({
+    realm: input.realmMode === 'new' ? null : { realm: input.authRealm },
+    clientRepresentation: null,
+    tenantAdminClientRepresentation: null,
+    pluginOidcClients: [],
+    protocolMappers: [],
+    tenantAdminStatus: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+    tenantAdminRepresentation: null,
+    keycloakClientSecret: null,
+    tenantAdminClientSecret: null,
+    systemAdminRole: null,
+  })),
+  readKeycloakRealmCreateCapability: vi.fn(async () => true),
   ...overrides,
 });
 
@@ -571,6 +594,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'Studio.Example.Org',
@@ -594,6 +618,7 @@ describe('instance registry service facade', () => {
       );
       await expect(
         service.createProvisioningRequest({
+          ...completeCreateIdentity,
           instanceId,
           displayName: 'Demo',
           parentDomain: 'studio.example.org',
@@ -637,6 +662,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -696,6 +722,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -729,7 +756,7 @@ describe('instance registry service facade', () => {
     expect(repository.createInstance).not.toHaveBeenCalled();
   });
 
-  it('syncs assigned module IAM before creating a fresh provisioning run', async () => {
+  it('commits the durable provisioning run without transactional module IAM follow-ups', async () => {
     const reconcileModuleActivationPolicies = vi.fn(async () => ({
       changedModuleIds: [],
       conflictModuleIds: [],
@@ -756,6 +783,7 @@ describe('instance registry service facade', () => {
     );
 
     await service.createProvisioningRequest({
+      ...completeCreateIdentity,
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'dialog.kassel.de',
@@ -765,14 +793,12 @@ describe('instance registry service facade', () => {
       idempotencyKey: 'idem-fresh-iam',
     });
 
-    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
-      expect.objectContaining({ instanceId: 'demo' })
-    );
-    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledBefore(
-      repository.syncAssignedModuleIam as ReturnType<typeof vi.fn>
-    );
-    expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(
-      repository.createProvisioningRun as ReturnType<typeof vi.fn>
+    expect(repository.syncProtectedSystemRolePermissions).not.toHaveBeenCalled();
+    expect(repository.reconcileModuleActivationPolicies).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).not.toHaveBeenCalled();
+    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', status: 'requested' })
     );
   });
 
@@ -786,6 +812,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -825,6 +852,7 @@ describe('instance registry service facade', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio-login',
         tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        tenantAdminBootstrap: completeTenantAdminBootstrap,
         idempotencyKey: 'idem-1',
       }),
     };
@@ -835,6 +863,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'dialog.kassel.de',
@@ -865,6 +894,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -892,6 +922,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Changed display name',
         parentDomain: 'studio.example.org',
@@ -924,6 +955,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -956,6 +988,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -986,6 +1019,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -1012,6 +1046,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -1047,6 +1082,7 @@ describe('instance registry service facade', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio-login',
         tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        tenantAdminBootstrap: completeTenantAdminBootstrap,
         idempotencyKey: 'idem-1',
       }),
       errorCode: 'kassel_login_probe_failed',
@@ -1071,6 +1107,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'dialog.kassel.de',
@@ -1327,6 +1364,7 @@ describe('instance registry service facade', () => {
       ...latestRun,
       status: 'failed' as const,
       desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      errorCode: 'kassel_login_probe_failed',
     };
     const releaseProvisioningRetryReservation = vi.fn(async () => failedRun);
     const retryProvisioningRun = vi.fn();
@@ -1367,6 +1405,7 @@ describe('instance registry service facade', () => {
       const failedRun = {
         ...latestRun,
         status: 'failed' as const,
+        errorCode: 'kassel_login_probe_failed',
         desiredSnapshot: {
           automationMode: 'kassel-traefik-file',
           assignedModules: ['news'],
@@ -1417,6 +1456,7 @@ describe('instance registry service facade', () => {
         ...latestRun,
         status: 'failed' as const,
         desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+        errorCode: 'kassel_login_probe_failed',
       };
       const syncProtectedSystemRolePermissions = vi.fn(
         () => new Promise<void>((resolve) => setTimeout(resolve, 15_000))
@@ -1472,7 +1512,7 @@ describe('instance registry service facade', () => {
         assignedModules: ['news'],
         ...kasselPluginSnapshot,
       },
-      errorCode: 'provisioning_deadline_exceeded',
+      errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:30:00.000Z',
     };
     const retryProvisioningRun = vi.fn();
@@ -1539,6 +1579,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -1558,6 +1599,7 @@ describe('instance registry service facade', () => {
       createInstanceRegistryService(
         createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => false })
       ).createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -1570,6 +1612,36 @@ describe('instance registry service facade', () => {
 
     expect(retryProvisioningRun).not.toHaveBeenCalled();
     expect(setInstanceStatus).not.toHaveBeenCalled();
+  });
+
+  it('rejects a manual retry for an unclassified failure before reserving the run', async () => {
+    const failedInstance = {
+      ...baseInstance,
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'keycloak',
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      errorCode: 'unexpected_provider_failure',
+    };
+    const reserveProvisioningRetryRun = vi.fn();
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      reserveProvisioningRetryRun,
+    });
+
+    await expect(
+      createInstanceRegistryService(createDeps(repository)).retryTenantProvisioning({
+        instanceId: 'demo',
+      })
+    ).rejects.toThrow('provisioning_retry_not_safe');
+
+    expect(reserveProvisioningRetryRun).not.toHaveBeenCalled();
   });
 
   it('does not revive an archived instance through an idempotent failed-create retry', async () => {
@@ -1592,6 +1664,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(createDeps(repository)).createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -1615,6 +1688,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'Studio.Example.Org',
@@ -1627,7 +1701,7 @@ describe('instance registry service facade', () => {
           secret: ' tenant-secret ',
         },
         tenantAdminBootstrap: {
-          username: 'tenant-admin',
+          ...completeTenantAdminBootstrap,
         },
         idempotencyKey: 'idem-1',
         actorId: 'actor-1',
@@ -1667,6 +1741,7 @@ describe('instance registry service facade', () => {
     );
 
     const result = await service.createProvisioningRequest({
+      ...completeCreateIdentity,
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'dialog.kassel.de',
@@ -1700,7 +1775,7 @@ describe('instance registry service facade', () => {
         assignedModules: ['news'],
         ...kasselPluginSnapshot,
       },
-      errorCode: 'provisioning_deadline_exceeded',
+      errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
     };
     const retryProvisioningRun = vi.fn();
@@ -1751,7 +1826,7 @@ describe('instance registry service facade', () => {
           },
         ],
       },
-      errorCode: 'provisioning_deadline_exceeded',
+      errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
     };
     const retryProvisioningRun = vi.fn();
@@ -1782,6 +1857,7 @@ describe('instance registry service facade', () => {
     );
 
     await service.createProvisioningRequest({
+      ...completeCreateIdentity,
       instanceId: 'new-tenant',
       displayName: 'Neuer Mandant',
       parentDomain: 'dialog.kassel.de',
@@ -1818,6 +1894,7 @@ describe('instance registry service facade', () => {
           authIssuerUrl: 'https://auth.dialog.kassel.de/realms/new-tenant',
           idempotencyKey: 'idem-kassel-1',
           tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+          tenantAdminBootstrap: completeTenantAdminBootstrap,
         }),
       })
     );
@@ -1832,6 +1909,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'tenant+foo',
         displayName: 'Tenant',
         parentDomain: 'studio.example.org',
@@ -1852,6 +1930,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'Labor',
         displayName: 'Labor',
         parentDomain: 'dialog.kassel.de',
@@ -1919,6 +1998,7 @@ describe('instance registry service facade', () => {
     const service = createInstanceRegistryService(deps);
 
     const result = service.createProvisioningRequest({
+      ...completeCreateIdentity,
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'studio.example.org',
@@ -1938,6 +2018,7 @@ describe('instance registry service facade', () => {
     const service = createInstanceRegistryService(deps);
 
     await service.createProvisioningRequest({
+      ...completeCreateIdentity,
       instanceId: 'demo',
       displayName: 'Demo',
       parentDomain: 'Studio.Example.Org',
@@ -1959,6 +2040,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
@@ -1982,38 +2064,161 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('handles status transitions and emits status artifacts', async () => {
-    const repository = createRepository({
-      getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'suspended' as const })),
-      setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
-    });
-    const deps = createDeps(repository);
-    const service = createInstanceRegistryService(deps);
+  it.each([
+    ['standard', false],
+    ['kassel', true],
+  ] as const)(
+    'blocks activation for the %s profile when current readiness evidence is incomplete',
+    async (_profile, automated) => {
+      const repository = createRepository({
+        getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'suspended' as const })),
+        setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
+      });
+      const deps = createDeps(repository, {
+        isAutomatedTenantProvisioningEnabled: vi.fn(() => automated),
+      });
+      const service = createInstanceRegistryService(deps);
 
-    await expect(
-      service.changeStatus({
-        instanceId: 'demo',
-        nextStatus: 'active',
-        idempotencyKey: 'idem-activate',
-        actorId: 'actor-1',
-        requestId: 'request-1',
-      })
-    ).resolves.toEqual({
-      ok: true,
-      instance: expect.objectContaining({ status: 'active' }),
-    });
+      await expect(
+        service.changeStatus({
+          instanceId: 'demo',
+          nextStatus: 'active',
+          idempotencyKey: 'idem-activate',
+          actorId: 'actor-1',
+          requestId: 'request-1',
+        })
+      ).rejects.toThrow('activation_readiness_blocked:');
 
-    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: 'activate', status: 'active' })
-    );
-    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: 'instance_activated',
-        details: { previousStatus: 'suspended', nextStatus: 'active' },
-      })
-    );
-    expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
-  });
+      expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+      expect(repository.createProvisioningRun).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['standard', false],
+    ['kassel', true],
+  ] as const)(
+    'activates the %s profile only with current successful postflight and IAM evidence',
+    async (profile, automated) => {
+      const suspendedInstance = { ...baseInstance, status: 'suspended' as const };
+      const inputFingerprint = buildKeycloakSnapshotInputFingerprint(suspendedInstance, {
+        authClientSecretCiphertext: 'auth-cipher',
+        tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
+      });
+      const readyStatus = {
+        realmExists: true,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        systemAdminRoleExists: true,
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        pluginOidcClientsAligned: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
+        runtimeSecretSource: 'tenant' as const,
+        realmBaselineAligned: true,
+        userProfileBaselineAligned: true,
+        instanceIdMapperAligned: true,
+        smtpPasswordConfigured: true,
+      };
+      const repository = createRepository({
+        getInstanceById: vi.fn(async () => suspendedInstance),
+        setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
+        listProvisioningRuns: vi.fn(async () => [
+          {
+            ...latestRun,
+            status: 'validated' as const,
+            stepKey: 'completed',
+            completedAt: '2026-01-01T00:05:00.000Z',
+          },
+        ]),
+        listKeycloakProvisioningRuns: vi.fn(async () => [
+          {
+            id: 'keycloak-run-ready',
+            instanceId: 'demo',
+            intent: 'provision' as const,
+            mode: 'new' as const,
+            overallStatus: 'succeeded' as const,
+            driftSummary: 'Kein Drift.',
+            createdAt: '2026-01-01T00:01:00.000Z',
+            updatedAt: '2026-01-01T00:02:00.000Z',
+            steps: [
+              {
+                stepKey: 'status_snapshot',
+                title: 'Postflight',
+                status: 'done' as const,
+                summary: 'Ready',
+                details: {
+                  policyVersion: 3,
+                  inputFingerprint,
+                  status: readyStatus,
+                  preflight: {
+                    overallStatus: 'ready',
+                    checkedAt: '2026-01-01T00:02:00.000Z',
+                    checks: [],
+                  },
+                  plan: {
+                    contractVersion: '1.0',
+                    fingerprint: 'a'.repeat(64),
+                    mode: 'new',
+                    overallStatus: 'ready',
+                    generatedAt: '2026-01-01T00:02:00.000Z',
+                    driftSummary: 'Kein Drift.',
+                    steps: [],
+                  },
+                },
+              },
+            ],
+          },
+        ]),
+        getLatestTenantIamAccessProbe: vi.fn(async () => ({
+          status: 'ready' as const,
+          summary: 'Zugriff bestätigt.',
+          checkedAt: '2026-01-01T00:02:00.000Z',
+        })),
+        getRoleReconcileSummary: vi.fn(async () => ({
+          status: 'ready' as const,
+          summary: 'Rollen abgeglichen.',
+          checkedAt: '2026-01-01T00:02:00.000Z',
+        })),
+      });
+      const deps = createDeps(repository, {
+        isAutomatedTenantProvisioningEnabled: vi.fn(() => automated),
+      });
+      const service = createInstanceRegistryService(deps);
+
+      await expect(
+        service.changeStatus({
+          instanceId: 'demo',
+          nextStatus: 'active',
+          idempotencyKey: `idem-activate-ready-${profile}`,
+          actorId: 'actor-1',
+          requestId: 'request-ready',
+        })
+      ).resolves.toEqual({
+        ok: true,
+        instance: expect.objectContaining({ status: 'active' }),
+      });
+
+      expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: 'activate', status: 'active' })
+      );
+      expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'instance_activated',
+          details: { previousStatus: 'suspended', nextStatus: 'active' },
+        })
+      );
+      expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+    }
+  );
 
   it('returns status errors for missing or invalid transitions', async () => {
     await expect(
@@ -3314,6 +3519,7 @@ describe('instance registry service facade', () => {
 
     await expect(
       service.createProvisioningRequest({
+        ...completeCreateIdentity,
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'Studio.Example.Org',

@@ -69,6 +69,7 @@ export type UpdateInstanceInput = InstanceRegistryMutationActor & {
 export type ReconcileInstanceKeycloakInput = InstanceRegistryMutationActor & {
   readonly idempotencyKey: string;
   readonly instanceId: string;
+  readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
   readonly rotateClientSecret?: boolean;
 };
@@ -77,6 +78,7 @@ export type ExecuteInstanceKeycloakProvisioningInput = InstanceRegistryMutationA
   readonly idempotencyKey: string;
   readonly instanceId: string;
   readonly intent: IamInstanceKeycloakProvisioningRun['intent'];
+  readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
 };
 

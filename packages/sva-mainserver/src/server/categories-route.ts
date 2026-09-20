@@ -10,6 +10,7 @@ import {
 import { createHash } from 'node:crypto';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
+import type { SvaMainserverCategoriesListItem } from '../types.js';
 import { parseCategorySaveInput } from './categories-route-input.js';
 import {
   categoryManagementContractFailure,
@@ -35,9 +36,32 @@ type CategoriesActor = {
   readonly activeOrganizationId?: string;
 };
 type CategoryIdempotency = Readonly<{ actorAccountId: string; endpoint: string; key: string }>;
+const categoryContentDataTypes = ['news_item', 'event_record', 'point_of_interest'] as const;
+type CategoryContentDataType = (typeof categoryContentDataTypes)[number];
 
 const categoryCreateEndpoint = (actor: CategoriesActor): string =>
   `POST:/api/v1/mainserver/categories#organization:${actor.activeOrganizationId ?? 'personal'}`;
+
+const readCategoryContentDataType = (
+  request: Request
+): CategoryContentDataType | Response | undefined => {
+  const dataTypes = new URL(request.url).searchParams.getAll('dataType');
+  if (dataTypes.length === 0) return undefined;
+  const dataType = dataTypes[0]?.trim();
+  if (
+    dataTypes.length !== 1 ||
+    !dataType ||
+    !categoryContentDataTypes.includes(dataType as CategoryContentDataType)
+  )
+    return errorJson(400, 'invalid_request', 'Der Kategorien-Datentypfilter ist ungültig.');
+  return dataType as CategoryContentDataType;
+};
+
+const toCategoryResponseItem = ({
+  dataTypes: _dataTypes,
+  ...category
+}: SvaMainserverCategoriesListItem): Omit<SvaMainserverCategoriesListItem, 'dataTypes'> =>
+  category;
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
@@ -65,7 +89,18 @@ const readCategories = async (
       'Methode wird für Mainserver-Kategorien nicht unterstützt.'
     );
   const view = new URL(request.url).searchParams.get('view');
-  if (view === null) return json({ data: await listSvaMainserverCategories(actor) });
+  if (view === null) {
+    const dataType = readCategoryContentDataType(request);
+    if (dataType instanceof Response) return dataType;
+    const categories = await listSvaMainserverCategories(actor);
+    const filteredCategories = dataType
+      ? categories.filter(
+          (category) =>
+            category.dataTypes.length === 0 || category.dataTypes.includes(dataType)
+        )
+      : categories;
+    return json({ data: filteredCategories.map(toCategoryResponseItem) });
+  }
   if (view !== 'management')
     return errorJson(
       400,

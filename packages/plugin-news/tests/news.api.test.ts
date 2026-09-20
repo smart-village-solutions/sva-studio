@@ -120,7 +120,10 @@ describe('news api', () => {
       { id: 'cat-1', name: 'Allgemein' },
       { id: 'cat-2', name: 'Rathaus' },
     ]);
-    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/categories', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/mainserver/categories?dataType=news_item',
+      expect.any(Object)
+    );
   });
 
   it('maps category and visibility endpoint errors to NewsApiError', async () => {

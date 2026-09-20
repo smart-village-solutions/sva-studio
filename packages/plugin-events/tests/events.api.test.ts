@@ -53,7 +53,10 @@ describe('events api', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(listEventCategories()).resolves.toEqual([{ id: 'cat-1', name: 'Kultur' }]);
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/mainserver/categories', expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/mainserver/categories?dataType=event_record',
+      expect.any(Object)
+    );
   });
 
   it('maps POI selection items through the POI facade', async () => {

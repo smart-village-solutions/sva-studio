@@ -69,7 +69,7 @@ export const listPoiCategories = async (): Promise<readonly PoiCategoryOption[]>
     { readonly data: readonly PoiCategoryOption[] },
     PoiApiError
   >({
-    url: '/api/v1/mainserver/categories',
+    url: '/api/v1/mainserver/categories?dataType=point_of_interest',
     errorFactory: (code, message) => new PoiApiError(code, message),
   });
 

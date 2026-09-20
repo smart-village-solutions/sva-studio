@@ -18,3 +18,10 @@ Das System SHALL für jeden konfigurierten öffentlichen Waste-Web-Stack einen e
 - **THEN** wird der Workflow terminal rot
 - **AND** das andere Ziel wird nicht mit den Variablen oder Secrets des fehlgeschlagenen Ziels verändert
 - **AND** ein zuvor erfolgreich aktualisiertes Ziel wird nicht automatisch zurückgerollt
+
+#### Scenario: Öffentliche Waste-Runtime nutzt eigenen Variablenraum
+
+- **WHEN** die öffentliche Waste-Web-Runtime produktiv gestartet wird
+- **THEN** liest sie ihre führende Konfiguration aus `PUBLIC_WASTE_*`-Variablen
+- **AND** greift nicht implizit auf `SVA_*`-Runtime-Variablen des normalen Studios zurück
+- **AND** ein JSON-basierter Konfigurationsblob bleibt höchstens ein lokaler oder kompatibler Fallback

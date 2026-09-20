@@ -14,6 +14,6 @@ Das System SHALL für jede konfigurierte öffentliche Waste-Web-Instanz einen ei
 #### Scenario: Öffentliche Waste-Web-App wird getrennt von Studio ausgerollt
 
 - **WHEN** ein Operator oder Workflow die öffentliche Waste-Web-App ausrollt
-- **THEN** erfolgt der Rollout gegen den dedizierten Stack `web-waste-calendar`
+- **THEN** erfolgt der Rollout gegen den über das GitHub-Environment ausgewählten dedizierten Waste-Web-Stack
 - **AND** der bestehende `studio`-Stack bleibt unverändert
 - **AND** die Compose-Definition des Waste-Web-Stacks erweitert nicht die Studio-Compose

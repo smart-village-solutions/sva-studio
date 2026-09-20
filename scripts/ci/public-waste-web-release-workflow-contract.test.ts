@@ -33,6 +33,15 @@ describe('public Waste Web release workflow', () => {
   });
 
   it('keeps target-local stack updates and the existing public runtime smokes', () => {
+    expect(workflow).toContain('Verify target deployment contract');
+    expect(workflow.indexOf('Verify target deployment contract')).toBeLessThan(
+      workflow.indexOf('Update Portainer stack image tag')
+    );
+    expect(workflow).toContain('PUBLIC_WASTE_BASE_URL');
+    expect(workflow).toContain('PUBLIC_WASTE_STACK_NAME');
+    expect(workflow).toContain('QUANTUM_ENDPOINT_ID');
+    expect(workflow).toContain('QUANTUM_HOST');
+    expect(workflow).toContain('QUANTUM_API_KEY');
     expect(workflow).toContain('pnpm exec tsx scripts/ops/public-waste/portainer-release.ts');
     expect(workflow).toContain('scripts/ci/public-waste-web-release-workflow-contract.test.ts');
     expect(workflow).toContain('${base_url}/health/live');

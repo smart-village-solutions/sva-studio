@@ -119,6 +119,21 @@ jobs:
             exit 1
           fi
 
+      - name: Verify target deployment contract
+        run: |
+          set -euo pipefail
+          for key in \
+            PUBLIC_WASTE_BASE_URL \
+            PUBLIC_WASTE_STACK_NAME \
+            QUANTUM_ENDPOINT_ID \
+            QUANTUM_HOST \
+            QUANTUM_API_KEY; do
+            if [ -z "${!key:-}" ]; then
+              echo "${key} fehlt im GitHub-Environment ${{ matrix.target.environment }}." >&2
+              exit 1
+            fi
+          done
+
       - name: Update Portainer stack image tag
         run: pnpm exec tsx scripts/ops/public-waste/portainer-release.ts
 

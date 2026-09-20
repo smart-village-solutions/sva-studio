@@ -4,6 +4,27 @@ type RgbColor = readonly [red: number, green: number, blue: number];
 
 export type { RgbColor };
 
+const BLACK: RgbColor = [0, 0, 0];
+const WHITE: RgbColor = [1, 1, 1];
+
+const toLinearRgbChannel = (value: number): number =>
+  value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+
+const getRelativeLuminance = ([red, green, blue]: RgbColor): number =>
+  0.2126 * toLinearRgbChannel(red) +
+  0.7152 * toLinearRgbChannel(green) +
+  0.0722 * toLinearRgbChannel(blue);
+
+const getContrastRatio = (left: number, right: number): number =>
+  (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
+
+export const getContrastingTextColor = (backgroundColor: RgbColor): RgbColor => {
+  const backgroundLuminance = getRelativeLuminance(backgroundColor);
+  return getContrastRatio(backgroundLuminance, 0) >= getContrastRatio(backgroundLuminance, 1)
+    ? BLACK
+    : WHITE;
+};
+
 export const BRANDING_BOX = {
   x: 640,
   top: 14,

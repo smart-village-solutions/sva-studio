@@ -499,6 +499,29 @@ describe('tenant provisioning parent orchestrator', () => {
     );
   });
 
+  it('recovers a plugin snapshot v1 run without persisted activation policies', async () => {
+    const harness = createHarness();
+    const { pluginActivationPolicies, ...legacyDesiredSnapshot } = harness.getRun().desiredSnapshot;
+    void pluginActivationPolicies;
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'lifecycle',
+      desiredSnapshot: {
+        ...legacyDesiredSnapshot,
+        pluginSnapshotVersion: '1.0',
+      },
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({ status: 'provisioning', stepKey: 'ingress' });
+    expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policies: [expect.objectContaining({ moduleId: 'ssf', policyRevision: 'ssf-1' })],
+      })
+    );
+  });
+
   it('keeps the instance fail-closed when tenant IAM role reconciliation is incomplete', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), {

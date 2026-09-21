@@ -145,7 +145,7 @@ describe('service-provisioning', () => {
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         desiredSnapshot: expect.objectContaining({
-          pluginSnapshotVersion: '1.0',
+          pluginSnapshotVersion: '2.0',
           pluginLifecycles: [lifecycle],
           pluginOidcClients: [oidcClient],
           pluginActivationPolicies: [

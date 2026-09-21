@@ -26,16 +26,11 @@ type TenantProvisioningPluginSnapshot = Readonly<{
 }>;
 
 export const TENANT_PROVISIONING_SNAPSHOT_VERSION = '3.0';
-const supportedTenantProvisioningSnapshotVersions = new Set([
-  '2.0',
-  TENANT_PROVISIONING_SNAPSHOT_VERSION,
-]);
+export const TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION = '2.0';
 
 export const isSupportedTenantProvisioningSnapshotVersion = (
   snapshotVersion: string | undefined
-): boolean =>
-  typeof snapshotVersion === 'string' &&
-  supportedTenantProvisioningSnapshotVersions.has(snapshotVersion);
+): boolean => snapshotVersion === '2.0' || snapshotVersion === TENANT_PROVISIONING_SNAPSHOT_VERSION;
 
 const copyLifecycle = (lifecycle: ProvisioningPluginTenantLifecycleContract) => ({
   ...lifecycle,
@@ -178,7 +173,7 @@ export const buildTenantProvisioningSnapshot = (
   realmBaselineVersion: instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
   realmBaselineFingerprint:
     instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE_FINGERPRINT : undefined,
-  pluginSnapshotVersion: '1.0',
+  pluginSnapshotVersion: TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION,
   pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
   pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
   pluginActivationPolicies: pluginSnapshot.activationPolicies.map(copyActivationPolicy),
@@ -191,10 +186,18 @@ export const readTenantProvisioningPluginSnapshot = (
   lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
   oidcClients: PluginOidcClients;
   activationPolicies: readonly TenantModuleActivationPolicyDescriptor[];
+  activationPoliciesBound: boolean;
 }> => {
   const snapshot = run.desiredSnapshot;
+  const legacyPluginSnapshot = snapshot.pluginSnapshotVersion === '1.0';
+  const activationPoliciesBound =
+    !legacyPluginSnapshot || snapshot.pluginActivationPolicies !== undefined;
+  const activationPolicies = legacyPluginSnapshot
+    ? (snapshot.pluginActivationPolicies ?? [])
+    : snapshot.pluginActivationPolicies;
   if (
-    snapshot.pluginSnapshotVersion !== '1.0' ||
+    (!legacyPluginSnapshot &&
+      snapshot.pluginSnapshotVersion !== TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION) ||
     !Array.isArray(snapshot.pluginLifecycles) ||
     !snapshot.pluginLifecycles.every(isLifecycleContract) ||
     new Set(snapshot.pluginLifecycles.map(({ pluginId }) => pluginId)).size !==
@@ -203,23 +206,24 @@ export const readTenantProvisioningPluginSnapshot = (
     !snapshot.pluginOidcClients.every(isPluginOidcClient) ||
     new Set(snapshot.pluginOidcClients.map(({ clientId }) => clientId)).size !==
       snapshot.pluginOidcClients.length ||
-    !Array.isArray(snapshot.pluginActivationPolicies) ||
-    !snapshot.pluginActivationPolicies.every(isActivationPolicy) ||
-    new Set(snapshot.pluginActivationPolicies.map(({ moduleId }) => moduleId)).size !==
-      snapshot.pluginActivationPolicies.length
+    !Array.isArray(activationPolicies) ||
+    !activationPolicies.every(isActivationPolicy) ||
+    new Set(activationPolicies.map(({ moduleId }) => moduleId)).size !== activationPolicies.length
   ) {
     throw new Error('provisioning_plugin_snapshot_missing');
   }
-  const activationPolicyModuleIds = new Set(
-    snapshot.pluginActivationPolicies.map(({ moduleId }) => moduleId)
-  );
-  if (snapshot.pluginLifecycles.some(({ pluginId }) => !activationPolicyModuleIds.has(pluginId))) {
+  const activationPolicyModuleIds = new Set(activationPolicies.map(({ moduleId }) => moduleId));
+  if (
+    activationPoliciesBound &&
+    snapshot.pluginLifecycles.some(({ pluginId }) => !activationPolicyModuleIds.has(pluginId))
+  ) {
     throw new Error('provisioning_plugin_snapshot_missing');
   }
   return {
     lifecycles: snapshot.pluginLifecycles,
     oidcClients: snapshot.pluginOidcClients,
-    activationPolicies: snapshot.pluginActivationPolicies,
+    activationPolicies,
+    activationPoliciesBound,
   };
 };
 
@@ -262,6 +266,7 @@ export const rebaseTenantProvisioningPluginSnapshot = (
   return {
     desiredSnapshot: {
       ...run.desiredSnapshot,
+      pluginSnapshotVersion: TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION,
       pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
       pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
       pluginActivationPolicies: pluginSnapshot.activationPolicies.map(copyActivationPolicy),

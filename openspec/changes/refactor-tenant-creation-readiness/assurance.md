@@ -213,6 +213,11 @@ Create-Blocker. Die Cross-Version-Tests verwenden für aktuelle Läufe Snapshot
 `3.0`, halten einen Legacy-`2.0`-Lauf am früheren Schritt `activate`
 fail-closed und prüfen die `stop-first`-Konfiguration aller drei
 Provisioner-Services.
+Das eigenständig versionierte Plugin-Snapshotformat schreibt neue Runs als
+`2.0`. Ein Legacy-`1.0`-Run ohne gebundene Aktivierungsrichtlinien löst die
+zum Lifecycle gehörenden Richtlinien einmalig aus dem aktuellen Katalog auf
+und stoppt bei einer fehlenden Richtlinie; ein Retry persistiert anschließend
+ein vollständiges `2.0`-Snapshot.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

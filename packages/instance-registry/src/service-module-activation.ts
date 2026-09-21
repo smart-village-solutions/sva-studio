@@ -95,11 +95,21 @@ export const reconcileProvisioningModuleActivationPolicies = async (
 ) => {
   const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
   if (pluginSnapshot.lifecycles.length === 0) return emptyResult;
+  const currentPolicies = pluginSnapshot.activationPoliciesBound
+    ? []
+    : (deps.readModuleActivationPolicySnapshot?.().modules ?? []);
+  const activationPolicies = pluginSnapshot.activationPoliciesBound
+    ? pluginSnapshot.activationPolicies
+    : pluginSnapshot.lifecycles.map(({ pluginId }) => {
+        const policy = currentPolicies.find(({ moduleId }) => moduleId === pluginId);
+        if (!policy) throw new Error('provisioning_plugin_snapshot_missing');
+        return policy;
+      });
   return createReconcileModuleActivationPoliciesHandler(deps, {
     forceIamSync: true,
     policySnapshot: {
       revision: `provisioning:${run.id}`,
-      modules: pluginSnapshot.activationPolicies,
+      modules: activationPolicies,
     },
     lifecycleRegistry: new Map(
       pluginSnapshot.lifecycles.map((lifecycle) => [lifecycle.pluginId, lifecycle])

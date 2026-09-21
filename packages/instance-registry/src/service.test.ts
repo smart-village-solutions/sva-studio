@@ -100,7 +100,7 @@ const currentNewsLifecycle = {
 };
 
 const kasselPluginSnapshot = {
-  pluginSnapshotVersion: '1.0',
+  pluginSnapshotVersion: '2.0',
   pluginLifecycles: [currentNewsLifecycle],
   pluginOidcClients: [],
   pluginActivationPolicies: [
@@ -1400,7 +1400,6 @@ describe('instance registry service facade', () => {
         pluginSnapshotVersion: '1.0',
         pluginLifecycles: [],
         pluginOidcClients: [],
-        pluginActivationPolicies: [],
       },
       errorCode: 'kassel_login_probe_failed',
       completedAt: '2026-01-01T00:10:00.000Z',
@@ -1438,6 +1437,7 @@ describe('instance registry service facade', () => {
     expect(retryProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         desiredSnapshot: expect.objectContaining({
+          pluginSnapshotVersion: '2.0',
           pluginLifecycles: [],
           pluginOidcClients: [],
           pluginActivationPolicies: [],

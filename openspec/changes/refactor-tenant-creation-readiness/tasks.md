@@ -271,3 +271,6 @@
       Rollout-Blocker nicht.
 - [x] 11.10 Die doppelte Realm-Feldbeschriftung als unabhängiges Follow-up
       #1450 erfassen und aus dem Merge-Scope dieses PRs nehmen.
+- [x] 11.11 Das um Aktivierungsrichtlinien erweiterte Plugin-Snapshotformat als
+      Version `2.0` schreiben, bestehende `1.0`-Runs ohne dieses Feld
+      kompatibel und fail-closed fortsetzen sowie Retries auf `2.0` anheben.

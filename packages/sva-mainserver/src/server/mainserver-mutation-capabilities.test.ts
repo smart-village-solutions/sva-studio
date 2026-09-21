@@ -16,6 +16,11 @@ afterEach(() => {
 
 describe('Mainserver mutation capabilities', () => {
   it('keeps confirmed adapters enabled by default', () => {
+    delete process.env[environmentName];
+    expect(isMainserverMutationCapabilityEnabled('categories.read')).toBe(true);
+    expect(isMainserverMutationCapabilityEnabled('categories.create')).toBe(true);
+    expect(isMainserverMutationCapabilityEnabled('categories.update')).toBe(true);
+    expect(isMainserverMutationCapabilityEnabled('categories.delete')).toBe(true);
     expect(isMainserverMutationCapabilityEnabled('news.update')).toBe(true);
     expect(isMainserverMutationCapabilityEnabled('surveys.create')).toBe(true);
   });

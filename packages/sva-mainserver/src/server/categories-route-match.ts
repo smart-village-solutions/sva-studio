@@ -1,6 +1,3 @@
-import { errorJson } from './content-route-core.js';
-import { isMainserverMutationCapabilityEnabled } from './mainserver-mutation-capabilities.js';
-
 const CATEGORY_COLLECTION_PATH = '/api/v1/mainserver/categories';
 
 export type CategoryAction =
@@ -30,17 +27,4 @@ export const resolveCategoryAction = (
   if (request.method === 'PUT' && route.kind === 'item') return 'categories.update';
   if (request.method === 'DELETE' && route.kind === 'item') return 'categories.delete';
   return null;
-};
-
-export const categoryManagementContractFailure = (
-  request: Request,
-  action: CategoryAction
-): Response | null => {
-  const required = request.method !== 'GET' || new URL(request.url).searchParams.has('view');
-  if (!required || isMainserverMutationCapabilityEnabled(action)) return null;
-  return errorJson(
-    503,
-    'category_management_contract_unavailable',
-    'Der Mainserver-Vertrag für diese Kategorienoperation ist nicht bestätigt.'
-  );
 };

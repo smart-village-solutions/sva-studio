@@ -13,7 +13,6 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import type { SvaMainserverCategoriesListItem } from '../types.js';
 import { parseCategorySaveInput } from './categories-route-input.js';
 import {
-  categoryManagementContractFailure,
   matchCategoryRoute,
   resolveCategoryAction,
   type CategoryAction,
@@ -187,8 +186,6 @@ const dispatchAuthenticated = async (
       const csrfFailure = validateCsrf(request, getWorkspaceContext().requestId);
       if (csrfFailure) return csrfFailure;
     }
-    const contractFailure = categoryManagementContractFailure(request, action);
-    if (contractFailure) return contractFailure;
     const actor = await authorize(ctx, action);
     if (actor instanceof Response) return actor;
     if (request.method === 'GET') return await readCategories(request, matched, actor);

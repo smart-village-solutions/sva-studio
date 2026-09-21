@@ -110,6 +110,9 @@ export const dispatchInstanceProvisionerRequest = async (
   if (!isForwardedRoute(request, originalUrl)) {
     return null;
   }
+  if (process.env.SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING?.trim() === 'true') {
+    return null;
+  }
 
   const configuredBaseUrl = process.env.SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL?.trim();
   if (!configuredBaseUrl) {

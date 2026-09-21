@@ -165,7 +165,10 @@ Registry-Create bleiben am App-Dienst. Dieser leitet exakt diese Methoden und
 Pfade über `http://provisioner:3000` weiter. Der private Provisioner übernimmt
 den Request unverändert hinsichtlich Session beziehungsweise Bearer-Token,
 Origin, CSRF-Header und Idempotency-Key und prüft Authentifizierung, CSRF und
-`instance.create` selbst erneut. Ein nicht erreichbarer oder falsch
+`instance.create` selbst erneut. Sein expliziter Local-Handling-Modus übergibt
+diese Requests ohne erneuten Proxy-Sprung an den lokalen IAM-Dispatcher; alle
+unterstützten Swarm-Profile starten dafür den kombinierten Provisioner-Server.
+Ein nicht erreichbarer oder falsch
 konfigurierter interner Dienst endet fail-closed mit `503`; es gibt für diese
 Endpunkte keinen lokalen Fallback auf die weniger privilegierte
 Keycloak-Admin-Identität des App-Prozesses. POST-Bodies werden mit höchstens

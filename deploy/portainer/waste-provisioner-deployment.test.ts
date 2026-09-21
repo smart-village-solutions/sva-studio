@@ -132,6 +132,19 @@ describe('waste tenant database provisioning deployment', () => {
     );
     expect(appSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
     expect(canonicalAppSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
+    expect(appSection).not.toContain('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING');
+    expect(canonicalAppSection).not.toContain('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING');
+    expect(genericAppSection).not.toContain('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING');
+    expect(provisionerSection).toContain("SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'");
+    expect(canonicalProvisionerSection).toContain(
+      '"SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING=true"'
+    );
+    expect(genericProvisionerSection).toContain(
+      'SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: "true"'
+    );
+    expect(genericProvisionerSection).toContain('HOST: 0.0.0.0');
+    expect(genericProvisionerSection).toContain('PORT: 3000');
+    expect(genericProvisionerSection).toContain('SVA_PROVISIONER_COMBINED_WORKER: "true"');
     expect(provisionerSection).toContain("SVA_TRUST_FORWARDED_HEADERS: 'true'");
     expect(canonicalProvisionerSection).toContain('"SVA_TRUST_FORWARDED_HEADERS=true"');
     for (const key of [

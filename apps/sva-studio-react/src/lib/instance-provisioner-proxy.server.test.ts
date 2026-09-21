@@ -25,6 +25,21 @@ describe('instance provisioner proxy', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('delegates allowlisted requests to the local auth handler inside the provisioner', async () => {
+    vi.stubEnv('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING', 'true');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await dispatchInstanceProvisionerRequest(
+      new Request('https://studio.example.test/api/v1/iam/instances/draft-readiness', {
+        method: 'POST',
+      })
+    );
+
+    expect(response).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['POST', '/api/v1/iam/instances'],
     ['POST', '/api/v1/iam/instances/draft-readiness'],

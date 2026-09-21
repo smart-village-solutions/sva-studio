@@ -39,6 +39,10 @@ describe('parseInstanceRegistryCliOptions', () => {
         '--parent-domain=example.test',
         '--auth-client-id=sva-demo',
         '--auth-realm=demo',
+        '--tenant-admin-username=tenant-admin',
+        '--tenant-admin-email=tenant-admin@example.org',
+        '--tenant-admin-first-name=Tenant',
+        '--tenant-admin-last-name=Admin',
       ])
     ).toMatchObject({
       command: 'create',
@@ -46,6 +50,10 @@ describe('parseInstanceRegistryCliOptions', () => {
       realmMode: 'new',
       authClientId: 'sva-demo',
       authRealm: 'demo',
+      tenantAdminUsername: 'tenant-admin',
+      tenantAdminEmail: 'tenant-admin@example.org',
+      tenantAdminFirstName: 'Tenant',
+      tenantAdminLastName: 'Admin',
     });
   });
 
@@ -133,6 +141,10 @@ describe('runInstanceRegistryCli', () => {
           '--parent-domain=example.test',
           '--auth-client-id=sva-demo',
           '--auth-realm=demo',
+          '--tenant-admin-username=tenant-admin',
+          '--tenant-admin-email=tenant-admin@example.org',
+          '--tenant-admin-first-name=Tenant',
+          '--tenant-admin-last-name=Admin',
         ],
         {
           env: { IAM_DATABASE_URL: 'postgres://example' },
@@ -149,7 +161,16 @@ describe('runInstanceRegistryCli', () => {
     ).resolves.toBe(0);
 
     expect(withTransactionSpy).toHaveBeenCalledWith('demo', expect.any(Function));
-    expect(createProvisioningRequest).toHaveBeenCalled();
+    expect(createProvisioningRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: 'tenant-admin@example.org',
+          firstName: 'Tenant',
+          lastName: 'Admin',
+        },
+      })
+    );
     consoleSpy.mockRestore();
   });
 
@@ -271,6 +292,10 @@ describe('runMutationCommand', () => {
       '--realm-mode=existing',
       '--auth-client-id=ssf',
       '--auth-realm=demo',
+      '--tenant-admin-username=tenant-admin',
+      '--tenant-admin-email=tenant-admin@example.org',
+      '--tenant-admin-first-name=Tenant',
+      '--tenant-admin-last-name=Admin',
     ]);
 
     await expect(runMutationCommand(service, options)).rejects.toThrow('oidc_client_id_reserved');

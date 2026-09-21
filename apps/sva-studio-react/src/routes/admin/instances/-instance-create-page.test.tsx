@@ -210,6 +210,20 @@ describe('InstanceCreatePage', () => {
     expect(screen.queryByLabelText('Tenant-Admin-Client-Secret')).toBeNull();
   });
 
+  it('clears the derived realm when switching from new to existing mode', async () => {
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fillBasics('derived-realm');
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
+    expect(document.querySelector('#instance-auth-realm')?.textContent).not.toContain(
+      'derived-realm'
+    );
+  });
+
   it('keeps a selected realm visible after the catalog returns to its first page', async () => {
     listRealmCatalogMock.mockImplementation(async ({ search }: { search?: string }) => ({
       data: search ? [{ realm: 'tenant-page-two', status: 'selectable' }] : [],

@@ -104,6 +104,12 @@ export const runMutationCommand = async (service: InstanceRegistryService, optio
           ),
           ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
         },
+        tenantAdminBootstrap: {
+          username: assertRequired(options.tenantAdminUsername, '--tenant-admin-username'),
+          email: assertRequired(options.tenantAdminEmail, '--tenant-admin-email'),
+          firstName: assertRequired(options.tenantAdminFirstName, '--tenant-admin-first-name'),
+          lastName: assertRequired(options.tenantAdminLastName, '--tenant-admin-last-name'),
+        },
         themeKey: options.themeKey,
       });
     case 'activate':

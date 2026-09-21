@@ -461,7 +461,11 @@ export const InstanceCreatePage = () => {
                     name="instance-realm-mode"
                     checked={formValues.realmMode === 'existing'}
                     onChange={() =>
-                      updateForm((current) => ({ ...current, realmMode: 'existing' }))
+                      updateForm((current) => ({
+                        ...current,
+                        realmMode: 'existing',
+                        authRealm: '',
+                      }))
                     }
                   />
                   <span>{t('admin.instances.flow.realmModeExisting')}</span>

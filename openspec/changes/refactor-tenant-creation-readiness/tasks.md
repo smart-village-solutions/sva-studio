@@ -91,8 +91,10 @@
 
 ## 5. Provisioning und ausschließlich manuelle Aktivierung
 
-- [x] 5.1 Worker-Preflight, bestätigten Plan, Mutation und aktuellen
+- [ ] 5.1 Worker-Preflight, bestätigten Plan, Mutation und aktuellen
       Postflight als getrennte, korrelierte Phasen führen.
+      **Merge-Blocker:** Die ausdrückliche Planbestätigung des Parent-Runs ist
+      noch nicht serverseitig gebunden; siehe #1454 und 11.27.
 - [x] 5.2 Den Kasseler `activate`-Worker-Schritt entfernen und den
       Elternlauf nach vollständiger technischer Abnahme in
       `awaiting_activation` überführen.
@@ -189,20 +191,24 @@
       Keycloak-Ausfall, 409-Klassen, Teilfortschritt, unbekannte Fehler und
       wartende Aktivierung ergänzen.
 
-- [x] 8.7 Bestehenden MCP-Prozess in `create`, `repair` und `adapt` vor
+- [ ] 8.7 Bestehenden MCP-Prozess in `create`, `repair` und `adapt` vor
       nicht bestätigten Keycloak-Mutationen anhalten; Plan anzeigen,
       Fingerprint über die vorhandenen Execute-/Reconcile-Verträge prüfen und
       bestehenden Run nach Bestätigung, Timeout und Kanalwechsel weiterlesen.
       Auch nachgelagerte Rollenänderungen dürfen die Planbindung nicht umgehen.
       Negativtests für fremde/veraltete Pläne und doppelte Aufträge ergänzen.
+      **Merge-Blocker:** Der MCP-Create kann den selbstfreigebenden Parent-Run
+      derzeit nur verfolgen; siehe #1454 und 11.27.
 
 ## 9. Systemnachweise und Qualität
 
-- [x] 9.1 Die Invarianten und Failure-Injection-Matrix aus
+- [ ] 9.1 Die Invarianten und Failure-Injection-Matrix aus
       `assurance.md` am exakten finalen HEAD mit verlinkter Evidenz aktualisieren.
       Die lokale Evidenz ist im Assurance Case dokumentiert; die SHA-Bindung,
       GitHub-Checks und Review-Threads werden über den kanonischen PR-Snapshot
       für den finalen PR-HEAD nachgewiesen.
+      **Ausstehend:** `PLAN-01` und der kanonische PR-Snapshot sind wegen #1454
+      noch nicht abschließend nachgewiesen.
 - [x] 9.2 Früh die kleinsten betroffenen Unit-, Type- und
       `check:server-runtime`-Gates ausführen; breite Nx-Gates erst nach
       Scope-Messung gemäß `DEVELOPMENT_RULES.md`.
@@ -304,3 +310,11 @@
       ausgewählten Module begrenzen.
 - [x] 11.24 Im MCP-Fallback den vom Assign-Endpunkt zurückgegebenen expandierten
       Modulstand für nachfolgende Zuweisungen berücksichtigen.
+- [x] 11.25 Beim UI-Wechsel von einem neuen auf einen vorhandenen Realm den
+      abgeleiteten Realm-Wert löschen und eine Katalogauswahl verlangen.
+- [x] 11.26 Die vollständigen Pflichtangaben des ersten Tenant-Administrators
+      im Ops-CLI-Create erfassen und in den aktuellen Beispielen dokumentieren.
+- [ ] 11.27 Den automatisierten Parent-Run auf einen zuvor ausdrücklich
+      bestätigten und serverseitig gebundenen Keycloak-Plan umstellen; der
+      Worker darf den bestätigten Fingerprint nicht selbst erzeugen; siehe
+      Blocker #1454.

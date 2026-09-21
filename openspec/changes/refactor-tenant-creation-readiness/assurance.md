@@ -244,6 +244,15 @@ Die Draft-Readiness prüft Plugin-OIDC-Clients nur für die im Create-Entwurf
 ausgewählten Module. Auch der MCP-Fallback übernimmt nach jeder Zuweisung den
 vom Server zurückgegebenen expandierten Modulstand und weist dadurch bereits
 hinzugefügte Companion-Module nicht erneut zu.
+Beim Wechsel auf einen Bestands-Realm verwirft die UI den nur für `new`
+abgeleiteten Realm-Wert. Der Ops-CLI-Create verlangt und übergibt das
+vollständige Tenant-Admin-Pflichtprofil.
+
+Offener Merge-Blocker für `PLAN-01`: Der automatisierte Parent-Worker erzeugt
+den Keycloak-Plan und übergibt dessen Fingerprint derzeit selbst an Execute.
+Vor Merge muss der Parent-Run stattdessen eine zuvor ausdrücklich bestätigte,
+serverseitig gebundene Freigabe konsumieren; eine selbst erzeugte Worker-
+Freigabe ist kein zulässiger Bestätigungsnachweis.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

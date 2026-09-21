@@ -168,7 +168,9 @@ Origin, CSRF-Header und Idempotency-Key und prüft Authentifizierung, CSRF und
 `instance.create` selbst erneut. Ein nicht erreichbarer oder falsch
 konfigurierter interner Dienst endet fail-closed mit `503`; es gibt für diese
 Endpunkte keinen lokalen Fallback auf die weniger privilegierte
-Keycloak-Admin-Identität des App-Prozesses.
+Keycloak-Admin-Identität des App-Prozesses. POST-Bodies werden mit höchstens
+einem MiB gestreamt; Body-Transfer und Upstream-Aufruf teilen sich ein
+15-Sekunden-Zeitlimit.
 
 ### Frühzeitige Bereitschaftsprüfung
 

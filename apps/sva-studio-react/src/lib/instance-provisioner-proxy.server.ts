@@ -1,5 +1,8 @@
 const INSTANCE_PROVISIONER_BASE_URL = 'http://provisioner:3000';
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+
+class InstanceProvisionerPayloadTooLargeError extends Error {}
 
 const forwardedRoutes = new Map<string, ReadonlySet<string>>([
   ['/api/v1/iam/instances', new Set(['POST'])],
@@ -31,6 +34,17 @@ const unavailableResponse = (): Response =>
     { status: 503 }
   );
 
+const payloadTooLargeResponse = (): Response =>
+  Response.json(
+    {
+      error: {
+        code: 'instance_provisioner_payload_too_large',
+        message: 'Der Request ist zu groß.',
+      },
+    },
+    { status: 413 }
+  );
+
 const isForwardedRoute = (request: Request, url: URL): boolean =>
   forwardedRoutes.get(url.pathname)?.has(request.method.toUpperCase()) === true;
 
@@ -44,6 +58,49 @@ const createForwardedHeaders = (request: Request, originalUrl: URL): Headers => 
   headers.set('x-forwarded-host', originalUrl.host);
   headers.set('x-forwarded-proto', originalUrl.protocol.replace(/:$/, ''));
   return headers;
+};
+
+const hasOversizedDeclaredBody = (request: Request): boolean => {
+  const contentLength = request.headers.get('content-length')?.trim();
+  if (!contentLength || !/^\d+$/u.test(contentLength)) {
+    return false;
+  }
+
+  return Number(contentLength) > MAX_REQUEST_BODY_BYTES;
+};
+
+const createBoundedBodyStream = (
+  request: Request,
+  signal: AbortSignal
+):
+  | {
+      readonly stream: ReadableStream<Uint8Array>;
+      readonly exceededLimit: () => boolean;
+    }
+  | undefined => {
+  if (!request.body) {
+    return undefined;
+  }
+
+  let receivedBytes = 0;
+  let limitExceeded = false;
+  return {
+    stream: request.body.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          receivedBytes += chunk.byteLength;
+          if (receivedBytes > MAX_REQUEST_BODY_BYTES) {
+            limitExceeded = true;
+            controller.error(new InstanceProvisionerPayloadTooLargeError());
+            return;
+          }
+          controller.enqueue(chunk);
+        },
+      }),
+      { signal }
+    ),
+    exceededLimit: () => limitExceeded,
+  };
 };
 
 export const dispatchInstanceProvisionerRequest = async (
@@ -61,19 +118,33 @@ export const dispatchInstanceProvisionerRequest = async (
   if (configuredBaseUrl !== INSTANCE_PROVISIONER_BASE_URL) {
     return unavailableResponse();
   }
+  if (hasOversizedDeclaredBody(request)) {
+    return payloadTooLargeResponse();
+  }
 
   const targetUrl = new URL(`${originalUrl.pathname}${originalUrl.search}`, configuredBaseUrl);
-  const body =
-    request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer();
+  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]);
+  const boundedBody =
+    request.method === 'GET' || request.method === 'HEAD'
+      ? undefined
+      : createBoundedBodyStream(request, signal);
+  const body = boundedBody?.stream;
+  const requestInit: RequestInit & { duplex?: 'half' } = {
+    method: request.method,
+    headers: createForwardedHeaders(request, originalUrl),
+    body,
+    redirect: 'manual',
+    signal,
+  };
+  if (body) {
+    requestInit.duplex = 'half';
+  }
   try {
-    return await fetch(targetUrl, {
-      method: request.method,
-      headers: createForwardedHeaders(request, originalUrl),
-      body,
-      redirect: 'manual',
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-  } catch {
+    return await fetch(targetUrl, requestInit);
+  } catch (error) {
+    if (error instanceof InstanceProvisionerPayloadTooLargeError || boundedBody?.exceededLimit()) {
+      return payloadTooLargeResponse();
+    }
     return unavailableResponse();
   }
 };

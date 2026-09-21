@@ -3640,11 +3640,35 @@
       "status": "open",
       "summary": "Keycloak-Reader in getrennte Status-, Preflight- und Planmodule zerlegen"
     },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/repository-provisioning.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Parent-Provisioning-Persistenz in Claim-, Planbindungs- und Recovery-Adapter zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution-finalize.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Finalisierung in Status-, Snapshot- und Parent-Resume-Phasen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Ausführung und Parent-Planbindung in getrennte fachliche Phasen zerlegen"
+    },
     "instance-registry-service:packages/instance-registry/src/service-keycloak-execution.ts:functionLines": {
       "ticketId": "#1448",
       "ticketSystem": "github",
       "status": "open",
       "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
+    },
+    "instance-registry-service:packages/instance-registry/src/tenant-provisioning-steps.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Tenant-Provisioning-Schritte nach Registry-, Keycloak- und Readiness-Phasen aufteilen"
     },
     "packages-default:packages/studio-mcp/src/process.ts:cyclomaticComplexity": {
       "ticketId": "#1448",

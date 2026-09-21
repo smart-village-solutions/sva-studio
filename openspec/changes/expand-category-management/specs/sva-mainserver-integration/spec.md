@@ -97,7 +97,8 @@ Die Mainserver-Integration MUST `categories.read`, `categories.create`, `categor
 - **WHEN** keine Kategorien-Capability über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` konfiguriert ist
 - **THEN** enthält die effektive Capability-Liste alle vier `categories.*`-Actions
 - **AND** erreicht eine lokal autorisierte Management-Operation den typisierten Mainserver-Adapter
-- **AND** fällt ein ungültiger Upstream-Vertrag als `category_management_invalid_response` aus, ohne auf den Active-only-Auswahlread zurückzufallen
+- **AND** bleibt eine GraphQL-Schemaablehnung als `graphql_error` sichtbar
+- **AND** fällt eine strukturell ungültige Erfolgsantwort als `category_management_invalid_response` aus, ohne auf den Active-only-Auswahlread zurückzufallen
 
 #### Scenario: Effektive Credentials besitzen keine Management-Rolle
 

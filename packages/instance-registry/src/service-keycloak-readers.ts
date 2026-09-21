@@ -2,6 +2,7 @@ import { classifyHost, normalizeHost } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
+import { buildMissingRealmReadState } from './provisioning-auth-state.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import type {
   KeycloakTenantPlan,
@@ -372,6 +373,10 @@ export const createPlanKeycloakProvisioningHandler =
       tenantAdminClientSecret: loaded.tenantAdminClientSecret,
       tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
       pluginOidcClients,
+      state:
+        loaded.instance.realmMode === 'new'
+          ? buildMissingRealmReadState(loaded.instance)
+          : undefined,
       realmBaselineApplicable: isRealmBaselineApplicable(
         loaded.instance.realmMode,
         runs,

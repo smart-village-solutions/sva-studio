@@ -321,7 +321,10 @@ const executeClaimedRun = async (
     appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
   if (plan.fingerprint !== confirmedPlanFingerprint) {
-    throw new Error('keycloak_plan_fingerprint_stale');
+    throw annotateInstanceRegistryError(
+      new Error('keycloak_plan_fingerprint_stale'),
+      'worker_plan'
+    );
   }
 
   const rotatingMissingTenantSecret =

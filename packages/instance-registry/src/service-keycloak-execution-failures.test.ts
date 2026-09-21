@@ -37,6 +37,25 @@ describe('service-keycloak-execution-failures', () => {
     );
   });
 
+  it('identifies a changed confirmed plan without reporting a Keycloak outage', async () => {
+    const repository = {
+      appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
+      updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+    };
+    await failRun({ repository: repository as never } as never, {
+      runId: 'run-stale',
+      instanceId: 'demo',
+      intent: 'provision',
+      error: new Error('keycloak_plan_fingerprint_stale'),
+    });
+    expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: { reasonCode: 'KEYCLOAK_PLAN_STALE' },
+        summary: expect.stringContaining('erneut'),
+      })
+    );
+  });
+
   it('persists worker failure details via failClaimedRun', async () => {
     const repository = {
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),

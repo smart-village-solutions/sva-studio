@@ -111,7 +111,15 @@ const childRun = (overallStatus: InstanceKeycloakProvisioningRun['overallStatus'
   driftSummary: 'queued',
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
-  steps: [],
+  steps: [
+    {
+      stepKey: 'queued',
+      title: 'Queued',
+      status: 'done' as const,
+      summary: 'Queued',
+      details: { confirmedRoleCatalogFingerprint: 'c'.repeat(64) },
+    },
+  ],
 });
 
 const createHarness = () => {
@@ -309,6 +317,7 @@ describe('tenant provisioning parent orchestrator', () => {
       Object.assign(harness.getRun(), {
         status: 'provisioning',
         stepKey: step,
+        childKeycloakRunId: childRun('succeeded').id,
         terminalEvidence: {
           routerName: 'studio-tenant-tenant-a',
           configHash: 'sha256:router',
@@ -445,6 +454,9 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun().stepKey).toBe('tenant_iam_access');
+    expect(harness.deps.reconcileTenantIamRoles).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedRoleCatalogFingerprint: 'c'.repeat(64) })
+    );
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun().stepKey).toBe('activate');
@@ -486,7 +498,11 @@ describe('tenant provisioning parent orchestrator', () => {
 
   it('keeps the instance fail-closed when tenant IAM role reconciliation is incomplete', async () => {
     const harness = createHarness();
-    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'tenant_iam_roles' });
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'tenant_iam_roles',
+      childKeycloakRunId: childRun('succeeded').id,
+    });
     vi.mocked(harness.deps.reconcileTenantIamRoles).mockResolvedValue({
       outcome: 'partial_failure',
       checkedCount: 1,
@@ -504,6 +520,28 @@ describe('tenant provisioning parent orchestrator', () => {
       errorCode: 'tenant_iam_roles_reconcile_not_ready',
     });
     expect(harness.deps.probeTenantIamAccess).not.toHaveBeenCalled();
+  });
+
+  it('fails closed before role reconciliation without a confirmed catalog fingerprint', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'tenant_iam_roles',
+      childKeycloakRunId: childRun('succeeded').id,
+    });
+    vi.mocked(harness.repository.getKeycloakProvisioningRun).mockResolvedValue({
+      ...childRun('succeeded'),
+      steps: [],
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      stepKey: 'tenant_iam_roles',
+      errorCode: 'role_catalog_fingerprint_missing_or_invalid',
+    });
+    expect(harness.deps.reconcileTenantIamRoles).not.toHaveBeenCalled();
   });
 
   it('routes a recovered legacy activate step through the tenant IAM postflight', async () => {

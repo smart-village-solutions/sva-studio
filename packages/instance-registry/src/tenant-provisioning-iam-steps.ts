@@ -21,6 +21,21 @@ export const tenantIamRolesStep = async ({
   assertExecutionActive,
 }: TenantIamStepContext): Promise<InstanceProvisioningRun> => {
   assertExecutionActive();
+  if (!run.childKeycloakRunId) throw new Error('keycloak_child_run_missing');
+  const child = await deps.repository.getKeycloakProvisioningRun(
+    instance.instanceId,
+    run.childKeycloakRunId
+  );
+  assertExecutionActive();
+  if (!child) throw new Error('keycloak_child_run_missing');
+  const confirmedRoleCatalogFingerprint = child.steps.find(({ stepKey }) => stepKey === 'queued')
+    ?.details.confirmedRoleCatalogFingerprint;
+  if (
+    typeof confirmedRoleCatalogFingerprint !== 'string' ||
+    !/^[a-f0-9]{64}$/u.test(confirmedRoleCatalogFingerprint)
+  ) {
+    throw new Error('role_catalog_fingerprint_missing_or_invalid');
+  }
   const report = await requireDependency(
     deps.reconcileTenantIamRoles,
     'dependency_missing_reconcileTenantIamRoles'
@@ -28,6 +43,7 @@ export const tenantIamRolesStep = async ({
     instanceId: instance.instanceId,
     actorId: run.actorId,
     requestId: run.requestId,
+    expectedRoleCatalogFingerprint: confirmedRoleCatalogFingerprint,
   });
   assertExecutionActive();
   if (report.outcome !== 'success') throw new Error('tenant_iam_roles_reconcile_not_ready');

@@ -2779,6 +2779,35 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('projects diagnosis when a safe automated retry is unavailable in the current mode', async () => {
+    const repository = createRepository({
+      listProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          status: 'failed' as const,
+          errorCode: 'tenant_iam_unavailable',
+          desiredSnapshot: {
+            ...latestRun.desiredSnapshot,
+            automationMode: 'kassel-traefik-file' as const,
+          },
+        },
+      ]),
+    });
+
+    await expect(
+      createInstanceRegistryService(
+        createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => false })
+      ).getInstanceDetail('demo')
+    ).resolves.toEqual(
+      expect.objectContaining({
+        provisioningReadiness: expect.objectContaining({
+          state: 'provisioning_blocked',
+          nextAction: { action: 'instance.diagnose', retryClass: 'never' },
+        }),
+      })
+    );
+  });
+
   it('projects waste-management settings into instance detail when a datasource is configured', async () => {
     const repository = createRepository({
       listAuditEvents: vi.fn(async () => []),

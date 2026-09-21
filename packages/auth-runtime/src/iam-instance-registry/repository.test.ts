@@ -290,11 +290,13 @@ describe('iam instance registry repository wiring', () => {
       instanceId: 'demo',
       actorId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-1',
+      expectedRoleCatalogFingerprint: 'c'.repeat(64),
     });
     expect(runRoleCatalogReconciliationMock).toHaveBeenCalledWith({
       instanceId: 'demo',
       actorAccountId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-1',
+      expectedRoleCatalogFingerprint: 'c'.repeat(64),
     });
     await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
       instanceId: 'demo',

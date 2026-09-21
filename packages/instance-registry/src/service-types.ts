@@ -299,6 +299,7 @@ export type InstanceRegistryServiceDeps = {
     instanceId: string;
     actorId?: string;
     requestId?: string;
+    expectedRoleCatalogFingerprint?: string;
   }) => Promise<{
     readonly outcome: 'success' | 'partial_failure' | 'failed';
     readonly checkedCount: number;

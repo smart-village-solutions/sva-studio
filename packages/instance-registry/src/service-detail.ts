@@ -15,6 +15,7 @@ import { buildBackgroundProvisioningCapabilities } from './service-draft-readine
 import {
   isTenantProvisioningFailureRetryable,
   requiresAutomatedProvisioningEvidence,
+  shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
@@ -150,6 +151,7 @@ export const loadKeycloakDetailArtifacts = async (
   const retryableCreateRun =
     createRun?.snapshotVersion === '2.0' &&
     createRun.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
+    shouldExposeAutomatedProvisioning(deps, instance) &&
     isTenantProvisioningFailureRetryable(createRun)
       ? createRun
       : undefined;

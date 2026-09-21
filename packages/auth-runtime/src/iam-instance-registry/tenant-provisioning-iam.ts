@@ -132,6 +132,7 @@ export const reconcileTenantIamRoles = async (input: {
   instanceId: string;
   actorId?: string;
   requestId?: string;
+  expectedRoleCatalogFingerprint?: string;
 }) => {
   const { runRoleCatalogReconciliation } =
     await import('../iam-account-management/reconcile-core.js');
@@ -139,5 +140,8 @@ export const reconcileTenantIamRoles = async (input: {
     instanceId: input.instanceId,
     actorAccountId: input.actorId && isUuid(input.actorId) ? input.actorId : undefined,
     requestId: input.requestId,
+    ...(input.expectedRoleCatalogFingerprint
+      ? { expectedRoleCatalogFingerprint: input.expectedRoleCatalogFingerprint }
+      : {}),
   });
 };

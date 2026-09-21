@@ -8,6 +8,11 @@ import type {
 import type { OidcAuthorizationRedirectExpectation } from './acceptance-runtime-checks-core.ts';
 import type { RemoteServiceContract } from './remote-service-spec.ts';
 
+export type OidcDoctorCompatibilityOptions = Pick<
+  OidcAuthorizationRedirectExpectation,
+  'allowImplicitQueryResponseMode'
+>;
+
 export type HttpHealthResult = {
   payload?: unknown;
   response: {

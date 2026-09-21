@@ -358,6 +358,8 @@ describe('runtime-health helpers', () => {
       SVA_LOKI_URL: 'https://loki.example.test',
       SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
       SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
+    }, {
+      allowImplicitQueryResponseMode: true,
     });
 
     const lokiQueries = fetchCalls
@@ -792,7 +794,11 @@ describe('runtime-health helpers', () => {
       withoutDebugEnv: vi.fn(),
     });
 
-    await ops.assertLoginFlow('studio', { SVA_AUTH_ISSUER: 'https://issuer.example.test' });
+    await ops.assertLoginFlow(
+      'studio',
+      { SVA_AUTH_ISSUER: 'https://issuer.example.test' },
+      { allowImplicitQueryResponseMode: true },
+    );
     await ops.assertMeEndpoint('studio', {});
 
     expect(fetchCalls).toHaveLength(2);

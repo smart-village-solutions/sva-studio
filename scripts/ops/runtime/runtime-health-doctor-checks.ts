@@ -11,7 +11,7 @@ import {
   resolveRemoteShortServiceName,
   resolveRemoteStackServiceName,
 } from './runtime-health-helpers.ts';
-import type { LiveRuntimeFlags, OidcClientSecretProbe, OidcClientSecretProbeResult, RuntimeHealthDeps } from './runtime-health.types.ts';
+import type { LiveRuntimeFlags, OidcClientSecretProbe, OidcClientSecretProbeResult, OidcDoctorCompatibilityOptions, RuntimeHealthDeps } from './runtime-health.types.ts';
 
 const KEYCLOAK_INSECURE_CONTEXT_QUERY =
   '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"';
@@ -256,6 +256,7 @@ const probeTenantAuthRedirects = async (
   deps: RuntimeHealthDeps,
   env: NodeJS.ProcessEnv,
   tenantTargetResolution: TenantRuntimeTargetResolution,
+  options: OidcDoctorCompatibilityOptions = {},
 ): Promise<TenantAuthRedirectProbeResult> => {
   const baseProtocol = new URL(env.SVA_PUBLIC_BASE_URL ?? 'https://studio.smart-village.app').protocol;
   const probeResults: Array<{ authRealm: string; host: string; instanceId: string }> = [];
@@ -272,7 +273,7 @@ const probeTenantAuthRedirects = async (
       : null;
     const expectedRedirectUri = `${baseProtocol}//${tenantTarget.host}/auth/callback`;
     if (!authorizationUrl || !isExpectedOidcRedirect(location, env, {
-      allowImplicitQueryResponseMode: true,
+      allowImplicitQueryResponseMode: options.allowImplicitQueryResponseMode === true,
       clientId: tenantTarget.authClientId,
       issuerUrl: issuerUrl.href,
       redirectUri: expectedRedirectUri,
@@ -300,12 +301,13 @@ const buildTenantAuthProofCheck = async (
   deps: RuntimeHealthDeps,
   runtimeProfile: RemoteRuntimeProfile,
   env: NodeJS.ProcessEnv,
+  options: OidcDoctorCompatibilityOptions = {},
 ): Promise<DoctorCheck> => {
   const tenantTargetResolution = await deps.resolveTenantRuntimeTargets(runtimeProfile, env, { limit: 2 });
   if (tenantTargetResolution.targets.length === 0) {
     return deps.toDoctorCheck('tenant-auth-proof', 'skipped', 'tenant_auth_optional', 'Kein Tenant-Auth-Proof konfiguriert.', { source: tenantTargetResolution.source });
   }
-  const redirectResult = await probeTenantAuthRedirects(deps, env, tenantTargetResolution);
+  const redirectResult = await probeTenantAuthRedirects(deps, env, tenantTargetResolution, options);
   if ('failedCheck' in redirectResult) return redirectResult.failedCheck;
 
   try {
@@ -353,6 +355,9 @@ export const createRuntimeHealthDoctorChecks = (deps: RuntimeHealthDeps) => ({
     buildLiveRuntimeEnvCheck(deps, runtimeProfile, env),
   buildObservabilityDoctorCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
     buildObservabilityDoctorCheck(deps, runtimeProfile, env),
-  buildTenantAuthProofCheck: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) =>
-    buildTenantAuthProofCheck(deps, runtimeProfile, env),
+  buildTenantAuthProofCheck: (
+    runtimeProfile: RemoteRuntimeProfile,
+    env: NodeJS.ProcessEnv,
+    options?: OidcDoctorCompatibilityOptions,
+  ) => buildTenantAuthProofCheck(deps, runtimeProfile, env, options),
 }) as const;

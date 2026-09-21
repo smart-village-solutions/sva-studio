@@ -26,6 +26,8 @@ const createWorkerState = (): LocalState => ({
 
 describe('createRuntimeDoctorOps', () => {
   it('uses acceptance service checks for remote profiles and otel checks only for local profiles', async () => {
+    const assertLoginFlow = vi.fn(async () => {});
+    const buildTenantAuthProofCheck = vi.fn(async () => createCheck('tenant-auth-proof'));
     const finalizeDoctorReport = vi.fn((profile: RuntimeProfile, checks: readonly DoctorCheck[]): DoctorReport => ({
       checks,
       generatedAt: '2026-06-19T10:00:00.000Z',
@@ -34,7 +36,7 @@ describe('createRuntimeDoctorOps', () => {
     }));
 
     const ops = createRuntimeDoctorOps({
-      assertLoginFlow: vi.fn(async () => {}),
+      assertLoginFlow,
       assertMainserverSmoke: vi.fn(async () => {}),
       assertMeEndpoint: vi.fn(async () => {}),
       assertOtelLocal: vi.fn(async () => {}),
@@ -59,7 +61,7 @@ describe('createRuntimeDoctorOps', () => {
       buildStudioImageVerifyEvidenceCheck: vi.fn(() => createCheck('image-verify-evidence')),
       buildTenantAdminClientContractCheck: vi.fn(() => createCheck('tenant-admin-client')),
       buildTenantAdminSecretContractCheck: vi.fn(async () => createCheck('tenant-admin-secret')),
-      buildTenantAuthProofCheck: vi.fn(async () => createCheck('tenant-auth-proof')),
+      buildTenantAuthProofCheck,
       buildTenantAuthSecretContractCheck: vi.fn(async () => createCheck('tenant-auth-secret')),
       checkHttpHealth: vi.fn(async () => ({ payload: {}, response: { ok: true, status: 200 } })),
       finalizeDoctorReport,
@@ -90,6 +92,10 @@ describe('createRuntimeDoctorOps', () => {
     const remoteReport = await ops.doctorRuntime('studio', {
       SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
     });
+    await ops.doctorRuntime('studio', {
+      SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE: 'true',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
+    });
     const localBuilderReport = await ops.doctorRuntime('local-builder', {
       SVA_PUBLIC_BASE_URL: 'http://localhost:3000',
     });
@@ -117,7 +123,18 @@ describe('createRuntimeDoctorOps', () => {
     expect(precheckReport.checks.map((check) => check.name)).toContain('runtime-env-live');
     expect(precheckReport.checks.findIndex((check) => check.name === 'tenant-auth-proof'))
       .toBeLessThan(precheckReport.checks.findIndex((check) => check.name === 'observability'));
-    expect(finalizeDoctorReport).toHaveBeenCalledTimes(4);
+    expect(assertLoginFlow).toHaveBeenCalledWith(
+      'studio',
+      expect.any(Object),
+      { allowImplicitQueryResponseMode: true },
+    );
+    expect(buildTenantAuthProofCheck).toHaveBeenCalledWith(
+      'studio',
+      expect.any(Object),
+      { allowImplicitQueryResponseMode: true },
+    );
+    expect(buildTenantAuthProofCheck).toHaveBeenCalledWith('studio', expect.any(Object));
+    expect(finalizeDoctorReport).toHaveBeenCalledTimes(5);
   });
 
   it('uses explicit endpoint error messages for non-200 health responses', async () => {

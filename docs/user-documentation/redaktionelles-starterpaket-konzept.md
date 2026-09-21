@@ -92,67 +92,66 @@ Die folgende Matrix ordnet jede aktuell katalogisierte Seite genau einem Dossier
 nur die empfohlene Reihenfolge an. Für die Abnahme müssen sämtliche Einträge den Status
 `Steckbrief geprüft` erreichen.
 
-| Welle | Dossier | Seiten-ID | Seitentyp | Owner |
-| --- | --- | --- | --- | --- |
-| 1 | Orientierung und Konto | `home.overview` | Übersicht | Host |
-| 1 | Orientierung und Konto | `account.profile` | Übersicht | Host |
-| 1 | Orientierung und Konto | `account.rules` | Übersicht | Host |
-| 1 | Orientierung und Konto | `account.privacy` | Übersicht | Host |
-| 1 | Orientierung und Konto | `account.privacy-detail` | Detail | Host |
-| 1 | Inhalte verwalten | `content.list` | Liste | Host |
-| 1 | Inhalte verwalten | `content.create` | Anlegen | Host |
-| 1 | Inhalte verwalten | `content.detail` | Detail | Host |
-| 1 | Medien verwalten | `host.media.list` | Liste | Host |
-| 1 | Medien verwalten | `host.media.create` | Anlegen | Host |
-| 1 | Medien verwalten | `host.media.detail` | Detail | Host |
-| 1 | Medien verwalten | `media.overview` | Übersicht | Host |
-| 1 | Medien verwalten | `media.usage` | Verwendung | Host |
-| 2 | Kategorien und Module | `categories.overview` | Übersicht | Host |
-| 2 | Kategorien und Module | `modules.overview` | Übersicht | Host |
-| 2 | Redaktionelle Inhaltstypen | `cockpit-cards.content.create` | Anlegen | Plugin `cockpit-cards` |
-| 2 | Redaktionelle Inhaltstypen | `cockpit-cards.content.detail` | Detail | Plugin `cockpit-cards` |
-| 2 | Redaktionelle Inhaltstypen | `events.content.create` | Anlegen | Plugin `events` |
-| 2 | Redaktionelle Inhaltstypen | `events.content.detail` | Detail | Plugin `events` |
-| 2 | Redaktionelle Inhaltstypen | `faq.content.create` | Anlegen | Plugin `faq` |
-| 2 | Redaktionelle Inhaltstypen | `faq.content.detail` | Detail | Plugin `faq` |
-| 2 | Redaktionelle Inhaltstypen | `generic-items.content.create` | Anlegen | Plugin `generic-items` |
-| 2 | Redaktionelle Inhaltstypen | `generic-items.content.detail` | Detail | Plugin `generic-items` |
-| 2 | Redaktionelle Inhaltstypen | `news.content.create` | Anlegen | Plugin `news` |
-| 2 | Redaktionelle Inhaltstypen | `news.content.detail` | Detail | Plugin `news` |
-| 2 | Redaktionelle Inhaltstypen | `poi.content.create` | Anlegen | Plugin `poi` |
-| 2 | Redaktionelle Inhaltstypen | `poi.content.detail` | Detail | Plugin `poi` |
-| 2 | Redaktionelle Inhaltstypen | `projects.content.create` | Anlegen | Plugin `projects` |
-| 2 | Redaktionelle Inhaltstypen | `projects.content.detail` | Detail | Plugin `projects` |
-| 2 | Redaktionelle Inhaltstypen | `surveys.content.create` | Anlegen | Plugin `surveys` |
-| 2 | Redaktionelle Inhaltstypen | `surveys.content.detail` | Detail | Plugin `surveys` |
-| 2 | App und Abfallkalender | `app.overview` | Übersicht | Host |
-| 2 | App und Abfallkalender | `waste-management.overview` | Übersicht | Plugin `waste-management` |
-| 3 | Identitäten und Berechtigungen | `admin.users.list` | Liste | Host |
-| 3 | Identitäten und Berechtigungen | `admin.users.create` | Anlegen | Host |
-| 3 | Identitäten und Berechtigungen | `admin.users.detail` | Detail | Host |
-| 3 | Identitäten und Berechtigungen | `admin.groups.list` | Liste | Host |
-| 3 | Identitäten und Berechtigungen | `admin.groups.create` | Anlegen | Host |
-| 3 | Identitäten und Berechtigungen | `admin.groups.detail` | Detail | Host |
-| 3 | Identitäten und Berechtigungen | `admin.roles.list` | Liste | Host |
-| 3 | Identitäten und Berechtigungen | `admin.roles.create` | Anlegen | Host |
-| 3 | Identitäten und Berechtigungen | `admin.roles.detail` | Detail | Host |
-| 3 | Identitäten und Berechtigungen | `admin.organizations.list` | Liste | Host |
-| 3 | Identitäten und Berechtigungen | `admin.organizations.create` | Anlegen | Host |
-| 3 | Identitäten und Berechtigungen | `admin.organizations.detail` | Detail | Host |
-| 3 | Instanzen und Rechtstexte | `admin.instances.list` | Liste | Host |
-| 3 | Instanzen und Rechtstexte | `admin.instances.create` | Anlegen | Host |
-| 3 | Instanzen und Rechtstexte | `admin.instances.detail` | Detail | Host |
-| 3 | Instanzen und Rechtstexte | `admin.instances.setup` | Einrichtung | Host |
-| 3 | Instanzen und Rechtstexte | `admin.legal-texts.list` | Liste | Host |
-| 3 | Instanzen und Rechtstexte | `admin.legal-texts.create` | Anlegen | Host |
-| 3 | Instanzen und Rechtstexte | `admin.legal-texts.detail` | Detail | Host |
-| 4 | Monitoring und Schnittstellen | `interfaces.overview` | Übersicht | Host |
-| 4 | Monitoring und Schnittstellen | `monitoring.overview` | Übersicht | Host |
-| 4 | Monitoring und Schnittstellen | `monitoring.jobs-list` | Liste | Host |
-| 4 | Monitoring und Schnittstellen | `monitoring.job-detail` | Detail | Host |
-| 4 | IAM und Datenschutzfälle | `admin.iam.overview` | Übersicht | Host |
-| 4 | IAM und Datenschutzfälle | `admin.iam.dsr-detail` | Detail | Host |
-| 4 | IAM und Datenschutzfälle | `admin.iam.governance-detail` | Detail | Host |
+| Welle | Dossier                        | Seiten-ID                      | Seitentyp  | Owner                     |
+| ----- | ------------------------------ | ------------------------------ | ---------- | ------------------------- |
+| 1     | Orientierung und Konto         | `home.overview`                | Übersicht  | Host                      |
+| 1     | Orientierung und Konto         | `account.profile`              | Übersicht  | Host                      |
+| 1     | Orientierung und Konto         | `account.rules`                | Übersicht  | Host                      |
+| 1     | Orientierung und Konto         | `account.privacy`              | Übersicht  | Host                      |
+| 1     | Orientierung und Konto         | `account.privacy-detail`       | Detail     | Host                      |
+| 1     | Inhalte verwalten              | `content.list`                 | Liste      | Host                      |
+| 1     | Inhalte verwalten              | `content.create`               | Anlegen    | Host                      |
+| 1     | Inhalte verwalten              | `content.detail`               | Detail     | Host                      |
+| 1     | Medien verwalten               | `host.media.list`              | Liste      | Host                      |
+| 1     | Medien verwalten               | `host.media.create`            | Anlegen    | Host                      |
+| 1     | Medien verwalten               | `host.media.detail`            | Detail     | Host                      |
+| 1     | Medien verwalten               | `media.overview`               | Übersicht  | Host                      |
+| 1     | Medien verwalten               | `media.usage`                  | Verwendung | Host                      |
+| 2     | Kategorien und Module          | `categories.overview`          | Übersicht  | Host                      |
+| 2     | Kategorien und Module          | `modules.overview`             | Übersicht  | Host                      |
+| 2     | Redaktionelle Inhaltstypen     | `cockpit-cards.content.create` | Anlegen    | Plugin `cockpit-cards`    |
+| 2     | Redaktionelle Inhaltstypen     | `cockpit-cards.content.detail` | Detail     | Plugin `cockpit-cards`    |
+| 2     | Redaktionelle Inhaltstypen     | `events.content.create`        | Anlegen    | Plugin `events`           |
+| 2     | Redaktionelle Inhaltstypen     | `events.content.detail`        | Detail     | Plugin `events`           |
+| 2     | Redaktionelle Inhaltstypen     | `faq.content.create`           | Anlegen    | Plugin `faq`              |
+| 2     | Redaktionelle Inhaltstypen     | `faq.content.detail`           | Detail     | Plugin `faq`              |
+| 2     | Redaktionelle Inhaltstypen     | `generic-items.content.create` | Anlegen    | Plugin `generic-items`    |
+| 2     | Redaktionelle Inhaltstypen     | `generic-items.content.detail` | Detail     | Plugin `generic-items`    |
+| 2     | Redaktionelle Inhaltstypen     | `news.content.create`          | Anlegen    | Plugin `news`             |
+| 2     | Redaktionelle Inhaltstypen     | `news.content.detail`          | Detail     | Plugin `news`             |
+| 2     | Redaktionelle Inhaltstypen     | `poi.content.create`           | Anlegen    | Plugin `poi`              |
+| 2     | Redaktionelle Inhaltstypen     | `poi.content.detail`           | Detail     | Plugin `poi`              |
+| 2     | Redaktionelle Inhaltstypen     | `projects.content.create`      | Anlegen    | Plugin `projects`         |
+| 2     | Redaktionelle Inhaltstypen     | `projects.content.detail`      | Detail     | Plugin `projects`         |
+| 2     | Redaktionelle Inhaltstypen     | `surveys.content.create`       | Anlegen    | Plugin `surveys`          |
+| 2     | Redaktionelle Inhaltstypen     | `surveys.content.detail`       | Detail     | Plugin `surveys`          |
+| 2     | App und Abfallkalender         | `app.overview`                 | Übersicht  | Host                      |
+| 2     | App und Abfallkalender         | `waste-management.overview`    | Übersicht  | Plugin `waste-management` |
+| 3     | Identitäten und Berechtigungen | `admin.users.list`             | Liste      | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.users.create`           | Anlegen    | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.users.detail`           | Detail     | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.groups.list`            | Liste      | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.groups.create`          | Anlegen    | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.groups.detail`          | Detail     | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.roles.list`             | Liste      | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.roles.create`           | Anlegen    | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.roles.detail`           | Detail     | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.organizations.list`     | Liste      | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.organizations.create`   | Anlegen    | Host                      |
+| 3     | Identitäten und Berechtigungen | `admin.organizations.detail`   | Detail     | Host                      |
+| 3     | Instanzen und Rechtstexte      | `admin.instances.list`         | Liste      | Host                      |
+| 3     | Instanzen und Rechtstexte      | `admin.instances.create`       | Anlegen    | Host                      |
+| 3     | Instanzen und Rechtstexte      | `admin.instances.detail`       | Detail     | Host                      |
+| 3     | Instanzen und Rechtstexte      | `admin.legal-texts.list`       | Liste      | Host                      |
+| 3     | Instanzen und Rechtstexte      | `admin.legal-texts.create`     | Anlegen    | Host                      |
+| 3     | Instanzen und Rechtstexte      | `admin.legal-texts.detail`     | Detail     | Host                      |
+| 4     | Monitoring und Schnittstellen  | `interfaces.overview`          | Übersicht  | Host                      |
+| 4     | Monitoring und Schnittstellen  | `monitoring.overview`          | Übersicht  | Host                      |
+| 4     | Monitoring und Schnittstellen  | `monitoring.jobs-list`         | Liste      | Host                      |
+| 4     | Monitoring und Schnittstellen  | `monitoring.job-detail`        | Detail     | Host                      |
+| 4     | IAM und Datenschutzfälle       | `admin.iam.overview`           | Übersicht  | Host                      |
+| 4     | IAM und Datenschutzfälle       | `admin.iam.dsr-detail`         | Detail     | Host                      |
+| 4     | IAM und Datenschutzfälle       | `admin.iam.governance-detail`  | Detail     | Host                      |
 
 ## Abnahmekriterien
 

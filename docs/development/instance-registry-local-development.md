@@ -65,7 +65,19 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --parent-domain studio.localhost \
   --auth-realm demo2 \
   --auth-client-id sva-studio \
+  --tenant-admin-username tenant-admin \
+  --tenant-admin-email tenant-admin@example.org \
+  --tenant-admin-first-name Tenant \
+  --tenant-admin-last-name Admin \
   --actor-id local-admin
+```
+
+Danach den serverseitigen Plan und die technischen Provisioning-Schritte über
+`/admin/instances/demo2` oder `studio_instance_process` bestätigen und bis zur
+Aktion `instance.status.activate` fortsetzen. Erst nach dieser Readiness darf
+die Aktivierung erfolgen; anschließend kann der Tenant-Host geprüft werden:
+
+```bash
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
   --instance-id demo2 \
   --actor-id local-admin
@@ -96,11 +108,18 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --parent-domain studio.localhost \
   --auth-realm demo \
   --auth-client-id sva-studio \
-  --actor-id local-admin
-pnpm exec tsx scripts/ops/instance-registry.ts activate \
-  --instance-id demo \
+  --tenant-admin-username tenant-admin \
+  --tenant-admin-email tenant-admin@example.org \
+  --tenant-admin-first-name Tenant \
+  --tenant-admin-last-name Admin \
   --actor-id local-admin
 ```
+
+`create` persistiert nur den Registry- und Parent-Provisioning-Auftrag. Die
+Planbestätigung, Keycloak-Provisionierung, Tenant-IAM-Rollen und Rechteprobe
+werden anschließend im Instanz-Cockpit oder über `studio_instance_process`
+durchlaufen. Der CLI-Befehl `activate` ist erst zulässig, wenn dort
+`instance.status.activate` als nächste Aktion ausgewiesen wird.
 
 ## Erwartetes Fail-closed-Verhalten
 

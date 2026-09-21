@@ -130,6 +130,7 @@ describe('instance detail split helpers', () => {
       'rotate_client_secret',
       'probeTenantIamAccess',
       'reconcileKeycloak',
+      'reconcileTenantIamRoles',
     ] as const) {
       expect(getDetailActionLabel(action)).toEqual(expect.any(String));
     }
@@ -343,7 +344,7 @@ describe('instance detail split helpers', () => {
     expect(registryState.overallSummary).toBe('Tenant-IAM ist betriebsbereit.');
   });
 
-  it('selects split cockpit primary actions for activation, tenant access probing, and reconcile', () => {
+  it('selects split cockpit primary actions from server readiness', () => {
     expect(
       buildInstanceDetailCockpitModel(
         createDetailFixture({
@@ -363,10 +364,41 @@ describe('instance detail split helpers', () => {
             reconcile: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
             overall: { status: 'ready', summary: 'ok', source: 'registry' },
           },
+          provisioningReadiness: {
+            state: 'awaiting_activation',
+            capabilities: [],
+            nextAction: { action: 'instance.status.activate', retryClass: 'never' },
+          },
         }),
         null
       ).primaryAction.action
     ).toBe('activate_instance');
+
+    expect(
+      buildInstanceDetailCockpitModel(
+        createDetailFixture({
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.secret.rotate', retryClass: 'conditional' },
+          },
+        }),
+        null
+      ).primaryAction.action
+    ).toBe('rotate_client_secret');
+
+    expect(
+      buildInstanceDetailCockpitModel(
+        createDetailFixture({
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.diagnose', retryClass: 'never' },
+          },
+        }),
+        null
+      ).primaryAction.action
+    ).toBe('open_diagnostics');
 
     expect(
       buildInstanceDetailCockpitModel(
@@ -376,6 +408,11 @@ describe('instance detail split helpers', () => {
             access: { status: 'degraded', summary: 'Probe ausstehend', source: 'access_probe' },
             reconcile: { status: 'ready', summary: 'ok', source: 'role_reconcile' },
             overall: { status: 'degraded', summary: 'Probe ausstehend', source: 'access_probe' },
+          },
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.tenant-iam.probe', retryClass: 'safe' },
           },
         }),
         null
@@ -391,10 +428,15 @@ describe('instance detail split helpers', () => {
             reconcile: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
             overall: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
           },
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.tenant-iam.reconcile', retryClass: 'safe' },
+          },
         }),
         null
       ).primaryAction.action
-    ).toBe('reconcileKeycloak');
+    ).toBe('reconcileTenantIamRoles');
   });
 
   it('maps status guidance and keycloak entries for empty and populated detail states', () => {

@@ -18,6 +18,7 @@ const resolveLoginContract = async (instanceId: string, authRealm?: string) => {
   if (!browser || !requirements.some((requirement) => requirement.contractVersion === '1.0'))
     return null;
   const input = {
+    instanceId,
     authClientId: instance.authClientId,
     tenantAdminClient: instance.tenantAdminClient,
     pluginOidcClients: requirements,

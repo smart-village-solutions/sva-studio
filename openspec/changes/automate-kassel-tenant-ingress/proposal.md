@@ -46,8 +46,9 @@ Verträge ausgerichtet.
   Bestandteil jedes Create-Laufs, weil das Directory vor `active` absichtlich
   unsichtbar bleibt und der Provisioner keine Benutzerpasswörter erhält.
 - Create liefert einen beobachtbaren Elternlauf, aber keinen vorzeitigen
-  fachlichen Erfolg. Die UI zeigt die Anlage ausschließlich nach terminalem
-  Erfolg als abgeschlossen; jeder Fehler endet innerhalb einer definierten
+  fachlichen Erfolg. Nach vollständiger technischer Abnahme endet der Elternlauf
+  in `awaiting_activation`; `active` setzt ausschließlich die gemeinsame,
+  bestätigte Benutzeraktion. Jeder Fehler endet innerhalb einer definierten
   Frist terminal als `failed`.
 - Registry-, Keycloak-, Secret-, Lifecycle- und Router-Artefakte bleiben bei
   `failed` erhalten. Ein autorisierter Retry wird über eine eigene Aktion mit

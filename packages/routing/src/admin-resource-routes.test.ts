@@ -34,7 +34,9 @@ const createRouteMock = vi.hoisted(() =>
   }))
 );
 
-const redirectMock = vi.hoisted(() => vi.fn((options: Record<string, unknown>) => ({ ...options, __redirect: true })));
+const redirectMock = vi.hoisted(() =>
+  vi.fn((options: Record<string, unknown>) => ({ ...options, __redirect: true }))
+);
 
 vi.mock('@tanstack/react-router', () => ({
   createRoute: createRouteMock,
@@ -45,7 +47,10 @@ vi.mock('./account-ui.routes.js', () => ({
   createAccountUiRouteGuard: createAccountUiRouteGuardMock,
 }));
 
-import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
+import {
+  createAdminResourceRouteFactories,
+  createLegacyContentAliasFactories,
+} from './admin-resource-routes.js';
 import type { AppRouteBindings } from './app.routes.shared.js';
 
 type RouteOptionsUnderTest = {
@@ -96,7 +101,6 @@ const bindings: AppRouteBindings = {
   adminOrganizationDetail: () => 'adminOrganizationDetail',
   adminInstances: () => 'adminInstances',
   adminInstanceCreate: () => 'adminInstanceCreate',
-  adminInstanceSetup: () => 'adminInstanceSetup',
   adminInstanceDetail: () => 'adminInstanceDetail',
   adminRoles: () => 'adminRoles',
   adminRoleCreate: () => 'adminRoleCreate',
@@ -142,7 +146,7 @@ describe('admin resource routes', () => {
       expectedPaths: ['/admin/content', '/admin/content/new', '/admin/content/$id'],
       expectedGuards: ['content', 'contentCreate', 'contentDetail'],
     },
-      {
+    {
       guard: 'media',
       resourceId: 'host.media',
       basePath: 'media',
@@ -178,7 +182,11 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminOrganizationCreate' },
         detail: { bindingKey: 'adminOrganizationDetail' },
       },
-      expectedPaths: ['/admin/organizations', '/admin/organizations/new', '/admin/organizations/$organizationId'],
+      expectedPaths: [
+        '/admin/organizations',
+        '/admin/organizations/new',
+        '/admin/organizations/$organizationId',
+      ],
       expectedGuards: ['adminOrganizations', 'adminOrganizationCreate', 'adminOrganizationDetail'],
     },
     {
@@ -205,7 +213,12 @@ describe('admin resource routes', () => {
         detail: { bindingKey: 'adminRoleDetail' },
         history: { bindingKey: 'adminRoles' },
       },
-      expectedPaths: ['/admin/roles', '/admin/roles/new', '/admin/roles/$roleId', '/admin/roles/$roleId/history'],
+      expectedPaths: [
+        '/admin/roles',
+        '/admin/roles/new',
+        '/admin/roles/$roleId',
+        '/admin/roles/$roleId/history',
+      ],
       expectedGuards: ['adminRoles', 'adminRoles', 'adminRoleDetail', 'adminRoles'],
     },
     {
@@ -231,7 +244,11 @@ describe('admin resource routes', () => {
         create: { bindingKey: 'adminLegalTextCreate' },
         detail: { bindingKey: 'adminLegalTextDetail' },
       },
-      expectedPaths: ['/admin/legal-texts', '/admin/legal-texts/new', '/admin/legal-texts/$legalTextVersionId'],
+      expectedPaths: [
+        '/admin/legal-texts',
+        '/admin/legal-texts/new',
+        '/admin/legal-texts/$legalTextVersionId',
+      ],
       expectedGuards: ['adminLegalTexts', 'adminLegalTextCreate', 'adminLegalTextDetail'],
     },
   ] as const)('maps %s routes to the expected account-ui guards', async (resource) => {
@@ -249,7 +266,9 @@ describe('admin resource routes', () => {
         : ['content', 'contentCreate', 'contentDetail', ...resource.expectedGuards];
 
     expect(routeOptions.map((route) => route.path)).toEqual(expectedPaths);
-    expect(createAccountUiRouteGuardMock.mock.calls.map(([guardKey]) => guardKey)).toEqual(expectedGuards);
+    expect(createAccountUiRouteGuardMock.mock.calls.map(([guardKey]) => guardKey)).toEqual(
+      expectedGuards
+    );
 
     for (const route of routeOptions) {
       await route.beforeLoad?.({ href: String(route.path) });
@@ -337,7 +356,10 @@ describe('admin resource routes', () => {
         href: '/admin/media/new',
         context: {
           auth: {
-            getUser: async () => ({ assignedModules: ['media'], permissionActions: ['media.read'] }),
+            getUser: async () => ({
+              assignedModules: ['media'],
+              permissionActions: ['media.read'],
+            }),
           },
         },
       })
@@ -513,12 +535,14 @@ describe('admin resource routes', () => {
       .map((route) => readRouteOptions(route))
       .find((route) => route.path === '/admin/content');
 
-    expect(listRoute?.validateSearch?.({
-      type: '  faq.faq  ',
-      languageCode: ' DE-de ',
-      page: '2',
-      ignored: 'value',
-    })).toEqual({
+    expect(
+      listRoute?.validateSearch?.({
+        type: '  faq.faq  ',
+        languageCode: ' DE-de ',
+        page: '2',
+        ignored: 'value',
+      })
+    ).toEqual({
       filters: {},
       page: 2,
       pageSize: 25,
@@ -540,17 +564,19 @@ describe('admin resource routes', () => {
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
     expect(() =>
-      readRouteOptions(routeMap.get('/content')).beforeLoad?.({ location: { href: '/content?page=3' } })
+      readRouteOptions(routeMap.get('/content')).beforeLoad?.({
+        location: { href: '/content?page=3' },
+      })
     ).toThrow(expect.objectContaining({ href: '/admin/content?page=3', __redirect: true }));
-    expect(() => readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new' })).toThrow(
-      expect.objectContaining({ href: '/admin/content/new', __redirect: true })
-    );
+    expect(() =>
+      readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new' })
+    ).toThrow(expect.objectContaining({ href: '/admin/content/new', __redirect: true }));
     expect(() => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({})).toThrow(
       expect.objectContaining({ href: '/admin/content', __redirect: true })
     );
-    expect(() => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/unexpected' })).toThrow(
-      expect.objectContaining({ href: '/admin/content', __redirect: true })
-    );
+    expect(() =>
+      readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/unexpected' })
+    ).toThrow(expect.objectContaining({ href: '/admin/content', __redirect: true }));
     expect(readRouteOptions(routeMap.get('/content')).getParentRoute?.()).toBe(rootRoute);
     expect(readRouteOptions(routeMap.get('/content')).component?.()).toBeNull();
     expect(readRouteOptions(routeMap.get('/content')).staticData?.documentation).toEqual({
@@ -670,7 +696,9 @@ describe('admin resource routes', () => {
       },
     ]);
     const rootRoute = { id: 'root' };
-    const paths = routeFactories.map((factory) => String(readRouteOptions(factory(rootRoute as never)).path));
+    const paths = routeFactories.map((factory) =>
+      String(readRouteOptions(factory(rootRoute as never)).path)
+    );
 
     expect(paths).toEqual(['/admin/content', '/admin/content/new', '/admin/content/$id']);
   });
@@ -693,15 +721,25 @@ describe('admin resource routes', () => {
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
-    expect(() => readRouteOptions(routeMap.get('/content')).beforeLoad?.({ href: '/content?page=1' })).toThrow(
+    expect(() =>
+      readRouteOptions(routeMap.get('/content')).beforeLoad?.({ href: '/content?page=1' })
+    ).toThrow(
       expect.objectContaining({ href: '/admin/editorial-content?page=1', __redirect: true })
     );
-    expect(() => readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new?mode=copy' })).toThrow(
+    expect(() =>
+      readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({
+        href: '/content/new?mode=copy',
+      })
+    ).toThrow(
       expect.objectContaining({ href: '/admin/editorial-content/new?mode=copy', __redirect: true })
     );
-    expect(
-      () => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/content/content-7' })
-    ).toThrow(expect.objectContaining({ href: '/admin/editorial-content/content-7', __redirect: true }));
+    expect(() =>
+      readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({
+        href: '/content/content-7',
+      })
+    ).toThrow(
+      expect.objectContaining({ href: '/admin/editorial-content/content-7', __redirect: true })
+    );
   });
 
   it('does not create legacy plugin CRUD aliases for unified content overview resources', () => {
@@ -772,15 +810,21 @@ describe('admin resource routes', () => {
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
-    expect(() => readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news?page=2' })).toThrow(
-      expect.objectContaining({ href: '/admin/news?page=2', __redirect: true })
+    expect(() =>
+      readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news?page=2' })
+    ).toThrow(expect.objectContaining({ href: '/admin/news?page=2', __redirect: true }));
+    expect(() =>
+      readRouteOptions(routeMap.get('/plugins/news/new')).beforeLoad?.({
+        href: '/plugins/news/new',
+      })
+    ).toThrow(expect.objectContaining({ href: '/admin/news/new', __redirect: true }));
+    expect(() =>
+      readRouteOptions(routeMap.get('/plugins/news/$contentId')).beforeLoad?.({
+        href: '/plugins/news/news-7?tab=history',
+      })
+    ).toThrow(
+      expect.objectContaining({ href: '/admin/news/news-7?tab=history', __redirect: true })
     );
-    expect(() => readRouteOptions(routeMap.get('/plugins/news/new')).beforeLoad?.({ href: '/plugins/news/new' })).toThrow(
-      expect.objectContaining({ href: '/admin/news/new', __redirect: true })
-    );
-    expect(
-      () => readRouteOptions(routeMap.get('/plugins/news/$contentId')).beforeLoad?.({ href: '/plugins/news/news-7?tab=history' })
-    ).toThrow(expect.objectContaining({ href: '/admin/news/news-7?tab=history', __redirect: true }));
   });
 
   it('keeps the host-owned content overview list route when the core content resource declares a content ui contract', () => {

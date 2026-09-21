@@ -42,6 +42,8 @@ import type {
   InstanceConfirmationChallenge,
   PrepareInstanceConfirmationChallengeInput,
 } from './confirmation-challenges.js';
+import type { InstanceDraftReadiness } from './service-draft-readiness.js';
+import type { RealmCatalog } from './service-realm-catalog.js';
 
 type ModuleActivationPolicyReconcileResult = Awaited<
   ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
@@ -97,6 +99,7 @@ type KeycloakProvisioningContext = {
   };
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
+  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
 export type InstanceRegistryService = {
@@ -121,12 +124,21 @@ export type InstanceRegistryService = {
   createProvisioningRequest(
     input: CreateInstanceProvisioningInput
   ): Promise<CreateInstanceProvisioningResult>;
+  getDraftReadiness(input: CreateInstanceProvisioningInput): Promise<InstanceDraftReadiness>;
+  listRealmCatalog(input?: {
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<RealmCatalog>;
   retryTenantProvisioning(input: RetryTenantProvisioningInput): Promise<IamInstanceListItem | null>;
   updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;
-  planKeycloakProvisioning(instanceId: string): Promise<KeycloakTenantPlan | null>;
+  planKeycloakProvisioning(
+    instanceId: string,
+    options?: { readonly forceLive?: boolean }
+  ): Promise<KeycloakTenantPlan | null>;
   executeKeycloakProvisioning(
     input: ExecuteInstanceKeycloakProvisioningInput
   ): Promise<KeycloakTenantProvisioningRun | null>;
@@ -224,7 +236,10 @@ export type InstanceRegistryServiceDeps = {
   readonly readKeycloakStateViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<KeycloakReadState>;
+  readonly listKeycloakRealms?: () => Promise<readonly { readonly realm: string }[]>;
+  readonly readKeycloakRealmCreateCapability?: () => Promise<boolean>;
   readonly readPluginOidcClientRequirements?: () => KeycloakProvisioningInput['pluginOidcClients'];
+  readonly readRoleCatalogFingerprint?: (instanceId: string) => Promise<string>;
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;
@@ -288,6 +303,7 @@ export type InstanceRegistryServiceDeps = {
     instanceId: string;
     actorId?: string;
     requestId?: string;
+    expectedRoleCatalogFingerprint?: string;
   }) => Promise<{
     readonly outcome: 'success' | 'partial_failure' | 'failed';
     readonly checkedCount: number;

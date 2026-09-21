@@ -26,6 +26,11 @@ describe('instance detail split module exports', () => {
     expect(OperationsStepStatusBadge).toBeTypeOf('function');
   });
 
+  it('labels the server-directed refresh and diagnostics actions', () => {
+    expect(getOperationsActionLabel('refresh_readiness')).toBe('Bereitschaft aktualisieren');
+    expect(getOperationsActionLabel('open_diagnostics')).toBe('Diagnose öffnen');
+  });
+
   it('builds a doctor model that mixes green and non-green checks from existing evidence', () => {
     const instance = {
       instanceId: 'demo',
@@ -127,15 +132,11 @@ describe('instance detail split module exports', () => {
       },
     } as any;
 
-    const operationsModel = buildExistingRealmOperationsModel(instance, null);
-    const primaryAction = buildOperationsPrimaryAction(operationsModel);
     const configurationAssessment = evaluateInstanceConfiguration(instance, null);
     const doctorModel = buildInstanceDoctorModel({
       instance,
       configurationAssessment,
       mutationError: null,
-      operationsModel,
-      primaryAction,
       requiredPluginReadiness: {
         status: 'blocked',
         summary: 'Pflicht-Plugin speech-flow ist noch nicht betriebsbereit.',

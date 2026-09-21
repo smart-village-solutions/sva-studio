@@ -143,13 +143,7 @@ export const withScopedRegistryMutation = <TContext, TResult>(
   options?: ScopedRegistryServiceOptions
 ): Promise<TResult> => deps.withScopedRegistryService(instanceId, work, options);
 
-type ScopedExecutionState<TContext, TData> = {
-  readonly request: Request;
-  readonly context: TContext;
-  readonly instanceId: string;
-  readonly actorId: string;
-  readonly idempotencyKey: string;
-  readonly requestId?: string;
+type ScopedExecutionState<TContext, TData> = ScopedRegistryMutationState<TContext> & {
   readonly input: TData;
 };
 
@@ -223,8 +217,20 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
         instanceId,
       };
     },
-    authorize: ({ request, context }: { readonly request: Request; readonly context: TContext }) =>
-      deps.ensurePlatformAccess(request, context) ?? {},
+    authorize: ({
+      request,
+      context,
+    }: {
+      readonly request: Request;
+      readonly context: TContext;
+    }) => {
+      const accessError = deps.ensurePlatformAccess(request, context);
+      if (accessError) return accessError;
+      if (options.criticalActionId) {
+        return deps.requireFreshReauth(request, context) ?? {};
+      }
+      return {};
+    },
     csrf: ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) =>
       deps.validateCsrf(request, requestId) ?? undefined,
     idempotency: ({
@@ -259,17 +265,7 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
         requestId: state.requestId,
         instanceId: state.instanceId,
       }),
-    respond: (
-      result: TResult | Response,
-      state: {
-        readonly request: Request;
-        readonly context: TContext;
-        readonly requestId?: string;
-        readonly actorId: string;
-        readonly instanceId: string;
-        readonly idempotencyKey: string;
-      }
-    ) =>
+    respond: (result: TResult | Response, state: ScopedRegistryMutationState<TContext>) =>
       result instanceof Response
         ? result
         : options.respond(result, {

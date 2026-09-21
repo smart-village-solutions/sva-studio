@@ -1,10 +1,16 @@
 import { createSdkLogger } from '@sva/server-runtime';
-import type { InstanceKeycloakProvisioningRun } from '@sva/core';
+import type { InstanceKeycloakProvisioningRun, InstanceProvisioningRun } from '@sva/core';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
-import { createGetKeycloakStatusHandler } from './service-keycloak-readers.js';
+import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
+import { readParentKeycloakPlanGate } from './tenant-provisioning-state.js';
+import {
+  createGetKeycloakPreflightHandler,
+  createGetKeycloakStatusHandler,
+  createPlanKeycloakProvisioningHandler,
+} from './service-keycloak-readers.js';
 import {
   loadInstanceWithSecret,
   loadKeycloakSnapshotSecretVersions,
@@ -54,6 +60,36 @@ const assertProvisioningIntentAllowed = (
     throw new Error('reset_tenant_admin_requires_existing_realm');
   }
 };
+
+const canRecoverMissingTenantSecret = async (
+  deps: InstanceRegistryServiceDeps,
+  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
+  intent: ExecuteInstanceKeycloakProvisioningInput['intent']
+): Promise<boolean> => {
+  if (
+    intent !== 'rotate_client_secret' ||
+    loaded.instance.realmMode !== 'existing' ||
+    loaded.authClientSecret
+  ) {
+    return false;
+  }
+  const preflight = await createGetKeycloakPreflightHandler(deps)(loaded.instance.instanceId);
+  const blockers = preflight?.checks.filter((check) => check.status === 'blocked') ?? [];
+  return blockers.length > 0 && blockers.every((check) => check.checkKey === 'tenant_secret');
+};
+
+const findAutomatedParentRun = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string
+): Promise<InstanceProvisioningRun | undefined> =>
+  (await deps.repository.listProvisioningRuns(instanceId)).find(
+    (run) =>
+      run.operation === 'create' &&
+      isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) &&
+      run.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
+      !run.completedAt &&
+      ['requested', 'validated', 'provisioning'].includes(run.status)
+  );
 
 const loadClaimedRunInstance = async (
   deps: InstanceRegistryServiceDeps,
@@ -265,7 +301,8 @@ const executeClaimedRun = async (
   run: InstanceKeycloakProvisioningRun,
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
   tenantAdminTemporaryPassword: string | undefined,
-  provisioningInput: QueuedProvisioningInput
+  provisioningInput: QueuedProvisioningInput,
+  confirmedPlanFingerprint: string
 ) => {
   assertProvisioningIntentAllowed(provisioningInput.realmMode, run.intent);
   const secretVersions = await loadKeycloakSnapshotSecretVersions(
@@ -283,6 +320,9 @@ const executeClaimedRun = async (
   const plan = await runInstanceRegistryStep('worker_plan', () =>
     appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
+  if (plan.fingerprint !== confirmedPlanFingerprint) {
+    throw new Error('keycloak_plan_fingerprint_stale');
+  }
 
   const rotatingMissingTenantSecret =
     run.intent === 'rotate_client_secret' && !loaded.authClientSecret;
@@ -394,6 +434,13 @@ export const processClaimedKeycloakProvisioningRun = async (
     const queueStep = run.steps.find(
       (step: InstanceKeycloakProvisioningRun['steps'][number]) => step.stepKey === 'queued'
     );
+    const confirmedPlanFingerprint = queueStep?.details.confirmedPlanFingerprint;
+    if (
+      typeof confirmedPlanFingerprint !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(confirmedPlanFingerprint)
+    ) {
+      throw new Error('keycloak_plan_confirmation_missing');
+    }
     const tenantAdminTemporaryPassword = readQueuedTemporaryPassword(
       deps,
       run.id,
@@ -419,7 +466,8 @@ export const processClaimedKeycloakProvisioningRun = async (
       run,
       loaded,
       tenantAdminTemporaryPassword,
-      provisioningInput
+      provisioningInput,
+      confirmedPlanFingerprint
     );
   } catch (error) {
     await failRun(deps, {
@@ -429,6 +477,13 @@ export const processClaimedKeycloakProvisioningRun = async (
       intent: run.intent,
       error,
     });
+    if (run.intent === 'rotate_client_secret') {
+      await deps.repository.completeProvisioningRemediation({
+        instanceId: run.instanceId,
+        childKeycloakRunId: run.id,
+        succeeded: false,
+      });
+    }
     return deps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);
   }
 };
@@ -464,14 +519,74 @@ export const createExecuteKeycloakProvisioningHandler =
       return null;
     }
     assertProvisioningIntentAllowed(loaded.instance.realmMode, input.intent);
-    if (!options.allowActiveTenantProvisioning) {
+    const parentRun = options.allowActiveTenantProvisioning
+      ? undefined
+      : await findAutomatedParentRun(deps, input.instanceId);
+    const parentGate = parentRun ? readParentKeycloakPlanGate(parentRun) : undefined;
+    const confirmsWaitingParent =
+      input.intent === 'provision' &&
+      parentGate?.status === 'awaiting_plan_confirmation';
+    const retriesConfirmedParent =
+      input.intent === 'provision' &&
+      parentGate?.status === 'confirmed' &&
+      parentGate.planFingerprint === input.planFingerprint;
+    const remediatesWaitingParent =
+      input.intent === 'rotate_client_secret' &&
+      parentGate?.status === 'awaiting_tenant_secret';
+    if (
+      !options.allowActiveTenantProvisioning &&
+      !confirmsWaitingParent &&
+      !retriesConfirmedParent &&
+      !remediatesWaitingParent
+    ) {
       await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
+    }
+
+    const currentPlan = await createPlanKeycloakProvisioningHandler(deps)(input.instanceId);
+    const missingSecretRecovery = await canRecoverMissingTenantSecret(deps, loaded, input.intent);
+    if (!currentPlan || (currentPlan.overallStatus === 'blocked' && !missingSecretRecovery)) {
+      throw new Error('keycloak_plan_blocked');
+    }
+    if (currentPlan.fingerprint !== input.planFingerprint) {
+      throw new Error('keycloak_plan_fingerprint_stale');
     }
 
     const { run } = await createQueuedRun(deps, loaded, {
       ...input,
+      confirmedPlan: currentPlan,
       mutation: 'executeKeycloakProvisioning',
     });
+    if (parentRun && confirmsWaitingParent) {
+      if (!parentGate?.planFingerprint) throw new Error('keycloak_plan_fingerprint_stale');
+      const confirmed = await deps.repository.confirmProvisioningPlan({
+        runId: parentRun.id,
+        instanceId: input.instanceId,
+        expectedPlanFingerprint: parentGate.planFingerprint,
+        planFingerprint: input.planFingerprint,
+        childKeycloakRunId: run.id,
+        actorId: input.actorId,
+        requestId: input.requestId,
+      });
+      if (!confirmed) throw new Error('keycloak_plan_fingerprint_stale');
+    } else if (parentRun && remediatesWaitingParent) {
+      if (!parentGate?.planFingerprint) throw new Error('keycloak_plan_fingerprint_stale');
+      const bound = await deps.repository.bindProvisioningRemediation({
+        runId: parentRun.id,
+        instanceId: input.instanceId,
+        expectedPlanFingerprint: parentGate.planFingerprint,
+        planFingerprint: input.planFingerprint,
+        childKeycloakRunId: run.id,
+        actorId: input.actorId,
+        requestId: input.requestId,
+      });
+      if (!bound) throw new Error('keycloak_plan_fingerprint_stale');
+    } else if (
+      parentRun &&
+      retriesConfirmedParent &&
+      parentGate?.childKeycloakRunId !== run.id
+    ) {
+      throw new Error('keycloak_plan_fingerprint_stale');
+    }
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);
   };
 
@@ -482,6 +597,7 @@ export const createReconcileKeycloakHandler =
     idempotencyKey: string;
     actorId: string;
     requestId: string;
+    planFingerprint: string;
     tenantAdminTemporaryPassword?: string;
     rotateClientSecret?: boolean;
   }) => {
@@ -491,13 +607,26 @@ export const createReconcileKeycloakHandler =
     }
     await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
-    await ensureReconcilePreconditions(deps, loaded);
-
     const intent = resolveReconcileIntent(loaded, input.rotateClientSecret);
+    const missingSecretRecovery =
+      intent === 'rotate_client_secret' &&
+      loaded.instance.realmMode === 'existing' &&
+      !loaded.authClientSecret;
+    await ensureReconcilePreconditions(deps, loaded, {
+      allowMissingTenantSecret: missingSecretRecovery,
+    });
+    const currentPlan = await createPlanKeycloakProvisioningHandler(deps)(input.instanceId);
+    if (!currentPlan || (currentPlan.overallStatus === 'blocked' && !missingSecretRecovery)) {
+      throw new Error('keycloak_plan_blocked');
+    }
+    if (currentPlan.fingerprint !== input.planFingerprint) {
+      throw new Error('keycloak_plan_fingerprint_stale');
+    }
 
     if (
       loaded.instance.realmMode === 'existing' &&
       intent !== 'provision_admin_client' &&
+      intent !== 'rotate_client_secret' &&
       !loaded.authClientSecret
     ) {
       throw new Error('tenant_auth_client_secret_missing');
@@ -511,6 +640,8 @@ export const createReconcileKeycloakHandler =
       tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword,
       rotateClientSecret: input.rotateClientSecret,
       intent,
+      planFingerprint: input.planFingerprint,
+      confirmedPlan: currentPlan,
       mutation: 'reconcileKeycloak',
     });
 

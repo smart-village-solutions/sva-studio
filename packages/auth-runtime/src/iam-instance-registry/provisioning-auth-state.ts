@@ -41,6 +41,10 @@ const provisionerClientFactory = createAuthKeycloakClientFactory(
 const adminAdapters = createKeycloakProvisioningAdapters(adminClientFactory);
 const provisionerAdapters = createKeycloakProvisioningAdapters(provisionerClientFactory);
 
+export const listKeycloakRealmsViaProvisioner = () => provisionerAdapters.listKeycloakRealms();
+export const readKeycloakRealmCreateCapabilityViaProvisioner = () =>
+  provisionerAdapters.readKeycloakRealmCreateCapability();
+
 export const readKeycloakClientSecretsViaProvisioner =
   createReadKeycloakClientSecrets(provisionerClientFactory);
 

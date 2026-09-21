@@ -1,4 +1,8 @@
-import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+import type {
+  InstanceProvisioningRun,
+  InstanceRegistryRecord,
+  TenantModuleActivationPolicyDescriptor,
+} from '@sva/core';
 
 import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
@@ -18,7 +22,14 @@ type PluginOidcClients = NonNullable<
 type TenantProvisioningPluginSnapshot = Readonly<{
   lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
   oidcClients: PluginOidcClients;
+  activationPolicies: readonly TenantModuleActivationPolicyDescriptor[];
 }>;
+
+export const TENANT_PROVISIONING_SNAPSHOT_VERSION = '3.0';
+export const TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION = '2.0';
+export const isSupportedTenantProvisioningSnapshotVersion = (
+  snapshotVersion: string | undefined
+): boolean => snapshotVersion === '2.0' || snapshotVersion === TENANT_PROVISIONING_SNAPSHOT_VERSION;
 
 const copyLifecycle = (lifecycle: ProvisioningPluginTenantLifecycleContract) => ({
   ...lifecycle,
@@ -32,11 +43,14 @@ const copyOidcClient = (client: PluginOidcClients[number]) => ({
   ...('webOrigins' in client ? { webOrigins: [...client.webOrigins] } : {}),
 });
 
+const copyActivationPolicy = (policy: TenantModuleActivationPolicyDescriptor) => ({ ...policy });
+
 export const buildConfiguredTenantProvisioningPluginSnapshot = (
   deps: InstanceRegistryServiceDeps,
   assignedModuleIds: readonly string[]
 ): TenantProvisioningPluginSnapshot => {
   const assignedModules = new Set(assignedModuleIds);
+  const activationPolicies = deps.readModuleActivationPolicySnapshot?.().modules ?? [];
   return {
     lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])]
       .filter(({ pluginId }) => assignedModules.has(pluginId))
@@ -44,6 +58,9 @@ export const buildConfiguredTenantProvisioningPluginSnapshot = (
     oidcClients: [...(deps.readPluginOidcClientRequirements?.() ?? [])]
       .filter(({ pluginId }) => assignedModules.has(pluginId))
       .sort((left, right) => left.clientId.localeCompare(right.clientId)),
+    activationPolicies: activationPolicies
+      .filter(({ moduleId }) => assignedModules.has(moduleId))
+      .sort((left, right) => left.moduleId.localeCompare(right.moduleId)),
   };
 };
 
@@ -58,7 +75,6 @@ const lifecycleOperations = new Set([
   'readiness',
 ]);
 const repairOperations = new Set(['provision', 'reconcile', 'suspend', 'reactivate']);
-
 const isLifecycleOperation = (value: unknown): boolean =>
   isRecord(value) &&
   typeof value.operation === 'string' &&
@@ -102,6 +118,15 @@ const isPluginOidcClient = (value: unknown): value is PluginOidcClients[number] 
       Array.isArray(value.webOrigins) &&
       value.webOrigins.every((origin) => typeof origin === 'string')));
 
+const isActivationPolicy = (value: unknown): value is TenantModuleActivationPolicyDescriptor =>
+  isRecord(value) &&
+  typeof value.moduleId === 'string' &&
+  ['optional', 'automatic', 'required'].includes(String(value.activationPolicy)) &&
+  typeof value.manifestVersion === 'number' &&
+  Number.isInteger(value.manifestVersion) &&
+  typeof value.policyRevision === 'string' &&
+  value.policyRevision.length > 0;
+
 const registryConfiguration = (instance: InstanceRegistryRecord) => ({
   instanceId: instance.instanceId,
   displayName: instance.displayName,
@@ -121,24 +146,35 @@ const registryConfiguration = (instance: InstanceRegistryRecord) => ({
   mainserverConfigRef: instance.mainserverConfigRef,
 });
 
+const registryFingerprintConfiguration = (instance: InstanceRegistryRecord) => {
+  const { assignedModules, ...configuration } = registryConfiguration(instance);
+  void assignedModules;
+  return configuration;
+};
+
 export const buildTenantProvisioningSnapshot = (
   instance: InstanceRegistryRecord,
   input: CreateInstanceProvisioningInput,
   payloadFingerprint: string,
   automationMode: 'external' | 'kassel-traefik-file' = 'external',
-  pluginSnapshot: TenantProvisioningPluginSnapshot = { lifecycles: [], oidcClients: [] }
+  pluginSnapshot: TenantProvisioningPluginSnapshot = {
+    lifecycles: [],
+    oidcClients: [],
+    activationPolicies: [],
+  }
 ) => ({
   ...registryConfiguration(instance),
-  registryFingerprint: buildPayloadFingerprint(registryConfiguration(instance)),
+  registryFingerprint: buildPayloadFingerprint(registryFingerprintConfiguration(instance)),
   authClientSecretRequired: Boolean(input.authClientSecret?.trim()),
   tenantAdminClientSecretRequired: Boolean(input.tenantAdminClient?.secret?.trim()),
   automationMode,
   realmBaselineVersion: instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
   realmBaselineFingerprint:
     instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE_FINGERPRINT : undefined,
-  pluginSnapshotVersion: '1.0',
+  pluginSnapshotVersion: TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION,
   pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
   pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
+  pluginActivationPolicies: pluginSnapshot.activationPolicies.map(copyActivationPolicy),
   payloadFingerprint,
 });
 
@@ -147,25 +183,45 @@ export const readTenantProvisioningPluginSnapshot = (
 ): Readonly<{
   lifecycles: readonly ProvisioningPluginTenantLifecycleContract[];
   oidcClients: PluginOidcClients;
+  activationPolicies: readonly TenantModuleActivationPolicyDescriptor[];
+  activationPoliciesBound: boolean;
 }> => {
   const snapshot = run.desiredSnapshot;
+  const legacyPluginSnapshot = snapshot.pluginSnapshotVersion === '1.0';
+  const activationPoliciesBound =
+    !legacyPluginSnapshot || snapshot.pluginActivationPolicies !== undefined;
+  const activationPolicies = legacyPluginSnapshot
+    ? (snapshot.pluginActivationPolicies ?? [])
+    : snapshot.pluginActivationPolicies;
   if (
-    snapshot.pluginSnapshotVersion !== '1.0' ||
+    (!legacyPluginSnapshot &&
+      snapshot.pluginSnapshotVersion !== TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION) ||
     !Array.isArray(snapshot.pluginLifecycles) ||
-    snapshot.pluginLifecycles.length === 0 ||
     !snapshot.pluginLifecycles.every(isLifecycleContract) ||
     new Set(snapshot.pluginLifecycles.map(({ pluginId }) => pluginId)).size !==
       snapshot.pluginLifecycles.length ||
     !Array.isArray(snapshot.pluginOidcClients) ||
     !snapshot.pluginOidcClients.every(isPluginOidcClient) ||
     new Set(snapshot.pluginOidcClients.map(({ clientId }) => clientId)).size !==
-      snapshot.pluginOidcClients.length
+      snapshot.pluginOidcClients.length ||
+    !Array.isArray(activationPolicies) ||
+    !activationPolicies.every(isActivationPolicy) ||
+    new Set(activationPolicies.map(({ moduleId }) => moduleId)).size !== activationPolicies.length
+  ) {
+    throw new Error('provisioning_plugin_snapshot_missing');
+  }
+  const activationPolicyModuleIds = new Set(activationPolicies.map(({ moduleId }) => moduleId));
+  if (
+    activationPoliciesBound &&
+    snapshot.pluginLifecycles.some(({ pluginId }) => !activationPolicyModuleIds.has(pluginId))
   ) {
     throw new Error('provisioning_plugin_snapshot_missing');
   }
   return {
     lifecycles: snapshot.pluginLifecycles,
     oidcClients: snapshot.pluginOidcClients,
+    activationPolicies,
+    activationPoliciesBound,
   };
 };
 
@@ -199,7 +255,6 @@ export const rebaseTenantProvisioningPluginSnapshot = (
     pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)
   );
   if (
-    pluginSnapshot.lifecycles.length === 0 ||
     previousPluginSnapshot.lifecycles.some(
       ({ pluginId }) => !currentLifecyclePluginIds.has(pluginId)
     )
@@ -209,8 +264,10 @@ export const rebaseTenantProvisioningPluginSnapshot = (
   return {
     desiredSnapshot: {
       ...run.desiredSnapshot,
+      pluginSnapshotVersion: TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION,
       pluginLifecycles: pluginSnapshot.lifecycles.map(copyLifecycle),
       pluginOidcClients: pluginSnapshot.oidcClients.map(copyOidcClient),
+      pluginActivationPolicies: pluginSnapshot.activationPolicies.map(copyActivationPolicy),
     },
     lifecycles: pluginSnapshot.lifecycles,
     keycloakReconcileRequired:
@@ -231,7 +288,13 @@ export const assertTenantProvisioningSnapshotCurrent = (
   const fingerprintInput = expectedRealmTransition
     ? { ...instance, realmMode: 'new' as const }
     : instance;
-  const registryFingerprint = buildPayloadFingerprint(registryConfiguration(fingerprintInput));
+  const registryFingerprint = buildPayloadFingerprint(
+    registryFingerprintConfiguration(fingerprintInput)
+  );
+  const legacyRegistryFingerprint =
+    run.snapshotVersion === '2.0'
+      ? buildPayloadFingerprint(registryConfiguration(fingerprintInput))
+      : undefined;
   const secretRequirementsMet =
     (snapshot.authClientSecretRequired !== true || instance.authClientSecretConfigured) &&
     (snapshot.tenantAdminClientSecretRequired !== true ||
@@ -241,9 +304,10 @@ export const assertTenantProvisioningSnapshotCurrent = (
     (snapshot.realmBaselineVersion === KEYCLOAK_REALM_BASELINE.version &&
       snapshot.realmBaselineFingerprint === KEYCLOAK_REALM_BASELINE_FINGERPRINT);
   if (
-    run.snapshotVersion !== '2.0' ||
+    !isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) ||
     snapshot.automationMode !== 'kassel-traefik-file' ||
-    snapshot.registryFingerprint !== registryFingerprint ||
+    (snapshot.registryFingerprint !== registryFingerprint &&
+      snapshot.registryFingerprint !== legacyRegistryFingerprint) ||
     snapshot.payloadFingerprint !== run.payloadFingerprint ||
     !secretRequirementsMet ||
     !realmBaselineCurrent

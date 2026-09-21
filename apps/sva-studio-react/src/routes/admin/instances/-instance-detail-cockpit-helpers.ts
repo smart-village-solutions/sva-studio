@@ -41,6 +41,10 @@ export const mapConfigurationStatusToCockpitStatus = (
 
 export const getDetailActionLabel = (action: DetailWorkflowAction) => {
   switch (action) {
+    case 'refresh_readiness':
+      return t('admin.instances.actions.refreshReadiness');
+    case 'open_diagnostics':
+      return t('admin.instances.actions.openDiagnostics');
     case 'check_preflight':
       return t('admin.instances.actions.checkPreflight');
     case 'check_keycloak_status':
@@ -55,12 +59,16 @@ export const getDetailActionLabel = (action: DetailWorkflowAction) => {
       return t('admin.instances.actions.resetTenantAdmin');
     case 'activate_instance':
       return t('admin.instances.actions.activate');
+    case 'retry_tenant_provisioning':
+      return t('admin.instances.feedback.provisioningRetryAction');
     case 'rotate_client_secret':
       return t('admin.instances.actions.rotateClientSecret');
     case 'probeTenantIamAccess':
       return t('admin.instances.actions.probeTenantIamAccess');
     case 'reconcileKeycloak':
       return t('admin.instances.actions.reconcileKeycloak');
+    case 'reconcileTenantIamRoles':
+      return t('admin.instances.actions.reconcileTenantIamRoles');
   }
 };
 

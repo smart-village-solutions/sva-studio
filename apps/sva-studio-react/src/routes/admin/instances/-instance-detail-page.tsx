@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, useStudioSaveFeedback } from '@sva/studio-ui-react';
+import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
@@ -24,12 +24,13 @@ import {
 import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section';
 import { InstanceDetailAuditSection } from './-instance-detail-audit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
+import { InstanceDetailCockpitSection } from './-instance-detail-cockpit-section';
 import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailHeader } from './-instance-detail-header';
 import {
   buildInstanceDoctorModel,
+  buildInstanceDetailCockpitModel,
   buildHistoryWorkspaceModel,
-  buildOperationsPrimaryAction,
   type DetailWorkflowAction,
   evaluateInstanceConfiguration,
   getStatusGuidance,
@@ -119,7 +120,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [actionFeedbackFading, setActionFeedbackFading] = React.useState(false);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('betrieb');
-  const [isRetryingProvisioning, setIsRetryingProvisioning] = React.useState(false);
   const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -154,15 +154,21 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     selectedInstance && operationsModel
       ? buildHistoryWorkspaceModel(selectedInstance, operationsModel)
       : null;
-  const primaryAction = operationsModel ? buildOperationsPrimaryAction(operationsModel) : null;
+  const cockpitModel =
+    selectedInstance && configurationAssessment
+      ? buildInstanceDetailCockpitModel(
+          selectedInstance,
+          instancesApi.mutationError,
+          configurationAssessment,
+          requiredPluginReadiness
+        )
+      : null;
   const doctorModel =
-    selectedInstance && configurationAssessment && operationsModel && primaryAction
+    selectedInstance && configurationAssessment && operationsModel
       ? buildInstanceDoctorModel({
           instance: selectedInstance,
           configurationAssessment,
           mutationError: instancesApi.mutationError,
-          operationsModel,
-          primaryAction,
           requiredPluginReadiness,
         })
       : null;
@@ -176,11 +182,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     (run) =>
       run.operation === 'create' &&
       run.status === 'failed' &&
-      run.snapshotVersion === '2.0' &&
+      (run.snapshotVersion === '2.0' || run.snapshotVersion === '3.0') &&
       run.desiredSnapshot.automationMode === 'kassel-traefik-file'
   );
   const canRetryTenantProvisioning =
-    selectedInstance?.status === 'failed' && Boolean(failedAutomatedCreateRun);
+    selectedInstance?.provisioningReadiness?.nextAction?.action === 'instance.provisioning.retry' &&
+    selectedInstance.provisioningReadiness.nextAction.retryClass === 'safe' &&
+    Boolean(failedAutomatedCreateRun);
   const hasRunningOperations = Boolean(
     operationsModel?.steps.some((step) => step.status === 'läuft')
   );
@@ -322,10 +330,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     if (!selectedInstance || !detailFormValues) {
       return;
     }
+    const planFingerprint = selectedInstance.keycloakPlan?.fingerprint;
+    if (!planFingerprint) return;
 
     setActionFeedback(null);
     const result = await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
       intent,
+      planFingerprint,
       tenantAdminTemporaryPassword:
         detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
     });
@@ -418,22 +429,32 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const retryTenantProvisioning = async () => {
     if (!selectedInstance || !canRetryTenantProvisioning) return;
     setActionFeedback(null);
-    setIsRetryingProvisioning(true);
-    try {
-      const result = await instancesApi.retryTenantProvisioning(selectedInstance.instanceId);
-      if (result) {
-        setActionFeedback({
-          tone: 'success',
-          message: t('admin.instances.feedback.provisioningRetryQueued'),
-        });
-      }
-    } finally {
-      setIsRetryingProvisioning(false);
+    const result = await instancesApi.retryTenantProvisioning(selectedInstance.instanceId);
+    if (result) {
+      setActionFeedback({
+        tone: 'success',
+        message: t('admin.instances.feedback.provisioningRetryQueued'),
+      });
     }
   };
 
   const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
     switch (action) {
+      case 'refresh_readiness':
+        if (!selectedInstance) return;
+        setActionFeedback(null);
+        if (await instancesApi.loadInstance(selectedInstance.instanceId)) {
+          setActionFeedback({
+            tone: 'success',
+            message: t('admin.instances.feedback.readinessUpdated'),
+          });
+        }
+        return;
+      case 'open_diagnostics':
+        if (!selectedInstance) return;
+        await instancesApi.loadInstance(selectedInstance.instanceId);
+        setActiveWorkspaceTab('doctor');
+        return;
       case 'focus_configuration':
         setActiveWorkspaceTab('einstellungen');
         return;
@@ -444,10 +465,35 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         if (!selectedInstance) {
           return;
         }
-        await instancesApi.reconcileKeycloak(selectedInstance.instanceId, {});
+        if (!selectedInstance.keycloakPlan?.fingerprint) return;
+        await instancesApi.reconcileKeycloak(selectedInstance.instanceId, {
+          planFingerprint: selectedInstance.keycloakPlan.fingerprint,
+        });
         return;
+      case 'reconcileTenantIamRoles': {
+        if (!selectedInstance) return;
+        const latestRun =
+          selectedInstance.latestKeycloakProvisioningRun ??
+          selectedInstance.keycloakProvisioningRuns[0];
+        const confirmedPlanFingerprint = latestRun?.steps.find(
+          ({ stepKey }) => stepKey === 'queued'
+        )?.details.confirmedPlanFingerprint;
+        if (
+          typeof confirmedPlanFingerprint !== 'string' ||
+          !/^[a-f0-9]{64}$/u.test(confirmedPlanFingerprint)
+        ) {
+          return;
+        }
+        await instancesApi.reconcileTenantIamRoles(selectedInstance.instanceId, {
+          planFingerprint: confirmedPlanFingerprint,
+        });
+        return;
+      }
       case 'rotate_client_secret':
         await executeProvisioning('rotate_client_secret');
+        return;
+      case 'retry_tenant_provisioning':
+        await retryTenantProvisioning();
         return;
       default:
         await triggerWorkflowAction(action);
@@ -459,22 +505,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       {actionFeedback ? (
         <Alert className={readActionFeedbackClassName(actionFeedback, actionFeedbackFading)}>
           <AlertDescription>{actionFeedback.message}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {canRetryTenantProvisioning ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950">
-          <AlertDescription className="flex flex-col items-start gap-3">
-            <span>{t('admin.instances.feedback.provisioningRetryAvailable')}</span>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isRetryingProvisioning || isLoading || detailLoading || statusLoading}
-              onClick={() => void retryTenantProvisioning()}
-            >
-              {t('admin.instances.feedback.provisioningRetryAction')}
-            </Button>
-          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -513,7 +543,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         </Alert>
       ) : null}
 
-      {selectedInstance && detailFormValues && operationsModel && primaryAction ? (
+      {selectedInstance && detailFormValues && operationsModel && cockpitModel ? (
         <div className="space-y-5">
           <InstanceDetailHeader
             selectedInstance={selectedInstance}
@@ -521,6 +551,15 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             operationalSummary={operationsModel.summary}
             onOpenDoctor={() => setActiveWorkspaceTab('doctor')}
             doctorWarning={doctorModel?.warning}
+          />
+
+          <InstanceDetailCockpitSection
+            selectedInstance={selectedInstance}
+            configurationAssessment={configurationAssessment}
+            cockpitModel={cockpitModel}
+            mutationError={instancesApi.mutationError}
+            onRunDetailAction={runDetailAction}
+            statusLoading={instancesApi.statusLoading}
           />
 
           <Tabs
@@ -565,8 +604,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                   doctorModel={doctorModel}
                   historyModel={historyModel}
                   selectedInstance={selectedInstance}
-                  statusLoading={instancesApi.statusLoading}
-                  onRunDetailAction={runDetailAction}
                   onLoadProvisioningRun={(runId) =>
                     instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
                   }

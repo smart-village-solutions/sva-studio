@@ -23,7 +23,13 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { shouldExposeAutomatedProvisioning } from './service-active-provisioning.js';
+import { createAssignModuleHandler } from './service-module-mutations.js';
+import {
+  isTenantProvisioningFailureRetryable,
+  requiresAutomatedProvisioningEvidence,
+  shouldExposeAutomatedProvisioning,
+} from './service-active-provisioning.js';
+import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -51,19 +57,19 @@ export const resolveIdempotentCreateRetry = async (
 ): Promise<CreateInstanceProvisioningResult | null> => {
   const matchingRun = await assertIdempotentCreateRetry(deps, input, instance);
   if (!matchingRun) return null;
-  if (matchingRun.status !== 'failed' || matchingRun.snapshotVersion !== '2.0') {
+  if (
+    matchingRun.status !== 'failed' ||
+    !isSupportedTenantProvisioningSnapshotVersion(matchingRun.snapshotVersion)
+  ) {
     await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
       instanceId: instance.instanceId,
       actorId: input.actorId,
       requestId: input.requestId,
     });
     invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
-    const automatedRun =
-      matchingRun.snapshotVersion === '2.0' &&
-      matchingRun.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
-      shouldExposeAutomatedProvisioning(deps, instance)
-        ? matchingRun
-        : undefined;
+    const automatedRun = requiresAutomatedProvisioningEvidence(matchingRun)
+      ? matchingRun
+      : undefined;
     return { ok: true, instance: toListItem(instance, automatedRun) };
   }
   if (instance.status !== 'failed') {
@@ -74,6 +80,9 @@ export const resolveIdempotentCreateRetry = async (
     !shouldExposeAutomatedProvisioning(deps, instance)
   ) {
     throw new Error('provisioning_retry_mode_invalid');
+  }
+  if (!isTenantProvisioningFailureRetryable(matchingRun)) {
+    throw new Error('provisioning_retry_not_safe');
   }
   const { desiredSnapshot, keycloakReconcileRequired, leaseOwner } =
     await reserveAndPrepareProvisioningRetry(deps, matchingRun, input);
@@ -134,13 +143,12 @@ export const createRetryTenantProvisioningHandler =
     );
     if (
       !latestCreateRun ||
-      latestCreateRun.snapshotVersion !== '2.0' ||
+      !isSupportedTenantProvisioningSnapshotVersion(latestCreateRun.snapshotVersion) ||
       latestCreateRun.desiredSnapshot.automationMode !== 'kassel-traefik-file' ||
       !shouldExposeAutomatedProvisioning(deps, instance)
     ) {
       throw new Error('provisioning_retry_mode_invalid');
     }
-
     if (
       (latestCreateRun.status === 'requested' || latestCreateRun.status === 'provisioning') &&
       (instance.status === 'requested' || instance.status === 'provisioning')
@@ -149,6 +157,9 @@ export const createRetryTenantProvisioningHandler =
     }
     if (latestCreateRun.status !== 'failed' || instance.status !== 'failed') {
       throw new Error('provisioning_retry_instance_status_invalid');
+    }
+    if (!isTenantProvisioningFailureRetryable(latestCreateRun)) {
+      throw new Error('provisioning_retry_not_safe');
     }
 
     const { desiredSnapshot, keycloakReconcileRequired, leaseOwner } =
@@ -218,4 +229,32 @@ export const createRequestedInstance = (
     featureFlags: input.featureFlags,
     mainserverConfigRef: input.mainserverConfigRef,
   });
+};
+
+export const assignRequestedCreateModules = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CreateInstanceProvisioningInput,
+  instance: NonNullable<Awaited<ReturnType<typeof createRequestedInstance>>>
+) => {
+  const requestedModuleIds = [...new Set(input.moduleIds ?? [])];
+  const assignedModuleIds = new Set(await deps.repository.listAssignedModules(instance.instanceId));
+  for (const moduleId of requestedModuleIds) {
+    if (assignedModuleIds.has(moduleId)) continue;
+    const assignment = await createAssignModuleHandler(deps)({
+      instanceId: instance.instanceId,
+      moduleId,
+      idempotencyKey: `${input.idempotencyKey}:module:${moduleId}`,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+    if (!assignment.ok) {
+      throw new Error(`instance_create_module_assignment_failed:${moduleId}:${assignment.reason}`);
+    }
+    for (const assignedModuleId of await deps.repository.listAssignedModules(instance.instanceId)) {
+      assignedModuleIds.add(assignedModuleId);
+    }
+  }
+  return requestedModuleIds.length > 0
+    ? ((await deps.repository.getInstanceById(instance.instanceId)) ?? instance)
+    : instance;
 };

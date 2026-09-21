@@ -40,6 +40,8 @@ export const authRoutePaths = [
   '/api/v1/iam/groups/$groupId/roles/$roleId',
   '/api/v1/iam/groups/$groupId/memberships',
   '/api/v1/iam/instances',
+  '/api/v1/iam/instances/draft-readiness',
+  '/api/v1/iam/instances/keycloak-realms',
   '/api/v1/iam/instances/audit',
   '/api/v1/iam/instances/$instanceId',
   '/api/v1/iam/instances/$instanceId/provisioning/retry',

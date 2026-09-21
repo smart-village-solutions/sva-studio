@@ -5,10 +5,10 @@ unter `/admin/instances`.
 
 ## Zielbild
 
-Die Verwaltung trennt jetzt klar zwischen:
+Die Verwaltung bündelt den Lebenszyklus einer Instanz in einem Detailfluss und trennt dort klar zwischen:
 
 1. `Anlage` einer neuen Instanz
-2. `Setup abschließen` als einmaligem Inbetriebnahme-Flow
+2. `Bereitstellung abschließen` als geführtem Abschnitt der Detailseite
 3. `Betrieb` als Standardansicht für Bestandsinstanzen
 4. `Doctor` als Diagnose- und Reparaturmodus
 5. `Einstellungen` für Stammdaten und Vertragswerte
@@ -16,14 +16,14 @@ Die Verwaltung trennt jetzt klar zwischen:
 ## Typischer Ablauf
 
 1. Neue Instanz über `/admin/instances/new` anlegen.
-2. Nach erfolgreicher Anlage direkt in `/admin/instances/<instanceId>/setup` wechseln.
-3. Im Setup die Instanz aktivieren und die Tenant-Admin-Struktur initialisieren.
-4. Erst nach abgeschlossenem Setup auf die Bestandsseite wechseln.
-5. Bestandsinstanzen standardmäßig im Modus `Betrieb` verwalten.
+2. Nach erfolgreicher Anlage direkt in `/admin/instances/<instanceId>` wechseln.
+3. Auf der Detailseite die technische Bereitschaft herstellen und prüfen.
+4. Die Instanz erst nach erfüllten Readiness-Gates manuell aktivieren.
+5. Aktive Bestandsinstanzen auf derselben Seite im Modus `Betrieb` verwalten.
 
-## Setup abschließen
+## Bereitstellung abschließen
 
-Der Setup-Flow ist bewusst von der späteren Bestandsverwaltung getrennt.
+Die Bereitstellung ist ein geführter Abschnitt der Instanzdetailseite und kein eigener Route- oder Geschäftsprozess.
 
 `Setup abschließen` gilt erst dann als erledigt, wenn beide Bedingungen erfüllt
 sind:
@@ -31,8 +31,7 @@ sind:
 - die Instanz ist aktiv
 - die Tenant-Admin-Struktur ist initialisiert
 
-Während des Setups stehen nur die dafür relevanten Schritte und Aktionen im
-Vordergrund. Die dauerhaften Bestandsmodi werden hier nicht eingeblendet.
+Bis zur Aktivierung stehen die Readiness-Schritte und ihre nächste zulässige Aktion im Vordergrund. Danach bleibt dieselbe Detailseite der Einstieg für Betrieb, Doctor und Einstellungen.
 
 ## Betrieb
 

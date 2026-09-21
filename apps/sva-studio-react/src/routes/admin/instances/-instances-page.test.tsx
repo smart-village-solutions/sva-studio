@@ -11,8 +11,14 @@ vi.mock('@tanstack/react-router', () => ({
     to,
     params,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; params?: Record<string, string> }) => (
-    <a href={params?.instanceId ? `${to.replace('$instanceId', params.instanceId)}` : to} {...props}>
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to: string;
+    params?: Record<string, string>;
+  }) => (
+    <a
+      href={params?.instanceId ? `${to.replace('$instanceId', params.instanceId)}` : to}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -70,7 +76,7 @@ describe('InstancesPage', () => {
     useInstancesMock.mockReset();
   });
 
-  it('renders the overview table and row actions', () => {
+  it('renders the overview table without an activation shortcut', () => {
     const setSearch = vi.fn();
     const setStatus = vi.fn();
     const activateInstance = vi.fn();
@@ -97,8 +103,12 @@ describe('InstancesPage', () => {
     expect(hostnameLink.getAttribute('href')).toBe('https://demo.studio.example.org');
     expect(hostnameLink.getAttribute('target')).toBe('_blank');
     expect(hostnameLink.getAttribute('rel')).toBe('noopener noreferrer');
-    expect(screen.getByRole('link', { name: 'Instanz anlegen' }).getAttribute('href')).toBe('/admin/instances/new');
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/instances/demo');
+    expect(screen.getByRole('link', { name: 'Instanz anlegen' }).getAttribute('href')).toBe(
+      '/admin/instances/new'
+    );
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe(
+      '/admin/instances/demo'
+    );
 
     fireEvent.change(screen.getByPlaceholderText('Nach Instanz-ID oder Anzeigename suchen'), {
       target: { value: 'alpha' },
@@ -106,14 +116,14 @@ describe('InstancesPage', () => {
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'active' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Aktivieren' })[0]!);
+    expect(screen.queryByRole('button', { name: 'Aktivieren' })).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Suspendieren' })[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Archivieren' })[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Gesamt-Audit starten' })[0]!);
 
     expect(setSearch).toHaveBeenCalledWith('alpha');
     expect(setStatus).toHaveBeenCalledWith('active');
-    expect(activateInstance).toHaveBeenCalledWith('demo');
+    expect(activateInstance).not.toHaveBeenCalled();
     expect(suspendInstance).toHaveBeenCalledWith('demo');
     expect(archiveInstance).toHaveBeenCalledWith('demo');
     expect(refreshInstancesAudit).toHaveBeenCalledWith();
@@ -130,7 +140,9 @@ describe('InstancesPage', () => {
     render(<InstancesPage />);
 
     expect(screen.getByText('Es sind aktuell keine Instanzen vorhanden.')).toBeTruthy();
-    expect(screen.getByRole('alert').textContent).toContain('Keine Berechtigung für die Instanzverwaltung.');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Keine Berechtigung für die Instanzverwaltung.'
+    );
   });
 
   it('renders audit trigger errors from mutationError', () => {
@@ -142,7 +154,9 @@ describe('InstancesPage', () => {
 
     render(<InstancesPage />);
 
-    expect(screen.getByRole('alert').textContent).toContain('Keine Berechtigung für die Instanzverwaltung.');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Keine Berechtigung für die Instanzverwaltung.'
+    );
   });
 
   it('renders the overall audit result when available', () => {

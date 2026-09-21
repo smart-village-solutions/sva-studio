@@ -164,7 +164,8 @@ vi.mock('../iam-account-management/api-helpers.js', () => ({
   toPayloadHash: mocks.toPayloadHash,
 }));
 
-vi.mock('../iam-account-management/shared.js', () => ({
+vi.mock('../iam-account-management/shared.js', async (importOriginal) => ({
+  ...(await importOriginal()),
   completeIdempotency: mocks.completeIdempotency,
   reserveIdempotency: mocks.reserveIdempotency,
 }));

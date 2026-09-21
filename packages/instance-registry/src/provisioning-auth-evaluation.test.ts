@@ -49,7 +49,12 @@ describe('provisioning-auth-evaluation', () => {
         clientId: 'sva-studio-admin',
         secretConfigured: false,
       },
-      tenantAdminBootstrap: { username: 'demo-admin' },
+      tenantAdminBootstrap: {
+        username: 'demo-admin',
+        email: 'demo-admin@example.invalid',
+        firstName: 'Demo',
+        lastName: 'Admin',
+      },
     });
 
     const existingRealmChecks = buildPreflightChecks({
@@ -62,18 +67,30 @@ describe('provisioning-auth-evaluation', () => {
     });
 
     expect(newRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe('ready');
-    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe('warning');
-    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('ready');
-    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_admin_client')?.status).toBe('ready');
+    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe(
+      'warning'
+    );
+    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe(
+      'ready'
+    );
+    expect(newRealmChecks.find((check) => check.checkKey === 'tenant_admin_client')?.status).toBe(
+      'ready'
+    );
     expect(toOverallPreflightStatus(newRealmChecks)).toBe('warning');
 
-    expect(existingRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe('ready');
-    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe('blocked');
-    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
+    expect(existingRealmChecks.find((check) => check.checkKey === 'realm_mode')?.status).toBe(
+      'ready'
+    );
+    expect(existingRealmChecks.find((check) => check.checkKey === 'tenant_secret')?.status).toBe(
+      'blocked'
+    );
+    expect(
+      existingRealmChecks.find((check) => check.checkKey === 'tenant_admin_profile')?.status
+    ).toBe('blocked');
     expect(toOverallPreflightStatus(existingRealmChecks)).toBe('blocked');
   });
 
-  it('keeps technical repairs available for an existing realm without admin bootstrap data', () => {
+  it('blocks an existing realm without the required admin bootstrap data', () => {
     const checks = buildPreflightChecks({
       realmMode: 'existing',
       authClientSecretConfigured: true,
@@ -88,8 +105,10 @@ describe('provisioning-auth-evaluation', () => {
       } as never,
     });
 
-    expect(checks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe('warning');
-    expect(toOverallPreflightStatus(checks)).toBe('warning');
+    expect(checks.find((check) => check.checkKey === 'tenant_admin_profile')?.status).toBe(
+      'blocked'
+    );
+    expect(toOverallPreflightStatus(checks)).toBe('blocked');
   });
 
   it('skips bootstrap-admin creation in plans for imported realms without a profile', () => {
@@ -137,7 +156,7 @@ describe('provisioning-auth-evaluation', () => {
     });
   });
 
-  it('plans role creation when the same-named role belongs to another instance', () => {
+  it('blocks adoption when the same-named role belongs to another instance', () => {
     const plan = buildPlan({
       instanceId: 'demo',
       realmMode: 'existing',
@@ -156,8 +175,8 @@ describe('provisioning-auth-evaluation', () => {
     });
 
     expect(plan.steps.find((step) => step.stepKey === 'roles')).toMatchObject({
-      action: 'create',
-      details: { systemAdminRoleExists: false },
+      action: 'skip',
+      details: { systemAdminRoleExists: false, ownershipConflict: true },
     });
   });
 
@@ -181,6 +200,9 @@ describe('provisioning-auth-evaluation', () => {
           webOrigins: [...expectedClient.webOrigins],
           attributes: {
             'post.logout.redirect.uris': expectedClient.postLogoutRedirectUris.join('##'),
+            managed_by: 'studio',
+            instance_id: 'demo',
+            artifact_key: 'login_client',
           },
         } as never,
         pluginOidcClients: [],
@@ -188,6 +210,14 @@ describe('provisioning-auth-evaluation', () => {
         tenantAdminStatus: {
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
+        },
+        tenantAdminRepresentation: {
+          id: 'user-1',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            artifact_key: ['tenant_admin'],
+          },
         },
         keycloakClientSecret: 'tenant-secret',
         systemAdminRole: {
@@ -211,6 +241,100 @@ describe('provisioning-auth-evaluation', () => {
     expect(status.systemAdminRoleExists).toBe(true);
     expect(status.clientSecretAligned).toBe(true);
     expect(status.runtimeSecretSource).toBe('tenant');
+  });
+
+  it('fails the live status closed when activation artifacts lose Studio ownership', () => {
+    const expectedClient = buildExpectedClientConfig('demo.example.org');
+    const status = buildKeycloakStatus({
+      authClientSecretConfigured: true,
+      authClientSecret: 'tenant-secret',
+      instanceId: 'demo',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      realmMode: 'existing',
+      tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: true },
+      tenantAdminClientSecret: 'tenant-admin-secret',
+      state: {
+        expectedClient,
+        realm: { realm: 'demo' },
+        clientRepresentation: {
+          clientId: 'sva-studio',
+          attributes: {
+            managed_by: 'studio',
+            instance_id: 'other',
+            artifact_key: 'login_client',
+          },
+        },
+        tenantAdminClientRepresentation: {
+          clientId: 'sva-studio-admin',
+          attributes: {
+            managed_by: 'studio',
+            instance_id: 'other',
+            artifact_key: 'tenant_admin_client',
+          },
+        },
+        pluginOidcClients: [
+          {
+            requirement: {
+              contractVersion: '1.0',
+              pluginId: 'ssf',
+              clientId: 'ssf',
+              audience: 'ssf',
+              enabled: false,
+            },
+            clientRepresentation: {
+              clientId: 'ssf',
+              enabled: false,
+              protocol: 'openid-connect',
+              publicClient: false,
+              standardFlowEnabled: false,
+              implicitFlowEnabled: false,
+              directAccessGrantsEnabled: false,
+              serviceAccountsEnabled: false,
+              attributes: {
+                managed_by: 'studio',
+                instance_id: 'other',
+                artifact_key: 'plugin_client:ssf',
+              },
+            },
+            protocolMappers: [
+              {
+                name: 'studio-ssf-audience',
+                protocol: 'openid-connect',
+                protocolMapper: 'oidc-audience-mapper',
+                config: {
+                  'included.client.audience': 'ssf',
+                  'included.custom.audience': '',
+                  'id.token.claim': 'false',
+                  'access.token.claim': 'true',
+                  'lightweight.claim': 'false',
+                  'introspection.token.claim': 'true',
+                },
+              },
+            ],
+          },
+        ],
+        protocolMappers: [],
+        tenantAdminStatus: { tenantAdminExists: true, tenantAdminHasSystemAdmin: true },
+        tenantAdminRepresentation: {
+          id: 'user-1',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['other'],
+            artifact_key: ['tenant_admin'],
+          },
+        },
+        keycloakClientSecret: 'tenant-secret',
+        tenantAdminClientSecret: 'tenant-admin-secret',
+        systemAdminRole: null,
+      } as never,
+    });
+
+    expect(status.clientExists).toBe(false);
+    expect(status.tenantAdminClientExists).toBe(false);
+    expect(status.tenantAdminExists).toBe(false);
+    expect(status.tenantAdminHasSystemAdmin).toBe(false);
+    expect(status.pluginOidcClientsAligned).toBe(false);
   });
 
   it('does not report a same-named role with foreign ownership as the protected role', () => {
@@ -252,17 +376,19 @@ describe('provisioning-auth-evaluation', () => {
       state: {
         expectedClient,
         clientRepresentation: null,
-        pluginOidcClients: [{
-          requirement: {
-            contractVersion: '1.0',
-            pluginId: 'ssf',
-            clientId: 'ssf',
-            audience: 'ssf',
-            enabled: false,
+        pluginOidcClients: [
+          {
+            requirement: {
+              contractVersion: '1.0',
+              pluginId: 'ssf',
+              clientId: 'ssf',
+              audience: 'ssf',
+              enabled: false,
+            },
+            clientRepresentation: { clientId: 'ssf', enabled: true },
+            protocolMappers: [],
           },
-          clientRepresentation: { clientId: 'ssf', enabled: true },
-          protocolMappers: [],
-        }],
+        ],
       } as never,
     });
 

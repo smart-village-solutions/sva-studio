@@ -3,7 +3,6 @@ import type { DetailWorkflowAction, InstanceDetailCockpitModel } from './-instan
 
 import { evaluateInstanceConfiguration } from './-instance-detail-configuration';
 import { buildCockpitState, getDetailActionLabel } from './-instance-detail-cockpit-helpers';
-import { getEffectiveTenantIamStatus } from './-instance-detail-tenant-iam';
 import { getSetupWorkflowSteps } from './-instance-detail-workflow';
 import type { IamInstanceDetail } from './-instance-detail-shared';
 import type { InstanceConfigurationAssessment } from './-instances-shared-types';
@@ -11,37 +10,40 @@ import type { RequiredPluginReadinessAssessment } from './-instance-required-plu
 
 const ORDERED_SECONDARY_ACTIONS: readonly DetailWorkflowAction[] = [
   'probeTenantIamAccess',
-  'reconcileKeycloak',
   'check_preflight',
   'check_keycloak_status',
   'plan_provisioning',
-  'execute_provisioning',
-  'provision_admin_client',
-  'reset_tenant_admin',
-  'rotate_client_secret',
 ];
+
+const SERVER_ACTIONS: Readonly<
+  Record<
+    NonNullable<IamInstanceDetail['provisioningReadiness']>['nextAction'] extends infer T
+      ? T extends { action: infer A extends string }
+        ? A
+        : never
+      : never,
+    DetailWorkflowAction
+  >
+> = {
+  'instance.readiness.refresh': 'refresh_readiness',
+  'instance.keycloak.execute': 'execute_provisioning',
+  'instance.secret.rotate': 'rotate_client_secret',
+  'instance.provisioning.retry': 'retry_tenant_provisioning',
+  'instance.diagnose': 'open_diagnostics',
+  'instance.tenant-iam.probe': 'probeTenantIamAccess',
+  'instance.tenant-iam.reconcile': 'reconcileTenantIamRoles',
+  'instance.status.activate': 'activate_instance',
+};
 
 const selectPrimaryAction = (
   instance: IamInstanceDetail,
   workflowActions: readonly DetailWorkflowAction[]
 ): DetailWorkflowAction => {
-  const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
-  const tenantIamStatus = getEffectiveTenantIamStatus(instance);
-  if (latestRun?.overallStatus === 'succeeded' && instance.status !== 'active') {
-    return 'activate_instance';
-  }
-
-  if (tenantIamStatus?.access.status !== 'ready') {
-    return 'probeTenantIamAccess';
-  }
-
-  if (tenantIamStatus && ['blocked', 'degraded'].includes(tenantIamStatus.reconcile.status)) {
-    return 'reconcileKeycloak';
-  }
+  const serverAction = instance.provisioningReadiness?.nextAction?.action;
+  if (serverAction) return SERVER_ACTIONS[serverAction];
 
   return (
-    workflowActions.find((action) => action !== 'check_preflight') ??
-    workflowActions[0] ??
+    workflowActions.find((action) => ORDERED_SECONDARY_ACTIONS.includes(action)) ??
     'check_preflight'
   );
 };

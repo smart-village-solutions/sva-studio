@@ -212,40 +212,92 @@ const isValidAuthRealmValue = (value: string) => AUTH_REALM_REGEX.test(trimValue
 export const getCreateStepValidationMessages = (
   step: CreateWizardStepKey,
   formValues: CreateFormValues
-): string[] => {
+): string[] => getCreateStepValidationIssues(step, formValues).map((issue) => issue.message);
+
+export type CreateValidationIssue = {
+  readonly fieldId: string;
+  readonly message: string;
+};
+
+export const getCreateStepValidationIssues = (
+  step: CreateWizardStepKey,
+  formValues: CreateFormValues
+): CreateValidationIssue[] => {
   if (step === 'basics') {
     return [
-      !trimValue(formValues.instanceId) ? t('admin.instances.wizard.validation.instanceId') : null,
+      !trimValue(formValues.instanceId)
+        ? { fieldId: 'instance-id', message: t('admin.instances.wizard.validation.instanceId') }
+        : null,
       !trimValue(formValues.displayName)
-        ? t('admin.instances.wizard.validation.displayName')
+        ? {
+            fieldId: 'instance-display-name',
+            message: t('admin.instances.wizard.validation.displayName'),
+          }
         : null,
       !trimValue(formValues.parentDomain)
-        ? t('admin.instances.wizard.validation.parentDomain')
+        ? {
+            fieldId: 'instance-parent-domain',
+            message: t('admin.instances.wizard.validation.parentDomain'),
+          }
         : null,
-    ].filter((value): value is string => Boolean(value));
+    ].filter((value): value is CreateValidationIssue => Boolean(value));
   }
 
   if (step === 'auth') {
     return [
-      !trimValue(formValues.authRealm) ? t('admin.instances.wizard.validation.authRealm') : null,
+      !trimValue(formValues.authRealm)
+        ? {
+            fieldId: 'instance-auth-realm',
+            message: t('admin.instances.wizard.validation.authRealm'),
+          }
+        : null,
       trimValue(formValues.authRealm) && !isValidAuthRealmValue(formValues.authRealm)
-        ? t('admin.instances.wizard.validation.authRealmFormat')
+        ? {
+            fieldId: 'instance-auth-realm',
+            message: t('admin.instances.wizard.validation.authRealmFormat'),
+          }
         : null,
-      !trimValue(formValues.authClientId)
-        ? t('admin.instances.wizard.validation.authClientId')
+    ].filter((value): value is CreateValidationIssue => Boolean(value));
+  }
+
+  if (step === 'tenantAdmin') {
+    return [
+      !trimValue(formValues.tenantAdminBootstrap.username)
+        ? {
+            fieldId: 'instance-admin-username',
+            message: t('admin.instances.wizard.validation.tenantAdminUsername'),
+          }
         : null,
-      isTenantSecretUserInputRequired(formValues.realmMode) &&
-      !trimValue(formValues.authClientSecret)
-        ? t('admin.instances.wizard.validation.authClientSecret')
+      !trimValue(formValues.tenantAdminBootstrap.email)
+        ? {
+            fieldId: 'instance-admin-email',
+            message: t('admin.instances.wizard.validation.tenantAdminEmail'),
+          }
+        : !/^\S+@\S+\.\S+$/u.test(trimValue(formValues.tenantAdminBootstrap.email))
+          ? {
+              fieldId: 'instance-admin-email',
+              message: t('admin.instances.wizard.validation.tenantAdminEmailFormat'),
+            }
+          : null,
+      !trimValue(formValues.tenantAdminBootstrap.firstName)
+        ? {
+            fieldId: 'instance-admin-first-name',
+            message: t('admin.instances.wizard.validation.tenantAdminFirstName'),
+          }
         : null,
-      !trimValue(formValues.tenantAdminClient.clientId)
-        ? t('admin.instances.wizard.validation.tenantAdminClientId')
+      !trimValue(formValues.tenantAdminBootstrap.lastName)
+        ? {
+            fieldId: 'instance-admin-last-name',
+            message: t('admin.instances.wizard.validation.tenantAdminLastName'),
+          }
         : null,
-      isTenantSecretUserInputRequired(formValues.realmMode) &&
-      !trimValue(formValues.tenantAdminClient.secret)
-        ? t('admin.instances.wizard.validation.tenantAdminClientSecret')
-        : null,
-    ].filter((value): value is string => Boolean(value));
+    ].filter((value): value is CreateValidationIssue => Boolean(value));
+  }
+
+  if (step === 'review') {
+    return (['basics', 'auth', 'tenantAdmin'] as const).flatMap((candidate) =>
+      getCreateStepValidationIssues(candidate, formValues)
+    );
   }
 
   return [];

@@ -497,13 +497,25 @@ Referenzen:
 
 ### Qualitätsziele für die Kasseler Mandantenanlage
 
-- Ein angenommener Create-Lauf erreicht innerhalb seiner Deadline `active` oder
-  `failed`; ein offener Status gilt nicht als Erfolg.
+- Ein angenommener Create-Lauf erreicht innerhalb seiner Deadline
+  `awaiting_activation` oder `failed`; ein offener Status gilt nicht als
+  technischer Erfolg.
 - Prozessabbruch und Redelivery dürfen weder Doppelaktivierung noch verlorenen
   Lifecycle-Wake-up erzeugen.
 - Leere, fehlende, veraltete oder nicht zur Aktivierung passende
   Plugin-Composition muss fail-closed bleiben.
-- `active` setzt korrelierten Keycloak-Erfolg, Routerübernahme, öffentliches TLS,
-  snapshotkompatible Modul-Readiness und Login-Nachweis voraus.
+- Die manuelle Aktivierung setzt korrelierten Keycloak-Erfolg, Routerübernahme,
+  öffentliches TLS, snapshotkompatible Modul-Readiness, Login-Nachweis und eine
+  aktuelle actor-/revisions-/evidenzgebundene Bestätigung voraus.
 - Fehler und Retry erhalten bestehende Registry-, Keycloak-, Secret-, Lifecycle-
   und Routerartefakte für Diagnose und Reconciliation.
+
+### Qualitätsziele für Tenant-Erstellung und Bestands-Realm
+
+- Ein Create-Blocker hinterlässt weder Tenant noch Auftrag oder Erfolgsaudit;
+  ein erfolgreicher Create hinterlässt immer einen dauerhaften Folgepunkt.
+- Realm-Katalog, UI, MCP und Create-Service verwenden dieselbe Auswahl- und
+  Ownership-Semantik.
+- Jeder sichtbare Blocker nennt Auswirkung, Behebung, Folgeprüfung und
+  Korrelation, ohne Providertext, PII oder Secrets offenzulegen.
+- UI und MCP bieten nur die serverseitig erlaubte nächste Mutation an.

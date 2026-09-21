@@ -171,6 +171,11 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     reconcile: { status: 'degraded', summary: 'Backlog vorhanden', source: 'role_reconcile' },
     overall: { status: 'degraded', summary: 'Eingeschränkt', source: 'role_reconcile' },
   },
+  provisioningReadiness: {
+    state: 'unknown',
+    capabilities: [],
+    nextAction: { action: 'instance.tenant-iam.probe', retryClass: 'safe' },
+  },
   ...overrides,
 });
 
@@ -214,6 +219,7 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
   probeTenantIamAccess: vi.fn().mockResolvedValue(true),
   reconcileKeycloak: vi.fn().mockResolvedValue(true),
+  reconcileTenantIamRoles: vi.fn().mockResolvedValue(true),
   activateInstance: vi.fn().mockResolvedValue(true),
   suspendInstance: vi.fn().mockResolvedValue(true),
   archiveInstance: vi.fn().mockResolvedValue(true),
@@ -270,7 +276,6 @@ describe('InstanceDetailPage', () => {
 
     expect(screen.getByText('Überblick')).toBeTruthy();
     expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
-    expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
     expect(screen.getByText('Validieren')).toBeTruthy();
     expect(
       screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' }).length
@@ -378,6 +383,79 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('reconciles tenant IAM roles with the fingerprint confirmed by the successful run', async () => {
+    const reconcileTenantIamRoles = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        reconcileTenantIamRoles,
+        selectedInstance: createSelectedInstance({
+          keycloakPlan: {
+            mode: 'existing',
+            overallStatus: 'ready',
+            fingerprint: 'b'.repeat(64),
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            driftSummary: 'Kein Drift.',
+            steps: [],
+          },
+          latestKeycloakProvisioningRun: {
+            id: 'run-1',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'succeeded',
+            driftSummary: 'Kein Drift.',
+            steps: [
+              {
+                stepKey: 'queued',
+                title: 'Eingeplant',
+                status: 'done',
+                summary: 'Bestätigt',
+                details: { confirmedPlanFingerprint: 'a'.repeat(64) },
+              },
+            ],
+          },
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.tenant-iam.reconcile', retryClass: 'safe' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-IAM-Rollen abgleichen' }));
+
+    await waitFor(() =>
+      expect(reconcileTenantIamRoles).toHaveBeenCalledWith('demo', {
+        planFingerprint: 'a'.repeat(64),
+      })
+    );
+  });
+
+  it('saves registry configuration while the optional Keycloak plan is unavailable', async () => {
+    const updateInstance = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        updateInstance,
+        selectedInstance: createSelectedInstance({ keycloakPlan: undefined }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    await activateTab('Einstellungen');
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
+      target: { value: 'Demo ohne Plan' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
+
+    await waitFor(() =>
+      expect(updateInstance).toHaveBeenCalledWith(
+        'demo',
+        expect.objectContaining({ displayName: 'Demo ohne Plan' })
+      )
+    );
+  });
+
   it('offers a retry action for a failed automated Kassel create run', async () => {
     const retryTenantProvisioning = vi.fn().mockResolvedValue(true);
     useInstancesMock.mockReturnValue(
@@ -385,6 +463,15 @@ describe('InstanceDetailPage', () => {
         retryTenantProvisioning,
         selectedInstance: createSelectedInstance({
           status: 'failed',
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: {
+              action: 'instance.provisioning.retry',
+              retryClass: 'safe',
+              runId: 'create-run-1',
+            },
+          },
           provisioningRuns: [
             {
               id: 'create-run-1',
@@ -392,7 +479,7 @@ describe('InstanceDetailPage', () => {
               operation: 'create',
               status: 'failed',
               idempotencyKey: 'original-create-key',
-              snapshotVersion: '2.0',
+              snapshotVersion: '3.0',
               desiredSnapshot: { automationMode: 'kassel-traefik-file' },
               attemptCount: 3,
               nextAttemptAt: '2026-01-01T00:10:00.000Z',
@@ -419,31 +506,15 @@ describe('InstanceDetailPage', () => {
     });
   });
 
-  it('shows a visible tenant-admin reset action inside the doctor repair step and triggers the existing repair intent', async () => {
-    const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
-    const loadInstance = vi.fn().mockResolvedValue(true);
-
-    useInstancesMock.mockReturnValue(
-      createInstancesApiState({
-        executeKeycloakProvisioning,
-        loadInstance,
-      })
-    );
+  it('does not expose tenant-admin reset as a parallel cockpit action', async () => {
+    useInstancesMock.mockReturnValue(createInstancesApiState());
 
     render(<InstanceDetailPage instanceId="demo" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
     expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen' }));
-
-    await waitFor(() => {
-      expect(executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
-        intent: 'reset_tenant_admin',
-        tenantAdminTemporaryPassword: undefined,
-      });
-    });
-    expect(loadInstance).toHaveBeenCalledWith('demo');
+    expect(screen.queryByRole('button', { name: 'Tenant-Admin neu setzen' })).toBeNull();
   });
 
   it('shows a visible warning when a provisioning run stays queued without a worker', async () => {
@@ -606,7 +677,7 @@ describe('InstanceDetailPage', () => {
   });
 
   it('keeps the detail page usable when keycloak is unavailable', async () => {
-    const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
+    const loadInstance = vi.fn().mockResolvedValue(true);
 
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
@@ -616,18 +687,69 @@ describe('InstanceDetailPage', () => {
           keycloakStatus: undefined,
           latestKeycloakProvisioningRun: undefined,
           keycloakProvisioningRuns: [],
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+          },
         }),
-        refreshKeycloakPreflight,
+        loadInstance,
       })
     );
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    await openDoctor();
-    fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
+    await waitFor(() => expect(loadInstance).toHaveBeenCalledWith('demo'));
+    loadInstance.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Bereitschaft aktualisieren' }));
 
     await waitFor(() => {
-      expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+    });
+  });
+
+  it('opens current parent-run diagnostics for the server diagnose action', async () => {
+    const loadInstance = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        loadInstance,
+        selectedInstance: createSelectedInstance({
+          provisioningRuns: [
+            {
+              id: 'parent-failed',
+              operation: 'create',
+              status: 'failed',
+              idempotencyKey: 'idem-1',
+              snapshotVersion: '2.0',
+              desiredSnapshot: {},
+              attemptCount: 1,
+              nextAttemptAt: '2026-01-01T00:00:00.000Z',
+              deadlineAt: '2026-01-01T00:30:00.000Z',
+              terminalEvidence: {},
+              payloadFingerprint: 'fingerprint',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:10:00.000Z',
+            },
+          ],
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.diagnose', retryClass: 'never' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    await waitFor(() => expect(loadInstance).toHaveBeenCalledWith('demo'));
+    loadInstance.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Diagnose öffnen' }));
+
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+      expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
+      expect(screen.getByText('create')).toBeTruthy();
     });
   });
 
@@ -910,6 +1032,11 @@ describe('InstanceDetailPage', () => {
           },
           latestKeycloakProvisioningRun: undefined,
           keycloakProvisioningRuns: [],
+          provisioningReadiness: {
+            state: 'provisioning_waiting',
+            capabilities: [],
+            nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+          },
         }),
       })
     );
@@ -975,6 +1102,11 @@ describe('InstanceDetailPage', () => {
           keycloakPlan: undefined,
           latestKeycloakProvisioningRun: undefined,
           keycloakProvisioningRuns: [],
+          provisioningReadiness: {
+            state: 'provisioning_waiting',
+            capabilities: [],
+            nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+          },
         }),
       })
     );
@@ -987,7 +1119,7 @@ describe('InstanceDetailPage', () => {
     await activateTab('Einstellungen');
 
     await waitFor(() => {
-      expect(screen.getByText('Konfiguration vorbereitet')).toBeTruthy();
+      expect(screen.getAllByText('Konfiguration vorbereitet').length).toBeGreaterThan(0);
     });
     expect(screen.queryByText('Konkrete Blocker')).toBeNull();
 

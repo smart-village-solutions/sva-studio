@@ -386,7 +386,7 @@ describe('useInstances', () => {
       });
       await result.current.retryTenantProvisioning('demo');
       await result.current.probeTenantIamAccess('demo');
-      await result.current.reconcileKeycloak('demo', {});
+      await result.current.reconcileKeycloak('demo', { planFingerprint: 'a'.repeat(64) });
       await result.current.bootstrapAdminStructure('demo', ['news']);
       await result.current.activateInstance('demo');
       await result.current.suspendInstance('demo');
@@ -734,6 +734,7 @@ describe('useInstances', () => {
     await act(async () => {
       const queued = await result.current.executeKeycloakProvisioning('demo', {
         intent: 'provision',
+        planFingerprint: 'a'.repeat(64),
       });
       expect(queued).toEqual(queuedRun);
     });
@@ -747,7 +748,9 @@ describe('useInstances', () => {
     expect(result.current.selectedInstance?.keycloakProvisioningRuns?.[0]).toEqual(finishedRun);
 
     await act(async () => {
-      const reconciled = await result.current.reconcileKeycloak('demo', {});
+      const reconciled = await result.current.reconcileKeycloak('demo', {
+        planFingerprint: 'a'.repeat(64),
+      });
       expect(reconciled).toEqual(
         expect.objectContaining({
           clientExists: true,
@@ -775,11 +778,14 @@ describe('useInstances', () => {
     });
     await act(async () => {
       await expect(
-        result.current.executeKeycloakProvisioning('demo', { intent: 'rotate_client_secret' })
+        result.current.executeKeycloakProvisioning('demo', {
+          intent: 'rotate_client_secret',
+          planFingerprint: 'a'.repeat(64),
+        })
       ).resolves.toEqual(queuedRun);
     });
 
-    expect(rotateInstanceSecretMock).toHaveBeenCalledWith('demo');
+    expect(rotateInstanceSecretMock).toHaveBeenCalledWith('demo', 'a'.repeat(64));
     expect(executeInstanceKeycloakProvisioningMock).not.toHaveBeenCalled();
   });
 
@@ -807,7 +813,10 @@ describe('useInstances', () => {
     });
 
     await act(async () => {
-      await result.current.executeKeycloakProvisioning('other', { intent: 'provision' });
+      await result.current.executeKeycloakProvisioning('other', {
+        intent: 'provision',
+        planFingerprint: 'a'.repeat(64),
+      });
       await result.current.loadKeycloakProvisioningRun('other', 'run-3');
     });
 

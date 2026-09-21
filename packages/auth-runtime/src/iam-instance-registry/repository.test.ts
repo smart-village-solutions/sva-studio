@@ -22,6 +22,7 @@ const runRoleCatalogReconciliationMock = vi.fn(async () => ({
   requiresManualActionCount: 0,
   roles: [],
 }));
+const readRoleCatalogFingerprintMock = vi.fn(async () => 'c'.repeat(64));
 const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
@@ -132,6 +133,8 @@ vi.mock('./provisioning-auth.js', () => ({
 }));
 
 vi.mock('./provisioning-auth-state.js', () => ({
+  listKeycloakRealmsViaProvisioner: vi.fn(),
+  readKeycloakRealmCreateCapabilityViaProvisioner: vi.fn(),
   readKeycloakStateViaProvisioner: vi.fn(),
 }));
 
@@ -141,6 +144,7 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 }));
 
 vi.mock('../iam-account-management/reconcile-core.js', () => ({
+  readRoleCatalogFingerprint: readRoleCatalogFingerprintMock,
   runRoleCatalogReconciliation: runRoleCatalogReconciliationMock,
 }));
 
@@ -264,7 +268,14 @@ describe('iam instance registry repository wiring', () => {
     expect(runtimeConfig?.serviceDeps.getKeycloakStatus).not.toBe(
       runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus
     );
-    expect(runtimeConfig?.serviceDeps).not.toHaveProperty('readKeycloakStateViaProvisioner');
+    expect(runtimeConfig?.serviceDeps).toEqual(
+      expect.objectContaining({
+        readKeycloakStateViaProvisioner: expect.any(Function),
+        listKeycloakRealms: expect.any(Function),
+        readKeycloakRealmCreateCapability: expect.any(Function),
+        readRoleCatalogFingerprint: expect.any(Function),
+      })
+    );
     expect(runtimeConfig?.provisioningWorkerServiceDeps).toEqual(
       expect.objectContaining({ readKeycloakStateViaProvisioner: expect.any(Function) })
     );
@@ -279,11 +290,13 @@ describe('iam instance registry repository wiring', () => {
       instanceId: 'demo',
       actorId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-1',
+      expectedRoleCatalogFingerprint: 'c'.repeat(64),
     });
     expect(runRoleCatalogReconciliationMock).toHaveBeenCalledWith({
       instanceId: 'demo',
       actorAccountId: '11111111-1111-4111-8111-111111111111',
       requestId: 'request-1',
+      expectedRoleCatalogFingerprint: 'c'.repeat(64),
     });
     await runtimeConfig?.provisioningWorkerServiceDeps.reconcileTenantIamRoles({
       instanceId: 'demo',

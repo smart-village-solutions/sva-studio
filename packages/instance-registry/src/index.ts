@@ -139,6 +139,8 @@ export {
   toSortedUnique,
 } from './provisioning-auth-utils.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+export type { InstanceDraftReadiness } from './service-draft-readiness.js';
+export type { RealmCatalog, RealmCatalogEntry } from './service-realm-catalog.js';
 export { createInstanceRegistryService } from './service.js';
 export { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 export { createRunInstanceAuditHandler } from './service-audit.js';

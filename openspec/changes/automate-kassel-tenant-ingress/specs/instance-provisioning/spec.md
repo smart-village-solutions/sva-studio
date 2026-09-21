@@ -40,15 +40,18 @@ einer geöffneten UI persistent ausführbar halten.
 Das System SHALL eine Kasseler Instanzanlage erst als erfolgreich abgeschlossen
 ausweisen, wenn Registry, Keycloak, externer Ingress, öffentliches TLS,
 Studio-Login und die Readiness aller effektiv aktiven Module zum aktuellen
-Sollzustand nachweislich betriebsbereit sind.
+Sollzustand nachweislich betriebsbereit sind. Der technische Elternlauf SHALL
+danach in `awaiting_activation` enden; ausschließlich die gemeinsame,
+bestätigte Benutzeraktion darf die Instanz auf `active` setzen.
 
 #### Scenario: Kasseler Instanz wird vollständig erfolgreich angelegt
 
 - **WHEN** alle internen Provisioning-Stufen, die aktuellen Readiness-Verträge aller effektiv aktiven Module und der öffentliche Studio-Login-Redirect erfolgreich sind
-- **THEN** setzt das System Instanz und Elternlauf gemeinsam terminal auf `active`
+- **THEN** setzt das System den Elternlauf terminal auf `awaiting_activation`
+- **AND** bietet die Control Plane die gemeinsame manuelle Aktivierung als nächste Aktion an
 - **AND** hat es zuvor den erwarteten Realm, die exakte Client-ID, PKCE `S256` und die hostgleiche Callback-Konfiguration bestätigt
 - **AND** hat es den tenantlokalen Rollenabgleich sowie die Rechteprobe erfolgreich abgeschlossen und als korrelierbare Evidenz gespeichert
-- **AND** zeigt die Control Plane erst diesen terminalen Zustand als abgeschlossene Anlage an
+- **AND** zeigt die Control Plane die technische Bereitstellung erst nach diesem terminalen Zustand als abgeschlossen, die Instanz aber bis zur bestätigten Aktivierung nicht als aktiv an
 
 #### Scenario: SSF ist für den Tenant effektiv aktiv
 
@@ -70,12 +73,19 @@ Sollzustand nachweislich betriebsbereit sind.
 - **THEN** erzeugt dessen fachliche Readiness keine künstliche Blockade des Create-Laufs
 - **AND** bleiben die für tatsächlich aktive Module geltenden Postconditions unverändert streng
 
-#### Scenario: Der Prozess endet vor der terminalen Aktivierung
+#### Scenario: Der Prozess endet vor der technischen Abnahme
 
 - **WHEN** eine Instanz `provisioning` ist und ihr Elternlauf noch nicht alle maschinenprüfbaren Postconditions bestätigt hat
 - **THEN** erkennt der persistente Recovery-Mechanismus diesen Zustand unabhängig vom ursprünglichen Prozess
 - **AND** führt er die fehlenden Postconditions weiter oder setzt Instanz und Elternlauf innerhalb der Fehlerfrist auf `failed`
-- **AND** wird weder die Instanz noch der nichtterminale Lauf zu diesem Zeitpunkt als aktive oder abgeschlossene Anlage dargestellt
+- **AND** wird weder die Instanz noch der nichtterminale Lauf zu diesem Zeitpunkt als aktiv oder technisch abgeschlossen dargestellt
+
+#### Scenario: Die technische Abnahme ist vollständig
+
+- **WHEN** der Kasseler Elternlauf alle maschinenprüfbaren Postconditions bestätigt hat
+- **THEN** endet er ohne Statusschreibzugriff auf `active` in `awaiting_activation`
+- **AND** prüft die gemeinsame Aktivierungsaktion die aktuelle technische Evidenz erneut
+- **AND** setzt nur diese bestätigte Aktion die Instanz auf `active`
 
 ### Requirement: Kasseler Fehler und Retries konvergieren ohne destruktiven Rollback
 

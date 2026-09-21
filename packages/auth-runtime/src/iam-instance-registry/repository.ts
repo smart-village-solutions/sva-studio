@@ -22,12 +22,17 @@ import {
   getInstanceKeycloakStatusViaProvisioner,
   provisionInstanceAuthArtifactsViaProvisioner,
 } from './provisioning-auth.js';
-import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
+import {
+  listKeycloakRealmsViaProvisioner,
+  readKeycloakRealmCreateCapabilityViaProvisioner,
+  readKeycloakStateViaProvisioner,
+} from './provisioning-auth-state.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 import { probeTenantIamAccess, reconcileTenantIamRoles } from './tenant-provisioning-iam.js';
+import { readRoleCatalogFingerprint } from '../iam-account-management/reconcile-core.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
@@ -48,6 +53,14 @@ const readPersistablePluginTenantLifecycleRegistry = () =>
 
 const readReservedPluginOidcClientIds = (): readonly string[] =>
   readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId);
+
+const readConfiguredProvisioningModuleReadiness: NonNullable<
+  Parameters<typeof createInstanceRegistryRuntime>[0]['serviceDeps']['readProvisioningModuleReadiness']
+> = async (input) => {
+  const { readProvisioningModuleReadiness } =
+    await import('../plugin-tenant-lifecycle/read-model.js');
+  return readProvisioningModuleReadiness(input);
+};
 
 export const runConfiguredPluginTenantProvisioningSchedule = async (
   instanceId: string
@@ -130,10 +143,16 @@ const registryRuntime = createInstanceRegistryRuntime({
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
+    readRoleCatalogFingerprint,
+    readKeycloakStateViaProvisioner,
+    listKeycloakRealms: listKeycloakRealmsViaProvisioner,
+    readKeycloakRealmCreateCapability: readKeycloakRealmCreateCapabilityViaProvisioner,
     protectSecret: protectField,
     revealSecret: revealField,
     loadWasteDataSourceRecord,
     saveWasteDataSourceRecord,
+    readProvisioningModuleReadiness: readConfiguredProvisioningModuleReadiness,
+    planKeycloakProvisioning: getWorkerKeycloakPlan,
     getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },
@@ -153,6 +172,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
+    readRoleCatalogFingerprint,
     protectSecret: protectField,
     revealSecret: revealField,
     syncTenantAdminBootstrapAccount,

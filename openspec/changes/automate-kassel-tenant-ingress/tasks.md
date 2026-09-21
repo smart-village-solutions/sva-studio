@@ -77,19 +77,20 @@
 
 ## 5. Terminale Create-Orchestrierung
 
-- [x] 5.1 Registry-, Keycloak-, Lifecycle-, Ingress-, TLS-, Auth-,
-      Aktivierungs- und öffentliche Studio-Smoke-Stufen im Elternlauf orchestrieren
-- [x] 5.2 Erfolg ausschließlich nach Studio-Login und den Anforderungen aller
-      effektiv aktiven Module terminal speichern
+- [x] 5.1 Registry-, Keycloak-, Lifecycle-, Ingress-, TLS-, Auth- und
+      öffentliche Studio-Smoke-Stufen im Elternlauf orchestrieren; Aktivierung
+      bleibt der gemeinsamen bestätigten Benutzeraktion vorbehalten
+- [x] 5.2 Technischen Erfolg ausschließlich nach Studio-Login und den Anforderungen
+      aller effektiv aktiven Module als `awaiting_activation` terminal speichern
 - [x] 5.3 Recovery für Prozessabbruch insbesondere vor der terminalen
-      Aktivierung nach öffentlichen Postconditions implementieren
+      technischen Abnahme nach öffentlichen Postconditions implementieren
 - [x] 5.4 Terminale Fehler ohne destruktiven Rollback speichern und
       autorisierten Retry ab der ersten nicht nachgewiesenen Stufe ermöglichen
 - [ ] 5.5 Integrations- und Fault-Injection-Tests für jede Stufengrenze,
       `svs`-ähnlichen Login-500 und aktive Instanz mit nichtterminalem Lauf
       ergänzen
 - [x] 5.6 Tenantlokalen Rollenabgleich und Rechteprobe als persistente
-      Postflight-Stufen vor der terminalen Aktivierung ausführen und deren
+      Postflight-Stufen vor `awaiting_activation` ausführen und deren
       Fehler über Retry und Deadline fail-closed behandeln
 
 ## 6. Control-Plane-UI und Beobachtbarkeit

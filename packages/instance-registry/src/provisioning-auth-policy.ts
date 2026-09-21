@@ -1,7 +1,4 @@
-import type {
-  KeycloakProvisioningInput,
-  KeycloakReadState,
-} from './provisioning-auth-types.js';
+import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import {
   KEYCLOAK_REALM_BASELINE,
   KEYCLOAK_REALM_BASELINE_FINGERPRINT,
@@ -11,22 +8,61 @@ import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
 export const KEYCLOAK_SNAPSHOT_POLICY_VERSION = 3;
 
+export const STUDIO_OWNERSHIP_ATTRIBUTES = {
+  managedBy: 'managed_by',
+  instanceId: 'instance_id',
+  artifactKey: 'artifact_key',
+} as const;
+
+export type StudioArtifactOwnership = 'owned' | 'foreign_or_unowned';
+
+export const readStudioOwnedClient = (
+  client: KeycloakReadState['clientRepresentation'] | undefined,
+  instanceId: string,
+  artifactKey: string
+): StudioArtifactOwnership =>
+  client?.attributes?.[STUDIO_OWNERSHIP_ATTRIBUTES.managedBy] === 'studio' &&
+  client.attributes[STUDIO_OWNERSHIP_ATTRIBUTES.instanceId] === instanceId &&
+  client.attributes[STUDIO_OWNERSHIP_ATTRIBUTES.artifactKey] === artifactKey
+    ? 'owned'
+    : 'foreign_or_unowned';
+
+export const readStudioOwnedUser = (
+  user: KeycloakReadState['tenantAdminRepresentation'] | undefined,
+  instanceId: string,
+  artifactKey: string
+): StudioArtifactOwnership => {
+  const readSingle = (key: string): string | undefined => {
+    const values = user?.attributes?.[key];
+    return values?.length === 1 ? values[0] : undefined;
+  };
+  return readSingle(STUDIO_OWNERSHIP_ATTRIBUTES.managedBy) === 'studio' &&
+    readSingle(STUDIO_OWNERSHIP_ATTRIBUTES.instanceId) === instanceId &&
+    readSingle(STUDIO_OWNERSHIP_ATTRIBUTES.artifactKey) === artifactKey
+    ? 'owned'
+    : 'foreign_or_unowned';
+};
+
 export type KeycloakSnapshotSecretVersions = Readonly<{
   authClientSecretCiphertext: string | null;
   tenantAdminClientSecretCiphertext: string | null;
 }>;
 
-export const buildKeycloakSnapshotInputFingerprint = (instance: {
-  readonly instanceId: string;
-  readonly primaryHostname: string;
-  readonly realmMode: KeycloakProvisioningInput['realmMode'];
-  readonly authRealm: string;
-  readonly authClientId: string;
-  readonly authIssuerUrl?: string;
-  readonly authClientSecretConfigured: boolean;
-  readonly tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
-  readonly tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
-}, secrets?: Partial<KeycloakSnapshotSecretVersions>, pluginOidcClients: KeycloakProvisioningInput['pluginOidcClients'] = []): string =>
+export const buildKeycloakSnapshotInputFingerprint = (
+  instance: {
+    readonly instanceId: string;
+    readonly primaryHostname: string;
+    readonly realmMode: KeycloakProvisioningInput['realmMode'];
+    readonly authRealm: string;
+    readonly authClientId: string;
+    readonly authIssuerUrl?: string;
+    readonly authClientSecretConfigured: boolean;
+    readonly tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
+    readonly tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
+  },
+  secrets?: Partial<KeycloakSnapshotSecretVersions>,
+  pluginOidcClients: KeycloakProvisioningInput['pluginOidcClients'] = []
+): string =>
   buildPayloadFingerprint({
     instanceId: instance.instanceId,
     primaryHostname: instance.primaryHostname,
@@ -41,8 +77,9 @@ export const buildKeycloakSnapshotInputFingerprint = (instance: {
     tenantAdminClientSecretCiphertext: secrets?.tenantAdminClientSecretCiphertext ?? null,
     realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
     realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
-    pluginOidcClients: [...pluginOidcClients].sort((left, right) =>
-      left.pluginId.localeCompare(right.pluginId) || left.clientId.localeCompare(right.clientId)
+    pluginOidcClients: [...pluginOidcClients].sort(
+      (left, right) =>
+        left.pluginId.localeCompare(right.pluginId) || left.clientId.localeCompare(right.clientId)
     ),
   });
 
@@ -67,9 +104,7 @@ export const isLegacyRealmRoleMigrationAllowed = (
   instances: readonly { readonly instanceId: string; readonly authRealm: string }[],
   current: { readonly instanceId: string; readonly authRealm: string }
 ): boolean => {
-  const realmAssignments = instances.filter(
-    (instance) => instance.authRealm === current.authRealm
-  );
+  const realmAssignments = instances.filter((instance) => instance.authRealm === current.authRealm);
   return realmAssignments.length === 1 && realmAssignments[0]?.instanceId === current.instanceId;
 };
 

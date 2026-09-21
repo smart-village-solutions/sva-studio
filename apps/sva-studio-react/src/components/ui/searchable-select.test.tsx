@@ -110,6 +110,67 @@ describe('SearchableSelect', () => {
     expect(onValueChange).toHaveBeenCalledWith('org-2');
   });
 
+  it('wraps past disabled boundary options while keeping an enabled option active', () => {
+    const onValueChange = vi.fn();
+
+    render(
+      <SearchableSelect
+        id="realm-select"
+        label="Realm"
+        value="realm-2"
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[
+          { value: 'realm-1', label: 'Realm 1' },
+          { value: 'realm-2', label: 'Realm 2' },
+          { value: 'master', label: 'Master', disabled: true },
+        ]}
+        onValueChange={onValueChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Realm' }));
+    const searchInput = screen.getByPlaceholderText('Suchen');
+    fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
+
+    expect(onValueChange).toHaveBeenCalledWith('realm-1');
+  });
+
+  it('activates the first enabled option when the selected option is disabled', () => {
+    const onValueChange = vi.fn();
+
+    render(
+      <SearchableSelect
+        id="realm-select"
+        label="Realm"
+        value="master"
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[
+          { value: 'master', label: 'Master', disabled: true },
+          { value: 'realm-1', label: 'Realm 1' },
+        ]}
+        onValueChange={onValueChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Realm' }));
+    const searchInput = screen.getByRole('combobox', { name: 'Suchen' });
+    const listbox = screen.getByRole('listbox', { name: 'Realm' });
+    expect(searchInput.getAttribute('aria-autocomplete')).toBe('list');
+    expect(searchInput.getAttribute('aria-controls')).toBe(listbox.id);
+    expect(searchInput.getAttribute('aria-expanded')).toBe('true');
+    expect(searchInput.getAttribute('aria-activedescendant')).toBe(
+      screen.getByRole('option', { name: 'Realm 1' }).id
+    );
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
+
+    expect(onValueChange).toHaveBeenCalledWith('realm-1');
+  });
+
   it('closes on escape and returns focus to the trigger', () => {
     render(
       <SearchableSelect
@@ -177,7 +238,9 @@ describe('SearchableSelect', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'Organisation' }).textContent).toContain('Zweihundertstadt');
+    expect(screen.getByRole('button', { name: 'Organisation' }).textContent).toContain(
+      'Zweihundertstadt'
+    );
   });
 
   it('prevents parent form submission when enter is pressed without matching options', () => {

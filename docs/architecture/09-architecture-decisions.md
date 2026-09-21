@@ -683,3 +683,16 @@ angelegten Realm.
 Zuordnung:
 
 - Abschnitt 05/06/08/09/10/11: ADR-064
+
+### Fortschreibung 2026-09: Bestätigte Tenant-Aktivierung über Browser und MCP
+
+[ADR-047](../adr/ADR-047-keycloak-service-accounts-fuer-lokale-mcp-control-plane.md)
+bindet die MCP-Einmal-Challenge nun zusätzlich an Instanzrevision und aktuelle
+Readiness-Evidenz. Browser-Fresh-Reauth bleibt ein Browservertrag und wird
+nicht auf Maschinenidentitäten übertragen. Beide Kanäle nutzen dasselbe
+serverseitige Aktivierungs-Gate; `create`, `repair` und `adapt` halten vor
+unbestätigten Keycloak-Mutationen am Plan-Fingerprint an.
+
+Zuordnung:
+
+- Abschnitt 03/04/05/06/08/09/10/11: ADR-047

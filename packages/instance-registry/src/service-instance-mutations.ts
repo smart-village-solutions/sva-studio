@@ -1,9 +1,4 @@
-import {
-  buildPrimaryHostname,
-  canTransitionInstanceStatus,
-  isValidInstanceId,
-  normalizeHost,
-} from '@sva/core';
+import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
 
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
@@ -14,13 +9,13 @@ import {
   encryptTenantAdminClientSecret,
   instanceRegistryServiceLogger,
   invalidateHostWithLog,
+  requireModuleIamRegistry,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
-import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
-import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 import {
   assertOidcClientIdsNotReserved,
   assertTenantHostnameAvailable,
+  assertValidInstanceId,
 } from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 import {
@@ -28,19 +23,16 @@ import {
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
 import {
+  assignRequestedCreateModules,
   createRequestedInstance,
-  resolveConcurrentIdempotentCreateRetry,
+  resolveConcurrentIdempotentCreateRetry as resolveConcurrentRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
+import {
+  collectActivationReadinessBlockers,
+  createDraftReadinessHandler,
+} from './service-draft-readiness.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
-
-const assertValidInstanceId = (input: { instanceId: string; realmMode: string }): void => {
-  if (!isValidInstanceId(input.instanceId)) {
-    throw new Error(
-      input.realmMode === 'new' ? 'invalid_new_realm_instance_id' : 'invalid_instance_id'
-    );
-  }
-};
 
 function applyNewRealmDefaults(
   input: CreateInstanceProvisioningInput
@@ -77,16 +69,16 @@ export const createProvisioningRequestHandler =
     });
     const effectiveInput = authIssuerUrl ? { ...normalizedInput, authIssuerUrl } : normalizedInput;
     assertOidcClientIdsNotReserved(deps, effectiveInput);
+    const requestedModuleIds = [...new Set(effectiveInput.moduleIds ?? [])];
+    if (requestedModuleIds.length > 0) {
+      const moduleRegistry = requireModuleIamRegistry(deps);
+      const unknownModuleId = requestedModuleIds.find((moduleId) => !moduleRegistry.has(moduleId));
+      if (unknownModuleId) throw new Error(`unknown_module_contract:${unknownModuleId}`);
+    }
     assertTenantHostnameAvailable(
       deps,
       buildPrimaryHostname(effectiveInput.instanceId, effectiveInput.parentDomain)
     );
-    instanceRegistryServiceLogger.info('instance_create_requested', {
-      operation: 'create_instance',
-      instance_id: effectiveInput.instanceId,
-      request_id: effectiveInput.requestId,
-      actor_id: effectiveInput.actorId,
-    });
     const existing = await runInstanceRegistryStep('registry_lookup', () =>
       deps.repository.getInstanceById(effectiveInput.instanceId)
     );
@@ -100,8 +92,26 @@ export const createProvisioningRequestHandler =
       });
       return { ok: false, reason: 'already_exists' as const };
     }
-
-    const instance = await runInstanceRegistryStep('registry_insert', () =>
+    const readiness = await createDraftReadinessHandler(deps)(effectiveInput);
+    if (readiness.createBlockers.length > 0) {
+      const concurrentInstance = await runInstanceRegistryStep('registry_lookup', () =>
+        deps.repository.getInstanceById(effectiveInput.instanceId)
+      );
+      if (concurrentInstance) {
+        const retry = await resolveConcurrentRetry(deps, effectiveInput, concurrentInstance);
+        if (retry) return retry;
+      }
+      throw new Error(
+        `keycloak_create_readiness_blocked:${readiness.createBlockers.map((blocker) => blocker.checkKey).join(',')}`
+      );
+    }
+    instanceRegistryServiceLogger.info('instance_create_requested', {
+      operation: 'create_instance',
+      instance_id: effectiveInput.instanceId,
+      request_id: effectiveInput.requestId,
+      actor_id: effectiveInput.actorId,
+    });
+    let instance = await runInstanceRegistryStep('registry_insert', () =>
       createRequestedInstance(deps, effectiveInput)
     );
     if (!instance) {
@@ -109,11 +119,7 @@ export const createProvisioningRequestHandler =
         deps.repository.getInstanceById(effectiveInput.instanceId)
       );
       if (concurrentInstance) {
-        const retry = await resolveConcurrentIdempotentCreateRetry(
-          deps,
-          effectiveInput,
-          concurrentInstance
-        );
+        const retry = await resolveConcurrentRetry(deps, effectiveInput, concurrentInstance);
         if (retry) return retry;
       }
       instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
@@ -124,18 +130,12 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    await syncProtectedSystemAdminPermissions(deps, instance.instanceId);
-    await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
-      instanceId: instance.instanceId,
-      actorId: effectiveInput.actorId,
-      requestId: effectiveInput.requestId,
-    });
-    const reconciledInstance =
-      (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
-    const automated = shouldExposeAutomatedProvisioning(deps, reconciledInstance);
+    instance = await assignRequestedCreateModules(deps, effectiveInput, instance);
+
+    const automated = shouldExposeAutomatedProvisioning(deps, instance);
     const provisioningRun = await createProvisioningArtifacts(
       deps,
-      reconciledInstance,
+      instance,
       effectiveInput,
       automated ? 'kassel-traefik-file' : 'external'
     );
@@ -152,7 +152,7 @@ export const createProvisioningRequestHandler =
     });
     return {
       ok: true,
-      instance: toListItem(reconciledInstance, automated ? provisioningRun : undefined),
+      instance: toListItem(instance, automated ? provisioningRun : undefined),
     };
   };
 
@@ -174,6 +174,15 @@ export const createChangeStatusHandler =
         request_id: input.requestId,
       });
       return { ok: false, reason: 'invalid_transition' as const, currentStatus: current.status };
+    }
+
+    if (input.nextStatus === 'active' && current.status !== 'active') {
+      const detail = await createGetInstanceDetail(deps)(input.instanceId);
+      if (!detail) return { ok: false, reason: 'not_found' as const };
+      const blockers = await collectActivationReadinessBlockers(deps, detail);
+      if (blockers.length > 0) {
+        throw new Error(`activation_readiness_blocked:${blockers.join(',')}`);
+      }
     }
 
     const updated = await deps.repository.setInstanceStatus({

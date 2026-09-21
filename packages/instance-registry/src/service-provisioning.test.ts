@@ -9,7 +9,7 @@ import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 type ProvisioningRepositoryMock = Pick<
   InstanceRegistryRepository,
-  'appendAuditEvent' | 'createProvisioningRun' | 'listModuleActivations' | 'setInstanceStatus'
+  'appendAuditEvent' | 'createProvisioningRun' | 'setInstanceStatus'
 >;
 
 const asRepository = (
@@ -88,6 +88,7 @@ describe('service-provisioning', () => {
         status: 'requested',
         idempotencyKey: 'idem-1',
         payloadFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        snapshotVersion: '3.0',
       })
     );
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
@@ -102,15 +103,6 @@ describe('service-provisioning', () => {
     const repository = {
       createProvisioningRun: vi.fn(async () => createRun('requested')),
       appendAuditEvent: vi.fn(async () => undefined),
-      listModuleActivations: vi.fn(async () => [
-        {
-          instanceId: 'de-test',
-          moduleId: 'ssf',
-          activationPolicy: 'default_on' as const,
-          effectiveActive: true,
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ]),
     } satisfies Partial<ProvisioningRepositoryMock>;
     const lifecycle = {
       pluginId: 'ssf',
@@ -132,6 +124,17 @@ describe('service-provisioning', () => {
         repository: asRepository(repository),
         invalidateHost: vi.fn(),
         pluginTenantLifecycleRegistry: new Map([['ssf', lifecycle]]),
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [
+            {
+              moduleId: 'ssf',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: 'ssf-1',
+            },
+          ],
+        }),
         readPluginOidcClientRequirements: () => [oidcClient],
       },
       { ...baseInstance, assignedModules: ['ssf'] },
@@ -142,9 +145,12 @@ describe('service-provisioning', () => {
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         desiredSnapshot: expect.objectContaining({
-          pluginSnapshotVersion: '1.0',
+          pluginSnapshotVersion: '2.0',
           pluginLifecycles: [lifecycle],
           pluginOidcClients: [oidcClient],
+          pluginActivationPolicies: [
+            expect.objectContaining({ moduleId: 'ssf', policyRevision: 'ssf-1' }),
+          ],
         }),
       })
     );

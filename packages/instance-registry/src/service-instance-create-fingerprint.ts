@@ -32,6 +32,7 @@ export const buildCreateInstancePayloadFingerprint = (
     themeKey: input.themeKey,
     mainserverConfigRef: input.mainserverConfigRef,
     featureFlags: input.featureFlags ?? {},
+    moduleIds: [...new Set(input.moduleIds ?? [])].sort((left, right) => left.localeCompare(right)),
   });
 
 const secretsEqual = (left: string, right: string): boolean => {

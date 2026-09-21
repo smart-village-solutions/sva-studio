@@ -1,21 +1,30 @@
 import { strict as assert } from 'node:assert';
 
+import type { KeycloakTenantPlan } from '@sva/core';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-execution.js';
+import {
+  createExecuteKeycloakProvisioningHandler,
+  processNextQueuedKeycloakProvisioningRun,
+} from './service-keycloak-execution.js';
+import { createPlanKeycloakProvisioningHandler } from './service-keycloak-readers.js';
+import { createInstanceRegistryService } from './service.js';
+import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 import {
   assertTenantProvisioningSnapshotCurrent,
   buildTenantProvisioningSnapshot,
 } from './tenant-provisioning-snapshot.js';
+import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
 import {
   buildExpectedClientConfig,
   buildExpectedTenantAdminClientConfig,
 } from './provisioning-auth-utils.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
+import { buildPayloadFingerprint } from './payload-fingerprint.js';
 
 const databaseName = process.env.INSTANCE_PROVISIONING_INTEGRATION_DB;
 const integrationDescribe = databaseName ? describe : describe.skip;
@@ -85,6 +94,9 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
       rootUrl: expectedClient.rootUrl,
       attributes: {
         'post.logout.redirect.uris': expectedClient.postLogoutRedirectUris.join('##'),
+        managed_by: 'studio',
+        instance_id: input.instanceId,
+        artifact_key: 'login_client',
       },
     },
     tenantAdminClientRepresentation: {
@@ -98,6 +110,9 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
       serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
       attributes: {
         'post.logout.redirect.uris': expectedTenantAdminClient.postLogoutRedirectUris.join('##'),
+        managed_by: 'studio',
+        instance_id: input.instanceId,
+        artifact_key: 'tenant_admin_client',
       },
     },
     pluginOidcClients: [],
@@ -121,6 +136,14 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
     },
+    tenantAdminRepresentation: {
+      id: 'integration-tenant-admin',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: [input.instanceId],
+        artifact_key: ['tenant_admin'],
+      },
+    },
     keycloakClientSecret: authClientSecret,
     tenantAdminClientSecret,
     systemAdminRole: {
@@ -137,6 +160,129 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
 };
 
 integrationDescribe('tenant provisioning recovery persistence', () => {
+  it('commits the durable minimum without background callbacks and rolls it back atomically on audit failure', async () => {
+    assert(databaseName);
+    const committedInstanceId = 'integration-create-durable-minimum';
+    const rolledBackInstanceId = 'integration-create-rollback';
+    const pool = new Pool({
+      host: process.env.POSTGRES_HOST ?? '127.0.0.1',
+      port: Number.parseInt(process.env.POSTGRES_HOST_PORT ?? '5432', 10),
+      database: databaseName,
+      user: process.env.POSTGRES_USER ?? 'sva',
+      password: process.env.POSTGRES_PASSWORD,
+      max: 4,
+    });
+    const runtimePool = {
+      connect: async () => {
+        const client = await pool.connect();
+        return {
+          query: async <TRow = Record<string, unknown>>(
+            text: string,
+            values?: readonly unknown[]
+          ) => {
+            const result = await client.query<TRow>(text, [...(values ?? [])]);
+            return { rowCount: result.rowCount ?? result.rows.length, rows: result.rows };
+          },
+          release: () => client.release(),
+        };
+      },
+    };
+    const createRuntime = (failAuditFor?: string) =>
+      createInstanceRegistryRuntime({
+        resolvePool: () => runtimePool,
+        createRepository: (executor) => {
+          const repository = createInstanceRegistryRepository(executor);
+          return failAuditFor
+            ? {
+                ...repository,
+                appendAuditEvent: async (input) => {
+                  if (input.instanceId === failAuditFor) throw new Error('injected_audit_failure');
+                  return repository.appendAuditEvent(input);
+                },
+              }
+            : repository;
+        },
+        serviceDeps: {
+          invalidateHost: () => undefined,
+          protectSecret: (value: string | undefined) => value ?? null,
+          revealSecret: (value: string | null | undefined) => value ?? undefined,
+          readPluginOidcClientRequirements: () => [],
+          readKeycloakStateViaProvisioner: async (input) => buildAcceptedKeycloakState(input),
+          isAutomatedTenantProvisioningEnabled: () => false,
+        },
+      });
+    const createInput = (targetInstanceId: string) => ({
+      instanceId: targetInstanceId,
+      displayName: `Integration ${targetInstanceId}`,
+      parentDomain: 'studio.example.org',
+      realmMode: 'existing' as const,
+      authRealm: targetInstanceId,
+      authClientId: 'sva-studio-login',
+      authIssuerUrl: `https://auth.example.invalid/realms/${targetInstanceId}`,
+      tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant-admin@example.invalid',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+      },
+      idempotencyKey: `create-${targetInstanceId}`,
+      actorId: 'integration-test',
+      requestId: `request-${targetInstanceId}`,
+    });
+
+    try {
+      const runtime = createRuntime();
+      const committed = await runtime.withRegistryCreateService(committedInstanceId, (service) =>
+        service.createProvisioningRequest(createInput(committedInstanceId))
+      );
+      expect(committed).toMatchObject({ ok: true });
+
+      const repeated = await runtime.withRegistryCreateService(committedInstanceId, (service) =>
+        service.createProvisioningRequest(createInput(committedInstanceId))
+      );
+      expect(repeated).toMatchObject({ ok: true });
+
+      const committedCounts = await pool.query<{
+        instances: string;
+        runs: string;
+        audits: string;
+      }>(
+        `SELECT
+           (SELECT count(*) FROM iam.instances WHERE id = $1)::text AS instances,
+           (SELECT count(*) FROM iam.instance_provisioning_runs WHERE instance_id = $1)::text AS runs,
+           (SELECT count(*) FROM iam.instance_audit_events WHERE instance_id = $1)::text AS audits`,
+        [committedInstanceId]
+      );
+      expect(committedCounts.rows[0]).toEqual({ instances: '1', runs: '1', audits: '1' });
+
+      const failingRuntime = createRuntime(rolledBackInstanceId);
+      await expect(
+        failingRuntime.withRegistryCreateService(rolledBackInstanceId, (service) =>
+          service.createProvisioningRequest(createInput(rolledBackInstanceId))
+        )
+      ).rejects.toThrow('injected_audit_failure');
+
+      const rolledBackCounts = await pool.query<{
+        instances: string;
+        runs: string;
+        audits: string;
+      }>(
+        `SELECT
+           (SELECT count(*) FROM iam.instances WHERE id = $1)::text AS instances,
+           (SELECT count(*) FROM iam.instance_provisioning_runs WHERE instance_id = $1)::text AS runs,
+           (SELECT count(*) FROM iam.instance_audit_events WHERE instance_id = $1)::text AS audits`,
+        [rolledBackInstanceId]
+      );
+      expect(rolledBackCounts.rows[0]).toEqual({ instances: '0', runs: '0', audits: '0' });
+    } finally {
+      await pool.query('DELETE FROM iam.instances WHERE id = ANY($1::text[])', [
+        [committedInstanceId, rolledBackInstanceId],
+      ]);
+      await pool.end();
+    }
+  }, 30_000);
+
   it('allows exactly one concurrent retry reservation and requires its lease to requeue', async () => {
     assert(databaseName);
     const retryReservationInstanceId = 'integration-retry-reservation';
@@ -218,14 +364,159 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         })
       ).resolves.toMatchObject({ status: 'requested' });
     } finally {
-      await pool.query('DELETE FROM iam.instances WHERE id = $1', [
-        retryReservationInstanceId,
-      ]);
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [retryReservationInstanceId]);
       await pool.end();
     }
   });
 
-  it('keeps correlated realm evidence through a local failure and replaces it on retry', async () => {
+  it('activates through the shared service only after current persisted readiness evidence', async () => {
+    assert(databaseName);
+    const activationInstanceId = 'integration-manual-activation';
+    const pool = new Pool({
+      host: process.env.POSTGRES_HOST ?? '127.0.0.1',
+      port: Number.parseInt(process.env.POSTGRES_HOST_PORT ?? '5432', 10),
+      database: databaseName,
+      user: process.env.POSTGRES_USER ?? 'sva',
+      password: process.env.POSTGRES_PASSWORD,
+      max: 4,
+    });
+    const repository = createInstanceRegistryRepository(createExecutor(pool));
+    const readyStatus = {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      pluginOidcClientsAligned: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant' as const,
+      realmBaselineAligned: true,
+      userProfileBaselineAligned: true,
+      instanceIdMapperAligned: true,
+      smtpPasswordConfigured: true,
+    };
+    const baseDeps = {
+      invalidateHost: () => undefined,
+      protectSecret: (value: string | undefined) => value ?? null,
+      revealSecret: (value: string | null | undefined) => value ?? undefined,
+      readPluginOidcClientRequirements: () => [],
+      isAutomatedTenantProvisioningEnabled: () => false,
+      getKeycloakStatus: async () => readyStatus,
+      moduleIamRegistry: new Map([['news', { permissionIds: ['news.read'], systemRoles: [] }]]),
+    } satisfies Omit<InstanceRegistryServiceDeps, 'repository' | 'withInstanceProvisioningLock'>;
+    try {
+      const instance = await repository.createInstance({
+        instanceId: activationInstanceId,
+        displayName: 'Integration Manual Activation',
+        status: 'provisioning',
+        parentDomain: 'studio.example.org',
+        primaryHostname: `${activationInstanceId}.studio.example.org`,
+        realmMode: 'existing',
+        authRealm: activationInstanceId,
+        authClientId: 'sva-studio-login',
+        authIssuerUrl: `https://auth.example.invalid/realms/${activationInstanceId}`,
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: 'tenant-admin@example.invalid',
+          firstName: 'Tenant',
+          lastName: 'Admin',
+        },
+        featureFlags: {},
+      });
+      assert(instance);
+
+      const inputFingerprint = buildKeycloakSnapshotInputFingerprint(instance);
+      const keycloakRun = await repository.createKeycloakProvisioningRun({
+        instanceId: activationInstanceId,
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'integration-manual-activation-keycloak',
+        payloadFingerprint: 'integration-manual-activation-payload',
+        mode: 'existing',
+        intent: 'provision',
+        overallStatus: 'planned',
+        driftSummary: 'Kein Drift.',
+      });
+      await repository.appendKeycloakProvisioningStep({
+        runId: keycloakRun.run.id,
+        stepKey: 'status_snapshot',
+        title: 'Postflight',
+        status: 'done',
+        summary: 'Aktuelle technische Evidenz ist bereit.',
+        details: {
+          policyVersion: 3,
+          inputFingerprint,
+          status: readyStatus,
+          preflight: { overallStatus: 'ready', checkedAt: new Date().toISOString(), checks: [] },
+          plan: {
+            contractVersion: '1.0',
+            fingerprint: 'a'.repeat(64),
+            mode: 'existing',
+            overallStatus: 'ready',
+            generatedAt: new Date().toISOString(),
+            driftSummary: 'Kein Drift.',
+            steps: [],
+          },
+        },
+      });
+      await repository.updateKeycloakProvisioningRun({
+        runId: keycloakRun.run.id,
+        overallStatus: 'succeeded',
+        driftSummary: 'Kein Drift.',
+      });
+      await repository.appendAuditEvent({
+        instanceId: activationInstanceId,
+        eventType: 'tenant_iam_access_probed',
+        requestId: 'integration-manual-activation-access',
+        details: { status: 'ready', summary: 'Zugriff bestätigt.' },
+      });
+      await pool.query(
+        `INSERT INTO iam.instance_modules (instance_id, module_id)
+         VALUES ($1, 'news')`,
+        [activationInstanceId]
+      );
+      await pool.query(
+        `INSERT INTO iam.roles (
+           instance_id, role_key, role_name, display_name, external_role_name,
+           is_system_role, role_level, managed_by, sync_state, last_synced_at
+         ) VALUES ($1, 'system_admin', 'System Admin', 'System Admin', 'system_admin',
+           true, 100, 'studio', 'synced', now())`,
+        [activationInstanceId]
+      );
+
+      const service = createInstanceRegistryService({ ...baseDeps, repository });
+      await expect(
+        service.changeStatus({
+          instanceId: activationInstanceId,
+          nextStatus: 'active',
+          idempotencyKey: 'integration-manual-activation',
+          actorId: 'integration-test',
+          requestId: 'integration-manual-activation-request',
+        })
+      ).resolves.toMatchObject({ ok: true, instance: { status: 'active' } });
+
+      await expect(repository.getInstanceById(activationInstanceId)).resolves.toMatchObject({
+        status: 'active',
+      });
+      await expect(repository.listAuditEvents(activationInstanceId)).resolves.toEqual(
+        expect.arrayContaining([expect.objectContaining({ eventType: 'instance_activated' })])
+      );
+    } finally {
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [activationInstanceId]);
+      await pool.end();
+    }
+  }, 30_000);
+
+  it('keeps correlated realm evidence and fails a retry closed when the current plan is blocked', async () => {
     assert(databaseName);
     const pool = new Pool({
       host: process.env.POSTGRES_HOST ?? '127.0.0.1',
@@ -241,6 +532,7 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
     const syncTenantAdminBootstrapAccount = vi.fn(async () => {
       throw new Error('local_admin_sync_failed');
     });
+    let confirmedWorkerPlan: KeycloakTenantPlan | undefined;
     const baseDeps = {
       invalidateHost: () => undefined,
       readPluginOidcClientRequirements: () => [],
@@ -248,6 +540,7 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       revealSecret: (value: string | null | undefined) => value ?? undefined,
       provisionInstanceAuth,
       deleteProvisionedRealm,
+      readRoleCatalogFingerprint: async () => 'c'.repeat(64),
       readKeycloakClientSecretsViaProvisioner: async () => ({
         keycloakClientSecret: authClientSecret,
         tenantAdminClientSecret,
@@ -259,11 +552,10 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         checkedAt: new Date().toISOString(),
         checks: [],
       }),
-      planKeycloakProvisioning: async () => ({
-        overallStatus: 'ready',
-        driftSummary: 'ready',
-        steps: [],
-      }),
+      planKeycloakProvisioning: async () => {
+        assert(confirmedWorkerPlan);
+        return confirmedWorkerPlan;
+      },
       syncTenantAdminBootstrapAccount,
       listProvisioningRealmAssignments: async () => [{ instanceId, authRealm: instanceId }],
     } satisfies Omit<InstanceRegistryServiceDeps, 'repository' | 'withInstanceProvisioningLock'>;
@@ -274,6 +566,7 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
     };
 
     try {
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [instanceId]);
       const created = await repository.createInstance({
         instanceId,
         displayName: 'Integration New Realm Recovery',
@@ -319,8 +612,32 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
             },
           ],
           oidcClients: [],
+          activationPolicies: [
+            {
+              moduleId: 'integration-plugin',
+              activationPolicy: 'automatic',
+              manifestVersion: 1,
+              policyRevision: '1',
+            },
+          ],
         }
       );
+      desiredSnapshot.registryFingerprint = buildPayloadFingerprint({
+        instanceId: created.instanceId,
+        displayName: created.displayName,
+        parentDomain: created.parentDomain,
+        primaryHostname: created.primaryHostname,
+        realmMode: created.realmMode,
+        authRealm: created.authRealm,
+        authClientId: created.authClientId,
+        authIssuerUrl: created.authIssuerUrl,
+        tenantAdminClientId: created.tenantAdminClient?.clientId,
+        tenantAdminBootstrap: created.tenantAdminBootstrap,
+        themeKey: created.themeKey,
+        assignedModules: created.assignedModules,
+        featureFlags: created.featureFlags,
+        mainserverConfigRef: created.mainserverConfigRef,
+      });
       await repository.createProvisioningRun({
         instanceId,
         operation: 'create',
@@ -334,9 +651,39 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       });
 
       await processNextTenantProvisioningRun(deps, { workerId: 'integration-parent-worker' });
-      const parentAfterQueue = (await repository.listProvisioningRuns(instanceId))[0];
-      assert(parentAfterQueue?.childKeycloakRunId);
-      const originalChildRunId = parentAfterQueue.childKeycloakRunId;
+      const parentAwaitingConfirmation = (await repository.listProvisioningRuns(instanceId))[0];
+      expect(parentAwaitingConfirmation).toMatchObject({
+        status: 'validated',
+        stepKey: 'registry',
+        childKeycloakRunId: undefined,
+        terminalEvidence: {
+          keycloakPlanGate: { status: 'awaiting_plan_confirmation' },
+        },
+      });
+      confirmedWorkerPlan =
+        (await createPlanKeycloakProvisioningHandler(deps)(instanceId)) ?? undefined;
+      assert(confirmedWorkerPlan);
+      const queuedChild = await createExecuteKeycloakProvisioningHandler(deps)({
+        instanceId,
+        intent: 'provision',
+        planFingerprint: confirmedWorkerPlan.fingerprint,
+        idempotencyKey: 'integration-parent-keycloak',
+        actorId: 'integration-test',
+        requestId: 'integration-parent-keycloak-request',
+      });
+      assert(queuedChild);
+      const originalChildRunId = queuedChild.id;
+      expect((await repository.listProvisioningRuns(instanceId))[0]).toMatchObject({
+        status: 'provisioning',
+        stepKey: 'keycloak',
+        childKeycloakRunId: originalChildRunId,
+        terminalEvidence: {
+          keycloakPlanGate: {
+            status: 'confirmed',
+            planFingerprint: confirmedWorkerPlan.fingerprint,
+          },
+        },
+      });
 
       await processNextQueuedKeycloakProvisioningRun(deps);
 
@@ -400,17 +747,19 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       await processNextTenantProvisioningRun(deps, { workerId: 'integration-parent-retry-worker' });
       const parentAfterRetry = (await repository.listProvisioningRuns(instanceId))[0];
       assert(parentAfterRetry?.childKeycloakRunId);
-      expect(parentAfterRetry.childKeycloakRunId).not.toBe(originalChildRunId);
-      expect(parentAfterRetry).toMatchObject({ status: 'provisioning', stepKey: 'keycloak' });
+      expect(parentAfterRetry.childKeycloakRunId).toBe(originalChildRunId);
+      expect(parentAfterRetry).toMatchObject({
+        status: 'failed',
+        stepKey: 'registry',
+        errorCode: 'keycloak_plan_blocked',
+      });
       expect(
         await repository.getKeycloakProvisioningRun(instanceId, originalChildRunId)
       ).toMatchObject({
         overallStatus: 'failed',
       });
-      expect(
-        await repository.getKeycloakProvisioningRun(instanceId, parentAfterRetry.childKeycloakRunId)
-      ).toMatchObject({ overallStatus: 'planned' });
     } finally {
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [instanceId]);
       await pool.end();
     }
   }, 30_000);

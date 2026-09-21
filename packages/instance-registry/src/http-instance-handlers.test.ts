@@ -14,6 +14,14 @@ describe('http-instance-handlers', () => {
       ok: true,
       instance: { instanceId: 'demo', status: 'validated' },
     })),
+    getDraftReadiness: vi.fn(async () => ({
+      checkedAt: '2026-09-20T12:00:00.000Z',
+      contractVersion: '1.0',
+      createBlockers: [],
+      provisioningBlockers: [],
+      activationBlockers: [],
+      preflight: { overallStatus: 'ready', checkedAt: '2026-09-20T12:00:00.000Z', checks: [] },
+    })),
     retryTenantProvisioning: vi.fn(async () => ({
       instanceId: 'demo',
       primaryHostname: 'demo.dialog.kassel.de',
@@ -54,8 +62,10 @@ describe('http-instance-handlers', () => {
       async (work: (registryService: InstanceRegistryService) => Promise<unknown>) => work(service)
     ),
     withRegistryCreateService: vi.fn(
-      async (_instanceId: string, work: (registryService: InstanceRegistryService) => Promise<unknown>) =>
-        work(service)
+      async (
+        _instanceId: string,
+        work: (registryService: InstanceRegistryService) => Promise<unknown>
+      ) => work(service)
     ),
     withScopedRegistryService: vi.fn(
       async (
@@ -149,6 +159,35 @@ describe('http-instance-handlers', () => {
     });
     expect(deps.withRegistryCreateService).toHaveBeenCalledWith('demo', expect.any(Function));
     expect(deps.withRegistryService).not.toHaveBeenCalled();
+  });
+
+  it('reads draft readiness through the shared create payload contract', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'new',
+        tenantAdminBootstrap: {
+          username: 'admin',
+          email: 'admin@example.org',
+          firstName: 'Admin',
+          lastName: 'Demo',
+        },
+      },
+    });
+    const response = await createInstanceRegistryHttpHandlers(deps).getDraftReadiness(
+      new Request('https://studio.example.org/api/v1/iam/instances/draft-readiness', {
+        method: 'POST',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.getDraftReadiness).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', authRealm: 'demo' })
+    );
   });
 
   it('does not fall back to an unscoped registry service when the atomic adapter is absent at runtime', async () => {

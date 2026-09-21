@@ -1,8 +1,10 @@
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import { readPluginOidcClientRequirements } from './provisioning-auth-plugin-clients.js';
 import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
+import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import type { KeycloakTenantPlan } from './keycloak-types.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
 import { appendRunStep } from './service-keycloak-run-steps.js';
 import {
@@ -19,15 +21,18 @@ export const buildKeycloakProvisioningPayloadFingerprint = (input: {
   readonly mutation: KeycloakProvisioningMutation;
   readonly intent?: ExecuteInstanceKeycloakProvisioningInput['intent'];
   readonly rotateClientSecret?: boolean;
+  readonly planFingerprint?: string;
   readonly tenantAdminTemporaryPassword?: string;
 }): string => {
   const payload =
     input.mutation === 'executeKeycloakProvisioning'
       ? {
           intent: input.intent,
+          planFingerprint: input.planFingerprint,
         }
       : {
           rotateClientSecret: input.rotateClientSecret ?? false,
+          planFingerprint: input.planFingerprint,
         };
   return buildPayloadFingerprint(payload);
 };
@@ -62,7 +67,7 @@ export const readQueuedTemporaryPassword = (
 
 export const readQueuedPluginOidcClientRequirements = (
   details: Readonly<Record<string, unknown>> | undefined,
-  provisioningInput: ReturnType<typeof buildProvisioningInput>
+  provisioningInput: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient'>
 ): readonly PluginOidcClientRequirement[] => {
   if (details && details.pluginOidcSnapshotVersion === undefined) {
     return [];
@@ -84,6 +89,28 @@ export const readQueuedPluginOidcClientRequirements = (
   });
 };
 
+export const readLatestQueuedPluginOidcClientRequirements = (
+  runs: readonly {
+    readonly steps: readonly {
+      readonly stepKey: string;
+      readonly details?: Readonly<Record<string, unknown>>;
+    }[];
+  }[],
+  provisioningInput: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient'>,
+  fallback: readonly PluginOidcClientRequirement[] = []
+): readonly PluginOidcClientRequirement[] => {
+  for (const run of runs) {
+    const queued = run.steps.find((step) => step.stepKey === 'queued');
+    if (!queued) continue;
+    try {
+      return readQueuedPluginOidcClientRequirements(queued.details, provisioningInput);
+    } catch {
+      return [];
+    }
+  }
+  return fallback;
+};
+
 export const assertQueuedRealmBaselineCurrent = (
   details: Readonly<Record<string, unknown>> | undefined,
   realmMode: 'new' | 'existing'
@@ -103,6 +130,7 @@ export const createQueuedRun = async (
   input: ExecuteInstanceKeycloakProvisioningInput & {
     readonly mutation: KeycloakProvisioningMutation;
     readonly rotateClientSecret?: boolean;
+    readonly confirmedPlan?: KeycloakTenantPlan;
   }
 ) => {
   const provisioningInput = buildProvisioningInput(loaded);
@@ -127,7 +155,13 @@ export const createQueuedRun = async (
     if (!readPluginOidcClientRequirements) {
       throw new Error('plugin_oidc_client_requirements_dependency_missing');
     }
+    if (!deps.readRoleCatalogFingerprint) {
+      throw new Error('role_catalog_fingerprint_dependency_missing');
+    }
     const pluginOidcClients = readPluginOidcClientRequirements();
+    const confirmedRoleCatalogFingerprint = await deps.readRoleCatalogFingerprint(
+      loaded.instance.instanceId
+    );
     await appendRunStep(deps, {
       runId: run.id,
       stepKey: 'queued',
@@ -141,6 +175,10 @@ export const createQueuedRun = async (
         authRealm: loaded.instance.authRealm,
         authClientId: loaded.instance.authClientId,
         primaryHostname: loaded.instance.primaryHostname,
+        confirmedPlanFingerprint: input.planFingerprint,
+        confirmedPlanContractVersion: input.confirmedPlan?.contractVersion,
+        confirmedPlanSteps: input.confirmedPlan?.steps,
+        confirmedRoleCatalogFingerprint,
         realmBaselineVersion:
           loaded.instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
         realmBaselineFingerprint:

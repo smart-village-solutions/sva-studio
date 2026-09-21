@@ -348,11 +348,41 @@ export type InstanceRegistryRepository = {
     status: InstanceStatus;
     stepKey: string;
     childKeycloakRunId?: string;
+    clearChildKeycloakRunId?: boolean;
     nextAttemptAt?: string;
     errorCode?: string;
     errorMessage?: string;
     terminalEvidence?: Readonly<Record<string, unknown>>;
     completedAt?: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly confirmProvisioningPlan: (input: {
+    runId: string;
+    instanceId: string;
+    expectedPlanFingerprint: string;
+    planFingerprint: string;
+    childKeycloakRunId: string;
+    actorId?: string;
+    requestId?: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly bindProvisioningRemediation: (input: {
+    runId: string;
+    instanceId: string;
+    expectedPlanFingerprint: string;
+    planFingerprint: string;
+    childKeycloakRunId: string;
+    actorId?: string;
+    requestId?: string;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly completeProvisioningRemediation: (input: {
+    instanceId: string;
+    childKeycloakRunId: string;
+    succeeded: boolean;
+  }) => Promise<InstanceProvisioningRun | null>;
+  readonly recordProvisioningWakeupFailure: (input: {
+    instanceId: string;
+    errorCode: string;
+    errorMessage: string;
+    occurredAt: string;
   }) => Promise<InstanceProvisioningRun | null>;
   readonly reserveProvisioningRetryRun: (input: {
     instanceId: string;

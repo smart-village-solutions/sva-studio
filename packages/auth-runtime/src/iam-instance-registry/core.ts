@@ -24,8 +24,8 @@ import {
 import { parseRegistryRequestBody } from './request-parsing.js';
 import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import {
-  scheduleConfiguredPluginTenantProvisioning,
   withRegistryCreateService,
+  withRegistryRepository,
   withRegistryService,
   withScopedRegistryService,
 } from './repository.js';
@@ -59,7 +59,38 @@ const instanceHttpHandlers = createInstanceRegistryHttpHandlers<RegistryRequestC
   reservedOidcClientIds: () =>
     readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId),
   onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {
-    scheduleConfiguredPluginTenantProvisioning(instanceId);
+    void withScopedRegistryService(instanceId, (service) =>
+      service.getInstanceDetail(instanceId)
+    ).catch(async (error) => {
+      try {
+        await withRegistryRepository((repository) =>
+          repository.recordProvisioningWakeupFailure({
+            instanceId,
+            errorCode: 'post_commit_wakeup_failed',
+            errorMessage: 'Post-Commit-Wake-up fehlgeschlagen.',
+            occurredAt: new Date().toISOString(),
+          })
+        );
+      } catch (persistenceError) {
+        logger.error('Instance post-create follow-up failure could not be persisted', {
+          operation: 'instance_post_create_follow_up_evidence',
+          result: 'failed',
+          error_code: 'instance_post_create_follow_up_evidence_failed',
+          error_type:
+            persistenceError instanceof Error ? persistenceError.name : typeof persistenceError,
+          instance_id: instanceId,
+          ...buildLogContext('platform', { includeTraceId: true }),
+        });
+      }
+      logger.error('Instance post-create follow-up failed', {
+        operation: 'instance_post_create_follow_up',
+        result: 'failed',
+        error_code: 'instance_post_create_follow_up_failed',
+        error_type: error instanceof Error ? error.name : typeof error,
+        instance_id: instanceId,
+        ...buildLogContext('platform', { includeTraceId: true }),
+      });
+    });
     logger.info('Instance provisioning requested', {
       operation: 'instance_create',
       instance_id: instanceId,
@@ -90,6 +121,16 @@ export const createInstanceInternal = async (
 ): Promise<Response> => {
   return instanceHttpHandlers.createInstance(request, ctx);
 };
+
+export const getInstanceDraftReadinessInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => instanceHttpHandlers.getDraftReadiness(request, ctx);
+
+export const listInstanceRealmsInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => instanceHttpHandlers.listRealmCatalog(request, ctx);
 
 export const retryTenantProvisioningInternal = async (
   request: Request,

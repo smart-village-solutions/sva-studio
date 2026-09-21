@@ -128,6 +128,14 @@ export type IamRuntimeSafeDetails = Readonly<{
   return_to?: string;
   auth_flow_id?: string;
   recovery_step?: string;
+  field?: string;
+  step?: string;
+  impact?: string;
+  remediation?: string;
+  responsibility?: string;
+  next_check?: string;
+  retry_class?: 'never' | 'safe' | 'conditional';
+  run_id?: string;
   sync_state?: string;
   sync_error_code?: string;
   moduleIds?: readonly string[];
@@ -703,6 +711,8 @@ export type IamInstanceKeycloakPreflight = {
 };
 
 export type IamInstanceKeycloakPlan = {
+  readonly contractVersion: '1.0';
+  readonly fingerprint: string;
   readonly mode: InstanceRealmMode;
   readonly overallStatus: 'ready' | 'blocked';
   readonly generatedAt: string;
@@ -812,6 +822,81 @@ export type IamInstanceModuleIamStatus = {
   readonly modules: readonly IamInstanceModuleIamModuleStatus[];
 };
 
+export type IamInstanceProvisioningCapabilityKey =
+  'worker' | 'queue' | 'callback' | 'provisioner' | 'ingress' | 'plugin';
+
+export type IamInstanceProvisioningCapability = {
+  readonly capability: IamInstanceProvisioningCapabilityKey;
+  readonly status: 'ready' | 'waiting' | 'blocked' | 'unknown' | 'not_required';
+  readonly reasonCode: string;
+  readonly summary: string;
+  readonly impact: 'provisioning' | 'activation';
+  readonly remediation: string;
+  readonly responsibility: 'studio_admin' | 'platform_operator';
+  readonly nextCheck: 'draft_readiness' | 'instance_detail';
+};
+
+export type IamInstanceProvisioningReadiness = {
+  readonly state:
+    'provisioning_waiting' | 'provisioning_blocked' | 'awaiting_activation' | 'ready' | 'unknown';
+  readonly capabilities: readonly IamInstanceProvisioningCapability[];
+  readonly nextAction: Readonly<{
+    action:
+      | 'instance.readiness.refresh'
+      | 'instance.keycloak.execute'
+      | 'instance.secret.rotate'
+      | 'instance.provisioning.retry'
+      | 'instance.diagnose'
+      | 'instance.tenant-iam.probe'
+      | 'instance.tenant-iam.reconcile'
+      | 'instance.status.activate';
+    retryClass: 'never' | 'safe' | 'conditional';
+    runId?: string;
+  }> | null;
+};
+
+export type IamInstanceRealmCatalogEntry = Readonly<{
+  realm: string;
+  status: 'selectable' | 'disabled';
+  reasonCode?: 'system_realm' | 'already_assigned';
+  assignedInstanceId?: string;
+}>;
+
+export type IamInstanceRealmCatalog = Readonly<{
+  data: readonly IamInstanceRealmCatalogEntry[];
+  page: number;
+  pageSize: number;
+  total: number;
+}>;
+
+export type IamInstanceDraftReadiness = Readonly<{
+  checkedAt: string;
+  contractVersion: '1.0';
+  draftFingerprint: string;
+  normalizedDraft: Readonly<{
+    instanceId: string;
+    primaryHostname: string;
+    realmMode: InstanceRealmMode;
+    authRealm: string;
+    authClientId: string;
+    authClientSecretConfigured: boolean;
+  }>;
+  createBlockers: readonly IamInstanceKeycloakPreflight['checks'][number][];
+  provisioningBlockers: readonly IamInstanceKeycloakPreflight['checks'][number][];
+  activationBlockers: readonly IamInstanceKeycloakPreflight['checks'][number][];
+  backgroundCapabilities: readonly IamInstanceProvisioningCapability[];
+  preflight: IamInstanceKeycloakPreflight;
+  realmSuitability?: Readonly<{
+    classification: 'ready' | 'auto_completable' | 'manual_resolution_required';
+    reasonCode: string;
+    impact: 'create' | 'provisioning' | 'activation';
+    remediation: string;
+    responsibility: 'studio_admin' | 'platform_operator';
+    nextCheck: 'draft_readiness';
+    plan: IamInstanceKeycloakPlan;
+  }>;
+}>;
+
 export type IamInstanceDetail = IamInstanceListItem & {
   readonly hostnames: readonly {
     readonly hostname: string;
@@ -827,6 +912,7 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[];
   readonly tenantIamStatus?: IamTenantIamStatus;
   readonly moduleIamStatus?: IamInstanceModuleIamStatus;
+  readonly provisioningReadiness?: IamInstanceProvisioningReadiness;
   readonly moduleActivations: readonly TenantModuleActivationRecord[];
   readonly wasteManagementSettings?: WasteManagementSettingsRecord;
 };

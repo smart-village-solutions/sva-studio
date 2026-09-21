@@ -1,6 +1,10 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
-import type { KeycloakTenantPlan, KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
+import type {
+  KeycloakTenantPlan,
+  KeycloakTenantPreflight,
+  KeycloakTenantStatus,
+} from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import {
   buildKeycloakStatus,
@@ -15,14 +19,19 @@ const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'inf
 export type ReadKeycloakState = (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;
 export type ReadKeycloakAccessError = (error: unknown) => string;
 
-const readDefaultAccessError = (error: unknown): string => error instanceof Error ? error.message : String(error);
+const readDefaultAccessError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 export const createInstanceKeycloakPreflightReader =
-  (readState: ReadKeycloakState, readAccessError: ReadKeycloakAccessError = readDefaultAccessError) =>
+  (
+    readState: ReadKeycloakState,
+    readAccessError: ReadKeycloakAccessError = readDefaultAccessError
+  ) =>
   async (input: KeycloakProvisioningInput): Promise<KeycloakTenantPreflight> => {
     try {
       const state = await readState(input);
       const checks = buildPreflightChecks({
+        instanceId: input.instanceId,
         realmMode: input.realmMode,
         authClientSecretConfigured: input.authClientSecretConfigured,
         authClientSecret: input.authClientSecret,
@@ -38,6 +47,7 @@ export const createInstanceKeycloakPreflightReader =
       };
     } catch (error) {
       const checks = buildPreflightChecks({
+        instanceId: input.instanceId,
         realmMode: input.realmMode,
         authClientSecretConfigured: input.authClientSecretConfigured,
         authClientSecret: input.authClientSecret,
@@ -55,7 +65,10 @@ export const createInstanceKeycloakPreflightReader =
   };
 
 export const createInstanceKeycloakPlanReader =
-  (readState: ReadKeycloakState, getPreflight: (input: KeycloakProvisioningInput) => Promise<KeycloakTenantPreflight>) =>
+  (
+    readState: ReadKeycloakState,
+    getPreflight: (input: KeycloakProvisioningInput) => Promise<KeycloakTenantPreflight>
+  ) =>
   async (input: KeycloakProvisioningInput): Promise<KeycloakTenantPlan> => {
     try {
       const state = await readState(input);

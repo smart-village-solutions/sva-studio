@@ -1,0 +1,4 @@
+{
+  "prNumber": 1447,
+  "body": "Sicherere Instanzerstellung und Aktivierung\n\n- Der Einrichtungsassistent prüft neue und vorhandene Nutzer-Datenbanken vor der Anlage und erklärt Blocker mit passenden nächsten Schritten.\n- Die technische Bereitstellung kann nach Unterbrechungen sicher fortgesetzt werden, ohne fremde Keycloak-Artefakte zu übernehmen.\n- Instanzen werden erst nach vollständiger serverseitiger Bereitschaft und einer ausdrücklichen manuellen Freigabe aktiviert."
+}

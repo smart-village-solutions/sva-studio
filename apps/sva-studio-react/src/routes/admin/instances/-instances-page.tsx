@@ -105,7 +105,9 @@ export const InstancesPage = () => {
                 onClick={() => void instancesApi.refreshInstancesAudit()}
                 disabled={instancesApi.auditLoading}
               >
-                {instancesApi.auditLoading ? t('admin.instances.audit.loadingAll') : t('admin.instances.audit.runAll')}
+                {instancesApi.auditLoading
+                  ? t('admin.instances.audit.loadingAll')
+                  : t('admin.instances.audit.runAll')}
               </Button>
               <Button asChild>
                 <Link to="/admin/instances/new">{t('admin.instances.actions.create')}</Link>
@@ -125,7 +127,10 @@ export const InstancesPage = () => {
           loadingState={t('content.messages.loading')}
           selectionMode="none"
           emptyState={
-            <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+            <Card
+              className="border-none p-0 text-sm text-muted-foreground shadow-none"
+              role="status"
+            >
               {t('admin.instances.messages.emptyState')}
             </Card>
           }
@@ -145,7 +150,9 @@ export const InstancesPage = () => {
                 <Select
                   id="instances-status"
                   value={instancesApi.filters.status}
-                  onChange={(event) => instancesApi.setStatus(event.target.value as typeof instancesApi.filters.status)}
+                  onChange={(event) =>
+                    instancesApi.setStatus(event.target.value as typeof instancesApi.filters.status)
+                  }
                 >
                   <option value="all">{t('admin.instances.filters.statusAll')}</option>
                   {Object.entries(INSTANCE_STATUS_LABELS).map(([value, labelKey]) => (
@@ -160,17 +167,27 @@ export const InstancesPage = () => {
           rowActions={(instance) => (
             <>
               <Button asChild size="sm" variant="secondary">
-                <Link to="/admin/instances/$instanceId" params={{ instanceId: instance.instanceId }}>
+                <Link
+                  to="/admin/instances/$instanceId"
+                  params={{ instanceId: instance.instanceId }}
+                >
                   {t('admin.instances.actions.edit')}
                 </Link>
               </Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void instancesApi.activateInstance(instance.instanceId)}>
-                {t('admin.instances.actions.activate')}
-              </Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void instancesApi.suspendInstance(instance.instanceId)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => void instancesApi.suspendInstance(instance.instanceId)}
+              >
                 {t('admin.instances.actions.suspend')}
               </Button>
-              <Button type="button" size="sm" variant="destructive" onClick={() => void instancesApi.archiveInstance(instance.instanceId)}>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                onClick={() => void instancesApi.archiveInstance(instance.instanceId)}
+              >
                 {t('admin.instances.actions.archive')}
               </Button>
             </>

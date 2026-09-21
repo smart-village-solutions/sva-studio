@@ -23,7 +23,10 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
 
 import { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
+import {
+  buildTenantProvisioningSnapshot,
+  TENANT_PROVISIONING_SNAPSHOT_VERSION,
+} from './tenant-provisioning-snapshot.js';
 import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 
 const now = new Date('2026-09-12T12:00:00.000Z');
@@ -38,6 +41,14 @@ const pluginSnapshot = {
     },
   ],
   oidcClients: [],
+  activationPolicies: [
+    {
+      moduleId: 'ssf',
+      activationPolicy: 'automatic' as const,
+      manifestVersion: 1,
+      policyRevision: 'ssf-1',
+    },
+  ],
 };
 
 const instance: InstanceRegistryRecord = {
@@ -65,7 +76,7 @@ const createRun = (): InstanceProvisioningRun => ({
   status: 'requested',
   idempotencyKey: 'idem-1',
   payloadFingerprint: 'fingerprint-1',
-  snapshotVersion: '2.0',
+  snapshotVersion: TENANT_PROVISIONING_SNAPSHOT_VERSION,
   desiredSnapshot: buildTenantProvisioningSnapshot(
     instance,
     {
@@ -103,7 +114,15 @@ const childRun = (overallStatus: InstanceKeycloakProvisioningRun['overallStatus'
   driftSummary: 'queued',
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
-  steps: [],
+  steps: [
+    {
+      stepKey: 'queued',
+      title: 'Queued',
+      status: 'done' as const,
+      summary: 'Queued',
+      details: { confirmedRoleCatalogFingerprint: 'c'.repeat(64) },
+    },
+  ],
 });
 
 const createHarness = () => {
@@ -111,6 +130,17 @@ const createHarness = () => {
   let currentInstance = instance;
   let keycloakStatus: InstanceKeycloakProvisioningRun['overallStatus'] = 'planned';
   let readiness: 'ready' | 'pending' | 'blocked' = 'pending';
+  let activationPolicies = {
+    revision: 'catalog-1',
+    modules: [
+      {
+        moduleId: 'ssf',
+        activationPolicy: 'automatic' as const,
+        manifestVersion: 1,
+        policyRevision: 'ssf-1',
+      },
+    ],
+  };
 
   const repository = {
     claimNextProvisioningRun: vi.fn(async ({ workerId, leaseExpiresAt }) => {
@@ -136,7 +166,9 @@ const createHarness = () => {
         ...currentRun,
         status: input.status,
         stepKey: input.stepKey,
-        childKeycloakRunId: input.childKeycloakRunId ?? currentRun.childKeycloakRunId,
+        childKeycloakRunId: input.clearChildKeycloakRunId
+          ? undefined
+          : (input.childKeycloakRunId ?? currentRun.childKeycloakRunId),
         nextAttemptAt: input.nextAttemptAt ?? currentRun.nextAttemptAt,
         terminalEvidence: {
           ...currentRun.terminalEvidence,
@@ -165,6 +197,28 @@ const createHarness = () => {
       details: {},
     })),
     getKeycloakProvisioningRun: vi.fn(async () => childRun(keycloakStatus)),
+    listKeycloakProvisioningRuns: vi.fn(async () => []),
+    reconcileModuleActivationPolicies: vi.fn(async () => ({
+      changedModuleIds: ['ssf'],
+      conflictModuleIds: [],
+      unchangedModuleIds: [],
+    })),
+    listAssignedModules: vi.fn(async () => ['ssf']),
+    syncAssignedModuleIam: vi.fn(async () => ({
+      permissionsInserted: 1,
+      permissionsUpdated: 0,
+      permissionsUnchanged: 0,
+      grantsInserted: 1,
+      grantsUnchanged: 0,
+    })),
+    persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => ['ssf']),
+    syncProtectedSystemRolePermissions: vi.fn(async () => ({
+      permissionsInserted: 1,
+      permissionsUpdated: 0,
+      permissionsUnchanged: 0,
+      grantsInserted: 1,
+      grantsUnchanged: 0,
+    })),
     appendAuditEvent: vi.fn(async () => undefined),
     setInstanceStatus: vi.fn(async ({ status }) => {
       currentInstance = { ...currentInstance, status };
@@ -176,7 +230,25 @@ const createHarness = () => {
     repository,
     invalidateHost: vi.fn(),
     revealSecret: vi.fn(() => undefined),
+    invalidatePermissionSnapshots: vi.fn(async () => undefined),
+    moduleIamRegistry: new Map([
+      [
+        'ssf',
+        {
+          moduleId: 'ssf',
+          permissionIds: ['ssf.configuration.tenant.read'],
+          tenantBootstrapRoles: [
+            { roleName: 'system_admin', permissionIds: ['ssf.configuration.tenant.read'] },
+          ],
+        },
+      ],
+    ]),
+    pluginTenantLifecycleRegistry: new Map([
+      ['ssf', { pluginId: 'ssf', contractRevision: 'ssf-1:contract' }],
+    ]),
+    readModuleActivationPolicySnapshot: () => activationPolicies,
     readPluginOidcClientRequirements: vi.fn(() => []),
+    readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
     publishTenantIngress: vi.fn(async () => ({
       routerName: 'studio-tenant-tenant-a',
       configHash: 'sha256:router',
@@ -213,8 +285,42 @@ const createHarness = () => {
     setKeycloakStatus: (status: InstanceKeycloakProvisioningRun['overallStatus']) => {
       keycloakStatus = status;
     },
+    confirmPlan: () => {
+      const gate = currentRun.terminalEvidence.keycloakPlanGate as
+        | { readonly planFingerprint?: string }
+        | undefined;
+      currentRun = {
+        ...currentRun,
+        status: 'provisioning',
+        stepKey: 'keycloak',
+        childKeycloakRunId: childRun(keycloakStatus).id,
+        terminalEvidence: {
+          ...currentRun.terminalEvidence,
+          keycloakPlanGate: {
+            status: 'confirmed',
+            planFingerprint: gate?.planFingerprint,
+            childKeycloakRunId: childRun(keycloakStatus).id,
+          },
+        },
+      };
+    },
     setReadiness: (status: typeof readiness) => {
       readiness = status;
+    },
+    addLiveActivationPolicy: () => {
+      activationPolicies = {
+        ...activationPolicies,
+        revision: 'catalog-2',
+        modules: [
+          ...activationPolicies.modules,
+          {
+            moduleId: 'news',
+            activationPolicy: 'automatic',
+            manifestVersion: 1,
+            policyRevision: 'news-1',
+          },
+        ],
+      };
     },
     changeInstance: (changes: Partial<InstanceRegistryRecord>) => {
       currentInstance = { ...currentInstance, ...changes };
@@ -242,6 +348,7 @@ describe('tenant provisioning parent orchestrator', () => {
       Object.assign(harness.getRun(), {
         status: 'provisioning',
         stepKey: step,
+        childKeycloakRunId: childRun('succeeded').id,
         terminalEvidence: {
           routerName: 'studio-tenant-tenant-a',
           configHash: 'sha256:router',
@@ -324,13 +431,24 @@ describe('tenant provisioning parent orchestrator', () => {
       processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     await iterate();
+    expect(harness.repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        role: expect.objectContaining({ roleKey: 'system_admin' }),
+      })
+    );
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
-      stepKey: 'keycloak',
-      childKeycloakRunId: '00000000-0000-4000-8000-000000000002',
+      status: 'validated',
+      stepKey: 'registry',
+      childKeycloakRunId: undefined,
       errorCode: undefined,
+      terminalEvidence: {
+        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
+      },
     });
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
 
+    harness.confirmPlan();
     await iterate();
     expect(harness.getRun().stepKey).toBe('keycloak');
     expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledWith(
@@ -341,7 +459,18 @@ describe('tenant provisioning parent orchestrator', () => {
     );
     harness.setKeycloakStatus('succeeded');
     await iterate();
+    harness.addLiveActivationPolicy();
     await iterate();
+    expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        reconcileId: 'provisioning:00000000-0000-4000-8000-000000000001',
+        policies: [expect.objectContaining({ moduleId: 'ssf' })],
+      })
+    );
+    expect(harness.repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'tenant-a' })
+    );
     await iterate();
     await iterate();
 
@@ -367,6 +496,9 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun().stepKey).toBe('tenant_iam_access');
+    expect(harness.deps.reconcileTenantIamRoles).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedRoleCatalogFingerprint: 'c'.repeat(64) })
+    );
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun().stepKey).toBe('activate');
@@ -382,7 +514,7 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.getInstance().status).toBe('provisioning');
     await iterate();
     expect(harness.getRun()).toMatchObject({
-      status: 'active',
+      status: 'validated',
       stepKey: 'completed',
       completedAt: now.toISOString(),
       terminalEvidence: {
@@ -400,11 +532,42 @@ describe('tenant provisioning parent orchestrator', () => {
         },
       },
     });
+    expect(harness.getInstance().status).toBe('validated');
+    expect(harness.repository.setInstanceStatus).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active' })
+    );
+  });
+
+  it('recovers a plugin snapshot v1 run without persisted activation policies', async () => {
+    const harness = createHarness();
+    const { pluginActivationPolicies, ...legacyDesiredSnapshot } = harness.getRun().desiredSnapshot;
+    void pluginActivationPolicies;
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'lifecycle',
+      desiredSnapshot: {
+        ...legacyDesiredSnapshot,
+        pluginSnapshotVersion: '1.0',
+      },
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({ status: 'provisioning', stepKey: 'ingress' });
+    expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policies: [expect.objectContaining({ moduleId: 'ssf', policyRevision: 'ssf-1' })],
+      })
+    );
   });
 
   it('keeps the instance fail-closed when tenant IAM role reconciliation is incomplete', async () => {
     const harness = createHarness();
-    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'tenant_iam_roles' });
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'tenant_iam_roles',
+      childKeycloakRunId: childRun('succeeded').id,
+    });
     vi.mocked(harness.deps.reconcileTenantIamRoles).mockResolvedValue({
       outcome: 'partial_failure',
       checkedCount: 1,
@@ -424,9 +587,35 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(harness.deps.probeTenantIamAccess).not.toHaveBeenCalled();
   });
 
+  it('fails closed before role reconciliation without a confirmed catalog fingerprint', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'tenant_iam_roles',
+      childKeycloakRunId: childRun('succeeded').id,
+    });
+    vi.mocked(harness.repository.getKeycloakProvisioningRun).mockResolvedValue({
+      ...childRun('succeeded'),
+      steps: [],
+    });
+
+    await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+
+    expect(harness.getRun()).toMatchObject({
+      status: 'failed',
+      stepKey: 'tenant_iam_roles',
+      errorCode: 'role_catalog_fingerprint_missing_or_invalid',
+    });
+    expect(harness.deps.reconcileTenantIamRoles).not.toHaveBeenCalled();
+  });
+
   it('routes a recovered legacy activate step through the tenant IAM postflight', async () => {
     const harness = createHarness();
-    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'activate' });
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'activate',
+      snapshotVersion: '2.0',
+    });
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
@@ -687,10 +876,10 @@ describe('tenant provisioning parent orchestrator', () => {
     const logged = JSON.stringify(state.logger.warn.mock.calls);
     expect(logged).not.toContain('outer-secret');
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
-      completedAt: undefined,
+      completedAt: now.toISOString(),
     });
   });
 
@@ -769,13 +958,13 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(logged).not.toContain('database-parameter-secret');
     expect(logged).not.toContain('database-stack-secret');
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
     });
   });
 
-  it('excludes untrusted provider details from outer diagnostics without changing the retry', async () => {
+  it('excludes untrusted provider details and fails an unknown error without retry', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
     vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
@@ -801,15 +990,14 @@ describe('tenant provisioning parent orchestrator', () => {
     expect(logged).not.toContain('user@example.org');
     expect(logged).not.toContain('provider_user_example');
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
-      nextAttemptAt: new Date(now.getTime() + 5_000).toISOString(),
-      completedAt: undefined,
+      completedAt: now.toISOString(),
     });
   });
 
-  it('preserves the scheduled retry when outer diagnostic logging throws', async () => {
+  it('preserves fail-closed handling when outer diagnostic logging throws', async () => {
     const harness = createHarness();
     Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
     vi.mocked(harness.repository.updateProvisioningRun).mockRejectedValueOnce(
@@ -822,10 +1010,10 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
+      status: 'failed',
       stepKey: 'ingress',
       errorCode: 'tenant_provisioning_step_failed',
-      nextAttemptAt: new Date(now.getTime() + 5_000).toISOString(),
+      completedAt: now.toISOString(),
     });
   });
 
@@ -866,21 +1054,23 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
-  it('fails closed when the persisted Kassel plugin composition is empty', async () => {
+  it('accepts an explicitly empty plugin snapshot for a tenant without assigned modules', async () => {
     const harness = createHarness();
+    const instanceWithoutModules = { ...harness.getInstance(), assignedModules: [] };
+    harness.changeInstance(instanceWithoutModules);
     Object.assign(harness.getRun(), {
       desiredSnapshot: buildTenantProvisioningSnapshot(
-        instance,
+        instanceWithoutModules,
         {
-          instanceId: instance.instanceId,
-          displayName: instance.displayName,
-          parentDomain: instance.parentDomain,
-          realmMode: instance.realmMode,
-          authRealm: instance.authRealm,
-          authClientId: instance.authClientId,
-          authIssuerUrl: instance.authIssuerUrl,
+          instanceId: instanceWithoutModules.instanceId,
+          displayName: instanceWithoutModules.displayName,
+          parentDomain: instanceWithoutModules.parentDomain,
+          realmMode: instanceWithoutModules.realmMode,
+          authRealm: instanceWithoutModules.authRealm,
+          authClientId: instanceWithoutModules.authClientId,
+          authIssuerUrl: instanceWithoutModules.authIssuerUrl,
           idempotencyKey: 'idem-1',
-          featureFlags: instance.featureFlags,
+          featureFlags: instanceWithoutModules.featureFlags,
         },
         'fingerprint-1',
         'kassel-traefik-file'
@@ -890,8 +1080,12 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'failed',
-      errorCode: 'provisioning_plugin_snapshot_missing',
+      status: 'validated',
+      stepKey: 'registry',
+      errorCode: undefined,
+      terminalEvidence: {
+        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
+      },
     });
     expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
   });
@@ -960,12 +1154,15 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
-      stepKey: 'keycloak',
-      childKeycloakRunId: '00000000-0000-4000-8000-000000000002',
+      status: 'validated',
+      stepKey: 'registry',
+      childKeycloakRunId: undefined,
       errorCode: undefined,
+      terminalEvidence: {
+        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
+      },
     });
-    expect(harness.repository.createKeycloakProvisioningRun).toHaveBeenCalledOnce();
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
   });
 
   it('renews the lease while a provisioning step is still running', async () => {
@@ -1049,7 +1246,7 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   });
 
-  it('propagates claim loss after activation so the enclosing transaction rolls back', async () => {
+  it('propagates claim loss after final validation so the enclosing transaction rolls back', async () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
@@ -1065,7 +1262,7 @@ describe('tenant provisioning parent orchestrator', () => {
         .mockResolvedValueOnce(harness.getRun())
         .mockResolvedValueOnce(null);
       vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
-        if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));
+        if (status === 'validated') await new Promise((resolve) => setTimeout(resolve, 15_000));
         harness.changeInstance({ status });
         return harness.getInstance();
       });
@@ -1083,7 +1280,7 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   });
 
-  it('rechecks the actual deadline before committing activation', async () => {
+  it('rechecks the actual deadline before committing final validation', async () => {
     vi.useFakeTimers({ now });
     try {
       const harness = createHarness();
@@ -1097,7 +1294,7 @@ describe('tenant provisioning parent orchestrator', () => {
         },
       });
       vi.mocked(harness.repository.setInstanceStatus).mockImplementation(async ({ status }) => {
-        if (status === 'active') await new Promise((resolve) => setTimeout(resolve, 15_000));
+        if (status === 'validated') await new Promise((resolve) => setTimeout(resolve, 15_000));
         harness.changeInstance({ status });
         return harness.getInstance();
       });

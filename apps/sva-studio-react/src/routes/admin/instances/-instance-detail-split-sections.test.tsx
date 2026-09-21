@@ -528,13 +528,11 @@ describe('instance detail split sections', () => {
   });
 
   it('renders the guided doctor section with overview, recommendation, repair, validation, and history', () => {
-    const onRunDetailAction = vi.fn().mockResolvedValue(undefined);
     const onLoadProvisioningRun = vi.fn().mockResolvedValue(undefined);
 
     render(
       <InstanceDetailDoctorSection
         selectedInstance={createDetailFixture()}
-        statusLoading={false}
         historyModel={{
           currentRun: createDetailFixture().latestKeycloakProvisioningRun,
           historicalRuns: createDetailFixture().keycloakProvisioningRuns,
@@ -568,14 +566,6 @@ describe('instance detail split sections', () => {
             label: 'Realm abgleichen',
             summary: 'Drift vorhanden',
           },
-          repairActions: [
-            { action: 'reconcileKeycloak', label: 'Realm abgleichen' },
-            { action: 'reset_tenant_admin', label: 'Tenant-Admin neu setzen' },
-          ],
-          validationActions: [
-            { action: 'check_preflight', label: 'Vorbedingungen prüfen' },
-            { action: 'check_keycloak_status', label: 'Keycloak-Status prüfen' },
-          ],
           validationState: 'blocked',
           warning: {
             tone: 'blocked',
@@ -583,14 +573,13 @@ describe('instance detail split sections', () => {
             summary: 'Drift vorhanden',
           },
         }}
-        onRunDetailAction={onRunDetailAction}
         onLoadProvisioningRun={onLoadProvisioningRun}
       />
     );
 
     expect(screen.getByText('Überblick')).toBeTruthy();
     expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
-    expect(screen.getByText('Reparatur ausführen')).toBeTruthy();
+    expect(screen.queryByText('Reparatur ausführen')).toBeNull();
     expect(screen.getByText('Validieren')).toBeTruthy();
     expect(screen.getByText('Konfiguration ok')).toBeTruthy();
     expect(screen.getByText('Service: sva-studio-provisioner')).toBeTruthy();
@@ -606,12 +595,8 @@ describe('instance detail split sections', () => {
     expect(screen.getAllByText('Drift vorhanden').length).toBeGreaterThan(0);
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Realm abgleichen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Run laden' })[0] as HTMLButtonElement);
 
-    expect(onRunDetailAction).toHaveBeenCalledWith('reconcileKeycloak');
-    expect(onRunDetailAction).toHaveBeenCalledWith('check_preflight');
     expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-current');
   });
 

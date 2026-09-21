@@ -27,6 +27,15 @@ const authRealmSchema = z
 const tenantAdminBootstrapSchema = z
   .object({
     username: z.string().trim().min(1),
+    email: z.string().trim().email(),
+    firstName: z.string().trim().min(1),
+    lastName: z.string().trim().min(1),
+  })
+  .optional();
+
+const persistedTenantAdminBootstrapSchema = z
+  .object({
+    username: z.string().trim().min(1),
     email: z.string().trim().email().optional(),
     firstName: z.string().trim().min(1).optional(),
     lastName: z.string().trim().min(1).optional(),
@@ -55,6 +64,11 @@ export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z.enum(instanceStatuses).optional(),
 });
+export const realmCatalogQuerySchema = z.object({
+  search: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(25),
+});
 
 const sharedInstanceWriteSchemaFields = {
   displayName: z.string().trim().min(1),
@@ -75,8 +89,16 @@ export const createInstanceSchema = z
     authRealm: authRealmSchema.optional(),
     authClientId: z.string().trim().min(1).optional(),
     tenantAdminClient: tenantAdminClientSchema,
+    moduleIds: z.array(z.string().trim().min(1)).max(100).optional(),
   })
   .superRefine((value, ctx) => {
+    if (!value.tenantAdminBootstrap) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['tenantAdminBootstrap'],
+        message: 'Vollständiges Tenant-Admin-Profil fehlt',
+      });
+    }
     if (value.realmMode === 'existing') {
       if (!value.authRealm) {
         ctx.addIssue({ code: 'custom', path: ['authRealm'], message: 'Auth-Realm fehlt' });
@@ -133,6 +155,7 @@ export const resolveCreateInstanceDefaults = (value: z.output<typeof createInsta
 
 export const updateInstanceSchema = z.object({
   ...sharedInstanceWriteSchemaFields,
+  tenantAdminBootstrap: persistedTenantAdminBootstrapSchema,
   authRealm: authRealmSchema,
   authClientId: z.string().trim().min(1),
   tenantAdminClient: tenantAdminClientSchema,
@@ -144,6 +167,7 @@ export const statusMutationSchema = z.object({
 
 export const reconcileKeycloakSchema = z
   .object({
+    planFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     tenantAdminTemporaryPassword: z.string().min(1).optional(),
   })
   .strict();
@@ -155,6 +179,7 @@ export const executeKeycloakProvisioningSchema = z.object({
     'reset_tenant_admin',
     'rotate_client_secret',
   ]),
+  planFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   tenantAdminTemporaryPassword: z.string().min(1).optional(),
 });
 

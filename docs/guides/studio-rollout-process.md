@@ -63,6 +63,36 @@ Ein Push nach `main` startet [Build](../../.github/workflows/build.yml):
 
 Dev ist die schnelle Integrationsstufe. Der fehlende Datenbank-Backup-Schritt ist bewusst auf Dev begrenzt und darf nicht auf Staging oder Production übertragen werden.
 
+### Cutover des Tenant-Provisioning-Vertrags auf Snapshot 3.0
+
+Der Provisioner läuft in allen drei Umgebungen mit genau einer Replik und wird
+mit `order: stop-first` ersetzt. Damit arbeiten während Upgrade oder Rollback
+niemals zwei Provisioner-Digests gleichzeitig. Neu angelegte Tenant-Läufe
+verwenden Snapshot-Version `3.0`; ein Worker des vorherigen Vertrags akzeptiert
+ausschließlich `2.0` und bricht einen neuen Lauf deshalb vor der
+Schrittausführung fail-closed ab. Der aktuelle Worker liest bestehende
+`2.0`-Läufe weiter, führt einen übernommenen Schritt `activate` aber nur noch
+bis `validated`.
+
+Vor einem Rollback auf einen Digest mit dem alten Aktivierungsvertrag muss die
+folgende read-only Inventur für die Zieldatenbank null Zeilen liefern:
+
+```sql
+SELECT id, instance_id, status, step_key
+FROM iam.instance_provisioning_runs
+WHERE operation = 'create'
+  AND snapshot_version IN ('2.0', '3.0')
+  AND completed_at IS NULL
+  AND status IN ('requested', 'provisioning', 'validated');
+```
+
+Andernfalls gilt **STOP**: Der aktuelle Digest bleibt aktiv, bis diese Läufe
+terminal und ohne automatische Aktivierung abgeschlossen sind. Die Inventur
+ist Diagnose innerhalb des kanonischen `Promote`-Pfads; sie autorisiert weder
+ein direktes Stack-Update noch eine Datenmutation. Der erfolgreiche
+Swarm-Nachweis muss für den Provisioner genau eine laufende Replik des
+Zieldigests zeigen.
+
 ## Phase 2: Denselben Digest nach Staging promoten
 
 Der manuelle Workflow [Promote](../../.github/workflows/promote.yml) erhält:

@@ -22,6 +22,8 @@ import {
 } from './service-keycloak.js';
 import { createListInstances } from './service-list.js';
 import { createRetryTenantProvisioningHandler } from './service-instance-create.js';
+import { createDraftReadinessHandler } from './service-draft-readiness.js';
+import { createListRealmCatalogHandler } from './service-realm-catalog.js';
 import {
   createAssignModuleHandler,
   createBootstrapAdminStructureHandler,
@@ -57,6 +59,8 @@ export const createInstanceRegistryService = (
   listInstances: createListInstances(deps.repository),
   getInstanceDetail: createGetInstanceDetail(deps),
   createProvisioningRequest: createProvisioningRequestHandler(deps),
+  getDraftReadiness: createDraftReadinessHandler(deps),
+  listRealmCatalog: createListRealmCatalogHandler(deps),
   retryTenantProvisioning: createRetryTenantProvisioningHandler(deps),
   updateInstance: createUpdateInstanceHandler(deps),
   changeStatus: createChangeStatusHandler(deps),

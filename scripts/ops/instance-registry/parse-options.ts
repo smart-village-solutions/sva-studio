@@ -44,6 +44,10 @@ type ParsedCliOptions = {
   authRealm?: string;
   tenantAdminClientId?: string;
   tenantAdminClientSecret?: string;
+  tenantAdminUsername?: string;
+  tenantAdminEmail?: string;
+  tenantAdminFirstName?: string;
+  tenantAdminLastName?: string;
   displayName?: string;
   featureFlagsRaw?: string;
   instanceId?: string;
@@ -85,6 +89,18 @@ const optionSetters: Readonly<Record<string, ParsedCliOptionSetter>> = {
   },
   '--tenant-admin-client-secret': (parsed, value) => {
     parsed.tenantAdminClientSecret = value;
+  },
+  '--tenant-admin-username': (parsed, value) => {
+    parsed.tenantAdminUsername = value;
+  },
+  '--tenant-admin-email': (parsed, value) => {
+    parsed.tenantAdminEmail = value;
+  },
+  '--tenant-admin-first-name': (parsed, value) => {
+    parsed.tenantAdminFirstName = value;
+  },
+  '--tenant-admin-last-name': (parsed, value) => {
+    parsed.tenantAdminLastName = value;
   },
   '--instance-id': (parsed, value) => {
     parsed.instanceId = value;
@@ -159,6 +175,10 @@ export const parseInstanceRegistryCliOptions = (argv: readonly string[]): CliOpt
     authRealm: parsed.authRealm,
     tenantAdminClientId: parsed.tenantAdminClientId,
     tenantAdminClientSecret: parsed.tenantAdminClientSecret,
+    tenantAdminUsername: parsed.tenantAdminUsername,
+    tenantAdminEmail: parsed.tenantAdminEmail,
+    tenantAdminFirstName: parsed.tenantAdminFirstName,
+    tenantAdminLastName: parsed.tenantAdminLastName,
     command: commandRaw as Command,
     displayName: parsed.displayName,
     featureFlags: parseFeatureFlags(parsed.featureFlagsRaw),

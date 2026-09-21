@@ -627,6 +627,8 @@ describe('instances shared helpers', () => {
           ],
         },
         keycloakPlan: {
+          contractVersion: '1.0',
+          fingerprint: 'a'.repeat(64),
           mode: 'existing',
           overallStatus: 'ready',
           generatedAt: '2026-01-02T08:05:00.000Z',
@@ -685,6 +687,11 @@ describe('instances shared helpers', () => {
             requestId: 'reconcile-1',
           },
         },
+        provisioningReadiness: {
+          state: 'awaiting_activation',
+          capabilities: [],
+          nextAction: { action: 'instance.status.activate', retryClass: 'never' },
+        },
       },
       null
     );
@@ -738,6 +745,8 @@ describe('instances shared helpers', () => {
           ],
         },
         keycloakPlan: {
+          contractVersion: '1.0',
+          fingerprint: 'b'.repeat(64),
           mode: 'existing',
           overallStatus: 'ready',
           generatedAt: '2026-01-02T08:05:00.000Z',
@@ -788,6 +797,11 @@ describe('instances shared helpers', () => {
           tenantAdminClientSecretReadable: true,
           tenantAdminClientSecretAligned: false,
           runtimeSecretSource: 'global',
+        },
+        provisioningReadiness: {
+          state: 'unknown',
+          capabilities: [],
+          nextAction: { action: 'instance.tenant-iam.probe', retryClass: 'safe' },
         },
       },
       {

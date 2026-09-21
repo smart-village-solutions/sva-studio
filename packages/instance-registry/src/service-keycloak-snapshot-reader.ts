@@ -1,4 +1,8 @@
 import { createSdkLogger } from '@sva/server-runtime';
+import {
+  areAllInstanceKeycloakRequirementsSatisfied,
+  isInstanceTenantAdminRequired,
+} from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 import {
@@ -11,15 +15,56 @@ import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js'
 import {
   decryptAuthClientSecret,
   decryptTenantAdminClientSecret,
+  loadInstanceWithSecret,
   loadPersistedSnapshotSecretVersions,
 } from './service-keycloak-secrets.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { readLatestQueuedPluginOidcClientRequirements } from './service-keycloak-execution-payload.js';
+import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
 
 type ProvisioningRuns = readonly Awaited<
   ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>
 >[number][];
+type ProvisioningRun = ProvisioningRuns[number];
+type SnapshotInputFingerprint =
+  string | readonly string[] | ((run: ProvisioningRun) => string | readonly string[]);
 
-const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak-snapshots', level: 'info' });
+const logger = createSdkLogger({
+  component: 'iam-instance-registry-keycloak-snapshots',
+  level: 'info',
+});
+
+export const isLiveKeycloakStatusReadyForActivation = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string,
+  pluginOidcClients?: readonly PluginOidcClientRequirement[]
+): Promise<boolean> => {
+  try {
+    const loaded = await loadInstanceWithSecret(deps, instanceId);
+    if (!loaded || !deps.getKeycloakStatus) return false;
+    const runs = pluginOidcClients
+      ? []
+      : await deps.repository.listKeycloakProvisioningRuns(instanceId);
+    const scopedPluginOidcClients =
+      pluginOidcClients ??
+      readLatestQueuedPluginOidcClientRequirements(
+        runs,
+        loaded.instance,
+        deps.readPluginOidcClientRequirements?.()
+      );
+    const status = await deps.getKeycloakStatus({
+      ...loaded.instance,
+      authClientSecret: loaded.authClientSecret,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
+      pluginOidcClients: scopedPluginOidcClients,
+    });
+    return areAllInstanceKeycloakRequirementsSatisfied(status, {
+      requireTenantAdmin: isInstanceTenantAdminRequired(loaded.instance),
+    });
+  } catch {
+    return false;
+  }
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -73,12 +118,7 @@ export const refreshManagedRealmSmtpPasswordStatus = async (
   if (
     !deps.getKeycloakStatus ||
     !deps.revealSecret ||
-    !isRealmBaselineApplicable(
-      instance.realmMode,
-      runs,
-      instance.authRealm,
-      instance.authClientId
-    )
+    !isRealmBaselineApplicable(instance.realmMode, runs, instance.authRealm, instance.authClientId)
   ) {
     return status;
   }
@@ -124,15 +164,21 @@ export const readSnapshotFromRuns = <T>(
   stepKeys: readonly string[],
   field: 'status' | 'preflight' | 'plan',
   policyVersion: number,
-  inputFingerprint: string
+  inputFingerprint: SnapshotInputFingerprint
 ): T | null => {
   for (const run of runs) {
+    const expectedFingerprint =
+      typeof inputFingerprint === 'function' ? inputFingerprint(run) : inputFingerprint;
+    const acceptedFingerprints = new Set(
+      typeof expectedFingerprint === 'string' ? [expectedFingerprint] : expectedFingerprint
+    );
     for (const stepKey of stepKeys) {
       const step = run.steps.find((candidate) => candidate.stepKey === stepKey);
       if (
         isRecord(step?.details) &&
         step.details.policyVersion === policyVersion &&
-        step.details.inputFingerprint === inputFingerprint &&
+        typeof step.details.inputFingerprint === 'string' &&
+        acceptedFingerprints.has(step.details.inputFingerprint) &&
         step.details[field]
       ) {
         return step.details[field] as T;
@@ -147,7 +193,7 @@ export const readManagedRealmPlanSnapshot = async (
   instance: NonNullable<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>>,
   runs: Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>,
   secretVersions: Awaited<ReturnType<typeof loadPersistedSnapshotSecretVersions>>,
-  inputFingerprint: string
+  inputFingerprint: SnapshotInputFingerprint
 ): Promise<KeycloakTenantPlan | null> => {
   const plan = readSnapshotFromRuns<KeycloakTenantPlan>(
     runs,

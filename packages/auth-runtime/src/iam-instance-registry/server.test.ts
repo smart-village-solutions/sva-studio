@@ -56,6 +56,10 @@ vi.mock('./core.js', () => ({
     async () => new Response('bootstrap', { status: 200 })
   ),
   createInstanceInternal: vi.fn(async () => new Response('create', { status: 200 })),
+  getInstanceDraftReadinessInternal: vi.fn(
+    async () => new Response('draft-readiness', { status: 200 })
+  ),
+  listInstanceRealmsInternal: vi.fn(async () => new Response('realms', { status: 200 })),
   retryTenantProvisioningInternal: vi.fn(async () => new Response('retry', { status: 200 })),
   getInstanceInternal: vi.fn(async () => new Response('get', { status: 200 })),
   listInstancesInternal: vi.fn(async () => new Response('list', { status: 200 })),
@@ -170,6 +174,32 @@ describe('iam-instance-registry/server', () => {
     expect(response.status).toBe(200);
     expect(state.authenticateRegistryServiceToken).toHaveBeenCalledWith(
       'signed-token',
+      'instance.create'
+    );
+  });
+
+  it('authorizes draft readiness and realm discovery with instance.create', async () => {
+    const { instanceRegistryHandlers } = await import('./server.js');
+    const draftRequest = new Request(
+      'https://studio.example.org/api/v1/iam/instances/draft-readiness',
+      { method: 'POST', headers: { authorization: 'Bearer draft-token' } }
+    );
+    const realmsRequest = new Request(
+      'https://studio.example.org/api/v1/iam/instances/keycloak-realms',
+      { headers: { authorization: 'Bearer realm-token' } }
+    );
+
+    await instanceRegistryHandlers.getInstanceDraftReadiness(draftRequest);
+    await instanceRegistryHandlers.listInstanceRealms(realmsRequest);
+
+    expect(state.authenticateRegistryServiceToken).toHaveBeenNthCalledWith(
+      1,
+      'draft-token',
+      'instance.create'
+    );
+    expect(state.authenticateRegistryServiceToken).toHaveBeenNthCalledWith(
+      2,
+      'realm-token',
       'instance.create'
     );
   });
@@ -339,9 +369,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(26);
+    expect(responses).toHaveLength(28);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(26);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(28);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

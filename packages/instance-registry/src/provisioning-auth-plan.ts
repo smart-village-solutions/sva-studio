@@ -6,9 +6,16 @@ import {
   readClientAlignment,
   readTenantAdminClientAlignment,
 } from './provisioning-auth-client-alignment.js';
-import { isSystemAdminRoleOwnedByInstance } from './provisioning-auth-policy.js';
+import {
+  isSystemAdminRoleOwnedByInstance,
+  readStudioOwnedClient,
+  readStudioOwnedUser,
+} from './provisioning-auth-policy.js';
 import { buildPluginOidcClientStep } from './provisioning-auth-plugin-clients.js';
 import { buildRealmBaselinePlanSteps } from './keycloak-realm-baseline.js';
+import { buildPayloadFingerprint } from './payload-fingerprint.js';
+
+export const KEYCLOAK_PLAN_CONTRACT_VERSION = '1.0' as const;
 
 const buildRealmStep = (
   realmMode: InstanceRealmMode,
@@ -43,24 +50,34 @@ const buildClientStep = (input: {
   redirectUrisMatch: boolean;
   logoutUrisMatch: boolean;
   webOriginsMatch: boolean;
+  ownershipConflict: boolean;
 }): KeycloakTenantPlan['steps'][number] => {
   const fullyAligned = areClientUrisAligned(input);
 
   return {
     stepKey: 'client',
     title: 'OIDC-Client abgleichen',
-    action: !input.clientExists ? 'create' : fullyAligned ? 'verify' : 'update',
+    action: input.ownershipConflict
+      ? 'skip'
+      : !input.clientExists
+        ? 'create'
+        : fullyAligned
+          ? 'verify'
+          : 'update',
     status: input.blocked ? 'blocked' : 'ready',
-    summary: !input.clientExists
-      ? 'Der OIDC-Client wird angelegt.'
-      : fullyAligned
-        ? 'Der OIDC-Client entspricht bereits dem Sollzustand.'
-        : 'Der OIDC-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
+    summary: input.ownershipConflict
+      ? 'Der gleichnamige OIDC-Client ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
+      : !input.clientExists
+        ? 'Der OIDC-Client wird angelegt.'
+        : fullyAligned
+          ? 'Der OIDC-Client entspricht bereits dem Sollzustand.'
+          : 'Der OIDC-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
     details: {
       clientExists: input.clientExists,
       redirectUrisMatch: input.redirectUrisMatch,
       logoutUrisMatch: input.logoutUrisMatch,
       webOriginsMatch: input.webOriginsMatch,
+      ownershipConflict: input.ownershipConflict,
     },
   };
 };
@@ -81,6 +98,7 @@ const buildTenantAdminClientStep = (input: {
   serviceAccountsEnabledMatch: boolean;
   standardFlowEnabledMatch: boolean;
   webOriginsMatch: boolean;
+  ownershipConflict: boolean;
 }): KeycloakTenantPlan['steps'][number] => {
   const fullyAligned =
     input.rootUrlMatch &&
@@ -94,13 +112,21 @@ const buildTenantAdminClientStep = (input: {
   return {
     stepKey: 'tenant_admin_client',
     title: 'Tenant-Admin-Client abgleichen',
-    action: !input.clientExists ? 'create' : fullyAligned ? 'verify' : 'update',
+    action: input.ownershipConflict
+      ? 'skip'
+      : !input.clientExists
+        ? 'create'
+        : fullyAligned
+          ? 'verify'
+          : 'update',
     status: input.blocked ? 'blocked' : 'ready',
-    summary: !input.clientExists
-      ? 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.'
-      : fullyAligned
-        ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
-        : 'Der Tenant-Admin-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
+    summary: input.ownershipConflict
+      ? 'Der gleichnamige Tenant-Admin-Client ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
+      : !input.clientExists
+        ? 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.'
+        : fullyAligned
+          ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
+          : 'Der Tenant-Admin-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
     details: {
       clientExists: input.clientExists,
       directAccessGrantsEnabledMatch: input.directAccessGrantsEnabledMatch,
@@ -110,35 +136,44 @@ const buildTenantAdminClientStep = (input: {
       serviceAccountsEnabledMatch: input.serviceAccountsEnabledMatch,
       standardFlowEnabledMatch: input.standardFlowEnabledMatch,
       webOriginsMatch: input.webOriginsMatch,
+      ownershipConflict: input.ownershipConflict,
     },
   };
 };
 
 const buildSecretStep = (
   blocked: boolean,
-  secretAligned: boolean
+  secretAligned: boolean,
+  ownershipConflict: boolean
 ): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'secret',
   title: 'Tenant-Secret abgleichen',
-  action: secretAligned ? 'skip' : 'update',
+  action: ownershipConflict || secretAligned ? 'skip' : 'update',
   status: blocked ? 'blocked' : 'ready',
-  summary: secretAligned
-    ? 'Das gespeicherte Tenant-Secret ist bereits mit Keycloak abgeglichen.'
-    : 'Das in der Registry gespeicherte Tenant-Secret wird gegen Keycloak abgeglichen.',
-  details: { secretAligned },
+  summary: ownershipConflict
+    ? 'Das Secret eines nicht eindeutig zugeordneten Clients wird nicht gelesen oder verändert.'
+    : secretAligned
+      ? 'Das gespeicherte Tenant-Secret ist bereits mit Keycloak abgeglichen.'
+      : 'Das in der Registry gespeicherte Tenant-Secret wird gegen Keycloak abgeglichen.',
+  details: { secretAligned, ownershipConflict },
 });
 
 const buildTenantAdminClientSecretStep = (
   blocked: boolean,
   tenantAdminClientConfigured: boolean,
-  secretAligned: boolean
+  secretAligned: boolean,
+  ownershipConflict: boolean
 ): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'tenant_admin_client_secret',
   title: 'Tenant-Admin-Client-Secret abgleichen',
-  action: resolveTenantAdminClientSecretAction(tenantAdminClientConfigured, secretAligned),
+  action: ownershipConflict
+    ? 'skip'
+    : resolveTenantAdminClientSecretAction(tenantAdminClientConfigured, secretAligned),
   status: blocked ? 'blocked' : 'ready',
-  summary: resolveTenantAdminClientSecretSummary(tenantAdminClientConfigured, secretAligned),
-  details: { tenantAdminClientConfigured, secretAligned },
+  summary: ownershipConflict
+    ? 'Das Secret eines nicht eindeutig zugeordneten Tenant-Admin-Clients wird nicht gelesen oder verändert.'
+    : resolveTenantAdminClientSecretSummary(tenantAdminClientConfigured, secretAligned),
+  details: { tenantAdminClientConfigured, secretAligned, ownershipConflict },
 });
 
 const resolveTenantAdminClientSecretAction = (
@@ -174,25 +209,32 @@ const buildRoleStep = (
     state?.systemAdminRole,
     instanceId
   );
+  const ownershipConflict = Boolean(state?.systemAdminRole) && !systemAdminRoleExists;
   return {
     stepKey: 'roles',
     title: 'Realm-Rollen sicherstellen',
-    action: systemAdminRoleExists ? 'verify' : 'create',
+    action: ownershipConflict ? 'skip' : systemAdminRoleExists ? 'verify' : 'create',
     status: blocked ? 'blocked' : 'ready',
-    summary: systemAdminRoleExists
-      ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
-      : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
-    details: { systemAdminRoleExists },
+    summary: ownershipConflict
+      ? 'Die gleichnamige Realm-Rolle ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
+      : systemAdminRoleExists
+        ? 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle ist vorhanden.'
+        : 'Die für das Tenant-Admin-Minimalprofil benötigte Realm-Rolle wird angelegt.',
+    details: { systemAdminRoleExists, ownershipConflict },
   };
 };
 
 const buildTenantAdminStep = (
   blocked: boolean,
   state: KeycloakReadState | undefined,
-  requireTenantAdmin: boolean
+  requireTenantAdmin: boolean,
+  instanceId: string
 ): KeycloakTenantPlan['steps'][number] => {
   const adminStatus = state?.tenantAdminStatus;
   const hasMinimalProfile = hasTenantAdminMinimalProfile(adminStatus);
+  const ownershipConflict =
+    Boolean(state?.tenantAdminRepresentation) &&
+    readStudioOwnedUser(state?.tenantAdminRepresentation, instanceId, 'tenant_admin') !== 'owned';
 
   if (!requireTenantAdmin) {
     return {
@@ -208,12 +250,20 @@ const buildTenantAdminStep = (
   return {
     stepKey: 'tenant_admin',
     title: 'Tenant-Admin sicherstellen',
-    action: hasMinimalProfile ? 'verify' : adminStatus?.tenantAdminExists ? 'update' : 'create',
+    action: ownershipConflict
+      ? 'skip'
+      : hasMinimalProfile
+        ? 'verify'
+        : adminStatus?.tenantAdminExists
+          ? 'update'
+          : 'create',
     status: blocked ? 'blocked' : 'ready',
-    summary: hasMinimalProfile
-      ? 'Der Tenant-Admin entspricht bereits dem Minimalprofil.'
-      : 'Der Tenant-Admin wird erstellt oder auf das Minimalprofil korrigiert.',
-    details: adminStatus ?? {},
+    summary: ownershipConflict
+      ? 'Der gleichnamige Tenant-Admin ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
+      : hasMinimalProfile
+        ? 'Der Tenant-Admin entspricht bereits dem Minimalprofil.'
+        : 'Der Tenant-Admin wird erstellt oder auf das Minimalprofil korrigiert.',
+    details: { ...(adminStatus ?? {}), ownershipConflict },
   };
 };
 
@@ -241,6 +291,17 @@ export const buildPlan = (input: {
   const requireTenantAdmin = isInstanceTenantAdminRequired(input);
   const alignment = readClientAlignment(input.state);
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
+  const clientOwnershipConflict =
+    Boolean(alignment.clientRepresentation) &&
+    readStudioOwnedClient(alignment.clientRepresentation, input.instanceId, 'login_client') !==
+      'owned';
+  const tenantAdminClientOwnershipConflict =
+    Boolean(tenantAdminClientAlignment.clientRepresentation) &&
+    readStudioOwnedClient(
+      tenantAdminClientAlignment.clientRepresentation,
+      input.instanceId,
+      'tenant_admin_client'
+    ) !== 'owned';
   const secretAligned = Boolean(
     input.authClientSecret &&
     input.state?.keycloakClientSecret &&
@@ -265,6 +326,7 @@ export const buildPlan = (input: {
       redirectUrisMatch: alignment.redirectUrisMatch,
       logoutUrisMatch: alignment.logoutUrisMatch,
       webOriginsMatch: alignment.webOriginsMatch,
+      ownershipConflict: clientOwnershipConflict,
     }),
     buildTenantAdminClientStep({
       blocked,
@@ -276,26 +338,33 @@ export const buildPlan = (input: {
       serviceAccountsEnabledMatch: tenantAdminClientAlignment.serviceAccountsEnabledMatch,
       standardFlowEnabledMatch: tenantAdminClientAlignment.standardFlowEnabledMatch,
       webOriginsMatch: tenantAdminClientAlignment.webOriginsMatch,
+      ownershipConflict: tenantAdminClientOwnershipConflict,
     }),
     ...pluginOidcClients.map((requirement) =>
-      buildPluginOidcClientStep(requirement, input.state, blocked)
+      buildPluginOidcClientStep(requirement, input.state, blocked, input.instanceId)
     ),
-    buildSecretStep(blocked, secretAligned),
+    buildSecretStep(blocked, secretAligned, clientOwnershipConflict),
     buildTenantAdminClientSecretStep(
       blocked,
       Boolean(input.tenantAdminClient?.clientId),
-      tenantAdminClientSecretAligned
+      tenantAdminClientSecretAligned,
+      tenantAdminClientOwnershipConflict
     ),
     buildRoleStep(blocked, input.state, input.instanceId),
-    buildTenantAdminStep(blocked, input.state, requireTenantAdmin),
+    buildTenantAdminStep(blocked, input.state, requireTenantAdmin, input.instanceId),
   ];
 
-  return {
+  const plan: Omit<KeycloakTenantPlan, 'fingerprint' | 'generatedAt'> = {
+    contractVersion: KEYCLOAK_PLAN_CONTRACT_VERSION,
     mode: input.realmMode,
     overallStatus: blocked ? 'blocked' : 'ready',
-    generatedAt: new Date().toISOString(),
     driftSummary: resolveDriftSummary(blocked, steps),
     steps,
+  };
+  return {
+    ...plan,
+    fingerprint: buildPayloadFingerprint({ instanceId: input.instanceId, ...plan }),
+    generatedAt: new Date().toISOString(),
   };
 };
 

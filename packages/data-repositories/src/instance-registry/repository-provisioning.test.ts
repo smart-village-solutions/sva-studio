@@ -499,13 +499,78 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain(
       "run.desired_snapshot->>'automationMode' = 'kassel-traefik-file'"
     );
+    expect(statements[0]?.text).toContain("run.snapshot_version IN ('2.0', '3.0')");
     expect(statements[0]?.text).toContain(
       "instance.status IN ('requested', 'validated', 'provisioning')"
     );
+    expect(statements[0]?.text).toContain("'awaiting_plan_confirmation'");
+    expect(statements[0]?.text).toContain("'awaiting_tenant_secret'");
+    expect(statements[0]?.text).toContain("'tenant_secret_rotation_running'");
     expect(statements[0]?.values).toEqual([
       'worker-1',
       '2026-01-01T00:00:30.000Z',
       'dialog.kassel.de',
+    ]);
+  });
+
+  it('binds confirmed Keycloak work to the exact waiting parent state', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [provisioningRow],
+      [provisioningRow],
+      [provisioningRow],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await repository.confirmProvisioningPlan({
+      runId: 'run-1',
+      instanceId: 'tenant-a',
+      expectedPlanFingerprint: 'old-plan',
+      planFingerprint: 'confirmed-plan',
+      childKeycloakRunId: '11111111-1111-4111-8111-111111111111',
+      actorId: 'operator-1',
+      requestId: 'request-1',
+    });
+    await repository.bindProvisioningRemediation({
+      runId: 'run-1',
+      instanceId: 'tenant-a',
+      expectedPlanFingerprint: 'blocked-plan',
+      planFingerprint: 'confirmed-rotation-plan',
+      childKeycloakRunId: '22222222-2222-4222-8222-222222222222',
+      actorId: 'operator-1',
+      requestId: 'request-2',
+    });
+    await repository.completeProvisioningRemediation({
+      instanceId: 'tenant-a',
+      childKeycloakRunId: '22222222-2222-4222-8222-222222222222',
+      succeeded: false,
+    });
+
+    expect(statements[0]?.text).toContain("step_key = 'keycloak'");
+    expect(statements[0]?.text).toContain("planFingerprint}' = $3");
+    expect(statements[0]?.values).toEqual([
+      'run-1',
+      'tenant-a',
+      'old-plan',
+      'confirmed-plan',
+      '11111111-1111-4111-8111-111111111111',
+      'operator-1',
+      'request-1',
+    ]);
+    expect(statements[1]?.text).toContain("'tenant_secret_rotation_running'");
+    expect(statements[1]?.values).toEqual([
+      'run-1',
+      'tenant-a',
+      'blocked-plan',
+      'confirmed-rotation-plan',
+      '22222222-2222-4222-8222-222222222222',
+      'operator-1',
+      'request-2',
+    ]);
+    expect(statements[2]?.text).toContain("'awaiting_tenant_secret'");
+    expect(statements[2]?.values).toEqual([
+      'tenant-a',
+      '22222222-2222-4222-8222-222222222222',
+      false,
     ]);
   });
 
@@ -532,6 +597,46 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain('WHERE id = $1::uuid AND lease_owner = $2');
     expect(statements[0]?.text).toContain('lease_expires_at > now()');
     expect(statements[0]?.values[1]).toBe('worker-1');
+  });
+
+  it('records a safe post-commit wake-up failure without making the run unclaimable', async () => {
+    const failedWakeupRow = {
+      ...provisioningRow,
+      status: 'requested',
+      error_code: 'post_commit_wakeup_failed',
+      error_message: 'Post-Commit-Wake-up fehlgeschlagen.',
+      terminal_evidence: {
+        postCommitWakeup: {
+          status: 'failed',
+          code: 'post_commit_wakeup_failed',
+          checkedAt: '2026-01-01T00:00:10.000Z',
+        },
+      },
+    };
+    const { executor, statements } = createQueuedExecutor([[failedWakeupRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.recordProvisioningWakeupFailure({
+        instanceId: 'tenant-a',
+        errorCode: 'post_commit_wakeup_failed',
+        errorMessage: 'Post-Commit-Wake-up fehlgeschlagen.',
+        occurredAt: '2026-01-01T00:00:10.000Z',
+      })
+    ).resolves.toMatchObject({
+      status: 'requested',
+      errorCode: 'post_commit_wakeup_failed',
+    });
+    expect(statements[0]?.text).toContain("status IN ('requested', 'validated', 'provisioning')");
+    expect(statements[0]?.text).toContain('next_attempt_at = LEAST(run.next_attempt_at, now())');
+    expect(statements[0]?.text).toContain("'postCommitWakeup'");
+    expect(statements[0]?.text).not.toContain('lease_owner = NULL');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'post_commit_wakeup_failed',
+      'Post-Commit-Wake-up fehlgeschlagen.',
+      '2026-01-01T00:00:10.000Z',
+    ]);
   });
 
   it('renews only a still-active parent-run lease owned by the worker', async () => {
@@ -587,7 +692,9 @@ describe('instance registry repository provisioning', () => {
       stepKey: 'lifecycle',
       terminalEvidence: { failedStep: 'login' },
     });
-    expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain(
+      "snapshot_version IN ('2.0', '3.0') AND status = 'failed'"
+    );
     expect(statements[0]?.text).toContain('lease_owner = $8 AND lease_expires_at > now()');
     expect(statements[0]?.text).toContain(
       "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
@@ -643,7 +750,9 @@ describe('instance registry repository provisioning', () => {
       })
     ).resolves.toMatchObject({ status: 'failed', leaseOwner: 'retry-lease-1' });
 
-    expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain(
+      "snapshot_version IN ('2.0', '3.0') AND status = 'failed'"
+    );
     expect(statements[0]?.text).toContain(
       '(lease_expires_at IS NULL OR lease_expires_at <= now())'
     );

@@ -1,4 +1,5 @@
 import { createSdkLogger } from '@sva/server-runtime';
+import { resolveTenantModuleEffectiveActivation } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -8,6 +9,7 @@ import { buildCreateInstancePayloadFingerprint } from './service-instance-create
 import {
   buildConfiguredTenantProvisioningPluginSnapshot,
   buildTenantProvisioningSnapshot,
+  TENANT_PROVISIONING_SNAPSHOT_VERSION,
 } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
@@ -26,15 +28,15 @@ export const createProvisioningArtifacts = async (
   const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
   const pluginSnapshot =
     automationMode === 'kassel-traefik-file'
-      ? await (async () => {
-          const activeModuleIds = new Set(
-            (await repository.listModuleActivations(instance.instanceId))
-              .filter(({ effectiveActive }) => effectiveActive)
-              .map(({ moduleId }) => moduleId)
-          );
-          return buildConfiguredTenantProvisioningPluginSnapshot(deps, [...activeModuleIds]);
-        })()
-      : { lifecycles: [], oidcClients: [] };
+      ? buildConfiguredTenantProvisioningPluginSnapshot(deps, [
+          ...new Set([
+            ...instance.assignedModules,
+            ...(deps.readModuleActivationPolicySnapshot?.().modules ?? [])
+              .filter((module) => resolveTenantModuleEffectiveActivation(module))
+              .map(({ moduleId }) => moduleId),
+          ]),
+        ])
+      : { lifecycles: [], oidcClients: [], activationPolicies: [] };
   const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
     repository.createProvisioningRun({
       instanceId: instance.instanceId,
@@ -42,9 +44,20 @@ export const createProvisioningArtifacts = async (
       status: 'requested',
       idempotencyKey: input.idempotencyKey,
       payloadFingerprint,
-      snapshotVersion: '2.0',
+      snapshotVersion: TENANT_PROVISIONING_SNAPSHOT_VERSION,
       desiredSnapshot: buildTenantProvisioningSnapshot(
-        instance,
+        {
+          ...instance,
+          assignedModules:
+            automationMode === 'kassel-traefik-file'
+              ? [
+                  ...new Set([
+                    ...instance.assignedModules,
+                    ...pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId),
+                  ]),
+                ]
+              : instance.assignedModules,
+        },
         input,
         payloadFingerprint,
         automationMode,

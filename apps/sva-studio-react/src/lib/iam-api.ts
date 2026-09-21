@@ -18,6 +18,8 @@ import type {
   InstanceAuditRun,
   IamInstanceDetail,
   IamInstanceListItem,
+  IamInstanceDraftReadiness,
+  IamInstanceRealmCatalog,
   IamKeycloakRealmRole,
   IamKeycloakRoleAssignmentMutationResult,
   IamLegalTextListItem,
@@ -578,12 +580,18 @@ export type UpdateInstancePayload = {
 };
 
 export type ReconcileInstanceKeycloakPayload = {
+  readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
+};
+
+export type ReconcileTenantIamRolesPayload = {
+  readonly planFingerprint: string;
 };
 
 export type ExecuteInstanceKeycloakProvisioningPayload = {
   readonly intent:
     'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
 };
 
@@ -1051,6 +1059,32 @@ export const createInstance = async (
     true
   );
 
+export const getInstanceDraftReadiness = async (
+  payload: CreateInstancePayload
+): Promise<ApiItemResponse<IamInstanceDraftReadiness>> =>
+  postJson<ApiItemResponse<IamInstanceDraftReadiness>, CreateInstancePayload>(
+    '/api/v1/iam/instances/draft-readiness',
+    payload,
+    true
+  );
+
+export const listInstanceRealmCatalog = async (
+  input: {
+    readonly search?: string;
+    readonly page?: number;
+    readonly pageSize?: number;
+  } = {}
+): Promise<IamInstanceRealmCatalog & { readonly requestId?: string }> => {
+  const params = new URLSearchParams();
+  if (input.search) params.set('search', input.search);
+  if (input.page) params.set('page', String(input.page));
+  if (input.pageSize) params.set('pageSize', String(input.pageSize));
+  const query = params.toString();
+  return requestJson<IamInstanceRealmCatalog & { readonly requestId?: string }>(
+    `/api/v1/iam/instances/keycloak-realms${query ? `?${query}` : ''}`
+  );
+};
+
 export const retryInstanceProvisioning = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
@@ -1102,14 +1136,15 @@ export const executeInstanceKeycloakProvisioning = async (
   >(`/api/v1/iam/instances/${instanceId}/keycloak/execute`, payload, true);
 
 export const rotateInstanceSecret = async (
-  instanceId: string
+  instanceId: string,
+  planFingerprint: string
 ): Promise<ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>> =>
   postJson<
     ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>,
-    Pick<ExecuteInstanceKeycloakProvisioningPayload, 'intent'>
+    Pick<ExecuteInstanceKeycloakProvisioningPayload, 'intent' | 'planFingerprint'>
   >(
     `/api/v1/iam/instances/${instanceId}/keycloak/rotate-secret`,
-    { intent: 'rotate_client_secret' },
+    { intent: 'rotate_client_secret', planFingerprint },
     true
   );
 
@@ -1319,6 +1354,16 @@ export const reconcileInstanceKeycloak = async (
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
   postJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>, ReconcileInstanceKeycloakPayload>(
     `/api/v1/iam/instances/${instanceId}/keycloak/reconcile`,
+    payload,
+    true
+  );
+
+export const reconcileTenantIamRoles = async (
+  instanceId: string,
+  payload: ReconcileTenantIamRolesPayload
+): Promise<ApiItemResponse<unknown>> =>
+  postJson<ApiItemResponse<unknown>, ReconcileTenantIamRolesPayload>(
+    `/api/v1/iam/instances/${instanceId}/tenant-iam/roles/reconcile`,
     payload,
     true
   );

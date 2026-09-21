@@ -10,7 +10,12 @@ import {
 import { z } from 'zod';
 
 export const instanceId = z.string().trim().min(1).describe('Eindeutige Studio-Instanz-ID');
-export const idempotencyKey = z.string().trim().min(8).max(200).optional()
+export const idempotencyKey = z
+  .string()
+  .trim()
+  .min(8)
+  .max(200)
+  .optional()
   .describe('Optionaler stabiler Schlüssel für eine sichere Wiederholung');
 export const mutationMeta = { idempotencyKey };
 export const emptyInput = z.object({}).strict();
@@ -19,11 +24,21 @@ export const instanceMutationInput = z.object({ instanceId, ...mutationMeta }).s
 
 export const schemas = {
   list: listQuerySchema.strict(),
+  realmCatalog: z
+    .object({
+      search: z.string().trim().min(1).optional(),
+      page: z.number().int().positive().optional(),
+      pageSize: z.number().int().positive().max(100).optional(),
+    })
+    .strict(),
+  draftReadiness: createInstanceSchema.strict(),
   instance: instanceInput,
-  auditAll: z.object({
-    instanceIds: z.array(instanceId).max(100).optional(),
-    includeOnlyActive: z.boolean().optional(),
-  }).strict(),
+  auditAll: z
+    .object({
+      instanceIds: z.array(instanceId).max(100).optional(),
+      includeOnlyActive: z.boolean().optional(),
+    })
+    .strict(),
   run: z.object({ instanceId, runId: z.string().trim().min(1) }).strict(),
   diagnose: z.object({ instanceId }).strict(),
   create: createInstanceSchema.safeExtend(mutationMeta).strict(),
@@ -35,71 +50,132 @@ export const schemas = {
       instanceId,
       intent: z.enum(['provision', 'provision_admin_client', 'reset_tenant_admin']),
       ...mutationMeta,
-    }).strict(),
+    })
+    .strict(),
   reconcile: reconcileKeycloakSchema.extend({ instanceId, ...mutationMeta }).strict(),
   assignModule: assignModuleSchema.extend({ instanceId, ...mutationMeta }).strict(),
   bootstrap: bootstrapAdminStructureSchema.extend({ instanceId, ...mutationMeta }).strict(),
   seed: instanceMutationInput,
   accessProbe: instanceMutationInput,
-  roleReconcile: instanceMutationInput,
-  prepareCritical: z.object({
-    instanceId,
-    actionId: z.enum([
-      'instance.status.activate', 'instance.status.suspend', 'instance.status.archive',
-      'instance.module.revoke', 'instance.secret.rotate',
-    ]),
-    moduleId: z.string().trim().min(1).optional(),
-  }).strict().superRefine((value, ctx) => {
-    if (value.actionId === 'instance.module.revoke' && !value.moduleId) {
-      ctx.addIssue({ code: 'custom', path: ['moduleId'], message: 'moduleId ist für Modulentzug erforderlich.' });
-    }
-  }),
-  critical: z.object({
-    instanceId,
-    challengeId: z.string().trim().min(1),
-    confirmationPhrase: z.string().min(1),
-    idempotencyKey: z.string().trim().min(8).max(200),
-  }).strict(),
-  revoke: z.object({
-    instanceId,
-    moduleId: z.string().trim().min(1),
-    challengeId: z.string().trim().min(1),
-    confirmationPhrase: z.string().min(1),
-    idempotencyKey: z.string().trim().min(8).max(200),
-  }).strict(),
-  process: z.object({
-    mode: z.enum(['create', 'repair', 'adapt']),
-    instanceId,
-    create: createInstanceSchema.strict().optional(),
-    moduleIds: z.array(z.string().trim().min(1)).max(100).optional(),
-    idempotencyKey,
-  }).strict().superRefine((value, ctx) => {
-    if (value.mode === 'create' && !value.create) {
-      ctx.addIssue({ code: 'custom', path: ['create'], message: 'create ist für den Modus create erforderlich.' });
-    }
-    if (value.mode !== 'create' && value.create) {
-      ctx.addIssue({ code: 'custom', path: ['create'], message: 'create ist nur für den Modus create erlaubt.' });
-    }
-    if (value.mode === 'repair' && (value.moduleIds?.length ?? 0) > 0) {
-      ctx.addIssue({ code: 'custom', path: ['moduleIds'], message: 'moduleIds ist nur für create oder adapt erlaubt.' });
-    }
-    if (value.create && value.create.instanceId !== value.instanceId) {
-      ctx.addIssue({ code: 'custom', path: ['create', 'instanceId'], message: 'create.instanceId muss instanceId entsprechen.' });
-    }
-  }),
+  roleReconcile: z
+    .object({
+      instanceId,
+      planFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      ...mutationMeta,
+    })
+    .strict(),
+  prepareCritical: z
+    .object({
+      instanceId,
+      actionId: z.enum([
+        'instance.status.activate',
+        'instance.status.suspend',
+        'instance.status.archive',
+        'instance.module.revoke',
+        'instance.secret.rotate',
+      ]),
+      moduleId: z.string().trim().min(1).optional(),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      if (value.actionId === 'instance.module.revoke' && !value.moduleId) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['moduleId'],
+          message: 'moduleId ist für Modulentzug erforderlich.',
+        });
+      }
+    }),
+  critical: z
+    .object({
+      instanceId,
+      challengeId: z.string().trim().min(1),
+      confirmationPhrase: z.string().min(1),
+      idempotencyKey: z.string().trim().min(8).max(200),
+    })
+    .strict(),
+  secretRotate: z
+    .object({
+      instanceId,
+      challengeId: z.string().trim().min(1),
+      confirmationPhrase: z.string().min(1),
+      idempotencyKey: z.string().trim().min(8).max(200),
+      planFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .strict(),
+  revoke: z
+    .object({
+      instanceId,
+      moduleId: z.string().trim().min(1),
+      challengeId: z.string().trim().min(1),
+      confirmationPhrase: z.string().min(1),
+      idempotencyKey: z.string().trim().min(8).max(200),
+    })
+    .strict(),
+  process: z
+    .object({
+      mode: z.enum(['create', 'repair', 'adapt']),
+      instanceId,
+      create: createInstanceSchema.strict().optional(),
+      moduleIds: z.array(z.string().trim().min(1)).max(100).optional(),
+      planFingerprint: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+      keycloakRunId: z.string().trim().min(1).optional(),
+      idempotencyKey,
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      if (value.mode === 'create' && !value.create) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['create'],
+          message: 'create ist für den Modus create erforderlich.',
+        });
+      }
+      if (value.mode !== 'create' && value.create) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['create'],
+          message: 'create ist nur für den Modus create erlaubt.',
+        });
+      }
+      if (value.mode === 'repair' && (value.moduleIds?.length ?? 0) > 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['moduleIds'],
+          message: 'moduleIds ist nur für create oder adapt erlaubt.',
+        });
+      }
+      if (value.create && value.create.instanceId !== value.instanceId) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['create', 'instanceId'],
+          message: 'create.instanceId muss instanceId entsprechen.',
+        });
+      }
+    }),
 } as const;
 
 export type ErrorCategory =
-  | 'validation' | 'authentication' | 'authorization' | 'conflict'
-  | 'platform_readiness' | 'dependency' | 'internal';
+  | 'validation'
+  | 'authentication'
+  | 'authorization'
+  | 'conflict'
+  | 'platform_readiness'
+  | 'dependency'
+  | 'internal';
 
 export type McpError = {
   readonly version: '1';
   readonly code: string;
   readonly category: ErrorCategory;
   readonly retryable: boolean;
+  readonly retryClass: 'never' | 'safe' | 'conditional';
   readonly summary: string;
   readonly recommendedAction: string;
+  readonly safeDetails?: Readonly<Record<string, unknown>>;
   readonly requestId?: string;
   readonly idempotencyKey?: string;
   readonly httpStatus?: number;

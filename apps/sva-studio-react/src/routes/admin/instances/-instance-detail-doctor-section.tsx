@@ -2,21 +2,18 @@ import type { ReactNode } from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
-import { Button } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 import { InstanceDetailHistorySection } from './-instance-detail-history-section';
 import { TenantIamStatusBadge, formatDateTime } from './-instance-detail-view-shared';
 
 import type { HistoryWorkspaceModel } from './-instance-detail-operations-types';
-import type { DetailWorkflowAction, SelectedInstance } from './-instances-shared-types';
+import type { SelectedInstance } from './-instances-shared-types';
 import type { InstanceDoctorModel } from './-instance-detail-doctor-model';
 
 type InstanceDetailDoctorSectionProps = {
   readonly doctorModel: InstanceDoctorModel;
   readonly historyModel: HistoryWorkspaceModel | null;
   readonly selectedInstance: SelectedInstance;
-  readonly statusLoading: boolean;
-  readonly onRunDetailAction: (action: DetailWorkflowAction | 'focus_configuration') => Promise<void>;
   readonly onLoadProvisioningRun: (runId: string) => Promise<unknown>;
 };
 
@@ -42,8 +39,6 @@ export const InstanceDetailDoctorSection = ({
   doctorModel,
   historyModel,
   selectedInstance,
-  statusLoading,
-  onRunDetailAction,
   onLoadProvisioningRun,
 }: InstanceDetailDoctorSectionProps) => (
   <div className="space-y-5">
@@ -78,7 +73,9 @@ export const InstanceDetailDoctorSection = ({
                 </span>
               ) : null}
               {check.checkedAt ? <span>{formatDateTime(check.checkedAt)}</span> : null}
-              {check.requestId ? <span>{t('admin.instances.tenantIam.requestId', { value: check.requestId })}</span> : null}
+              {check.requestId ? (
+                <span>{t('admin.instances.tenantIam.requestId', { value: check.requestId })}</span>
+              ) : null}
             </div>
             {check.remediation ? (
               <p className="mt-3 text-sm text-foreground">{check.remediation}</p>
@@ -94,28 +91,11 @@ export const InstanceDetailDoctorSection = ({
     >
       <div className="rounded-xl border border-border/70 bg-background/85 p-4">
         <div className="space-y-1">
-          <div className="text-lg font-semibold text-foreground">{doctorModel.recommendedAction.label}</div>
+          <div className="text-lg font-semibold text-foreground">
+            {doctorModel.recommendedAction.label}
+          </div>
           <p className="text-sm text-muted-foreground">{doctorModel.recommendedAction.summary}</p>
         </div>
-      </div>
-    </DoctorStepCard>
-
-    <DoctorStepCard
-      title={t('admin.instances.doctor.steps.repair.title')}
-      subtitle={t('admin.instances.doctor.steps.repair.subtitle')}
-    >
-      <div className="flex flex-wrap gap-2">
-        {doctorModel.repairActions.map((action, index) => (
-          <Button
-            key={action.action}
-            type="button"
-            variant={index === 0 ? 'primary' : 'secondary'}
-            onClick={() => void onRunDetailAction(action.action)}
-            disabled={statusLoading}
-          >
-            {action.label}
-          </Button>
-        ))}
       </div>
     </DoctorStepCard>
 
@@ -124,20 +104,9 @@ export const InstanceDetailDoctorSection = ({
       subtitle={t('admin.instances.doctor.steps.validation.subtitle')}
     >
       <div className="rounded-xl border border-border/70 bg-background/85 p-4">
-        <p className="text-sm text-muted-foreground">{t(`admin.instances.doctor.validation.${doctorModel.validationState}`)}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {doctorModel.validationActions.map((action) => (
-            <Button
-              key={action.action}
-              type="button"
-              variant="secondary"
-              onClick={() => void onRunDetailAction(action.action)}
-              disabled={statusLoading}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </div>
+        <p className="text-sm text-muted-foreground">
+          {t(`admin.instances.doctor.validation.${doctorModel.validationState}`)}
+        </p>
       </div>
     </DoctorStepCard>
 
@@ -157,7 +126,7 @@ export const InstanceDetailDoctorSection = ({
         ...selectedInstance,
         keycloakProvisioningRuns: historyModel?.currentRun
           ? [historyModel.currentRun, ...historyModel.historicalRuns]
-          : historyModel?.historicalRuns ?? selectedInstance.keycloakProvisioningRuns,
+          : (historyModel?.historicalRuns ?? selectedInstance.keycloakProvisioningRuns),
       }}
       onLoadProvisioningRun={onLoadProvisioningRun}
     />

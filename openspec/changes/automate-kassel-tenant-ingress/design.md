@@ -218,12 +218,13 @@ Serialisierung idempotent ab:
     vollständig erfolgreichen Ergebnis fortfahren.
 11. Die tenantgebundene IAM-Rechteprobe ausführen und deren redigierte Evidenz
     im Elternlauf und im Instanz-Audit speichern.
-12. Erst danach Instanz und Elternlauf terminal auf `active` setzen.
+12. Danach den Elternlauf terminal auf `awaiting_activation` setzen; die Instanz
+    bleibt bis zur getrennten, bestätigten Aktivierungsaktion inaktiv.
 
-Damit existiert kein Zustand `active` mit nichtterminalem Create-Lauf. Der
+Damit existiert kein automatischer Statusschreiber für `active`. Der
 Login-Smoke folgt Redirects bewusst nicht bis zum Callback; er verifiziert den
 öffentlichen Issuer, die exakte Client-ID, PKCE `S256` und den hostgleichen
-Callback. Der normale Callback bleibt bis zur terminalen Aktivierung durch das
+Callback. Der normale Callback bleibt bis zur manuellen Aktivierung durch das
 bestehende Traffic-Gate gesperrt.
 
 Ein echter SSF-Browserlogin kann deshalb nicht widerspruchsfrei innerhalb des

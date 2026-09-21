@@ -18,6 +18,10 @@ export type CliOptions = {
   readonly authRealm?: string;
   readonly tenantAdminClientId?: string;
   readonly tenantAdminClientSecret?: string;
+  readonly tenantAdminUsername?: string;
+  readonly tenantAdminEmail?: string;
+  readonly tenantAdminFirstName?: string;
+  readonly tenantAdminLastName?: string;
   readonly command: Command;
   readonly displayName?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;

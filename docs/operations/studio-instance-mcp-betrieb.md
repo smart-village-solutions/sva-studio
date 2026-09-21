@@ -52,11 +52,11 @@ Codex nach der Änderung neu starten oder die MCP-Serverkonfiguration neu laden.
 
 ## Umgebungen und Keycloak
 
-| Umgebung | Root-Realm | Client-ID |
-| --- | --- | --- |
-| Entwicklung | `studio-dev` | `sva-studio-mcp` |
-| Staging | `studio-staging` | `sva-studio-mcp` |
-| Produktion | `sva-studio` | `sva-studio-mcp` |
+| Umgebung    | Root-Realm       | Client-ID        |
+| ----------- | ---------------- | ---------------- |
+| Entwicklung | `studio-dev`     | `sva-studio-mcp` |
+| Staging     | `studio-staging` | `sva-studio-mcp` |
+| Produktion  | `sva-studio`     | `sva-studio-mcp` |
 
 Je Realm gilt:
 
@@ -92,24 +92,25 @@ Für gezielte Betriebsprüfungen stehen neben der aggregierten Diagnose eigenst�
 
 ## Tool-Übersicht und benötigte Actions
 
-| Bereich | MCP-Tools | Erforderliche Studio-Action |
-| --- | --- | --- |
-| Bestand und Evidenz | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit` | `instance.list`, `instance.read`, `instance.audit.read` |
-| Diagnose | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight` | `instance.diagnose` |
-| Provisioning | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile` | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile` |
+| Bereich                  | MCP-Tools                                                                                                                                                    | Erforderliche Studio-Action                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Bestand und Evidenz      | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit`                                                            | `instance.list`, `instance.read`, `instance.audit.read`                                                                  |
+| Diagnose                 | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight`                                                          | `instance.diagnose`                                                                                                      |
+| Provisioning             | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile`             | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile`             |
 | Konfiguration und Module | `studio_instances_create`, `studio_instance_update`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | `instance.create`, `instance.update`, `instance.module.assign`, `instance.iam.baseline.seed`, `instance.admin.bootstrap` |
-| Tenant-IAM | `studio_instance_tenant_iam_access_probe`, `studio_instance_iam_roles_reconcile` | `instance.diagnose`, `instance.iam.roles.reconcile` |
-| Kritische Aktionen | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate` | jeweilige Action plus `instance.confirmation.prepare` |
-| Geführter Ablauf | `studio_instance_process` | Kombination der für die gewählte Aktion benötigten Actions |
+| Tenant-IAM               | `studio_instance_tenant_iam_access_probe`, `studio_instance_iam_roles_reconcile`                                                                             | `instance.diagnose`, `instance.iam.roles.reconcile`                                                                      |
+| Kritische Aktionen       | `studio_instance_activate`, `studio_instance_suspend`, `studio_instance_archive`, `studio_instance_module_revoke`, `studio_instance_secret_rotate`           | jeweilige Action plus `instance.confirmation.prepare`                                                                    |
+| Geführter Ablauf         | `studio_instance_process`                                                                                                                                    | Kombination der für die gewählte Aktion benötigten Actions                                                               |
 
 Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical_action_prepare`. Dessen `challengeId` und die zurückgegebene Bestätigungsphrase werden unverändert an das eigentliche Tool übergeben. Challenges sind kurzlebig, zustandsgebunden und nur einmal verwendbar.
+Für `studio_instance_secret_rotate` muss zusätzlich der unmittelbar zuvor mit `studio_instance_provisioning_plan` gelesene `planFingerprint` übergeben werden.
 
 ## Häufige Abläufe
 
 ### Tenant sicher anlegen
 
 1. Mit `studio_instance_process` im Modus `create` den vollständigen Registry-Vertrag einschließlich Tenant-Admin-Profil und der gewünschten `moduleIds` übergeben.
-2. Bei `status: awaiting_human_action` zuerst den aktuellen Zustand mit `studio_instance_get` prüfen.
+2. Bei der Planbestätigung den zurückgegebenen `planFingerprint` und `idempotencyKey` unverändert an den nächsten Aufruf übergeben; anschließend den aktuellen Zustand mit `studio_instance_get` prüfen.
 3. `instance.status.activate` über `studio_instance_critical_action_prepare` vorbereiten und anschließend mit `studio_instance_activate` bestätigen.
 4. Mit `studio_instance_diagnose` oder den gezielten Status- und Preflight-Tools die Abnahme dokumentieren.
 
@@ -131,6 +132,7 @@ Die Tools mit kritischer Aktion verlangen immer zuerst `studio_instance_critical
 Der MCP-Server `sva-studio-mcp` stellt ergänzend zu den Einzeltools das Tool `studio_instance_process` bereit. Es verwendet die Modi `create`, `repair` und `adapt` und ruft dabei ausschließlich die bestehenden Studio-API-Verträge für Registry, Modulzuweisung, IAM-Basis, Admin-Struktur, Keycloak-Provisioning, instanzgebundenen Rollenabgleich, Rechteprobe und Detaildiagnose auf. Der Rollenabgleich verwendet die dedizierte Action `instance.iam.roles.reconcile`; eine Browser-Session oder eine pauschale IAM-Admin-Berechtigung ist dafür nicht erforderlich.
 
 - `create` verlangt zusätzlich den bestehenden Create-Vertrag und legt die Registry-Instanz idempotent an.
+- Unterbricht `create` für die menschliche Planbestätigung, gibt der Prozess den dabei verwendeten `idempotencyKey` zurück. Der bestätigende Folgeaufruf muss ihn zusammen mit dem `planFingerprint` wiederverwenden.
 - `repair` arbeitet auf einer vorhandenen Instanz über den bestehenden Reconcile-Vertrag; `adapt` ergänzt nur fehlende Module einschließlich ihrer IAM-Basis und Admin-Struktur.
 - Der Prozess verfolgt den gestarteten Keycloak-Run nur innerhalb seines lokalen Zeitbudgets mit gedrosseltem Backoff und gibt bei noch laufendem oder fehlgeschlagenem Run einen handlungsfähigen Zwischen- beziehungsweise Blockierungszustand zurück.
 - Nach einem erfolgreichen Run gleicht er zuerst den instanzgebundenen Rollen-Katalog ab, führt dann eine tenantlokale Rechteprobe aus und liest den aktuellen Detail-/Doctor-Zustand. Historische Preflight-Evidenz ist kein Abschlussnachweis.

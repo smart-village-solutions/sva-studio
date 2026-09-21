@@ -7,6 +7,7 @@ import type {
   IamInstanceKeycloakPreflight,
   IamInstanceKeycloakProvisioningRun,
   IamInstanceListItem,
+  IamInstanceProvisioningReadiness,
   IamTenantIamAxis,
   IamTenantIamStatus,
   WasteManagementSettingsRecord,
@@ -37,7 +38,7 @@ const isConfigurationReady = (
 ): boolean =>
   Boolean(
     keycloakStatus &&
-      areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus, { requireTenantAdmin })
+    areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus, { requireTenantAdmin })
   );
 
 const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => {
@@ -242,7 +243,12 @@ export const buildInstanceDetail = (
   keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = [],
   tenantIamStatus?: IamTenantIamStatus,
   moduleIamStatus?: IamInstanceDetail['moduleIamStatus'],
-  wasteManagementSettings?: WasteManagementSettingsRecord
+  wasteManagementSettings?: WasteManagementSettingsRecord,
+  provisioningReadiness: IamInstanceProvisioningReadiness = {
+    state: 'unknown',
+    capabilities: [],
+    nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+  }
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -262,6 +268,7 @@ export const buildInstanceDetail = (
   keycloakProvisioningRuns,
   tenantIamStatus,
   moduleIamStatus,
+  provisioningReadiness,
   wasteManagementSettings,
 });
 

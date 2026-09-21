@@ -14,6 +14,11 @@ import {
   SYSTEM_ADMIN_ROLE,
 } from './provisioning-auth-utils.js';
 import {
+  STUDIO_OWNERSHIP_ATTRIBUTES,
+  readStudioOwnedClient,
+  readStudioOwnedUser,
+} from './provisioning-auth-policy.js';
+import {
   readPluginOidcClientAlignment,
   readPluginOidcClientRequirements,
 } from './provisioning-auth-plugin-clients.js';
@@ -57,6 +62,8 @@ type KeycloakAdminUser = {
 };
 
 export type KeycloakProvisioningClient = {
+  listRealms(): Promise<readonly { readonly realm: string }[]>;
+  hasRealmCreateCapability(): Promise<boolean>;
   ensureRealm(input: {
     displayName?: string;
     settings?: KeycloakRealmBaselineSettings;
@@ -82,6 +89,7 @@ export type KeycloakProvisioningClient = {
     publicClient?: boolean;
     pkceCodeChallengeMethod?: 'S256';
     accessTokenLifespan?: 900;
+    ownership?: Readonly<{ instanceId: string; artifactKey: string }>;
   }): Promise<void>;
   ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
   listClientProtocolMappers(clientId: string): Promise<
@@ -165,6 +173,8 @@ export const createKeycloakProvisioningClientFactory =
 export const createKeycloakProvisioningAdapters = (
   createClient: KeycloakProvisioningClientFactory
 ) => ({
+  listKeycloakRealms: () => createClient().listRealms(),
+  readKeycloakRealmCreateCapability: () => createClient().hasRealmCreateCapability(),
   readKeycloakState: createReadKeycloakState(createClient),
   provisionInstanceAuthArtifacts: createProvisionInstanceAuthArtifacts(createClient),
   deleteKeycloakRealm: (realm: string) => createClient(realm).deleteRealm(),
@@ -207,8 +217,13 @@ const isConflictRequestError = (error: unknown): boolean =>
 
 const ensureTenantAdmin = async (
   client: KeycloakProvisioningClient,
-  input: TenantAdminInput
+  input: TenantAdminInput & { instanceId: string }
 ): Promise<void> => {
+  const ownershipAttributes = {
+    [STUDIO_OWNERSHIP_ATTRIBUTES.managedBy]: ['studio'],
+    [STUDIO_OWNERSHIP_ATTRIBUTES.instanceId]: [input.instanceId],
+    [STUDIO_OWNERSHIP_ATTRIBUTES.artifactKey]: ['tenant_admin'],
+  } as const;
   const syncTenantAdminAccess = async (userId: string) => {
     await client.syncRoles(userId, [SYSTEM_ADMIN_ROLE]);
     if (!input.temporaryPassword) {
@@ -218,13 +233,17 @@ const ensureTenantAdmin = async (
     await client.setUserRequiredActions(userId, ['UPDATE_PASSWORD']);
   };
 
-  const updateExisting = async (user: { id: string; email?: string; enabled?: boolean }) => {
+  const updateExisting = async (user: KeycloakAdminUser) => {
+    if (readStudioOwnedUser(user, input.instanceId, 'tenant_admin') !== 'owned') {
+      throw new Error('tenant_admin_ownership_conflict');
+    }
     await client.updateUser(user.id, {
       username: input.username,
       email: input.email ?? user.email ?? fallbackEmail,
       firstName: input.firstName,
       lastName: input.lastName,
       enabled: user.enabled ?? true,
+      attributes: ownershipAttributes,
     });
     await syncTenantAdminAccess(user.id);
   };
@@ -241,6 +260,7 @@ const ensureTenantAdmin = async (
         firstName: input.firstName,
         lastName: input.lastName,
         enabled: true,
+        attributes: ownershipAttributes,
       });
       await syncTenantAdminAccess(created.externalId);
       return;
@@ -254,11 +274,7 @@ const ensureTenantAdmin = async (
         throw error;
       }
 
-      await updateExisting({
-        id: conflictingUser.id,
-        email: conflictingUser.email,
-        enabled: conflictingUser.enabled,
-      });
+      await updateExisting(conflictingUser);
       return;
     }
   }
@@ -270,19 +286,22 @@ const readTenantAdminStatus = async (
   input: {
     username: string | undefined;
   }
-): Promise<TenantAdminStatus> => {
+): Promise<{ status: TenantAdminStatus; representation: KeycloakAdminUser | null }> => {
   if (!input.username) {
     return {
-      tenantAdminExists: false,
-      tenantAdminHasSystemAdmin: false,
+      status: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+      representation: null,
     };
   }
 
   const tenantAdmin = await client.findUserByUsername(input.username);
   const tenantAdminRoles = tenantAdmin ? await client.listUserRoleNames(tenantAdmin.id) : [];
   return {
-    tenantAdminExists: Boolean(tenantAdmin),
-    tenantAdminHasSystemAdmin: tenantAdminRoles.includes(SYSTEM_ADMIN_ROLE),
+    status: {
+      tenantAdminExists: Boolean(tenantAdmin),
+      tenantAdminHasSystemAdmin: tenantAdminRoles.includes(SYSTEM_ADMIN_ROLE),
+    },
+    representation: tenantAdmin,
   };
 };
 
@@ -335,15 +354,24 @@ export const createReadKeycloakState =
     const protocolMappers = clientRepresentation
       ? await client.listClientProtocolMappers(input.authClientId)
       : [];
-    const tenantAdminStatus = await readTenantAdminStatus(client, {
+    const tenantAdmin = await readTenantAdminStatus(client, {
       username: input.tenantAdminBootstrap?.username,
     });
-    const keycloakClientSecret = clientRepresentation
-      ? await client.getOidcClientSecretValue(input.authClientId)
-      : null;
-    const tenantAdminClientSecret = input.tenantAdminClient?.clientId
-      ? await client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
-      : null;
+    const keycloakClientSecret =
+      clientRepresentation &&
+      readStudioOwnedClient(clientRepresentation, input.instanceId, 'login_client') === 'owned'
+        ? await client.getOidcClientSecretValue(input.authClientId)
+        : null;
+    const tenantAdminClientSecret =
+      input.tenantAdminClient?.clientId &&
+      tenantAdminClientRepresentation &&
+      readStudioOwnedClient(
+        tenantAdminClientRepresentation,
+        input.instanceId,
+        'tenant_admin_client'
+      ) === 'owned'
+        ? await client.getOidcClientSecretValue(input.tenantAdminClient.clientId)
+        : null;
     const systemAdminRole = await client.getRoleByName(SYSTEM_ADMIN_ROLE);
     const realmBaselineAligned = isKeycloakRealmBaselineAligned(realm);
     const userProfileBaselineAligned = await client.hasAdminOnlyUserProfileAttributes(
@@ -359,7 +387,8 @@ export const createReadKeycloakState =
       tenantAdminClientRepresentation,
       pluginOidcClients,
       protocolMappers,
-      tenantAdminStatus,
+      tenantAdminStatus: tenantAdmin.status,
+      tenantAdminRepresentation: tenantAdmin.representation,
       keycloakClientSecret,
       tenantAdminClientSecret,
       systemAdminRole,
@@ -391,7 +420,10 @@ export const reconcilePluginOidcClients = async (
     | 'getOidcClientByClientId'
     | 'listClientProtocolMappers'
   >,
-  input: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient' | 'pluginOidcClients'>
+  input: Pick<
+    KeycloakProvisioningInput,
+    'instanceId' | 'authClientId' | 'tenantAdminClient' | 'pluginOidcClients'
+  >
 ): Promise<void> => {
   for (const requirement of readPluginOidcClientRequirements(input)) {
     const browser = requirement.contractVersion === '2.0';
@@ -417,6 +449,10 @@ export const reconcilePluginOidcClients = async (
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
       uriPolicy: 'replace',
+      ownership: {
+        instanceId: input.instanceId,
+        artifactKey: `plugin_client:${requirement.pluginId}`,
+      },
     });
     await client.ensureAudienceProtocolMapper({
       clientId: requirement.clientId,
@@ -459,6 +495,7 @@ const reconcileInstanceAuthArtifacts = async (
       rootUrl: expectedClient.rootUrl,
       clientSecret: input.authClientSecret,
       rotateClientSecret: input.rotateClientSecret,
+      ownership: { instanceId: input.instanceId, artifactKey: 'login_client' },
     });
     if (input.realmMode === 'new') {
       await client.ensureAdminOnlyUserProfileAttributes(
@@ -483,6 +520,7 @@ const reconcileInstanceAuthArtifacts = async (
       standardFlowEnabled: expectedTenantAdminClient.standardFlowEnabled,
       directAccessGrantsEnabled: expectedTenantAdminClient.directAccessGrantsEnabled,
       serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
+      ownership: { instanceId: input.instanceId, artifactKey: 'tenant_admin_client' },
     });
     await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
   }
@@ -492,6 +530,7 @@ const reconcileInstanceAuthArtifacts = async (
   if (input.tenantAdminBootstrap) {
     await ensureTenantAdmin(client, {
       ...input.tenantAdminBootstrap,
+      instanceId: input.instanceId,
       temporaryPassword: input.tenantAdminTemporaryPassword,
     });
   }

@@ -106,14 +106,6 @@
       }
     },
     {
-      "id": "admin.instances.setup",
-      "path": "/admin/instances/$instanceId/setup",
-      "pageType": "setup",
-      "owner": {
-        "kind": "host"
-      }
-    },
-    {
       "id": "admin.legal-texts.create",
       "path": "/admin/legal-texts/new",
       "pageType": "create",

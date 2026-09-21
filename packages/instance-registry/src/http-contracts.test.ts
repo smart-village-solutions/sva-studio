@@ -13,6 +13,13 @@ import {
   updateInstanceSchema,
 } from './http-contracts.js';
 
+const tenantAdminBootstrap = {
+  username: 'demo-admin',
+  email: 'demo-admin@example.invalid',
+  firstName: 'Demo',
+  lastName: 'Admin',
+};
+
 describe('http-contracts', () => {
   it('extracts detail instance ids from nested routes', () => {
     expect(
@@ -49,6 +56,7 @@ describe('http-contracts', () => {
       realmMode: 'new',
       authRealm: 'de-test',
       authClientId: 'sva-studio-login',
+      tenantAdminBootstrap,
       authIssuerUrl: 'not-a-url',
     });
 
@@ -61,6 +69,7 @@ describe('http-contracts', () => {
       displayName: 'Demo',
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
+      tenantAdminBootstrap,
       authRealm:
         'Bitte ein Tenant-Client-Secret angeben. Bitte ein Tenant-Admin-Client-Secret angeben.',
       authClientId: 'sva-studio',
@@ -104,6 +113,7 @@ describe('http-contracts', () => {
       realmMode: 'new',
       authRealm: 'de-test',
       authClientId: 'sva-studio-login',
+      tenantAdminBootstrap,
     });
 
     expect(result.success).toBe(true);
@@ -122,6 +132,7 @@ describe('http-contracts', () => {
       displayName: 'Demo',
       parentDomain: 'studio.smart-village.app',
       realmMode: 'new',
+      tenantAdminBootstrap,
     });
 
     expect(result.success).toBe(true);
@@ -158,6 +169,28 @@ describe('http-contracts', () => {
     ).toBe(true);
   });
 
+  it('accepts a persisted username-only tenant admin profile during unrelated updates', () => {
+    expect(
+      updateInstanceSchema.safeParse({
+        displayName: 'Legacy tenant',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'de-test',
+        authClientId: 'sva-studio-login',
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      }).success
+    ).toBe(true);
+    expect(
+      createInstanceSchema.safeParse({
+        instanceId: 'de-test',
+        displayName: 'New tenant',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'new',
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      }).success
+    ).toBe(false);
+  });
+
   it('rejects reserved instance ids for audit routes', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'audit',
@@ -179,6 +212,7 @@ describe('http-contracts', () => {
       realmMode: 'new',
       authRealm: 'de-test',
       authClientId: 'sva-studio-login',
+      tenantAdminBootstrap,
       wasteManagementSettings: {
         provider: 'supabase',
         projectUrl: 'https://tenant-a.supabase.co',
@@ -200,6 +234,7 @@ describe('http-contracts', () => {
       realmMode: 'new',
       authRealm: 'de-test',
       authClientId: 'sva-studio-login',
+      tenantAdminBootstrap,
       wasteManagementSettings: {
         provider: 'supabase',
         projectUrl: 'not-a-url',
@@ -239,8 +274,10 @@ describe('http-contracts', () => {
   it('rejects secret rotation on the non-critical reconcile route', () => {
     expect(reconcileKeycloakSchema.safeParse({ rotateClientSecret: true }).success).toBe(false);
     expect(
-      reconcileKeycloakSchema.safeParse({ tenantAdminTemporaryPassword: 'temporary-password' })
-        .success
+      reconcileKeycloakSchema.safeParse({
+        planFingerprint: '0'.repeat(64),
+        tenantAdminTemporaryPassword: 'temporary-password',
+      }).success
     ).toBe(true);
   });
 

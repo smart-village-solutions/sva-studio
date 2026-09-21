@@ -347,10 +347,17 @@ Tenant-Realm-Rollen werden separat gelesen und mit `iam.role.write` als
 einzelne, serverseitig tenantgebundene Deltas verwaltet. Externe Rollennamen
 werden weder in lokale Rollen importiert noch für Studio-Fachgates ausgewertet.
 
-### Ergänzung 2026-09: Terminale Kasseler Instanzanlage
+### Ergänzung 2026-09: Technisch terminale Kasseler Instanzanlage
 
 Die Kasseler Instanzanlage folgt einem persistenten, lease-geschützten
 Elternlauf. Ein an den Lauf gebundener Plugin-, OIDC- und Lifecycle-Snapshot
 überbrückt die Prozessgrenze zwischen App und Provisioner. Fehlende Composition,
 Readiness oder öffentliche Postconditions führen fail-closed zu `failed`;
-`active` wird ausschließlich als letzter Schritt gespeichert.
+vollständige technische Readiness führt zu `awaiting_activation`. `active` wird
+ausschließlich durch die gemeinsame, bestätigte Aktivierungsaktion gespeichert.
+
+Die allgemeine Create-Strategie trennt aktuelle Keycloak-Anlagegates vom
+reparierbaren Background-Provisioning. Bestands-Realm-Mutationen benötigen
+eindeutige Studio-/Instanz-Ownership und einen versionierten, aktuellen
+Plan-Fingerprint. Unbekannte Fehler sind nicht retrybar; nur explizit sichere,
+persistiert korrelierte Schritte dürfen wieder aufgenommen werden.

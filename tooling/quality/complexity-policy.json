@@ -1996,18 +1996,6 @@
       "status": "open",
       "summary": "Admin-Module-Seite in kleinere UI-Sections und View-Model-Helfer zerlegen"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-setup-page.tsx:cyclomaticComplexity": {
-      "ticketId": "QUAL-FRONTEND-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Setup-Seite in kleinere Workflow-Actions und Render-Sections zerlegen"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-setup-page.tsx:functionLines": {
-      "ticketId": "QUAL-FRONTEND-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Setup-Seite in kleinere Workflow-Actions und Render-Sections zerlegen"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/monitoring/-jobs-page.tsx:functionLines": {
       "ticketId": "QUAL-PLUGIN-OPS-003",
       "ticketSystem": "backlog",
@@ -3543,6 +3531,180 @@
       "ticketSystem": "github",
       "status": "open",
       "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
+    },
+    "auth-runtime:packages/auth-runtime/src/keycloak-admin-client/core.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Admin-Client in kleinere Lese-, Schreib- und Fehlerpfade zerlegen"
+    },
+    "core-iam:packages/core/src/iam/runtime-diagnostics.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Runtime-Diagnosevertrag in fokussierte Typ- und Mappingmodule zerlegen"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/ui/searchable-select.tsx:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Searchable Select entlang Zustands-, Listen- und Interaktionslogik zerlegen"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-page.tsx:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Instanzübersicht in fokussierte View-Model- und Render-Abschnitte zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/mutation-errors.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Mutationsfehler nach stabilen Fehlerklassen in fokussierte Klassifizierer zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/mutation-errors.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Mutationsfehler nach stabilen Fehlerklassen in fokussierte Klassifizierer zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/provisioning-auth-evaluation.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Evaluation in getrennte Preflight-, Ownership- und Statusbausteine zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/provisioning-auth-evaluation.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Evaluation in getrennte Preflight-, Ownership- und Statusbausteine zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/provisioning-auth-evaluation.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Evaluation in getrennte Preflight-, Ownership- und Statusbausteine zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/provisioning-auth-plan.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Plan nach Artefakt- und Ausführungsphasen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-detail.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Instanzdetail-Projektion in Readiness-, Action- und Diagnosebausteine zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-detail.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Instanzdetail-Projektion in Readiness-, Action- und Diagnosebausteine zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-draft-readiness.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Draft-Readiness in Anlage-, Bereitstellungs- und Aktivierungsprüfungen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-draft-readiness.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Draft-Readiness in Anlage-, Bereitstellungs- und Aktivierungsprüfungen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-draft-readiness.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Draft-Readiness in Anlage-, Bereitstellungs- und Aktivierungsprüfungen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-helpers.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Registry-Helfer entlang ihrer fachlichen Projektionen aufteilen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-instance-mutations.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Instanzmutationen in getrennte Status- und Aktivierungsabläufe zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-readers.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Reader in getrennte Status-, Preflight- und Planmodule zerlegen"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/repository-provisioning.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Parent-Provisioning-Persistenz in Claim-, Planbindungs- und Recovery-Adapter zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution-finalize.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Finalisierung in Status-, Snapshot- und Parent-Resume-Phasen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Ausführung und Parent-Planbindung in getrennte fachliche Phasen zerlegen"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
+    },
+    "instance-registry-service:packages/instance-registry/src/tenant-provisioning-steps.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Tenant-Provisioning-Schritte nach Registry-, Keycloak- und Readiness-Phasen aufteilen"
+    },
+    "packages-default:packages/studio-mcp/src/process.ts:cyclomaticComplexity": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
+    },
+    "packages-default:packages/studio-mcp/src/process.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
+    },
+    "packages-default:packages/studio-mcp/src/process.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
+    },
+    "packages-default:packages/studio-mcp/src/tools.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
+    },
+    "packages-default:packages/studio-mcp/src/tools.ts:functionLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
+    },
+    "routing:packages/routing/src/app.routes.shared.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Gemeinsame App-Routen nach fachlichen Ressourcenmodulen aufteilen"
     },
     "plugin-sdk:packages/plugin-sdk/src/plugins.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-SDK-001",

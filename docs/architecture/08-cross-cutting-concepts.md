@@ -1074,3 +1074,16 @@ Tokens, Secrets oder E-Mail-Adressen.
   Lifecycle-Readiness darf eine `provisioning`-Instanz prüfen.
 - Logs und Evidenz enthalten Korrelation, Stufe, Routername und Hash, aber keine
   Client-Secrets, Zugangsdaten oder ACME-Inhalte.
+
+### Tenant-Readiness, Ownership und Retry
+
+- Readiness unterscheidet Anlage, technische Bereitstellung und Aktivierung;
+  `unknown` ist niemals gleichbedeutend mit `ready`.
+- Keycloak-Artefakte sind nur bei vollständigen Markern für Studio, Instanz und
+  Artefaktschlüssel automatisch veränderbar. Namensgleichheit genügt nicht.
+- Plan-Fingerprints binden Vertragsversion, Sollzustand und Readback. Bereits
+  eindeutig nachgewiesene eigene Schritte dürfen fortgesetzt werden, fremde
+  oder nicht zuordenbare Drift nicht.
+- API-, Persistenz-, Log-, UI- und MCP-Grenzen verwenden stabile Codes,
+  redigierte Details und Run-/Request-Korrelation. Unbekannte Fehler bleiben
+  ohne blinden Retry.

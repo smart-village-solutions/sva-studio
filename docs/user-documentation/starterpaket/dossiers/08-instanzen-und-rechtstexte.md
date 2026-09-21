@@ -42,20 +42,6 @@
 - **Evidenz:** `routes/admin/instances/-instance-detail-page.tsx` und zugehörige
   `-instance-detail-*-section.tsx`.
 
-## `admin.instances.setup` – Instanz einrichten
-
-- **Route / Typ / Owner:** `/admin/instances/$instanceId/setup`, Einrichtung, Host.
-- **Nutzerziel:** Eine angelegte Instanz aktivieren und ihre geschützte Tenant-Admin-Struktur
-  initialisieren.
-- **Produktfakten:** Der Setup-Flow ist erst abgeschlossen, wenn die Instanz aktiv und die
-  Tenant-Admin-Struktur initialisiert ist. Dabei werden `system_admin` und die IAM-Basis der
-  ausgewählten Module synchronisiert. Ein temporäres Tenant-Admin-Passwort ist nur nötig, wenn der
-  Workflow es setzen soll.
-- **Leitfragen / Stichwörter:** Welcher Pflichtschritt fehlt? Welche Module sollen initial enthalten
-  sein? Setup, Aktivierung, Tenant-Admin, IAM-Basis, temporäres Passwort.
-- **Evidenz:** `routes/admin/instances/-instance-setup-page.tsx`,
-  `i18n/resources/de/admin/instances/setup.resources.ts`.
-
 ## `admin.legal-texts.list` – Rechtstexte verwalten
 
 - **Route / Typ / Owner:** `/admin/legal-texts`, Liste, Host.

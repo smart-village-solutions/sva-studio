@@ -41,6 +41,10 @@ services:
       - default
     deploy:
       replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: pause
       placement:
         constraints:
           - node.hostname == node-005.sva

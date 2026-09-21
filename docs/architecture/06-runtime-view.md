@@ -1347,7 +1347,7 @@ Nachweis gesperrt.
 4. Nur der belegte Zielzustand wird als Erfolg bestätigt. Ein unklarer Zustand
    liefert einen Reconciliation-Konflikt und ein pseudonymisiertes Audit-Event.
 
-### Szenario 21: Kasseler Mandantenanlage abschließen
+### Szenario 21: Kasseler Mandanten technisch bereitstellen
 
 1. Die App persistiert Instanz, effektive Aktivierungen, Lifecycle-Intent und
    Elternlauf einschließlich unveränderlichem Plugin-/OIDC-Snapshot.
@@ -1358,7 +1358,22 @@ Nachweis gesperrt.
 4. Der Provisioner bewertet Lifecycle-Evidenz gegen den Snapshot. Die interne
    SSF-Prüfung darf dabei `provisioning` lesen; Directory und öffentlicher
    Tenant-Verkehr bleiben weiterhin auf `active` begrenzt.
-5. Nach Login-Nachweis setzt ausschließlich der Elternlauf Instanz und Lauf auf
-   `active`. Jeder terminale Fehler bleibt mit Artefakten und Evidenz erhalten.
+5. Nach technischem Login-Nachweis endet der Elternlauf in
+   `awaiting_activation`. Jeder terminale Fehler bleibt mit Artefakten und
+   Evidenz erhalten.
 6. Ein Retry persistiert vor der Rückgabe erneut einen Lifecycle-Intent und
    beginnt ab der ersten nicht mehr nachgewiesenen Stufe.
+7. Eine berechtigte Person bestätigt die getrennte kritische Aktivierungsaktion.
+   Der Server bindet die Challenge an Akteur, Instanzrevision und aktuelle
+   Readiness-Evidenz, prüft alle Achsen erneut und setzt erst dann `active`.
+
+### Szenario 22: Tenant anlegen und Bestands-Realm übernehmen
+
+1. UI oder MCP liest Realm-Katalog und Draft-Readiness ohne Mutation.
+2. Create wiederholt Keycloak-Zugriff, Auswahl, Zuordnung und Ownership unter
+   dem Instanz-Lock und persistiert Tenant, Audit und Auftrag atomar.
+3. Der Worker schreibt getrennte Preflight-, Plan-, Mutations- und
+   Postflight-Evidenz. Ein geänderter Fingerprint oder fremde Drift stoppt vor
+   der Mutation.
+4. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
+   `unknown` sichtbar. Der dauerhafte Auftrag bleibt claimbar.

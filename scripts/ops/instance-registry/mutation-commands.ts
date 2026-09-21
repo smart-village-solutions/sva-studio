@@ -53,11 +53,16 @@ export const runBackfillAdminClientCommand = async (
         return null;
       }
 
+      const plan = await service.planKeycloakProvisioning(instance.instanceId);
+      if (!plan) {
+        throw new Error(`keycloak_plan_missing:${instance.instanceId}`);
+      }
       const provisioningRun = await service.executeKeycloakProvisioning({
         actorId: options.actorId,
         idempotencyKey: `${options.idempotencyKey}:${instance.instanceId}:provision-admin-client`,
         instanceId: instance.instanceId,
         intent: 'provision_admin_client',
+        planFingerprint: plan.fingerprint,
         requestId: toRequestId(options.idempotencyKey),
       });
 
@@ -98,6 +103,12 @@ export const runMutationCommand = async (service: InstanceRegistryService, optio
             options.tenantAdminClientId
           ),
           ...(options.tenantAdminClientSecret ? { secret: options.tenantAdminClientSecret } : {}),
+        },
+        tenantAdminBootstrap: {
+          username: assertRequired(options.tenantAdminUsername, '--tenant-admin-username'),
+          email: assertRequired(options.tenantAdminEmail, '--tenant-admin-email'),
+          firstName: assertRequired(options.tenantAdminFirstName, '--tenant-admin-first-name'),
+          lastName: assertRequired(options.tenantAdminLastName, '--tenant-admin-last-name'),
         },
         themeKey: options.themeKey,
       });

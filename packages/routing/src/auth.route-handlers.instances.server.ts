@@ -12,6 +12,12 @@ export const instanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.listInstances),
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.createInstance),
   },
+  '/api/v1/iam/instances/draft-readiness': {
+    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceDraftReadiness),
+  },
+  '/api/v1/iam/instances/keycloak-realms': {
+    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.listInstanceRealms),
+  },
   '/api/v1/iam/instances/audit': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceAuditRun),
   },

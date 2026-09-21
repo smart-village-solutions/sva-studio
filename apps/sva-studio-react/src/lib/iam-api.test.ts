@@ -72,6 +72,7 @@ import {
   probeTenantIamAccess,
   reconcileRoles,
   reconcileInstanceKeycloak,
+  reconcileTenantIamRoles,
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
@@ -1358,6 +1359,27 @@ describe('iam-api Keycloak role helpers', () => {
       expect.objectContaining({ credentials: 'include' })
     );
   });
+
+  it('uses the dedicated tenant IAM role reconciliation endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { outcome: 'success' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-role-reconcile' });
+
+    await reconcileTenantIamRoles('demo', { planFingerprint: 'a'.repeat(64) });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/instances/demo/tenant-iam/roles/reconcile',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ planFingerprint: 'a'.repeat(64) }),
+      })
+    );
+  });
 });
 
 describe('iam-api group helpers', () => {
@@ -1479,13 +1501,16 @@ describe('iam-api instance helpers', () => {
     const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ data: { id: 'run-rotate' } }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await rotateInstanceSecret('demo');
+    await rotateInstanceSecret('demo', 'a'.repeat(64));
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/iam/instances/demo/keycloak/rotate-secret',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ intent: 'rotate_client_secret' }),
+        body: JSON.stringify({
+          intent: 'rotate_client_secret',
+          planFingerprint: 'a'.repeat(64),
+        }),
       })
     );
   });
@@ -1539,10 +1564,12 @@ describe('iam-api instance helpers', () => {
     await planInstanceKeycloakProvisioning('demo');
     await executeInstanceKeycloakProvisioning('demo', {
       intent: 'provision',
+      planFingerprint: 'a'.repeat(64),
       tenantAdminTemporaryPassword: 'test-temp-password',
     });
     await getInstanceKeycloakProvisioningRun('demo', 'run-1');
     await reconcileInstanceKeycloak('demo', {
+      planFingerprint: 'a'.repeat(64),
       tenantAdminTemporaryPassword: 'test-temp-password',
     });
     await probeTenantIamAccess('demo');

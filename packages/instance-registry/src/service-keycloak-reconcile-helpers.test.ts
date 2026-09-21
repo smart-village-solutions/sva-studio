@@ -65,7 +65,8 @@ describe('service-keycloak-reconcile-helpers', () => {
   });
 
   it('fails closed with the summarized blocker details before reconcile enqueueing', async () => {
-    const { ensureReconcilePreconditions } = await import('./service-keycloak-reconcile-helpers.js');
+    const { ensureReconcilePreconditions } =
+      await import('./service-keycloak-reconcile-helpers.js');
 
     await expect(
       ensureReconcilePreconditions(
@@ -89,7 +90,8 @@ describe('service-keycloak-reconcile-helpers', () => {
   });
 
   it('allows reconcile enqueueing when an imported realm only has preflight warnings', async () => {
-    const { ensureReconcilePreconditions } = await import('./service-keycloak-reconcile-helpers.js');
+    const { ensureReconcilePreconditions } =
+      await import('./service-keycloak-reconcile-helpers.js');
 
     await expect(
       ensureReconcilePreconditions(
@@ -110,6 +112,28 @@ describe('service-keycloak-reconcile-helpers', () => {
           },
           tenantAdminClientSecret: 'secret',
         })
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('allows secret rotation when tenant_secret is the only blocker', async () => {
+    const { ensureReconcilePreconditions } =
+      await import('./service-keycloak-reconcile-helpers.js');
+
+    await expect(
+      ensureReconcilePreconditions(
+        {
+          getKeycloakPreflight: vi.fn().mockResolvedValue({
+            overallStatus: 'blocked',
+            checks: [{ checkKey: 'tenant_secret', status: 'blocked', summary: 'Secret fehlt.' }],
+          }),
+          planKeycloakProvisioning: vi.fn().mockResolvedValue({
+            overallStatus: 'blocked',
+            driftSummary: 'Provisioning blockiert.',
+          }),
+        } as never,
+        createLoaded({ instance: { realmMode: 'existing' } }),
+        { allowMissingTenantSecret: true }
       )
     ).resolves.toBeUndefined();
   });

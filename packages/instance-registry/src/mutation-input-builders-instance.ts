@@ -31,6 +31,7 @@ export const buildCreateInstanceProvisioningInput = (
   themeKey: payload.themeKey,
   featureFlags: payload.featureFlags,
   mainserverConfigRef: payload.mainserverConfigRef,
+  moduleIds: payload.moduleIds,
 });
 
 export const buildUpdateInstanceInput = (

@@ -516,6 +516,7 @@ export const runStudioInstanceProcess = async (
           summary: 'Der Rollenabgleich ist nicht vollständig erfolgreich; Ergebnis prüfen.',
         },
         requestId,
+        idempotencyKey,
       };
     }
     completedSteps.push('tenant_iam_roles_reconciled');

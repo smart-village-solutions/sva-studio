@@ -862,6 +862,7 @@ describe('Studio MCP tools', () => {
         completed: false,
         status: 'blocked',
         currentStep: 'tenant_iam_roles_reconcile',
+        idempotencyKey: expect.any(String),
         nextAction: { actionId: 'instance.iam.roles.reconcile' },
       },
     });

@@ -593,7 +593,7 @@ export type IamInstanceProvisioningReadiness = {
     readonly state: 'provisioning_waiting' | 'provisioning_blocked' | 'awaiting_activation' | 'ready' | 'unknown';
     readonly capabilities: readonly IamInstanceProvisioningCapability[];
     readonly nextAction: Readonly<{
-        action: 'instance.readiness.refresh' | 'instance.keycloak.execute' | 'instance.secret.rotate' | 'instance.provisioning.retry' | 'instance.tenant-iam.probe' | 'instance.tenant-iam.reconcile' | 'instance.status.activate';
+        action: 'instance.readiness.refresh' | 'instance.keycloak.execute' | 'instance.secret.rotate' | 'instance.provisioning.retry' | 'instance.diagnose' | 'instance.tenant-iam.probe' | 'instance.tenant-iam.reconcile' | 'instance.status.activate';
         retryClass: 'never' | 'safe' | 'conditional';
         runId?: string;
     }> | null;

@@ -113,7 +113,7 @@ export const dispatchInstanceProvisionerRequest = async (
 
   const configuredBaseUrl = process.env.SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL?.trim();
   if (!configuredBaseUrl) {
-    return null;
+    return unavailableResponse();
   }
   if (configuredBaseUrl !== INSTANCE_PROVISIONER_BASE_URL) {
     return unavailableResponse();

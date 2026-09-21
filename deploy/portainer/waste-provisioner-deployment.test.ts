@@ -25,6 +25,10 @@ const canonicalAppSection = canonicalCompose.slice(
   canonicalCompose.indexOf('  app:'),
   canonicalCompose.indexOf('  provisioner:')
 );
+const genericAppSection = genericCompose.slice(
+  genericCompose.indexOf('  app:'),
+  genericCompose.indexOf('  provisioner:')
+);
 const provisionerSection = compose.slice(
   compose.indexOf('  provisioner:'),
   compose.indexOf('  migrate:')
@@ -32,6 +36,10 @@ const provisionerSection = compose.slice(
 const canonicalProvisionerSection = canonicalCompose.slice(
   canonicalCompose.indexOf('  provisioner:'),
   canonicalCompose.indexOf('  migrate:')
+);
+const genericProvisionerSection = genericCompose.slice(
+  genericCompose.indexOf('  provisioner:'),
+  genericCompose.indexOf('  migrate:')
 );
 const migrateSection = compose.slice(
   compose.indexOf('  migrate:'),
@@ -119,6 +127,9 @@ describe('waste tenant database provisioning deployment', () => {
     expect(canonicalAppSection).toContain(
       '"SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL=http://provisioner:3000"'
     );
+    expect(genericAppSection).toContain(
+      'SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: "http://provisioner:3000"'
+    );
     expect(appSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
     expect(canonicalAppSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
     expect(provisionerSection).toContain("SVA_TRUST_FORWARDED_HEADERS: 'true'");
@@ -140,6 +151,7 @@ describe('waste tenant database provisioning deployment', () => {
     ]) {
       expect(provisionerSection, `reference provisioner ${key}`).toContain(`${key}:`);
       expect(canonicalProvisionerSection, `canonical provisioner ${key}`).toContain(`"${key}=`);
+      expect(genericProvisionerSection, `generic provisioner ${key}`).toContain(`${key}:`);
     }
     expect(provisionerSection).not.toContain('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL');
     expect(canonicalProvisionerSection).not.toContain('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL');

@@ -8,7 +8,7 @@ describe('instance provisioner proxy', () => {
     vi.unstubAllGlobals();
   });
 
-  it('does not intercept requests when the internal provisioner target is not configured', async () => {
+  it('fails closed when the internal provisioner target is not configured', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -18,7 +18,10 @@ describe('instance provisioner proxy', () => {
       })
     );
 
-    expect(response).toBeNull();
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: { code: 'instance_provisioner_unavailable' },
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

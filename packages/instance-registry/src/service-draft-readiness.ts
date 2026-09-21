@@ -30,6 +30,27 @@ export type RealmSuitability = Readonly<{
 
 export type InstanceDraftReadiness = IamInstanceDraftReadiness;
 
+export const isAssignedPluginLifecycleReady = async (
+  deps: InstanceRegistryServiceDeps,
+  input: Pick<IamInstanceDetail, 'instanceId' | 'assignedModules'>
+): Promise<boolean> => {
+  const lifecycles = input.assignedModules.flatMap((moduleId) => {
+    const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
+    return lifecycle ? [lifecycle] : [];
+  });
+  if (lifecycles.length === 0) return true;
+
+  try {
+    const readiness = await deps.readProvisioningModuleReadiness?.({
+      instanceId: input.instanceId,
+      lifecycles,
+    });
+    return readiness?.status === 'ready';
+  } catch {
+    return false;
+  }
+};
+
 export const collectActivationReadinessBlockers = async (
   deps: InstanceRegistryServiceDeps,
   detail: IamInstanceDetail
@@ -49,20 +70,8 @@ export const collectActivationReadinessBlockers = async (
   if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
     blockers.push('module_readiness_not_ready');
   }
-  const lifecycles = detail.assignedModules.flatMap((moduleId) => {
-    const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
-    return lifecycle ? [lifecycle] : [];
-  });
-  if (lifecycles.length > 0) {
-    try {
-      const readiness = await deps.readProvisioningModuleReadiness?.({
-        instanceId: detail.instanceId,
-        lifecycles,
-      });
-      if (readiness?.status !== 'ready') blockers.push('plugin_readiness_not_ready');
-    } catch {
-      blockers.push('plugin_readiness_not_ready');
-    }
+  if (!(await isAssignedPluginLifecycleReady(deps, detail))) {
+    blockers.push('plugin_readiness_not_ready');
   }
   if (detail.provisioningRuns.some(requiresAutomatedProvisioningEvidence)) {
     const completed = detail.provisioningRuns.some(

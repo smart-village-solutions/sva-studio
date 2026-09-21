@@ -877,7 +877,8 @@ describe('instance registry service facade', () => {
     const assignedInstance = { ...createdInstance, assignedModules: ['news'] };
     const repository = createRepository({
       listInstances: vi.fn(async () => []),
-      getInstanceById: vi.fn()
+      getInstanceById: vi
+        .fn()
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValue(assignedInstance),
@@ -2215,12 +2216,14 @@ describe('instance registry service facade', () => {
   );
 
   it.each([
-    ['standard', false, ['news'], false, false, false],
-    ['kassel', true, ['news'], false, false, false],
-    ['moduleless', false, [], false, false, false],
-    ['kassel-disabled-runtime', false, ['news'], true, false, false],
-    ['live-keycloak-drift', false, ['news'], false, true, false],
-    ['plugin-pending', false, ['news'], false, false, true],
+    ['standard', false, ['news'], false, false, false, false, false],
+    ['kassel', true, ['news'], false, false, false, false, false],
+    ['moduleless', false, [], false, false, false, false, false],
+    ['kassel-disabled-runtime', false, ['news'], true, false, false, false, false],
+    ['live-keycloak-drift', false, ['news'], false, true, false, false, false],
+    ['plugin-pending', false, ['news'], false, false, true, false, false],
+    ['stale-tenant-iam', false, ['news'], false, false, false, true, false],
+    ['keycloak-running', false, ['news'], false, true, false, false, true],
   ] as const)(
     'activates the %s profile only with current successful postflight and IAM evidence',
     async (
@@ -2229,7 +2232,9 @@ describe('instance registry service facade', () => {
       assignedModules,
       hostReadinessMissing,
       liveKeycloakDrift,
-      pluginPending
+      pluginPending,
+      staleTenantIamEvidence,
+      keycloakRunInProgress
     ) => {
       const suspendedInstance = {
         ...baseInstance,
@@ -2284,7 +2289,7 @@ describe('instance registry service facade', () => {
             instanceId: 'demo',
             intent: 'provision' as const,
             mode: 'new' as const,
-            overallStatus: 'succeeded' as const,
+            overallStatus: keycloakRunInProgress ? ('running' as const) : ('succeeded' as const),
             driftSummary: 'Kein Drift.',
             createdAt: '2026-01-01T00:01:00.000Z',
             updatedAt: '2026-01-01T00:02:00.000Z',
@@ -2320,12 +2325,16 @@ describe('instance registry service facade', () => {
         getLatestTenantIamAccessProbe: vi.fn(async () => ({
           status: 'ready' as const,
           summary: 'Zugriff bestätigt.',
-          checkedAt: '2026-01-01T00:02:00.000Z',
+          checkedAt: staleTenantIamEvidence
+            ? '2026-01-01T00:01:00.000Z'
+            : '2026-01-01T00:02:00.000Z',
         })),
         getRoleReconcileSummary: vi.fn(async () => ({
           status: 'ready' as const,
           summary: 'Rollen abgeglichen.',
-          checkedAt: '2026-01-01T00:02:00.000Z',
+          checkedAt: staleTenantIamEvidence
+            ? '2026-01-01T00:01:00.000Z'
+            : '2026-01-01T00:02:00.000Z',
         })),
       });
       const deps = createDeps(repository, {
@@ -2352,6 +2361,52 @@ describe('instance registry service facade', () => {
             }),
           })
         );
+      }
+
+      if (pluginPending) {
+        await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+          expect.objectContaining({
+            provisioningReadiness: expect.objectContaining({
+              nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+            }),
+          })
+        );
+      }
+
+      if (staleTenantIamEvidence) {
+        await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+          expect.objectContaining({
+            tenantIamStatus: expect.objectContaining({
+              access: expect.objectContaining({ status: 'unknown' }),
+              reconcile: expect.objectContaining({ status: 'unknown' }),
+            }),
+            provisioningReadiness: expect.objectContaining({
+              nextAction: { action: 'instance.tenant-iam.probe', retryClass: 'safe' },
+            }),
+          })
+        );
+        await expect(
+          service.changeStatus({
+            instanceId: 'demo',
+            nextStatus: 'active',
+            idempotencyKey: `idem-activate-ready-${profile}`,
+            actorId: 'actor-1',
+            requestId: 'request-ready',
+          })
+        ).rejects.toThrow('activation_readiness_blocked:tenant_iam_not_ready');
+        expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+        return;
+      }
+
+      if (keycloakRunInProgress) {
+        await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+          expect.objectContaining({
+            provisioningReadiness: expect.objectContaining({
+              nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+            }),
+          })
+        );
+        return;
       }
 
       if (hostReadinessMissing) {

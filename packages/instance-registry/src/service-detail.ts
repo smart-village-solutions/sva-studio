@@ -11,7 +11,10 @@ import {
   buildModuleIamStatus,
   buildTenantIamStatus,
 } from './service-helpers.js';
-import { buildBackgroundProvisioningCapabilities } from './service-draft-readiness.js';
+import {
+  buildBackgroundProvisioningCapabilities,
+  isAssignedPluginLifecycleReady,
+} from './service-draft-readiness.js';
 import {
   isTenantProvisioningFailureRetryable,
   requiresAutomatedProvisioningEvidence,
@@ -87,27 +90,43 @@ export const loadKeycloakDetailArtifacts = async (
     ),
   ]);
 
+  const latestKeycloakRun = keycloakProvisioningRuns[0];
+  const latestSuccessfulKeycloakRun = keycloakProvisioningRuns.find(
+    (run) => run.overallStatus === 'succeeded'
+  );
+  const evidenceIsCurrent = (checkedAt: string | undefined) => {
+    if (!latestSuccessfulKeycloakRun) return true;
+    if (!checkedAt) return false;
+    return Date.parse(checkedAt) >= Date.parse(latestSuccessfulKeycloakRun.updatedAt);
+  };
+  const currentAccessEvidence = evidenceIsCurrent(accessEvidence?.checkedAt)
+    ? accessEvidence
+    : undefined;
+  const currentReconcileEvidence = evidenceIsCurrent(reconcileEvidence?.checkedAt)
+    ? reconcileEvidence
+    : undefined;
+
   const tenantIamStatus = buildTenantIamStatus({
     keycloakStatus,
     requireTenantAdmin: isInstanceTenantAdminRequired(instance),
-    accessEvidence: accessEvidence
+    accessEvidence: currentAccessEvidence
       ? {
-          status: accessEvidence.status,
-          summary: accessEvidence.summary,
+          status: currentAccessEvidence.status,
+          summary: currentAccessEvidence.summary,
           source: 'access_probe',
-          checkedAt: accessEvidence.checkedAt,
-          errorCode: accessEvidence.errorCode,
-          requestId: accessEvidence.requestId,
+          checkedAt: currentAccessEvidence.checkedAt,
+          errorCode: currentAccessEvidence.errorCode,
+          requestId: currentAccessEvidence.requestId,
         }
       : undefined,
-    reconcileEvidence: reconcileEvidence
+    reconcileEvidence: currentReconcileEvidence
       ? {
-          status: reconcileEvidence.status,
-          summary: reconcileEvidence.summary,
+          status: currentReconcileEvidence.status,
+          summary: currentReconcileEvidence.summary,
           source: 'role_reconcile',
-          checkedAt: reconcileEvidence.checkedAt,
-          errorCode: reconcileEvidence.errorCode,
-          requestId: reconcileEvidence.requestId,
+          checkedAt: currentReconcileEvidence.checkedAt,
+          errorCode: currentReconcileEvidence.errorCode,
+          requestId: currentReconcileEvidence.requestId,
         }
       : undefined,
   });
@@ -121,7 +140,10 @@ export const loadKeycloakDetailArtifacts = async (
     'instance_detail'
   );
   const createRun = provisioningRuns.find((run) => run.operation === 'create');
-  const latestKeycloakRun = keycloakProvisioningRuns[0];
+  const pluginLifecycleReady = await isAssignedPluginLifecycleReady(deps, instance);
+  const keycloakRunInProgress =
+    latestKeycloakRun?.overallStatus === 'planned' ||
+    latestKeycloakRun?.overallStatus === 'running';
   const keycloakPlanHasMutations =
     keycloakPlan?.steps.some((step) => step.action === 'create' || step.action === 'update') ??
     false;
@@ -147,6 +169,7 @@ export const loadKeycloakDetailArtifacts = async (
     !keycloakPlanHasMutations &&
     tenantIamStatus.overall.status === 'ready' &&
     (instance.assignedModules.length === 0 || moduleIamStatus?.overall.status === 'ready') &&
+    pluginLifecycleReady &&
     hostReadinessSatisfied;
   const retryableCreateRun =
     createRun?.snapshotVersion === '2.0' &&
@@ -182,13 +205,15 @@ export const loadKeycloakDetailArtifacts = async (
               ? ({ action: 'instance.status.activate', retryClass: 'never' } as const)
               : missingTenantSecretIsOnlyBlocker
                 ? ({ action: 'instance.secret.rotate', retryClass: 'conditional' } as const)
-                : keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations
-                  ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
-                  : tenantIamStatus.access.status !== 'ready'
-                    ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
-                    : tenantIamStatus.reconcile.status !== 'ready'
-                      ? ({ action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const)
-                      : ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const),
+                : keycloakRunInProgress
+                  ? ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const)
+                  : keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations
+                    ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
+                    : tenantIamStatus.access.status !== 'ready'
+                      ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
+                      : tenantIamStatus.reconcile.status !== 'ready'
+                        ? ({ action: 'instance.tenant-iam.reconcile', retryClass: 'safe' } as const)
+                        : ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const),
   };
 
   return buildInstanceDetail(

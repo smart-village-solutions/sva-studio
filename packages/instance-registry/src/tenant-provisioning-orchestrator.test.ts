@@ -166,7 +166,9 @@ const createHarness = () => {
         ...currentRun,
         status: input.status,
         stepKey: input.stepKey,
-        childKeycloakRunId: input.childKeycloakRunId ?? currentRun.childKeycloakRunId,
+        childKeycloakRunId: input.clearChildKeycloakRunId
+          ? undefined
+          : (input.childKeycloakRunId ?? currentRun.childKeycloakRunId),
         nextAttemptAt: input.nextAttemptAt ?? currentRun.nextAttemptAt,
         terminalEvidence: {
           ...currentRun.terminalEvidence,
@@ -282,6 +284,25 @@ const createHarness = () => {
     getInstance: () => currentInstance,
     setKeycloakStatus: (status: InstanceKeycloakProvisioningRun['overallStatus']) => {
       keycloakStatus = status;
+    },
+    confirmPlan: () => {
+      const gate = currentRun.terminalEvidence.keycloakPlanGate as
+        | { readonly planFingerprint?: string }
+        | undefined;
+      currentRun = {
+        ...currentRun,
+        status: 'provisioning',
+        stepKey: 'keycloak',
+        childKeycloakRunId: childRun(keycloakStatus).id,
+        terminalEvidence: {
+          ...currentRun.terminalEvidence,
+          keycloakPlanGate: {
+            status: 'confirmed',
+            planFingerprint: gate?.planFingerprint,
+            childKeycloakRunId: childRun(keycloakStatus).id,
+          },
+        },
+      };
     },
     setReadiness: (status: typeof readiness) => {
       readiness = status;
@@ -416,18 +437,18 @@ describe('tenant provisioning parent orchestrator', () => {
         role: expect.objectContaining({ roleKey: 'system_admin' }),
       })
     );
-    expect(
-      vi.mocked(harness.repository.syncProtectedSystemRolePermissions).mock.invocationCallOrder[0]
-    ).toBeLessThan(
-      vi.mocked(harness.repository.createKeycloakProvisioningRun).mock.invocationCallOrder[0] ?? 0
-    );
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
-      stepKey: 'keycloak',
-      childKeycloakRunId: '00000000-0000-4000-8000-000000000002',
+      status: 'validated',
+      stepKey: 'registry',
+      childKeycloakRunId: undefined,
       errorCode: undefined,
+      terminalEvidence: {
+        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
+      },
     });
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
 
+    harness.confirmPlan();
     await iterate();
     expect(harness.getRun().stepKey).toBe('keycloak');
     expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledWith(
@@ -1059,11 +1080,14 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
-      stepKey: 'keycloak',
+      status: 'validated',
+      stepKey: 'registry',
       errorCode: undefined,
+      terminalEvidence: {
+        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
+      },
     });
-    expect(harness.repository.createKeycloakProvisioningRun).toHaveBeenCalledOnce();
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
   });
 
   it('accepts only the correlated Keycloak new-to-existing realm transition', async () => {
@@ -1130,12 +1154,15 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
-      stepKey: 'keycloak',
-      childKeycloakRunId: '00000000-0000-4000-8000-000000000002',
+      status: 'validated',
+      stepKey: 'registry',
+      childKeycloakRunId: undefined,
       errorCode: undefined,
+      terminalEvidence: {
+        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
+      },
     });
-    expect(harness.repository.createKeycloakProvisioningRun).toHaveBeenCalledOnce();
+    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
   });
 
   it('renews the lease while a provisioning step is still running', async () => {

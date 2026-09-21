@@ -503,10 +503,74 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain(
       "instance.status IN ('requested', 'validated', 'provisioning')"
     );
+    expect(statements[0]?.text).toContain("'awaiting_plan_confirmation'");
+    expect(statements[0]?.text).toContain("'awaiting_tenant_secret'");
+    expect(statements[0]?.text).toContain("'tenant_secret_rotation_running'");
     expect(statements[0]?.values).toEqual([
       'worker-1',
       '2026-01-01T00:00:30.000Z',
       'dialog.kassel.de',
+    ]);
+  });
+
+  it('binds confirmed Keycloak work to the exact waiting parent state', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [provisioningRow],
+      [provisioningRow],
+      [provisioningRow],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await repository.confirmProvisioningPlan({
+      runId: 'run-1',
+      instanceId: 'tenant-a',
+      expectedPlanFingerprint: 'old-plan',
+      planFingerprint: 'confirmed-plan',
+      childKeycloakRunId: '11111111-1111-4111-8111-111111111111',
+      actorId: 'operator-1',
+      requestId: 'request-1',
+    });
+    await repository.bindProvisioningRemediation({
+      runId: 'run-1',
+      instanceId: 'tenant-a',
+      expectedPlanFingerprint: 'blocked-plan',
+      planFingerprint: 'confirmed-rotation-plan',
+      childKeycloakRunId: '22222222-2222-4222-8222-222222222222',
+      actorId: 'operator-1',
+      requestId: 'request-2',
+    });
+    await repository.completeProvisioningRemediation({
+      instanceId: 'tenant-a',
+      childKeycloakRunId: '22222222-2222-4222-8222-222222222222',
+      succeeded: false,
+    });
+
+    expect(statements[0]?.text).toContain("step_key = 'keycloak'");
+    expect(statements[0]?.text).toContain("planFingerprint}' = $3");
+    expect(statements[0]?.values).toEqual([
+      'run-1',
+      'tenant-a',
+      'old-plan',
+      'confirmed-plan',
+      '11111111-1111-4111-8111-111111111111',
+      'operator-1',
+      'request-1',
+    ]);
+    expect(statements[1]?.text).toContain("'tenant_secret_rotation_running'");
+    expect(statements[1]?.values).toEqual([
+      'run-1',
+      'tenant-a',
+      'blocked-plan',
+      'confirmed-rotation-plan',
+      '22222222-2222-4222-8222-222222222222',
+      'operator-1',
+      'request-2',
+    ]);
+    expect(statements[2]?.text).toContain("'awaiting_tenant_secret'");
+    expect(statements[2]?.values).toEqual([
+      'tenant-a',
+      '22222222-2222-4222-8222-222222222222',
+      false,
     ]);
   });
 

@@ -91,12 +91,12 @@
 
 ## 5. Provisioning und ausschließlich manuelle Aktivierung
 
-- [ ] 5.1 Worker-Preflight, bestätigten Plan, Mutation und aktuellen
+- [x] 5.1 Worker-Preflight, bestätigten Plan, Mutation und aktuellen
       Postflight als getrennte, korrelierte Phasen führen.
-      **Merge-Blocker:** Die ausdrückliche Planbestätigung des Parent-Runs ist
-      noch nicht serverseitig gebunden. Außerdem muss ein wegen fehlendem
-      Tenant-Secret wartender Bestands-Realm nach Secret-Eingabe denselben Run
-      fortsetzen können; siehe #1454 sowie 11.27 und 11.28.
+      Der Parent-Run wartet persistiert auf die ausdrückliche Planbestätigung,
+      bindet den bestätigten Fingerprint atomar an den Keycloak-Kindlauf und
+      setzt auch einen wegen fehlendem Tenant-Secret wartenden Bestands-Realm
+      nach der korrelierten Secret-Rotation im selben Run fort.
 - [x] 5.2 Den Kasseler `activate`-Worker-Schritt entfernen und den
       Elternlauf nach vollständiger technischer Abnahme in
       `awaiting_activation` überführen.
@@ -193,24 +193,25 @@
       Keycloak-Ausfall, 409-Klassen, Teilfortschritt, unbekannte Fehler und
       wartende Aktivierung ergänzen.
 
-- [ ] 8.7 Bestehenden MCP-Prozess in `create`, `repair` und `adapt` vor
+- [x] 8.7 Bestehenden MCP-Prozess in `create`, `repair` und `adapt` vor
       nicht bestätigten Keycloak-Mutationen anhalten; Plan anzeigen,
       Fingerprint über die vorhandenen Execute-/Reconcile-Verträge prüfen und
       bestehenden Run nach Bestätigung, Timeout und Kanalwechsel weiterlesen.
       Auch nachgelagerte Rollenänderungen dürfen die Planbindung nicht umgehen.
       Negativtests für fremde/veraltete Pläne und doppelte Aufträge ergänzen.
-      **Merge-Blocker:** Der MCP-Create kann den selbstfreigebenden Parent-Run
-      derzeit nur verfolgen; siehe #1454 und 11.27.
+      Der Create-Pfad hält nun am wartenden Parent-Run an, zeigt den aktuellen
+      Plan und setzt nach ausdrücklicher Fingerprint-Bestätigung denselben Run
+      fort; Kanalwechsel und Timeout bleiben über dessen Run-ID resumierbar.
 
 ## 9. Systemnachweise und Qualität
 
-- [ ] 9.1 Die Invarianten und Failure-Injection-Matrix aus
+- [x] 9.1 Die Invarianten und Failure-Injection-Matrix aus
       `assurance.md` am exakten finalen HEAD mit verlinkter Evidenz aktualisieren.
       Die lokale Evidenz ist im Assurance Case dokumentiert; die SHA-Bindung,
       GitHub-Checks und Review-Threads werden über den kanonischen PR-Snapshot
-      für den finalen PR-HEAD nachgewiesen.
-      **Ausstehend:** `PLAN-01` und der kanonische PR-Snapshot sind wegen #1454
-      noch nicht abschließend nachgewiesen.
+      für den finalen PR-HEAD nachgewiesen. `PLAN-01` ist durch die gezielten
+      Parent-/Kindlauf-, Plan-Drift-, Secret-Recovery- und MCP-Tests lokal
+      belegt; der folgende PR-Snapshot bindet diese Evidenz an den finalen HEAD.
 - [x] 9.2 Früh die kleinsten betroffenen Unit-, Type- und
       `check:server-runtime`-Gates ausführen; breite Nx-Gates erst nach
       Scope-Messung gemäß `DEVELOPMENT_RULES.md`.
@@ -316,10 +317,13 @@
       abgeleiteten Realm-Wert löschen und eine Katalogauswahl verlangen.
 - [x] 11.26 Die vollständigen Pflichtangaben des ersten Tenant-Administrators
       im Ops-CLI-Create erfassen und in den aktuellen Beispielen dokumentieren.
-- [ ] 11.27 Den automatisierten Parent-Run auf einen zuvor ausdrücklich
+- [x] 11.27 Den automatisierten Parent-Run auf einen zuvor ausdrücklich
       bestätigten und serverseitig gebundenen Keycloak-Plan umstellen; der
       Worker darf den bestätigten Fingerprint nicht selbst erzeugen; siehe
-      Blocker #1454.
-- [ ] 11.28 Einen Bestands-Realm ohne Tenant-Secret als nichtterminalen,
+      #1454.
+- [x] 11.28 Einen Bestands-Realm ohne Tenant-Secret als nichtterminalen,
       behebbaren Wartezustand projizieren und den korrelierten Parent-Run nach
-      geschützter Secret-Eingabe sicher fortsetzen; siehe Blocker #1454.
+      geschützter Secret-Eingabe sicher fortsetzen; siehe #1454.
+- [x] 11.29 Den Ops-CLI-Create-Pfad vor direkter Aktivierung an den geführten
+      UI-/MCP-Prozess übergeben und die CLI-Aktivierung erst für die
+      serverseitig projizierte Aktion `instance.status.activate` dokumentieren.

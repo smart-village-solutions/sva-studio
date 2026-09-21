@@ -226,7 +226,7 @@ describe('service-keycloak-execution-finalize', () => {
     );
   });
 
-  it('completes an existing realm repair without an optional bootstrap admin', async () => {
+  it('completes an existing realm secret rotation and resumes its parent run', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
     const status = {
       realmExists: true,
@@ -239,6 +239,7 @@ describe('service-keycloak-execution-finalize', () => {
       listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
       setInstanceStatus: vi.fn(),
       updateKeycloakProvisioningRun: vi.fn().mockResolvedValue(undefined),
+      completeProvisioningRemediation: vi.fn().mockResolvedValue(undefined),
     };
     state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
     state.buildFinalRunSteps.mockReturnValue([
@@ -270,14 +271,14 @@ describe('service-keycloak-execution-finalize', () => {
             },
           } as never,
           runId: 'run-role-repair',
-          intent: 'provision',
+          intent: 'rotate_client_secret',
         }
       )
     ).resolves.toBe('succeeded');
 
     expect(state.buildFinalRunSteps).toHaveBeenCalledWith({
       status,
-      intent: 'provision',
+      intent: 'rotate_client_secret',
       usedTemporaryPassword: false,
       requireTenantAdmin: false,
       requireRealmBaseline: false,
@@ -288,6 +289,11 @@ describe('service-keycloak-execution-finalize', () => {
     expect(repository.updateKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({ overallStatus: 'succeeded' })
     );
+    expect(repository.completeProvisioningRemediation).toHaveBeenCalledWith({
+      instanceId: 'instance-imported',
+      childKeycloakRunId: 'run-role-repair',
+      succeeded: true,
+    });
   });
 
   it('keeps the realm baseline applicable after a managed realm transitioned to existing', async () => {

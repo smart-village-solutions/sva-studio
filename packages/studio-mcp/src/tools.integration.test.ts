@@ -377,6 +377,200 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('shows the automated parent plan before starting its Keycloak child run', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'requested' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'validated' },
+          keycloakPlan: { fingerprint: confirmedPlanFingerprint, steps: [] },
+          provisioningReadiness: {
+            nextAction: { action: 'instance.keycloak.execute' },
+          },
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'awaiting_human_action',
+        currentStep: 'keycloak_plan_confirmation',
+        doctor: { keycloakPlan: { fingerprint: confirmedPlanFingerprint } },
+        nextAction: { actionId: 'instance.keycloak.plan.confirm' },
+      },
+    });
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls.map(([value]) => value.path)).not.toContain(
+      '/api/v1/iam/instances/demo/keycloak/execute'
+    );
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('binds a confirmed automated parent plan and resumes the same run', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'requested' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'validated' },
+          keycloakPlan: { fingerprint: confirmedPlanFingerprint, steps: [] },
+          provisioningReadiness: {
+            nextAction: { action: 'instance.keycloak.execute' },
+          },
+        },
+      })
+      .mockResolvedValueOnce({ data: { id: 'keycloak-run-1' } })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          status: 'validated',
+          assignedModules: [],
+          latestProvisioningRun: {
+            id: 'parent-run-1',
+            status: 'validated',
+            completedAt: '2026-09-21T10:00:00.000Z',
+          },
+          keycloakStatus: { realmExists: true, clientExists: true },
+          tenantIamStatus: { overall: { status: 'ready' } },
+          moduleIamStatus: { overall: { status: 'ready' } },
+          provisioningReadiness: {
+            state: 'awaiting_activation',
+            nextAction: { action: 'instance.status.activate' },
+          },
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        planFingerprint: confirmedPlanFingerprint,
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'awaiting_human_action',
+        currentStep: 'activation',
+        completedSteps: [
+          'registry_created_or_idempotently_reused',
+          'parent_provisioning_completed',
+        ],
+      },
+    });
+    expect(request).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        path: '/api/v1/iam/instances/demo/keycloak/execute',
+        body: { intent: 'provision', planFingerprint: confirmedPlanFingerprint },
+      })
+    );
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('projects missing-secret remediation without terminalizing the automated parent', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'requested' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'validated' },
+          keycloakPlan: { fingerprint: confirmedPlanFingerprint, overallStatus: 'blocked' },
+          provisioningReadiness: {
+            nextAction: { action: 'instance.secret.rotate' },
+          },
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'existing',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'awaiting_human_action',
+        currentStep: 'tenant_secret',
+        doctor: { parentRun: { id: 'parent-run-1', status: 'validated' } },
+        nextAction: { actionId: 'instance.secret.rotate' },
+      },
+    });
+    expect(request).toHaveBeenCalledTimes(2);
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('uses the projected recovery action for a non-retryable parent failure', async () => {
     const request = vi
       .fn()

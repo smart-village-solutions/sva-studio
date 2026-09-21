@@ -241,6 +241,14 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
         : 'Provisioning abgeschlossen, aber einzelne Sollzustände weichen weiterhin ab.',
   });
 
+  if (input.intent === 'rotate_client_secret') {
+    await deps.repository.completeProvisioningRemediation({
+      instanceId: input.loaded.instance.instanceId,
+      childKeycloakRunId: input.runId,
+      succeeded: finalRunStatus === 'succeeded',
+    });
+  }
+
   if (transitionNewRealm) {
     await deps.repository.setInstanceRealmMode({
       instanceId: input.loaded.instance.instanceId,

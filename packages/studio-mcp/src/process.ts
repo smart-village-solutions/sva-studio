@@ -87,6 +87,11 @@ const readParentRun = (detail: Record<string, unknown>, runId: string): Record<s
   return unwrap(runs.find((candidate) => unwrap(candidate).id === runId));
 };
 
+const readProvisioningAction = (detail: Record<string, unknown>): string | undefined => {
+  const action = unwrap(unwrap(detail.provisioningReadiness).nextAction).action;
+  return typeof action === 'string' ? action : undefined;
+};
+
 const request = (client: StudioApiClient, input: StudioApiRequest) => client.request(input);
 
 const mutation = (
@@ -145,6 +150,8 @@ const waitForParentProvisioning = async (
   while (Date.now() < deadline) {
     const run = readParentRun(detail, runId);
     if (run.completedAt !== undefined || run.status === 'failed') break;
+    const action = readProvisioningAction(detail);
+    if (action === 'instance.keycloak.execute' || action === 'instance.secret.rotate') break;
     await new Promise<void>((resolve) =>
       setTimeout(resolve, Math.min(delayMs, Math.max(0, deadline - Date.now())))
     );
@@ -303,14 +310,14 @@ export const runStudioInstanceProcess = async (
 
     if (automatedParentRunId) {
       currentStep = 'parent_provisioning';
-      const detail = await waitForParentProvisioning(
+      let detail = await waitForParentProvisioning(
         client,
         basePath,
         automatedParentRunId,
         requestId,
         options.timeoutMs
       );
-      const parentRun = readParentRun(detail, automatedParentRunId);
+      let parentRun = readParentRun(detail, automatedParentRunId);
       if (parentRun.status === 'failed') {
         const projectedAction = unwrap(unwrap(detail.provisioningReadiness).nextAction).action;
         return {
@@ -323,6 +330,100 @@ export const runStudioInstanceProcess = async (
           doctor: parentRun,
           nextAction: {
             actionId: typeof projectedAction === 'string' ? projectedAction : 'instance.diagnose',
+            summary: 'Den fehlgeschlagenen Provisioning-Lauf und die nächste Aktion prüfen.',
+          },
+          requestId,
+          idempotencyKey,
+        };
+      }
+      const projectedAction = readProvisioningAction(detail);
+      if (projectedAction === 'instance.secret.rotate') {
+        return {
+          completed: false,
+          status: 'awaiting_human_action',
+          instanceId: input.instanceId,
+          currentStep: 'tenant_secret',
+          completedSteps,
+          openSteps: ['tenant_secret', 'keycloak_plan_confirmation'],
+          doctor: {
+            parentRun,
+            keycloakPlan: detail.keycloakPlan,
+            provisioningReadiness: detail.provisioningReadiness,
+          },
+          nextAction: {
+            actionId: 'instance.secret.rotate',
+            summary:
+              'Das Tenant-Secret geschützt erfassen; derselbe Parent-Run wird danach fortgesetzt.',
+          },
+          requestId,
+          idempotencyKey,
+        };
+      }
+      if (projectedAction === 'instance.keycloak.execute') {
+        const plan = unwrap(detail.keycloakPlan);
+        const planFingerprint =
+          typeof plan.fingerprint === 'string' ? plan.fingerprint : undefined;
+        if (!input.planFingerprint) {
+          return {
+            completed: false,
+            status: 'awaiting_human_action',
+            instanceId: input.instanceId,
+            currentStep: 'keycloak_plan_confirmation',
+            completedSteps,
+            openSteps: ['keycloak_plan_confirmation', 'parent_provisioning'],
+            doctor: { parentRun, keycloakPlan: plan },
+            nextAction: {
+              actionId: 'instance.keycloak.plan.confirm',
+              summary:
+                'Den aktuellen Keycloak-Plan prüfen und seinen Fingerprint ausdrücklich bestätigen.',
+            },
+            requestId,
+            idempotencyKey,
+          };
+        }
+        if (planFingerprint !== input.planFingerprint) {
+          throw new StudioApiError(
+            409,
+            {
+              error: {
+                code: 'keycloak_plan_fingerprint_stale',
+                message: 'Der bestätigte Keycloak-Plan ist nicht mehr aktuell.',
+              },
+            },
+            requestId,
+            idempotencyKey
+          );
+        }
+        await request(
+          client,
+          mutation(
+            `${basePath}/keycloak/execute`,
+            { intent: 'provision', planFingerprint: input.planFingerprint },
+            requestId,
+            deriveIdempotencyKey(idempotencyKey, 'parent-provision')
+          )
+        );
+        detail = await waitForParentProvisioning(
+          client,
+          basePath,
+          automatedParentRunId,
+          requestId,
+          options.timeoutMs
+        );
+        parentRun = readParentRun(detail, automatedParentRunId);
+      }
+      if (parentRun.status === 'failed') {
+        const action = readProvisioningAction(detail);
+        return {
+          completed: false,
+          status: 'blocked',
+          instanceId: input.instanceId,
+          currentStep,
+          completedSteps,
+          openSteps: [currentStep],
+          doctor: parentRun,
+          nextAction: {
+            actionId: action ?? 'instance.diagnose',
             summary: 'Den fehlgeschlagenen Provisioning-Lauf und die nächste Aktion prüfen.',
           },
           requestId,

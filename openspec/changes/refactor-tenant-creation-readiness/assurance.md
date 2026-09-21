@@ -248,16 +248,24 @@ Beim Wechsel auf einen Bestands-Realm verwirft die UI den nur für `new`
 abgeleiteten Realm-Wert. Der Ops-CLI-Create verlangt und übergibt das
 vollständige Tenant-Admin-Pflichtprofil.
 
-Offener Merge-Blocker für `PLAN-01`: Der automatisierte Parent-Worker erzeugt
-den Keycloak-Plan und übergibt dessen Fingerprint derzeit selbst an Execute.
-Vor Merge muss der Parent-Run stattdessen eine zuvor ausdrücklich bestätigte,
-serverseitig gebundene Freigabe konsumieren; eine selbst erzeugte Worker-
-Freigabe ist kein zulässiger Bestätigungsnachweis.
-Für Bestands-Realms ohne Tenant-Secret darf derselbe Zustandsraum außerdem
-nicht terminal auf `keycloak_plan_blocked` enden: Die Projektion muss die
-geschützte Secret-Eingabe priorisieren und danach genau den korrelierten
-Parent-Run fortsetzen können. Diagnose ohne Wiederaufnahmepfad erfüllt
-`RETRY-01` und `FLOW-01` nicht.
+Die abschließende `PLAN-01`-Korrektur trennt Planung und menschliche Freigabe
+auch im automatisierten Parent-Run. Der Worker persistiert einen Wartezustand
+mit dem aktuellen Fingerprint, ohne selbst einen Kindlauf zu starten. Erst der
+vorhandene Execute-Vertrag bindet den vom Akteur bestätigten aktuellen Plan
+per Compare-and-Set an Parent- und Kindlauf; ein zwischenzeitlich geänderter
+Plan benötigt dadurch eine neue ausdrückliche Bestätigung. Der MCP-Create
+zeigt diesen Plan, stoppt mit `awaiting_human_action` und liest nach der
+Bestätigung denselben Parent-Run weiter.
+
+Ein Bestands-Realm ohne Tenant-Secret bleibt als
+`awaiting_tenant_secret` nichtterminal. Die vorhandene Secret-Rotation wird
+mit diesem Parent-Run korreliert; Erfolg weckt denselben Run erneut, ein
+Fehler stellt wieder den behebbaren Wartezustand her. Die gezielten Tests für
+Repository-CAS, Execute/Rotation, Parent-Orchestrierung, Finalisierung und MCP
+sind mit 22, 33, 38, 8 und 31 Fällen grün. Der Ops-CLI-Create verweist nach der
+Registry-Anlage auf denselben geführten UI-/MCP-Prozess und dokumentiert die
+direkte Aktivierung erst nach serverseitiger Projektion von
+`instance.status.activate`.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

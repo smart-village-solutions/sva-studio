@@ -565,6 +565,7 @@ describe('service-keycloak-execution', () => {
       getKeycloakProvisioningRun: vi
         .fn()
         .mockResolvedValue({ id: 'run-1', overallStatus: 'failed' }),
+      completeProvisioningRemediation: vi.fn().mockResolvedValue(null),
     };
     state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
 
@@ -589,6 +590,11 @@ describe('service-keycloak-execution', () => {
 
     expect(state.syncRotatedClientSecretToRegistry).not.toHaveBeenCalled();
     expect(state.completeRun).not.toHaveBeenCalled();
+    expect(repository.completeProvisioningRemediation).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      childKeycloakRunId: 'run-1',
+      succeeded: false,
+    });
   });
 
   it('recovers a missing tenant secret even when the derived plan remains blocked', async () => {
@@ -1044,6 +1050,57 @@ describe('service-keycloak-execution', () => {
     expect(state.createQueuedRun).not.toHaveBeenCalled();
   });
 
+  it('binds an explicit plan confirmation to the waiting automated parent run', async () => {
+    const { createExecuteKeycloakProvisioningHandler } =
+      await import('./service-keycloak-execution.js');
+    state.loadInstanceWithSecret.mockResolvedValue(createLoaded());
+    state.createQueuedRun.mockResolvedValue({ run: { id: 'run-1' } });
+    const parentRun = {
+      id: 'parent-1',
+      operation: 'create',
+      status: 'validated',
+      snapshotVersion: '3.0',
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      terminalEvidence: {
+        keycloakPlanGate: {
+          status: 'awaiting_plan_confirmation',
+          planFingerprint: 'b'.repeat(64),
+        },
+      },
+    };
+    const repository = {
+      listProvisioningRuns: vi.fn().mockResolvedValue([parentRun]),
+      confirmProvisioningPlan: vi.fn().mockResolvedValue({
+        ...parentRun,
+        status: 'provisioning',
+        stepKey: 'keycloak',
+        childKeycloakRunId: 'run-1',
+      }),
+      getKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1' }),
+    };
+
+    await expect(
+      createExecuteKeycloakProvisioningHandler({ repository: repository as never } as never)({
+        instanceId: 'instance-1',
+        idempotencyKey: 'idem-1',
+        requestId: 'request-1',
+        actorId: 'operator-1',
+        intent: 'provision',
+        planFingerprint: confirmedPlanFingerprint,
+      })
+    ).resolves.toEqual({ id: 'run-1' });
+
+    expect(repository.confirmProvisioningPlan).toHaveBeenCalledWith({
+      runId: 'parent-1',
+      instanceId: 'instance-1',
+      expectedPlanFingerprint: 'b'.repeat(64),
+      planFingerprint: confirmedPlanFingerprint,
+      childKeycloakRunId: 'run-1',
+      actorId: 'operator-1',
+      requestId: 'request-1',
+    });
+  });
+
   it('enqueues missing-secret recovery when tenant_secret is the only blocker', async () => {
     const { createExecuteKeycloakProvisioningHandler } =
       await import('./service-keycloak-execution.js');
@@ -1066,8 +1123,22 @@ describe('service-keycloak-execution', () => {
       }))
     );
     state.createQueuedRun.mockResolvedValue({ run: { id: 'run-1' } });
+    const parentRun = {
+      id: 'parent-1',
+      operation: 'create',
+      status: 'validated',
+      snapshotVersion: '3.0',
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      terminalEvidence: {
+        keycloakPlanGate: {
+          status: 'awaiting_tenant_secret',
+          planFingerprint: confirmedPlanFingerprint,
+        },
+      },
+    };
     const repository = {
-      listProvisioningRuns: vi.fn().mockResolvedValue([]),
+      listProvisioningRuns: vi.fn().mockResolvedValue([parentRun]),
+      bindProvisioningRemediation: vi.fn().mockResolvedValue(parentRun),
       getKeycloakProvisioningRun: vi
         .fn()
         .mockResolvedValue({ id: 'run-1', overallStatus: 'queued' }),
@@ -1088,6 +1159,13 @@ describe('service-keycloak-execution', () => {
       expect.anything(),
       expect.anything(),
       expect.objectContaining({ intent: 'rotate_client_secret' })
+    );
+    expect(repository.bindProvisioningRemediation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: 'parent-1',
+        childKeycloakRunId: 'run-1',
+        actorId: 'actor-1',
+      })
     );
   });
 

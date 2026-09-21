@@ -1,8 +1,10 @@
 import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { createExecuteKeycloakProvisioningHandler } from './service-keycloak-execution.js';
-import { createPlanKeycloakProvisioningHandler } from './service-keycloak-readers.js';
+import {
+  createGetKeycloakPreflightHandler,
+  createPlanKeycloakProvisioningHandler,
+} from './service-keycloak-readers.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import {
   continueAt,
@@ -85,24 +87,43 @@ const registryStep: StepHandler = async ({
     readPluginOidcClientRequirements: () => pluginSnapshot.oidcClients,
   };
   const plan = await createPlanKeycloakProvisioningHandler(executionDeps)(instance.instanceId);
-  if (!plan || plan.overallStatus === 'blocked') {
+  if (!plan) {
     throw new Error('keycloak_plan_blocked');
   }
-  const child = await createExecuteKeycloakProvisioningHandler(executionDeps, {
-    allowActiveTenantProvisioning: true,
-  })({
-    instanceId: instance.instanceId,
-    intent: 'provision',
-    planFingerprint: plan.fingerprint,
-    idempotencyKey: `parent:${run.id}:keycloak:${run.deadlineAt}`,
-    actorId: run.actorId,
-    requestId: run.requestId,
-  });
-  assertExecutionActive();
-  if (!child) throw new Error('instance_not_found');
-  return continueAt(deps, run, workerId, 'keycloak', now, {
-    childKeycloakRunId: child.id,
-    delayMs: RETRY_MILLISECONDS,
+  if (plan.overallStatus === 'blocked') {
+    const preflight = await createGetKeycloakPreflightHandler(executionDeps)(instance.instanceId);
+    const blockers = preflight?.checks.filter(({ status }) => status === 'blocked') ?? [];
+    const missingTenantSecret =
+      instance.realmMode === 'existing' &&
+      blockers.length > 0 &&
+      blockers.every(({ checkKey }) => checkKey === 'tenant_secret');
+    if (!missingTenantSecret) throw new Error('keycloak_plan_blocked');
+    return updateClaimedRun(deps, run, workerId, {
+      status: 'validated',
+      stepKey: 'registry',
+      clearChildKeycloakRunId: true,
+      terminalEvidence: {
+        keycloakPlanGate: {
+          status: 'awaiting_tenant_secret',
+          planFingerprint: plan.fingerprint,
+          intent: 'rotate_client_secret',
+          checkedAt: now.toISOString(),
+        },
+      },
+    });
+  }
+  return updateClaimedRun(deps, run, workerId, {
+    status: 'validated',
+    stepKey: 'registry',
+    clearChildKeycloakRunId: true,
+    terminalEvidence: {
+      keycloakPlanGate: {
+        status: 'awaiting_plan_confirmation',
+        planFingerprint: plan.fingerprint,
+        intent: 'provision',
+        checkedAt: now.toISOString(),
+      },
+    },
   });
 };
 
@@ -132,7 +153,6 @@ const keycloakStep: StepHandler = async ({
 const lifecycleStep: StepHandler = async ({
   deps,
   run,
-  instance,
   workerId,
   now,
   assertExecutionActive,

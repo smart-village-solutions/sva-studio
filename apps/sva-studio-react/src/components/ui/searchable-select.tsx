@@ -18,6 +18,7 @@ type SearchableSelectBaseProps = {
   readonly searchPlaceholder: string;
   readonly emptyText: string;
   readonly options: readonly SearchableSelectOption[];
+  readonly showLabel?: boolean;
   readonly disabled?: boolean;
   readonly ariaInvalid?: boolean;
   readonly describedBy?: string;
@@ -317,6 +318,7 @@ export const SearchableSelect = ({
   searchPlaceholder,
   emptyText,
   options,
+  showLabel = true,
   disabled = false,
   ariaInvalid,
   describedBy,
@@ -378,7 +380,7 @@ export const SearchableSelect = ({
         }
       }}
     >
-      <label htmlFor={id}>{label}</label>
+      {showLabel ? <label htmlFor={id}>{label}</label> : null}
       <SearchableSelectTrigger
         close={() => {
           close();

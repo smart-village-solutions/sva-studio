@@ -5,7 +5,10 @@ import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { Pool, type PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
-import { processNextQueuedKeycloakProvisioningRun } from './service-keycloak-execution.js';
+import {
+  createExecuteKeycloakProvisioningHandler,
+  processNextQueuedKeycloakProvisioningRun,
+} from './service-keycloak-execution.js';
 import { createPlanKeycloakProvisioningHandler } from './service-keycloak-readers.js';
 import { createInstanceRegistryService } from './service.js';
 import { createInstanceRegistryRuntime } from './runtime-wiring.js';
@@ -648,12 +651,39 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       });
 
       await processNextTenantProvisioningRun(deps, { workerId: 'integration-parent-worker' });
-      const parentAfterQueue = (await repository.listProvisioningRuns(instanceId))[0];
-      assert(parentAfterQueue?.childKeycloakRunId);
-      const originalChildRunId = parentAfterQueue.childKeycloakRunId;
+      const parentAwaitingConfirmation = (await repository.listProvisioningRuns(instanceId))[0];
+      expect(parentAwaitingConfirmation).toMatchObject({
+        status: 'validated',
+        stepKey: 'registry',
+        childKeycloakRunId: undefined,
+        terminalEvidence: {
+          keycloakPlanGate: { status: 'awaiting_plan_confirmation' },
+        },
+      });
       confirmedWorkerPlan =
         (await createPlanKeycloakProvisioningHandler(deps)(instanceId)) ?? undefined;
       assert(confirmedWorkerPlan);
+      const queuedChild = await createExecuteKeycloakProvisioningHandler(deps)({
+        instanceId,
+        intent: 'provision',
+        planFingerprint: confirmedWorkerPlan.fingerprint,
+        idempotencyKey: 'integration-parent-keycloak',
+        actorId: 'integration-test',
+        requestId: 'integration-parent-keycloak-request',
+      });
+      assert(queuedChild);
+      const originalChildRunId = queuedChild.id;
+      expect((await repository.listProvisioningRuns(instanceId))[0]).toMatchObject({
+        status: 'provisioning',
+        stepKey: 'keycloak',
+        childKeycloakRunId: originalChildRunId,
+        terminalEvidence: {
+          keycloakPlanGate: {
+            status: 'confirmed',
+            planFingerprint: confirmedWorkerPlan.fingerprint,
+          },
+        },
+      });
 
       await processNextQueuedKeycloakProvisioningRun(deps);
 

@@ -253,6 +253,11 @@ den Keycloak-Plan und übergibt dessen Fingerprint derzeit selbst an Execute.
 Vor Merge muss der Parent-Run stattdessen eine zuvor ausdrücklich bestätigte,
 serverseitig gebundene Freigabe konsumieren; eine selbst erzeugte Worker-
 Freigabe ist kein zulässiger Bestätigungsnachweis.
+Für Bestands-Realms ohne Tenant-Secret darf derselbe Zustandsraum außerdem
+nicht terminal auf `keycloak_plan_blocked` enden: Die Projektion muss die
+geschützte Secret-Eingabe priorisieren und danach genau den korrelierten
+Parent-Run fortsetzen können. Diagnose ohne Wiederaufnahmepfad erfüllt
+`RETRY-01` und `FLOW-01` nicht.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

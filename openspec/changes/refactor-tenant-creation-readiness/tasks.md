@@ -94,7 +94,9 @@
 - [ ] 5.1 Worker-Preflight, bestätigten Plan, Mutation und aktuellen
       Postflight als getrennte, korrelierte Phasen führen.
       **Merge-Blocker:** Die ausdrückliche Planbestätigung des Parent-Runs ist
-      noch nicht serverseitig gebunden; siehe #1454 und 11.27.
+      noch nicht serverseitig gebunden. Außerdem muss ein wegen fehlendem
+      Tenant-Secret wartender Bestands-Realm nach Secret-Eingabe denselben Run
+      fortsetzen können; siehe #1454 sowie 11.27 und 11.28.
 - [x] 5.2 Den Kasseler `activate`-Worker-Schritt entfernen und den
       Elternlauf nach vollständiger technischer Abnahme in
       `awaiting_activation` überführen.
@@ -318,3 +320,6 @@
       bestätigten und serverseitig gebundenen Keycloak-Plan umstellen; der
       Worker darf den bestätigten Fingerprint nicht selbst erzeugen; siehe
       Blocker #1454.
+- [ ] 11.28 Einen Bestands-Realm ohne Tenant-Secret als nichtterminalen,
+      behebbaren Wartezustand projizieren und den korrelierten Parent-Run nach
+      geschützter Secret-Eingabe sicher fortsetzen; siehe Blocker #1454.

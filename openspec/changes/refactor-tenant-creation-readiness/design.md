@@ -505,8 +505,13 @@ Die fachliche Reihenfolge und die Zustandsübergänge bleiben identisch.
 
 - Browser beziehungsweise MCP zu Studio-API: Eingaben sind untrusted;
   serverseitige Validierung und Autorisierung sind maßgeblich.
+- App-Prozess zu privatem Provisioner: Nur Realm-Katalog, Draft-Readiness und
+  Registry-Create werden mit exakter Methoden-/Pfad-Allowlist weitergeleitet.
+  Der Provisioner validiert Session oder Service-Account, CSRF und
+  `instance.create` erneut; bei Ausfall existiert kein lokaler Fallback.
 - Studio zu Keycloak Admin API: Realm-Liste und Readback sind externe
-  Evidenz; Providertexte werden klassifiziert und redigiert.
+  Evidenz; Providertexte werden klassifiziert und redigiert. Die globale
+  Provisioner-Identität bleibt ausschließlich im privaten Provisioner-Prozess.
 - App zu Provisioning-Worker: Nur persistierte, versionierte Sollzustände und
   Claims gelten; In-Memory-Zustand ist keine Worker-Konfiguration.
 - Worker zu Ingress, Modulen und weiteren Zielsystemen: Ausfälle sind

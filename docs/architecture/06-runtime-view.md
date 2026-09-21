@@ -1369,11 +1369,17 @@ Nachweis gesperrt.
 
 ### Szenario 22: Tenant anlegen und Bestands-Realm übernehmen
 
-1. UI oder MCP liest Realm-Katalog und Draft-Readiness ohne Mutation.
-2. Create wiederholt Keycloak-Zugriff, Auswahl, Zuordnung und Ownership unter
+1. UI oder MCP fordert Realm-Katalog und Draft-Readiness am öffentlichen
+   App-Endpunkt an. Der App-Prozess leitet nur diese allowlisteten Requests an
+   den privaten Provisioner weiter; dieser validiert Authentifizierung,
+   CSRF-Schutz und Berechtigung erneut.
+2. Der Provisioner liest Keycloak mit seiner ausschließlich dort verfügbaren
+   globalen Service-Identität, ohne Token oder Providerdetails zurückzugeben.
+3. Create nimmt denselben internen Weg und wiederholt Keycloak-Zugriff,
+   Auswahl, Zuordnung und Ownership unter
    dem Instanz-Lock und persistiert Tenant, Audit und Auftrag atomar.
-3. Der Worker schreibt getrennte Preflight-, Plan-, Mutations- und
+4. Der Worker schreibt getrennte Preflight-, Plan-, Mutations- und
    Postflight-Evidenz. Ein geänderter Fingerprint oder fremde Drift stoppt vor
    der Mutation.
-4. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
+5. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
    `unknown` sichtbar. Der dauerhafte Auftrag bleibt claimbar.

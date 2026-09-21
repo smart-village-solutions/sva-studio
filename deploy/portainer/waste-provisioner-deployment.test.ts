@@ -29,6 +29,10 @@ const provisionerSection = compose.slice(
   compose.indexOf('  provisioner:'),
   compose.indexOf('  migrate:')
 );
+const canonicalProvisionerSection = canonicalCompose.slice(
+  canonicalCompose.indexOf('  provisioner:'),
+  canonicalCompose.indexOf('  migrate:')
+);
 const migrateSection = compose.slice(
   compose.indexOf('  migrate:'),
   compose.indexOf('  bootstrap:')
@@ -106,6 +110,35 @@ describe('waste tenant database provisioning deployment', () => {
     expect(provisionerSection).toContain('- internal');
     expect(provisionerSection).not.toContain('traefik.enable');
     expect(provisionerSection).not.toContain('ports:');
+  });
+
+  it('routes only the instance creation control plane to the private provisioner boundary', () => {
+    expect(appSection).toContain(
+      "SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: 'http://provisioner:3000'"
+    );
+    expect(canonicalAppSection).toContain(
+      '"SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL=http://provisioner:3000"'
+    );
+    expect(appSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
+    expect(canonicalAppSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
+    expect(provisionerSection).toContain("SVA_TRUST_FORWARDED_HEADERS: 'true'");
+    expect(canonicalProvisionerSection).toContain('"SVA_TRUST_FORWARDED_HEADERS=true"');
+    for (const key of [
+      'SVA_AUTH_ISSUER',
+      'SVA_AUTH_CLIENT_ID',
+      'SVA_AUTH_REDIRECT_URI',
+      'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
+      'IAM_CSRF_ALLOWED_ORIGINS',
+      'SVA_PARENT_DOMAIN',
+      'SVA_STUDIO_ROOT_HOST',
+      'SVA_ALLOWED_INSTANCE_IDS',
+      'IAM_ADMIN_ENABLED',
+    ]) {
+      expect(provisionerSection, `reference provisioner ${key}`).toContain(`${key}:`);
+      expect(canonicalProvisionerSection, `canonical provisioner ${key}`).toContain(`"${key}=`);
+    }
+    expect(provisionerSection).not.toContain('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL');
+    expect(canonicalProvisionerSection).not.toContain('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL');
   });
 
   it('replaces the single provisioner without mixed worker digests', () => {

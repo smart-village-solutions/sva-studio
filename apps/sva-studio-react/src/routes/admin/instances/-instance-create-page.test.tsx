@@ -319,6 +319,51 @@ describe('InstanceCreatePage', () => {
     ).toBe(true);
   });
 
+  it('renders background capabilities with distinct names and remediation', async () => {
+    getDraftReadinessMock.mockResolvedValue({
+      data: {
+        ...readyDraft,
+        backgroundCapabilities: [
+          {
+            capability: 'worker',
+            status: 'unknown',
+            reasonCode: 'worker_heartbeat_unavailable',
+          },
+          {
+            capability: 'callback',
+            status: 'unknown',
+            reasonCode: 'callback_readiness_unavailable',
+          },
+          {
+            capability: 'provisioner',
+            status: 'blocked',
+            reasonCode: 'provisioner_worker_readiness_unavailable',
+          },
+        ],
+      },
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fillBasics();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fillAdministrator();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    await waitFor(() => expect(screen.getByText('Provisioning-Worker')).toBeTruthy());
+    expect(screen.getByText('Status-Rückmeldung')).toBeTruthy();
+    expect(screen.getByText('Provisioner')).toBeTruthy();
+    expect(screen.getByText('Den Workerzustand und ausstehende Aufträge prüfen.')).toBeTruthy();
+    expect(
+      screen.getByText('Bei ausbleibender Verarbeitung den Recovery-Pfad prüfen.')
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Worker-Konfiguration und Provisioner-Verbindung prüfen.')
+    ).toBeTruthy();
+    expect(screen.queryAllByText('Technische Bereitschaft')).toHaveLength(0);
+  });
+
   it('keeps a failed readiness request visible with its diagnostic request id', async () => {
     getDraftReadinessMock.mockRejectedValue({
       code: 'keycloak_unavailable',

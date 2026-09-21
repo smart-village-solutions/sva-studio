@@ -149,6 +149,9 @@ keinen parallelen Experten-Workflow bilden.
   `Wird von Studio eingerichtet` und
   `Vor der Aktivierung noch erforderlich`
 - **AND** nennt jeder Blocker Auswirkung, Behebung und Folgeprüfung
+- **AND** bezeichnet die UI jede nicht bereite Hintergrundfähigkeit mit ihrem
+  konkreten Fähigkeitsnamen und ihrer zugehörigen Handlungsempfehlung statt
+  mehrere unterschiedliche Befunde generisch als technische Bereitschaft
 - **AND** lautet die verbindliche Hauptaktion `Instanz anlegen`
 
 #### Scenario: Erfolgreiche Anlage öffnet das gemeinsame Einrichtungscockpit

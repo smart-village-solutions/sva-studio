@@ -12,6 +12,14 @@ const lazyDispatcher = (
 
 export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   {
+    label: 'instance provisioner control plane',
+    getDispatcher: lazyDispatcher(() =>
+      import('./instance-provisioner-proxy.server').then(
+        (module) => module.dispatchInstanceProvisionerRequest
+      )
+    ),
+  },
+  {
     label: 'mainserver content ownership',
     getDispatcher: lazyDispatcher(() =>
       import('./mainserver-content-ownership-api.server').then(

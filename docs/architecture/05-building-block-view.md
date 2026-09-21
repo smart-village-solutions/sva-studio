@@ -991,6 +991,11 @@ von lokalen IAM-Rollen dar und besitzt keine eigene Rollen-Allowlist.
 - `@sva/auth-runtime` bindet beim Create die effektiv aktiven Lifecycle- und
   OIDC-Verträge an den Lauf und bewertet im separaten Worker nur diese
   persistierte Composition.
+- Der App-Server leitet ausschließlich Realm-Katalog, Draft-Readiness und
+  Registry-Create über den internen Dienstnamen an den privaten Provisioner
+  weiter. Dort werden Browser-Session beziehungsweise Service-Account,
+  CSRF-Schutz und `instance.create` erneut geprüft; nur dieser Prozess besitzt
+  die globale Keycloak-Provisioner-Identität.
 - Beim Eintritt in den Instanz-Lock erhält der Orchestrator die vom Worker
   bereitgestellten Funktionen für Ingress-Veröffentlichung, Endpoint-Prüfung
   und Modulbereitschaft. Repository und übrige Abhängigkeiten stammen aus dem

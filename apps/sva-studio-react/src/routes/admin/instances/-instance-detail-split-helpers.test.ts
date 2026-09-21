@@ -390,6 +390,19 @@ describe('instance detail split helpers', () => {
     expect(
       buildInstanceDetailCockpitModel(
         createDetailFixture({
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.diagnose', retryClass: 'never' },
+          },
+        }),
+        null
+      ).primaryAction.action
+    ).toBe('check_preflight');
+
+    expect(
+      buildInstanceDetailCockpitModel(
+        createDetailFixture({
           tenantIamStatus: {
             configuration: { status: 'ready', summary: 'ok', source: 'registry' },
             access: { status: 'degraded', summary: 'Probe ausstehend', source: 'access_probe' },

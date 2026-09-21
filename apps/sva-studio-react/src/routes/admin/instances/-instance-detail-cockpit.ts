@@ -29,6 +29,7 @@ const SERVER_ACTIONS: Readonly<
   'instance.keycloak.execute': 'execute_provisioning',
   'instance.secret.rotate': 'rotate_client_secret',
   'instance.provisioning.retry': 'retry_tenant_provisioning',
+  'instance.diagnose': 'check_preflight',
   'instance.tenant-iam.probe': 'probeTenantIamAccess',
   'instance.tenant-iam.reconcile': 'reconcileTenantIamRoles',
   'instance.status.activate': 'activate_instance',

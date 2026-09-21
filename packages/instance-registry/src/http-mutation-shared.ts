@@ -223,8 +223,20 @@ export const createScopedRegistryMutationHandler = <TContext, TData, TResult>(
         instanceId,
       };
     },
-    authorize: ({ request, context }: { readonly request: Request; readonly context: TContext }) =>
-      deps.ensurePlatformAccess(request, context) ?? {},
+    authorize: ({
+      request,
+      context,
+    }: {
+      readonly request: Request;
+      readonly context: TContext;
+    }) => {
+      const accessError = deps.ensurePlatformAccess(request, context);
+      if (accessError) return accessError;
+      if (options.criticalActionId) {
+        return deps.requireFreshReauth(request, context) ?? {};
+      }
+      return {};
+    },
     csrf: ({ request, requestId }: { readonly request: Request; readonly requestId?: string }) =>
       deps.validateCsrf(request, requestId) ?? undefined,
     idempotency: ({

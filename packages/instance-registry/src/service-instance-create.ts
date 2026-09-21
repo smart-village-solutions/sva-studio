@@ -29,6 +29,7 @@ import {
   requiresAutomatedProvisioningEvidence,
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
+import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
 
 const assertIdempotentCreateRetry = async (
   deps: InstanceRegistryServiceDeps,
@@ -56,7 +57,10 @@ export const resolveIdempotentCreateRetry = async (
 ): Promise<CreateInstanceProvisioningResult | null> => {
   const matchingRun = await assertIdempotentCreateRetry(deps, input, instance);
   if (!matchingRun) return null;
-  if (matchingRun.status !== 'failed' || matchingRun.snapshotVersion !== '2.0') {
+  if (
+    matchingRun.status !== 'failed' ||
+    !isSupportedTenantProvisioningSnapshotVersion(matchingRun.snapshotVersion)
+  ) {
     await createReconcileModuleActivationPoliciesHandler(deps, { forceIamSync: true })({
       instanceId: instance.instanceId,
       actorId: input.actorId,
@@ -139,7 +143,7 @@ export const createRetryTenantProvisioningHandler =
     );
     if (
       !latestCreateRun ||
-      latestCreateRun.snapshotVersion !== '2.0' ||
+      !isSupportedTenantProvisioningSnapshotVersion(latestCreateRun.snapshotVersion) ||
       latestCreateRun.desiredSnapshot.automationMode !== 'kassel-traefik-file' ||
       !shouldExposeAutomatedProvisioning(deps, instance)
     ) {

@@ -58,6 +58,8 @@ export type InstanceSetupStatusItem = {
 
 export type DetailWorkflowAction =
   | NonNullable<SetupWorkflowStep['action']>
+  | 'refresh_readiness'
+  | 'open_diagnostics'
   | 'retry_tenant_provisioning'
   | 'rotate_client_secret'
   | 'probeTenantIamAccess'

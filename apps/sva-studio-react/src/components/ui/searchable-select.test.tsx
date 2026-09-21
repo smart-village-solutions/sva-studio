@@ -158,7 +158,11 @@ describe('SearchableSelect', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Realm' }));
-    const searchInput = screen.getByPlaceholderText('Suchen');
+    const searchInput = screen.getByRole('combobox', { name: 'Suchen' });
+    const listbox = screen.getByRole('listbox', { name: 'Realm' });
+    expect(searchInput.getAttribute('aria-autocomplete')).toBe('list');
+    expect(searchInput.getAttribute('aria-controls')).toBe(listbox.id);
+    expect(searchInput.getAttribute('aria-expanded')).toBe('true');
     expect(searchInput.getAttribute('aria-activedescendant')).toBe(
       screen.getByRole('option', { name: 'Realm 1' }).id
     );

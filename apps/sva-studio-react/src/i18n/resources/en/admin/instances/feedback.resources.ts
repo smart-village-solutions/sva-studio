@@ -1,5 +1,6 @@
 export const feedbackInstancesAdminENResources = {
   preflightUpdated: 'Preflight data was refreshed.',
+  readinessUpdated: 'Readiness was refreshed.',
   keycloakStatusUpdated: 'Keycloak status was refreshed.',
   provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
   provisioningQueued: 'The provisioning job was queued for execution.',

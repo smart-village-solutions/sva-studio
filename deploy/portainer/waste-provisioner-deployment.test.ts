@@ -108,6 +108,24 @@ describe('waste tenant database provisioning deployment', () => {
     expect(provisionerSection).not.toContain('ports:');
   });
 
+  it('replaces the single provisioner without mixed worker digests', () => {
+    for (const environment of ['dev', 'staging', 'prod']) {
+      const environmentCompose = readFileSync(
+        resolve(import.meta.dirname, `../compose.${environment}.yaml`),
+        'utf8'
+      );
+      const environmentProvisioner = environmentCompose.slice(
+        environmentCompose.indexOf('  provisioner:'),
+        environmentCompose.indexOf('  migrate:')
+      );
+
+      expect(environmentProvisioner).toContain('replicas: 1');
+      expect(environmentProvisioner).toContain('parallelism: 1');
+      expect(environmentProvisioner).toContain('order: stop-first');
+      expect(environmentProvisioner).toContain('failure_action: pause');
+    }
+  });
+
   it('restarts every long-running Studio service without an attempt limit', () => {
     for (const serviceName of ['app', 'provisioner', 'redis', 'postgres']) {
       const referenceSection = serviceSection(compose, serviceName);

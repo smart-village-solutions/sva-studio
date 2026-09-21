@@ -649,7 +649,7 @@ describe('http mutation handlers', () => {
     });
   });
 
-  it('revokeModule does not require fresh reauthentication', async () => {
+  it('revokeModule requires fresh reauthentication before a critical browser mutation', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
       ok: true,
       data: { moduleId: 'news', confirmation: 'REVOKE' },
@@ -662,8 +662,9 @@ describe('http mutation handlers', () => {
       { userId: 'u-1' }
     );
 
-    expect(response.status).toBe(200);
-    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+    expect(response.status).toBe(403);
+    expect(deps.requireFreshReauth).toHaveBeenCalledOnce();
+    expect(deps.withScopedRegistryService).not.toHaveBeenCalled();
   });
 
   it('bootstrapAdminStructure passes selected module ids into the registry service', async () => {
@@ -940,7 +941,7 @@ describe('http mutation handlers', () => {
     await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
   });
 
-  it('mutateInstanceStatus does not require fresh reauthentication', async () => {
+  it('mutateInstanceStatus requires fresh reauthentication before a critical browser mutation', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
       ok: true,
       data: { status: 'active' },
@@ -954,7 +955,8 @@ describe('http mutation handlers', () => {
       'active'
     );
 
-    expect(response.status).toBe(200);
-    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
+    expect(response.status).toBe(403);
+    expect(deps.requireFreshReauth).toHaveBeenCalledOnce();
+    expect(deps.withScopedRegistryService).not.toHaveBeenCalled();
   });
 });

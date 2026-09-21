@@ -164,6 +164,23 @@ describe('InstanceCreatePage', () => {
     expect(screen.getByRole('alert').querySelector('a')?.getAttribute('href')).toBe('#instance-id');
   });
 
+  it('validates every skipped step before a direct jump to review', () => {
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fillBasics();
+    fireEvent.click(screen.getByRole('button', { name: /Prüfen und anlegen/u }));
+
+    expect(screen.getByLabelText('Admin-Benutzername', { selector: 'input' })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Bitte einen Benutzernamen für den ersten Administrator angeben.'
+    );
+    expect(getDraftReadinessMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText('Die serverseitige Bereitschaftsprüfung ist nicht erreichbar.')
+    ).toBeNull();
+  });
+
   it('selects only eligible existing realms and defers secret capture', async () => {
     listRealmCatalogMock.mockResolvedValue({
       data: [

@@ -25,6 +25,18 @@ type TenantProvisioningPluginSnapshot = Readonly<{
   activationPolicies: readonly TenantModuleActivationPolicyDescriptor[];
 }>;
 
+export const TENANT_PROVISIONING_SNAPSHOT_VERSION = '3.0';
+const supportedTenantProvisioningSnapshotVersions = new Set([
+  '2.0',
+  TENANT_PROVISIONING_SNAPSHOT_VERSION,
+]);
+
+export const isSupportedTenantProvisioningSnapshotVersion = (
+  snapshotVersion: string | undefined
+): boolean =>
+  typeof snapshotVersion === 'string' &&
+  supportedTenantProvisioningSnapshotVersions.has(snapshotVersion);
+
 const copyLifecycle = (lifecycle: ProvisioningPluginTenantLifecycleContract) => ({
   ...lifecycle,
   operations: lifecycle.operations.map((operation) => ({ ...operation })),
@@ -142,7 +154,8 @@ const registryConfiguration = (instance: InstanceRegistryRecord) => ({
 });
 
 const registryFingerprintConfiguration = (instance: InstanceRegistryRecord) => {
-  const { assignedModules: _assignedModules, ...configuration } = registryConfiguration(instance);
+  const { assignedModules, ...configuration } = registryConfiguration(instance);
+  void assignedModules;
   return configuration;
 };
 
@@ -183,7 +196,6 @@ export const readTenantProvisioningPluginSnapshot = (
   if (
     snapshot.pluginSnapshotVersion !== '1.0' ||
     !Array.isArray(snapshot.pluginLifecycles) ||
-    snapshot.pluginLifecycles.length === 0 ||
     !snapshot.pluginLifecycles.every(isLifecycleContract) ||
     new Set(snapshot.pluginLifecycles.map(({ pluginId }) => pluginId)).size !==
       snapshot.pluginLifecycles.length ||
@@ -241,7 +253,6 @@ export const rebaseTenantProvisioningPluginSnapshot = (
     pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)
   );
   if (
-    pluginSnapshot.lifecycles.length === 0 ||
     previousPluginSnapshot.lifecycles.some(
       ({ pluginId }) => !currentLifecyclePluginIds.has(pluginId)
     )
@@ -286,7 +297,7 @@ export const assertTenantProvisioningSnapshotCurrent = (
     (snapshot.realmBaselineVersion === KEYCLOAK_REALM_BASELINE.version &&
       snapshot.realmBaselineFingerprint === KEYCLOAK_REALM_BASELINE_FINGERPRINT);
   if (
-    run.snapshotVersion !== '2.0' ||
+    !isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) ||
     snapshot.automationMode !== 'kassel-traefik-file' ||
     snapshot.registryFingerprint !== registryFingerprint ||
     snapshot.payloadFingerprint !== run.payloadFingerprint ||

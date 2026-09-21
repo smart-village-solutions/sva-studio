@@ -200,6 +200,9 @@ describe('provisioning-auth-evaluation', () => {
           webOrigins: [...expectedClient.webOrigins],
           attributes: {
             'post.logout.redirect.uris': expectedClient.postLogoutRedirectUris.join('##'),
+            managed_by: 'studio',
+            instance_id: 'demo',
+            artifact_key: 'login_client',
           },
         } as never,
         pluginOidcClients: [],
@@ -207,6 +210,14 @@ describe('provisioning-auth-evaluation', () => {
         tenantAdminStatus: {
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
+        },
+        tenantAdminRepresentation: {
+          id: 'user-1',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['demo'],
+            artifact_key: ['tenant_admin'],
+          },
         },
         keycloakClientSecret: 'tenant-secret',
         systemAdminRole: {
@@ -230,6 +241,100 @@ describe('provisioning-auth-evaluation', () => {
     expect(status.systemAdminRoleExists).toBe(true);
     expect(status.clientSecretAligned).toBe(true);
     expect(status.runtimeSecretSource).toBe('tenant');
+  });
+
+  it('fails the live status closed when activation artifacts lose Studio ownership', () => {
+    const expectedClient = buildExpectedClientConfig('demo.example.org');
+    const status = buildKeycloakStatus({
+      authClientSecretConfigured: true,
+      authClientSecret: 'tenant-secret',
+      instanceId: 'demo',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      realmMode: 'existing',
+      tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: true },
+      tenantAdminClientSecret: 'tenant-admin-secret',
+      state: {
+        expectedClient,
+        realm: { realm: 'demo' },
+        clientRepresentation: {
+          clientId: 'sva-studio',
+          attributes: {
+            managed_by: 'studio',
+            instance_id: 'other',
+            artifact_key: 'login_client',
+          },
+        },
+        tenantAdminClientRepresentation: {
+          clientId: 'sva-studio-admin',
+          attributes: {
+            managed_by: 'studio',
+            instance_id: 'other',
+            artifact_key: 'tenant_admin_client',
+          },
+        },
+        pluginOidcClients: [
+          {
+            requirement: {
+              contractVersion: '1.0',
+              pluginId: 'ssf',
+              clientId: 'ssf',
+              audience: 'ssf',
+              enabled: false,
+            },
+            clientRepresentation: {
+              clientId: 'ssf',
+              enabled: false,
+              protocol: 'openid-connect',
+              publicClient: false,
+              standardFlowEnabled: false,
+              implicitFlowEnabled: false,
+              directAccessGrantsEnabled: false,
+              serviceAccountsEnabled: false,
+              attributes: {
+                managed_by: 'studio',
+                instance_id: 'other',
+                artifact_key: 'plugin_client:ssf',
+              },
+            },
+            protocolMappers: [
+              {
+                name: 'studio-ssf-audience',
+                protocol: 'openid-connect',
+                protocolMapper: 'oidc-audience-mapper',
+                config: {
+                  'included.client.audience': 'ssf',
+                  'included.custom.audience': '',
+                  'id.token.claim': 'false',
+                  'access.token.claim': 'true',
+                  'lightweight.claim': 'false',
+                  'introspection.token.claim': 'true',
+                },
+              },
+            ],
+          },
+        ],
+        protocolMappers: [],
+        tenantAdminStatus: { tenantAdminExists: true, tenantAdminHasSystemAdmin: true },
+        tenantAdminRepresentation: {
+          id: 'user-1',
+          attributes: {
+            managed_by: ['studio'],
+            instance_id: ['other'],
+            artifact_key: ['tenant_admin'],
+          },
+        },
+        keycloakClientSecret: 'tenant-secret',
+        tenantAdminClientSecret: 'tenant-admin-secret',
+        systemAdminRole: null,
+      } as never,
+    });
+
+    expect(status.clientExists).toBe(false);
+    expect(status.tenantAdminClientExists).toBe(false);
+    expect(status.tenantAdminExists).toBe(false);
+    expect(status.tenantAdminHasSystemAdmin).toBe(false);
+    expect(status.pluginOidcClientsAligned).toBe(false);
   });
 
   it('does not report a same-named role with foreign ownership as the protected role', () => {

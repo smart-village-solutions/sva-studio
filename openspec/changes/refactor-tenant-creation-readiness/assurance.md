@@ -96,6 +96,13 @@ Zusätzlich gelten für die vorhandenen Transportverträge:
 - Ingress-Erreichbarkeit allein, Directory-Sichtbarkeit allein oder ein
   erfolgreicher Keycloak-Run allein genügen nicht.
 - Ein Rollback oder alter Worker darf den manuellen Gate nicht umgehen.
+- Der Provisioner wird mit einer Replik und `stop-first` ohne gemischte
+  Worker-Digests ersetzt. Neue Läufe tragen Snapshot-Version `3.0`, die der
+  vorherige Worker vor jeder Schrittausführung ablehnt. Der neue Worker führt
+  übernommene `2.0`-Läufe weiter, setzt deren Legacy-Schritt `activate` aber nur
+  noch auf `validated`. Vor einem Rollback muss die im kanonischen
+  Rollout-Dokument definierte read-only Inventur null nichtterminale
+  `2.0`-Läufe ergeben.
 - Technische Aktivierungsgates sind vor `active` ausführbar. OIDC wird über
   Konfiguration und Readbacks geprüft; interaktiver Login, `/auth/me` und
   Gateway-Nutzung sind keine Aktivierungsvoraussetzungen. Ein Test belegt den
@@ -195,6 +202,17 @@ Testdatenbank auf Schema-Version 96. Migration 0091 wurde dort nur als
 angewandt markiert, weil ihre clusterweite Rolle im lokalen PostgreSQL bereits
 existierte; die für diese Tests relevanten Migrationen 0090 und 0092 bis 0096
 wurden real ausgeführt.
+
+Die Review-Nachprüfung am 21. September 2026 wiederholte die vier realen
+PostgreSQL-Recovery-Tests gegen eine neue temporäre Datenbank auf
+Schema-Version 96. Sie deckte Create-Commit und Rollback, konkurrierende
+Retry-Reservierung, persistierte Aktivierungsevidenz sowie New-Realm-Recovery
+ab; die Datenbank wurde anschließend entfernt. Der gezielte Browserlauf prüfte
+erneut New-Realm, Existing-Realm samt gesperrten Realms und den autoritativen
+Create-Blocker. Die Cross-Version-Tests verwenden für aktuelle Läufe Snapshot
+`3.0`, halten einen Legacy-`2.0`-Lauf am früheren Schritt `activate`
+fail-closed und prüfen die `stop-first`-Konfiguration aller drei
+Provisioner-Services.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

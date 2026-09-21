@@ -440,6 +440,21 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
     switch (action) {
+      case 'refresh_readiness':
+        if (!selectedInstance) return;
+        setActionFeedback(null);
+        if (await instancesApi.loadInstance(selectedInstance.instanceId)) {
+          setActionFeedback({
+            tone: 'success',
+            message: t('admin.instances.feedback.readinessUpdated'),
+          });
+        }
+        return;
+      case 'open_diagnostics':
+        if (!selectedInstance) return;
+        await instancesApi.loadInstance(selectedInstance.instanceId);
+        setActiveWorkspaceTab('doctor');
+        return;
       case 'focus_configuration':
         setActiveWorkspaceTab('einstellungen');
         return;

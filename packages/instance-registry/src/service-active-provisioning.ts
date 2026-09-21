@@ -1,5 +1,6 @@
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
 
 const activeCreateStatuses = new Set(['requested', 'provisioning']);
 
@@ -40,7 +41,7 @@ export const assertNoActiveTenantProvisioning = async (
   const activeRun = (await repository.listProvisioningRuns(instanceId)).some(
     (run) =>
       run.operation === 'create' &&
-      run.snapshotVersion === '2.0' &&
+      isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) &&
       run.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
       (activeCreateStatuses.has(run.status) ||
         (run.status === 'validated' && !run.completedAt) ||
@@ -58,4 +59,5 @@ export const requiresAutomatedProvisioningEvidence = (run: {
   readonly snapshotVersion?: string;
   readonly desiredSnapshot: Readonly<{ automationMode?: string }>;
 }): boolean =>
-  run.snapshotVersion === '2.0' && run.desiredSnapshot.automationMode === 'kassel-traefik-file';
+  isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) &&
+  run.desiredSnapshot.automationMode === 'kassel-traefik-file';

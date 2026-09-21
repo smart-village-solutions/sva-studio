@@ -241,9 +241,13 @@ export const InstanceCreatePage = () => {
     const nextIndex = getStepIndex(step);
     const currentIndex = getStepIndex(currentStep);
     if (nextIndex > currentIndex) {
-      const validationIssues = getCreateStepValidationIssues(currentStep, formValues);
-      if (validationIssues.length > 0) {
+      const firstInvalidStep = stepOrder
+        .slice(0, nextIndex)
+        .find((candidate) => getCreateStepValidationIssues(candidate, formValues).length > 0);
+      if (firstInvalidStep) {
+        const validationIssues = getCreateStepValidationIssues(firstInvalidStep, formValues);
         setStepErrors(validationIssues);
+        setCurrentStep(firstInvalidStep);
         globalThis.setTimeout(() => errorSummaryRef.current?.focus(), 0);
         return;
       }
@@ -856,21 +860,19 @@ export const InstanceCreatePage = () => {
                     </Alert>
                   ) : null}
                 </div>
-              ) : (
+              ) : draftReadinessError ? (
                 <>
                   <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
                     <AlertDescription>
                       {t('admin.instances.wizard.readiness.serverUnavailable')}
                     </AlertDescription>
                   </Alert>
-                  {draftReadinessError ? (
-                    <StudioPersistentFormError
-                      message={getErrorMessage(draftReadinessError)}
-                      details={<IamRuntimeDiagnosticDetails error={draftReadinessError} />}
-                    />
-                  ) : null}
+                  <StudioPersistentFormError
+                    message={getErrorMessage(draftReadinessError)}
+                    details={<IamRuntimeDiagnosticDetails error={draftReadinessError} />}
+                  />
                 </>
-              )}
+              ) : null}
               <Button
                 type="button"
                 variant="secondary"

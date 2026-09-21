@@ -23,7 +23,10 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
 
 import { processNextTenantProvisioningRun } from './tenant-provisioning-orchestrator.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { buildTenantProvisioningSnapshot } from './tenant-provisioning-snapshot.js';
+import {
+  buildTenantProvisioningSnapshot,
+  TENANT_PROVISIONING_SNAPSHOT_VERSION,
+} from './tenant-provisioning-snapshot.js';
 import { createInstanceRegistryRuntime } from './runtime-wiring.js';
 
 const now = new Date('2026-09-12T12:00:00.000Z');
@@ -73,7 +76,7 @@ const createRun = (): InstanceProvisioningRun => ({
   status: 'requested',
   idempotencyKey: 'idem-1',
   payloadFingerprint: 'fingerprint-1',
-  snapshotVersion: '2.0',
+  snapshotVersion: TENANT_PROVISIONING_SNAPSHOT_VERSION,
   desiredSnapshot: buildTenantProvisioningSnapshot(
     instance,
     {
@@ -546,7 +549,11 @@ describe('tenant provisioning parent orchestrator', () => {
 
   it('routes a recovered legacy activate step through the tenant IAM postflight', async () => {
     const harness = createHarness();
-    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'activate' });
+    Object.assign(harness.getRun(), {
+      status: 'provisioning',
+      stepKey: 'activate',
+      snapshotVersion: '2.0',
+    });
 
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
@@ -985,21 +992,23 @@ describe('tenant provisioning parent orchestrator', () => {
     });
   });
 
-  it('fails closed when the persisted Kassel plugin composition is empty', async () => {
+  it('accepts an explicitly empty plugin snapshot for a tenant without assigned modules', async () => {
     const harness = createHarness();
+    const instanceWithoutModules = { ...harness.getInstance(), assignedModules: [] };
+    harness.changeInstance(instanceWithoutModules);
     Object.assign(harness.getRun(), {
       desiredSnapshot: buildTenantProvisioningSnapshot(
-        instance,
+        instanceWithoutModules,
         {
-          instanceId: instance.instanceId,
-          displayName: instance.displayName,
-          parentDomain: instance.parentDomain,
-          realmMode: instance.realmMode,
-          authRealm: instance.authRealm,
-          authClientId: instance.authClientId,
-          authIssuerUrl: instance.authIssuerUrl,
+          instanceId: instanceWithoutModules.instanceId,
+          displayName: instanceWithoutModules.displayName,
+          parentDomain: instanceWithoutModules.parentDomain,
+          realmMode: instanceWithoutModules.realmMode,
+          authRealm: instanceWithoutModules.authRealm,
+          authClientId: instanceWithoutModules.authClientId,
+          authIssuerUrl: instanceWithoutModules.authIssuerUrl,
           idempotencyKey: 'idem-1',
-          featureFlags: instance.featureFlags,
+          featureFlags: instanceWithoutModules.featureFlags,
         },
         'fingerprint-1',
         'kassel-traefik-file'
@@ -1009,10 +1018,11 @@ describe('tenant provisioning parent orchestrator', () => {
     await processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     expect(harness.getRun()).toMatchObject({
-      status: 'failed',
-      errorCode: 'provisioning_plugin_snapshot_missing',
+      status: 'provisioning',
+      stepKey: 'keycloak',
+      errorCode: undefined,
     });
-    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+    expect(harness.repository.createKeycloakProvisioningRun).toHaveBeenCalledOnce();
   });
 
   it('accepts only the correlated Keycloak new-to-existing realm transition', async () => {

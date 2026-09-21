@@ -1382,6 +1382,70 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledBefore(retryProvisioningRun);
   });
 
+  it('requeues a failed automated tenant whose persisted plugin snapshot is explicitly empty', async () => {
+    const failedInstance = {
+      ...baseInstance,
+      assignedModules: [],
+      status: 'failed' as const,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const failedRun = {
+      ...latestRun,
+      status: 'failed' as const,
+      stepKey: 'login',
+      desiredSnapshot: {
+        automationMode: 'kassel-traefik-file',
+        assignedModules: [],
+        pluginSnapshotVersion: '1.0',
+        pluginLifecycles: [],
+        pluginOidcClients: [],
+        pluginActivationPolicies: [],
+      },
+      errorCode: 'kassel_login_probe_failed',
+      completedAt: '2026-01-01T00:10:00.000Z',
+    };
+    const retryProvisioningRun = vi.fn(async () => ({
+      ...failedRun,
+      status: 'requested' as const,
+      stepKey: 'registry',
+      errorCode: undefined,
+      completedAt: undefined,
+    }));
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => failedInstance),
+      listAssignedModules: vi.fn(async () => []),
+      listProvisioningRuns: vi.fn(async () => [failedRun]),
+      retryProvisioningRun,
+      setInstanceStatus: vi.fn(async () => ({ ...failedInstance, status: 'requested' as const })),
+    });
+
+    await expect(
+      createInstanceRegistryService(
+        createDeps(repository, {
+          pluginTenantLifecycleRegistry: new Map(),
+          readPluginOidcClientRequirements: () => [],
+        })
+      ).retryTenantProvisioning({
+        instanceId: 'demo',
+        actorId: 'admin-1',
+        requestId: 'retry-empty',
+      })
+    ).resolves.toMatchObject({
+      status: 'requested',
+      latestProvisioningRun: expect.objectContaining({ stepKey: 'registry' }),
+    });
+    expect(retryProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desiredSnapshot: expect.objectContaining({
+          pluginLifecycles: [],
+          pluginOidcClients: [],
+          pluginActivationPolicies: [],
+        }),
+      })
+    );
+  });
+
   it('reserves a failed manual retry before IAM side effects and rejects the concurrent loser', async () => {
     const failedInstance = {
       ...baseInstance,

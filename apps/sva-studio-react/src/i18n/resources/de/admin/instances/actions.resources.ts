@@ -3,6 +3,8 @@ export const actionsInstancesAdminDEResources = {
   edit: 'Bearbeiten',
   save: 'Instanz speichern',
   openConfiguration: 'Konfiguration öffnen',
+  refreshReadiness: 'Bereitschaft aktualisieren',
+  openDiagnostics: 'Diagnose öffnen',
   checkPreflight: 'Vorbedingungen prüfen',
   activate: 'Aktivieren',
   suspend: 'Suspendieren',

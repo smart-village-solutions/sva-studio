@@ -3,6 +3,8 @@ export const actionsInstancesAdminENResources = {
   edit: 'Edit',
   save: 'Save instance',
   openConfiguration: 'Open configuration',
+  refreshReadiness: 'Refresh readiness',
+  openDiagnostics: 'Open diagnostics',
   checkPreflight: 'Check preflight',
   activate: 'Activate',
   suspend: 'Suspend',

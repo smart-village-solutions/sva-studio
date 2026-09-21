@@ -282,11 +282,15 @@ const SearchableSelectPopover = ({
       <Input
         ref={inputRef}
         id={searchInputId}
+        role="combobox"
         value={searchValue}
         onChange={(event) => setSearch(event.target.value)}
         onKeyDown={onSearchInputKeyDown}
         placeholder={searchPlaceholder}
         aria-label={searchPlaceholder}
+        aria-autocomplete="list"
+        aria-controls={`${id}-listbox`}
+        aria-expanded="true"
         aria-activedescendant={
           filteredOptions[activeIndex] ? getSearchableSelectOptionId(id, activeIndex) : undefined
         }

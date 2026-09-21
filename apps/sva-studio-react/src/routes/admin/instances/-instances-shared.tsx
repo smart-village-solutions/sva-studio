@@ -161,6 +161,10 @@ export const getOperationsActionLabel = (action: OperationsDetailAction): string
       return t('admin.instances.actions.openConfiguration');
     case 'check_preflight':
       return t('admin.instances.actions.checkPreflight');
+    case 'refresh_readiness':
+      return t('admin.instances.actions.refreshReadiness');
+    case 'open_diagnostics':
+      return t('admin.instances.actions.openDiagnostics');
     case 'check_keycloak_status':
       return t('admin.instances.actions.checkKeycloakStatus');
     case 'plan_provisioning':

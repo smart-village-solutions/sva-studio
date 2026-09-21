@@ -347,40 +347,69 @@ export const buildKeycloakStatus = (
     state: KeycloakReadState;
   }
 ): KeycloakTenantStatus => {
-  const clientSecretAligned = Boolean(
-    input.authClientSecret &&
-    input.state.keycloakClientSecret &&
-    input.authClientSecret === input.state.keycloakClientSecret
-  );
-  const tenantAdminClientSecretAligned = Boolean(
-    input.tenantAdminClientSecret &&
-    input.state.tenantAdminClientSecret &&
-    input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
-  );
+  const loginClientOwned =
+    readStudioOwnedClient(input.state.clientRepresentation, input.instanceId, 'login_client') ===
+    'owned';
+  const tenantAdminClientOwned =
+    readStudioOwnedClient(
+      input.state.tenantAdminClientRepresentation,
+      input.instanceId,
+      'tenant_admin_client'
+    ) === 'owned';
+  const tenantAdminOwned =
+    readStudioOwnedUser(input.state.tenantAdminRepresentation, input.instanceId, 'tenant_admin') ===
+    'owned';
+  const clientSecretAligned =
+    loginClientOwned &&
+    Boolean(
+      input.authClientSecret &&
+      input.state.keycloakClientSecret &&
+      input.authClientSecret === input.state.keycloakClientSecret
+    );
+  const tenantAdminClientSecretAligned =
+    tenantAdminClientOwned &&
+    Boolean(
+      input.tenantAdminClientSecret &&
+      input.state.tenantAdminClientSecret &&
+      input.tenantAdminClientSecret === input.state.tenantAdminClientSecret
+    );
 
   return {
     realmExists: true,
-    clientExists: Boolean(input.state.clientRepresentation),
-    tenantAdminClientExists: Boolean(input.state.tenantAdminClientRepresentation),
+    clientExists: loginClientOwned,
+    tenantAdminClientExists: tenantAdminClientOwned,
     systemAdminRoleExists: isSystemAdminRoleOwnedByInstance(
       input.state.systemAdminRole,
       input.instanceId
     ),
-    ...input.state.tenantAdminStatus,
-    redirectUrisMatch: equalSets(
-      input.state.clientRepresentation?.redirectUris ?? [],
-      input.state.expectedClient.redirectUris
-    ),
-    logoutUrisMatch: equalSets(
-      readPostLogoutUris(input.state.clientRepresentation?.attributes),
-      input.state.expectedClient.postLogoutRedirectUris
-    ),
-    webOriginsMatch: equalSets(
-      input.state.clientRepresentation?.webOrigins ?? [],
-      input.state.expectedClient.webOrigins
-    ),
+    tenantAdminExists: tenantAdminOwned && input.state.tenantAdminStatus.tenantAdminExists,
+    tenantAdminHasSystemAdmin:
+      tenantAdminOwned && input.state.tenantAdminStatus.tenantAdminHasSystemAdmin,
+    redirectUrisMatch:
+      loginClientOwned &&
+      equalSets(
+        input.state.clientRepresentation?.redirectUris ?? [],
+        input.state.expectedClient.redirectUris
+      ),
+    logoutUrisMatch:
+      loginClientOwned &&
+      equalSets(
+        readPostLogoutUris(input.state.clientRepresentation?.attributes),
+        input.state.expectedClient.postLogoutRedirectUris
+      ),
+    webOriginsMatch:
+      loginClientOwned &&
+      equalSets(
+        input.state.clientRepresentation?.webOrigins ?? [],
+        input.state.expectedClient.webOrigins
+      ),
     pluginOidcClientsAligned: input.state.pluginOidcClients.every(
-      ({ requirement, ...state }) => readPluginOidcClientAlignment(requirement, state).aligned
+      ({ requirement, ...state }) =>
+        readStudioOwnedClient(
+          state.clientRepresentation,
+          input.instanceId,
+          `plugin_client:${requirement.pluginId}`
+        ) === 'owned' && readPluginOidcClientAlignment(requirement, state).aligned
     ),
     clientSecretConfigured: input.authClientSecretConfigured,
     tenantClientSecretReadable: Boolean(input.authClientSecret),
@@ -391,7 +420,8 @@ export const buildKeycloakStatus = (
     runtimeSecretSource: input.authClientSecret ? 'tenant' : 'global',
     realmBaselineAligned: input.state.realmBaselineAligned,
     userProfileBaselineAligned: input.state.userProfileBaselineAligned,
-    instanceIdMapperAligned: (input.state.protocolMappers ?? []).some(isInstanceIdMapperAligned),
+    instanceIdMapperAligned:
+      loginClientOwned && (input.state.protocolMappers ?? []).some(isInstanceIdMapperAligned),
     smtpPasswordConfigured: input.state.realm?.smtpPasswordConfigured ?? false,
   };
 };

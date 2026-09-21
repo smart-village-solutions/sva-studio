@@ -9,6 +9,7 @@ import { buildCreateInstancePayloadFingerprint } from './service-instance-create
 import {
   buildConfiguredTenantProvisioningPluginSnapshot,
   buildTenantProvisioningSnapshot,
+  TENANT_PROVISIONING_SNAPSHOT_VERSION,
 } from './tenant-provisioning-snapshot.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
@@ -43,7 +44,7 @@ export const createProvisioningArtifacts = async (
       status: 'requested',
       idempotencyKey: input.idempotencyKey,
       payloadFingerprint,
-      snapshotVersion: '2.0',
+      snapshotVersion: TENANT_PROVISIONING_SNAPSHOT_VERSION,
       desiredSnapshot: buildTenantProvisioningSnapshot(
         {
           ...instance,

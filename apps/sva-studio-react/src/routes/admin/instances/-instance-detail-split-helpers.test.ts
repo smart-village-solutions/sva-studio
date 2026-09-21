@@ -398,7 +398,7 @@ describe('instance detail split helpers', () => {
         }),
         null
       ).primaryAction.action
-    ).toBe('check_preflight');
+    ).toBe('open_diagnostics');
 
     expect(
       buildInstanceDetailCockpitModel(

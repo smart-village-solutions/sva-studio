@@ -132,6 +132,14 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
     },
+    tenantAdminRepresentation: {
+      id: 'integration-tenant-admin',
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: [input.instanceId],
+        artifact_key: ['tenant_admin'],
+      },
+    },
     keycloakClientSecret: authClientSecret,
     tenantAdminClientSecret,
     systemAdminRole: {

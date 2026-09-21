@@ -1,5 +1,6 @@
 export const feedbackInstancesAdminDEResources = {
   preflightUpdated: 'Vorbedingungen wurden aktualisiert.',
+  readinessUpdated: 'Bereitschaft wurde aktualisiert.',
   keycloakStatusUpdated: 'Keycloak-Status wurde aktualisiert.',
   provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
   provisioningQueued: 'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',

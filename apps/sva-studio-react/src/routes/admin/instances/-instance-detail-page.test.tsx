@@ -677,7 +677,7 @@ describe('InstanceDetailPage', () => {
   });
 
   it('keeps the detail page usable when keycloak is unavailable', async () => {
-    const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
+    const loadInstance = vi.fn().mockResolvedValue(true);
 
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
@@ -693,17 +693,63 @@ describe('InstanceDetailPage', () => {
             nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
           },
         }),
-        refreshKeycloakPreflight,
+        loadInstance,
       })
     );
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    await openDoctor();
-    fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
+    await waitFor(() => expect(loadInstance).toHaveBeenCalledWith('demo'));
+    loadInstance.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Bereitschaft aktualisieren' }));
 
     await waitFor(() => {
-      expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+    });
+  });
+
+  it('opens current parent-run diagnostics for the server diagnose action', async () => {
+    const loadInstance = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        loadInstance,
+        selectedInstance: createSelectedInstance({
+          provisioningRuns: [
+            {
+              id: 'parent-failed',
+              operation: 'create',
+              status: 'failed',
+              idempotencyKey: 'idem-1',
+              snapshotVersion: '2.0',
+              desiredSnapshot: {},
+              attemptCount: 1,
+              nextAttemptAt: '2026-01-01T00:00:00.000Z',
+              deadlineAt: '2026-01-01T00:30:00.000Z',
+              terminalEvidence: {},
+              payloadFingerprint: 'fingerprint',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:10:00.000Z',
+            },
+          ],
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.diagnose', retryClass: 'never' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    await waitFor(() => expect(loadInstance).toHaveBeenCalledWith('demo'));
+    loadInstance.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Diagnose öffnen' }));
+
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+      expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
+      expect(screen.getByText('create')).toBeTruthy();
     });
   });
 

@@ -20,6 +20,7 @@ import {
   requiresAutomatedProvisioningEvidence,
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
+import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
@@ -173,7 +174,8 @@ export const loadKeycloakDetailArtifacts = async (
     pluginLifecycleReady &&
     hostReadinessSatisfied;
   const retryableCreateRun =
-    createRun?.snapshotVersion === '2.0' &&
+    createRun &&
+    isSupportedTenantProvisioningSnapshotVersion(createRun.snapshotVersion) &&
     createRun.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
     shouldExposeAutomatedProvisioning(deps, instance) &&
     isTenantProvisioningFailureRetryable(createRun)

@@ -88,6 +88,7 @@ describe('service-provisioning', () => {
         status: 'requested',
         idempotencyKey: 'idem-1',
         payloadFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        snapshotVersion: '3.0',
       })
     );
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(

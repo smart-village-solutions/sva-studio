@@ -41,6 +41,10 @@ export const mapConfigurationStatusToCockpitStatus = (
 
 export const getDetailActionLabel = (action: DetailWorkflowAction) => {
   switch (action) {
+    case 'refresh_readiness':
+      return t('admin.instances.actions.refreshReadiness');
+    case 'open_diagnostics':
+      return t('admin.instances.actions.openDiagnostics');
     case 'check_preflight':
       return t('admin.instances.actions.checkPreflight');
     case 'check_keycloak_status':

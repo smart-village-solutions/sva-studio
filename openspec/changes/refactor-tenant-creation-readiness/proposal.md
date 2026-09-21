@@ -90,7 +90,8 @@ allgemeine Workflow-, Queue- oder Deployment-Plattform.
 
 ## Non-Goals
 
-- Keine direkte Implementierung innerhalb dieses OpenSpec-Changes.
+- Keine Implementierung außerhalb der freigegebenen Lieferabschnitte und kein
+  paralleler fachlicher Pfad.
 - Kein zweiter Registry-, Provisioning-, IAM- oder Keycloak-Pfad.
 - Keine automatische Übernahme fremder Clients, Rollen oder Benutzer.
 - Keine automatische Änderung von Identity Providern, User Federation, SMTP,

@@ -365,8 +365,10 @@ test('authoritative create blockers keep the final action disabled', async ({ pa
   await page.locator('#instance-admin-last-name').fill('Admin');
   await page.getByRole('button', { name: 'Weiter' }).click();
 
+  const createBlockers = page.getByRole('region', { name: 'Vor der Anlage zu beheben' });
+  await expect(createBlockers.getByText('Technischer Keycloak-Zugriff')).toBeVisible();
   await expect(
-    page.getByText('Keycloak ist für die verbindliche Anlageprüfung nicht erreichbar.')
+    createBlockers.getByText('Die serverseitige Prüfung blockiert den nächsten Schritt.')
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Instanz anlegen' })).toBeDisabled();
   expect(createRequested).toBe(false);

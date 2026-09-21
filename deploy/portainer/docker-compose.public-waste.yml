@@ -72,4 +72,4 @@ networks:
     external: true
   waste-database:
     external: true
-    name: studio_internal
+    name: studio_default

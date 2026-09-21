@@ -53,10 +53,10 @@ services:
         - 'traefik.port=3002'
 
         #Traefik v3
-        - 'traefik.http.routers.public-waste.rule=Host(`${PUBLIC_WASTE_PUBLIC_HOST}`)'
-        - 'traefik.http.routers.public-waste.tls=true'
-        - 'traefik.http.routers.public-waste.tls.certresolver=default'
-        - 'traefik.http.services.public-waste.loadbalancer.server.port=3002'
+        - 'traefik.http.routers.public-waste-${PUBLIC_WASTE_INSTANCE_ID}.rule=Host(`${PUBLIC_WASTE_PUBLIC_HOST}`)'
+        - 'traefik.http.routers.public-waste-${PUBLIC_WASTE_INSTANCE_ID}.tls=true'
+        - 'traefik.http.routers.public-waste-${PUBLIC_WASTE_INSTANCE_ID}.tls.certresolver=default'
+        - 'traefik.http.services.public-waste-${PUBLIC_WASTE_INSTANCE_ID}.loadbalancer.server.port=3002'
 
     healthcheck:
       test:

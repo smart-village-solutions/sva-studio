@@ -87,7 +87,7 @@ export const updatePublicWasteDomainEnv = (
 export const ensurePublicWasteCertificateResolver = (stackFileContent: string): string => {
   const resolverMatches = [
     ...stackFileContent.matchAll(
-      /^(\s*-\s*)(['"])traefik\.http\.routers\.public-waste\.tls\.certresolver=([^\s'"]+)\2[ \t]*$/gmu
+      /^(\s*-\s*)(['"])traefik\.http\.routers\.(public-waste(?:-[^\s.'"]+)?)\.tls\.certresolver=([^\s'"]+)\2[ \t]*$/gmu
     ),
   ];
   if (resolverMatches.length > 1) {
@@ -95,22 +95,22 @@ export const ensurePublicWasteCertificateResolver = (stackFileContent: string): 
   }
   const resolverMatch = resolverMatches[0];
   if (resolverMatch?.[1] && resolverMatch[2]) {
-    if (resolverMatch[3] === 'default') return stackFileContent;
+    if (resolverMatch[4] === 'default') return stackFileContent;
     return stackFileContent.replace(
       resolverMatch[0],
-      `${resolverMatch[1]}${resolverMatch[2]}traefik.http.routers.public-waste.tls.certresolver=default${resolverMatch[2]}`
+      `${resolverMatch[1]}${resolverMatch[2]}traefik.http.routers.${resolverMatch[3]}.tls.certresolver=default${resolverMatch[2]}`
     );
   }
   const matches = [
     ...stackFileContent.matchAll(
-      /^(\s*-\s*)(['"])traefik\.http\.routers\.public-waste\.tls=true\2[ \t]*$/gmu
+      /^(\s*-\s*)(['"])traefik\.http\.routers\.(public-waste(?:-[^\s.'"]+)?)\.tls=true\2[ \t]*$/gmu
     ),
   ];
   const match = matches[0];
   if (matches.length !== 1 || !match?.[1] || !match[2]) {
     throw new Error('Der Public-Waste-Stack besitzt kein eindeutiges TLS-Router-Label.');
   }
-  const resolverLabel = `${match[1]}${match[2]}traefik.http.routers.public-waste.tls.certresolver=default${match[2]}`;
+  const resolverLabel = `${match[1]}${match[2]}traefik.http.routers.${match[3]}.tls.certresolver=default${match[2]}`;
   return stackFileContent.replace(match[0], `${match[0]}\n${resolverLabel}`);
 };
 

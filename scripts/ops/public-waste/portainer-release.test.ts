@@ -98,6 +98,14 @@ describe('public waste portainer release', () => {
       "        - 'traefik.http.routers.public-waste.tls.certresolver=default'"
     );
     expect(ensurePublicWasteCertificateResolver(updated)).toBe(updated);
+    const namespacedStack = [
+      '      labels:',
+      '        - "traefik.http.routers.public-waste-bb-prignitz.tls=true"',
+      '',
+    ].join('\n');
+    expect(ensurePublicWasteCertificateResolver(namespacedStack)).toContain(
+      '        - "traefik.http.routers.public-waste-bb-prignitz.tls.certresolver=default"'
+    );
     expect(
       ensurePublicWasteCertificateResolver(
         '      labels:\n        - "traefik.http.routers.public-waste.tls=true"\n'

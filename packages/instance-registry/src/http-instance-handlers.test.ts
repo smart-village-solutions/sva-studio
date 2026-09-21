@@ -22,6 +22,12 @@ describe('http-instance-handlers', () => {
       activationBlockers: [],
       preflight: { overallStatus: 'ready', checkedAt: '2026-09-20T12:00:00.000Z', checks: [] },
     })),
+    listRealmCatalog: vi.fn(async () => ({
+      entries: [],
+      page: 1,
+      pageSize: 25,
+      total: 0,
+    })),
     retryTenantProvisioning: vi.fn(async () => ({
       instanceId: 'demo',
       primaryHostname: 'demo.dialog.kassel.de',
@@ -101,6 +107,12 @@ describe('http-instance-handlers', () => {
       ok: true,
       instance: { instanceId: 'demo', status: 'validated' },
     } as never);
+    vi.mocked(service.listRealmCatalog).mockResolvedValue({
+      entries: [],
+      page: 1,
+      pageSize: 25,
+      total: 0,
+    } as never);
     vi.mocked(service.retryTenantProvisioning).mockResolvedValue({
       instanceId: 'demo',
       primaryHostname: 'demo.dialog.kassel.de',
@@ -124,6 +136,44 @@ describe('http-instance-handlers', () => {
       data: [{ instanceId: 'demo', status: 'active' }],
       pagination: { page: 1, pageSize: 1, total: 1 },
     });
+  });
+
+  it('lists the paginated realm catalog', async () => {
+    vi.mocked(service.listRealmCatalog).mockResolvedValueOnce({
+      entries: [{ realm: 'smartcity', displayName: 'Smart City' }],
+      page: 2,
+      pageSize: 10,
+      total: 11,
+    } as never);
+
+    const response = await createInstanceRegistryHttpHandlers(deps).listRealmCatalog(
+      new Request(
+        'https://studio.example.org/api/v1/iam/instances/realm-catalog?search=smart&page=2&pageSize=10'
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.listRealmCatalog).toHaveBeenCalledWith({
+      search: 'smart',
+      page: 2,
+      pageSize: 10,
+    });
+    expect(await readBody(response)).toMatchObject({
+      entries: [{ realm: 'smartcity', displayName: 'Smart City' }],
+      requestId: 'req-1',
+    });
+  });
+
+  it('rejects invalid realm catalog pagination before calling the service', async () => {
+    const response = await createInstanceRegistryHttpHandlers(deps).listRealmCatalog(
+      new Request('https://studio.example.org/api/v1/iam/instances/realm-catalog?page=0'),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    expect(await readBody(response)).toMatchObject({ code: 'invalid_request' });
+    expect(service.listRealmCatalog).not.toHaveBeenCalled();
   });
 
   it('creates instances and emits the provisioning hook', async () => {

@@ -574,6 +574,41 @@ describe('instance registry repository provisioning', () => {
     ]);
   });
 
+  it('returns null when the expected provisioning state changed concurrently', async () => {
+    const { executor } = createQueuedExecutor([[], [], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.confirmProvisioningPlan({
+        runId: 'run-1',
+        instanceId: 'tenant-a',
+        expectedPlanFingerprint: 'old-plan',
+        planFingerprint: 'confirmed-plan',
+        childKeycloakRunId: '11111111-1111-4111-8111-111111111111',
+        actorId: 'operator-1',
+        requestId: 'request-1',
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.bindProvisioningRemediation({
+        runId: 'run-1',
+        instanceId: 'tenant-a',
+        expectedPlanFingerprint: 'blocked-plan',
+        planFingerprint: 'confirmed-rotation-plan',
+        childKeycloakRunId: '22222222-2222-4222-8222-222222222222',
+        actorId: 'operator-1',
+        requestId: 'request-2',
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.completeProvisioningRemediation({
+        instanceId: 'tenant-a',
+        childKeycloakRunId: '22222222-2222-4222-8222-222222222222',
+        succeeded: false,
+      })
+    ).resolves.toBeNull();
+  });
+
   it('advances only the currently leased parent run and merges safe evidence', async () => {
     const updatedRow = {
       ...provisioningRow,

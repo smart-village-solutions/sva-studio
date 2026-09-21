@@ -400,6 +400,8 @@ describe('deriveIamRuntimeDiagnostics', () => {
           session_id: 'private-session',
           stacktrace: 'private-stacktrace',
           instance_id: 42,
+          moduleIds: ['valid-module', 42],
+          errorCodes: ['VALID_ERROR', null],
           syncError: {
             raw: 'private-provider-error',
           },

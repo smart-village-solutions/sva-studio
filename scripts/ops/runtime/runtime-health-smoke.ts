@@ -1,11 +1,16 @@
 import type { RuntimeProfile } from '../../../packages/core/src/runtime-profile.ts';
 import { resolveAcceptanceContainerServices, resolveRemoteShortServiceName, resolveRemoteStackServiceName } from './runtime-health-helpers.ts';
-import type { RuntimeHealthDeps } from './runtime-health.types.ts';
+import type { OidcDoctorCompatibilityOptions, RuntimeHealthDeps } from './runtime-health.types.ts';
 
 const baseUrl = (env: NodeJS.ProcessEnv) => env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 const httpTimeoutSignal = (timeoutMs: number) => AbortSignal.timeout(timeoutMs);
 
-const assertLoginFlow = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+const assertLoginFlow = async (
+  deps: RuntimeHealthDeps,
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options: OidcDoctorCompatibilityOptions = {},
+) => {
   const loginUrl = new URL('/auth/login', baseUrl(env)).toString();
   const response = await fetch(loginUrl, { redirect: 'manual', signal: httpTimeoutSignal(10_000) });
   const location = response.headers.get('location') ?? '';
@@ -15,7 +20,9 @@ const assertLoginFlow = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeP
     return;
   }
 
-  if (response.status !== 302 || !deps.isExpectedOidcRedirect(location, env)) {
+  if (response.status !== 302 || !deps.isExpectedOidcRedirect(location, env, {
+    allowImplicitQueryResponseMode: options.allowImplicitQueryResponseMode === true,
+  })) {
     throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten Status ${response.status} mit Location ${location}`);
   }
 };
@@ -204,7 +211,11 @@ const smokeRuntime = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeProf
 export const createRuntimeHealthSmokeOps = (deps: RuntimeHealthDeps) => ({
   assertAcceptanceContainerHealth: (env: NodeJS.ProcessEnv) => assertAcceptanceContainerHealth(deps, env),
   assertIamContextEndpoint,
-  assertLoginFlow: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => assertLoginFlow(deps, runtimeProfile, env),
+  assertLoginFlow: (
+    runtimeProfile: RuntimeProfile,
+    env: NodeJS.ProcessEnv,
+    options?: OidcDoctorCompatibilityOptions,
+  ) => assertLoginFlow(deps, runtimeProfile, env, options),
   assertMainserverSmoke,
   assertMeEndpoint,
   assertOtelLocal,

@@ -7,6 +7,12 @@ import type {
 } from '../runtime-env.shared.ts';
 import { createAssertionCheck, createEndpointHealthCheck, createRuntimeEnvCheck } from './doctor-check-builders.ts';
 import type { RuntimeDoctorDeps } from './doctor.types.ts';
+import type { OidcDoctorCompatibilityOptions } from './runtime-health.types.ts';
+
+const resolveOidcDoctorCompatibility = (env: NodeJS.ProcessEnv): OidcDoctorCompatibilityOptions => ({
+  allowImplicitQueryResponseMode:
+    env.SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE === 'true',
+});
 
 const addRuntimeEnvCheck = (
   deps: RuntimeDoctorDeps,
@@ -48,6 +54,7 @@ const addAuthChecks = async (
   checks: DoctorCheck[],
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
+  options: OidcDoctorCompatibilityOptions = {},
 ) => {
   checks.push(await deps.buildKeycloakClientSecretCheck(runtimeProfile, env));
   checks.push(await createAssertionCheck(deps, {
@@ -55,7 +62,7 @@ const addAuthChecks = async (
     errorCode: 'auth_login_failed',
     name: 'auth-login',
     okMessage: 'Login-Verhalten entspricht dem Profil.',
-    run: () => deps.assertLoginFlow(runtimeProfile, env),
+    run: () => deps.assertLoginFlow(runtimeProfile, env, options),
   }));
   checks.push(await createAssertionCheck(deps, {
     code: 'auth_me_ok',
@@ -110,10 +117,11 @@ const addRemoteRuntimeChecks = async (
   checks: DoctorCheck[],
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv,
+  options: OidcDoctorCompatibilityOptions = {},
 ) => {
   if (!deps.isRemoteRuntimeProfile(runtimeProfile)) return;
   checks.push(await deps.buildAppPrincipalReadinessCheck(env));
-  checks.push(await deps.buildTenantAuthProofCheck(runtimeProfile, env));
+  checks.push(await deps.buildTenantAuthProofCheck(runtimeProfile, env, options));
 };
 
 const addInstanceChecks = async (
@@ -181,6 +189,7 @@ const doctorRuntime = async (
   env: NodeJS.ProcessEnv,
 ): Promise<DoctorReport> => {
   const checks: DoctorCheck[] = [];
+  const oidcCompatibility = resolveOidcDoctorCompatibility(env);
   if (deps.isRemoteRuntimeProfile(runtimeProfile)) {
     checks.push(await deps.buildLiveRuntimeEnvCheck(runtimeProfile, env));
   } else {
@@ -188,10 +197,10 @@ const doctorRuntime = async (
   }
   checks.push(deps.buildLocalProvisioningWorkerCheck(runtimeProfile, deps.readLocalWorkerState(deps.localWorkerStateFile)));
   await addEndpointChecks(deps, checks, env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000');
-  await addAuthChecks(deps, checks, runtimeProfile, env);
+  await addAuthChecks(deps, checks, runtimeProfile, env, oidcCompatibility);
   await addMainserverCheck(deps, checks, runtimeProfile, env);
   await addLocalOrRemoteSmokeChecks(deps, checks, runtimeProfile, env);
-  await addRemoteRuntimeChecks(deps, checks, runtimeProfile, env);
+  await addRemoteRuntimeChecks(deps, checks, runtimeProfile, env, oidcCompatibility);
   await addCommonDoctorChecks(deps, checks, runtimeProfile, env);
   return deps.finalizeDoctorReport(runtimeProfile, checks);
 };

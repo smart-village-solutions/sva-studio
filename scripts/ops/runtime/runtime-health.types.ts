@@ -5,7 +5,13 @@ import type {
   RemoteRuntimeProfile,
   TenantRuntimeTargetResolution,
 } from '../runtime-env.shared.ts';
+import type { OidcAuthorizationRedirectExpectation } from './acceptance-runtime-checks-core.ts';
 import type { RemoteServiceContract } from './remote-service-spec.ts';
+
+export type OidcDoctorCompatibilityOptions = Pick<
+  OidcAuthorizationRedirectExpectation,
+  'allowImplicitQueryResponseMode'
+>;
 
 export type HttpHealthResult = {
   payload?: unknown;
@@ -64,7 +70,11 @@ export type RuntimeHealthDeps = {
     env: NodeJS.ProcessEnv,
     input: { quantumEndpoint: string; serviceName: string; stackName: string },
   ) => Promise<RemoteServiceContract | null>;
-  isExpectedOidcRedirect: (location: string, env: NodeJS.ProcessEnv) => boolean;
+  isExpectedOidcRedirect: (
+    location: string,
+    env: NodeJS.ProcessEnv,
+    expectation?: OidcAuthorizationRedirectExpectation,
+  ) => boolean;
   isMainserverCheckRequired: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => boolean;
   isMockAuthRuntimeProfile: (runtimeProfile: RuntimeProfile) => boolean;
   readRemoteStackEvidence: (env: NodeJS.ProcessEnv) => Promise<RemoteStackEvidence>;

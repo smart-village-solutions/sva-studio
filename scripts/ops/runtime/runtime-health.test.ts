@@ -301,7 +301,7 @@ describe('runtime-health helpers', () => {
 
         if (new URL(url).hostname === 'tenant.example.test') {
           return new Response(null, {
-            headers: { location: 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid' },
+            headers: { location: 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid' },
             status: 302,
           });
         }
@@ -358,6 +358,8 @@ describe('runtime-health helpers', () => {
       SVA_LOKI_URL: 'https://loki.example.test',
       SVA_PUBLIC_BASE_URL: 'https://studio.example.test',
       SVA_AUTH_ISSUER: 'https://issuer.example.test/realms/platform',
+    }, {
+      allowImplicitQueryResponseMode: true,
     });
 
     const lokiQueries = fetchCalls
@@ -371,7 +373,7 @@ describe('runtime-health helpers', () => {
     expect(lokiQueries).toContain(
       '{swarm_service=~".*keycloak_keycloak"} |= "Non-secure context detected; cookies are not secured"',
     );
-    expect(fetchCalls).toContain('https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid');
+    expect(fetchCalls).toContain('https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=tenant-client&response_type=code&redirect_uri=https%3A%2F%2Ftenant.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid');
   });
 
   it('fails observability readiness when Keycloak reports an insecure cookie context', async () => {
@@ -755,6 +757,7 @@ describe('runtime-health helpers', () => {
 
   it('uses timeouts for login and me smoke requests', async () => {
     const fetchCalls: RequestInit[] = [];
+    const isExpectedOidcRedirect = vi.fn(() => true);
     vi.stubGlobal(
       'fetch',
       vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
@@ -777,7 +780,7 @@ describe('runtime-health helpers', () => {
       getRemoteAppServiceName: vi.fn(),
       getRuntimeProfileDefinition: vi.fn(() => ({ isLocal: true })),
       inspectRemoteServiceContract: vi.fn(),
-      isExpectedOidcRedirect: vi.fn(() => true),
+      isExpectedOidcRedirect,
       isMainserverCheckRequired: vi.fn(() => false),
       isMockAuthRuntimeProfile: vi.fn(() => false),
       readRemoteStackEvidence: vi.fn(),
@@ -791,12 +794,21 @@ describe('runtime-health helpers', () => {
       withoutDebugEnv: vi.fn(),
     });
 
-    await ops.assertLoginFlow('studio', { SVA_AUTH_ISSUER: 'https://issuer.example.test' });
+    await ops.assertLoginFlow(
+      'studio',
+      { SVA_AUTH_ISSUER: 'https://issuer.example.test' },
+      { allowImplicitQueryResponseMode: true },
+    );
     await ops.assertMeEndpoint('studio', {});
 
     expect(fetchCalls).toHaveLength(2);
     expect(fetchCalls[0]?.signal).toBeInstanceOf(AbortSignal);
     expect(fetchCalls[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(isExpectedOidcRedirect).toHaveBeenCalledWith(
+      'https://issuer.example.test/protocol/openid-connect/auth',
+      { SVA_AUTH_ISSUER: 'https://issuer.example.test' },
+      { allowImplicitQueryResponseMode: true },
+    );
   });
 
   it('normalizes qualified remote app service names for acceptance container checks', async () => {

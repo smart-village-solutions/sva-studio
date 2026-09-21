@@ -1,5 +1,6 @@
 import type { AcceptanceDeployOptions, DoctorCheck, DoctorReport, RemoteRuntimeProfile, RuntimeProfile } from '../runtime-env.shared.ts';
 import type { LocalState } from './local-runtime.ts';
+import type { OidcDoctorCompatibilityOptions } from './runtime-health.types.ts';
 
 export type RuntimeProfileValidation = {
   derived: readonly string[] | Record<string, unknown>;
@@ -14,7 +15,11 @@ export type HttpHealthResult = {
 };
 
 export type RuntimeDoctorDeps = {
-  assertLoginFlow: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<void>;
+  assertLoginFlow: (
+    runtimeProfile: RuntimeProfile,
+    env: NodeJS.ProcessEnv,
+    options?: OidcDoctorCompatibilityOptions,
+  ) => Promise<void>;
   assertMainserverSmoke: (env: NodeJS.ProcessEnv) => Promise<void>;
   assertMeEndpoint: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<void>;
   assertOtelLocal: (env: NodeJS.ProcessEnv) => Promise<void>;
@@ -40,7 +45,11 @@ export type RuntimeDoctorDeps = {
   buildStudioImageVerifyEvidenceCheck: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv, options?: AcceptanceDeployOptions) => DoctorCheck;
   buildTenantAdminClientContractCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => DoctorCheck;
   buildTenantAdminSecretContractCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
-  buildTenantAuthProofCheck: (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
+  buildTenantAuthProofCheck: (
+    runtimeProfile: RemoteRuntimeProfile,
+    env: NodeJS.ProcessEnv,
+    options?: OidcDoctorCompatibilityOptions,
+  ) => Promise<DoctorCheck>;
   buildTenantAuthSecretContractCheck: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => Promise<DoctorCheck>;
   checkHttpHealth: (url: string) => Promise<HttpHealthResult>;
   finalizeDoctorReport: (runtimeProfile: RuntimeProfile, checks: readonly DoctorCheck[]) => DoctorReport;

@@ -87,9 +87,13 @@ describe('acceptance runtime checks', () => {
       SVA_AUTH_REDIRECT_URI: 'https://studio.example.test/auth/callback',
     };
     const location = 'https://issuer.example.test/realms/studio/protocol/openid-connect/auth?client_id=studio-client&response_type=code&response_mode=query&redirect_uri=https%3A%2F%2Fstudio.example.test%2Fauth%2Fcallback&code_challenge=challenge&code_challenge_method=S256&state=state&nonce=nonce&scope=openid%20profile';
+    const implicitQueryLocation = location.replace('&response_mode=query', '');
 
     expect(isExpectedOidcRedirect(location, env)).toBe(true);
+    expect(isExpectedOidcRedirect(implicitQueryLocation, env)).toBe(false);
+    expect(isExpectedOidcRedirect(implicitQueryLocation, env, { allowImplicitQueryResponseMode: true })).toBe(true);
     expect(isExpectedOidcRedirect(location.replace('response_mode=query', 'response_mode=form_post'), env)).toBe(false);
+    expect(isExpectedOidcRedirect(location.replace('response_mode=query', 'response_mode=form_post'), env, { allowImplicitQueryResponseMode: true })).toBe(false);
     expect(isExpectedOidcRedirect(location.replace('studio-client', 'service-client'), env)).toBe(false);
     expect(isExpectedOidcRedirect(location.replace('state=state', 'state='), env)).toBe(false);
     expect(isExpectedOidcRedirect(location.replace('code_challenge_method=S256', 'code_challenge_method=plain'), env)).toBe(false);

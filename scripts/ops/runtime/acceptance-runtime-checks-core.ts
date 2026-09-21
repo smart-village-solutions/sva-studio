@@ -94,6 +94,7 @@ export const buildAcceptanceIngressConsistencyCheck = async (
 };
 
 export type OidcAuthorizationRedirectExpectation = Readonly<{
+  allowImplicitQueryResponseMode?: boolean;
   clientId?: string;
   issuerUrl?: string;
   redirectUri?: string;
@@ -128,11 +129,15 @@ const isExpectedAuthorizationEndpoint = (authorizationUrl: URL, issuer: URL) => 
 
 const hasExpectedAuthorizationParameters = (
   params: URLSearchParams,
-  expectation: Required<Pick<OidcAuthorizationRedirectExpectation, 'clientId' | 'redirectUri'>>,
+  expectation: Required<Pick<OidcAuthorizationRedirectExpectation, 'clientId' | 'redirectUri'>>
+    & Pick<OidcAuthorizationRedirectExpectation, 'allowImplicitQueryResponseMode'>,
 ) =>
   params.get('client_id') === expectation.clientId &&
   params.get('response_type') === 'code' &&
-  params.get('response_mode') === 'query' &&
+  (
+    params.get('response_mode') === 'query'
+    || (expectation.allowImplicitQueryResponseMode === true && params.get('response_mode') === null)
+  ) &&
   params.get('redirect_uri') === expectation.redirectUri &&
   params.get('code_challenge_method') === 'S256' &&
   (params.get('code_challenge')?.length ?? 0) > 0 &&
@@ -155,7 +160,11 @@ export const isExpectedOidcRedirect = (
     const authorizationUrl = new URL(location);
     return isTrustedIssuerUrl(issuer)
       && isExpectedAuthorizationEndpoint(authorizationUrl, issuer)
-      && hasExpectedAuthorizationParameters(authorizationUrl.searchParams, { clientId, redirectUri });
+      && hasExpectedAuthorizationParameters(authorizationUrl.searchParams, {
+        allowImplicitQueryResponseMode: expectation.allowImplicitQueryResponseMode,
+        clientId,
+        redirectUri,
+      });
   } catch {
     return false;
   }

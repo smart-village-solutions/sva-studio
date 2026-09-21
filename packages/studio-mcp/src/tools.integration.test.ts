@@ -345,9 +345,9 @@ describe('Studio MCP tools', () => {
           realmMode: 'new',
           authRealm: 'demo',
           authClientId: 'sva-studio-login',
+          moduleIds: ['news'],
           ...completeTenantCreateFields,
         },
-        moduleIds: ['news'],
       },
     });
 

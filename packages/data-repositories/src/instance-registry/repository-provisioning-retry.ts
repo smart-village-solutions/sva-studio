@@ -45,7 +45,7 @@ SET status = 'requested',
     error_code = NULL, error_message = NULL,
     actor_id = COALESCE($3, actor_id), request_id = COALESCE($4, request_id), updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
-  AND snapshot_version = '2.0' AND status = 'failed'
+  AND snapshot_version IN ('2.0', '3.0') AND status = 'failed'
   AND lease_owner = $8 AND lease_expires_at > now()
 RETURNING ${provisioningColumns};
 `,
@@ -75,7 +75,7 @@ const reserveProvisioningRetryRun = async (
 UPDATE iam.instance_provisioning_runs
 SET lease_owner = $3, lease_expires_at = $4::timestamptz, updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
-  AND snapshot_version = '2.0' AND status = 'failed'
+  AND snapshot_version IN ('2.0', '3.0') AND status = 'failed'
   AND (lease_expires_at IS NULL OR lease_expires_at <= now())
 RETURNING ${provisioningColumns};
 `,
@@ -96,7 +96,7 @@ const renewProvisioningRetryReservation = async (
 UPDATE iam.instance_provisioning_runs
 SET lease_expires_at = $4::timestamptz, updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
-  AND snapshot_version = '2.0' AND status = 'failed'
+  AND snapshot_version IN ('2.0', '3.0') AND status = 'failed'
   AND lease_owner = $3 AND lease_expires_at > now()
 RETURNING ${provisioningColumns};
 `,
@@ -117,7 +117,7 @@ const releaseProvisioningRetryReservation = async (
 UPDATE iam.instance_provisioning_runs
 SET lease_owner = NULL, lease_expires_at = NULL, updated_at = now()
 WHERE instance_id = $1 AND operation = 'create' AND idempotency_key = $2
-  AND snapshot_version = '2.0' AND status = 'failed' AND lease_owner = $3
+  AND snapshot_version IN ('2.0', '3.0') AND status = 'failed' AND lease_owner = $3
 RETURNING ${provisioningColumns};
 `,
       [input.instanceId, input.idempotencyKey, input.leaseOwner]
@@ -130,8 +130,7 @@ export const createProvisioningRetryRepository = (
   executor: SqlExecutor
 ): ProvisioningRetryRepository => ({
   reserveProvisioningRetryRun: (input) => reserveProvisioningRetryRun(executor, input),
-  renewProvisioningRetryReservation: (input) =>
-    renewProvisioningRetryReservation(executor, input),
+  renewProvisioningRetryReservation: (input) => renewProvisioningRetryReservation(executor, input),
   releaseProvisioningRetryReservation: (input) =>
     releaseProvisioningRetryReservation(executor, input),
   retryProvisioningRun: (input) => retryProvisioningRun(executor, input),

@@ -285,3 +285,10 @@
 - [x] 11.15 Vor dem Anzeigen der Aktivierungsaktion einen Live-Postflight mit
       derselben gebundenen OIDC-Auswahl ausführen und bei Drift stattdessen die
       konkrete Keycloak-Reparaturaktion oder ein sicheres Refresh anbieten.
+- [x] 11.16 Worker-Claim und Retry-Reservierung für aktuelle
+      Provisioning-Snapshots `3.0` sowie unterstützte Legacy-Snapshots `2.0`
+      öffnen.
+- [x] 11.17 Bestehende partielle Tenant-Admin-Profile bei Updates weiterhin
+      akzeptieren, während neue Tenants ein vollständiges Profil benötigen.
+- [x] 11.18 Im MCP-Prozess innerhalb von `create` akzeptierte `moduleIds`
+      erhalten und im gesamten Create-/Fallback-Pfad konsistent verwenden.

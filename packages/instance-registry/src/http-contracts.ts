@@ -33,6 +33,15 @@ const tenantAdminBootstrapSchema = z
   })
   .optional();
 
+const persistedTenantAdminBootstrapSchema = z
+  .object({
+    username: z.string().trim().min(1),
+    email: z.string().trim().email().optional(),
+    firstName: z.string().trim().min(1).optional(),
+    lastName: z.string().trim().min(1).optional(),
+  })
+  .optional();
+
 const tenantAdminClientSchema = z
   .object({
     clientId: z.string().trim().min(1),
@@ -146,6 +155,7 @@ export const resolveCreateInstanceDefaults = (value: z.output<typeof createInsta
 
 export const updateInstanceSchema = z.object({
   ...sharedInstanceWriteSchemaFields,
+  tenantAdminBootstrap: persistedTenantAdminBootstrapSchema,
   authRealm: authRealmSchema,
   authClientId: z.string().trim().min(1),
   tenantAdminClient: tenantAdminClientSchema,

@@ -274,6 +274,7 @@ export const runStudioInstanceProcess = async (
   const requestId = randomUUID();
   const idempotencyKey = input.idempotencyKey ?? randomUUID();
   const basePath = `/api/v1/iam/instances/${encodeURIComponent(input.instanceId)}`;
+  const moduleIds = input.moduleIds ?? input.create?.moduleIds ?? [];
   const completedSteps: string[] = [];
   let currentStep = input.mode === 'create' ? 'registry_create' : 'keycloak_plan';
 
@@ -285,7 +286,7 @@ export const runStudioInstanceProcess = async (
           client,
           mutation(
             '/api/v1/iam/instances',
-            { ...input.create, moduleIds: input.moduleIds ?? [] },
+            { ...input.create, moduleIds },
             requestId,
             idempotencyKey
           )
@@ -356,7 +357,7 @@ export const runStudioInstanceProcess = async (
       await assignMissingModules({
         client,
         basePath,
-        moduleIds: input.moduleIds ?? [],
+        moduleIds,
         requestId,
         idempotencyKey,
       })

@@ -499,6 +499,7 @@ describe('instance registry repository provisioning', () => {
     expect(statements[0]?.text).toContain(
       "run.desired_snapshot->>'automationMode' = 'kassel-traefik-file'"
     );
+    expect(statements[0]?.text).toContain("run.snapshot_version IN ('2.0', '3.0')");
     expect(statements[0]?.text).toContain(
       "instance.status IN ('requested', 'validated', 'provisioning')"
     );
@@ -627,7 +628,9 @@ describe('instance registry repository provisioning', () => {
       stepKey: 'lifecycle',
       terminalEvidence: { failedStep: 'login' },
     });
-    expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain(
+      "snapshot_version IN ('2.0', '3.0') AND status = 'failed'"
+    );
     expect(statements[0]?.text).toContain('lease_owner = $8 AND lease_expires_at > now()');
     expect(statements[0]?.text).toContain(
       "WHEN step_key IN ('registry', 'keycloak') THEN 'registry'"
@@ -683,7 +686,9 @@ describe('instance registry repository provisioning', () => {
       })
     ).resolves.toMatchObject({ status: 'failed', leaseOwner: 'retry-lease-1' });
 
-    expect(statements[0]?.text).toContain("snapshot_version = '2.0' AND status = 'failed'");
+    expect(statements[0]?.text).toContain(
+      "snapshot_version IN ('2.0', '3.0') AND status = 'failed'"
+    );
     expect(statements[0]?.text).toContain(
       '(lease_expires_at IS NULL OR lease_expires_at <= now())'
     );

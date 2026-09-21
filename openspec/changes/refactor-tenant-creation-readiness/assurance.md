@@ -225,6 +225,12 @@ weder gültige Postflight-Snapshots verdrängen noch die Aktivierungsanzeige vom
 serverseitigen Aktivierungsgate abweichen lassen. Zusätzlich decken die Tests
 den UI-Retry für aktuelle `3.0`-Runs und den historischen `2.0`-Fingerprint
 einschließlich `assignedModules` ab.
+Die Worker- und Retry-Abfragen akzeptieren denselben Versionskorridor aus
+`2.0` und `3.0`; damit bleiben neu erzeugte Läufe claimbar. Update-Verträge
+bewahren bereits persistierte partielle Tenant-Admin-Profile, ohne die
+vollständige Profilpflicht bei der Neuanlage zu lockern. Der MCP-Prozess nutzt
+verschachtelte `create.moduleIds` auch dann, wenn das optionale Top-Level-Feld
+nicht gesetzt ist.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

@@ -169,6 +169,28 @@ describe('http-contracts', () => {
     ).toBe(true);
   });
 
+  it('accepts a persisted username-only tenant admin profile during unrelated updates', () => {
+    expect(
+      updateInstanceSchema.safeParse({
+        displayName: 'Legacy tenant',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'existing',
+        authRealm: 'de-test',
+        authClientId: 'sva-studio-login',
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      }).success
+    ).toBe(true);
+    expect(
+      createInstanceSchema.safeParse({
+        instanceId: 'de-test',
+        displayName: 'New tenant',
+        parentDomain: 'studio.smart-village.app',
+        realmMode: 'new',
+        tenantAdminBootstrap: { username: 'tenant-admin' },
+      }).success
+    ).toBe(false);
+  });
+
   it('rejects reserved instance ids for audit routes', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'audit',

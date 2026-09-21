@@ -105,6 +105,7 @@ describe('service-keycloak-execution-shared', () => {
         repository: repository as never,
         protectSecret,
         readPluginOidcClientRequirements: () => [],
+        readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
       } as never,
       createLoaded() as never,
       {
@@ -133,6 +134,7 @@ describe('service-keycloak-execution-shared', () => {
         requestId: 'request-1',
         details: expect.objectContaining({
           intent: 'provision',
+          confirmedRoleCatalogFingerprint: 'c'.repeat(64),
           tenantAdminTemporaryPasswordCiphertext:
             'protected:iam.instances.keycloak_run_temp_password:run-created:temporary-password',
         }),

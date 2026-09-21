@@ -228,6 +228,7 @@ const createHarness = () => {
     ]),
     readModuleActivationPolicySnapshot: () => activationPolicies,
     readPluginOidcClientRequirements: vi.fn(() => []),
+    readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
     publishTenantIngress: vi.fn(async () => ({
       routerName: 'studio-tenant-tenant-a',
       configHash: 'sha256:router',

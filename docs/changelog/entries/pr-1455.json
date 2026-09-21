@@ -1,0 +1,4 @@
+{
+  "prNumber": 1455,
+  "body": "Domainwechsel für öffentliche Abfallkalender weiter unterstützt\n\n- Die technische Umstellung von öffentlichen Kalenderadressen funktioniert auch mit getrennten Traefik-Routern je Mandant."
+}

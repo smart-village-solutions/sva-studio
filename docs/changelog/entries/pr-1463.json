@@ -1,0 +1,4 @@
+{
+  "prNumber": 1463,
+  "body": "Neue Instanzen ohne unbegründeten Plan-Konflikt einrichten\n\n- Die Vorschau und die Ausführung verwenden bei noch nicht angelegten Nutzer-Datenbanken denselben Provisioning-Plan.\n- Tatsächlich geänderte Pläne werden verständlich als Plan-Konflikt gemeldet und können erneut geprüft werden."
+}

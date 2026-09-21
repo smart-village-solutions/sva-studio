@@ -14,7 +14,7 @@ services:
       com.sva-studio.component: 'public-waste-app'
       com.sva-studio.environment: 'production'
     networks:
-      - public
+      - network-node-003
       - waste-database
     deploy:
       replicas: 1
@@ -44,7 +44,7 @@ services:
           cpus: '0.50'
       labels:
         - 'traefik.enable=true'
-        - 'traefik.docker.network=public'
+        - 'traefik.swarm.network=network-node-003'
 
         #Traefik v1
         - 'traefik.frontend.rule=Host:${PUBLIC_WASTE_PUBLIC_HOST}'
@@ -68,7 +68,7 @@ services:
       start_period: 20s
 
 networks:
-  public:
+  network-node-003:
     external: true
   waste-database:
     external: true

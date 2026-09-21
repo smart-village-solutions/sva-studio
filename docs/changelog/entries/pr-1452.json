@@ -1,0 +1,4 @@
+{
+  "prNumber": 1452,
+  "body": "Öffentlichen Abfallkalender wieder ausbringbar gemacht\n\n- Der Abfallkalender verwendet für die Datenbankverbindung wieder das im Produktionssystem vorhandene Netzwerk.\n- Damit können Aktualisierungen des Kalenders für Prignitz und Frankfurt (Oder) wieder gestartet werden."
+}

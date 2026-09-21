@@ -240,7 +240,7 @@ Referenzen:
 ### Fortschreibung 2026-06: Isolierter Releasepfad für die öffentliche Waste-Webversion
 
 - Die produktive Waste-Webversion besitzt einen eigenen Node-Laufzeitpfad unter `apps/public-waste-calendar-web/src/server/**`; der Build erzeugt ein gekapseltes Artefakt aus statischen Assets plus kleinem HTTP-Server.
-- Die Runtime erreicht die für ihre kanonische Studio-Instanz provisionierte Waste-Datenbank über das externe Overlay-Netz `studio_internal`; der Browser erhält zu keinem Zeitpunkt Datenbankzugang. Studio, Migration, öffentliche App und Owner verwenden tenantbezogene Rollen mit minimalen Rechten.
+- Die Runtime erreicht die für ihre kanonische Studio-Instanz provisionierte Waste-Datenbank über das externe Overlay-Netz `studio_default`; der Browser erhält zu keinem Zeitpunkt Datenbankzugang. Studio, Migration, öffentliche App und Owner verwenden tenantbezogene Rollen mit minimalen Rechten.
 - Die produktiven Stacks laufen getrennt vom Studio-Stack als `web-waste-calendar` für Prignitz und `web-waste-calendar-frankfurt-oder` für Frankfurt (Oder), beide mit `deploy/portainer/docker-compose.public-waste.yml`.
 - Das zugehörige Container-Image wird getrennt unter `ghcr.io/smart-village-solutions/public-waste-calendar-web:<tag>` gebaut; Studio-Image, Studio-Stack und Studio-Workflows bleiben unberührt.
 - Die produktive Runtime-Konfiguration nutzt führend getrennte `PUBLIC_WASTE_*`-Variablen (`PUBLIC_WASTE_IMAGE_TAG`, `PUBLIC_WASTE_PUBLIC_HOST`, `PUBLIC_WASTE_BASE_URL`, `PUBLIC_WASTE_INSTANCE_ID`, `PUBLIC_WASTE_DATABASE_URL`, `PUBLIC_WASTE_SCHEMA_NAME`).

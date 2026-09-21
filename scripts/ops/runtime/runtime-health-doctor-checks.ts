@@ -272,6 +272,7 @@ const probeTenantAuthRedirects = async (
       : null;
     const expectedRedirectUri = `${baseProtocol}//${tenantTarget.host}/auth/callback`;
     if (!authorizationUrl || !isExpectedOidcRedirect(location, env, {
+      allowImplicitQueryResponseMode: true,
       clientId: tenantTarget.authClientId,
       issuerUrl: issuerUrl.href,
       redirectUri: expectedRedirectUri,

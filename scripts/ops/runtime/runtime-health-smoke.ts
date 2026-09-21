@@ -15,7 +15,9 @@ const assertLoginFlow = async (deps: RuntimeHealthDeps, runtimeProfile: RuntimeP
     return;
   }
 
-  if (response.status !== 302 || !deps.isExpectedOidcRedirect(location, env)) {
+  if (response.status !== 302 || !deps.isExpectedOidcRedirect(location, env, {
+    allowImplicitQueryResponseMode: true,
+  })) {
     throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten Status ${response.status} mit Location ${location}`);
   }
 };

@@ -769,6 +769,54 @@ describe('instance registry service facade', () => {
     expect(readKeycloakStateViaProvisioner).not.toHaveBeenCalled();
   });
 
+  it('exposes a persisted automated parent run after runtime automation was disabled', async () => {
+    const instance = {
+      ...idempotentInstance,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+    };
+    const run = {
+      ...latestRun,
+      desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      payloadFingerprint: buildCreateInstancePayloadFingerprint({
+        ...completeCreateIdentity,
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        idempotencyKey: 'idem-1',
+      }),
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => instance),
+      listProvisioningRuns: vi.fn(async () => [run]),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => false })
+    );
+
+    await expect(
+      service.createProvisioningRequest({
+        ...completeCreateIdentity,
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        latestProvisioningRun: expect.objectContaining({ id: 'run-1' }),
+      }),
+    });
+  });
+
   it('commits the durable provisioning run without transactional module IAM follow-ups', async () => {
     const reconcileModuleActivationPolicies = vi.fn(async () => ({
       changedModuleIds: [],
@@ -2112,13 +2160,14 @@ describe('instance registry service facade', () => {
   );
 
   it.each([
-    ['standard', false, ['news'], false],
-    ['kassel', true, ['news'], false],
-    ['moduleless', false, [], false],
-    ['kassel-disabled-runtime', false, ['news'], true],
+    ['standard', false, ['news'], false, false],
+    ['kassel', true, ['news'], false, false],
+    ['moduleless', false, [], false, false],
+    ['kassel-disabled-runtime', false, ['news'], true, false],
+    ['live-keycloak-drift', false, ['news'], false, true],
   ] as const)(
     'activates the %s profile only with current successful postflight and IAM evidence',
-    async (profile, automated, assignedModules, hostReadinessMissing) => {
+    async (profile, automated, assignedModules, hostReadinessMissing, liveKeycloakDrift) => {
       const suspendedInstance = {
         ...baseInstance,
         status: 'suspended' as const,
@@ -2218,6 +2267,10 @@ describe('instance registry service facade', () => {
       });
       const deps = createDeps(repository, {
         isAutomatedTenantProvisioningEnabled: vi.fn(() => automated),
+        getKeycloakStatus: vi.fn(async () => ({
+          ...readyStatus,
+          clientExists: liveKeycloakDrift ? false : readyStatus.clientExists,
+        })),
       });
       const service = createInstanceRegistryService(deps);
 
@@ -2244,6 +2297,20 @@ describe('instance registry service facade', () => {
             requestId: 'request-ready',
           })
         ).rejects.toThrow('activation_readiness_blocked:host_readiness_missing');
+        expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+        return;
+      }
+
+      if (liveKeycloakDrift) {
+        await expect(
+          service.changeStatus({
+            instanceId: 'demo',
+            nextStatus: 'active',
+            idempotencyKey: `idem-activate-ready-${profile}`,
+            actorId: 'actor-1',
+            requestId: 'request-ready',
+          })
+        ).rejects.toThrow('activation_readiness_blocked:keycloak_live_postflight_not_ready');
         expect(repository.setInstanceStatus).not.toHaveBeenCalled();
         return;
       }

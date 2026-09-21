@@ -132,7 +132,13 @@ export const createQueuedRun = async (
     if (!readPluginOidcClientRequirements) {
       throw new Error('plugin_oidc_client_requirements_dependency_missing');
     }
+    if (!deps.readRoleCatalogFingerprint) {
+      throw new Error('role_catalog_fingerprint_dependency_missing');
+    }
     const pluginOidcClients = readPluginOidcClientRequirements();
+    const confirmedRoleCatalogFingerprint = await deps.readRoleCatalogFingerprint(
+      loaded.instance.instanceId
+    );
     await appendRunStep(deps, {
       runId: run.id,
       stepKey: 'queued',
@@ -149,6 +155,7 @@ export const createQueuedRun = async (
         confirmedPlanFingerprint: input.planFingerprint,
         confirmedPlanContractVersion: input.confirmedPlan?.contractVersion,
         confirmedPlanSteps: input.confirmedPlan?.steps,
+        confirmedRoleCatalogFingerprint,
         realmBaselineVersion:
           loaded.instance.realmMode === 'new' ? KEYCLOAK_REALM_BASELINE.version : undefined,
         realmBaselineFingerprint:

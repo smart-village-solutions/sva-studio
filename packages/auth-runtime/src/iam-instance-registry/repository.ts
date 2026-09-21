@@ -32,6 +32,7 @@ import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 import { probeTenantIamAccess, reconcileTenantIamRoles } from './tenant-provisioning-iam.js';
+import { readRoleCatalogFingerprint } from '../iam-account-management/reconcile-core.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
@@ -134,6 +135,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
+    readRoleCatalogFingerprint,
     readKeycloakStateViaProvisioner,
     listKeycloakRealms: listKeycloakRealmsViaProvisioner,
     readKeycloakRealmCreateCapability: readKeycloakRealmCreateCapabilityViaProvisioner,
@@ -160,6 +162,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     },
     readModuleActivationPolicySnapshot: readInstanceRegistryPluginActivationPolicies,
     readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
+    readRoleCatalogFingerprint,
     protectSecret: protectField,
     revealSecret: revealField,
     syncTenantAdminBootstrapAccount,

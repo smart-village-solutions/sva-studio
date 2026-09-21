@@ -122,6 +122,7 @@ export {
 } from './role-resolution.js';
 
 export {
+  readRoleCatalogFingerprint,
   runRoleCatalogReconciliation,
   type ReconcileReport,
   type RoleCatalogReconciliationDeps,

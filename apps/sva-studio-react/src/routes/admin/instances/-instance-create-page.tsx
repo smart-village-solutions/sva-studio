@@ -124,6 +124,7 @@ export const InstanceCreatePage = () => {
   const [draftReadiness, setDraftReadiness] = React.useState<IamInstanceDraftReadiness | null>(
     null
   );
+  const [draftReadinessError, setDraftReadinessError] = React.useState<IamHttpError | null>(null);
   const [readinessLoading, setReadinessLoading] = React.useState(false);
   const readinessRequestRef = React.useRef(0);
   const errorSummaryRef = React.useRef<HTMLDivElement | null>(null);
@@ -143,6 +144,7 @@ export const InstanceCreatePage = () => {
     setFormValues((current) => updater(current));
     setStepErrors([]);
     setDraftReadiness(null);
+    setDraftReadinessError(null);
   };
 
   React.useEffect(() => {
@@ -178,11 +180,15 @@ export const InstanceCreatePage = () => {
       return;
     }
     setReadinessLoading(true);
+    setDraftReadinessError(null);
     try {
       const response = await getInstanceDraftReadiness(buildCreatePayload(formValues));
       if (requestSequence === readinessRequestRef.current) setDraftReadiness(response.data);
-    } catch {
-      if (requestSequence === readinessRequestRef.current) setDraftReadiness(null);
+    } catch (error: unknown) {
+      if (requestSequence === readinessRequestRef.current) {
+        setDraftReadiness(null);
+        setDraftReadinessError(asIamError(error));
+      }
     } finally {
       if (requestSequence === readinessRequestRef.current) setReadinessLoading(false);
     }
@@ -805,11 +811,19 @@ export const InstanceCreatePage = () => {
                   ) : null}
                 </div>
               ) : (
-                <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-                  <AlertDescription>
-                    {t('admin.instances.wizard.readiness.serverUnavailable')}
-                  </AlertDescription>
-                </Alert>
+                <>
+                  <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+                    <AlertDescription>
+                      {t('admin.instances.wizard.readiness.serverUnavailable')}
+                    </AlertDescription>
+                  </Alert>
+                  {draftReadinessError ? (
+                    <StudioPersistentFormError
+                      message={getErrorMessage(draftReadinessError)}
+                      details={<IamRuntimeDiagnosticDetails error={draftReadinessError} />}
+                    />
+                  ) : null}
+                </>
               )}
               <Button
                 type="button"

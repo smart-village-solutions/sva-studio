@@ -189,7 +189,9 @@ const useSearchableSelectState = ({
   const openWithActiveOption = React.useCallback(() => {
     const selectedIndex = filteredOptions.findIndex((option) => option.value === value);
     setActiveIndex(
-      selectedIndex >= 0 ? selectedIndex : findEnabledOptionIndex(filteredOptions, 0, 1)
+      selectedIndex >= 0 && !filteredOptions[selectedIndex]?.disabled
+        ? selectedIndex
+        : findEnabledOptionIndex(filteredOptions, 0, 1)
     );
     setOpen(true);
   }, [filteredOptions, setOpen, value]);

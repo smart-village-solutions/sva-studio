@@ -1,7 +1,15 @@
-import { isReservedTenantHostname, normalizeHost } from '@sva/core';
+import { isReservedTenantHostname, isValidInstanceId, normalizeHost } from '@sva/core';
 
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+
+export const assertValidInstanceId = (input: { instanceId: string; realmMode: string }): void => {
+  if (!isValidInstanceId(input.instanceId)) {
+    throw new Error(
+      input.realmMode === 'new' ? 'invalid_new_realm_instance_id' : 'invalid_instance_id'
+    );
+  }
+};
 
 export const assertTenantHostnameAvailable = (
   deps: InstanceRegistryServiceDeps,
@@ -39,4 +47,3 @@ export const assertOidcClientIdsNotReserved = (
     throw new Error('oidc_client_id_reserved');
   }
 };
-

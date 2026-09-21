@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { IdentityProviderPort } from './identity-provider-port.js';
 import { readString } from './input-readers.js';
 
@@ -12,7 +14,10 @@ import { isTenantManageableRole, isTenantTechnicalKeycloakRole } from './role-go
 import { classifyTenantKeycloakRole } from './keycloak-role-assignment-policy.js';
 import type { ManagedRoleRow } from './types.js';
 
-type IdentityRole = Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T ? Exclude<T, null> : never;
+type IdentityRole =
+  Awaited<ReturnType<IdentityProviderPort['getRoleByName']>> extends infer T
+    ? Exclude<T, null>
+    : never;
 
 type ReconcileRoleEntry = {
   readonly roleId?: string;
@@ -77,8 +82,13 @@ type RoleReconcileOperation = 'reconcile_create' | 'reconcile_update' | 'reconci
 type RoleReconcileResult = 'success' | 'failure';
 
 export type RoleCatalogReconciliationDeps = {
-  resolveIdentityProviderForInstance(instanceId: string): Promise<{ provider: IdentityProviderPort } | null>;
-  withInstanceScopedDb<T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T>;
+  resolveIdentityProviderForInstance(
+    instanceId: string
+  ): Promise<{ provider: IdentityProviderPort } | null>;
+  withInstanceScopedDb<T>(
+    instanceId: string,
+    work: (client: QueryClient) => Promise<T>
+  ): Promise<T>;
   setRoleSyncState(
     client: QueryClient,
     input: {
@@ -108,6 +118,61 @@ export type RoleCatalogReconciliationDeps = {
   trackKeycloakCall<T>(operation: string, execute: () => Promise<T>): Promise<T>;
   setRoleDriftBacklog(instanceId: string, backlog: number): void;
 };
+
+const fingerprintRoleCatalog = (roles: readonly ManagedRoleRow[]): string =>
+  createHash('sha256')
+    .update(
+      JSON.stringify(
+        roles.map((role) => ({
+          id: role.id,
+          roleKey: role.role_key,
+          roleName: role.role_name,
+          displayName: role.display_name,
+          externalRoleName: role.external_role_name,
+          description: role.description,
+          isSystemRole: role.is_system_role,
+          roleLevel: role.role_level,
+          managedBy: role.managed_by,
+        }))
+      )
+    )
+    .digest('hex');
+
+const loadManagedRoleCatalog = async (
+  deps: RoleCatalogReconciliationDeps,
+  instanceId: string
+): Promise<readonly ManagedRoleRow[]> =>
+  deps.withInstanceScopedDb(instanceId, async (client) => {
+    const result = await client.query<ManagedRoleRow>(
+      `
+SELECT
+  id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at::text,
+  last_error_code
+FROM iam.roles
+WHERE instance_id = $1
+  AND managed_by = 'studio'
+ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC, id ASC;
+`,
+      [instanceId]
+    );
+    return result.rows.filter((role) => isTenantManageableRole(role));
+  });
+
+export const readRoleCatalogFingerprint = async (input: {
+  deps: RoleCatalogReconciliationDeps;
+  instanceId: string;
+}): Promise<string> =>
+  fingerprintRoleCatalog(await loadManagedRoleCatalog(input.deps, input.instanceId));
 
 const readRoleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
@@ -174,7 +239,10 @@ const hydrateRoleDetailsForReconciliation = async (
     })
   );
 
-const isAcceptedIdentityRoleKey = (roleKey: string, identityRoleKey: string | undefined): boolean => {
+const isAcceptedIdentityRoleKey = (
+  roleKey: string,
+  identityRoleKey: string | undefined
+): boolean => {
   if (!identityRoleKey) {
     return false;
   }
@@ -201,9 +269,15 @@ const buildReconcileDebugReport = (input: {
     };
   }>;
 }) => {
-  const listedByExternalName = new Map(input.listedIdpRoles.map((role) => [role.externalName, role]));
-  const hydratedByExternalName = new Map(input.hydratedIdpRoles.map((role) => [role.externalName, role]));
-  const managedByExternalName = new Map(input.managedIdpRoles.map((role) => [role.externalName, role]));
+  const listedByExternalName = new Map(
+    input.listedIdpRoles.map((role) => [role.externalName, role])
+  );
+  const hydratedByExternalName = new Map(
+    input.hydratedIdpRoles.map((role) => [role.externalName, role])
+  );
+  const managedByExternalName = new Map(
+    input.managedIdpRoles.map((role) => [role.externalName, role])
+  );
   const managedByRoleKey = new Map(
     input.managedIdpRoles.flatMap((role) => {
       const roleKey = readRoleAttribute(role.attributes, 'role_key');
@@ -232,7 +306,9 @@ const buildReconcileDebugReport = (input: {
         hasRoleKeyMatch: Boolean(roleKeyMatch),
         matchingExternalNameByRoleKey: roleKeyMatch?.externalName,
         listedRoleFound: Boolean(listedRole),
-        listedRoleHasAttributes: Boolean(listedRole?.attributes && Object.keys(listedRole.attributes).length > 0),
+        listedRoleHasAttributes: Boolean(
+          listedRole?.attributes && Object.keys(listedRole.attributes).length > 0
+        ),
         hydratedRoleFound: Boolean(hydratedRole),
         hydratedManagedBy: readRoleAttribute(hydratedRole?.attributes, 'managed_by'),
         hydratedInstanceId: readRoleAttribute(hydratedRole?.attributes, 'instance_id'),
@@ -243,10 +319,7 @@ const buildReconcileDebugReport = (input: {
   } satisfies NonNullable<ReconcileReport['debug']>;
 };
 
-const appendReconcileEntry = (
-  entries: ReconcileRoleEntry[],
-  entry: ReconcileRoleEntry
-): void => {
+const appendReconcileEntry = (entries: ReconcileRoleEntry[], entry: ReconcileRoleEntry): void => {
   entries.push(entry);
 };
 
@@ -300,10 +373,15 @@ const describeMatchedIdentityRole = (input: {
   reportedExternalRoleName: string;
 } => {
   const expectedDisplayName = getRoleDisplayName(input.role);
-  const identityDisplayName = readRoleAttribute(input.matchingIdentityRole.attributes, 'display_name');
+  const identityDisplayName = readRoleAttribute(
+    input.matchingIdentityRole.attributes,
+    'display_name'
+  );
   const identityRoleKey = readRoleAttribute(input.matchingIdentityRole.attributes, 'role_key');
-  const canonicalExternalRoleName = input.matchingIdentityRole.externalName ?? input.externalRoleName;
-  const aliasSatisfiedByCanonicalRole = input.alias !== undefined && canonicalExternalRoleName !== input.alias;
+  const canonicalExternalRoleName =
+    input.matchingIdentityRole.externalName ?? input.externalRoleName;
+  const aliasSatisfiedByCanonicalRole =
+    input.alias !== undefined && canonicalExternalRoleName !== input.alias;
 
   return {
     expectedDisplayName,
@@ -669,7 +747,11 @@ const reconcileDatabaseRoles = async (input: {
       continue;
     }
 
-    markMatchedIdentityRole(input.matchedIdentityExternalNames, input.matchedIdentityRoleKeys, matchingIdentityRole);
+    markMatchedIdentityRole(
+      input.matchedIdentityExternalNames,
+      input.matchedIdentityRoleKeys,
+      matchingIdentityRole
+    );
 
     const {
       expectedDisplayName,
@@ -684,11 +766,13 @@ const reconcileDatabaseRoles = async (input: {
       alias,
       matchingIdentityRole,
     });
-    const descriptionChanged = (matchingIdentityRole.description ?? undefined) !== (role.description ?? undefined);
+    const descriptionChanged =
+      (matchingIdentityRole.description ?? undefined) !== (role.description ?? undefined);
     const displayNameChanged = identityDisplayName !== expectedDisplayName;
     const roleKeyChanged = !isAcceptedIdentityRoleKey(role.role_key, identityRoleKey);
     const shouldUpdateIdentityRole =
-      !aliasSatisfiedByCanonicalRole && (descriptionChanged || displayNameChanged || roleKeyChanged);
+      !aliasSatisfiedByCanonicalRole &&
+      (descriptionChanged || displayNameChanged || roleKeyChanged);
     const shouldResyncDbState = role.sync_state !== 'synced';
 
     if (shouldUpdateIdentityRole || shouldResyncDbState) {
@@ -896,6 +980,7 @@ export const runRoleCatalogReconciliation = async (input: {
   requestId?: string;
   traceId?: string;
   includeDiagnostics?: boolean;
+  expectedRoleCatalogFingerprint?: string;
 }): Promise<ReconcileReport> => {
   const deps = input.deps;
   const identityProvider = await deps.resolveIdentityProviderForInstance(input.instanceId);
@@ -903,45 +988,39 @@ export const runRoleCatalogReconciliation = async (input: {
     throw new Error('identity_provider_unavailable');
   }
 
-  const dbRoles = await deps.withInstanceScopedDb(input.instanceId, async (client) => {
-    const result = await client.query<ManagedRoleRow>(
-      `
-SELECT
-  id,
-  role_key,
-  role_name,
-  display_name,
-  external_role_name,
-  description,
-  is_system_role,
-  role_level,
-  managed_by,
-  sync_state,
-  last_synced_at::text,
-  last_error_code
-FROM iam.roles
-WHERE instance_id = $1
-  AND managed_by = 'studio'
-ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
-`,
-      [input.instanceId]
-    );
-    return result.rows.filter((role) => isTenantManageableRole(role));
-  });
+  const dbRoles = await loadManagedRoleCatalog(deps, input.instanceId);
+  if (
+    input.expectedRoleCatalogFingerprint &&
+    fingerprintRoleCatalog(dbRoles) !== input.expectedRoleCatalogFingerprint
+  ) {
+    throw new Error('role_catalog_fingerprint_stale');
+  }
   const technicalDbRoles = dbRoles.filter((role) => isTenantTechnicalKeycloakRole(role));
 
-  const listedIdpRoles = await deps.trackKeycloakCall('reconcile_list_roles', () => identityProvider.provider.listRoles());
-  const idpRoles = await hydrateRoleDetailsForReconciliation(deps, identityProvider, listedIdpRoles);
-  const managedIdpRoles = idpRoles.filter((role) => isStudioManagedIdentityRole(role, input.instanceId));
+  const listedIdpRoles = await deps.trackKeycloakCall('reconcile_list_roles', () =>
+    identityProvider.provider.listRoles()
+  );
+  const idpRoles = await hydrateRoleDetailsForReconciliation(
+    deps,
+    identityProvider,
+    listedIdpRoles
+  );
+  const managedIdpRoles = idpRoles.filter((role) =>
+    isStudioManagedIdentityRole(role, input.instanceId)
+  );
   const technicalManagedIdpRoles = managedIdpRoles.filter(isTechnicalIdentityRole);
-  const idpByExternalName = new Map(technicalManagedIdpRoles.map((role) => [role.externalName, role]));
+  const idpByExternalName = new Map(
+    technicalManagedIdpRoles.map((role) => [role.externalName, role])
+  );
   const idpByRoleKey = new Map(
     technicalManagedIdpRoles.flatMap((role) => {
       const roleKey = readRoleAttribute(role.attributes, 'role_key');
       return roleKey ? ([[roleKey, role]] as const) : [];
     })
   );
-  const dbByExternalName = new Map(technicalDbRoles.map((role) => [getRoleExternalName(role), role]));
+  const dbByExternalName = new Map(
+    technicalDbRoles.map((role) => [getRoleExternalName(role), role])
+  );
   const dbByRoleKey = new Map(technicalDbRoles.map((role) => [role.role_key, role]));
   const matchedIdentityExternalNames = new Set<string>();
   const matchedIdentityRoleKeys = new Set<string>();
@@ -994,17 +1073,19 @@ ORDER BY role_level DESC, COALESCE(display_name, role_name) ASC;
   });
 
   const report = {
-    outcome:
-      entries.some((entry) => entry.status === 'failed' || entry.status === 'requires_manual_action')
-        ? entries.some((entry) => entry.status === 'corrected' || entry.status === 'synced')
-          ? 'partial_failure'
-          : 'failed'
-        : 'success',
+    outcome: entries.some(
+      (entry) => entry.status === 'failed' || entry.status === 'requires_manual_action'
+    )
+      ? entries.some((entry) => entry.status === 'corrected' || entry.status === 'synced')
+        ? 'partial_failure'
+        : 'failed'
+      : 'success',
     checkedCount: entries.length,
     correctedCount: entries.filter((entry) => entry.status === 'corrected').length,
     failedCount: entries.filter((entry) => entry.status === 'failed').length,
     manualReviewCount: entries.filter((entry) => entry.status === 'requires_manual_action').length,
-    requiresManualActionCount: entries.filter((entry) => entry.status === 'requires_manual_action').length,
+    requiresManualActionCount: entries.filter((entry) => entry.status === 'requires_manual_action')
+      .length,
     roles: entries,
     ...(input.includeDiagnostics
       ? {

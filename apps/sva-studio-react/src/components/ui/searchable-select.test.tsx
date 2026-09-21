@@ -138,6 +138,35 @@ describe('SearchableSelect', () => {
     expect(onValueChange).toHaveBeenCalledWith('realm-1');
   });
 
+  it('activates the first enabled option when the selected option is disabled', () => {
+    const onValueChange = vi.fn();
+
+    render(
+      <SearchableSelect
+        id="realm-select"
+        label="Realm"
+        value="master"
+        placeholder="Bitte wählen"
+        searchPlaceholder="Suchen"
+        emptyText="Keine Treffer"
+        options={[
+          { value: 'master', label: 'Master', disabled: true },
+          { value: 'realm-1', label: 'Realm 1' },
+        ]}
+        onValueChange={onValueChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Realm' }));
+    const searchInput = screen.getByPlaceholderText('Suchen');
+    expect(searchInput.getAttribute('aria-activedescendant')).toBe(
+      screen.getByRole('option', { name: 'Realm 1' }).id
+    );
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
+
+    expect(onValueChange).toHaveBeenCalledWith('realm-1');
+  });
+
   it('closes on escape and returns focus to the trigger', () => {
     render(
       <SearchableSelect

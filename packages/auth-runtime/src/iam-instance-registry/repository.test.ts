@@ -22,6 +22,7 @@ const runRoleCatalogReconciliationMock = vi.fn(async () => ({
   requiresManualActionCount: 0,
   roles: [],
 }));
+const readRoleCatalogFingerprintMock = vi.fn(async () => 'c'.repeat(64));
 const ensureConfiguredPluginTenantProvisioningMock = vi.fn(async () => undefined);
 const studioModuleIamRegistryMock = new Map([
   [
@@ -143,6 +144,7 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 }));
 
 vi.mock('../iam-account-management/reconcile-core.js', () => ({
+  readRoleCatalogFingerprint: readRoleCatalogFingerprintMock,
   runRoleCatalogReconciliation: runRoleCatalogReconciliationMock,
 }));
 
@@ -271,6 +273,7 @@ describe('iam instance registry repository wiring', () => {
         readKeycloakStateViaProvisioner: expect.any(Function),
         listKeycloakRealms: expect.any(Function),
         readKeycloakRealmCreateCapability: expect.any(Function),
+        readRoleCatalogFingerprint: expect.any(Function),
       })
     );
     expect(runtimeConfig?.provisioningWorkerServiceDeps).toEqual(

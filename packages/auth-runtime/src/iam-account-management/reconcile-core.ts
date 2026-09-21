@@ -1,4 +1,5 @@
 import {
+  readRoleCatalogFingerprint as readIamAdminRoleCatalogFingerprint,
   runRoleCatalogReconciliation as runIamAdminRoleCatalogReconciliation,
   type ReconcileReport,
   type RoleCatalogReconciliationDeps,
@@ -30,8 +31,15 @@ export const runRoleCatalogReconciliation = async (input: {
   requestId?: string;
   traceId?: string;
   includeDiagnostics?: boolean;
+  expectedRoleCatalogFingerprint?: string;
 }): Promise<ReconcileReport> =>
   runIamAdminRoleCatalogReconciliation({
     deps: roleCatalogReconciliationDeps,
     ...input,
+  });
+
+export const readRoleCatalogFingerprint = async (instanceId: string): Promise<string> =>
+  readIamAdminRoleCatalogFingerprint({
+    deps: roleCatalogReconciliationDeps,
+    instanceId,
   });

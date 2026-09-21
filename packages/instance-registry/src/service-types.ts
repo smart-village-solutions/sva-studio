@@ -235,6 +235,7 @@ export type InstanceRegistryServiceDeps = {
   readonly listKeycloakRealms?: () => Promise<readonly { readonly realm: string }[]>;
   readonly readKeycloakRealmCreateCapability?: () => Promise<boolean>;
   readonly readPluginOidcClientRequirements?: () => KeycloakProvisioningInput['pluginOidcClients'];
+  readonly readRoleCatalogFingerprint?: (instanceId: string) => Promise<string>;
   readonly readKeycloakClientSecretsViaProvisioner?: (
     input: KeycloakProvisioningInput
   ) => Promise<Pick<KeycloakReadState, 'keycloakClientSecret' | 'tenantAdminClientSecret'>>;

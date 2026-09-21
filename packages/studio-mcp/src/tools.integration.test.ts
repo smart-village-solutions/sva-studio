@@ -411,6 +411,36 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('returns the resume key while an ordinary Keycloak run is pending', async () => {
+    const request = vi.fn().mockResolvedValueOnce({
+      data: { id: 'run-1', overallStatus: 'running' },
+    });
+    const server = createStudioMcpServer({ request }, { ...config, processTimeoutMs: 0 });
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'adapt',
+        instanceId: 'demo',
+        keycloakRunId: 'run-1',
+        idempotencyKey: 'resume-key-1',
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'in_progress',
+        currentStep: 'keycloak_provisioning',
+        idempotencyKey: 'resume-key-1',
+      },
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('rejects a stale confirmed plan while preserving completed registry progress', async () => {
     const request = vi
       .fn()

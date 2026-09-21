@@ -240,6 +240,27 @@ describe('InstanceCreatePage', () => {
     ).toBe(true);
   });
 
+  it('keeps a failed readiness request visible with its diagnostic request id', async () => {
+    getDraftReadinessMock.mockRejectedValue({
+      code: 'keycloak_unavailable',
+      requestId: 'req-draft-readiness',
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fillBasics();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fillAdministrator();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    await waitFor(() => expect(getDraftReadinessMock).toHaveBeenCalledOnce());
+    expect(screen.getByText('Request-ID: req-draft-readiness')).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Instanz anlegen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
+  });
+
   it('ignores an obsolete readiness response after the draft changed', async () => {
     let resolveFirst: (value: { data: Record<string, unknown> }) => void = () => undefined;
     let resolveSecond: (value: { data: Record<string, unknown> }) => void = () => undefined;

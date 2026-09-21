@@ -10,7 +10,10 @@ const state = vi.hoisted(() => ({
       steps: [
         {
           stepKey: 'queued',
-          details: { confirmedPlanFingerprint: 'a'.repeat(64) },
+          details: {
+            confirmedPlanFingerprint: 'a'.repeat(64),
+            confirmedRoleCatalogFingerprint: 'c'.repeat(64),
+          },
         },
       ],
     },
@@ -103,7 +106,10 @@ describe('reconcileInstanceIamRolesInternal', () => {
         steps: [
           {
             stepKey: 'queued',
-            details: { confirmedPlanFingerprint: 'b'.repeat(64) },
+            details: {
+              confirmedPlanFingerprint: 'b'.repeat(64),
+              confirmedRoleCatalogFingerprint: 'c'.repeat(64),
+            },
           },
         ],
       },
@@ -140,5 +146,27 @@ describe('reconcileInstanceIamRolesInternal', () => {
 
     expect(response.status).toBe(409);
     expect(state.reconcile).not.toHaveBeenCalled();
+  });
+
+  it('binds reconciliation to the role catalog captured with the confirmed plan', async () => {
+    state.reconcile.mockRejectedValueOnce(new Error('role_catalog_fingerprint_stale'));
+    const { reconcileInstanceIamRolesInternal } = await import('./role-reconcile.js');
+
+    const response = await reconcileInstanceIamRolesInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/tenant-iam/roles/reconcile', {
+        method: 'POST',
+      }),
+      { user: { id: 'service-account' } } as never
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { details: { reason_code: 'role_catalog_fingerprint_stale' } },
+    });
+    expect(state.reconcile).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      requestId: 'req-1',
+      expectedRoleCatalogFingerprint: 'c'.repeat(64),
+    });
   });
 });

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { runRoleCatalogReconciliation, type RoleCatalogReconciliationDeps } from './reconcile-core.js';
+import {
+  runRoleCatalogReconciliation,
+  type RoleCatalogReconciliationDeps,
+} from './reconcile-core.js';
 
 const createIdentityProvider = () => ({
   listRoles: vi.fn(async () => []),
@@ -60,7 +63,9 @@ const createDatabaseRole = (
 const createScopedDbWithRoles = (rows: readonly unknown[]) =>
   vi.fn(async (_instanceId, work) =>
     work({
-      query: vi.fn(async (sql: string) => (sql.includes('SELECT\n  id,') ? { rows } : { rows: [] })),
+      query: vi.fn(async (sql: string) =>
+        sql.includes('SELECT\n  id,') ? { rows } : { rows: [] }
+      ),
     } as never)
   );
 
@@ -97,8 +102,12 @@ const createSystemAdminProviderResolver = (input: {
     } as never,
   }));
 
-const createDeps = (overrides: Partial<RoleCatalogReconciliationDeps> = {}): RoleCatalogReconciliationDeps => ({
-  resolveIdentityProviderForInstance: vi.fn(async () => ({ provider: createIdentityProvider() as never })),
+const createDeps = (
+  overrides: Partial<RoleCatalogReconciliationDeps> = {}
+): RoleCatalogReconciliationDeps => ({
+  resolveIdentityProviderForInstance: vi.fn(async () => ({
+    provider: createIdentityProvider() as never,
+  })),
   withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
     work({
       query: vi.fn(async () => ({ rows: [] })),
@@ -112,6 +121,21 @@ const createDeps = (overrides: Partial<RoleCatalogReconciliationDeps> = {}): Rol
 });
 
 describe('runRoleCatalogReconciliation', () => {
+  it('rejects a role catalog that changed after the provisioning snapshot was confirmed', async () => {
+    const deps = createDeps({
+      withInstanceScopedDb: createScopedDbWithRoles([createDatabaseRole({})]),
+    });
+
+    await expect(
+      runRoleCatalogReconciliation({
+        deps,
+        instanceId: 'tenant-a',
+        expectedRoleCatalogFingerprint: 'a'.repeat(64),
+      })
+    ).rejects.toThrow('role_catalog_fingerprint_stale');
+    expect(deps.resolveIdentityProviderForInstance).toHaveBeenCalledOnce();
+  });
+
   it('resolves the tenant-local identity provider for the target instance', async () => {
     const deps = createDeps();
 
@@ -353,7 +377,9 @@ describe('runRoleCatalogReconciliation', () => {
             if (sql.includes('INSERT INTO iam.roles')) {
               insertAttempts.push('insert');
               if (insertAttempts.length > 1) {
-                throw new Error('duplicate key value violates unique constraint "uq_roles_instance_role_key"');
+                throw new Error(
+                  'duplicate key value violates unique constraint "uq_roles_instance_role_key"'
+                );
               }
               return { rows: [{ id: 'role-import-1' }] };
             }

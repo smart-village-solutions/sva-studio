@@ -1,9 +1,4 @@
-import {
-  buildPrimaryHostname,
-  canTransitionInstanceStatus,
-  isValidInstanceId,
-  normalizeHost,
-} from '@sva/core';
+import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
 
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
@@ -19,6 +14,7 @@ import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './ser
 import {
   assertOidcClientIdsNotReserved,
   assertTenantHostnameAvailable,
+  assertValidInstanceId,
 } from './service-reservations.js';
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 import {
@@ -33,14 +29,7 @@ import {
 } from './service-instance-create.js';
 import { createDraftReadinessHandler } from './service-draft-readiness.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
-
-const assertValidInstanceId = (input: { instanceId: string; realmMode: string }): void => {
-  if (!isValidInstanceId(input.instanceId)) {
-    throw new Error(
-      input.realmMode === 'new' ? 'invalid_new_realm_instance_id' : 'invalid_instance_id'
-    );
-  }
-};
+import { isLiveKeycloakStatusReadyForActivation } from './service-keycloak-snapshot-reader.js';
 
 function applyNewRealmDefaults(
   input: CreateInstanceProvisioningInput
@@ -180,6 +169,9 @@ export const createChangeStatusHandler =
       const detail = await createGetInstanceDetail(deps)(input.instanceId);
       if (!detail) return { ok: false, reason: 'not_found' as const };
       const blockers: string[] = [];
+      if (!(await isLiveKeycloakStatusReadyForActivation(deps, input.instanceId))) {
+        blockers.push('keycloak_live_postflight_not_ready');
+      }
       if (detail.latestKeycloakProvisioningRun?.overallStatus !== 'succeeded') {
         blockers.push('keycloak_postflight_missing');
       }

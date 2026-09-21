@@ -25,6 +25,7 @@ import {
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import {
   isTenantProvisioningFailureRetryable,
+  requiresAutomatedProvisioningEvidence,
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
 
@@ -61,12 +62,9 @@ export const resolveIdempotentCreateRetry = async (
       requestId: input.requestId,
     });
     invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);
-    const automatedRun =
-      matchingRun.snapshotVersion === '2.0' &&
-      matchingRun.desiredSnapshot.automationMode === 'kassel-traefik-file' &&
-      shouldExposeAutomatedProvisioning(deps, instance)
-        ? matchingRun
-        : undefined;
+    const automatedRun = requiresAutomatedProvisioningEvidence(matchingRun)
+      ? matchingRun
+      : undefined;
     return { ok: true, instance: toListItem(instance, automatedRun) };
   }
   if (instance.status !== 'failed') {

@@ -47,6 +47,7 @@ describe('service-keycloak-execution-payload', () => {
         repository,
         invalidateHost: vi.fn(),
         readPluginOidcClientRequirements: () => [ssfRequirement],
+        readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
       } as never,
       loaded as never,
       {
@@ -66,6 +67,7 @@ describe('service-keycloak-execution-payload', () => {
         details: expect.objectContaining({
           pluginOidcSnapshotVersion: '1.0',
           pluginOidcClients: [ssfRequirement],
+          confirmedRoleCatalogFingerprint: 'c'.repeat(64),
         }),
       })
     );
@@ -186,6 +188,7 @@ describe('service-keycloak-execution-payload', () => {
         repository,
         invalidateHost: vi.fn(),
         readPluginOidcClientRequirements: () => [ssfRequirement],
+        readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
       } as never,
       loaded as never,
       {
@@ -223,6 +226,7 @@ describe('service-keycloak-execution-payload', () => {
           repository,
           invalidateHost: vi.fn(),
           readPluginOidcClientRequirements: () => [ssfRequirement],
+          readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
         } as never,
         loaded as never,
         {

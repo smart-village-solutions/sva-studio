@@ -54,11 +54,16 @@ export const reconcileInstanceIamRolesInternal = async (
     );
     const confirmedPlanFingerprint = latestRun?.steps.find(({ stepKey }) => stepKey === 'queued')
       ?.details.confirmedPlanFingerprint;
+    const confirmedRoleCatalogFingerprint = latestRun?.steps.find(
+      ({ stepKey }) => stepKey === 'queued'
+    )?.details.confirmedRoleCatalogFingerprint;
     if (
       latestRun?.overallStatus !== 'succeeded' ||
       currentPlan?.overallStatus !== 'ready' ||
       currentPlan.fingerprint !== parsed.data.planFingerprint ||
-      confirmedPlanFingerprint !== parsed.data.planFingerprint
+      confirmedPlanFingerprint !== parsed.data.planFingerprint ||
+      typeof confirmedRoleCatalogFingerprint !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(confirmedRoleCatalogFingerprint)
     ) {
       return createApiError(
         409,
@@ -68,9 +73,22 @@ export const reconcileInstanceIamRolesInternal = async (
         { reason_code: 'keycloak_plan_fingerprint_stale' }
       );
     }
-    const report = await runRoleCatalogReconciliation({ instanceId, requestId });
+    const report = await runRoleCatalogReconciliation({
+      instanceId,
+      requestId,
+      expectedRoleCatalogFingerprint: confirmedRoleCatalogFingerprint,
+    });
     return jsonResponse(200, asApiItem(report, requestId));
   } catch (error) {
+    if (error instanceof Error && error.message === 'role_catalog_fingerprint_stale') {
+      return createApiError(
+        409,
+        'conflict',
+        'Der bestätigte Rollenkatalog ist nicht mehr aktuell.',
+        requestId,
+        { reason_code: 'role_catalog_fingerprint_stale' }
+      );
+    }
     return createApiError(
       503,
       'keycloak_unavailable',

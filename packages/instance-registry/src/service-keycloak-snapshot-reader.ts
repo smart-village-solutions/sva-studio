@@ -1,4 +1,8 @@
 import { createSdkLogger } from '@sva/server-runtime';
+import {
+  areAllInstanceKeycloakRequirementsSatisfied,
+  isInstanceTenantAdminRequired,
+} from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 import {
@@ -11,6 +15,7 @@ import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js'
 import {
   decryptAuthClientSecret,
   decryptTenantAdminClientSecret,
+  loadInstanceWithSecret,
   loadPersistedSnapshotSecretVersions,
 } from './service-keycloak-secrets.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -19,7 +24,30 @@ type ProvisioningRuns = readonly Awaited<
   ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>
 >[number][];
 
-const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak-snapshots', level: 'info' });
+const logger = createSdkLogger({
+  component: 'iam-instance-registry-keycloak-snapshots',
+  level: 'info',
+});
+
+export const isLiveKeycloakStatusReadyForActivation = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string
+): Promise<boolean> => {
+  try {
+    const loaded = await loadInstanceWithSecret(deps, instanceId);
+    if (!loaded || !deps.getKeycloakStatus) return false;
+    const status = await deps.getKeycloakStatus({
+      ...loaded.instance,
+      authClientSecret: loaded.authClientSecret,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
+    });
+    return areAllInstanceKeycloakRequirementsSatisfied(status, {
+      requireTenantAdmin: isInstanceTenantAdminRequired(loaded.instance),
+    });
+  } catch {
+    return false;
+  }
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -73,12 +101,7 @@ export const refreshManagedRealmSmtpPasswordStatus = async (
   if (
     !deps.getKeycloakStatus ||
     !deps.revealSecret ||
-    !isRealmBaselineApplicable(
-      instance.realmMode,
-      runs,
-      instance.authRealm,
-      instance.authClientId
-    )
+    !isRealmBaselineApplicable(instance.realmMode, runs, instance.authRealm, instance.authClientId)
   ) {
     return status;
   }

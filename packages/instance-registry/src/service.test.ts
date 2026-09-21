@@ -16,6 +16,11 @@ vi.mock('@sva/server-runtime', async () => {
 });
 
 import { createInstanceRegistryService } from './service.js';
+import { createReadKeycloakState } from './provisioning-auth-state.js';
+import {
+  createInstanceKeycloakPlanReader,
+  createInstanceKeycloakPreflightReader,
+} from './provisioning-auth.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
 import {
@@ -4384,6 +4389,27 @@ describe('instance registry service facade', () => {
       )
     ).resolves.toEqual(livePlan);
     expect(planKeycloakProvisioning).toHaveBeenCalledOnce();
+  });
+
+  it('binds the initial new-realm plan to the same fingerprint as the live worker', async () => {
+    const repository = createRepository({ listKeycloakProvisioningRuns: vi.fn(async () => []) });
+    const localPlan = await createPlanKeycloakProvisioningHandler(createDeps(repository))('demo');
+    const client = { getRealm: vi.fn(async () => null) };
+    const readState = createReadKeycloakState(() => client as never);
+    const workerPlan = await createInstanceKeycloakPlanReader(
+      readState,
+      createInstanceKeycloakPreflightReader(readState)
+    )({ ...baseInstance, authClientSecret: 'secret', tenantAdminClientSecret: 'tenant-secret' });
+
+    expect(workerPlan.overallStatus).toBe('ready');
+    expect(localPlan?.steps).toEqual(workerPlan.steps);
+    expect(localPlan?.fingerprint).toBe(workerPlan.fingerprint);
+    expect(workerPlan.steps).toContainEqual(
+      expect.objectContaining({ stepKey: 'realm', action: 'create' })
+    );
+    expect(workerPlan.steps).toContainEqual(
+      expect.objectContaining({ stepKey: 'tenant_admin', action: 'create' })
+    );
   });
 
   it('invalidates an outdated imported-realm plan that would create a tenant admin', async () => {

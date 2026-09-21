@@ -1264,7 +1264,10 @@ describe('service-keycloak-execution', () => {
     expect(state.failRun).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        error: expect.objectContaining({ message: 'keycloak_plan_fingerprint_stale' }),
+        error: expect.objectContaining({
+          message: 'keycloak_plan_fingerprint_stale',
+          instanceRegistryStep: 'worker_plan',
+        }),
       })
     );
     expect(provisionInstanceAuth).not.toHaveBeenCalled();

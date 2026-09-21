@@ -318,6 +318,28 @@ const readTenantAdminStatus = async (
   };
 };
 
+// Keep the local creation preview identical to a worker read of an absent realm.
+export const buildMissingRealmReadState = (
+  input: Pick<KeycloakProvisioningInput, 'primaryHostname' | 'tenantAdminClient'>
+): KeycloakReadState => ({
+  client: null,
+  expectedClient: buildExpectedClientConfig(input.primaryHostname),
+  expectedTenantAdminClient: input.tenantAdminClient
+    ? buildExpectedTenantAdminClientConfig(input.primaryHostname)
+    : null,
+  realm: null,
+  clientRepresentation: null,
+  tenantAdminClientRepresentation: null,
+  pluginOidcClients: [],
+  protocolMappers: [],
+  tenantAdminStatus: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
+  keycloakClientSecret: null,
+  tenantAdminClientSecret: null,
+  systemAdminRole: null,
+  realmBaselineAligned: false,
+  userProfileBaselineAligned: false,
+});
+
 export const createReadKeycloakState =
   (createClient: KeycloakProvisioningClientFactory) =>
   async (input: KeycloakProvisioningInput): Promise<KeycloakReadState> => {
@@ -330,25 +352,7 @@ export const createReadKeycloakState =
     const realm = await client.getRealm();
 
     if (!realm) {
-      return {
-        client,
-        expectedClient,
-        expectedTenantAdminClient,
-        realm,
-        clientRepresentation: null,
-        tenantAdminClientRepresentation: null,
-        pluginOidcClients: [],
-        protocolMappers: [],
-        tenantAdminStatus: {
-          tenantAdminExists: false,
-          tenantAdminHasSystemAdmin: false,
-        },
-        keycloakClientSecret: null,
-        tenantAdminClientSecret: null,
-        systemAdminRole: null,
-        realmBaselineAligned: false,
-        userProfileBaselineAligned: false,
-      };
+      return { ...buildMissingRealmReadState(input), client };
     }
 
     const clientRepresentation = await client.getOidcClientByClientId(input.authClientId);

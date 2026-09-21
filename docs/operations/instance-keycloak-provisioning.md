@@ -617,6 +617,21 @@ kurzlebigen Gleichheitsvergleich; Bericht, Fehler und Logs enthalten weiterhin
 nur `tenant secret compared` oder `secret missing`. Die Tenant-Credentials
 werden ausschließlich für den kurzlebigen Live-Read verwendet.
 
+## Abbruch vor der Anlage: bestätigter Plan
+
+`KEYCLOAK_PLAN_STALE` im Schritt `worker_plan` bedeutet, dass der Worker einen
+anderen Plan als den bestätigten Auftrag ermittelt hat. Der Lauf stoppt vor
+Keycloak-Mutationen. Der aktuelle Plan muss erneut geprüft und bestätigt werden;
+es handelt sich nicht um einen nachgewiesenen Ausfall der Keycloak-Verbindung.
+
+Für neue Realms verwendet die lokale Vorschau denselben leeren Readback-Zustand
+wie der Worker bei einem nachweislich fehlenden Realm. Damit erzeugen fehlende
+Admin-Befunde und leere URI-Listen keinen künstlichen Fingerprint-Konflikt.
+Ein zwischenzeitlich angelegter Realm oder andere tatsächliche Planänderungen
+bleiben blockierend. Bereits gespeicherte Worker-Pläne behalten ihr Format.
+Der Regressionstest in `packages/instance-registry/src/service.test.ts` vergleicht
+den lokalen Handler mit dem echten Plan- und Preflight-Reader bei fehlendem Realm.
+
 ## Tenant-Admin: Readback und Ownership diagnostizieren
 
 `tenantAdminExists` und `tenantAdminHasSystemAdmin` im bewerteten Status setzen zusätzlich eine gültige Studio-Ownership voraus. Beide können deshalb `false` sein, obwohl die exakte Benutzersuche einen Benutzer mit `system_admin` gefunden hat. Für die Ownership müssen `managed_by = studio`, `instance_id = <Instanz-ID>` und `artifact_key = tenant_admin` jeweils als genau ein Attributwert zurückgelesen werden.

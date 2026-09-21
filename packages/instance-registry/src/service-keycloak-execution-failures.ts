@@ -58,6 +58,13 @@ const classifyError = (error: unknown): { reasonCode: string; safeSummary: strin
         safeSummary: 'Der Provisioning-Auftrag enthält keinen gültigen Plugin-OIDC-Snapshot.',
       };
     }
+    if (message === 'keycloak_plan_fingerprint_stale') {
+      return {
+        reasonCode: 'KEYCLOAK_PLAN_STALE',
+        safeSummary:
+          'Der bestätigte Provisioning-Plan stimmt nicht mehr mit dem aktuellen Zustand überein. Prüfen und bestätigen Sie den Plan erneut.',
+      };
+    }
     if (message.includes('Keycloak') || message.includes('keycloak')) {
       return {
         reasonCode: 'KEYCLOAK_EXECUTION_FAILED',

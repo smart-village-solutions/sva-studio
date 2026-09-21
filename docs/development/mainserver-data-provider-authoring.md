@@ -42,7 +42,7 @@ Der kanonische Remote-Promote reicht den Wert aus dem getrackten Umgebungsprofil
 - `legacy_compatible` ist der Übergangsstandard. V2-Requests benötigen immer den expliziten Principal. Nur headerlose alte Clients dürfen den Principal deterministisch über den bestehenden policy-gesteuerten Credential-Resolver ableiten.
 - `required` lehnt auch headerlose alte Mutationsrequests ohne expliziten Principal ab.
 
-`content.transferOwnership` gehört für die bestätigten Studio-Typen dauerhaft zu den Code-Capabilities und wird nicht über eine Umgebungsvariable geschaltet. `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` enthält ausschließlich weitere, durch reale Contract-Tests bestätigte Actions. Ein leerer Wert erweitert diese zusätzlichen Capabilities nicht.
+`content.transferOwnership` sowie `categories.read`, `categories.create`, `categories.update` und `categories.delete` gehören dauerhaft zu den Code-Capabilities und werden nicht über eine Umgebungsvariable geschaltet. `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` enthält ausschließlich weitere, durch reale Contract-Tests bestätigte Actions. Ein leerer Wert erweitert diese zusätzlichen Capabilities nicht.
 
 Die effektive Liste wird angemeldeten Studio-Clients über
 `GET /api/v1/mainserver/mutation-capabilities` bereitgestellt. UI-Rechte allein schalten keine

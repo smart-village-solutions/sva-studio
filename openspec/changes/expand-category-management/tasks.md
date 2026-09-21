@@ -1,7 +1,7 @@
 ## 0. Vertrags- und Scope-Preflight
 
-- [ ] 0.1 Den GraphQL-Vertrag aus Jira `SVA-1753` und Mainserver-Commit `b01aead122485848cd03ea774c12eb9fc3efdd28` gegen eine vorgesehene Dev-Zielumgebung verifizieren.
-- [ ] 0.2 Den Studio-Schema-Snapshot ausschließlich aus dem verifizierten Ziel-Schema aktualisieren und `includeInactive`, `SaveCategoryInput`, `saveCategory`, `deleteCategory`, Payloadfehler, `affectedDescendantIds` und Usage-Felder bestätigen.
+- [ ] 0.1 Den als Baseline vorausgesetzten GraphQL-Vertrag aus Jira `SVA-1753` und Mainserver-Commit `b01aead122485848cd03ea774c12eb9fc3efdd28` gegen eine vorgesehene Dev-Zielumgebung als Release-Evidenz verifizieren; daraus keinen Laufzeitschalter ableiten.
+- [ ] 0.2 Den Studio-Schema-Snapshot ausschließlich aus dem verifizierten Ziel-Schema aktualisieren und `includeInactive`, `SaveCategoryInput`, `saveCategory`, `deleteCategory`, Payloadfehler, `affectedDescendantIds` und Usage-Felder bestätigen; die Kategorien-Capabilities bleiben Teil des Code-Basisvertrags.
 - [ ] 0.3 Nachweisen, dass die effektiv verwendeten persönlichen und organisatorischen Mainserver-Credentials die erforderliche Management-Rolle besitzen; fehlende Readiness als eigenen Fehler behandeln.
 - [x] 0.4 Überschneidungen mit laufenden Changes an Mainserver-Credentials, Plugin-Aktivierung und Admin-Ressourcen prüfen; keine konkurrierende Kategorienroute oder Registry einführen.
 
@@ -63,5 +63,5 @@
 - [x] 7.1 Früh die gezielten Unit-/Type-Gates für `plugin-categories` und `sva-mainserver` sowie `pnpm check:server-runtime` ausführen.
 - [x] 7.2 Vor PR-Freigabe `pnpm check:file-placement`, die relevanten Nx-Gates und den strikten OpenSpec-Check ausführen; breite Gates gemäß `DEVELOPMENT_RULES.md` und tatsächlichem affected Scope auswählen.
 - [ ] 7.3 In Dev die Positiv-/Negativmatrix für zwei Municipalities, alle vier Actions, unbekannte Datentypen, Statuskaskade und alle Delete-Usage-Kategorien nachweisen.
-- [ ] 7.4 Studio erst nach bestätigtem Mainserver-Vertrag und Management-Credential-Readiness über `Build` → Dev → Staging → Production mit demselben Image-Digest promoten.
+- [ ] 7.4 Studio nach Management-Credential- und Browser-Readiness über `Build` → Dev → Staging → Production mit demselben Image-Digest promoten; der Kategorien-Basisvertrag wird nicht je Umgebung freigeschaltet.
 - [ ] 7.5 Vor Production die Browserabnahme für Create, Update, Reparenting, Deaktivieren/Reaktivieren und blockiertes/erfolgreiches Löschen in Staging dokumentieren.

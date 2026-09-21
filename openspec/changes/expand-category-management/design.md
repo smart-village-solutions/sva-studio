@@ -33,7 +33,7 @@ Es entsteht kein neues Package, kein generischer CRUD-Provider und kein direkter
 
 Der bestehende parameterlose `GET /api/v1/mainserver/categories` bleibt kompatibel und fragt weiterhin nur aktive Kategorien für Content-Auswahlen ab. Die Kategorienverwaltung fordert eine explizite Management-Sicht an, beispielsweise über `GET /api/v1/mainserver/categories?view=management`. Nur diese Sicht verwendet upstream `categories(includeInactive: true)` und liefert das vollständige Management-Modell.
 
-Der Server akzeptiert ausschließlich die dokumentierten View-Werte. Die Management-Sicht benötigt lokal `categories.read` und verwendbare Mainserver-Management-Credentials. Ein fehlender Management-Vertrag oder eine fehlende Upstream-Rolle fällt mit einem deterministischen Fehler aus; die Route darf nicht auf die Active-only-Liste zurückfallen und dadurch inaktive Einträge verschweigen.
+Der Server akzeptiert ausschließlich die dokumentierten View-Werte. Die Management-Sicht benötigt lokal `categories.read` und verwendbare Mainserver-Management-Credentials. Die vier `categories.*`-Operationen gehören zum Basisvertrag aller unterstützten Mainserver und benötigen keinen zusätzlichen Laufzeitschalter. Eine fehlende Upstream-Rolle oder eine ungültige Antwort fällt mit einem deterministischen Fehler aus; die Route darf nicht auf die Active-only-Liste zurückfallen und dadurch inaktive Einträge verschweigen.
 
 ### Create und Update verwenden getrennte HTTP-Operationen bei gemeinsamem Upstream-Vertrag
 
@@ -121,18 +121,18 @@ Feldbezüge aus dem Mainserver werden auf die kanonischen Studio-Feldnamen abgeb
 - Unbekannte Datentypen gehen beim Speichern verloren → vollständiger Initialzustand, sichtbare unavailable-Werte und explizite Remove-Semantik.
 - Parent-Wechsel erzeugt Zyklen oder Teilzustände → Clientfilter als UX-Hilfe, Mainserver als atomare verbindliche Prüfung und Re-Read nach Erfolg.
 - UI behauptet Erfolg trotz GraphQL-Payloadfehler → fachlicher Erfolg erfordert leere Fehlerliste und erwartete Resultat-ID.
-- Mainserver-Code ist vorhanden, aber noch nicht in der Zielumgebung verfügbar → Schema-/Capability-Preflight blockiert Aktivierung und Rollout.
+- Ein Mainserver verletzt den vorausgesetzten Kategorien-Basisvertrag → typisierte Response-Validierung meldet einen deterministischen Vertragsfehler; die Capability wird nicht über Deployment-Konfiguration modelliert.
 - Mainserver-Credentials besitzen keine Management-Rolle → expliziter Readiness-Nachweis und verständlicher, vom lokalen IAM-Denial getrennter Fehler.
 - Create-Antwort geht nach möglichem Upstream-Erfolg verloren → vorhandene Host-Idempotenz replayed terminale Ergebnisse; eine nichtterminale Reservation blockiert den automatischen zweiten Upstream-Aufruf bis zum Management-Re-Read.
 
 ## Migration Plan
 
-1. Den bereitgestellten Mainserver-Vertrag in Dev gegen Schema und negative Municipality-Grenzen verifizieren und den Studio-Schema-Snapshot aktualisieren.
+1. Den bereitgestellten Mainserver-Basisvertrag in Dev gegen Schema und negative Municipality-Grenzen verifizieren und den Studio-Schema-Snapshot aktualisieren; diese Release-Evidenz ist kein Laufzeitschalter.
 2. Typisierte Management-Query, Save-/Delete-Dokumente, Runtime-Parser und Serviceoperationen ergänzen.
 3. Die bestehende Kategorienroute um Management-Read, Create, Update und Delete mit actionspezifischer Autorisierung erweitern.
 4. Plugin-API, vollständiges Modell und vorhandene Kategorienseite um Formulare, Registry-Datentypen, Kaskadenfeedback und Safe-Delete erweitern.
 5. Kompatibilitäts-, Contract-, Permission-, Unit-, Accessibility- und E2E-Nachweise ausführen.
-6. Den Studio-Change erst nach positivem Mainserver-Readiness-Nachweis über den kanonischen geschützten Rolloutpfad promoten.
+6. Den Studio-Change nach positivem Credential- und Browser-Nachweis über den kanonischen geschützten Rolloutpfad promoten.
 
 Rollback entfernt beziehungsweise deaktiviert ausschließlich die neuen Studio-Management-Operationen. Der bestehende Active-only-Read-Pfad bleibt während der gesamten Migration kompatibel.
 

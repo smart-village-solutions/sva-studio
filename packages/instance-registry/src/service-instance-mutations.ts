@@ -20,18 +20,19 @@ import {
 import { annotateInstanceRegistryError, runInstanceRegistryStep } from './observability.js';
 import {
   assertNoActiveTenantProvisioning,
-  requiresAutomatedProvisioningEvidence,
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
 import {
+  assignRequestedCreateModules,
   createRequestedInstance,
   resolveConcurrentIdempotentCreateRetry as resolveConcurrentRetry,
   resolveIdempotentCreateRetry,
 } from './service-instance-create.js';
-import { createDraftReadinessHandler } from './service-draft-readiness.js';
+import {
+  collectActivationReadinessBlockers,
+  createDraftReadinessHandler,
+} from './service-draft-readiness.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
-import { isLiveKeycloakStatusReadyForActivation } from './service-keycloak-snapshot-reader.js';
-import { createAssignModuleHandler } from './service-module-mutations.js';
 
 function applyNewRealmDefaults(
   input: CreateInstanceProvisioningInput
@@ -129,23 +130,7 @@ export const createProvisioningRequestHandler =
       return { ok: false, reason: 'already_exists' as const };
     }
 
-    for (const moduleId of requestedModuleIds) {
-      const assignment = await createAssignModuleHandler(deps)({
-        instanceId: instance.instanceId,
-        moduleId,
-        idempotencyKey: `${effectiveInput.idempotencyKey}:module:${moduleId}`,
-        actorId: effectiveInput.actorId,
-        requestId: effectiveInput.requestId,
-      });
-      if (!assignment.ok) {
-        throw new Error(
-          `instance_create_module_assignment_failed:${moduleId}:${assignment.reason}`
-        );
-      }
-    }
-    if (requestedModuleIds.length > 0) {
-      instance = (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
-    }
+    instance = await assignRequestedCreateModules(deps, effectiveInput, instance);
 
     const automated = shouldExposeAutomatedProvisioning(deps, instance);
     const provisioningRun = await createProvisioningArtifacts(
@@ -194,57 +179,7 @@ export const createChangeStatusHandler =
     if (input.nextStatus === 'active' && current.status !== 'active') {
       const detail = await createGetInstanceDetail(deps)(input.instanceId);
       if (!detail) return { ok: false, reason: 'not_found' as const };
-      const blockers: string[] = [];
-      if (!(await isLiveKeycloakStatusReadyForActivation(deps, input.instanceId))) {
-        blockers.push('keycloak_live_postflight_not_ready');
-      }
-      if (detail.latestKeycloakProvisioningRun?.overallStatus !== 'succeeded') {
-        blockers.push('keycloak_postflight_missing');
-      }
-      if (detail.keycloakPlan?.overallStatus !== 'ready') {
-        blockers.push('keycloak_plan_not_ready');
-      }
-      if (
-        detail.keycloakPlan?.steps.some(
-          (step) => step.action === 'create' || step.action === 'update'
-        )
-      ) {
-        blockers.push('keycloak_drift_present');
-      }
-      if (detail.tenantIamStatus?.overall.status !== 'ready') {
-        blockers.push('tenant_iam_not_ready');
-      }
-      if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
-        blockers.push('module_readiness_not_ready');
-      }
-      const assignedPluginLifecycles = detail.assignedModules.flatMap((moduleId) => {
-        const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
-        return lifecycle ? [lifecycle] : [];
-      });
-      if (assignedPluginLifecycles.length > 0) {
-        try {
-          const pluginReadiness = await deps.readProvisioningModuleReadiness?.({
-            instanceId: input.instanceId,
-            lifecycles: assignedPluginLifecycles,
-          });
-          if (pluginReadiness?.status !== 'ready') {
-            blockers.push('plugin_readiness_not_ready');
-          }
-        } catch {
-          blockers.push('plugin_readiness_not_ready');
-        }
-      }
-      if (detail.provisioningRuns.some(requiresAutomatedProvisioningEvidence)) {
-        const completedCreateRun = detail.provisioningRuns.find(
-          (run) =>
-            run.operation === 'create' &&
-            requiresAutomatedProvisioningEvidence(run) &&
-            run.status === 'validated' &&
-            run.stepKey === 'completed' &&
-            Boolean(run.completedAt)
-        );
-        if (!completedCreateRun) blockers.push('host_readiness_missing');
-      }
+      const blockers = await collectActivationReadinessBlockers(deps, detail);
       if (blockers.length > 0) {
         throw new Error(`activation_readiness_blocked:${blockers.join(',')}`);
       }

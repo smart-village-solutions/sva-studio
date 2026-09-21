@@ -23,6 +23,7 @@ import {
   invalidateHostWithLog,
 } from './service-shared.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { createAssignModuleHandler } from './service-module-mutations.js';
 import {
   isTenantProvisioningFailureRetryable,
   requiresAutomatedProvisioningEvidence,
@@ -224,4 +225,27 @@ export const createRequestedInstance = (
     featureFlags: input.featureFlags,
     mainserverConfigRef: input.mainserverConfigRef,
   });
+};
+
+export const assignRequestedCreateModules = async (
+  deps: InstanceRegistryServiceDeps,
+  input: CreateInstanceProvisioningInput,
+  instance: NonNullable<Awaited<ReturnType<typeof createRequestedInstance>>>
+) => {
+  const requestedModuleIds = [...new Set(input.moduleIds ?? [])];
+  for (const moduleId of requestedModuleIds) {
+    const assignment = await createAssignModuleHandler(deps)({
+      instanceId: instance.instanceId,
+      moduleId,
+      idempotencyKey: `${input.idempotencyKey}:module:${moduleId}`,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+    if (!assignment.ok) {
+      throw new Error(`instance_create_module_assignment_failed:${moduleId}:${assignment.reason}`);
+    }
+  }
+  return requestedModuleIds.length > 0
+    ? ((await deps.repository.getInstanceById(instance.instanceId)) ?? instance)
+    : instance;
 };

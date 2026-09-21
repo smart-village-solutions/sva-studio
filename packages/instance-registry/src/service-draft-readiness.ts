@@ -1,5 +1,9 @@
 import { buildPrimaryHostname } from '@sva/core';
-import type { IamInstanceDraftReadiness, IamInstanceProvisioningCapability } from '@sva/core';
+import type {
+  IamInstanceDetail,
+  IamInstanceDraftReadiness,
+  IamInstanceProvisioningCapability,
+} from '@sva/core';
 
 import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
@@ -11,6 +15,8 @@ import {
 } from './provisioning-auth-evaluation.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { requiresAutomatedProvisioningEvidence } from './service-active-provisioning.js';
+import { isLiveKeycloakStatusReadyForActivation } from './service-keycloak-snapshot-reader.js';
 
 export type RealmSuitability = Readonly<{
   classification: 'ready' | 'auto_completable' | 'manual_resolution_required';
@@ -23,6 +29,54 @@ export type RealmSuitability = Readonly<{
 }>;
 
 export type InstanceDraftReadiness = IamInstanceDraftReadiness;
+
+export const collectActivationReadinessBlockers = async (
+  deps: InstanceRegistryServiceDeps,
+  detail: IamInstanceDetail
+): Promise<readonly string[]> => {
+  const blockers: string[] = [];
+  if (!(await isLiveKeycloakStatusReadyForActivation(deps, detail.instanceId))) {
+    blockers.push('keycloak_live_postflight_not_ready');
+  }
+  if (detail.latestKeycloakProvisioningRun?.overallStatus !== 'succeeded') {
+    blockers.push('keycloak_postflight_missing');
+  }
+  if (detail.keycloakPlan?.overallStatus !== 'ready') blockers.push('keycloak_plan_not_ready');
+  if (detail.keycloakPlan?.steps.some(({ action }) => action === 'create' || action === 'update')) {
+    blockers.push('keycloak_drift_present');
+  }
+  if (detail.tenantIamStatus?.overall.status !== 'ready') blockers.push('tenant_iam_not_ready');
+  if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
+    blockers.push('module_readiness_not_ready');
+  }
+  const lifecycles = detail.assignedModules.flatMap((moduleId) => {
+    const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
+    return lifecycle ? [lifecycle] : [];
+  });
+  if (lifecycles.length > 0) {
+    try {
+      const readiness = await deps.readProvisioningModuleReadiness?.({
+        instanceId: detail.instanceId,
+        lifecycles,
+      });
+      if (readiness?.status !== 'ready') blockers.push('plugin_readiness_not_ready');
+    } catch {
+      blockers.push('plugin_readiness_not_ready');
+    }
+  }
+  if (detail.provisioningRuns.some(requiresAutomatedProvisioningEvidence)) {
+    const completed = detail.provisioningRuns.some(
+      (run) =>
+        run.operation === 'create' &&
+        requiresAutomatedProvisioningEvidence(run) &&
+        run.status === 'validated' &&
+        run.stepKey === 'completed' &&
+        Boolean(run.completedAt)
+    );
+    if (!completed) blockers.push('host_readiness_missing');
+  }
+  return blockers;
+};
 
 const buildNormalizedDraft = (input: CreateInstanceProvisioningInput) => ({
   instanceId: input.instanceId,

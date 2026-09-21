@@ -3634,6 +3634,12 @@
       "status": "open",
       "summary": "Instanzmutationen in getrennte Status- und Aktivierungsabläufe zerlegen"
     },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-readers.ts:fileLines": {
+      "ticketId": "#1448",
+      "ticketSystem": "github",
+      "status": "open",
+      "summary": "Keycloak-Reader in getrennte Status-, Preflight- und Planmodule zerlegen"
+    },
     "instance-registry-service:packages/instance-registry/src/service-keycloak-execution.ts:functionLines": {
       "ticketId": "#1448",
       "ticketSystem": "github",

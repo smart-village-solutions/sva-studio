@@ -165,19 +165,23 @@ const assignMissingModules = async (input: {
     await request(input.client, { path: input.basePath, requestId: input.requestId })
   );
   const requestedModuleIds = [...new Set(input.moduleIds)];
-  const missingModuleIds = requestedModuleIds.filter(
-    (moduleId) => !readAssignedModuleIds(detail).has(moduleId)
-  );
-  for (const moduleId of missingModuleIds) {
-    await request(
-      input.client,
-      mutation(
-        `${input.basePath}/modules/assign`,
-        { moduleId },
-        input.requestId,
-        deriveIdempotencyKey(input.idempotencyKey, `module:${moduleId}`)
+  const assignedModuleIds = new Set(readAssignedModuleIds(detail));
+  for (const moduleId of requestedModuleIds) {
+    if (assignedModuleIds.has(moduleId)) continue;
+    const assignment = unwrap(
+      await request(
+        input.client,
+        mutation(
+          `${input.basePath}/modules/assign`,
+          { moduleId },
+          input.requestId,
+          deriveIdempotencyKey(input.idempotencyKey, `module:${moduleId}`)
+        )
       )
     );
+    for (const assignedModuleId of readAssignedModuleIds(assignment)) {
+      assignedModuleIds.add(assignedModuleId);
+    }
   }
   await request(
     input.client,

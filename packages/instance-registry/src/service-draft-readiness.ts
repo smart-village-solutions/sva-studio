@@ -235,23 +235,28 @@ const createDependencyFailure = (
 const toProvisioningInput = (
   input: CreateInstanceProvisioningInput,
   deps: InstanceRegistryServiceDeps
-): KeycloakProvisioningInput => ({
-  instanceId: input.instanceId,
-  primaryHostname: buildPrimaryHostname(input.instanceId, input.parentDomain),
-  realmMode: input.realmMode,
-  authRealm: input.authRealm,
-  authClientId: input.authClientId,
-  authIssuerUrl: input.authIssuerUrl,
-  authClientSecretConfigured: Boolean(input.authClientSecret),
-  authClientSecret: input.authClientSecret,
-  tenantAdminClient: input.tenantAdminClient && {
-    clientId: input.tenantAdminClient.clientId,
-    secretConfigured: Boolean(input.tenantAdminClient.secret),
-  },
-  tenantAdminClientSecret: input.tenantAdminClient?.secret,
-  tenantAdminBootstrap: input.tenantAdminBootstrap,
-  pluginOidcClients: deps.readPluginOidcClientRequirements?.(),
-});
+): KeycloakProvisioningInput => {
+  const requestedModuleIds = new Set(input.moduleIds ?? []);
+  return {
+    instanceId: input.instanceId,
+    primaryHostname: buildPrimaryHostname(input.instanceId, input.parentDomain),
+    realmMode: input.realmMode,
+    authRealm: input.authRealm,
+    authClientId: input.authClientId,
+    authIssuerUrl: input.authIssuerUrl,
+    authClientSecretConfigured: Boolean(input.authClientSecret),
+    authClientSecret: input.authClientSecret,
+    tenantAdminClient: input.tenantAdminClient && {
+      clientId: input.tenantAdminClient.clientId,
+      secretConfigured: Boolean(input.tenantAdminClient.secret),
+    },
+    tenantAdminClientSecret: input.tenantAdminClient?.secret,
+    tenantAdminBootstrap: input.tenantAdminBootstrap,
+    pluginOidcClients: (deps.readPluginOidcClientRequirements?.() ?? []).filter(({ pluginId }) =>
+      requestedModuleIds.has(pluginId)
+    ),
+  };
+};
 
 const readSafeAccessCode = (error: unknown): string => {
   if (typeof error === 'object' && error !== null) {

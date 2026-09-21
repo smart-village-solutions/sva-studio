@@ -48,6 +48,34 @@ const createRepository = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('draft readiness', () => {
+  it('scopes plugin OIDC clients to modules selected in the draft', async () => {
+    const readKeycloakStateViaProvisioner = vi.fn(async () => readState());
+    const ssfClient = {
+      contractVersion: '1.0' as const,
+      pluginId: 'ssf',
+      clientId: 'ssf',
+      audience: 'ssf',
+      enabled: false as const,
+    };
+    const deps = {
+      readKeycloakStateViaProvisioner,
+      readPluginOidcClientRequirements: () => [ssfClient],
+      repository: createRepository(),
+    } as never;
+
+    await createDraftReadinessHandler(deps)(input);
+    await createDraftReadinessHandler(deps)({ ...input, moduleIds: ['ssf'] });
+
+    expect(readKeycloakStateViaProvisioner).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ pluginOidcClients: [] })
+    );
+    expect(readKeycloakStateViaProvisioner).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ pluginOidcClients: [ssfClient] })
+    );
+  });
+
   it('keeps an absent imported-realm secret out of create blockers', async () => {
     const readiness = await createDraftReadinessHandler({
       readKeycloakStateViaProvisioner: vi.fn(async () => readState()),

@@ -792,6 +792,60 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('skips a requested companion module returned by an earlier MCP assignment', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { assignedModules: ['categories', 'news'] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { bootstrapped: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
+      .mockResolvedValueOnce({ data: { outcome: 'success' } })
+      .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          status: 'active',
+          keycloakStatus: { realmExists: true, clientExists: true },
+          tenantIamStatus: { overall: { status: 'ready' } },
+          moduleIamStatus: { overall: { status: 'ready' } },
+          assignedModules: ['categories', 'news'],
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'adapt',
+        instanceId: 'demo',
+        moduleIds: ['news', 'categories'],
+        keycloakRunId: 'run-1',
+        planFingerprint: confirmedPlanFingerprint,
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: { completed: true, status: 'completed' },
+    });
+    expect(
+      request.mock.calls.filter(
+        ([requestInput]) => requestInput.path === '/api/v1/iam/instances/demo/modules/assign'
+      )
+    ).toHaveLength(1);
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '/api/v1/iam/instances/demo/modules/assign',
+        body: { moduleId: 'news' },
+      })
+    );
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('uses reconcile and the resulting run for repairs', async () => {
     const request = vi
       .fn()

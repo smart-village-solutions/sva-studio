@@ -240,6 +240,10 @@ Keycloak-Kindlauf idempotent an, sodass der anschließende Tenant-Admin-Sync
 nicht an einer fehlenden lokalen Rolle scheitert. Die Create-Zuordnung liest
 nach jeder Modul-Expansion den aktuellen Stand und behandelt dadurch bereits
 automatisch hinzugefügte Companion-Module als erfüllt.
+Die Draft-Readiness prüft Plugin-OIDC-Clients nur für die im Create-Entwurf
+ausgewählten Module. Auch der MCP-Fallback übernimmt nach jeder Zuweisung den
+vom Server zurückgegebenen expandierten Modulstand und weist dadurch bereits
+hinzugefügte Companion-Module nicht erneut zu.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

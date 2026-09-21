@@ -300,3 +300,7 @@
       dem Einreihen des Keycloak-Laufs idempotent sicherstellen.
 - [x] 11.22 Explizit angeforderte Companion-Module überspringen, wenn eine
       frühere Modulzuweisung sie im selben Create-Lauf bereits mit angelegt hat.
+- [x] 11.23 Plugin-OIDC-Anforderungen der Draft-Readiness auf die im Entwurf
+      ausgewählten Module begrenzen.
+- [x] 11.24 Im MCP-Fallback den vom Assign-Endpunkt zurückgegebenen expandierten
+      Modulstand für nachfolgende Zuweisungen berücksichtigen.

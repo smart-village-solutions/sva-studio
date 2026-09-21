@@ -198,7 +198,7 @@
 
 ## 9. Systemnachweise und Qualität
 
-- [x] 9.1 Die Invarianten und Failure-Injection-Matrix aus
+- [ ] 9.1 Die Invarianten und Failure-Injection-Matrix aus
       `assurance.md` am exakten finalen HEAD mit verlinkter Evidenz aktualisieren.
       Die lokale Evidenz ist im Assurance Case dokumentiert; die SHA-Bindung,
       GitHub-Checks und Review-Threads werden über den kanonischen PR-Snapshot
@@ -206,9 +206,9 @@
 - [x] 9.2 Früh die kleinsten betroffenen Unit-, Type- und
       `check:server-runtime`-Gates ausführen; breite Nx-Gates erst nach
       Scope-Messung gemäß `DEVELOPMENT_RULES.md`.
-- [x] 9.3 Reale PostgreSQL-Integrationstests für Create, Claim, Retry,
+- [ ] 9.3 Reale PostgreSQL-Integrationstests für Create, Claim, Retry,
       Evidenzrevision und Aktivierung ausführen.
-- [x] 9.4 E2E den New-Realm- und Existing-Realm-Happy-Path sowie alle
+- [ ] 9.4 E2E den New-Realm- und Existing-Realm-Happy-Path sowie alle
       sicherheitskritischen Negativpfade prüfen.
 - [x] 9.5 Mit statischer Suche und Tests belegen, dass ausschließlich die
       kritische Aktivierungsaktion `active` setzen kann.
@@ -240,3 +240,34 @@
       vollständiger Assurance-Evidenz und expliziter Freigabe promoten.
       **Operator-Gate:** Nicht ausgeführt; Production-Promotion erfordert eine
       separate ausdrückliche Freigabe und einen Staging-bestätigten Digest.
+
+## 11. Offene Review-Befunde vor dem finalen Nachweis
+
+- [ ] 11.1 Die Cockpit-Aktion zum Aktualisieren der Readiness gegen den
+      vollständigen Instanz-Detailstand ausführen und danach die serverseitig
+      bestimmte Hauptaktion neu ableiten; `check_preflight` bleibt auf den
+      ausdrücklichen Preflight beschränkt.
+- [ ] 11.2 Die Diagnose-Aktion in den Doctor-Kontext mit dem betroffenen
+      Elternlauf und dessen aktueller Evidenz führen, statt nur den Preflight
+      erneut auszuführen.
+- [ ] 11.3 Browserbasierte kritische Registry-Mutationen serverseitig an eine
+      gültige Fresh-Reauth binden; Service-Accounts behalten ausschließlich den
+      vorhandenen Challenge-/Fingerprint-Vertrag.
+- [ ] 11.4 Leere, aber strukturell gültige Plugin-Lifecycle-Snapshots bei
+      Provisioning und Retry akzeptieren und mit Tests für Tenants ohne
+      Lifecycle-Intents absichern.
+- [ ] 11.5 Die Studio-Ownership aller aktivierungsrelevanten Keycloak-Artefakte
+      im Live-Status erneut prüfen und einen Ownership-Verlust zwischen Plan
+      und Aktivierung fail-closed behandeln.
+- [ ] 11.6 Direkte Vorwärtssprünge im Wizard gegen alle übersprungenen Schritte
+      validieren und lokale Validierungszustände von echten Serverfehlern
+      unterscheiden.
+- [ ] 11.7 Den fokussierten Realm-Suchinput mit vollständiger
+      Combobox-Semantik und stabiler Listbox-Zuordnung versehen.
+- [ ] 11.8 Den widersprüchlichen Nicht-Ziel-Satz im Proposal an den tatsächlich
+      implementierenden OpenSpec-Change anpassen.
+- [ ] 11.9 Den Cross-Version-Cutover aus Issue #1449 vor dem automatischen
+      Dev-Rollout fail-closed nachweisen; ein Issue allein ersetzt diesen
+      Rollout-Blocker nicht.
+- [x] 11.10 Die doppelte Realm-Feldbeschriftung als unabhängiges Follow-up
+      #1450 erfassen und aus dem Merge-Scope dieses PRs nehmen.

@@ -210,6 +210,13 @@ const createHarness = () => {
       grantsUnchanged: 0,
     })),
     persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => ['ssf']),
+    syncProtectedSystemRolePermissions: vi.fn(async () => ({
+      permissionsInserted: 1,
+      permissionsUpdated: 0,
+      permissionsUnchanged: 0,
+      grantsInserted: 1,
+      grantsUnchanged: 0,
+    })),
     appendAuditEvent: vi.fn(async () => undefined),
     setInstanceStatus: vi.fn(async ({ status }) => {
       currentInstance = { ...currentInstance, status };
@@ -403,6 +410,17 @@ describe('tenant provisioning parent orchestrator', () => {
       processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
     await iterate();
+    expect(harness.repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        role: expect.objectContaining({ roleKey: 'system_admin' }),
+      })
+    );
+    expect(
+      vi.mocked(harness.repository.syncProtectedSystemRolePermissions).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(harness.repository.createKeycloakProvisioningRun).mock.invocationCallOrder[0] ?? 0
+    );
     expect(harness.getRun()).toMatchObject({
       status: 'provisioning',
       stepKey: 'keycloak',

@@ -296,3 +296,7 @@
       Provisioning-Snapshots `2.0` und `3.0` erweitern.
 - [x] 11.20 Den effektiven MCP-Idempotency-Key auch dann zurückgeben, wenn die
       Provisioning-Antwort keine eindeutige Run-ID enthält.
+- [x] 11.21 Die geschützte lokale `system_admin`-Baseline im Parent-Worker vor
+      dem Einreihen des Keycloak-Laufs idempotent sicherstellen.
+- [x] 11.22 Explizit angeforderte Companion-Module überspringen, wenn eine
+      frühere Modulzuweisung sie im selben Create-Lauf bereits mit angelegt hat.

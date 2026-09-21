@@ -16,6 +16,7 @@ import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snap
 import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
 import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
 import { reconcileProvisioningModuleActivationPolicies } from './service-module-activation.js';
+import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 
 type StepContext = {
   deps: InstanceRegistryServiceDeps;
@@ -76,6 +77,8 @@ const registryStep: StepHandler = async ({
   });
   assertExecutionActive();
   if (!provisioning) throw new Error('instance_not_found');
+  await syncProtectedSystemAdminPermissions(deps, instance.instanceId);
+  assertExecutionActive();
   const pluginSnapshot = readTenantProvisioningPluginSnapshot(run);
   const executionDeps = {
     ...deps,

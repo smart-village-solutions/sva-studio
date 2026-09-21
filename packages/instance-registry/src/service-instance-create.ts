@@ -237,7 +237,9 @@ export const assignRequestedCreateModules = async (
   instance: NonNullable<Awaited<ReturnType<typeof createRequestedInstance>>>
 ) => {
   const requestedModuleIds = [...new Set(input.moduleIds ?? [])];
+  const assignedModuleIds = new Set(await deps.repository.listAssignedModules(instance.instanceId));
   for (const moduleId of requestedModuleIds) {
+    if (assignedModuleIds.has(moduleId)) continue;
     const assignment = await createAssignModuleHandler(deps)({
       instanceId: instance.instanceId,
       moduleId,
@@ -247,6 +249,9 @@ export const assignRequestedCreateModules = async (
     });
     if (!assignment.ok) {
       throw new Error(`instance_create_module_assignment_failed:${moduleId}:${assignment.reason}`);
+    }
+    for (const assignedModuleId of await deps.repository.listAssignedModules(instance.instanceId)) {
+      assignedModuleIds.add(assignedModuleId);
     }
   }
   return requestedModuleIds.length > 0

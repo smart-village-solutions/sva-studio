@@ -883,7 +883,7 @@ describe('instance registry service facade', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValue(assignedInstance),
       createInstance: vi.fn(async () => createdInstance),
-      listAssignedModules: vi.fn(async () => ['news']),
+      listAssignedModules: vi.fn().mockResolvedValueOnce([]).mockResolvedValue(['news']),
       createProvisioningRun: vi.fn(async (input) => ({ ...latestRun, ...input })),
     });
     const service = createInstanceRegistryService(
@@ -917,6 +917,56 @@ describe('instance registry service facade', () => {
     expect(vi.mocked(repository.assignModule).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(repository.createProvisioningRun).mock.invocationCallOrder[0] ?? 0
     );
+  });
+
+  it('skips a requested companion module already assigned by an earlier create module', async () => {
+    const createdInstance = {
+      ...baseInstance,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+      assignedModules: [],
+    };
+    let assignedModules: string[] = [];
+    const assignModule = vi.fn(async (_instanceId: string, moduleId: string) => {
+      if (assignedModules.includes(moduleId)) return false;
+      assignedModules = [...assignedModules, moduleId];
+      return true;
+    });
+    const repository = createRepository({
+      listInstances: vi.fn(async () => []),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockImplementation(async () => ({ ...createdInstance, assignedModules })),
+      createInstance: vi.fn(async () => createdInstance),
+      assignModule,
+      listAssignedModules: vi.fn(async () => assignedModules),
+      createProvisioningRun: vi.fn(async (input) => ({ ...latestRun, ...input })),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, { isAutomatedTenantProvisioningEnabled: () => true })
+    );
+
+    await service.createProvisioningRequest({
+      ...completeCreateIdentity,
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'dialog.kassel.de',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio-login',
+      idempotencyKey: 'idem-create-companions',
+      moduleIds: ['news', 'categories'],
+    });
+
+    expect(assignModule).toHaveBeenCalledWith(
+      'demo',
+      'news',
+      currentNewsLifecycle.contractRevision
+    );
+    expect(assignModule).toHaveBeenCalledWith('demo', 'categories');
+    expect(assignModule).toHaveBeenCalledTimes(2);
   });
 
   it('resolves a concurrent identical create after losing the instance insert race', async () => {

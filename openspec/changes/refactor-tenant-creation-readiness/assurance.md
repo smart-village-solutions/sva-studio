@@ -235,6 +235,11 @@ Das Rollback-Inventar stoppt nun auch bei nichtterminalen `3.0`-Läufen. Der
 MCP-Prozess gibt den effektiven Idempotency-Key in allen resumierbaren
 nichtterminalen Ergebnissen zurück, einschließlich einer fehlenden Run-ID nach
 bereits ausgeführter Provisioning-Mutation.
+Der Parent-Worker legt die geschützte lokale `system_admin`-Baseline vor dem
+Keycloak-Kindlauf idempotent an, sodass der anschließende Tenant-Admin-Sync
+nicht an einer fehlenden lokalen Rolle scheitert. Die Create-Zuordnung liest
+nach jeder Modul-Expansion den aktuellen Stand und behandelt dadurch bereits
+automatisch hinzugefügte Companion-Module als erfüllt.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

@@ -9,6 +9,7 @@ import {
   encryptTenantAdminClientSecret,
   instanceRegistryServiceLogger,
   invalidateHostWithLog,
+  requireModuleIamRegistry,
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import {
@@ -30,6 +31,7 @@ import {
 import { createDraftReadinessHandler } from './service-draft-readiness.js';
 import { isValidKeycloakRealmName, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 import { isLiveKeycloakStatusReadyForActivation } from './service-keycloak-snapshot-reader.js';
+import { createAssignModuleHandler } from './service-module-mutations.js';
 
 function applyNewRealmDefaults(
   input: CreateInstanceProvisioningInput
@@ -66,6 +68,12 @@ export const createProvisioningRequestHandler =
     });
     const effectiveInput = authIssuerUrl ? { ...normalizedInput, authIssuerUrl } : normalizedInput;
     assertOidcClientIdsNotReserved(deps, effectiveInput);
+    const requestedModuleIds = [...new Set(effectiveInput.moduleIds ?? [])];
+    if (requestedModuleIds.length > 0) {
+      const moduleRegistry = requireModuleIamRegistry(deps);
+      const unknownModuleId = requestedModuleIds.find((moduleId) => !moduleRegistry.has(moduleId));
+      if (unknownModuleId) throw new Error(`unknown_module_contract:${unknownModuleId}`);
+    }
     assertTenantHostnameAvailable(
       deps,
       buildPrimaryHostname(effectiveInput.instanceId, effectiveInput.parentDomain)
@@ -102,7 +110,7 @@ export const createProvisioningRequestHandler =
       request_id: effectiveInput.requestId,
       actor_id: effectiveInput.actorId,
     });
-    const instance = await runInstanceRegistryStep('registry_insert', () =>
+    let instance = await runInstanceRegistryStep('registry_insert', () =>
       createRequestedInstance(deps, effectiveInput)
     );
     if (!instance) {
@@ -119,6 +127,24 @@ export const createProvisioningRequestHandler =
         request_id: effectiveInput.requestId,
       });
       return { ok: false, reason: 'already_exists' as const };
+    }
+
+    for (const moduleId of requestedModuleIds) {
+      const assignment = await createAssignModuleHandler(deps)({
+        instanceId: instance.instanceId,
+        moduleId,
+        idempotencyKey: `${effectiveInput.idempotencyKey}:module:${moduleId}`,
+        actorId: effectiveInput.actorId,
+        requestId: effectiveInput.requestId,
+      });
+      if (!assignment.ok) {
+        throw new Error(
+          `instance_create_module_assignment_failed:${moduleId}:${assignment.reason}`
+        );
+      }
+    }
+    if (requestedModuleIds.length > 0) {
+      instance = (await deps.repository.getInstanceById(instance.instanceId)) ?? instance;
     }
 
     const automated = shouldExposeAutomatedProvisioning(deps, instance);
@@ -190,6 +216,23 @@ export const createChangeStatusHandler =
       }
       if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
         blockers.push('module_readiness_not_ready');
+      }
+      const assignedPluginLifecycles = detail.assignedModules.flatMap((moduleId) => {
+        const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
+        return lifecycle ? [lifecycle] : [];
+      });
+      if (assignedPluginLifecycles.length > 0) {
+        try {
+          const pluginReadiness = await deps.readProvisioningModuleReadiness?.({
+            instanceId: input.instanceId,
+            lifecycles: assignedPluginLifecycles,
+          });
+          if (pluginReadiness?.status !== 'ready') {
+            blockers.push('plugin_readiness_not_ready');
+          }
+        } catch {
+          blockers.push('plugin_readiness_not_ready');
+        }
       }
       if (detail.provisioningRuns.some(requiresAutomatedProvisioningEvidence)) {
         const completedCreateRun = detail.provisioningRuns.find(

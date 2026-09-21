@@ -283,7 +283,12 @@ export const runStudioInstanceProcess = async (
       const created = unwrap(
         await request(
           client,
-          mutation('/api/v1/iam/instances', input.create, requestId, idempotencyKey)
+          mutation(
+            '/api/v1/iam/instances',
+            { ...input.create, moduleIds: input.moduleIds ?? [] },
+            requestId,
+            idempotencyKey
+          )
         )
       );
       const parentRun = unwrap(created.latestProvisioningRun);

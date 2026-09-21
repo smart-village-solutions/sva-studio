@@ -313,7 +313,7 @@ describe('Studio MCP tools', () => {
         data: {
           instanceId: 'demo',
           status: 'validated',
-          assignedModules: [],
+          assignedModules: ['news'],
           latestProvisioningRun: {
             id: 'parent-run-1',
             status: 'validated',
@@ -321,7 +321,7 @@ describe('Studio MCP tools', () => {
           },
           keycloakStatus: { realmExists: true, clientExists: true },
           tenantIamStatus: { overall: { status: 'ready' } },
-          moduleIamStatus: { overall: { status: 'unknown' } },
+          moduleIamStatus: { overall: { status: 'ready' } },
           provisioningReadiness: {
             state: 'awaiting_activation',
             nextAction: { action: 'instance.status.activate' },
@@ -347,6 +347,7 @@ describe('Studio MCP tools', () => {
           authClientId: 'sva-studio-login',
           ...completeTenantCreateFields,
         },
+        moduleIds: ['news'],
       },
     });
 
@@ -363,6 +364,13 @@ describe('Studio MCP tools', () => {
       },
     });
     expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        path: '/api/v1/iam/instances',
+        body: expect.objectContaining({ moduleIds: ['news'] }),
+      })
+    );
     expect(request).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' })
     );

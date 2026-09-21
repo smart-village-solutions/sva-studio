@@ -50,7 +50,7 @@ export const reconcileInstanceIamRolesInternal = async (
     }
     const latestRun = detail.latestKeycloakProvisioningRun;
     const currentPlan = await withRegistryService((service) =>
-      service.planKeycloakProvisioning(instanceId)
+      service.planKeycloakProvisioning(instanceId, { forceLive: true })
     );
     const confirmedPlanFingerprint = latestRun?.steps.find(({ stepKey }) => stepKey === 'queued')
       ?.details.confirmedPlanFingerprint;
@@ -60,6 +60,7 @@ export const reconcileInstanceIamRolesInternal = async (
     if (
       latestRun?.overallStatus !== 'succeeded' ||
       currentPlan?.overallStatus !== 'ready' ||
+      currentPlan.steps.some((step) => step.action === 'create' || step.action === 'update') ||
       confirmedPlanFingerprint !== parsed.data.planFingerprint ||
       typeof confirmedRoleCatalogFingerprint !== 'string' ||
       !/^[a-f0-9]{64}$/u.test(confirmedRoleCatalogFingerprint)

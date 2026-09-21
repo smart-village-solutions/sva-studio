@@ -80,6 +80,7 @@ export const createInstanceSchema = z
     authRealm: authRealmSchema.optional(),
     authClientId: z.string().trim().min(1).optional(),
     tenantAdminClient: tenantAdminClientSchema,
+    moduleIds: z.array(z.string().trim().min(1)).max(100).optional(),
   })
   .superRefine((value, ctx) => {
     if (!value.tenantAdminBootstrap) {

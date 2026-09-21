@@ -349,6 +349,10 @@ const createDeps = (
     ],
   ]),
   pluginTenantLifecycleRegistry: new Map([['news', currentNewsLifecycle]]),
+  readProvisioningModuleReadiness: vi.fn(async () => ({
+    status: 'ready' as const,
+    evidence: {},
+  })),
   readPluginOidcClientRequirements: () => [],
   readKeycloakStateViaProvisioner: vi.fn(async (input) => ({
     realm: input.realmMode === 'new' ? null : { realm: input.authRealm },
@@ -860,6 +864,57 @@ describe('instance registry service facade', () => {
     expect(repository.persistPluginTenantLifecycleReconcileIntents).not.toHaveBeenCalled();
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'demo', status: 'requested' })
+    );
+  });
+
+  it('assigns requested create modules before capturing the automated provisioning snapshot', async () => {
+    const createdInstance = {
+      ...baseInstance,
+      parentDomain: 'dialog.kassel.de',
+      primaryHostname: 'demo.dialog.kassel.de',
+      assignedModules: [],
+    };
+    const assignedInstance = { ...createdInstance, assignedModules: ['news'] };
+    const repository = createRepository({
+      listInstances: vi.fn(async () => []),
+      getInstanceById: vi.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue(assignedInstance),
+      createInstance: vi.fn(async () => createdInstance),
+      listAssignedModules: vi.fn(async () => ['news']),
+      createProvisioningRun: vi.fn(async (input) => ({ ...latestRun, ...input })),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        isAutomatedTenantProvisioningEnabled: () => true,
+      })
+    );
+
+    await service.createProvisioningRequest({
+      ...completeCreateIdentity,
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'dialog.kassel.de',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio-login',
+      idempotencyKey: 'idem-create-modules',
+      moduleIds: ['news'],
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith(
+      'demo',
+      'news',
+      currentNewsLifecycle.contractRevision
+    );
+    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desiredSnapshot: expect.objectContaining({ assignedModules: ['news'] }),
+      })
+    );
+    expect(vi.mocked(repository.assignModule).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.createProvisioningRun).mock.invocationCallOrder[0] ?? 0
     );
   });
 
@@ -2160,14 +2215,22 @@ describe('instance registry service facade', () => {
   );
 
   it.each([
-    ['standard', false, ['news'], false, false],
-    ['kassel', true, ['news'], false, false],
-    ['moduleless', false, [], false, false],
-    ['kassel-disabled-runtime', false, ['news'], true, false],
-    ['live-keycloak-drift', false, ['news'], false, true],
+    ['standard', false, ['news'], false, false, false],
+    ['kassel', true, ['news'], false, false, false],
+    ['moduleless', false, [], false, false, false],
+    ['kassel-disabled-runtime', false, ['news'], true, false, false],
+    ['live-keycloak-drift', false, ['news'], false, true, false],
+    ['plugin-pending', false, ['news'], false, false, true],
   ] as const)(
     'activates the %s profile only with current successful postflight and IAM evidence',
-    async (profile, automated, assignedModules, hostReadinessMissing, liveKeycloakDrift) => {
+    async (
+      profile,
+      automated,
+      assignedModules,
+      hostReadinessMissing,
+      liveKeycloakDrift,
+      pluginPending
+    ) => {
       const suspendedInstance = {
         ...baseInstance,
         status: 'suspended' as const,
@@ -2271,6 +2334,10 @@ describe('instance registry service facade', () => {
           ...readyStatus,
           clientExists: liveKeycloakDrift ? false : readyStatus.clientExists,
         })),
+        readProvisioningModuleReadiness: vi.fn(async () => ({
+          status: pluginPending ? ('pending' as const) : ('ready' as const),
+          evidence: {},
+        })),
       });
       const service = createInstanceRegistryService(deps);
 
@@ -2311,6 +2378,20 @@ describe('instance registry service facade', () => {
             requestId: 'request-ready',
           })
         ).rejects.toThrow('activation_readiness_blocked:keycloak_live_postflight_not_ready');
+        expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+        return;
+      }
+
+      if (pluginPending) {
+        await expect(
+          service.changeStatus({
+            instanceId: 'demo',
+            nextStatus: 'active',
+            idempotencyKey: `idem-activate-ready-${profile}`,
+            actorId: 'actor-1',
+            requestId: 'request-ready',
+          })
+        ).rejects.toThrow('activation_readiness_blocked:plugin_readiness_not_ready');
         expect(repository.setInstanceStatus).not.toHaveBeenCalled();
         return;
       }
@@ -4001,6 +4082,56 @@ describe('instance registry service facade', () => {
 
     await expect(createGetKeycloakPreflightHandler(deps)('demo')).resolves.toEqual(preflight);
     await expect(createPlanKeycloakProvisioningHandler(deps)('demo')).resolves.toEqual(plan);
+  });
+
+  it('bypasses persisted plan snapshots for an explicit live postflight', async () => {
+    const persistedPlan = {
+      mode: 'new' as const,
+      overallStatus: 'ready' as const,
+      generatedAt: '2026-09-11T12:00:00.000Z',
+      driftSummary: 'Persistierter Stand.',
+      steps: [],
+    };
+    const livePlan = {
+      ...persistedPlan,
+      driftSummary: 'Live geprüft.',
+      steps: [{ stepKey: 'client', action: 'update', status: 'ready', details: {} }],
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => baseInstance),
+      getAuthClientSecretCiphertext: vi.fn(async () => 'cipher-auth-v2'),
+      getTenantAdminClientSecretCiphertext: vi.fn(async () => 'cipher-admin-v2'),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          ...latestRun,
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Final',
+              details: {
+                policyVersion: 3,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance, {
+                  authClientSecretCiphertext: 'cipher-auth-v2',
+                  tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
+                }),
+                plan: persistedPlan,
+              },
+            },
+          ],
+        },
+      ]),
+    });
+    const planKeycloakProvisioning = vi.fn(async () => livePlan);
+
+    await expect(
+      createPlanKeycloakProvisioningHandler(createDeps(repository, { planKeycloakProvisioning }))(
+        'demo',
+        { forceLive: true }
+      )
+    ).resolves.toEqual(livePlan);
+    expect(planKeycloakProvisioning).toHaveBeenCalledOnce();
   });
 
   it('invalidates an outdated imported-realm plan that would create a tenant admin', async () => {

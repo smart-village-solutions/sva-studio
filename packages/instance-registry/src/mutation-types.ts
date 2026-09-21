@@ -38,6 +38,7 @@ export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+  readonly moduleIds?: readonly string[];
 };
 
 export type RetryTenantProvisioningInput = InstanceRegistryMutationActor & {

@@ -134,7 +134,10 @@ export type InstanceRegistryService = {
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;
-  planKeycloakProvisioning(instanceId: string): Promise<KeycloakTenantPlan | null>;
+  planKeycloakProvisioning(
+    instanceId: string,
+    options?: { readonly forceLive?: boolean }
+  ): Promise<KeycloakTenantPlan | null>;
   executeKeycloakProvisioning(
     input: ExecuteInstanceKeycloakProvisioningInput
   ): Promise<KeycloakTenantProvisioningRun | null>;

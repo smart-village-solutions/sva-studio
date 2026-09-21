@@ -18,7 +18,11 @@ const state = vi.hoisted(() => ({
       ],
     },
   })),
-  plan: vi.fn(async () => ({ overallStatus: 'ready', fingerprint: 'a'.repeat(64) })),
+  plan: vi.fn(async () => ({
+    overallStatus: 'ready',
+    fingerprint: 'a'.repeat(64),
+    steps: [],
+  })),
 }));
 
 vi.mock('@sva/instance-registry/http-contracts', () => ({
@@ -71,6 +75,26 @@ describe('reconcileInstanceIamRolesInternal', () => {
     state.detail.mockClear();
     state.plan.mockClear();
     state.parseBody.mockClear();
+  });
+
+  it('requires a live mutation-free Keycloak postflight before changing roles', async () => {
+    state.plan.mockResolvedValueOnce({
+      overallStatus: 'ready',
+      fingerprint: 'a'.repeat(64),
+      steps: [{ action: 'update' }],
+    });
+    const { reconcileInstanceIamRolesInternal } = await import('./role-reconcile.js');
+
+    const response = await reconcileInstanceIamRolesInternal(
+      new Request('https://studio.example/api/v1/iam/instances/demo/tenant-iam/roles/reconcile', {
+        method: 'POST',
+      }),
+      { user: { id: 'service-account' } } as never
+    );
+
+    expect(response.status).toBe(409);
+    expect(state.plan).toHaveBeenCalledWith('demo', { forceLive: true });
+    expect(state.reconcile).not.toHaveBeenCalled();
   });
 
   it('returns a structured, redacted synchronization error when reconciliation fails', async () => {
@@ -149,7 +173,11 @@ describe('reconcileInstanceIamRolesInternal', () => {
   });
 
   it('accepts fresh no-drift postflight evidence with a new plan fingerprint', async () => {
-    state.plan.mockResolvedValueOnce({ overallStatus: 'ready', fingerprint: 'b'.repeat(64) });
+    state.plan.mockResolvedValueOnce({
+      overallStatus: 'ready',
+      fingerprint: 'b'.repeat(64),
+      steps: [],
+    });
     state.reconcile.mockResolvedValueOnce({ outcome: 'success' });
     const { reconcileInstanceIamRolesInternal } = await import('./role-reconcile.js');
 

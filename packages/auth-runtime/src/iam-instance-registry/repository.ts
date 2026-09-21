@@ -54,6 +54,14 @@ const readPersistablePluginTenantLifecycleRegistry = () =>
 const readReservedPluginOidcClientIds = (): readonly string[] =>
   readInstanceRegistryPluginOidcClientRequirements().map(({ clientId }) => clientId);
 
+const readConfiguredProvisioningModuleReadiness: NonNullable<
+  Parameters<typeof createInstanceRegistryRuntime>[0]['serviceDeps']['readProvisioningModuleReadiness']
+> = async (input) => {
+  const { readProvisioningModuleReadiness } =
+    await import('../plugin-tenant-lifecycle/read-model.js');
+  return readProvisioningModuleReadiness(input);
+};
+
 export const runConfiguredPluginTenantProvisioningSchedule = async (
   instanceId: string
 ): Promise<void> => {
@@ -143,6 +151,8 @@ const registryRuntime = createInstanceRegistryRuntime({
     revealSecret: revealField,
     loadWasteDataSourceRecord,
     saveWasteDataSourceRecord,
+    readProvisioningModuleReadiness: readConfiguredProvisioningModuleReadiness,
+    planKeycloakProvisioning: getWorkerKeycloakPlan,
     getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },

@@ -27,12 +27,14 @@ export const createProvisioningArtifacts = async (
   const payloadFingerprint = buildCreateInstancePayloadFingerprint(input);
   const pluginSnapshot =
     automationMode === 'kassel-traefik-file'
-      ? buildConfiguredTenantProvisioningPluginSnapshot(
-          deps,
-          (deps.readModuleActivationPolicySnapshot?.().modules ?? [])
-            .filter((module) => resolveTenantModuleEffectiveActivation(module))
-            .map(({ moduleId }) => moduleId)
-        )
+      ? buildConfiguredTenantProvisioningPluginSnapshot(deps, [
+          ...new Set([
+            ...instance.assignedModules,
+            ...(deps.readModuleActivationPolicySnapshot?.().modules ?? [])
+              .filter((module) => resolveTenantModuleEffectiveActivation(module))
+              .map(({ moduleId }) => moduleId),
+          ]),
+        ])
       : { lifecycles: [], oidcClients: [], activationPolicies: [] };
   const provisioningRun = await runInstanceRegistryStep('provisioning_run_insert', () =>
     repository.createProvisioningRun({
@@ -47,7 +49,12 @@ export const createProvisioningArtifacts = async (
           ...instance,
           assignedModules:
             automationMode === 'kassel-traefik-file'
-              ? pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId)
+              ? [
+                  ...new Set([
+                    ...instance.assignedModules,
+                    ...pluginSnapshot.lifecycles.map(({ pluginId }) => pluginId),
+                  ]),
+                ]
               : instance.assignedModules,
         },
         input,

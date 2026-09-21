@@ -34,6 +34,7 @@ export type CreateInstancePayloadFields = {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+  readonly moduleIds?: readonly string[];
 };
 
 export type ExecuteKeycloakProvisioningIntent = IamInstanceKeycloakProvisioningRun['intent'];

@@ -39,3 +39,39 @@ export const readConfiguredPluginTenantReadiness = async (
     .filter((model) => model !== null)
     .sort((left, right) => left.pluginId.localeCompare(right.pluginId));
 };
+
+export const readProvisioningModuleReadiness = async (input: {
+  instanceId: string;
+  lifecycles: readonly PluginTenantLifecycleRegistryEntry[];
+}) => {
+  if (input.lifecycles.length === 0) throw new Error('provisioning_plugin_snapshot_missing');
+  const models = await readConfiguredPluginTenantReadiness(input.instanceId, input.lifecycles);
+  if (models.length !== input.lifecycles.length) {
+    throw new Error('provisioning_plugin_activation_missing');
+  }
+  const evidence = {
+    modules: models.map((model) => ({
+      pluginId: model.pluginId,
+      status: model.status,
+      evidenceState: model.evidenceState,
+      revision: model.revision,
+      errorCode: model.error?.code,
+    })),
+  };
+  const terminalModel = models.find(
+    (model) =>
+      model.error?.retryKind === 'terminal' ||
+      (model.status === 'blocked' && model.error?.retryKind !== 'retryable')
+  );
+  if (terminalModel) {
+    return {
+      status: 'blocked' as const,
+      evidence,
+      errorCode: terminalModel.error?.code,
+    };
+  }
+  if (models.some((model) => model.status !== 'ready' || model.evidenceState !== 'valid')) {
+    return { status: 'pending' as const, evidence };
+  }
+  return { status: 'ready' as const, evidence };
+};

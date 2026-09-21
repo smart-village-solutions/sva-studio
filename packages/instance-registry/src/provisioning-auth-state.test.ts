@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { buildKeycloakStatus } from './provisioning-auth-evaluation.js';
+
 const loggerErrorMock = vi.hoisted(() => vi.fn());
+const loggerInfoMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: () => ({ error: loggerErrorMock }),
+  createSdkLogger: () => ({ error: loggerErrorMock, info: loggerInfoMock }),
 }));
 
 import {
@@ -25,6 +28,7 @@ const ssfClientRequirement = {
 
 beforeEach(() => {
   loggerErrorMock.mockReset();
+  loggerInfoMock.mockReset();
 });
 
 const createClientWithAlignedSsf = () =>
@@ -121,6 +125,82 @@ const createClient = (
 });
 
 describe('provisioning-auth-state', () => {
+  it('retains tenant-admin ownership through a managed-profile write and immediate readback without a password', async () => {
+    const managedAttributes = new Set<string>();
+    let user: Awaited<ReturnType<KeycloakProvisioningClient['findUserByUsername']>> = null;
+    let roles: readonly string[] = [];
+    const client = createClient({
+      ensureAdminOnlyUserProfileAttributes: vi.fn(async (attributes) => {
+        for (const attribute of attributes) managedAttributes.add(attribute.name);
+      }),
+      createUser: vi.fn(async (input) => {
+        // Keycloak's default profile policy ignores undeclared attributes.
+        user = {
+          ...input,
+          id: 'created-admin',
+          attributes: Object.fromEntries(
+            Object.entries(input.attributes ?? {}).filter(([name]) => managedAttributes.has(name))
+          ),
+        };
+        return { externalId: user.id };
+      }),
+      findUserByUsername: vi.fn(async () => user),
+      syncRoles: vi.fn(async (_id, assignedRoles) => { roles = assignedRoles; }),
+      listUserRoleNames: vi.fn(async () => roles),
+    });
+    const factory = vi.fn(() => client);
+    const input = {
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'new' as const,
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: false,
+      tenantAdminBootstrap: {
+        username: 'bootstrap-admin',
+        email: 'bootstrap@example.org',
+        firstName: 'Initial',
+        lastName: 'Administrator',
+      },
+    };
+
+    await createProvisionInstanceAuthArtifacts(factory)(input);
+    const state = await createReadKeycloakState(factory)(input);
+
+    expect(state.tenantAdminStatus).toEqual({
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+    });
+    expect(buildKeycloakStatus({ ...input, state })).toMatchObject({
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+    });
+    expect(client.syncRoles).toHaveBeenCalledWith('created-admin', ['system_admin']);
+    expect(client.setUserPassword).not.toHaveBeenCalled();
+    expect(factory.mock.calls).toEqual([['demo'], ['demo']]);
+    expect(loggerInfoMock.mock.calls.map(([event, context]) => [event, context.result])).toEqual([
+      ['tenant_admin_bootstrap_checkpoint', 'started'],
+      ['tenant_admin_bootstrap_checkpoint', 'user_missing'],
+      ['tenant_admin_bootstrap_checkpoint', 'user_created'],
+      ['tenant_admin_bootstrap_checkpoint', 'roles_synced'],
+      ['tenant_admin_bootstrap_checkpoint', 'completed'],
+      ['tenant_admin_readback', undefined],
+    ]);
+    expect(loggerInfoMock).toHaveBeenLastCalledWith('tenant_admin_readback', {
+      operation: 'read_tenant_admin_status',
+      instance_id: 'demo',
+      bootstrap_configured: true,
+      user_found: true,
+      system_admin_assigned: true,
+      ownership: 'owned',
+    });
+    const logs = JSON.stringify(loggerInfoMock.mock.calls);
+    for (const value of Object.values(input.tenantAdminBootstrap)) {
+      expect(logs).not.toContain(value);
+    }
+    expect(logs).not.toContain('created-admin');
+  });
+
   it('reads Keycloak state through an injected provisioning client', async () => {
     const client = createClient();
     const readState = createReadKeycloakState(() => client);
@@ -238,6 +318,9 @@ describe('provisioning-auth-state', () => {
       { name: 'instanceId', multivalued: false },
       { name: 'mainserverUserApplicationId', multivalued: false },
       { name: 'mainserverUserApplicationSecret', multivalued: false },
+      { name: 'managed_by', multivalued: false },
+      { name: 'instance_id', multivalued: false },
+      { name: 'artifact_key', multivalued: false },
     ]);
     expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith({
       clientId: 'sva-studio',

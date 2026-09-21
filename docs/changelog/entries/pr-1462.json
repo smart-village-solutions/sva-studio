@@ -1,0 +1,4 @@
+{
+  "prNumber": 1462,
+  "body": "Initialen Administrator neuer Instanzen zuverlässig erkennen\n\n- Neue Nutzer-Datenbanken erhalten die erforderlichen Zuordnungsmerkmale für den initialen Administrator. Dadurch wird ein korrekt angelegter Administrator nicht wegen fehlender Merkmale als abwesend bewertet.\n- Zusätzliche Diagnosemeldungen erleichtern die Fehlersuche, ohne persönliche Profildaten auszugeben."
+}

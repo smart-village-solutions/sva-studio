@@ -81,7 +81,7 @@ folgende read-only Inventur für die Zieldatenbank null Zeilen liefern:
 SELECT id, instance_id, status, step_key
 FROM iam.instance_provisioning_runs
 WHERE operation = 'create'
-  AND snapshot_version = '2.0'
+  AND snapshot_version IN ('2.0', '3.0')
   AND completed_at IS NULL
   AND status IN ('requested', 'provisioning', 'validated');
 ```

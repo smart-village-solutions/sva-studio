@@ -292,3 +292,7 @@
       akzeptieren, während neue Tenants ein vollständiges Profil benötigen.
 - [x] 11.18 Im MCP-Prozess innerhalb von `create` akzeptierte `moduleIds`
       erhalten und im gesamten Create-/Fallback-Pfad konsistent verwenden.
+- [x] 11.19 Das verpflichtende Rollback-Inventar auf alle nichtterminalen
+      Provisioning-Snapshots `2.0` und `3.0` erweitern.
+- [x] 11.20 Den effektiven MCP-Idempotency-Key auch dann zurückgeben, wenn die
+      Provisioning-Antwort keine eindeutige Run-ID enthält.

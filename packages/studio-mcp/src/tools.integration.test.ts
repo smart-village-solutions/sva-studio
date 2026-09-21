@@ -511,6 +511,46 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('returns the generated create key when provisioning yields no run id', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { fingerprint: confirmedPlanFingerprint, steps: [] } })
+      .mockResolvedValueOnce({ data: {} });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        planFingerprint: confirmedPlanFingerprint,
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'example.org',
+          realmMode: 'new',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'blocked',
+        currentStep: 'keycloak_provisioning',
+        idempotencyKey: expect.any(String),
+      },
+    });
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('rejects a stale confirmed plan while preserving completed registry progress', async () => {
     const request = vi
       .fn()

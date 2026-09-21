@@ -231,6 +231,10 @@ bewahren bereits persistierte partielle Tenant-Admin-Profile, ohne die
 vollständige Profilpflicht bei der Neuanlage zu lockern. Der MCP-Prozess nutzt
 verschachtelte `create.moduleIds` auch dann, wenn das optionale Top-Level-Feld
 nicht gesetzt ist.
+Das Rollback-Inventar stoppt nun auch bei nichtterminalen `3.0`-Läufen. Der
+MCP-Prozess gibt den effektiven Idempotency-Key in allen resumierbaren
+nichtterminalen Ergebnissen zurück, einschließlich einer fehlenden Run-ID nach
+bereits ausgeführter Provisioning-Mutation.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

@@ -30,7 +30,7 @@ const SERVER_ACTIONS: Readonly<
   'instance.secret.rotate': 'rotate_client_secret',
   'instance.provisioning.retry': 'retry_tenant_provisioning',
   'instance.tenant-iam.probe': 'probeTenantIamAccess',
-  'instance.tenant-iam.reconcile': 'reconcileKeycloak',
+  'instance.tenant-iam.reconcile': 'reconcileTenantIamRoles',
   'instance.status.activate': 'activate_instance',
 };
 

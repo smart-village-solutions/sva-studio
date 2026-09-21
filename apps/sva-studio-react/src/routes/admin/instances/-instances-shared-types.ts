@@ -61,6 +61,7 @@ export type DetailWorkflowAction =
   | 'retry_tenant_provisioning'
   | 'rotate_client_secret'
   | 'probeTenantIamAccess'
+  | 'reconcileTenantIamRoles'
   | 'reconcileKeycloak';
 
 export type PrimaryDetailAction = {

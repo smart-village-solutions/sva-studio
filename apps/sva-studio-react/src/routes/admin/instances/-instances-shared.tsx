@@ -181,6 +181,8 @@ export const getOperationsActionLabel = (action: OperationsDetailAction): string
       return t('admin.instances.actions.probeTenantIamAccess');
     case 'reconcileKeycloak':
       return t('admin.instances.actions.reconcileKeycloak');
+    case 'reconcileTenantIamRoles':
+      return t('admin.instances.actions.reconcileTenantIamRoles');
   }
 };
 

@@ -63,6 +63,8 @@ export const getDetailActionLabel = (action: DetailWorkflowAction) => {
       return t('admin.instances.actions.probeTenantIamAccess');
     case 'reconcileKeycloak':
       return t('admin.instances.actions.reconcileKeycloak');
+    case 'reconcileTenantIamRoles':
+      return t('admin.instances.actions.reconcileTenantIamRoles');
   }
 };
 

@@ -219,6 +219,7 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
   probeTenantIamAccess: vi.fn().mockResolvedValue(true),
   reconcileKeycloak: vi.fn().mockResolvedValue(true),
+  reconcileTenantIamRoles: vi.fn().mockResolvedValue(true),
   activateInstance: vi.fn().mockResolvedValue(true),
   suspendInstance: vi.fn().mockResolvedValue(true),
   archiveInstance: vi.fn().mockResolvedValue(true),

@@ -60,7 +60,6 @@ export const reconcileInstanceIamRolesInternal = async (
     if (
       latestRun?.overallStatus !== 'succeeded' ||
       currentPlan?.overallStatus !== 'ready' ||
-      currentPlan.fingerprint !== parsed.data.planFingerprint ||
       confirmedPlanFingerprint !== parsed.data.planFingerprint ||
       typeof confirmedRoleCatalogFingerprint !== 'string' ||
       !/^[a-f0-9]{64}$/u.test(confirmedRoleCatalogFingerprint)

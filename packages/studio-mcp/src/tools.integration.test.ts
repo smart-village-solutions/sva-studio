@@ -171,6 +171,8 @@ describe('Studio MCP tools', () => {
     const request = vi
       .fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { fingerprint: confirmedPlanFingerprint, steps: [] } });
     const server = createStudioMcpServer({ request }, config);
     const client = new Client({ name: 'test-client', version: '1' });
@@ -204,10 +206,13 @@ describe('Studio MCP tools', () => {
         nextAction: { actionId: 'instance.keycloak.plan.confirm' },
       },
     });
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledTimes(4);
     expect(request).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/plan' })
+    );
+    expect(request.mock.calls.map(([value]) => value.path)).not.toContain(
+      '/api/v1/iam/instances/demo/keycloak/execute'
     );
     await Promise.all([client.close(), server.close()]);
   });
@@ -231,11 +236,11 @@ describe('Studio MCP tools', () => {
       const request = vi
         .fn()
         .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+        .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+        .mockResolvedValueOnce({ data: { seeded: true } })
         .mockResolvedValueOnce({ data: { fingerprint: confirmedPlanFingerprint, steps: [] } })
         .mockResolvedValueOnce({ data: { id: 'run-1' } })
         .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
-        .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
-        .mockResolvedValueOnce({ data: { seeded: true } })
         .mockResolvedValueOnce({ data: { outcome: 'success' } })
         .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
         .mockResolvedValueOnce({
@@ -285,7 +290,7 @@ describe('Studio MCP tools', () => {
         },
       });
       expect(request).toHaveBeenNthCalledWith(
-        3,
+        5,
         expect.objectContaining({
           path: '/api/v1/iam/instances/demo/keycloak/execute',
           body: { intent: 'provision', planFingerprint: confirmedPlanFingerprint },
@@ -445,6 +450,8 @@ describe('Studio MCP tools', () => {
     const request = vi
       .fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { fingerprint: 'b'.repeat(64), steps: [] } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo' } });
     const server = createStudioMcpServer({ request }, config);
@@ -489,6 +496,8 @@ describe('Studio MCP tools', () => {
     const request = vi
       .fn()
       .mockResolvedValueOnce({ data: { instanceId: 'demo' } })
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockRejectedValueOnce(new StudioApiError(503, { code: 'keycloak_unavailable' }, 'req-plan'));
     const server = createStudioMcpServer({ request }, config);
     const client = new Client({ name: 'test-client', version: '1' });
@@ -622,11 +631,11 @@ describe('Studio MCP tools', () => {
   it('adapts modules and only reports completion for an active, ready instance', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { assigned: true } })
       .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { bootstrapped: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({
@@ -660,11 +669,11 @@ describe('Studio MCP tools', () => {
       data: { completed: true, status: 'completed' },
     });
     expect(request).toHaveBeenNthCalledWith(
-      3,
+      2,
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/assign' })
     );
     expect(request).toHaveBeenNthCalledWith(
-      5,
+      4,
       expect.objectContaining({
         path: '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure',
       })
@@ -681,12 +690,12 @@ describe('Studio MCP tools', () => {
   it('uses reconcile and the resulting run for repairs', async () => {
     const request = vi
       .fn()
+      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
+      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { fingerprint: confirmedPlanFingerprint, steps: [] } })
       .mockResolvedValueOnce({ data: { overallStatus: 'planned' } })
       .mockResolvedValueOnce({ data: { latestKeycloakProvisioningRun: { id: 'run-1' } } })
       .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
-      .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
-      .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({
@@ -713,11 +722,11 @@ describe('Studio MCP tools', () => {
       data: { status: 'awaiting_human_action' },
     });
     expect(request).toHaveBeenNthCalledWith(
-      1,
+      3,
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/plan' })
     );
     expect(request).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.objectContaining({
         path: '/api/v1/iam/instances/demo/keycloak/reconcile',
         body: { planFingerprint: confirmedPlanFingerprint },
@@ -729,9 +738,9 @@ describe('Studio MCP tools', () => {
   it('blocks completion when a present module-IAM status is malformed', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
       .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({
@@ -769,9 +778,9 @@ describe('Studio MCP tools', () => {
   it('blocks the process when tenant role reconciliation is not fully successful', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({
         data: { outcome: 'partial_failure', requiresManualActionCount: 1 },
       });
@@ -809,9 +818,9 @@ describe('Studio MCP tools', () => {
   it('does not require module IAM readiness when no modules are assigned', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: [] } })
       .mockResolvedValueOnce({ data: { seeded: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({
@@ -843,7 +852,7 @@ describe('Studio MCP tools', () => {
       data: { completed: true, status: 'completed' },
     });
     expect(request).toHaveBeenNthCalledWith(
-      3,
+      2,
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/seed-iam-baseline' })
     );
     await Promise.all([client.close(), server.close()]);
@@ -852,10 +861,10 @@ describe('Studio MCP tools', () => {
   it('repeats module IAM steps after modules were assigned by an earlier attempt', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { instanceId: 'demo', assignedModules: ['news'] } })
       .mockResolvedValueOnce({ data: { seeded: true } })
       .mockResolvedValueOnce({ data: { bootstrapped: true } })
+      .mockResolvedValueOnce({ data: { id: 'run-1', overallStatus: 'succeeded' } })
       .mockResolvedValueOnce({ data: { outcome: 'success' } })
       .mockResolvedValueOnce({ data: { overall: { status: 'ready' } } })
       .mockResolvedValueOnce({
@@ -888,11 +897,11 @@ describe('Studio MCP tools', () => {
       data: { completed: true, status: 'completed' },
     });
     expect(request).toHaveBeenNthCalledWith(
-      3,
+      2,
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/modules/seed-iam-baseline' })
     );
     expect(request).toHaveBeenNthCalledWith(
-      4,
+      3,
       expect.objectContaining({
         path: '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure',
         body: { moduleIds: ['news'] },

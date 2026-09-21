@@ -455,6 +455,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           planFingerprint: selectedInstance.keycloakPlan.fingerprint,
         });
         return;
+      case 'reconcileTenantIamRoles':
+        if (!selectedInstance?.keycloakPlan?.fingerprint) return;
+        await instancesApi.reconcileTenantIamRoles(selectedInstance.instanceId, {
+          planFingerprint: selectedInstance.keycloakPlan.fingerprint,
+        });
+        return;
       case 'rotate_client_secret':
         await executeProvisioning('rotate_client_secret');
         return;

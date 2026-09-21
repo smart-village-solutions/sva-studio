@@ -335,6 +335,19 @@ export const runStudioInstanceProcess = async (
       return evaluateDoctor({ detail, instanceId: input.instanceId, completedSteps, requestId });
     }
 
+    currentStep = 'modules_and_iam';
+    if (
+      await assignMissingModules({
+        client,
+        basePath,
+        moduleIds: input.moduleIds ?? [],
+        requestId,
+        idempotencyKey,
+      })
+    ) {
+      completedSteps.push('modules_and_iam_ready');
+    }
+
     let runId: string | undefined = input.keycloakRunId;
     if (!runId) {
       currentStep = 'keycloak_plan';
@@ -464,19 +477,6 @@ export const runStudioInstanceProcess = async (
         requestId,
         idempotencyKey,
       };
-    }
-
-    currentStep = 'modules_and_iam';
-    if (
-      await assignMissingModules({
-        client,
-        basePath,
-        moduleIds: input.moduleIds ?? [],
-        requestId,
-        idempotencyKey,
-      })
-    ) {
-      completedSteps.push('modules_and_iam_ready');
     }
 
     currentStep = 'tenant_iam_roles_reconcile';

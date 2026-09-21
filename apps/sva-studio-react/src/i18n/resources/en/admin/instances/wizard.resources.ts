@@ -58,6 +58,43 @@ export const wizardInstancesAdminENResources = {
     followUpTitle: 'Next operational step',
     followUpSummary:
       'After saving, continue on the detail page with technical checks and Keycloak provisioning.',
+    findings: {
+      titles: {
+        platform_access: 'Platform access',
+        keycloak_admin_access: 'Technical Keycloak access',
+        realm_mode: 'Realm mode',
+        tenant_secret: 'Tenant client secret',
+        tenant_admin_client: 'Tenant admin client',
+        tenant_admin_profile: 'Tenant admin profile',
+        realm_ownership: 'Studio ownership of realm artifacts',
+        registry_instance_id: 'Instance ID',
+        registry_hostname: 'Primary hostname',
+        realm_selection: 'Realm selection',
+        realm_create_capability: 'Realm creation',
+        unknown: 'Technical readiness',
+      },
+      status: {
+        ready: 'The server-side check is ready.',
+        warning: 'The server-side check requires attention during provisioning.',
+        blocked: 'The server-side check blocks the next step.',
+        unknown: 'This server-side check does not have a conclusive result yet.',
+      },
+    },
+    capabilityReasons: {
+      worker_heartbeat_unavailable: 'Check the worker state and pending jobs.',
+      durable_queue_available: 'The durable provisioning job can be stored.',
+      callback_readiness_unavailable: 'Use the recovery path if processing does not start.',
+      provisioner_adapter_available: 'The provisioning adapter is available.',
+      provisioner_worker_readiness_unavailable:
+        'Check the worker configuration and provisioner connection.',
+      ingress_automation_available: 'Ingress publication and probing are available.',
+      ingress_worker_readiness_unavailable: 'Check the ingress worker and probe for this profile.',
+      ingress_automation_not_required: 'Automated ingress is not required for this profile.',
+      plugin_lifecycle_registry_available: 'Registered plugin lifecycles are available.',
+      plugin_lifecycle_registry_unavailable:
+        'Check the plugin lifecycle registry and worker configuration.',
+      unknown: 'Check this technical capability in operations monitoring.',
+    },
   },
   realmCatalog: {
     placeholder: 'Select user database',
@@ -70,6 +107,11 @@ export const wizardInstancesAdminENResources = {
     ready: 'The user database is ready.',
     auto_completable: 'Studio can add the missing owned artifacts.',
     manual_resolution_required: 'Manual resolution is required before creation.',
+  },
+  realmSuitabilityRemediation: {
+    ready: 'No realm follow-up is required; check the remaining prerequisites.',
+    auto_completable: 'Confirm the displayed plan and then execute it.',
+    manual_resolution_required: 'Resolve the reported creation blocker and check again.',
   },
   capabilities: {
     worker: 'Provisioning worker',

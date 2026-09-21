@@ -584,6 +584,10 @@ export type ReconcileInstanceKeycloakPayload = {
   readonly tenantAdminTemporaryPassword?: string;
 };
 
+export type ReconcileTenantIamRolesPayload = {
+  readonly planFingerprint: string;
+};
+
 export type ExecuteInstanceKeycloakProvisioningPayload = {
   readonly intent:
     'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
@@ -1350,6 +1354,16 @@ export const reconcileInstanceKeycloak = async (
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
   postJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>, ReconcileInstanceKeycloakPayload>(
     `/api/v1/iam/instances/${instanceId}/keycloak/reconcile`,
+    payload,
+    true
+  );
+
+export const reconcileTenantIamRoles = async (
+  instanceId: string,
+  payload: ReconcileTenantIamRolesPayload
+): Promise<ApiItemResponse<unknown>> =>
+  postJson<ApiItemResponse<unknown>, ReconcileTenantIamRolesPayload>(
+    `/api/v1/iam/instances/${instanceId}/tenant-iam/roles/reconcile`,
     payload,
     true
   );

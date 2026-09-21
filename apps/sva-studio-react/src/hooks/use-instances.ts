@@ -20,6 +20,7 @@ import {
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileInstanceKeycloak,
+  reconcileTenantIamRoles,
   retryInstanceProvisioning,
   rotateInstanceSecret,
   revokeInstanceModule,
@@ -29,6 +30,7 @@ import {
   type CreateInstancePayload,
   type ExecuteInstanceKeycloakProvisioningPayload,
   type ReconcileInstanceKeycloakPayload,
+  type ReconcileTenantIamRolesPayload,
   type UpdateInstancePayload,
 } from '../lib/iam-api';
 import {
@@ -627,6 +629,12 @@ export const useInstances = () => {
         },
         instanceId,
         'reconcile_instance_keycloak'
+      ),
+    reconcileTenantIamRoles: async (instanceId: string, payload: ReconcileTenantIamRolesPayload) =>
+      mutate(
+        async () => reconcileTenantIamRoles(instanceId, payload),
+        instanceId,
+        'reconcile_tenant_iam_roles'
       ),
     assignModule: async (instanceId: string, moduleId: string) =>
       mutate(

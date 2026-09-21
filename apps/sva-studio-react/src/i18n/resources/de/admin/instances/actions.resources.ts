@@ -14,6 +14,7 @@ export const actionsInstancesAdminDEResources = {
   provisionAdminClient: 'Tenant-Admin-Client bereitstellen',
   probeTenantIamAccess: 'Tenant-IAM-Rechte probeweise prüfen',
   reconcileKeycloak: 'Realm anwenden',
+  reconcileTenantIamRoles: 'Tenant-IAM-Rollen abgleichen',
   resetTenantAdmin: 'Tenant-Admin neu setzen',
   rotateClientSecret: 'Client-Secret rotieren',
   loadRun: 'Run laden',

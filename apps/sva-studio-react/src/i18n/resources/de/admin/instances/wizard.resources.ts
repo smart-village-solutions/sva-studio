@@ -60,6 +60,44 @@ export const wizardInstancesAdminDEResources = {
     followUpTitle: 'Nächster Betriebs-Schritt',
     followUpSummary:
       'Nach dem Speichern folgt im Detail die technische Prüfung und das Keycloak-Provisioning.',
+    findings: {
+      titles: {
+        platform_access: 'Plattformzugriff',
+        keycloak_admin_access: 'Technischer Keycloak-Zugriff',
+        realm_mode: 'Realm-Modus',
+        tenant_secret: 'Tenant-Client-Secret',
+        tenant_admin_client: 'Tenant-Admin-Client',
+        tenant_admin_profile: 'Tenant-Admin-Profil',
+        realm_ownership: 'Studio-Eigentum der Realm-Artefakte',
+        registry_instance_id: 'Instanz-ID',
+        registry_hostname: 'Primärer Hostname',
+        realm_selection: 'Realm-Auswahl',
+        realm_create_capability: 'Realm-Erstellung',
+        unknown: 'Technische Bereitschaft',
+      },
+      status: {
+        ready: 'Die serverseitige Prüfung ist bereit.',
+        warning: 'Die serverseitige Prüfung erfordert beim Provisioning Aufmerksamkeit.',
+        blocked: 'Die serverseitige Prüfung blockiert den nächsten Schritt.',
+        unknown: 'Für diese serverseitige Prüfung liegt noch kein eindeutiges Ergebnis vor.',
+      },
+    },
+    capabilityReasons: {
+      worker_heartbeat_unavailable: 'Den Workerzustand und ausstehende Aufträge prüfen.',
+      durable_queue_available: 'Der dauerhafte Provisioning-Auftrag kann gespeichert werden.',
+      callback_readiness_unavailable: 'Bei ausbleibender Verarbeitung den Recovery-Pfad prüfen.',
+      provisioner_adapter_available: 'Der Provisioning-Adapter ist verfügbar.',
+      provisioner_worker_readiness_unavailable:
+        'Worker-Konfiguration und Provisioner-Verbindung prüfen.',
+      ingress_automation_available: 'Ingress-Publikation und Probe sind verfügbar.',
+      ingress_worker_readiness_unavailable: 'Ingress-Worker und Probe für dieses Profil prüfen.',
+      ingress_automation_not_required:
+        'Für dieses Profil ist kein automatisiertes Ingress erforderlich.',
+      plugin_lifecycle_registry_available: 'Die registrierten Plugin-Lifecycles sind verfügbar.',
+      plugin_lifecycle_registry_unavailable:
+        'Plugin-Lifecycle-Registry und Worker-Konfiguration prüfen.',
+      unknown: 'Die technische Fähigkeit muss im Betriebsmonitoring geprüft werden.',
+    },
   },
   realmCatalog: {
     placeholder: 'Nutzer-Datenbank auswählen',
@@ -72,6 +110,11 @@ export const wizardInstancesAdminDEResources = {
     ready: 'Die Nutzer-Datenbank ist bereit.',
     auto_completable: 'Studio kann die fehlenden eigenen Artefakte ergänzen.',
     manual_resolution_required: 'Vor der Anlage ist eine manuelle Klärung erforderlich.',
+  },
+  realmSuitabilityRemediation: {
+    ready: 'Keine Realm-Nacharbeit erforderlich; die übrigen Voraussetzungen prüfen.',
+    auto_completable: 'Den angezeigten Plan bestätigen und anschließend ausführen.',
+    manual_resolution_required: 'Den ausgewiesenen Anlageblocker beheben und erneut prüfen.',
   },
   capabilities: {
     worker: 'Provisioning-Worker',

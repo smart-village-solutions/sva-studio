@@ -130,6 +130,7 @@ describe('instance detail split helpers', () => {
       'rotate_client_secret',
       'probeTenantIamAccess',
       'reconcileKeycloak',
+      'reconcileTenantIamRoles',
     ] as const) {
       expect(getDetailActionLabel(action)).toEqual(expect.any(String));
     }
@@ -422,7 +423,7 @@ describe('instance detail split helpers', () => {
         }),
         null
       ).primaryAction.action
-    ).toBe('reconcileKeycloak');
+    ).toBe('reconcileTenantIamRoles');
   });
 
   it('maps status guidance and keycloak entries for empty and populated detail states', () => {

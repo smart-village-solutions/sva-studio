@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { setActiveLocale } from '../../../i18n';
 import { InstanceCreatePage } from './-instance-create-page';
 
 const useInstancesMock = vi.fn();
@@ -88,6 +89,7 @@ describe('InstanceCreatePage', () => {
   let parentDomainMeta: HTMLMetaElement;
 
   beforeEach(() => {
+    setActiveLocale('de');
     useInstancesMock.mockReset();
     navigateMock.mockReset();
     getDraftReadinessMock.mockReset().mockResolvedValue({ data: readyDraft });
@@ -101,6 +103,7 @@ describe('InstanceCreatePage', () => {
   });
 
   afterEach(() => {
+    setActiveLocale('de');
     parentDomainMeta.remove();
     cleanup();
   });
@@ -233,7 +236,11 @@ describe('InstanceCreatePage', () => {
     fillAdministrator();
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
-    await waitFor(() => expect(screen.getByText('Der Realm ist bereits zugeordnet.')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Die serverseitige Prüfung blockiert den nächsten Schritt.')
+      ).toBeTruthy()
+    );
     expect(screen.getByText('Vor der Anlage zu beheben')).toBeTruthy();
     expect(
       (screen.getByRole('button', { name: 'Instanz anlegen' }) as HTMLButtonElement).disabled
@@ -302,12 +309,61 @@ describe('InstanceCreatePage', () => {
       ],
     };
     await act(async () => resolveSecond({ data: currentBlocker }));
-    await waitFor(() => expect(screen.getByText('Aktueller Entwurf ist blockiert.')).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Die serverseitige Prüfung blockiert den nächsten Schritt.')
+      ).toBeTruthy()
+    );
 
     await act(async () => resolveFirst({ data: readyDraft }));
-    expect(screen.getByText('Aktueller Entwurf ist blockiert.')).toBeTruthy();
+    expect(
+      screen.getByText('Die serverseitige Prüfung blockiert den nächsten Schritt.')
+    ).toBeTruthy();
     expect(
       (screen.getByRole('button', { name: 'Instanz anlegen' }) as HTMLButtonElement).disabled
     ).toBe(true);
+  });
+
+  it('renders authoritative readiness findings from locale keys instead of server prose', async () => {
+    setActiveLocale('en');
+    getDraftReadinessMock.mockResolvedValue({
+      data: {
+        ...readyDraft,
+        createBlockers: [
+          {
+            checkKey: 'realm_selection',
+            title: 'Feste deutsche Serverüberschrift',
+            status: 'blocked',
+            summary: 'Fester deutscher Servertext',
+            details: {},
+          },
+        ],
+      },
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fireEvent.change(document.querySelector('#instance-id') as HTMLInputElement, {
+      target: { value: 'demo' },
+    });
+    fireEvent.change(document.querySelector('#instance-display-name') as HTMLInputElement, {
+      target: { value: 'Demo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    for (const [selector, value] of [
+      ['#instance-admin-username', 'tenant-admin'],
+      ['#instance-admin-email', 'tenant-admin@example.org'],
+      ['#instance-admin-first-name', 'Tenant'],
+      ['#instance-admin-last-name', 'Admin'],
+    ] as const) {
+      fireEvent.change(document.querySelector(selector) as HTMLInputElement, { target: { value } });
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    await waitFor(() => expect(screen.getByText('Realm selection')).toBeTruthy());
+    expect(screen.getByText('The server-side check blocks the next step.')).toBeTruthy();
+    expect(screen.queryByText('Feste deutsche Serverüberschrift')).toBeNull();
+    expect(screen.queryByText('Fester deutscher Servertext')).toBeNull();
   });
 });

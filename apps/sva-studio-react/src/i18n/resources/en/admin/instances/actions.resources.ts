@@ -14,6 +14,7 @@ export const actionsInstancesAdminENResources = {
   provisionAdminClient: 'Provision tenant admin client',
   probeTenantIamAccess: 'Probe tenant IAM access',
   reconcileKeycloak: 'Apply realm',
+  reconcileTenantIamRoles: 'Reconcile tenant IAM roles',
   resetTenantAdmin: 'Reset tenant admin',
   rotateClientSecret: 'Rotate client secret',
   loadRun: 'Load run',

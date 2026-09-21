@@ -40,6 +40,44 @@ import type { CreateFormValues, CreateWizardStepKey } from './-instances-shared-
 import type { IamInstanceDraftReadiness, IamInstanceRealmCatalogEntry } from '@sva/core';
 
 const stepOrder = CREATE_WIZARD_STEPS.map((step) => step.key);
+const readinessFindingKeys = new Set([
+  'platform_access',
+  'keycloak_admin_access',
+  'realm_mode',
+  'tenant_secret',
+  'tenant_admin_client',
+  'tenant_admin_profile',
+  'realm_ownership',
+  'registry_instance_id',
+  'registry_hostname',
+  'realm_selection',
+  'realm_create_capability',
+]);
+const readinessCapabilityReasonCodes = new Set([
+  'worker_heartbeat_unavailable',
+  'durable_queue_available',
+  'callback_readiness_unavailable',
+  'provisioner_adapter_available',
+  'provisioner_worker_readiness_unavailable',
+  'ingress_automation_available',
+  'ingress_worker_readiness_unavailable',
+  'ingress_automation_not_required',
+  'plugin_lifecycle_registry_available',
+  'plugin_lifecycle_registry_unavailable',
+]);
+
+const getReadinessFindingTitle = (checkKey: string) =>
+  t(
+    `admin.instances.wizard.readiness.findings.titles.${readinessFindingKeys.has(checkKey) ? checkKey : 'unknown'}`
+  );
+const getReadinessFindingSummary = (status: string) =>
+  t(
+    `admin.instances.wizard.readiness.findings.status.${['ready', 'warning', 'blocked'].includes(status) ? status : 'unknown'}`
+  );
+const getReadinessCapabilitySummary = (reasonCode: string) =>
+  t(
+    `admin.instances.wizard.readiness.capabilityReasons.${readinessCapabilityReasonCodes.has(reasonCode) ? reasonCode : 'unknown'}`
+  );
 
 const FormLabelWithHelp = ({
   htmlFor,
@@ -753,7 +791,7 @@ export const InstanceCreatePage = () => {
                               capability.status === 'blocked'
                                 ? ('blocked' as const)
                                 : ('warning' as const),
-                            summary: `${capability.summary} ${capability.remediation}`,
+                            summary: getReadinessCapabilitySummary(capability.reasonCode),
                             details: { reasonCode: capability.reasonCode },
                           })),
                       ],
@@ -782,9 +820,11 @@ export const InstanceCreatePage = () => {
                             className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
                           >
                             <div>
-                              <div className="font-medium text-foreground">{finding.title}</div>
+                              <div className="font-medium text-foreground">
+                                {getReadinessFindingTitle(finding.checkKey)}
+                              </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {finding.summary}
+                                {getReadinessFindingSummary(finding.status)}
                               </p>
                             </div>
                             <WorkflowStatusBadge
@@ -805,7 +845,9 @@ export const InstanceCreatePage = () => {
                         {t(
                           `admin.instances.wizard.realmSuitability.${draftReadiness.realmSuitability.classification}`
                         )}{' '}
-                        {draftReadiness.realmSuitability.remediation}
+                        {t(
+                          `admin.instances.wizard.realmSuitabilityRemediation.${draftReadiness.realmSuitability.classification}`
+                        )}
                       </AlertDescription>
                     </Alert>
                   ) : null}

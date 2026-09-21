@@ -72,6 +72,7 @@ import {
   probeTenantIamAccess,
   reconcileRoles,
   reconcileInstanceKeycloak,
+  reconcileTenantIamRoles,
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
@@ -1356,6 +1357,27 @@ describe('iam-api Keycloak role helpers', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/iam/keycloak-roles',
       expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
+  it('uses the dedicated tenant IAM role reconciliation endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { outcome: 'success' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-role-reconcile' });
+
+    await reconcileTenantIamRoles('demo', { planFingerprint: 'a'.repeat(64) });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/instances/demo/tenant-iam/roles/reconcile',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ planFingerprint: 'a'.repeat(64) }),
+      })
     );
   });
 });

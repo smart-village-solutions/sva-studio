@@ -8,6 +8,28 @@ describe('SearchableSelect', () => {
     cleanup();
   });
 
+  it('can use an external visible label while retaining its accessible name', () => {
+    render(
+      <div>
+        <label htmlFor="organization-select">Organisation</label>
+        <SearchableSelect
+          id="organization-select"
+          label="Organisation"
+          showLabel={false}
+          value=""
+          placeholder="Bitte wählen"
+          searchPlaceholder="Suchen"
+          emptyText="Keine Treffer"
+          options={[{ value: 'org-1', label: 'Musterstadt' }]}
+          onValueChange={vi.fn()}
+        />
+      </div>
+    );
+
+    expect(screen.getAllByText('Organisation', { selector: 'label' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Organisation' }).id).toBe('organization-select');
+  });
+
   it('filters options inside the open dropdown and selects a value', () => {
     const onValueChange = vi.fn();
 

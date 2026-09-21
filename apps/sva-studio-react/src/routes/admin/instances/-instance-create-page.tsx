@@ -563,6 +563,7 @@ export const InstanceCreatePage = () => {
                     <SearchableSelect
                       id="instance-auth-realm"
                       label={t('admin.instances.form.authRealm')}
+                      showLabel={false}
                       value={formValues.authRealm}
                       placeholder={t('admin.instances.wizard.realmCatalog.placeholder')}
                       searchPlaceholder={t('admin.instances.wizard.realmCatalog.search')}

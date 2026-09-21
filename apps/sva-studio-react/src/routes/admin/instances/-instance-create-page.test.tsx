@@ -197,6 +197,19 @@ describe('InstanceCreatePage', () => {
     fillBasics('existing-demo');
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
     await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
+
+    const realmLabel = screen.getByText('Auth-Realm', { selector: 'label' });
+    const realmTrigger = document.querySelector('#instance-auth-realm') as HTMLButtonElement;
+    const realmHelp = screen
+      .getAllByRole('button', { name: 'Auth-Realm' })
+      .find((button) => button !== realmTrigger);
+
+    expect(screen.getAllByText('Auth-Realm', { selector: 'label' })).toHaveLength(1);
+    expect(realmLabel.getAttribute('for')).toBe('instance-auth-realm');
+    expect(realmTrigger.getAttribute('aria-label')).toBe('Auth-Realm');
+    expect(realmHelp).toBeTruthy();
+    expect(realmHelp?.closest('label')).toBeNull();
+
     fireEvent.click(document.querySelector('#instance-auth-realm') as HTMLButtonElement);
 
     expect(screen.getByRole('option', { name: /master/u }).getAttribute('aria-disabled')).toBe(

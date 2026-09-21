@@ -1,6 +1,10 @@
 const CONFIRMED_CAPABILITIES_ENV = 'SVA_MAINSERVER_CONFIRMED_CAPABILITIES';
 
 const defaultCapabilities = new Set([
+  'categories.create',
+  'categories.delete',
+  'categories.read',
+  'categories.update',
   'cockpit-cards.create',
   'cockpit-cards.delete',
   'cockpit-cards.update',

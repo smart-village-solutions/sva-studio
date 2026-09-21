@@ -84,12 +84,12 @@ Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der 
 
 ## Kategorien
 
-Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host hält die Active-only-Auswahl für Facheditoren getrennt von der expliziten Management-Sicht und prüft jede Operation mit ihrer eigenen `categories.*`-Permission. Die Management-Pfade bleiben bis zur bestätigten Mainserver-Capability fail-closed.
+Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host hält die Active-only-Auswahl für Facheditoren getrennt von der expliziten Management-Sicht und prüft jede Operation mit ihrer eigenen `categories.*`-Permission. Alle vier `categories.*`-Operationen gehören zum Basisvertrag der unterstützten Mainserver und benötigen keine zusätzliche Laufzeitfreigabe.
 
 | Studio-Methode                                      | Lokale Primitive    | Mainserver-Operation          | Hinweis                                                                                                                                              |
 | --------------------------------------------------- | ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/mainserver/categories`                 | `categories.read`   | `categories`                  | Liefert weiterhin ausschließlich aktive Kategorien für Editor-Auswahllisten.                                                                         |
-| `GET /api/v1/mainserver/categories?view=management` | `categories.read`   | `categories(includeInactive)` | Liefert das vollständige Management-Modell; ein fehlender Vertrag führt zu `category_management_contract_unavailable`, nie zum Active-only-Fallback. |
+| `GET /api/v1/mainserver/categories?view=management` | `categories.read`   | `categories(includeInactive)` | Liefert das vollständige Management-Modell; Schemafehler bleiben `graphql_error`, strukturell ungültige Erfolgsantworten werden `category_management_invalid_response`, nie erfolgt ein Active-only-Fallback. |
 | `POST /api/v1/mainserver/categories`                | `categories.create` | `saveCategory`                | Verlangt einen versuchsgebundenen `Idempotency-Key`; der GraphQL-Transport wiederholt Mutationen nicht automatisch.                                  |
 | `PUT /api/v1/mainserver/categories/$categoryId`     | `categories.update` | `saveCategory`                | Übernimmt die ID nur aus dem Pfad und speichert das vollständige Modell.                                                                             |
 | `DELETE /api/v1/mainserver/categories/$categoryId`  | `categories.delete` | `deleteCategory`              | Löscht nur ungenutzte Kategorien und liefert andernfalls strukturierte Usage-Zahlen.                                                                 |
@@ -375,7 +375,7 @@ Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
 
 - `SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow|automatic|compatibility` (Standard: `shadow`)
 - `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE=legacy_compatible|required` (Standard: `legacy_compatible`)
-- `SVA_MAINSERVER_CONFIRMED_CAPABILITIES=<Action-ID,...>` (Standard: leer)
+- `SVA_MAINSERVER_CONFIRMED_CAPABILITIES=<Action-ID,...>` (Standard: leer; erweitert nur optionale Actions, nicht den Kategorien-Basisvertrag)
 
 Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](./mainserver-data-provider-authoring.md) beschrieben.
 

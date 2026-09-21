@@ -88,16 +88,17 @@ Create MUST den vorhandenen Host-Idempotenzvertrag verwenden. Derselbe `Idempote
 - **THEN** ruft die Route `saveCategory` nicht erneut auf
 - **AND** fordert sie einen Management-Re-Read vor einer neuen Create-Entscheidung
 
-### Requirement: Kategorienmanagement bleibt bei fehlender Upstream-Readiness fail-closed
+### Requirement: Kategorienmanagement ist eine Baseline-Capability
 
-Die Mainserver-Integration MUST Management-Operationen blockieren, wenn der erforderliche Schema-Vertrag oder verwendbare Management-Credentials fehlen. Sie darf fehlende Management-Fähigkeit nicht durch einen Active-only-Fallback, eine lokale Teilmutation oder eine Mutation mit fremden Credentials verdecken.
+Die Mainserver-Integration MUST `categories.read`, `categories.create`, `categories.update` und `categories.delete` als von allen unterstützten Mainservern bereitgestellten Basisvertrag behandeln. Sie darf diese Operationen nicht von einer zusätzlichen Laufzeitkonfiguration abhängig machen. Lokale Autorisierung, verwendbare Management-Credentials und die Validierung der Upstream-Antwort bleiben davon unberührt fail-closed.
 
-#### Scenario: Schema-Vertrag fehlt im Zielsystem
+#### Scenario: Keine zusätzliche Capability-Konfiguration ist gesetzt
 
-- **WHEN** Capability- beziehungsweise Schema-Preflight `includeInactive`, `saveCategory` oder `deleteCategory` nicht bestätigt
-- **THEN** bleibt die betreffende Management-Operation deaktiviert
-- **AND** liefert die Fassade `category_management_contract_unavailable`
-- **AND** bleibt der bestehende Active-only-Auswahlread davon unabhängig nutzbar
+- **WHEN** keine Kategorien-Capability über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` konfiguriert ist
+- **THEN** enthält die effektive Capability-Liste alle vier `categories.*`-Actions
+- **AND** erreicht eine lokal autorisierte Management-Operation den typisierten Mainserver-Adapter
+- **AND** bleibt eine GraphQL-Schemaablehnung als `graphql_error` sichtbar
+- **AND** fällt eine strukturell ungültige Erfolgsantwort als `category_management_invalid_response` aus, ohne auf den Active-only-Auswahlread zurückzufallen
 
 #### Scenario: Effektive Credentials besitzen keine Management-Rolle
 

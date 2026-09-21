@@ -48,16 +48,11 @@ const ctx = {
 };
 
 describe('dispatchSvaMainserverCategoriesRequest', () => {
-  const confirmedCapabilitiesEnvironment = 'SVA_MAINSERVER_CONFIRMED_CAPABILITIES';
-
   beforeEach(() => {
-    process.env[confirmedCapabilitiesEnvironment] =
-      'categories.read,categories.create,categories.update,categories.delete';
     state.validateCsrf.mockReturnValue(null);
   });
 
   afterEach(() => {
-    delete process.env[confirmedCapabilitiesEnvironment];
     vi.resetAllMocks();
   });
 
@@ -232,23 +227,6 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     await expect(response?.json()).resolves.toEqual({
       data: [{ id: 'inactive', name: 'Archiv', active: false }],
     });
-  });
-
-  it('fails closed before authorization when the category management contract is unconfirmed', async () => {
-    delete process.env[confirmedCapabilitiesEnvironment];
-    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-
-    const response = await dispatchSvaMainserverCategoriesRequest(
-      new Request('https://studio.test/api/v1/mainserver/categories?view=management')
-    );
-
-    expect(response?.status).toBe(503);
-    await expect(response?.json()).resolves.toEqual({
-      error: 'category_management_contract_unavailable',
-      message: 'Der Mainserver-Vertrag für diese Kategorienoperation ist nicht bestätigt.',
-    });
-    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
-    expect(state.listSvaMainserverCategoryManagement).not.toHaveBeenCalled();
   });
 
   it('rejects a create request before the upstream call when its idempotency key is missing', async () => {

@@ -135,22 +135,28 @@ export const classifyInstanceMutationError = (
     };
   }
   if (message.startsWith('keycloak_create_readiness_blocked:')) {
+    const errorCodes = message
+      .slice('keycloak_create_readiness_blocked:'.length)
+      .split(',')
+      .filter(Boolean);
+    const hasRegistryConflict = errorCodes.some((code) =>
+      ['registry_hostname', 'registry_instance_id', 'realm_selection'].includes(code)
+    );
     return {
-      status: 503,
+      status: hasRegistryConflict ? 409 : 503,
       code: 'keycloak_create_readiness_blocked',
       details: {
-        dependency: 'keycloak',
-        reason_code: 'keycloak_create_readiness_blocked',
+        dependency: hasRegistryConflict ? 'registry' : 'keycloak',
+        reason_code: hasRegistryConflict
+          ? 'instance_create_conflict'
+          : 'keycloak_create_readiness_blocked',
         step: 'create_preflight',
         impact: 'create_blocked',
         remediation: 'draft_readiness_recheck',
         responsibility: 'studio_admin_or_platform_operator',
         next_check: 'draft_readiness',
-        retry_class: 'conditional',
-        errorCodes: message
-          .slice('keycloak_create_readiness_blocked:'.length)
-          .split(',')
-          .filter(Boolean),
+        retry_class: hasRegistryConflict ? 'never' : 'conditional',
+        errorCodes,
       },
     };
   }

@@ -193,6 +193,34 @@ describe('InstanceCreatePage', () => {
     expect(screen.queryByLabelText('Tenant-Admin-Client-Secret')).toBeNull();
   });
 
+  it('keeps a selected realm visible after the catalog returns to its first page', async () => {
+    listRealmCatalogMock.mockImplementation(async ({ search }: { search?: string }) => ({
+      data: search ? [{ realm: 'tenant-page-two', status: 'selectable' }] : [],
+      pagination: { page: 1, pageSize: 100, total: search ? 1 : 150 },
+    }));
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+    render(<InstanceCreatePage />);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
+    fillBasics('existing-demo');
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
+    fireEvent.click(document.querySelector('#instance-auth-realm') as HTMLButtonElement);
+    fireEvent.change(screen.getByPlaceholderText('Nutzer-Datenbanken durchsuchen'), {
+      target: { value: 'tenant-page-two' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: 'tenant-page-two' })).toBeTruthy()
+    );
+    fireEvent.click(screen.getByRole('option', { name: 'tenant-page-two' }));
+    await waitFor(() =>
+      expect(document.querySelector('#instance-auth-realm')?.textContent).toContain(
+        'tenant-page-two'
+      )
+    );
+  });
+
   it('surfaces realm catalog failures instead of presenting an empty result', async () => {
     listRealmCatalogMock.mockRejectedValue({
       code: 'keycloak_unavailable',

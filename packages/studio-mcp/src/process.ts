@@ -206,6 +206,7 @@ const evaluateDoctor = (input: {
   instanceId: string;
   completedSteps: readonly string[];
   requestId: string;
+  idempotencyKey: string;
 }): StudioInstanceProcessResult => {
   const doctor = {
     keycloakStatus: input.detail.keycloakStatus,
@@ -227,6 +228,7 @@ const evaluateDoctor = (input: {
         summary: 'Die aktuelle Doctor-Abnahme ist nicht vollständig bereit.',
       },
       requestId: input.requestId,
+      idempotencyKey: input.idempotencyKey,
     };
   }
   if (input.detail.status !== 'active') {
@@ -244,6 +246,7 @@ const evaluateDoctor = (input: {
           'Die technische Abnahme ist abgeschlossen; Aktivierung verlangt eine serverseitige Bestätigungs-Challenge.',
       },
       requestId: input.requestId,
+      idempotencyKey: input.idempotencyKey,
     };
   }
   return {
@@ -259,6 +262,7 @@ const evaluateDoctor = (input: {
       summary: 'Die Instanz ist aktiv und vollständig abgenommen.',
     },
     requestId: input.requestId,
+    idempotencyKey: input.idempotencyKey,
   };
 };
 
@@ -298,6 +302,7 @@ export const runStudioInstanceProcess = async (
       );
       const parentRun = readParentRun(detail, automatedParentRunId);
       if (parentRun.status === 'failed') {
+        const projectedAction = unwrap(unwrap(detail.provisioningReadiness).nextAction).action;
         return {
           completed: false,
           status: 'blocked',
@@ -307,8 +312,8 @@ export const runStudioInstanceProcess = async (
           openSteps: [currentStep],
           doctor: parentRun,
           nextAction: {
-            actionId: 'instance.provisioning.retry',
-            summary: 'Den automatischen Provisioning-Lauf prüfen und gezielt fortsetzen.',
+            actionId: typeof projectedAction === 'string' ? projectedAction : 'instance.diagnose',
+            summary: 'Den fehlgeschlagenen Provisioning-Lauf und die nächste Aktion prüfen.',
           },
           requestId,
           idempotencyKey,
@@ -332,7 +337,13 @@ export const runStudioInstanceProcess = async (
         };
       }
       completedSteps.push('parent_provisioning_completed');
-      return evaluateDoctor({ detail, instanceId: input.instanceId, completedSteps, requestId });
+      return evaluateDoctor({
+        detail,
+        instanceId: input.instanceId,
+        completedSteps,
+        requestId,
+        idempotencyKey,
+      });
     }
 
     currentStep = 'modules_and_iam';
@@ -521,7 +532,13 @@ export const runStudioInstanceProcess = async (
     completedSteps.push('tenant_iam_access_probed');
     currentStep = 'doctor_validation';
     const detail = unwrap(await request(client, { path: basePath, requestId }));
-    return evaluateDoctor({ detail, instanceId: input.instanceId, completedSteps, requestId });
+    return evaluateDoctor({
+      detail,
+      instanceId: input.instanceId,
+      completedSteps,
+      requestId,
+      idempotencyKey,
+    });
   } catch (error) {
     throw new StudioInstanceProcessError(error, {
       completed: false,

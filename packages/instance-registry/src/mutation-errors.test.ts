@@ -93,6 +93,24 @@ describe('mutation-errors', () => {
     ).toMatchObject({ status: 409, code: 'auth_realm_conflict' });
   });
 
+  it.each(['registry_hostname', 'registry_instance_id', 'realm_selection'])(
+    'classifies the %s create-readiness blocker as a non-retryable conflict',
+    (checkKey) => {
+      expect(
+        classifyInstanceMutationError(new Error(`keycloak_create_readiness_blocked:${checkKey}`))
+      ).toMatchObject({
+        status: 409,
+        code: 'keycloak_create_readiness_blocked',
+        details: {
+          dependency: 'registry',
+          reason_code: 'instance_create_conflict',
+          retry_class: 'never',
+          errorCodes: [checkKey],
+        },
+      });
+    }
+  );
+
   it('classifies tenant RLS and schema write failures as database failures', () => {
     expect(
       classifyInstanceMutationError(

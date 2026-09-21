@@ -329,6 +329,9 @@ export const InstanceCreatePage = () => {
       ? t(`admin.instances.wizard.realmCatalog.${entry.reasonCode}`)
       : undefined,
   }));
+  const selectedRealmOption =
+    realmOptions.find(({ value }) => value === formValues.authRealm) ??
+    (formValues.authRealm ? { value: formValues.authRealm, label: formValues.authRealm } : null);
 
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading}>
@@ -557,6 +560,7 @@ export const InstanceCreatePage = () => {
                       searchPlaceholder={t('admin.instances.wizard.realmCatalog.search')}
                       emptyText={t('admin.instances.wizard.realmCatalog.empty')}
                       options={realmOptions}
+                      selectedOption={selectedRealmOption}
                       searchValue={realmSearch}
                       onSearchValueChange={setRealmSearch}
                       onValueChange={(value) =>

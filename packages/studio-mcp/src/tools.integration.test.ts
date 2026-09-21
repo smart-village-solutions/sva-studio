@@ -355,6 +355,7 @@ describe('Studio MCP tools', () => {
       data: {
         status: 'awaiting_human_action',
         currentStep: 'activation',
+        idempotencyKey: expect.any(String),
         completedSteps: [
           'registry_created_or_idempotently_reused',
           'parent_provisioning_completed',
@@ -365,6 +366,62 @@ describe('Studio MCP tools', () => {
     expect(request).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: '/api/v1/iam/instances/demo/keycloak/execute' })
     );
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('uses the projected recovery action for a non-retryable parent failure', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'provisioning' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: {
+            id: 'parent-run-1',
+            status: 'failed',
+            errorCode: 'invalid_snapshot',
+          },
+          provisioningReadiness: {
+            nextAction: { action: 'instance.diagnose', retryClass: 'never' },
+          },
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        status: 'blocked',
+        currentStep: 'parent_provisioning',
+        idempotencyKey: expect.any(String),
+        nextAction: { actionId: 'instance.diagnose' },
+      },
+    });
     await Promise.all([client.close(), server.close()]);
   });
 

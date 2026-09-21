@@ -182,7 +182,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     (run) =>
       run.operation === 'create' &&
       run.status === 'failed' &&
-      run.snapshotVersion === '2.0' &&
+      (run.snapshotVersion === '2.0' || run.snapshotVersion === '3.0') &&
       run.desiredSnapshot.automationMode === 'kassel-traefik-file'
   );
   const canRetryTenantProvisioning =

@@ -2413,6 +2413,24 @@ describe('instance registry service facade', () => {
           ...readyStatus,
           clientExists: liveKeycloakDrift ? false : readyStatus.clientExists,
         })),
+        planKeycloakProvisioning: liveKeycloakDrift
+          ? vi.fn(async () => ({
+              contractVersion: '1.0' as const,
+              fingerprint: 'b'.repeat(64),
+              mode: 'new' as const,
+              overallStatus: 'ready' as const,
+              generatedAt: '2026-01-01T00:03:00.000Z',
+              driftSummary: 'Der Tenant-Client ist nicht aktuell.',
+              steps: [
+                {
+                  stepKey: 'client',
+                  action: 'update' as const,
+                  status: 'ready' as const,
+                  details: {},
+                },
+              ],
+            }))
+          : undefined,
         readProvisioningModuleReadiness: vi.fn(async () => ({
           status: pluginPending ? ('pending' as const) : ('ready' as const),
           evidence: {},
@@ -2505,6 +2523,13 @@ describe('instance registry service facade', () => {
       }
 
       if (liveKeycloakDrift) {
+        await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+          expect.objectContaining({
+            provisioningReadiness: expect.objectContaining({
+              nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+            }),
+          })
+        );
         await expect(
           service.changeStatus({
             instanceId: 'demo',
@@ -4187,6 +4212,25 @@ describe('instance registry service facade', () => {
       driftSummary: 'Kein Drift.',
       steps: [],
     };
+    const status = {
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      systemAdminRoleExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      pluginOidcClientsAligned: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant' as const,
+    };
     const repository = createRepository({
       getInstanceById: vi.fn(async () => baseInstance),
       getAuthClientSecretCiphertext: vi.fn(async () => 'cipher-auth-v2'),
@@ -4195,6 +4239,16 @@ describe('instance registry service facade', () => {
         {
           ...latestRun,
           steps: [
+            {
+              stepKey: 'queued',
+              title: 'Queued',
+              status: 'done',
+              summary: 'Scoped plugin contract',
+              details: {
+                pluginOidcSnapshotVersion: '1.0',
+                pluginOidcClients: [],
+              },
+            },
             {
               stepKey: 'status_snapshot',
               title: 'Status',
@@ -4206,6 +4260,7 @@ describe('instance registry service facade', () => {
                   authClientSecretCiphertext: 'cipher-auth-v2',
                   tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
                 }),
+                status,
                 preflight,
                 plan,
               },
@@ -4214,8 +4269,19 @@ describe('instance registry service facade', () => {
         },
       ]),
     });
-    const deps = createDeps(repository);
+    const deps = createDeps(repository, {
+      readPluginOidcClientRequirements: () => [
+        {
+          pluginId: 'ssf',
+          clientId: 'ssf-client',
+          audience: 'ssf',
+          enabled: false,
+          contractVersion: '1.0',
+        },
+      ],
+    });
 
+    await expect(createGetKeycloakStatusHandler(deps)('demo')).resolves.toEqual(status);
     await expect(createGetKeycloakPreflightHandler(deps)('demo')).resolves.toEqual(preflight);
     await expect(createPlanKeycloakProvisioningHandler(deps)('demo')).resolves.toEqual(plan);
   });

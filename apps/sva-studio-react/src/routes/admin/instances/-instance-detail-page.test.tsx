@@ -479,7 +479,7 @@ describe('InstanceDetailPage', () => {
               operation: 'create',
               status: 'failed',
               idempotencyKey: 'original-create-key',
-              snapshotVersion: '2.0',
+              snapshotVersion: '3.0',
               desiredSnapshot: { automationMode: 'kassel-traefik-file' },
               attemptCount: 3,
               nextAttemptAt: '2026-01-01T00:10:00.000Z',

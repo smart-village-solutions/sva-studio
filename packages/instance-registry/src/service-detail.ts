@@ -21,6 +21,8 @@ import {
   shouldExposeAutomatedProvisioning,
 } from './service-active-provisioning.js';
 import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
+import { isLiveKeycloakStatusReadyForActivation } from './service-keycloak-snapshot-reader.js';
+import { readLatestQueuedPluginOidcClientRequirements } from './service-keycloak-execution-payload.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
@@ -164,7 +166,7 @@ export const loadKeycloakDetailArtifacts = async (
       createRun.stepKey === 'completed' &&
       createRun.completedAt
     );
-  const activationReady =
+  const persistedActivationCandidate =
     instance.status !== 'active' &&
     latestKeycloakRun?.overallStatus === 'succeeded' &&
     keycloakPlan?.overallStatus === 'ready' &&
@@ -173,6 +175,29 @@ export const loadKeycloakDetailArtifacts = async (
     (instance.assignedModules.length === 0 || moduleIamStatus?.overall.status === 'ready') &&
     pluginLifecycleReady &&
     hostReadinessSatisfied;
+  const pluginOidcClients = readLatestQueuedPluginOidcClientRequirements(
+    keycloakProvisioningRuns,
+    instance,
+    deps.readPluginOidcClientRequirements?.()
+  );
+  const [liveKeycloakReady, liveKeycloakPlan] = persistedActivationCandidate
+    ? await Promise.all([
+        isLiveKeycloakStatusReadyForActivation(deps, instance.instanceId, pluginOidcClients),
+        loadOptionalArtifact(instance.instanceId, 'keycloak_plan', () =>
+          planKeycloakProvisioning(instance.instanceId, { forceLive: true })
+        ),
+      ])
+    : [false, undefined];
+  const effectiveKeycloakPlan = liveKeycloakPlan ?? keycloakPlan;
+  const effectiveKeycloakPlanHasMutations =
+    effectiveKeycloakPlan?.steps.some(
+      (step) => step.action === 'create' || step.action === 'update'
+    ) ?? false;
+  const activationReady =
+    persistedActivationCandidate &&
+    liveKeycloakReady &&
+    effectiveKeycloakPlan?.overallStatus === 'ready' &&
+    !effectiveKeycloakPlanHasMutations;
   const retryableCreateRun =
     createRun &&
     isSupportedTenantProvisioningSnapshotVersion(createRun.snapshotVersion) &&
@@ -211,7 +236,8 @@ export const loadKeycloakDetailArtifacts = async (
                 : keycloakRunInProgress
                   ? ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const)
                   : keycloakRunFailed ||
-                      (keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations)
+                      (effectiveKeycloakPlan?.overallStatus === 'ready' &&
+                        effectiveKeycloakPlanHasMutations)
                     ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
                     : tenantIamStatus.access.status !== 'ready'
                       ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)
@@ -227,7 +253,7 @@ export const loadKeycloakDetailArtifacts = async (
     moduleActivations,
     keycloakStatus,
     keycloakPreflight,
-    keycloakPlan,
+    effectiveKeycloakPlan,
     keycloakProvisioningRuns,
     tenantIamStatus,
     moduleIamStatus,

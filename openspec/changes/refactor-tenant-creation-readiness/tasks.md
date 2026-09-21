@@ -274,3 +274,14 @@
 - [x] 11.11 Das um Aktivierungsrichtlinien erweiterte Plugin-Snapshotformat als
       Version `2.0` schreiben, bestehende `1.0`-Runs ohne dieses Feld
       kompatibel und fail-closed fortsetzen sowie Retries auf `2.0` anheben.
+- [x] 11.12 Retry-Aktionen für aktuelle Tenant-Provisioning-Snapshots `3.0`
+      ebenso wie für unterstützte Legacy-Snapshots `2.0` anbieten.
+- [x] 11.13 Den historischen `2.0`-Registry-Fingerprint einschließlich
+      `assignedModules` bei der Recovery weiterhin akzeptieren, ohne die
+      strengere `3.0`-Prüfung aufzuweichen.
+- [x] 11.14 Persistierte Keycloak-Postflight-Artefakte gegen die im Auftrag
+      gebundene Plugin-OIDC-Auswahl prüfen und nicht gegen den globalen,
+      unzugeordneten Plugin-Katalog.
+- [x] 11.15 Vor dem Anzeigen der Aktivierungsaktion einen Live-Postflight mit
+      derselben gebundenen OIDC-Auswahl ausführen und bei Drift stattdessen die
+      konkrete Keycloak-Reparaturaktion oder ein sicheres Refresh anbieten.

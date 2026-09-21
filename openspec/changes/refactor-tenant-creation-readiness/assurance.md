@@ -218,6 +218,13 @@ Das eigenständig versionierte Plugin-Snapshotformat schreibt neue Runs als
 zum Lifecycle gehörenden Richtlinien einmalig aus dem aktuellen Katalog auf
 und stoppt bei einer fehlenden Richtlinie; ein Retry persistiert anschließend
 ein vollständiges `2.0`-Snapshot.
+Die abschließende Review-Fixrunde bindet Status, Preflight, Plan und
+Live-Postflight an dieselbe im Keycloak-Auftrag persistierte Plugin-OIDC-Auswahl.
+Damit können global konfigurierte, dem Tenant aber nicht zugeordnete Clients
+weder gültige Postflight-Snapshots verdrängen noch die Aktivierungsanzeige vom
+serverseitigen Aktivierungsgate abweichen lassen. Zusätzlich decken die Tests
+den UI-Retry für aktuelle `3.0`-Runs und den historischen `2.0`-Fingerprint
+einschließlich `assignedModules` ab.
 
 Die statische Statusschreiber-Prüfung ergab für Instanzen:
 

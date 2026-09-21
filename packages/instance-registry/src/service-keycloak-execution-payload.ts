@@ -1,6 +1,7 @@
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import { readPluginOidcClientRequirements } from './provisioning-auth-plugin-clients.js';
 import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
+import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import type { KeycloakTenantPlan } from './keycloak-types.js';
@@ -66,7 +67,7 @@ export const readQueuedTemporaryPassword = (
 
 export const readQueuedPluginOidcClientRequirements = (
   details: Readonly<Record<string, unknown>> | undefined,
-  provisioningInput: ReturnType<typeof buildProvisioningInput>
+  provisioningInput: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient'>
 ): readonly PluginOidcClientRequirement[] => {
   if (details && details.pluginOidcSnapshotVersion === undefined) {
     return [];
@@ -86,6 +87,28 @@ export const readQueuedPluginOidcClientRequirements = (
     ...provisioningInput,
     pluginOidcClients: requirements as unknown as readonly PluginOidcClientRequirement[],
   });
+};
+
+export const readLatestQueuedPluginOidcClientRequirements = (
+  runs: readonly {
+    readonly steps: readonly {
+      readonly stepKey: string;
+      readonly details?: Readonly<Record<string, unknown>>;
+    }[];
+  }[],
+  provisioningInput: Pick<KeycloakProvisioningInput, 'authClientId' | 'tenantAdminClient'>,
+  fallback: readonly PluginOidcClientRequirement[] = []
+): readonly PluginOidcClientRequirement[] => {
+  for (const run of runs) {
+    const queued = run.steps.find((step) => step.stepKey === 'queued');
+    if (!queued) continue;
+    try {
+      return readQueuedPluginOidcClientRequirements(queued.details, provisioningInput);
+    } catch {
+      return [];
+    }
+  }
+  return fallback;
 };
 
 export const assertQueuedRealmBaselineCurrent = (

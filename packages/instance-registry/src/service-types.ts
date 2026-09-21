@@ -99,6 +99,7 @@ type KeycloakProvisioningContext = {
   };
   tenantAdminClientSecret?: string;
   tenantAdminBootstrap?: TenantAdminBootstrap;
+  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
 export type InstanceRegistryService = {

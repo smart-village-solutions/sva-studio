@@ -27,7 +27,6 @@ type TenantProvisioningPluginSnapshot = Readonly<{
 
 export const TENANT_PROVISIONING_SNAPSHOT_VERSION = '3.0';
 export const TENANT_PROVISIONING_PLUGIN_SNAPSHOT_VERSION = '2.0';
-
 export const isSupportedTenantProvisioningSnapshotVersion = (
   snapshotVersion: string | undefined
 ): boolean => snapshotVersion === '2.0' || snapshotVersion === TENANT_PROVISIONING_SNAPSHOT_VERSION;
@@ -76,7 +75,6 @@ const lifecycleOperations = new Set([
   'readiness',
 ]);
 const repairOperations = new Set(['provision', 'reconcile', 'suspend', 'reactivate']);
-
 const isLifecycleOperation = (value: unknown): boolean =>
   isRecord(value) &&
   typeof value.operation === 'string' &&
@@ -293,6 +291,10 @@ export const assertTenantProvisioningSnapshotCurrent = (
   const registryFingerprint = buildPayloadFingerprint(
     registryFingerprintConfiguration(fingerprintInput)
   );
+  const legacyRegistryFingerprint =
+    run.snapshotVersion === '2.0'
+      ? buildPayloadFingerprint(registryConfiguration(fingerprintInput))
+      : undefined;
   const secretRequirementsMet =
     (snapshot.authClientSecretRequired !== true || instance.authClientSecretConfigured) &&
     (snapshot.tenantAdminClientSecretRequired !== true ||
@@ -304,7 +306,8 @@ export const assertTenantProvisioningSnapshotCurrent = (
   if (
     !isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) ||
     snapshot.automationMode !== 'kassel-traefik-file' ||
-    snapshot.registryFingerprint !== registryFingerprint ||
+    (snapshot.registryFingerprint !== registryFingerprint &&
+      snapshot.registryFingerprint !== legacyRegistryFingerprint) ||
     snapshot.payloadFingerprint !== run.payloadFingerprint ||
     !secretRequirementsMet ||
     !realmBaselineCurrent

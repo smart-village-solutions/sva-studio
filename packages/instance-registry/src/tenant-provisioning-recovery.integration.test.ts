@@ -21,6 +21,7 @@ import {
   buildExpectedTenantAdminClientConfig,
 } from './provisioning-auth-utils.js';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
+import { buildPayloadFingerprint } from './payload-fingerprint.js';
 
 const databaseName = process.env.INSTANCE_PROVISIONING_INTEGRATION_DB;
 const integrationDescribe = databaseName ? describe : describe.skip;
@@ -618,6 +619,22 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
           ],
         }
       );
+      desiredSnapshot.registryFingerprint = buildPayloadFingerprint({
+        instanceId: created.instanceId,
+        displayName: created.displayName,
+        parentDomain: created.parentDomain,
+        primaryHostname: created.primaryHostname,
+        realmMode: created.realmMode,
+        authRealm: created.authRealm,
+        authClientId: created.authClientId,
+        authIssuerUrl: created.authIssuerUrl,
+        tenantAdminClientId: created.tenantAdminClient?.clientId,
+        tenantAdminBootstrap: created.tenantAdminBootstrap,
+        themeKey: created.themeKey,
+        assignedModules: created.assignedModules,
+        featureFlags: created.featureFlags,
+        mainserverConfigRef: created.mainserverConfigRef,
+      });
       await repository.createProvisioningRun({
         instanceId,
         operation: 'create',

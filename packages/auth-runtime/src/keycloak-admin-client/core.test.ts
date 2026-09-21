@@ -2753,3 +2753,66 @@ it('replaces only competing mappers for an explicitly owned client claim', async
   expect(deletions).toHaveLength(1);
   expect(String(deletions[0]?.[0])).toContain('/clients/browser/protocol-mappers/models/legacy');
 });
+
+// Explicit local integration run; never use the normal deployment credentials.
+it.runIf(process.env.KEYCLOAK_BOOTSTRAP_INTEGRATION === '1')(
+  'provisions a real local realm and immediately reads back the owned tenant admin and role',
+  async () => {
+    const baseUrl = process.env.KEYCLOAK_BOOTSTRAP_TEST_URL ?? 'http://127.0.0.1:8080';
+    const url = new URL(baseUrl);
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) {
+      throw new Error('The bootstrap integration test requires a local Keycloak instance');
+    }
+    const clientId = process.env.KEYCLOAK_BOOTSTRAP_TEST_CLIENT_ID;
+    const clientSecret = process.env.KEYCLOAK_BOOTSTRAP_TEST_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      throw new Error('Local bootstrap test client credentials are required');
+    }
+    const { KeycloakAdminClient } = await import('./core.js');
+    const { createProvisionInstanceAuthArtifacts, createReadKeycloakState } =
+      await import('@sva/instance-registry/provisioning-auth-state');
+    const { buildKeycloakStatus } = await import('@sva/instance-registry/provisioning-auth');
+    const realm = `bootstrap-test-${crypto.randomUUID()}`;
+    const createClient = (targetRealm = realm) => new KeycloakAdminClient({
+      baseUrl,
+      realm: targetRealm,
+      adminRealm: 'master',
+      clientId,
+      clientSecret,
+      maxRetries: 0,
+    });
+    const input = {
+      instanceId: realm,
+      primaryHostname: `${realm}.example.org`,
+      realmMode: 'new' as const,
+      authRealm: realm,
+      authClientId: 'sva-studio-login',
+      authClientSecretConfigured: false,
+      pluginOidcClients: [],
+      tenantAdminBootstrap: {
+        username: 'bootstrap-admin',
+        email: 'bootstrap@example.org',
+        firstName: 'Initial',
+        lastName: 'Administrator',
+      },
+    };
+    try {
+      await createProvisionInstanceAuthArtifacts(createClient)(input);
+      const state = await createReadKeycloakState(createClient)(input);
+      expect(state.tenantAdminStatus).toEqual({
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+      });
+      expect(buildKeycloakStatus({ ...input, state })).toMatchObject({
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        systemAdminRoleExists: true,
+      });
+      expect(state.userProfileBaselineAligned).toBe(true);
+    } finally {
+      const client = createClient();
+      if (await client.getRealm()) await client.deleteRealm();
+    }
+  },
+  60_000
+);

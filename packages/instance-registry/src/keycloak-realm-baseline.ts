@@ -42,6 +42,9 @@ export const KEYCLOAK_REALM_BASELINE = {
     { name: 'instanceId', multivalued: false },
     { name: 'mainserverUserApplicationId', multivalued: false },
     { name: 'mainserverUserApplicationSecret', multivalued: false },
+    { name: 'managed_by', multivalued: false },
+    { name: 'instance_id', multivalued: false },
+    { name: 'artifact_key', multivalued: false },
   ],
   instanceIdMapper: {
     name: 'instanceId',

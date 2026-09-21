@@ -219,6 +219,13 @@ const ensureTenantAdmin = async (
   client: KeycloakProvisioningClient,
   input: TenantAdminInput & { instanceId: string }
 ): Promise<void> => {
+  const checkpoint = (result: string) =>
+    logger.info('tenant_admin_bootstrap_checkpoint', {
+      operation: 'ensure_tenant_admin',
+      instance_id: input.instanceId,
+      result,
+    });
+  checkpoint('started');
   const ownershipAttributes = {
     [STUDIO_OWNERSHIP_ATTRIBUTES.managedBy]: ['studio'],
     [STUDIO_OWNERSHIP_ATTRIBUTES.instanceId]: [input.instanceId],
@@ -226,6 +233,7 @@ const ensureTenantAdmin = async (
   } as const;
   const syncTenantAdminAccess = async (userId: string) => {
     await client.syncRoles(userId, [SYSTEM_ADMIN_ROLE]);
+    checkpoint('roles_synced');
     if (!input.temporaryPassword) {
       return;
     }
@@ -246,12 +254,14 @@ const ensureTenantAdmin = async (
       attributes: ownershipAttributes,
     });
     await syncTenantAdminAccess(user.id);
+    checkpoint('completed');
   };
 
   const fallbackEmail = `${input.username}@tenant.invalid`;
   const resolvedEmail = input.email ?? fallbackEmail;
 
   const existing = await client.findUserByUsername(input.username);
+  checkpoint(existing ? 'user_found' : 'user_missing');
   if (!existing) {
     try {
       const created = await client.createUser({
@@ -262,7 +272,9 @@ const ensureTenantAdmin = async (
         enabled: true,
         attributes: ownershipAttributes,
       });
+      checkpoint('user_created');
       await syncTenantAdminAccess(created.externalId);
+      checkpoint('completed');
       return;
     } catch (error) {
       if (!isConflictRequestError(error)) {
@@ -270,6 +282,7 @@ const ensureTenantAdmin = async (
       }
 
       const conflictingUser = await client.findUserByUsername(input.username);
+      checkpoint(conflictingUser ? 'conflict_user_found' : 'conflict_user_missing');
       if (!conflictingUser) {
         throw error;
       }
@@ -356,6 +369,14 @@ export const createReadKeycloakState =
       : [];
     const tenantAdmin = await readTenantAdminStatus(client, {
       username: input.tenantAdminBootstrap?.username,
+    });
+    logger.info('tenant_admin_readback', {
+      operation: 'read_tenant_admin_status',
+      instance_id: input.instanceId,
+      bootstrap_configured: Boolean(input.tenantAdminBootstrap?.username),
+      user_found: tenantAdmin.status.tenantAdminExists,
+      system_admin_assigned: tenantAdmin.status.tenantAdminHasSystemAdmin,
+      ownership: readStudioOwnedUser(tenantAdmin.representation, input.instanceId, 'tenant_admin'),
     });
     const keycloakClientSecret =
       clientRepresentation &&
@@ -527,6 +548,13 @@ const reconcileInstanceAuthArtifacts = async (
   await client.ensureRealmRole(SYSTEM_ADMIN_ROLE, input.instanceId, {
     allowLegacyRealmRoleMigration: input.allowLegacyRealmRoleMigration,
   });
+  if (!input.tenantAdminBootstrap) {
+    logger.info('tenant_admin_bootstrap_checkpoint', {
+      operation: 'ensure_tenant_admin',
+      instance_id: input.instanceId,
+      result: 'skipped_unconfigured',
+    });
+  }
   if (input.tenantAdminBootstrap) {
     await ensureTenantAdmin(client, {
       ...input.tenantAdminBootstrap,

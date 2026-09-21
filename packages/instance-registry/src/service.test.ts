@@ -2216,14 +2216,15 @@ describe('instance registry service facade', () => {
   );
 
   it.each([
-    ['standard', false, ['news'], false, false, false, false, false],
-    ['kassel', true, ['news'], false, false, false, false, false],
-    ['moduleless', false, [], false, false, false, false, false],
-    ['kassel-disabled-runtime', false, ['news'], true, false, false, false, false],
-    ['live-keycloak-drift', false, ['news'], false, true, false, false, false],
-    ['plugin-pending', false, ['news'], false, false, true, false, false],
-    ['stale-tenant-iam', false, ['news'], false, false, false, true, false],
-    ['keycloak-running', false, ['news'], false, true, false, false, true],
+    ['standard', false, ['news'], false, false, false, false, false, false],
+    ['kassel', true, ['news'], false, false, false, false, false, false],
+    ['moduleless', false, [], false, false, false, false, false, false],
+    ['kassel-disabled-runtime', false, ['news'], true, false, false, false, false, false],
+    ['live-keycloak-drift', false, ['news'], false, true, false, false, false, false],
+    ['plugin-pending', false, ['news'], false, false, true, false, false, false],
+    ['stale-tenant-iam', false, ['news'], false, false, false, true, false, false],
+    ['keycloak-running', false, ['news'], false, true, false, false, true, false],
+    ['keycloak-failed', false, ['news'], false, false, false, false, false, true],
   ] as const)(
     'activates the %s profile only with current successful postflight and IAM evidence',
     async (
@@ -2234,7 +2235,8 @@ describe('instance registry service facade', () => {
       liveKeycloakDrift,
       pluginPending,
       staleTenantIamEvidence,
-      keycloakRunInProgress
+      keycloakRunInProgress,
+      keycloakRunFailed
     ) => {
       const suspendedInstance = {
         ...baseInstance,
@@ -2289,7 +2291,11 @@ describe('instance registry service facade', () => {
             instanceId: 'demo',
             intent: 'provision' as const,
             mode: 'new' as const,
-            overallStatus: keycloakRunInProgress ? ('running' as const) : ('succeeded' as const),
+            overallStatus: keycloakRunInProgress
+              ? ('running' as const)
+              : keycloakRunFailed
+                ? ('failed' as const)
+                : ('succeeded' as const),
             driftSummary: 'Kein Drift.',
             createdAt: '2026-01-01T00:01:00.000Z',
             updatedAt: '2026-01-01T00:02:00.000Z',
@@ -2403,6 +2409,17 @@ describe('instance registry service facade', () => {
           expect.objectContaining({
             provisioningReadiness: expect.objectContaining({
               nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+            }),
+          })
+        );
+        return;
+      }
+
+      if (keycloakRunFailed) {
+        await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+          expect.objectContaining({
+            provisioningReadiness: expect.objectContaining({
+              nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
             }),
           })
         );

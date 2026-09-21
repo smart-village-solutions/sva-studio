@@ -144,6 +144,7 @@ export const loadKeycloakDetailArtifacts = async (
   const keycloakRunInProgress =
     latestKeycloakRun?.overallStatus === 'planned' ||
     latestKeycloakRun?.overallStatus === 'running';
+  const keycloakRunFailed = latestKeycloakRun?.overallStatus === 'failed';
   const keycloakPlanHasMutations =
     keycloakPlan?.steps.some((step) => step.action === 'create' || step.action === 'update') ??
     false;
@@ -207,7 +208,8 @@ export const loadKeycloakDetailArtifacts = async (
                 ? ({ action: 'instance.secret.rotate', retryClass: 'conditional' } as const)
                 : keycloakRunInProgress
                   ? ({ action: 'instance.readiness.refresh', retryClass: 'safe' } as const)
-                  : keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations
+                  : keycloakRunFailed ||
+                      (keycloakPlan?.overallStatus === 'ready' && keycloakPlanHasMutations)
                     ? ({ action: 'instance.keycloak.execute', retryClass: 'conditional' } as const)
                     : tenantIamStatus.access.status !== 'ready'
                       ? ({ action: 'instance.tenant-iam.probe', retryClass: 'safe' } as const)

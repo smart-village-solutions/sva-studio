@@ -625,13 +625,9 @@ Neue Realms deklarieren diese drei Attribute vor der Benutzeranlage in der beste
 
 Die strukturierten Ereignisse `tenant_admin_bootstrap_checkpoint` zeigen Eintritt, Suchergebnis, erfolgreiche Anlage, Rollensynchronisierung und Abschluss beziehungsweise ein fehlendes Bootstrap-Profil. `tenant_admin_readback` trennt `user_found`, `system_admin_assigned` und `ownership`. Die Ereignisse enthalten keine Benutzernamen, Namen, E-Mail-Adressen, Benutzer-IDs oder Passwörter. Ein negatives Ownership-Ergebnis bleibt blockierend; der Rollback neuer Realms bleibt aktiv.
 
-Der echte Integrationstest liegt im bestehenden `packages/auth-runtime/src/keycloak-admin-client/core.test.ts`. Er verwendet ausschließlich eine explizit konfigurierte lokale Keycloak-Instanz und einen Master-Service-Account mit Realm-Anlagerechten. Die Variablen `KEYCLOAK_BOOTSTRAP_TEST_URL` (Standard `http://127.0.0.1:8080`), `KEYCLOAK_BOOTSTRAP_TEST_CLIENT_ID` und `KEYCLOAK_BOOTSTRAP_TEST_CLIENT_SECRET` müssen für diese lokale Testinstanz gesetzt sein. Ausführung ohne Nx-Cache:
+Der gezielte Unit-Regressionstest in `packages/instance-registry/src/provisioning-auth-state.test.ts` bildet das Verwerfen nicht deklarierter Attribute ab und prüft Provisionierung, unmittelbaren Readback sowie den bewerteten Status. Er ist kein echter Keycloak-Integrationsnachweis.
 
-```sh
-KEYCLOAK_BOOTSTRAP_INTEGRATION=1 pnpm nx run auth-runtime:test:unit --testFiles=src/keycloak-admin-client/core.test.ts --skipNxCache
-```
-
-Der Test erstellt ein zufällig benanntes Realm, provisioniert den initialen Administrator ohne Passwort, prüft unmittelbar Benutzer, Rolle und Ownership über den echten Admin-Client und entfernt das Test-Realm im Abschluss. Ohne explizite Aktivierung wird er übersprungen. Ein grüner Unit-Testlauf ersetzt weder diesen Integrationsnachweis noch die Abnahme auf Staging.
+Für eine echte Abnahme muss ein frischer Provisioning-Plan mit der aktuellen Baseline bestätigt und ein neuer Realm-Lauf ausgeführt werden. Nach erfolgreicher Anlage müssen die Checkpoints Benutzerfund, `system_admin` und `ownership = owned` sowie einen erfolgreichen Abschluss zeigen. Ein grüner Unit-Testlauf oder App-Rollout ersetzt diesen Nachweis nicht. Der Fehlerfall darf nicht durch manuelle Benutzeranlage überdeckt werden.
 
 ## Referenzen
 

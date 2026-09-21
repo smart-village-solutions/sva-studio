@@ -455,12 +455,25 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           planFingerprint: selectedInstance.keycloakPlan.fingerprint,
         });
         return;
-      case 'reconcileTenantIamRoles':
-        if (!selectedInstance?.keycloakPlan?.fingerprint) return;
+      case 'reconcileTenantIamRoles': {
+        if (!selectedInstance) return;
+        const latestRun =
+          selectedInstance.latestKeycloakProvisioningRun ??
+          selectedInstance.keycloakProvisioningRuns[0];
+        const confirmedPlanFingerprint = latestRun?.steps.find(
+          ({ stepKey }) => stepKey === 'queued'
+        )?.details.confirmedPlanFingerprint;
+        if (
+          typeof confirmedPlanFingerprint !== 'string' ||
+          !/^[a-f0-9]{64}$/u.test(confirmedPlanFingerprint)
+        ) {
+          return;
+        }
         await instancesApi.reconcileTenantIamRoles(selectedInstance.instanceId, {
-          planFingerprint: selectedInstance.keycloakPlan.fingerprint,
+          planFingerprint: confirmedPlanFingerprint,
         });
         return;
+      }
       case 'rotate_client_secret':
         await executeProvisioning('rotate_client_secret');
         return;

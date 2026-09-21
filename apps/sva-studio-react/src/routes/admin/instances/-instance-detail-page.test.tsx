@@ -383,6 +383,55 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('reconciles tenant IAM roles with the fingerprint confirmed by the successful run', async () => {
+    const reconcileTenantIamRoles = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        reconcileTenantIamRoles,
+        selectedInstance: createSelectedInstance({
+          keycloakPlan: {
+            mode: 'existing',
+            overallStatus: 'ready',
+            fingerprint: 'b'.repeat(64),
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            driftSummary: 'Kein Drift.',
+            steps: [],
+          },
+          latestKeycloakProvisioningRun: {
+            id: 'run-1',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'succeeded',
+            driftSummary: 'Kein Drift.',
+            steps: [
+              {
+                stepKey: 'queued',
+                title: 'Eingeplant',
+                status: 'done',
+                summary: 'Bestätigt',
+                details: { confirmedPlanFingerprint: 'a'.repeat(64) },
+              },
+            ],
+          },
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.tenant-iam.reconcile', retryClass: 'safe' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-IAM-Rollen abgleichen' }));
+
+    await waitFor(() =>
+      expect(reconcileTenantIamRoles).toHaveBeenCalledWith('demo', {
+        planFingerprint: 'a'.repeat(64),
+      })
+    );
+  });
+
   it('saves registry configuration while the optional Keycloak plan is unavailable', async () => {
     const updateInstance = vi.fn().mockResolvedValue(true);
     useInstancesMock.mockReturnValue(

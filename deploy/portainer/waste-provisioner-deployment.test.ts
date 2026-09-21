@@ -25,9 +25,21 @@ const canonicalAppSection = canonicalCompose.slice(
   canonicalCompose.indexOf('  app:'),
   canonicalCompose.indexOf('  provisioner:')
 );
+const genericAppSection = genericCompose.slice(
+  genericCompose.indexOf('  app:'),
+  genericCompose.indexOf('  provisioner:')
+);
 const provisionerSection = compose.slice(
   compose.indexOf('  provisioner:'),
   compose.indexOf('  migrate:')
+);
+const canonicalProvisionerSection = canonicalCompose.slice(
+  canonicalCompose.indexOf('  provisioner:'),
+  canonicalCompose.indexOf('  migrate:')
+);
+const genericProvisionerSection = genericCompose.slice(
+  genericCompose.indexOf('  provisioner:'),
+  genericCompose.indexOf('  migrate:')
 );
 const migrateSection = compose.slice(
   compose.indexOf('  migrate:'),
@@ -106,6 +118,56 @@ describe('waste tenant database provisioning deployment', () => {
     expect(provisionerSection).toContain('- internal');
     expect(provisionerSection).not.toContain('traefik.enable');
     expect(provisionerSection).not.toContain('ports:');
+  });
+
+  it('routes only the instance creation control plane to the private provisioner boundary', () => {
+    expect(appSection).toContain(
+      "SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: 'http://provisioner:3000'"
+    );
+    expect(canonicalAppSection).toContain(
+      '"SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL=http://provisioner:3000"'
+    );
+    expect(genericAppSection).toContain(
+      'SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: "http://provisioner:3000"'
+    );
+    expect(appSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
+    expect(canonicalAppSection).not.toContain('KEYCLOAK_PROVISIONER_CLIENT_SECRET');
+    expect(appSection).not.toContain('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING');
+    expect(canonicalAppSection).not.toContain('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING');
+    expect(genericAppSection).not.toContain('SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING');
+    expect(provisionerSection).toContain("SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'");
+    expect(canonicalProvisionerSection).toContain(
+      '"SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING=true"'
+    );
+    expect(genericProvisionerSection).toContain(
+      'SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: "true"'
+    );
+    expect(genericProvisionerSection).toContain('HOST: 0.0.0.0');
+    expect(genericProvisionerSection).toContain('PORT: 3000');
+    expect(genericProvisionerSection).toContain('SVA_PROVISIONER_COMBINED_WORKER: "true"');
+    expect(provisionerSection).toContain("SVA_TRUST_FORWARDED_HEADERS: 'true'");
+    expect(canonicalProvisionerSection).toContain('"SVA_TRUST_FORWARDED_HEADERS=true"');
+    for (const key of [
+      'SVA_AUTH_ISSUER',
+      'SVA_AUTH_CLIENT_ID',
+      'SVA_AUTH_REDIRECT_URI',
+      'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
+      'SVA_STUDIO_MCP_ENABLED',
+      'SVA_STUDIO_MCP_ISSUER',
+      'SVA_STUDIO_MCP_AUDIENCE',
+      'SVA_STUDIO_MCP_CLIENT_ID',
+      'IAM_CSRF_ALLOWED_ORIGINS',
+      'SVA_PARENT_DOMAIN',
+      'SVA_STUDIO_ROOT_HOST',
+      'SVA_ALLOWED_INSTANCE_IDS',
+      'IAM_ADMIN_ENABLED',
+    ]) {
+      expect(provisionerSection, `reference provisioner ${key}`).toContain(`${key}:`);
+      expect(canonicalProvisionerSection, `canonical provisioner ${key}`).toContain(`"${key}=`);
+      expect(genericProvisionerSection, `generic provisioner ${key}`).toContain(`${key}:`);
+    }
+    expect(provisionerSection).not.toContain('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL');
+    expect(canonicalProvisionerSection).not.toContain('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL');
   });
 
   it('replaces the single provisioner without mixed worker digests', () => {

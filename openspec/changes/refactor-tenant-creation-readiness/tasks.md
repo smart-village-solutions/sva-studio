@@ -327,3 +327,12 @@
 - [x] 11.29 Den Ops-CLI-Create-Pfad vor direkter Aktivierung an den geführten
       UI-/MCP-Prozess übergeben und die CLI-Aktivierung erst für die
       serverseitig projizierte Aktion `instance.status.activate` dokumentieren.
+- [x] 11.30 Draft-Readiness, Realm-Katalog und Registry-Create über einen
+      eng allowlisteten internen Proxy im bestehenden Provisioner ausführen,
+      dort Session, CSRF und Berechtigung erneut prüfen und das privilegierte
+      Keycloak-Provisioner-Secret aus dem App-Dienst heraushalten.
+- [x] 11.31 Hintergrundfähigkeiten im Create-Wizard mit ihrem konkreten Namen
+      und ihrer serverseitig abgeleiteten Handlungsempfehlung darstellen.
+- [x] 11.32 Den korrigierten Trust-Boundary-, Runtime- und Deployment-Vertrag
+      dokumentieren und mit gezielten Unit-, Compose- und Runtime-Gates
+      absichern.

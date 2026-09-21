@@ -783,13 +783,21 @@ export const InstanceCreatePage = () => {
                     {
                       key: 'create',
                       title: t('admin.instances.wizard.readiness.createGroup'),
-                      findings: draftReadiness.createBlockers,
+                      findings: draftReadiness.createBlockers.map((finding) => ({
+                        ...finding,
+                        displayTitle: getReadinessFindingTitle(finding.checkKey),
+                        displaySummary: getReadinessFindingSummary(finding.status),
+                      })),
                     },
                     {
                       key: 'provisioning',
                       title: t('admin.instances.wizard.readiness.provisioningGroup'),
                       findings: [
-                        ...draftReadiness.provisioningBlockers,
+                        ...draftReadiness.provisioningBlockers.map((finding) => ({
+                          ...finding,
+                          displayTitle: getReadinessFindingTitle(finding.checkKey),
+                          displaySummary: getReadinessFindingSummary(finding.status),
+                        })),
                         ...draftReadiness.backgroundCapabilities
                           .filter(
                             (capability) =>
@@ -797,14 +805,14 @@ export const InstanceCreatePage = () => {
                           )
                           .map((capability) => ({
                             checkKey: capability.capability,
-                            title: t(
+                            displayTitle: t(
                               `admin.instances.wizard.capabilities.${capability.capability}`
                             ),
                             status:
                               capability.status === 'blocked'
                                 ? ('blocked' as const)
                                 : ('warning' as const),
-                            summary: getReadinessCapabilitySummary(capability.reasonCode),
+                            displaySummary: getReadinessCapabilitySummary(capability.reasonCode),
                             details: { reasonCode: capability.reasonCode },
                           })),
                       ],
@@ -812,7 +820,11 @@ export const InstanceCreatePage = () => {
                     {
                       key: 'activation',
                       title: t('admin.instances.wizard.readiness.activationGroup'),
-                      findings: draftReadiness.activationBlockers,
+                      findings: draftReadiness.activationBlockers.map((finding) => ({
+                        ...finding,
+                        displayTitle: getReadinessFindingTitle(finding.checkKey),
+                        displaySummary: getReadinessFindingSummary(finding.status),
+                      })),
                     },
                   ].map((group) => (
                     <section
@@ -834,10 +846,10 @@ export const InstanceCreatePage = () => {
                           >
                             <div>
                               <div className="font-medium text-foreground">
-                                {getReadinessFindingTitle(finding.checkKey)}
+                                {finding.displayTitle}
                               </div>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {getReadinessFindingSummary(finding.status)}
+                                {finding.displaySummary}
                               </p>
                             </div>
                             <WorkflowStatusBadge

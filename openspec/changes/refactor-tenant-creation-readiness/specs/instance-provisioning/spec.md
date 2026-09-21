@@ -153,6 +153,19 @@ Anlageblocker, Bereitstellungsblocker oder Aktivierungsblocker klassifizieren.
 - **AND** verlässt er sich nicht allein auf einen Clientzustand, eine alte
   Preflight-Antwort oder einen lokalen MCP-Entscheid
 
+#### Scenario: Privilegierte Keycloak-Prüfung bleibt im Provisioner
+
+- **WHEN** UI oder MCP Realm-Katalog, Draft-Readiness oder Registry-Create am
+  öffentlichen App-Endpunkt anfordert
+- **THEN** leitet die App ausschließlich die fest erlaubte Methode und den
+  fest erlaubten Pfad an den privaten Provisioner weiter
+- **AND** prüft der Provisioner Authentifizierung, CSRF und `instance.create`
+  erneut, bevor er die globale Keycloak-Provisioner-Identität verwendet
+- **AND** erhält der App-Prozess weder diese Identität noch einen lokalen
+  Fallback auf eine andere Keycloak-Identität
+- **AND** schlägt der Request bei einem nicht erreichbaren oder ungültig
+  konfigurierten Provisioner fail-closed fehl
+
 #### Scenario: Keycloak ist vor Create nicht erreichbar
 
 - **WHEN** Keycloak unmittelbar vor der Registry-Persistenz nicht erreichbar

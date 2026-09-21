@@ -7,6 +7,7 @@ const dispatchAuthRouteRequestMock = vi.fn();
 const dispatchSsfAdminLoginDirectoryRequestMock = vi.fn();
 const dispatchPluginServerHandlerMock = vi.fn();
 const createStudioPluginServerHandlerDispatcherMock = vi.fn();
+const dispatchInstanceProvisionerRequestMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
@@ -50,6 +51,10 @@ vi.mock('@sva/routing/server', () => ({
 
 vi.mock('./lib/ssf-admin-login-directory.server.js', () => ({
   dispatchStudioSsfAdminLoginDirectoryRequest: dispatchSsfAdminLoginDirectoryRequestMock,
+}));
+
+vi.mock('./lib/instance-provisioner-proxy.server', () => ({
+  dispatchInstanceProvisionerRequest: dispatchInstanceProvisionerRequestMock,
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
@@ -127,6 +132,7 @@ describe('server transport', () => {
     createStudioPluginServerHandlerDispatcherMock.mockResolvedValue(
       dispatchPluginServerHandlerMock
     );
+    dispatchInstanceProvisionerRequestMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -138,6 +144,7 @@ describe('server transport', () => {
     dispatchSsfAdminLoginDirectoryRequestMock.mockReset();
     dispatchPluginServerHandlerMock.mockReset();
     createStudioPluginServerHandlerDispatcherMock.mockReset();
+    dispatchInstanceProvisionerRequestMock.mockReset();
     dispatchMainserverNewsRequestMock.mockReset();
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();

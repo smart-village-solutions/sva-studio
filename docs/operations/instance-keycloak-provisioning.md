@@ -160,6 +160,21 @@ Rollen werden erst im getrennten, bestätigten Provisioning benötigt. Der
 Readiness-Pfad probiert keine Berechtigung durch eine Testmutation aus und
 speichert weder Token noch Providerfehlertext.
 
+Die öffentlichen Endpunkte für Realm-Katalog, Draft-Readiness und
+Registry-Create bleiben am App-Dienst. Dieser leitet exakt diese Methoden und
+Pfade über `http://provisioner:3000` weiter. Der private Provisioner übernimmt
+den Request unverändert hinsichtlich Session beziehungsweise Bearer-Token,
+Origin, CSRF-Header und Idempotency-Key und prüft Authentifizierung, CSRF und
+`instance.create` selbst erneut. Sein expliziter Local-Handling-Modus übergibt
+diese Requests ohne erneuten Proxy-Sprung an den lokalen IAM-Dispatcher; alle
+unterstützten Swarm-Profile starten dafür den kombinierten Provisioner-Server.
+Ein nicht erreichbarer oder falsch
+konfigurierter interner Dienst endet fail-closed mit `503`; es gibt für diese
+Endpunkte keinen lokalen Fallback auf die weniger privilegierte
+Keycloak-Admin-Identität des App-Prozesses. POST-Bodies werden mit höchstens
+einem MiB gestreamt; Body-Transfer und Upstream-Aufruf teilen sich ein
+15-Sekunden-Zeitlimit.
+
 ### Frühzeitige Bereitschaftsprüfung
 
 Vor der verbindlichen Bestätigung der Tenant-Anlage führt Studio eine
@@ -588,9 +603,10 @@ zwei festen Schritten:
 1. Die Erhebung authentisiert den in der Registry hinterlegten
    Tenant-Admin-Client direkt in seinem Tenant-Realm und liest Realm,
    Login-Client, Tenant-Admin-Client, Rollen und Serviceaccount-Zustand in
-   fester Reihenfolge. Die globale Provisioner-Identität bleibt dem separaten
-   Provisioning-Worker vorbehalten und wird nicht in den Web-Request-Pfad
-   eingebunden.
+   fester Reihenfolge. Die globale Provisioner-Identität bleibt dem privaten
+   Provisioner-Prozess vorbehalten. Sie wird weder in den App-Prozess noch an
+   Browser oder MCP weitergegeben; nur die drei allowlisteten Create-Control-
+   Plane-Requests erreichen den Provisioner über das interne Netz.
 2. Eine reine Bewertung leitet aus dem typisierten Snapshot die bestehenden
    vierzehn Check-Ergebnisse ab. Check-IDs, Titel, Zusammenfassungen, Details
    und Fail-/Warn-/Skip-Semantik sind ein stabiler Betriebsvertrag.

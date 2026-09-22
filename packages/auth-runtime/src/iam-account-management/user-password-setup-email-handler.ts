@@ -8,7 +8,8 @@ import { reserveIdempotency } from './shared.js';
 import { resolveUserMutationTargetContext } from './user-mutation-request-context.shared.js';
 import { processPasswordSetupEmailSend } from './user-password-setup-email-send.js';
 
-const SEND_PASSWORD_SETUP_EMAIL_ENDPOINT = 'POST:/api/v1/iam/users/$userId/send-password-setup-email';
+const SEND_PASSWORD_SETUP_EMAIL_ENDPOINT =
+  'POST:/api/v1/iam/users/$userId/send-password-setup-email';
 
 export const sendPasswordSetupEmailInternal = async (
   request: Request,
@@ -51,7 +52,15 @@ export const sendPasswordSetupEmailInternal = async (
     actor,
     ctx,
     endpoint: SEND_PASSWORD_SETUP_EMAIL_ENDPOINT,
-    executeActionsEmail: identityProvider.provider.executeActionsEmail?.bind(identityProvider.provider),
+    executeActionsEmail: identityProvider.provider.executeActionsEmail?.bind(
+      identityProvider.provider
+    ),
+    readRealmEmailTheme: identityProvider.provider.getRealmEmailTheme?.bind(
+      identityProvider.provider
+    ),
+    readRealmLocalizationTexts: identityProvider.provider.getRealmLocalizationTexts?.bind(
+      identityProvider.provider
+    ),
     idempotencyKey: idempotencyKey.key,
     userId,
   });

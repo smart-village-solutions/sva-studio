@@ -213,6 +213,10 @@ const createRepository = (
     consumeConfirmationChallenge: vi.fn(async () => true),
     createInstance: vi.fn(async () => baseInstance),
     updateInstance: vi.fn(async () => ({ ...baseInstance, displayName: 'Updated' })),
+    updateAccountInvitationTemplate: vi.fn(async ({ template }) => ({
+      ...baseInstance,
+      accountInvitationTemplate: template ?? undefined,
+    })),
     setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
     createProvisioningRun: vi.fn(async () => latestRun),
     reserveProvisioningRetryRun: vi.fn(async ({ leaseOwner }) => ({
@@ -2919,6 +2923,88 @@ describe('instance registry service facade', () => {
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.example.org');
+  });
+
+  it('persists, projects and confirms a revision-bound account invitation template', async () => {
+    const custom = {
+      subject: 'Willkommen bei {{tenantName}}',
+      body: 'Bitte jetzt {{passwordSetupLink}} verwenden.',
+      passwordSetupLinkLabel: 'Passwort setzen',
+      tenantHomepageLinkLabel: 'Zur Startseite',
+    } as const;
+    const current = { ...baseInstance, accountInvitationTemplate: { ...custom, revision: 3 } };
+    const persisted = { ...baseInstance, accountInvitationTemplate: { ...custom, revision: 4 } };
+    const repository = createRepository({
+      getInstanceById: vi.fn().mockResolvedValueOnce(current).mockResolvedValue(persisted),
+      updateInstance: vi.fn(async () => current),
+      updateAccountInvitationTemplate: vi.fn(async () => persisted),
+    });
+    const projectAccountInvitationTemplate = vi.fn(async () => undefined);
+    const readAccountInvitationProjection = vi.fn(async () => ({ status: 'in_sync' as const }));
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        projectAccountInvitationTemplate,
+        readAccountInvitationProjection,
+      })
+    );
+
+    await expect(
+      service.updateInstance({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: baseInstance.parentDomain,
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        accountInvitationTemplate: custom,
+        accountInvitationTemplateRevision: 3,
+      })
+    ).resolves.toMatchObject({
+      accountInvitationTemplate: { revision: 4 },
+      accountInvitationProjection: { status: 'in_sync' },
+    });
+
+    expect(repository.updateAccountInvitationTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedRevision: 3, template: { ...custom, revision: 4 } })
+    );
+    expect(projectAccountInvitationTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'demo', authRealm: 'demo' })
+    );
+  });
+
+  it('rejects a stale invitation reset before mutating the realm', async () => {
+    const existing = {
+      ...baseInstance,
+      accountInvitationTemplate: {
+        revision: 4,
+        subject: 'Willkommen bei {{tenantName}}',
+        body: 'Bitte jetzt {{passwordSetupLink}} verwenden.',
+        passwordSetupLinkLabel: 'Passwort setzen',
+        tenantHomepageLinkLabel: 'Zur Startseite',
+      },
+    };
+    const repository = createRepository({ getInstanceById: vi.fn(async () => existing) });
+    const projectAccountInvitationTemplate = vi.fn(async () => undefined);
+    const service = createInstanceRegistryService(
+      createDeps(repository, { projectAccountInvitationTemplate })
+    );
+
+    await expect(
+      service.updateInstance({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: baseInstance.parentDomain,
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        accountInvitationTemplate: null,
+        accountInvitationTemplateRevision: 3,
+      })
+    ).rejects.toThrow('account_invitation_template_revision_conflict');
+
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+    expect(repository.updateAccountInvitationTemplate).not.toHaveBeenCalled();
+    expect(projectAccountInvitationTemplate).not.toHaveBeenCalled();
   });
 
   it('does not update the legacy waste datasource during instance updates', async () => {

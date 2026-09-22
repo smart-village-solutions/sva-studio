@@ -444,6 +444,19 @@ export {
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
 export {
+  accountInvitationProjectionStatuses,
+  compileAccountInvitationTemplate,
+  DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+  validateAccountInvitationTemplate,
+  AccountInvitationTemplateValidationError,
+} from './instances/account-invitation-template.js';
+export type {
+  AccountInvitationProjection,
+  AccountInvitationProjectionStatus,
+  AccountInvitationTemplate,
+  CompiledAccountInvitationTemplate,
+} from './instances/account-invitation-template.js';
+export {
   canDisableTenantModule,
   resolveTenantModuleEffectiveActivation,
   tenantModuleActivationOrigins,

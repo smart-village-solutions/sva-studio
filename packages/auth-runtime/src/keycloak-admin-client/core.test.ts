@@ -213,6 +213,38 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('reads and mutates only the requested realm localization entries', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { executeActionsSubject: 'Betreff' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = await createClient(fetchImpl);
+
+    await client.updateRealmSettings({ emailTheme: 'sva-kern2' });
+    await client.updateRealmLocalizationTexts('de', { executeActionsSubject: 'Betreff' });
+    await expect(client.getRealmLocalizationTexts('de')).resolves.toEqual({
+      executeActionsSubject: 'Betreff',
+    });
+    await client.deleteRealmLocalizationText('de', 'executeActionsSubject');
+
+    expect(fetchImpl.mock.calls[1]?.[0]).toBe('https://keycloak.example/admin/realms/demo');
+    expect(fetchImpl.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ emailTheme: 'sva-kern2' }) })
+    );
+    expect(fetchImpl.mock.calls[2]?.[0]).toBe(
+      'https://keycloak.example/admin/realms/demo/localization/de'
+    );
+    expect(fetchImpl.mock.calls[3]?.[0]).toBe(
+      'https://keycloak.example/admin/realms/demo/localization/de?useRealmDefaultLocaleFallback=false'
+    );
+    expect(fetchImpl.mock.calls[4]?.[0]).toBe(
+      'https://keycloak.example/admin/realms/demo/localization/de/executeActionsSubject'
+    );
+  });
+
   it('deletes a keycloak user by external id', async () => {
     const fetchImpl = vi
       .fn()

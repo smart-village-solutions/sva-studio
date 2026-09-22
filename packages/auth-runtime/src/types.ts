@@ -1,4 +1,4 @@
-import type { IamUserGroupAssignment } from '@sva/core';
+import type { AccountInvitationTemplate, IamUserGroupAssignment } from '@sva/core';
 
 export type ScopeKind = 'platform' | 'instance';
 
@@ -98,6 +98,9 @@ export type AuthConfig = RuntimeScopeRef & {
   scopes: string;
   sessionCookieName: string;
   loginStateCookieName: string;
+  accountInvitationTemplate?: AccountInvitationTemplate;
+  tenantDisplayName?: string;
+  tenantHomepageUrl?: string;
   silentSsoSuppressCookieName: string;
   sessionTtlMs: number;
   sessionRedisTtlBufferMs: number;

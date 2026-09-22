@@ -1,4 +1,5 @@
 import type {
+  AccountInvitationTemplate,
   InstanceRealmMode,
   InstanceStatus,
   IamInstanceDetail,
@@ -65,6 +66,8 @@ export type UpdateInstanceInput = InstanceRegistryMutationActor & {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+  readonly accountInvitationTemplate?: Omit<AccountInvitationTemplate, 'revision'> | null;
+  readonly accountInvitationTemplateRevision?: number;
 };
 
 export type ReconcileInstanceKeycloakInput = InstanceRegistryMutationActor & {

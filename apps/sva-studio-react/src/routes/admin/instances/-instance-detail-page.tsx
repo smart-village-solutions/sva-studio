@@ -324,6 +324,37 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
+  const onSaveAccountInvitationTemplate = async (
+    template: Omit<
+      NonNullable<NonNullable<typeof selectedInstance>['accountInvitationTemplate']>,
+      'revision'
+    > | null
+  ): Promise<boolean> => {
+    if (!selectedInstance || !detailFormValues) return false;
+    const updated = await instancesApi.updateInstance(selectedInstance.instanceId, {
+      displayName: detailFormValues.displayName.trim(),
+      parentDomain: detailFormValues.parentDomain.trim(),
+      realmMode: detailFormValues.realmMode,
+      authRealm: detailFormValues.authRealm.trim(),
+      authClientId: detailFormValues.authClientId.trim(),
+      authIssuerUrl: detailFormValues.authIssuerUrl.trim() || undefined,
+      tenantAdminClient: detailFormValues.tenantAdminClient.clientId.trim()
+        ? { clientId: detailFormValues.tenantAdminClient.clientId.trim() }
+        : undefined,
+      tenantAdminBootstrap: detailFormValues.tenantAdminBootstrap.username.trim()
+        ? {
+            username: detailFormValues.tenantAdminBootstrap.username.trim(),
+            email: detailFormValues.tenantAdminBootstrap.email.trim() || undefined,
+            firstName: detailFormValues.tenantAdminBootstrap.firstName.trim() || undefined,
+            lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
+          }
+        : undefined,
+      accountInvitationTemplate: template,
+      accountInvitationTemplateRevision: selectedInstance.accountInvitationTemplate?.revision ?? 0,
+    });
+    return Boolean(updated);
+  };
+
   const executeProvisioning = async (
     intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret'
   ) => {
@@ -623,6 +654,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                   setDetailFormValues(value);
                 }}
                 onUpdateSubmit={onUpdateSubmit}
+                onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
                 saveStatus={saveFeedback.status}
               />
             </TabsContent>

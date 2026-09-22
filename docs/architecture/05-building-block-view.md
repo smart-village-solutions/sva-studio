@@ -1014,3 +1014,14 @@ Service-Account-Challenge an dieselben Serviceverträge;
 `@sva/studio-mcp` bleibt API-Client. Die React-App zeigt genau die vom Server
 projizierte nächste Hauptaktion und legt Diagnose-Readbacks unter technischen
 Details offen.
+
+### Ergänzung 2026-09: Instanzbezogene Account-Einladung
+
+- `@sva/core` definiert die typisierte Vorlage und kompiliert ausschließlich
+  kontrollierte Platzhalter in Keycloaks Betreff-, Plaintext- und HTML-Schlüssel.
+- `@sva/instance-registry` hält den revisionsgebundenen Sollzustand an der
+  Instanz; `@sva/auth-runtime` projiziert genau drei deutsche Realm-Overrides
+  über den vorhandenen Tenant-Admin-Client und liest sie kausal zurück.
+- `sva-kern2` besitzt zusätzlich einen E-Mail-Typ. Keycloak bleibt Eigentümer
+  von Action-Token, Ablaufprüfung, Rendering und SMTP-Versand; Studio erhält
+  den Passwortlink nie.

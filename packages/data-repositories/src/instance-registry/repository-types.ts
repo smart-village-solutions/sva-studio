@@ -1,4 +1,5 @@
 import type {
+  AccountInvitationTemplate,
   InstanceAuditEvent,
   InstanceKeycloakProvisioningRun,
   InstanceKeycloakProvisioningRunStep,
@@ -26,6 +27,7 @@ export type InstanceListRow = {
   tenant_admin_first_name: string | null;
   tenant_admin_last_name: string | null;
   theme_key: string | null;
+  account_invitation_template: AccountInvitationTemplate | null;
   assigned_module_ids: readonly string[] | null;
   feature_flags: Record<string, boolean> | null;
   mainserver_config_ref: string | null;

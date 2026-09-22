@@ -1,3 +1,4 @@
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -186,6 +187,49 @@ describe('sendPasswordSetupEmailInternal', () => {
         status: 'COMPLETED',
       })
     );
+  });
+
+  it('blocks resend when the custom invitation projection has drifted', async () => {
+    state.resolveAuthConfigForInstance.mockResolvedValue({
+      clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
+      postLogoutRedirectUri: 'https://tenant.example.test/',
+      accountInvitationTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 2 },
+      tenantDisplayName: 'Demo',
+      tenantHomepageUrl: 'https://tenant.example.test/',
+    });
+    const executeActionsEmail = vi.fn(async () => undefined);
+    state.resolveUserMutationTargetContext.mockResolvedValue({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      identityProvider: {
+        provider: {
+          executeActionsEmail,
+          getRealmEmailTheme: vi.fn(async () => 'sva-kern2'),
+          getRealmLocalizationTexts: vi.fn(async () => ({})),
+        },
+      },
+      userId: 'user-1',
+    });
+    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: { id: 'kc-actor-1', instanceId: 'instance-1', roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(503);
+    expect(executeActionsEmail).not.toHaveBeenCalled();
   });
 
   it('returns not_found when the target user does not exist', async () => {

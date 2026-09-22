@@ -1,4 +1,4 @@
-import { isInstanceTenantAdminRequired } from '@sva/core';
+import { compileAccountInvitationTemplate, isInstanceTenantAdminRequired } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
@@ -35,7 +35,11 @@ const logger = createSdkLogger({ component: 'iam-instance-registry-service', lev
 const loadOptionalArtifact = async <T>(
   instanceId: string,
   artifactKey:
-    'keycloak_status' | 'keycloak_preflight' | 'keycloak_plan' | 'waste_management_settings',
+    | 'keycloak_status'
+    | 'keycloak_preflight'
+    | 'keycloak_plan'
+    | 'waste_management_settings'
+    | 'account_invitation_projection',
   load: () => Promise<T | null>
 ): Promise<T | undefined> => {
   try {
@@ -55,6 +59,23 @@ export const loadKeycloakDetailArtifacts = async (
   deps: InstanceRegistryServiceDeps,
   instance: InstanceRecord
 ) => {
+  const accountInvitationTemplate = instance.accountInvitationTemplate;
+  const accountInvitationProjection = accountInvitationTemplate
+    ? await loadOptionalArtifact(
+        instance.instanceId,
+        'account_invitation_projection',
+        () =>
+          deps.readAccountInvitationProjection?.({
+            instanceId: instance.instanceId,
+            authRealm: instance.authRealm,
+            expected: compileAccountInvitationTemplate({
+              template: accountInvitationTemplate,
+              tenantName: instance.displayName,
+              tenantHomepageUrl: `https://${instance.primaryHostname}/`,
+            }),
+          }) ?? Promise.resolve({ status: 'unavailable' as const, errorCode: 'adapter_missing' })
+      )
+    : { status: 'default' as const };
   const getKeycloakStatus = createGetKeycloakStatusHandler(deps);
   const getKeycloakPreflight = createGetKeycloakPreflightHandler(deps);
   const planKeycloakProvisioning = createPlanKeycloakProvisioningHandler(deps);
@@ -258,7 +279,8 @@ export const loadKeycloakDetailArtifacts = async (
     tenantIamStatus,
     moduleIamStatus,
     wasteManagementSettings ?? undefined,
-    provisioningReadiness
+    provisioningReadiness,
+    accountInvitationProjection ?? { status: 'unavailable', errorCode: 'read_failed' }
   );
 };
 

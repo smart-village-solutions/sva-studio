@@ -1383,3 +1383,20 @@ Nachweis gesperrt.
    der Mutation.
 5. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
    `unknown` sichtbar. Der dauerhafte Auftrag bleibt claimbar.
+
+### Szenario 23: Account-Einladung je Studio-Instanz
+
+1. Ein Plattformadministrator speichert auf der Instanzdetailseite Text und
+   Linkbeschriftungen zusammen mit der zuletzt gelesenen Vorlagenrevision.
+2. Der Server validiert Platzhalter und Freitext, persistiert die nächste
+   Revision und kompiliert Tenantname sowie die aus `primaryHostname`
+   abgeleitete HTTPS-Startseite in drei Keycloak-Nachrichten.
+3. Der Tenant-Admin-Client setzt `emailTheme = sva-kern2`, schreibt nur diese
+   drei Realm-Overrides und bestätigt sie durch einen Readback. Ein Teilfehler
+   bleibt als Drift sichtbar und ist idempotent wiederholbar.
+4. Vor Create-Einladung und Resend vergleicht die Auth-Runtime bei einer
+   Individualvorlage den Realmzustand mit derselben Kompilierung. Abweichung
+   oder Nichtverfügbarkeit stoppt ausschließlich die E-Mail; der Account bleibt
+   bestehen.
+5. Erst danach ruft Studio `execute-actions-email` mit `UPDATE_PASSWORD` auf.
+   Keycloak erzeugt und versendet den signierten, zeitlich begrenzten Link.

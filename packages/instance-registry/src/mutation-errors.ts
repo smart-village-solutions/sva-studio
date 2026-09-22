@@ -24,6 +24,9 @@ export type InstanceMutationErrorCode =
   | 'keycloak_plan_fingerprint_stale'
   | 'activation_readiness_blocked'
   | 'plugin_activation_state_conflict'
+  | 'account_invitation_template_revision_conflict'
+  | 'account_invitation_template_revision_required'
+  | 'invalid_account_invitation_template'
   | 'internal_unclassified';
 
 export type InstanceMutationErrorClassification = {
@@ -41,6 +44,7 @@ const stableConflictCodes = [
   'provisioning_retry_instance_status_invalid',
   'provisioning_retry_not_safe',
   'provisioning_retry_conflict',
+  'account_invitation_template_revision_conflict',
 ] as const;
 
 const readMutationErrorMessage = (error: unknown): string => {
@@ -53,6 +57,9 @@ const readMutationErrorMessage = (error: unknown): string => {
     databaseError.constraint === 'instances_auth_realm_unique'
   ) {
     return 'auth_realm_conflict';
+  }
+  if (databaseError?.code === 'invalid_account_invitation_template') {
+    return 'invalid_account_invitation_template';
   }
   return error instanceof Error ? error.message : String(error);
 };
@@ -103,6 +110,12 @@ export const classifyInstanceMutationError = (
   }
   if (message === 'tenant_hostname_reserved') {
     return { status: 400, code: 'tenant_hostname_reserved' };
+  }
+  if (message === 'account_invitation_template_revision_required') {
+    return { status: 400, code: 'account_invitation_template_revision_required' };
+  }
+  if (message === 'invalid_account_invitation_template') {
+    return { status: 400, code: 'invalid_account_invitation_template' };
   }
   if (message.includes('oidc_client_id_reserved')) {
     return {

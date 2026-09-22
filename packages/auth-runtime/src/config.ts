@@ -212,6 +212,9 @@ export const resolveAuthConfigForInstance = async (
     authRealm: instance.authRealm,
     issuer: buildIssuerUrl(instance.authRealm, instance.authIssuerUrl),
     clientId: instance.authClientId,
+    accountInvitationTemplate: instance.accountInvitationTemplate,
+    tenantDisplayName: instance.displayName,
+    tenantHomepageUrl: `https://${instance.primaryHostname}/`,
     redirectUri: `${origin}/auth/callback`,
     postLogoutRedirectUri: `${origin}/`,
   });

@@ -162,6 +162,7 @@ export const toListItem = (
   tenantAdminClient: item.tenantAdminClient,
   tenantAdminBootstrap: item.tenantAdminBootstrap,
   themeKey: item.themeKey,
+  accountInvitationTemplate: item.accountInvitationTemplate,
   featureFlags: item.featureFlags,
   assignedModules: item.assignedModules,
   mainserverConfigRef: item.mainserverConfigRef,
@@ -248,6 +249,9 @@ export const buildInstanceDetail = (
     state: 'unknown',
     capabilities: [],
     nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
+  },
+  accountInvitationProjection: IamInstanceDetail['accountInvitationProjection'] = {
+    status: 'default',
   }
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
@@ -270,6 +274,7 @@ export const buildInstanceDetail = (
   moduleIamStatus,
   provisioningReadiness,
   wasteManagementSettings,
+  accountInvitationProjection,
 });
 
 export const createAuditDetails = (

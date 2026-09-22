@@ -612,6 +612,7 @@ export type IamInstanceListItem = {
     readonly lastName?: string;
   };
   readonly themeKey?: string;
+  readonly accountInvitationTemplate?: import('../instances/account-invitation-template.js').AccountInvitationTemplate;
   readonly assignedModules: readonly string[];
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;
@@ -898,6 +899,7 @@ export type IamInstanceDraftReadiness = Readonly<{
 }>;
 
 export type IamInstanceDetail = IamInstanceListItem & {
+  readonly accountInvitationProjection?: import('../instances/account-invitation-template.js').AccountInvitationProjection;
   readonly hostnames: readonly {
     readonly hostname: string;
     readonly isPrimary: boolean;

@@ -49,6 +49,15 @@ const tenantAdminClientSchema = z
   })
   .optional();
 
+const accountInvitationTemplateSchema = z
+  .object({
+    subject: z.string().min(1).max(200),
+    body: z.string().min(1).max(5_000),
+    passwordSetupLinkLabel: z.string().min(1).max(120),
+    tenantHomepageLinkLabel: z.string().min(1).max(120),
+  })
+  .strict();
+
 const reservedInstanceIds = new Set(['audit']);
 
 const instanceIdSchema = z
@@ -159,6 +168,8 @@ export const updateInstanceSchema = z.object({
   authRealm: authRealmSchema,
   authClientId: z.string().trim().min(1),
   tenantAdminClient: tenantAdminClientSchema,
+  accountInvitationTemplate: accountInvitationTemplateSchema.nullable().optional(),
+  accountInvitationTemplateRevision: z.number().int().nonnegative().optional(),
 });
 
 export const statusMutationSchema = z.object({

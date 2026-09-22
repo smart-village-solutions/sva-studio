@@ -85,6 +85,7 @@ export type KeycloakReadState = {
   readonly realm: {
     readonly realm: string;
     readonly loginTheme?: string;
+    readonly emailTheme?: string;
     readonly internationalizationEnabled?: boolean;
     readonly supportedLocales?: readonly string[];
     readonly defaultLocale?: string;

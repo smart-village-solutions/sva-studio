@@ -1,6 +1,7 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
+import { updateAccountInvitationTemplate } from './repository-account-invitation-template.js';
 import {
   buildInstanceSelectColumns,
   demotePreviousPrimaryHostnameSql,
@@ -19,6 +20,7 @@ type MutationRepository = Pick<
   InstanceRegistryRepository,
   | 'createInstance'
   | 'updateInstance'
+  | 'updateAccountInvitationTemplate'
   | 'updateInstanceKeycloakSecrets'
   | 'setInstanceStatus'
   | 'setInstanceRealmMode'
@@ -241,6 +243,7 @@ ${buildInstanceSelectColumns()};
 export const createMutationRepository = (executor: SqlExecutor): MutationRepository => ({
   createInstance: (input) => createInstance(executor, input),
   updateInstance: (input) => updateInstance(executor, input),
+  updateAccountInvitationTemplate: (input) => updateAccountInvitationTemplate(executor, input),
   updateInstanceKeycloakSecrets: (input) => updateInstanceKeycloakSecrets(executor, input),
   setInstanceStatus: (input) => setInstanceStatus(executor, input),
   setInstanceRealmMode: (input) => setInstanceRealmMode(executor, input),

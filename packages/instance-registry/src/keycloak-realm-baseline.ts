@@ -8,6 +8,7 @@ export const KEYCLOAK_REALM_BASELINE = {
   tenantAdminClientId: 'sva-studio-realm-admin',
   realm: {
     loginTheme: 'sva-kern2',
+    emailTheme: 'sva-kern2',
     internationalizationEnabled: true,
     supportedLocales: ['de'],
     defaultLocale: 'de',
@@ -71,6 +72,7 @@ const equalStringArrays = (
 export const isKeycloakRealmBaselineAligned = (
   realm: Readonly<{
     loginTheme?: string;
+    emailTheme?: string;
     internationalizationEnabled?: boolean;
     supportedLocales?: readonly string[];
     defaultLocale?: string;
@@ -89,6 +91,7 @@ export const isKeycloakRealmBaselineAligned = (
   const expected = KEYCLOAK_REALM_BASELINE.realm;
   return (
     realm.loginTheme === expected.loginTheme &&
+    realm.emailTheme === expected.emailTheme &&
     realm.internationalizationEnabled === expected.internationalizationEnabled &&
     equalStringArrays(realm.supportedLocales, expected.supportedLocales) &&
     realm.defaultLocale === expected.defaultLocale &&

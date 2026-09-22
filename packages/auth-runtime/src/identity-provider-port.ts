@@ -94,6 +94,8 @@ export type ExecuteActionsEmailInput = {
 export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
   executeActionsEmail?(externalId: string, input: ExecuteActionsEmailInput): Promise<void>;
+  getRealmEmailTheme?(): Promise<string | undefined>;
+  getRealmLocalizationTexts?(locale: string): Promise<Readonly<Record<string, string>>>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
   deleteUser(externalId: string): Promise<void>;

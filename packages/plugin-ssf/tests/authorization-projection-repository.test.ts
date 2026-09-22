@@ -218,7 +218,11 @@ describe('SSF authorization projection repository', () => {
   });
 
   it('reads only an exactly converged revision in a tenant-bound transaction', async () => {
-    const revision = `sha256:${'b'.repeat(64)}`;
+    const revision = createSsfAuthorizationRevision({
+      contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+      instanceId: 'tenant-a',
+      subjects: [],
+    });
     const client = {
       query: vi
         .fn()

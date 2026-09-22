@@ -106,6 +106,7 @@
       ],
       "@sva/instance-registry": ["packages/instance-registry/dist/index.d.ts"],
       "@sva/media": ["packages/media/dist/index.d.ts"],
+      "@sva/plugin-ssf/runtime": ["packages/plugin-ssf/dist/runtime.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"],
       "@sva/studio-module-iam": ["packages/studio-module-iam/dist/index.d.ts"]
     }

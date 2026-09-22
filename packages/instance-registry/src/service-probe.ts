@@ -18,6 +18,7 @@ export const createProbeTenantIamAccessHandler =
 
     const access = await deps.probeTenantIamAccess({
       instanceId: input.instanceId,
+      authClientId: instance.authClientId,
       actorId: input.actorId,
       requestId: input.requestId,
     });

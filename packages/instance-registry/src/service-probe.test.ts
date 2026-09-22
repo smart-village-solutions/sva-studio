@@ -37,7 +37,10 @@ describe('service-probe', () => {
 
   it('probes tenant IAM access, appends audit evidence and merges reconcile status', async () => {
     const repository = {
-      getInstanceById: vi.fn(async () => ({ instanceId: 'tenant-a' })),
+      getInstanceById: vi.fn(async () => ({
+        instanceId: 'tenant-a',
+        authClientId: 'sva-studio-login',
+      })),
       appendAuditEvent: vi.fn(async () => undefined),
       getRoleReconcileSummary: vi.fn(async () => ({
         status: 'ready',
@@ -73,6 +76,7 @@ describe('service-probe', () => {
 
     expect(probeTenantIamAccess).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      authClientId: 'sva-studio-login',
       actorId: 'actor-1',
       requestId: 'req-1',
     });

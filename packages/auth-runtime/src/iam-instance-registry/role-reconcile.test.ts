@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
   reconcile: vi.fn(),
   mapRoleSyncErrorCode: vi.fn(() => 'IDP_TIMEOUT'),
   parseBody: vi.fn(async () => ({ ok: true, data: { planFingerprint: 'a'.repeat(64) } })),
@@ -31,6 +37,7 @@ vi.mock('@sva/instance-registry/http-contracts', () => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({ requestId: 'req-1' }),
 }));
 
@@ -75,6 +82,7 @@ describe('reconcileInstanceIamRolesInternal', () => {
     state.detail.mockClear();
     state.plan.mockClear();
     state.parseBody.mockClear();
+    state.logger.warn.mockReset();
   });
 
   it('requires a live mutation-free Keycloak postflight before changing roles', async () => {
@@ -95,6 +103,20 @@ describe('reconcileInstanceIamRolesInternal', () => {
     expect(response.status).toBe(409);
     expect(state.plan).toHaveBeenCalledWith('demo', { forceLive: true });
     expect(state.reconcile).not.toHaveBeenCalled();
+    expect(state.logger.warn).toHaveBeenCalledWith('tenant_iam_role_reconcile_rejected', {
+      operation: 'reconcile_tenant_iam_roles',
+      result: 'rejected',
+      classification: 'conflict',
+      error_code: 'keycloak_plan_fingerprint_stale',
+      reason_code: 'keycloak_plan_fingerprint_stale',
+      request_id: 'req-1',
+      instance_id: 'demo',
+      latest_run_succeeded: true,
+      current_plan_ready: true,
+      current_plan_mutation_free: false,
+      requested_plan_matches_confirmed: true,
+      role_catalog_fingerprint_valid: true,
+    });
   });
 
   it('returns a structured, redacted synchronization error when reconciliation fails', async () => {

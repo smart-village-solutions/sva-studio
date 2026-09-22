@@ -1,5 +1,5 @@
 import { readDetailInstanceId } from '@sva/instance-registry/http-contracts';
-import { getWorkspaceContext } from '@sva/server-runtime';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import {
@@ -17,9 +17,17 @@ import { ensurePlatformAccess } from './http.js';
 import { parseRegistryRequestBody } from './request-parsing.js';
 import { withRegistryService } from './repository.js';
 
+const logger = createSdkLogger({
+  component: 'iam-instance-registry-role-reconcile',
+  level: 'info',
+});
+
 const reconcileTenantIamRolesSchema = z
   .object({ planFingerprint: z.string().regex(/^[a-f0-9]{64}$/) })
   .strict();
+
+const readSha256Fingerprint = (value: unknown): string | undefined =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value) ? value : undefined;
 
 export const reconcileInstanceIamRolesInternal = async (
   request: Request,
@@ -57,14 +65,27 @@ export const reconcileInstanceIamRolesInternal = async (
     const confirmedRoleCatalogFingerprint = latestRun?.steps.find(
       ({ stepKey }) => stepKey === 'queued'
     )?.details.confirmedRoleCatalogFingerprint;
-    if (
-      latestRun?.overallStatus !== 'succeeded' ||
-      currentPlan?.overallStatus !== 'ready' ||
-      currentPlan.steps.some((step) => step.action === 'create' || step.action === 'update') ||
-      confirmedPlanFingerprint !== parsed.data.planFingerprint ||
-      typeof confirmedRoleCatalogFingerprint !== 'string' ||
-      !/^[a-f0-9]{64}$/u.test(confirmedRoleCatalogFingerprint)
-    ) {
+    const validRoleCatalogFingerprint = readSha256Fingerprint(confirmedRoleCatalogFingerprint);
+    const gateResults = {
+      latest_run_succeeded: latestRun?.overallStatus === 'succeeded',
+      current_plan_ready: currentPlan?.overallStatus === 'ready',
+      current_plan_mutation_free: !(currentPlan?.steps ?? []).some(
+        (step) => step.action === 'create' || step.action === 'update'
+      ),
+      requested_plan_matches_confirmed: confirmedPlanFingerprint === parsed.data.planFingerprint,
+      role_catalog_fingerprint_valid: Boolean(validRoleCatalogFingerprint),
+    };
+    if (Object.values(gateResults).some((passed) => !passed)) {
+      logger.warn('tenant_iam_role_reconcile_rejected', {
+        operation: 'reconcile_tenant_iam_roles',
+        result: 'rejected',
+        classification: 'conflict',
+        error_code: 'keycloak_plan_fingerprint_stale',
+        reason_code: 'keycloak_plan_fingerprint_stale',
+        request_id: requestId,
+        instance_id: instanceId,
+        ...gateResults,
+      });
       return createApiError(
         409,
         'conflict',
@@ -76,7 +97,7 @@ export const reconcileInstanceIamRolesInternal = async (
     const report = await runRoleCatalogReconciliation({
       instanceId,
       requestId,
-      expectedRoleCatalogFingerprint: confirmedRoleCatalogFingerprint,
+      expectedRoleCatalogFingerprint: validRoleCatalogFingerprint,
     });
     return jsonResponse(200, asApiItem(report, requestId));
   } catch (error) {

@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 
+const tenantIamLoggerMock = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  isLevelEnabled: vi.fn(() => true),
+}));
+
 const createInstanceRegistryRuntimeMock = vi.fn(() => ({
   withRegistryRepository: vi.fn(),
   withScopedRegistryRepository: vi.fn(),
@@ -93,13 +101,7 @@ vi.mock('../db.js', () => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    isLevelEnabled: vi.fn(() => true),
-  }),
+  createSdkLogger: () => tenantIamLoggerMock,
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-test', traceId: 'trace-test' })),
   getInstanceConfig: vi.fn(() => ({ canonicalAuthHost: 'admin.example.test' })),
   isCanonicalAuthHost: vi.fn(() => true),
@@ -351,6 +353,7 @@ describe('iam instance registry repository wiring', () => {
       },
     });
     resolveAuthConfigForInstanceMock.mockClear();
+    tenantIamLoggerMock.info.mockClear();
     await import('./repository.js');
 
     const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
@@ -363,6 +366,16 @@ describe('iam instance registry repository wiring', () => {
     ).resolves.toEqual(expect.objectContaining({ status: 'ready' }));
     expect(getOidcClientByClientId).toHaveBeenCalledWith('sva-studio');
     expect(resolveAuthConfigForInstanceMock).not.toHaveBeenCalled();
+    expect(tenantIamLoggerMock.info).toHaveBeenCalledWith(
+      'tenant_iam_access_probe_completed',
+      expect.objectContaining({
+        operation: 'probe_tenant_iam_access',
+        result: 'ready',
+        instance_id: 'demo',
+        request_id: 'req-provisioning-probe',
+        auth_client_source: 'instance',
+      })
+    );
   });
 
   it('reports ready tenant IAM access when password setup emails can be triggered for the configured login client', async () => {
@@ -527,6 +540,7 @@ describe('iam instance registry repository wiring', () => {
       },
     });
     resolveAuthConfigForInstanceMock.mockResolvedValueOnce({ clientId: 'sva-studio' });
+    tenantIamLoggerMock.warn.mockClear();
     await import('./repository.js');
 
     const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
@@ -544,6 +558,54 @@ describe('iam instance registry repository wiring', () => {
         requestId: 'req-probe-unavailable',
       })
     );
+    expect(tenantIamLoggerMock.warn).toHaveBeenCalledWith(
+      'tenant_iam_access_probe_completed',
+      expect.objectContaining({
+        operation: 'probe_tenant_iam_access',
+        result: 'degraded',
+        classification: 'unavailable',
+        failure_stage: 'roles_read',
+        reason_code: 'IDP_UNAVAILABLE',
+        auth_client_source: 'active_runtime_fallback',
+        error_type: 'KeycloakAdminRequestError',
+      })
+    );
+  });
+
+  it('identifies active runtime auth resolution as the failed IAM probe stage', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockRejectedValueOnce(new Error('config details'));
+    tenantIamLoggerMock.warn.mockClear();
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-auth-resolution',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'degraded',
+        errorCode: 'IDP_UNAVAILABLE',
+      })
+    );
+    expect(tenantIamLoggerMock.warn).toHaveBeenCalledWith(
+      'tenant_iam_access_probe_completed',
+      expect.objectContaining({
+        failure_stage: 'auth_config_resolution',
+        auth_client_source: 'active_runtime_fallback',
+        error_type: 'Error',
+      })
+    );
+    expect(JSON.stringify(tenantIamLoggerMock.warn.mock.calls)).not.toContain('config details');
   });
 
   it('does not leak a follow-up capability rejection when IAM reads already failed', async () => {

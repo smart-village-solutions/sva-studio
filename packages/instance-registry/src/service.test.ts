@@ -1,17 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
+const serviceLogger = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  isLevelEnabled: vi.fn(() => true),
+}));
+
 vi.mock('@sva/server-runtime', async () => {
   const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
   return {
     ...actual,
-    createSdkLogger: () => ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      isLevelEnabled: vi.fn(() => true),
-    }),
+    createSdkLogger: () => serviceLogger,
   };
 });
 
@@ -4348,6 +4350,8 @@ describe('instance registry service facade', () => {
       realmMode: 'existing' as const,
     };
     const persistedPlan = {
+      contractVersion: '1.0' as const,
+      fingerprint: 'a'.repeat(64),
       mode: 'new' as const,
       overallStatus: 'ready' as const,
       generatedAt: '2026-09-11T12:00:00.000Z',
@@ -4399,6 +4403,7 @@ describe('instance registry service facade', () => {
       ]),
     });
     const planKeycloakProvisioning = vi.fn(async () => livePlan);
+    serviceLogger.info.mockClear();
 
     await expect(
       createPlanKeycloakProvisioningHandler(createDeps(repository, { planKeycloakProvisioning }))(
@@ -4408,6 +4413,19 @@ describe('instance registry service facade', () => {
     ).resolves.toEqual(livePlan);
     expect(planKeycloakProvisioning).toHaveBeenCalledWith(
       expect.objectContaining({ realmMode: 'existing', realmBaselineApplicable: true })
+    );
+    expect(planKeycloakProvisioning).toHaveBeenCalledOnce();
+    expect(serviceLogger.info).toHaveBeenCalledWith(
+      'keycloak_plan_completed',
+      expect.objectContaining({
+        operation: 'plan_keycloak_provisioning',
+        result: 'completed',
+        instance_id: 'demo',
+        plan_source: 'live',
+        plan_status: 'ready',
+        realm_mode: 'new',
+        plan_action_update_count: 1,
+      })
     );
   });
 

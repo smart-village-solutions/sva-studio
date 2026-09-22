@@ -3,7 +3,6 @@ import {
   type SsfAuthorizationProjection,
 } from './authorization-projection.js';
 import type { SsfAuthorizationProjectionState } from './authorization-projection-repository.js';
-
 export interface SsfAuthorizationProjectionLockedStore {
   stage(projection: SsfAuthorizationProjection): Promise<SsfAuthorizationProjectionState>;
   claim(input: {
@@ -28,21 +27,18 @@ export interface SsfAuthorizationProjectionLockedStore {
     errorCode: string;
   }): Promise<boolean>;
 }
-
 export interface SsfAuthorizationProjectionStore {
   withTenantLock<T>(
     instanceId: string,
     operation: (store: SsfAuthorizationProjectionLockedStore) => Promise<T>
   ): Promise<T>;
 }
-
 export type SsfAuthorizationProjectionInput =
   | SsfAuthorizationProjection
   | Readonly<{
       instanceId: string;
       readDesired: () => Promise<SsfAuthorizationProjection>;
     }>;
-
 export interface SsfAuthorizationProjectionTarget {
   prepareLoginClients(instanceId: string): Promise<void>;
   prepareRuntimeBaseline(instanceId: string): Promise<void>;
@@ -53,7 +49,6 @@ export interface SsfAuthorizationProjectionTarget {
   revokeTenantSessions(instanceId: string, authorizationRevision: string): Promise<void>;
   resumeTokenIssuance(instanceId: string): Promise<void>;
 }
-
 type SsfProjectionFailureReason =
   | 'login_client_preparation_failed'
   | 'runtime_baseline_preparation_failed'
@@ -65,7 +60,6 @@ type SsfProjectionFailureReason =
   | 'target_readback_failed'
   | 'target_readback_mismatch'
   | 'token_issuance_resume_failed';
-
 export type SsfAuthorizationProjectionReconcileResult =
   | Readonly<{
       status: 'ready';
@@ -82,19 +76,16 @@ export type SsfAuthorizationProjectionReconcileResult =
       generation: number;
       reason: SsfProjectionFailureReason;
     }>;
-
 class SsfProjectionPhaseError extends Error {
   constructor(readonly reason: SsfProjectionFailureReason) {
     super(reason);
     this.name = 'SsfProjectionPhaseError';
   }
 }
-
 type SsfAuthorizationProjectionReconcilerDependencies = Readonly<{
   store: SsfAuthorizationProjectionStore;
   target: SsfAuthorizationProjectionTarget;
 }>;
-
 const isTargetIntegrityFailure = (error: unknown): boolean =>
   typeof error === 'object' &&
   error !== null &&

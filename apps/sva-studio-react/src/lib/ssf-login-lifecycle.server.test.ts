@@ -29,7 +29,7 @@ it('keeps two clean tenants unpublished through partial provisioning and recover
   const projected = new Map<string, SsfAuthorizationProjection>();
   let failBaselineForB = true;
   const desired = (instanceId: string): SsfAuthorizationProjection => ({
-    contractVersion: '1.0',
+    contractVersion: '2.0',
     instanceId,
     subjects: [
       {

@@ -56,6 +56,7 @@
       "@sva/plugin-sdk/route-documentation": [
         "../../packages/plugin-sdk/src/route-documentation.ts"
       ],
+      "@sva/plugin-ssf/runtime": ["../../packages/plugin-ssf/src/runtime.ts"],
       "@sva/routing": ["../../packages/routing/src/index.ts"],
       "@sva/routing/documentation": ["../../packages/routing/src/route-documentation.ts"],
       "@sva/routing/route-search": ["../../packages/routing/src/route-search.ts"],

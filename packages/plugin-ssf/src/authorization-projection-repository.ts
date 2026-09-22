@@ -12,9 +12,7 @@ import {
   projectionColumns,
   type ProjectionRow,
 } from './authorization-projection-repository-mapping.js';
-
 type ProjectionQueryClient = Pick<Pool, 'query'>;
-
 export type SsfAuthorizationProjectionStatus =
   'pending' | 'projecting' | 'activation_pending' | 'revocation_pending' | 'ready' | 'blocked';
 

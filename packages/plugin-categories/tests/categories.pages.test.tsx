@@ -165,6 +165,52 @@ describe('CategoriesPage', () => {
     );
   });
 
+  it('edits optional fields and creates a child category from the table action', async () => {
+    state.save.mockResolvedValue({
+      category: { ...categories[1], id: 'cat-new' },
+      affectedDescendantIds: [],
+      errors: [],
+    });
+    render(<CategoriesPage />);
+    await screen.findByRole('table', { name: 'Kategorien-Tabelle' });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Neue Unterkategorie' })[0]!);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Unterkategorie' } });
+    fireEvent.change(screen.getByLabelText('Übergeordnete Kategorie'), {
+      target: { value: 'cat-child' },
+    });
+    fireEvent.change(screen.getByLabelText('Position'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'team@example.org' } });
+    const dataTypes = screen.getByLabelText('Datentypen') as HTMLSelectElement;
+    const eventRecord = Array.from(dataTypes.options).find(
+      (option) => option.value === 'event_record'
+    );
+    if (!eventRecord) throw new Error('Expected event record option');
+    eventRecord.selected = true;
+    fireEvent.change(dataTypes);
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() =>
+      expect(state.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: expect.objectContaining({
+            parentId: 'cat-child',
+            position: null,
+            email: 'team@example.org',
+            dataTypes: ['event_record'],
+          }),
+        })
+      )
+    );
+  });
+
+  it('renders inactive category status in the management table', async () => {
+    state.list.mockResolvedValue([{ ...categories[0], active: false }]);
+    render(<CategoriesPage />);
+
+    expect((await screen.findAllByText('Inaktiv')).length).toBeGreaterThan(0);
+  });
+
   it('intersects mutation permissions with confirmed Mainserver capabilities', async () => {
     render(<CategoriesPage enabledMutationActions={['categories.update']} />);
     await screen.findByRole('table', { name: 'Kategorien-Tabelle' });

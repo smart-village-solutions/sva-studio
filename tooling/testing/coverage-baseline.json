@@ -61,10 +61,10 @@
       "branches": 81.03
     },
     "instance-registry": {
-      "lines": 94.54,
-      "statements": 94.42,
-      "functions": 96.01,
-      "branches": 82.36
+      "lines": 94.88,
+      "statements": 93.89,
+      "functions": 96.35,
+      "branches": 86.75
     },
     "studio-mcp": {
       "lines": 89.16,
@@ -91,10 +91,10 @@
       "branches": 89.91
     },
     "plugin-categories": {
-      "lines": 95.1,
-      "statements": 95.3,
-      "functions": 93.88,
-      "branches": 91.36
+      "lines": 94.04,
+      "statements": 93.27,
+      "functions": 95.42,
+      "branches": 84.86
     },
     "plugin-events": {
       "lines": 87,

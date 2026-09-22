@@ -272,7 +272,6 @@ export const executeCreateUser = async (input: {
       keycloakSubject: result.responseData.keycloakSubject,
       roleNames: result.roleNames,
     });
-    await requestSsfAuthorizationReconcile(actor);
 
     const responseData = await resolveCreateUserResponseData({
       actor,
@@ -282,12 +281,14 @@ export const executeCreateUser = async (input: {
       responseData: result.responseData,
     });
 
-    return finalizeCreateUserResult({
+    const finalizedResult = await finalizeCreateUserResult({
       actor,
       identityProvider,
       payload,
       responseData,
     });
+    await requestSsfAuthorizationReconcile(actor);
+    return finalizedResult;
   } catch (error) {
     logCreateUserFailure({
       actor,

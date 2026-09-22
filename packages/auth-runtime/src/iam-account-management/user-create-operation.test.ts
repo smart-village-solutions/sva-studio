@@ -349,6 +349,69 @@ describe('executeCreateUser', () => {
     });
   });
 
+  it('keeps the created user result when the SSF authorization reconcile request fails', async () => {
+    state.readInstanceRegistryPluginTenantLifecycleRegistry.mockReturnValue(
+      new Map([
+        [
+          'ssf',
+          {
+            pluginId: 'ssf',
+            contractRevision: 'ssf-contract-1',
+            operations: [],
+            readinessChecks: [],
+          },
+        ],
+      ])
+    );
+    state.persistPluginTenantLifecycleReconcileIntents.mockRejectedValueOnce(
+      new Error('registry unavailable')
+    );
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    await expect(
+      executeCreateUser({
+        actor: {
+          instanceId: 'instance-1',
+          actorAccountId: 'actor-1',
+          requestId: 'req-1',
+          traceId: 'trace-1',
+        },
+        actorSubject: 'kc-actor-1',
+        identityProvider,
+        payload: {
+          email: 'alice@example.com',
+          roleIds: [],
+          sendPasswordSetupEmail: false,
+        },
+      })
+    ).resolves.toMatchObject({ invitation: { status: 'not_requested' } });
+
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'SSF authorization reconcile scheduling failed after IAM user creation',
+      {
+        workspace_id: 'instance-1',
+        context: {
+          operation: 'schedule_ssf_authorization_reconcile',
+          instance_id: 'instance-1',
+          request_id: 'req-1',
+          trace_id: 'trace-1',
+          error: 'registry unavailable',
+        },
+      }
+    );
+  });
+
   it('keeps personal Mainserver provisioning active for a normally created technical account', async () => {
     state.provisionMainserverUserCredentials.mockResolvedValue({
       mainserverUserApplicationId: 'mainserver-app-1',

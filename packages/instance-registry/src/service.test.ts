@@ -21,6 +21,7 @@ import {
   createInstanceKeycloakPlanReader,
   createInstanceKeycloakPreflightReader,
 } from './provisioning-auth.js';
+import { buildKeycloakPlanFingerprint } from './provisioning-auth-plan.js';
 import { buildCreateInstancePayloadFingerprint } from './service-instance-create-fingerprint.js';
 import { buildKeycloakSnapshotInputFingerprint } from './provisioning-auth-policy.js';
 import {
@@ -4342,6 +4343,10 @@ describe('instance registry service facade', () => {
   });
 
   it('bypasses persisted plan snapshots for an explicit live postflight', async () => {
+    const managedInstance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+    };
     const persistedPlan = {
       mode: 'new' as const,
       overallStatus: 'ready' as const,
@@ -4355,13 +4360,22 @@ describe('instance registry service facade', () => {
       steps: [{ stepKey: 'client', action: 'update', status: 'ready', details: {} }],
     };
     const repository = createRepository({
-      getInstanceById: vi.fn(async () => baseInstance),
+      getInstanceById: vi.fn(async () => managedInstance),
       getAuthClientSecretCiphertext: vi.fn(async () => 'cipher-auth-v2'),
       getTenantAdminClientSecretCiphertext: vi.fn(async () => 'cipher-admin-v2'),
       listKeycloakProvisioningRuns: vi.fn(async () => [
         {
           ...latestRun,
+          mode: 'new',
+          overallStatus: 'succeeded',
           steps: [
+            {
+              stepKey: 'realm_baseline',
+              title: 'Realm-Baseline',
+              status: 'done',
+              summary: 'Applied',
+              details: {},
+            },
             {
               stepKey: 'status_snapshot',
               title: 'Status',
@@ -4369,7 +4383,11 @@ describe('instance registry service facade', () => {
               summary: 'Final',
               details: {
                 policyVersion: 3,
-                inputFingerprint: buildKeycloakSnapshotInputFingerprint(baseInstance, {
+                authRealm: managedInstance.authRealm,
+                authClientId: managedInstance.authClientId,
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+                inputFingerprint: buildKeycloakSnapshotInputFingerprint(managedInstance, {
                   authClientSecretCiphertext: 'cipher-auth-v2',
                   tenantAdminClientSecretCiphertext: 'cipher-admin-v2',
                 }),
@@ -4388,7 +4406,9 @@ describe('instance registry service facade', () => {
         { forceLive: true }
       )
     ).resolves.toEqual(livePlan);
-    expect(planKeycloakProvisioning).toHaveBeenCalledOnce();
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ realmMode: 'existing', realmBaselineApplicable: true })
+    );
   });
 
   it('binds the initial new-realm plan to the same fingerprint as the live worker', async () => {
@@ -4782,8 +4802,10 @@ describe('instance registry service facade', () => {
                 ),
                 status: snapshotStatus,
                 plan: {
+                  contractVersion: '1.0',
                   mode: 'existing',
                   overallStatus: 'ready',
+                  fingerprint: 'persisted-smtp-plan',
                   generatedAt: '2026-01-01T00:00:00.000Z',
                   driftSummary: 'Nur das SMTP-Passwort fehlt.',
                   steps: [
@@ -4832,6 +4854,9 @@ describe('instance registry service facade', () => {
         actionCode: 'none',
       },
     });
+    expect(plan?.fingerprint).not.toBe('persisted-smtp-plan');
+    if (!plan) throw new Error('expected refreshed plan');
+    expect(plan.fingerprint).toBe(buildKeycloakPlanFingerprint('demo', plan));
 
     getKeycloakStatus.mockRejectedValueOnce(new Error('tenant-admin-unavailable'));
     await expect(

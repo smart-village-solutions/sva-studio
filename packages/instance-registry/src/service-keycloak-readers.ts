@@ -32,7 +32,7 @@ import {
   loadRepositoryTenantAdminClientSecret,
 } from './service-keycloak-secrets.js';
 import {
-  isRealmBaselineApplicable,
+  loadRealmBaselineApplicability,
   readManagedRealmPlanSnapshot,
   readSnapshotFromRuns,
   refreshManagedRealmSmtpPasswordStatus,
@@ -329,6 +329,11 @@ export const createPlanKeycloakProvisioningHandler =
     const pluginOidcClients = readPluginOidcClients(deps, runs, loaded.instance);
     const inputFingerprint = (run: (typeof runs)[number]) =>
       buildSnapshotInputFingerprintForRun(deps, run, loaded.instance, secretVersions);
+    const realmBaselineApplicable = await loadRealmBaselineApplicability(
+      deps,
+      loaded.instance,
+      runs
+    );
     if (options?.forceLive) {
       if (!deps.planKeycloakProvisioning) return null;
       const plan = await deps.planKeycloakProvisioning({
@@ -336,6 +341,7 @@ export const createPlanKeycloakProvisioningHandler =
         authClientSecret: loaded.authClientSecret,
         tenantAdminClientSecret: loaded.tenantAdminClientSecret,
         pluginOidcClients,
+        realmBaselineApplicable,
       });
       logger.info('keycloak_plan_completed', {
         operation: 'plan_keycloak_provisioning',
@@ -377,12 +383,7 @@ export const createPlanKeycloakProvisioningHandler =
         loaded.instance.realmMode === 'new'
           ? buildMissingRealmReadState(loaded.instance)
           : undefined,
-      realmBaselineApplicable: isRealmBaselineApplicable(
-        loaded.instance.realmMode,
-        runs,
-        loaded.instance.authRealm,
-        loaded.instance.authClientId
-      ),
+      realmBaselineApplicable,
       preflight,
     });
     logger.info('keycloak_plan_completed', {

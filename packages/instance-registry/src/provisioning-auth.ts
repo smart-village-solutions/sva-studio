@@ -18,6 +18,9 @@ const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'inf
 
 export type ReadKeycloakState = (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;
 export type ReadKeycloakAccessError = (error: unknown) => string;
+type KeycloakPlanInput = KeycloakProvisioningInput & {
+  readonly realmBaselineApplicable?: boolean;
+};
 
 const readDefaultAccessError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -69,7 +72,7 @@ export const createInstanceKeycloakPlanReader =
     readState: ReadKeycloakState,
     getPreflight: (input: KeycloakProvisioningInput) => Promise<KeycloakTenantPreflight>
   ) =>
-  async (input: KeycloakProvisioningInput): Promise<KeycloakTenantPlan> => {
+  async (input: KeycloakPlanInput): Promise<KeycloakTenantPlan> => {
     try {
       const state = await readState(input);
       const preflight = await getPreflight(input);
@@ -81,6 +84,7 @@ export const createInstanceKeycloakPlanReader =
         tenantAdminClientSecret: input.tenantAdminClientSecret,
         tenantAdminBootstrap: input.tenantAdminBootstrap,
         pluginOidcClients: input.pluginOidcClients,
+        realmBaselineApplicable: input.realmBaselineApplicable,
         preflight,
         state,
       });
@@ -94,6 +98,7 @@ export const createInstanceKeycloakPlanReader =
         tenantAdminClientSecret: input.tenantAdminClientSecret,
         tenantAdminBootstrap: input.tenantAdminBootstrap,
         pluginOidcClients: input.pluginOidcClients,
+        realmBaselineApplicable: input.realmBaselineApplicable,
         preflight,
       });
     }

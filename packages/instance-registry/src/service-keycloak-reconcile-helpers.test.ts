@@ -2,10 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   buildProvisioningInput: vi.fn(),
+  loadRealmBaselineApplicability: vi.fn(),
 }));
 
 vi.mock('./service-keycloak-execution-shared.js', () => ({
   buildProvisioningInput: state.buildProvisioningInput,
+}));
+
+vi.mock('./service-keycloak-snapshot-reader.js', () => ({
+  loadRealmBaselineApplicability: state.loadRealmBaselineApplicability,
 }));
 
 const createLoaded = (overrides: Record<string, unknown> = {}) => ({
@@ -22,6 +27,7 @@ describe('service-keycloak-reconcile-helpers', () => {
     vi.resetModules();
     state.buildProvisioningInput.mockReset();
     state.buildProvisioningInput.mockReturnValue({ payload: 'provisioning' });
+    state.loadRealmBaselineApplicability.mockReset().mockResolvedValue(false);
   });
 
   it('resolves reconcile intents from the rotation flag and tenant-admin client state', async () => {
@@ -114,6 +120,45 @@ describe('service-keycloak-reconcile-helpers', () => {
         })
       )
     ).resolves.toBeUndefined();
+  });
+
+  it('uses proven Studio baseline applicability for the reconcile precheck plan', async () => {
+    const { ensureReconcilePreconditions } =
+      await import('./service-keycloak-reconcile-helpers.js');
+    const getKeycloakPreflight = vi.fn().mockResolvedValue({
+      overallStatus: 'ready',
+      checks: [],
+    });
+    const planKeycloakProvisioning = vi.fn().mockResolvedValue({
+      overallStatus: 'ready',
+      driftSummary: 'Kein Drift.',
+    });
+    state.loadRealmBaselineApplicability.mockResolvedValue(true);
+    const loaded = createLoaded({
+      instance: {
+        realmMode: 'existing',
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      },
+      tenantAdminClientSecret: 'secret',
+    });
+
+    await ensureReconcilePreconditions(
+      {
+        repository: {} as never,
+        getKeycloakPreflight,
+        planKeycloakProvisioning,
+      } as never,
+      loaded as never
+    );
+
+    expect(state.loadRealmBaselineApplicability).toHaveBeenCalledWith(
+      expect.anything(),
+      loaded.instance
+    );
+    expect(getKeycloakPreflight).toHaveBeenCalledWith({ payload: 'provisioning' });
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ realmBaselineApplicable: true })
+    );
   });
 
   it('allows secret rotation when tenant_secret is the only blocker', async () => {

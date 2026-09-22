@@ -23,7 +23,7 @@ import {
   buildKeycloakSnapshotInputFingerprint,
   KEYCLOAK_SNAPSHOT_POLICY_VERSION,
 } from './provisioning-auth-policy.js';
-import { isRealmBaselineApplicable } from './service-keycloak-snapshot-reader.js';
+import { loadRealmBaselineApplicability } from './service-keycloak-snapshot-reader.js';
 import {
   buildKeycloakStatus,
   buildMissingRealmStatus,
@@ -60,19 +60,6 @@ const assertParentProvisioningRunActive = (
   if (parent && !['requested', 'validated', 'provisioning'].includes(parent.status)) {
     throw new Error('keycloak_parent_provisioning_run_inactive');
   }
-};
-
-const loadRealmBaselineApplicability = async (
-  deps: InstanceRegistryServiceDeps,
-  instance: InstanceRegistryRecord
-): Promise<boolean> => {
-  if (instance.realmMode === 'new') return true;
-  return isRealmBaselineApplicable(
-    instance.realmMode,
-    await deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
-    instance.authRealm,
-    instance.authClientId
-  );
 };
 
 const buildStatusFromState = (
@@ -165,10 +152,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
   const status = buildStatusFromState(provisioningInput, state);
   const requireTenantAdmin = isInstanceTenantAdminRequired(input.loaded.instance);
   const provisioningRuns = await deps.repository.listProvisioningRuns(provisioningInput.instanceId);
-  const realmBaselineApplicable = await loadRealmBaselineApplicability(
-    deps,
-    input.loaded.instance
-  );
+  const realmBaselineApplicable = await loadRealmBaselineApplicability(deps, input.loaded.instance);
 
   const completionSteps = buildFinalRunSteps({
     status,

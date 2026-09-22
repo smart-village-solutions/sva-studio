@@ -17,6 +17,22 @@ import { buildPayloadFingerprint } from './payload-fingerprint.js';
 
 export const KEYCLOAK_PLAN_CONTRACT_VERSION = '1.0' as const;
 
+export const buildKeycloakPlanFingerprint = (
+  instanceId: string,
+  plan: Pick<
+    KeycloakTenantPlan,
+    'contractVersion' | 'mode' | 'overallStatus' | 'driftSummary' | 'steps'
+  >
+): string =>
+  buildPayloadFingerprint({
+    instanceId,
+    contractVersion: plan.contractVersion,
+    mode: plan.mode,
+    overallStatus: plan.overallStatus,
+    driftSummary: plan.driftSummary,
+    steps: plan.steps,
+  });
+
 const buildRealmStep = (
   realmMode: InstanceRealmMode,
   state: KeycloakReadState | undefined,
@@ -363,7 +379,7 @@ export const buildPlan = (input: {
   };
   return {
     ...plan,
-    fingerprint: buildPayloadFingerprint({ instanceId: input.instanceId, ...plan }),
+    fingerprint: buildKeycloakPlanFingerprint(input.instanceId, plan),
     generatedAt: new Date().toISOString(),
   };
 };

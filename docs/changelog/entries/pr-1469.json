@@ -1,0 +1,4 @@
+{
+  "prNumber": 1469,
+  "body": "Probleme bei der Instanzanlage schneller eingrenzen\n\n- Technische Protokolle zeigen genauer, in welchem Schritt die Keycloak- oder Rechteprüfung fehlgeschlagen ist.\n- Sensible Konfigurations-, Provider- und Nutzerdaten bleiben weiterhin aus den Diagnoseinformationen ausgeschlossen."
+}

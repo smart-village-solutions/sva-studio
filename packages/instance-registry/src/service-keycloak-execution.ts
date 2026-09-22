@@ -32,6 +32,7 @@ import {
   ensureReconcilePreconditions,
   resolveReconcileIntent,
 } from './service-keycloak-reconcile-helpers.js';
+import { loadRealmBaselineApplicability } from './service-keycloak-snapshot-reader.js';
 import {
   annotateInstanceRegistryError,
   readInstanceRegistryStepKey,
@@ -155,14 +156,18 @@ const appendPreflightSnapshot = async (
 const appendPlanSnapshot = async (
   deps: InstanceRegistryServiceDeps,
   run: InstanceKeycloakProvisioningRun,
-  provisioningInput: ReturnType<typeof buildProvisioningInput>,
-  inputFingerprint: string
+  provisioningInput: QueuedProvisioningInput,
+  inputFingerprint: string,
+  realmBaselineApplicable: boolean
 ) => {
   const planKeycloakProvisioning = deps.planKeycloakProvisioning;
   if (!planKeycloakProvisioning) {
     throw new Error('dependency_missing_planKeycloakProvisioning');
   }
-  const plan = await planKeycloakProvisioning(provisioningInput);
+  const plan = await planKeycloakProvisioning({
+    ...provisioningInput,
+    realmBaselineApplicable,
+  });
   await appendRunStep(deps, {
     runId: run.id,
     stepKey: 'worker_plan_snapshot',
@@ -302,7 +307,8 @@ const executeClaimedRun = async (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
   tenantAdminTemporaryPassword: string | undefined,
   provisioningInput: QueuedProvisioningInput,
-  confirmedPlanFingerprint: string
+  confirmedPlanFingerprint: string,
+  realmBaselineApplicable: boolean
 ) => {
   assertProvisioningIntentAllowed(provisioningInput.realmMode, run.intent);
   const secretVersions = await loadKeycloakSnapshotSecretVersions(
@@ -318,7 +324,7 @@ const executeClaimedRun = async (
     appendPreflightSnapshot(deps, run, provisioningInput, inputFingerprint)
   );
   const plan = await runInstanceRegistryStep('worker_plan', () =>
-    appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint)
+    appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint, realmBaselineApplicable)
   );
   if (plan.fingerprint !== confirmedPlanFingerprint) {
     throw annotateInstanceRegistryError(
@@ -464,13 +470,15 @@ export const processClaimedKeycloakProvisioningRun = async (
       allowLegacyRealmRoleMigration,
       pluginOidcClients,
     };
+    const realmBaselineApplicable = await loadRealmBaselineApplicability(deps, loaded.instance);
     return await executeClaimedRun(
       deps,
       run,
       loaded,
       tenantAdminTemporaryPassword,
       provisioningInput,
-      confirmedPlanFingerprint
+      confirmedPlanFingerprint,
+      realmBaselineApplicable
     );
   } catch (error) {
     await failRun(deps, {
@@ -527,15 +535,13 @@ export const createExecuteKeycloakProvisioningHandler =
       : await findAutomatedParentRun(deps, input.instanceId);
     const parentGate = parentRun ? readParentKeycloakPlanGate(parentRun) : undefined;
     const confirmsWaitingParent =
-      input.intent === 'provision' &&
-      parentGate?.status === 'awaiting_plan_confirmation';
+      input.intent === 'provision' && parentGate?.status === 'awaiting_plan_confirmation';
     const retriesConfirmedParent =
       input.intent === 'provision' &&
       parentGate?.status === 'confirmed' &&
       parentGate.planFingerprint === input.planFingerprint;
     const remediatesWaitingParent =
-      input.intent === 'rotate_client_secret' &&
-      parentGate?.status === 'awaiting_tenant_secret';
+      input.intent === 'rotate_client_secret' && parentGate?.status === 'awaiting_tenant_secret';
     if (
       !options.allowActiveTenantProvisioning &&
       !confirmsWaitingParent &&
@@ -583,11 +589,7 @@ export const createExecuteKeycloakProvisioningHandler =
         requestId: input.requestId,
       });
       if (!bound) throw new Error('keycloak_plan_fingerprint_stale');
-    } else if (
-      parentRun &&
-      retriesConfirmedParent &&
-      parentGate?.childKeycloakRunId !== run.id
-    ) {
+    } else if (parentRun && retriesConfirmedParent && parentGate?.childKeycloakRunId !== run.id) {
       throw new Error('keycloak_plan_fingerprint_stale');
     }
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);

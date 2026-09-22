@@ -227,6 +227,26 @@ describe('provisioning-auth readers', () => {
     );
   });
 
+  it('keeps the proven Studio realm baseline applicable in live plans', async () => {
+    const preflight = createInstanceKeycloakPreflightReader(readState);
+    const plan = createInstanceKeycloakPlanReader(readState, preflight);
+
+    await expect(plan({ ...input, realmBaselineApplicable: true })).resolves.toEqual(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({
+            stepKey: 'realm_baseline',
+            details: expect.objectContaining({ applicable: true }),
+          }),
+          expect.objectContaining({
+            stepKey: 'smtp_password',
+            details: expect.objectContaining({ applicable: true }),
+          }),
+        ]),
+      })
+    );
+  });
+
   it('marks tenant admin client drift as an update in the plan preview', async () => {
     const driftedReadState = vi.fn(async (): Promise<KeycloakReadState> => ({
       ...(await readState(input)),

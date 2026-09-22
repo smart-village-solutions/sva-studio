@@ -102,6 +102,10 @@ type KeycloakProvisioningContext = {
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
 
+type KeycloakPlanContext = KeycloakProvisioningContext & {
+  realmBaselineApplicable?: boolean;
+};
+
 export type InstanceRegistryService = {
   prepareConfirmationChallenge(
     input: PrepareInstanceConfirmationChallengeInput
@@ -267,9 +271,7 @@ export type InstanceRegistryServiceDeps = {
   readonly getKeycloakPreflight?: (
     input: KeycloakProvisioningContext
   ) => Promise<KeycloakTenantPreflight>;
-  readonly planKeycloakProvisioning?: (
-    input: KeycloakProvisioningContext
-  ) => Promise<KeycloakTenantPlan>;
+  readonly planKeycloakProvisioning?: (input: KeycloakPlanContext) => Promise<KeycloakTenantPlan>;
   readonly getKeycloakStatus?: (
     input: KeycloakProvisioningContext
   ) => Promise<KeycloakTenantStatus>;

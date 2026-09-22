@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  KEYCLOAK_REALM_BASELINE,
+  KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+} from './keycloak-realm-baseline.js';
+
 const state = vi.hoisted(() => ({
   logger: {
     debug: vi.fn(),
@@ -341,6 +346,26 @@ describe('service-keycloak-execution', () => {
       getKeycloakProvisioningRun: vi
         .fn()
         .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([
+        {
+          mode: 'new',
+          overallStatus: 'succeeded',
+          steps: [
+            { stepKey: 'realm_baseline', status: 'done' },
+            {
+              stepKey: 'status_snapshot',
+              status: 'done',
+              details: {
+                policyVersion: 3,
+                authRealm: 'tenant',
+                authClientId: 'studio-client',
+                realmBaselineVersion: KEYCLOAK_REALM_BASELINE.version,
+                realmBaselineFingerprint: KEYCLOAK_REALM_BASELINE_FINGERPRINT,
+              },
+            },
+          ],
+        },
+      ]),
     };
     state.loadInstanceWithSecret.mockResolvedValue({
       ...createLoaded(),
@@ -392,7 +417,7 @@ describe('service-keycloak-execution', () => {
       expect.objectContaining({ pluginOidcClients })
     );
     expect(planKeycloakProvisioning).toHaveBeenCalledWith(
-      expect.objectContaining({ pluginOidcClients })
+      expect.objectContaining({ pluginOidcClients, realmBaselineApplicable: true })
     );
     expect(state.assertQueuedRealmBaselineCurrent).toHaveBeenCalledWith(
       expect.objectContaining({ pluginOidcSnapshotVersion: '1.0' }),
@@ -648,6 +673,7 @@ describe('service-keycloak-execution', () => {
       getKeycloakProvisioningRun: vi
         .fn()
         .mockResolvedValue({ id: 'run-1', overallStatus: 'succeeded' }),
+      listKeycloakProvisioningRuns: vi.fn().mockResolvedValue([]),
     };
     const provisionInstanceAuth = vi.fn().mockResolvedValue(undefined);
     const loaded = createLoaded();

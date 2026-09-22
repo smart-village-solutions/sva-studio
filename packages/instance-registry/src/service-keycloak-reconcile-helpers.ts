@@ -1,4 +1,5 @@
 import { buildProvisioningInput } from './service-keycloak-execution-shared.js';
+import { loadRealmBaselineApplicability } from './service-keycloak-snapshot-reader.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 type LoadedInstanceForReconcile = {
@@ -71,9 +72,10 @@ export const ensureReconcilePreconditions = async (
   options: { readonly allowMissingTenantSecret?: boolean } = {}
 ): Promise<void> => {
   const provisioningInput = buildProvisioningInput(loaded);
+  const realmBaselineApplicable = await loadRealmBaselineApplicability(deps, loaded.instance);
   const [preflight, plan] = await Promise.all([
     deps.getKeycloakPreflight?.(provisioningInput),
-    deps.planKeycloakProvisioning?.(provisioningInput),
+    deps.planKeycloakProvisioning?.({ ...provisioningInput, realmBaselineApplicable }),
   ]);
 
   const blockingChecks =

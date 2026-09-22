@@ -2,6 +2,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import {
   areAllInstanceKeycloakRequirementsSatisfied,
   isInstanceTenantAdminRequired,
+  type InstanceRegistryRecord,
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
@@ -21,6 +22,7 @@ import {
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { readLatestQueuedPluginOidcClientRequirements } from './service-keycloak-execution-payload.js';
 import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
+import { buildKeycloakPlanFingerprint } from './provisioning-auth-plan.js';
 
 type ProvisioningRuns = readonly Awaited<
   ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>
@@ -107,6 +109,20 @@ export const isRealmBaselineApplicable = (
       (run.overallStatus === 'succeeded' ||
         (run.overallStatus === 'failed' && hasCompletedStep(run, 'admin_bootstrap', 'failed')))
   );
+
+export const loadRealmBaselineApplicability = async (
+  deps: InstanceRegistryServiceDeps,
+  instance: InstanceRegistryRecord,
+  runs?: ProvisioningRuns
+): Promise<boolean> => {
+  if (instance.realmMode === 'new') return true;
+  return isRealmBaselineApplicable(
+    instance.realmMode,
+    runs ?? (await deps.repository.listKeycloakProvisioningRuns(instance.instanceId)),
+    instance.authRealm,
+    instance.authClientId
+  );
+};
 
 export const refreshManagedRealmSmtpPasswordStatus = async (
   deps: InstanceRegistryServiceDeps,
@@ -222,7 +238,7 @@ export const readManagedRealmPlanSnapshot = async (
   );
   if (refreshedStatus.smtpPasswordConfigured === status.smtpPasswordConfigured) return plan;
 
-  return {
+  const refreshedPlan = {
     ...plan,
     steps: plan.steps.map((step) =>
       step.stepKey === 'smtp_password'
@@ -233,5 +249,9 @@ export const readManagedRealmPlanSnapshot = async (
           )
         : step
     ),
+  };
+  return {
+    ...refreshedPlan,
+    fingerprint: buildKeycloakPlanFingerprint(instance.instanceId, refreshedPlan),
   };
 };

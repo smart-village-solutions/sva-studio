@@ -5,10 +5,14 @@
 Studio SHALL unter `GET /internal/plugins/ssf/v1/admin-login-tenants` alle
 aktiven und vollständig loginbereiten Einträge seiner lokalen Mandanten-Registry mit `contractVersion: "1.0"`,
 einer SHA-256-`directoryRevision` und ausschließlich den Mandantenfeldern
-`{id, displayName, realm}` liefern. Die Sortierung SHALL nach deutschem
+`{id, displayName, realm, studioUrl}` liefern. `studioUrl` SHALL als
+`https://${primaryHostname}/` aus dem kanonischen Registry-Feld des jeweiligen
+Eintrags gebildet werden und darf nicht aus `SVA_PUBLIC_BASE_URL`, Mandanten-ID
+oder Parent-Domain abgeleitet werden. Die Sortierung SHALL nach deutschem
 `displayName`, bei Gleichstand nach `id` erfolgen. Die Revision SHALL aus der
 kanonisch sortierten `tenants`-Darstellung gebildet werden, bei unverändertem
-öffentlichen Inhalt stabil bleiben und sich bei dessen Änderung ändern. Studio SHALL vor Veröffentlichung den gemeinsamen SSF-Readiness-Pfad prüfen.
+öffentlichen Inhalt stabil bleiben und sich insbesondere bei einer Änderung
+von `studioUrl` ändern. Studio SHALL vor Veröffentlichung den gemeinsamen SSF-Readiness-Pfad prüfen.
 Dieser MUST den bereiten Lifecycle, den Tenant-Grunddatensatz, beide Client-Verträge
 und die bestätigte IAM-Revision verlangen. Die Erstprovisionierung MUST diese
 Voraussetzungen vor `ready` herstellen; Directory-Reads bleiben schreibfrei.
@@ -24,8 +28,15 @@ unberührt.
 
 - **GIVEN** lokale Registry-Einträge mit unterschiedlichen Statuswerten
 - **WHEN** SSF das Verzeichnis autorisiert abruft
-- **THEN** enthält die Antwort nur aktive, loginbereite Einträge mit ID, Bezeichnung und Auth-Realm
+- **THEN** enthält die Antwort nur aktive, loginbereite Einträge mit ID, Bezeichnung, Auth-Realm und kanonischer Tenant-Studio-URL
 - **AND** enthält sie keine Credentials oder anderen Registry-Felder
+
+#### Scenario: Kanonische Tenant-Studio-URL
+
+- **GIVEN** ein loginbereiter Registry-Eintrag mit `primaryHostname: "smartcity.dialog.kassel.de"`
+- **WHEN** SSF das Verzeichnis autorisiert abruft
+- **THEN** enthält der Eintrag `studioUrl: "https://smartcity.dialog.kassel.de/"`
+- **AND** fließt die URL in die `directoryRevision` ein
 
 #### Scenario: Leeres Verzeichnis
 
@@ -66,7 +77,7 @@ Login-Handler oder gespeicherte Keycloak-Authorization-URLs bereitstellen.
 #### Scenario: Realm für die SSF-Login-Auswahl
 
 - **WHEN** SSF einen Directory-Eintrag erhält
-- **THEN** kann es Bezeichnung und Realm für seinen eigenen Login-Einstieg nutzen
+- **THEN** kann es Bezeichnung und Realm für seinen eigenen Login-Einstieg sowie die Tenant-Studio-URL für eine spätere Verlinkung nutzen
 - **AND** bleiben Service-Credentials ausschließlich serverseitig
 
 #### Scenario: Teilprovisionierung oder Client-Drift

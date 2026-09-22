@@ -1008,7 +1008,8 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   über das Plattform-Audit erfasst, über den öffentlichen Ingress bleibt er
   verborgen.
 - Das Verzeichnis veröffentlicht nur aktive, vollständig loginbereite Registry-Einträge
-  mit ID, öffentlicher Bezeichnung und Realm. Sein schreibfreier Readiness-Pfad baut
+  mit ID, öffentlicher Bezeichnung, Realm und der aus `primaryHostname`
+  gebildeten HTTPS-Tenant-Studio-URL. Sein schreibfreier Readiness-Pfad baut
   auf der auch vom Runtime-Zugriff verwendeten technischen Prüfung von Lifecycle,
   Tenant-Grunddatensatz, Ressourcenclient, aktiviertem Browserclient und bestätigter
   Projektionsrevision auf. Nur das Verzeichnis verlangt zusätzlich mindestens ein

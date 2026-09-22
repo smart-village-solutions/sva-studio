@@ -62,14 +62,25 @@ describe('SSF admin login directory', () => {
         instanceId: 'a',
         displayName: 'Aachen',
         authRealm: 'aachen',
+        primaryHostname: 'aachen.example.org',
         tenantAdminBootstrap: { username: 'private', email: 'private@example.org' },
       }),
     ]);
     const response = await dispatchSsfAdminLoginDirectoryRequest(request());
     expect(response?.status).toBe(200);
     const tenants = [
-      { id: 'a', displayName: 'Aachen', realm: 'aachen' },
-      { id: 'kassel', displayName: 'Stadt Kassel', realm: 'tenant-kassel' },
+      {
+        id: 'a',
+        displayName: 'Aachen',
+        realm: 'aachen',
+        studioUrl: 'https://aachen.example.org/',
+      },
+      {
+        id: 'kassel',
+        displayName: 'Stadt Kassel',
+        realm: 'tenant-kassel',
+        studioUrl: 'https://kassel.example.org/',
+      },
     ];
     expect(await response?.json()).toEqual({
       contractVersion: '1.0',
@@ -97,7 +108,12 @@ describe('SSF admin login directory', () => {
 
   it('keeps the revision stable across source order and changes it with public data', async () => {
     const kassel = instance();
-    const aachen = instance({ instanceId: 'a', displayName: 'Aachen', authRealm: 'aachen' });
+    const aachen = instance({
+      instanceId: 'a',
+      displayName: 'Aachen',
+      authRealm: 'aachen',
+      primaryHostname: 'aachen.example.org',
+    });
     mocks.listInstances.mockResolvedValue([kassel, aachen]);
     const first = (await (await dispatchSsfAdminLoginDirectoryRequest(request()))?.json()) as {
       directoryRevision: string;
@@ -108,7 +124,7 @@ describe('SSF admin login directory', () => {
     };
     mocks.listInstances.mockResolvedValue([
       aachen,
-      instance({ displayName: 'Kassel', updatedAt: '2027-01-01T00:00:00Z' }),
+      instance({ primaryHostname: 'smartcity.dialog.kassel.de' }),
     ]);
     const changed = (await (await dispatchSsfAdminLoginDirectoryRequest(request()))?.json()) as {
       directoryRevision: string;

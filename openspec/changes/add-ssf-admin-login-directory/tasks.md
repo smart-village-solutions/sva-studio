@@ -14,3 +14,10 @@
 - Server-Runtime-Check, Lint (keine Fehler), OpenSpec-Validierung und
   Dateiplatzierungsprüfung grün.
 - Kein Deployment und keine Änderung am laufenden Keycloak.
+
+## Additive Tenant-Studio-URL
+
+- [x] Den freigegebenen V1-Vertrag um `studioUrl` aus `primaryHostname` erweitern.
+- [x] Directory-Revision und gezielte Tests um die URL erweitern.
+- [x] API- und relevante Architekturdokumentation aktualisieren.
+- [x] Gezielte Unit-, Type-, Server-Runtime-, OpenSpec- und Dateiplatzierungs-Gates prüfen.

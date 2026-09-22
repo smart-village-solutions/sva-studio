@@ -37,7 +37,13 @@ export const createPostgresSsfAuthorizationProjectionStore = (
     let unlockError: unknown;
     let result: T | undefined;
     try {
-      await client.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [instanceId]);
+      const lock = await client.query<{ acquired: boolean }>(
+        'SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired',
+        [instanceId]
+      );
+      if (lock.rows[0]?.acquired !== true) {
+        throw new Error('ssf_authorization_projection_lock_unavailable');
+      }
       lockAcquired = true;
       result = await operation(createLockedProjectionStore(client));
     } catch (error) {

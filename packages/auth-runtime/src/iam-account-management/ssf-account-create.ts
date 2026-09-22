@@ -97,5 +97,10 @@ export const withSsfAccountCreate = async <T>(input: {
         },
       });
     }
-  );
+  ).catch((error: unknown) => {
+    if (error instanceof Error && error.message === 'ssf_authorization_projection_lock_unavailable') {
+      throw new Error('conflict:SSF-Mandant wird gerade aktualisiert.');
+    }
+    throw error;
+  });
 };

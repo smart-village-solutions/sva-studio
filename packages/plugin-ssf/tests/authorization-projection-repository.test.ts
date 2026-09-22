@@ -82,7 +82,7 @@ describe('SSF authorization projection repository', () => {
     const client = {
       query: vi
         .fn()
-        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ acquired: true }] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [] }),
       release: vi.fn(),
     };
@@ -94,7 +94,7 @@ describe('SSF authorization projection repository', () => {
 
     expect(client.query).toHaveBeenNthCalledWith(
       1,
-      'SELECT pg_advisory_lock(hashtextextended($1, 0))',
+      'SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired',
       ['tenant-a']
     );
     expect(client.query).toHaveBeenNthCalledWith(
@@ -105,11 +105,28 @@ describe('SSF authorization projection repository', () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it('returns a bounded conflict when the tenant advisory lock is already held', async () => {
+    const client = {
+      query: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ acquired: false }] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+    const store = createPostgresSsfAuthorizationProjectionStore(pool);
+    const operation = vi.fn();
+
+    await expect(store.withTenantLock('tenant-a', operation)).rejects.toThrow(
+      'ssf_authorization_projection_lock_unavailable'
+    );
+    expect(operation).not.toHaveBeenCalled();
+    expect(client.query).toHaveBeenCalledOnce();
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
   it('releases the tenant advisory lock when reconcile work fails', async () => {
     const client = {
       query: vi
         .fn()
-        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ acquired: true }] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [] }),
       release: vi.fn(),
     };
@@ -149,7 +166,7 @@ describe('SSF authorization projection repository', () => {
     const client = {
       query: vi
         .fn()
-        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ acquired: true }] })
         .mockRejectedValueOnce(new Error('unlock failed')),
       release: vi.fn(),
     };

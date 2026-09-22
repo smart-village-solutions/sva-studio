@@ -44,6 +44,10 @@ export default defineConfig({
         replacement: resolve(__dirname, './packages/data-repositories/src/index.ts'),
       },
       {
+        find: /^@sva\/plugin-ssf\/runtime$/,
+        replacement: resolve(__dirname, './packages/plugin-ssf/src/runtime.ts'),
+      },
+      {
         find: /^@sva\/server-runtime$/,
         replacement: resolve(__dirname, './packages/server-runtime/src/index.ts'),
       },

@@ -57,6 +57,9 @@ export type ConfigurationSectionProps = WorkspaceSectionCommonProps & {
   readonly setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>>;
   readonly onUpdateSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   readonly saveStatus?: StudioSaveStatus;
+  readonly onSaveAccountInvitationTemplate?: (
+    template: Omit<NonNullable<SelectedInstance['accountInvitationTemplate']>, 'revision'> | null
+  ) => Promise<boolean>;
 };
 
 export type OperationsSectionProps = WorkspaceSectionCommonProps & {

@@ -6,9 +6,9 @@ import { FieldHelp } from './-field-help';
 import { INSTANCE_FIELD_HELP } from './-instance-form-models';
 import { ConfigurationAssessmentCard } from './-instance-configuration-assessment-card';
 import { FormLabelWithHelp } from './-instance-detail-view-shared';
-
 import type { ConfigurationSectionProps } from './-instance-detail-view-shared';
 import type { DetailFormValues } from './-instances-shared-types';
+import { AccountInvitationTemplateCard } from './-account-invitation-template-card';
 
 const updateFormField =
   <T extends keyof DetailFormValues>(
@@ -343,6 +343,7 @@ export const InstanceDetailConfigurationSection = ({
   setDetailFormValues,
   onUpdateSubmit,
   saveStatus = 'idle',
+  onSaveAccountInvitationTemplate,
 }: ConfigurationSectionProps) => {
   const updateRealmMode = updateFormField(setDetailFormValues, 'realmMode');
 
@@ -351,6 +352,11 @@ export const InstanceDetailConfigurationSection = ({
       <ConfigurationAssessmentCard
         configurationAssessment={configurationAssessment}
         selectedInstance={selectedInstance}
+      />
+
+      <AccountInvitationTemplateCard
+        instance={selectedInstance}
+        onSave={onSaveAccountInvitationTemplate ?? (async () => false)}
       />
 
       <Card className="space-y-5 p-4">

@@ -175,6 +175,7 @@ type KeycloakUserProfileConfig = Readonly<{
 type KeycloakRealmRepresentation = Readonly<{
   realm: string;
   loginTheme?: string;
+  emailTheme?: string;
   internationalizationEnabled?: boolean;
   supportedLocales?: readonly string[];
   defaultLocale?: string;
@@ -1410,6 +1411,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       return {
         realm: realm.realm,
         loginTheme: realm.loginTheme,
+        emailTheme: realm.emailTheme,
         internationalizationEnabled: realm.internationalizationEnabled,
         supportedLocales: realm.supportedLocales,
         defaultLocale: realm.defaultLocale,
@@ -1430,6 +1432,55 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) {
         return null;
       }
+      throw error;
+    }
+  }
+
+  async updateRealmSettings(settings: KeycloakRealmSettings): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path: `/admin/realms/${encodePathSegment(this.realm)}`,
+      body: JSON.stringify(settings),
+      operation: 'update_realm_settings',
+    });
+  }
+
+  async getRealmEmailTheme(): Promise<string | undefined> {
+    return (await this.getRealm())?.emailTheme;
+  }
+
+  async getRealmLocalizationTexts(locale: string): Promise<Readonly<Record<string, string>>> {
+    return this.executeWithResilience<Readonly<Record<string, string>>>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/localization/${encodePathSegment(locale)}?useRealmDefaultLocaleFallback=false`,
+      operation: 'get_realm_localization_texts',
+    });
+  }
+
+  async updateRealmLocalizationTexts(
+    locale: string,
+    texts: Readonly<Record<string, string>>
+  ): Promise<void> {
+    await this.assertWriteAvailability();
+    await this.executeWithResilience<void>({
+      method: 'POST',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/localization/${encodePathSegment(locale)}`,
+      body: JSON.stringify(texts),
+      operation: 'update_realm_localization_texts',
+    });
+  }
+
+  async deleteRealmLocalizationText(locale: string, key: string): Promise<void> {
+    await this.assertWriteAvailability();
+    try {
+      await this.executeWithResilience<void>({
+        method: 'DELETE',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/localization/${encodePathSegment(locale)}/${encodePathSegment(key)}`,
+        operation: 'delete_realm_localization_text',
+      });
+    } catch (error) {
+      if (error instanceof KeycloakAdminRequestError && error.statusCode === 404) return;
       throw error;
     }
   }

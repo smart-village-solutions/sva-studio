@@ -22,6 +22,7 @@ export const buildInstanceSelectColumns = (alias?: string): string => {
   ${qualify(alias, 'tenant_admin_first_name')},
   ${qualify(alias, 'tenant_admin_last_name')},
   ${qualify(alias, 'theme_key')},
+  ${qualify(alias, 'account_invitation_template')},
   (
     SELECT COALESCE(array_agg(module_id ORDER BY module_id), ARRAY[]::text[])
     FROM iam.instance_modules

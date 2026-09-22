@@ -1388,6 +1388,8 @@ CREATE TABLE iam.instances (
     tenant_admin_client_id text NOT NULL,
     tenant_admin_client_secret_ciphertext text,
     time_zone text DEFAULT 'Europe/Berlin'::text NOT NULL,
+    account_invitation_template jsonb,
+    CONSTRAINT instances_account_invitation_template_chk CHECK (((account_invitation_template IS NULL) OR ((jsonb_typeof(account_invitation_template) = 'object'::text) AND (jsonb_typeof((account_invitation_template -> 'revision'::text)) = 'number'::text) AND (((account_invitation_template ->> 'revision'::text))::integer > 0) AND (jsonb_typeof((account_invitation_template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((account_invitation_template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((account_invitation_template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((account_invitation_template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text)))),
     CONSTRAINT instances_audit_retention_days_positive_chk CHECK ((audit_retention_days > 0)),
     CONSTRAINT instances_realm_mode_chk CHECK ((realm_mode = ANY (ARRAY['new'::text, 'existing'::text]))),
     CONSTRAINT instances_retention_days_positive_chk CHECK ((retention_days > 0)),

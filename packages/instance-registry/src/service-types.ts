@@ -44,6 +44,7 @@ import type {
 } from './confirmation-challenges.js';
 import type { InstanceDraftReadiness } from './service-draft-readiness.js';
 import type { RealmCatalog } from './service-realm-catalog.js';
+import type { ProjectAccountInvitationTemplate, ReadAccountInvitationProjection } from './service-account-invitation-template.js';
 
 type ModuleActivationPolicyReconcileResult = Awaited<
   ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
@@ -191,6 +192,8 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly readAccountInvitationProjection?: ReadAccountInvitationProjection;
+  readonly projectAccountInvitationTemplate?: ProjectAccountInvitationTemplate;
   readonly resolveProvisioningAuthIssuerUrl?: (input: {
     readonly parentDomain: string;
     readonly authRealm: string;

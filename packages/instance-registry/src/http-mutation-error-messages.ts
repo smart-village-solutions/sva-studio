@@ -24,6 +24,12 @@ export const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = 
     'Der fehlgeschlagene Schritt ist nicht eindeutig als sicher wiederholbar klassifiziert. Bitte die Run-ID für die Diagnose verwenden.',
   provisioning_retry_conflict:
     'Der Provisioning-Lauf wurde gleichzeitig geändert. Bitte laden Sie die Instanz neu und versuchen Sie es erneut.',
+  account_invitation_template_revision_conflict:
+    'Die Account-Einladung wurde gleichzeitig geändert. Bitte laden Sie die Instanz neu.',
+  account_invitation_template_revision_required:
+    'Die aktuelle Revision der Account-Einladung fehlt.',
+  invalid_account_invitation_template:
+    'Die Account-Einladung enthält ungültige Platzhalter oder nicht erlaubte Inhalte.',
   database_unavailable:
     'Die Instanzverwaltung konnte wegen eines Datenbank- oder Schemafehlers nicht abgeschlossen werden.',
   encryption_not_configured: 'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',

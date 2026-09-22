@@ -1,3 +1,4 @@
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -542,6 +543,53 @@ describe('executeCreateUser', () => {
     });
     expect(identityProvider.provider.assertWriteAvailability).toHaveBeenCalledTimes(1);
     expect(result.invitation.status).toBe('sent');
+  });
+
+  it('keeps user creation successful and blocks a drifted custom invitation', async () => {
+    state.resolveAuthConfigForInstance.mockResolvedValue({
+      clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
+      postLogoutRedirectUri: 'https://tenant.example.test/',
+      accountInvitationTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 2 },
+      tenantDisplayName: 'Demo',
+      tenantHomepageUrl: 'https://tenant.example.test/',
+    });
+    const executeActionsEmail = vi.fn(async () => undefined);
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+        listUsers: vi.fn(async () => [{ externalId: 'kc-user-1', email: 'alice@example.com' }]),
+        executeActionsEmail,
+        getRealmEmailTheme: vi.fn(async () => 'sva-kern2'),
+        getRealmLocalizationTexts: vi.fn(async () => ({})),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const result = await executeCreateUser({
+      actor: { instanceId: 'instance-1', actorAccountId: 'actor-1' },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        roleIds: [],
+        sendPasswordSetupEmail: true,
+      },
+    });
+
+    expect(result.user.id).toBe('account-1');
+    expect(result.invitation).toMatchObject({
+      status: 'failed',
+      error: { code: 'keycloak_unavailable', retryable: true },
+    });
+    expect(executeActionsEmail).not.toHaveBeenCalled();
   });
 
   it('keeps user creation successful and marks the invitation as failed when email delivery fails', async () => {

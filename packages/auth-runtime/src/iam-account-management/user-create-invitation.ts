@@ -1,8 +1,12 @@
 import type { IamCreateUserResult, IamUserInvitationError } from '@sva/core';
 import { resolveAuthConfigForInstance } from '../config.js';
-import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared.js';
+import { assertAccountInvitationProjection } from './account-invitation-guard.js';
 
 export type CreateUserActorInfo = {
   instanceId: string;
@@ -39,7 +43,8 @@ const isMatchingListedUser = (
   const normalizedEmail = input.email.trim().toLowerCase();
   return users.some(
     (user) =>
-      user.externalId === input.keycloakSubject || user.email?.trim().toLowerCase() === normalizedEmail
+      user.externalId === input.keycloakSubject ||
+      user.email?.trim().toLowerCase() === normalizedEmail
   );
 };
 
@@ -92,7 +97,10 @@ const executeActionsEmailWithRetry = async (input: {
       });
       return;
     } catch (error) {
-      if (!isInvitationTargetNotReadyError(error) || attempt >= INVITATION_DELIVERY_RETRY_DELAYS_MS.length) {
+      if (
+        !isInvitationTargetNotReadyError(error) ||
+        attempt >= INVITATION_DELIVERY_RETRY_DELAYS_MS.length
+      ) {
         throw error;
       }
       await sleep(INVITATION_DELIVERY_RETRY_DELAYS_MS[attempt]);
@@ -114,6 +122,18 @@ export const sendPasswordSetupInvitation = async (input: {
   }
 
   const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
+  await assertAccountInvitationProjection({
+    instanceId: input.actor.instanceId,
+    template: authConfig.accountInvitationTemplate,
+    tenantName: authConfig.tenantDisplayName,
+    tenantHomepageUrl: authConfig.tenantHomepageUrl,
+    readRealmEmailTheme: input.identityProvider.provider.getRealmEmailTheme?.bind(
+      input.identityProvider.provider
+    ),
+    readRealmLocalizationTexts: input.identityProvider.provider.getRealmLocalizationTexts?.bind(
+      input.identityProvider.provider
+    ),
+  });
   await waitForKeycloakUserReadiness(input);
   await executeActionsEmailWithRetry({
     actor: input.actor,
@@ -134,29 +154,38 @@ export const buildInvitationFailure = (error: unknown): InvitationResult => {
             'Einladungs-E-Mail zum Passwort setzen konnte nicht an Keycloak übergeben werden.',
           retryable: true,
         }
-      : error instanceof KeycloakAdminRequestError && error.code === 'user_not_ready'
+      : error instanceof KeycloakAdminRequestError &&
+          (error.code === 'account_invitation_template_drift' ||
+            error.code === 'account_invitation_template_unavailable')
         ? {
-            code: 'keycloak_user_not_ready',
-            message: INVITATION_NOT_READY_MESSAGE,
+            code: 'keycloak_unavailable',
+            message: 'Die Account-Einladung ist noch nicht mit dem Keycloak-Realm abgeglichen.',
             retryable: true,
           }
-        : isInvitationTargetNotReadyError(error)
+        : error instanceof KeycloakAdminRequestError && error.code === 'user_not_ready'
           ? {
               code: 'keycloak_user_not_ready',
               message: INVITATION_NOT_READY_MESSAGE,
               retryable: true,
             }
-          : error instanceof Error && error.message === 'execute_actions_email_not_supported'
+          : isInvitationTargetNotReadyError(error)
             ? {
-                code: 'execute_actions_email_not_supported',
-                message: 'Der konfigurierte Identity-Provider unterstützt keine Einladungs-E-Mails.',
-                retryable: false,
+                code: 'keycloak_user_not_ready',
+                message: INVITATION_NOT_READY_MESSAGE,
+                retryable: true,
               }
-            : {
-                code: 'internal_error',
-                message: INVITATION_DELIVERY_FAILED_MESSAGE,
-                retryable: false,
-              };
+            : error instanceof Error && error.message === 'execute_actions_email_not_supported'
+              ? {
+                  code: 'execute_actions_email_not_supported',
+                  message:
+                    'Der konfigurierte Identity-Provider unterstützt keine Einladungs-E-Mails.',
+                  retryable: false,
+                }
+              : {
+                  code: 'internal_error',
+                  message: INVITATION_DELIVERY_FAILED_MESSAGE,
+                  retryable: false,
+                };
 
   return {
     status: 'failed',

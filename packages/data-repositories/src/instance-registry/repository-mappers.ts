@@ -41,6 +41,7 @@ export const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
       }
     : undefined,
   themeKey: row.theme_key ?? undefined,
+  accountInvitationTemplate: row.account_invitation_template ?? undefined,
   assignedModules: row.assigned_module_ids ?? [],
   featureFlags: row.feature_flags ?? {},
   mainserverConfigRef: row.mainserver_config_ref ?? undefined,

@@ -394,6 +394,47 @@ describe('instance registry mutation result and error contracts', () => {
     expect(statements[0]?.text).not.toContain('(auth_realm = $6 AND realm_mode = $5)');
   });
 
+  it('updates an account invitation template only at the expected revision', async () => {
+    const template = {
+      revision: 3,
+      subject: 'Willkommen',
+      body: '{{passwordSetupLink}}',
+      passwordSetupLinkLabel: 'Passwort setzen',
+      tenantHomepageLinkLabel: 'Zur Startseite',
+    } as const;
+    const { executor, statements } = createQueuedExecutor([
+      [{ ...instanceRow, account_invitation_template: template }],
+    ]);
+
+    await expect(
+      createInstanceRegistryRepository(executor).updateAccountInvitationTemplate({
+        instanceId: 'tenant-a',
+        expectedRevision: 2,
+        template,
+        actorId: 'admin-1',
+      })
+    ).resolves.toMatchObject({ accountInvitationTemplate: template });
+
+    expect(statements[0]?.text).toContain("account_invitation_template ->> 'revision'");
+    expect(statements[0]?.values).toStrictEqual([
+      'tenant-a',
+      2,
+      JSON.stringify(template),
+      'admin-1',
+    ]);
+  });
+
+  it('reports a revision conflict without overwriting the current template', async () => {
+    const { executor } = createQueuedExecutor([[], [{ instance_exists: true }]]);
+    await expect(
+      createInstanceRegistryRepository(executor).updateAccountInvitationTemplate({
+        instanceId: 'tenant-a',
+        expectedRevision: 1,
+        template: null,
+      })
+    ).rejects.toThrow('account_invitation_template_revision_conflict');
+  });
+
   it('rejects a hostname already owned by another instance', async () => {
     const { executor } = createQueuedExecutor([[instanceRow], []]);
     const repository = createInstanceRegistryRepository(executor);

@@ -1,3 +1,4 @@
+import type { AccountInvitationTemplate } from '@sva/core';
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import type {
   CreateInstancePayloadFields,
@@ -9,7 +10,10 @@ export type CreateInstancePayload = CreateInstancePayloadFields & {
   readonly instanceId: string;
 };
 
-export type UpdateInstancePayload = CreateInstancePayloadFields;
+export type UpdateInstancePayload = CreateInstancePayloadFields & {
+  readonly accountInvitationTemplate?: Omit<AccountInvitationTemplate, 'revision'> | null;
+  readonly accountInvitationTemplateRevision?: number;
+};
 
 export const buildCreateInstanceProvisioningInput = (
   payload: CreateInstancePayload,
@@ -54,4 +58,6 @@ export const buildUpdateInstanceInput = (
   themeKey: payload.themeKey,
   featureFlags: payload.featureFlags,
   mainserverConfigRef: payload.mainserverConfigRef,
+  accountInvitationTemplate: payload.accountInvitationTemplate,
+  accountInvitationTemplateRevision: payload.accountInvitationTemplateRevision,
 });

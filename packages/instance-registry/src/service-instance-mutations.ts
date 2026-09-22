@@ -1,7 +1,15 @@
-import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
+import {
+  buildPrimaryHostname,
+  canTransitionInstanceStatus,
+  normalizeHost,
+} from '@sva/core';
 
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
+import {
+  applyAccountInvitationTemplateMutation,
+  validateAccountInvitationTemplateMutation,
+} from './service-account-invitation-template.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
 import {
@@ -223,6 +231,7 @@ export const createUpdateInstanceHandler =
     if (!existing) {
       return null;
     }
+    validateAccountInvitationTemplateMutation(effectiveInput, existing);
     await assertNoActiveTenantProvisioning(deps.repository, effectiveInput.instanceId);
     const enteringNewRealm = existing.realmMode !== 'new' && effectiveInput.realmMode === 'new';
     const normalizedParentDomain = normalizeHost(effectiveInput.parentDomain);
@@ -273,6 +282,15 @@ export const createUpdateInstanceHandler =
     if (!updated) {
       return null;
     }
+
+    const invitationUpdated = await applyAccountInvitationTemplateMutation({
+      repository: deps.repository,
+      project: deps.projectAccountInvitationTemplate,
+      mutation: effectiveInput,
+      existing,
+      updated,
+    });
+    if (!invitationUpdated) return null;
 
     invalidateHostWithLog(deps.invalidateHost, existing.primaryHostname, updated.instanceId);
     invalidateHostWithLog(deps.invalidateHost, updated.primaryHostname, updated.instanceId);

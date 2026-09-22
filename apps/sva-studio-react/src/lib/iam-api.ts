@@ -577,6 +577,13 @@ export type UpdateInstancePayload = {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+  readonly accountInvitationTemplate?: {
+    readonly subject: string;
+    readonly body: string;
+    readonly passwordSetupLinkLabel: string;
+    readonly tenantHomepageLinkLabel: string;
+  } | null;
+  readonly accountInvitationTemplateRevision?: number;
 };
 
 export type ReconcileInstanceKeycloakPayload = {

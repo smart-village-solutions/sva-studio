@@ -15,6 +15,7 @@ import { guidanceInstancesAdminENResources } from './instances/guidance.resource
 import { helpInstancesAdminENResources } from './instances/help.resources.js';
 import { historyInstancesAdminENResources } from './instances/history.resources.js';
 import { instanceModulesInstancesAdminENResources } from './instances/instanceModules.resources.js';
+import { invitationInstancesAdminENResources } from './instances/invitation.resources.js';
 import { keycloakPanelInstancesAdminENResources } from './instances/keycloakPanel.resources.js';
 import { keycloakStatusInstancesAdminENResources } from './instances/keycloakStatus.resources.js';
 import { messagesInstancesAdminENResources } from './instances/messages.resources.js';
@@ -47,6 +48,7 @@ export const instancesAdminENResources = {
   help: helpInstancesAdminENResources,
   history: historyInstancesAdminENResources,
   instanceModules: instanceModulesInstancesAdminENResources,
+  invitation: invitationInstancesAdminENResources,
   keycloakPanel: keycloakPanelInstancesAdminENResources,
   keycloakStatus: keycloakStatusInstancesAdminENResources,
   messages: messagesInstancesAdminENResources,

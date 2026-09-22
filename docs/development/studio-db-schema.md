@@ -72,7 +72,8 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0096_iam_instance_provisioning_orchestration.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt. `0091` ergänzt den parameterlosen, ausschließlich aggregierenden Lifecycle-Observability-Snapshot. Sein NOLOGIN-/NOBYPASSRLS-Definer besitzt nur spaltenbegrenzte Leserechte und eigene `FOR SELECT`-Policies; `iam_app` erhält ausschließlich `EXECUTE` auf die Funktion. `0096` erweitert bestehende Instanz-Provisioning-Läufe additiv um versionierte Soll-Snapshots, einen referenzierten Keycloak-Kindlauf, Lease- und Retry-Felder, Deadline sowie kumulative Terminalevidenz. Ein partieller Claim-Index beschränkt den Kasseler Worker auf fällige, nichtterminale Create-Läufe der Snapshot-Version `2.0`.
+- Enthält strukturell den Repo-Sollstand bis `0097_iam_instance_account_invitation_template.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt. `0091` ergänzt den parameterlosen, ausschließlich aggregierenden Lifecycle-Observability-Snapshot. Sein NOLOGIN-/NOBYPASSRLS-Definer besitzt nur spaltenbegrenzte Leserechte und eigene `FOR SELECT`-Policies; `iam_app` erhält ausschließlich `EXECUTE` auf die Funktion. `0096` erweitert bestehende Instanz-Provisioning-Läufe additiv um versionierte Soll-Snapshots, einen referenzierten Keycloak-Kindlauf, Lease- und Retry-Felder, Deadline sowie kumulative Terminalevidenz. Ein partieller Claim-Index beschränkt den Kasseler Worker auf fällige, nichtterminale Create-Läufe der Snapshot-Version `2.0`.
+- Migration `0097` ergänzt die optionale, revisionsgebundene Account-Einladungsvorlage je Instanz.
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -111,7 +112,10 @@ Konvergenznachweis der SSF-IAM-Projektion:
 Die generische Instanz-Registry speichert in `iam.instances.time_zone` die
 Tenant-Zeitzone. Bestehende und zunächst nicht individuell konfigurierte
 Instanzen verwenden `Europe/Berlin`; Runtime-Verbraucher validieren den Wert
-zusätzlich als IANA-Zeitzone. `iam.instances.auth_realm` ist eindeutig, damit
+zusätzlich als IANA-Zeitzone. Die optionale JSONB-Spalte
+`iam.instances.account_invitation_template` hält ausschließlich die typisierte,
+revisionsgebundene Individualvorlage; Realm-Overrides bleiben eine abgeleitete
+Keycloak-Projektion. `iam.instances.auth_realm` ist eindeutig, damit
 ein Keycloak-Realm atomar höchstens einer Studio-Instanz zugeordnet werden kann.
 Migration `0094` sperrt die Registry-Tabelle kurz und prüft Bestandsdaten vor
 dem Constraint. Bei vorhandenen Duplikaten bricht sie mit einer konkreten

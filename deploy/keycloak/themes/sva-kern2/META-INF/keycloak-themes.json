@@ -2,7 +2,7 @@
   "themes": [
     {
       "name": "sva-kern2",
-      "types": ["login"]
+      "types": ["login", "email"]
     }
   ]
 }

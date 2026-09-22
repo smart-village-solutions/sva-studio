@@ -1088,3 +1088,16 @@ Tokens, Secrets oder E-Mail-Adressen.
 - API-, Persistenz-, Log-, UI- und MCP-Grenzen verwenden stabile Codes,
   redigierte Details und Run-/Request-Korrelation. Unbekannte Fehler bleiben
   ohne blinden Retry.
+
+### Sichere Textvorlagen für Account-Einladungen
+
+- Vorlagen sind Text, kein HTML. Erlaubt sind nur `tenantName`,
+  `passwordSetupLink`, `tenantHomepageLink` und `linkExpiresIn`; der
+  Passwortlink muss genau einmal vorkommen.
+- Freie URI-Schemata, Markup und unbekannte Platzhalter werden vor Persistenz
+  abgewiesen. HTML entsteht ausschließlich serverseitig aus escaped Freitext
+  und zwei kontrollierten Links.
+- Logs und Audit enthalten nur Instanz, Revision, Ergebnis und sichere
+  Fehlercodes, niemals Nachrichtentext, Empfänger, Action-Token oder Link.
+- Custom-Drift wird vor jedem Versand fail-closed behandelt. Instanzen ohne
+  Individualvorlage behalten ihren bisherigen Keycloak-Versandpfad.

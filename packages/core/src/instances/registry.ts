@@ -40,6 +40,7 @@ export type InstanceRegistryRecord = {
     readonly lastName?: string;
   };
   readonly themeKey?: string;
+  readonly accountInvitationTemplate?: import('./account-invitation-template.js').AccountInvitationTemplate;
   readonly assignedModules: readonly string[];
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;

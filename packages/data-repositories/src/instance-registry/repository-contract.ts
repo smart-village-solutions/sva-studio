@@ -1,5 +1,6 @@
 import type {
   InstanceAuditEvent,
+  AccountInvitationTemplate,
   InstanceKeycloakProvisioningRun,
   InstanceKeycloakProvisioningRunStep,
   InstanceProvisioningOperation,
@@ -295,6 +296,12 @@ export type InstanceRegistryRepository = {
     themeKey?: string;
     featureFlags?: Readonly<Record<string, boolean>>;
     mainserverConfigRef?: string;
+  }) => Promise<InstanceRegistryRecord | null>;
+  readonly updateAccountInvitationTemplate: (input: {
+    instanceId: string;
+    expectedRevision: number;
+    template: AccountInvitationTemplate | null;
+    actorId?: string;
   }) => Promise<InstanceRegistryRecord | null>;
   readonly updateInstanceKeycloakSecrets: (input: {
     instanceId: string;

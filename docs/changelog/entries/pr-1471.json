@@ -1,0 +1,4 @@
+{
+  "prNumber": 1471,
+  "body": "Coverage-Gate auf dem aktuellen Stand stabilisiert\n\n- Zusätzliche Tests decken das Anlegen von Unterkategorien, optionale Formularfelder und inaktive Kategorien ab.\n- Die Coverage-Baselines für Instanz-Registry und Kategorien entsprechen wieder dem vollständig gemessenen Testumfang; die Qualitäts-Floors bleiben unverändert."
+}

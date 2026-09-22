@@ -26,6 +26,7 @@ describe('account invitation template', () => {
   });
 
   it.each([
+    ['empty subject', { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, subject: '   ' }],
     ['missing password link', { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, body: 'Hallo' }],
     [
       'multiple password links',
@@ -49,6 +50,20 @@ describe('account invitation template', () => {
     [
       'raw MessageFormat argument',
       { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, body: '{{passwordSetupLink}} {0}' },
+    ],
+    [
+      'token in link label',
+      {
+        ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+        passwordSetupLinkLabel: '{{tenantName}}',
+      },
+    ],
+    [
+      'password link in subject',
+      {
+        ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+        subject: '{{passwordSetupLink}}',
+      },
     ],
   ])('rejects %s', (_name, template) => {
     expect(() => validateAccountInvitationTemplate(template)).toThrow(

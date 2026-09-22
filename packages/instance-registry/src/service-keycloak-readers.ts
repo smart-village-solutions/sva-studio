@@ -37,7 +37,23 @@ import {
   readSnapshotFromRuns,
   refreshManagedRealmSmtpPasswordStatus,
 } from './service-keycloak-snapshot-reader.js';
+import { buildKeycloakPlanLogFields } from './observability.js';
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
+
+const logKeycloakPlanCompleted = (
+  instanceId: string,
+  planSource: 'live' | 'local' | 'snapshot',
+  plan: KeycloakTenantPlan
+): void => {
+  logger.info('keycloak_plan_completed', {
+    operation: 'plan_keycloak_provisioning',
+    result: 'completed',
+    instance_id: instanceId,
+    plan_source: planSource,
+    snapshot_policy_version: KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+    ...buildKeycloakPlanLogFields(plan),
+  });
+};
 
 const readPluginOidcClients = (
   deps: InstanceRegistryServiceDeps,
@@ -343,10 +359,7 @@ export const createPlanKeycloakProvisioningHandler =
         pluginOidcClients,
         realmBaselineApplicable,
       });
-      logger.info('keycloak_plan_completed', {
-        operation: 'plan_keycloak_provisioning',
-        instance_id: instanceId,
-      });
+      logKeycloakPlanCompleted(instanceId, 'live', plan);
       return plan;
     }
     const snapshot = await readManagedRealmPlanSnapshot(
@@ -357,10 +370,7 @@ export const createPlanKeycloakProvisioningHandler =
       inputFingerprint
     );
     if (snapshot) {
-      logger.info('keycloak_plan_completed', {
-        operation: 'plan_keycloak_provisioning',
-        instance_id: instanceId,
-      });
+      logKeycloakPlanCompleted(instanceId, 'snapshot', snapshot);
       return snapshot;
     }
     const preflight = buildLocalPreflight({
@@ -386,10 +396,7 @@ export const createPlanKeycloakProvisioningHandler =
       realmBaselineApplicable,
       preflight,
     });
-    logger.info('keycloak_plan_completed', {
-      operation: 'plan_keycloak_provisioning',
-      instance_id: instanceId,
-    });
+    logKeycloakPlanCompleted(instanceId, 'local', plan);
     return plan;
   };
 

@@ -1,5 +1,7 @@
 import { redactObject } from '@sva/server-runtime';
 
+import type { KeycloakTenantPlan } from './keycloak-types.js';
+
 export type InstanceRegistryFailureContext = {
   readonly operation: string;
   readonly requestId?: string;
@@ -15,6 +17,88 @@ type InstanceRegistryFailureClassification = {
   readonly status: number;
 };
 
+type InstanceRegistryFailureDiagnostics = Readonly<{
+  comparison_stage: 'enqueue' | 'parent_confirmation' | 'reconcile' | 'worker_plan';
+  expected_plan_fingerprint_prefix?: string;
+  actual_plan_fingerprint_prefix?: string;
+  plan_status?: KeycloakTenantPlan['overallStatus'];
+  realm_mode?: KeycloakTenantPlan['mode'];
+  plan_action_create_count?: number;
+  plan_action_update_count?: number;
+  plan_action_verify_count?: number;
+  plan_action_skip_count?: number;
+  realm_baseline_applicable?: boolean;
+}>;
+
+const failureDiagnostics = Symbol('instanceRegistryFailureDiagnostics');
+
+const readFingerprintPrefix = (value: string | undefined): string | undefined =>
+  value && /^[a-f0-9]{64}$/u.test(value) ? value.slice(0, 12) : undefined;
+
+export const buildKeycloakPlanLogFields = (
+  plan: KeycloakTenantPlan
+): Readonly<Record<string, string | number | boolean>> => {
+  const actionCounts = { create: 0, update: 0, verify: 0, skip: 0 };
+  for (const step of plan.steps ?? []) {
+    actionCounts[step.action] += 1;
+  }
+  const realmBaselineApplicable = plan.steps?.find((step) => step.stepKey === 'realm_baseline')
+    ?.details.applicable;
+  const planFingerprintPrefix = readFingerprintPrefix(plan.fingerprint);
+
+  return {
+    plan_status: plan.overallStatus,
+    realm_mode: plan.mode,
+    plan_contract_version: plan.contractVersion,
+    ...(planFingerprintPrefix ? { plan_fingerprint_prefix: planFingerprintPrefix } : {}),
+    plan_action_create_count: actionCounts.create,
+    plan_action_update_count: actionCounts.update,
+    plan_action_verify_count: actionCounts.verify,
+    plan_action_skip_count: actionCounts.skip,
+    ...(typeof realmBaselineApplicable === 'boolean'
+      ? { realm_baseline_applicable: realmBaselineApplicable }
+      : {}),
+  };
+};
+
+export const buildKeycloakPlanComparisonDiagnostics = (input: {
+  readonly comparisonStage: InstanceRegistryFailureDiagnostics['comparison_stage'];
+  readonly expectedFingerprint?: string;
+  readonly actualPlan?: KeycloakTenantPlan;
+}): InstanceRegistryFailureDiagnostics => {
+  const planFields = input.actualPlan ? buildKeycloakPlanLogFields(input.actualPlan) : {};
+  const expectedFingerprintPrefix = readFingerprintPrefix(input.expectedFingerprint);
+  const actualFingerprintPrefix = readFingerprintPrefix(input.actualPlan?.fingerprint);
+  return {
+    comparison_stage: input.comparisonStage,
+    ...(expectedFingerprintPrefix
+      ? { expected_plan_fingerprint_prefix: expectedFingerprintPrefix }
+      : {}),
+    ...(actualFingerprintPrefix ? { actual_plan_fingerprint_prefix: actualFingerprintPrefix } : {}),
+    ...(planFields.plan_status === 'ready' || planFields.plan_status === 'blocked'
+      ? { plan_status: planFields.plan_status }
+      : {}),
+    ...(planFields.realm_mode === 'new' || planFields.realm_mode === 'existing'
+      ? { realm_mode: planFields.realm_mode }
+      : {}),
+    ...(typeof planFields.plan_action_create_count === 'number'
+      ? { plan_action_create_count: planFields.plan_action_create_count }
+      : {}),
+    ...(typeof planFields.plan_action_update_count === 'number'
+      ? { plan_action_update_count: planFields.plan_action_update_count }
+      : {}),
+    ...(typeof planFields.plan_action_verify_count === 'number'
+      ? { plan_action_verify_count: planFields.plan_action_verify_count }
+      : {}),
+    ...(typeof planFields.plan_action_skip_count === 'number'
+      ? { plan_action_skip_count: planFields.plan_action_skip_count }
+      : {}),
+    ...(typeof planFields.realm_baseline_applicable === 'boolean'
+      ? { realm_baseline_applicable: planFields.realm_baseline_applicable }
+      : {}),
+  };
+};
+
 export type InstanceRegistryMutationErrorMapper = (
   error: unknown,
   context?: InstanceRegistryFailureContext
@@ -26,7 +110,7 @@ const readSafeString = (value: unknown, key: string): string | undefined => {
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
 };
 
-const readProperty = (value: unknown, key: string): unknown => {
+const readProperty = (value: unknown, key: PropertyKey): unknown => {
   if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
     return undefined;
   }
@@ -106,7 +190,11 @@ export const readInstanceRegistryStepKey = (error: unknown): string | undefined 
   return stepKey && stepKeys.has(stepKey) ? stepKey : undefined;
 };
 
-export const annotateInstanceRegistryError = (error: unknown, stepKey: string): unknown => {
+export const annotateInstanceRegistryError = (
+  error: unknown,
+  stepKey: string,
+  diagnostics?: InstanceRegistryFailureDiagnostics
+): unknown => {
   if (error !== null && typeof error === 'object' && stepKeys.has(stepKey)) {
     try {
       Object.defineProperty(error, 'instanceRegistryStep', {
@@ -114,6 +202,13 @@ export const annotateInstanceRegistryError = (error: unknown, stepKey: string): 
         enumerable: false,
         value: stepKey,
       });
+      if (diagnostics) {
+        Object.defineProperty(error, failureDiagnostics, {
+          configurable: true,
+          enumerable: false,
+          value: diagnostics,
+        });
+      }
     } catch {
       // Preserve non-extensible upstream errors without replacing their original identity.
     }
@@ -138,6 +233,11 @@ export const buildInstanceRegistryFailureLog = (
   classification: InstanceRegistryFailureClassification
 ): Record<string, unknown> => {
   const stepKey = context.stepKey ?? readInstanceRegistryStepKey(error);
+  const annotatedDiagnostics = readProperty(error, failureDiagnostics);
+  const diagnostics =
+    annotatedDiagnostics !== null && typeof annotatedDiagnostics === 'object'
+      ? (annotatedDiagnostics as InstanceRegistryFailureDiagnostics)
+      : undefined;
   return {
     operation: context.operation,
     result: 'failed',
@@ -152,6 +252,7 @@ export const buildInstanceRegistryFailureLog = (
     ...(context.intent ? { intent: context.intent } : {}),
     ...(stepKey ? { step_key: stepKey } : {}),
     ...(context.dependency ? { dependency: context.dependency } : {}),
+    ...(diagnostics ?? {}),
     ...(readSafeString(error, 'table') ? { database_table: readSafeString(error, 'table') } : {}),
     ...(readSafeString(error, 'column')
       ? { database_column: readSafeString(error, 'column') }

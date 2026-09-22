@@ -35,9 +35,11 @@ import {
 import { loadRealmBaselineApplicability } from './service-keycloak-snapshot-reader.js';
 import {
   annotateInstanceRegistryError,
+  buildKeycloakPlanComparisonDiagnostics,
   readInstanceRegistryStepKey,
   runInstanceRegistryStep,
 } from './observability.js';
+import type { KeycloakTenantPlan } from './keycloak-types.js';
 import {
   buildKeycloakSnapshotInputFingerprint,
   KEYCLOAK_SNAPSHOT_POLICY_VERSION,
@@ -52,6 +54,20 @@ const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', le
 type QueuedProvisioningInput = ReturnType<typeof buildProvisioningInput> & {
   pluginOidcClients: NonNullable<KeycloakProvisioningInput['pluginOidcClients']>;
 };
+
+const createPlanStaleError = (input: {
+  readonly comparisonStage: Parameters<
+    typeof buildKeycloakPlanComparisonDiagnostics
+  >[0]['comparisonStage'];
+  readonly stepKey: 'queue_enqueue' | 'worker_plan';
+  readonly expectedFingerprint?: string;
+  readonly actualPlan?: KeycloakTenantPlan;
+}): unknown =>
+  annotateInstanceRegistryError(
+    new Error('keycloak_plan_fingerprint_stale'),
+    input.stepKey,
+    buildKeycloakPlanComparisonDiagnostics(input)
+  );
 
 const assertProvisioningIntentAllowed = (
   realmMode: KeycloakProvisioningInput['realmMode'],
@@ -327,10 +343,12 @@ const executeClaimedRun = async (
     appendPlanSnapshot(deps, run, provisioningInput, inputFingerprint, realmBaselineApplicable)
   );
   if (plan.fingerprint !== confirmedPlanFingerprint) {
-    throw annotateInstanceRegistryError(
-      new Error('keycloak_plan_fingerprint_stale'),
-      'worker_plan'
-    );
+    throw createPlanStaleError({
+      comparisonStage: 'worker_plan',
+      stepKey: 'worker_plan',
+      expectedFingerprint: confirmedPlanFingerprint,
+      actualPlan: plan,
+    });
   }
 
   const rotatingMissingTenantSecret =
@@ -557,7 +575,12 @@ export const createExecuteKeycloakProvisioningHandler =
       throw new Error('keycloak_plan_blocked');
     }
     if (currentPlan.fingerprint !== input.planFingerprint) {
-      throw new Error('keycloak_plan_fingerprint_stale');
+      throw createPlanStaleError({
+        comparisonStage: 'enqueue',
+        stepKey: 'queue_enqueue',
+        expectedFingerprint: input.planFingerprint,
+        actualPlan: currentPlan,
+      });
     }
 
     const { run } = await createQueuedRun(deps, loaded, {
@@ -566,7 +589,13 @@ export const createExecuteKeycloakProvisioningHandler =
       mutation: 'executeKeycloakProvisioning',
     });
     if (parentRun && confirmsWaitingParent) {
-      if (!parentGate?.planFingerprint) throw new Error('keycloak_plan_fingerprint_stale');
+      if (!parentGate?.planFingerprint) {
+        throw createPlanStaleError({
+          comparisonStage: 'parent_confirmation',
+          stepKey: 'queue_enqueue',
+          actualPlan: currentPlan,
+        });
+      }
       const confirmed = await deps.repository.confirmProvisioningPlan({
         runId: parentRun.id,
         instanceId: input.instanceId,
@@ -576,9 +605,22 @@ export const createExecuteKeycloakProvisioningHandler =
         actorId: input.actorId,
         requestId: input.requestId,
       });
-      if (!confirmed) throw new Error('keycloak_plan_fingerprint_stale');
+      if (!confirmed) {
+        throw createPlanStaleError({
+          comparisonStage: 'parent_confirmation',
+          stepKey: 'queue_enqueue',
+          expectedFingerprint: parentGate.planFingerprint,
+          actualPlan: currentPlan,
+        });
+      }
     } else if (parentRun && remediatesWaitingParent) {
-      if (!parentGate?.planFingerprint) throw new Error('keycloak_plan_fingerprint_stale');
+      if (!parentGate?.planFingerprint) {
+        throw createPlanStaleError({
+          comparisonStage: 'parent_confirmation',
+          stepKey: 'queue_enqueue',
+          actualPlan: currentPlan,
+        });
+      }
       const bound = await deps.repository.bindProvisioningRemediation({
         runId: parentRun.id,
         instanceId: input.instanceId,
@@ -588,9 +630,21 @@ export const createExecuteKeycloakProvisioningHandler =
         actorId: input.actorId,
         requestId: input.requestId,
       });
-      if (!bound) throw new Error('keycloak_plan_fingerprint_stale');
+      if (!bound) {
+        throw createPlanStaleError({
+          comparisonStage: 'parent_confirmation',
+          stepKey: 'queue_enqueue',
+          expectedFingerprint: parentGate.planFingerprint,
+          actualPlan: currentPlan,
+        });
+      }
     } else if (parentRun && retriesConfirmedParent && parentGate?.childKeycloakRunId !== run.id) {
-      throw new Error('keycloak_plan_fingerprint_stale');
+      throw createPlanStaleError({
+        comparisonStage: 'parent_confirmation',
+        stepKey: 'queue_enqueue',
+        expectedFingerprint: input.planFingerprint,
+        actualPlan: currentPlan,
+      });
     }
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);
   };
@@ -625,7 +679,12 @@ export const createReconcileKeycloakHandler =
       throw new Error('keycloak_plan_blocked');
     }
     if (currentPlan.fingerprint !== input.planFingerprint) {
-      throw new Error('keycloak_plan_fingerprint_stale');
+      throw createPlanStaleError({
+        comparisonStage: 'reconcile',
+        stepKey: 'queue_enqueue',
+        expectedFingerprint: input.planFingerprint,
+        actualPlan: currentPlan,
+      });
     }
 
     if (

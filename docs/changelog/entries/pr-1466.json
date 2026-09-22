@@ -1,0 +1,4 @@
+{
+  "prNumber": 1466,
+  "body": "Tenant-IAM-Rechteprobe vor der Aktivierung zuverlässig ausführen\n\n- Angeforderte oder bereits provisionierte Instanzen verwenden bei der Rechteprobe ihren gespeicherten Login-Client.\n- Die Probe meldet dadurch keinen irreführenden Verbindungsfehler mehr, nur weil die Instanz noch nicht für den normalen Login aktiviert ist."
+}

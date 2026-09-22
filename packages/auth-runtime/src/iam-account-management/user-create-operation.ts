@@ -8,6 +8,8 @@ import {
 } from './shared.js';
 import { ensureManagedRealmRolesExist } from './shared-managed-role-sync.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
+import { readInstanceRegistryPluginTenantLifecycleRegistry } from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
+import { withRegistryRepository } from '../iam-instance-registry/repository.js';
 import {
   buildInvitationFailure,
   logInvitationFailure,
@@ -88,6 +90,33 @@ const syncUserRolesIfNeeded = async (input: {
   await trackKeycloakCall('sync_roles', () =>
     input.identityProvider.provider.syncRoles(input.keycloakSubject, [...technicalRoleNames])
   );
+};
+
+const requestSsfAuthorizationReconcile = async (actor: CreateUserActorInfo): Promise<void> => {
+  const lifecycle = readInstanceRegistryPluginTenantLifecycleRegistry().get('ssf');
+  const contractRevision = lifecycle?.contractRevision;
+  if (!lifecycle || !contractRevision) return;
+
+  try {
+    await withRegistryRepository((repository) =>
+      repository.persistPluginTenantLifecycleReconcileIntents({
+        instanceId: actor.instanceId,
+        lifecycles: [{ pluginId: lifecycle.pluginId, contractRevision }],
+        forcePluginIds: ['ssf'],
+      })
+    );
+  } catch (error) {
+    logger.error('SSF authorization reconcile scheduling failed after IAM user creation', {
+      workspace_id: actor.instanceId,
+      context: {
+        operation: 'schedule_ssf_authorization_reconcile',
+        instance_id: actor.instanceId,
+        request_id: actor.requestId,
+        trace_id: actor.traceId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
 };
 
 const enrichUserWithMainserverCredentials = (
@@ -243,6 +272,7 @@ export const executeCreateUser = async (input: {
       keycloakSubject: result.responseData.keycloakSubject,
       roleNames: result.roleNames,
     });
+    await requestSsfAuthorizationReconcile(actor);
 
     const responseData = await resolveCreateUserResponseData({
       actor,

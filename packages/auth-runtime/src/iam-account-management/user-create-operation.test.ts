@@ -6,6 +6,8 @@ const state = vi.hoisted(() => ({
   ensureManagedRealmRolesExist: vi.fn(),
   resolveIdentityProviderForInstance: vi.fn(),
   resolveAuthConfigForInstance: vi.fn(),
+  readInstanceRegistryPluginTenantLifecycleRegistry: vi.fn(() => new Map()),
+  persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => []),
   provisionMainserverUserCredentials: vi.fn(),
   trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) =>
     execute()
@@ -37,6 +39,20 @@ vi.mock('../config.js', () => ({
   resolveAuthConfigForInstance: state.resolveAuthConfigForInstance,
 }));
 
+vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
+  readInstanceRegistryPluginTenantLifecycleRegistry:
+    state.readInstanceRegistryPluginTenantLifecycleRegistry,
+}));
+
+vi.mock('../iam-instance-registry/repository.js', () => ({
+  withRegistryRepository: vi.fn(async (work: (repository: object) => Promise<unknown>) =>
+    work({
+      persistPluginTenantLifecycleReconcileIntents:
+        state.persistPluginTenantLifecycleReconcileIntents,
+    })
+  ),
+}));
+
 vi.mock('./mainserver-user-provisioning.js', () => ({
   provisionMainserverUserCredentials: state.provisionMainserverUserCredentials,
 }));
@@ -60,6 +76,8 @@ describe('executeCreateUser', () => {
       redirectUri: 'https://tenant.example.test/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example.test/',
     });
+    state.readInstanceRegistryPluginTenantLifecycleRegistry.mockReturnValue(new Map());
+    state.persistPluginTenantLifecycleReconcileIntents.mockResolvedValue([]);
     state.provisionMainserverUserCredentials.mockResolvedValue(null);
   });
 
@@ -289,6 +307,47 @@ describe('executeCreateUser', () => {
     expect(identityProvider.provider.executeActionsEmail).not.toHaveBeenCalled();
     expect(result.invitation.status).toBe('not_requested');
   }, 15_000);
+
+  it('requests the existing SSF authorization reconcile after creating a user', async () => {
+    const ssfLifecycle = {
+      pluginId: 'ssf',
+      contractRevision: 'ssf-contract-1',
+      operations: [],
+      readinessChecks: [],
+    };
+    state.readInstanceRegistryPluginTenantLifecycleRegistry.mockReturnValue(
+      new Map([['ssf', ssfLifecycle]])
+    );
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    await executeCreateUser({
+      actor: { instanceId: 'instance-1', actorAccountId: 'actor-1' },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        roleIds: [],
+        sendPasswordSetupEmail: false,
+      },
+    });
+
+    expect(state.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      lifecycles: [{ pluginId: 'ssf', contractRevision: 'ssf-contract-1' }],
+      forcePluginIds: ['ssf'],
+    });
+  });
 
   it('keeps personal Mainserver provisioning active for a normally created technical account', async () => {
     state.provisionMainserverUserCredentials.mockResolvedValue({

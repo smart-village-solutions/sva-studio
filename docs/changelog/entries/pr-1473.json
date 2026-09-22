@@ -1,0 +1,4 @@
+{
+  "prNumber": 1473,
+  "body": "Die tenant-spezifischen Account-Einladungen sind jetzt zusätzlich durch vollständige Projektionstests abgesichert.\n\n- Das Schreiben, Prüfen und Zurücksetzen der Keycloak-E-Mail-Vorlage wird automatisiert getestet.\n- Abweichende Realm-Einstellungen und unvollständige Tenant-Zugangsdaten bleiben fail-closed.\n- Die Validierungsregeln für Betreff und Linkbeschriftungen werden vollständig abgedeckt."
+}

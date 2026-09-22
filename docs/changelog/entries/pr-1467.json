@@ -1,0 +1,4 @@
+{
+  "prNumber": 1467,
+  "body": "Keycloak-Pläne bleiben nach erfolgreicher Realm-Anlage konsistent\n\n- Nachgewiesene Studio-Baselines werden bei Wiederholungs- und Reparaturläufen weiterhin berücksichtigt.\n- Importierte oder fremde Realms bleiben von Studio-Baseline-Schritten ausgeschlossen.\n- Planbestätigungen bleiben auch nach der Live-Prüfung des SMTP-Status nachvollziehbar."
+}

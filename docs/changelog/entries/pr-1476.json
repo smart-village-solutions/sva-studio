@@ -1,0 +1,4 @@
+{
+  "prNumber": 1476,
+  "body": "SSF-Berechtigungsprojektionen werden bei der Kontoanlage konsistent vorbereitet.\n\n- Die Berechtigungsrevision beschreibt den tenantgebundenen Vertragsstand statt einzelner Nutzerzuordnungen.\n- Neue Konten erhalten nach validierter Rollen- und Berechtigungszuordnung ihre SSF-Claims, bevor die lokale Anlage abgeschlossen wird.\n- Die SSF-Anmeldebereitschaft bewertet aktive lokale Berechtigungen nach bestätigter technischer Projektion."
+}

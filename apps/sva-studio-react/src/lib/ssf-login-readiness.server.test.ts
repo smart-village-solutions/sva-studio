@@ -3,17 +3,20 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   configure: vi.fn(),
   access: vi.fn(),
-  hasSubjects: vi.fn(),
+  hasActiveSubject: vi.fn(),
   pool: {},
   resolvePool: vi.fn(),
   revision: vi.fn(),
   baselineReady: vi.fn(),
 }));
-vi.mock('@sva/auth-runtime/server', () => ({ readConfiguredPluginTenantAccess: mocks.access }));
+vi.mock('@sva/auth-runtime/server', () => ({
+  hasActiveTenantPermissionProjectionSubject: mocks.hasActiveSubject,
+  readConfiguredPluginTenantAccess: mocks.access,
+}));
 vi.mock('@sva/plugin-ssf/runtime', () => ({
-  hasReadySsfAuthorizationProjectionSubjects: mocks.hasSubjects,
   readReadySsfAuthorizationRevision: mocks.revision,
   resolveSsfDatabasePool: mocks.resolvePool,
+  SSF_TENANT_PERMISSION_IDS: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
 }));
 vi.mock('./plugin-activation-policy-bootstrap.server.js', () => ({
   ensurePluginActivationPoliciesConfigured: mocks.configure,
@@ -30,7 +33,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.resolvePool.mockReturnValue(mocks.pool);
   mocks.access.mockResolvedValue({ allowed: true, reason: 'ready' });
-  mocks.hasSubjects.mockResolvedValue(true);
+  mocks.hasActiveSubject.mockResolvedValue(true);
   mocks.revision.mockResolvedValue('sha256:confirmed');
   mocks.baselineReady.mockResolvedValue(true);
 });
@@ -65,9 +68,12 @@ it('isolates two tenants and rejects a false-ready client independently', async 
   expect(await readStudioSsfLoginReadiness('tenant-b')).toBe(false);
 });
 it('keeps technical runtime readiness independent from directory subject eligibility', async () => {
-  mocks.hasSubjects.mockResolvedValue(false);
+  mocks.hasActiveSubject.mockResolvedValue(false);
 
   expect(await readStudioSsfLoginReadiness('tenant-a')).toBe(true);
   expect(await readStudioSsfAdminLoginReadiness('tenant-a')).toBe(false);
-  expect(mocks.hasSubjects).toHaveBeenCalledWith(mocks.pool, 'tenant-a');
+  expect(mocks.hasActiveSubject).toHaveBeenCalledWith({
+    instanceId: 'tenant-a',
+    permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+  });
 });

@@ -59,7 +59,7 @@ describe('SSF authorization projection contract', () => {
     expect(createSsfAuthorizationRevision(projection())).toMatch(/^sha256:[0-9a-f]{64}$/u);
   });
 
-  it('binds the revision to the tenant and effective permissions', () => {
+  it('binds the revision to the tenant and contract, not individual subjects', () => {
     expect(createSsfAuthorizationRevision(projection('tenant-a'))).not.toBe(
       createSsfAuthorizationRevision(projection('tenant-b'))
     );
@@ -69,9 +69,10 @@ describe('SSF authorization projection contract', () => {
         entry.subject === 'user-a' ? { ...entry, permissions: [] } : entry
       ),
     };
-    expect(createSsfAuthorizationRevision(projection())).not.toBe(
+    expect(createSsfAuthorizationRevision(projection())).toBe(
       createSsfAuthorizationRevision(reduced)
     );
+    expect(areSsfAuthorizationProjectionsEqual(projection(), reduced)).toBe(false);
   });
 
   it('rejects duplicate subjects and permissions outside the catalog', () => {
@@ -110,10 +111,7 @@ describe('SSF authorization projection contract', () => {
           {
             subject: 'admin',
             roleNames: ['system_admin'],
-            permissionIds: [
-              'ssf.configuration.tenant.read',
-              'ssf.configuration.tenant.manage',
-            ],
+            permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
           },
           {
             subject: 'custom-manager',
@@ -134,10 +132,7 @@ describe('SSF authorization projection contract', () => {
         {
           subject: 'admin',
           roles: ['tenant_admin'],
-          permissions: [
-            'ssf.configuration.tenant.manage',
-            'ssf.configuration.tenant.read',
-          ],
+          permissions: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
         },
         {
           subject: 'custom-manager',

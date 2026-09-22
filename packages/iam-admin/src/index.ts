@@ -157,6 +157,7 @@ export {
 
 export {
   createUserCreatePersistence,
+  type PreparedCreateUserAssignments,
   type CreateUserPersistenceActor,
   type CreateUserPersistenceDeps,
   type CreateUserPersistencePayload,

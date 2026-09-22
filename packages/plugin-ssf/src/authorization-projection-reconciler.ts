@@ -36,6 +36,13 @@ export interface SsfAuthorizationProjectionStore {
   ): Promise<T>;
 }
 
+export type SsfAuthorizationProjectionInput =
+  | SsfAuthorizationProjection
+  | Readonly<{
+      instanceId: string;
+      readDesired: () => Promise<SsfAuthorizationProjection>;
+    }>;
+
 export interface SsfAuthorizationProjectionTarget {
   prepareLoginClients(instanceId: string): Promise<void>;
   prepareRuntimeBaseline(instanceId: string): Promise<void>;
@@ -245,10 +252,17 @@ const reconcileLockedProjection = async (
 export const createSsfAuthorizationProjectionReconciler =
   (dependencies: SsfAuthorizationProjectionReconcilerDependencies) =>
   async (
-    desired: SsfAuthorizationProjection
+    input: SsfAuthorizationProjectionInput
   ): Promise<SsfAuthorizationProjectionReconcileResult> => {
-    const normalizedDesired = normalizeSsfAuthorizationProjection(desired);
-    return dependencies.store.withTenantLock(normalizedDesired.instanceId, (store) =>
-      reconcileLockedProjection(dependencies, store, normalizedDesired)
-    );
+    const directDesired =
+      'readDesired' in input ? undefined : normalizeSsfAuthorizationProjection(input);
+    const instanceId = directDesired?.instanceId ?? input.instanceId;
+    return dependencies.store.withTenantLock(instanceId, async (store) => {
+      const desired = 'readDesired' in input ? await input.readDesired() : directDesired!;
+      const normalizedDesired = normalizeSsfAuthorizationProjection(desired);
+      if (normalizedDesired.instanceId !== instanceId) {
+        throw new Error('ssf_authorization_projection_tenant_mismatch');
+      }
+      return reconcileLockedProjection(dependencies, store, normalizedDesired);
+    });
   };

@@ -4,6 +4,7 @@ import {
   areSsfAuthorizationProjectionsEqual,
   createSsfAuthorizationRevision,
   normalizeSsfAuthorizationProjection,
+  SSF_AUTHORIZATION_PROJECTION_VERSION,
   type SsfAuthorizationProjection,
 } from './authorization-projection.js';
 import {
@@ -41,44 +42,44 @@ export const stageSsfAuthorizationProjection = async (
      ) VALUES ($1, $2, $3::jsonb)
      ON CONFLICT (instance_id) DO UPDATE SET
        generation = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.generation
          ELSE ssf.authorization_projections.generation + 1
        END,
        status = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.status
          ELSE 'pending'
        END,
        desired_revision = EXCLUDED.desired_revision,
        desired_projection = EXCLUDED.desired_projection,
        confirmed_revision = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.confirmed_revision
          ELSE NULL
        END,
        confirmed_projection = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.confirmed_projection
          ELSE NULL
        END,
        sessions_revoked_revision = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.sessions_revoked_revision
          ELSE NULL
        END,
        last_error_code = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.last_error_code
          ELSE NULL
        END,
        confirmed_at = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.confirmed_at
          ELSE NULL
        END,
        sessions_revoked_at = CASE
-         WHEN ssf.authorization_projections.desired_revision = EXCLUDED.desired_revision
+         WHEN ssf.authorization_projections.desired_projection = EXCLUDED.desired_projection
            THEN ssf.authorization_projections.sessions_revoked_at
          ELSE NULL
        END,
@@ -216,6 +217,11 @@ export const readReadySsfAuthorizationRevision = async (
   instanceId: string
 ): Promise<string | null> =>
   withTenantRead(pool, instanceId, async (client) => {
+    const supportedRevision = createSsfAuthorizationRevision({
+      contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+      instanceId,
+      subjects: [],
+    });
     const result = await client.query<{ confirmed_revision: string }>(
       `SELECT confirmed_revision
          FROM ssf.authorization_projections
@@ -225,7 +231,8 @@ export const readReadySsfAuthorizationRevision = async (
           AND last_error_code IS NULL`,
       [instanceId]
     );
-    return result.rows[0]?.confirmed_revision ?? null;
+    const revision = result.rows[0]?.confirmed_revision ?? null;
+    return revision === supportedRevision ? revision : null;
   });
 
 export const hasReadySsfAuthorizationProjectionSubjects = async (

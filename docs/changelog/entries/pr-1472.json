@@ -1,0 +1,4 @@
+{
+  "prNumber": 1472,
+  "body": "Account-Einladungen lassen sich je Studio-Instanz individuell formulieren.\n\n- Betreff, Nachricht und Linkbeschriftungen können in den Instanzeinstellungen angepasst und sicher vorab angezeigt werden.\n- Der Link zum Festlegen des Passworts wird weiterhin geschützt von Keycloak erzeugt; zusätzlich kann die Startseite des jeweiligen Tenants verlinkt werden.\n- Das Studio zeigt an, ob die gespeicherte Vorlage mit dem Keycloak-Realm übereinstimmt, und verhindert bei Abweichungen den Versand einer falschen Einladung."
+}

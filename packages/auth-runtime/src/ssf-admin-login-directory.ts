@@ -90,10 +90,7 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
     )();
     const readyInstances: InstanceRegistryRecord[] = [];
     for (const instance of instances) {
-      if (
-        instance.status === 'active' &&
-        (await readTenantReadiness(instance.instanceId))
-      ) {
+      if (instance.status === 'active' && (await readTenantReadiness(instance.instanceId))) {
         readyInstances.push(instance);
       }
     }
@@ -102,6 +99,7 @@ export const dispatchSsfAdminLoginDirectoryRequest = async (
         id: instance.instanceId,
         displayName: instance.displayName,
         realm: instance.authRealm,
+        studioUrl: `https://${instance.primaryHostname}/`,
       }))
       .sort(
         (left, right) =>

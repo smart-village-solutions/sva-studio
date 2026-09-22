@@ -111,7 +111,8 @@ dokumentiert.
 
 Zusätzlich liefert Studio dem SSF-Backend das
 [Login-Mandantenverzeichnis](../api/ssf-admin-login-mandanten-v1.md): aktive
-Einträge der lokalen Registry mit ID, Bezeichnung und Realm. Der Host stellt diesen
+Einträge der lokalen Registry mit ID, Bezeichnung, Realm und der aus dem
+kanonischen `primaryHostname` gebildeten Tenant-Studio-URL. Der Host stellt diesen
 installationsweiten Lesezugriff vor dem tenantgebundenen Plugin-Dispatch bereit.
 Er verwendet den bestehenden internen Ingress-Schutz und die SSF-Service-Identität
 mit eigener Directory-Rolle. SSF besitzt weiterhin Login-Auswahl und OIDC-Flow.

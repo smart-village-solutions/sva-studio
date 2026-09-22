@@ -18,7 +18,8 @@ X-Correlation-Id: <id>
     {
       "id": "tenant-kassel",
       "displayName": "Stadt Kassel",
-      "realm": "kassel-ssf-2025"
+      "realm": "kassel-ssf-2025",
+      "studioUrl": "https://smartcity.dialog.kassel.de/"
     }
   ]
 }
@@ -38,16 +39,20 @@ X-Correlation-Id: <id>
   Daraus entsteht der öffentliche Client `ssf-frontend` mit Redirect `/login/*`,
   Code Flow, PKCE S256 und maximal 900 Sekunden Access-Token-Laufzeit. Ohne diese
   Konfiguration wird keine SSF-Login-Bereitschaft bestätigt.
-- `id` ist die stabile `instanceId`, `displayName` die Bezeichnung und `realm`
-  der `authRealm` aus der Registry.
+- `id` ist die stabile `instanceId`, `displayName` die Bezeichnung, `realm`
+  der `authRealm` und `studioUrl` die öffentliche HTTPS-URL des Tenant-Bereichs.
   SSF darf den Realm nicht aus der Mandanten-ID ableiten.
+- Studio bildet `studioUrl` ausschließlich als `https://${primaryHostname}/` aus
+  dem kanonischen Registry-Feld. `SVA_PUBLIC_BASE_URL`, Mandanten-ID und
+  Parent-Domain sind dafür keine Quelle.
 - Sortierung nach `displayName` mit deutscher Kollation, bei Gleichstand nach `id`.
-- Keine weiteren Mandantenfelder, Admin-URLs oder Credentials werden ausgegeben.
+- Keine weiteren Mandantenfelder oder Credentials werden ausgegeben.
 - Eine leere Liste ist eine gültige Antwort mit `contractVersion`,
   `directoryRevision` und `tenants: []`.
 - `directoryRevision` ist `sha256:` plus der SHA-256-Hash der kanonisch
   sortierten JSON-Darstellung von `tenants`. Sie bleibt bei unverändertem
-  öffentlichen Verzeichnis stabil und ändert sich mit dessen Inhalt.
+  öffentlichen Verzeichnis stabil und ändert sich mit dessen Inhalt,
+  einschließlich `studioUrl`.
 - Antworten tragen `Cache-Control: no-store`; SSF kann anhand der Revision
   selbst entscheiden, ob es eine unveränderte Liste weiterverwendet.
 

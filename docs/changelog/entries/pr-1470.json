@@ -1,0 +1,4 @@
+{
+  "prNumber": 1470,
+  "body": "SSF kann Tenant-Studio-Links anzeigen\n\n- Das Studio liefert im bestehenden SSF-Login-Mandantenverzeichnis zusätzlich die kanonische URL des jeweiligen Tenant-Bereichs.\n- Die URL wird aus dem hinterlegten Tenant-Host gebildet; Login- und Berechtigungsabläufe bleiben unverändert."
+}

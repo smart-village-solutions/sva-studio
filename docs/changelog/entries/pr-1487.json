@@ -1,0 +1,4 @@
+{
+  "prNumber": 1487,
+  "body": "Stabilere Qualitätssicherung der SSF-Berechtigungsprojektion\n\n- Die Prüfung aktiver Tenant-Berechtigungen ist jetzt gezielt gegen leere, doppelte und fehlende Ergebnisse abgesichert."
+}

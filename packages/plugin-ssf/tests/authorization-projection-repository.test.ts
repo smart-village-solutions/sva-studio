@@ -289,6 +289,21 @@ describe('SSF authorization projection repository', () => {
     );
   });
 
+  it('treats an absent confirmed subject flag as unavailable', async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: null, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: null, rows: [] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+
+    await expect(hasReadySsfAuthorizationProjectionSubjects(pool, 'tenant-a')).resolves.toBe(false);
+  });
+
   it('treats missing subject evidence in a historical schema as unavailable', async () => {
     const missingColumnError = Object.assign(new Error('column does not exist'), { code: '42703' });
     const client = {

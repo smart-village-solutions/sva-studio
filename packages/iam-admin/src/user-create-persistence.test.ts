@@ -205,6 +205,38 @@ describe('user-create-persistence', () => {
     });
   });
 
+  it('reuses assignments prepared before the external account write', async () => {
+    const deps = createDeps();
+    const client = createInsertClient('account-1');
+    const persistence = createUserCreatePersistence(deps);
+    const assignments = {
+      effectiveRoleIds: ['role-1'],
+      effectiveRoles: [roleRow],
+    };
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: {
+          instanceId: 'inst-1',
+          actorAccountId: 'actor-1',
+          actorRoles: ['admin'],
+        },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: ['role-1'],
+        },
+        assignments,
+      })
+    ).resolves.toMatchObject({ roleNames: ['Editor'] });
+
+    expect(deps.ensureRoleAssignmentWithinActorLevel).not.toHaveBeenCalled();
+    expect(deps.resolveGroupsByIds).not.toHaveBeenCalled();
+    expect(deps.resolveRoleIdsForGroups).not.toHaveBeenCalled();
+    expect(deps.resolveRolesByIds).not.toHaveBeenCalled();
+  });
+
   it('includes canonical system_admin for aliased technical role rows', async () => {
     const deps = {
       ...createDeps(),

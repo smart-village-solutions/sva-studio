@@ -246,6 +246,7 @@ export const executeCreateUser = async (input: {
             actorSubject,
             externalId,
             payload,
+            assignments,
           })
         );
 

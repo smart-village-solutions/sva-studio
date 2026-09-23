@@ -876,10 +876,11 @@ describe('executeCreateUser', () => {
   });
 
   it('ensures managed realm roles exist before syncing mapped roles to the created identity user', async () => {
-    state.prepareCreatedUserAssignments.mockResolvedValueOnce({
+    const assignments = {
       effectiveRoleIds: ['role-system-admin', 'role-editor'],
       effectiveRoles: [{ role_name: 'system_admin' }, { role_name: 'editor' }],
-    });
+    };
+    state.prepareCreatedUserAssignments.mockResolvedValueOnce(assignments);
     state.persistCreatedUser.mockResolvedValue({
       responseData: {
         id: 'account-1',
@@ -930,6 +931,10 @@ describe('executeCreateUser', () => {
       traceId: 'trace-1',
     });
     expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
+    expect(state.persistCreatedUser).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ assignments })
+    );
   });
 
   it('deletes the created external user through the same provider when persistence fails', async () => {

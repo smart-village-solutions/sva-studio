@@ -200,14 +200,17 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       readonly actorSubject: string;
       readonly externalId: string;
       readonly payload: CreateUserPersistencePayload;
+      readonly assignments?: PreparedCreateUserAssignments;
     }
   ): Promise<{ readonly responseData: IamUserDetail; readonly roleNames: readonly string[] }> => {
     const { actor, actorSubject, externalId, payload } = input;
-    const assignments = await prepareCreatedUserAssignments(client, {
-      actor,
-      actorSubject,
-      payload,
-    });
+    const assignments =
+      input.assignments ??
+      (await prepareCreatedUserAssignments(client, {
+        actor,
+        actorSubject,
+        payload,
+      }));
 
     const inserted = await client.query<{ readonly id: string }>(
       INSERT_ACCOUNT_QUERY,

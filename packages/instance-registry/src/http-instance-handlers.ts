@@ -2,10 +2,12 @@ import {
   createCreateInstanceHandler,
   createDraftReadinessHandler,
   createRetryTenantProvisioningHandler,
+  createUpdateServerAccountInvitationTemplateHandler,
   createUpdateInstanceHandler,
 } from './http-instance-write-handlers.js';
 import {
   createGetInstanceHandler,
+  createGetServerAccountInvitationTemplateHandler,
   createListInstancesHandler,
   createListRealmCatalogHttpHandler,
 } from './http-instance-read-handlers.js';
@@ -23,9 +25,11 @@ export const createInstanceRegistryHttpHandlers = <TContext>(
 ) => ({
   listInstances: createListInstancesHandler(deps),
   getInstance: createGetInstanceHandler(deps),
+  getServerAccountInvitationTemplate: createGetServerAccountInvitationTemplateHandler(deps),
   createInstance: createCreateInstanceHandler(deps),
   getDraftReadiness: createDraftReadinessHandler(deps),
   listRealmCatalog: createListRealmCatalogHttpHandler(deps),
   retryTenantProvisioning: createRetryTenantProvisioningHandler(deps),
   updateInstance: createUpdateInstanceHandler(deps),
+  updateServerAccountInvitationTemplate: createUpdateServerAccountInvitationTemplateHandler(deps),
 });

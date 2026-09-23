@@ -5,7 +5,7 @@ import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
 
 const KEYS = ['executeActionsSubject', 'executeActionsBody', 'executeActionsBodyHtml'] as const;
 
-export const assertAccountInvitationProjection = async (input: {
+export const ensureAccountInvitationRealmValues = async (input: {
   readonly instanceId: string;
   readonly template?: AccountInvitationTemplate;
   readonly tenantName?: string;
@@ -14,6 +14,11 @@ export const assertAccountInvitationProjection = async (input: {
   readonly readRealmLocalizationTexts?: (
     locale: string
   ) => Promise<Readonly<Record<string, string>>>;
+  readonly updateRealmEmailTheme?: (emailTheme: string) => Promise<void>;
+  readonly updateRealmLocalizationTexts?: (
+    locale: string,
+    values: Readonly<Record<string, string>>
+  ) => Promise<void>;
 }): Promise<void> => {
   const template = input.template;
   if (!template) return;
@@ -36,13 +41,33 @@ export const assertAccountInvitationProjection = async (input: {
     tenantName: input.tenantName,
     tenantHomepageUrl: input.tenantHomepageUrl,
   });
-  const [emailTheme, actual] = await Promise.all([
+  let [emailTheme, actual] = await Promise.all([
     input.readRealmEmailTheme(),
     input.readRealmLocalizationTexts('de'),
   ]);
-  if (emailTheme !== 'sva-kern2' || KEYS.some((key) => actual[key] !== expected[key])) {
+  const differs = () =>
+    emailTheme !== 'sva-kern2' || KEYS.some((key) => actual[key] !== expected[key]);
+  if (!differs()) return;
+  if (!input.updateRealmEmailTheme || !input.updateRealmLocalizationTexts) {
     throw new KeycloakAdminRequestError({
-      message: 'Account invitation template projection differs from the stored revision',
+      message: 'Account invitation template projection is unavailable',
+      statusCode: 503,
+      code: 'account_invitation_template_unavailable',
+      retryable: true,
+    });
+  }
+
+  if (emailTheme !== 'sva-kern2') {
+    await input.updateRealmEmailTheme('sva-kern2');
+  }
+  await input.updateRealmLocalizationTexts('de', expected);
+  [emailTheme, actual] = await Promise.all([
+    input.readRealmEmailTheme(),
+    input.readRealmLocalizationTexts('de'),
+  ]);
+  if (differs()) {
+    throw new KeycloakAdminRequestError({
+      message: 'Account invitation template projection could not be confirmed',
       statusCode: 503,
       code: 'account_invitation_template_drift',
       retryable: true,

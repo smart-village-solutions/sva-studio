@@ -102,6 +102,7 @@ const bindings: AppRouteBindings = {
   adminInstances: () => 'adminInstances',
   adminInstanceCreate: () => 'adminInstanceCreate',
   adminInstanceDetail: () => 'adminInstanceDetail',
+  adminTemplates: () => 'adminTemplates',
   adminRoles: () => 'adminRoles',
   adminRoleCreate: () => 'adminRoleCreate',
   adminRoleDetail: () => 'adminRoleDetail',

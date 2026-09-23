@@ -4,8 +4,38 @@ import {
   AccountInvitationTemplateValidationError,
   compileAccountInvitationTemplate,
   DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+  resolveEffectiveAccountInvitationTemplate,
   validateAccountInvitationTemplate,
 } from './account-invitation-template.js';
+
+describe('resolveEffectiveAccountInvitationTemplate', () => {
+  const serverTemplate = { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 2 };
+  const instanceTemplate = {
+    ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+    subject: 'Individuell für {{tenantName}}',
+    revision: 4,
+  };
+
+  it('prefers the instance template', () => {
+    expect(resolveEffectiveAccountInvitationTemplate({ instanceTemplate, serverTemplate })).toEqual(
+      { template: instanceTemplate, source: 'instance' }
+    );
+  });
+
+  it('uses the server template when the instance has no override', () => {
+    expect(resolveEffectiveAccountInvitationTemplate({ serverTemplate })).toEqual({
+      template: serverTemplate,
+      source: 'server',
+    });
+  });
+
+  it('falls back to the built-in SVA template', () => {
+    expect(resolveEffectiveAccountInvitationTemplate({})).toEqual({
+      template: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 0 },
+      source: 'sva_default',
+    });
+  });
+});
 
 describe('account invitation template', () => {
   it('compiles the controlled links and Keycloak MessageFormat arguments', () => {

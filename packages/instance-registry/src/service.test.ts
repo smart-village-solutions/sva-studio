@@ -217,6 +217,11 @@ const createRepository = (
       ...baseInstance,
       accountInvitationTemplate: template ?? undefined,
     })),
+    getServerAccountInvitationTemplate: vi.fn(async () => ({ revision: 0 })),
+    updateServerAccountInvitationTemplate: vi.fn(async ({ expectedRevision, template }) => ({
+      revision: expectedRevision + 1,
+      ...(template ? { template } : {}),
+    })),
     setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
     createProvisioningRun: vi.fn(async () => latestRun),
     reserveProvisioningRetryRun: vi.fn(async ({ leaseOwner }) => ({
@@ -2925,7 +2930,7 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.example.org');
   });
 
-  it('persists, projects and confirms a revision-bound account invitation template', async () => {
+  it('persists a revision-bound account invitation template without a Keycloak write', async () => {
     const custom = {
       subject: 'Willkommen bei {{tenantName}}',
       body: 'Bitte jetzt {{passwordSetupLink}} verwenden.',
@@ -2939,14 +2944,7 @@ describe('instance registry service facade', () => {
       updateInstance: vi.fn(async () => current),
       updateAccountInvitationTemplate: vi.fn(async () => persisted),
     });
-    const projectAccountInvitationTemplate = vi.fn(async () => undefined);
-    const readAccountInvitationProjection = vi.fn(async () => ({ status: 'in_sync' as const }));
-    const service = createInstanceRegistryService(
-      createDeps(repository, {
-        projectAccountInvitationTemplate,
-        readAccountInvitationProjection,
-      })
-    );
+    const service = createInstanceRegistryService(createDeps(repository));
 
     await expect(
       service.updateInstance({
@@ -2961,18 +2959,15 @@ describe('instance registry service facade', () => {
       })
     ).resolves.toMatchObject({
       accountInvitationTemplate: { revision: 4 },
-      accountInvitationProjection: { status: 'in_sync' },
+      accountInvitationTemplateSource: 'instance',
     });
 
     expect(repository.updateAccountInvitationTemplate).toHaveBeenCalledWith(
       expect.objectContaining({ expectedRevision: 3, template: { ...custom, revision: 4 } })
     );
-    expect(projectAccountInvitationTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({ instanceId: 'demo', authRealm: 'demo' })
-    );
   });
 
-  it('rejects a stale invitation reset before mutating the realm', async () => {
+  it('rejects a stale invitation reset before persistence', async () => {
     const existing = {
       ...baseInstance,
       accountInvitationTemplate: {
@@ -2984,10 +2979,7 @@ describe('instance registry service facade', () => {
       },
     };
     const repository = createRepository({ getInstanceById: vi.fn(async () => existing) });
-    const projectAccountInvitationTemplate = vi.fn(async () => undefined);
-    const service = createInstanceRegistryService(
-      createDeps(repository, { projectAccountInvitationTemplate })
-    );
+    const service = createInstanceRegistryService(createDeps(repository));
 
     await expect(
       service.updateInstance({
@@ -3004,7 +2996,6 @@ describe('instance registry service facade', () => {
 
     expect(repository.updateInstance).not.toHaveBeenCalled();
     expect(repository.updateAccountInvitationTemplate).not.toHaveBeenCalled();
-    expect(projectAccountInvitationTemplate).not.toHaveBeenCalled();
   });
 
   it('does not update the legacy waste datasource during instance updates', async () => {

@@ -1,4 +1,5 @@
 import { buildPrimaryHostname, normalizeHost } from '@sva/core';
+import { z } from 'zod';
 
 import {
   createInstanceSchema,
@@ -18,6 +19,13 @@ import {
 } from './http-instance-shared.js';
 import { mutationErrorMessages } from './http-mutation-error-messages.js';
 import type { InstanceRegistryService } from './service-types.js';
+
+const serverAccountInvitationTemplateMutationSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative(),
+    template: updateInstanceSchema.shape.accountInvitationTemplate.unwrap(),
+  })
+  .strict();
 
 const findReservedOidcClientId = (
   input: Pick<CreateInstancePayload, 'authClientId' | 'tenantAdminClient'>,
@@ -251,6 +259,42 @@ export const createUpdateInstanceHandler =
         operation: 'update_instance',
         requestId: deps.getRequestId(),
         instanceId,
+      });
+    }
+  };
+
+export const createUpdateServerAccountInvitationTemplateHandler =
+  <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
+  async (request: Request, ctx: TContext): Promise<Response> => {
+    const guardError = requireMutationGuards(deps, request, ctx, { requireFreshReauth: false });
+    if (guardError) return guardError;
+
+    const payloadResult = await deps.parseRequestBody(
+      request,
+      serverAccountInvitationTemplateMutationSchema
+    );
+    if (!payloadResult.ok) {
+      return deps.createApiError(
+        400,
+        'invalid_request',
+        payloadResult.message,
+        deps.getRequestId()
+      );
+    }
+
+    try {
+      const result = await deps.withRegistryService((service) =>
+        service.updateServerAccountInvitationTemplate({
+          ...payloadResult.data,
+          actorId: deps.getActor(ctx).id,
+          requestId: deps.getRequestId(),
+        })
+      );
+      return deps.jsonResponse(200, deps.asApiItem(result, deps.getRequestId()));
+    } catch (error) {
+      return deps.mapMutationError(error, {
+        operation: 'update_server_account_invitation_template',
+        requestId: deps.getRequestId(),
       });
     }
   };

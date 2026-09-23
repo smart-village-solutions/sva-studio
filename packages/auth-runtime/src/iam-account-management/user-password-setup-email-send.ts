@@ -21,7 +21,7 @@ import {
   type PasswordSetupEmailActor,
   type SendPasswordSetupEmailDependencies,
 } from './user-password-setup-email-shared.js';
-import { assertAccountInvitationProjection } from './account-invitation-guard.js';
+import { ensureAccountInvitationRealmValues } from './account-invitation-guard.js';
 
 type SendPasswordSetupEmailResult = {
   readonly status: 'sent';
@@ -132,6 +132,7 @@ const resolveExecuteActionsEmail = async (
 const emitPasswordSetupEmailSuccessAudit = async (input: {
   actor: PasswordSetupEmailActor;
   user: PasswordSetupTargetUser;
+  templateRevision: number;
 }) =>
   withInstanceScopedDb(input.actor.instanceId, (client) =>
     emitActivityLog(client, {
@@ -144,7 +145,7 @@ const emitPasswordSetupEmailSuccessAudit = async (input: {
         title: 'Einladungs-E-Mail zum Passwort setzen versendet',
         description: 'Für dieses Konto wurde eine E-Mail zum Setzen des Passworts versendet.',
         operation: 'send_password_setup_email',
-        keycloak_subject: input.user.keycloakSubject,
+        template_revision: input.templateRevision,
       },
       requestId: input.actor.requestId,
       traceId: input.actor.traceId,
@@ -157,15 +158,22 @@ const sendPasswordSetupEmail = async (input: {
   user: PasswordSetupTargetUser;
   readRealmEmailTheme?: () => Promise<string | undefined>;
   readRealmLocalizationTexts?: (locale: string) => Promise<Readonly<Record<string, string>>>;
+  updateRealmEmailTheme?: (emailTheme: string) => Promise<void>;
+  updateRealmLocalizationTexts?: (
+    locale: string,
+    values: Readonly<Record<string, string>>
+  ) => Promise<void>;
 }) => {
   const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
-  await assertAccountInvitationProjection({
+  await ensureAccountInvitationRealmValues({
     instanceId: input.actor.instanceId,
     template: authConfig.accountInvitationTemplate,
     tenantName: authConfig.tenantDisplayName,
     tenantHomepageUrl: authConfig.tenantHomepageUrl,
     readRealmEmailTheme: input.readRealmEmailTheme,
     readRealmLocalizationTexts: input.readRealmLocalizationTexts,
+    updateRealmEmailTheme: input.updateRealmEmailTheme,
+    updateRealmLocalizationTexts: input.updateRealmLocalizationTexts,
   });
   await trackKeycloakCall('send_password_setup_email', () =>
     input.executeActionsEmail(input.user.keycloakSubject, {
@@ -174,6 +182,7 @@ const sendPasswordSetupEmail = async (input: {
       redirectUri: authConfig.redirectUri,
     })
   );
+  return authConfig.accountInvitationTemplate?.revision ?? 0;
 };
 
 const completePasswordSetupEmailSuccess = async (
@@ -199,6 +208,11 @@ export const processPasswordSetupEmailSend = async (input: {
   executeActionsEmail: ExecuteActionsEmail | undefined;
   readRealmEmailTheme?: () => Promise<string | undefined>;
   readRealmLocalizationTexts?: (locale: string) => Promise<Readonly<Record<string, string>>>;
+  updateRealmEmailTheme?: (emailTheme: string) => Promise<void>;
+  updateRealmLocalizationTexts?: (
+    locale: string,
+    values: Readonly<Record<string, string>>
+  ) => Promise<void>;
   idempotencyKey: string;
   userId: string;
 }): Promise<Response> => {
@@ -233,16 +247,19 @@ export const processPasswordSetupEmailSend = async (input: {
       throw new Error('password_setup_email_target_resolution_invariant_failed');
     }
 
-    await sendPasswordSetupEmail({
+    const templateRevision = await sendPasswordSetupEmail({
       actor: input.actor,
       executeActionsEmail,
       user: resolvedTargetUser.user,
       readRealmEmailTheme: input.readRealmEmailTheme,
       readRealmLocalizationTexts: input.readRealmLocalizationTexts,
+      updateRealmEmailTheme: input.updateRealmEmailTheme,
+      updateRealmLocalizationTexts: input.updateRealmLocalizationTexts,
     });
     await emitPasswordSetupEmailSuccessAudit({
       actor: input.actor,
       user: resolvedTargetUser.user,
+      templateRevision,
     });
     return completePasswordSetupEmailSuccess(completionContext);
   } catch (error) {

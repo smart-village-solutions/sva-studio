@@ -176,7 +176,6 @@ const finalizeCreateUserResult = async (input: {
   } catch (error) {
     logInvitationFailure({
       actor: input.actor,
-      keycloakSubject: input.responseData.keycloakSubject,
       error,
     });
     return buildCreateUserResult(input.responseData, buildInvitationFailure(error));

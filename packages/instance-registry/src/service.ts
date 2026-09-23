@@ -33,6 +33,10 @@ import {
 import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
 import { createProbeTenantIamAccessHandler } from './service-probe.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import {
+  getServerAccountInvitationTemplate,
+  updateServerAccountInvitationTemplate,
+} from './service-account-invitation-template.js';
 
 export const createInstanceRegistryService = (
   deps: InstanceRegistryServiceDeps
@@ -57,6 +61,15 @@ export const createInstanceRegistryService = (
     });
   },
   listInstances: createListInstances(deps.repository),
+  getServerAccountInvitationTemplate: () => getServerAccountInvitationTemplate(deps.repository),
+  updateServerAccountInvitationTemplate: (input) =>
+    updateServerAccountInvitationTemplate({
+      repository: deps.repository,
+      expectedRevision: input.expectedRevision,
+      template: input.template,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    }),
   getInstanceDetail: createGetInstanceDetail(deps),
   createProvisioningRequest: createProvisioningRequestHandler(deps),
   getDraftReadiness: createDraftReadinessHandler(deps),

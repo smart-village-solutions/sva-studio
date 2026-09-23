@@ -1450,6 +1450,10 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     return (await this.getRealm())?.emailTheme;
   }
 
+  async updateRealmEmailTheme(emailTheme: string): Promise<void> {
+    await this.updateRealmSettings({ emailTheme });
+  }
+
   async getRealmLocalizationTexts(locale: string): Promise<Readonly<Record<string, string>>> {
     return this.executeWithResilience<Readonly<Record<string, string>>>({
       method: 'GET',

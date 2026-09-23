@@ -61,6 +61,12 @@ export const sendPasswordSetupEmailInternal = async (
     readRealmLocalizationTexts: identityProvider.provider.getRealmLocalizationTexts?.bind(
       identityProvider.provider
     ),
+    updateRealmEmailTheme: identityProvider.provider.updateRealmEmailTheme?.bind(
+      identityProvider.provider
+    ),
+    updateRealmLocalizationTexts: identityProvider.provider.updateRealmLocalizationTexts?.bind(
+      identityProvider.provider
+    ),
     idempotencyKey: idempotencyKey.key,
     userId,
   });

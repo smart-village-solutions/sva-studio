@@ -1,4 +1,7 @@
-import { compileAccountInvitationTemplate, isInstanceTenantAdminRequired } from '@sva/core';
+import {
+  isInstanceTenantAdminRequired,
+  resolveEffectiveAccountInvitationTemplate,
+} from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
@@ -35,11 +38,7 @@ const logger = createSdkLogger({ component: 'iam-instance-registry-service', lev
 const loadOptionalArtifact = async <T>(
   instanceId: string,
   artifactKey:
-    | 'keycloak_status'
-    | 'keycloak_preflight'
-    | 'keycloak_plan'
-    | 'waste_management_settings'
-    | 'account_invitation_projection',
+    'keycloak_status' | 'keycloak_preflight' | 'keycloak_plan' | 'waste_management_settings',
   load: () => Promise<T | null>
 ): Promise<T | undefined> => {
   try {
@@ -59,23 +58,6 @@ export const loadKeycloakDetailArtifacts = async (
   deps: InstanceRegistryServiceDeps,
   instance: InstanceRecord
 ) => {
-  const accountInvitationTemplate = instance.accountInvitationTemplate;
-  const accountInvitationProjection = accountInvitationTemplate
-    ? await loadOptionalArtifact(
-        instance.instanceId,
-        'account_invitation_projection',
-        () =>
-          deps.readAccountInvitationProjection?.({
-            instanceId: instance.instanceId,
-            authRealm: instance.authRealm,
-            expected: compileAccountInvitationTemplate({
-              template: accountInvitationTemplate,
-              tenantName: instance.displayName,
-              tenantHomepageUrl: `https://${instance.primaryHostname}/`,
-            }),
-          }) ?? Promise.resolve({ status: 'unavailable' as const, errorCode: 'adapter_missing' })
-      )
-    : { status: 'default' as const };
   const getKeycloakStatus = createGetKeycloakStatusHandler(deps);
   const getKeycloakPreflight = createGetKeycloakPreflightHandler(deps);
   const planKeycloakProvisioning = createPlanKeycloakProvisioningHandler(deps);
@@ -91,6 +73,7 @@ export const loadKeycloakDetailArtifacts = async (
     accessEvidence,
     reconcileEvidence,
     wasteManagementSettings,
+    serverAccountInvitationTemplate,
   ] = await Promise.all([
     deps.repository.listProvisioningRuns(instance.instanceId),
     deps.repository.listAuditEvents(instance.instanceId),
@@ -112,7 +95,13 @@ export const loadKeycloakDetailArtifacts = async (
       'waste_management_settings',
       () => deps.loadWasteDataSourceRecord?.(instance.instanceId) ?? Promise.resolve(null)
     ),
+    deps.repository.getServerAccountInvitationTemplate(),
   ]);
+
+  const effectiveAccountInvitationTemplate = resolveEffectiveAccountInvitationTemplate({
+    instanceTemplate: instance.accountInvitationTemplate,
+    serverTemplate: serverAccountInvitationTemplate.template,
+  });
 
   const latestKeycloakRun = keycloakProvisioningRuns[0];
   const latestSuccessfulKeycloakRun = keycloakProvisioningRuns.find(
@@ -280,7 +269,8 @@ export const loadKeycloakDetailArtifacts = async (
     moduleIamStatus,
     wasteManagementSettings ?? undefined,
     provisioningReadiness,
-    accountInvitationProjection ?? { status: 'unavailable', errorCode: 'read_failed' }
+    effectiveAccountInvitationTemplate,
+    serverAccountInvitationTemplate.revision
   );
 };
 

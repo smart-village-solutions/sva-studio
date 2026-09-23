@@ -1,4 +1,7 @@
-import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client.js';
 import { jsonResponse } from '../db.js';
 
 import { createApiError } from './api-helpers.js';
@@ -32,6 +35,15 @@ export type ExecuteActionsEmail = (
     redirectUri?: string;
   }
 ) => Promise<void>;
+
+const toSafeInvitationErrorCode = (error: unknown): string =>
+  error instanceof KeycloakAdminRequestError
+    ? error.code
+    : error instanceof KeycloakAdminUnavailableError
+      ? 'keycloak_unavailable'
+      : error instanceof Error
+        ? error.name
+        : 'unknown_error';
 
 export const buildKeycloakUnavailableResponse = (requestId?: string): Response =>
   createApiError(
@@ -106,10 +118,11 @@ export const emitPasswordSetupEmailFailureAudit = async (input: {
         result: 'failure',
         payload: {
           title: 'Versand der Einladungs-E-Mail zum Passwort setzen fehlgeschlagen',
-          description: 'Die E-Mail zum Setzen des Passworts konnte für dieses Konto nicht versendet werden.',
+          description:
+            'Die E-Mail zum Setzen des Passworts konnte für dieses Konto nicht versendet werden.',
           operation: 'send_password_setup_email',
           user_id: input.userId,
-          error: input.error instanceof Error ? input.error.message : String(input.error),
+          error_code: toSafeInvitationErrorCode(input.error),
         },
         requestId: input.actor.requestId,
         traceId: input.actor.traceId,
@@ -122,7 +135,7 @@ export const emitPasswordSetupEmailFailureAudit = async (input: {
         operation: 'send_password_setup_email_audit_failure',
         request_id: input.actor.requestId,
         trace_id: input.actor.traceId,
-        error: activityError instanceof Error ? activityError.message : String(activityError),
+        error_code: activityError instanceof Error ? activityError.name : 'unknown_error',
       },
     });
   }
@@ -150,7 +163,7 @@ export const logSendPasswordSetupEmailFailure = (input: {
       actor_account_id: input.actor.actorAccountId,
       request_id: input.actor.requestId,
       trace_id: input.actor.traceId,
-      error: input.error instanceof Error ? input.error.message : String(input.error),
+      error_code: toSafeInvitationErrorCode(input.error),
     },
   });
 };

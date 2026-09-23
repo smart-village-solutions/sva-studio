@@ -717,6 +717,69 @@ describe('executeCreateUser', () => {
     expect(executeActionsEmail).not.toHaveBeenCalled();
   });
 
+  it('aligns changed realm values before sending a requested create invitation', async () => {
+    state.resolveAuthConfigForInstance.mockResolvedValue({
+      clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
+      postLogoutRedirectUri: 'https://tenant.example.test/',
+      accountInvitationTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 3 },
+      tenantDisplayName: 'Demo',
+      tenantHomepageUrl: 'https://tenant.example.test/',
+    });
+    let emailTheme = 'base';
+    let messages: Readonly<Record<string, string>> = {};
+    const executeActionsEmail = vi.fn(async () => undefined);
+    const updateRealmLocalizationTexts = vi.fn(
+      async (_locale: string, values: Readonly<Record<string, string>>) => {
+        messages = { ...messages, ...values };
+      }
+    );
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+        listUsers: vi.fn(async () => [{ externalId: 'kc-user-1', email: 'alice@example.com' }]),
+        executeActionsEmail,
+        getRealmEmailTheme: vi.fn(async () => emailTheme),
+        getRealmLocalizationTexts: vi.fn(async () => messages),
+        updateRealmEmailTheme: vi.fn(async (value: string) => {
+          emailTheme = value;
+        }),
+        updateRealmLocalizationTexts,
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const result = await executeCreateUser({
+      actor: { instanceId: 'instance-1', actorAccountId: 'actor-1' },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+      payload: {
+        email: 'alice@example.com',
+        firstName: 'Alice',
+        roleIds: [],
+        sendPasswordSetupEmail: true,
+      },
+    });
+
+    expect(identityProvider.provider.updateRealmEmailTheme).toHaveBeenCalledWith('sva-kern2');
+    expect(updateRealmLocalizationTexts).toHaveBeenCalledWith(
+      'de',
+      expect.objectContaining({
+        executeActionsSubject: expect.any(String),
+        executeActionsBody: expect.any(String),
+        executeActionsBodyHtml: expect.any(String),
+      })
+    );
+    expect(executeActionsEmail).toHaveBeenCalledTimes(1);
+    expect(result.invitation.status).toBe('sent');
+  });
+
   it('keeps user creation successful and marks the invitation as failed when email delivery fails', async () => {
     const identityProvider = {
       provider: {

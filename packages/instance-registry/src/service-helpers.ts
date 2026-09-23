@@ -1,4 +1,7 @@
-import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
+import {
+  areAllInstanceKeycloakRequirementsSatisfied,
+  DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+} from '@sva/core';
 
 import type {
   InstanceStatus,
@@ -250,9 +253,17 @@ export const buildInstanceDetail = (
     capabilities: [],
     nextAction: { action: 'instance.readiness.refresh', retryClass: 'safe' },
   },
-  accountInvitationProjection: IamInstanceDetail['accountInvitationProjection'] = {
-    status: 'default',
-  }
+  effectiveAccountInvitationTemplate: {
+    template: IamInstanceDetail['effectiveAccountInvitationTemplate'];
+    source: IamInstanceDetail['accountInvitationTemplateSource'];
+  } = {
+    template: instance.accountInvitationTemplate ?? {
+      ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+      revision: 0,
+    },
+    source: instance.accountInvitationTemplate ? 'instance' : 'sva_default',
+  },
+  serverAccountInvitationTemplateRevision = 0
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -274,7 +285,9 @@ export const buildInstanceDetail = (
   moduleIamStatus,
   provisioningReadiness,
   wasteManagementSettings,
-  accountInvitationProjection,
+  effectiveAccountInvitationTemplate: effectiveAccountInvitationTemplate.template,
+  accountInvitationTemplateSource: effectiveAccountInvitationTemplate.source,
+  serverAccountInvitationTemplateRevision,
 });
 
 export const createAuditDetails = (

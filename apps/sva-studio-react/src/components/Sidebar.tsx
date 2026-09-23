@@ -23,6 +23,7 @@ import {
   IconPlus,
   IconShieldCheck,
   IconShieldLock,
+  IconTemplate,
   IconUserSquareRounded,
   IconUsersGroup,
   type Icon,
@@ -1215,6 +1216,17 @@ export default function Sidebar({
               to: '/interfaces',
               label: t('shell.sidebar.interfaces'),
               icon: IconPlugConnected,
+            },
+          ]
+        : []),
+      ...(canAccessAdminInstances
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'templates',
+              to: '/admin/templates',
+              label: t('shell.sidebar.templates'),
+              icon: IconTemplate,
             },
           ]
         : []),

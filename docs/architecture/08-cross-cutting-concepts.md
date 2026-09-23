@@ -1099,5 +1099,13 @@ Tokens, Secrets oder E-Mail-Adressen.
   und zwei kontrollierten Links.
 - Logs und Audit enthalten nur Instanz, Revision, Ergebnis und sichere
   Fehlercodes, niemals Nachrichtentext, Empfänger, Action-Token oder Link.
-- Custom-Drift wird vor jedem Versand fail-closed behandelt. Instanzen ohne
-  Individualvorlage behalten ihren bisherigen Keycloak-Versandpfad.
+- Die wirksame Vorlage wird deterministisch als Instanzvorlage,
+  Servervorlage oder SVA-Standard aufgelöst; Vererbungswerte werden nicht in
+  Instanzdatensätze kopiert.
+- Speichern und Reset mutieren nur den revisionsgebundenen Datenbankzustand.
+  Vor jedem Versand werden E-Mail-Theme und genau drei verwaltete Realmtexte
+  bedarfsgesteuert sichergestellt und fail-closed zurückgelesen. Fremde
+  Lokalisierungswerte bleiben unberührt.
+- Ein fehlgeschlagener Abgleich erzeugt keinen globalen Teilstatus: Nur die
+  konkrete Einladung scheitert, und der nächste Versandversuch wiederholt die
+  idempotente Sicherstellung.

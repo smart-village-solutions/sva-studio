@@ -1,4 +1,4 @@
-# Dossier 8: Instanzen und Rechtstexte
+# Dossier 8: Instanzen, Templates und Rechtstexte
 
 ## `admin.instances.list` – Instanzen verwalten
 
@@ -41,6 +41,21 @@
   ist eine Reparaturaktion zulässig? Instanzdetails, Doctor, Betrieb, Provisioning-Lauf, Module.
 - **Evidenz:** `routes/admin/instances/-instance-detail-page.tsx` und zugehörige
   `-instance-detail-*-section.tsx`.
+
+## `admin.templates` – Systemweite Templates verwalten
+
+- **Route / Typ / Owner:** `/admin/templates`, Detail, Host.
+- **Nutzerziel:** Den Standardtext für Einladungsmails aller Studio-Instanzen verwalten.
+- **Produktfakten:** Betreff und Nachricht werden systemweit gespeichert. Instanzen ohne eigenen
+  Text verwenden dieses Template; fehlt auch das System-Template, greift der eingebaute
+  SVA-Standard. „Zurücksetzen“ entfernt nur das System-Template und aktiviert damit wieder den
+  eingebauten Standard.
+- **Kontextabhängig:** Ein abweichendes Template an einer Instanz hat Vorrang. Änderungen werden
+  beim nächsten Versand einer Einladung wirksam.
+- **Leitfragen / Stichwörter:** Welcher Einladungstext gilt standardmäßig? Gibt es für die Instanz
+  eine Abweichung? Templates, Einladung, E-Mail, Systemstandard, Vererbung.
+- **Evidenz:** `routes/admin/templates/-templates-page.tsx`,
+  `i18n/resources/de/admin/instances/invitation.resources.ts`.
 
 ## `admin.legal-texts.list` – Rechtstexte verwalten
 

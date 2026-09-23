@@ -1399,6 +1399,24 @@ CREATE TABLE iam.instances (
 
 
 --
+-- Name: server_account_invitation_templates; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.server_account_invitation_templates (
+    template_key text NOT NULL,
+    revision integer DEFAULT 0 NOT NULL,
+    template jsonb,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by text,
+    CONSTRAINT server_account_invitation_templates_key_chk CHECK ((template_key = 'account_invitation'::text)),
+    CONSTRAINT server_account_invitation_templates_revision_chk CHECK ((revision >= 0)),
+    CONSTRAINT server_account_invitation_templates_template_chk CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text))))
+);
+
+ALTER TABLE ONLY iam.server_account_invitation_templates FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: legal_holds; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -2480,6 +2498,14 @@ ALTER TABLE ONLY iam.instances
 
 ALTER TABLE ONLY iam.instances
     ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: server_account_invitation_templates server_account_invitation_templates_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.server_account_invitation_templates
+    ADD CONSTRAINT server_account_invitation_templates_pkey PRIMARY KEY (template_key);
 
 
 --
@@ -4933,6 +4959,19 @@ CREATE POLICY instance_waste_provisioning_isolation_policy ON iam.instance_waste
 --
 
 CREATE POLICY instances_isolation_policy ON iam.instances USING ((id = iam.current_instance_id())) WITH CHECK ((id = iam.current_instance_id()));
+
+
+--
+-- Name: server_account_invitation_templates; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.server_account_invitation_templates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: server_account_invitation_templates server_account_invitation_templates_platform_scope; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY server_account_invitation_templates_platform_scope ON iam.server_account_invitation_templates USING ((iam.current_instance_id() IS NULL)) WITH CHECK ((iam.current_instance_id() IS NULL));
 
 
 --

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 
@@ -88,6 +89,12 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     hostnames: [],
     provisioningRuns: [],
     auditEvents: [],
+    effectiveAccountInvitationTemplate: {
+      ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+      revision: 0,
+    },
+    accountInvitationTemplateSource: 'sva_default',
+    serverAccountInvitationTemplateRevision: 0,
     keycloakPreflight: {
       overallStatus: 'ready',
       generatedAt: '2026-01-01T00:00:00.000Z',

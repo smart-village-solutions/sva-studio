@@ -40,6 +40,17 @@ export const createListInstancesHandler =
     );
   };
 
+export const createGetServerAccountInvitationTemplateHandler =
+  <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
+  async (request: Request, ctx: TContext): Promise<Response> => {
+    const accessError = deps.ensurePlatformAccess(request, ctx);
+    if (accessError) return accessError;
+    const template = await deps.withRegistryService((service) =>
+      service.getServerAccountInvitationTemplate()
+    );
+    return deps.jsonResponse(200, deps.asApiItem(template, deps.getRequestId()));
+  };
+
 export const createGetInstanceHandler =
   <TContext>(deps: InstanceRegistryHttpDeps<TContext>) =>
   async (request: Request, ctx: TContext): Promise<Response> => {

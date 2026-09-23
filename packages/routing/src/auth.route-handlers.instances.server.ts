@@ -21,6 +21,14 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/instances/audit': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceAuditRun),
   },
+  '/api/v1/iam/templates/account-invitation': {
+    GET: routeHandler(
+      authRuntimeRoutes.instanceRegistryHandlers.getServerAccountInvitationTemplate
+    ),
+    PATCH: routeHandler(
+      authRuntimeRoutes.instanceRegistryHandlers.updateServerAccountInvitationTemplate
+    ),
+  },
   '/api/v1/iam/instances/$instanceId': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstance),
     PATCH: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.updateInstance),

@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
     warn: vi.fn(),
   },
   loadInstanceById: vi.fn(),
+  loadServerAccountInvitationTemplate: vi.fn(),
   getInstanceConfig: vi.fn(),
   isCanonicalAuthHost: vi.fn(),
   classifyHost: vi.fn(),
@@ -26,6 +27,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: state.loadInstanceById,
+  loadServerAccountInvitationTemplate: state.loadServerAccountInvitationTemplate,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -84,6 +86,7 @@ describe('auth config resolution', () => {
     state.getAuthClientSecret.mockReturnValue('platform-secret');
     state.getAuthStateSecret.mockReturnValue('state-secret');
     state.isTrafficEnabledInstanceStatus.mockReturnValue(true);
+    state.loadServerAccountInvitationTemplate.mockResolvedValue({ revision: 0 });
     state.resolveTenantAuthClientSecret.mockResolvedValue({
       configured: true,
       readable: true,
@@ -170,9 +173,55 @@ describe('auth config resolution', () => {
       clientId: 'tenant-client',
       redirectUri: 'https://tenant.example/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example/',
+      accountInvitationTemplate: {
+        revision: 0,
+        subject: expect.stringContaining('{{tenantName}}'),
+      },
     });
     expect(state.resolveTenantAuthClientSecret).toHaveBeenCalledWith('tenant-a', {
       allowGlobalFallback: false,
+    });
+  });
+
+  it('resolves an instance invitation before a server invitation', async () => {
+    const instanceTemplate = {
+      revision: 4,
+      subject: 'Instanz {{tenantName}}',
+      body: '{{passwordSetupLink}} {{tenantHomepageLink}} {{linkExpiresIn}}',
+      passwordSetupLinkLabel: 'Passwort',
+      tenantHomepageLinkLabel: 'Start',
+    };
+    const serverTemplate = { ...instanceTemplate, revision: 7, subject: 'Server {{tenantName}}' };
+    state.loadServerAccountInvitationTemplate.mockResolvedValue({
+      revision: 7,
+      template: serverTemplate,
+    });
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'tenant-a',
+      displayName: 'Tenant A',
+      primaryHostname: 'tenant.example',
+      status: 'active',
+      authRealm: 'tenant-a',
+      authClientId: 'tenant-client',
+      accountInvitationTemplate: instanceTemplate,
+    });
+
+    await expect(resolveAuthConfigForInstance('tenant-a')).resolves.toMatchObject({
+      accountInvitationTemplate: instanceTemplate,
+      tenantDisplayName: 'Tenant A',
+      tenantHomepageUrl: 'https://tenant.example/',
+    });
+
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'tenant-a',
+      displayName: 'Tenant A',
+      primaryHostname: 'tenant.example',
+      status: 'active',
+      authRealm: 'tenant-a',
+      authClientId: 'tenant-client',
+    });
+    await expect(resolveAuthConfigForInstance('tenant-a')).resolves.toMatchObject({
+      accountInvitationTemplate: serverTemplate,
     });
   });
 

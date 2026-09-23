@@ -26,6 +26,7 @@ export const uiRoutePaths = {
   adminInstances: '/admin/instances',
   adminInstanceCreate: '/admin/instances/new',
   adminInstanceDetail: '/admin/instances/$instanceId',
+  adminTemplates: '/admin/templates',
   adminRoles: '/admin/roles',
   adminRoleCreate: '/admin/roles/new',
   adminRoleDetail: '/admin/roles/$roleId',

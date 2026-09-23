@@ -115,6 +115,11 @@ export const getInstanceInternal = async (
   return instanceHttpHandlers.getInstance(request, ctx);
 };
 
+export const getServerAccountInvitationTemplateInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => instanceHttpHandlers.getServerAccountInvitationTemplate(request, ctx);
+
 export const createInstanceInternal = async (
   request: Request,
   ctx: RegistryRequestContext
@@ -143,6 +148,11 @@ export const updateInstanceInternal = async (
 ): Promise<Response> => {
   return instanceHttpHandlers.updateInstance(request, ctx);
 };
+
+export const updateServerAccountInvitationTemplateInternal = async (
+  request: Request,
+  ctx: RegistryRequestContext
+): Promise<Response> => instanceHttpHandlers.updateServerAccountInvitationTemplate(request, ctx);
 
 export const activateInstanceInternal = async (
   request: Request,

@@ -26,6 +26,7 @@ fachliche Frage hebt diesen Status nicht auf; sie ist in
 | `admin.instances.create`       | 08      | Quellengeprüft |
 | `admin.instances.detail`       | 08      | Quellengeprüft |
 | `admin.instances.list`         | 08      | Quellengeprüft |
+| `admin.templates`              | 08      | Quellengeprüft |
 | `admin.legal-texts.create`     | 08      | Quellengeprüft |
 | `admin.legal-texts.detail`     | 08      | Quellengeprüft |
 | `admin.legal-texts.list`       | 08      | Quellengeprüft |

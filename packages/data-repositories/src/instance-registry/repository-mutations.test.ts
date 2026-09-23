@@ -47,7 +47,9 @@ describe('instance registry mutation SQL values', () => {
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
-    await expect(repository.createInstance(minimalCreateInput)).resolves.toMatchObject({ instanceId: 'tenant-a' });
+    await expect(repository.createInstance(minimalCreateInput)).resolves.toMatchObject({
+      instanceId: 'tenant-a',
+    });
 
     expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('INSERT INTO iam.instances');
@@ -164,7 +166,9 @@ describe('instance registry mutation SQL values', () => {
     ]);
     const repository = createInstanceRegistryRepository(executor);
 
-    await expect(repository.updateInstance(minimalUpdateInput)).resolves.toMatchObject({ instanceId: 'tenant-a' });
+    await expect(repository.updateInstance(minimalUpdateInput)).resolves.toMatchObject({
+      instanceId: 'tenant-a',
+    });
 
     expect(statements).toHaveLength(3);
     expect(statements[0]?.text).toContain('UPDATE iam.instances');
@@ -290,51 +294,111 @@ type SecretCase = {
 };
 
 const secretCases: readonly SecretCase[] = [
-  { label: 'undefined keep with undefined ciphertext', keep: undefined, ciphertext: undefined, expectedKeep: true, expectedCiphertext: null },
-  { label: 'true keep with undefined ciphertext', keep: true, ciphertext: undefined, expectedKeep: true, expectedCiphertext: null },
-  { label: 'false keep with undefined ciphertext', keep: false, ciphertext: undefined, expectedKeep: false, expectedCiphertext: null },
-  { label: 'undefined keep with null ciphertext', keep: undefined, ciphertext: null, expectedKeep: false, expectedCiphertext: null },
-  { label: 'true keep with null ciphertext', keep: true, ciphertext: null, expectedKeep: false, expectedCiphertext: null },
-  { label: 'false keep with null ciphertext', keep: false, ciphertext: null, expectedKeep: false, expectedCiphertext: null },
-  { label: 'undefined keep with ciphertext', keep: undefined, ciphertext: 'cipher', expectedKeep: false, expectedCiphertext: 'cipher' },
-  { label: 'true keep with ciphertext', keep: true, ciphertext: 'cipher', expectedKeep: false, expectedCiphertext: 'cipher' },
-  { label: 'false keep with ciphertext', keep: false, ciphertext: 'cipher', expectedKeep: false, expectedCiphertext: 'cipher' },
+  {
+    label: 'undefined keep with undefined ciphertext',
+    keep: undefined,
+    ciphertext: undefined,
+    expectedKeep: true,
+    expectedCiphertext: null,
+  },
+  {
+    label: 'true keep with undefined ciphertext',
+    keep: true,
+    ciphertext: undefined,
+    expectedKeep: true,
+    expectedCiphertext: null,
+  },
+  {
+    label: 'false keep with undefined ciphertext',
+    keep: false,
+    ciphertext: undefined,
+    expectedKeep: false,
+    expectedCiphertext: null,
+  },
+  {
+    label: 'undefined keep with null ciphertext',
+    keep: undefined,
+    ciphertext: null,
+    expectedKeep: false,
+    expectedCiphertext: null,
+  },
+  {
+    label: 'true keep with null ciphertext',
+    keep: true,
+    ciphertext: null,
+    expectedKeep: false,
+    expectedCiphertext: null,
+  },
+  {
+    label: 'false keep with null ciphertext',
+    keep: false,
+    ciphertext: null,
+    expectedKeep: false,
+    expectedCiphertext: null,
+  },
+  {
+    label: 'undefined keep with ciphertext',
+    keep: undefined,
+    ciphertext: 'cipher',
+    expectedKeep: false,
+    expectedCiphertext: 'cipher',
+  },
+  {
+    label: 'true keep with ciphertext',
+    keep: true,
+    ciphertext: 'cipher',
+    expectedKeep: false,
+    expectedCiphertext: 'cipher',
+  },
+  {
+    label: 'false keep with ciphertext',
+    keep: false,
+    ciphertext: 'cipher',
+    expectedKeep: false,
+    expectedCiphertext: 'cipher',
+  },
 ];
 
 describe('instance registry update secret preservation matrix', () => {
-  it.each(secretCases)('maps auth-client $label', async ({ keep, ciphertext, expectedKeep, expectedCiphertext }) => {
-    const { executor, statements } = createQueuedExecutor([[]]);
-    const repository = createInstanceRegistryRepository(executor);
-    const input = {
-      ...minimalUpdateInput,
-      keepExistingAuthClientSecret: keep,
-      authClientSecretCiphertext: ciphertext,
-    } as unknown as UpdateInstanceInput;
+  it.each(secretCases)(
+    'maps auth-client $label',
+    async ({ keep, ciphertext, expectedKeep, expectedCiphertext }) => {
+      const { executor, statements } = createQueuedExecutor([[]]);
+      const repository = createInstanceRegistryRepository(executor);
+      const input = {
+        ...minimalUpdateInput,
+        keepExistingAuthClientSecret: keep,
+        authClientSecretCiphertext: ciphertext,
+      } as unknown as UpdateInstanceInput;
 
-    await expect(repository.updateInstance(input)).resolves.toBeNull();
+      await expect(repository.updateInstance(input)).resolves.toBeNull();
 
-    expect(statements[0]?.values).toHaveLength(21);
-    expect(statements[0]?.values.slice(8, 10)).toStrictEqual([expectedKeep, expectedCiphertext]);
-  });
+      expect(statements[0]?.values).toHaveLength(21);
+      expect(statements[0]?.values.slice(8, 10)).toStrictEqual([expectedKeep, expectedCiphertext]);
+    }
+  );
 
-  it.each(secretCases)('maps tenant-admin-client $label', async ({ keep, ciphertext, expectedKeep, expectedCiphertext }) => {
-    const { executor, statements } = createQueuedExecutor([[]]);
-    const repository = createInstanceRegistryRepository(executor);
-    const input = {
-      ...minimalUpdateInput,
-      keepExistingTenantAdminClientSecret: keep,
-      tenantAdminClient: { clientId: 'tenant-admin', secretCiphertext: ciphertext },
-    } as unknown as UpdateInstanceInput;
+  it.each(secretCases)(
+    'maps tenant-admin-client $label',
+    async ({ keep, ciphertext, expectedKeep, expectedCiphertext }) => {
+      const { executor, statements } = createQueuedExecutor([[]]);
+      const repository = createInstanceRegistryRepository(executor);
+      const input = {
+        ...minimalUpdateInput,
+        keepExistingTenantAdminClientSecret: keep,
+        tenantAdminClient: { clientId: 'tenant-admin', secretCiphertext: ciphertext },
+      } as unknown as UpdateInstanceInput;
 
-    await expect(repository.updateInstance(input)).resolves.toBeNull();
+      await expect(repository.updateInstance(input)).resolves.toBeNull();
 
-    expect(statements[0]?.values).toHaveLength(21);
-    expect(statements[0]?.values.slice(10, 13)).toStrictEqual([
-      'tenant-admin',
-      expectedKeep,
-      expectedCiphertext,
-    ]);
-  });
+      expect(statements[0]?.values).toHaveLength(21);
+      expect(statements[0]?.values.slice(10, 13)).toStrictEqual([
+        'tenant-admin',
+        expectedKeep,
+        expectedCiphertext,
+      ]);
+    }
+  );
 });
 
 describe('instance registry mutation result and error contracts', () => {
@@ -379,10 +443,7 @@ describe('instance registry mutation result and error contracts', () => {
   });
 
   it('reports a fenced realm change as a conflict when the instance still exists', async () => {
-    const { executor, statements } = createQueuedExecutor([
-      [],
-      [{ instance_exists: true }],
-    ]);
+    const { executor, statements } = createQueuedExecutor([[], [{ instance_exists: true }]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(repository.updateInstance(minimalUpdateInput)).rejects.toThrow(
@@ -435,6 +496,49 @@ describe('instance registry mutation result and error contracts', () => {
     ).rejects.toThrow('account_invitation_template_revision_conflict');
   });
 
+  it('reads and updates the server account invitation template at the expected revision', async () => {
+    const template = {
+      revision: 5,
+      subject: 'Willkommen bei {{tenantName}}',
+      body: '{{passwordSetupLink}}',
+      passwordSetupLinkLabel: 'Passwort setzen',
+      tenantHomepageLinkLabel: 'Zur Startseite',
+    } as const;
+    const { executor, statements } = createQueuedExecutor([
+      [{ revision: 4, template: null }],
+      [{ revision: 5, template }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getServerAccountInvitationTemplate()).resolves.toEqual({ revision: 4 });
+    await expect(
+      repository.updateServerAccountInvitationTemplate({
+        expectedRevision: 4,
+        template,
+        actorId: 'admin-1',
+      })
+    ).resolves.toEqual({ revision: 5, template });
+
+    expect(statements[0]?.values).toEqual(['account_invitation']);
+    expect(statements[1]?.text).toContain('AND revision = $2');
+    expect(statements[1]?.values).toEqual([
+      'account_invitation',
+      4,
+      JSON.stringify(template),
+      'admin-1',
+    ]);
+  });
+
+  it('reports a server template revision conflict', async () => {
+    const { executor } = createQueuedExecutor([[]]);
+    await expect(
+      createInstanceRegistryRepository(executor).updateServerAccountInvitationTemplate({
+        expectedRevision: 3,
+        template: null,
+      })
+    ).rejects.toThrow('account_invitation_template_revision_conflict');
+  });
+
   it('rejects a hostname already owned by another instance', async () => {
     const { executor } = createQueuedExecutor([[instanceRow], []]);
     const repository = createInstanceRegistryRepository(executor);
@@ -463,13 +567,21 @@ describe('instance registry mutation result and error contracts', () => {
     });
 
     await expect(
-      createInstanceRegistryRepository(throwingExecutor(insertError)).createInstance(minimalCreateInput)
+      createInstanceRegistryRepository(throwingExecutor(insertError)).createInstance(
+        minimalCreateInput
+      )
     ).rejects.toBe(insertError);
-    expect((insertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe('registry_insert');
+    expect((insertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe(
+      'registry_insert'
+    );
     await expect(
-      createInstanceRegistryRepository(throwingExecutor(updateError)).updateInstance(minimalUpdateInput)
+      createInstanceRegistryRepository(throwingExecutor(updateError)).updateInstance(
+        minimalUpdateInput
+      )
     ).rejects.toBe(updateError);
-    expect((updateError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBeUndefined();
+    expect(
+      (updateError as Error & { instanceRegistryStep?: string }).instanceRegistryStep
+    ).toBeUndefined();
   });
 
   it('preserves create and update hostname error identity and their existing annotations', async () => {
@@ -493,22 +605,28 @@ describe('instance registry mutation result and error contracts', () => {
     const updateUpsertError = new Error('sensitive update-hostname-upsert diagnostics');
 
     await expect(
-      createInstanceRegistryRepository(hostnameExecutor(createHostnameError)).createInstance(minimalCreateInput)
+      createInstanceRegistryRepository(hostnameExecutor(createHostnameError)).createInstance(
+        minimalCreateInput
+      )
     ).rejects.toBe(createHostnameError);
-    expect((createHostnameError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe(
-      'primary_hostname_upsert'
-    );
+    expect(
+      (createHostnameError as Error & { instanceRegistryStep?: string }).instanceRegistryStep
+    ).toBe('primary_hostname_upsert');
     await expect(
-      createInstanceRegistryRepository(hostnameExecutor(updateDemoteError)).updateInstance(minimalUpdateInput)
+      createInstanceRegistryRepository(hostnameExecutor(updateDemoteError)).updateInstance(
+        minimalUpdateInput
+      )
     ).rejects.toBe(updateDemoteError);
-    expect((updateDemoteError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe(
-      'previous_primary_hostname_demote'
-    );
+    expect(
+      (updateDemoteError as Error & { instanceRegistryStep?: string }).instanceRegistryStep
+    ).toBe('previous_primary_hostname_demote');
     await expect(
-      createInstanceRegistryRepository(hostnameExecutor(updateUpsertError, 3)).updateInstance(minimalUpdateInput)
+      createInstanceRegistryRepository(hostnameExecutor(updateUpsertError, 3)).updateInstance(
+        minimalUpdateInput
+      )
     ).rejects.toBe(updateUpsertError);
-    expect((updateUpsertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep).toBe(
-      'primary_hostname_upsert'
-    );
+    expect(
+      (updateUpsertError as Error & { instanceRegistryStep?: string }).instanceRegistryStep
+    ).toBe('primary_hostname_upsert');
   });
 });

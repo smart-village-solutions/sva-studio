@@ -1,13 +1,3 @@
-export const accountInvitationProjectionStatuses = [
-  'default',
-  'in_sync',
-  'drifted',
-  'unavailable',
-] as const;
-
-export type AccountInvitationProjectionStatus =
-  (typeof accountInvitationProjectionStatuses)[number];
-
 export type AccountInvitationTemplate = Readonly<{
   revision: number;
   subject: string;
@@ -16,11 +6,36 @@ export type AccountInvitationTemplate = Readonly<{
   tenantHomepageLinkLabel: string;
 }>;
 
-export type AccountInvitationProjection = Readonly<{
-  status: AccountInvitationProjectionStatus;
-  checkedAt?: string;
-  errorCode?: string;
+export const ACCOUNT_INVITATION_TEMPLATE_KEY = 'account_invitation' as const;
+
+export type AccountInvitationTemplateSource = 'instance' | 'server' | 'sva_default';
+
+type EffectiveAccountInvitationTemplate = Readonly<{
+  template: AccountInvitationTemplate;
+  source: AccountInvitationTemplateSource;
 }>;
+
+export type ServerAccountInvitationTemplateState = Readonly<{
+  revision: number;
+  template?: AccountInvitationTemplate;
+}>;
+
+export type ServerAccountInvitationTemplateView = Readonly<{
+  revision: number;
+  effectiveTemplate: AccountInvitationTemplate;
+  source: Extract<AccountInvitationTemplateSource, 'server' | 'sva_default'>;
+}>;
+
+export const toServerAccountInvitationTemplateView = (
+  state: ServerAccountInvitationTemplateState
+): ServerAccountInvitationTemplateView => ({
+  revision: state.revision,
+  effectiveTemplate: state.template ?? {
+    ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+    revision: state.revision,
+  },
+  source: state.template ? 'server' : 'sva_default',
+});
 
 export type CompiledAccountInvitationTemplate = Readonly<{
   executeActionsSubject: string;
@@ -48,6 +63,22 @@ Freundliche Grüße
 Ihr Team von {{tenantName}}`,
   passwordSetupLinkLabel: 'Passwort festlegen',
   tenantHomepageLinkLabel: 'Zur Startseite',
+};
+
+export const resolveEffectiveAccountInvitationTemplate = (input: {
+  instanceTemplate?: AccountInvitationTemplate;
+  serverTemplate?: AccountInvitationTemplate;
+}): EffectiveAccountInvitationTemplate => {
+  if (input.instanceTemplate) {
+    return { template: input.instanceTemplate, source: 'instance' };
+  }
+  if (input.serverTemplate) {
+    return { template: input.serverTemplate, source: 'server' };
+  }
+  return {
+    template: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 0 },
+    source: 'sva_default',
+  };
 };
 
 const ALLOWED_TOKENS = new Set([

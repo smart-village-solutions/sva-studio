@@ -1,4 +1,5 @@
 import { access, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -15,6 +16,7 @@ import {
 
 const outputPath = resolve('docs/user-documentation/page-catalog.json');
 const pluginCatalogPath = resolve('apps/sva-studio-react/plugin-catalog.json');
+const packageRequire = createRequire(import.meta.url);
 const component = () => null;
 const bindings = new Proxy(
   {},
@@ -32,13 +34,21 @@ const readPluginCatalog = async (): Promise<readonly StudioPluginCatalogConfigEn
   return value as readonly StudioPluginCatalogConfigEntry[];
 };
 
-const loadWorkspacePlugin = async (
+const readPluginManifest = async (
   entry: StudioPluginCatalogConfigEntry
+): Promise<PluginManifest> => {
+  const manifestPath =
+    entry.sourceType === 'workspace'
+      ? resolve(entry.sourceRef, 'plugin.manifest.json')
+      : packageRequire.resolve(`${entry.sourceRef}/plugin.manifest.json`);
+  return JSON.parse(await readFile(manifestPath, 'utf8')) as PluginManifest;
+};
+
+const loadWorkspacePlugin = async (
+  entry: StudioPluginCatalogConfigEntry,
+  manifest: PluginManifest
 ): Promise<PluginDefinition> => {
   const pluginRoot = resolve(entry.sourceRef);
-  const manifest = JSON.parse(
-    await readFile(resolve(pluginRoot, 'plugin.manifest.json'), 'utf8')
-  ) as PluginManifest;
   const sourceCandidates = getWorkspacePluginModuleCandidates(manifest).filter((candidate) =>
     candidate.startsWith('src/')
   );
@@ -74,12 +84,28 @@ const loadPackagePlugin = async (
 
 const loadEnabledPlugins = async (): Promise<readonly PluginDefinition[]> => {
   const entries = (await readPluginCatalog()).filter((entry) => entry.enabled);
-  const plugins = await Promise.all(
-    entries.map((entry) =>
-      entry.sourceType === 'workspace' ? loadWorkspacePlugin(entry) : loadPackagePlugin(entry)
-    )
+  const loadedPlugins = await Promise.all(
+    entries.map(async (entry) => {
+      const manifest = await readPluginManifest(entry);
+      const definition =
+        entry.sourceType === 'workspace'
+          ? await loadWorkspacePlugin(entry, manifest)
+          : await loadPackagePlugin(entry);
+      return { definition, manifest };
+    })
   );
-  return Array.from(createPluginRegistry(plugins).values());
+  return Array.from(
+    createPluginRegistry(
+      loadedPlugins.map(({ definition }) => definition),
+      {
+        extensionTiers: new Map(
+          loadedPlugins.map(
+            ({ definition, manifest }) => [definition.id, manifest.extensionTier] as const
+          )
+        ),
+      }
+    ).values()
+  );
 };
 
 export const createDocumentationPageCatalogJson = async (): Promise<string> =>

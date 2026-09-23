@@ -40,6 +40,20 @@ const createInput = (
 });
 
 describe('documentation integrity', () => {
+  it(
+    'checks the complete page catalog with the enabled plugins manifest access tiers',
+    () => {
+      expect(() =>
+        execFileSync(
+          'pnpm',
+          ['exec', 'tsx', 'scripts/ci/generate-documentation-page-catalog.ts', '--check'],
+          { cwd: workspaceRoot, stdio: 'pipe' }
+        )
+      ).not.toThrow();
+    },
+    30_000
+  );
+
   it('accepts a completely indexed current documentation graph', () => {
     expect(checkDocumentationIntegrity(createInput())).toEqual([]);
   });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1477,
+  "body": "Account-Einladungsmails können jetzt zentral und pro Studio-Instanz angepasst werden.\n\n- Unter System → Templates lässt sich ein Standardtext für alle Instanzen hinterlegen.\n- Individuelle Instanztexte haben Vorrang; ohne eigenen Text wird automatisch der System- oder SVA-Standard verwendet.\n- Änderungen werden beim nächsten Versand einer Einladung wirksam."
+}

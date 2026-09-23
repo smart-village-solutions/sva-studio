@@ -291,7 +291,7 @@ export const InstanceDetailCockpitSection = ({
   onRunDetailAction,
   statusLoading,
 }: CockpitSectionProps) => (
-  <Card className="overflow-hidden border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(0,90,158,0.08),transparent_38%),linear-gradient(135deg,rgba(245,249,253,0.98),rgba(236,243,251,0.94))] p-0">
+  <Card className="overflow-hidden border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(0,90,158,0.08),transparent_38%),linear-gradient(135deg,rgba(245,249,253,0.98),rgba(236,243,251,0.94))] p-0 dark:bg-[radial-gradient(circle_at_top_left,rgba(74,132,188,0.18),transparent_42%),linear-gradient(135deg,rgba(12,18,27,0.98),rgba(16,24,36,0.94))]">
     <div className="space-y-6 p-5 md:p-6">
       <div className="space-y-2">
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">

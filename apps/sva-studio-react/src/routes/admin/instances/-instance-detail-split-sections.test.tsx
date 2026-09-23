@@ -231,7 +231,7 @@ describe('instance detail split sections', () => {
   it('renders the cockpit split section and dispatches primary and secondary actions', () => {
     const onRunDetailAction = vi.fn().mockResolvedValue(undefined);
 
-    render(
+    const { container } = render(
       <InstanceDetailCockpitSection
         selectedInstance={createDetailFixture()}
         configurationAssessment={{
@@ -328,6 +328,8 @@ describe('instance detail split sections', () => {
     expect(screen.getByText('Lokaler IAM-Abgleich')).toBeTruthy();
     expect(screen.getByText('Access Probe')).toBeTruthy();
     expect(screen.getByText(/Die Detailseite bleibt bedienbar/)).toBeTruthy();
+    expect(container.firstElementChild?.className).toContain('dark:bg-[radial-gradient');
+    expect(screen.getByText('degraded').className).toContain('dark:text-amber-200');
 
     fireEvent.click(screen.getByRole('button', { name: 'Realm abgleichen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));

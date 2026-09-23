@@ -138,10 +138,10 @@ export const readActionFeedbackClassName = (
   const opacityClassName = actionFeedbackFading ? 'opacity-0' : 'opacity-100';
 
   if (actionFeedback.tone === 'success') {
-    return `border-emerald-500/40 bg-emerald-500/10 text-emerald-900 transition-opacity duration-300 ${opacityClassName}`;
+    return `border-emerald-500/40 bg-emerald-500/10 text-emerald-900 transition-opacity duration-300 dark:bg-emerald-950/40 dark:text-emerald-200 ${opacityClassName}`;
   }
 
-  return `border-amber-500/40 bg-amber-500/10 text-amber-950 transition-opacity duration-300 ${opacityClassName}`;
+  return `border-amber-500/40 bg-amber-500/10 text-amber-950 transition-opacity duration-300 dark:bg-amber-950/40 dark:text-amber-200 ${opacityClassName}`;
 };
 
 export const clearSensitiveDetailFields = (current: ReturnType<typeof createDetailForm> | null) => {

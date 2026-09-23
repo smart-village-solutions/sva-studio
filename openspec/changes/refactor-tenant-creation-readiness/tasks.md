@@ -175,6 +175,26 @@
       einer serverseitig gesteuerten nächsten Hauptaktion mit
       `Erneut prüfen` und progressiven technischen Details zusammenführen;
       ersetzte Komponenten im selben Lieferabschnitt löschen.
+- [x] 7.14 Die serverseitige Cockpit-Projektion so korrigieren, dass ein
+      terminal fehlgeschlagener oder blockierter maßgeblicher Teilschritt
+      veraltete `requested`-/`running`-Zustände übersteuert und die UI keinen
+      widersprüchlichen Gesamtstatus anzeigt.
+- [ ] 7.15 Den geführten Ablauf als zwei aufeinanderfolgende Phasen in derselben
+      visuellen Hauptfläche darstellen: vor Create die vier Eingabeschritte,
+      danach `Bereitstellung vorbereiten`, `Änderungen bestätigen`,
+      `Technische Bereitstellung`, `Betriebsbereitschaft prüfen` und
+      `Aktivieren`. Teilerfolge innerhalb der technischen Bereitstellung
+      kompakt darstellen, insbesondere Keycloak-Erfolg, lokalen
+      IAM-/Administrator-Fehler und die dadurch blockierte Aktivierung;
+      Erfüllungszähler eindeutig auf ihren Teilbereich begrenzen und Betrieb,
+      Doctor sowie Einstellungen während der Ersteinrichtung nachordnen.
+- [ ] 7.16 Im blockierten Mischzustand Ergebnis, Auswirkung und genau eine
+      serverseitig erlaubte, teilerhaltende Folgeaktion priorisieren;
+      gleichartige Befunde zusammenfassen und technische Einzelheiten
+      progressiv offenlegen.
+- [ ] 7.17 Komponenten-, Accessibility- und Browsertests für widerspruchsfreie
+      Zustandspriorität, den Keycloak-erfolgreich/lokales-IAM-fehlgeschlagen-
+      Mischzustand, Fokusführung und die sichere Fortsetzung ergänzen.
 
 ## 8. MCP
 
@@ -336,3 +356,8 @@
 - [x] 11.32 Den korrigierten Trust-Boundary-, Runtime- und Deployment-Vertrag
       dokumentieren und mit gezielten Unit-, Compose- und Runtime-Gates
       absichern.
+- [x] 11.33 Die geschützte lokale `system_admin`-Baseline vor dem
+      transaktionalen Keycloak-Worker-Lock committen, damit der nachgelagerte
+      Tenant-Admin-Bootstrap sie im selben Lauf sicher lesen und zuordnen kann;
+      den New-Realm-Pfad mit einer frischen Instanz über UI, Worker, lokales IAM
+      und `kcadm.sh` nachweisen.

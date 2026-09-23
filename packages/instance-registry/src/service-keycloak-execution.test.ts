@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   readQueuedTemporaryPassword: vi.fn(),
   syncProvisionedClientSecretToRegistry: vi.fn(),
   syncRotatedClientSecretToRegistry: vi.fn(),
+  syncProtectedSystemAdminPermissions: vi.fn(),
   syncTenantAdminBootstrapAccount: vi.fn(),
   failClaimedRun: vi.fn(),
   failRun: vi.fn(),
@@ -62,6 +63,10 @@ vi.mock('./service-keycloak-execution-shared.js', () => ({
 vi.mock('./service-keycloak-execution-failures.js', () => ({
   failClaimedRun: state.failClaimedRun,
   failRun: state.failRun,
+}));
+
+vi.mock('./service-module-mutations.js', () => ({
+  syncProtectedSystemAdminPermissions: state.syncProtectedSystemAdminPermissions,
 }));
 
 const createLoaded = () => ({
@@ -115,6 +120,7 @@ describe('service-keycloak-execution', () => {
     state.readQueuedTemporaryPassword.mockReset();
     state.syncProvisionedClientSecretToRegistry.mockReset();
     state.syncRotatedClientSecretToRegistry.mockReset();
+    state.syncProtectedSystemAdminPermissions.mockReset();
     state.syncTenantAdminBootstrapAccount.mockReset();
     state.failClaimedRun.mockReset();
     state.failRun.mockReset();
@@ -132,6 +138,7 @@ describe('service-keycloak-execution', () => {
     state.readQueuedPluginOidcClientRequirements.mockReturnValue([]);
     state.syncProvisionedClientSecretToRegistry.mockResolvedValue(undefined);
     state.syncRotatedClientSecretToRegistry.mockResolvedValue(undefined);
+    state.syncProtectedSystemAdminPermissions.mockResolvedValue(undefined);
     state.syncTenantAdminBootstrapAccount.mockResolvedValue(undefined);
     state.failClaimedRun.mockResolvedValue(undefined);
     state.failRun.mockResolvedValue(undefined);
@@ -1414,6 +1421,13 @@ describe('service-keycloak-execution', () => {
     } as never);
 
     expect(withInstanceProvisioningLock).toHaveBeenCalledWith('instance-1', expect.any(Function));
+    expect(state.syncProtectedSystemAdminPermissions).toHaveBeenCalledWith(
+      expect.objectContaining({ readKeycloakClientSecretsViaProvisioner }),
+      'instance-1'
+    );
+    expect(
+      state.syncProtectedSystemAdminPermissions.mock.invocationCallOrder[0] ?? 0
+    ).toBeLessThan(withInstanceProvisioningLock.mock.invocationCallOrder[0] ?? 0);
     expect(lockedRepository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
     expect(state.loadInstanceWithSecret).toHaveBeenCalledWith(
       expect.objectContaining({

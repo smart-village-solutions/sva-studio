@@ -54,6 +54,48 @@ const selectPrimaryAction = (
   );
 };
 
+const getProvisionSetupStepStatus = ({
+  confirmationDone,
+  technicalBlocked,
+  technicalDone,
+}: {
+  confirmationDone: boolean;
+  technicalBlocked: boolean;
+  technicalDone: boolean;
+}): InstanceSetupStep['status'] => {
+  if (technicalDone) return 'done';
+  if (technicalBlocked) return 'blocked';
+  return confirmationDone ? 'current' : 'pending';
+};
+
+const getVerifySetupStepStatus = ({
+  readinessBlocked,
+  readinessDone,
+  technicalDone,
+}: {
+  readinessBlocked: boolean;
+  readinessDone: boolean;
+  technicalDone: boolean;
+}): InstanceSetupStep['status'] => {
+  if (readinessDone) return 'done';
+  if (readinessBlocked) return 'blocked';
+  return technicalDone ? 'current' : 'pending';
+};
+
+const getActivateSetupStepStatus = ({
+  isActive,
+  nextAction,
+  readinessBlocked,
+}: {
+  isActive: boolean;
+  nextAction: string | undefined;
+  readinessBlocked: boolean;
+}): InstanceSetupStep['status'] => {
+  if (isActive) return 'done';
+  if (nextAction === 'instance.status.activate') return 'current';
+  return readinessBlocked ? 'blocked' : 'pending';
+};
+
 export const buildInstanceSetupSteps = (
   instance: IamInstanceDetail
 ): readonly InstanceSetupStep[] => {
@@ -97,37 +139,23 @@ export const buildInstanceSetupSteps = (
       key: 'provision',
       title: t('admin.instances.cockpit.setup.steps.provision.title'),
       description: t('admin.instances.cockpit.setup.steps.provision.description'),
-      status: technicalDone
-        ? 'done'
-        : technicalBlocked
-          ? 'blocked'
-          : confirmationDone
-            ? 'current'
-            : 'pending',
+      status: getProvisionSetupStepStatus({
+        confirmationDone,
+        technicalBlocked,
+        technicalDone,
+      }),
     },
     {
       key: 'verify',
       title: t('admin.instances.cockpit.setup.steps.verify.title'),
       description: t('admin.instances.cockpit.setup.steps.verify.description'),
-      status: readinessDone
-        ? 'done'
-        : readinessBlocked
-          ? 'blocked'
-          : technicalDone
-            ? 'current'
-            : 'pending',
+      status: getVerifySetupStepStatus({ readinessBlocked, readinessDone, technicalDone }),
     },
     {
       key: 'activate',
       title: t('admin.instances.cockpit.setup.steps.activate.title'),
       description: t('admin.instances.cockpit.setup.steps.activate.description'),
-      status: isActive
-        ? 'done'
-        : nextAction === 'instance.status.activate'
-          ? 'current'
-          : readinessState === 'provisioning_blocked'
-            ? 'blocked'
-            : 'pending',
+      status: getActivateSetupStepStatus({ isActive, nextAction, readinessBlocked }),
     },
   ];
 };

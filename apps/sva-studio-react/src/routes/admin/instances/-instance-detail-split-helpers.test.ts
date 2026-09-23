@@ -482,6 +482,15 @@ describe('instance detail split helpers', () => {
       buildInstanceSetupSteps(createDetailFixture(overrides)).map((step) => step.status);
 
     expect(readStatuses({})).toEqual(['current', 'pending', 'pending', 'pending', 'pending']);
+    expect(
+      readStatuses({
+        provisioningReadiness: {
+          state: 'provisioning_blocked',
+          capabilities: [],
+          nextAction: { action: 'instance.diagnose', retryClass: 'safe' },
+        },
+      })
+    ).toEqual(['blocked', 'pending', 'blocked', 'pending', 'pending']);
     expect(readStatuses({ keycloakPlan: plan })).toEqual([
       'done',
       'current',

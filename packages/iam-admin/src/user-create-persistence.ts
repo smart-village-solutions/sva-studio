@@ -102,6 +102,11 @@ export type CreateUserPersistenceDeps = {
   ) => Promise<readonly IamRoleRow[]>;
 };
 
+export type PreparedCreateUserAssignments = Readonly<{
+  effectiveRoleIds: readonly string[];
+  effectiveRoles: readonly IamRoleRow[];
+}>;
+
 const INSERT_ACCOUNT_QUERY = `
 INSERT INTO iam.accounts (
   instance_id,
@@ -150,16 +155,15 @@ const toUniqueSortedIds = (values: readonly string[]): readonly string[] =>
   [...new Set(values)].sort((left, right) => left.localeCompare(right));
 
 export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => {
-  const persistCreatedUser = async (
+  const prepareCreatedUserAssignments = async (
     client: QueryClient,
     input: {
       readonly actor: CreateUserPersistenceActor;
       readonly actorSubject: string;
-      readonly externalId: string;
       readonly payload: CreateUserPersistencePayload;
     }
-  ): Promise<{ readonly responseData: IamUserDetail; readonly roleNames: readonly string[] }> => {
-    const { actor, actorSubject, externalId, payload } = input;
+  ): Promise<PreparedCreateUserAssignments> => {
+    const { actor, actorSubject, payload } = input;
     const roleValidation = await deps.ensureRoleAssignmentWithinActorLevel({
       client,
       instanceId: actor.instanceId,
@@ -175,6 +179,38 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       actorSubject,
       groupIds: payload.groupIds ?? [],
     });
+    const effectiveRoleIds = await resolveAssignedRoleIds(deps, client, {
+      instanceId: actor.instanceId,
+      roleIds: payload.roleIds,
+      groupIds: payload.groupIds ?? [],
+    });
+    return {
+      effectiveRoleIds,
+      effectiveRoles: await deps.resolveRolesByIds(client, {
+        instanceId: actor.instanceId,
+        roleIds: effectiveRoleIds,
+      }),
+    };
+  };
+
+  const persistCreatedUser = async (
+    client: QueryClient,
+    input: {
+      readonly actor: CreateUserPersistenceActor;
+      readonly actorSubject: string;
+      readonly externalId: string;
+      readonly payload: CreateUserPersistencePayload;
+      readonly assignments?: PreparedCreateUserAssignments;
+    }
+  ): Promise<{ readonly responseData: IamUserDetail; readonly roleNames: readonly string[] }> => {
+    const { actor, actorSubject, externalId, payload } = input;
+    const assignments =
+      input.assignments ??
+      (await prepareCreatedUserAssignments(client, {
+        actor,
+        actorSubject,
+        payload,
+      }));
 
     const inserted = await client.query<{ readonly id: string }>(
       INSERT_ACCOUNT_QUERY,
@@ -199,15 +235,8 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       origin: 'manual',
     });
 
-    const assignedRoleIds = await resolveAssignedRoleIds(deps, client, {
-      instanceId: actor.instanceId,
-      roleIds: payload.roleIds,
-      groupIds: payload.groupIds ?? [],
-    });
-    const assignedRoleRows = await deps.resolveRolesByIds(client, {
-      instanceId: actor.instanceId,
-      roleIds: assignedRoleIds,
-    });
+    const assignedRoleIds = assignments.effectiveRoleIds;
+    const assignedRoleRows = assignments.effectiveRoles;
 
     await deps.emitActivityLog(client, {
       instanceId: actor.instanceId,
@@ -243,6 +272,7 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
   };
 
   return {
+    prepareCreatedUserAssignments,
     persistCreatedUser,
   };
 };

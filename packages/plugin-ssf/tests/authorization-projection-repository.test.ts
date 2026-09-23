@@ -82,7 +82,7 @@ describe('SSF authorization projection repository', () => {
     const client = {
       query: vi
         .fn()
-        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ acquired: true }] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [] }),
       release: vi.fn(),
     };
@@ -94,7 +94,7 @@ describe('SSF authorization projection repository', () => {
 
     expect(client.query).toHaveBeenNthCalledWith(
       1,
-      'SELECT pg_advisory_lock(hashtextextended($1, 0))',
+      'SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired',
       ['tenant-a']
     );
     expect(client.query).toHaveBeenNthCalledWith(
@@ -105,11 +105,28 @@ describe('SSF authorization projection repository', () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it('returns a bounded conflict when the tenant advisory lock is already held', async () => {
+    const client = {
+      query: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ acquired: false }] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+    const store = createPostgresSsfAuthorizationProjectionStore(pool);
+    const operation = vi.fn();
+
+    await expect(store.withTenantLock('tenant-a', operation)).rejects.toThrow(
+      'ssf_authorization_projection_lock_unavailable'
+    );
+    expect(operation).not.toHaveBeenCalled();
+    expect(client.query).toHaveBeenCalledOnce();
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+
   it('releases the tenant advisory lock when reconcile work fails', async () => {
     const client = {
       query: vi
         .fn()
-        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ acquired: true }] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [] }),
       release: vi.fn(),
     };
@@ -149,7 +166,7 @@ describe('SSF authorization projection repository', () => {
     const client = {
       query: vi
         .fn()
-        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ acquired: true }] })
         .mockRejectedValueOnce(new Error('unlock failed')),
       release: vi.fn(),
     };
@@ -218,7 +235,11 @@ describe('SSF authorization projection repository', () => {
   });
 
   it('reads only an exactly converged revision in a tenant-bound transaction', async () => {
-    const revision = `sha256:${'b'.repeat(64)}`;
+    const revision = createSsfAuthorizationRevision({
+      contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+      instanceId: 'tenant-a',
+      subjects: [],
+    });
     const client = {
       query: vi
         .fn()
@@ -266,6 +287,21 @@ describe('SSF authorization projection repository', () => {
       expect.stringContaining('desired_revision = confirmed_revision'),
       ['tenant-a']
     );
+  });
+
+  it('treats an absent confirmed subject flag as unavailable', async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rowCount: null, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: null, rows: [] }),
+      release: vi.fn(),
+    };
+    const pool = { connect: vi.fn().mockResolvedValue(client) } as unknown as Pool;
+
+    await expect(hasReadySsfAuthorizationProjectionSubjects(pool, 'tenant-a')).resolves.toBe(false);
   });
 
   it('treats missing subject evidence in a historical schema as unavailable', async () => {

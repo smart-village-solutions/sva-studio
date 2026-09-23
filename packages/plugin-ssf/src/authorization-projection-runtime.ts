@@ -44,16 +44,21 @@ export const createSsfAuthorizationProjectionRuntime = (dependencies: {
         store: dependencies.store,
         target,
       });
-      const sourceSubjects = await dependencies.source.readSubjects({
+      return reconcileProjection({
         instanceId,
-        permissionIds: SSF_TENANT_PERMISSION_IDS,
+        readDesired: async () => {
+          const sourceSubjects = await dependencies.source.readSubjects({
+            instanceId,
+            permissionIds: SSF_TENANT_PERMISSION_IDS,
+          });
+          const subjects = sourceSubjects.map(({ keycloakSubject, roleNames, permissionIds }) => ({
+            subject: keycloakSubject,
+            roleNames,
+            permissionIds,
+          }));
+          return createSsfAuthorizationProjection({ instanceId, subjects });
+        },
       });
-      const subjects = sourceSubjects.map(({ keycloakSubject, roleNames, permissionIds }) => ({
-        subject: keycloakSubject,
-        roleNames,
-        permissionIds,
-      }));
-      return reconcileProjection(createSsfAuthorizationProjection({ instanceId, subjects }));
     },
   };
 };

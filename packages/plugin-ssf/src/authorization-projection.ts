@@ -3,7 +3,12 @@ import { createHash } from 'node:crypto';
 import { canonicalize } from 'json-canonicalize';
 import { z } from 'zod';
 
-export const SSF_AUTHORIZATION_PROJECTION_VERSION = '1.0' as const;
+/**
+ * This version describes the authorization contract, not its current subjects.
+ * A subject change must still be reconciled, but must not mint a new tenant
+ * contract revision for every account mutation.
+ */
+export const SSF_AUTHORIZATION_PROJECTION_VERSION = '2.0' as const;
 
 export const SSF_TOKEN_CLAIMS = {
   instanceId: 'studio_tenant_id',
@@ -80,13 +85,25 @@ export const createSsfAuthorizationRevision = (
   projection: SsfAuthorizationProjection
 ): `sha256:${string}` => {
   const normalized = normalizeSsfAuthorizationProjection(projection);
-  return `sha256:${createHash('sha256').update(canonicalize(normalized), 'utf8').digest('hex')}`;
+  return `sha256:${createHash('sha256')
+    .update(
+      canonicalize({
+        contractVersion: normalized.contractVersion,
+        instanceId: normalized.instanceId,
+        permissionIds: SSF_TENANT_PERMISSION_IDS,
+        roleIds: SSF_TENANT_ROLE_IDS,
+      }),
+      'utf8'
+    )
+    .digest('hex')}`;
 };
 
 export const areSsfAuthorizationProjectionsEqual = (
   left: SsfAuthorizationProjection,
   right: SsfAuthorizationProjection
-): boolean => createSsfAuthorizationRevision(left) === createSsfAuthorizationRevision(right);
+): boolean =>
+  canonicalize(normalizeSsfAuthorizationProjection(left)) ===
+  canonicalize(normalizeSsfAuthorizationProjection(right));
 
 const SSF_PERMISSION_PREFIX = 'ssf.';
 const SSF_PERMISSION_SET = new Set<string>(SSF_TENANT_PERMISSION_IDS);
@@ -110,9 +127,7 @@ export const createSsfAuthorizationProjection = (input: {
     return [
       {
         subject: entry.subject,
-        roles: [
-          entry.roleNames.includes('system_admin') ? 'tenant_admin' : 'user',
-        ],
+        roles: [entry.roleNames.includes('system_admin') ? 'tenant_admin' : 'user'],
         permissions: ssfPermissions,
       },
     ];

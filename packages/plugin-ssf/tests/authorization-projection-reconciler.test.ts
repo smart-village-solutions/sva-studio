@@ -120,6 +120,23 @@ describe('SSF authorization projection reconciler', () => {
     );
   });
 
+  it('reads lazy desired state only after acquiring the tenant lock', async () => {
+    const desired = projection('tenant-a');
+    const { store, lockedStore, reconcile } = fixtures(desired);
+    const readDesired = vi.fn(async () => desired);
+
+    await expect(reconcile({ instanceId: 'tenant-a', readDesired })).resolves.toMatchObject({
+      status: 'ready',
+    });
+
+    expect(store.withTenantLock).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    expect(readDesired).toHaveBeenCalledOnce();
+    expect(store.withTenantLock.mock.invocationCallOrder[0]).toBeLessThan(
+      readDesired.mock.invocationCallOrder[0]
+    );
+    expect(lockedStore.stage).toHaveBeenCalledWith(desired);
+  });
+
   it('does not touch Keycloak for an already converged projection', async () => {
     const desired = projection();
     const revision = createSsfAuthorizationRevision(desired);

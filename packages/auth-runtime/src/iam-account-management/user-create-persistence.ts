@@ -16,7 +16,7 @@ import {
 
 export type CreateUserPayload = z.infer<typeof createUserSchema>;
 
-export const { persistCreatedUser } = createUserCreatePersistence({
+export const { persistCreatedUser, prepareCreatedUserAssignments } = createUserCreatePersistence({
   assignGroups,
   assignRoles,
   emitActivityLog,

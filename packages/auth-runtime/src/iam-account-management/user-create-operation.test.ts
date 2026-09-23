@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   persistCreatedUser: vi.fn(),
+  prepareCreatedUserAssignments: vi.fn(),
   ensureManagedRealmRolesExist: vi.fn(),
   resolveIdentityProviderForInstance: vi.fn(),
   resolveAuthConfigForInstance: vi.fn(),
@@ -18,11 +19,21 @@ const state = vi.hoisted(() => ({
   logger: {
     error: vi.fn(),
   },
+  withSsfAccountCreate: vi.fn(
+    async ({
+      execute,
+    }: {
+      execute: (context: { readClaims: () => Promise<unknown> }) => Promise<unknown>;
+    }) => execute({ readClaims: async () => ({ attributes: {} }) })
+  ),
 }));
 
 vi.mock('./user-create-persistence.js', () => ({
   persistCreatedUser: state.persistCreatedUser,
+  prepareCreatedUserAssignments: state.prepareCreatedUserAssignments,
 }));
+
+vi.mock('./ssf-account-create.js', () => ({ withSsfAccountCreate: state.withSsfAccountCreate }));
 
 vi.mock('./shared-managed-role-sync.js', () => ({
   ensureManagedRealmRolesExist: state.ensureManagedRealmRolesExist,
@@ -70,6 +81,10 @@ describe('executeCreateUser', () => {
         mainserverUserApplicationSecretSet: false,
       },
       roleNames: [],
+    });
+    state.prepareCreatedUserAssignments.mockResolvedValue({
+      effectiveRoleIds: [],
+      effectiveRoles: [],
     });
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
@@ -308,7 +323,7 @@ describe('executeCreateUser', () => {
     expect(result.invitation.status).toBe('not_requested');
   }, 15_000);
 
-  it('requests the existing SSF authorization reconcile after creating a user', async () => {
+  it('does not schedule an SSF reconcile after creating a user', async () => {
     const ssfLifecycle = {
       pluginId: 'ssf',
       contractRevision: 'ssf-contract-1',
@@ -342,14 +357,10 @@ describe('executeCreateUser', () => {
       },
     });
 
-    expect(state.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalledWith({
-      instanceId: 'instance-1',
-      lifecycles: [{ pluginId: 'ssf', contractRevision: 'ssf-contract-1' }],
-      forcePluginIds: ['ssf'],
-    });
+    expect(state.persistPluginTenantLifecycleReconcileIntents).not.toHaveBeenCalled();
   });
 
-  it('keeps the created user result when the SSF authorization reconcile request fails', async () => {
+  it('does not invoke a failing SSF reconcile scheduler after commit', async () => {
     state.readInstanceRegistryPluginTenantLifecycleRegistry.mockReturnValue(
       new Map([
         [
@@ -397,22 +408,14 @@ describe('executeCreateUser', () => {
       })
     ).resolves.toMatchObject({ invitation: { status: 'not_requested' } });
 
-    expect(state.logger.error).toHaveBeenCalledWith(
-      'SSF authorization reconcile scheduling failed after IAM user creation',
-      {
-        workspace_id: 'instance-1',
-        context: {
-          operation: 'schedule_ssf_authorization_reconcile',
-          instance_id: 'instance-1',
-          request_id: 'req-1',
-          trace_id: 'trace-1',
-          error: 'registry unavailable',
-        },
-      }
-    );
+    expect(state.persistPluginTenantLifecycleReconcileIntents).not.toHaveBeenCalled();
   });
 
   it('keeps personal Mainserver provisioning active for a normally created technical account', async () => {
+    state.prepareCreatedUserAssignments.mockResolvedValueOnce({
+      effectiveRoleIds: ['role-system-admin'],
+      effectiveRoles: [{ role_name: 'system_admin' }],
+    });
     state.provisionMainserverUserCredentials.mockResolvedValue({
       mainserverUserApplicationId: 'mainserver-app-1',
       mainserverUserApplicationSecret: 'mainserver-secret-1',
@@ -493,8 +496,8 @@ describe('executeCreateUser', () => {
         mainserverUserApplicationSecret: ['mainserver-secret-1'],
       },
     });
-    expect(state.persistCreatedUser.mock.invocationCallOrder[0]).toBeLessThan(
-      identityProvider.provider.syncRoles.mock.invocationCallOrder[0] ?? 0
+    expect(identityProvider.provider.syncRoles.mock.invocationCallOrder[0]).toBeLessThan(
+      state.persistCreatedUser.mock.invocationCallOrder[0] ?? 0
     );
     expect(identityProvider.provider.syncRoles.mock.invocationCallOrder[0]).toBeLessThan(
       state.provisionMainserverUserCredentials.mock.invocationCallOrder[0] ?? 0
@@ -873,6 +876,11 @@ describe('executeCreateUser', () => {
   });
 
   it('ensures managed realm roles exist before syncing mapped roles to the created identity user', async () => {
+    const assignments = {
+      effectiveRoleIds: ['role-system-admin', 'role-editor'],
+      effectiveRoles: [{ role_name: 'system_admin' }, { role_name: 'editor' }],
+    };
+    state.prepareCreatedUserAssignments.mockResolvedValueOnce(assignments);
     state.persistCreatedUser.mockResolvedValue({
       responseData: {
         id: 'account-1',
@@ -923,22 +931,19 @@ describe('executeCreateUser', () => {
       traceId: 'trace-1',
     });
     expect(identityProvider.provider.syncRoles).toHaveBeenCalledWith('kc-user-1', ['system_admin']);
+    expect(state.persistCreatedUser).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ assignments })
+    );
   });
 
-  it('deactivates the created external user when persistence fails after Keycloak creation', async () => {
+  it('deletes the created external user through the same provider when persistence fails', async () => {
     state.persistCreatedUser.mockRejectedValue(new Error('db write failed'));
-    const deactivateUser = vi.fn(async () => undefined);
-    state.resolveIdentityProviderForInstance.mockResolvedValue({
-      provider: { deactivateUser },
-      realm: 'tenant-realm',
-      source: 'instance',
-      clientId: 'tenant-admin',
-      adminRealm: 'tenant-realm',
-      executionMode: 'tenant_admin',
-    });
+    const deleteUser = vi.fn(async () => undefined);
     const identityProvider = {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        deleteUser,
         syncRoles: vi.fn(async () => undefined),
       },
       realm: 'tenant-realm',
@@ -969,10 +974,7 @@ describe('executeCreateUser', () => {
       })
     ).rejects.toThrow('db write failed');
 
-    expect(state.resolveIdentityProviderForInstance).toHaveBeenCalledWith('instance-1', {
-      executionMode: 'tenant_admin',
-    });
-    expect(deactivateUser).toHaveBeenCalledWith('kc-user-1');
+    expect(deleteUser).toHaveBeenCalledWith('kc-user-1');
     expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
     expect(state.logger.error).toHaveBeenCalledWith(
       'IAM user creation failed',
@@ -982,23 +984,14 @@ describe('executeCreateUser', () => {
     );
   });
 
-  it('logs compensation failures when the created external user cannot be deactivated', async () => {
+  it('logs compensation failures when the created external user cannot be deleted', async () => {
     state.persistCreatedUser.mockRejectedValue(new Error('db write failed'));
-    state.resolveIdentityProviderForInstance.mockResolvedValue({
-      provider: {
-        deactivateUser: vi.fn(async () => {
-          throw new Error('deactivate failed');
-        }),
-      },
-      realm: 'tenant-realm',
-      source: 'instance',
-      clientId: 'tenant-admin',
-      adminRealm: 'tenant-realm',
-      executionMode: 'tenant_admin',
-    });
     const identityProvider = {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        deleteUser: vi.fn(async () => {
+          throw new Error('delete failed');
+        }),
         syncRoles: vi.fn(async () => undefined),
       },
       realm: 'tenant-realm',

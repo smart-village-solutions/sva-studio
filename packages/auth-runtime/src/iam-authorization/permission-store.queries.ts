@@ -16,7 +16,7 @@ export type PermissionLookupInput = {
 
 const SCOPE_SENSITIVE_PERMISSION_KEYS = listScopeSensitivePermissionKeys();
 
-const ROLE_ASSIGNMENT_SOURCE_SQL = `
+export const ROLE_ASSIGNMENT_SOURCE_SQL = `
   SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
   FROM iam.account_roles ar
   WHERE ar.valid_from <= NOW()

@@ -1,8 +1,11 @@
-import { readConfiguredPluginTenantAccess } from '@sva/auth-runtime/server';
 import {
-  hasReadySsfAuthorizationProjectionSubjects,
+  hasActiveTenantPermissionProjectionSubject,
+  readConfiguredPluginTenantAccess,
+} from '@sva/auth-runtime/server';
+import {
   readReadySsfAuthorizationRevision,
   resolveSsfDatabasePool,
+  SSF_TENANT_PERMISSION_IDS,
 } from '@sva/plugin-ssf/runtime';
 
 import { ensurePluginActivationPoliciesConfigured } from './plugin-activation-policy-bootstrap.server.js';
@@ -25,9 +28,11 @@ export const readStudioSsfLoginReadiness = async (
   return (await readReadySsfAuthorizationRevision(pool, instanceId)) === revision;
 };
 
-/** Directory eligibility adds a persisted subject check without querying Keycloak. */
+/** Directory eligibility adds committed active IAM account evidence without querying Keycloak. */
 export const readStudioSsfAdminLoginReadiness = async (instanceId: string): Promise<boolean> => {
   if (!(await readStudioSsfLoginReadiness(instanceId))) return false;
-  const pool = resolveSsfDatabasePool();
-  return pool ? hasReadySsfAuthorizationProjectionSubjects(pool, instanceId) : false;
+  return hasActiveTenantPermissionProjectionSubject({
+    instanceId,
+    permissionIds: SSF_TENANT_PERMISSION_IDS,
+  });
 };

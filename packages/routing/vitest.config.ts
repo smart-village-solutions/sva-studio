@@ -23,6 +23,10 @@ export default defineConfig({
         find: /^@sva\/plugin-ssf\/provisioning$/,
         replacement: resolve(__dirname, '../plugin-ssf/src/provisioning.ts'),
       },
+      {
+        find: /^@sva\/plugin-ssf\/runtime$/,
+        replacement: resolve(__dirname, '../plugin-ssf/src/runtime.ts'),
+      },
       { find: /^@sva\/auth-runtime$/, replacement: resolve(__dirname, '../auth-runtime/src/index.ts') },
       { find: /^@sva\/iam-core$/, replacement: resolve(__dirname, '../iam-core/src/index.ts') },
       { find: /^@sva\/iam-admin\/encryption$/, replacement: resolve(__dirname, '../iam-admin/src/encryption.ts') },

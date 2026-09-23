@@ -30,6 +30,10 @@ export default defineConfig({
         replacement: resolve(currentDir, '../plugin-ssf/src/provisioning.ts'),
       },
       {
+        find: /^@sva\/plugin-ssf\/runtime$/,
+        replacement: resolve(currentDir, '../plugin-ssf/src/runtime.ts'),
+      },
+      {
         find: /^@sva\/plugin-sdk$/,
         replacement: resolve(currentDir, '../plugin-sdk/src/index.ts'),
       },

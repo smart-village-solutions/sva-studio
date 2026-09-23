@@ -4971,7 +4971,7 @@ ALTER TABLE iam.server_account_invitation_templates ENABLE ROW LEVEL SECURITY;
 -- Name: server_account_invitation_templates server_account_invitation_templates_platform_scope; Type: POLICY; Schema: iam; Owner: -
 --
 
-CREATE POLICY server_account_invitation_templates_platform_scope ON iam.server_account_invitation_templates USING ((iam.current_instance_id() IS NULL)) WITH CHECK ((iam.current_instance_id() IS NULL));
+CREATE POLICY server_account_invitation_templates_platform_scope ON iam.server_account_invitation_templates USING (true) WITH CHECK ((iam.current_instance_id() IS NULL));
 
 
 --

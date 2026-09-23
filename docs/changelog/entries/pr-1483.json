@@ -1,4 +1,4 @@
 {
   "prNumber": 1483,
-  "body": "Instanz-Einrichtung stabilisiert\n\n- Die geführte Einrichtung neuer Instanzen bleibt im Dark Mode durchgängig lesbar.\n- Lokale Abnahmen verarbeiten Keycloak-Aufträge mit genau einem zuständigen Worker und vermeiden dadurch konkurrierende Provisioning-Läufe."
+  "body": "Instanz-Einrichtung stabilisiert\n\n- Die geführte Einrichtung neuer Instanzen bleibt im Dark Mode durchgängig lesbar.\n- Lokale Abnahmen verarbeiten Keycloak-Aufträge mit genau einem zuständigen Worker und vermeiden dadurch konkurrierende Provisioning-Läufe.\n- Tenant-Prozesse können die globale Account-Einladungsvorlage lesen; fehlgeschlagene Post-Commit-Wake-ups werden wieder zuverlässig protokolliert."
 }

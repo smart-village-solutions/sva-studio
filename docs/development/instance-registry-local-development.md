@@ -92,6 +92,23 @@ PLAYWRIGHT_TENANT_LOGIN_URL=http://demo2.studio.localhost:4173/auth/login?return
 pnpm nx run sva-studio-react:test:e2e -- --grep "tenant-host login"
 ```
 
+## Lokaler MCP-Prozess
+
+Der lokale MCP-Service-Account verwendet die Client-ID aus dem aktiven
+Runtime-Profil. Sie darf nicht durch die produktive Standard-ID
+`sva-studio-mcp` ersetzt werden. Vor dem ersten End-to-End-Lauf müssen in
+Keycloak sowohl die Plattformrolle `instance_registry_admin` als auch alle in
+[`REGISTRY_ACTIONS`](../../packages/auth-runtime/src/iam-instance-registry/auth-context.ts)
+definierten Client-Rollen vorhanden und dem Service-Account-Benutzer zugewiesen
+sein. Eine nur am Client definierte, aber nicht zugewiesene Action-Rolle reicht
+nicht aus.
+
+Nach Änderungen an den Rollenzuweisungen muss der MCP-Prozess ein neues Token
+beziehen. Ein erfolgreicher lokaler Create-Test endet vor der Aktivierung mit
+`awaiting_human_action`, der nächsten Action `instance.status.activate` sowie
+grünem Keycloak-Status, Rollenabgleich und Tenant-IAM-Zugriffstest. Die
+Aktivierung bleibt eine separate, ausdrücklich bestätigte Mutation.
+
 ## Ops-CLI
 
 Die nicht-interaktive CLI liegt unter [scripts/ops/instance-registry.ts](../../scripts/ops/instance-registry.ts).

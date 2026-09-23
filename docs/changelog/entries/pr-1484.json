@@ -1,0 +1,4 @@
+{
+  "prNumber": 1484,
+  "body": "Zuverlässigere lokale Migrationsprüfung\n\n- Die Migrationsprüfung läuft jetzt vollständig isoliert und beeinflusst keine bereits gestartete lokale Studio-Datenbank mehr.\n- Wiederholte Prüfungen können dadurch auch bei vorhandenen datenbankweiten Rollen zuverlässig ausgeführt werden."
+}

@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./ssf": {
+      "types": "./dist/ssf-module-iam-contract.d.ts",
+      "default": "./dist/ssf-module-iam-contract.js"
     }
   },
   "dependencies": {

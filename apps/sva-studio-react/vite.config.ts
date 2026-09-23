@@ -24,6 +24,13 @@ const tanstackDevtoolsEnabled =
   process.env.PLAYWRIGHT_TEST !== 'true';
 const configuredParentDomain = process.env.SVA_PARENT_DOMAIN?.trim().toLowerCase();
 const configuredDevHost = process.env.HOST?.trim();
+const studioDistribution = (() => {
+  const value = process.env.SVA_STUDIO_DISTRIBUTION?.trim();
+  if (!value || value === 'studio') return 'studio';
+  if (value === 'ssf') return 'ssf';
+  throw new Error(`invalid_studio_distribution:${value}`);
+})();
+process.env.VITE_SVA_STUDIO_DISTRIBUTION = studioDistribution;
 const allowedHosts = [
   'localhost',
   '127.0.0.1',
@@ -91,6 +98,49 @@ const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
+      '#studio-plugin-client-inputs': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/plugin-client-inputs.ssf.ts'
+          : './src/lib/plugin-client-inputs.studio.ts'
+      ),
+      '#studio-plugin-catalog-inputs': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/plugin-catalog-inputs.ssf.ts'
+          : './src/lib/plugin-catalog-inputs.studio.ts'
+      ),
+      '#studio-mainserver-generic-type-inputs': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/mainserver-generic-type-inputs.ssf.server.ts'
+          : './src/lib/mainserver-generic-type-inputs.studio.server.ts'
+      ),
+      '#studio-module-iam-inputs': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/module-iam-inputs.ssf.ts'
+          : './src/lib/module-iam-inputs.studio.ts'
+      ),
+      '#studio-plugin-operation-runtime': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/plugin-operation-runtime.ssf.server.ts'
+          : './src/lib/plugin-operation-runtime.server.ts'
+      ),
+      '#studio-plugin-operation-inputs': resolveAppPath(
+        './src/lib/plugin-operation-inputs.studio.server.ts'
+      ),
+      '#studio-plugin-server-inputs': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/plugin-server-inputs.ssf.server.ts'
+          : './src/lib/plugin-server-inputs.studio.server.ts'
+      ),
+      '#studio-ssf-runtime-service-access': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/ssf-runtime-service-access.ssf.server.ts'
+          : './src/lib/ssf-runtime-service-access.studio.server.ts'
+      ),
+      '#studio-ssf-admin-login-directory': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/ssf-admin-login-directory.server.ts'
+          : './src/lib/ssf-admin-login-directory.excluded.server.ts'
+      ),
       '@': resolveAppPath('./src'),
       // React 19 + Vite resolves react-dom/server -> server.browser (no default export).
       // TanStack router imports a default export here, so provide a compat shim.
@@ -136,6 +186,9 @@ const config = defineConfig({
       '@sva/mail-runtime': resolveAppPath('../../packages/mail-runtime/src/index.ts'),
       '@sva/plugin-ssf/runtime': resolveAppPath('../../packages/plugin-ssf/src/runtime.ts'),
       '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
+      '@sva/studio-module-iam/ssf': resolveAppPath(
+        '../../packages/studio-module-iam/src/ssf-module-iam-contract.ts'
+      ),
       '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
       '@sva/iam-core': resolveAppPath('../../packages/iam-core/src/index.ts'),
       '@sva/iam-governance/read-models-internal': resolveAppPath(

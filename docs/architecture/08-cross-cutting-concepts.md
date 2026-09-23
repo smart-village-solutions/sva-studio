@@ -1109,3 +1109,7 @@ Tokens, Secrets oder E-Mail-Adressen.
 - Ein fehlgeschlagener Abgleich erzeugt keinen globalen Teilstatus: Nur die
   konkrete Einladung scheitert, und der nächste Versandversuch wiederholt die
   idempotente Sicherstellung.
+
+### Build-Zeit-Plugin-Grenze
+
+Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. Die Auswahl von Studio oder SSF erfolgt deshalb beim Build und entfernt nicht zulässige Katalog-, Route-, Job- und IAM-Beiträge vor dem Artefakt.

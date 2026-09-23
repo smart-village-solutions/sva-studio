@@ -10,7 +10,6 @@ import {
   type PluginCatalogEntry,
   type PluginManifest,
 } from '@sva/plugin-sdk';
-import studioPluginCatalogConfig from '../../plugin-catalog.json';
 import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,
@@ -21,11 +20,19 @@ import {
   getWorkspacePluginModuleCandidates,
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
+import {
+  nodeJobModuleLoaders,
+  nodeManifestModules,
+  nodePluginModuleLoaders,
+  workspaceJobModuleLoaders,
+  workspaceManifestModules,
+  workspacePluginModuleLoaders,
+} from '#studio-plugin-operation-inputs';
+import { pluginCatalogConfig } from '#studio-plugin-catalog-inputs';
 import { createNodemailerMailDispatcher } from '@sva/mail-runtime';
 import { protectField, revealField } from '@sva/auth-runtime/server';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
 import { createMapPostalCodeResolver } from './map-geocoding-api.operations.js';
-import { createStudioSsfAuthorizationProjectionRuntime } from './ssf-authorization-projection-runtime.server.js';
 import {
   createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
   type WasteManagementOperationRuntime,
@@ -62,45 +69,6 @@ const cancellablePluginJobTypeIds = new Set<string>([
 ]);
 const privilegedJobTypeId = wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase;
 
-const workspaceJobModuleLoaders = import.meta.glob(
-  '../../../../packages/plugin-*/src/server.ts'
-) as Record<string, PluginJobModuleLoader>;
-const workspacePluginModuleLoaders = {
-  ...import.meta.glob('../../../../packages/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../packages/plugin-*/src/index.tsx'),
-} as Record<string, () => Promise<Record<string, unknown>>>;
-const nodeJobModuleLoaders = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/server.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/server.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/server.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server.ts'),
-} as Record<string, PluginJobModuleLoader>;
-const nodePluginModuleLoaders = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.tsx'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx'),
-} as Record<string, () => Promise<Record<string, unknown>>>;
-const workspaceManifestModules = import.meta.glob(
-  '../../../../packages/plugin-*/plugin.manifest.json',
-  {
-    eager: true,
-    import: 'default',
-  }
-) as Record<string, PluginManifest>;
-const nodeManifestModules = {
-  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-} as Record<string, PluginManifest>;
-
 const {
   workspaceManifestRegistry,
   nodeManifestRegistry,
@@ -123,7 +91,7 @@ const {
 });
 
 const studioPluginCatalogConfigEntries =
-  studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
+  pluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
 const resolveStudioPluginManifest = (
   entry: StudioPluginCatalogConfigEntry
 ): PluginManifest | undefined =>
@@ -240,7 +208,6 @@ const resolvePluginJobModule = (input: {
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
-  'ssf.authorization-projection': createStudioSsfAuthorizationProjectionRuntime,
   'waste-management.operations': () =>
     createWasteManagementOperationRuntime({
       dispatchMail: createNodemailerMailDispatcher({}),

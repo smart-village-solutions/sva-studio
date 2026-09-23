@@ -404,3 +404,7 @@ Studio-Deployments und andere Worker erhalten weder diesen Mount noch
 Docker-Socket oder ACME-Speicher. App und Provisioner verwenden dasselbe
 immutable Image, aber keine gemeinsame In-Memory-Konfiguration: der
 prozessübergreifende Vertrag liegt im versionierten Elternlauf-Snapshot.
+
+### Ergänzung 2026-09: getrennte Studio-Distributionen
+
+Der Main-Build erzeugt getrennte, OCI-gelabelte Images `sva-studio` und `sva-studio-ssf`; jedes enthält ein Distribution-Manifest und wird vor einer Promotion mit seinem eigenen Digest verifiziert. Nur das reguläre Studio-Image wird in den bestehenden Dev-Promote-Pfad übergeben.

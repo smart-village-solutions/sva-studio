@@ -1034,3 +1034,7 @@ Details offen.
 - `sva-kern2` besitzt zusätzlich einen E-Mail-Typ. Keycloak bleibt Eigentümer
   von Action-Token, Ablaufprüfung, Rendering und SMTP-Versand; Studio erhält
   den Passwortlink nie.
+
+### Distributionsgrenze Studio und SSF
+
+Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt profiliert: `studio` enthält kein SSF, `ssf` ausschließlich SSF und Media.

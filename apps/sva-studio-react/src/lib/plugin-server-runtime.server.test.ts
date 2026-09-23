@@ -98,61 +98,20 @@ describe('plugin server runtime loader', () => {
     ).rejects.toThrow('invalid_plugin_server_handler_binding:news:news.list');
   });
 
-  it('installs fail-closed SSF service access while preserving explicit test overrides', async () => {
+  it('does not install SSF service access in the Studio distribution', async () => {
     const authenticateService = vi.fn();
 
     await createStudioPluginServerHandlerDispatcher({
       dependencies: { authenticateService },
     });
 
-    expect(authRuntimeMocks.createSsfRuntimePluginServiceAccess).toHaveBeenCalledTimes(1);
-    expect(authRuntimeMocks.createSsfRuntimePluginServiceAccess).toHaveBeenCalledWith({
-      readAuthorizationRevision: expect.any(Function),
-      readDatabaseReadiness: expect.any(Function),
-      readLoginReadiness: expect.any(Function),
-    });
+    expect(authRuntimeMocks.createSsfRuntimePluginServiceAccess).not.toHaveBeenCalled();
     expect(authRuntimeMocks.createPluginServerHandlerDispatcher).toHaveBeenCalledWith(
       expect.objectContaining({
         dependencies: expect.objectContaining({
           authenticateService,
-          bindServiceTenant: expect.any(Function),
         }),
       })
     );
-  });
-
-  it('binds SSF readiness providers to one configured plugin database pool', async () => {
-    ssfRuntimeMocks.resolveSsfDatabasePool.mockReturnValue(ssfRuntimeMocks.pool);
-    ssfRuntimeMocks.readSsfTenant.mockResolvedValue({ instanceId: 'tenant-a' });
-    ssfRuntimeMocks.readReadySsfAuthorizationRevision.mockResolvedValue('sha256:revision');
-
-    await createStudioPluginServerHandlerDispatcher();
-
-    const dependencies =
-      authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
-    if (!dependencies) throw new Error('missing_ssf_runtime_dependencies');
-    await expect(dependencies.readDatabaseReadiness('tenant-a')).resolves.toBe(true);
-    await expect(dependencies.readAuthorizationRevision('tenant-a')).resolves.toBe(
-      'sha256:revision'
-    );
-    expect(ssfRuntimeMocks.readSsfTenant).toHaveBeenCalledWith(ssfRuntimeMocks.pool, 'tenant-a');
-    expect(ssfRuntimeMocks.readReadySsfAuthorizationRevision).toHaveBeenCalledWith(
-      ssfRuntimeMocks.pool,
-      'tenant-a'
-    );
-  });
-
-  it('keeps SSF readiness closed without a configured plugin database', async () => {
-    ssfRuntimeMocks.resolveSsfDatabasePool.mockReturnValue(null);
-
-    await createStudioPluginServerHandlerDispatcher();
-
-    const dependencies =
-      authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
-    if (!dependencies) throw new Error('missing_ssf_runtime_dependencies');
-    await expect(dependencies.readDatabaseReadiness('tenant-a')).resolves.toBe(false);
-    await expect(dependencies.readAuthorizationRevision('tenant-a')).resolves.toBeNull();
-    expect(ssfRuntimeMocks.readSsfTenant).not.toHaveBeenCalled();
-    expect(ssfRuntimeMocks.readReadySsfAuthorizationRevision).not.toHaveBeenCalled();
   });
 });

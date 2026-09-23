@@ -1,6 +1,5 @@
 import {
   createPluginServerHandlerDispatcher,
-  createSsfRuntimePluginServiceAccess,
   type PluginServerHandlerDispatcherDependencies,
 } from '@sva/auth-runtime/server';
 import type {
@@ -9,18 +8,19 @@ import type {
   PluginServerExecutionHandler,
   PluginServerHandlerModuleFactory,
 } from '@sva/plugin-sdk';
-import {
-  readReadySsfAuthorizationRevision,
-  readSsfTenant,
-  resolveSsfDatabasePool,
-} from '@sva/plugin-ssf/runtime';
 
 import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,
 } from './plugin-build-registry.js';
 import { studioPluginSnapshot } from './plugins.js';
-import { readStudioSsfLoginReadiness } from './ssf-login-readiness.server.js';
+import { createStudioSsfRuntimeServiceAccess } from '#studio-ssf-runtime-service-access';
+import {
+  nodeManifestModules,
+  nodeServerModuleLoaders,
+  workspaceManifestModules,
+  workspaceServerModuleLoaders,
+} from '#studio-plugin-server-inputs';
 
 type PluginServerModuleExports = Readonly<{
   createPluginServerHandlers?: PluginServerHandlerModuleFactory;
@@ -32,33 +32,6 @@ type StudioPluginServerSource = Readonly<{
   sourceRef: string;
   manifest: PluginManifest;
 }>;
-
-const workspaceManifestModules = import.meta.glob(
-  '../../../../packages/plugin-*/plugin.manifest.json',
-  { eager: true, import: 'default' }
-) as Record<string, PluginManifest>;
-const workspaceServerModuleLoaders = {
-  ...import.meta.glob('../../../../packages/plugin-*/src/server.ts'),
-  ...import.meta.glob('../../../../packages/plugin-*/src/server/index.ts'),
-} as Record<string, () => Promise<PluginServerModuleExports>>;
-const nodeManifestModules = {
-  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-} as Record<string, PluginManifest>;
-const nodeServerModuleLoaders = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/server.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/server.ts'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/server/index.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/server.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server/index.ts'),
-} as Record<string, () => Promise<PluginServerModuleExports>>;
 
 const { workspacePluginRegistry: workspaceServerRegistry, nodePluginRegistry: nodeServerRegistry } =
   createPluginBuildRegistries({
@@ -134,22 +107,11 @@ export const createStudioPluginServerHandlerDispatcher = async (
   const handlers = await createPluginServerExecutionHandlersFromSnapshot({
     pluginSources: studioPluginSnapshot.pluginSources as readonly StudioPluginServerSource[],
   });
-  const ssfRuntimeServiceAccess = createSsfRuntimePluginServiceAccess({
-    readLoginReadiness: readStudioSsfLoginReadiness,
-    readDatabaseReadiness: async (instanceId) => {
-      const pool = resolveSsfDatabasePool();
-      return pool ? (await readSsfTenant(pool, instanceId)) !== null : false;
-    },
-    readAuthorizationRevision: async (instanceId) => {
-      const pool = resolveSsfDatabasePool();
-      return pool ? readReadySsfAuthorizationRevision(pool, instanceId) : null;
-    },
-  });
   const dispatchPlugin = createPluginServerHandlerDispatcher({
     descriptors: studioPluginSnapshot.registry.pluginServerHandlerRegistry,
     handlers,
     dependencies: {
-      ...ssfRuntimeServiceAccess,
+      ...createStudioSsfRuntimeServiceAccess(),
       ...input.dependencies,
     },
   });

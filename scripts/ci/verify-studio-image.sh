@@ -2,12 +2,17 @@
 set -euo pipefail
 
 if [ "${1:-}" = "" ]; then
-  echo "usage: verify-studio-image.sh <image-ref> [artifact-dir]" >&2
+  echo "usage: verify-studio-image.sh <image-ref> [artifact-dir] [studio|ssf]" >&2
   exit 1
 fi
 
 IMAGE_REF="$1"
 ARTIFACT_DIR_INPUT="${2:-artifacts/runtime/image-verify}"
+SVA_STUDIO_DISTRIBUTION="${3:-studio}"
+case "${SVA_STUDIO_DISTRIBUTION}" in
+  studio|ssf) ;;
+  *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;;
+esac
 VERIFY_ID="studio-image-verify-$(date +%s)"
 NETWORK_NAME="${VERIFY_ID}-net"
 POSTGRES_NAME="${VERIFY_ID}-postgres"
@@ -27,6 +32,17 @@ REPORT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.json"
 SUMMARY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.md"
 PHASES_LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.phases.log"
 ENV_FILE="${ARTIFACT_DIR}/${VERIFY_ID}.env"
+
+actual_distribution="$(docker image inspect "${IMAGE_REF}" --format '{{ index .Config.Labels "com.sva-studio.distribution" }}')"
+if [ "${actual_distribution}" != "${SVA_STUDIO_DISTRIBUTION}" ]; then
+  echo "image_distribution_mismatch:expected=${SVA_STUDIO_DISTRIBUTION}:actual=${actual_distribution}" >&2
+  exit 1
+fi
+artifact_distribution="$(docker run --rm --entrypoint cat "${IMAGE_REF}" .output/server/generated/studio-distribution.json | jq -er '.distribution')"
+if [ "${artifact_distribution}" != "${SVA_STUDIO_DISTRIBUTION}" ]; then
+  echo "artifact_distribution_mismatch:expected=${SVA_STUDIO_DISTRIBUTION}:actual=${artifact_distribution}" >&2
+  exit 1
+fi
 
 FAILURE_CLASS="none"
 FAILED_PHASE=""

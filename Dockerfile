@@ -2,11 +2,14 @@ FROM node:24.15.0-alpine AS build
 
 WORKDIR /workspace
 
+ARG SVA_STUDIO_DISTRIBUTION=studio
+
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}:${PATH}"
 ENV CI=true
 ENV NX_DAEMON=false
 ENV NX_ADD_PLUGINS=false
+ENV SVA_STUDIO_DISTRIBUTION=${SVA_STUDIO_DISTRIBUTION}
 
 RUN apk add --no-cache bash
 RUN npm install -g pnpm@11.3.0
@@ -82,6 +85,8 @@ const walk = (dir) => { \
 for (const distRoot of distRoots) walk(distRoot);"
 RUN pnpm exec tsx scripts/ci/check-production-jsx-runtime.ts /workspace/apps/sva-studio-react
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
+RUN pnpm exec tsx scripts/ci/studio-distribution-artifact.ts prune-deploy \
+      /workspace/.deploy/sva-studio-react "${SVA_STUDIO_DISTRIBUTION}"
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.
 # Important: /node_modules/@sva/* are symlinks, so we target real .pnpm directories.
@@ -100,15 +105,18 @@ RUN find /workspace/.deploy/sva-studio-react/node_modules/.pnpm \
 FROM node:24.15.0-alpine AS runtime
 
 ARG SVA_IMAGE_REVISION
+ARG SVA_STUDIO_DISTRIBUTION=studio
 
 LABEL org.opencontainers.image.source="https://github.com/smart-village-solutions/sva-studio"
 LABEL org.opencontainers.image.revision="${SVA_IMAGE_REVISION}"
+LABEL com.sva-studio.distribution="${SVA_STUDIO_DISTRIBUTION}"
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV SVA_STUDIO_DISTRIBUTION=${SVA_STUDIO_DISTRIBUTION}
 
 RUN apk add --no-cache aws-cli bash curl ca-certificates postgresql-client \
   && aws --version \
@@ -135,6 +143,11 @@ COPY --from=build --chown=node:node /workspace/packages/data/goose.config.json .
 COPY --from=build --chown=node:node /workspace/packages/data/scripts/goosew.sh ./packages/data/scripts/goosew.sh
 COPY --from=build --chown=node:node /workspace/packages/data/migrations ./packages/data/migrations
 COPY --from=build --chown=node:node /workspace/packages/plugin-ssf/migrations ./packages/plugin-ssf/migrations
+RUN case "${SVA_STUDIO_DISTRIBUTION}" in \
+      studio) rm -rf packages/plugin-ssf migrate-ssf-plugin.mjs ssf-plugin-database-config.mjs ;; \
+      ssf) rm -f migrate-waste-tenants.mjs waste-tenant-migration-catalog.mjs ;; \
+      *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;; \
+    esac
 RUN chmod +x entrypoint.sh bootstrap-entrypoint.sh migrate-entrypoint.sh provisioner-entrypoint.sh packages/data/scripts/goosew.sh
 RUN chown -R node:node /app
 

@@ -138,6 +138,12 @@ const authServerMocks = vi.hoisted(() => {
     instanceRegistryHandlers: {
       listInstances: vi.fn(async () => response('listInstancesHandler')),
       getInstanceAuditRun: vi.fn(async () => response('getInstanceAuditRunHandler')),
+      getServerAccountInvitationTemplate: vi.fn(async () =>
+        response('getServerAccountInvitationTemplateHandler')
+      ),
+      updateServerAccountInvitationTemplate: vi.fn(async () =>
+        response('updateServerAccountInvitationTemplateHandler')
+      ),
       getInstance: vi.fn(async () => response('getInstanceHandler')),
       getPluginTenantReadiness: vi.fn(async () => response('getPluginTenantReadinessHandler')),
       startPluginTenantLifecycle: vi.fn(async () => response('startPluginTenantLifecycleHandler')),
@@ -1219,6 +1225,12 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getMediaDeliveryHandler).toHaveBeenCalled();
     expect(authServerMocks.replaceMediaReferencesHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.getServerAccountInvitationTemplate
+    ).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.updateServerAccountInvitationTemplate
+    ).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.retryTenantProvisioning).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getPluginTenantReadiness).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.startPluginTenantLifecycle).toHaveBeenCalled();

@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -105,6 +106,12 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
   hostnames: [],
   provisioningRuns: [],
   auditEvents: [],
+  effectiveAccountInvitationTemplate: {
+    ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+    revision: 0,
+  },
+  accountInvitationTemplateSource: 'sva_default',
+  serverAccountInvitationTemplateRevision: 0,
   keycloakPreflight: {
     overallStatus: 'ready',
     generatedAt: '2026-01-01T00:00:00.000Z',

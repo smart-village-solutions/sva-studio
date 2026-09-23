@@ -1,91 +1,64 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-POSTGRES_DB="${POSTGRES_DB:-sva_studio}"
-POSTGRES_USER="${POSTGRES_USER:-sva}"
-POSTGRES_READY_DB="${POSTGRES_READY_DB:-postgres}"
+POSTGRES_DB="sva_studio"
+POSTGRES_USER="sva"
+POSTGRES_PASSWORD="sva_migration_validation_password"
 POSTGRES_WAIT_TIMEOUT_SECONDS="${POSTGRES_WAIT_TIMEOUT_SECONDS:-120}"
-
-if ! docker compose config --services >/tmp/data-compose-services.txt 2>/tmp/data-compose-services.err; then
-  echo "Failed to read docker compose services:"
-  cat /tmp/data-compose-services.err
-  exit 1
-fi
-
-if command -v rg >/dev/null 2>&1; then
-  service_exists_cmd=(rg -qx 'postgres' /tmp/data-compose-services.txt)
-else
-  service_exists_cmd=(grep -qx 'postgres' /tmp/data-compose-services.txt)
-fi
-
-if ! "${service_exists_cmd[@]}"; then
-  echo "Postgres service not found in docker compose configuration."
-  exit 1
-fi
-
-if [ -z "$(docker compose ps -q postgres)" ]; then
-  echo "Postgres container is not running. Starting it via docker compose..."
-else
-  echo "Ensuring Postgres service is running and healthy..."
-fi
-
-if docker compose up --help | grep -q -- '--wait'; then
-  docker compose up -d --wait --wait-timeout "${POSTGRES_WAIT_TIMEOUT_SECONDS}" postgres
-else
-  echo "docker compose --wait is not available. Falling back to pg_isready polling..."
-  docker compose up -d postgres
-fi
-
-echo "Wait for Postgres readiness..."
-attempt=0
-max_attempts="${POSTGRES_WAIT_TIMEOUT_SECONDS}"
-until docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; do
-  attempt=$((attempt + 1))
-  if [ "${attempt}" -ge "${max_attempts}" ]; then
-    break
-  fi
-  sleep 1
-done
-
-if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" >/dev/null 2>&1; then
-  echo "Postgres did not become ready in time."
-  docker compose logs postgres --tail=200 || true
-  exit 1
-fi
-
-timestamp="$(date +%s)"
-raw_db_name="${POSTGRES_DB}_validate_${timestamp}_$$"
-sanitized_db_name="$(printf '%s' "${raw_db_name}" | tr -c '[:alnum:]_' '_')"
-VALIDATION_DB_NAME="${VALIDATION_DB_NAME:-${sanitized_db_name:0:63}}"
+POSTGRES_IMAGE="postgres:16-alpine"
+VALIDATION_CONTAINER_NAME="sva-migration-validation-$(date +%s)-$$"
 
 cleanup() {
   local exit_code="$1"
 
-  echo "Dropping temporary validation database: ${VALIDATION_DB_NAME}"
-  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" <<SQL >/dev/null
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE datname = '${VALIDATION_DB_NAME}'
-  AND pid <> pg_backend_pid();
-
-DROP DATABASE IF EXISTS "${VALIDATION_DB_NAME}";
-SQL
-
+  trap - EXIT
+  echo "Removing temporary validation container: ${VALIDATION_CONTAINER_NAME}"
+  docker rm --force "${VALIDATION_CONTAINER_NAME}" >/dev/null 2>&1 || true
   exit "${exit_code}"
 }
 
 trap 'cleanup $?' EXIT
 
-echo "Creating temporary validation database: ${VALIDATION_DB_NAME}"
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${POSTGRES_READY_DB}" <<SQL >/dev/null
-DROP DATABASE IF EXISTS "${VALIDATION_DB_NAME}";
-CREATE DATABASE "${VALIDATION_DB_NAME}";
-SQL
+echo "Starting isolated Postgres validation container: ${VALIDATION_CONTAINER_NAME}"
+docker run \
+  --detach \
+  --rm \
+  --name "${VALIDATION_CONTAINER_NAME}" \
+  --env "POSTGRES_DB=${POSTGRES_DB}" \
+  --env "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
+  --env "POSTGRES_USER=${POSTGRES_USER}" \
+  --publish '127.0.0.1::5432' \
+  "${POSTGRES_IMAGE}" >/dev/null
 
-echo "Validating migrations against temporary database..."
-POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh down-to 0 || true
-POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh up
-POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh down-to 0
-POSTGRES_DB="${VALIDATION_DB_NAME}" bash packages/data/scripts/run-migrations.sh up
+echo "Wait for isolated Postgres readiness..."
+attempt=0
+until docker exec "${VALIDATION_CONTAINER_NAME}" \
+  pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; do
+  attempt=$((attempt + 1))
+  if [ "${attempt}" -ge "${POSTGRES_WAIT_TIMEOUT_SECONDS}" ]; then
+    echo "Isolated Postgres did not become ready in time."
+    docker logs "${VALIDATION_CONTAINER_NAME}" --tail=200 || true
+    exit 1
+  fi
+  sleep 1
+done
 
-echo "Migration validation successful (up -> down -> up) on temporary database ${VALIDATION_DB_NAME}."
+POSTGRES_PORT="$(docker port "${VALIDATION_CONTAINER_NAME}" 5432/tcp | sed -E 's/^.*:([0-9]+)$/\1/')"
+if ! [[ "${POSTGRES_PORT}" =~ ^[0-9]+$ ]]; then
+  echo "Could not determine the isolated Postgres port."
+  exit 1
+fi
+
+export POSTGRES_DB
+export POSTGRES_HOST="127.0.0.1"
+export POSTGRES_PASSWORD
+export POSTGRES_PORT
+export POSTGRES_USER
+export SVA_LOCAL_POSTGRES_CONTAINER_NAME="${VALIDATION_CONTAINER_NAME}"
+
+echo "Validating migrations in isolated Postgres..."
+bash packages/data/scripts/run-migrations.sh up
+bash packages/data/scripts/run-migrations.sh down-to 0
+bash packages/data/scripts/run-migrations.sh up
+
+echo "Migration validation successful (up -> down -> up) in isolated Postgres."

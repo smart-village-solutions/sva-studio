@@ -45,11 +45,9 @@ import type {
 } from './confirmation-challenges.js';
 import type { InstanceDraftReadiness } from './service-draft-readiness.js';
 import type { RealmCatalog } from './service-realm-catalog.js';
-
 type ModuleActivationPolicyReconcileResult = Awaited<
   ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
 >;
-
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
@@ -67,7 +65,6 @@ export type InstanceModuleIamRegistryEntry = {
   }[];
   readonly systemAdminPermissionExclusions?: readonly string[];
 };
-
 export type ProvisioningPluginTenantLifecycleContract = Readonly<{
   pluginId: string;
   contractVersion: 1;
@@ -84,7 +81,6 @@ export type ProvisioningPluginTenantLifecycleContract = Readonly<{
     repairOperation?: 'provision' | 'reconcile' | 'suspend' | 'reactivate';
   }>[];
 }>;
-
 type KeycloakProvisioningContext = {
   instanceId: string;
   primaryHostname: string;
@@ -106,7 +102,6 @@ type KeycloakProvisioningContext = {
 type KeycloakPlanContext = KeycloakProvisioningContext & {
   realmBaselineApplicable?: boolean;
 };
-
 export type InstanceRegistryService = {
   prepareConfirmationChallenge(
     input: PrepareInstanceConfirmationChallengeInput

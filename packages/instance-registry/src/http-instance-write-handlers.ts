@@ -1,9 +1,9 @@
 import { buildPrimaryHostname, normalizeHost } from '@sva/core';
+import { z } from 'zod';
 
 import {
   createInstanceSchema,
   resolveCreateInstanceDefaults,
-  serverAccountInvitationTemplateMutationSchema,
   updateInstanceSchema,
 } from './http-contracts.js';
 import {
@@ -19,6 +19,13 @@ import {
 } from './http-instance-shared.js';
 import { mutationErrorMessages } from './http-mutation-error-messages.js';
 import type { InstanceRegistryService } from './service-types.js';
+
+const serverAccountInvitationTemplateMutationSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative(),
+    template: updateInstanceSchema.shape.accountInvitationTemplate.unwrap(),
+  })
+  .strict();
 
 const findReservedOidcClientId = (
   input: Pick<CreateInstancePayload, 'authClientId' | 'tenantAdminClient'>,

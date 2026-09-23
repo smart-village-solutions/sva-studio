@@ -1,11 +1,7 @@
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
-import {
-  getServerAccountInvitationTemplate,
-  updateAccountInvitationTemplate,
-  updateServerAccountInvitationTemplate,
-} from './repository-account-invitation-template.js';
+import * as invitationTemplates from './repository-account-invitation-template.js';
 import {
   buildInstanceSelectColumns,
   demotePreviousPrimaryHostnameSql,
@@ -80,19 +76,18 @@ const demotePreviousPrimaryHostname = async (
 const instanceExists = async (executor: SqlExecutor, instanceId: string): Promise<boolean> => {
   const rows = await queryRows<{ instance_exists: boolean }>(
     executor,
-    statement(`SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`, [
-      instanceId,
-    ])
+    statement(
+      `SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`,
+      [instanceId]
+    )
   );
   return rows[0]?.instance_exists === true;
 };
 
-const createInstance = async (
-  executor: SqlExecutor,
-  input: Parameters<MutationRepository['createInstance']>[0]
-) => {
-  const rows = await runMutationStep('registry_insert', () =>
-    queryRows<InstanceListRow>(executor, {
+const createInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['createInstance']>[0]) => {
+  const rows = await runMutationStep('registry_insert', () => queryRows<InstanceListRow>(
+    executor,
+    {
       text: `
 INSERT INTO iam.instances (
   id, display_name, status, parent_domain, primary_hostname, realm_mode, auth_realm, auth_client_id,
@@ -106,8 +101,8 @@ RETURNING
 ${buildInstanceSelectColumns()};
 `,
       values: createInstanceValues(input),
-    })
-  );
+    }
+  ));
   if (!rows[0]) {
     return null;
   }
@@ -117,10 +112,7 @@ ${buildInstanceSelectColumns()};
   return mapInstance(rows[0]);
 };
 
-const updateInstance = async (
-  executor: SqlExecutor,
-  input: Parameters<MutationRepository['updateInstance']>[0]
-) => {
+const updateInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['updateInstance']>[0]) => {
   const rows = await queryRows<InstanceListRow>(
     executor,
     statement(
@@ -253,10 +245,12 @@ ${buildInstanceSelectColumns()};
 export const createMutationRepository = (executor: SqlExecutor): MutationRepository => ({
   createInstance: (input) => createInstance(executor, input),
   updateInstance: (input) => updateInstance(executor, input),
-  updateAccountInvitationTemplate: (input) => updateAccountInvitationTemplate(executor, input),
-  getServerAccountInvitationTemplate: () => getServerAccountInvitationTemplate(executor),
+  updateAccountInvitationTemplate: (input) =>
+    invitationTemplates.updateAccountInvitationTemplate(executor, input),
+  getServerAccountInvitationTemplate: () =>
+    invitationTemplates.getServerAccountInvitationTemplate(executor),
   updateServerAccountInvitationTemplate: (input) =>
-    updateServerAccountInvitationTemplate(executor, input),
+    invitationTemplates.updateServerAccountInvitationTemplate(executor, input),
   updateInstanceKeycloakSecrets: (input) => updateInstanceKeycloakSecrets(executor, input),
   setInstanceStatus: (input) => setInstanceStatus(executor, input),
   setInstanceRealmMode: (input) => setInstanceRealmMode(executor, input),

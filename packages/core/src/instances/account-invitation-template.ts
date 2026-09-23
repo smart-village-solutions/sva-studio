@@ -10,7 +10,7 @@ export const ACCOUNT_INVITATION_TEMPLATE_KEY = 'account_invitation' as const;
 
 export type AccountInvitationTemplateSource = 'instance' | 'server' | 'sva_default';
 
-export type EffectiveAccountInvitationTemplate = Readonly<{
+type EffectiveAccountInvitationTemplate = Readonly<{
   template: AccountInvitationTemplate;
   source: AccountInvitationTemplateSource;
 }>;

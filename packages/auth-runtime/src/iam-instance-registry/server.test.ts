@@ -62,11 +62,17 @@ vi.mock('./core.js', () => ({
   listInstanceRealmsInternal: vi.fn(async () => new Response('realms', { status: 200 })),
   retryTenantProvisioningInternal: vi.fn(async () => new Response('retry', { status: 200 })),
   getInstanceInternal: vi.fn(async () => new Response('get', { status: 200 })),
+  getServerAccountInvitationTemplateInternal: vi.fn(
+    async () => new Response('server-template', { status: 200 })
+  ),
   listInstancesInternal: vi.fn(async () => new Response('list', { status: 200 })),
   revokeInstanceModuleInternal: vi.fn(async () => new Response('revoke', { status: 200 })),
   seedInstanceIamBaselineInternal: vi.fn(async () => new Response('seed', { status: 200 })),
   suspendInstanceInternal: vi.fn(async () => new Response('suspend', { status: 200 })),
   updateInstanceInternal: vi.fn(async () => new Response('update', { status: 200 })),
+  updateServerAccountInvitationTemplateInternal: vi.fn(
+    async () => new Response('update-server-template', { status: 200 })
+  ),
 }));
 
 vi.mock('./core-keycloak.js', () => ({
@@ -369,9 +375,9 @@ describe('iam-instance-registry/server', () => {
       )
     );
 
-    expect(responses).toHaveLength(28);
+    expect(responses).toHaveLength(30);
     expect(responses.every((response) => response.status === 200)).toBe(true);
-    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(28);
+    expect(state.withAuthenticatedUser).toHaveBeenCalledTimes(30);
     expect(state.prepareInstanceConfirmationInternal).toHaveBeenCalledOnce();
   });
 });

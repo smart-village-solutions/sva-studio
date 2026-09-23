@@ -456,7 +456,6 @@ export type {
   AccountInvitationTemplate,
   AccountInvitationTemplateSource,
   CompiledAccountInvitationTemplate,
-  EffectiveAccountInvitationTemplate,
   ServerAccountInvitationTemplateState,
   ServerAccountInvitationTemplateView,
 } from './instances/account-invitation-template.js';

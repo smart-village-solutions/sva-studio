@@ -323,7 +323,7 @@ const recordProvisioningWakeupFailure = async (
     statement(
       `
 WITH candidate AS (
-  SELECT id
+  SELECT id AS candidate_run_id
   FROM iam.instance_provisioning_runs
   WHERE instance_id = $1
     AND operation = 'create'
@@ -341,7 +341,7 @@ SET error_code = $2,
     next_attempt_at = LEAST(run.next_attempt_at, now()),
     updated_at = now()
 FROM candidate
-WHERE run.id = candidate.id
+WHERE run.id = candidate.candidate_run_id
 RETURNING ${provisioningColumns};
 `,
       [input.instanceId, input.errorCode, input.errorMessage, input.occurredAt]

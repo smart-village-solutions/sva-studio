@@ -317,7 +317,7 @@ const waitForHttpOk = async (url: string, timeoutMs: number) => {
 };
 
 export const upLocalInfra = ({ composeArgs, env, run }: LocalInfraOptions) => {
-  run('docker', [...composeArgs, 'up', '-d'], env);
+  run('docker', [...composeArgs, 'up', '-d', '--scale', 'app=0'], env);
 };
 
 export const downLocalInfra = ({ composeArgs, env, run }: LocalInfraOptions) => {

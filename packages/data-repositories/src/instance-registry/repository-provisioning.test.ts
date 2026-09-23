@@ -663,6 +663,8 @@ describe('instance registry repository provisioning', () => {
       errorCode: 'post_commit_wakeup_failed',
     });
     expect(statements[0]?.text).toContain("status IN ('requested', 'validated', 'provisioning')");
+    expect(statements[0]?.text).toContain('SELECT id AS candidate_run_id');
+    expect(statements[0]?.text).toContain('run.id = candidate.candidate_run_id');
     expect(statements[0]?.text).toContain('next_attempt_at = LEAST(run.next_attempt_at, now())');
     expect(statements[0]?.text).toContain("'postCommitWakeup'");
     expect(statements[0]?.text).not.toContain('lease_owner = NULL');

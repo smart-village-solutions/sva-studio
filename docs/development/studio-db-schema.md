@@ -129,8 +129,10 @@ Löschung wäre fachlich nicht sicher.
 `iam.server_account_invitation_templates` hält ausschließlich den
 plattformweiten Account-Einladungs-Override. Der Check-Constraint begrenzt den
 Schlüssel auf `account_invitation` und bindet die JSON-Revision an die separate,
-auch nach einem Reset fortlaufende Revision. Erzwungene RLS erlaubt den Zugriff
-nur im Plattformkontext ohne gesetzte `iam.current_instance_id()`.
+auch nach einem Reset fortlaufende Revision. Erzwungene RLS stellt die globale
+Vorlage auch in tenant-bezogenen Lesevorgängen für die Vererbung bereit;
+Schreibzugriffe bleiben auf den Plattformkontext ohne gesetzte
+`iam.current_instance_id()` begrenzt.
 
 Migration `0095` erzwingt pro Keycloak-Provisioning-Lauf höchstens einen
 `queued`-Schritt. Vor dem Indexaufbau behält sie bei historischen Duplikaten

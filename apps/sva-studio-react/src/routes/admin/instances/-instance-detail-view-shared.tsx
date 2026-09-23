@@ -28,10 +28,14 @@ export const INSTANCE_STATUS_LABELS = {
 } as const;
 
 export const COCKPIT_STATUS_STYLES = {
-  ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900',
-  degraded: 'border-amber-500/30 bg-amber-500/10 text-amber-950',
-  blocked: 'border-red-500/30 bg-red-500/10 text-red-900',
-  unknown: 'border-slate-400/30 bg-slate-500/10 text-slate-900',
+  ready:
+    'border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200',
+  degraded:
+    'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200',
+  blocked:
+    'border-red-500/30 bg-red-500/10 text-red-900 dark:bg-red-950/40 dark:text-red-200',
+  unknown:
+    'border-slate-400/30 bg-slate-500/10 text-slate-900 dark:bg-slate-900/60 dark:text-slate-200',
 } as const;
 
 export const TENANT_IAM_AXIS_TITLE_KEYS = {
@@ -117,11 +121,11 @@ export const TenantIamStatusBadge = ({
 }) => {
   const tone =
     status === 'ready'
-      ? 'bg-emerald-100 text-emerald-800'
+      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
       : status === 'blocked'
-        ? 'bg-red-100 text-red-800'
+        ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200'
         : status === 'degraded'
-          ? 'bg-amber-100 text-amber-900'
+          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200'
           : 'bg-muted text-muted-foreground';
 
   return (

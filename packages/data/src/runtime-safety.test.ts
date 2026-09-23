@@ -616,6 +616,25 @@ test('instance provisioning orchestration migration and snapshot preserve leases
   expect(downSql).toMatch(/DROP COLUMN IF EXISTS snapshot_version/);
 });
 
+test('server invitation template scope keeps inherited reads tenant-visible and writes platform-only', () => {
+  const sql = readRepoFile(
+    'data/migrations/0099_iam_server_account_invitation_template_scope.sql'
+  );
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+  const downSql = sql.split('-- +goose Down')[1] ?? '';
+
+  expect(upSql).toMatch(
+    /ALTER POLICY server_account_invitation_templates_platform_scope[\s\S]+USING \(true\)[\s\S]+WITH CHECK \(iam\.current_instance_id\(\) IS NULL\)/
+  );
+  expect(schemaSnapshot).toMatch(
+    /CREATE POLICY server_account_invitation_templates_platform_scope[\s\S]+USING \(true\) WITH CHECK \(\(iam\.current_instance_id\(\) IS NULL\)\)/
+  );
+  expect(downSql).toMatch(
+    /USING \(iam\.current_instance_id\(\) IS NULL\)[\s\S]+WITH CHECK \(iam\.current_instance_id\(\) IS NULL\)/
+  );
+});
+
 test('organization type migration and schema snapshot support associations and institutions', () => {
   const sql = readRepoFile(
     'data/migrations/0084_iam_organization_types_association_institution.sql'

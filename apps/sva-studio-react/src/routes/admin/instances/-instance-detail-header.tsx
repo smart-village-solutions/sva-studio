@@ -88,8 +88,8 @@ export const InstanceDetailHeader = ({
       <div
         className={
           doctorWarning.tone === 'blocked'
-            ? 'rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-900'
-            : 'rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-950'
+            ? 'rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-900 dark:bg-red-950/40 dark:text-red-200'
+            : 'rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200'
         }
       >
         <div className="font-medium">{doctorWarning.title}</div>

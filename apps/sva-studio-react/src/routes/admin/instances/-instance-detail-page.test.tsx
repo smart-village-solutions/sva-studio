@@ -640,8 +640,14 @@ describe('InstanceDetailPage', () => {
     expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain(
       'border-emerald-500/40'
     );
+    expect(readActionFeedbackClassName({ tone: 'success', message: 'ok' }, false)).toContain(
+      'dark:text-emerald-200'
+    );
     expect(readActionFeedbackClassName({ tone: 'warning', message: 'warn' }, false)).toContain(
       'border-amber-500/40'
+    );
+    expect(readActionFeedbackClassName({ tone: 'warning', message: 'warn' }, false)).toContain(
+      'dark:text-amber-200'
     );
   });
 

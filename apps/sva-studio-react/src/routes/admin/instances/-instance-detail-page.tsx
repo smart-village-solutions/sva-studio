@@ -586,13 +586,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       ) : null}
 
       {workerPendingProjection && !missingWorkerEnvName ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950">
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
           <AlertDescription>{t('admin.instances.feedback.workerProjectionHint')}</AlertDescription>
         </Alert>
       ) : null}
 
       {workerUnavailableWarning && !missingWorkerEnvName ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950">
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
           <AlertDescription>{t('admin.instances.feedback.workerUnavailable')}</AlertDescription>
         </Alert>
       ) : null}

@@ -266,6 +266,37 @@ describe('instance detail split sections', () => {
               requestId: 'req-anomaly',
             },
           ],
+          setupSteps: [
+            {
+              key: 'prepare',
+              title: 'Bereitstellung vorbereiten',
+              description: 'Vorbedingungen und Plan prüfen.',
+              status: 'done',
+            },
+            {
+              key: 'confirm',
+              title: 'Änderungen bestätigen',
+              description: 'Plan bestätigen.',
+              status: 'current',
+            },
+          ],
+          technicalProgress: [
+            {
+              key: 'keycloak',
+              title: 'Keycloak-Konfiguration',
+              status: 'done',
+            },
+            {
+              key: 'tenantAdmin',
+              title: 'Tenant-Administrator',
+              status: 'done',
+            },
+            {
+              key: 'tenantIam',
+              title: 'Lokaler IAM-Abgleich',
+              status: 'blocked',
+            },
+          ],
           primaryAction: {
             action: 'reconcileKeycloak',
             label: 'Realm abgleichen',
@@ -289,6 +320,12 @@ describe('instance detail split sections', () => {
     );
 
     expect(screen.getAllByText('Weitere Schritte sind erforderlich.').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Instanz fertig einrichten' })).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'Fortschritt der Instanzeinrichtung' })).toBeTruthy();
+    expect(screen.getByText('Bereitstellung vorbereiten')).toBeTruthy();
+    expect(screen.getByText('Änderungen bestätigen')).toBeTruthy();
+    expect(screen.getByText('Keycloak-Konfiguration')).toBeTruthy();
+    expect(screen.getByText('Lokaler IAM-Abgleich')).toBeTruthy();
     expect(screen.getByText('Access Probe')).toBeTruthy();
     expect(screen.getByText(/Die Detailseite bleibt bedienbar/)).toBeTruthy();
 

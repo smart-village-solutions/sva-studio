@@ -55,6 +55,38 @@ const ACTION_FEEDBACK_FADE_MS = 300;
 
 export { readActionFeedbackClassName };
 
+const InstanceSecondaryWorkspace = ({
+  guidedSetupActive,
+  expanded,
+  onExpandedChange,
+  children,
+}: {
+  readonly guidedSetupActive: boolean;
+  readonly expanded: boolean;
+  readonly onExpandedChange: (expanded: boolean) => void;
+  readonly children: React.ReactNode;
+}) => {
+  if (!guidedSetupActive) return children;
+
+  return (
+    <details
+      open={expanded}
+      onToggle={(event) => onExpandedChange(event.currentTarget.open)}
+      className="rounded-xl border border-border/70 bg-background p-4"
+    >
+      <summary className="cursor-pointer list-none">
+        <div className="font-semibold text-foreground">
+          {t('admin.instances.cockpit.setup.secondaryTitle')}
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('admin.instances.cockpit.setup.secondaryDescription')}
+        </p>
+      </summary>
+      <div className="mt-4 border-t border-border/70 pt-4">{children}</div>
+    </details>
+  );
+};
+
 const InstanceRuntimeEvidence = ({
   classification,
   instance,
@@ -120,6 +152,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [actionFeedbackFading, setActionFeedbackFading] = React.useState(false);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('betrieb');
+  const [secondaryWorkspaceExpanded, setSecondaryWorkspaceExpanded] = React.useState(false);
   const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -217,6 +250,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         setActionFeedback(null);
         setDetailFormValues(createDetailForm(selectedInstance));
         setActiveWorkspaceTab('betrieb');
+        setSecondaryWorkspaceExpanded(false);
       } else if (!detailFormValues) {
         setDetailFormValues(createDetailForm(selectedInstance));
       }
@@ -485,9 +519,11 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         if (!selectedInstance) return;
         await instancesApi.loadInstance(selectedInstance.instanceId);
         setActiveWorkspaceTab('doctor');
+        setSecondaryWorkspaceExpanded(true);
         return;
       case 'focus_configuration':
         setActiveWorkspaceTab('einstellungen');
+        setSecondaryWorkspaceExpanded(true);
         return;
       case 'probeTenantIamAccess':
         await probeTenantIamAccess();
@@ -580,7 +616,10 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             selectedInstance={selectedInstance}
             operationalTitle={getStatusGuidance(selectedInstance).title}
             operationalSummary={operationsModel.summary}
-            onOpenDoctor={() => setActiveWorkspaceTab('doctor')}
+            onOpenDoctor={() => {
+              setActiveWorkspaceTab('doctor');
+              setSecondaryWorkspaceExpanded(true);
+            }}
             doctorWarning={doctorModel?.warning}
           />
 
@@ -593,72 +632,80 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             statusLoading={instancesApi.statusLoading}
           />
 
-          <Tabs
-            value={activeWorkspaceTab}
-            onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)}
-            className="space-y-4"
+          <InstanceSecondaryWorkspace
+            guidedSetupActive={selectedInstance.status !== 'active'}
+            expanded={secondaryWorkspaceExpanded}
+            onExpandedChange={setSecondaryWorkspaceExpanded}
           >
-            <TabsList
-              aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
-              className="h-auto flex-wrap justify-start"
+            <Tabs
+              value={activeWorkspaceTab}
+              onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)}
+              className="space-y-4"
             >
-              <TabsTrigger value="betrieb">{t('admin.instances.detail.tabs.betrieb')}</TabsTrigger>
-              <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
-              <TabsTrigger value="einstellungen">
-                {t('admin.instances.detail.tabs.einstellungen')}
-              </TabsTrigger>
-            </TabsList>
+              <TabsList
+                aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
+                className="h-auto flex-wrap justify-start"
+              >
+                <TabsTrigger value="betrieb">
+                  {t('admin.instances.detail.tabs.betrieb')}
+                </TabsTrigger>
+                <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
+                <TabsTrigger value="einstellungen">
+                  {t('admin.instances.detail.tabs.einstellungen')}
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="betrieb" className="space-y-5">
-              <InstanceDetailBetriebSection
-                selectedInstance={selectedInstance}
-                statusLoading={instancesApi.statusLoading}
-                mutationError={instancesApi.mutationError}
-                pluginReadiness={pluginReadiness}
-                onAssignModule={assignModuleAndRefreshReadiness}
-                onRevokeModule={revokeModuleAndRefreshReadiness}
-                onSeedIamBaseline={instancesApi.seedIamBaseline}
-                onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
-              />
-              <InstanceDetailAuditSection
-                auditRun={instancesApi.instanceAuditRun}
-                auditLoading={instancesApi.auditLoading}
-                onRefresh={async () =>
-                  instancesApi.refreshInstanceAudit(selectedInstance.instanceId)
-                }
-              />
-            </TabsContent>
-
-            <TabsContent value="doctor" className="space-y-5">
-              {doctorModel && historyModel ? (
-                <InstanceDetailDoctorSection
-                  doctorModel={doctorModel}
-                  historyModel={historyModel}
+              <TabsContent value="betrieb" className="space-y-5">
+                <InstanceDetailBetriebSection
                   selectedInstance={selectedInstance}
-                  onLoadProvisioningRun={(runId) =>
-                    instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
+                  statusLoading={instancesApi.statusLoading}
+                  mutationError={instancesApi.mutationError}
+                  pluginReadiness={pluginReadiness}
+                  onAssignModule={assignModuleAndRefreshReadiness}
+                  onRevokeModule={revokeModuleAndRefreshReadiness}
+                  onSeedIamBaseline={instancesApi.seedIamBaseline}
+                  onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
+                />
+                <InstanceDetailAuditSection
+                  auditRun={instancesApi.instanceAuditRun}
+                  auditLoading={instancesApi.auditLoading}
+                  onRefresh={async () =>
+                    instancesApi.refreshInstanceAudit(selectedInstance.instanceId)
                   }
                 />
-              ) : null}
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="einstellungen" className="space-y-5">
-              <InstanceDetailConfigurationSection
-                selectedInstance={selectedInstance}
-                detailFormValues={detailFormValues}
-                statusLoading={statusLoading}
-                configurationAssessment={configurationAssessment}
-                tenantSecretUserInputRequired={tenantSecretUserInputRequired}
-                setDetailFormValues={(value) => {
-                  saveFeedback.markDirty();
-                  setDetailFormValues(value);
-                }}
-                onUpdateSubmit={onUpdateSubmit}
-                onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
-                saveStatus={saveFeedback.status}
-              />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="doctor" className="space-y-5">
+                {doctorModel && historyModel ? (
+                  <InstanceDetailDoctorSection
+                    doctorModel={doctorModel}
+                    historyModel={historyModel}
+                    selectedInstance={selectedInstance}
+                    onLoadProvisioningRun={(runId) =>
+                      instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
+                    }
+                  />
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="einstellungen" className="space-y-5">
+                <InstanceDetailConfigurationSection
+                  selectedInstance={selectedInstance}
+                  detailFormValues={detailFormValues}
+                  statusLoading={statusLoading}
+                  configurationAssessment={configurationAssessment}
+                  tenantSecretUserInputRequired={tenantSecretUserInputRequired}
+                  setDetailFormValues={(value) => {
+                    saveFeedback.markDirty();
+                    setDetailFormValues(value);
+                  }}
+                  onUpdateSubmit={onUpdateSubmit}
+                  onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
+                  saveStatus={saveFeedback.status}
+                />
+              </TabsContent>
+            </Tabs>
+          </InstanceSecondaryWorkspace>
         </div>
       ) : (
         <Card className="p-4">

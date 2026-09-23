@@ -3,6 +3,44 @@ export const cockpitInstancesAdminENResources = {
   title: 'Operational overview',
   subtitle:
     'Current state, dominant findings, and the next meaningful operator action at a glance.',
+  setup: {
+    phase: 'Setup · Phase 2 of 2',
+    title: 'Finish setting up the instance',
+    subtitle:
+      'The instance data has been saved. Continue through the technical steps to manual activation.',
+    ariaLabel: 'Instance setup progress',
+    secondaryTitle: 'Operations, Doctor, and settings',
+    secondaryDescription:
+      'These advanced areas remain available but are secondary while initial setup is in progress.',
+    technical: {
+      title: 'Technical substeps',
+      keycloak: 'Keycloak configuration',
+      tenantAdmin: 'Tenant administrator',
+      tenantIam: 'Local IAM reconciliation',
+    },
+    steps: {
+      prepare: {
+        title: 'Prepare provisioning',
+        description: 'Check prerequisites and the current change plan.',
+      },
+      confirm: {
+        title: 'Confirm changes',
+        description: 'Explicitly approve the reviewed plan for execution.',
+      },
+      provision: {
+        title: 'Technical provisioning',
+        description: 'Set up the realm, clients, secrets, and tenant administrator.',
+      },
+      verify: {
+        title: 'Verify operational readiness',
+        description: 'Check tenant IAM, modules, and technical evidence.',
+      },
+      activate: {
+        title: 'Activate',
+        description: 'Manually release the fully verified instance.',
+      },
+    },
+  },
   identity: 'Instance',
   currentState: 'Overall state',
   configurationSnapshot: 'Configuration',

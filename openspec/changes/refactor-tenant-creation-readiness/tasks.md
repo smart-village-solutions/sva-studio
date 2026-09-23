@@ -179,7 +179,7 @@
       terminal fehlgeschlagener oder blockierter maßgeblicher Teilschritt
       veraltete `requested`-/`running`-Zustände übersteuert und die UI keinen
       widersprüchlichen Gesamtstatus anzeigt.
-- [ ] 7.15 Den geführten Ablauf als zwei aufeinanderfolgende Phasen in derselben
+- [x] 7.15 Den geführten Ablauf als zwei aufeinanderfolgende Phasen in derselben
       visuellen Hauptfläche darstellen: vor Create die vier Eingabeschritte,
       danach `Bereitstellung vorbereiten`, `Änderungen bestätigen`,
       `Technische Bereitstellung`, `Betriebsbereitschaft prüfen` und

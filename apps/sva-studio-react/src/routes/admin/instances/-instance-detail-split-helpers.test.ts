@@ -1,7 +1,11 @@
 import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { describe, expect, it } from 'vitest';
 
-import { buildInstanceDetailCockpitModel } from './-instance-detail-cockpit';
+import {
+  buildInstanceDetailCockpitModel,
+  buildInstanceSetupSteps,
+  buildInstanceTechnicalProgress,
+} from './-instance-detail-cockpit';
 import {
   buildCockpitState,
   getCockpitSourceLabel,
@@ -444,6 +448,109 @@ describe('instance detail split helpers', () => {
         null
       ).primaryAction.action
     ).toBe('reconcileTenantIamRoles');
+  });
+
+  it('projects the guided setup phase from the existing server-owned readiness state', () => {
+    const plan = {
+      mode: 'new' as const,
+      overallStatus: 'ready' as const,
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      driftSummary: 'Änderungen erforderlich.',
+      steps: [
+        {
+          stepKey: 'client',
+          action: 'create' as const,
+          status: 'ready' as const,
+          title: 'Client anlegen',
+          summary: 'Der Client wird angelegt.',
+          details: {},
+        },
+      ],
+    };
+    const runningRun = {
+      id: 'run-current',
+      instanceId: 'demo',
+      intent: 'provision' as const,
+      mode: 'new' as const,
+      overallStatus: 'running' as const,
+      driftSummary: 'Provisioning läuft.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:01:00.000Z',
+      steps: [],
+    };
+    const readStatuses = (overrides: Record<string, unknown>) =>
+      buildInstanceSetupSteps(createDetailFixture(overrides)).map((step) => step.status);
+
+    expect(readStatuses({})).toEqual(['current', 'pending', 'pending', 'pending', 'pending']);
+    expect(
+      readStatuses({
+        provisioningReadiness: {
+          state: 'provisioning_blocked',
+          capabilities: [],
+          nextAction: { action: 'instance.diagnose', retryClass: 'safe' },
+        },
+      })
+    ).toEqual(['blocked', 'pending', 'blocked', 'pending', 'pending']);
+    expect(readStatuses({ keycloakPlan: plan })).toEqual([
+      'done',
+      'current',
+      'pending',
+      'pending',
+      'pending',
+    ]);
+    expect(
+      readStatuses({
+        keycloakPlan: plan,
+        latestKeycloakProvisioningRun: runningRun,
+        keycloakProvisioningRuns: [runningRun],
+      })
+    ).toEqual(['done', 'done', 'current', 'pending', 'pending']);
+
+    const succeededRun = { ...runningRun, overallStatus: 'succeeded' as const };
+    expect(
+      readStatuses({
+        keycloakPlan: plan,
+        latestKeycloakProvisioningRun: succeededRun,
+        keycloakProvisioningRuns: [succeededRun],
+        provisioningReadiness: {
+          state: 'provisioning_blocked',
+          capabilities: [],
+          nextAction: { action: 'instance.tenant-iam.reconcile', retryClass: 'safe' },
+        },
+      })
+    ).toEqual(['done', 'done', 'done', 'blocked', 'blocked']);
+    expect(
+      readStatuses({
+        keycloakPlan: plan,
+        latestKeycloakProvisioningRun: succeededRun,
+        keycloakProvisioningRuns: [succeededRun],
+        provisioningReadiness: {
+          state: 'awaiting_activation',
+          capabilities: [],
+          nextAction: { action: 'instance.status.activate', retryClass: 'never' },
+        },
+      })
+    ).toEqual(['done', 'done', 'done', 'done', 'current']);
+    expect(readStatuses({ status: 'active' })).toEqual(['done', 'done', 'done', 'done', 'done']);
+
+    expect(
+      buildInstanceTechnicalProgress(
+        createDetailFixture({
+          latestKeycloakProvisioningRun: succeededRun,
+          keycloakStatus: createKeycloakStatusFixture(),
+          tenantIamStatus: {
+            configuration: { status: 'ready', summary: 'ok', source: 'registry' },
+            access: { status: 'ready', summary: 'ok', source: 'access_probe' },
+            reconcile: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
+            overall: { status: 'blocked', summary: 'Drift', source: 'role_reconcile' },
+          },
+        })
+      ).map(({ key, status }) => ({ key, status }))
+    ).toEqual([
+      { key: 'keycloak', status: 'done' },
+      { key: 'tenantAdmin', status: 'done' },
+      { key: 'tenantIam', status: 'blocked' },
+    ]);
   });
 
   it('maps status guidance and keycloak entries for empty and populated detail states', () => {

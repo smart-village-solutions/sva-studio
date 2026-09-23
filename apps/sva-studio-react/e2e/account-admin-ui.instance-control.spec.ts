@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 
 import {
   configureRootAccountAdminTest,
@@ -23,6 +24,12 @@ test('root control plane exposes tenant IAM reconcile for platform admins', asyn
     authClientSecretConfigured: true,
     tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: true },
     hostnames: [],
+    effectiveAccountInvitationTemplate: {
+      ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+      revision: 0,
+    },
+    accountInvitationTemplateSource: 'sva_default',
+    serverAccountInvitationTemplateRevision: 0,
     assignedModules: ['news'],
     moduleActivations: [
       {
@@ -149,6 +156,8 @@ test('root control plane exposes tenant IAM reconcile for platform admins', asyn
   await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({
     timeout: 10000,
   });
+  await page.getByText('Betrieb, Doctor und Einstellungen', { exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Betrieb' })).toBeVisible();
   const newsModuleRow = page.getByRole('row').filter({ hasText: 'news' });
   await expect(newsModuleRow).toContainText('Aktiv');
   await expect(newsModuleRow).toContainText('Automatisch');

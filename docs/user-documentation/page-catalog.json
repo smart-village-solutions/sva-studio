@@ -476,6 +476,24 @@
       "titleKey": "projects.navigation.title"
     },
     {
+      "id": "ssf.system-configuration",
+      "path": "/plugins/ssf/system-configuration",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
+      "id": "ssf.tenant-configuration",
+      "path": "/plugins/ssf/configuration",
+      "pageType": "setup",
+      "owner": {
+        "kind": "plugin",
+        "pluginId": "ssf"
+      }
+    },
+    {
       "id": "surveys.content.create",
       "path": "/admin/surveys/new",
       "pageType": "create",

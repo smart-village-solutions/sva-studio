@@ -1,0 +1,4 @@
+{
+  "prNumber": 1478,
+  "body": "Der Anwenderdokumentationskatalog berücksichtigt nun die im Plugin-Manifest deklarierte Erweiterungsstufe.\n\nDie bestehenden SSF-Konfigurationsseiten werden dadurch wieder vollständig in den Katalog aufgenommen."
+}

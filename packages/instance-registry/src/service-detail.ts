@@ -208,6 +208,13 @@ export const loadKeycloakDetailArtifacts = async (
     liveKeycloakReady &&
     effectiveKeycloakPlan?.overallStatus === 'ready' &&
     !effectiveKeycloakPlanHasMutations;
+  const hasTerminalProvisioningBlocker =
+    createRun?.status === 'failed' ||
+    latestKeycloakRun?.overallStatus === 'failed' ||
+    effectiveKeycloakPlan?.overallStatus === 'blocked' ||
+    blockedPreflightChecks.length > 0 ||
+    tenantIamStatus.overall.status === 'blocked' ||
+    (instance.assignedModules.length > 0 && moduleIamStatus?.overall.status === 'blocked');
   const retryableCreateRun =
     createRun &&
     isSupportedTenantProvisioningSnapshotVersion(createRun.snapshotVersion) &&
@@ -220,7 +227,7 @@ export const loadKeycloakDetailArtifacts = async (
     state:
       instance.status === 'active'
         ? ('ready' as const)
-        : createRun?.status === 'failed'
+        : hasTerminalProvisioningBlocker
           ? ('provisioning_blocked' as const)
           : instance.status === 'validated' && createRun?.completedAt
             ? ('awaiting_activation' as const)

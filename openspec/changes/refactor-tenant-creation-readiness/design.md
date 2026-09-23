@@ -443,9 +443,26 @@ bleibt ein sichtbarer Bereitstellungs- und Aktivierungsblocker, aber kein
 Anlageblocker; es wird erst in der dafür vorgesehenen sicheren Aktion
 erfasst oder abgeglichen.
 
+Der geführte Ablauf verwendet zwei aufeinanderfolgende Phasen in derselben
+visuellen Hauptfläche. Vor der Registry-Persistenz zeigt die Phase `Angaben`
+die vier Eingabeschritte. Nach erfolgreicher Anlage ersetzt die Phase
+`Einrichtung` diese Eingabekarten in demselben Schrittbereich, statt alle
+Schritte gleichzeitig in eine zu enge horizontale Leiste zu setzen oder den
+Benutzer in die vollständige Instanz-Detailansicht zu entlassen. Die URL darf
+technisch zur bestehenden Detailroute wechseln; Navigation, Seitentitel und
+Fortschrittsdarstellung müssen den Ablauf dennoch als nahtlose Fortsetzung
+erkennbar machen.
+
+Die beiden Phasen verwenden diese fachlichen Schritte:
+
+1. **Angaben:** `Instanz`, `Nutzer-Datenbank (Keycloak-Realm)`, `Erster
+Administrator`, `Prüfen und anlegen`.
+2. **Einrichtung:** `Bereitstellung vorbereiten`, `Änderungen bestätigen`,
+   `Technische Bereitstellung`, `Betriebsbereitschaft prüfen`, `Aktivieren`.
+
 Nach der Registry-Persistenz wechselt die UI ohne separate Setup-Strecke in
-das gemeinsame Einrichtungscockpit der Instanz. Es zeigt die fachliche
-Fortschrittsfolge:
+die Einrichtungsphase des gemeinsamen Cockpits. Die dortigen fünf Schritte
+bilden die bestehende fachliche Fortschrittsfolge ab:
 
 1. Instanz angelegt,
 2. Bereitstellung vorbereitet,
@@ -454,11 +471,59 @@ Fortschrittsfolge:
 5. Betriebsbereitschaft geprüft,
 6. manuelle Aktivierung.
 
+`Instanz angelegt` ist dabei das Ergebnis des vierten Eingabeschritts und wird
+als bestätigter Übergang in die Einrichtungsphase gezeigt, aber nicht als
+zusätzliche konkurrierende Hauptaktion. Automatische technische Teilschritte
+wie Realm, Clients, Secrets, Tenant-Administrator und lokaler IAM-Abgleich
+erscheinen innerhalb von `Technische Bereitstellung` als kompakte Statusfolge.
+Sie werden nicht zu gleichwertigen Hauptschritten aufgebläht.
+
+Im aktiven Einrichtungsschritt zeigt der Standardpfad nur Ergebnis, Status,
+offene Voraussetzung, bereits bestätigte Teilerfolge und höchstens eine
+serverseitig erlaubte Hauptaktion. `Betrieb`, `Doctor` und `Einstellungen`
+bleiben für Experten erreichbar, sind während der Ersteinrichtung jedoch
+nachgeordnet. Erst nach manueller Aktivierung führt die Abschlussaktion in die
+normale Instanzverwaltung.
+
 Das Cockpit bietet höchstens eine hervorgehobene, vom Server erlaubte nächste
 Aktion. Preflight, Keycloak-Status und Plan werden automatisch geladen
 beziehungsweise über ein gemeinsames `Erneut prüfen` aktualisiert. Der
 Standardpfad zeigt weder parallele Mutationsschaltflächen noch einen
 generischen Retry.
+
+### Cockpit-Zustandspriorität und Teilerfolge
+
+Das Cockpit verwendet eine serverseitig bestimmte, widerspruchsfreie
+Gesamtprojektion. Ein terminal fehlgeschlagener oder blockierter relevanter
+Provisioning-Lauf hat für die aktuelle Darstellung Vorrang vor veralteten
+Elternlauf-, Wake-up- oder Polling-Zuständen wie `requested` oder `running`.
+Die UI darf daher nicht gleichzeitig `Provisioning läuft`, `Provisioniert`
+oder vollständige Betriebsbereitschaft behaupten, wenn der maßgebliche Lauf
+bereits an einem Aktivierungs-Gate gescheitert ist.
+
+Teilerfolge bleiben als kurze fachliche Fortschrittsfolge erhalten. Im
+beobachteten Mischzustand unterscheidet das Cockpit klar:
+
+1. Registry-Eintrag angelegt,
+2. Keycloak-Realm und Clients eingerichtet,
+3. Tenant-Administrator in Keycloak eingerichtet,
+4. lokaler IAM-/Administrator-Abgleich fehlgeschlagen,
+5. Aktivierung bis zur erfolgreichen Folgeprüfung blockiert.
+
+Teilzähler wie `12/12` erhalten immer ihren fachlichen Geltungsbereich,
+beispielsweise `Keycloak-Konfiguration 12/12`, und dürfen nicht als
+Gesamtbereitschaft erscheinen. Die primäre Statuskarte nennt in dieser
+Reihenfolge Ergebnis, Auswirkung und die genau eine serverseitig erlaubte
+nächste Aktion. Sie bewahrt bestätigte Teilerfolge und startet weder die
+Tenant-Anlage noch bereits erfolgreiche Keycloak-Schritte erneut.
+
+Run-/Request-IDs, technische Codes, einzelne Probe-Ergebnisse, Audit und
+vollständige Historie bleiben unter `Technische Details`. Gleichartige
+technische Befunde werden im Standardpfad zu einem konkreten Blocker
+zusammengefasst, statt mehrfach generisch als `Technische Bereitschaft`
+aufzutreten. Statuswechsel werden barrierefrei angekündigt; nach einer
+fehlgeschlagenen Aktion wird der Fokus auf die verständliche
+Fehlerzusammenfassung geführt.
 
 Experten öffnen am jeweiligen Befund `Technische Details`. Dort bleiben
 Plan-Fingerprint, einzelne Checks, Run-/Request-IDs, Zeitpunkte,

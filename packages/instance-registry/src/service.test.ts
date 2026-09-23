@@ -2408,9 +2408,14 @@ describe('instance registry service facade', () => {
         listProvisioningRuns: vi.fn(async () => [
           {
             ...latestRun,
-            status: hostReadinessMissing ? ('failed' as const) : ('validated' as const),
+            status: hostReadinessMissing
+              ? ('failed' as const)
+              : keycloakRunFailed
+                ? ('provisioning' as const)
+                : ('validated' as const),
             stepKey: hostReadinessMissing ? 'ingress' : 'completed',
-            completedAt: hostReadinessMissing ? undefined : '2026-01-01T00:05:00.000Z',
+            completedAt:
+              hostReadinessMissing || keycloakRunFailed ? undefined : '2026-01-01T00:05:00.000Z',
             desiredSnapshot: {
               automationMode: hostReadinessMissing ? 'kassel-traefik-file' : 'external',
             },
@@ -2568,6 +2573,7 @@ describe('instance registry service facade', () => {
         await expect(service.getInstanceDetail('demo')).resolves.toEqual(
           expect.objectContaining({
             provisioningReadiness: expect.objectContaining({
+              state: 'provisioning_blocked',
               nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
             }),
           })
@@ -3124,6 +3130,9 @@ describe('instance registry service facade', () => {
             status: 'blocked',
             requestId: 'req-probe-1',
           }),
+        }),
+        provisioningReadiness: expect.objectContaining({
+          state: 'provisioning_blocked',
         }),
       })
     );
@@ -4278,6 +4287,7 @@ describe('instance registry service facade', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         provisioningReadiness: expect.objectContaining({
+          state: 'provisioning_blocked',
           nextAction: { action: 'instance.secret.rotate', retryClass: 'conditional' },
         }),
       })

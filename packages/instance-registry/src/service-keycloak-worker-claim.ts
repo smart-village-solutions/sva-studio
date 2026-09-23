@@ -1,6 +1,7 @@
 import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 
 import type { InstanceRegistryServiceDeps } from './service-types.js';
+import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 
 export const hasProvisioningWorkerDependencies = (
   deps: InstanceRegistryServiceDeps
@@ -27,6 +28,7 @@ export const processNextProvisioningClaim = async (
   if (!run) {
     return null;
   }
+  await syncProtectedSystemAdminPermissions(deps, run.instanceId);
   return deps.withInstanceProvisioningLock(run.instanceId, async (lockedDeps) => {
     const persistedRun = await lockedDeps.repository.getKeycloakProvisioningRun(run.instanceId, run.id);
     if (!persistedRun || persistedRun.overallStatus !== 'running') {

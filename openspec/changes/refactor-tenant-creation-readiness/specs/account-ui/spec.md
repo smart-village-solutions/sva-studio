@@ -164,6 +164,32 @@ keinen parallelen Experten-Workflow bilden.
   Bereitstellung, Betriebsprüfung und manuelle Aktivierung als gemeinsame
   Fortschrittsfolge
 
+#### Scenario: Geführter Ablauf wechselt in die Einrichtungsphase
+
+- **WHEN** der Benutzer den vierten Eingabeschritt `Prüfen und anlegen`
+  erfolgreich abgeschlossen hat
+- **THEN** ersetzt die UI die vier Eingabekarten im selben visuellen
+  Schrittbereich durch die Einrichtungsfolge `Bereitstellung vorbereiten`,
+  `Änderungen bestätigen`, `Technische Bereitstellung`,
+  `Betriebsbereitschaft prüfen` und `Aktivieren`
+- **AND** bleibt der Wechsel auch bei einer technischen Navigation auf die
+  bestehende Detailroute als nahtlose Fortsetzung desselben Ablaufs erkennbar
+- **AND** zeigt die UI nicht alle Eingabe- und Einrichtungsschritte
+  gleichzeitig in einer überfüllten horizontalen Leiste
+- **AND** ordnet sie `Betrieb`, `Doctor` und `Einstellungen` während der
+  Ersteinrichtung dem geführten Ablauf nach
+
+#### Scenario: Technische Teilschritte bleiben im fachlichen Schritt kompakt
+
+- **WHEN** Realm, Clients, Secrets, Tenant-Administrator oder lokaler
+  IAM-Abgleich ausgeführt werden
+- **THEN** zeigt die UI diese Teilergebnisse innerhalb von
+  `Technische Bereitstellung` als kompakte Statusfolge
+- **AND** erzeugt sie daraus keine konkurrierenden Hauptschritte oder
+  parallelen Mutationsaktionen
+- **AND** bleiben technische Einzelheiten auf Anforderung unter
+  `Technische Details` zugänglich
+
 #### Scenario: Cockpit zeigt genau eine nächste Hauptaktion
 
 - **WHEN** der Server eine zulässige nächste Aktion meldet
@@ -265,6 +291,43 @@ Instanz-Lebenszyklus ergänzen und keine zweite Freigabequelle bilden.
   Schritt
 - **AND** bleiben bereits erfolgreiche Schritte und der gespeicherte Tenant
   sichtbar
+
+#### Scenario: Terminaler Teilschritt übersteuert veralteten Laufzustand
+
+- **WHEN** der maßgebliche Provisioning-Teilschritt terminal fehlgeschlagen
+  oder blockiert ist
+- **AND** ein Elternlauf, Wake-up oder Polling-Zustand noch `requested` oder
+  `running` meldet
+- **THEN** zeigt die serverseitige Cockpit-Projektion den Gesamtzustand als
+  blockiert und nicht als laufend oder provisioniert
+- **AND** zeigt die UI keine widersprüchliche Erfolgs- oder
+  Fortschrittsbehauptung
+
+#### Scenario: Erfolgreiche Keycloak-Schritte bleiben bei lokalem IAM-Fehler sichtbar
+
+- **WHEN** Realm, Clients und Tenant-Administrator in Keycloak erfolgreich
+  eingerichtet wurden
+- **AND** der lokale IAM- oder Administrator-Abgleich anschließend fehlschlägt
+- **THEN** weist das Cockpit die Keycloak-Schritte als erfolgreich und den
+  lokalen Abgleich als fehlgeschlagen aus
+- **AND** bezeichnet es die Aktivierung bis zur erfolgreichen Folgeprüfung als
+  blockiert
+- **AND** ordnet es jeden Erfüllungszähler eindeutig seinem Teilbereich zu,
+  statt daraus vollständige Betriebsbereitschaft abzuleiten
+
+#### Scenario: Blockierter Mischzustand bleibt kompakt und handlungsfähig
+
+- **WHEN** erfolgreiche und fehlgeschlagene Provisioning-Schritte zugleich
+  vorliegen
+- **THEN** nennt die primäre Statuskarte Ergebnis, Auswirkung und genau eine
+  serverseitig erlaubte nächste Aktion
+- **AND** bewahrt diese Aktion bestätigte Teilerfolge und wiederholt weder die
+  Tenant-Anlage noch erfolgreiche Keycloak-Schritte
+- **AND** fasst die UI gleichartige Befunde zu einem konkreten Blocker zusammen
+- **AND** verschiebt sie Run-/Request-IDs, technische Codes, einzelne Probes,
+  Audit und vollständige Historie unter `Technische Details`
+- **AND** kündigt sie den Statuswechsel zugänglich an und führt den Fokus nach
+  einer fehlgeschlagenen Aktion zur Fehlerzusammenfassung
 
 #### Scenario: Tenant wartet auf manuelle Aktivierung
 

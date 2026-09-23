@@ -3,7 +3,7 @@ import { Card } from '../../../components/ui/card';
 import { StudioSummaryCard } from '../../../components/StudioSummaryCard';
 import { t } from '../../../i18n';
 import { getStatusGuidance } from './-instance-detail-models';
-import { ConfigurationStatusBadge } from './-instance-status-badges';
+import { ConfigurationStatusBadge, WorkflowStatusBadge } from './-instance-status-badges';
 import {
   COCKPIT_STATUS_STYLES,
   formatDateTime,
@@ -12,6 +12,53 @@ import {
 } from './-instance-detail-view-shared';
 
 import type { CockpitSectionProps } from './-instance-detail-view-shared';
+
+const SetupProgress = ({ cockpitModel }: Pick<CockpitSectionProps, 'cockpitModel'>) => (
+  <ol
+    className="grid gap-3 md:grid-cols-2 xl:grid-cols-5"
+    aria-label={t('admin.instances.cockpit.setup.ariaLabel')}
+  >
+    {cockpitModel.setupSteps.map((step, index) => (
+      <li
+        key={step.key}
+        aria-current={step.status === 'current' ? 'step' : undefined}
+        className={`rounded-xl border p-3 ${
+          step.status === 'current'
+            ? 'border-foreground bg-accent/40'
+            : step.status === 'blocked'
+              ? 'border-destructive/40 bg-destructive/10'
+              : 'border-border bg-background/80'
+        }`}
+      >
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{index + 1}</div>
+        <div className="mt-1 flex items-start justify-between gap-3">
+          <span className="font-medium text-foreground">{step.title}</span>
+          <WorkflowStatusBadge status={step.status} />
+        </div>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">{step.description}</p>
+      </li>
+    ))}
+  </ol>
+);
+
+const TechnicalProgress = ({ cockpitModel }: Pick<CockpitSectionProps, 'cockpitModel'>) => (
+  <div className="rounded-xl border border-border/70 bg-background/80 p-4">
+    <div className="text-sm font-semibold text-foreground">
+      {t('admin.instances.cockpit.setup.technical.title')}
+    </div>
+    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      {cockpitModel.technicalProgress.map((item) => (
+        <div
+          key={item.key}
+          className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
+        >
+          <span className="text-sm text-foreground">{item.title}</span>
+          <WorkflowStatusBadge status={item.status} />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const CockpitMetrics = ({
   selectedInstance,
@@ -246,28 +293,36 @@ export const InstanceDetailCockpitSection = ({
 }: CockpitSectionProps) => (
   <Card className="overflow-hidden border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(0,90,158,0.08),transparent_38%),linear-gradient(135deg,rgba(245,249,253,0.98),rgba(236,243,251,0.94))] p-0">
     <div className="space-y-6 p-5 md:p-6">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              {t('admin.instances.cockpit.eyebrow')}
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">
-                {t('admin.instances.cockpit.title')}
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                {t('admin.instances.cockpit.subtitle')}
-              </p>
-            </div>
+      <div className="space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+          {t('admin.instances.cockpit.setup.phase')}
+        </div>
+        <div>
+          <h2 className="text-2xl font-semibold text-foreground">
+            {t('admin.instances.cockpit.setup.title')}
+          </h2>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            {t('admin.instances.cockpit.setup.subtitle')}
+          </p>
+        </div>
+      </div>
+
+      <SetupProgress cockpitModel={cockpitModel} />
+      <TechnicalProgress cockpitModel={cockpitModel} />
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.62fr)]">
+        <div
+          className={`rounded-xl border p-5 ${COCKPIT_STATUS_STYLES[cockpitModel.overallStatus]}`}
+          aria-live="polite"
+        >
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] opacity-75">
+            {t('admin.instances.cockpit.currentState')}
           </div>
-          <CockpitMetrics
-            selectedInstance={selectedInstance}
-            configurationAssessment={configurationAssessment}
-            overallStatus={cockpitModel.overallStatus}
-            overallTitle={cockpitModel.overallTitle}
-            overallSummary={cockpitModel.overallSummary}
-          />
+          <div className="mt-2 text-xl font-semibold">{cockpitModel.overallTitle}</div>
+          <p className="mt-2 max-w-2xl text-sm">{cockpitModel.overallSummary}</p>
+          <div className="mt-4 border-t border-current/15 pt-3 text-xs opacity-80">
+            {selectedInstance.displayName} · {selectedInstance.primaryHostname}
+          </div>
         </div>
         <PrimaryActionsCard
           cockpitModel={cockpitModel}
@@ -276,14 +331,28 @@ export const InstanceDetailCockpitSection = ({
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
-        <AnomalyQueueCard cockpitModel={cockpitModel} />
-        <EvidenceCard
-          selectedInstance={selectedInstance}
-          cockpitModel={cockpitModel}
-          mutationError={mutationError}
-        />
-      </div>
+      <details className="rounded-xl border border-border/70 bg-background/70 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-foreground">
+          {t('admin.instances.wizard.technicalDetails')}
+        </summary>
+        <div className="mt-4 space-y-4">
+          <CockpitMetrics
+            selectedInstance={selectedInstance}
+            configurationAssessment={configurationAssessment}
+            overallStatus={cockpitModel.overallStatus}
+            overallTitle={cockpitModel.overallTitle}
+            overallSummary={cockpitModel.overallSummary}
+          />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
+            <AnomalyQueueCard cockpitModel={cockpitModel} />
+            <EvidenceCard
+              selectedInstance={selectedInstance}
+              cockpitModel={cockpitModel}
+              mutationError={mutationError}
+            />
+          </div>
+        </div>
+      </details>
     </div>
   </Card>
 );

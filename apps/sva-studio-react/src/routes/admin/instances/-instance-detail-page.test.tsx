@@ -278,8 +278,16 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByRole('tab', { name: 'Einstellungen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Doctor öffnen' })).toBeTruthy();
     expect(screen.getByText('Doctor erkennt aktuell Handlungsbedarf.')).toBeTruthy();
+    const secondaryWorkspace = screen
+      .getByText('Betrieb, Doctor und Einstellungen')
+      .closest('details');
+    expect(secondaryWorkspace?.open).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
+
+    await waitFor(() => {
+      expect(secondaryWorkspace?.open).toBe(true);
+    });
 
     expect(screen.getByText('Überblick')).toBeTruthy();
     expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();

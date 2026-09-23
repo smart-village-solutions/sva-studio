@@ -71,6 +71,21 @@ export type PrimaryDetailAction = {
   readonly label: string;
 };
 
+export type InstanceSetupStepKey = 'prepare' | 'confirm' | 'provision' | 'verify' | 'activate';
+
+export type InstanceSetupStep = {
+  readonly key: InstanceSetupStepKey;
+  readonly title: string;
+  readonly description: string;
+  readonly status: WorkflowStepState;
+};
+
+export type InstanceTechnicalProgressItem = {
+  readonly key: 'keycloak' | 'tenantAdmin' | 'tenantIam';
+  readonly title: string;
+  readonly status: WorkflowStepState;
+};
+
 export type CockpitAnomalyItem = {
   readonly key: string;
   readonly title: string;
@@ -93,6 +108,8 @@ export type InstanceDetailCockpitModel = {
     readonly requestId?: string;
   };
   readonly anomalyQueue: readonly CockpitAnomalyItem[];
+  readonly setupSteps: readonly InstanceSetupStep[];
+  readonly technicalProgress: readonly InstanceTechnicalProgressItem[];
   readonly primaryAction: PrimaryDetailAction;
   readonly secondaryActions: readonly PrimaryDetailAction[];
 };

@@ -3,6 +3,44 @@ export const cockpitInstancesAdminDEResources = {
   title: 'Operativer Überblick',
   subtitle:
     'Aktueller Zustand, dominante Befunde und die nächste sinnvolle Operator-Aktion auf einen Blick.',
+  setup: {
+    phase: 'Einrichtung · Phase 2 von 2',
+    title: 'Instanz fertig einrichten',
+    subtitle:
+      'Die Angaben sind gespeichert. Folgen Sie jetzt den technischen Schritten bis zur manuellen Aktivierung.',
+    ariaLabel: 'Fortschritt der Instanzeinrichtung',
+    secondaryTitle: 'Betrieb, Doctor und Einstellungen',
+    secondaryDescription:
+      'Diese erweiterten Bereiche bleiben verfügbar, sind während der Ersteinrichtung aber nachgeordnet.',
+    technical: {
+      title: 'Technische Teilschritte',
+      keycloak: 'Keycloak-Konfiguration',
+      tenantAdmin: 'Tenant-Administrator',
+      tenantIam: 'Lokaler IAM-Abgleich',
+    },
+    steps: {
+      prepare: {
+        title: 'Bereitstellung vorbereiten',
+        description: 'Vorbedingungen und den aktuellen Änderungsplan prüfen.',
+      },
+      confirm: {
+        title: 'Änderungen bestätigen',
+        description: 'Den geprüften Plan ausdrücklich zur Ausführung freigeben.',
+      },
+      provision: {
+        title: 'Technische Bereitstellung',
+        description: 'Realm, Clients, Secrets und Tenant-Administrator einrichten.',
+      },
+      verify: {
+        title: 'Betriebsbereitschaft prüfen',
+        description: 'Tenant-IAM, Module und technische Nachweise kontrollieren.',
+      },
+      activate: {
+        title: 'Aktivieren',
+        description: 'Die vollständig geprüfte Instanz manuell freigeben.',
+      },
+    },
+  },
   identity: 'Instanz',
   currentState: 'Gesamtstatus',
   configurationSnapshot: 'Konfiguration',

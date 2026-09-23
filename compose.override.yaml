@@ -6,6 +6,8 @@ services:
 
   provisioner:
     build: .
+    environment:
+      SVA_PROVISIONER_COMBINED_WORKER: 'false'
 
   migrate:
     build: .

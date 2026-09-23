@@ -2,11 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   readLocalStateFile,
   shouldCheckLocalInstanceRegistryDriftBeforeCommand,
+  upLocalInfra,
 } from './local-runtime.ts';
 
 let tempDir: string | null = null;
@@ -56,6 +57,19 @@ describe('readLocalStateFile', () => {
 });
 
 describe('local runtime helpers', () => {
+  it('keeps the container app stopped while the source app owns the local port', () => {
+    const run = vi.fn();
+    const env = { SVA_RUNTIME_PROFILE: 'local-keycloak' };
+
+    upLocalInfra({ composeArgs: ['compose', '-f', 'compose.yaml'], env, run });
+
+    expect(run).toHaveBeenCalledWith(
+      'docker',
+      ['compose', '-f', 'compose.yaml', 'up', '-d', '--scale', 'app=0'],
+      env,
+    );
+  });
+
   it('checks registry drift only before up/update commands', () => {
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('up')).toBe(true);
     expect(shouldCheckLocalInstanceRegistryDriftBeforeCommand('update')).toBe(true);

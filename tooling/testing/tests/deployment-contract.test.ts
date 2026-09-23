@@ -26,6 +26,14 @@ describe('deployment contracts', () => {
     );
   });
 
+  it('leaves local Keycloak provisioning exclusively to the source worker', () => {
+    const override = load('compose.override.yaml');
+
+    expect(override).toMatch(
+      /provisioner:\n(?: {4,}.*\n)*? {4}environment:\n(?: {6,}.*\n)*? {6}SVA_PROVISIONER_COMBINED_WORKER: 'false'/u
+    );
+  });
+
   it('limits automatic dev promotion to push events with a valid change base', () => {
     const workflow = load('.github/workflows/build.yml');
 

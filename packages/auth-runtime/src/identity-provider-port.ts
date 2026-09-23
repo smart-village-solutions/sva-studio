@@ -96,6 +96,11 @@ export interface IdentityProviderPort {
   executeActionsEmail?(externalId: string, input: ExecuteActionsEmailInput): Promise<void>;
   getRealmEmailTheme?(): Promise<string | undefined>;
   getRealmLocalizationTexts?(locale: string): Promise<Readonly<Record<string, string>>>;
+  updateRealmEmailTheme?(emailTheme: string): Promise<void>;
+  updateRealmLocalizationTexts?(
+    locale: string,
+    values: Readonly<Record<string, string>>
+  ): Promise<void>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
   deleteUser(externalId: string): Promise<void>;

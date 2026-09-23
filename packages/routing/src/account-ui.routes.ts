@@ -24,6 +24,7 @@ export type AccountUiRouteGuardKey =
   | 'adminOrganizationCreate'
   | 'adminOrganizationDetail'
   | 'adminInstances'
+  | 'adminTemplates'
   | 'adminRoles'
   | 'adminRoleCreate'
   | 'adminRoleDetail'
@@ -105,6 +106,12 @@ const accountUiRouteGuardDefinitions: Record<
     kind: 'protected',
     route: uiRoutePaths.adminInstances,
     requiredRoles: ['instance_registry_admin'],
+  },
+  adminTemplates: {
+    kind: 'protected',
+    route: uiRoutePaths.adminTemplates,
+    requiredAnyPermissions: ['instance.registry.manage'],
+    requiredAnyRoles: ['instance_registry_admin'],
   },
   adminRoles: {
     kind: 'protected',
@@ -222,6 +229,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     adminOrganizationCreate: createAccountUiRouteGuard('adminOrganizationCreate', diagnostics),
     adminOrganizationDetail: createAccountUiRouteGuard('adminOrganizationDetail', diagnostics),
     adminInstances: createAccountUiRouteGuard('adminInstances', diagnostics),
+    adminTemplates: createAccountUiRouteGuard('adminTemplates', diagnostics),
     adminRoles: createAccountUiRouteGuard('adminRoles', diagnostics),
     adminRoleCreate: createAccountUiRouteGuard('adminRoleCreate', diagnostics),
     adminRoleDetail: createAccountUiRouteGuard('adminRoleDetail', diagnostics),

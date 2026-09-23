@@ -33,6 +33,7 @@ import type {
   IamPermission,
   IamRoleListItem,
   IamRoleReconcileReport,
+  ServerAccountInvitationTemplateView,
   IamTenantDeletionRulesOverview,
   StudioJobDetail,
   StudioJobDetailResponse,
@@ -586,6 +587,11 @@ export type UpdateInstancePayload = {
   readonly accountInvitationTemplateRevision?: number;
 };
 
+export type UpdateServerAccountInvitationTemplatePayload = {
+  readonly expectedRevision: number;
+  readonly template: UpdateInstancePayload['accountInvitationTemplate'];
+};
+
 export type ReconcileInstanceKeycloakPayload = {
   readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
@@ -1109,6 +1115,21 @@ export const updateInstance = async (
     `/api/v1/iam/instances/${instanceId}`,
     payload
   );
+
+export const getServerAccountInvitationTemplate = async (): Promise<
+  ApiItemResponse<ServerAccountInvitationTemplateView>
+> =>
+  requestJson<ApiItemResponse<ServerAccountInvitationTemplateView>>(
+    '/api/v1/iam/templates/account-invitation'
+  );
+
+export const updateServerAccountInvitationTemplate = async (
+  payload: UpdateServerAccountInvitationTemplatePayload
+): Promise<ApiItemResponse<ServerAccountInvitationTemplateView>> =>
+  patchJson<
+    ApiItemResponse<ServerAccountInvitationTemplateView>,
+    UpdateServerAccountInvitationTemplatePayload
+  >('/api/v1/iam/templates/account-invitation', payload);
 
 export const getInstanceKeycloakStatus = async (
   instanceId: string

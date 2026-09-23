@@ -29,12 +29,14 @@ import {
   getInstanceDraftReadinessInternal,
   listInstanceRealmsInternal,
   getInstanceInternal,
+  getServerAccountInvitationTemplateInternal,
   listInstancesInternal,
   revokeInstanceModuleInternal,
   retryTenantProvisioningInternal,
   seedInstanceIamBaselineInternal,
   suspendInstanceInternal,
   updateInstanceInternal,
+  updateServerAccountInvitationTemplateInternal,
 } from './core.js';
 import {
   executeInstanceKeycloakProvisioningInternal,
@@ -128,6 +130,12 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, 'instance.list', listInstancesInternal),
   getInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.read', getInstanceInternal),
+  getServerAccountInvitationTemplate: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.update',
+      getServerAccountInvitationTemplateInternal
+    ),
   getPluginTenantReadiness: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(
       request,
@@ -150,6 +158,12 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, 'instance.create', retryTenantProvisioningInternal),
   updateInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.update', updateInstanceInternal),
+  updateServerAccountInvitationTemplate: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(
+      request,
+      'instance.update',
+      updateServerAccountInvitationTemplateInternal
+    ),
   getInstanceAuditRun: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, 'instance.audit.read', getInstanceAuditRunInternal),
   getInstanceKeycloakStatus: async (request: Request): Promise<Response> =>

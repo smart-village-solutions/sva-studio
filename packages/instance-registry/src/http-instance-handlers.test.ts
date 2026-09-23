@@ -9,6 +9,28 @@ describe('http-instance-handlers', () => {
   const ctx = { user: { id: 'admin-1' } };
   const service = {
     listInstances: vi.fn(async () => [{ instanceId: 'demo', status: 'active' }]),
+    getServerAccountInvitationTemplate: vi.fn(async () => ({
+      revision: 0,
+      effectiveTemplate: {
+        revision: 0,
+        subject: 'Willkommen {{tenantName}}',
+        body: '{{passwordSetupLink}}',
+        passwordSetupLinkLabel: 'Passwort',
+        tenantHomepageLinkLabel: 'Startseite',
+      },
+      source: 'sva_default',
+    })),
+    updateServerAccountInvitationTemplate: vi.fn(async () => ({
+      revision: 1,
+      effectiveTemplate: {
+        revision: 1,
+        subject: 'Willkommen {{tenantName}}',
+        body: '{{passwordSetupLink}}',
+        passwordSetupLinkLabel: 'Passwort',
+        tenantHomepageLinkLabel: 'Startseite',
+      },
+      source: 'server',
+    })),
     getInstanceDetail: vi.fn(async () => ({ instanceId: 'demo', status: 'active' })),
     createProvisioningRequest: vi.fn(async () => ({
       ok: true,
@@ -136,6 +158,58 @@ describe('http-instance-handlers', () => {
       data: [{ instanceId: 'demo', status: 'active' }],
       pagination: { page: 1, pageSize: 1, total: 1 },
     });
+  });
+
+  it('reads and updates the server invitation template behind platform guards', async () => {
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+    const readResponse = await handlers.getServerAccountInvitationTemplate(
+      new Request('https://studio.example.org/api/v1/iam/templates/account-invitation'),
+      ctx
+    );
+    expect(readResponse.status).toBe(200);
+    expect(await readBody(readResponse)).toMatchObject({ source: 'sva_default', revision: 0 });
+
+    const template = {
+      subject: 'Willkommen {{tenantName}}',
+      body: '{{passwordSetupLink}}',
+      passwordSetupLinkLabel: 'Passwort',
+      tenantHomepageLinkLabel: 'Startseite',
+    };
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: { expectedRevision: 0, template },
+    });
+    const updateResponse = await handlers.updateServerAccountInvitationTemplate(
+      new Request('https://studio.example.org/api/v1/iam/templates/account-invitation', {
+        method: 'PATCH',
+      }),
+      ctx
+    );
+
+    expect(updateResponse.status).toBe(200);
+    expect(service.updateServerAccountInvitationTemplate).toHaveBeenCalledWith({
+      expectedRevision: 0,
+      template,
+      actorId: 'admin-1',
+      requestId: 'req-1',
+    });
+    expect(deps.ensurePlatformAccess).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects server template access before reading or writing state', async () => {
+    deps.ensurePlatformAccess.mockReturnValueOnce(
+      new Response(JSON.stringify({ code: 'forbidden' }), { status: 403 })
+    );
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+    const response = await handlers.updateServerAccountInvitationTemplate(
+      new Request('https://studio.example.org/api/v1/iam/templates/account-invitation', {
+        method: 'PATCH',
+      }),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(service.updateServerAccountInvitationTemplate).not.toHaveBeenCalled();
   });
 
   it('lists the paginated realm catalog', async () => {

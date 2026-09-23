@@ -6,7 +6,7 @@ import {
 } from '../keycloak-admin-client.js';
 import type { IdentityProviderResolution } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared.js';
-import { assertAccountInvitationProjection } from './account-invitation-guard.js';
+import { ensureAccountInvitationRealmValues } from './account-invitation-guard.js';
 
 export type CreateUserActorInfo = {
   instanceId: string;
@@ -122,7 +122,7 @@ export const sendPasswordSetupInvitation = async (input: {
   }
 
   const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
-  await assertAccountInvitationProjection({
+  await ensureAccountInvitationRealmValues({
     instanceId: input.actor.instanceId,
     template: authConfig.accountInvitationTemplate,
     tenantName: authConfig.tenantDisplayName,
@@ -133,6 +133,13 @@ export const sendPasswordSetupInvitation = async (input: {
     readRealmLocalizationTexts: input.identityProvider.provider.getRealmLocalizationTexts?.bind(
       input.identityProvider.provider
     ),
+    updateRealmEmailTheme: input.identityProvider.provider.updateRealmEmailTheme?.bind(
+      input.identityProvider.provider
+    ),
+    updateRealmLocalizationTexts:
+      input.identityProvider.provider.updateRealmLocalizationTexts?.bind(
+        input.identityProvider.provider
+      ),
   });
   await waitForKeycloakUserReadiness(input);
   await executeActionsEmailWithRetry({
@@ -193,21 +200,23 @@ export const buildInvitationFailure = (error: unknown): InvitationResult => {
   };
 };
 
-export const logInvitationFailure = (input: {
-  actor: CreateUserActorInfo;
-  keycloakSubject: string;
-  error: unknown;
-}) => {
+export const logInvitationFailure = (input: { actor: CreateUserActorInfo; error: unknown }) => {
   logger.error('IAM user invitation email failed', {
     workspace_id: input.actor.instanceId,
     context: {
       operation: 'execute_actions_email',
       instance_id: input.actor.instanceId,
-      keycloak_subject: input.keycloakSubject,
       request_id: input.actor.requestId,
       trace_id: input.actor.traceId,
       actor_account_id: input.actor.actorAccountId,
-      error: input.error instanceof Error ? input.error.message : String(input.error),
+      error_code:
+        input.error instanceof KeycloakAdminRequestError
+          ? input.error.code
+          : input.error instanceof KeycloakAdminUnavailableError
+            ? 'keycloak_unavailable'
+            : input.error instanceof Error
+              ? input.error.name
+              : 'unknown_error',
     },
   });
 };

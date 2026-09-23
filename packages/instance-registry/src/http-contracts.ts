@@ -58,6 +58,13 @@ const accountInvitationTemplateSchema = z
   })
   .strict();
 
+export const serverAccountInvitationTemplateMutationSchema = z
+  .object({
+    expectedRevision: z.number().int().nonnegative(),
+    template: accountInvitationTemplateSchema.nullable(),
+  })
+  .strict();
+
 const reservedInstanceIds = new Set(['audit']);
 
 const instanceIdSchema = z

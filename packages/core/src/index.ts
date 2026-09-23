@@ -444,17 +444,21 @@ export {
   trafficEnabledInstanceStatuses,
 } from './instances/registry.js';
 export {
-  accountInvitationProjectionStatuses,
+  ACCOUNT_INVITATION_TEMPLATE_KEY,
   compileAccountInvitationTemplate,
   DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+  resolveEffectiveAccountInvitationTemplate,
+  toServerAccountInvitationTemplateView,
   validateAccountInvitationTemplate,
   AccountInvitationTemplateValidationError,
 } from './instances/account-invitation-template.js';
 export type {
-  AccountInvitationProjection,
-  AccountInvitationProjectionStatus,
   AccountInvitationTemplate,
+  AccountInvitationTemplateSource,
   CompiledAccountInvitationTemplate,
+  EffectiveAccountInvitationTemplate,
+  ServerAccountInvitationTemplateState,
+  ServerAccountInvitationTemplateView,
 } from './instances/account-invitation-template.js';
 export {
   canDisableTenantModule,

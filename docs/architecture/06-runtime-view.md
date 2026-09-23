@@ -1384,19 +1384,30 @@ Nachweis gesperrt.
 5. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
    `unknown` sichtbar. Der dauerhafte Auftrag bleibt claimbar.
 
-### Szenario 23: Account-Einladung je Studio-Instanz
+### Szenario 23: Vererbte Account-Einladung je Studio-Installation und Instanz
 
-1. Ein Plattformadministrator speichert auf der Instanzdetailseite Text und
-   Linkbeschriftungen zusammen mit der zuletzt gelesenen Vorlagenrevision.
-2. Der Server validiert Platzhalter und Freitext, persistiert die nächste
-   Revision und kompiliert Tenantname sowie die aus `primaryHostname`
-   abgeleitete HTTPS-Startseite in drei Keycloak-Nachrichten.
-3. Der Tenant-Admin-Client setzt `emailTheme = sva-kern2`, schreibt nur diese
-   drei Realm-Overrides und bestätigt sie durch einen Readback. Ein Teilfehler
-   bleibt als Drift sichtbar und ist idempotent wiederholbar.
-4. Vor Create-Einladung und Resend vergleicht die Auth-Runtime bei einer
-   Individualvorlage den Realmzustand mit derselben Kompilierung. Abweichung
-   oder Nichtverfügbarkeit stoppt ausschließlich die E-Mail; der Account bleibt
-   bestehen.
-5. Erst danach ruft Studio `execute-actions-email` mit `UPDATE_PASSWORD` auf.
-   Keycloak erzeugt und versendet den signierten, zeitlich begrenzten Link.
+1. Ein Plattformadministrator speichert unter `/admin/templates` die
+   Servervorlage oder an der Instanz eine abweichende Vorlage zusammen mit der
+   zuletzt gelesenen Revision. Ein Reset entfernt nur den jeweiligen Override.
+2. Der Server validiert Platzhalter und Freitext und persistiert ausschließlich
+   den Studio-Sollzustand. Dabei erfolgt kein Keycloak-Aufruf.
+3. Für einen konkreten Versand löst die Auth-Runtime genau eine wirksame
+   Vorlage in der Reihenfolge Instanzvorlage, Servervorlage, SVA-Standard auf
+   und kompiliert Tenantname sowie die aus `primaryHostname` abgeleitete
+   HTTPS-Startseite in drei Keycloak-Nachrichten.
+4. Unmittelbar vor Create-Einladung und Resend liest der Tenant-Admin-Client
+   E-Mail-Theme und Realmtexte. Bei Abweichung setzt er `emailTheme = sva-kern2`
+   und schreibt ausschließlich die drei verwalteten deutschen Werte.
+5. Erst ein exakter Readback erlaubt `execute-actions-email` mit
+   `UPDATE_PASSWORD`. Keycloak erzeugt und versendet den signierten,
+   zeitlich begrenzten Link.
+
+Fehlerpfad:
+
+- Ein Revisionskonflikt überschreibt keinen neueren Studio-Sollzustand; die UI
+  lädt den aktuellen Stand neu.
+- Ein Keycloak-Write-, Readback- oder Verbindungsfehler stoppt ausschließlich
+  die konkrete E-Mail. Ein bereits angelegter Account bleibt bestehen.
+- Es gibt keinen globalen Projektionsstatus, keinen Fan-out beim Speichern und
+  keinen separaten Retry-Workflow; der nächste Versand stellt erneut
+  idempotent sicher.

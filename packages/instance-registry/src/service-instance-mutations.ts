@@ -1,8 +1,4 @@
-import {
-  buildPrimaryHostname,
-  canTransitionInstanceStatus,
-  normalizeHost,
-} from '@sva/core';
+import { buildPrimaryHostname, canTransitionInstanceStatus, normalizeHost } from '@sva/core';
 
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import { createGetInstanceDetail } from './service-detail.js';
@@ -285,9 +281,7 @@ export const createUpdateInstanceHandler =
 
     const invitationUpdated = await applyAccountInvitationTemplateMutation({
       repository: deps.repository,
-      project: deps.projectAccountInvitationTemplate,
       mutation: effectiveInput,
-      existing,
       updated,
     });
     if (!invitationUpdated) return null;
@@ -301,6 +295,15 @@ export const createUpdateInstanceHandler =
       request_id: input.requestId,
       previous_hostname: existing.primaryHostname,
       next_hostname: updated.primaryHostname,
+      ...(effectiveInput.accountInvitationTemplate !== undefined
+        ? {
+            account_invitation_template_revision:
+              (effectiveInput.accountInvitationTemplateRevision ?? 0) + 1,
+            account_invitation_template_operation: effectiveInput.accountInvitationTemplate
+              ? 'set'
+              : 'reset',
+          }
+        : {}),
     });
     return createGetInstanceDetail(deps)(updated.instanceId);
   };

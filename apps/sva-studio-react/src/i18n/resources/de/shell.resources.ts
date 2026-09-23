@@ -150,6 +150,7 @@ export const shellDEResources = {
     accounts: 'Accounts',
     organizations: 'Organisationen',
     instances: 'Instanzen',
+    templates: 'Templates',
     roles: 'Rollen',
     groups: 'Gruppen',
     legalTexts: 'Rechtstexte',

@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as instancesShared from './-instances-shared';
@@ -24,6 +25,15 @@ import {
   getPostCreateGuidance,
   readSuggestedParentDomain,
 } from './-instance-form-models';
+
+const accountInvitationDetailFields = {
+  effectiveAccountInvitationTemplate: {
+    ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+    revision: 0,
+  },
+  accountInvitationTemplateSource: 'sva_default',
+  serverAccountInvitationTemplateRevision: 0,
+} as const;
 
 const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
   ({
@@ -54,6 +64,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     hostnames: [],
     provisioningRuns: [],
     auditEvents: [],
+    ...accountInvitationDetailFields,
     keycloakPreflight: undefined,
     keycloakPlan: undefined,
     keycloakProvisioningRuns: [],
@@ -263,6 +274,7 @@ describe('instances shared helpers', () => {
 
     const workflow = getSetupWorkflowSteps(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'requested',
@@ -299,6 +311,7 @@ describe('instances shared helpers', () => {
 
   it('maps setup workflow and status guidance for a blocked requested instance', () => {
     const instance = {
+      ...accountInvitationDetailFields,
       instanceId: 'demo',
       displayName: 'Demo',
       status: 'requested',
@@ -395,6 +408,7 @@ describe('instances shared helpers', () => {
   it('uses intent-specific workflow actions for tenant admin client and tenant admin steps', () => {
     const workflow = getSetupWorkflowSteps(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'requested',
@@ -455,6 +469,7 @@ describe('instances shared helpers', () => {
   it('evaluates the configuration as incomplete when canonical requirements are missing', () => {
     const assessment = evaluateInstanceConfiguration(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'active',
@@ -580,6 +595,7 @@ describe('instances shared helpers', () => {
   it('builds a cockpit model with a single primary action and prioritizes current evidence over history', () => {
     const model = buildInstanceDetailCockpitModel(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'validated',
@@ -714,6 +730,7 @@ describe('instances shared helpers', () => {
   it('limits the anomaly queue to three items and does not derive a green overall state from unknown tenant access', () => {
     const model = buildInstanceDetailCockpitModel(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'active',
@@ -825,6 +842,7 @@ describe('instances shared helpers', () => {
   it('prefers the current keycloak structure over stale tenant IAM configuration evidence', () => {
     const model = buildInstanceDetailCockpitModel(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'active',
@@ -1036,6 +1054,7 @@ describe('instances shared helpers', () => {
   it('surfaces failed provisioning runs as cockpit anomalies with provisioning source labels', () => {
     const model = buildInstanceDetailCockpitModel(
       {
+        ...accountInvitationDetailFields,
         instanceId: 'demo',
         displayName: 'Demo',
         status: 'validated',

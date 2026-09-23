@@ -43,6 +43,7 @@ export const authRoutePaths = [
   '/api/v1/iam/instances/draft-readiness',
   '/api/v1/iam/instances/keycloak-realms',
   '/api/v1/iam/instances/audit',
+  '/api/v1/iam/templates/account-invitation',
   '/api/v1/iam/instances/$instanceId',
   '/api/v1/iam/instances/$instanceId/provisioning/retry',
   '/api/v1/iam/instances/$instanceId/plugin-readiness',

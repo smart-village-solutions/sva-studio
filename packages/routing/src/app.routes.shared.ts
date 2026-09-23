@@ -179,6 +179,12 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     documentation: page('admin.instances.detail', 'detail'),
   },
   {
+    binding: 'adminTemplates',
+    path: uiRoutePaths.adminTemplates,
+    guard: 'adminTemplates',
+    documentation: page('admin.templates', 'detail'),
+  },
+  {
     binding: 'adminRoles',
     path: uiRoutePaths.adminRoles,
     guard: 'adminRoles',

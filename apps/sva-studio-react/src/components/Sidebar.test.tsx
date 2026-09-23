@@ -671,6 +671,9 @@ describe('Sidebar', () => {
     );
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
     expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Templates' }).getAttribute('href')).toBe(
+      '/admin/templates'
+    );
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
   });
 

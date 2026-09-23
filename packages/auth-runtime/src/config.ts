@@ -1,5 +1,13 @@
-import { classifyHost, isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
-import { loadInstanceById } from '@sva/data-repositories/server';
+import {
+  classifyHost,
+  isTrafficEnabledInstanceStatus,
+  normalizeHost,
+  resolveEffectiveAccountInvitationTemplate,
+} from '@sva/core';
+import {
+  loadInstanceById,
+  loadServerAccountInvitationTemplate,
+} from '@sva/data-repositories/server';
 import { getInstanceConfig, isCanonicalAuthHost } from '@sva/server-runtime';
 
 import {
@@ -196,7 +204,10 @@ export const resolveAuthConfigForInstance = async (
   instanceId: string,
   options: { origin?: string; protocol?: string } = {}
 ): Promise<AuthConfig> => {
-  const instance = await loadInstanceById(instanceId);
+  const [instance, serverAccountInvitationTemplate] = await Promise.all([
+    loadInstanceById(instanceId),
+    loadServerAccountInvitationTemplate(),
+  ]);
   if (!instance || !isTrafficEnabledInstanceStatus(instance.status)) {
     throw new Error(`Active instance auth config not found for ${instanceId}`);
   }
@@ -212,7 +223,10 @@ export const resolveAuthConfigForInstance = async (
     authRealm: instance.authRealm,
     issuer: buildIssuerUrl(instance.authRealm, instance.authIssuerUrl),
     clientId: instance.authClientId,
-    accountInvitationTemplate: instance.accountInvitationTemplate,
+    accountInvitationTemplate: resolveEffectiveAccountInvitationTemplate({
+      instanceTemplate: instance.accountInvitationTemplate,
+      serverTemplate: serverAccountInvitationTemplate.template,
+    }).template,
     tenantDisplayName: instance.displayName,
     tenantHomepageUrl: `https://${instance.primaryHostname}/`,
     redirectUri: `${origin}/auth/callback`,

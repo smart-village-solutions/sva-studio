@@ -251,6 +251,30 @@ describe('accountUiRouteGuards', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('protects server templates with the existing platform permission or root role', async () => {
+    await expect(
+      invoke(
+        accountUiRouteGuards.adminTemplates,
+        { roles: ['custom_role'], permissionActions: ['instance.registry.manage'] },
+        '/admin/templates'
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(
+        accountUiRouteGuards.adminTemplates,
+        { roles: ['instance_registry_admin'], permissionActions: [] },
+        '/admin/templates'
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(
+        accountUiRouteGuards.adminTemplates,
+        { roles: ['custom_role'], permissionActions: [] },
+        '/admin/templates'
+      )
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+  });
+
   it('requires write access for the role creation route', async () => {
     await expect(
       invoke(

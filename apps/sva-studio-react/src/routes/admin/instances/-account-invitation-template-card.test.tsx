@@ -1,4 +1,5 @@
 import type { IamInstanceDetail } from '@sva/core';
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,7 +17,9 @@ const instance = {
   instanceId: 'demo',
   displayName: 'Stadt Demo',
   primaryHostname: 'demo.example.org',
-  accountInvitationProjection: { status: 'default' },
+  effectiveAccountInvitationTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 0 },
+  accountInvitationTemplateSource: 'sva_default',
+  serverAccountInvitationTemplateRevision: 0,
 } as IamInstanceDetail;
 
 describe('AccountInvitationTemplateCard', () => {
@@ -41,8 +44,8 @@ describe('AccountInvitationTemplateCard', () => {
     vi.stubGlobal('confirm', confirm);
     render(<AccountInvitationTemplateCard instance={instance} onSave={onSave} />);
     fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Auf SVA-Standard zurücksetzen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Servervorlage verwenden' }));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith(null));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('wirklich entfernen'));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Instanzvorlage entfernen'));
   });
 });

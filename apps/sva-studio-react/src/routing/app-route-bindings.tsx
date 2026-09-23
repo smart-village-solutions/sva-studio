@@ -58,6 +58,7 @@ import { GroupCreatePage } from '../routes/admin/groups/-group-create-page';
 import { InstanceCreatePage } from '../routes/admin/instances/-instance-create-page';
 import { InstanceDetailPage } from '../routes/admin/instances/-instance-detail-page';
 import { InstancesPage } from '../routes/admin/instances/-instances-page';
+import { TemplatesPage } from '../routes/admin/templates/-templates-page';
 import { LegalTextCreatePage } from '../routes/admin/legal-texts/-legal-text-create-page';
 import { LegalTextDetailPage } from '../routes/admin/legal-texts/-legal-text-detail-page';
 import { LegalTextsPage } from '../routes/admin/legal-texts/-legal-texts-page';
@@ -1003,6 +1004,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   adminInstances: InstancesPage,
   adminInstanceCreate: InstanceCreatePage,
   adminInstanceDetail: InstanceDetailRoutePage,
+  adminTemplates: TemplatesPage,
   adminRoles: RolesRoutePage,
   adminRoleCreate: RoleCreatePage,
   adminRoleDetail: RoleDetailRoutePage,

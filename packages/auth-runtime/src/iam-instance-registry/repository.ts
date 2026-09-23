@@ -33,10 +33,6 @@ import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.j
 import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 import { probeTenantIamAccess, reconcileTenantIamRoles } from './tenant-provisioning-iam.js';
 import { readRoleCatalogFingerprint } from '../iam-account-management/reconcile-core.js';
-import {
-  projectAccountInvitationTemplate,
-  readAccountInvitationProjection,
-} from './account-invitation-projection.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
@@ -134,8 +130,6 @@ const registryRuntime = createInstanceRegistryRuntime({
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
-    projectAccountInvitationTemplate,
-    readAccountInvitationProjection,
     resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,
     isAutomatedTenantProvisioningEnabled: ({ parentDomain }) =>
       process.env.SVA_TENANT_INGRESS_MODE === 'kassel-traefik-file' &&

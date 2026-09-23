@@ -1,9 +1,11 @@
 ## ADDED Requirements
 
-### Requirement: Instanzbezogene Account-Einladung wird sicher in den Tenant-Realm projiziert
+### Requirement: Wirksame Account-Einladung wird sicher für den Tenant-Realm aufgelöst
 
-Das System SHALL optional einen versionierten Account-Einladungstext als
-Studio-owned Instanzkonfiguration führen und daraus ausschließlich die
+Das System SHALL einen optionalen serverweiten und einen optionalen
+instanzbezogenen, versionierten Account-Einladungstext als Studio-owned
+Konfiguration führen. Die wirksame Reihenfolge SHALL Instanzvorlage,
+Servervorlage und eingebauter SVA-Standard sein. Daraus SHALL das System ausschließlich die
 Keycloak-Lokalisierungsschlüssel `executeActionsSubject`,
 `executeActionsBody` und `executeActionsBodyHtml` im exklusiv zugeordneten
 Tenant-Realm ableiten. Der gespeicherte Text SHALL keine Realm-, Host-, Token-
@@ -25,31 +27,38 @@ oder Empfängerwerte kopieren.
 
 #### Scenario: Template wird begrenzt kompiliert
 
-- **WHEN** eine gültige Individualvorlage projiziert wird
+- **WHEN** eine gültige wirksame Vorlage für einen Versand kompiliert wird
 - **THEN** ersetzt der Server ausschließlich die vier freigegebenen semantischen Platzhalter
 - **AND** maskiert er Keycloak-MessageFormat-Sonderzeichen deterministisch
 - **AND** erzeugt er Plaintext mit vollständigen sicheren URLs sowie vollständig escaped HTML mit ausschließlich serverseitig erzeugten Links
 - **AND** gelangt kein frei eingegebenes HTML oder URI-Ziel in den Realm
 
-#### Scenario: Exklusive Realm-Zuordnung wird vor Mutation geprüft
+#### Scenario: Exklusive Realm-Zuordnung wird vor dem Versand geprüft
 
-- **WHEN** eine Vorlagenprojektion oder ein Reset angefordert wird
+- **WHEN** die wirksame Vorlage vor einer Einladung im Realm sichergestellt wird
 - **THEN** löst der Server den Realm ausschließlich aus der aktuellen Instanz-Registry auf
 - **AND** bricht er bei fehlender, fremder oder nicht eindeutiger `instanceId -> authRealm`-Zuordnung vor jeder Realm-Mutation ab
 
-#### Scenario: Projektion wird kausal bestätigt
+#### Scenario: Servervorlage wird revisionsgebunden gespeichert
 
-- **WHEN** die drei kompilierten Lokalisierungsschlüssel nach Keycloak geschrieben wurden
-- **THEN** liest der Server genau diese Schlüssel aus demselben Realm zurück
-- **AND** meldet er `in_sync` nur bei vollständiger Übereinstimmung
-- **AND** klassifiziert er Teilfehler oder Abweichungen als `drifted` beziehungsweise `unavailable`
+- **WHEN** ein berechtigter Plattformadministrator eine gültige Servervorlage mit der aktuell gelesenen Revision speichert
+- **THEN** persistiert das System genau einen typisierten Datensatz mit dem Schlüssel `account_invitation`
+- **AND** schreibt es den Servertext nicht in Instanzdatensätze
+- **AND** erfolgt kein Keycloak-Zugriff mit Schreibwirkung
 
-#### Scenario: Retry bleibt idempotent und eng begrenzt
+#### Scenario: Wirksame Vorlage wird deterministisch aufgelöst
 
-- **WHEN** dieselbe gespeicherte Vorlagenrevision nach einem Teilfehler erneut projiziert wird
-- **THEN** schreibt der Server erneut ausschließlich die drei verwalteten Einladungsschlüssel
+- **WHEN** das System die Vorlage für eine Instanz benötigt
+- **THEN** verwendet es zuerst deren Individualvorlage
+- **AND** verwendet es ohne Individualvorlage die Servervorlage
+- **AND** verwendet es ohne beide Overrides den eingebauten SVA-Standard
+
+#### Scenario: Sicherstellung vor Versand bleibt idempotent und eng begrenzt
+
+- **WHEN** die kompilierten Realmwerte vor einem konkreten Versand abweichen
+- **THEN** schreibt der Server ausschließlich die drei verwalteten Einladungsschlüssel
 - **AND** verändert oder entfernt er keine fremden Realm-Lokalisierungen
-- **AND** kann der exakte Readback die Revision anschließend als `in_sync` bestätigen
+- **AND** bestätigt er dieselben drei Werte durch Readback, bevor Keycloak die E-Mail versendet
 
 ### Requirement: SVA-E-Mail-Theme liefert den sicheren Standardtext
 
@@ -63,19 +72,17 @@ E-Mail-Theme über die vorhandene serverseitige Realm-Baseline erhalten.
 - **WHEN** der vorhandene Provisioner einen neuen Tenant-Realm mit der freigegebenen Baseline erstellt
 - **THEN** setzt er zusätzlich `emailTheme = sva-kern2`
 - **AND** bestätigt der finale Readback das E-Mail-Theme
-- **AND** verwendet eine Account-Einladung ohne Individualvorlage den versionierten deutschen Standardtext
+- **AND** verwendet eine Account-Einladung ohne Individualvorlage die Servervorlage oder ersatzweise den versionierten deutschen SVA-Standardtext
 
-#### Scenario: Bestandsrealm wird nicht automatisch migriert
+#### Scenario: Bestandsrealm wird nicht als Fleet migriert
 
-- **WHEN** eine bestehende Instanz ohne ausdrückliche Vorlagenmutation gelesen, geprüft oder normal reconciled wird
+- **WHEN** eine Server- oder Instanzvorlage gespeichert, zurückgesetzt, gelesen oder normal reconciled wird
 - **THEN** setzt oder ändert das System ihr E-Mail-Theme und ihre Einladungsschlüssel nicht automatisch
-- **AND** bleibt eine spätere ausdrückliche Speicherung oder Rücksetzung als kontrollierter Migrationspunkt verfügbar
+- **AND** richtet erst ein konkreter Einladungsversand den betroffenen Realm bedarfsgesteuert aus
 
-#### Scenario: Reset entfernt nur die Individualisierung
+#### Scenario: Instanz-Reset aktiviert die Vererbung
 
 - **WHEN** eine Individualvorlage revisionsgebunden auf den Standard zurückgesetzt wird
 - **THEN** entfernt das System die gespeicherte Individualvorlage
-- **AND** setzt es im zugeordneten Realm das E-Mail-Theme `sva-kern2`
-- **AND** entfernt es ausschließlich die drei individuellen Einladungsschlüssel
-- **AND** bestätigt der Readback den wirksamen SVA-Standard, ohne andere Realm-Lokalisierungen zu verändern
-
+- **AND** löst es anschließend die Servervorlage oder den eingebauten SVA-Standard als wirksamen Text auf
+- **AND** erfolgt beim Reset kein Keycloak-Write

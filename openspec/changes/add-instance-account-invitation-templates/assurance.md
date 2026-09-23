@@ -2,11 +2,11 @@
 
 ## Kritische Grenzen
 
-Der Change koppelt einen in der Studio-Registry gespeicherten Solltext mit
+Der Change koppelt einen server- oder instanzbezogen in der Studio-Datenbank gespeicherten Solltext mit
 Realm-Lokalisierungswerten, die Keycloak beim Erzeugen eines signierten
 Passwort-Aktionslinks tatsächlich versendet. Kritisch sind die exklusive
-Instanz-/Realm-Zuordnung, die Unveränderlichkeit der Link-Ownership und das
-Verhalten bei Teilfehlern oder direktem Realm-Drift.
+Instanz-/Realm-Zuordnung, die Unveränderlichkeit der Link-Ownership und die
+bedarfsgesteuerte Sicherstellung unmittelbar vor dem Versand.
 
 ## Invarianten und geplante Nachweise
 
@@ -49,10 +49,10 @@ Nachweis:
   serverseitig erzeugte Anchors;
 - Property-/Fuzz-nahe Tests für Klammern, Apostrophe, Unicode und Zeilenumbrüche.
 
-### AIT-4 – Passwortlink ist in jeder Individualvorlage genau einmal vorhanden
+### AIT-4 – Passwortlink ist in jeder gespeicherten Vorlage genau einmal vorhanden
 
-Eine Individualvorlage ohne oder mit mehrfach eingefügtem
-`{{passwordSetupLink}}` ist ungültig und darf nicht persistiert oder projiziert
+Eine Server- oder Individualvorlage ohne oder mit mehrfach eingefügtem
+`{{passwordSetupLink}}` ist ungültig und darf nicht persistiert oder für einen Versand verwendet
 werden.
 
 Nachweis:
@@ -61,44 +61,48 @@ Nachweis:
 - Readback-Test bestätigt `{0}` genau einmal in Plaintext und HTML;
 - UI zeigt den Validierungsfehler am Nachrichtentext.
 
-### AIT-5 – Teilfehler werden nicht als aktive Vorlage behauptet
+### AIT-5 – Die Vererbung liefert genau eine wirksame Vorlage
 
-Persistierter Sollzustand, Keycloak-Write und Readback sind getrennte Zustände.
-Nur ein exakter Readback aller drei verwalteten Schlüssel gilt als `in_sync`.
-
-Nachweis:
-
-- Fault-Tests nach jedem Keycloak-Schreibschritt und vor dem Readback;
-- Drift-Test mit genau einem abweichenden Schlüssel;
-- idempotenter Retry stellt alle drei Schlüssel her, ohne fremde Overrides zu
-  verändern;
-- UI- und API-Tests unterscheiden `in_sync`, `drifted` und `unavailable`.
-
-### AIT-6 – Custom-Drift verhindert falschen Einladungsversand
-
-Ist eine Individualvorlage gespeichert, darf weder Create noch Resend
-`execute-actions-email` auslösen, solange der aktuelle Realm-Readback nicht zur
-gespeicherten Revision passt.
+Die Auflösung muss deterministisch Instanzvorlage, Servervorlage und danach den
+eingebauten SVA-Standard wählen. Servertexte dürfen nicht in Instanzdatensätze
+kopiert werden.
 
 Nachweis:
 
-- IAM-Integrationstests für Create und Resend mit `in_sync`, `drifted` und
-  `unavailable`;
-- Spies bestätigen ausbleibenden Versand bei Drift;
+- Resolver-Tests für alle drei Quellen und beide Rücksetzungen;
+- Repository-Tests belegen revisionsgebundene Server- und Instanzwerte;
+- UI-Tests zeigen die Quelle der wirksamen Vorlage ohne globalen
+  Projektionsstatus.
+
+### AIT-6 – Versand erfolgt erst nach bestätigter wirksamer Vorlage
+
+Weder Create noch Resend darf `execute-actions-email` auslösen, solange die
+drei Realmwerte nicht exakt der kompilierten wirksamen Vorlage entsprechen.
+Eine Abweichung wird für diesen Realm idempotent korrigiert und zurückgelesen.
+
+Nachweis:
+
+- IAM-Integrationstests für Create und Resend mit bereits passendem Text,
+  erfolgreicher Aktualisierung sowie Write- und Readbackfehlern;
+- Spies bestätigen, dass nur die drei verwalteten Schlüssel geschrieben werden
+  und bei nicht bestätigtem Readback kein Versand erfolgt;
 - bestehende Tests bestätigen, dass die Accountanlage trotz isoliertem
   Einladungsfehler erfolgreich bleibt.
 
-### AIT-7 – Reset entfernt nur Studio-owned Einladungsschlüssel
+### AIT-7 – Speichern und Reset mutieren keinen Realm
 
-„Auf Standard zurücksetzen“ darf ausschließlich die Individualvorlage und die
-drei verwalteten Realm-Overrides entfernen sowie das freigegebene E-Mail-Theme
-setzen. Andere Lokalisierungswerte und Theme-Artefakte bleiben unverändert.
+Das Speichern oder Zurücksetzen einer Server- oder Instanzvorlage darf nur den
+Studio-Sollzustand verändern. Die Realmwerte werden erst vor dem nächsten
+konkreten Versand bedarfsgesteuert ausgerichtet.
 
 Nachweis:
 
-- Adaptertest mit zusätzlichen fremden Realm-Overrides;
-- Readback bestätigt den SVA-Standardtext;
-- Retry- und Teilfehlertest für einen unterbrochenen Reset.
+- Service-Spies bestätigen, dass Template-Mutationen keinen Keycloak-Write
+  auslösen;
+- Resolver-Tests bestätigen nach Instanz-Reset den Servertext und nach
+  Server-Reset den SVA-Standard;
+- der nächste Versand überschreibt ausschließlich die drei verwalteten
+  Einladungsschlüssel und lässt fremde Lokalisierungen unverändert.
 
 ### AIT-8 – Konkurrierende Bearbeitung überschreibt keine neuere Revision
 
@@ -111,6 +115,19 @@ Nachweis:
 - der Konflikt entsteht vor Keycloak-Zugriff;
 - UI fordert nach Konflikt zum Neuladen auf und behält keinen falschen
   Erfolgszustand.
+
+### AIT-9 – Servervorlage bleibt Plattformadministration
+
+Nur Aufrufer mit der bestehenden Plattformberechtigung
+`instance.registry.manage` dürfen die Servervorlage lesen oder verändern. Die
+neue Route darf keine tenantlokale Rollenabkürzung einführen.
+
+Nachweis:
+
+- HTTP- und Navigationstests für berechtigte und unberechtigte Aufrufer;
+- Mutationstests bestätigen die Autorisierung vor jedem Datenbank-Write;
+- Audit enthält nur Vorlagenschlüssel, Revision, Actor und Ergebnis, niemals
+  den Vorlagentext.
 
 ## Abnahmegrenze
 
@@ -137,5 +154,7 @@ Für den aktuellen Arbeitsstand sind folgende lokale Nachweise grün:
 - Typechecks der betroffenen Projekte sowie `check:server-runtime`,
   `check:file-placement`, `git diff --check` und die strikte OpenSpec-Validierung.
 
-Noch offen bleiben die vollständige Teilfehlermatrix, der abschließende Nachweis
-aller Invarianten am finalen Commit sowie die Testrealm-Abnahme.
+Zusätzlich belegen Resolver-, Konfigurations-, HTTP- und UI-Tests die
+Serververerbung, den autorisierten Server-Override, den revisionsgebundenen
+Reset und die bedarfsgesteuerte Sicherstellung vor Create und Resend. Offen
+bleibt die Testrealm-Abnahme gegen eine unterstützte Keycloak-Version.

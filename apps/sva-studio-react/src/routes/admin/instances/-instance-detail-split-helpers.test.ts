@@ -1,3 +1,4 @@
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { describe, expect, it } from 'vitest';
 
 import { buildInstanceDetailCockpitModel } from './-instance-detail-cockpit';
@@ -64,6 +65,12 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     hostnames: [],
     provisioningRuns: [],
     auditEvents: [],
+    effectiveAccountInvitationTemplate: {
+      ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+      revision: 0,
+    },
+    accountInvitationTemplateSource: 'sva_default',
+    serverAccountInvitationTemplateRevision: 0,
     keycloakPreflight: undefined,
     keycloakPlan: undefined,
     keycloakProvisioningRuns: [],

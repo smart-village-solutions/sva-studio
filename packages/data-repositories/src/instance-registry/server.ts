@@ -1,6 +1,7 @@
 import {
   normalizeHost,
   type InstanceRegistryRecord,
+  type ServerAccountInvitationTemplateState,
   type WasteTenantProvisioningRecord,
 } from '@sva/core';
 import { Pool } from 'pg';
@@ -92,10 +93,13 @@ const resolveIamDatabaseUrl = (): string | undefined => {
     try {
       return ensureValidIamDatabaseUrl(explicit) ?? undefined;
     } catch (error) {
-      logger.warn('Explicit IAM database URL is invalid; falling back to derived database credentials', {
-        reason: 'iam_database_url_invalid',
-        error_type: readErrorType(error),
-      });
+      logger.warn(
+        'Explicit IAM database URL is invalid; falling back to derived database credentials',
+        {
+          reason: 'iam_database_url_invalid',
+          error_type: readErrorType(error),
+        }
+      );
     }
   }
 
@@ -123,9 +127,12 @@ const pruneHostCache = (now: number): void => {
 const getPool = (databaseUrl: string | undefined): Pool | null => {
   const normalizedDatabaseUrl = ensureValidIamDatabaseUrl(databaseUrl);
   if (!normalizedDatabaseUrl) {
-    logger.warn('IAM database URL is not configured; instance-registry lookup cannot use the server repository', {
-      reason: 'iam_database_url_missing',
-    });
+    logger.warn(
+      'IAM database URL is not configured; instance-registry lookup cannot use the server repository',
+      {
+        reason: 'iam_database_url_missing',
+      }
+    );
     return null;
   }
   const existing = poolsByDatabaseUrl.get(normalizedDatabaseUrl);
@@ -161,7 +168,10 @@ const withClient = async <T>(
 };
 
 const createExecutor = (client: QueryClient) => ({
-  execute: async <TRow = Record<string, unknown>>(statement: { text: string; values: readonly unknown[] }) => {
+  execute: async <TRow = Record<string, unknown>>(statement: {
+    text: string;
+    values: readonly unknown[];
+  }) => {
     const result = await client.query<TRow>(statement.text, statement.values);
     return {
       rowCount: result.rowCount,
@@ -303,6 +313,17 @@ export const loadInstanceById = async (
     { getDatabaseUrl: options.getDatabaseUrl }
   );
 
+export const loadServerAccountInvitationTemplate = async (
+  options: { readonly getDatabaseUrl?: () => string | undefined } = {}
+): Promise<ServerAccountInvitationTemplateState> =>
+  withClient(
+    async (client) => {
+      const repository = createInstanceRegistryRepository(createExecutor(client));
+      return repository.getServerAccountInvitationTemplate();
+    },
+    { getDatabaseUrl: options.getDatabaseUrl }
+  );
+
 export const loadInstanceAuthClientSecretCiphertext = async (
   instanceId: string,
   options: { readonly getDatabaseUrl?: () => string | undefined } = {}
@@ -377,7 +398,11 @@ export const requestWasteTenantProvisioning = (
   );
 
 export const claimWasteTenantProvisioning = (
-  input: { readonly instanceId: string; readonly jobId: string; readonly desiredGeneration: number },
+  input: {
+    readonly instanceId: string;
+    readonly jobId: string;
+    readonly desiredGeneration: number;
+  },
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord | null> =>
   withWasteProvisioningRepository(input.instanceId, options, (repository) =>

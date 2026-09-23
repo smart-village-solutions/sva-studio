@@ -8,6 +8,7 @@ import type {
   IamTenantIamStatus,
   WasteManagementDataSourceRecord,
   TenantModuleActivationPolicySnapshot,
+  ServerAccountInvitationTemplateView,
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
@@ -44,7 +45,6 @@ import type {
 } from './confirmation-challenges.js';
 import type { InstanceDraftReadiness } from './service-draft-readiness.js';
 import type { RealmCatalog } from './service-realm-catalog.js';
-import type { ProjectAccountInvitationTemplate, ReadAccountInvitationProjection } from './service-account-invitation-template.js';
 
 type ModuleActivationPolicyReconcileResult = Awaited<
   ReturnType<InstanceRegistryRepository['reconcileModuleActivationPolicies']>
@@ -125,6 +125,13 @@ export type InstanceRegistryService = {
     search?: string;
     status?: InstanceStatus;
   }): Promise<readonly IamInstanceListItem[]>;
+  getServerAccountInvitationTemplate(): Promise<ServerAccountInvitationTemplateView>;
+  updateServerAccountInvitationTemplate(input: {
+    expectedRevision: number;
+    template: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
+    actorId?: string;
+    requestId?: string;
+  }): Promise<ServerAccountInvitationTemplateView>;
   getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
   createProvisioningRequest(
     input: CreateInstanceProvisioningInput
@@ -192,8 +199,6 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
-  readonly readAccountInvitationProjection?: ReadAccountInvitationProjection;
-  readonly projectAccountInvitationTemplate?: ProjectAccountInvitationTemplate;
   readonly resolveProvisioningAuthIssuerUrl?: (input: {
     readonly parentDomain: string;
     readonly authRealm: string;

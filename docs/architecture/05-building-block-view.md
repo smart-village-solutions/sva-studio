@@ -1019,9 +1019,18 @@ Details offen.
 
 - `@sva/core` definiert die typisierte Vorlage und kompiliert ausschließlich
   kontrollierte Platzhalter in Keycloaks Betreff-, Plaintext- und HTML-Schlüssel.
-- `@sva/instance-registry` hält den revisionsgebundenen Sollzustand an der
-  Instanz; `@sva/auth-runtime` projiziert genau drei deutsche Realm-Overrides
-  über den vorhandenen Tenant-Admin-Client und liest sie kausal zurück.
+- `@sva/instance-registry` hält revisionsgebundene Sollzustände für die
+  Studio-Installation und optional für einzelne Instanzen. Die wirksame
+  Vorlage wird ohne Kopie als Instanzvorlage, Servervorlage oder eingebauter
+  SVA-Standard aufgelöst. Speichern und Reset bleiben reine Datenbankoperationen.
+- Die React-App bietet die Servervorlage unter `/admin/templates` im Menü
+  `System -> Templates` und die optionale Abweichung weiterhin an der
+  Instanz an. Beide Ansichten verwenden denselben Editor und zeigen die
+  wirksame Quelle.
+- `@sva/auth-runtime` stellt unmittelbar vor Create-Einladung und Resend über
+  den vorhandenen Tenant-Admin-Client das E-Mail-Theme und genau drei deutsche
+  Realmwerte idempotent sicher. Erst ein exakter Readback erlaubt den Versand;
+  es gibt dafür keinen globalen Projektionsstatus und keinen Hintergrundlauf.
 - `sva-kern2` besitzt zusätzlich einen E-Mail-Typ. Keycloak bleibt Eigentümer
   von Action-Token, Ablaufprüfung, Rendering und SMTP-Versand; Studio erhält
   den Passwortlink nie.

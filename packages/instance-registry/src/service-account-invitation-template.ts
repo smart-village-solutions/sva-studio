@@ -1,31 +1,59 @@
 import {
-  compileAccountInvitationTemplate,
-  DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+  toServerAccountInvitationTemplateView,
   validateAccountInvitationTemplate,
 } from '@sva/core';
 
-import type {
-  AccountInvitationProjection,
-  CompiledAccountInvitationTemplate,
-  InstanceRegistryRecord,
-} from '@sva/core';
+import type { InstanceRegistryRecord } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
-import { createSdkLogger } from '@sva/server-runtime';
 import type { UpdateInstanceInput } from './mutation-types.js';
+import { instanceRegistryServiceLogger } from './service-shared.js';
 
-const logger = createSdkLogger({ component: 'iam-instance-account-invitation', level: 'info' });
+export const getServerAccountInvitationTemplate = async (
+  repository: Pick<InstanceRegistryRepository, 'getServerAccountInvitationTemplate'>
+) => toServerAccountInvitationTemplateView(await repository.getServerAccountInvitationTemplate());
 
-export type ReadAccountInvitationProjection = (input: {
-  readonly instanceId: string;
-  readonly authRealm: string;
-  readonly expected: CompiledAccountInvitationTemplate;
-}) => Promise<AccountInvitationProjection>;
-
-export type ProjectAccountInvitationTemplate = (input: {
-  readonly instanceId: string;
-  readonly authRealm: string;
-  readonly template: CompiledAccountInvitationTemplate | null;
-}) => Promise<void>;
+export const updateServerAccountInvitationTemplate = async (input: {
+  readonly repository: Pick<InstanceRegistryRepository, 'updateServerAccountInvitationTemplate'>;
+  readonly expectedRevision: number;
+  readonly template: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
+  readonly actorId?: string;
+  readonly requestId?: string;
+}) => {
+  if (input.template) validateAccountInvitationTemplate(input.template);
+  const nextRevision = input.expectedRevision + 1;
+  try {
+    const state = await input.repository.updateServerAccountInvitationTemplate({
+      expectedRevision: input.expectedRevision,
+      template: input.template ? { ...input.template, revision: nextRevision } : null,
+      actorId: input.actorId,
+    });
+    instanceRegistryServiceLogger.info('Server account invitation template updated', {
+      operation: 'update_server_account_invitation_template',
+      template_key: 'account_invitation',
+      revision: state.revision,
+      result: 'success',
+      actor_id: input.actorId,
+      request_id: input.requestId,
+    });
+    return toServerAccountInvitationTemplateView(state);
+  } catch (error) {
+    instanceRegistryServiceLogger.warn('Server account invitation template update failed', {
+      operation: 'update_server_account_invitation_template',
+      template_key: 'account_invitation',
+      revision: nextRevision,
+      result: 'failure',
+      error_code:
+        error instanceof Error && error.message === 'account_invitation_template_revision_conflict'
+          ? error.message
+          : error instanceof Error
+            ? error.name
+            : 'unknown_error',
+      actor_id: input.actorId,
+      request_id: input.requestId,
+    });
+    throw error;
+  }
+};
 
 export const validateAccountInvitationTemplateMutation = (
   input: UpdateInstanceInput,
@@ -46,9 +74,7 @@ export const validateAccountInvitationTemplateMutation = (
 
 export const applyAccountInvitationTemplateMutation = async (input: {
   readonly repository: Pick<InstanceRegistryRepository, 'updateAccountInvitationTemplate'>;
-  readonly project?: ProjectAccountInvitationTemplate;
   readonly mutation: UpdateInstanceInput;
-  readonly existing: InstanceRegistryRecord;
   readonly updated: InstanceRegistryRecord;
 }): Promise<boolean> => {
   const template = input.mutation.accountInvitationTemplate;
@@ -58,59 +84,12 @@ export const applyAccountInvitationTemplateMutation = async (input: {
     throw new Error('account_invitation_template_revision_required');
   }
 
-  if (template === null) {
-    if (!input.project) throw new Error('keycloak_unavailable');
-    const reserved = await input.repository.updateAccountInvitationTemplate({
+  return Boolean(
+    await input.repository.updateAccountInvitationTemplate({
       instanceId: input.updated.instanceId,
       expectedRevision,
-      template: {
-        ...(input.existing.accountInvitationTemplate ?? DEFAULT_ACCOUNT_INVITATION_TEMPLATE),
-        revision: expectedRevision + 1,
-      },
+      template: template ? { ...template, revision: expectedRevision + 1 } : null,
       actorId: input.mutation.actorId,
-    });
-    if (!reserved) return false;
-    await input.project({
-      instanceId: input.updated.instanceId,
-      authRealm: input.updated.authRealm,
-      template: null,
-    });
-    return Boolean(
-      await input.repository.updateAccountInvitationTemplate({
-        instanceId: input.updated.instanceId,
-        expectedRevision: expectedRevision + 1,
-        template: null,
-        actorId: input.mutation.actorId,
-      })
-    );
-  }
-
-  const storedTemplate = { ...template, revision: expectedRevision + 1 };
-  const persisted = await input.repository.updateAccountInvitationTemplate({
-    instanceId: input.updated.instanceId,
-    expectedRevision,
-    template: storedTemplate,
-    actorId: input.mutation.actorId,
-  });
-  if (!persisted) return false;
-  try {
-    await input.project?.({
-      instanceId: persisted.instanceId,
-      authRealm: persisted.authRealm,
-      template: compileAccountInvitationTemplate({
-        template: storedTemplate,
-        tenantName: persisted.displayName,
-        tenantHomepageUrl: `https://${persisted.primaryHostname}/`,
-      }),
-    });
-  } catch (error) {
-    logger.warn('account_invitation_template_projection_failed', {
-      operation: 'update_account_invitation_template',
-      instance_id: persisted.instanceId,
-      revision: storedTemplate.revision,
-      request_id: input.mutation.requestId,
-      error_type: error instanceof Error ? error.name : typeof error,
-    });
-  }
-  return true;
+    })
+  );
 };

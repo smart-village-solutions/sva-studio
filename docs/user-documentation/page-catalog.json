@@ -178,6 +178,14 @@
       }
     },
     {
+      "id": "admin.templates",
+      "path": "/admin/templates",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
       "id": "admin.users.create",
       "path": "/admin/users/new",
       "pageType": "create",

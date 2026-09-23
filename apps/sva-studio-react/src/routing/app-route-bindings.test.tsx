@@ -233,6 +233,10 @@ vi.mock('../routes/admin/instances/-instances-page', () => ({
   InstancesPage: () => <div data-testid="instances-page" />,
 }));
 
+vi.mock('../routes/admin/templates/-templates-page', () => ({
+  TemplatesPage: () => <div data-testid="templates-page" />,
+}));
+
 vi.mock('../routes/admin/legal-texts/-legal-text-create-page', () => ({
   LegalTextCreatePage: () => <div data-testid="legal-text-create-page" />,
 }));

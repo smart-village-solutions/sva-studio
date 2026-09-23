@@ -72,8 +72,9 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0097_iam_instance_account_invitation_template.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt. `0091` ergänzt den parameterlosen, ausschließlich aggregierenden Lifecycle-Observability-Snapshot. Sein NOLOGIN-/NOBYPASSRLS-Definer besitzt nur spaltenbegrenzte Leserechte und eigene `FOR SELECT`-Policies; `iam_app` erhält ausschließlich `EXECUTE` auf die Funktion. `0096` erweitert bestehende Instanz-Provisioning-Läufe additiv um versionierte Soll-Snapshots, einen referenzierten Keycloak-Kindlauf, Lease- und Retry-Felder, Deadline sowie kumulative Terminalevidenz. Ein partieller Claim-Index beschränkt den Kasseler Worker auf fällige, nichtterminale Create-Läufe der Snapshot-Version `2.0`.
+- Enthält strukturell den Repo-Sollstand bis `0098_iam_server_account_invitation_template.sql`; `0088` ergänzt den Aktivierungsvertrag für optionale, automatische und verpflichtende Plugins. Ein manuelles `enabled` bleibt bei einem aus dem Host-Snapshot entfernten Plugin als inaktiver Override erhalten, damit eine spätere Wiederaufnahme die Administrationsabsicht wiederherstellt. `0089` ergänzt den generischen generationsgebundenen Plugin-Tenant-Lifecycle. `0090` ergänzt Recheck-, Vertrags- und Recovery-Evidenz sowie den eindeutigen Terminalevent-Vertrag pro Job-Attempt. `0091` ergänzt den parameterlosen, ausschließlich aggregierenden Lifecycle-Observability-Snapshot. Sein NOLOGIN-/NOBYPASSRLS-Definer besitzt nur spaltenbegrenzte Leserechte und eigene `FOR SELECT`-Policies; `iam_app` erhält ausschließlich `EXECUTE` auf die Funktion. `0096` erweitert bestehende Instanz-Provisioning-Läufe additiv um versionierte Soll-Snapshots, einen referenzierten Keycloak-Kindlauf, Lease- und Retry-Felder, Deadline sowie kumulative Terminalevidenz. Ein partieller Claim-Index beschränkt den Kasseler Worker auf fällige, nichtterminale Create-Läufe der Snapshot-Version `2.0`.
 - Migration `0097` ergänzt die optionale, revisionsgebundene Account-Einladungsvorlage je Instanz.
+- Migration `0098` ergänzt genau einen plattformweiten, revisionsgebundenen Account-Einladungs-Override mit dem stabilen Schlüssel `account_invitation`. Ein `NULL`-Template bedeutet SVA-Standard; die fortlaufende Revision bleibt beim Reset erhalten.
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -114,8 +115,9 @@ Tenant-Zeitzone. Bestehende und zunächst nicht individuell konfigurierte
 Instanzen verwenden `Europe/Berlin`; Runtime-Verbraucher validieren den Wert
 zusätzlich als IANA-Zeitzone. Die optionale JSONB-Spalte
 `iam.instances.account_invitation_template` hält ausschließlich die typisierte,
-revisionsgebundene Individualvorlage; Realm-Overrides bleiben eine abgeleitete
-Keycloak-Projektion. `iam.instances.auth_realm` ist eindeutig, damit
+revisionsgebundene Individualvorlage. Speichern und Reset bleiben DB-only; die
+wirksamen Realmwerte werden erst unmittelbar vor einem Einladungsversand
+bedarfsgesteuert sichergestellt. `iam.instances.auth_realm` ist eindeutig, damit
 ein Keycloak-Realm atomar höchstens einer Studio-Instanz zugeordnet werden kann.
 Migration `0094` sperrt die Registry-Tabelle kurz und prüft Bestandsdaten vor
 dem Constraint. Bei vorhandenen Duplikaten bricht sie mit einer konkreten
@@ -123,6 +125,12 @@ Diagnose und Abfragehilfe ab. Der Betrieb muss dann die tatsächliche
 Realm-Zugehörigkeit prüfen, jeder betroffenen Instanz einen eindeutigen Realm
 zuordnen und die Migration erneut starten; eine automatische Umbenennung oder
 Löschung wäre fachlich nicht sicher.
+
+`iam.server_account_invitation_templates` hält ausschließlich den
+plattformweiten Account-Einladungs-Override. Der Check-Constraint begrenzt den
+Schlüssel auf `account_invitation` und bindet die JSON-Revision an die separate,
+auch nach einem Reset fortlaufende Revision. Erzwungene RLS erlaubt den Zugriff
+nur im Plattformkontext ohne gesetzte `iam.current_instance_id()`.
 
 Migration `0095` erzwingt pro Keycloak-Provisioning-Lauf höchstens einen
 `queued`-Schritt. Vor dem Indexaufbau behält sie bei historischen Duplikaten

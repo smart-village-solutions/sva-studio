@@ -159,7 +159,6 @@ describe('waste tenant database provisioning deployment', () => {
       'IAM_CSRF_ALLOWED_ORIGINS',
       'SVA_PARENT_DOMAIN',
       'SVA_STUDIO_ROOT_HOST',
-      'SVA_ALLOWED_INSTANCE_IDS',
       'IAM_ADMIN_ENABLED',
     ]) {
       expect(provisionerSection, `reference provisioner ${key}`).toContain(`${key}:`);

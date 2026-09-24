@@ -7,7 +7,6 @@ vi.mock('@sva/auth-runtime/server', () => ({
 const {
   candidateTenantQuery,
   isCandidatePreflightEntrypoint,
-  parseAllowedInstanceIds,
   verifyTenantRows,
 } = await import('./candidate-preflight.mjs');
 
@@ -34,19 +33,12 @@ describe('candidate preflight', () => {
     ).toBe(false);
   });
 
-  it('normalizes the explicit release tenant scope', () => {
-    expect(parseAllowedInstanceIds('tenant-b, tenant-a,tenant-b')).toEqual([
-      'tenant-a',
-      'tenant-b',
-    ]);
-  });
-
-  it('selects only active tenants from the explicit release scope', () => {
+  it('selects every active tenant from the registry', () => {
     expect(candidateTenantQuery).toContain("WHERE status = 'active'");
-    expect(candidateTenantQuery).toContain('AND id = ANY($1::text[])');
+    expect(candidateTenantQuery).not.toContain('id = ANY');
   });
 
-  it('accepts only scoped active tenants with readable configured secrets', () => {
+  it('accepts active tenants with readable configured secrets', () => {
     expect(() =>
       verifyTenantRows(
         [
@@ -56,29 +48,16 @@ describe('candidate preflight', () => {
             tenant_admin_client_id: 'admin',
             tenant_admin_client_secret_ciphertext: 'readable',
           },
-        ],
-        ['tenant-a']
+        ]
       )
     ).not.toThrow();
   });
 
-  it('fails closed for scope drift and unreadable secrets', () => {
-    expect(() => verifyTenantRows([], ['tenant-a'])).toThrow(
-      'candidate_release_tenant_scope_mismatch'
-    );
-    expect(() =>
-      verifyTenantRows(
-        [
-          {
-            id: 'tenant-b',
-            auth_client_secret_ciphertext: 'readable',
-            tenant_admin_client_id: '',
-            tenant_admin_client_secret_ciphertext: null,
-          },
-        ],
-        ['tenant-a']
-      )
-    ).toThrow('candidate_release_tenant_scope_mismatch');
+  it('does not treat an empty active registry as an environment mismatch', () => {
+    expect(() => verifyTenantRows([])).not.toThrow();
+  });
+
+  it('fails closed for unreadable secrets', () => {
     expect(() =>
       verifyTenantRows(
         [
@@ -88,8 +67,7 @@ describe('candidate preflight', () => {
             tenant_admin_client_id: '',
             tenant_admin_client_secret_ciphertext: null,
           },
-        ],
-        ['tenant-a']
+        ]
       )
     ).toThrow('candidate_tenant_auth_secret_unreadable');
   });

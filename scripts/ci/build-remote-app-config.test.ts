@@ -15,7 +15,6 @@ import { PromoteContractError, redactPromoteFailure } from './promote-result.ts'
 const profile = Object.entries(remoteConfigContract)
   .filter(([, contract]) => contract.kind === 'config')
   .map(([key, contract]) => {
-    if (key === 'SVA_ALLOWED_INSTANCE_IDS') return `${key}=`;
     if (contract.type === 'boolean') return `${key}=false`;
     if (contract.type === 'integer') return `${key}=5000`;
     if (contract.type === 'url') return `${key}=https://example.test/${key.toLowerCase()}`;
@@ -83,21 +82,6 @@ describe('remote app config builder', () => {
       expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
       expect(result.source).toContain('ENABLE_OTEL=false\n');
       expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
-    }
-  );
-
-  it.each([
-    ['dev', 'de-teststadt-dev'],
-    ['staging', 'de-studio-sandbox'],
-  ] as const)(
-    'binds the %s candidate to its explicit release tenant scope',
-    (environment, allowedInstanceId) => {
-      const remoteProfile = readFileSync(
-        new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
-        'utf8'
-      );
-
-      expect(remoteProfile).toContain(`SVA_ALLOWED_INSTANCE_IDS=${allowedInstanceId}\n`);
     }
   );
 

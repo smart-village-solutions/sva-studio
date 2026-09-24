@@ -90,7 +90,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       "journal.action_id <> 'content.transferOwnership'"
     );
     expect(state.query.mock.calls[0]?.[0]).toContain(
-      'journal.acting_principal_id::text = $3::uuid::text'
+      'journal.acting_principal_id::text = $3'
     );
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -67,7 +67,7 @@ WHERE journal.instance_id = $1
     (
       journal.action_id <> 'content.transferOwnership'
       AND journal.acting_principal_type = $2
-      AND journal.acting_principal_id = $3::uuid
+      AND journal.acting_principal_id::text = $3::uuid::text
       AND journal.active_organization_id IS NOT DISTINCT FROM $4::uuid
       AND journal.credential_fingerprint = $5
     )

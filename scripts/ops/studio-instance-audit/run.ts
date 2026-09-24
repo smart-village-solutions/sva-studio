@@ -18,7 +18,9 @@ import { resolveStudioIngressContract } from '../runtime/tenant-ingress-hosts.ts
 
 export const buildRegistryChecks = (target: AuditRegistryTarget): readonly AuditCheckResult[] => {
   const ingressContract = resolveStudioIngressContract(`https://${target.parentDomain}`);
-  const explicitlyReleased = ingressContract?.hosts.includes(target.primaryHostname) ?? false;
+  const belongsToStudioIngress =
+    ingressContract !== null
+    && target.primaryHostname.endsWith(`.${ingressContract.rootHost}`);
 
   return [
     {
@@ -57,9 +59,9 @@ export const buildRegistryChecks = (target: AuditRegistryTarget): readonly Audit
         environment: ingressContract?.environment ?? null,
         primaryHostname: target.primaryHostname,
       },
-      status: explicitlyReleased ? 'pass' : 'fail',
-      summary: explicitlyReleased ? 'Host ist versioniert freigegeben.' : 'Host fehlt in der expliziten Ingress-Freigabe.',
-      title: 'Tenant-Host ist im Studio-Ingress explizit freigegeben',
+      status: belongsToStudioIngress ? 'pass' : 'fail',
+      summary: belongsToStudioIngress ? 'Host gehört zur Studio-Ingress-Domain.' : 'Host gehört nicht zur Studio-Ingress-Domain.',
+      title: 'Tenant-Host gehört zur Studio-Ingress-Domain',
     },
   ];
 };

@@ -82,7 +82,7 @@ export const validateRemoteConfigValue = (
   if (!contract) return;
   const normalizedValue = value.trim();
   if (
-    (!normalizedValue && key !== 'SVA_ALLOWED_INSTANCE_IDS') ||
+    !normalizedValue ||
     placeholderPattern.test(normalizedValue)
   )
     fail(

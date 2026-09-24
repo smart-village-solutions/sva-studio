@@ -7,7 +7,6 @@ export type OneShotDiagnosticCode =
   | 'BOOTSTRAP_SQL_FAILED'
   | 'CANDIDATE_CONFIG_INVALID'
   | 'CANDIDATE_SECRET_REFERENCE_MISSING'
-  | 'CANDIDATE_TENANT_SCOPE_MISMATCH'
   | 'CANDIDATE_TENANT_SECRET_UNREADABLE'
   | 'MIGRATION_GOOSE_FAILED'
   | 'MIGRATION_CONFIG_INVALID'
@@ -41,10 +40,6 @@ const diagnosticRules: readonly Readonly<{
   {
     code: 'CANDIDATE_TENANT_SECRET_UNREADABLE',
     pattern: /promote_preflight_tenant_secret_unreadable/iu,
-  },
-  {
-    code: 'CANDIDATE_TENANT_SCOPE_MISMATCH',
-    pattern: /promote_preflight_tenant_scope_mismatch/iu,
   },
   {
     code: 'CANDIDATE_SECRET_REFERENCE_MISSING',
@@ -125,7 +120,6 @@ const diagnosticCodeByExitCode: Readonly<
   },
   candidate: {
     21: 'CANDIDATE_TENANT_SECRET_UNREADABLE',
-    22: 'CANDIDATE_TENANT_SCOPE_MISMATCH',
     23: 'CANDIDATE_SECRET_REFERENCE_MISSING',
     24: 'CANDIDATE_CONFIG_INVALID',
   },

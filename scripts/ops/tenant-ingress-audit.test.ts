@@ -17,7 +17,7 @@ describe('tenant ingress instance audit', () => {
     tenantAdminClientSecretConfigured: true,
   } as const;
 
-  it('separates explicit ingress readiness from active registry status', () => {
+  it('keeps registry lifecycle independent from the static ingress host list', () => {
     expect(buildRegistryChecks(target).find((check) => check.checkId === 'ingress.host.explicit')).toMatchObject({
       status: 'pass',
     });
@@ -26,7 +26,7 @@ describe('tenant ingress instance audit', () => {
       instanceId: 'unknown-active',
       primaryHostname: 'unknown-active.studio.smart-village.app',
     }).find((check) => check.checkId === 'ingress.host.explicit')).toMatchObject({
-      status: 'fail',
+      status: 'pass',
     });
   });
 

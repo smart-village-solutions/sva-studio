@@ -10,11 +10,6 @@ import {
 
 describe('one-shot job lifecycle', () => {
   it.each([
-    [
-      '{"code":"PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH"}',
-      'candidate',
-      'CANDIDATE_TENANT_SCOPE_MISMATCH',
-    ],
     ['[migrate-entrypoint] Wende Migrationen an', 'migrate', 'MIGRATION_GOOSE_FAILED'],
     [
       '[migrate-entrypoint] Wende Graphile-Worker-Migrationen mit dem privilegierten Migrationsbenutzer an',
@@ -38,7 +33,6 @@ describe('one-shot job lifecycle', () => {
 
   it.each([
     ['candidate', 21, 'CANDIDATE_TENANT_SECRET_UNREADABLE'],
-    ['candidate', 22, 'CANDIDATE_TENANT_SCOPE_MISMATCH'],
     ['candidate', 23, 'CANDIDATE_SECRET_REFERENCE_MISSING'],
     ['candidate', 24, 'CANDIDATE_CONFIG_INVALID'],
     ['migrate', 30, 'ONESHOT_REQUIRED_CONFIG_MISSING'],

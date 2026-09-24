@@ -38,17 +38,18 @@ describe.each(profiles)(
     const source = readFileSync(resolve(process.cwd(), composeFile), 'utf8');
     const contract = studioIngressContracts[environment];
 
-    it('contains the exact deterministic host set in Traefik v1 and v2 labels', () => {
+    it('keeps Traefik v1 and v2 labels equivalent without coupling them to the tenant registry', () => {
       const v1Hosts = parseV1Hosts(readLabel(source, 'traefik.frontend.rule'));
       const v2Hosts = parseV2Hosts(readLabel(source, `traefik.http.routers.${router}.rule`));
 
-      expect(v1Hosts).toEqual(contract.hosts);
-      expect(v2Hosts).toEqual(contract.hosts);
+      expect(v1Hosts).toEqual(v2Hosts);
       expect(new Set(v1Hosts).size).toBe(v1Hosts.length);
       expect(new Set(v2Hosts).size).toBe(v2Hosts.length);
-      expect(contract.tenantIds).toEqual([...contract.tenantIds].sort());
+      expect(v1Hosts).toContain(contract.rootHost);
       expect(
-        contract.tenantIds.every((instanceId) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(instanceId))
+        v1Hosts.every(
+          (host) => host === contract.rootHost || host.endsWith(`.${contract.rootHost}`)
+        )
       ).toBe(true);
     });
 

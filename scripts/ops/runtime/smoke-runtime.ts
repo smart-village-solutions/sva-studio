@@ -126,10 +126,11 @@ const explicitIngressHostProbes = (
   const contract = resolveStudioIngressContract(base.toString());
   if (!contract) return [];
 
-  const tenantTargetsByHost = new Map(tenantTargets.map((target) => [target.host, target] as const));
-  const allowedHostProbes = contract.tenantIds.flatMap((instanceId) => {
-    const host = `${instanceId}.${contract.rootHost}`;
-    const tenantTarget = tenantTargetsByHost.get(host) ?? { authRealm: instanceId, host, instanceId };
+  const activeIngressTenantTargets = tenantTargets.filter(
+    (target) => target.host.endsWith(`.${contract.rootHost}`) && target.host !== contract.rootHost
+  );
+  const allowedHostProbes = activeIngressTenantTargets.flatMap((tenantTarget) => {
+    const host = tenantTarget.host;
     return [
     deps.runHttpProbe({
       name: `public-ingress-https-${host}`,

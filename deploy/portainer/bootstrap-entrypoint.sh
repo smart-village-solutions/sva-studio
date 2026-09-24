@@ -20,14 +20,10 @@ export POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 export APP_DB_USER="${APP_DB_USER:-sva_app}"
 export STUDIO_JOB_WORKER_DB_USER="${STUDIO_JOB_WORKER_DB_USER:-sva_job_worker}"
-export SVA_ALLOWED_INSTANCE_IDS="${SVA_ALLOWED_INSTANCE_IDS:-}"
-export SVA_PARENT_DOMAIN="${SVA_PARENT_DOMAIN:-}"
-export SVA_STUDIO_ROOT_HOST="${SVA_STUDIO_ROOT_HOST:-}"
 export SVA_BOOTSTRAP_RECONCILE_APP_ROLE="${SVA_BOOTSTRAP_RECONCILE_APP_ROLE:-true}"
 export SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD="${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD:-true}"
 export SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE="${SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE:-true}"
 export SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD="${SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD:-true}"
-export SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID="${SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID:-sva-studio-admin}"
 
 tmp_sql="$(mktemp /tmp/sva-bootstrap.XXXXXX)"
 cleanup() {
@@ -53,7 +49,7 @@ const resolveWorkspacePackage = (packageName) => {
   return import(pathToFileURL(entrypoint).href);
 };
 
-const [{ resolvesSystemAdminGrant, classifyHost }, { studioPermissionCatalog }] = await Promise.all([
+const [{ resolvesSystemAdminGrant }, { studioPermissionCatalog }] = await Promise.all([
   resolveWorkspacePackage('@sva/core'),
   resolveWorkspacePackage('@sva/studio-module-iam'),
 ]);
@@ -62,13 +58,6 @@ const appDbPassword = process.env.APP_DB_PASSWORD?.trim() ?? '';
 const appDbUser = process.env.APP_DB_USER?.trim() || 'sva_app';
 const workerDbPassword = process.env.STUDIO_JOB_WORKER_DB_PASSWORD?.trim() ?? '';
 const workerDbUser = process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker';
-const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
-  .split(',')
-  .map((entry) => entry.trim())
-  .filter((entry) => entry.length > 0);
-const parentDomain = process.env.SVA_PARENT_DOMAIN?.trim() ?? '';
-const studioRootHost = process.env.SVA_STUDIO_ROOT_HOST?.trim() || parentDomain;
-const tenantAdminClientId = process.env.SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-admin';
 if (!appDbPassword) {
   throw new Error('APP_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
 }
@@ -190,43 +179,8 @@ statements.push(...workerRoleStatements);
 
 
 if (
-  (process.env.SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE ?? 'true').trim().toLowerCase() !== 'false' &&
-  instanceIds.length > 0 &&
-  parentDomain.length > 0
+  (process.env.SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE ?? 'true').trim().toLowerCase() !== 'false'
 ) {
-  for (const instanceId of instanceIds) {
-    if (classifyHost(`${instanceId}.${parentDomain}`, parentDomain, studioRootHost).kind !== 'tenant') {
-      throw new Error('Bootstrap-Tenant-Hostname ist ungültig oder reserviert.');
-    }
-  }
-  const instanceRows = instanceIds
-    .map(
-      (instanceId) =>
-        `(${sqlLiteral(instanceId)}, ${sqlLiteral(instanceId)}, 'active', ${sqlLiteral(parentDomain)}, ${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, ${sqlLiteral('sva-studio')}, ${sqlLiteral(tenantAdminClientId)})`,
-    )
-    .join(',\n');
-  const hostnameRows = instanceIds
-    .map(
-      (instanceId) =>
-        `(${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)})`,
-    )
-    .join(',\n');
-  const instanceIdList = instanceIds.map((instanceId) => sqlLiteral(instanceId)).join(', ');
-
-  statements.push(
-    `INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)
-VALUES
-${instanceRows}
-ON CONFLICT (id) DO UPDATE
-SET
-  status = EXCLUDED.status,
-  parent_domain = COALESCE(NULLIF(iam.instances.parent_domain, ''), EXCLUDED.parent_domain),
-  primary_hostname = COALESCE(NULLIF(iam.instances.primary_hostname, ''), EXCLUDED.primary_hostname),
-  auth_realm = COALESCE(NULLIF(iam.instances.auth_realm, ''), EXCLUDED.auth_realm),
-  auth_client_id = COALESCE(NULLIF(iam.instances.auth_client_id, ''), EXCLUDED.auth_client_id),
-  tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id),
-  updated_at = NOW();`,
-  );
   const activePermissionCatalog = studioPermissionCatalog.filter(
     (definition) => definition.availability.kind !== 'root' && definition.lifecycle !== 'deprecated',
   );
@@ -246,7 +200,7 @@ DECLARE
   grants_inserted integer;
 BEGIN
   FOR target_instance_id IN
-    SELECT id FROM iam.instances WHERE id IN (${instanceIdList}) ORDER BY id
+    SELECT id FROM iam.instances WHERE status = 'active' ORDER BY id
   LOOP
     WITH catalog(permission_key, description, resource_type, module_id, system_admin_grant) AS (
       VALUES
@@ -345,24 +299,6 @@ BEGIN
 END
 $permission_catalog_reconcile$;`,
   );
-  statements.push(
-    `INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
-SELECT
-  expected.hostname,
-  expected.instance_id,
-  instances.primary_hostname = expected.hostname,
-  'runtime-bootstrap'
-FROM (
-  VALUES
-${hostnameRows}
-) AS expected(hostname, instance_id)
-JOIN iam.instances AS instances
-  ON instances.id = expected.instance_id
-ON CONFLICT (hostname) DO UPDATE
-SET
-  instance_id = EXCLUDED.instance_id,
-  is_primary = EXCLUDED.is_primary;`,
-  );
   if ((process.env.SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD ?? 'true').trim().toLowerCase() !== 'false') {
     statements.push(
       `DO $hostname_guard$
@@ -377,7 +313,7 @@ BEGIN
         ON hostname.instance_id = instances.id
        AND hostname.hostname = instances.primary_hostname
        AND hostname.is_primary = true
-      WHERE instances.id IN (${instanceIdList})
+      WHERE instances.status = 'active'
         AND hostname.instance_id IS NULL
       ORDER BY instances.primary_hostname
     ),

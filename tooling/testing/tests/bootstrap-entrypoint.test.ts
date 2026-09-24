@@ -72,7 +72,6 @@ exec "${process.execPath}" "$@"
         POSTGRES_DB: 'sva_studio',
         POSTGRES_PASSWORD: 'postgres-password',
         POSTGRES_USER: 'sva',
-        SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
         ...(useDefaultSchemaGuard ? {} : { SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD: 'false' }),
         SVA_PARENT_DOMAIN: 'studio.smart-village.app',
       },
@@ -132,16 +131,14 @@ describe('bootstrap-entrypoint', () => {
     );
   });
 
-  it('backfills tenant_admin_client_id in bootstrap instance reconciliation SQL', () => {
+  it('reconciles existing active registry tenants without deriving them from runtime config', () => {
     const sql = renderBootstrapSql();
 
-    expect(sql).toContain(
-      'INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)'
-    );
-    expect(sql).toContain("'sva-studio-admin'");
-    expect(sql).toContain(
-      "tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id)"
-    );
+    expect(sql).toContain("SELECT id FROM iam.instances WHERE status = 'active' ORDER BY id");
+    expect(sql).not.toContain('INSERT INTO iam.instances (id, display_name');
+    expect(sql).not.toContain('INSERT INTO iam.instance_hostnames');
+    expect(sql).not.toContain('bb-guben');
+    expect(sql).not.toContain('de-musterhausen');
   });
 
   it('reconciles canonical tenant permissions and system_admin grants additively', () => {

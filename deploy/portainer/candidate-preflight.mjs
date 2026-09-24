@@ -10,32 +10,15 @@ const required = (name) => {
   return value;
 };
 
-export const parseAllowedInstanceIds = (value) =>
-  [
-    ...new Set(
-      value
-        .split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-    ),
-  ].sort();
-
 export const candidateTenantQuery = `
       SELECT id, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext
       FROM iam.instances
       WHERE status = 'active'
-        AND id = ANY($1::text[])
       ORDER BY id
     `;
 
-export const verifyTenantRows = (rows, allowedInstanceIds) => {
-  const allowed = new Set(allowedInstanceIds);
-  const selected = new Set(rows.map((row) => row.id));
-  if (selected.size !== allowed.size || allowedInstanceIds.some((id) => !selected.has(id))) {
-    throw new Error('candidate_release_tenant_scope_mismatch');
-  }
+export const verifyTenantRows = (rows) => {
   for (const row of rows) {
-    if (!allowed.has(row.id)) throw new Error('candidate_release_tenant_scope_mismatch');
     if (
       !revealField(row.auth_client_secret_ciphertext, `iam.instances.auth_client_secret:${row.id}`)
     ) {
@@ -63,11 +46,6 @@ const candidateFailureRules = [
     matches: (message) => message.includes('secret_unreadable'),
   },
   {
-    code: 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH',
-    exitCode: 22,
-    matches: (message) => message.includes('tenant_scope'),
-  },
-  {
     code: 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING',
     exitCode: 23,
     matches: (message) => message.includes('ENOENT') || message.includes('EACCES'),
@@ -90,8 +68,6 @@ export const runCandidatePreflight = async () => {
   const { Client } = pg;
   if (required('SVA_RUNTIME_PROFILE') !== 'studio')
     throw new Error('candidate_runtime_profile_mismatch');
-  const allowedInstanceIds = parseAllowedInstanceIds(required('SVA_ALLOWED_INSTANCE_IDS'));
-  if (allowedInstanceIds.length === 0) throw new Error('candidate_release_tenant_scope_missing');
   await access(required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE'), constants.R_OK);
 
   const client = new Client({
@@ -104,8 +80,8 @@ export const runCandidatePreflight = async () => {
   await client.connect();
   try {
     await client.query('BEGIN READ ONLY');
-    const result = await client.query(candidateTenantQuery, [allowedInstanceIds]);
-    verifyTenantRows(result.rows, allowedInstanceIds);
+    const result = await client.query(candidateTenantQuery);
+    verifyTenantRows(result.rows);
     await client.query('ROLLBACK');
     process.stdout.write(
       `${JSON.stringify({ checkedActiveTenantCount: result.rowCount ?? 0, status: 'ok' })}\n`

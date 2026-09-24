@@ -13,39 +13,10 @@ const readRepoFile = (path: string) =>
 
 describe('IAM schema readiness deployment contract', () => {
   const bootstrapEntrypoint = readRepoFile('deploy/portainer/bootstrap-entrypoint.sh');
-  it.each(['studio', 'auth', 'admin', 'tenant'])(
-    'validates bootstrap host %s before emitting SQL',
-    (id) => {
-      const program = bootstrapEntrypoint
-        .split("<<'NODE'")[1]
-        ?.split('\n')
-        .slice(1)
-        .join('\n')
-        .split('\nNODE\n')[0];
-      expect(program).toBeTruthy();
-      const result = spawnSync(process.execPath, ['--input-type=module'], {
-        cwd: resolve(import.meta.dirname, '../..'),
-        input: program,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          APP_DB_PASSWORD: 'test-only',
-          STUDIO_JOB_WORKER_DB_PASSWORD: 'test-only',
-          SVA_PARENT_DOMAIN: 'example.org',
-          SVA_STUDIO_ROOT_HOST: 'admin.example.org',
-          SVA_ALLOWED_INSTANCE_IDS: id,
-        },
-      });
-      if (id === 'tenant') {
-        expect(result.status).toBe(0);
-        expect(result.stdout).toContain('tenant.example.org');
-        return;
-      }
-      expect(result.status).not.toBe(0);
-      expect(result.stderr).toContain('Bootstrap-Tenant-Hostname ist ungültig oder reserviert.');
-      expect(result.stdout).toBe('');
-    }
-  );
+  it('does not derive registry tenants from the runtime allowlist', () => {
+    expect(bootstrapEntrypoint).not.toContain('SVA_ALLOWED_INSTANCE_IDS');
+    expect(bootstrapEntrypoint).toContain("SELECT id FROM iam.instances WHERE status = 'active' ORDER BY id");
+  });
 
   const candidatePreflight = readRepoFile('deploy/portainer/candidate-preflight.mjs');
   const migrateEntrypoints = [
@@ -238,12 +209,6 @@ describe('IAM schema readiness deployment contract', () => {
   it('classifies candidate failures from one rule source', async () => {
     const { classifyCandidateFailure } = await import('./candidate-preflight.mjs');
 
-    expect(classifyCandidateFailure('candidate_release_tenant_scope_missing')).toEqual(
-      expect.objectContaining({
-        code: 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH',
-        exitCode: 22,
-      })
-    );
     expect(classifyCandidateFailure('candidate_runtime_profile_mismatch')).toEqual(
       expect.objectContaining({ code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID', exitCode: 24 })
     );

@@ -146,7 +146,7 @@ describe('smoke helpers', () => {
     expect(wait).toHaveBeenCalledExactlyOnceWith(10_000);
   });
 
-  it('probes every explicit ingress host and an unknown host for the selected environment', async () => {
+  it('probes every active ingress host and an unknown host for the selected environment', async () => {
     const targets: string[] = [];
     const names: string[] = [];
     const ops = createRuntimeSmokeOps({
@@ -155,7 +155,10 @@ describe('smoke helpers', () => {
       doctorRuntime: async () => createDoctorReport({}),
       isExpectedOidcRedirect: () => true,
       parseRuntimeProfile: (value) => value,
-      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      resolveTenantRuntimeTargets: async () => ({
+        source: 'registry',
+        targets: [{ authRealm: 'de-teststadt-dev', host: 'de-teststadt-dev.studio-dev.smart-village.app', instanceId: 'de-teststadt-dev' }],
+      }),
       runHttpProbe: async (input) => {
         names.push(input.name);
         targets.push(input.target);
@@ -189,6 +192,35 @@ describe('smoke helpers', () => {
     });
     expect(names).not.toContain('public-ingress-https-studio-dev.smart-village.app');
     expect(names).not.toContain('public-ingress-login-studio-dev.smart-village.app');
+  });
+
+  it('derives the ingress scope from the active registry instead of the static host list', async () => {
+    const names: string[] = [];
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({
+        source: 'registry',
+        targets: [{ authRealm: 'future-tenant', host: 'future-tenant.studio.smart-village.app', instanceId: 'future-tenant' }],
+      }),
+      runHttpProbe: async (input) => {
+        names.push(input.name);
+        return createProbe({ name: input.name, target: input.target });
+      },
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait: async () => undefined,
+    });
+
+    await ops.runExternalSmoke('studio', {
+      SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+    });
+
+    expect(names).toContain('public-ingress-https-future-tenant.studio.smart-village.app');
+    expect(names).not.toContain('public-ingress-https-bb-ahrensfelde.studio.smart-village.app');
   });
 
   it('checks the registry realm for every explicit tenant ingress login', async () => {

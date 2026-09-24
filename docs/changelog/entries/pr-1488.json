@@ -1,0 +1,4 @@
+{
+  "prNumber": 1488,
+  "body": "Mainserver-Inhalte synchronisieren wieder mit bestehenden Datenbankschemata.\n\n- Tenant-Aktivierung und -Deaktivierung bereits gerouteter Instanzen folgen nun der zentralen Instanz-Registry, ohne dass eine Runtime-Tenantliste oder ein App-Deploy angepasst werden muss.\n- Produktionsprüfungen und Bootstrap berücksichtigen alle aktiven Registry-Tenants, ohne neue Instanzen aus einer Umgebungsvariable anzulegen."
+}

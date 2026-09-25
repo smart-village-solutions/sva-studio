@@ -1,0 +1,4 @@
+{
+  "prNumber": 1491,
+  "body": "Unbenutzte Media-Helfer im Generic-Items-Plugin entfernt\n\n- Nicht mehr referenzierte interne Hilfsfunktionen werden aus dem Plugin entfernt."
+}

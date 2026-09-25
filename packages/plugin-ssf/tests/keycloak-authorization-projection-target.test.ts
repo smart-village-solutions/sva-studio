@@ -329,6 +329,52 @@ describe('SSF Keycloak authorization projection target', () => {
       'ssf_keycloak_projection_revision_mismatch'
     );
   });
+
+  it.each([
+    [
+      'missing tenant claim',
+      (attributes: Record<string, readonly string[]>) => {
+        delete attributes[SSF_TOKEN_CLAIMS.instanceId];
+      },
+    ],
+    [
+      'foreign tenant claim',
+      (attributes: Record<string, readonly string[]>) => {
+        attributes[SSF_TOKEN_CLAIMS.instanceId] = ['tenant-b'];
+      },
+    ],
+    [
+      'stale authorization revision',
+      (attributes: Record<string, readonly string[]>) => {
+        attributes[SSF_TOKEN_CLAIMS.authorizationRevision] = [`sha256:${'c'.repeat(64)}`];
+      },
+    ],
+  ])('fails readiness closed for a %s without affecting another realm', async (_caseName, corrupt) => {
+    const tenantA = createClient();
+    const tenantB = createClient();
+    const target = createSsfKeycloakAuthorizationProjectionTarget({
+      resolveTenant: async (instanceId) => ({
+        instanceId,
+        clientId: 'ssf-frontend',
+        client: instanceId === 'tenant-a' ? tenantA.client : tenantB.client,
+      }),
+      readLoginReadiness: async () => true,
+      revokeSsfTenantSessions: async () => undefined,
+    });
+    const projectionA = desiredProjection('tenant-a');
+    const projectionB = desiredProjection('tenant-b');
+    const revisionA = createSsfAuthorizationRevision(projectionA);
+    const revisionB = createSsfAuthorizationRevision(projectionB);
+
+    await target.reconcile(projectionA, revisionA);
+    await target.reconcile(projectionB, revisionB);
+    const attributesA = tenantA.attributes.get('user-1');
+    if (!attributesA) throw new Error('missing_test_subject');
+    corrupt(attributesA);
+
+    await expect(target.isReady('tenant-a', revisionA)).resolves.toBe(false);
+    await expect(target.isReady('tenant-b', revisionB)).resolves.toBe(true);
+  });
 });
 
 it('does not accept hardcoded or duplicate claims from effective client-scope mappers', async () => {

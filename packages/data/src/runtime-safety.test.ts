@@ -733,7 +733,14 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
 
   expect(imageVerifyScript).toMatch(/docker pull "\$\{IMAGE_REF\}"/);
   assert.doesNotMatch(imageVerifyScript, /skipped-local/);
-  assert.doesNotMatch(imageVerifyScript, /docker image inspect "\$\{IMAGE_REF\}"/);
+  assert.match(
+    imageVerifyScript,
+    /docker image inspect "\$\{IMAGE_REF\}" --format '\{\{ index \.Config\.Labels "com\.sva-studio\.distribution" \}\}'/
+  );
+  assert.match(imageVerifyScript, /assert_image_package_inventory\(\)/);
+  assert.match(imageVerifyScript, /assert_image_package_inventory "plugin-ssf" "absent"/);
+  assert.match(imageVerifyScript, /assert_image_package_inventory "plugin-ssf" "present"/);
+  assert.match(imageVerifyScript, /assert_image_package_inventory "plugin-news" "absent"/);
   assert.match(imageVerifyScript, /run_postgres_sql_with_retry\(\)/);
   assert.match(imageVerifyScript, /for _ in \$\(seq 1 10\); do/);
   assert.match(imageVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);

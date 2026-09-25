@@ -45,7 +45,6 @@ type PluginJobModuleFactory = (
 type PluginJobModuleExports = {
   readonly createPluginJobExecutionHandlers?: PluginJobModuleFactory;
 };
-type PluginJobModuleLoader = () => Promise<PluginJobModuleExports>;
 type PluginJobRuntimeFactory = () => unknown;
 type PluginJobRuntimeFactoryRegistry = Readonly<Record<string, PluginJobRuntimeFactory>>;
 type HostOwnedPluginJobModuleDescriptor = Readonly<{

@@ -20,21 +20,36 @@ export const workspacePluginModuleLoaders = {
 } as Record<string, () => Promise<Record<string, unknown>>>;
 
 export const nodeManifestModules = {
-  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
+  ...import.meta.glob(
+    ['../../../../node_modules/*/plugin.manifest.json', '!../../../../node_modules/plugin-ssf/**'],
+    {
+      eager: true,
+      import: 'default',
+    }
+  ),
+  ...import.meta.glob(
+    [
+      '../../../../node_modules/@*/*/plugin.manifest.json',
+      '!../../../../node_modules/@*/plugin-ssf/**',
+    ],
+    {
+      eager: true,
+      import: 'default',
+    }
+  ),
 } as Record<string, PluginManifest>;
 
 export const nodePluginModuleLoaders = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.tsx'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx'),
+  ...import.meta.glob([
+    '../../../../node_modules/plugin-*/dist/index.js',
+    '../../../../node_modules/plugin-*/src/index.ts',
+    '../../../../node_modules/plugin-*/src/index.tsx',
+    '!../../../../node_modules/plugin-ssf/**',
+  ]),
+  ...import.meta.glob([
+    '../../../../node_modules/@*/plugin-*/dist/index.js',
+    '../../../../node_modules/@*/plugin-*/src/index.ts',
+    '../../../../node_modules/@*/plugin-*/src/index.tsx',
+    '!../../../../node_modules/@*/plugin-ssf/**',
+  ]),
 } as Record<string, () => Promise<Record<string, unknown>>>;

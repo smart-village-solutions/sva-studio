@@ -16,19 +16,31 @@ export const workspacePluginModuleLoaders = {
 } as Record<string, PluginModuleLoader>;
 
 export const nodeJobModuleLoaders = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/server.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/server.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/server.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server.ts'),
+  ...import.meta.glob([
+    '../../../../node_modules/plugin-*/dist/server.js',
+    '../../../../node_modules/plugin-*/src/server.ts',
+    '!../../../../node_modules/plugin-ssf/**',
+  ]),
+  ...import.meta.glob([
+    '../../../../node_modules/@*/plugin-*/dist/server.js',
+    '../../../../node_modules/@*/plugin-*/src/server.ts',
+    '!../../../../node_modules/@*/plugin-ssf/**',
+  ]),
 } as Record<string, PluginModuleLoader>;
 
 export const nodePluginModuleLoaders = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.tsx'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx'),
+  ...import.meta.glob([
+    '../../../../node_modules/plugin-*/dist/index.js',
+    '../../../../node_modules/plugin-*/src/index.ts',
+    '../../../../node_modules/plugin-*/src/index.tsx',
+    '!../../../../node_modules/plugin-ssf/**',
+  ]),
+  ...import.meta.glob([
+    '../../../../node_modules/@*/plugin-*/dist/index.js',
+    '../../../../node_modules/@*/plugin-*/src/index.ts',
+    '../../../../node_modules/@*/plugin-*/src/index.tsx',
+    '!../../../../node_modules/@*/plugin-ssf/**',
+  ]),
 } as Record<string, PluginModuleLoader>;
 
 export const workspaceManifestModules = import.meta.glob(
@@ -40,12 +52,21 @@ export const workspaceManifestModules = import.meta.glob(
 ) as Record<string, PluginManifest>;
 
 export const nodeManifestModules = {
-  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
+  ...import.meta.glob(
+    ['../../../../node_modules/*/plugin.manifest.json', '!../../../../node_modules/plugin-ssf/**'],
+    {
+      eager: true,
+      import: 'default',
+    }
+  ),
+  ...import.meta.glob(
+    [
+      '../../../../node_modules/@*/*/plugin.manifest.json',
+      '!../../../../node_modules/@*/plugin-ssf/**',
+    ],
+    {
+      eager: true,
+      import: 'default',
+    }
+  ),
 } as Record<string, PluginManifest>;

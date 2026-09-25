@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authRuntimeMocks = vi.hoisted(() => ({
-  createSsfRuntimePluginServiceAccess: vi.fn((dependencies) => dependencies),
+  createSsfRuntimePluginServiceAccess: vi.fn(
+    (dependencies: {
+      readonly readDatabaseReadiness: (instanceId: string) => Promise<boolean>;
+      readonly readAuthorizationRevision: (instanceId: string) => Promise<string | null>;
+    }) => dependencies
+  ),
 }));
 
 const ssfRuntimeMocks = vi.hoisted(() => ({
@@ -19,6 +24,12 @@ vi.mock('./ssf-login-readiness.server.js', () => loginReadinessMocks);
 
 import { createStudioSsfRuntimeServiceAccess } from './ssf-runtime-service-access.ssf.server.js';
 
+const readRegisteredDependencies = () => {
+  const dependencies = authRuntimeMocks.createSsfRuntimePluginServiceAccess.mock.calls.at(-1)?.[0];
+  if (!dependencies) throw new Error('SSF runtime service access was not registered');
+  return dependencies;
+};
+
 describe('SSF runtime service access', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +41,8 @@ describe('SSF runtime service access', () => {
     ssfRuntimeMocks.readSsfTenant.mockResolvedValue({ instanceId: 'tenant-a' });
     ssfRuntimeMocks.readReadySsfAuthorizationRevision.mockResolvedValue('sha256:revision');
 
-    const dependencies = createStudioSsfRuntimeServiceAccess();
+    createStudioSsfRuntimeServiceAccess();
+    const dependencies = readRegisteredDependencies();
 
     await expect(dependencies.readDatabaseReadiness('tenant-a')).resolves.toBe(true);
     await expect(dependencies.readAuthorizationRevision('tenant-a')).resolves.toBe(
@@ -44,7 +56,8 @@ describe('SSF runtime service access', () => {
   });
 
   it('keeps SSF readiness closed without a configured plugin database', async () => {
-    const dependencies = createStudioSsfRuntimeServiceAccess();
+    createStudioSsfRuntimeServiceAccess();
+    const dependencies = readRegisteredDependencies();
 
     await expect(dependencies.readDatabaseReadiness('tenant-a')).resolves.toBe(false);
     await expect(dependencies.readAuthorizationRevision('tenant-a')).resolves.toBeNull();

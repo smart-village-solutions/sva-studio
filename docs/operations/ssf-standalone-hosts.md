@@ -67,8 +67,9 @@ Kasseler Datenbank, Redis-Instanz und den lokalen Keycloak verwenden.
 
 Der verbindliche Compose-Zusatz und sein fail-closed Startskript liegen unter
 [`deploy/standalone/keycloak-provisioner.compose.yml`](../../deploy/standalone/keycloak-provisioner.compose.yml).
-Vor dem Start wird `SVA_IMAGE_REF` auf denselben unveränderlichen Image-Digest gesetzt, den
-auch der Kasseler App-Container verwendet. Die `runtime.env` muss im Compose-Projektordner
+Vor dem Start wird `SVA_IMAGE_REF` auf einen unveränderlichen Digest aus
+`ghcr.io/smart-village-solutions/sva-studio-ssf` gesetzt; App und Provisioner verwenden
+denselben SSF-Digest. Die `runtime.env` muss im Compose-Projektordner
 liegen und insbesondere die bestehenden `APP_DB_*`-, `POSTGRES_*`-, `REDIS_*`- und
 `KEYCLOAK_PROVISIONER_*`-Werte der Kasseler Installation enthalten.
 

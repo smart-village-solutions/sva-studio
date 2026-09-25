@@ -158,6 +158,18 @@ describe('IAM schema readiness deployment contract', () => {
     expect(result.status).toBe(0);
   });
 
+  it('accepts an immutable SSF distribution image reference', () => {
+    const result = spawnSync('sh', ['deploy/standalone/up.sh', '--validate-only'], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SVA_IMAGE_REF: `ghcr.io/smart-village-solutions/sva-studio-ssf@sha256:${'c'.repeat(64)}`,
+      },
+    });
+    expect(result.status).toBe(0);
+  });
+
   it('ships one canonical verifier in both runtime images', () => {
     for (const dockerfile of dockerfiles) {
       expect(dockerfile).toContain('verify-iam-schema.mjs');

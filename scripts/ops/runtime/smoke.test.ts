@@ -53,8 +53,7 @@ describe('smoke helpers', () => {
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => true,
       wait,
     });
 
@@ -68,9 +67,9 @@ describe('smoke helpers', () => {
 
   it.each([
     ['PROMOTE_READINESS_NOT_READY', 'public-ready', 'person@example.test'],
-    ['PROMOTE_SMOKE_REALM_MISMATCH', 'public-auth-login-tenant', 'Tenant-Realm stimmt nicht: https://internal.example.test/realm'],
-    ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login-tenant', 'Tenant-Redirect-URI stimmt nicht: first line\nsecond line'],
-    ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login-tenant', 'Tenant-OIDC-Redirect-Vertrag stimmt nicht'],
+    ['PROMOTE_SMOKE_REALM_MISMATCH', 'public-auth-login', 'Realm stimmt nicht: https://internal.example.test/realm'],
+    ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login', 'Redirect-URI stimmt nicht: first line\nsecond line'],
+    ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login', 'OIDC-Redirect-Vertrag stimmt nicht'],
     ['PROMOTE_INTERNAL_ERROR', 'public-home', 'secret-key=should-not-leak'],
   ] as const)('records canonical %s evidence without probe diagnostics', async (code, name, message) => {
     const directory = mkdtempSync(join(tmpdir(), 'runtime-smoke-failure-'));
@@ -83,8 +82,7 @@ describe('smoke helpers', () => {
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => true,
       wait: async () => undefined,
     });
     try {
@@ -134,8 +132,7 @@ describe('smoke helpers', () => {
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => true,
       wait,
     });
 
@@ -170,8 +167,7 @@ describe('smoke helpers', () => {
           target: input.target,
         });
       },
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => false,
       wait: async () => undefined,
     });
 
@@ -210,8 +206,7 @@ describe('smoke helpers', () => {
         names.push(input.name);
         return createProbe({ name: input.name, target: input.target });
       },
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => false,
       wait: async () => undefined,
     });
 
@@ -221,6 +216,34 @@ describe('smoke helpers', () => {
 
     expect(names).toContain('public-ingress-https-future-tenant.studio.smart-village.app');
     expect(names).not.toContain('public-ingress-https-bb-ahrensfelde.studio.smart-village.app');
+  });
+
+  it('runs release smoke without reading the tenant registry or requiring an active tenant', async () => {
+    const resolveTenantRuntimeTargets = vi.fn().mockRejectedValue(new Error('registry unavailable'));
+    const names: string[] = [];
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets,
+      runHttpProbe: async (input) => {
+        names.push(input.name);
+        return createProbe({ name: input.name, target: input.target });
+      },
+      isStudioReleaseVerification: (runtimeProfile, env) =>
+        runtimeProfile === 'studio' && env.SVA_ACCEPTANCE_RELEASE_MODE === 'app-only',
+      wait: async () => undefined,
+    });
+
+    await expect(ops.runExternalSmoke('studio', {
+      SVA_ACCEPTANCE_RELEASE_MODE: 'app-only',
+      SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+    })).resolves.toHaveLength(7);
+    expect(resolveTenantRuntimeTargets).not.toHaveBeenCalled();
+    expect(names).toContain('public-ingress-unknown-host');
+    expect(names.every((name) => !name.includes('de-musterhausen'))).toBe(true);
   });
 
   it('checks the registry realm for every explicit tenant ingress login', async () => {
@@ -239,8 +262,7 @@ describe('smoke helpers', () => {
         if (input.name === 'public-ingress-login-de-teststadt-dev.studio-dev.smart-village.app') loginExpectation = input.expect;
         return createProbe({ name: input.name, target: input.target });
       },
-      selectSmokeTenantTargets: () => [],
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => false,
       wait: async () => undefined,
     });
 
@@ -272,8 +294,7 @@ describe('smoke helpers', () => {
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: (runtimeProfile, env) =>
+      isStudioReleaseVerification: (runtimeProfile, env) =>
         runtimeProfile === 'studio' && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0,
       wait: async () => undefined,
     });
@@ -300,7 +321,7 @@ describe('smoke helpers', () => {
   it.each([
     'public-home',
     'public-iam-context',
-    'public-ingress-https-de-musterhausen.studio.smart-village.app',
+    'public-ingress-unknown-host',
   ])('keeps %s release-blocking', async (name) => {
     const ops = createRuntimeSmokeOps({
       buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
@@ -310,8 +331,7 @@ describe('smoke helpers', () => {
       parseRuntimeProfile: (value) => value,
       resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
       runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
-      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
-      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      isStudioReleaseVerification: () => true,
       wait: async () => undefined,
     });
     const blockingFailure = createProbe({ message: 'fetch failed', name, status: 'error' });
@@ -330,12 +350,12 @@ describe('smoke helpers', () => {
     expect(resolveStudioIngressContract('https://')).toBeNull();
   });
 
-  it('pins the production release blocker to de-musterhausen while staging retains its sandbox tenant', () => {
+  it('recognizes only configured root hosts for ingress checks', () => {
     expect(resolveStudioIngressContract('https://studio.smart-village.app')).toMatchObject({
-      releaseBlockingTenantId: 'de-musterhausen',
+      rootHost: 'studio.smart-village.app',
     });
     expect(resolveStudioIngressContract('https://studio-staging.smart-village.app')).toMatchObject({
-      releaseBlockingTenantId: 'de-studio-sandbox',
+      rootHost: 'studio-staging.smart-village.app',
     });
   });
 

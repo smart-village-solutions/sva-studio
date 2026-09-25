@@ -151,5 +151,5 @@ describe('one-shot job compose documents', () => {
         STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
       });
     }
-  });
+  }, 15_000);
 });

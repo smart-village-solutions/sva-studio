@@ -2,49 +2,16 @@ import { access, constants } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { revealField } from '@sva/auth-runtime/server';
-
 const required = (name) => {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`candidate_required_config_missing:${name}`);
   return value;
 };
 
-export const candidateTenantQuery = `
-      SELECT id, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext
-      FROM iam.instances
-      WHERE status = 'active'
-      ORDER BY id
-    `;
-
-export const verifyTenantRows = (rows) => {
-  for (const row of rows) {
-    if (
-      !revealField(row.auth_client_secret_ciphertext, `iam.instances.auth_client_secret:${row.id}`)
-    ) {
-      throw new Error('candidate_tenant_auth_secret_unreadable');
-    }
-    if (
-      row.tenant_admin_client_id &&
-      !revealField(
-        row.tenant_admin_client_secret_ciphertext,
-        `iam.instances.tenant_admin_client_secret:${row.id}`
-      )
-    ) {
-      throw new Error('candidate_tenant_admin_secret_unreadable');
-    }
-  }
-};
-
 export const isCandidatePreflightEntrypoint = (moduleUrl, executablePath) =>
   Boolean(executablePath) && moduleUrl === pathToFileURL(resolve(executablePath)).href;
 
 const candidateFailureRules = [
-  {
-    code: 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE',
-    exitCode: 21,
-    matches: (message) => message.includes('secret_unreadable'),
-  },
   {
     code: 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING',
     exitCode: 23,
@@ -80,11 +47,10 @@ export const runCandidatePreflight = async () => {
   await client.connect();
   try {
     await client.query('BEGIN READ ONLY');
-    const result = await client.query(candidateTenantQuery);
-    verifyTenantRows(result.rows);
+    await client.query('SELECT 1');
     await client.query('ROLLBACK');
     process.stdout.write(
-      `${JSON.stringify({ checkedActiveTenantCount: result.rowCount ?? 0, status: 'ok' })}\n`
+      `${JSON.stringify({ status: 'ok' })}\n`
     );
   } finally {
     await client.end();

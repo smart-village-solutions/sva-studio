@@ -26,8 +26,6 @@ const {
   repairLocalRuntimeWithDeps,
   requireLocalInstanceRegistryReconciliationInput,
   resolveTenantRuntimeTargets,
-  selectReleaseBlockingTenantTargets,
-  selectSmokeTenantTargets,
   shouldCheckLocalInstanceRegistryDriftBeforeCommand,
   shouldRunLocalProvisioningWorker,
   tryReadGithubStudioImageVerifyEvidence,
@@ -1090,104 +1088,6 @@ describe('resolveTenantRuntimeTargets', () => {
       ['hb-meinquartier', 'saas-hb-meinquartier'],
       ['de-musterhausen', 'de-musterhausen'],
     ]);
-  });
-});
-
-describe('selectReleaseBlockingTenantTargets', () => {
-  const tenantTargets = [
-    {
-      authRealm: 'saas-hb-meinquartier',
-      host: 'hb-meinquartier.studio.smart-village.app',
-      instanceId: 'hb-meinquartier',
-    },
-    {
-      authRealm: 'de-musterhausen',
-      host: 'de-musterhausen.studio.smart-village.app',
-      instanceId: 'de-musterhausen',
-    },
-  ] as const;
-
-  it('keeps only de-musterhausen as a release-blocking tenant on studio', () => {
-    expect(selectReleaseBlockingTenantTargets('studio', tenantTargets)).toEqual([
-      {
-        authRealm: 'de-musterhausen',
-        host: 'de-musterhausen.studio.smart-village.app',
-        instanceId: 'de-musterhausen',
-      },
-    ]);
-  });
-
-  it('keeps all tenant targets on non-studio profiles', () => {
-    expect(selectReleaseBlockingTenantTargets('local-keycloak', tenantTargets)).toEqual(tenantTargets);
-  });
-});
-
-describe('selectSmokeTenantTargets', () => {
-  const tenantTargets = [
-    {
-      authRealm: 'bb-guben',
-      host: 'bb-guben.studio.smart-village.app',
-      instanceId: 'bb-guben',
-    },
-    {
-      authRealm: 'de-musterhausen',
-      host: 'de-musterhausen.studio.smart-village.app',
-      instanceId: 'de-musterhausen',
-    },
-    {
-      authRealm: 'saas-hb-meinquartier',
-      host: 'hb-meinquartier.studio.smart-village.app',
-      instanceId: 'hb-meinquartier',
-    },
-  ] as const;
-
-  it('keeps explicit operator tenant scopes on studio smoke runs without release mode', () => {
-    expect(
-      selectSmokeTenantTargets('studio', tenantTargets, {
-        env: {
-          SVA_TENANT_SCOPE_INSTANCE_IDS: 'bb-guben',
-        },
-        source: 'explicit_env',
-      })
-    ).toEqual(tenantTargets);
-  });
-
-  it('keeps only de-musterhausen as a blocking tenant for studio acceptance release runs', () => {
-    expect(
-      selectSmokeTenantTargets('studio', tenantTargets, {
-        env: {
-          SVA_ACCEPTANCE_RELEASE_MODE: 'app-only',
-        },
-        source: 'registry',
-      })
-    ).toEqual([
-      {
-        authRealm: 'de-musterhausen',
-        host: 'de-musterhausen.studio.smart-village.app',
-        instanceId: 'de-musterhausen',
-      },
-    ]);
-  });
-
-  it('fails when the blocking studio tenant is missing during an acceptance release run', () => {
-    expect(() =>
-      selectSmokeTenantTargets(
-        'studio',
-        [
-          {
-            authRealm: 'bb-guben',
-            host: 'bb-guben.studio.smart-village.app',
-            instanceId: 'bb-guben',
-          },
-        ],
-        {
-          env: {
-            SVA_ACCEPTANCE_RELEASE_MODE: 'app-only',
-          },
-          source: 'registry',
-        }
-      )
-    ).toThrow(/de-musterhausen/u);
   });
 });
 

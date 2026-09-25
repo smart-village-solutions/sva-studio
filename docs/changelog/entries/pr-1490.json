@@ -1,0 +1,4 @@
+{
+  "prNumber": 1490,
+  "body": "App-Deployments hängen nicht mehr vom Zustand einzelner Tenants ab.\n\n- Der Candidate prüft Image-Konfiguration und Datenbankverbindung, aber keine Tenant-Secrets.\n- Release-Smokes prüfen die Plattform und den Root-Host; Tenant-Hosts bleiben separat bei Aktivierung und im Betrieb prüfbar."
+}

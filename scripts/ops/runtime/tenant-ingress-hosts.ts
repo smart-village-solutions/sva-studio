@@ -6,15 +6,8 @@ const rootHosts: Readonly<Record<StudioIngressEnvironment, string>> = {
   staging: 'studio-staging.smart-village.app',
 };
 
-const releaseBlockingTenantIds: Readonly<Record<StudioIngressEnvironment, string>> = {
-  dev: 'de-teststadt-dev',
-  prod: 'de-musterhausen',
-  staging: 'de-studio-sandbox',
-};
-
 type StudioIngressContract = Readonly<{
   environment: StudioIngressEnvironment;
-  releaseBlockingTenantId: string;
   rootHost: string;
   unknownHost: string;
 }>;
@@ -25,7 +18,6 @@ const createStudioIngressContract = (
   const rootHost = rootHosts[environment];
   return {
     environment,
-    releaseBlockingTenantId: releaseBlockingTenantIds[environment],
     rootHost,
     unknownHost: `unknown-ingress-smoke.${rootHost}`,
   };

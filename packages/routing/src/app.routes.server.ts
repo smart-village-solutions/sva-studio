@@ -11,8 +11,6 @@ import {
 import { defaultServerRoutingDiagnostics } from './diagnostics.server.js';
 
 export {
-  getPluginRouteFactories,
-  mapPluginGuardToAccountGuard,
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.shared.js';

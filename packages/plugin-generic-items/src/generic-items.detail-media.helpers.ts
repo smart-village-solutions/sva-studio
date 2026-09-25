@@ -9,7 +9,7 @@ import {
 import type { GenericItemMediaContent } from './generic-items.content-types.js';
 import { normalizeMediaContentType } from './generic-items.detail-media-content-type.js';
 
-export const mediaContentTypeFromAsset = (asset: HostMediaAssetListItem): string => {
+const mediaContentTypeFromAsset = (asset: HostMediaAssetListItem): string => {
   const mimeType = asset.mimeType?.trim();
   if (!mimeType) {
     return '';
@@ -42,5 +42,3 @@ export const mediaContentFromAsset = (asset: HostMediaAssetListItem): GenericIte
     },
   };
 };
-
-export const mediaContentSourceKey = (media: GenericItemMediaContent | undefined): string => media?.sourceUrl?.url?.trim() ?? '';

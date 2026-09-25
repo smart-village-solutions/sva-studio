@@ -1,13 +1,13 @@
 import { quoteIdentifier } from './waste-management-operations.shared.js';
 
-export const wasteMainserverSourceStateTable = 'waste_mainserver_source_state' as const;
+const wasteMainserverSourceStateTable = 'waste_mainserver_source_state' as const;
 
 type WasteMainserverRevisionTriggerSpec = Readonly<{
   tableName: string;
   updateColumns: readonly string[];
 }>;
 
-export const wasteMainserverRevisionTriggerSpecs = [
+const wasteMainserverRevisionTriggerSpecs = [
   { tableName: 'waste_cities', updateColumns: ['name', 'postal_code'] },
   { tableName: 'waste_streets', updateColumns: ['name'] },
   { tableName: 'waste_house_numbers', updateColumns: ['number', 'street_id'] },

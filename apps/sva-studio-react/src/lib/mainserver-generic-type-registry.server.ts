@@ -7,13 +7,17 @@ import {
   type SvaMainserverGenericItemProjectionContentType,
   type SvaMainserverGenericTypeOwnership,
 } from '@sva/sva-mainserver';
-import studioPluginCatalogConfig from '../../plugin-catalog.json';
 
 import {
   getNodeSourceRefFromGlobPath,
   getWorkspaceSourceRefFromGlobPath,
 } from './plugin-build-registry.js';
 import type { StudioPluginCatalogConfigEntry } from './plugin-catalog-loader.js';
+import { pluginCatalogConfig } from '#studio-plugin-catalog-inputs';
+import {
+  nodeOwnershipModules,
+  workspaceOwnershipModules,
+} from '#studio-mainserver-generic-type-inputs';
 
 type OwnershipModule = Readonly<Record<string, unknown>>;
 
@@ -75,22 +79,8 @@ export const createStudioMainserverGenericTypeRegistry = (input: {
   return validatedRegistry;
 };
 
-const workspaceOwnershipModules = {
-  ...import.meta.glob('../../../../packages/plugin-*/src/generic-item-ownership.ts', {
-    eager: true,
-  }),
-} as Record<string, OwnershipModule>;
-const nodeOwnershipModules = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/generic-item-ownership.js', {
-    eager: true,
-  }),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/generic-item-ownership.js', {
-    eager: true,
-  }),
-} as Record<string, OwnershipModule>;
-
 export const studioMainserverGenericTypeRegistry = createStudioMainserverGenericTypeRegistry({
-  catalogConfig: studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[],
+  catalogConfig: pluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[],
   workspaceModules: workspaceOwnershipModules,
   nodeModules: nodeOwnershipModules,
 });

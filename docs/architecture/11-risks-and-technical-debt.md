@@ -698,3 +698,7 @@ Referenzen:
   Tenant-Verkehr freigibt.
 - Die Bestätigung schützt die Entscheidung, ersetzt aber keine aktuelle
   serverseitige Readiness-Prüfung unmittelbar vor dem Statuswechsel.
+
+### Distributionsdrift
+
+Ein versehentlich übernommener allgemeiner Plugin-Glob kann eine ausgeschlossene Fähigkeit erneut in ein Image ziehen. Profilierte Eingabemodule, ein eingebettetes Manifest und die Image-Verifikation begrenzen diese Drift; die CI prüft beide Images getrennt.

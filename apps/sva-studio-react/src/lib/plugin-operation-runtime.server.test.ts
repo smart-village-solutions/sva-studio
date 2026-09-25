@@ -120,13 +120,12 @@ describe('plugin operation runtime registration', () => {
     mockWasteBrowserPluginModule(createBrowserPluginModuleExports(declaredWasteJobTypeIds));
   });
 
-  it('registers the current studio plugin operation handlers after coverage validation', async () => {
+  it('registers only regular Studio plugin operation handlers after coverage validation', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
     const handlers = await mod.registerStudioPluginOperationHandlers();
 
     expect(Object.keys(handlers).sort()).toEqual([
-      'ssf.reconcile-authorization',
       'waste-management.apply-migrations',
       'waste-management.import-data',
       'waste-management.initialize-data-source',
@@ -147,10 +146,7 @@ describe('plugin operation runtime registration', () => {
       queueName: 'waste-provisioning',
       executionLane: 'privileged',
     });
-    expect(handlers['ssf.reconcile-authorization']).toMatchObject({
-      queueName: 'plugin-operations',
-      executionLane: 'default',
-    });
+    expect(handlers).not.toHaveProperty('ssf.reconcile-authorization');
     expect(handlers['waste-management.reset-data']).toMatchObject({
       supportsCancellation: false,
     });

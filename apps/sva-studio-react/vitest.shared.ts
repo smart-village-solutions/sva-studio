@@ -15,6 +15,30 @@ export const sharedVitestConfig = defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
+      '#studio-mainserver-generic-type-inputs': fileURLToPath(
+        new URL('./src/lib/mainserver-generic-type-inputs.studio.server.ts', import.meta.url)
+      ),
+      '#studio-plugin-catalog-inputs': fileURLToPath(
+        new URL('./src/lib/plugin-catalog-inputs.studio.ts', import.meta.url)
+      ),
+      '#studio-module-iam-inputs': fileURLToPath(
+        new URL('./src/lib/module-iam-inputs.studio.ts', import.meta.url)
+      ),
+      '#studio-plugin-operation-runtime': fileURLToPath(
+        new URL('./src/lib/plugin-operation-runtime.server.ts', import.meta.url)
+      ),
+      '#studio-plugin-operation-inputs': fileURLToPath(
+        new URL('./src/lib/plugin-operation-inputs.studio.server.ts', import.meta.url)
+      ),
+      '#studio-ssf-admin-login-directory': fileURLToPath(
+        new URL('./src/lib/ssf-admin-login-directory.excluded.server.ts', import.meta.url)
+      ),
+      '#studio-plugin-server-inputs': fileURLToPath(
+        new URL('./src/lib/plugin-server-inputs.studio.server.ts', import.meta.url)
+      ),
+      '#studio-ssf-runtime-service-access': fileURLToPath(
+        new URL('./src/lib/ssf-runtime-service-access.studio.server.ts', import.meta.url)
+      ),
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       'react-dom/server': fileURLToPath(
         new URL('./src/lib/react-dom-server-compat.ts', import.meta.url)
@@ -66,6 +90,9 @@ export const sharedVitestConfig = defineConfig({
       ),
       '@sva/iam-admin/encryption': fileURLToPath(
         new URL('../../packages/iam-admin/src/encryption.ts', import.meta.url)
+      ),
+      '@sva/studio-module-iam/ssf': fileURLToPath(
+        new URL('../../packages/studio-module-iam/src/ssf-module-iam-contract.ts', import.meta.url)
       ),
       '@sva/iam-admin': fileURLToPath(
         new URL('../../packages/iam-admin/src/index.ts', import.meta.url)

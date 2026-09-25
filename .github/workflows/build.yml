@@ -24,6 +24,7 @@ jobs:
     outputs:
       backup_agent_image_digest: ${{ steps.build_backup_agent_image.outputs.digest }}
       image_digest: ${{ steps.build_image.outputs.digest }}
+      ssf_image_digest: ${{ steps.build_ssf_image.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -50,6 +51,7 @@ jobs:
         with:
           build-args: |
             SVA_IMAGE_REVISION=${{ github.sha }}
+            SVA_STUDIO_DISTRIBUTION=studio
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
@@ -57,6 +59,21 @@ jobs:
           tags: |
             ghcr.io/smart-village-solutions/sva-studio:${{ github.sha }}
             ghcr.io/smart-village-solutions/sva-studio:latest
+
+      - name: Build and push SSF Docker image
+        id: build_ssf_image
+        uses: docker/build-push-action@v5
+        with:
+          build-args: |
+            SVA_IMAGE_REVISION=${{ github.sha }}
+            SVA_STUDIO_DISTRIBUTION=ssf
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/smart-village-solutions/sva-studio-ssf:${{ github.sha }}
+            ghcr.io/smart-village-solutions/sva-studio-ssf:latest
 
       - name: Build and push backup agent image
         id: build_backup_agent_image
@@ -75,7 +92,7 @@ jobs:
   promote-dev:
     name: Promote dev
     if: github.event_name == 'push'
-    needs: build
+    needs: [build, verify-images]
     uses: ./.github/workflows/promote.yml
     secrets: inherit
     with:
@@ -85,3 +102,42 @@ jobs:
       environment: dev
       image_ref: ${{ needs.build.outputs.image_digest }}
       migration_mode: auto
+
+  verify-images:
+    name: Verify distribution images
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Studio image
+        run: |
+          docker pull "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}"
+          bash scripts/ci/verify-studio-image.sh \
+            "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}" \
+            artifacts/runtime/studio-image-verify studio
+
+      - name: Verify SSF image
+        run: |
+          docker pull "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}"
+          SVA_IMAGE_VERIFY_PORT=39081 SVA_IMAGE_VERIFY_POSTGRES_PORT=35434 \
+            bash scripts/ci/verify-studio-image.sh \
+              "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}" \
+              artifacts/runtime/ssf-image-verify ssf
+
+      - name: Upload image verification reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-distribution-image-verify-${{ github.run_id }}
+          path: artifacts/runtime
+          if-no-files-found: warn
+          retention-days: 14

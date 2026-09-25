@@ -48,7 +48,7 @@ let ensureStudioJobWorkerStartedPromise: Promise<
   (typeof import('@sva/auth-runtime/server'))['ensureStudioJobWorkerStarted']
 > | null = null;
 let registerStudioPluginOperationHandlersPromise: Promise<
-  (typeof import('./lib/plugin-operation-runtime.server'))['registerStudioPluginOperationHandlers']
+  (typeof import('#studio-plugin-operation-runtime'))['registerStudioPluginOperationHandlers']
 > | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
@@ -65,7 +65,7 @@ const getDispatchAuthRouteRequest = async () => {
 };
 const getDispatchSsfAdminLoginDirectoryRequest = async () => {
   dispatchSsfAdminLoginDirectoryRequestPromise ??=
-    import('./lib/ssf-admin-login-directory.server.js').then(
+    import('#studio-ssf-admin-login-directory').then(
       (mod) => mod.dispatchStudioSsfAdminLoginDirectoryRequest
     );
   return dispatchSsfAdminLoginDirectoryRequestPromise;
@@ -91,11 +91,11 @@ const getEnsureStudioJobWorkerStarted = async () => {
 };
 const getRegisterStudioPluginOperationHandlers = async () => {
   if (devRuntimeRefreshEnabled) {
-    return (await import('./lib/plugin-operation-runtime.server'))
+    return (await import('#studio-plugin-operation-runtime'))
       .registerStudioPluginOperationHandlers;
   }
   registerStudioPluginOperationHandlersPromise ??=
-    import('./lib/plugin-operation-runtime.server').then(
+    import('#studio-plugin-operation-runtime').then(
       (mod) => mod.registerStudioPluginOperationHandlers
     );
   return registerStudioPluginOperationHandlersPromise;

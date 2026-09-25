@@ -1,0 +1,4 @@
+{
+  "prNumber": 1485,
+  "body": "SSF als eigenständige Studio-Distribution ausliefern\n\n- Das reguläre Studio-Artefakt enthält keine SSF-Routen, -Handler oder -Pakete mehr.\n- Das Image-Verify prüft das distributionsspezifische Plugin-Inventar zusätzlich zum attestierten Manifest."
+}

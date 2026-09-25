@@ -519,3 +519,8 @@ Referenzen:
 - Jeder sichtbare Blocker nennt Auswirkung, Behebung, Folgeprüfung und
   Korrelation, ohne Providertext, PII oder Secrets offenzulegen.
 - UI und MCP bieten nur die serverseitig erlaubte nächste Mutation an.
+
+### Distributionsintegrität
+
+- Der Standardbuild darf weder SSF-Plugin-Code noch SSF-IAM- oder Job-Beiträge enthalten.
+- Das SSF-Artefakt enthält nur SSF und Media; Image-Label, eingebettetes Manifest und geprüfter Digest müssen übereinstimmen.

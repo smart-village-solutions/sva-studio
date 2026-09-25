@@ -49,7 +49,7 @@ vi.mock('@sva/routing/server', () => ({
   dispatchAuthRouteRequest: dispatchAuthRouteRequestMock,
 }));
 
-vi.mock('./lib/ssf-admin-login-directory.server.js', () => ({
+vi.mock('#studio-ssf-admin-login-directory', () => ({
   dispatchStudioSsfAdminLoginDirectoryRequest: dispatchSsfAdminLoginDirectoryRequestMock,
 }));
 
@@ -107,7 +107,7 @@ vi.mock('./lib/server-function-request-diagnostics.server', () => ({
   resolveServerFunctionBranchDecision: resolveServerFunctionBranchDecisionMock,
 }));
 
-vi.mock('./lib/plugin-operation-runtime.server', () => ({
+vi.mock('#studio-plugin-operation-runtime', () => ({
   registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
 }));
 

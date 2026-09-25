@@ -1,6 +1,5 @@
 import { composePermissionCatalog, corePermissionCatalog } from '@sva/core';
 
-import { ssfModuleIamContract } from './ssf-module-iam-contract.js';
 
 export const studioModuleIamVersion = '0.0.1';
 
@@ -211,7 +210,7 @@ const mediaModuleIamContract: StudioModuleIamContract = {
   systemRoles: createSystemAdminSystemRoles(mediaTenantBootstrapRoles),
 };
 
-export const studioPluginModuleIamContracts = [
+export const studioRegularPluginModuleIamContracts = [
   categoriesModuleIamContract,
   newsModuleIamContract,
   eventsModuleIamContract,
@@ -222,7 +221,10 @@ export const studioPluginModuleIamContracts = [
   projectsModuleIamContract,
   surveysModuleIamContract,
   wasteManagementModuleIamContract,
-  ssfModuleIamContract,
+] as const satisfies readonly StudioModuleIamContract[];
+
+export const studioPluginModuleIamContracts = [
+  ...studioRegularPluginModuleIamContracts,
 ] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioHostModuleIamContracts = [

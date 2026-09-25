@@ -2,12 +2,17 @@
 set -euo pipefail
 
 if [ "${1:-}" = "" ]; then
-  echo "usage: verify-studio-image.sh <image-ref> [artifact-dir]" >&2
+  echo "usage: verify-studio-image.sh <image-ref> [artifact-dir] [studio|ssf]" >&2
   exit 1
 fi
 
 IMAGE_REF="$1"
 ARTIFACT_DIR_INPUT="${2:-artifacts/runtime/image-verify}"
+SVA_STUDIO_DISTRIBUTION="${3:-studio}"
+case "${SVA_STUDIO_DISTRIBUTION}" in
+  studio|ssf) ;;
+  *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;;
+esac
 VERIFY_ID="studio-image-verify-$(date +%s)"
 NETWORK_NAME="${VERIFY_ID}-net"
 POSTGRES_NAME="${VERIFY_ID}-postgres"
@@ -28,6 +33,28 @@ SUMMARY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.md"
 PHASES_LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.phases.log"
 ENV_FILE="${ARTIFACT_DIR}/${VERIFY_ID}.env"
 
+actual_distribution="$(docker image inspect "${IMAGE_REF}" --format '{{ index .Config.Labels "com.sva-studio.distribution" }}')"
+if [ "${actual_distribution}" != "${SVA_STUDIO_DISTRIBUTION}" ]; then
+  echo "image_distribution_mismatch:expected=${SVA_STUDIO_DISTRIBUTION}:actual=${actual_distribution}" >&2
+  exit 1
+fi
+artifact_distribution="$(docker run --rm --entrypoint cat "${IMAGE_REF}" .output/server/generated/studio-distribution.json | jq -er '.distribution')"
+if [ "${artifact_distribution}" != "${SVA_STUDIO_DISTRIBUTION}" ]; then
+  echo "artifact_distribution_mismatch:expected=${SVA_STUDIO_DISTRIBUTION}:actual=${artifact_distribution}" >&2
+  exit 1
+fi
+
+assert_image_package_inventory() {
+  local package_name="$1"
+  local expected_presence="$2"
+
+  if docker run --rm --entrypoint sh "${IMAGE_REF}" -lc "test -d '/app/node_modules/@sva/${package_name}'"; then
+    [ "${expected_presence}" = "present" ]
+  else
+    [ "${expected_presence}" = "absent" ]
+  fi
+}
+
 FAILURE_CLASS="none"
 FAILED_PHASE=""
 VERIFY_STATUS="ok"
@@ -38,6 +65,7 @@ SCHEMA_MIGRATIONS_STATUS="pending"
 REDIS_READY_STATUS="pending"
 KEYCLOAK_READY_STATUS="pending"
 IMAGE_PULL_STATUS="pending"
+PLUGIN_INVENTORY_STATUS="pending"
 APP_START_STATUS="pending"
 HEALTH_LIVE_STATUS="pending"
 HEALTH_READY_STATUS="pending"
@@ -73,6 +101,29 @@ fail_verify() {
   printf '%s\t%s\t%s\n' "${failed_phase}" "${failure_class}" "${message}" >> "${PHASES_LOG_PATH}"
   echo "${message}" >&2
 }
+
+if [ "${SVA_STUDIO_DISTRIBUTION}" = "studio" ]; then
+  if assert_image_package_inventory "plugin-ssf" "absent"; then
+    set_phase_var PLUGIN_INVENTORY_STATUS ok
+    mark_phase plugin-inventory ok
+  else
+    set_phase_var PLUGIN_INVENTORY_STATUS error
+    mark_phase plugin-inventory error
+    fail_verify artifact-inventory-mismatch plugin-inventory "Das Studio-Image enthält SSF-Plugin-Artefakte."
+  fi
+else
+  if \
+    assert_image_package_inventory "plugin-ssf" "present" && \
+    assert_image_package_inventory "plugin-news" "absent"
+  then
+    set_phase_var PLUGIN_INVENTORY_STATUS ok
+    mark_phase plugin-inventory ok
+  else
+    set_phase_var PLUGIN_INVENTORY_STATUS error
+    mark_phase plugin-inventory error
+    fail_verify artifact-inventory-mismatch plugin-inventory "Das SSF-Image enthält nicht das erwartete exklusive Plugin-Inventar."
+  fi
+fi
 
 wait_for_postgres() {
   for _ in $(seq 1 20); do
@@ -420,6 +471,7 @@ cat >"${REPORT_PATH}" <<EOF
     "redis-ready": "${REDIS_READY_STATUS}",
     "keycloak-ready": "${KEYCLOAK_READY_STATUS}",
     "image-pull": "${IMAGE_PULL_STATUS}",
+    "plugin-inventory": "${PLUGIN_INVENTORY_STATUS}",
     "app-start": "${APP_START_STATUS}",
     "health-live": "${HEALTH_LIVE_STATUS}",
     "health-ready": "${HEALTH_READY_STATUS}",
@@ -455,6 +507,7 @@ cat >"${SUMMARY_PATH}" <<EOF
 - \`redis-ready\`: \`${REDIS_READY_STATUS}\`
 - \`keycloak-ready\`: \`${KEYCLOAK_READY_STATUS}\`
 - \`image-pull\`: \`${IMAGE_PULL_STATUS}\`
+- \`plugin-inventory\`: \`${PLUGIN_INVENTORY_STATUS}\`
 - \`app-start\`: \`${APP_START_STATUS}\`
 - \`health-live\`: \`${HEALTH_LIVE_STATUS}\`
 - \`health-ready\`: \`${HEALTH_READY_STATUS}\`

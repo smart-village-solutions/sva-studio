@@ -4,12 +4,7 @@ import {
   type PluginManifest,
 } from '@sva/plugin-sdk';
 import { createBrowserLogger } from '@sva/monitoring-client/logging';
-import {
-  studioHostModuleIamContracts,
-  studioModuleIamContracts,
-  studioModuleIamRegistry,
-} from '@sva/studio-module-iam';
-import studioPluginCatalogConfig from '../../plugin-catalog.json';
+import type { StudioModuleIamContract } from '@sva/studio-module-iam';
 import { appAdminResources } from '../routing/admin-resources';
 
 import {
@@ -29,8 +24,22 @@ import {
   getWorkspacePluginModuleCandidates,
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
+import { filterPluginCatalogForDistribution, resolveStudioDistribution } from './studio-distribution.js';
+import {
+  nodeManifestModules,
+  nodePluginModuleLoaders,
+  pluginCatalogConfig,
+  workspaceManifestModules,
+  workspacePluginModuleLoaders,
+} from '#studio-plugin-client-inputs';
+import {
+  studioHostModuleContracts,
+  studioPluginModuleContracts,
+} from '#studio-module-iam-inputs';
 
-export { studioHostModuleIamContracts, studioModuleIamContracts, studioModuleIamRegistry };
+export const studioDistribution = resolveStudioDistribution(
+  import.meta.env.VITE_SVA_STUDIO_DISTRIBUTION
+);
 
 const pluginLogger = createBrowserLogger({
   component: 'plugin-actions',
@@ -39,41 +48,6 @@ const pluginLogger = createBrowserLogger({
 
 const studioPluginTranslationsSignatureKey = Symbol.for('sva-studio.plugin-translations.signature');
 const warnedDeprecatedPluginActionAliases = new Set<string>();
-
-const workspaceManifestModules = import.meta.glob(
-  '../../../../packages/plugin-*/plugin.manifest.json',
-  {
-    eager: true,
-    import: 'default',
-  }
-) as Record<string, PluginManifest>;
-const workspacePluginModuleLoaders = {
-  ...import.meta.glob('../../../../packages/plugin-*/src/browser.ts'),
-  ...import.meta.glob('../../../../packages/plugin-*/src/browser.tsx'),
-  ...import.meta.glob('../../../../packages/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../packages/plugin-*/src/index.tsx'),
-} as Record<string, () => Promise<Record<string, unknown>>>;
-const nodeManifestModules = {
-  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', {
-    eager: true,
-    import: 'default',
-  }),
-} as Record<string, PluginManifest>;
-const nodePluginModuleLoaders = {
-  // Restrict eager package-module imports to the documented plugin package naming
-  // scheme. Modules stay lazy so disabled or uncatalogized plugins cannot
-  // execute top-level code during startup.
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.tsx'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/index.js'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts'),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx'),
-} as Record<string, () => Promise<Record<string, unknown>>>;
 
 const {
   workspaceManifestRegistry,
@@ -114,8 +88,10 @@ const resolveNodePluginModule = (
     getPackagePluginModuleCandidates(manifest)
   );
 
-const studioPluginCatalogConfigEntries =
-  studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
+const studioPluginCatalogConfigEntries = filterPluginCatalogForDistribution(
+  pluginCatalogConfig,
+  studioDistribution
+);
 
 const studioPluginCatalogReport = await createStudioPluginCatalogReport({
   catalogConfig: studioPluginCatalogConfigEntries,
@@ -146,6 +122,12 @@ for (const issue of studioPluginCatalogReport.issues) {
 export const studioPluginCatalog = studioPluginCatalogReport.catalog;
 export const studioPluginCatalogIssues = studioPluginCatalogReport.issues;
 export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
+export const studioHostModuleIamContracts = studioHostModuleContracts;
+export const studioModuleIamContracts: readonly StudioModuleIamContract[] =
+  [...studioPluginModuleContracts, ...studioHostModuleIamContracts];
+export const studioModuleIamRegistry: ReadonlyMap<string, StudioModuleIamContract> = new Map(
+  studioModuleIamContracts.map((contract) => [contract.moduleId, contract] as const)
+);
 
 export const studioBuildTimeRegistry = studioPluginSnapshot.registry;
 const studioBuildTimeTranslationsSignature = JSON.stringify(studioBuildTimeRegistry.translations);

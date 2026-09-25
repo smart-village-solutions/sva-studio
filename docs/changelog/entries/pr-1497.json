@@ -1,0 +1,4 @@
+{
+  "prNumber": 1497,
+  "body": "Sicherere SSF-Anmeldung bei fehlerhaften Berechtigungsdaten\n\n- Fehlende, falsche oder veraltete Tenant- und Autorisierungsclaims verhindern die Bereitschaft des betroffenen Tenant-Realms.\n- Die Prüfung sichert, dass unabhängige Tenant-Realms durch einen fehlerhaften Claim nicht beeinflusst werden."
+}

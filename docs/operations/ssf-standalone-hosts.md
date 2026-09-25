@@ -60,7 +60,8 @@ Keine Passwörter zurücksetzen und keine zusätzlichen Tenant-Rollen vergeben.
 
 Die Kasseler Installation benötigt neben dem App-Container zwingend einen eigenen
 Keycloak-Provisioner. Er verarbeitet Hintergrundaufträge und stellt zugleich den internen,
-ausschließlich über `http://provisioner:3000` erreichbaren Create-/Readiness-Endpunkt bereit.
+ausschließlich über `http://provisioner:3000` erreichbaren Create-/Readiness-Endpunkt bereit;
+seine eigene Runtime bearbeitet diese Requests lokal und leitet sie nicht erneut weiter.
 Er darf nicht durch einen Worker des regulären Studio-Stacks ersetzt werden: Er muss dieselbe
 Kasseler Datenbank, Redis-Instanz und den lokalen Keycloak verwenden.
 

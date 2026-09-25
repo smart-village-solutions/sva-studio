@@ -31,6 +31,7 @@ services:
     env_file:
       - ./runtime.env
     environment:
+      SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'
       SVA_PROVISIONER_COMBINED_WORKER: 'true'
     restart: unless-stopped
     networks:

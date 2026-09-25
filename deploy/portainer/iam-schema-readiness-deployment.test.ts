@@ -49,6 +49,7 @@ describe('IAM schema readiness deployment contract', () => {
       "SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: 'http://provisioner:3000'"
     );
     expect(standaloneProvisioner).toContain('./runtime.env');
+    expect(standaloneProvisioner).toContain("SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'");
     expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'true'");
     expect(standaloneProvisioner).not.toContain('node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js');
     expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');

@@ -19,7 +19,7 @@ const createDoctorReport = (status: DoctorReport['status']): DoctorReport => ({
 });
 
 describe('createAcceptanceDeployRunner', () => {
-  it('only exempts additional tenant ingress failures in release scope', () => {
+  it('exempts tenant ingress failures in release scope', () => {
     expect(isBlockingSmokeProbe({
       durationMs: 1,
       message: 'IAM-Kontext liefert HTML.',

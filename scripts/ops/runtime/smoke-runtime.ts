@@ -2,7 +2,7 @@ import type { AcceptanceProbeResult, DoctorReport, RemoteRuntimeProfile, Runtime
 import type { OidcAuthorizationRedirectExpectation } from './acceptance-runtime-checks-core.ts';
 import { buildPromoteFailure, PromoteContractError, writePromoteFailureRecord, type PromoteErrorCode, type PromoteEnvironment } from '../../ci/promote-result.ts';
 import { deriveInternalVerifyMaxAttempts, shouldRetryExternalSmoke, shouldRetryInternalVerifyAttempt, summarizeExternalSmokeAttempt } from './smoke-retry.ts';
-import { resolveStudioIngressContract, studioIngressContracts } from './tenant-ingress-hosts.ts';
+import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
 type RunHttpProbeInput = {
   expect: (response: Response, payload: unknown) => string | null;
@@ -19,8 +19,7 @@ export type RuntimeSmokeDeps = {
   parseRuntimeProfile: (value: RuntimeProfile | undefined) => RuntimeProfile | undefined;
   resolveTenantRuntimeTargets: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv, options?: { readonly limit?: number }) => Promise<TenantRuntimeTargetResolution>;
   runHttpProbe: (input: RunHttpProbeInput) => Promise<AcceptanceProbeResult>;
-  selectSmokeTenantTargets: (runtimeProfile: RuntimeProfile, tenantTargets: TenantRuntimeTargetResolution['targets'], options: { readonly env: NodeJS.ProcessEnv; readonly source: TenantRuntimeTargetResolution['source'] }) => TenantRuntimeTargetResolution['targets'];
-  shouldUseStudioReleaseBlockingTenantScope: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => boolean;
+  isStudioReleaseVerification: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => boolean;
   wait: (ms: number) => Promise<unknown>;
 };
 
@@ -190,13 +189,12 @@ const baseExternalProbes = (deps: RuntimeSmokeDeps, baseUrl: string, env: NodeJS
 const runExternalSmoke = async (deps: RuntimeSmokeDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): Promise<readonly AcceptanceProbeResult[]> => {
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
   const base = new URL(baseUrl);
-  const tenantOptions = deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env)
-    || resolveStudioIngressContract(baseUrl)
-    ? undefined
-    : { limit: 2 };
+  if (deps.isStudioReleaseVerification(runtimeProfile, env)) {
+    return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base, env, [])]);
+  }
+  const tenantOptions = resolveStudioIngressContract(baseUrl) ? undefined : { limit: 2 };
   const tenantResolution = await deps.resolveTenantRuntimeTargets(runtimeProfile, env, tenantOptions);
-  const tenantTargets = deps.selectSmokeTenantTargets(runtimeProfile, tenantResolution.targets, { env, source: tenantResolution.source });
-  const tenantProbes = tenantTargets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, env, tenantTarget));
+  const tenantProbes = tenantResolution.targets.map((tenantTarget) => tenantAuthLoginProbe(deps, base, env, tenantTarget));
 
   return Promise.all([...baseExternalProbes(deps, baseUrl, env), ...explicitIngressHostProbes(deps, base, env, tenantResolution.targets), ...tenantProbes]);
 };
@@ -230,46 +228,44 @@ const runExternalSmokeWithWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Pr
 
 export const isBlockingSmokeProbe = (
   probe: AcceptanceProbeResult,
-  usesReleaseBlockingTenantScope: boolean,
+  isReleaseSmoke: boolean,
 ) => {
   if (['public-home', 'public-live', 'public-ready', 'public-auth-login', 'public-ingress-unknown-host'].includes(probe.name)) return true;
-  if (probe.name.startsWith('public-auth-login-')) return true;
+  if (probe.name.startsWith('public-auth-login-')) return !isReleaseSmoke;
 
   const isExplicitIngressProbe = probe.name.startsWith('public-ingress-https-')
     || probe.name.startsWith('public-ingress-login-');
   if (!isExplicitIngressProbe) return true;
-  if (!usesReleaseBlockingTenantScope) return true;
+  if (!isReleaseSmoke) return true;
 
-  const releaseBlockingTenantId = studioIngressContracts.prod.releaseBlockingTenantId;
-  return probe.name.startsWith(`public-ingress-https-${releaseBlockingTenantId}.`)
-    || probe.name.startsWith(`public-ingress-login-${releaseBlockingTenantId}.`);
+  return false;
 };
 
 export const reportNonBlockingSmokeFailures = (
   probes: readonly AcceptanceProbeResult[],
-  usesReleaseBlockingTenantScope: boolean,
+  isReleaseSmoke: boolean,
 ) => {
   for (const probe of probes) {
-    if (probe.status !== 'error' || isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)) continue;
+    if (probe.status !== 'error' || isBlockingSmokeProbe(probe, isReleaseSmoke)) continue;
     console.warn('[runtime-env] PROMOTE_SMOKE_NON_BLOCKING_FAILURE: Eine nicht blockierende Smoke-Prüfung ist fehlgeschlagen.');
   }
 };
 
 const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.ProcessEnv, options?: ExternalSmokeWarmupOptions) => {
   const runtimeProfile = options?.runtimeProfile ?? defaultRuntimeProfile(deps, env);
-  const usesReleaseBlockingTenantScope = deps.shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, env);
+  const isReleaseSmoke = deps.isStudioReleaseVerification(runtimeProfile, env);
   const probes = await runExternalSmokeWithWarmup(deps, env, {
     maxAttempts: options?.maxAttempts,
     retryDelayMs: options?.retryDelayMs,
     runtimeProfile,
     runner: options?.runner,
     shouldRetry: (candidateProbes) => shouldRetryExternalSmoke(
-      candidateProbes.filter((probe) => isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)),
+      candidateProbes.filter((probe) => isBlockingSmokeProbe(probe, isReleaseSmoke)),
     ),
   });
-  reportNonBlockingSmokeFailures(probes, usesReleaseBlockingTenantScope);
+  reportNonBlockingSmokeFailures(probes, isReleaseSmoke);
   const failingProbe = probes.find(
-    (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope),
+    (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, isReleaseSmoke),
   );
   if (failingProbe) {
     const failure = buildPromoteFailure({

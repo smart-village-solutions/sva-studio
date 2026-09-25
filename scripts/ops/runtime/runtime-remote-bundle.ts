@@ -41,8 +41,7 @@ const createSmokeOps = (deps: RuntimeRemoteBundleDeps, runtimeRemoteVerification
     parseRuntimeProfile: (value) => deps.parseRuntimeProfile(value) ?? undefined,
     resolveTenantRuntimeTargets: runtimeRemoteVerificationOps.resolveTenantRuntimeTargets,
     runHttpProbe: deps.runHttpProbe,
-    selectSmokeTenantTargets: runtimeRemoteVerificationOps.selectSmokeTenantTargets,
-    shouldUseStudioReleaseBlockingTenantScope: runtimeRemoteVerificationOps.shouldUseStudioReleaseBlockingTenantScope,
+    isStudioReleaseVerification: runtimeRemoteVerificationOps.isStudioReleaseVerification,
     wait: deps.wait,
   });
 

@@ -5,7 +5,6 @@ import type {
   TenantRuntimeTargetResolution,
 } from '../runtime-env.shared.ts';
 import { createStudioImageVerifyEvidenceReaders } from './studio-image-verify-evidence.ts';
-import { studioIngressContracts } from './tenant-ingress-hosts.ts';
 
 type RemoteVerificationDeps = {
   commandExists: (commandName: string) => boolean;
@@ -137,32 +136,8 @@ const resolveTenantRuntimeTargets = async (
   resolveRegistryTenantRuntimeTargets(deps, runtimeProfile, env, options) ??
   resolveLegacyTenantRuntimeTargets(deps, runtimeProfile, env);
 
-const selectReleaseBlockingTenantTargets = (
-  runtimeProfile: RuntimeProfile,
-  tenantTargets: readonly TenantRuntimeTarget[],
-): readonly TenantRuntimeTarget[] =>
-  runtimeProfile === 'studio'
-    ? tenantTargets.filter((target) => target.instanceId === studioIngressContracts.prod.releaseBlockingTenantId)
-    : tenantTargets;
-
-export const shouldUseStudioReleaseBlockingTenantScope = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
+export const isStudioReleaseVerification = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) =>
   runtimeProfile === 'studio' && (env.SVA_ACCEPTANCE_RELEASE_MODE?.trim().length ?? 0) > 0;
-
-const selectSmokeTenantTargets = (
-  runtimeProfile: RuntimeProfile,
-  tenantTargets: readonly TenantRuntimeTarget[],
-  options: { readonly env: NodeJS.ProcessEnv; readonly source: TenantRuntimeTargetResolution['source'] },
-): readonly TenantRuntimeTarget[] => {
-  if (!shouldUseStudioReleaseBlockingTenantScope(runtimeProfile, options.env)) return tenantTargets;
-
-  const blockingTargets = selectReleaseBlockingTenantTargets(runtimeProfile, tenantTargets);
-  if (blockingTargets.length > 0) return blockingTargets;
-
-  throw new Error(
-    `Release-blockierender Tenant ${studioIngressContracts.prod.releaseBlockingTenantId} fehlt im Scope (${options.source}). ` +
-      'Pruefe Instanz-Registry oder Tenant-Scope-Konfiguration.',
-  );
-};
 
 const waitForPostDeployStabilization = async (
   deps: RemoteVerificationDeps,
@@ -187,9 +162,7 @@ export const createRuntimeRemoteVerification = (deps: RemoteVerificationDeps) =>
     readStudioImageVerifyEvidence: studioImageVerifyEvidenceReaders.readStudioImageVerifyEvidence,
     resolveTenantRuntimeTargets: (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv, options?: { readonly limit?: number }) =>
       resolveTenantRuntimeTargets(deps, runtimeProfile, env, options),
-    selectReleaseBlockingTenantTargets,
-    selectSmokeTenantTargets,
-    shouldUseStudioReleaseBlockingTenantScope,
+    isStudioReleaseVerification,
     tryReadGithubStudioImageVerifyEvidence: studioImageVerifyEvidenceReaders.tryReadGithubStudioImageVerifyEvidence,
     waitForPostDeployStabilization: (env: NodeJS.ProcessEnv, waitFn?: (ms: number) => Promise<unknown>) =>
       waitForPostDeployStabilization(deps, env, waitFn),

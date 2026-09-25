@@ -96,6 +96,10 @@ describe('createRuntimeDoctorOps', () => {
       SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE: 'true',
       SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
     });
+    const releaseReport = await ops.doctorRuntime('studio', {
+      SVA_ACCEPTANCE_RELEASE_MODE: 'prod',
+      SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
+    });
     const localBuilderReport = await ops.doctorRuntime('local-builder', {
       SVA_PUBLIC_BASE_URL: 'http://localhost:3000',
     });
@@ -117,6 +121,10 @@ describe('createRuntimeDoctorOps', () => {
     expect(remoteReport.checks.map((check) => check.name)).toContain('runtime-env-live');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('runtime-env');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('otel');
+    expect(releaseReport.checks.map((check) => check.name)).not.toContain('tenant-auth-proof');
+    expect(releaseReport.checks.map((check) => check.name)).not.toContain('instance-auth-config');
+    expect(releaseReport.checks.map((check) => check.name)).not.toContain('tenant-auth-secret');
+    expect(releaseReport.checks.map((check) => check.name)).toContain('app-db-principal');
     expect(localBuilderReport.checks.map((check) => check.name)).toContain('otel');
     expect(localKeycloakReport.checks.map((check) => check.name)).toContain('actor-diagnosis');
     expect(precheckReport.checks.map((check) => check.name)).toContain('acceptance-live-spec');
@@ -134,7 +142,7 @@ describe('createRuntimeDoctorOps', () => {
       { allowImplicitQueryResponseMode: true },
     );
     expect(buildTenantAuthProofCheck).toHaveBeenCalledWith('studio', expect.any(Object));
-    expect(finalizeDoctorReport).toHaveBeenCalledTimes(5);
+    expect(finalizeDoctorReport).toHaveBeenCalledTimes(6);
   });
 
   it('uses explicit endpoint error messages for non-200 health responses', async () => {

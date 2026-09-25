@@ -6,6 +6,7 @@ import type {
   RuntimeProfile,
 } from '../runtime-env.shared.ts';
 import { createAssertionCheck, createEndpointHealthCheck, createRuntimeEnvCheck } from './doctor-check-builders.ts';
+import { isStudioReleaseVerification } from './remote-verification.ts';
 import type { RuntimeDoctorDeps } from './doctor.types.ts';
 import type { OidcDoctorCompatibilityOptions } from './runtime-health.types.ts';
 
@@ -121,7 +122,9 @@ const addRemoteRuntimeChecks = async (
 ) => {
   if (!deps.isRemoteRuntimeProfile(runtimeProfile)) return;
   checks.push(await deps.buildAppPrincipalReadinessCheck(env));
-  checks.push(await deps.buildTenantAuthProofCheck(runtimeProfile, env, options));
+  if (!isStudioReleaseVerification(runtimeProfile, env)) {
+    checks.push(await deps.buildTenantAuthProofCheck(runtimeProfile, env, options));
+  }
 };
 
 const addInstanceChecks = async (
@@ -151,7 +154,9 @@ const addCommonDoctorChecks = async (
   checks.push(deps.buildMigrationStatusCheck(runtimeProfile, env));
   checks.push(deps.buildSchemaGuardCheck(runtimeProfile, env));
   checks.push(deps.buildSchemaSnapshotCheck(runtimeProfile, env));
-  await addInstanceChecks(deps, checks, runtimeProfile, env);
+  if (!isStudioReleaseVerification(runtimeProfile, env)) {
+    await addInstanceChecks(deps, checks, runtimeProfile, env);
+  }
   checks.push(...(await deps.buildGuardrailDoctorChecks(runtimeProfile, { env })));
 };
 

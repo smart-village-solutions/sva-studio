@@ -62,6 +62,7 @@ VERIFY_STATUS="ok"
 POSTGRES_READY_STATUS="pending"
 POSTGRES_APP_ROLE_STATUS="pending"
 SCHEMA_MIGRATIONS_STATUS="pending"
+GRAPHILE_WORKER_MIGRATIONS_STATUS="pending"
 REDIS_READY_STATUS="pending"
 KEYCLOAK_READY_STATUS="pending"
 IMAGE_PULL_STATUS="pending"
@@ -386,6 +387,22 @@ SVA_SERVER_ENTRY_DEBUG=true
 EOF
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if docker run --rm \
+    --network "${NETWORK_NAME}" \
+    --env-file "${ENV_FILE}" \
+    --entrypoint node \
+    "${IMAGE_REF}" ./migrate-graphile-worker.mjs >/dev/null
+  then
+    set_phase_var GRAPHILE_WORKER_MIGRATIONS_STATUS ok
+    mark_phase graphile-worker-migrations ok
+  else
+    set_phase_var GRAPHILE_WORKER_MIGRATIONS_STATUS error
+    mark_phase graphile-worker-migrations error
+    fail_verify dependency-failed graphile-worker-migrations "Die temporaeren Graphile-Worker-Migrationen fuer das Image-Verify sind fehlgeschlagen."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
   docker run -d \
     --name "${APP_NAME}" \
     --network "${NETWORK_NAME}" \
@@ -468,6 +485,7 @@ cat >"${REPORT_PATH}" <<EOF
     "postgres-ready": "${POSTGRES_READY_STATUS}",
     "postgres-app-role": "${POSTGRES_APP_ROLE_STATUS}",
     "schema-migrations": "${SCHEMA_MIGRATIONS_STATUS}",
+    "graphile-worker-migrations": "${GRAPHILE_WORKER_MIGRATIONS_STATUS}",
     "redis-ready": "${REDIS_READY_STATUS}",
     "keycloak-ready": "${KEYCLOAK_READY_STATUS}",
     "image-pull": "${IMAGE_PULL_STATUS}",
@@ -504,6 +522,7 @@ cat >"${SUMMARY_PATH}" <<EOF
 - \`postgres-ready\`: \`${POSTGRES_READY_STATUS}\`
 - \`postgres-app-role\`: \`${POSTGRES_APP_ROLE_STATUS}\`
 - \`schema-migrations\`: \`${SCHEMA_MIGRATIONS_STATUS}\`
+- \`graphile-worker-migrations\`: \`${GRAPHILE_WORKER_MIGRATIONS_STATUS}\`
 - \`redis-ready\`: \`${REDIS_READY_STATUS}\`
 - \`keycloak-ready\`: \`${KEYCLOAK_READY_STATUS}\`
 - \`image-pull\`: \`${IMAGE_PULL_STATUS}\`

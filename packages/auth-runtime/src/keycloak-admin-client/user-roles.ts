@@ -6,7 +6,7 @@ import {
   isStudioManagedRealmRole,
   mapKeycloakRole,
 } from './helpers.js';
-import type { KeycloakRealmRole, KeycloakRoleMapping } from './internal-models.js';
+import type { KeycloakRealmRole } from './internal-models.js';
 import type { IdentityRole } from '../identity-provider-port.js';
 
 export class KeycloakUserRoleOperations extends KeycloakUserWriteOperations {

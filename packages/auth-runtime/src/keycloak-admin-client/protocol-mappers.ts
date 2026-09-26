@@ -1,6 +1,6 @@
 import { KeycloakTenantAdminAccessOperations } from './tenant-admin-access.js';
 import { KeycloakAdminRequestError } from './errors.js';
-import { encodePathSegment, isSemanticallyEqualJson } from './helpers.js';
+import { encodePathSegment } from './helpers.js';
 import type {
   KeycloakProtocolMapperEvaluationRepresentation,
   KeycloakProtocolMapperRepresentation,

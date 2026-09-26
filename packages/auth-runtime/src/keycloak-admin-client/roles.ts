@@ -3,8 +3,6 @@ import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './erro
 import {
   canReconcileStudioManagedRole,
   encodePathSegment,
-  isBuiltInRealmRole,
-  isStudioManagedRealmRole,
   logger,
   mapKeycloakRole,
   normalizeManagedRoleAttributes,

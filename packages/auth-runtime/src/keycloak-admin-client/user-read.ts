@@ -1,5 +1,5 @@
 import { KeycloakRoleOperations } from './roles.js';
-import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './errors.js';
+import { KeycloakAdminUnavailableError } from './errors.js';
 import {
   encodePathSegment,
   filterUserAttributes,
@@ -12,11 +12,7 @@ import type {
   KeycloakListUsersQuery,
   KeycloakRoleMapping,
 } from './internal-models.js';
-import type {
-  IdentityListedUser,
-  IdentityUserAttributes,
-  IdentityUserListQuery,
-} from '../identity-provider-port.js';
+import type { IdentityListedUser, IdentityUserAttributes } from '../identity-provider-port.js';
 
 export class KeycloakUserReadOperations extends KeycloakRoleOperations {
   async getUserAttributes(

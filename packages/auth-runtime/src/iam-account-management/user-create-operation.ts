@@ -195,6 +195,9 @@ const deleteCreatedExternalUser = async (input: {
   );
 };
 
+const createCoreAccountWithoutPluginClaims: AccountCreateContribution = async ({ execute }) =>
+  execute({ readClaims: async () => ({ attributes: {} }) });
+
 export const executeCreateUser = async (input: {
   actor: CreateUserActorInfo;
   actorSubject: string;
@@ -205,10 +208,7 @@ export const executeCreateUser = async (input: {
   let createdExternalId: string | undefined;
 
   try {
-    const withAccountCreate: AccountCreateContribution =
-      readAccountCreateContribution() ??
-      (async ({ execute }) => execute({ readClaims: async () => ({ attributes: {} }) }));
-    return await withAccountCreate({
+    return await (readAccountCreateContribution() ?? createCoreAccountWithoutPluginClaims)({
       instanceId: actor.instanceId,
       execute: async ({ readClaims }) => {
         const assignments = await withInstanceScopedDb(actor.instanceId, (client) =>

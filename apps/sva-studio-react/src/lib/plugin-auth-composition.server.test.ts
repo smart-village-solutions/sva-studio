@@ -5,11 +5,9 @@ const state = vi.hoisted(() => ({
   readLoginRequirement: vi.fn(() => null),
 }));
 
-vi.mock('@sva/plugin-ssf/runtime', () => ({
-  createSsfAccountCreateContribution: state.createContribution,
-}));
 vi.mock('@sva/plugin-ssf/provisioning', () => ({
   SSF_TENANT_OIDC_CLIENT_REQUIREMENT: { pluginId: 'ssf', clientId: 'ssf' },
+  createSsfAccountCreateContribution: state.createContribution,
   readSsfLoginClientRequirement: state.readLoginRequirement,
 }));
 

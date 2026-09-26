@@ -1,6 +1,6 @@
-import { createSsfAccountCreateContribution } from '@sva/plugin-ssf/runtime';
 import {
   SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
+  createSsfAccountCreateContribution,
   readSsfLoginClientRequirement,
 } from '@sva/plugin-ssf/provisioning';
 

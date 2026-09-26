@@ -10,4 +10,3 @@ export * from './handler.js';
 export * from './resolver.js';
 export * from './repository.js';
 export * from './revision.js';
-export { createSsfAccountCreateContribution } from './account-create.js';

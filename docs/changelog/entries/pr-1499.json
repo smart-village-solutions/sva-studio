@@ -1,0 +1,4 @@
+{
+  "prNumber": 1499,
+  "body": "Die Verifikation ausgelieferter Studio-Images richtet jetzt auch das benötigte Graphile-Worker-Schema ein. Dadurch prüft das Release-Gate den tatsächlichen Containerstart statt vorzeitig an einer unvollständigen Testdatenbank zu scheitern."
+}

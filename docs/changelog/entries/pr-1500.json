@@ -1,0 +1,4 @@
+{
+  "prNumber": 1500,
+  "body": "Die Image-Verifikation verbindet die temporäre Graphile-Worker-Migration nun mit der eigens gestarteten Testdatenbank. Dadurch kann der vollständige Containerstart im Release-Gate geprüft werden."
+}

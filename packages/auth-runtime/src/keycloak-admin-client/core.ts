@@ -1463,6 +1463,12 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       updateClient: (existing, payload, clientId) => this.updateOidcClient(existing, payload, clientId),
       deleteClientForCompensation: (clientId, displayClientId) =>
         this.deleteOidcClientForCompensation(clientId, displayClientId),
+      logCompensationFailure: (clientId, error) =>
+        logKeycloakWriteFailure(
+          'delete_client_failed',
+          { operation: 'delete_client', realm: this.realm, client_id: clientId },
+          error
+        ),
       getClientSecretValue: (clientId) => this.getOidcClientSecretValue(clientId),
       rotateClientSecret: (client, input) => this.rotateOidcClientSecret(client, input),
     };

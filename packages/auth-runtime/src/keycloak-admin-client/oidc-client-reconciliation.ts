@@ -61,17 +61,11 @@ export type KeycloakOidcClientOperations = {
   readonly assertWriteAvailability: () => Promise<void>;
   readonly findClient: (clientId: string) => Promise<KeycloakOidcClientRepresentation | null>;
   readonly createClient: (payload: OidcClientPayload, clientId: string) => Promise<string | null>;
-  readonly updateClient: (
-    existing: KeycloakOidcClientRepresentation,
-    payload: object,
-    clientId: string
-  ) => Promise<void>;
+  readonly updateClient: (existing: KeycloakOidcClientRepresentation, payload: object, clientId: string) => Promise<void>;
   readonly deleteClientForCompensation: (clientId: string, displayClientId: string) => Promise<void>;
+  readonly logCompensationFailure: (clientId: string, error: unknown) => void;
   readonly getClientSecretValue: (clientId: string) => Promise<string | null>;
-  readonly rotateClientSecret: (
-    client: KeycloakOidcClientRepresentation,
-    input: Pick<EnsureOidcClientInput, 'clientId' | 'clientSecret' | 'rotateClientSecret'>
-  ) => Promise<void>;
+  readonly rotateClientSecret: (client: KeycloakOidcClientRepresentation, input: Pick<EnsureOidcClientInput, 'clientId' | 'clientSecret' | 'rotateClientSecret'>) => Promise<void>;
 };
 
 const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] =>
@@ -79,26 +73,16 @@ const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] 
     ...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0)),
   ].sort((left, right) => left.localeCompare(right));
 
-const mergeSortedUniqueStrings = (
-  left: readonly string[] | undefined,
-  right: readonly string[] | undefined
-): string[] => toSortedUniqueStrings([...(left ?? []), ...(right ?? [])]);
+const mergeSortedUniqueStrings = (left: readonly string[] | undefined, right: readonly string[] | undefined): string[] =>
+  toSortedUniqueStrings([...(left ?? []), ...(right ?? [])]);
 
-const areStringSetsEqual = (
-  left: readonly string[] | undefined,
-  right: readonly string[] | undefined
-): boolean => {
+const areStringSetsEqual = (left: readonly string[] | undefined, right: readonly string[] | undefined): boolean => {
   const normalizedLeft = toSortedUniqueStrings(left);
   const normalizedRight = toSortedUniqueStrings(right);
-  return (
-    normalizedLeft.length === normalizedRight.length &&
-    normalizedLeft.every((value, index) => value === normalizedRight[index])
-  );
+  return normalizedLeft.length === normalizedRight.length && normalizedLeft.every((value, index) => value === normalizedRight[index]);
 };
 
-const readPostLogoutRedirectUris = (
-  attributes: Readonly<Record<string, string>> | undefined
-): readonly string[] => {
+const readPostLogoutRedirectUris = (attributes: Readonly<Record<string, string>> | undefined): readonly string[] => {
   const raw = attributes?.['post.logout.redirect.uris'];
   return raw
     ? raw
@@ -231,8 +215,7 @@ const reconcileCreatedClientDefaults = async (
   } catch (error) {
     return compensateCreatedClient(operations, createdClientId, input.clientId, error);
   }
-  if (!created) {
-    return compensateCreatedClient(
+  if (!created) return compensateCreatedClient(
       operations,
       createdClientId,
       input.clientId,
@@ -242,8 +225,7 @@ const reconcileCreatedClientDefaults = async (
         code: 'client_readback_failed',
         retryable: false,
       })
-    );
-  }
+  );
   try {
     await upsertClient(
       operations,
@@ -262,8 +244,14 @@ const compensateCreatedClient = async (
   clientId: string,
   originalError: unknown
 ): Promise<never> => {
+  if (!createdClientId) {
+    const cleanupError = new Error('created_client_id_unavailable_for_cleanup');
+    operations.logCompensationFailure(clientId, cleanupError);
+    const manualActionError = new Error('strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action') as Error & { cause?: unknown };
+    manualActionError.cause = cleanupError;
+    throw manualActionError;
+  }
   try {
-    if (!createdClientId) throw new Error('created_client_id_unavailable_for_cleanup');
     await operations.deleteClientForCompensation(createdClientId, clientId);
   } catch (cleanupError) {
     const manualActionError = new Error(

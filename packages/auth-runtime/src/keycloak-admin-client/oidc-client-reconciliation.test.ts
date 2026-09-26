@@ -38,6 +38,7 @@ const createOperations = (
   createClient: vi.fn(async () => 'client-1'),
   updateClient: vi.fn(async () => undefined),
   deleteClientForCompensation: vi.fn(async () => undefined),
+  logCompensationFailure: vi.fn(),
   getClientSecretValue: vi.fn(async () => 'stored-secret'),
   rotateClientSecret: vi.fn(async () => undefined),
   ...overrides,
@@ -155,5 +156,20 @@ describe('OIDC client reconciliation', () => {
       message: 'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action',
       cause: cleanupFailure,
     });
+
+    const unavailableIdOperations = createOperations({
+      createClient: vi.fn(async () => null),
+      findClient: vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(readbackFailure),
+    });
+    await expect(
+      reconcileOidcClient(unavailableIdOperations, { ...input, uriPolicy: 'replace', redirectUris: [] })
+    ).rejects.toMatchObject({
+      message: 'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action',
+      cause: expect.objectContaining({ message: 'created_client_id_unavailable_for_cleanup' }),
+    });
+    expect(unavailableIdOperations.logCompensationFailure).toHaveBeenCalledWith(
+      'web-app',
+      expect.objectContaining({ message: 'created_client_id_unavailable_for_cleanup' })
+    );
   });
 });

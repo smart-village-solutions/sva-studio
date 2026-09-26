@@ -1,7 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { studioModuleIamContracts as realStudioModuleIamContracts } from '@sva/studio-module-iam';
+import { definePluginManifest } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  createStudioModuleIamContracts,
+  studioHostModuleIamContracts,
+  studioModuleIamContracts,
+  studioPluginSnapshot,
+} from '../../../lib/plugins';
+import { createStudioPluginCatalogReport } from '../../../lib/plugin-catalog-loader';
 import { ModulesPage } from './-modules-page';
 
 const useInstancesMock = vi.fn();
@@ -50,11 +57,6 @@ vi.mock('../../../components/ConfirmDialog', () => ({
     ) : null,
 }));
 
-vi.mock('../../../lib/plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../lib/plugins')>()),
-  studioModuleIamContracts: realStudioModuleIamContracts,
-}));
-
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   instances: [
     {
@@ -96,6 +98,98 @@ const createDeferred = <T,>() => {
 };
 
 describe('ModulesPage', () => {
+  it('projects only validated plugin contracts plus host modules', () => {
+    expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
+      ...studioPluginSnapshot.registry.pluginModuleIamContracts.map(
+        (contract) => contract.moduleId
+      ),
+      'media',
+    ]);
+    expect(
+      createStudioModuleIamContracts([], studioHostModuleIamContracts).map(
+        (contract) => contract.moduleId
+      )
+    ).toEqual(['media']);
+    expect(
+      createStudioModuleIamContracts(
+        [
+          {
+            moduleId: 'additional-plugin',
+            namespace: 'additional-plugin',
+            ownerPluginId: 'additional-plugin',
+            permissionIds: ['additional-plugin.read'],
+            systemRoles: [],
+          },
+        ],
+        studioHostModuleIamContracts
+      ).map((contract) => contract.moduleId)
+    ).toEqual(['additional-plugin', 'media']);
+  });
+
+  it('excludes disabled, incompatible and removed plugins from the assignable catalog', async () => {
+    const report = await createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'additional-plugin',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'additional',
+        },
+        {
+          pluginId: 'disabled-plugin',
+          sourceType: 'workspace',
+          enabled: false,
+          sourceRef: 'disabled',
+        },
+        {
+          pluginId: 'incompatible-plugin',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'incompatible',
+        },
+      ],
+      resolveManifest: (entry) =>
+        definePluginManifest({
+          pluginId: entry.pluginId,
+          manifestVersion: 1,
+          extensionTier: 'feature',
+          tenantActivationPolicy: 'optional',
+          version: '0.0.1',
+          sdkVersion: '0.0.1',
+          hostCompatibility: {
+            studioVersionRange: entry.pluginId === 'incompatible-plugin' ? '^99.0.0' : '^0.0.1',
+            requiredCapabilities: ['iam'],
+          },
+          entryPoints: { browser: './dist/index.js' },
+        }),
+      resolvePluginModule: async (entry) => ({
+        plugin: {
+          id: entry.pluginId,
+          displayName: entry.pluginId,
+          routes: [],
+          permissions: [{ id: `${entry.pluginId}.read`, titleKey: 'plugin.read' }],
+          moduleIam: {
+            moduleId: entry.pluginId,
+            permissionIds: [`${entry.pluginId}.read`],
+            systemRoles: [],
+          },
+          translations: {},
+        },
+      }),
+    });
+
+    expect(
+      report.snapshot.registry.pluginModuleIamContracts.map((contract) => contract.moduleId)
+    ).toEqual(['additional-plugin']);
+    expect(
+      createStudioModuleIamContracts(
+        report.snapshot.registry.pluginModuleIamContracts,
+        studioHostModuleIamContracts
+      ).map((contract) => contract.moduleId)
+    ).toEqual(['additional-plugin', 'media']);
+    expect(report.issues.some((issue) => issue.pluginId === 'incompatible-plugin')).toBe(true);
+  });
+
   afterEach(() => {
     cleanup();
   });
@@ -130,7 +224,7 @@ describe('ModulesPage', () => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
-    expect(realStudioModuleIamContracts.every((module) => module.descriptionKey.length > 0)).toBe(true);
+    expect(studioModuleIamContracts.every((module) => module.descriptionKey.length > 0)).toBe(true);
 
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
     expect(screen.getByText('Module schalten Bereiche frei')).toBeTruthy();
@@ -143,16 +237,22 @@ describe('ModulesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' }));
-    expect(screen.getByRole('dialog', { name: 'Tenant-Admin-Struktur wirklich initialisieren?' })).toBeTruthy();
+    expect(
+      screen.getByRole('dialog', { name: 'Tenant-Admin-Struktur wirklich initialisieren?' })
+    ).toBeTruthy();
     expect(bootstrapAdminStructure).not.toHaveBeenCalled();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
     expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
     expect(revokeModule).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
     const eventsModuleCard = screen.getByText('events').closest('div.rounded-lg');
     expect(eventsModuleCard).toBeTruthy();
-    fireEvent.click(within(eventsModuleCard as HTMLElement).getByRole('button', { name: 'Modul zuweisen' }));
+    fireEvent.click(
+      within(eventsModuleCard as HTMLElement).getByRole('button', { name: 'Modul zuweisen' })
+    );
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
@@ -217,7 +317,9 @@ describe('ModulesPage', () => {
     render(<ModulesPage />);
 
     expect(screen.getByRole('alert').textContent).toContain('Keine Berechtigung');
-    expect(screen.getByText('Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.')).toBeTruthy();
+    expect(
+      screen.getByText('Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.')
+    ).toBeTruthy();
   });
 
   it('renders a read-only tenant module table when the session has an instance context', () => {
@@ -225,7 +327,7 @@ describe('ModulesPage', () => {
       user: {
         id: 'tenant-user',
         instanceId: 'de-musterhausen',
-        assignedModules: ['news', 'media'],
+        assignedModules: ['news', 'media', 'removed-plugin'],
       },
     });
 
@@ -236,8 +338,36 @@ describe('ModulesPage', () => {
     expect(screen.getByText('events')).toBeTruthy();
     expect(screen.getAllByText('Aktiv')).toHaveLength(2);
     expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('removed-plugin')).toBeTruthy();
+    expect(screen.getByText('Nicht verfügbar (historische Zuweisung)')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Modul zuweisen' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
     expect(useInstancesMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps historical assignments visible without offering them as available modules', () => {
+    const bootstrapAdminStructure = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        bootstrapAdminStructure,
+        selectedInstance: {
+          instanceId: 'demo',
+          assignedModules: ['news', 'removed-plugin'],
+        },
+      })
+    );
+
+    render(<ModulesPage />);
+
+    expect(screen.getByText('removed-plugin')).toBeTruthy();
+    expect(screen.getByText('Nicht verfügbar (historische Zuweisung)')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Modul zuweisen' }).length).toBe(
+      studioModuleIamContracts.length - 1
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' }));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!
+    );
+    expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news']);
   });
 });

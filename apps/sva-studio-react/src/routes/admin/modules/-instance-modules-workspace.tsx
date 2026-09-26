@@ -25,7 +25,10 @@ type InstanceModulesWorkspaceProps = {
   readonly onAssignModule: (instanceId: string, moduleId: string) => Promise<unknown>;
   readonly onRevokeModule: (instanceId: string, moduleId: string) => Promise<unknown>;
   readonly onSeedIamBaseline: (instanceId: string) => Promise<unknown>;
-  readonly onBootstrapAdminStructure: (instanceId: string, moduleIds: readonly string[]) => Promise<unknown>;
+  readonly onBootstrapAdminStructure: (
+    instanceId: string,
+    moduleIds: readonly string[]
+  ) => Promise<unknown>;
 };
 
 const formatRoleNames = (roleNames: readonly string[]) => roleNames.join(', ');
@@ -43,17 +46,29 @@ type ModuleCardProps = {
 const ModuleWorkspaceGuidance = () => (
   <Card className="space-y-3 p-4">
     <div className="space-y-1">
-      <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.title')}</div>
-      <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.subtitle')}</p>
+      <div className="font-medium text-foreground">
+        {t('admin.instances.instanceModules.guidance.title')}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {t('admin.instances.instanceModules.guidance.subtitle')}
+      </p>
     </div>
     <div className="grid gap-3 md:grid-cols-2">
       <div className="rounded-lg border border-border p-3">
-        <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.moduleTitle')}</div>
-        <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.moduleBody')}</p>
+        <div className="font-medium text-foreground">
+          {t('admin.instances.instanceModules.guidance.moduleTitle')}
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('admin.instances.instanceModules.guidance.moduleBody')}
+        </p>
       </div>
       <div className="rounded-lg border border-border p-3">
-        <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.roleTitle')}</div>
-        <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.roleBody')}</p>
+        <div className="font-medium text-foreground">
+          {t('admin.instances.instanceModules.guidance.roleTitle')}
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('admin.instances.instanceModules.guidance.roleBody')}
+        </p>
       </div>
     </div>
   </Card>
@@ -71,14 +86,18 @@ const ModuleCard = ({
       <div>
         <div className="font-medium text-foreground">{module.moduleId}</div>
         <p className="mt-1 text-sm text-muted-foreground">
-          {t('admin.instances.instanceModules.module.permissions', { value: module.permissionIds.join(', ') })}
+          {t('admin.instances.instanceModules.module.permissions', {
+            value: module.permissionIds.join(', '),
+          })}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           {t('admin.instances.instanceModules.module.roles', {
             value: formatRoleNames((module.systemRoles ?? []).map((role) => role.roleName)),
           })}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">{resolveModuleDescription(module.descriptionKey)}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {resolveModuleDescription(module.descriptionKey)}
+        </p>
       </div>
       <Button
         type="button"
@@ -94,6 +113,7 @@ const ModuleCard = ({
 
 type AssignedModulesCardProps = {
   readonly assignedModules: readonly StudioModuleContract[];
+  readonly unavailableModuleIds: readonly string[];
   readonly instanceId: string;
   readonly statusLoading: boolean;
   readonly showBootstrapAction: boolean;
@@ -104,6 +124,7 @@ type AssignedModulesCardProps = {
 
 const AssignedModulesCard = ({
   assignedModules,
+  unavailableModuleIds,
   instanceId,
   statusLoading,
   showBootstrapAction,
@@ -114,8 +135,12 @@ const AssignedModulesCard = ({
   <Card className="space-y-4 p-4">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1">
-        <div className="font-medium text-foreground">{t('admin.instances.instanceModules.assigned.title')}</div>
-        <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.assigned.subtitle')}</p>
+        <div className="font-medium text-foreground">
+          {t('admin.instances.instanceModules.assigned.title')}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {t('admin.instances.instanceModules.assigned.subtitle')}
+        </p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -139,7 +164,7 @@ const AssignedModulesCard = ({
       </div>
     </div>
 
-    {assignedModules.length > 0 ? (
+    {assignedModules.length > 0 || unavailableModuleIds.length > 0 ? (
       <div className="space-y-3">
         {assignedModules.map((module) => (
           <ModuleCard
@@ -150,6 +175,14 @@ const AssignedModulesCard = ({
             statusLoading={statusLoading}
             onAction={onOpenRevokeConfirm}
           />
+        ))}
+        {unavailableModuleIds.map((moduleId) => (
+          <div key={moduleId} className="rounded-lg border border-border p-4">
+            <div className="font-medium text-foreground">{moduleId}</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('admin.instances.instanceModules.detail.status.unavailable')}
+            </p>
+          </div>
         ))}
       </div>
     ) : (
@@ -175,8 +208,12 @@ const AvailableModulesCard = ({
 }: AvailableModulesCardProps) => (
   <Card className="space-y-4 p-4">
     <div className="space-y-1">
-      <div className="font-medium text-foreground">{t('admin.instances.instanceModules.available.title')}</div>
-      <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.available.subtitle')}</p>
+      <div className="font-medium text-foreground">
+        {t('admin.instances.instanceModules.available.title')}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {t('admin.instances.instanceModules.available.subtitle')}
+      </p>
     </div>
 
     {availableModules.length > 0 ? (
@@ -217,9 +254,18 @@ export const InstanceModulesWorkspace = ({
   const [bootstrapConfirmOpen, setBootstrapConfirmOpen] = React.useState(false);
 
   const assignedModuleIds = new Set(selectedInstance?.assignedModules ?? []);
-  const assignedModules = studioModuleIamContracts.filter((module) => assignedModuleIds.has(module.moduleId));
-  const availableModules = studioModuleIamContracts.filter((module) => !assignedModuleIds.has(module.moduleId));
-  const pendingRevokeModule = assignedModules.find((module) => module.moduleId === pendingRevokeModuleId) ?? null;
+  const assignedModules = studioModuleIamContracts.filter((module) =>
+    assignedModuleIds.has(module.moduleId)
+  );
+  const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
+  const unavailableModuleIds = [...assignedModuleIds].filter(
+    (moduleId) => !availableModuleIds.has(moduleId)
+  );
+  const availableModules = studioModuleIamContracts.filter(
+    (module) => !assignedModuleIds.has(module.moduleId)
+  );
+  const pendingRevokeModule =
+    assignedModules.find((module) => module.moduleId === pendingRevokeModuleId) ?? null;
 
   return (
     <div className="space-y-5">
@@ -235,6 +281,7 @@ export const InstanceModulesWorkspace = ({
         <div className="grid gap-5 lg:grid-cols-2">
           <AssignedModulesCard
             assignedModules={assignedModules}
+            unavailableModuleIds={unavailableModuleIds}
             instanceId={selectedInstance.instanceId}
             statusLoading={statusLoading}
             showBootstrapAction={showBootstrapAction}
@@ -268,7 +315,10 @@ export const InstanceModulesWorkspace = ({
           if (!selectedInstance || !pendingRevokeModule) {
             return;
           }
-          const success = await onRevokeModule(selectedInstance.instanceId, pendingRevokeModule.moduleId);
+          const success = await onRevokeModule(
+            selectedInstance.instanceId,
+            pendingRevokeModule.moduleId
+          );
           if (success) {
             setPendingRevokeModuleId(null);
           }
@@ -291,7 +341,7 @@ export const InstanceModulesWorkspace = ({
             }
             const success = await onBootstrapAdminStructure(
               selectedInstance.instanceId,
-              selectedInstance.assignedModules ?? []
+              assignedModules.map((module) => module.moduleId)
             );
             if (success) {
               setBootstrapConfirmOpen(false);

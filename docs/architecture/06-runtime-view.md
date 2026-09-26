@@ -1163,6 +1163,8 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 
 ### Plugin-Aktivierungsrichtlinien materialisieren
 
+Die Modulverwaltung zeigt nur die IAM-Verträge des validierten Plugin-Snapshots und Hostmodule als neu zuweisbar. Historische Instanzzuweisungen ohne aktuellen Vertrag bleiben als nicht verfügbar sichtbar.
+
 1. Beim Serverstart materialisiert der hostvalidierte Plugin-Snapshot für jedes installierte Plugin genau eine tenantbezogene Richtlinie `optional`, `automatic` oder `required` samt Manifest- und Policy-Revision. Die Server-Runtime übernimmt diesen unveränderlichen Snapshot; sie führt keinen zweiten Plugin-Katalog.
 2. Beim erstmaligen Übernehmen einer Snapshot-Revision listet die Server-Runtime alle bestehenden Instanzen und führt denselben Reconcile je Instanz kontrolliert und idempotent aus. Erfolgreiche Instanzen persistieren Richtlinie, Revision und Reconcile-Evidenz; ein revisionsgebundener Abschlussbericht weist einzelne Teilfehler aus, ohne die übrigen Instanzen auszulassen.
 3. Vor einer späteren scoped Instanzoperation liest der Registry-Service den aktuellen Snapshot und reconciliiert die Einträge in `iam.instance_modules` erneut idempotent. Neue Instanzen durchlaufen denselben Handler unmittelbar nach ihrer Anlage.

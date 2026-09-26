@@ -35,12 +35,17 @@ const ModuleTransparencyTable = ({ selectedInstance }: { selectedInstance: Selec
     )
   );
   const moduleIds = [
-    ...new Set([...contractsByModuleId.keys(), ...activationsByModuleId.keys()]),
+    ...new Set([
+      ...contractsByModuleId.keys(),
+      ...activationsByModuleId.keys(),
+      ...(selectedInstance.assignedModules ?? []),
+    ]),
   ].sort((left, right) => left.localeCompare(right, 'de'));
   const tenantModules = moduleIds.map((moduleId) => {
     const contract = contractsByModuleId.get(moduleId);
     return {
       moduleId,
+      available: Boolean(contract),
       description: contract
         ? resolveModuleDescription(contract.descriptionKey)
         : t('admin.instances.instanceModules.detail.descriptionFallback'),
@@ -78,9 +83,11 @@ const ModuleTransparencyTable = ({ selectedInstance }: { selectedInstance: Selec
             <tr key={module.moduleId} className="border-t border-border align-top">
               <td className="px-3 py-2 font-medium text-foreground">{module.moduleId}</td>
               <td className="px-3 py-2 text-muted-foreground">
-                {module.activation?.effectiveActive
-                  ? t('admin.instances.instanceModules.detail.status.active')
-                  : t('admin.instances.instanceModules.detail.status.inactive')}
+                {!module.available
+                  ? t('admin.instances.instanceModules.detail.status.unavailable')
+                  : module.activation?.effectiveActive
+                    ? t('admin.instances.instanceModules.detail.status.active')
+                    : t('admin.instances.instanceModules.detail.status.inactive')}
               </td>
               <td className="px-3 py-2 text-muted-foreground">
                 {module.activation

@@ -545,7 +545,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 2. `packages/plugin-news/src/plugin.tsx`, `packages/plugin-events/src/plugin.tsx`, `packages/plugin-poi/src/plugin.tsx`
    - leiten ihre `moduleIam`-Deklarationen aus derselben Vertragsfamilie ab, behalten aber den schmalen Plugin-Vertrag ohne zusätzliche Runtime-Metadaten
 3. `apps/sva-studio-react/src/lib/plugins.ts`
-   - verwendet denselben Katalog für Build-time-Registry-Parität und die hostseitige Modulübersicht
+   - projiziert die verfügbaren Pluginmodule für die Modulverwaltung aus den IAM-Verträgen des validierten Plugin-Snapshots und ergänzt nur echte Hostmodule wie `media` aus `@sva/studio-module-iam`; entfernte oder abgewiesene Plugins sind nicht neu zuweisbar
+   - kennzeichnet gespeicherte Zuweisungen ohne aktuellen Vertrag in der Modulverwaltung als nicht verfügbar
 4. `packages/auth-runtime/src/iam-instance-registry/repository.ts`
    - nutzt denselben Katalog für Runtime- und Provisioning-Wiring statt lokaler manueller Modul-Maps
 

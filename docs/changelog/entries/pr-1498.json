@@ -1,0 +1,4 @@
+{
+  "prNumber": 1498,
+  "body": "Kassel kann neue Studio-Tenants wieder über den gemeinsamen Provisioning-Vertrag vorbereiten\n\n- Der Standalone-Provisioner verarbeitet Hintergrundaufträge und stellt den privaten Create-/Readiness-Endpunkt bereit.\n- Die Anwendung erreicht diesen Endpunkt ausschließlich im internen Docker-Netz; der Provisioner veröffentlicht weiterhin keine Ports und erhält keine Traefik-Router.\n- App und Provisioner bleiben an denselben unveränderlichen Image-Digest gebunden."
+}

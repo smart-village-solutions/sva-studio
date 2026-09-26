@@ -56,17 +56,20 @@ Der interne Keycloak-Admin-Zugriff bleibt auf dem lokalen Docker-Netz.
 Datenbank-, Redis-, OIDC- und Verschlüsselungsgeheimnisse werden unverändert übernommen.
 Keine Passwörter zurücksetzen und keine zusätzlichen Tenant-Rollen vergeben.
 
-### Eigenständiger Provisioning-Worker
+### Eigenständiger Provisioner
 
 Die Kasseler Installation benötigt neben dem App-Container zwingend einen eigenen
-Keycloak-Provisioner. Der Worker gehört zu dieser Installation und darf nicht durch einen
-Worker des regulären Studio-Stacks ersetzt werden: Er muss dieselbe Kasseler Datenbank,
-Redis-Instanz und den lokalen Keycloak verwenden.
+Keycloak-Provisioner. Er verarbeitet Hintergrundaufträge und stellt zugleich den internen,
+ausschließlich über `http://provisioner:3000` erreichbaren Create-/Readiness-Endpunkt bereit;
+seine eigene Runtime bearbeitet diese Requests lokal und leitet sie nicht erneut weiter.
+Er darf nicht durch einen Worker des regulären Studio-Stacks ersetzt werden: Er muss dieselbe
+Kasseler Datenbank, Redis-Instanz und den lokalen Keycloak verwenden.
 
 Der verbindliche Compose-Zusatz und sein fail-closed Startskript liegen unter
 [`deploy/standalone/keycloak-provisioner.compose.yml`](../../deploy/standalone/keycloak-provisioner.compose.yml).
-Vor dem Start wird `SVA_IMAGE_REF` auf denselben unveränderlichen Image-Digest gesetzt, den
-auch der Kasseler App-Container verwendet. Die `runtime.env` muss im Compose-Projektordner
+Vor dem Start wird `SVA_IMAGE_REF` auf einen unveränderlichen Digest aus
+`ghcr.io/smart-village-solutions/sva-studio-ssf` gesetzt; App und Provisioner verwenden
+denselben SSF-Digest. Die `runtime.env` muss im Compose-Projektordner
 liegen und insbesondere die bestehenden `APP_DB_*`-, `POSTGRES_*`-, `REDIS_*`- und
 `KEYCLOAK_PROVISIONER_*`-Werte der Kasseler Installation enthalten.
 
@@ -101,14 +104,14 @@ und Worker an exakt denselben Digest. Vor dem Start führt es den einmaligen Die
 mit demselben Digest aus. Ein fehlgeschlagener IAM- oder SSF-Plugin-Migrationsschritt beendet
 `up.sh`, bevor App und Provisioner aktualisiert werden.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
-wenn `provisioner` läuft; bereits wartende Aufträge werden vom Worker selbst übernommen.
+wenn `provisioner` läuft; bereits wartende Aufträge werden vom Provisioner selbst übernommen.
 
 Studio speichert den validierten Plugin-OIDC-Vertrag im Provisioning-Auftrag. Der Worker verwendet
 genau diesen Snapshot für Keycloak-Abgleich und Status-Fingerprint. Unversionierte oder
 unvollständige Aufträge werden abgewiesen und deshalb vor dem Versionswechsel mit dem bisherigen
 Worker geleert. So bleibt ein Worker-Lauf auch bei getrennten App- und Worker-Prozessen auswertbar.
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
-der Realm-, Client- und Tenant-Admin-Struktur. Der Worker veröffentlicht keine Ports und erhält
+der Realm-, Client- und Tenant-Admin-Struktur. Der Provisioner veröffentlicht keine Ports und erhält
 keine Traefik-Router.
 
 Der bestehende Docker-Provider-Router enthält derzeit die expliziten

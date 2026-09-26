@@ -1,6 +1,8 @@
 services:
   app:
     image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
+    environment:
+      SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: 'http://provisioner:3000'
 
   migrate:
     image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
@@ -26,15 +28,11 @@ services:
     image: ${SVA_IMAGE_REF:?SVA_IMAGE_REF must be set}
     entrypoint:
       - ./provisioner-entrypoint.sh
-    command:
-      - node
-      - --import
-      - ./otel-bootstrap.mjs
-      - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
     env_file:
       - ./runtime.env
     environment:
-      SVA_PROVISIONER_COMBINED_WORKER: 'false'
+      SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'
+      SVA_PROVISIONER_COMBINED_WORKER: 'true'
     restart: unless-stopped
     networks:
       - studio-internal

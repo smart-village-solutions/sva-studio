@@ -45,12 +45,13 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).toContain('migrate:');
     expect(standaloneProvisioner.match(/image: \$\{SVA_IMAGE_REF:/gu)).toHaveLength(3);
     expect(standaloneProvisioner).toContain('./provisioner-entrypoint.sh');
-    expect(standaloneProvisioner).toContain('command:');
     expect(standaloneProvisioner).toContain(
-      'node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js'
+      "SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL: 'http://provisioner:3000'"
     );
     expect(standaloneProvisioner).toContain('./runtime.env');
-    expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'false'");
+    expect(standaloneProvisioner).toContain("SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'");
+    expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'true'");
+    expect(standaloneProvisioner).not.toContain('node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js');
     expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');
     expect(standaloneProvisioner).toContain('name: ssf-backend_default');
     expect(standaloneProvisioner).not.toContain('ports:');
@@ -152,6 +153,18 @@ describe('IAM schema readiness deployment contract', () => {
       env: {
         ...process.env,
         SVA_IMAGE_REF: `ghcr.io/smart-village-solutions/sva-studio:release@sha256:${'b'.repeat(64)}`,
+      },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('accepts an immutable SSF distribution image reference', () => {
+    const result = spawnSync('sh', ['deploy/standalone/up.sh', '--validate-only'], {
+      cwd: resolve(import.meta.dirname, '../..'),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SVA_IMAGE_REF: `ghcr.io/smart-village-solutions/sva-studio-ssf@sha256:${'c'.repeat(64)}`,
       },
     });
     expect(result.status).toBe(0);

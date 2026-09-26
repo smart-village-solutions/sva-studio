@@ -1,0 +1,4 @@
+{
+  "prNumber": 1501,
+  "body": "Die Image-Verifikation initialisiert nun auch den temporären Worker-Principal und seine Datenbankrechte. Dadurch kann der vollständige Startvertrag des ausgelieferten Studio-Containers geprüft werden."
+}

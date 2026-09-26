@@ -758,7 +758,11 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(imageVerifyScript, /for _ in \$\(seq 1 10\); do/);
   assert.match(imageVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
   assert.match(imageVerifyScript, /-e "POSTGRES_HOST=\$\{POSTGRES_NAME\}"/);
+  assert.match(imageVerifyScript, /STUDIO_JOB_WORKER_DB_PASSWORD=verify-worker-password/);
+  assert.match(imageVerifyScript, /SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE=false/);
+  assert.match(imageVerifyScript, /--entrypoint \.\/bootstrap-entrypoint\.sh/);
   assert.match(imageVerifyScript, /--entrypoint node \\\n {4}"\$\{IMAGE_REF\}" \.\/migrate-graphile-worker\.mjs/);
+  assert.match(imageVerifyScript, /worker-bootstrap/);
   assert.match(imageVerifyScript, /graphile-worker-migrations/);
 
   assert.match(runtimeVerifyScript, /grep -E -q 'jsxDEV\|jsx-dev-runtime'/);

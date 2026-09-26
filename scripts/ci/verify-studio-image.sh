@@ -63,6 +63,7 @@ POSTGRES_READY_STATUS="pending"
 POSTGRES_APP_ROLE_STATUS="pending"
 SCHEMA_MIGRATIONS_STATUS="pending"
 GRAPHILE_WORKER_MIGRATIONS_STATUS="pending"
+WORKER_BOOTSTRAP_STATUS="pending"
 REDIS_READY_STATUS="pending"
 KEYCLOAK_READY_STATUS="pending"
 IMAGE_PULL_STATUS="pending"
@@ -369,6 +370,7 @@ POSTGRES_USER=sva
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 APP_DB_USER=sva_app
 APP_DB_PASSWORD=${APP_DB_PASSWORD}
+STUDIO_JOB_WORKER_DB_PASSWORD=verify-worker-password
 REDIS_PASSWORD=${REDIS_PASSWORD}
 IAM_DATABASE_URL=postgres://sva_app:${APP_DB_PASSWORD}@${POSTGRES_NAME}:5432/sva_studio
 REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_NAME}:6379
@@ -400,6 +402,24 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
     set_phase_var GRAPHILE_WORKER_MIGRATIONS_STATUS error
     mark_phase graphile-worker-migrations error
     fail_verify dependency-failed graphile-worker-migrations "Die temporaeren Graphile-Worker-Migrationen fuer das Image-Verify sind fehlgeschlagen."
+  fi
+fi
+
+if [ "${VERIFY_STATUS}" = "ok" ]; then
+  if docker run --rm \
+    --network "${NETWORK_NAME}" \
+    --env-file "${ENV_FILE}" \
+    -e "POSTGRES_HOST=${POSTGRES_NAME}" \
+    -e SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE=false \
+    --entrypoint ./bootstrap-entrypoint.sh \
+    "${IMAGE_REF}" >/dev/null
+  then
+    set_phase_var WORKER_BOOTSTRAP_STATUS ok
+    mark_phase worker-bootstrap ok
+  else
+    set_phase_var WORKER_BOOTSTRAP_STATUS error
+    mark_phase worker-bootstrap error
+    fail_verify dependency-failed worker-bootstrap "Der temporaere Worker-Bootstrap fuer das Image-Verify ist fehlgeschlagen."
   fi
 fi
 
@@ -487,6 +507,7 @@ cat >"${REPORT_PATH}" <<EOF
     "postgres-app-role": "${POSTGRES_APP_ROLE_STATUS}",
     "schema-migrations": "${SCHEMA_MIGRATIONS_STATUS}",
     "graphile-worker-migrations": "${GRAPHILE_WORKER_MIGRATIONS_STATUS}",
+    "worker-bootstrap": "${WORKER_BOOTSTRAP_STATUS}",
     "redis-ready": "${REDIS_READY_STATUS}",
     "keycloak-ready": "${KEYCLOAK_READY_STATUS}",
     "image-pull": "${IMAGE_PULL_STATUS}",
@@ -524,6 +545,7 @@ cat >"${SUMMARY_PATH}" <<EOF
 - \`postgres-app-role\`: \`${POSTGRES_APP_ROLE_STATUS}\`
 - \`schema-migrations\`: \`${SCHEMA_MIGRATIONS_STATUS}\`
 - \`graphile-worker-migrations\`: \`${GRAPHILE_WORKER_MIGRATIONS_STATUS}\`
+- \`worker-bootstrap\`: \`${WORKER_BOOTSTRAP_STATUS}\`
 - \`redis-ready\`: \`${REDIS_READY_STATUS}\`
 - \`keycloak-ready\`: \`${KEYCLOAK_READY_STATUS}\`
 - \`image-pull\`: \`${IMAGE_PULL_STATUS}\`

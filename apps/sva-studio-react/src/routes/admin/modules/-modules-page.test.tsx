@@ -352,7 +352,8 @@ describe('ModulesPage', () => {
         bootstrapAdminStructure,
         selectedInstance: {
           instanceId: 'demo',
-          assignedModules: ['news', 'removed-plugin'],
+          assignedModules: ['news'],
+          moduleActivations: [{ moduleId: 'removed-plugin', effectiveActive: false }],
         },
       })
     );

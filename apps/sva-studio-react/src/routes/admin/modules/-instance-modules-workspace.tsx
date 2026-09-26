@@ -13,6 +13,7 @@ import { resolveModuleDescription } from './-module-description';
 type ModuleWorkspaceInstance = {
   readonly instanceId: string;
   readonly assignedModules?: readonly string[];
+  readonly moduleActivations?: readonly { readonly moduleId: string }[];
 };
 
 type InstanceModulesWorkspaceProps = {
@@ -258,7 +259,11 @@ export const InstanceModulesWorkspace = ({
     assignedModuleIds.has(module.moduleId)
   );
   const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
-  const unavailableModuleIds = [...assignedModuleIds].filter(
+  const persistedModuleIds = new Set([
+    ...assignedModuleIds,
+    ...(selectedInstance?.moduleActivations ?? []).map((activation) => activation.moduleId),
+  ]);
+  const unavailableModuleIds = [...persistedModuleIds].filter(
     (moduleId) => !availableModuleIds.has(moduleId)
   );
   const availableModules = studioModuleIamContracts.filter(

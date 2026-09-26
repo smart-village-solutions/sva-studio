@@ -54,8 +54,34 @@ vi.mock('./plugins', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   configureInstanceRegistryPluginRuntimeSnapshot: configureMock,
+  readConfiguredPluginTenantAccess: vi.fn(),
   reconcileConfiguredPluginActivationPoliciesForAllInstances: reconcileMock,
   recordUnexpectedPluginActivationPolicyFleetReconcileFailure: recordUnexpectedFailureMock,
+}));
+
+vi.mock('#studio-plugin-auth-composition', () => ({
+  resolvePluginAuthComposition: ({
+    pluginSources,
+  }: {
+    pluginSources: readonly { pluginId: string }[];
+  }) =>
+    pluginSources.some(({ pluginId }) => pluginId === 'ssf')
+      ? {
+          accountCreateContribution: vi.fn(),
+          pluginOidcClientRequirements: [
+            { pluginId: 'ssf', clientId: 'ssf' },
+            ...(process.env.SVA_STUDIO_SSF_LOGIN_ORIGIN
+              ? [
+                  {
+                    pluginId: 'ssf',
+                    clientId: 'ssf-frontend',
+                    origin: process.env.SVA_STUDIO_SSF_LOGIN_ORIGIN,
+                  },
+                ]
+              : []),
+          ],
+        }
+      : { accountCreateContribution: undefined, pluginOidcClientRequirements: [] },
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -100,6 +126,7 @@ describe('plugin activation policy bootstrap', () => {
       activationPolicies: snapshot,
       moduleIamContracts: [pluginModuleIamContract, hostModuleIamContract],
       pluginOidcClientRequirements: [],
+      accountCreateContribution: undefined,
       tenantLifecycles: [tenantLifecycle],
     });
     await vi.waitFor(() => expect(reconcileMock).toHaveBeenCalledTimes(1));

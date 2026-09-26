@@ -273,7 +273,7 @@ importers:
         version: 1.1.21(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@sva/auth-runtime':
         specifier: workspace:*
-        version: file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)
       '@sva/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -330,7 +330,7 @@ importers:
         version: link:../../packages/plugin-surveys
       '@sva/routing':
         specifier: workspace:*
-        version: file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
@@ -342,7 +342,7 @@ importers:
         version: file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)
       '@sva/sva-mainserver':
         specifier: workspace:*
-        version: file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)
       '@sva/waste-management-contracts':
         specifier: workspace:*
         version: link:../../packages/waste-management-contracts
@@ -512,9 +512,6 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
-      '@sva/plugin-ssf':
-        specifier: workspace:*
-        version: file:packages/plugin-ssf(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)
       '@sva/server-runtime':
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
@@ -1364,7 +1361,7 @@ importers:
     dependencies:
       '@sva/auth-runtime':
         specifier: workspace:*
-        version: file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)
       '@sva/core':
         specifier: workspace:*
         version: link:../core
@@ -1549,7 +1546,7 @@ importers:
         version: 1.9.1
       '@sva/auth-runtime':
         specifier: workspace:*
-        version: file:packages/auth-runtime(@types/node@25.9.1)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
+        version: file:packages/auth-runtime(@types/node@25.9.1)(typescript@7.0.2)
       '@sva/core':
         specifier: workspace:*
         version: link:../core
@@ -5619,12 +5616,6 @@ packages:
 
   '@sva/plugin-sdk@file:packages/plugin-sdk':
     resolution: {directory: packages/plugin-sdk, type: directory}
-
-  '@sva/plugin-ssf@file:packages/plugin-ssf':
-    resolution: {directory: packages/plugin-ssf, type: directory}
-    peerDependencies:
-      react: ^19.2.8
-      react-dom: ^19.2.8
 
   '@sva/routing@file:packages/routing':
     resolution: {directory: packages/routing, type: directory}
@@ -14516,7 +14507,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@sva/auth-runtime@file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)':
+  '@sva/auth-runtime@file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)':
     dependencies:
       '@aws-sdk/client-s3': 3.1073.0
       '@aws-sdk/s3-request-presigner': 3.1073.0
@@ -14529,7 +14520,6 @@ snapshots:
       '@sva/instance-registry': file:packages/instance-registry(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/media': file:packages/media
       '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/plugin-ssf': file:packages/plugin-ssf(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam': file:packages/studio-module-iam
       cookie-es: 3.1.1
@@ -14544,21 +14534,13 @@ snapshots:
       sharp: 0.35.4(@types/node@25.9.1)
       zod: 4.4.3
     transitivePeerDependencies:
-      - '@floating-ui/dom'
       - '@opentelemetry/core'
-      - '@tiptap/core'
-      - '@tiptap/pm'
       - '@types/node'
-      - '@types/react'
-      - '@types/react-dom'
       - pg-native
-      - react
-      - react-dom
-      - react-hook-form
       - supports-color
       - typescript
 
-  '@sva/auth-runtime@file:packages/auth-runtime(@types/node@25.9.1)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@7.0.2)':
+  '@sva/auth-runtime@file:packages/auth-runtime(@types/node@25.9.1)(typescript@7.0.2)':
     dependencies:
       '@aws-sdk/client-s3': 3.1073.0
       '@aws-sdk/s3-request-presigner': 3.1073.0
@@ -14571,7 +14553,6 @@ snapshots:
       '@sva/instance-registry': file:packages/instance-registry(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/media': file:packages/media
       '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/plugin-ssf': file:packages/plugin-ssf(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam': file:packages/studio-module-iam
       cookie-es: 3.1.1
@@ -14586,17 +14567,9 @@ snapshots:
       sharp: 0.35.4(@types/node@25.9.1)
       zod: 4.4.3
     transitivePeerDependencies:
-      - '@floating-ui/dom'
       - '@opentelemetry/core'
-      - '@tiptap/core'
-      - '@tiptap/pm'
       - '@types/node'
-      - '@types/react'
-      - '@types/react-dom'
       - pg-native
-      - react
-      - react-dom
-      - react-hook-form
       - supports-color
       - typescript
 
@@ -14676,44 +14649,19 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/iam-core': file:packages/iam-core
 
-  '@sva/plugin-ssf@file:packages/plugin-ssf(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)':
+  '@sva/routing@file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)':
     dependencies:
-      '@sva/plugin-sdk': file:packages/plugin-sdk
-      '@sva/studio-ui-react': file:packages/studio-ui-react(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)
-      json-canonicalize: 3.0.0
-      pg: 8.22.0
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-      sanitize-html: 2.17.7
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@floating-ui/dom'
-      - '@tiptap/core'
-      - '@tiptap/pm'
-      - '@types/react'
-      - '@types/react-dom'
-      - pg-native
-      - react-hook-form
-
-  '@sva/routing@file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)':
-    dependencies:
-      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)
       '@sva/core': file:packages/core
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@tanstack/react-router': 1.170.24(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     transitivePeerDependencies:
-      - '@floating-ui/dom'
       - '@opentelemetry/core'
-      - '@tiptap/core'
-      - '@tiptap/pm'
       - '@types/node'
-      - '@types/react'
-      - '@types/react-dom'
       - pg-native
       - react
       - react-dom
-      - react-hook-form
       - supports-color
       - typescript
 
@@ -14764,26 +14712,18 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@sva/sva-mainserver@file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)':
+  '@sva/sva-mainserver@file:packages/sva-mainserver(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/node@25.9.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react-hook-form@7.80.0(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+      '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(@types/node@25.9.1)(typescript@6.0.3)
       '@sva/core': file:packages/core
       '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       zod: 4.4.3
     transitivePeerDependencies:
-      - '@floating-ui/dom'
       - '@opentelemetry/core'
-      - '@tiptap/core'
-      - '@tiptap/pm'
       - '@types/node'
-      - '@types/react'
-      - '@types/react-dom'
       - pg-native
-      - react
-      - react-dom
-      - react-hook-form
       - supports-color
       - typescript
 
@@ -15714,7 +15654,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.2.1(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   '@vitest/expect@4.1.10':
     dependencies:

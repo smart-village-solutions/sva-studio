@@ -98,6 +98,11 @@ const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
+      '#studio-plugin-auth-composition': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/lib/plugin-auth-composition.ssf.server.ts'
+          : './src/lib/plugin-auth-composition.studio.server.ts'
+      ),
       '#studio-plugin-client-inputs': resolveAppPath(
         studioDistribution === 'ssf'
           ? './src/lib/plugin-client-inputs.ssf.ts'

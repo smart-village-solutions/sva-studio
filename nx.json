@@ -69,7 +69,7 @@
       "{projectRoot}/tsconfig.json",
       "{projectRoot}/package.json"
     ],
-    "frontendEnvBuild": [{ "env": "CODECOV_TOKEN" }],
+    "frontendEnvBuild": [{ "env": "CODECOV_TOKEN" }, { "env": "SVA_STUDIO_DISTRIBUTION" }],
     "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],
     "frontendEnvE2E": [{ "env": "CI" }],
     "lintTooling": ["{workspaceRoot}/eslint.config.mjs"],

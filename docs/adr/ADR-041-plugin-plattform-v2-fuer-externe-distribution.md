@@ -74,6 +74,24 @@ Verworfen, weil dies die öffentliche Boundary überlädt und Host-Ownership mit
 - Der Plugin-Katalog bleibt die führende Quelle für Aktivierung, Deaktivierung und Kompatibilitätsstatus.
 - Runtime-Consumer wie Routing, IAM, Audit und Job-Orchestrierung lesen denselben validierten Snapshot und bauen keine parallelen Teilregistries auf.
 
+## Fortschreibung 2026-09: Auth-Composition an der Buildprofil-Grenze
+
+Die gemeinsame `@sva/auth-runtime` besitzt die Account-Persistenz und den
+Keycloak-Create, importiert aber keine konkrete Plugin-Runtime. Der bestehende
+hostvalidierte Runtime-Snapshot enthält für den aktuellen SSF-Verbraucher einen
+optionalen, typisierten Account-Create-Beitrag. Die App bindet ihn zusammen mit
+den SSF-OIDC-Anforderungen ausschließlich im SSF-Buildprofil; ein fehlendes
+SSF-Plugin in diesem Profil verhindert den Bootstrap. Das Studio-Profil bleibt
+ohne SSF-Paket und erstellt Core-Benutzer ohne SSF-Claims. Der Nx-Build-Cache
+nimmt `SVA_STUDIO_DISTRIBUTION` in seinen Schlüssel auf, damit die Profile
+keine Artefakte gegenseitig übernehmen.
+
+Der SSF-Beitrag besitzt die fachliche Readiness-, Sperr-, Projektions- und
+Claim-Ableitung. Er umschließt den vorhandenen Host-Callback, führt aber keinen
+zweiten Persistenz- oder Kompensationspfad ein. Diese konkrete Auth-Grenze
+entscheidet weder über freie Plugin-Installation noch über die bestehenden
+Tenant-Aktivierungsrichtlinien `optional`, `automatic` und `required`.
+
 ## Verhältnis zu ADR-034
 
 - ADR-034 definiert den statischen Plugin-SDK-Vertrag v1.

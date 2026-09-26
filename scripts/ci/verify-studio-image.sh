@@ -390,6 +390,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
   if docker run --rm \
     --network "${NETWORK_NAME}" \
     --env-file "${ENV_FILE}" \
+    -e "POSTGRES_HOST=${POSTGRES_NAME}" \
     --entrypoint node \
     "${IMAGE_REF}" ./migrate-graphile-worker.mjs >/dev/null
   then

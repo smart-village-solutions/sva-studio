@@ -3,6 +3,18 @@ import {
   getKeycloakAdminClientSecret,
   getKeycloakProvisionerClientSecret,
 } from '../runtime-secrets.js';
+import {
+  reconcileOidcClient,
+  setOidcClientEnabled as reconcileOidcClientEnabled,
+  type EnsureOidcClientInput,
+  type KeycloakOidcClientRepresentation,
+  type KeycloakOidcClientOperations,
+} from './oidc-client-reconciliation.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+  type KeycloakAdminFieldError,
+} from './errors.js';
 
 import type {
   CreateIdentityRoleInput,
@@ -70,10 +82,8 @@ type KeycloakErrorResponse = {
   }[];
 };
 
-export type KeycloakAdminFieldError = {
-  readonly field?: string;
-  readonly code: string;
-};
+export { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from './errors.js';
+export type { KeycloakAdminFieldError } from './errors.js';
 
 type KeycloakRoleMapping = {
   readonly id: string;
@@ -117,24 +127,7 @@ const tenantAdminServiceRoleMappingsAreSafe = (
   );
 };
 
-type KeycloakClientRepresentation = {
-  readonly id: string;
-  readonly clientId: string;
-  readonly name?: string;
-  readonly enabled?: boolean;
-  readonly protocol?: string;
-  readonly publicClient?: boolean;
-  readonly standardFlowEnabled?: boolean;
-  readonly implicitFlowEnabled?: boolean;
-  readonly directAccessGrantsEnabled?: boolean;
-  readonly serviceAccountsEnabled?: boolean;
-  readonly redirectUris?: readonly string[];
-  readonly webOrigins?: readonly string[];
-  readonly rootUrl?: string;
-  readonly baseUrl?: string;
-  readonly adminUrl?: string;
-  readonly attributes?: Readonly<Record<string, string>>;
-};
+type KeycloakClientRepresentation = KeycloakOidcClientRepresentation;
 
 type KeycloakProtocolMapperRepresentation = {
   readonly id: string;
@@ -280,37 +273,6 @@ type CachedToken = {
   readonly expiresAtMs: number;
 };
 
-export class KeycloakAdminUnavailableError extends Error {
-  readonly statusCode = 503;
-
-  constructor(message: string) {
-    super(message);
-    this.name = 'KeycloakAdminUnavailableError';
-  }
-}
-
-export class KeycloakAdminRequestError extends Error {
-  readonly statusCode: number;
-  readonly code: string;
-  readonly retryable: boolean;
-  readonly fieldErrors: readonly KeycloakAdminFieldError[];
-
-  constructor(input: {
-    message: string;
-    statusCode: number;
-    code: string;
-    retryable: boolean;
-    fieldErrors?: readonly KeycloakAdminFieldError[];
-  }) {
-    super(input.message);
-    this.name = 'KeycloakAdminRequestError';
-    this.statusCode = input.statusCode;
-    this.code = input.code;
-    this.retryable = input.retryable;
-    this.fieldErrors = input.fieldErrors ?? [];
-  }
-}
-
 type RequestExecutionOptions = {
   readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   readonly path: string;
@@ -378,41 +340,6 @@ const isBuiltInRealmRole = (roleName: string): boolean =>
 
 const isStudioManagedRealmRole = (role: IdentityRole | undefined): boolean =>
   role?.clientRole !== true && readRoleAttribute(role?.attributes, 'managed_by') === 'studio';
-
-const toSortedUniqueStrings = (values: readonly string[] | undefined): string[] =>
-  [
-    ...new Set((values ?? []).map((value) => value.trim()).filter((value) => value.length > 0)),
-  ].sort((left, right) => left.localeCompare(right));
-
-const mergeSortedUniqueStrings = (
-  left: readonly string[] | undefined,
-  right: readonly string[] | undefined
-): string[] => toSortedUniqueStrings([...(left ?? []), ...(right ?? [])]);
-
-const areStringSetsEqual = (
-  left: readonly string[] | undefined,
-  right: readonly string[] | undefined
-): boolean => {
-  const normalizedLeft = toSortedUniqueStrings(left);
-  const normalizedRight = toSortedUniqueStrings(right);
-  if (normalizedLeft.length !== normalizedRight.length) {
-    return false;
-  }
-  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
-};
-
-const readPostLogoutRedirectUris = (
-  attributes: Readonly<Record<string, string>> | undefined
-): readonly string[] => {
-  const raw = attributes?.['post.logout.redirect.uris'];
-  if (!raw) {
-    return [];
-  }
-  return raw
-    .split('##')
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-};
 
 const mapKeycloakRole = (role: KeycloakRealmRole): IdentityRole => ({
   id: role.id,
@@ -1520,259 +1447,25 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     return typeof response.value === 'string' && response.value.length > 0 ? response.value : null;
   }
 
-  async ensureOidcClient(input: {
-    clientId: string;
-    redirectUris: readonly string[];
-    postLogoutRedirectUris: readonly string[];
-    webOrigins: readonly string[];
-    rootUrl: string;
-    clientSecret?: string;
-    rotateClientSecret?: boolean;
-    standardFlowEnabled?: boolean;
-    implicitFlowEnabled?: boolean;
-    directAccessGrantsEnabled?: boolean;
-    serviceAccountsEnabled?: boolean;
-    enabled?: boolean;
-    uriPolicy?: 'merge' | 'replace';
-    publicClient?: boolean;
-    pkceCodeChallengeMethod?: 'S256';
-    accessTokenLifespan?: 900;
-    ownership?: Readonly<{ instanceId: string; artifactKey: string }>;
-  }): Promise<void> {
-    this.assertValidOidcClientInput(input);
-    await this.assertWriteAvailability();
-    const existing = await this.getOidcClientByClientId(input.clientId);
-    if (existing && input.ownership) {
-      const owned =
-        existing.attributes?.managed_by === 'studio' &&
-        existing.attributes.instance_id === input.ownership.instanceId &&
-        existing.attributes.artifact_key === input.ownership.artifactKey;
-      if (!owned) {
-        throw new KeycloakAdminRequestError({
-          message: `Keycloak client ${input.clientId} has conflicting or incomplete Studio ownership metadata.`,
-          statusCode: 409,
-          code: 'client_ownership_conflict',
-          retryable: false,
-        });
-      }
-    }
-    const payload = {
-      clientId: input.clientId,
-      name: input.clientId,
-      enabled: input.enabled ?? true,
-      protocol: 'openid-connect',
-      publicClient: input.publicClient ?? false,
-      standardFlowEnabled: input.standardFlowEnabled ?? true,
-      implicitFlowEnabled: input.implicitFlowEnabled ?? existing?.implicitFlowEnabled ?? false,
-      directAccessGrantsEnabled: input.directAccessGrantsEnabled ?? false,
-      serviceAccountsEnabled: input.serviceAccountsEnabled ?? false,
-      redirectUris:
-        input.uriPolicy === 'replace'
-          ? [...input.redirectUris]
-          : mergeSortedUniqueStrings(existing?.redirectUris, input.redirectUris),
-      webOrigins:
-        input.uriPolicy === 'replace'
-          ? [...input.webOrigins]
-          : mergeSortedUniqueStrings(existing?.webOrigins, input.webOrigins),
-      attributes: {
-        ...existing?.attributes,
-        ...(input.ownership
-          ? {
-              managed_by: 'studio',
-              instance_id: input.ownership.instanceId,
-              artifact_key: input.ownership.artifactKey,
-            }
-          : {}),
-        ...(input.pkceCodeChallengeMethod
-          ? { 'pkce.code.challenge.method': input.pkceCodeChallengeMethod }
-          : {}),
-        ...(input.accessTokenLifespan
-          ? { 'access.token.lifespan': String(input.accessTokenLifespan) }
-          : {}),
-        'post.logout.redirect.uris': (input.uriPolicy === 'replace'
-          ? [...input.postLogoutRedirectUris]
-          : mergeSortedUniqueStrings(
-              readPostLogoutRedirectUris(existing?.attributes),
-              input.postLogoutRedirectUris
-            )
-        ).join('##'),
-      },
-      rootUrl: input.rootUrl,
-      baseUrl: '/',
-      adminUrl: input.rootUrl,
-    };
-
-    const createdClientId = await this.upsertOidcClient(existing, payload, input.clientId);
-    await this.reconcileCreatedOidcClientDefaults(existing, createdClientId, payload, input);
-    if (!input.publicClient) await this.syncOidcClientSecret(existing, input);
-  }
-
-  private assertValidOidcClientInput(input: {
-    publicClient?: boolean;
-    clientSecret?: string;
-    rotateClientSecret?: boolean;
-    serviceAccountsEnabled?: boolean;
-  }): void {
-    if (
-      input.publicClient &&
-      (input.clientSecret || input.rotateClientSecret || input.serviceAccountsEnabled)
-    ) {
-      throw new Error('public_oidc_client_secret_or_service_account_forbidden');
-    }
-  }
-
-  private async reconcileCreatedOidcClientDefaults(
-    existing: KeycloakClientRepresentation | null,
-    createdClientId: string | null,
-    payload: Parameters<KeycloakAdminClient['upsertOidcClient']>[1],
-    input: { clientId: string; uriPolicy?: 'merge' | 'replace' }
-  ): Promise<void> {
-    const hasEmptyAllowlist = payload.redirectUris.length === 0 || payload.webOrigins.length === 0;
-    if (existing || (input.uriPolicy !== 'replace' && !hasEmptyAllowlist)) return;
-    let created: KeycloakClientRepresentation | null;
-    try {
-      created = await this.getOidcClientByClientId(input.clientId);
-    } catch (error) {
-      return this.compensateCreatedOidcClient(createdClientId, input.clientId, error);
-    }
-    if (!created) {
-      return this.compensateCreatedOidcClient(
-        createdClientId,
-        input.clientId,
-        new KeycloakAdminRequestError({
-          message: `Keycloak client ${input.clientId} is missing after creation.`,
-          statusCode: 502,
-          code: 'client_readback_failed',
-          retryable: false,
-        })
-      );
-    }
-    // Keycloak may normalize empty callback/origin arrays to wildcard defaults
-    // during POST. Reconcile the read-back representation so strict clients
-    // never retain broader URI access than requested.
-    try {
-      await this.upsertOidcClient(
-        created,
-        { ...payload, attributes: { ...created.attributes, ...payload.attributes } },
-        input.clientId
-      );
-    } catch (error) {
-      await this.compensateCreatedOidcClient(created.id, input.clientId, error);
-    }
-  }
-
-  private async compensateCreatedOidcClient(
-    createdClientId: string | null,
-    clientId: string,
-    originalError: unknown
-  ): Promise<never> {
-    try {
-      if (!createdClientId) throw new Error('created_client_id_unavailable_for_cleanup');
-      // Compensation must remain available after the repair failure opens the
-      // normal request circuit, while retaining normal transient-failure retries.
-      await this.executeWithRetryPolicy<void>(
-        {
-          method: 'DELETE',
-          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(createdClientId)}`,
-          operation: 'delete_client',
-        },
-        false
-      );
-      // A successful authenticated cleanup proves Keycloak is reachable again
-      // and must leave outer compensation (for example realm deletion) usable.
-      this.markSuccess();
-      logKeycloakWriteSuccess('delete_client', {
-        operation: 'delete_client',
-        realm: this.realm,
-        client_id: clientId,
-      });
-    } catch (cleanupError) {
-      if (cleanupError instanceof KeycloakAdminRequestError && cleanupError.statusCode === 404) {
-        this.markSuccess();
-        logKeycloakWriteSuccess('delete_client', {
-          operation: 'delete_client',
-          realm: this.realm,
-          client_id: clientId,
-        });
-        throw originalError;
-      }
-      logKeycloakWriteFailure(
-        'delete_client_failed',
-        { operation: 'delete_client', realm: this.realm, client_id: clientId },
-        cleanupError
-      );
-      const manualActionError = new Error(
-        'strict_oidc_client_reconciliation_failed_cleanup_failed_requires_manual_action'
-      ) as Error & { cause?: unknown };
-      manualActionError.cause = cleanupError;
-      throw manualActionError;
-    }
-    throw originalError;
-  }
-
-  private async upsertOidcClient(
-    existing: KeycloakClientRepresentation | null,
-    payload: {
-      clientId: string;
-      name: string;
-      enabled: boolean;
-      protocol: string;
-      publicClient: boolean;
-      standardFlowEnabled: boolean;
-      implicitFlowEnabled: boolean;
-      directAccessGrantsEnabled: boolean;
-      serviceAccountsEnabled: boolean;
-      redirectUris: string[];
-      webOrigins: string[];
-      attributes: Record<string, string> & { 'post.logout.redirect.uris': string };
-      rootUrl: string;
-      baseUrl: string;
-      adminUrl: string;
-    },
-    clientId: string
-  ): Promise<string | null> {
-    if (!existing) {
-      return this.createOidcClient(payload, clientId);
-    }
-    const requiresUpdate =
-      existing.enabled !== payload.enabled ||
-      existing.protocol !== payload.protocol ||
-      existing.publicClient !== payload.publicClient ||
-      existing.rootUrl !== payload.rootUrl ||
-      existing.standardFlowEnabled !== payload.standardFlowEnabled ||
-      existing.implicitFlowEnabled !== payload.implicitFlowEnabled ||
-      existing.directAccessGrantsEnabled !== payload.directAccessGrantsEnabled ||
-      existing.serviceAccountsEnabled !== payload.serviceAccountsEnabled ||
-      existing.attributes?.['pkce.code.challenge.method'] !==
-        payload.attributes['pkce.code.challenge.method'] ||
-      existing.attributes?.['access.token.lifespan'] !==
-        payload.attributes['access.token.lifespan'] ||
-      !areStringSetsEqual(existing.redirectUris, payload.redirectUris) ||
-      !areStringSetsEqual(existing.webOrigins, payload.webOrigins) ||
-      !areStringSetsEqual(
-        readPostLogoutRedirectUris(existing.attributes),
-        readPostLogoutRedirectUris(payload.attributes)
-      );
-    if (requiresUpdate) {
-      await this.updateOidcClient(existing, payload, clientId);
-    }
-    return null;
+  async ensureOidcClient(input: EnsureOidcClientInput): Promise<void> {
+    return reconcileOidcClient(this.oidcClientOperations(), input);
   }
 
   async setOidcClientEnabled(clientId: string, enabled: boolean): Promise<void> {
-    await this.assertWriteAvailability();
-    const existing = await this.getOidcClientByClientId(clientId);
-    if (!existing?.id) {
-      throw new KeycloakAdminRequestError({
-        message: `Keycloak client ${clientId} is missing.`,
-        statusCode: 404,
-        code: 'client_not_found',
-        retryable: false,
-      });
-    }
-    if (existing.enabled === enabled) return;
+    return reconcileOidcClientEnabled(this.oidcClientOperations(), clientId, enabled);
+  }
 
-    await this.updateOidcClient(existing, { ...existing, enabled }, clientId);
+  private oidcClientOperations(): KeycloakOidcClientOperations {
+    return {
+      assertWriteAvailability: () => this.assertWriteAvailability(),
+      findClient: (clientId) => this.getOidcClientByClientId(clientId),
+      createClient: (payload, clientId) => this.createOidcClient(payload, clientId),
+      updateClient: (existing, payload, clientId) => this.updateOidcClient(existing, payload, clientId),
+      deleteClientForCompensation: (clientId, displayClientId) =>
+        this.deleteOidcClientForCompensation(clientId, displayClientId),
+      getClientSecretValue: (clientId) => this.getOidcClientSecretValue(clientId),
+      rotateClientSecret: (client, input) => this.rotateOidcClientSecret(client, input),
+    };
   }
 
   private async createOidcClient(payload: object, clientId: string): Promise<string | null> {
@@ -1829,33 +1522,45 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
-  private async syncOidcClientSecret(
-    existing: KeycloakClientRepresentation | null,
-    input: {
-      clientId: string;
-      clientSecret?: string;
-      rotateClientSecret?: boolean;
-    }
+  private async deleteOidcClientForCompensation(
+    createdClientId: string,
+    clientId: string
   ): Promise<void> {
-    // Secret reconciliation is registry-facing. Only explicit rotation mutates
-    // Keycloak because the admin API can only generate a new secret here.
-    if (!input.rotateClientSecret) {
-      return;
+    try {
+      // Compensation must remain available after the repair failure opens the
+      // normal request circuit, while retaining normal transient-failure retries.
+      await this.executeWithRetryPolicy<void>(
+        {
+          method: 'DELETE',
+          path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(createdClientId)}`,
+          operation: 'delete_client',
+        },
+        false
+      );
+    } catch (error) {
+      if (!(error instanceof KeycloakAdminRequestError) || error.statusCode !== 404) {
+        logKeycloakWriteFailure(
+          'delete_client_failed',
+          { operation: 'delete_client', realm: this.realm, client_id: clientId },
+          error
+        );
+        throw error;
+      }
     }
-    const resolvedClient = existing ?? (await this.getOidcClientByClientId(input.clientId));
-    if (!resolvedClient) {
-      throw new KeycloakAdminRequestError({
-        message: 'Keycloak client secret could not be updated because the client is missing.',
-        statusCode: 404,
-        code: 'client_not_found',
-        retryable: false,
-      });
-    }
-    const currentSecret = await this.getOidcClientSecretValue(input.clientId);
-    const shouldUpdateSecret = input.rotateClientSecret || currentSecret !== input.clientSecret;
-    if (!shouldUpdateSecret) {
-      return;
-    }
+    // A successful authenticated cleanup, including an already deleted client,
+    // proves Keycloak is reachable again and keeps outer compensation usable.
+    this.markSuccess();
+    logKeycloakWriteSuccess('delete_client', {
+      operation: 'delete_client',
+      realm: this.realm,
+      client_id: clientId,
+    });
+  }
+
+  private async rotateOidcClientSecret(
+    client: KeycloakClientRepresentation,
+    input: Pick<EnsureOidcClientInput, 'clientId' | 'clientSecret' | 'rotateClientSecret'>
+  ): Promise<void> {
     const logEvent = input.rotateClientSecret ? 'rotate_client_secret' : 'sync_client_secret';
     const logFailureEvent = input.rotateClientSecret
       ? 'rotate_client_secret_failed'
@@ -1863,7 +1568,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     try {
       await this.executeWithResilience<void>({
         method: 'POST',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(resolvedClient.id)}/client-secret`,
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(client.id)}/client-secret`,
         operation: 'rotate_client_secret',
         body: JSON.stringify({
           type: 'secret',

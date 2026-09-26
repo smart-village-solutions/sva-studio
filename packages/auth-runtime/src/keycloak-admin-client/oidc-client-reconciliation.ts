@@ -305,7 +305,7 @@ export const setOidcClientEnabled = async (
 ): Promise<void> => {
   await operations.assertWriteAvailability();
   const existing = await operations.findClient(clientId);
-  if (!existing) {
+  if (!existing?.id) {
     throw new KeycloakAdminRequestError({
       message: `Keycloak client ${clientId} is missing.`,
       statusCode: 404,

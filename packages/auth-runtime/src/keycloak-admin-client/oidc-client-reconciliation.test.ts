@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   reconcileOidcClient,
+  setOidcClientEnabled,
   type EnsureOidcClientInput,
   type KeycloakOidcClientOperations,
 } from './oidc-client-reconciliation.js';
@@ -123,6 +124,16 @@ describe('OIDC client reconciliation', () => {
 
     expect(operations.getClientSecretValue).not.toHaveBeenCalled();
     expect(operations.rotateClientSecret).not.toHaveBeenCalled();
+  });
+
+  it('rejects an incomplete client record before changing its enabled state', async () => {
+    const operations = createOperations({ findClient: vi.fn(async () => ({ clientId: 'web-app', enabled: false })) });
+
+    await expect(setOidcClientEnabled(operations, 'web-app', true)).rejects.toMatchObject({
+      statusCode: 404,
+      code: 'client_not_found',
+    });
+    expect(operations.updateClient).not.toHaveBeenCalled();
   });
 
   it('preserves the original repair failure after successful cleanup and requires manual action when cleanup fails', async () => {

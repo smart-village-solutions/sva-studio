@@ -1,94 +1,81 @@
 # Instanz-Lebenszyklus und Navigation
 
-Diese Anleitung beschreibt den neuen Arbeitsablauf in der Instanzverwaltung
-unter `/admin/instances`.
+Die Instanzverwaltung unter `/admin/instances` bündelt Anlage, Einrichtung,
+Betrieb, Diagnose und Einstellungen in den bestehenden Routen.
 
-## Zielbild
+## Liste und Anlage
 
-Die Verwaltung bündelt den Lebenszyklus einer Instanz in einem Detailfluss und trennt dort klar zwischen:
+Die Liste öffnet das Detail über den Instanznamen. Hostname und Parent-Domain,
+Lifecycle und belegter Handlungsbedarf stehen nebeneinander. Ohne aktuelle
+Betriebsevidenz zeigt die Liste „Betrieb nicht verifiziert“. Suspendieren und
+Archivieren liegen unter „Weitere Aktionen“. Der Gesamt-Audit wird erst auf
+Anforderung geladen; die Liste löst keine Detailabfragen pro Instanz aus.
 
-1. `Anlage` einer neuen Instanz
-2. `Bereitstellung abschließen` als geführtem Abschnitt der Detailseite
-3. `Betrieb` als Standardansicht für Bestandsinstanzen
-4. `Doctor` als Diagnose- und Reparaturmodus
-5. `Einstellungen` für Stammdaten und Vertragswerte
+Die Anlage führt durch vier Schritte:
 
-## Typischer Ablauf
+1. Instanz-ID, Anzeigename und Parent-Domain erfassen.
+2. Neue oder bestehende Nutzer-Datenbank (Realm) wählen. Abgeleitete Clients und
+   weitere technische Angaben bleiben aufklappbar.
+3. Benutzername, E-Mail, Vor- und Nachname des ersten Administrators erfassen.
+4. Alle Angaben prüfen. „Ändern“ öffnet die jeweilige Gruppe und erlaubt die
+   direkte validierte Rückkehr. Änderungen verwerfen die vorherige Readiness.
 
-1. Neue Instanz über `/admin/instances/new` anlegen.
-2. Nach erfolgreicher Anlage direkt in `/admin/instances/<instanceId>` wechseln.
-3. Auf der Detailseite die technische Bereitschaft herstellen und prüfen.
-4. Die Instanz erst nach erfüllten Readiness-Gates manuell aktivieren.
-5. Aktive Bestandsinstanzen auf derselben Seite im Modus `Betrieb` verwalten.
+Die serverseitigen Befunde unterscheiden Anlageblocker, Voraussetzungen der
+Einrichtung und offene Aktivierungsvoraussetzungen. Nur Anlageblocker sperren
+Create; eine fehlgeschlagene oder ausstehende Prüfung erteilt keine Freigabe.
+Nach Create öffnet dieselbe Detailroute `/admin/instances/<instanceId>`.
 
 ## Bereitstellung abschließen
 
-Die Bereitstellung ist ein geführter Abschnitt der Instanzdetailseite und kein eigener Route- oder Geschäftsprozess.
+Der kompakte Kopf zeigt Identität, Lifecycle und Betriebszustand getrennt.
+Bei noch nicht eingerichteten Instanzen folgt die Fünferfolge: vorbereiten,
+Änderungen bestätigen, technisch bereitstellen, Betriebsbereitschaft prüfen,
+aktivieren. Der aktuelle Schritt zeigt Ergebnis, Auswirkung und genau eine
+Hauptaktion aus dem vorhandenen Serververtrag. Erfolgreiche Keycloak-Schritte
+bleiben bei einem lokalen IAM-Fehler sichtbar. Technische Belege sind aufklappbar.
 
-`Setup abschließen` gilt erst dann als erledigt, wenn beide Bedingungen erfüllt
-sind:
+Planänderungen bleiben an den aktuellen Fingerprint gebunden. Ein Retry wird
+nur bei sicherer Freigabe ausgeführt. Eine angenommene Mutation oder ein
+fehlgeschlagener Refresh wird nicht als Betriebsbereitschaft ausgegeben.
+Die Aktivierung bleibt manuell und benötigt die Bestätigung im Einrichtungsabschnitt.
 
-- die Instanz ist aktiv
-- die Tenant-Admin-Struktur ist initialisiert
+## Betrieb und Module
 
-Bis zur Aktivierung stehen die Readiness-Schritte und ihre nächste zulässige Aktion im Vordergrund. Danach bleibt dieselbe Detailseite der Einstieg für Betrieb, Doctor und Einstellungen.
+Die Tabs `Betrieb`, `Doctor` und `Einstellungen` sind immer direkt erreichbar.
+Aktive, suspendierte und archivierte Bestandsinstanzen bleiben in `Betrieb`,
+auch bei Störungen oder fehlenden historischen Setup-Markern.
 
-## Betrieb
-
-`Betrieb` ist die normale Standardansicht für eingerichtete Instanzen.
-
-Hier stehen vor allem diese Aufgaben im Vordergrund:
-
-- Module zuweisen und entziehen
-- laufende Verwaltungsarbeit an der Instanz
-- wiederkehrende Standardaktionen im Tagesbetrieb
-
-Der Happy Path liegt damit bewusst auf der Modulverwaltung und nicht mehr auf
-Diagnose oder Stammdatenpflege.
+Jede Modulzeile verbindet Zuweisung, effektive Aktivierung, Policy und technische
+Bereitschaft. „Keine technische Prüfung vorgesehen“ unterscheidet sich von
+fehlender oder nicht verifizierter Evidenz. Rollen, Permissions, Herkunft,
+Overrides, Checks und Jobs stehen in den Zeilendetails. Pflichtmodule und
+laufende Jobs sperren unzulässige Änderungen; Entzug benötigt eine Bestätigung.
+Der separate Einstieg `/admin/modules` verwendet dieselbe Oberfläche und behält
+seinen bisherigen Bootstrap-Einstieg.
 
 ## Doctor
 
-`Doctor` ist dauerhaft erreichbar und dient der Diagnose und Reparatur.
+`Doctor öffnen` bleibt im Kopf erreichbar. Der Doctor ordnet Befunde mit
+Handlungsbedarf zuerst und trennt deren Quelle, Serviceidentität und Korrelation
+in technischen Details. Empfohlene Diagnose- und Reparaturmaßnahmen verwenden
+denselben Aktionshandler wie die Einrichtung. Es gibt keine automatische neue
+Rechteprobe. Eine Aktivierungsempfehlung führt zurück zum Aktivierungsabschnitt
+und fokussiert dessen Überschrift; sie aktiviert die Instanz nicht unmittelbar.
 
-Der Einstiegspunkt `Doctor öffnen` bleibt immer an derselben Stelle im Kopf der
-Bestandsseite sichtbar:
+Auf Maßnahme und Validierung folgen aufklappbare Audit-Ergebnisse und technische
+Historie. Strukturierte HTTP-Fehler bleiben erhalten; unbekannte Fehlercodes
+bekommen einen sicheren allgemeinen Text statt ungefilterter Servermeldungen.
 
-- bei automatisch erkannten Problemen mit zusätzlichem Warnkontext
-- ohne erkannte Probleme als normaler, manuell nutzbarer Einstieg
+## Einstellungen und Einladungsvorlage
 
-Der Doctor folgt immer demselben Ablauf:
+Allgemeine Angaben und Administratorprofil sind offen sichtbar. Realm und
+Clients sowie Zugangsdaten stehen in eigenen aufklappbaren Gruppen. Die
+Fehlerübersicht führt zum betroffenen Feld und öffnet dessen Gruppe.
 
-1. `Überblick`
-2. `Empfohlene Maßnahme`
-3. `Reparatur ausführen`
-4. `Validieren`
-
-Zusätzlich liegt die technische Historie im Doctor-Kontext, damit frühere Läufe
-und aktuelle Befunde zusammen gelesen werden können.
-
-## Einstellungen
-
-`Einstellungen` bündelt nachgeordnete Änderungen, die nicht zum laufenden
-Betrieb gehören.
-
-Dazu zählen insbesondere:
-
-- Anzeigename
-- Parent-Domain
-- Realm- und Client-Zuordnung
-- Issuer- und Secret-bezogene Vertragswerte
-- Tenant-Admin- und Client-Basisdaten
-
-Diese Änderungen sind bewusst aus dem Standard-Erstblick herausgezogen.
-
-## Orientierung im Kopf
-
-Der Kopf der Bestandsseite dient nur der schnellen Einordnung:
-
-- Instanzidentität
-- Setup-Status
-- Betriebsstatus
-- fixer Einstieg `Doctor öffnen`
-
-Wenn ein Problem erkannt wird, erscheint dort zusätzlich ein Warnhinweis. Die
-Position des Doctor-Einstiegs ändert sich dabei nicht.
+Die Einladungsvorlage wird in einem eigenen Dialog gespeichert oder zurückgesetzt.
+Dieser Request verwendet den gespeicherten Instanzstand und die Vorlagenrevision;
+er übernimmt keine ungespeicherten Namen, Realm-Angaben oder Secrets. Konflikte
+bleiben im Editor sichtbar. Tabwechsel, Refresh und fehlgeschlagene Saves
+bewahren den lokalen Entwurf. Neue Secret-Eingaben werden erst nach erfolgreichem
+Instanz-Save gelöscht. Eine vollständige Anmeldeweiterleitung persistiert keine
+Entwürfe oder Secrets im Browser-Speicher.

@@ -15,7 +15,8 @@ export const doctorInstancesAdminDEResources = {
       'Prüfen Sie den Rollenvertrag von sva-studio-tenant-iam; verwenden Sie keine Provisioner-Credentials als Ersatz.',
     unknown:
       'Wiederholen Sie die Rechteprobe mit sva-studio-tenant-iam oder prüfen Sie die Strukturevidenz des Provisioners.',
-    unavailable: 'Stellen Sie die Keycloak-Erreichbarkeit wieder her und wiederholen Sie danach die Probe.',
+    unavailable:
+      'Stellen Sie die Keycloak-Erreichbarkeit wieder her und wiederholen Sie danach die Probe.',
     misconfiguredProvisioner:
       'Der Studio Provisioner muss die abweichende technische Konfiguration gezielt abgleichen.',
     misconfiguredTenantIam:
@@ -24,6 +25,8 @@ export const doctorInstancesAdminDEResources = {
   warning: {
     title: 'Doctor erkennt aktuell Handlungsbedarf.',
   },
+  openActivation: 'Zur Aktivierung',
+  auditResults: 'Prüfergebnisse',
   steps: {
     overview: {
       title: 'Überblick',
@@ -57,7 +60,7 @@ export const doctorInstancesAdminDEResources = {
     blocked:
       'Doctor hat blockierende Befunde erkannt und priorisiert die nächste Maßnahme vor dem Weiterbetrieb.',
   },
-  historyTitle: 'Historie',
+  historyTitle: 'Technische Historie',
   historySubtitle:
     'Technische Läufe bleiben zur Diagnose sichtbar, folgen aber bewusst erst nach Überblick, Maßnahme, Reparatur und Validierung.',
 } as const;

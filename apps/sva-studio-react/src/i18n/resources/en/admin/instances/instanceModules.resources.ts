@@ -1,4 +1,8 @@
 export const instanceModulesInstancesAdminENResources = {
+  noLifecycle: 'No technical check required',
+  notVerified: 'Not verified',
+  readinessLabel: 'Readiness',
+
   title: 'Instance modules',
   subtitle: 'Assign and revoke modules per instance and rebuild the matching IAM baseline.',
   empty: 'Select an instance to manage module assignments.',

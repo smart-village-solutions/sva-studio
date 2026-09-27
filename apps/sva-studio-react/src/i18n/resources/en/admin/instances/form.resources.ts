@@ -1,4 +1,10 @@
 export const formInstancesAdminENResources = {
+  general: 'General',
+  realmAndClients: 'User database and clients',
+  credentials: 'Credentials',
+  unsaved: 'Unsaved instance settings',
+  invalidIssuer: 'Enter a valid issuer URL.',
+
   title: 'Create instance',
   subtitle:
     'Creation uses the same provisioning contract as the ops path and stores the base Keycloak realm settings.',

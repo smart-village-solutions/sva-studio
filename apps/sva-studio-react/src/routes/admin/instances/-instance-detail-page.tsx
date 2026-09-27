@@ -1,7 +1,12 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, useWatch } from 'react-hook-form';
+import type { DetailFormValues } from './-instances-shared-types';
+import type { AccountInvitationTemplateSaveResult } from './-account-invitation-template-card';
 import React from 'react';
 import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Card } from '../../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
@@ -33,10 +38,14 @@ import {
   buildHistoryWorkspaceModel,
   type DetailWorkflowAction,
   evaluateInstanceConfiguration,
-  getStatusGuidance,
 } from './-instance-detail-models';
 import { getErrorMessage } from './-instance-error-messages';
-import { createDetailForm } from './-instance-form-models';
+import {
+  createDetailForm,
+  createEmptyCreateForm,
+  createInstanceSettingsSchema,
+  buildInstanceSettingsPayload,
+} from './-instance-form-models';
 import {
   evaluateRequiredPluginReadiness,
   includeRequiredPluginReadiness,
@@ -54,38 +63,6 @@ const ACTION_FEEDBACK_VISIBLE_MS = 15_000;
 const ACTION_FEEDBACK_FADE_MS = 300;
 
 export { readActionFeedbackClassName };
-
-const InstanceSecondaryWorkspace = ({
-  guidedSetupActive,
-  expanded,
-  onExpandedChange,
-  children,
-}: {
-  readonly guidedSetupActive: boolean;
-  readonly expanded: boolean;
-  readonly onExpandedChange: (expanded: boolean) => void;
-  readonly children: React.ReactNode;
-}) => {
-  if (!guidedSetupActive) return children;
-
-  return (
-    <details
-      open={expanded}
-      onToggle={(event) => onExpandedChange(event.currentTarget.open)}
-      className="rounded-xl border border-border/70 bg-background p-4"
-    >
-      <summary className="cursor-pointer list-none">
-        <div className="font-semibold text-foreground">
-          {t('admin.instances.cockpit.setup.secondaryTitle')}
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('admin.instances.cockpit.setup.secondaryDescription')}
-        </p>
-      </summary>
-      <div className="mt-4 border-t border-border/70 pt-4">{children}</div>
-    </details>
-  );
-};
 
 const InstanceRuntimeEvidence = ({
   classification,
@@ -145,14 +122,29 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const instancesApi = useInstances();
   const pluginReadiness = usePluginTenantReadiness(instanceId);
   const { loadInstance, isLoading, detailLoading, statusLoading } = instancesApi;
-  const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<
-    typeof createDetailForm
-  > | null>(null);
+  const detailForm = useForm<DetailFormValues>({
+    resolver: zodResolver(createInstanceSettingsSchema()),
+    defaultValues: { ...createEmptyCreateForm(), tenantAdminTemporaryPassword: '' },
+    shouldUnregister: false,
+  });
+  const detailFormValues = useWatch({ control: detailForm.control }) as DetailFormValues;
+  const setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>> = (
+    update
+  ) => {
+    const next = typeof update === 'function' ? update(detailForm.getValues()) : update;
+    if (!next) return;
+    for (const key of Object.keys(next) as (keyof DetailFormValues)[])
+      detailForm.setValue(key, next[key], { shouldDirty: true });
+  };
+  const [settingsSaving, setSettingsSaving] = React.useState(false);
+  const settingsSavingRef = React.useRef(false);
   const saveFeedback = useStudioSaveFeedback();
   const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [actionFeedbackFading, setActionFeedbackFading] = React.useState(false);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('betrieb');
-  const [secondaryWorkspaceExpanded, setSecondaryWorkspaceExpanded] = React.useState(false);
+  const [activationConfirmation, setActivationConfirmation] = React.useState<string | null>(null);
+  const [actionBusy, setActionBusy] = React.useState(false);
+  const actionBusyRef = React.useRef(false);
   const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -248,11 +240,10 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
       if (instanceChanged) {
         setActionFeedback(null);
-        setDetailFormValues(createDetailForm(selectedInstance));
+        detailForm.reset(createDetailForm(selectedInstance));
+        saveFeedback.reset();
         setActiveWorkspaceTab('betrieb');
-        setSecondaryWorkspaceExpanded(false);
-      } else if (!detailFormValues) {
-        setDetailFormValues(createDetailForm(selectedInstance));
+        setActivationConfirmation(null);
       }
 
       previousSelectedInstanceIdRef.current = selectedInstance.instanceId;
@@ -260,9 +251,8 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       previousSelectedInstanceIdRef.current = null;
       setActionFeedback(null);
       setActionFeedbackFading(false);
-      setDetailFormValues(null);
     }
-  }, [detailFormValues, selectedInstance]);
+  }, [selectedInstance, detailForm.reset, saveFeedback.reset]);
 
   React.useEffect(() => {
     if (!actionFeedback) {
@@ -321,40 +311,30 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   const onUpdateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedInstance || !detailFormValues) {
+    if (!selectedInstance || settingsSavingRef.current) return;
+    settingsSavingRef.current = true;
+    if (!(await detailForm.trigger())) {
+      settingsSavingRef.current = false;
+      setActiveWorkspaceTab('einstellungen');
+      globalThis.setTimeout(() => document.getElementById('instance-settings-errors')?.focus(), 0);
       return;
     }
-
+    settingsSavingRef.current = true;
+    setSettingsSaving(true);
     const operationId = saveFeedback.beginSaving();
-    const updated = await instancesApi.updateInstance(selectedInstance.instanceId, {
-      displayName: detailFormValues.displayName.trim(),
-      parentDomain: detailFormValues.parentDomain.trim(),
-      realmMode: detailFormValues.realmMode,
-      authRealm: detailFormValues.authRealm.trim(),
-      authClientId: detailFormValues.authClientId.trim(),
-      authIssuerUrl: detailFormValues.authIssuerUrl.trim() || undefined,
-      authClientSecret: detailFormValues.authClientSecret.trim() || undefined,
-      tenantAdminClient: detailFormValues.tenantAdminClient.clientId.trim()
-        ? {
-            clientId: detailFormValues.tenantAdminClient.clientId.trim(),
-            secret: detailFormValues.tenantAdminClient.secret.trim() || undefined,
-          }
-        : undefined,
-      tenantAdminBootstrap: detailFormValues.tenantAdminBootstrap.username.trim()
-        ? {
-            username: detailFormValues.tenantAdminBootstrap.username.trim(),
-            email: detailFormValues.tenantAdminBootstrap.email.trim() || undefined,
-            firstName: detailFormValues.tenantAdminBootstrap.firstName.trim() || undefined,
-            lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
-          }
-        : undefined,
-    });
-
-    if (updated) {
-      setDetailFormValues(clearSensitiveDetailFields);
-      saveFeedback.markSaved(operationId);
-    } else {
-      saveFeedback.markFailed(operationId);
+    try {
+      const updated = await instancesApi.updateInstance(
+        selectedInstance.instanceId,
+        buildInstanceSettingsPayload(detailForm.getValues())
+      );
+      if (updated) {
+        const cleared = clearSensitiveDetailFields(detailForm.getValues());
+        if (cleared) detailForm.reset(cleared);
+        saveFeedback.markSaved(operationId);
+      } else saveFeedback.markFailed(operationId);
+    } finally {
+      settingsSavingRef.current = false;
+      setSettingsSaving(false);
     }
   };
 
@@ -363,30 +343,30 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       NonNullable<NonNullable<typeof selectedInstance>['accountInvitationTemplate']>,
       'revision'
     > | null
-  ): Promise<boolean> => {
-    if (!selectedInstance || !detailFormValues) return false;
-    const updated = await instancesApi.updateInstance(selectedInstance.instanceId, {
-      displayName: detailFormValues.displayName.trim(),
-      parentDomain: detailFormValues.parentDomain.trim(),
-      realmMode: detailFormValues.realmMode,
-      authRealm: detailFormValues.authRealm.trim(),
-      authClientId: detailFormValues.authClientId.trim(),
-      authIssuerUrl: detailFormValues.authIssuerUrl.trim() || undefined,
-      tenantAdminClient: detailFormValues.tenantAdminClient.clientId.trim()
-        ? { clientId: detailFormValues.tenantAdminClient.clientId.trim() }
-        : undefined,
-      tenantAdminBootstrap: detailFormValues.tenantAdminBootstrap.username.trim()
-        ? {
-            username: detailFormValues.tenantAdminBootstrap.username.trim(),
-            email: detailFormValues.tenantAdminBootstrap.email.trim() || undefined,
-            firstName: detailFormValues.tenantAdminBootstrap.firstName.trim() || undefined,
-            lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
-          }
-        : undefined,
-      accountInvitationTemplate: template,
-      accountInvitationTemplateRevision: selectedInstance.accountInvitationTemplate?.revision ?? 0,
-    });
-    return Boolean(updated);
+  ): Promise<AccountInvitationTemplateSaveResult> => {
+    if (!selectedInstance || settingsSavingRef.current) return false;
+    settingsSavingRef.current = true;
+    setSettingsSaving(true);
+    const failure = { conflict: false };
+    try {
+      const updated = await instancesApi.updateInstance(
+        selectedInstance.instanceId,
+        {
+          ...buildInstanceSettingsPayload(createDetailForm(selectedInstance)),
+          accountInvitationTemplate: template,
+          accountInvitationTemplateRevision:
+            selectedInstance.accountInvitationTemplate?.revision ?? 0,
+        },
+        (error) => {
+          failure.conflict = error.code === 'conflict';
+        }
+      );
+      if (failure.conflict) await instancesApi.loadInstance(selectedInstance.instanceId);
+      return updated ? true : failure.conflict ? 'conflict' : false;
+    } finally {
+      settingsSavingRef.current = false;
+      setSettingsSaving(false);
+    }
   };
 
   const executeProvisioning = async (
@@ -411,10 +391,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         message: t('admin.instances.feedback.provisioningQueued'),
       });
     }
-    await instancesApi.loadInstance(selectedInstance.instanceId);
-    setDetailFormValues((current) =>
-      current ? { ...current, tenantAdminTemporaryPassword: '' } : current
-    );
+    if (result) detailForm.setValue('tenantAdminTemporaryPassword', '', { shouldDirty: false });
   };
 
   const triggerWorkflowAction = async (
@@ -473,7 +450,11 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         await executeProvisioning('reset_tenant_admin');
         return;
       case 'activate_instance':
-        await instancesApi.activateInstance(selectedInstance.instanceId);
+        if (
+          selectedInstance.provisioningReadiness?.nextAction?.action === 'instance.status.activate'
+        ) {
+          setActivationConfirmation(selectedInstance.updatedAt);
+        }
     }
   };
 
@@ -503,7 +484,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
-  const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
+  const performDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
     switch (action) {
       case 'refresh_readiness':
         if (!selectedInstance) return;
@@ -519,11 +500,11 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         if (!selectedInstance) return;
         await instancesApi.loadInstance(selectedInstance.instanceId);
         setActiveWorkspaceTab('doctor');
-        setSecondaryWorkspaceExpanded(true);
+
         return;
       case 'focus_configuration':
         setActiveWorkspaceTab('einstellungen');
-        setSecondaryWorkspaceExpanded(true);
+
         return;
       case 'probeTenantIamAccess':
         await probeTenantIamAccess();
@@ -567,8 +548,28 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
+  const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
+    if (action === 'activate_instance') return performDetailAction(action);
+    if (actionBusyRef.current) return;
+    actionBusyRef.current = true;
+    setActionBusy(true);
+    try {
+      await performDetailAction(action);
+    } finally {
+      actionBusyRef.current = false;
+      setActionBusy(false);
+    }
+  };
+  const openActivation = () => {
+    setActiveWorkspaceTab('betrieb');
+    globalThis.setTimeout(() => document.getElementById('instance-current-task')?.focus(), 0);
+  };
+
   return (
-    <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading}>
+    <section
+      className="min-w-0 space-y-5 break-words"
+      aria-busy={instancesApi.isLoading || instancesApi.detailLoading}
+    >
       {actionFeedback ? (
         <Alert className={readActionFeedbackClassName(actionFeedback, actionFeedbackFading)}>
           <AlertDescription>{actionFeedback.message}</AlertDescription>
@@ -597,7 +598,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         </Alert>
       ) : null}
 
-      {instancesApi.mutationError && instancesApi.mutationError.code !== 'keycloak_unavailable' ? (
+      {instancesApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{getErrorMessage(instancesApi.mutationError)}</span>
@@ -614,98 +615,129 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         <div className="space-y-5">
           <InstanceDetailHeader
             selectedInstance={selectedInstance}
-            operationalTitle={getStatusGuidance(selectedInstance).title}
+            operationalTitle={cockpitModel.overallTitle}
             operationalSummary={operationsModel.summary}
             onOpenDoctor={() => {
               setActiveWorkspaceTab('doctor');
-              setSecondaryWorkspaceExpanded(true);
             }}
             doctorWarning={doctorModel?.warning}
           />
 
-          <InstanceDetailCockpitSection
-            selectedInstance={selectedInstance}
-            configurationAssessment={configurationAssessment}
-            cockpitModel={cockpitModel}
-            mutationError={instancesApi.mutationError}
-            onRunDetailAction={runDetailAction}
-            statusLoading={instancesApi.statusLoading}
-          />
+          {!['active', 'suspended', 'archived'].includes(selectedInstance.status) &&
+          activeWorkspaceTab === 'betrieb' ? (
+            <InstanceDetailCockpitSection
+              selectedInstance={selectedInstance}
+              configurationAssessment={configurationAssessment}
+              cockpitModel={cockpitModel}
+              mutationError={instancesApi.mutationError}
+              onRunDetailAction={runDetailAction}
+              statusLoading={instancesApi.statusLoading || actionBusy}
+            />
+          ) : null}
 
-          <InstanceSecondaryWorkspace
-            guidedSetupActive={selectedInstance.status !== 'active'}
-            expanded={secondaryWorkspaceExpanded}
-            onExpandedChange={setSecondaryWorkspaceExpanded}
+          <Tabs
+            value={activeWorkspaceTab}
+            onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)}
+            className="space-y-4"
           >
-            <Tabs
-              value={activeWorkspaceTab}
-              onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)}
-              className="space-y-4"
+            <TabsList
+              aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
+              className="h-auto flex-wrap justify-start"
             >
-              <TabsList
-                aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
-                className="h-auto flex-wrap justify-start"
-              >
-                <TabsTrigger value="betrieb">
-                  {t('admin.instances.detail.tabs.betrieb')}
-                </TabsTrigger>
-                <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
-                <TabsTrigger value="einstellungen">
-                  {t('admin.instances.detail.tabs.einstellungen')}
-                </TabsTrigger>
-              </TabsList>
+              <TabsTrigger value="betrieb">{t('admin.instances.detail.tabs.betrieb')}</TabsTrigger>
+              <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
+              <TabsTrigger value="einstellungen">
+                {t('admin.instances.detail.tabs.einstellungen')}
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="betrieb" className="space-y-5">
-                <InstanceDetailBetriebSection
+            <TabsContent value="betrieb" className="space-y-5">
+              <InstanceDetailBetriebSection
+                selectedInstance={selectedInstance}
+                statusLoading={instancesApi.statusLoading}
+                mutationError={instancesApi.mutationError}
+                pluginReadiness={pluginReadiness}
+                onAssignModule={assignModuleAndRefreshReadiness}
+                onRevokeModule={revokeModuleAndRefreshReadiness}
+                onSeedIamBaseline={instancesApi.seedIamBaseline}
+                onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
+              />
+            </TabsContent>
+
+            <TabsContent value="doctor" className="space-y-5">
+              {doctorModel && historyModel ? (
+                <InstanceDetailDoctorSection
+                  doctorModel={doctorModel}
+                  secondaryActions={cockpitModel.secondaryActions}
+                  onRunDetailAction={runDetailAction}
+                  onOpenActivation={openActivation}
+                  statusLoading={statusLoading || actionBusy}
+                  auditContent={
+                    <InstanceDetailAuditSection
+                      auditRun={instancesApi.instanceAuditRun}
+                      auditLoading={instancesApi.auditLoading}
+                      onRefresh={async () =>
+                        instancesApi.refreshInstanceAudit(selectedInstance.instanceId)
+                      }
+                    />
+                  }
+                  historyModel={historyModel}
                   selectedInstance={selectedInstance}
-                  statusLoading={instancesApi.statusLoading}
-                  mutationError={instancesApi.mutationError}
-                  pluginReadiness={pluginReadiness}
-                  onAssignModule={assignModuleAndRefreshReadiness}
-                  onRevokeModule={revokeModuleAndRefreshReadiness}
-                  onSeedIamBaseline={instancesApi.seedIamBaseline}
-                  onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
-                />
-                <InstanceDetailAuditSection
-                  auditRun={instancesApi.instanceAuditRun}
-                  auditLoading={instancesApi.auditLoading}
-                  onRefresh={async () =>
-                    instancesApi.refreshInstanceAudit(selectedInstance.instanceId)
+                  onLoadProvisioningRun={(runId) =>
+                    instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
                   }
                 />
-              </TabsContent>
+              ) : null}
+            </TabsContent>
 
-              <TabsContent value="doctor" className="space-y-5">
-                {doctorModel && historyModel ? (
-                  <InstanceDetailDoctorSection
-                    doctorModel={doctorModel}
-                    historyModel={historyModel}
-                    selectedInstance={selectedInstance}
-                    onLoadProvisioningRun={(runId) =>
-                      instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
-                    }
-                  />
-                ) : null}
-              </TabsContent>
+            <TabsContent
+              value="einstellungen"
+              forceMount
+              hidden={activeWorkspaceTab !== 'einstellungen'}
+              className="space-y-5"
+            >
+              <InstanceDetailConfigurationSection
+                selectedInstance={selectedInstance}
+                form={detailForm}
+                saving={settingsSaving}
+                detailFormValues={detailFormValues}
+                statusLoading={statusLoading}
+                configurationAssessment={configurationAssessment}
+                tenantSecretUserInputRequired={tenantSecretUserInputRequired}
+                setDetailFormValues={(value) => {
+                  saveFeedback.markDirty();
+                  setDetailFormValues(value);
+                }}
+                onUpdateSubmit={onUpdateSubmit}
+                onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
+                saveStatus={saveFeedback.status}
+              />
+            </TabsContent>
+          </Tabs>
 
-              <TabsContent value="einstellungen" className="space-y-5">
-                <InstanceDetailConfigurationSection
-                  selectedInstance={selectedInstance}
-                  detailFormValues={detailFormValues}
-                  statusLoading={statusLoading}
-                  configurationAssessment={configurationAssessment}
-                  tenantSecretUserInputRequired={tenantSecretUserInputRequired}
-                  setDetailFormValues={(value) => {
-                    saveFeedback.markDirty();
-                    setDetailFormValues(value);
-                  }}
-                  onUpdateSubmit={onUpdateSubmit}
-                  onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
-                  saveStatus={saveFeedback.status}
-                />
-              </TabsContent>
-            </Tabs>
-          </InstanceSecondaryWorkspace>
+          <ConfirmDialog
+            open={activationConfirmation !== null}
+            title={t('admin.instances.actions.activate')}
+            description={t('admin.instances.detail.confirmActivation')}
+            confirmLabel={t('admin.instances.actions.activate')}
+            cancelLabel={t('account.actions.cancel')}
+            onCancel={() => setActivationConfirmation(null)}
+            onConfirm={() => {
+              const stillCurrent =
+                activationConfirmation === selectedInstance.updatedAt &&
+                selectedInstance.provisioningReadiness?.nextAction?.action ===
+                  'instance.status.activate';
+              setActivationConfirmation(null);
+              if (stillCurrent && !actionBusyRef.current) {
+                actionBusyRef.current = true;
+                setActionBusy(true);
+                void instancesApi.activateInstance(selectedInstance.instanceId).finally(() => {
+                  actionBusyRef.current = false;
+                  setActionBusy(false);
+                });
+              }
+            }}
+          />
         </div>
       ) : (
         <Card className="p-4">

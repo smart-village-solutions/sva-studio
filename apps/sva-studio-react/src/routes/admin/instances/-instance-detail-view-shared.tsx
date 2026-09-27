@@ -1,12 +1,11 @@
-import React from 'react';
+import type { UseFormReturn } from 'react-hook-form';
+import type { AccountInvitationTemplateSaveResult } from './-account-invitation-template-card';
+import type React from 'react';
+import { t } from '../../../i18n';
 import type { StudioSaveStatus } from '@sva/studio-ui-react';
 
-import { Label } from '../../../components/ui/label';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
-import { FieldHelp } from './-field-help';
-import { INSTANCE_FIELD_HELP } from './-instance-form-models';
 
-import type { IamTenantIamStatus } from '@sva/core';
 import type { IamHttpError } from '../../../lib/iam-api';
 import type {
   DetailFormValues,
@@ -14,7 +13,6 @@ import type {
   InstanceConfigurationAssessment,
   InstanceDetailCockpitModel,
   SelectedInstance,
-  SetupWorkflowStep,
 } from './-instances-shared-types';
 
 export const INSTANCE_STATUS_LABELS = {
@@ -27,28 +25,7 @@ export const INSTANCE_STATUS_LABELS = {
   archived: 'admin.instances.status.archived',
 } as const;
 
-export const COCKPIT_STATUS_STYLES = {
-  ready:
-    'border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200',
-  degraded:
-    'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200',
-  blocked:
-    'border-red-500/30 bg-red-500/10 text-red-900 dark:bg-red-950/40 dark:text-red-200',
-  unknown:
-    'border-slate-400/30 bg-slate-500/10 text-slate-900 dark:bg-slate-900/60 dark:text-slate-200',
-} as const;
-
-export const TENANT_IAM_AXIS_TITLE_KEYS = {
-  configuration: 'admin.instances.tenantIam.axes.configuration',
-  access: 'admin.instances.tenantIam.axes.access',
-  reconcile: 'admin.instances.tenantIam.axes.reconcile',
-} as const;
-
 export type WorkspaceTabKey = 'betrieb' | 'doctor' | 'einstellungen';
-export type ProvisioningIntent =
-  'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
-export type WorkflowAction = NonNullable<SetupWorkflowStep['action']>;
-
 export type WorkspaceSectionCommonProps = {
   readonly selectedInstance: SelectedInstance;
   readonly detailFormValues: DetailFormValues;
@@ -56,6 +33,8 @@ export type WorkspaceSectionCommonProps = {
 };
 
 export type ConfigurationSectionProps = WorkspaceSectionCommonProps & {
+  readonly form?: UseFormReturn<DetailFormValues>;
+  readonly saving?: boolean;
   readonly configurationAssessment: InstanceConfigurationAssessment | null;
   readonly tenantSecretUserInputRequired: boolean;
   readonly setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>>;
@@ -63,16 +42,7 @@ export type ConfigurationSectionProps = WorkspaceSectionCommonProps & {
   readonly saveStatus?: StudioSaveStatus;
   readonly onSaveAccountInvitationTemplate?: (
     template: Omit<NonNullable<SelectedInstance['accountInvitationTemplate']>, 'revision'> | null
-  ) => Promise<boolean>;
-};
-
-export type OperationsSectionProps = WorkspaceSectionCommonProps & {
-  readonly effectiveTenantIamStatus: IamTenantIamStatus | undefined;
-  readonly mutationError: IamHttpError | null;
-  readonly setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>>;
-  readonly onTriggerWorkflowAction: (action: WorkflowAction) => Promise<void>;
-  readonly onExecuteProvisioning: (intent: ProvisioningIntent) => Promise<void>;
-  readonly onSeedIamBaseline: () => Promise<void>;
+  ) => Promise<AccountInvitationTemplateSaveResult>;
 };
 
 export type HistorySectionProps = {
@@ -96,24 +66,6 @@ export const formatDateTime = (value?: string) => {
   return formatEditorDateTime(value) ?? value;
 };
 
-export const FormLabelWithHelp = ({
-  htmlFor,
-  label,
-  helpKey,
-}: {
-  htmlFor: string;
-  label: string;
-  helpKey: keyof typeof INSTANCE_FIELD_HELP;
-}) => {
-  const help = INSTANCE_FIELD_HELP[helpKey];
-  return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      <FieldHelp {...help} />
-    </div>
-  );
-};
-
 export const TenantIamStatusBadge = ({
   status,
 }: {
@@ -130,7 +82,7 @@ export const TenantIamStatusBadge = ({
 
   return (
     <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>
-      {status ?? 'unknown'}
+      {t(`admin.instances.cockpit.overall.${status ?? 'unknown'}`)}
     </span>
   );
 };

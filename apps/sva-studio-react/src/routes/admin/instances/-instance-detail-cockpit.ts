@@ -46,6 +46,11 @@ const selectPrimaryAction = (
   workflowActions: readonly DetailWorkflowAction[]
 ): DetailWorkflowAction => {
   const serverAction = instance.provisioningReadiness?.nextAction?.action;
+  if (
+    serverAction === 'instance.provisioning.retry' &&
+    instance.provisioningReadiness?.nextAction?.retryClass !== 'safe'
+  )
+    return 'open_diagnostics';
   if (serverAction) return SERVER_ACTIONS[serverAction];
 
   return (
@@ -219,7 +224,10 @@ export const buildInstanceDetailCockpitModel = (
     configurationAssessmentOverride ?? evaluateInstanceConfiguration(instance, mutationError);
   const workflowSteps = getSetupWorkflowSteps(instance, mutationError);
   const workflowActions = workflowSteps.flatMap((step) => (step.action ? [step.action] : []));
-  const primaryActionKey = selectPrimaryAction(instance, workflowActions);
+  const primaryActionKey =
+    mutationError?.code === 'keycloak_plan_fingerprint_stale'
+      ? 'plan_provisioning'
+      : selectPrimaryAction(instance, workflowActions);
   const cockpitState = buildCockpitState(
     instance,
     configurationAssessment,

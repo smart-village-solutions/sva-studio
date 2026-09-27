@@ -376,8 +376,9 @@ Abhängigkeiten des aktuellen Systems.
    - erzwingt für die Access-Probe und tenantlokale Reconcile-Pfade den Execution-Mode `tenant_admin` ohne Plattform-Fallback.
    - bewertet `/health/ready` fail-closed auch gegen den tenant-spezifischen Login-Vertrag aktiver Instanzen; fehlende Host-/Realm-/Client-Grunddaten oder unlesbare tenantgebundene Auth-Secrets blockieren Readiness.
 5. `apps/sva-studio-react`
-   - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
-   - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
+   - rendert auf `/admin/instances/$instanceId` einen kompakten Kopf mit getrenntem Lifecycle und Betriebszustand sowie direkt erreichbare Tabs `Betrieb`, `Doctor` und `Einstellungen`.
+   - zeigt für neue Instanzen eine kompakte Fünferfolge mit genau einer aktuellen Hauptaktion; aktive, suspendierte und archivierte Bestandsinstanzen bleiben im Betrieb. Doctor-Maßnahmen nutzen denselben Handler und führen für Aktivierung zum geschützten Einrichtungsabschnitt zurück.
+   - verbindet in `InstanceModulesWorkspace` Zuweisung, Aktivierung, Policy und vorhandene Plugin-Readiness pro Modul; Detailseite und `/admin/modules` nutzen dieselbe Oberfläche.
    - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
 
 ### Ergänzung 2026-09: Servicegebundene Doctor-Evidenz

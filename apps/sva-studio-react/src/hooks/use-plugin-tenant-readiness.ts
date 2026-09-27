@@ -22,6 +22,7 @@ export const usePluginTenantReadiness = (instanceId: string) => {
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const requestSequence = React.useRef(0);
+  const repairInFlight = React.useRef(false);
   const currentInstanceId = React.useRef(instanceId);
   const accessFingerprint = React.useRef<string | null>(null);
   const authenticatedInstanceId = React.useRef(user?.instanceId);
@@ -31,6 +32,10 @@ export const usePluginTenantReadiness = (instanceId: string) => {
   refreshAuthSession.current = refreshSession;
 
   const refresh = React.useCallback(async () => {
+    if (!instanceId) {
+      setIsLoading(false);
+      return;
+    }
     const sequence = ++requestSequence.current;
     setIsLoading(true);
     setError(null);
@@ -99,6 +104,8 @@ export const usePluginTenantReadiness = (instanceId: string) => {
 
   const startRepair = React.useCallback(
     async (pluginId: string, operation: PluginTenantLifecycleOperation) => {
+      if (repairInFlight.current || !instanceId) return;
+      repairInFlight.current = true;
       const action = `${pluginId}:${operation}`;
       setActiveAction(action);
       setError(null);
@@ -112,6 +119,7 @@ export const usePluginTenantReadiness = (instanceId: string) => {
           setError(asIamError(cause));
         }
       } finally {
+        repairInFlight.current = false;
         if (currentInstanceId.current === instanceId) {
           setActiveAction(null);
         }

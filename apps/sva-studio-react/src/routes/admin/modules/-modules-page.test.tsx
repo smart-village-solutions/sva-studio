@@ -13,6 +13,7 @@ import { ModulesPage } from './-modules-page';
 
 const useInstancesMock = vi.fn();
 const useAuthMock = vi.fn();
+const readinessState = vi.hoisted(() => ({ items: [] as unknown[], error: null as unknown }));
 
 vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
@@ -57,6 +58,17 @@ vi.mock('../../../components/ConfirmDialog', () => ({
     ) : null,
 }));
 
+vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
+  usePluginTenantReadiness: () => ({
+    items: readinessState.items,
+    isLoading: false,
+    activeAction: null,
+    error: readinessState.error,
+    refresh: vi.fn(),
+    startRepair: vi.fn(),
+  }),
+}));
+
 const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   instances: [
     {
@@ -98,6 +110,10 @@ const createDeferred = <T,>() => {
 };
 
 describe('ModulesPage', () => {
+  beforeEach(() => {
+    readinessState.items = [];
+    readinessState.error = null;
+  });
   it('projects only validated plugin contracts plus host modules', () => {
     expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
       ...studioPluginSnapshot.registry.pluginModuleIamContracts.map(
@@ -227,15 +243,22 @@ describe('ModulesPage', () => {
     expect(studioModuleIamContracts.every((module) => module.descriptionKey.length > 0)).toBe(true);
 
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
-    expect(screen.getByText('Module schalten Bereiche frei')).toBeTruthy();
-    expect(screen.getByText('Rollen vergeben Berechtigungen')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('categories')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
-    expect(screen.getByText('media')).toBeTruthy();
+    expect(screen.getAllByText('media').length).toBeGreaterThan(0);
     expect(screen.getByText('waste-management')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Tenant-Admin-Struktur initialisieren',
+          }) as HTMLButtonElement
+        ).disabled
+      ).toBe(false)
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' }));
     expect(
       screen.getByRole('dialog', { name: 'Tenant-Admin-Struktur wirklich initialisieren?' })
@@ -244,11 +267,21 @@ describe('ModulesPage', () => {
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Tenant-Admin-Struktur initialisieren' })[1]!
     );
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('button', { name: 'Modul entziehen' }) as HTMLButtonElement).disabled
+      ).toBe(false)
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
     expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
     expect(revokeModule).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
-    const eventsModuleCard = screen.getByText('events').closest('div.rounded-lg');
+    await waitFor(() =>
+      expect(
+        (screen.getAllByRole('button', { name: 'Modul zuweisen' })[0] as HTMLButtonElement).disabled
+      ).toBe(false)
+    );
+    const eventsModuleCard = screen.getByRole('region', { name: 'events' });
     expect(eventsModuleCard).toBeTruthy();
     fireEvent.click(
       within(eventsModuleCard as HTMLElement).getByRole('button', { name: 'Modul zuweisen' })
@@ -293,6 +326,11 @@ describe('ModulesPage', () => {
 
     render(<ModulesPage />);
 
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('button', { name: 'Modul entziehen' }) as HTMLButtonElement).disabled
+      ).toBe(false)
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
 
@@ -343,6 +381,87 @@ describe('ModulesPage', () => {
     expect(screen.queryByRole('button', { name: 'Modul zuweisen' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
     expect(useInstancesMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps an assigned pending lifecycle separate from assignment and blocks duplicate actions', async () => {
+    const lifecycle = studioPluginSnapshot.registry.tenantLifecycles[0];
+    expect(lifecycle).toBeDefined();
+    const contract = studioPluginSnapshot.registry.pluginModuleIamContracts.find(
+      (entry) => entry.ownerPluginId === lifecycle.pluginId
+    )!;
+    expect(contract).toBeDefined();
+    readinessState.items = [
+      {
+        pluginId: lifecycle.pluginId,
+        status: 'pending',
+        activationPolicy: 'optional',
+        desiredGeneration: 1,
+        completedGeneration: 0,
+        checks: [],
+      },
+    ];
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: { instanceId: 'demo', assignedModules: [contract.moduleId] },
+      })
+    );
+    render(<ModulesPage />);
+    expect(
+      within(screen.getAllByRole('region', { name: contract.moduleId })[0]!).getByText(
+        /Bereitschaft:/
+      ).textContent
+    ).not.toContain('Nicht verifiziert');
+    expect(screen.getAllByText(/Keine technische Prüfung vorgesehen/).length).toBeGreaterThan(0);
+  });
+
+  it('keeps required modules without readiness unverified and non-revocable', () => {
+    const lifecycle = studioPluginSnapshot.registry.tenantLifecycles[0];
+    const contract = studioPluginSnapshot.registry.pluginModuleIamContracts.find(
+      (entry) => entry.ownerPluginId === lifecycle.pluginId
+    )!;
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: {
+          instanceId: 'demo',
+          assignedModules: [contract.moduleId],
+          moduleActivations: [
+            {
+              moduleId: contract.moduleId,
+              activationPolicy: 'required',
+              activationOrigin: 'policy_reconcile',
+              effectiveActive: true,
+            },
+          ],
+        },
+      })
+    );
+    render(<ModulesPage />);
+    const row = within(screen.getAllByRole('region', { name: contract.moduleId })[0]!);
+    expect(row.getByText('Bereitschaft: Nicht verifiziert')).toBeTruthy();
+    expect(
+      (row.getByRole('button', { name: 'Modul entziehen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
+  });
+
+  it('accepts an empty assignment set and sends only one assignment while pending', async () => {
+    const pending = createDeferred<boolean>();
+    const assignModule = vi.fn(() => pending.promise);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        assignModule,
+        selectedInstance: { instanceId: 'demo', assignedModules: [] },
+      })
+    );
+    render(<ModulesPage />);
+    expect(screen.queryByRole('button', { name: 'Modul entziehen' })).toBeNull();
+    const assign = within(screen.getByRole('region', { name: 'news' })).getByRole('button', {
+      name: 'Modul zuweisen',
+    });
+    fireEvent.click(assign);
+    fireEvent.click(assign);
+    expect(assignModule).toHaveBeenCalledTimes(1);
+    pending.resolve(true);
+    await waitFor(() => expect((assign as HTMLButtonElement).disabled).toBe(false));
   });
 
   it('keeps historical assignments visible without offering them as available modules', () => {

@@ -1,399 +1,198 @@
-import { StudioSaveButton } from '@sva/studio-ui-react';
+import type { FieldPath } from 'react-hook-form';
+import {
+  StudioField,
+  StudioFormSummaryErrors,
+  StudioSaveButton,
+  getStudioFormFieldProps,
+} from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { t } from '../../../i18n';
-import { FieldHelp } from './-field-help';
-import { INSTANCE_FIELD_HELP } from './-instance-form-models';
-import { ConfigurationAssessmentCard } from './-instance-configuration-assessment-card';
-import { FormLabelWithHelp } from './-instance-detail-view-shared';
 import type { ConfigurationSectionProps } from './-instance-detail-view-shared';
 import type { DetailFormValues } from './-instances-shared-types';
 import { AccountInvitationTemplateCard } from './-account-invitation-template-card';
 
-const updateFormField =
-  <T extends keyof DetailFormValues>(
-    setDetailFormValues: ConfigurationSectionProps['setDetailFormValues'],
-    key: T
-  ) =>
-  (value: DetailFormValues[T]) =>
-    setDetailFormValues((current) => (current ? { ...current, [key]: value } : current));
-
-const updateNestedField =
-  <T extends 'tenantAdminClient' | 'tenantAdminBootstrap', K extends keyof DetailFormValues[T]>(
-    setDetailFormValues: ConfigurationSectionProps['setDetailFormValues'],
-    section: T,
-    key: K
-  ) =>
-  (value: DetailFormValues[T][K]) =>
-    setDetailFormValues((current) =>
-      current ? { ...current, [section]: { ...current[section], [key]: value } } : current
-    );
-
-const RealmModeSelector = ({
-  realmMode,
-  onChange,
-}: {
-  realmMode: DetailFormValues['realmMode'];
-  onChange: (value: DetailFormValues['realmMode']) => void;
-}) => (
-  <>
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <h2 className="text-sm font-medium text-foreground">
-          {t('admin.instances.flow.realmModeTitle')}
-        </h2>
-        <FieldHelp {...INSTANCE_FIELD_HELP.realmMode} />
-      </div>
-      <p className="text-xs text-muted-foreground">{t('admin.instances.flow.realmModeSubtitle')}</p>
-    </div>
-    <div className="grid gap-2 md:grid-cols-2">
-      <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-        <input
-          type="radio"
-          name="detail-realm-mode"
-          checked={realmMode === 'new'}
-          onChange={() => onChange('new')}
-        />
-        <span>{t('admin.instances.flow.realmModeNew')}</span>
-      </label>
-      <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-        <input
-          type="radio"
-          name="detail-realm-mode"
-          checked={realmMode === 'existing'}
-          onChange={() => onChange('existing')}
-        />
-        <span>{t('admin.instances.flow.realmModeExisting')}</span>
-      </label>
-    </div>
-  </>
-);
-
-const AuthSettingsFields = ({
-  detailFormValues,
-  setDetailFormValues,
-}: Pick<ConfigurationSectionProps, 'detailFormValues' | 'setDetailFormValues'>) => {
-  const updateDisplayName = updateFormField(setDetailFormValues, 'displayName');
-  const updateParentDomain = updateFormField(setDetailFormValues, 'parentDomain');
-  const updateAuthRealm = updateFormField(setDetailFormValues, 'authRealm');
-  const updateAuthClientId = updateFormField(setDetailFormValues, 'authClientId');
-  const updateAuthIssuerUrl = updateFormField(setDetailFormValues, 'authIssuerUrl');
-
-  return (
-    <>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-display-name"
-            label={t('admin.instances.form.displayName')}
-            helpKey="displayName"
-          />
-          <Input
-            id="detail-display-name"
-            value={detailFormValues.displayName}
-            onChange={(event) => updateDisplayName(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-parent-domain"
-            label={t('admin.instances.form.parentDomain')}
-            helpKey="parentDomain"
-          />
-          <Input
-            id="detail-parent-domain"
-            value={detailFormValues.parentDomain}
-            onChange={(event) => updateParentDomain(event.target.value)}
-          />
-        </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-auth-realm"
-            label={t('admin.instances.form.authRealm')}
-            helpKey="authRealm"
-          />
-          <Input
-            id="detail-auth-realm"
-            value={detailFormValues.authRealm}
-            onChange={(event) => updateAuthRealm(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-auth-client-id"
-            label={t('admin.instances.form.authClientId')}
-            helpKey="authClientId"
-          />
-          <Input
-            id="detail-auth-client-id"
-            value={detailFormValues.authClientId}
-            onChange={(event) => updateAuthClientId(event.target.value)}
-          />
-        </div>
-      </div>
-      <div className="space-y-1">
-        <FormLabelWithHelp
-          htmlFor="detail-auth-issuer-url"
-          label={t('admin.instances.form.authIssuerUrl')}
-          helpKey="authIssuerUrl"
-        />
-        <Input
-          id="detail-auth-issuer-url"
-          value={detailFormValues.authIssuerUrl}
-          onChange={(event) => updateAuthIssuerUrl(event.target.value)}
-        />
-      </div>
-    </>
-  );
-};
-
-const TenantSecretField = ({
-  detailFormValues,
-  selectedInstance,
-  tenantSecretUserInputRequired,
-  setDetailFormValues,
-}: Pick<
-  ConfigurationSectionProps,
-  'detailFormValues' | 'selectedInstance' | 'tenantSecretUserInputRequired' | 'setDetailFormValues'
->) => {
-  const updateAuthClientSecret = updateFormField(setDetailFormValues, 'authClientSecret');
-
-  return (
-    <div className="space-y-1">
-      <FormLabelWithHelp
-        htmlFor="detail-auth-client-secret"
-        label={t('admin.instances.form.authClientSecret')}
-        helpKey="authClientSecret"
-      />
-      <Input
-        id="detail-auth-client-secret"
-        type="password"
-        disabled={!tenantSecretUserInputRequired}
-        placeholder={
-          !tenantSecretUserInputRequired
-            ? t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
-            : selectedInstance.authClientSecretConfigured
-              ? t('admin.instances.form.authClientSecretConfigured')
-              : t('admin.instances.form.authClientSecretMissing')
-        }
-        value={detailFormValues.authClientSecret}
-        onChange={(event) => updateAuthClientSecret(event.target.value)}
-      />
-      <p className="text-xs text-muted-foreground">
-        {tenantSecretUserInputRequired
-          ? t('admin.instances.form.authClientSecretHint')
-          : t('admin.instances.form.authClientSecretGeneratedHint')}
-      </p>
-    </div>
-  );
-};
-
-const TenantAdminClientFields = ({
-  detailFormValues,
-  selectedInstance,
-  tenantSecretUserInputRequired,
-  setDetailFormValues,
-}: Pick<
-  ConfigurationSectionProps,
-  'detailFormValues' | 'selectedInstance' | 'tenantSecretUserInputRequired' | 'setDetailFormValues'
->) => {
-  const updateClientId = updateNestedField(setDetailFormValues, 'tenantAdminClient', 'clientId');
-  const updateSecret = updateNestedField(setDetailFormValues, 'tenantAdminClient', 'secret');
-
-  return (
-    <>
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium text-foreground">
-          {t('admin.instances.form.tenantAdminClientTitle')}
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          {t('admin.instances.form.tenantAdminClientSubtitle')}
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-tenant-admin-client-id"
-            label={t('admin.instances.form.tenantAdminClientId')}
-            helpKey="tenantAdminClientId"
-          />
-          <Input
-            id="detail-tenant-admin-client-id"
-            value={detailFormValues.tenantAdminClient.clientId}
-            onChange={(event) => updateClientId(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-tenant-admin-client-secret"
-            label={t('admin.instances.form.tenantAdminClientSecret')}
-            helpKey="tenantAdminClientSecret"
-          />
-          <Input
-            id="detail-tenant-admin-client-secret"
-            type="password"
-            disabled={!tenantSecretUserInputRequired}
-            placeholder={
-              !tenantSecretUserInputRequired
-                ? t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
-                : selectedInstance.tenantAdminClient?.secretConfigured
-                  ? t('admin.instances.form.tenantAdminClientSecretConfigured')
-                  : t('admin.instances.form.tenantAdminClientSecretMissing')
-            }
-            value={detailFormValues.tenantAdminClient.secret}
-            onChange={(event) => updateSecret(event.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            {tenantSecretUserInputRequired
-              ? t('admin.instances.form.tenantAdminClientSecretHint')
-              : t('admin.instances.form.authClientSecretGeneratedHint')}
-          </p>
-        </div>
-      </div>
-    </>
-  );
-};
-
-const TenantAdminFields = ({
-  detailFormValues,
-  setDetailFormValues,
-}: Pick<ConfigurationSectionProps, 'detailFormValues' | 'setDetailFormValues'>) => {
-  const updateUsername = updateNestedField(setDetailFormValues, 'tenantAdminBootstrap', 'username');
-  const updateEmail = updateNestedField(setDetailFormValues, 'tenantAdminBootstrap', 'email');
-  const updateFirstName = updateNestedField(
-    setDetailFormValues,
-    'tenantAdminBootstrap',
-    'firstName'
-  );
-  const updateLastName = updateNestedField(setDetailFormValues, 'tenantAdminBootstrap', 'lastName');
-
-  return (
-    <>
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium text-foreground">
-          {t('admin.instances.form.tenantAdminTitle')}
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          {t('admin.instances.form.tenantAdminSubtitle')}
-        </p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-admin-username"
-            label={t('admin.instances.form.tenantAdminUsername')}
-            helpKey="tenantAdminUsername"
-          />
-          <Input
-            id="detail-admin-username"
-            value={detailFormValues.tenantAdminBootstrap.username}
-            onChange={(event) => updateUsername(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-admin-email"
-            label={t('admin.instances.form.tenantAdminEmail')}
-            helpKey="tenantAdminEmail"
-          />
-          <Input
-            id="detail-admin-email"
-            value={detailFormValues.tenantAdminBootstrap.email}
-            onChange={(event) => updateEmail(event.target.value)}
-          />
-        </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-admin-first-name"
-            label={t('admin.instances.form.tenantAdminFirstName')}
-            helpKey="tenantAdminFirstName"
-          />
-          <Input
-            id="detail-admin-first-name"
-            value={detailFormValues.tenantAdminBootstrap.firstName}
-            onChange={(event) => updateFirstName(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <FormLabelWithHelp
-            htmlFor="detail-admin-last-name"
-            label={t('admin.instances.form.tenantAdminLastName')}
-            helpKey="tenantAdminLastName"
-          />
-          <Input
-            id="detail-admin-last-name"
-            value={detailFormValues.tenantAdminBootstrap.lastName}
-            onChange={(event) => updateLastName(event.target.value)}
-          />
-        </div>
-      </div>
-    </>
-  );
-};
+const fields = [
+  ['displayName', 'detail-display-name', 'displayName'],
+  ['parentDomain', 'detail-parent-domain', 'parentDomain'],
+  ['tenantAdminBootstrap.username', 'detail-admin-username', 'tenantAdminUsername'],
+  ['tenantAdminBootstrap.email', 'detail-admin-email', 'tenantAdminEmail'],
+  ['tenantAdminBootstrap.firstName', 'detail-admin-first-name', 'tenantAdminFirstName'],
+  ['tenantAdminBootstrap.lastName', 'detail-admin-last-name', 'tenantAdminLastName'],
+  ['authRealm', 'detail-auth-realm', 'authRealm'],
+  ['authClientId', 'detail-auth-client-id', 'authClientId'],
+  ['authIssuerUrl', 'detail-auth-issuer-url', 'authIssuerUrl'],
+  ['tenantAdminClient.clientId', 'detail-tenant-admin-client-id', 'tenantAdminClientId'],
+  ['authClientSecret', 'detail-auth-client-secret', 'authClientSecret'],
+  ['tenantAdminClient.secret', 'detail-tenant-admin-client-secret', 'tenantAdminClientSecret'],
+] as const satisfies readonly (readonly [FieldPath<DetailFormValues>, string, string])[];
 
 export const InstanceDetailConfigurationSection = ({
   selectedInstance,
   detailFormValues,
-  configurationAssessment,
   tenantSecretUserInputRequired,
   setDetailFormValues,
   onUpdateSubmit,
   saveStatus = 'idle',
   onSaveAccountInvitationTemplate,
+  form,
+  saving,
 }: ConfigurationSectionProps) => {
-  const updateRealmMode = updateFormField(setDetailFormValues, 'realmMode');
-
+  const errorFields = fields.flatMap(([name, id]) => {
+    const message = form?.getFieldState(name, form.formState).error?.message;
+    return message ? [{ field: id, message }] : [];
+  });
+  const renderFields = (start: number, end: number) =>
+    fields.slice(start, end).map(([name, id, label]) => {
+      const [key, nestedKey] = name.split('.') as [keyof DetailFormValues, string | undefined];
+      const section = detailFormValues[key];
+      const value =
+        typeof section === 'object' && nestedKey
+          ? (Reflect.get(section, nestedKey) as string)
+          : (section as string);
+      const isSecret = name === 'authClientSecret' || name === 'tenantAdminClient.secret';
+      const configured =
+        name === 'authClientSecret'
+          ? selectedInstance.authClientSecretConfigured
+          : selectedInstance.tenantAdminClient?.secretConfigured;
+      const binding = getStudioFormFieldProps({
+        id,
+        error: form?.getFieldState(name, form.formState).error,
+      });
+      return (
+        <StudioField key={name} {...binding} label={t(`admin.instances.form.${label}`)}>
+          <Input
+            value={value}
+            type={isSecret ? 'password' : name === 'tenantAdminBootstrap.email' ? 'email' : 'text'}
+            disabled={saving || (isSecret && !tenantSecretUserInputRequired)}
+            placeholder={
+              isSecret
+                ? t(
+                    !tenantSecretUserInputRequired
+                      ? 'admin.instances.form.authClientSecretGeneratedDuringProvisioning'
+                      : configured
+                        ? 'admin.instances.form.authClientSecretConfigured'
+                        : 'admin.instances.form.authClientSecretMissing'
+                  )
+                : undefined
+            }
+            onChange={(event) =>
+              setDetailFormValues((current) =>
+                current
+                  ? {
+                      ...current,
+                      [key]:
+                        nestedKey && typeof current[key] === 'object'
+                          ? { ...current[key], [nestedKey]: event.target.value }
+                          : event.target.value,
+                    }
+                  : current
+              )
+            }
+          />
+        </StudioField>
+      );
+    });
+  const openError = (field: string) => {
+    const input = document.getElementById(field);
+    const disclosure = input?.closest('details');
+    if (disclosure) disclosure.open = true;
+  };
   return (
-    <>
-      <ConfigurationAssessmentCard
-        configurationAssessment={configurationAssessment}
-        selectedInstance={selectedInstance}
-      />
+    <div className="space-y-4">
+      <Card className="p-4">
+        <form className="space-y-5" noValidate onSubmit={(event) => void onUpdateSubmit(event)}>
+          <div id="instance-settings-errors" tabIndex={-1}>
+            <StudioFormSummaryErrors
+              errors={errorFields}
+              title={t('account.messages.validationSummary')}
+              onSelectError={({ field }) => openError(field)}
+            />
+          </div>
+          <section className="space-y-3">
+            <h2 className="font-medium">{t('admin.instances.form.general')}</h2>
+            <div className="grid gap-3 md:grid-cols-2">{renderFields(0, 2)}</div>
+          </section>
+          <section className="space-y-3">
+            <h2 className="font-medium">{t('admin.instances.wizard.steps.tenantAdmin.title')}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t('admin.instances.form.tenantAdminSubtitle')}
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">{renderFields(2, 6)}</div>
+          </section>
 
-      <AccountInvitationTemplateCard
-        instance={selectedInstance}
-        onSave={onSaveAccountInvitationTemplate ?? (async () => false)}
-      />
-
-      <Card className="space-y-5 p-4">
-        <form className="space-y-4" onSubmit={(event) => void onUpdateSubmit(event)}>
-          <RealmModeSelector realmMode={detailFormValues.realmMode} onChange={updateRealmMode} />
-          <AuthSettingsFields
-            detailFormValues={detailFormValues}
-            setDetailFormValues={setDetailFormValues}
+          <AccountInvitationTemplateCard
+            instance={selectedInstance}
+            disabled={saving}
+            onSave={onSaveAccountInvitationTemplate ?? (async () => false)}
           />
-          <TenantSecretField
-            detailFormValues={detailFormValues}
-            selectedInstance={selectedInstance}
-            tenantSecretUserInputRequired={tenantSecretUserInputRequired}
-            setDetailFormValues={setDetailFormValues}
-          />
-          <TenantAdminClientFields
-            detailFormValues={detailFormValues}
-            selectedInstance={selectedInstance}
-            tenantSecretUserInputRequired={tenantSecretUserInputRequired}
-            setDetailFormValues={setDetailFormValues}
-          />
-          <TenantAdminFields
-            detailFormValues={detailFormValues}
-            setDetailFormValues={setDetailFormValues}
-          />
+          <details className="space-y-3 rounded-md border border-border p-3">
+            <summary className="cursor-pointer font-medium">
+              {t('admin.instances.form.realmAndClients')} · {selectedInstance.authRealm}
+            </summary>
+            <fieldset className="flex flex-wrap gap-3" disabled={saving}>
+              <legend className="text-sm">{t('admin.instances.flow.realmModeTitle')}</legend>
+              {(['new', 'existing'] as const).map((mode) => (
+                <label key={mode} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="detail-realm-mode"
+                    checked={detailFormValues.realmMode === mode}
+                    onChange={() =>
+                      setDetailFormValues((current) =>
+                        current ? { ...current, realmMode: mode } : current
+                      )
+                    }
+                  />
+                  {t(
+                    mode === 'new'
+                      ? 'admin.instances.flow.realmModeNew'
+                      : 'admin.instances.flow.realmModeExisting'
+                  )}
+                </label>
+              ))}
+            </fieldset>
+            <div className="grid gap-3 md:grid-cols-2">{renderFields(6, 10)}</div>
+          </details>
+          <div className="space-y-2">
+            {tenantSecretUserInputRequired &&
+            (!selectedInstance.authClientSecretConfigured ||
+              !selectedInstance.tenantAdminClient?.secretConfigured) ? (
+              <p role="status" className="text-sm">
+                {t('admin.instances.form.authClientSecretMissing')}
+              </p>
+            ) : null}
+            <details className="space-y-3 rounded-md border border-border p-3">
+              <summary className="cursor-pointer font-medium">
+                {t('admin.instances.form.credentials')}
+              </summary>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  tenantSecretUserInputRequired
+                    ? 'admin.instances.form.authClientSecretHint'
+                    : 'admin.instances.form.authClientSecretGeneratedHint'
+                )}
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">{renderFields(10, 12)}</div>
+            </details>
+          </div>
           <StudioSaveButton
             type="submit"
-            variant="secondary"
             status={saveStatus}
+            disabled={saving}
             labels={{
               idle: t('admin.instances.actions.save'),
               saving: t('account.actions.saving'),
               saved: t('account.actions.saved'),
             }}
           />
+          {form?.formState.isDirty ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t('admin.instances.form.unsaved')}
+            </p>
+          ) : null}
         </form>
       </Card>
-    </>
+    </div>
   );
 };

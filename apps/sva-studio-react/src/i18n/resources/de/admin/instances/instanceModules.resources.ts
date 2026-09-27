@@ -1,4 +1,8 @@
 export const instanceModulesInstancesAdminDEResources = {
+  noLifecycle: 'Keine technische Prüfung vorgesehen',
+  notVerified: 'Nicht verifiziert',
+  readinessLabel: 'Bereitschaft',
+
   title: 'Instanzmodule',
   subtitle: 'Module pro Instanz zuweisen, entziehen und die zugehörige IAM-Basis neu aufbauen.',
   empty: 'Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.',

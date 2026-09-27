@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 
 import {
   configureRootAccountAdminTest,
@@ -9,6 +10,14 @@ import {
 } from './account-admin-ui.helpers';
 
 configureRootAccountAdminTest(test);
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/iam/instances/*/plugin-readiness', (route) =>
+    route.fulfill({ json: { data: [] } })
+  );
+  await page.route('**/api/v1/iam/instances/*/audit', (route) =>
+    route.fulfill({ json: { data: null } })
+  );
+});
 
 test('new-realm create uses the four-step flow and opens the shared cockpit', async ({ page }) => {
   let createRequestBody: Record<string, unknown> | null = null;
@@ -26,6 +35,9 @@ test('new-realm create uses the four-step flow and opens the shared cockpit', as
   };
   const instanceDetail = {
     ...createdInstance,
+    effectiveAccountInvitationTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 0 },
+    accountInvitationTemplateSource: 'sva_default',
+    serverAccountInvitationTemplateRevision: 0,
     assignedModules: [],
     provisioningRuns: [],
     keycloakProvisioningRuns: [],
@@ -155,6 +167,27 @@ test('new-realm create uses the four-step flow and opens the shared cockpit', as
   await expect(
     page.getByRole('region', { name: 'Vor der Aktivierung noch erforderlich' })
   ).toBeVisible();
+  await expect(page.getByText('admin@example.org', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Ändern: Erster Administrator' }).click();
+  await page.locator('#instance-admin-first-name').fill('Reviewed');
+  await page.getByRole('button', { name: 'Zurück zur Prüfung' }).click();
+  await expect(page.getByText('Reviewed', { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 900 });
+  await expect(page.getByRole('button', { name: 'Instanz anlegen' })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = '2';
+  });
+  await expect(page.getByRole('button', { name: 'Instanz anlegen' })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.zoom = '';
+  });
   await page.getByRole('button', { name: 'Instanz anlegen' }).click();
   await expect
     .poll(() => createRequestBody)
@@ -166,10 +199,16 @@ test('new-realm create uses the four-step flow and opens the shared cockpit', as
         realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio-login',
+        tenantAdminBootstrap: {
+          username: 'setup-admin',
+          email: 'admin@example.org',
+          firstName: 'Reviewed',
+          lastName: 'Admin',
+        },
       })
     );
   await expect(page).toHaveURL(/\/admin\/instances\/demo$/u);
-  await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Demo', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Provisioning ausführen' })).toBeVisible();
 });
 
@@ -266,12 +305,39 @@ test('existing-realm create rejects reserved choices and submits the selected el
     });
   });
 
+  await page.route('**/api/v1/iam/instances/existing-demo', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          ...createRequestBody,
+          instanceId: 'existing-demo',
+          displayName: 'Existing Demo',
+          status: 'requested',
+          primaryHostname: 'existing-demo.studio.example.org',
+          hostnames: [],
+          assignedModules: [],
+          provisioningRuns: [],
+          keycloakProvisioningRuns: [],
+          auditEvents: [],
+          effectiveAccountInvitationTemplate: {
+            ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
+            revision: 0,
+          },
+          accountInvitationTemplateSource: 'sva_default',
+          serverAccountInvitationTemplateRevision: 0,
+        },
+      },
+    })
+  );
+  await page.route('**/api/v1/iam/instances/existing-demo/keycloak/status', (route) =>
+    route.fulfill({ json: { data: {} } })
+  );
   await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
   await navigateClientSide(page, '/admin/instances/new');
-  await page.getByRole('radio', { name: /Bestehender Realm:/u }).check();
   await page.locator('#instance-id').fill('existing-demo');
   await page.locator('#instance-display-name').fill('Existing Demo');
   await page.getByRole('button', { name: 'Weiter' }).click();
+  await page.getByRole('radio', { name: /Bestehender Realm:/u }).check();
   await page.locator('#instance-auth-realm').click();
   await expect(page.getByRole('option', { name: /master/u })).toHaveAttribute(
     'aria-disabled',
@@ -300,6 +366,7 @@ test('existing-realm create rejects reserved choices and submits the selected el
       })
     );
   await expect(page).toHaveURL(/\/admin\/instances\/existing-demo$/u);
+  await expect(page.getByRole('heading', { name: 'Existing Demo', exact: true })).toBeVisible();
 });
 
 test('authoritative create blockers keep the final action disabled', async ({ page }) => {

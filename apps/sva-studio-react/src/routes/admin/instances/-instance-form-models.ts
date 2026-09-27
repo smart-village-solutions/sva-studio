@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type { IamInstanceDetail } from '@sva/core';
 
 import { t } from '../../../i18n';
@@ -303,6 +305,50 @@ export const getCreateStepValidationIssues = (
   return [];
 };
 
+// The existing step validation is also the resolver contract; field drafts have one owner.
+export const createInstanceFormSchema = () =>
+  z
+    .object({
+      instanceId: z.string(),
+      displayName: z.string(),
+      parentDomain: z.string(),
+      realmMode: z.enum(['new', 'existing']),
+      authRealm: z.string(),
+      authClientId: z.string(),
+      authIssuerUrl: z.string(),
+      authClientSecret: z.string(),
+      tenantAdminClient: z.object({ clientId: z.string(), secret: z.string() }),
+      tenantAdminBootstrap: z.object({
+        username: z.string(),
+        email: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
+      }),
+    })
+    .superRefine((values, ctx) => {
+      for (const issue of getCreateStepValidationIssues('review', values)) {
+        const fieldPaths: Readonly<Record<string, string>> = {
+          'instance-id': 'instanceId',
+          'instance-display-name': 'displayName',
+          'instance-parent-domain': 'parentDomain',
+          'instance-auth-realm': 'authRealm',
+          'instance-auth-client-id': 'authClientId',
+          'instance-auth-client-secret': 'authClientSecret',
+          'instance-tenant-admin-client-id': 'tenantAdminClient.clientId',
+          'instance-tenant-admin-client-secret': 'tenantAdminClient.secret',
+          'instance-admin-username': 'tenantAdminBootstrap.username',
+          'instance-admin-email': 'tenantAdminBootstrap.email',
+          'instance-admin-first-name': 'tenantAdminBootstrap.firstName',
+          'instance-admin-last-name': 'tenantAdminBootstrap.lastName',
+        };
+        ctx.addIssue({
+          code: 'custom',
+          path: (fieldPaths[issue.fieldId] ?? issue.fieldId).split('.'),
+          message: issue.message,
+        });
+      }
+    });
+
 export const getCreateReadinessChecks = (formValues: CreateFormValues) => [
   {
     key: 'secret',
@@ -369,3 +415,71 @@ export const getPostCreateGuidance = (instance: {
     ],
   };
 };
+
+export const createInstanceSettingsSchema = () =>
+  z.object({
+    displayName: z.string().trim().min(1, t('admin.instances.wizard.validation.displayName')),
+    parentDomain: z.string().trim().min(1, t('admin.instances.wizard.validation.parentDomain')),
+    realmMode: z.enum(['new', 'existing']),
+    authRealm: z
+      .string()
+      .trim()
+      .min(1, t('admin.instances.wizard.validation.authRealm'))
+      .regex(AUTH_REALM_REGEX, t('admin.instances.wizard.validation.authRealmFormat')),
+    authClientId: z.string().trim().min(1, t('admin.instances.wizard.validation.authClientId')),
+    authIssuerUrl: z.string().refine((value) => {
+      if (!value.trim()) return true;
+      try {
+        new URL(value.trim());
+        return true;
+      } catch {
+        return false;
+      }
+    }, t('admin.instances.form.invalidIssuer')),
+    authClientSecret: z.string(),
+    tenantAdminClient: z.object({ clientId: z.string(), secret: z.string() }),
+    tenantAdminBootstrap: z
+      .object({
+        username: z.string(),
+        email: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
+      })
+      .superRefine((values, ctx) => {
+        if (
+          values.username.trim() &&
+          values.email.trim() &&
+          !/^\S+@\S+\.\S+$/u.test(values.email.trim())
+        )
+          ctx.addIssue({
+            code: 'custom',
+            path: ['email'],
+            message: t('admin.instances.wizard.validation.tenantAdminEmailFormat'),
+          });
+      }),
+    tenantAdminTemporaryPassword: z.string(),
+  });
+
+export const buildInstanceSettingsPayload = (values: DetailFormValues) => ({
+  displayName: values.displayName.trim(),
+  parentDomain: values.parentDomain.trim(),
+  realmMode: values.realmMode,
+  authRealm: values.authRealm.trim(),
+  authClientId: values.authClientId.trim(),
+  authIssuerUrl: values.authIssuerUrl.trim() || undefined,
+  authClientSecret: values.authClientSecret.trim() || undefined,
+  tenantAdminClient: values.tenantAdminClient.clientId.trim()
+    ? {
+        clientId: values.tenantAdminClient.clientId.trim(),
+        secret: values.tenantAdminClient.secret.trim() || undefined,
+      }
+    : undefined,
+  tenantAdminBootstrap: values.tenantAdminBootstrap.username.trim()
+    ? {
+        username: values.tenantAdminBootstrap.username.trim(),
+        email: values.tenantAdminBootstrap.email.trim() || undefined,
+        firstName: values.tenantAdminBootstrap.firstName.trim() || undefined,
+        lastName: values.tenantAdminBootstrap.lastName.trim() || undefined,
+      }
+    : undefined,
+});

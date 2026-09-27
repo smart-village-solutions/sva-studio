@@ -1,4 +1,6 @@
 export const wizardInstancesAdminDEResources = {
+  editGroup: 'Ändern: {{group}}',
+  returnToReview: 'Zurück zur Prüfung',
   steps: {
     basics: {
       title: 'Instanz',
@@ -37,6 +39,17 @@ export const wizardInstancesAdminDEResources = {
       'Bitte eine Supabase-Projekt-URL angeben, sobald Abfallmanagement für die Instanz aktiviert wird.',
   },
   readiness: {
+    impacts: {
+      create:
+        'Diese Befunde verhindern die Anlage. Korrigieren Sie die Eingaben oder lassen Sie den technischen Zugriff prüfen.',
+      provisioning:
+        'Die Anlage ist möglich. Offene technische Voraussetzungen müssen vor der erfolgreichen Einrichtung behoben werden.',
+      activation:
+        'Die Anlage ist möglich. Die Instanz bleibt bis zur bestätigten Betriebsbereitschaft inaktiv.',
+    },
+    resolveTechnical:
+      'Technischen Zugriff oder Worker-Konfiguration durch die zuständige Administration prüfen lassen; anschließend erneut prüfen.',
+
     serverChecking: 'Die serverseitige Bereitschaft wird geprüft.',
     serverUnavailable:
       'Die serverseitige Bereitschaft konnte nicht bestätigt werden. Die Instanz kann noch nicht angelegt werden.',

@@ -188,13 +188,21 @@
       IAM-/Administrator-Fehler und die dadurch blockierte Aktivierung;
       Erfüllungszähler eindeutig auf ihren Teilbereich begrenzen und Betrieb,
       Doctor sowie Einstellungen während der Ersteinrichtung nachordnen.
-- [ ] 7.16 Im blockierten Mischzustand Ergebnis, Auswirkung und genau eine
+- [x] 7.16 Im blockierten Mischzustand Ergebnis, Auswirkung und genau eine
       serverseitig erlaubte, teilerhaltende Folgeaktion priorisieren;
       gleichartige Befunde zusammenfassen und technische Einzelheiten
       progressiv offenlegen.
-- [ ] 7.17 Komponenten-, Accessibility- und Browsertests für widerspruchsfreie
+- [x] 7.17 Komponenten-, Accessibility- und Browsertests für widerspruchsfreie
       Zustandspriorität, den Keycloak-erfolgreich/lokales-IAM-fehlgeschlagen-
       Mischzustand, Fokusführung und die sichere Fortsetzung ergänzen.
+
+Gemeinsame UI-Evidenz für 7.16/7.17: umgesetzt durch
+[`refactor-instance-management-ui`](../refactor-instance-management-ui/tasks.md).
+34 Detailtests einschließlich realem MSW-Hook-/API-Pfad, drei Axe-Fälle und
+sechs Playwright-Szenarien plus Auth-Setup sind grün. Mischzustand,
+teilerhaltender sicherer Retry, Aktivierungsbestätigung, Fokus und Reflow
+werden geprüft. Dies ist Fixture-basierte UI-Evidenz; Backend-, Rollout- und
+reale Einladungsabnahmen bleiben unverändert, insbesondere 10.5/10.6.
 
 ## 8. MCP
 

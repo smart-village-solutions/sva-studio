@@ -15,7 +15,7 @@ import {
   getInstanceAuditRun,
   getSingleInstanceAuditRun,
   getInstance,
-  IamHttpError,
+  type IamHttpError,
   listInstances,
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
@@ -50,37 +50,6 @@ type InstanceFilters = {
 };
 
 const instancesLogger = createOperationLogger('instances-hook', 'debug');
-const passthroughWorkflowErrorCodes = new Set([
-  'unauthorized',
-  'forbidden',
-  'tenant_admin_client_not_configured',
-  'tenant_admin_client_secret_missing',
-  'tenant_auth_client_secret_missing',
-  'encryption_not_configured',
-  'csrf_validation_failed',
-  'reauth_required',
-  'conflict',
-  'invalid_request',
-  'not_found',
-]);
-
-const normalizeKeycloakWorkflowError = (error: IamHttpError): IamHttpError => {
-  if (passthroughWorkflowErrorCodes.has(error.code)) {
-    return error;
-  }
-
-  if (error.code === 'keycloak_unavailable') {
-    return error;
-  }
-
-  return new IamHttpError({
-    status: 502,
-    code: 'keycloak_unavailable',
-    message: error.message,
-    requestId: error.requestId,
-  });
-};
-
 export const useInstances = () => {
   const { refreshSession } = useAuth();
   const [filters, setFilters] = React.useState<InstanceFilters>({ search: '', status: 'all' });
@@ -259,7 +228,7 @@ export const useInstances = () => {
           keycloakStatus: statusResponse?.data ?? detailResponse.data.keycloakStatus,
         };
         setSelectedInstance(nextInstance);
-        const nextMutationError = statusError ? normalizeKeycloakWorkflowError(statusError) : null;
+        const nextMutationError = statusError ? statusError : null;
         setMutationError(nextMutationError);
         logBrowserOperationSuccess(instancesLogger, 'instance_detail_load_succeeded', {
           operation: 'get_instance_detail',
@@ -357,7 +326,7 @@ export const useInstances = () => {
       action: () => Promise<{ data: T }>,
       instanceId?: string,
       operation = 'instance_mutation',
-      options?: { refreshSessionAfterSuccess?: boolean }
+      options?: { refreshSessionAfterSuccess?: boolean; onError?: (error: IamHttpError) => void }
     ) => {
       setMutationError(null);
       logBrowserOperationStart(instancesLogger, 'instance_mutation_started', {
@@ -402,6 +371,7 @@ export const useInstances = () => {
             ...(instanceId ? [loadInstance(instanceId), refreshInstanceAudit(instanceId)] : []),
           ]);
         }
+        options?.onError?.(resolvedError);
         setMutationError(resolvedError);
         logBrowserOperationFailure(instancesLogger, 'instance_mutation_failed', resolvedError, {
           operation,
@@ -446,8 +416,12 @@ export const useInstances = () => {
         instanceId,
         'retry_instance_provisioning'
       ),
-    updateInstance: async (instanceId: string, payload: UpdateInstancePayload) =>
-      mutate(() => updateInstance(instanceId, payload), instanceId, 'update_instance'),
+    updateInstance: async (
+      instanceId: string,
+      payload: UpdateInstancePayload,
+      onError?: (error: IamHttpError) => void
+    ) =>
+      mutate(() => updateInstance(instanceId, payload), instanceId, 'update_instance', { onError }),
     refreshKeycloakStatus: async (instanceId: string) => {
       logBrowserOperationStart(instancesLogger, 'instance_keycloak_status_refresh_started', {
         operation: 'get_instance_keycloak_status',
@@ -503,7 +477,7 @@ export const useInstances = () => {
         }));
         return response.data;
       } catch (cause) {
-        const resolvedError = normalizeKeycloakWorkflowError(asIamError(cause));
+        const resolvedError = asIamError(cause);
         setMutationError(resolvedError);
         return null;
       } finally {
@@ -521,7 +495,7 @@ export const useInstances = () => {
         }));
         return response.data;
       } catch (cause) {
-        const resolvedError = normalizeKeycloakWorkflowError(asIamError(cause));
+        const resolvedError = asIamError(cause);
         setMutationError(resolvedError);
         return null;
       } finally {

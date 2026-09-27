@@ -48,4 +48,21 @@ describe('AccountInvitationTemplateCard', () => {
     await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith(null));
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Instanzvorlage entfernen'));
   });
+  it('prevents duplicate saves while validation and the request are pending', async () => {
+    let finish!: (saved: boolean) => void;
+    const onSave = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<AccountInvitationTemplateCard instance={instance} onSave={onSave} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
+    const save = screen.getByRole('button', { name: 'Vorlage speichern' });
+    fireEvent.click(save);
+    fireEvent.click(save);
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    finish(true);
+    await screen.findByRole('status');
+  });
 });

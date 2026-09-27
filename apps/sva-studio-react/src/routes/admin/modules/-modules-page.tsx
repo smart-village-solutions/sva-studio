@@ -4,6 +4,7 @@ import { StudioPageTitle } from '@sva/studio-ui-react';
 import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Card } from '../../../components/ui/card';
+import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { studioModuleIamContracts } from '../../../lib/plugins';
@@ -86,6 +87,7 @@ const AdminModulesPage = () => {
   const instancesApi = useInstances();
   const { loadInstance } = instancesApi;
   const [selectedInstanceId, setSelectedInstanceId] = React.useState('');
+  const pluginReadiness = usePluginTenantReadiness(selectedInstanceId);
 
   React.useEffect(() => {
     if (!selectedInstanceId && instancesApi.instances[0]?.instanceId) {
@@ -147,11 +149,20 @@ const AdminModulesPage = () => {
 
       <InstanceModulesWorkspace
         selectedInstance={selectedInstance}
+        pluginReadiness={pluginReadiness}
         statusLoading={instancesApi.statusLoading}
         mutationError={instancesApi.mutationError}
         emptyState={t('admin.instances.instanceModules.empty')}
-        onAssignModule={instancesApi.assignModule}
-        onRevokeModule={instancesApi.revokeModule}
+        onAssignModule={async (instanceId, moduleId) => {
+          const result = await instancesApi.assignModule(instanceId, moduleId);
+          if (result) await pluginReadiness.refresh();
+          return result;
+        }}
+        onRevokeModule={async (instanceId, moduleId) => {
+          const result = await instancesApi.revokeModule(instanceId, moduleId);
+          if (result) await pluginReadiness.refresh();
+          return result;
+        }}
         onSeedIamBaseline={instancesApi.seedIamBaseline}
         onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
       />

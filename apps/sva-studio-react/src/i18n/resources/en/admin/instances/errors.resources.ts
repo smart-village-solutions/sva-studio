@@ -1,4 +1,6 @@
 export const errorsInstancesAdminENResources = {
+  stalePlan:
+    'The confirmed plan is outdated. No new execution was approved. Load and review the current provisioning preview.',
   unauthorized: 'Your session is no longer valid. Please sign in again.',
   recoveryRunning: 'The session is currently recovering or unstable. Please sign in again.',
   forbidden: 'You do not have permission to manage instances.',

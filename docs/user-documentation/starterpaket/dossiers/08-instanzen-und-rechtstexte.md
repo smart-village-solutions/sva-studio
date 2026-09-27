@@ -16,11 +16,10 @@
 ## `admin.instances.create` – Instanz anlegen
 
 - **Route / Typ / Owner:** `/admin/instances/new`, Anlegen, Host.
-- **Nutzerziel:** Registry, Keycloak-Grunddaten und optional Abfall-Datenquelle für eine neue Instanz
-  vorbereiten.
-- **Produktfakten:** Felder umfassen Instanz-ID, Anzeigename, Parent-Domain, Realm, Auth-Client,
-  Issuer, Tenant-Admin-Client und initialen Tenant-Admin. Secrets können beim Provisioning erzeugt
-  werden. Optional werden Supabase- beziehungsweise Datenbankdaten des Abfallmoduls erfasst.
+- **Nutzerziel:** Instanz, Nutzer-Datenbank und Administratorprofil für eine neue Instanz vorbereiten.
+- **Produktfakten:** Vier Schritte erfassen Instanzdaten, Realm-Auswahl, Administratorprofil und Review.
+  Gruppen können direkt geändert werden; Readiness trennt Anlage-, Einrichtungs- und
+  Aktivierungsblocker. Clients und Secrets folgen den bestehenden Provisioning-Defaults.
 - **Folge:** Die Anlage startet denselben Provisioning-Vertrag wie der Ops-Pfad und führt danach in
   den Setup-Abschluss.
 - **Leitfragen / Stichwörter:** Welche IDs sind dauerhaft? Welche Secrets werden erzeugt statt
@@ -33,8 +32,10 @@
 - **Route / Typ / Owner:** `/admin/instances/$instanceId`, Detail, Host.
 - **Nutzerziel:** Betrieb, Diagnose und Konfiguration einer Instanz steuern.
 - **Produktfakten:** Hauptbereiche sind Betrieb, Doctor und Einstellungen. Die Seite bündelt
-  Provisioning-Läufe, Realm- und Keycloak-Status, Module, Konfiguration, Historie, Cockpit,
-  Operationen und Tenant-IAM. Gespeicherte Secrets werden nur als vorhanden oder fehlend gezeigt.
+  eine kompakte Einrichtung mit einer nächsten Hauptaktion, Modulzeilen mit Aktivierung und
+  Bereitschaft sowie Doctor-Maßnahmen mit aufklappbaren Belegen. Realm/Clients und Zugangsdaten
+  sind in den Einstellungen aufklappbar. Die Einladungsvorlage speichert unabhängig vom
+  ungespeicherten Einstellungsentwurf. Gespeicherte Secrets werden nie zurückgelesen.
 - **Kontextabhängig:** Einzelne Reparatur-, Reconcile- oder Bootstrap-Aktionen benötigen besondere
   Rechte und bestätigte Betriebsdiagnose.
 - **Leitfragen / Stichwörter:** Welche Ansicht beantwortet Status, Ursache oder Konfiguration? Wann

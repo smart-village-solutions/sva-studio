@@ -180,7 +180,7 @@ Es ist also kein modernes Zielpackage mehr, sondern ein kontrollierter Übergang
 
 ### `apps/public-waste-calendar-web`
 
-`public-waste-calendar-web` ist eine eigenständige öffentliche React-/Node-App für den Bürgerfluss des Abfallkalenders. Sie besitzt eine eigene UI, eine eigene Node-Runtime unter `src/server/**` und einen separaten Releasepfad, nutzt für ihren Serverteil aber bewusst gemeinsame Workspace-Verträge aus `@sva/core`, `@sva/data-repositories` und `@sva/waste-management-contracts/unsubscribe-token`.
+`public-waste-calendar-web` ist eine eigenständige öffentliche React-/Node-App für den Bürgerfluss des Abfallkalenders. Sie besitzt eine eigene UI, eine eigene Node-Runtime unter `src/server/**` und einen separaten Releasepfad, nutzt für ihren Serverteil aber bewusst generische Verträge aus `@sva/core`, Waste-Fachverträge und Abmeldetoken aus `@sva/waste-management-contracts` sowie Repository-Zugriffe aus `@sva/data-repositories`.
 
 Die App ist fachlich eng mit Waste-Management verbunden, aber technisch von der Studio-Admin-Shell getrennt. Insbesondere liest und verifiziert sie Abmeldetoken über das Contracts-Package statt über App-lokale oder Studio-interne Module.
 

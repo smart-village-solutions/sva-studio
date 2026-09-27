@@ -219,7 +219,7 @@ Abhängigkeiten des aktuellen Systems.
 - der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
 - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
-- `@sva/core`, Repository und Host-Fassade teilen den Tourstatusvertrag; Public-Waste, Reminder, Abdeckungsprüfung, Mainserver-Materialisierung und Folgejahr-Quellauswahl lesen ausschließlich `published`
+- `@sva/waste-management-contracts` definiert den Tourstatusvertrag für Repository und Host-Fassade; Public-Waste, Reminder, Abdeckungsprüfung, Mainserver-Materialisierung und Folgejahr-Quellauswahl lesen ausschließlich `published`
 - der Mainserver-Terminabgleich liest seine tenantlokale Quellrevision zusammen mit allen Materialisierungstabellen in einem PostgreSQL-Snapshot; `iam.studio_jobs` bleibt alleinige Wahrheit für aktiven Lauf, letzten Erfolg, Progress und Fehler
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird
@@ -450,13 +450,14 @@ Abhängigkeiten des aktuellen Systems.
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
-- `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`
+- `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts`
 - `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog
 - `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/plugin-sdk` -> `@sva/core`
+- `@sva/waste-management-contracts` -> `@sva/core`, `@sva/plugin-sdk`; `@sva/data-repositories`, `@sva/iam-governance` und `@sva/instance-registry` beziehen ihre Waste-Fachverträge direkt daraus
 - `@sva/plugin-sdk` definiert zusätzlich den fail-closed `contentHistory`-Contribution-Vertrag und den gemeinsamen History-Read-Client; `@sva/studio-ui-react` stellt dafür die schreibgeschützte, barrierefreie Darstellung bereit
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
-- `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
+- `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`, `@sva/waste-management-contracts` (Waste-Datenquellentypen)
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
 - `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
@@ -854,7 +855,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 - `StudioDataTable` besitzt ausschließlich Darstellung und Interaktion. Jeder Aufrufer muss den Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Bestand oder extern kontrolliert deklarieren.
 - Paginierte Inhalts-, Organisations-, Governance-, DSR- und Waste-Abholortlisten lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
-- Die Waste-Abholortprojektion gehört `@sva/data-repositories`. `@sva/core` definiert den framework-agnostischen Query-, Page- und List-Item-Vertrag; `@sva/auth-runtime` besitzt Autorisierung und strikte HTTP-Parameterprüfung; das Browser-Plugin kontrolliert ausschließlich URL-Zustand, Darstellung und ID-basierte Auswahl.
+- Die Waste-Abholortprojektion gehört `@sva/data-repositories`. `@sva/waste-management-contracts` definiert den framework-agnostischen Query-, Page- und List-Item-Vertrag; `@sva/auth-runtime` besitzt Autorisierung und strikte HTTP-Parameterprüfung; das Browser-Plugin kontrolliert ausschließlich URL-Zustand, Darstellung und ID-basierte Auswahl.
 - Die Projektion verbindet Filter, Gesamtzahl und Seite in einer SQL-Anweisung, aggregiert Touren erst für die Seite und sortiert mit der migrierten ICU-Collation `public.sva_de_numeric`. Beide fachlichen Sortiermodi enden unabhängig von der Richtung mit `ID asc` und behandeln fehlende Werte zuletzt.
 - Ein separater, nur lesender Resolver liefert alle IDs desselben Filtervertrags ohne Pagination oder Sortierparameter. Dadurch bleibt „Alle gefilterten auswählen“ global korrekt, ohne den vollständigen Listendatensatz in den Browser zu laden.
 - Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.
@@ -873,7 +874,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 ### Ergänzung 2026-08: Waste-Datenaustausch
 
-- `@sva/core` besitzt den versionierten, framework-agnostischen Vertrag für neun Waste-Datenprofile einschließlich Feldklassifikation, Defaults, Referenzen und Ausschlussgründen.
+- `@sva/waste-management-contracts` besitzt den versionierten, framework-agnostischen Vertrag für neun Waste-Datenprofile einschließlich Feldklassifikation, Defaults, Referenzen und Ausschlussgründen.
 - `@sva/plugin-sdk` registriert Exportprofile neben Job- und Importprofilen. `@sva/waste-management-contracts` besitzt die konkreten Import-, Export- und Jobdefinitionen.
 - Die hostseitige Waste-Runtime liest und schreibt ausschließlich die im Profil enthaltenen Fachfelder. E-Mail-Abonnements, Consent, Token und Outbox bleiben außerhalb dieses Bausteins.
 - Exportartefakte werden instanzgebunden im geschützten Media-Speicher abgelegt. Die Auth-Runtime prüft beim Download Job, Actor, Instanz, aktuelle Exportberechtigung, Ablauf, Größe und SHA-256 erneut.
@@ -881,7 +882,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 ### Ergänzung 2026-08: Waste-Tourensatz im Folgejahr
 
 - `@sva/plugin-waste-management` besitzt ausschließlich den zugänglichen Drei-Schritt-Assistenten, die Auswahl und die ausdrückliche Konfliktbestätigung. Das Zieljahr ist dort nur Anzeige und kein frei wählbarer Parameter.
-- `@sva/core` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
+- `@sva/waste-management-contracts` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
 - `@sva/auth-runtime` besitzt Mandanten-, Berechtigungs-, CSRF- und Idempotenzgrenze. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.
 
 ### Ergänzung 2026-08: Kontextbezogene Anwenderdokumentation

@@ -2,10 +2,12 @@
 
 ## Geltungsbereich und Zielbild
 
-Diese einmalige Erstinstallation auf `root@136.243.39.147` unter
+Diese eigenständige Installation auf `root@136.243.39.147` unter
 `/root/projects/sva-studio-ssf` ist unabhängig vom regulären Studio-Prod-Server.
 Der [reguläre Studio-Rollout](../guides/studio-rollout-process.md) bleibt unverändert.
-Die folgenden Werte beschreiben die geplante Umschaltung, keinen bereits erfolgten Rollout.
+Kassel betreibt genau eine Studio-Instanz ohne separate Staging-Instanz. Die
+folgenden Hostwerte stammen aus der ursprünglichen Umschaltplanung; vor einem
+weiteren Release ist der tatsächliche Live-Zustand erneut zu prüfen.
 
 | Host                         | Dienst und Kontext                                                       |
 | ---------------------------- | ------------------------------------------------------------------------ |
@@ -76,16 +78,21 @@ liegen und insbesondere die bestehenden `APP_DB_*`-, `POSTGRES_*`-, `REDIS_*`- u
 Bei einem Wechsel des Queue-Vertrags müssen App und Worker koordiniert aktualisiert werden:
 Zuerst die App stoppen, damit sie keine neuen Aufträge annimmt. Den bisherigen Worker alle
 bereits geplanten oder laufenden Aufträge abschließen lassen und diesen Zustand über die
-Registry prüfen. Danach den Worker stoppen und beide Dienste gemeinsam mit demselben neuen
-Digest starten. So verarbeitet weder ein alter Worker neue Aufträge noch ein neuer Worker
-Aufträge im alten Format.
+Registry prüfen. Auch `requested`, `validated` und `provisioning` im Elternlauf sowie
+`planned` und `running` im Keycloak-Kindlauf sind nach Snapshot-Version und
+Verarbeitbarkeit zu unterscheiden. Historische `legacy`-Läufe dürfen nicht als
+abgearbeitete Aufträge ausgegeben oder für den Release gelöscht werden; sie sind
+gesondert zu dokumentieren. Danach den Worker stoppen und beide Dienste gemeinsam
+mit demselben neuen Digest starten. So verarbeitet weder ein alter Worker neue
+Aufträge noch ein neuer Worker Aufträge im alten Format.
 
 ```bash
 docker compose \
   -f app.compose.yml \
   -f keycloak-provisioner.compose.yml \
   stop app
-# Registry prüfen: keine Provisioning-Läufe mit Status planned oder running.
+# Registry prüfen: keine noch verarbeitbaren, nichtterminalen Läufe;
+# historische legacy-Läufe gesondert klassifizieren.
 docker compose \
   -f app.compose.yml \
   -f keycloak-provisioner.compose.yml \
@@ -98,9 +105,13 @@ docker compose \
 ```
 
 Overlay und `up.sh` werden dazu aus dem exakt freigegebenen Release-Stand in den eigenständigen
-Compose-Projektordner übernommen. Das Startskript akzeptiert ausschließlich eine vollständige
-Image-Referenz aus `ghcr.io/smart-village-solutions/sva-studio` mit `@sha256:` und bindet App
-und Worker an exakt denselben Digest. Vor dem Start führt es den einmaligen Dienst `migrate`
+Compose-Projektordner übernommen. Der aktuelle Repo-Stand des Startskripts akzeptiert
+vollständige unveränderliche Referenzen aus `ghcr.io/smart-village-solutions/sva-studio`
+und `ghcr.io/smart-village-solutions/sva-studio-ssf` mit `@sha256:`. Der am 27. September 2026 auf Kassel vorgefundene ältere `up.sh` akzeptierte dagegen
+nur das Standard-Repository. Vor dem SSF-Distributionswechsel muss daher die
+freigegebene Skriptversion am Ziel verifiziert werden; `SVA_IMAGE_REF` muss den
+geprüften SSF-Digest bezeichnen und App und Worker an genau diesen Digest binden.
+Vor dem Start führt das Skript den einmaligen Dienst `migrate`
 mit demselben Digest aus. Ein fehlgeschlagener IAM- oder SSF-Plugin-Migrationsschritt beendet
 `up.sh`, bevor App und Provisioner aktualisiert werden.
 Ein Provisioning-Auftrag darf erst erneut eingereiht werden,
@@ -113,6 +124,53 @@ Worker geleert. So bleibt ein Worker-Lauf auch bei getrennten App- und Worker-Pr
 Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend der Live-Abgleich
 der Realm-, Client- und Tenant-Admin-Struktur. Der Provisioner veröffentlicht keine Ports und erhält
 keine Traefik-Router.
+
+### SSF-Distributionswechsel und Freigabe (#1408)
+
+Ein grüner Build des SSF-Images oder ein Rollout im regulären Studio-Swarm ist
+kein Kasseler Staging-Nachweis. Vor jeder Mutation am einzigen Kasseler Ziel
+müssen Release-Commit, verifizierter SSF-Image-Digest, OCI-Revision und
+Distribution zusammenpassen. Das Image-Verify muss die positiven und negativen
+Artefakt-Inventare sowie einen authentifizierten SSF-/Media-Modul-Smoke bestehen.
+Die Release-Freigabe bewertet ausdrücklich das Restrisiko ohne unabhängiges
+Kasseler Staging.
+
+Unmittelbar vor dem Cutover sind Live-Digest, laufende Compose-Konfiguration,
+betroffene Dienste und alle noch verarbeitbaren Provisionierungsaufträge erneut
+lesend zu erfassen. Am 27. September 2026 liefen App und Provisioner noch mit
+demselben Standard-Studio-Digest; die Studio-Datenbank meldete Goose-Version 97,
+die getrennte SSF-Plugin-Datenbank Version 6. Der freigegebene Repo-Stand enthält
+für Studio zusätzlich die Migrationen 98 und 99. Diese Momentaufnahme ersetzt
+weder die erneute Prüfung noch eine Kompatibilitätsentscheidung: Migrationen
+werden nicht automatisch zurückgerollt.
+
+Nach dem oben beschriebenen Stop/Drain und vor dem Migrationsdienst müssen
+aktuelle, geschützte Sicherungen der Datenbanken `sva_studio`, `sva_studio_ssf`
+und `keycloak`, des persistenten Redis-Zustands, des dynamischen Traefik-Verzeichnisses
+sowie der tatsächlich verwendeten Compose-/Runtime-Konfiguration vorliegen.
+Sicherungsergebnisse sind über SHA-256, Archivlesbarkeit und einen isolierten
+Test-Restore mit lesenden Struktur- und Bestandsprüfungen zu verifizieren. Für
+die anschließende Anlage eines Test-Tenants sind auch die betroffene SSF-Backend-Datenbank
+`ssf` und der Zertifikatszustand in den Rückweg einzubeziehen. Zugangsdaten und
+Dump-Inhalte gehören nicht in CI-Artefakte oder Issue-Kommentare.
+
+Der vor dem Cutover erfasste Standard-Digest ist nur ein zeitlich begrenzter
+App-Rückweg: Die Migrationen 98/99 ergänzen eine Tabelle und ändern deren Policy,
+und der bisherige Schema-Guard akzeptiert einen neueren Goose-Stand. Der bisherige
+Worker beansprucht jedoch nur Create-Snapshots der Version `2.0`, während der
+neue Stand auch `3.0` erzeugen kann. Sobald ein neuer `3.0`-Lauf oder andere
+neue Schreibvorgänge begonnen haben, darf der alte Digest nicht als pauschal
+sicherer Rollback gelten. Dann sind zuerst Aufträge und Datenänderungen zu
+bewerten und ein kontrollierter Vorwärtsfix oder ein ausdrücklich entschiedener
+Restore mit Verlustbewertung erforderlich. Keine automatische Down-Migration,
+kein Löschen von Legacy-Läufen oder Volumes.
+
+Go erst nach verifiziertem Image, freigegebenem Skript, geleertem verarbeitbarem
+Auftragsbestand, aktuellem Test-Restore und dokumentiertem Rückweg. Andernfalls
+bleiben App und Provisioner auf dem bisherigen Digest; `tenant-kassel` wird nicht
+für den Test verändert. Nach dem Update müssen Live/Ready, identischer Digest
+beider Dienste, authentifizierte SSF-/Media-Funktionen und die für [#1325](https://github.com/smart-village-solutions/sva-studio/issues/1325)
+erforderliche Tenant-/IAM-Readiness am Kasseler Ziel nachgewiesen werden.
 
 Der bestehende Docker-Provider-Router enthält derzeit die expliziten
 Bestandshosts. Neue Tenant-Hosts werden nach dem koordinierten Enablement nicht

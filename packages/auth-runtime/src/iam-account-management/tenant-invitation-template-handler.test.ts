@@ -1,5 +1,5 @@
 import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authorize: vi.fn(),
@@ -63,6 +63,10 @@ beforeEach(() => {
   mocks.registryRepository.mockImplementation(async (work) => work(repository));
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe('tenant invitation template handler', () => {
   it('reads only the session tenant and returns a narrow inherited view', async () => {
     const response = await getTenantInvitationTemplateInternal(request('GET'), context('tenant-a'));
@@ -99,6 +103,15 @@ describe('tenant invitation template handler', () => {
     expect(denied.status).toBe(403);
     expect(mocks.scopedRepository).not.toHaveBeenCalled();
     expect(mocks.registryRepository).not.toHaveBeenCalled();
+  });
+
+  it('rejects reads when IAM administration is disabled', async () => {
+    vi.stubEnv('IAM_ADMIN_ENABLED', 'false');
+    const response = await getTenantInvitationTemplateInternal(request('GET'), context('tenant-a'));
+    expect(response.status).toBe(503);
+    expect((await response.json()).error.code).toBe('feature_disabled');
+    expect(mocks.authorize).not.toHaveBeenCalled();
+    expect(mocks.scopedRepository).not.toHaveBeenCalled();
   });
 
   it('writes the session tenant with the expected revision and supports reset', async () => {

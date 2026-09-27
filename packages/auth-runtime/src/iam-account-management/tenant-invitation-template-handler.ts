@@ -19,6 +19,7 @@ import {
   withScopedRegistryRepository,
 } from '../iam-instance-registry/repository.js';
 import { asApiItem, createApiError, parseRequestBody } from './api-helpers.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { resolveMutationActorWithAccount } from './mutation-request-context.shared.js';
 
 const ACTION = 'iam.invitationTemplate.manage';
@@ -64,6 +65,8 @@ export const getTenantInvitationTemplateInternal = async (
   const requestId = getWorkspaceContext().requestId;
   const requestedInstance = rejectRequestedInstance(request, requestId);
   if (requestedInstance) return requestedInstance;
+  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestId);
+  if (featureCheck) return featureCheck;
   const instanceId = ctx.user.instanceId;
   if (!instanceId) {
     return createApiError(403, 'forbidden', 'Tenant-Kontext fehlt.', requestId);

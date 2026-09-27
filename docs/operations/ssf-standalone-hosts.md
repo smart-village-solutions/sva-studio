@@ -128,7 +128,7 @@ Erfolgsnachweis sind ein abgeschlossener Lauf mit Request-ID und anschließend d
 der Realm-, Client- und Tenant-Admin-Struktur. Der Provisioner veröffentlicht keine Ports und erhält
 keine Traefik-Router.
 
-### SSF-Distributionswechsel und Freigabe (#1408)
+### Einmaliger SSF-Distributionswechsel und Freigabe (#1408)
 
 Ein grüner Build des SSF-Images oder ein Rollout im regulären Studio-Swarm ist
 kein Kasseler Staging-Nachweis. Vor jeder Mutation am einzigen Kasseler Ziel
@@ -242,6 +242,23 @@ Der vorhandene Keycloak-Router erhält die Host-Regel für `auth.dialog.kassel.d
 Der SSF-Einstieg erhält einen eigenen Router für `dialog.kassel.de` auf den bestehenden
 SSF-Frontend-Dienst. Bestehende SSF-API-/Frontend-Routen und deren Verbraucher müssen
 vor Ablösung inventarisiert werden; Studio erhält weder Catch-all noch Wildcard-Router.
+
+### Folge-Releases auf der SSF-Distribution
+
+Die Cutover-Schritte oben betreffen den Wechsel vom Standard-Studio zur
+SSF-Distribution. Für einen SSF-zu-SSF-Patch ohne Schema-, Queue- oder
+Host-/Issuer-Änderung werden stattdessen der aktuelle Live-Digest, die
+betroffenen Dienste und noch verarbeitbare Provisionierungsaufträge lesend
+geprüft. Der neue Digest muss zum Release-Commit und zur SSF-Distribution
+passen und die Image-Verifikation bestehen. Vor dem Update liegen eine
+aktuelle, auf Lesbarkeit geprüfte Sicherung der betroffenen Daten und
+Konfiguration sowie ein Rückweg zum bisherigen Digest vor; neue Schreibvorgänge
+werden bei dessen Bewertung berücksichtigt. App und Provisioner starten mit
+demselben Digest. Danach werden Live/Ready und die betroffenen authentifizierten
+SSF-Pfade geprüft. Ein erneuter isolierter Test-Restore aller Cutover-Datenbanken
+ist für einen solchen Patch nicht erforderlich. Ändert ein Release Schema,
+Queue-Vertrag oder Host-/Issuer-Zuordnung, gelten die jeweiligen strengeren
+Cutover- und Kompatibilitätsprüfungen aus diesem Dokument.
 
 ## Keycloak und Registry
 

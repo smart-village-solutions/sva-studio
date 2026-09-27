@@ -611,9 +611,7 @@ test('instance provisioning orchestration migration and snapshot preserve leases
 });
 
 test('server invitation template scope keeps inherited reads tenant-visible and writes platform-only', () => {
-  const sql = readRepoFile(
-    'data/migrations/0099_iam_server_account_invitation_template_scope.sql'
-  );
+  const sql = readRepoFile('data/migrations/0099_iam_server_account_invitation_template_scope.sql');
   const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
   const upSql = sql.split('-- +goose Down')[0] ?? '';
   const downSql = sql.split('-- +goose Down')[1] ?? '';
@@ -748,12 +746,11 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.doesNotMatch(imageVerifyScript, /skipped-local/);
   assert.match(
     imageVerifyScript,
-    /docker image inspect "\$\{IMAGE_REF\}" --format '\{\{ index \.Config\.Labels "com\.sva-studio\.distribution" \}\}'/
+    /docker image inspect "\$\{IMAGE_REF\}" > "\$\{IMAGE_INSPECT_PATH\}"/
   );
-  assert.match(imageVerifyScript, /assert_image_package_inventory\(\)/);
-  assert.match(imageVerifyScript, /assert_image_package_inventory "plugin-ssf" "absent"/);
-  assert.match(imageVerifyScript, /assert_image_package_inventory "plugin-ssf" "present"/);
-  assert.match(imageVerifyScript, /assert_image_package_inventory "plugin-news" "absent"/);
+  assert.match(imageVerifyScript, /--slurpfile manifest "\$\{RUNTIME_MANIFEST_PATH\}"/);
+  assert.match(imageVerifyScript, /--rawfile packages "\$\{PACKAGE_INVENTORY_PATH\}"/);
+  assert.match(imageVerifyScript, /verify-studio-image-contract\.mjs/);
   assert.match(imageVerifyScript, /run_postgres_sql_with_retry\(\)/);
   assert.match(imageVerifyScript, /for _ in \$\(seq 1 10\); do/);
   assert.match(imageVerifyScript, /run_postgres_sql_with_retry "sva_studio"/);
@@ -761,7 +758,10 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(imageVerifyScript, /STUDIO_JOB_WORKER_DB_PASSWORD=verify-worker-password/);
   assert.match(imageVerifyScript, /SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE=false/);
   assert.match(imageVerifyScript, /--entrypoint \.\/bootstrap-entrypoint\.sh/);
-  assert.match(imageVerifyScript, /--entrypoint node \\\n {4}"\$\{IMAGE_REF\}" \.\/migrate-graphile-worker\.mjs/);
+  assert.match(
+    imageVerifyScript,
+    /--entrypoint node \\\n {4}"\$\{IMAGE_REF\}" \.\/migrate-graphile-worker\.mjs/
+  );
   assert.match(imageVerifyScript, /worker-bootstrap/);
   assert.match(imageVerifyScript, /graphile-worker-migrations/);
 

@@ -407,4 +407,4 @@ prozessübergreifende Vertrag liegt im versionierten Elternlauf-Snapshot.
 
 ### Ergänzung 2026-09: getrennte Studio-Distributionen
 
-Der Main-Build erzeugt getrennte, OCI-gelabelte Images `sva-studio` und `sva-studio-ssf`; jedes enthält ein Distribution-Manifest und wird vor einer Promotion mit seinem eigenen Digest verifiziert. Nur das reguläre Studio-Image wird in den bestehenden Dev-Promote-Pfad übergeben.
+Der Main-Build erzeugt getrennte, OCI-gelabelte Images `sva-studio` und `sva-studio-ssf`; der Image-Verify bindet Repository, Commit, Digest, Laufzeit-Distribution und das positive/negative Workspace-Paketinventar an das eingebettete Manifest. Nur das reguläre Studio-Image wird in den bestehenden Dev-Promote-Pfad übergeben. Der authentifizierte SSF-/Media-Smoke und die vollständige Browser-/Server-Chunk-Provenienz bleiben offene Gates von #1408 vor dem eigenständigen Kasseler Cutover.

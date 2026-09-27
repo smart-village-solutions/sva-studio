@@ -11,6 +11,10 @@ on:
         description: 'Optionaler Tag fuer Report und Korrelation'
         required: false
         type: string
+      expected_revision:
+        description: 'Verbindlicher 40-stelliger Commit-SHA des Images'
+        required: true
+        type: string
   workflow_call:
     inputs:
       image_digest:
@@ -18,6 +22,9 @@ on:
         type: string
       image_tag:
         required: false
+        type: string
+      expected_revision:
+        required: true
         type: string
     outputs:
       image_ref:
@@ -68,6 +75,10 @@ jobs:
             echo "image_digest muss ein sha256-Digest sein." >&2
             exit 1
           fi
+          if [[ "${IMAGE_TAG}" == *$'\n'* || "${IMAGE_TAG}" == *$'\r'* ]]; then
+            echo "image_tag darf keine Zeilenumbrueche enthalten." >&2
+            exit 1
+          fi
           image_ref="ghcr.io/smart-village-solutions/sva-studio@${IMAGE_DIGEST}"
           digest_short="$(printf '%s' "${IMAGE_DIGEST}" | cut -d: -f2 | cut -c1-12)"
           artifact_suffix="${digest_short}"
@@ -83,21 +94,28 @@ jobs:
           docker pull "${image_ref}"
 
       - name: Verify studio image in runner
+        env:
+          EXPECTED_REVISION: ${{ inputs.expected_revision || github.event.inputs.expected_revision }}
         run: |
           set -euo pipefail
           bash scripts/ci/verify-studio-image.sh \
             "${{ steps.image.outputs.image_ref }}" \
-            "artifacts/runtime/image-verify"
+            "artifacts/runtime/image-verify" studio \
+            "${EXPECTED_REVISION}"
 
       - name: Publish verify summary
         if: always()
+        env:
+          VERIFIED_IMAGE_REF: ${{ steps.image.outputs.image_ref }}
+          VERIFIED_IMAGE_TAG: ${{ steps.image.outputs.image_tag }}
+          VERIFY_ARTIFACT_NAME: ${{ steps.image.outputs.verify_artifact_name }}
         run: |
           echo 'Studio-Image-Verifikation ausgeführt.' >> "$GITHUB_STEP_SUMMARY"
-          echo "Image-Ref: \`${{ steps.image.outputs.image_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "${{ steps.image.outputs.image_tag }}" ]; then
-            echo "Image-Tag: \`${{ steps.image.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image-Ref: \`${VERIFIED_IMAGE_REF}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${VERIFIED_IMAGE_TAG}" ]; then
+            echo "Image-Tag: \`${VERIFIED_IMAGE_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
-          echo "Artifact: \`${{ steps.image.outputs.verify_artifact_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: \`${VERIFY_ARTIFACT_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifact verify reports
         if: always()

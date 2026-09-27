@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,6 +71,47 @@ describe('deployment contracts', () => {
     expect(workflow).toContain('pnpm nx run sva-studio-react:verify:runtime-artifact');
     expect(workflow).toContain('platforms: linux/amd64');
     expect(workflow).toContain('image_ref: ${{ needs.build.outputs.image_digest }}');
+  });
+
+  it('passes manual image verify inputs through the step environment, not shell interpolation', () => {
+    const workflow = load('.github/workflows/studio-image-verify.yml');
+
+    expect(workflow).toContain(
+      'EXPECTED_REVISION: ${{ inputs.expected_revision || github.event.inputs.expected_revision }}'
+    );
+    expect(workflow).toContain('"${EXPECTED_REVISION}"');
+    expect(workflow).not.toContain(
+      '"${{ inputs.expected_revision || github.event.inputs.expected_revision }}"'
+    );
+    expect(workflow).toContain('VERIFIED_IMAGE_TAG: ${{ steps.image.outputs.image_tag }}');
+    expect(workflow).toContain('"${VERIFIED_IMAGE_TAG}"');
+    expect(workflow).not.toContain('"${{ steps.image.outputs.image_tag }}"');
+    expect(workflow).toContain('image_tag darf keine Zeilenumbrueche enthalten.');
+    expect(workflow.indexOf('image_tag darf keine Zeilenumbrueche enthalten.')).toBeLessThan(
+      workflow.indexOf('echo "image_tag=${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"')
+    );
+  });
+
+  it('rejects newline output injection in the manual image tag without executing quoted input', () => {
+    const workflow = load('.github/workflows/studio-image-verify.yml');
+    const guardStart = workflow.indexOf('          if [[ "${IMAGE_TAG}"');
+    const guardEnd = workflow.indexOf('\n          fi', guardStart);
+    expect(guardStart).toBeGreaterThan(-1);
+    expect(guardEnd).toBeGreaterThan(guardStart);
+    const guard = workflow.slice(guardStart, guardEnd + '\n          fi'.length);
+
+    const newlinePayload = spawnSync('bash', ['-c', `set -euo pipefail\n${guard}`], {
+      env: { IMAGE_TAG: 'safe\nimage_ref=spoofed' },
+      encoding: 'utf8',
+    });
+    expect(newlinePayload.status).toBe(1);
+    expect(newlinePayload.stderr).toContain('image_tag darf keine Zeilenumbrueche enthalten.');
+
+    const quotedPayload = spawnSync('bash', ['-c', `set -euo pipefail\n${guard}`], {
+      env: { IMAGE_TAG: '"; exit 42; echo "' },
+      encoding: 'utf8',
+    });
+    expect(quotedPayload.status).toBe(0);
   });
 
   it('has no competing Studio image build or release-preparation workflow', () => {

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "${1:-}" = "" ]; then
-  echo "usage: verify-studio-image.sh <image-ref> [artifact-dir] [studio|ssf]" >&2
+if [ "${1:-}" = "" ] || [ "${4:-}" = "" ]; then
+  echo "usage: verify-studio-image.sh <image-ref> <artifact-dir> <studio|ssf> <expected-revision>" >&2
   exit 1
 fi
 
 IMAGE_REF="$1"
 ARTIFACT_DIR_INPUT="${2:-artifacts/runtime/image-verify}"
 SVA_STUDIO_DISTRIBUTION="${3:-studio}"
+EXPECTED_REVISION="$4"
 case "${SVA_STUDIO_DISTRIBUTION}" in
   studio|ssf) ;;
   *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;;
@@ -32,28 +33,10 @@ REPORT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.json"
 SUMMARY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.md"
 PHASES_LOG_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.phases.log"
 ENV_FILE="${ARTIFACT_DIR}/${VERIFY_ID}.env"
-
-actual_distribution="$(docker image inspect "${IMAGE_REF}" --format '{{ index .Config.Labels "com.sva-studio.distribution" }}')"
-if [ "${actual_distribution}" != "${SVA_STUDIO_DISTRIBUTION}" ]; then
-  echo "image_distribution_mismatch:expected=${SVA_STUDIO_DISTRIBUTION}:actual=${actual_distribution}" >&2
-  exit 1
-fi
-artifact_distribution="$(docker run --rm --entrypoint cat "${IMAGE_REF}" .output/server/generated/studio-distribution.json | jq -er '.distribution')"
-if [ "${artifact_distribution}" != "${SVA_STUDIO_DISTRIBUTION}" ]; then
-  echo "artifact_distribution_mismatch:expected=${SVA_STUDIO_DISTRIBUTION}:actual=${artifact_distribution}" >&2
-  exit 1
-fi
-
-assert_image_package_inventory() {
-  local package_name="$1"
-  local expected_presence="$2"
-
-  if docker run --rm --entrypoint sh "${IMAGE_REF}" -lc "test -d '/app/node_modules/@sva/${package_name}'"; then
-    [ "${expected_presence}" = "present" ]
-  else
-    [ "${expected_presence}" = "absent" ]
-  fi
-}
+IMAGE_INSPECT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.image-inspect.json"
+RUNTIME_MANIFEST_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.runtime-manifest.json"
+PACKAGE_INVENTORY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.workspace-packages.txt"
+IMAGE_CONTRACT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.image-contract.json"
 
 FAILURE_CLASS="none"
 FAILED_PHASE=""
@@ -76,7 +59,7 @@ ROOT_PAGE_STATUS="pending"
 cleanup() {
   docker rm -f "${APP_NAME}" "${KEYCLOAK_NAME}" "${REDIS_NAME}" "${POSTGRES_NAME}" >/dev/null 2>&1 || true
   docker network rm "${NETWORK_NAME}" >/dev/null 2>&1 || true
-  rm -f "${ENV_FILE}"
+  rm -f "${ENV_FILE}" "${IMAGE_INSPECT_PATH}" "${RUNTIME_MANIFEST_PATH}" "${PACKAGE_INVENTORY_PATH}"
 }
 trap cleanup EXIT
 
@@ -104,27 +87,44 @@ fail_verify() {
   echo "${message}" >&2
 }
 
-if [ "${SVA_STUDIO_DISTRIBUTION}" = "studio" ]; then
-  if assert_image_package_inventory "plugin-ssf" "absent"; then
-    set_phase_var PLUGIN_INVENTORY_STATUS ok
-    mark_phase plugin-inventory ok
-  else
-    set_phase_var PLUGIN_INVENTORY_STATUS error
-    mark_phase plugin-inventory error
-    fail_verify artifact-inventory-mismatch plugin-inventory "Das Studio-Image enthält SSF-Plugin-Artefakte."
-  fi
+if docker pull "${IMAGE_REF}" >/dev/null; then
+  set_phase_var IMAGE_PULL_STATUS ok
+  mark_phase image-pull ok
 else
-  if \
-    assert_image_package_inventory "plugin-ssf" "present" && \
-    assert_image_package_inventory "plugin-news" "absent"
-  then
-    set_phase_var PLUGIN_INVENTORY_STATUS ok
-    mark_phase plugin-inventory ok
-  else
-    set_phase_var PLUGIN_INVENTORY_STATUS error
-    mark_phase plugin-inventory error
-    fail_verify artifact-inventory-mismatch plugin-inventory "Das SSF-Image enthält nicht das erwartete exklusive Plugin-Inventar."
-  fi
+  fail_verify dependency-failed image-pull "Das Studio-Image konnte fuer das Verify nicht gepullt werden."
+  exit 1
+fi
+
+docker image inspect "${IMAGE_REF}" > "${IMAGE_INSPECT_PATH}"
+docker run --rm --entrypoint cat "${IMAGE_REF}" \
+  .output/server/generated/studio-distribution.json > "${RUNTIME_MANIFEST_PATH}"
+# Check resolvable packages in both top-level and pnpm-store node_modules. Broken
+# links left by pnpm are not deployable packages and must not count as present.
+docker run --rm --entrypoint sh "${IMAGE_REF}" -lc '
+  find /app/node_modules -path "*/node_modules/@sva/*" -prune |
+    while IFS= read -r package_path; do
+      if [ -d "${package_path}" ]; then printf "%s\n" "${package_path##*/}"; fi
+    done | sort -u
+' > "${PACKAGE_INVENTORY_PATH}"
+
+if jq -n \
+  --arg imageRef "${IMAGE_REF}" \
+  --arg expectedRevision "${EXPECTED_REVISION}" \
+  --arg distribution "${SVA_STUDIO_DISTRIBUTION}" \
+  --slurpfile inspection "${IMAGE_INSPECT_PATH}" \
+  --slurpfile manifest "${RUNTIME_MANIFEST_PATH}" \
+  --rawfile packages "${PACKAGE_INVENTORY_PATH}" \
+  '{imageRef: $imageRef, expectedRevision: $expectedRevision, distribution: $distribution, inspection: $inspection[0], runtimeManifest: $manifest[0], packages: ($packages | split("\n") | map(select(length > 0)))}' |
+  node "$(dirname "${BASH_SOURCE[0]}")/verify-studio-image-contract.mjs" > "${IMAGE_CONTRACT_PATH}"
+then
+  set_phase_var PLUGIN_INVENTORY_STATUS ok
+  mark_phase plugin-inventory ok
+else
+  set_phase_var PLUGIN_INVENTORY_STATUS error
+  mark_phase plugin-inventory error
+  rm -f "${IMAGE_CONTRACT_PATH}"
+  fail_verify artifact-inventory-mismatch plugin-inventory "Image-Identitaet oder Paket-Inventar stimmt nicht mit dem Buildprofil ueberein."
+  exit 1
 fi
 
 wait_for_postgres() {
@@ -325,17 +325,6 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
   fi
 fi
 
-if [ "${VERIFY_STATUS}" = "ok" ]; then
-  if docker pull "${IMAGE_REF}" >/dev/null; then
-    set_phase_var IMAGE_PULL_STATUS ok
-    mark_phase image-pull ok
-  else
-    set_phase_var IMAGE_PULL_STATUS error
-    mark_phase image-pull error
-    fail_verify dependency-failed image-pull "Das Studio-Image konnte fuer das Verify nicht gepullt werden."
-  fi
-fi
-
 cat >"${ENV_FILE}" <<EOF
 HOST=0.0.0.0
 PORT=3000
@@ -521,6 +510,7 @@ cat >"${REPORT_PATH}" <<EOF
   "artifacts": {
     "summary": "$(basename "${SUMMARY_PATH}")",
     "phasesLog": "$(basename "${PHASES_LOG_PATH}")",
+    "imageContract": "$(basename "${IMAGE_CONTRACT_PATH}")",
     "appLog": "${APP_NAME}.log",
     "appInspect": "${APP_NAME}.inspect.json",
     "postgresLog": "${POSTGRES_NAME}.log",

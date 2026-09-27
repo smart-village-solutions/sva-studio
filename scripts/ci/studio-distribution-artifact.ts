@@ -23,7 +23,18 @@ const excludedPackages: Readonly<Record<StudioDistribution, readonly string[]>> 
 };
 
 const includedPluginIds: Readonly<Record<StudioDistribution, readonly string[]>> = {
-  studio: ['categories', 'cockpit-cards', 'events', 'faq', 'generic-items', 'news', 'poi', 'projects', 'surveys', 'waste-management'],
+  studio: [
+    'categories',
+    'cockpit-cards',
+    'events',
+    'faq',
+    'generic-items',
+    'news',
+    'poi',
+    'projects',
+    'surveys',
+    'waste-management',
+  ],
   ssf: ['ssf'],
 };
 
@@ -62,7 +73,7 @@ const writeManifest = (outputRoot: string, distribution: StudioDistribution): vo
   mkdirSync(generated, { recursive: true });
   writeFileSync(
     join(generated, 'studio-distribution.json'),
-    `${JSON.stringify({ schemaVersion: 1, distribution, includedPluginIds: includedPluginIds[distribution] }, null, 2)}\n`,
+    `${JSON.stringify({ schemaVersion: 1, distribution, includedPluginIds: includedPluginIds[distribution], excludedWorkspacePackages: excludedPackages[distribution] }, null, 2)}\n`,
     'utf8'
   );
 };

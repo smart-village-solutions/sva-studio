@@ -36,6 +36,8 @@ export default defineConfig({
       '../../scripts/ci/pr-review-intake.test.ts',
       '../../scripts/ci/promote-deploy-gates.test.ts',
       '../../scripts/ci/promote-image-contract.test.ts',
+      '../../scripts/ci/verify-studio-image-contract.test.ts',
+      '../../scripts/ci/studio-distribution-artifact.test.ts',
       '../../scripts/ci/inject-worker-database-secret.test.ts',
       '../../scripts/ci/promote-one-shot-job.test.ts',
       '../../scripts/ci/promote-deployment-base.test.ts',

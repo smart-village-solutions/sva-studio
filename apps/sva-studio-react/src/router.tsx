@@ -16,7 +16,7 @@ import {
   readPluginRouteScope,
   type PluginRouteScope,
 } from './lib/plugin-route-scope';
-import { appRouteBindings } from './routing/app-route-bindings';
+import { appRouteBindings } from '#studio-app-route-bindings';
 import { rootRoute } from './routes/__root';
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {

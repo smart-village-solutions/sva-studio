@@ -569,6 +569,25 @@ describe('appRouteBindings', () => {
     cleanup();
   });
 
+  it('keeps the seven legacy host URLs inert in the SSF profile', async () => {
+    const { appRouteBindings: ssfBindings } = await import('./app-route-bindings.ssf');
+    const { default: NotFound } = await import('../components/NotFound');
+    const urlsAndBindings = [
+      ['/categories', ssfBindings.categories],
+      ['/admin/content', ssfBindings.content],
+      ['/admin/content/new', ssfBindings.contentCreate],
+      ['/admin/content/$id', ssfBindings.contentDetail],
+      ['/content', ssfBindings.content],
+      ['/content/new', ssfBindings.contentCreate],
+      ['/content/$contentId', ssfBindings.contentDetail],
+    ] as const;
+    for (const [url, binding] of urlsAndBindings) {
+      expect(binding, url).toBe(NotFound);
+    }
+    expect(routeState.getContent).not.toHaveBeenCalled();
+    expect(routeState.requestMainserverJson).not.toHaveBeenCalled();
+  });
+
   it('renders remaining placeholder bindings with translated section and title metadata', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 

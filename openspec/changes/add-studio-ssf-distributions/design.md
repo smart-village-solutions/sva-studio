@@ -36,12 +36,25 @@ Navigation, Server-Handler, Job-Handler und IAM-Verträge im Standard-Studio
 nicht. Historische Persistenz bleibt unbeeinflusst und wird nicht als
 Verfügbarkeit interpretiert.
 
+Die App wählt zusätzlich ihre Seiten-Bindings zur Build-Zeit: Das Standardprofil
+behält die bisherigen Plugin-Seiten; das SSF-Profil bindet nur Core-, Admin- und
+Medienseiten. Die sieben hosteigenen Pfade `/categories`, `/admin/content*`
+und ihre `/content*`-Aliase bleiben aus Kompatibilitätsgründen im Router.
+Bestehende Session-/Modul-Guards und Redirects greifen weiter; nach erfolgreichem
+Guard rendert das SSF-Profil dort lediglich eine daten- und aktionsfreie
+Not-Found-Seite. Dies ist kein Versprechen eines HTTP-404-Status.
+
 ### Zwei attestierte OCI-Artefakte
 
 Der reguläre Build veröffentlicht das Studio-Image und das SSF-Image getrennt.
 Ein Artefaktmanifest und die Image-Verifikation prüfen die behauptete
 Distribution sowie das positive und negative Plugin-Inventar. Promotion darf
 nur einen zur Ziel-Distribution passenden Digest verwenden.
+Für alle finalen Browser- und Server-JavaScript-Dateien hält ein zusätzliches
+Buildartefakt Quellmodul-Provenienz je Chunk und den Hash der finalen Bytes fest.
+Die Image-Verifikation inventarisiert und hasht diese Dateien erneut im
+Container; unbekannte Dateien, Hashabweichungen und ausgeschlossene
+Plugin-Quellen stoppen das Gate. Source Maps gelangen nicht ins Image.
 
 ## Risks / Trade-offs
 

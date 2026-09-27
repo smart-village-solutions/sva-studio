@@ -113,7 +113,7 @@
       "outputs": ["{projectRoot}/.output"],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "rm -rf public/generated .output/public/generated && pnpm exec tsx ../../scripts/ci/generate-studio-changelog-artifact.ts --output .generated/studio-changelog.json && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh -e \"const fs=require('node:fs'); fs.mkdirSync('.output/server/generated',{recursive:true}); fs.copyFileSync('.generated/studio-changelog.json','.output/server/generated/studio-changelog.json')\" && pnpm exec tsx ../../scripts/ci/studio-distribution-artifact.ts write-manifest .output \"${SVA_STUDIO_DISTRIBUTION:-studio}\" && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts ."
+        "command": "rm -rf public/generated .output/public/generated && pnpm exec tsx ../../scripts/ci/generate-studio-changelog-artifact.ts --output .generated/studio-changelog.json && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh -e \"const fs=require('node:fs'); fs.mkdirSync('.output/server/generated',{recursive:true}); fs.copyFileSync('.generated/studio-changelog.json','.output/server/generated/studio-changelog.json')\" && pnpm exec tsx ../../scripts/ci/studio-distribution-artifact.ts write-manifest .output \"${SVA_STUDIO_DISTRIBUTION:-studio}\" && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts . && pnpm exec tsx ../../scripts/ci/studio-distribution-artifact.ts write-chunk-provenance .output \"${SVA_STUDIO_DISTRIBUTION:-studio}\""
       }
     },
     "check:toolchain-consistency": {

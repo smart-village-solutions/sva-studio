@@ -550,6 +550,53 @@ describe('app.routes', () => {
     ).toBe(rootRoute);
   });
 
+  it('keeps the seven legacy host URLs guarded or redirected with inert SSF bindings', async () => {
+    const inert = () => null;
+    const ssfBindings = {
+      ...bindings,
+      categories: inert,
+      content: inert,
+      contentCreate: inert,
+      contentDetail: inert,
+    };
+    const routes = getClientRouteFactories({ bindings: ssfBindings }).map((factory) =>
+      factory({ id: 'root' } as never)
+    );
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+    for (const path of [
+      '/categories',
+      '/admin/content',
+      '/admin/content/new',
+      '/admin/content/$id',
+    ]) {
+      const options = readRouteOptions(expectDefined(routeMap.get(path)));
+      expect(options.component, path).toBe(inert);
+      await options.beforeLoad?.({
+        href: path,
+        context: {
+          auth: {
+            getUser: async () => ({
+              assignedModules: ['categories'],
+              permissionActions: ['categories.read'],
+            }),
+          },
+        },
+      });
+    }
+    expect(guardSpies.content).toHaveBeenCalledTimes(2);
+    expect(guardSpies.contentCreate).toHaveBeenCalledTimes(1);
+    expect(guardSpies.contentDetail).toHaveBeenCalledTimes(1);
+    for (const [legacy, canonical] of [
+      ['/content', '/admin/content'],
+      ['/content/new', '/admin/content/new'],
+      ['/content/$contentId', '/admin/content/$contentId'],
+    ]) {
+      expect(() => readRouteOptions(routeMap.get(legacy)).beforeLoad?.({ href: legacy })).toThrow(
+        expect.objectContaining({ href: canonical, __redirect: true })
+      );
+    }
+  });
+
   it('defaults admin resources to an empty list when ui route factories are created without options', () => {
     const routeFactories = createUiRouteFactories(bindings);
     const rootRoute = { id: 'root' };

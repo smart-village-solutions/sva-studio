@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -10,12 +10,13 @@ const scriptPath = path.join(workspaceRoot, 'scripts/ci/studio-distribution-arti
 const temporaryDirectories: string[] = [];
 
 const runArtifactCommand = (
-  command: 'write-manifest' | 'prune-deploy',
+  command: 'write-manifest' | 'write-chunk-provenance' | 'prune-deploy',
   target: string,
   distribution: string
 ) => {
   execFileSync(process.execPath, ['--import', 'tsx', scriptPath, command, target, distribution], {
     cwd: workspaceRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 };
 
@@ -24,6 +25,96 @@ describe('studio-distribution-artifact', () => {
     for (const directoryPath of temporaryDirectories.splice(0)) {
       rmSync(directoryPath, { recursive: true, force: true });
     }
+  });
+
+  const createChunkFixture = (distribution: 'studio' | 'ssf') => {
+    const appRoot = mkdtempSync(path.join(os.tmpdir(), 'studio-chunk-provenance-'));
+    temporaryDirectories.push(appRoot);
+    const outputRoot = path.join(appRoot, '.output');
+    const reportRoot = path.join(appRoot, '.generated', 'chunk-provenance');
+    mkdirSync(path.join(outputRoot, 'public', 'assets'), { recursive: true });
+    mkdirSync(path.join(outputRoot, 'server', '_ssr'), { recursive: true });
+    mkdirSync(path.join(outputRoot, 'server', 'node_modules', 'tslib', 'modules'), {
+      recursive: true,
+    });
+    mkdirSync(reportRoot, { recursive: true });
+    for (const file of [
+      'public/assets/index.js',
+      'server/_ssr/router.mjs',
+      'server/node_modules/tslib/tslib.js',
+      'server/node_modules/tslib/tslib.es6.js',
+      'server/node_modules/tslib/tslib.es6.mjs',
+      'server/node_modules/tslib/modules/index.js',
+    ])
+      writeFileSync(path.join(outputRoot, file), `// ${file}`);
+    const plugin = distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news';
+    writeFileSync(
+      path.join(reportRoot, 'client.json'),
+      JSON.stringify([
+        { fileName: 'assets/index.js', modules: [`/workspace/packages/${plugin}/src/client.ts`] },
+      ])
+    );
+    writeFileSync(
+      path.join(reportRoot, 'ssr.json'),
+      JSON.stringify([
+        { fileName: 'assets/router.js', modules: [`/workspace/packages/${plugin}/src/server.ts`] },
+      ])
+    );
+    writeFileSync(
+      path.join(reportRoot, 'nitro.json'),
+      JSON.stringify([
+        {
+          fileName: '_ssr/router.mjs',
+          modules: ['/workspace/app/node_modules/.nitro/vite/services/ssr/assets/router.js'],
+        },
+      ])
+    );
+    return { outputRoot, reportRoot };
+  };
+
+  it.each(['studio', 'ssf'] as const)(
+    'attests all final %s chunks and maps SSR sources through Nitro',
+    (distribution) => {
+      const { outputRoot } = createChunkFixture(distribution);
+      runArtifactCommand('write-chunk-provenance', outputRoot, distribution);
+      const manifest = JSON.parse(
+        readFileSync(
+          path.join(outputRoot, 'server', 'generated', 'studio-chunk-provenance.json'),
+          'utf8'
+        )
+      );
+      expect(manifest).toMatchObject({ schemaVersion: 1, distribution });
+      expect(manifest.chunks).toHaveLength(6);
+      expect(
+        manifest.chunks.find((chunk: { path: string }) => chunk.path === 'server/_ssr/router.mjs')
+          .pluginPackages
+      ).toEqual([distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news']);
+    }
+  );
+
+  it('rejects an excluded source module and an unknown final JavaScript file', () => {
+    const { outputRoot, reportRoot } = createChunkFixture('ssf');
+    writeFileSync(
+      path.join(reportRoot, 'client.json'),
+      JSON.stringify([
+        { fileName: 'assets/index.js', modules: ['/workspace/packages/plugin-news/src/page.ts'] },
+      ])
+    );
+    expect(() => runArtifactCommand('write-chunk-provenance', outputRoot, 'ssf')).toThrow();
+    writeFileSync(
+      path.join(reportRoot, 'client.json'),
+      JSON.stringify([
+        { fileName: 'assets/index.js', modules: ['/workspace/packages/plugin-ssf/src/page.ts'] },
+      ])
+    );
+    writeFileSync(path.join(outputRoot, 'server', 'unknown.mjs'), '// unknown');
+    expect(() => runArtifactCommand('write-chunk-provenance', outputRoot, 'ssf')).toThrow();
+  });
+
+  it('rejects source maps from the final output', () => {
+    const { outputRoot } = createChunkFixture('ssf');
+    writeFileSync(path.join(outputRoot, 'public', 'assets', 'index.js.map'), '{}');
+    expect(() => runArtifactCommand('write-chunk-provenance', outputRoot, 'ssf')).toThrow();
   });
 
   it('writes the attested manifest and removes SSF from a studio deploy tree', () => {

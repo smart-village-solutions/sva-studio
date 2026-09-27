@@ -12,4 +12,7 @@
 - Unit-Tests für Katalog- und Modulfilter sowie Snapshot-Parität.
 - Server-/Routing-Tests für fehlende SSF-Routen im Studio-Profil.
 - Image-Verify mit Positiv-/Negativinventar und Runtime-Manifest.
+- Finaler Client-/SSR-/Nitro-Chunk-Nachweis je Image: Build-Provenienz auf
+  Workspace-Plugin-Quellen, Hashabgleich im Container und negative Proben für
+  zusätzliche Dateien, veränderte Bytes und ausgeschlossene Plugin-Module.
 - Exakte-HEAD-CI für beide Artefakte vor einer Promotion.

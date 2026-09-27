@@ -25,6 +25,7 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
+      "#studio-app-route-bindings": ["./src/routing/app-route-bindings.tsx"],
       "#studio-plugin-auth-composition": ["./src/lib/plugin-auth-composition.studio.server.ts"],
       "#studio-plugin-client-inputs": ["./src/lib/plugin-client-inputs.studio.ts"],
       "#studio-plugin-catalog-inputs": ["./src/lib/plugin-catalog-inputs.studio.ts"],

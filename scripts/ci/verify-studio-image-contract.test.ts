@@ -64,6 +64,26 @@ const validInput = (distribution: 'studio' | 'ssf') => {
             'waste-management-runtime',
           ]
         : ['plugin-sdk', 'plugin-ssf'],
+    chunkProvenance: {
+      schemaVersion: 1,
+      distribution,
+      chunks: [
+        {
+          path: 'public/assets/index.js',
+          sha256: 'c'.repeat(64),
+          pluginPackages: [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news'],
+        },
+        {
+          path: 'server/_ssr/router.mjs',
+          sha256: 'd'.repeat(64),
+          pluginPackages: [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news'],
+        },
+      ],
+    },
+    chunkFiles: [
+      { path: 'public/assets/index.js', sha256: 'c'.repeat(64) },
+      { path: 'server/_ssr/router.mjs', sha256: 'd'.repeat(64) },
+    ],
   };
 };
 
@@ -83,6 +103,7 @@ describe('verify-studio-image-contract', () => {
         revision,
         includedPluginIds: distribution === 'ssf' ? ['ssf'] : regularPlugins,
         presentWorkspacePackages: [...validInput(distribution).packages].sort(),
+        verifiedChunks: { chunks: 2 },
       });
     }
   );
@@ -196,6 +217,30 @@ describe('verify-studio-image-contract', () => {
   it('rejects a studio image without the host-owned Waste runtime package', () => {
     const input = validInput('studio');
     input.packages = input.packages.filter((name) => name !== 'waste-management-runtime');
+    expect(() => verify(input)).toThrow();
+  });
+
+  it('rejects changed final bytes, an unknown final chunk and a tampered provenance manifest', () => {
+    const changedBytes = validInput('ssf');
+    changedBytes.chunkFiles[0]!.sha256 = 'e'.repeat(64);
+    expect(() => verify(changedBytes)).toThrow();
+
+    const unknownFile = validInput('ssf');
+    unknownFile.chunkFiles.push({ path: 'server/unknown.mjs', sha256: 'e'.repeat(64) });
+    expect(() => verify(unknownFile)).toThrow();
+
+    const tamperedManifest = validInput('ssf');
+    tamperedManifest.chunkProvenance.chunks[0]!.sha256 = 'e'.repeat(64);
+    expect(() => verify(tamperedManifest)).toThrow();
+
+    const wrongDistribution = validInput('ssf');
+    wrongDistribution.chunkProvenance.distribution = 'studio';
+    expect(() => verify(wrongDistribution)).toThrow();
+  });
+
+  it('rejects excluded plugin provenance despite otherwise valid chunk hashes', () => {
+    const input = validInput('ssf');
+    input.chunkProvenance.chunks[0]!.pluginPackages.push('plugin-news');
     expect(() => verify(input)).toThrow();
   });
 });

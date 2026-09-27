@@ -133,6 +133,9 @@ auch nach einem Reset fortlaufende Revision. Erzwungene RLS stellt die globale
 Vorlage auch in tenant-bezogenen Lesevorgängen für die Vererbung bereit;
 Schreibzugriffe bleiben auf den Plattformkontext ohne gesetzte
 `iam.current_instance_id()` begrenzt.
+Migration `0100` gibt der vorhandenen, nicht erbenden Standalone-App-Rolle
+`sva_app` die für Lesen und Aktualisieren dieser Tabelle erforderlichen Rechte.
+Der strukturelle Soll-Snapshot ändert sich nicht, da er ohne ACLs erzeugt wird.
 
 Migration `0095` erzwingt pro Keycloak-Provisioning-Lauf höchstens einen
 `queued`-Schritt. Vor dem Indexaufbau behält sie bei historischen Duplikaten

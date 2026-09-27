@@ -61,8 +61,14 @@ if [ "${SVA_PROVISIONER_COMBINED_WORKER:-false}" = "true" ] && [ "$#" -eq 0 ]; t
   set -- node --import ./otel-bootstrap.mjs .output/server/index.mjs
 fi
 
+if [ "${SVA_STUDIO_DISTRIBUTION:-studio}" = "ssf" ]; then
+  provisioning_worker_entrypoint=./ssf-provisioning-worker.mjs
+else
+  provisioning_worker_entrypoint=node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
+fi
+
 if [ "${SVA_PROVISIONER_COMBINED_WORKER:-false}" = "true" ]; then
-  node --import ./otel-bootstrap.mjs node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js &
+  node --import ./otel-bootstrap.mjs "${provisioning_worker_entrypoint}" &
   keycloak_worker_pid=$!
   trap 'kill "${keycloak_worker_pid}" "${studio_worker_pid:-}" 2>/dev/null || true' INT TERM EXIT
   ./entrypoint.sh "$@" &
@@ -75,7 +81,7 @@ if [ "${SVA_PROVISIONER_COMBINED_WORKER:-false}" = "true" ]; then
   wait "${studio_worker_pid}" 2>/dev/null || true
   exit 1
 elif [ "$#" -eq 0 ]; then
-  set -- node --import ./otel-bootstrap.mjs node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
+  set -- node --import ./otel-bootstrap.mjs "${provisioning_worker_entrypoint}"
 fi
 
 exec "$@"

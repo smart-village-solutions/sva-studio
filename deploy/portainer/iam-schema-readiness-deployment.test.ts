@@ -15,7 +15,9 @@ describe('IAM schema readiness deployment contract', () => {
   const bootstrapEntrypoint = readRepoFile('deploy/portainer/bootstrap-entrypoint.sh');
   it('does not derive registry tenants from the runtime allowlist', () => {
     expect(bootstrapEntrypoint).not.toContain('SVA_ALLOWED_INSTANCE_IDS');
-    expect(bootstrapEntrypoint).toContain("SELECT id FROM iam.instances WHERE status = 'active' ORDER BY id");
+    expect(bootstrapEntrypoint).toContain(
+      "SELECT id FROM iam.instances WHERE status = 'active' ORDER BY id"
+    );
   });
 
   const candidatePreflight = readRepoFile('deploy/portainer/candidate-preflight.mjs');
@@ -40,6 +42,25 @@ describe('IAM schema readiness deployment contract', () => {
   const standaloneUp = readRepoFile('deploy/standalone/up.sh');
   const standaloneRunbook = readRepoFile('docs/operations/ssf-standalone-hosts.md');
 
+  it('starts the configured SSF worker and excludes its entrypoint from the standard image', () => {
+    for (const entrypoint of provisionerEntrypoints) {
+      expect(entrypoint).toContain('SVA_STUDIO_DISTRIBUTION:-studio');
+      expect(entrypoint).toContain('provisioning_worker_entrypoint=./ssf-provisioning-worker.mjs');
+      expect(entrypoint).toContain(
+        'provisioning_worker_entrypoint=node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js'
+      );
+      expect(entrypoint).toContain(
+        'node --import ./otel-bootstrap.mjs "${provisioning_worker_entrypoint}"'
+      );
+    }
+    for (const dockerfile of dockerfiles) {
+      expect(dockerfile).toContain(
+        '/workspace/apps/sva-studio-react/src/lib/ssf-provisioning-worker.mjs ./ssf-provisioning-worker.mjs'
+      );
+    }
+    expect(dockerfiles[0]).toContain('ssf-provisioning-worker.mjs ;;');
+  });
+
   it('ships the standalone Keycloak provisioner as a digest-bound internal service', () => {
     expect(standaloneProvisioner).toContain('provisioner:');
     expect(standaloneProvisioner).toContain('migrate:');
@@ -51,7 +72,9 @@ describe('IAM schema readiness deployment contract', () => {
     expect(standaloneProvisioner).toContain('./runtime.env');
     expect(standaloneProvisioner).toContain("SVA_INSTANCE_PROVISIONER_LOCAL_HANDLING: 'true'");
     expect(standaloneProvisioner).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'true'");
-    expect(standaloneProvisioner).not.toContain('node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js');
+    expect(standaloneProvisioner).not.toContain(
+      'node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js'
+    );
     expect(standaloneProvisioner).toContain('name: sva-studio-ssf_internal');
     expect(standaloneProvisioner).toContain('name: ssf-backend_default');
     expect(standaloneProvisioner).not.toContain('ports:');

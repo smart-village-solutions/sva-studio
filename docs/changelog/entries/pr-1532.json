@@ -1,0 +1,4 @@
+{
+  "prNumber": 1532,
+  "body": "Der Kasseler SSF-Provisioner lädt beim Start den SSF-Modulvertrag. Neu angelegte Tenants mit expliziter SSF-Zuweisung können dadurch im Hintergrund verarbeitet werden."
+}

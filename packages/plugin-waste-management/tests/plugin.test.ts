@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { createPluginTenantReadinessReadModel, evaluatePluginTenantAccess } from '@sva/plugin-sdk';
 
 import {
   pluginWasteManagement,
@@ -326,7 +327,45 @@ describe('pluginWasteManagement contract', () => {
           required: true,
           repairOperation: 'reconcile',
         },
+        {
+          checkId: 'waste-management.iam-data-source-schema',
+          titleKey: 'wasteManagement.readiness.iamSchema',
+          required: true,
+        },
       ],
+    });
+  });
+
+  it('rejects old ready evidence without the required Waste IAM schema check', () => {
+    const model = createPluginTenantReadinessReadModel({
+      definition: {
+        pluginId: pluginWasteManagement.id,
+        ...pluginWasteManagement.tenantLifecycle!,
+      },
+      activation: {
+        activationPolicy: 'optional',
+        effectiveActive: true,
+        updatedAt: '2026-09-27T10:00:00.000Z',
+      },
+      evidence: {
+        accessState: 'active',
+        readinessStatus: 'ready',
+        desiredOperation: 'readiness',
+        desiredGeneration: 1,
+        completedGeneration: 1,
+        readinessRevision: 'waste-tenant-database-v1',
+        readinessChecks: [
+          { checkId: 'waste-management.tenant-provisioning', status: 'ready' },
+          { checkId: 'waste-management.tenant-database-interface', status: 'ready' },
+        ],
+        updatedAt: '2026-09-27T10:00:00.000Z',
+      },
+    });
+
+    expect(model).toMatchObject({ status: 'blocked', evidenceState: 'invalid' });
+    expect(evaluatePluginTenantAccess(model)).toEqual({
+      allowed: false,
+      reason: 'evidence_invalid',
     });
   });
 

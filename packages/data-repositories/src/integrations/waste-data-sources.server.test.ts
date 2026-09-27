@@ -41,6 +41,45 @@ describe('waste data sources server', () => {
     delete process.env.IAM_DATABASE_URL;
   });
 
+  it.each([true, false])('checks whether the Waste IAM table exists (%s)', async (exists) => {
+    const { checkWasteDataSourceSchema } = await import('./waste-data-sources.server.js');
+    const query = vi.fn(async (text: string) => ({
+      rowCount: 1,
+      rows: text.includes('to_regclass') ? [{ exists }] : [],
+    }));
+    mocks.poolFactory.mockReturnValue({
+      connect: vi.fn(async () => ({ query, release: vi.fn() })),
+    });
+
+    await expect(
+      checkWasteDataSourceSchema('tenant-a', {
+        getDatabaseUrl: () => 'postgres://db.example/sva',
+      })
+    ).resolves.toBe(exists);
+    expect(query).toHaveBeenCalledWith(
+      "SELECT to_regclass('iam.instance_waste_data_sources') IS NOT NULL AS exists"
+    );
+  });
+
+  it('fails closed when the Waste IAM schema query fails', async () => {
+    const { checkWasteDataSourceSchema } = await import('./waste-data-sources.server.js');
+    mocks.poolFactory.mockReturnValue({
+      connect: vi.fn(async () => ({
+        query: vi.fn(async (text: string) => {
+          if (text.includes('to_regclass')) throw new Error('probe failed');
+          return { rowCount: 0, rows: [] };
+        }),
+        release: vi.fn(),
+      })),
+    });
+
+    await expect(
+      checkWasteDataSourceSchema('tenant-a', {
+        getDatabaseUrl: () => 'postgres://db.example/sva',
+      })
+    ).rejects.toThrow('probe failed');
+  });
+
   it('persists a waste data source configuration inside the IAM transaction boundary', async () => {
     const { saveWasteDataSourceRecord } = await import('./waste-data-sources.server.js');
 
@@ -92,7 +131,14 @@ describe('waste data sources server', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE iam.instance_waste_data_sources'),
-      ['tenant-a', 'error', '2026-05-09T10:00:00.000Z', 'failed', 'connection_refused', 'Host unreachable']
+      [
+        'tenant-a',
+        'error',
+        '2026-05-09T10:00:00.000Z',
+        'failed',
+        'connection_refused',
+        'Host unreachable',
+      ]
     );
   });
 
@@ -274,11 +320,8 @@ describe('waste data sources server', () => {
   });
 
   it('reuses pools per database url and closes them during server-state reset', async () => {
-    const {
-      loadWasteDataSourceRecord,
-      resetWasteDataSourceServerState,
-      saveWasteConnectionCheck,
-    } = await import('./waste-data-sources.server.js');
+    const { loadWasteDataSourceRecord, resetWasteDataSourceServerState, saveWasteConnectionCheck } =
+      await import('./waste-data-sources.server.js');
 
     const end = vi.fn(async () => undefined);
     const connect = vi.fn(async () => ({

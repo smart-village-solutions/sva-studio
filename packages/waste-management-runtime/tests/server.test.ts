@@ -177,10 +177,11 @@ describe('waste management runtime handlers', () => {
       expect(requestTenantDatabaseProvisioning).toHaveBeenCalledWith('instance-1');
       expect(result).toMatchObject({
         tenantLifecycle: {
-          revision: 'waste-tenant-database-v1',
+          revision: 'waste-tenant-database-v2',
           checks: [
             { checkId: 'waste-management.tenant-provisioning', status: 'ready' },
             { checkId: 'waste-management.tenant-database-interface', status: 'ready' },
+            { checkId: 'waste-management.iam-data-source-schema', status: 'ready' },
           ],
         },
       });
@@ -189,7 +190,7 @@ describe('waste management runtime handlers', () => {
 
   it('executes readiness as a read-only lifecycle operation', async () => {
     const readTenantDatabaseReadiness = vi.fn(async () => ({
-      revision: 'waste-tenant-database-v1',
+      revision: 'waste-tenant-database-v2',
       checks: [
         {
           checkId: 'waste-management.tenant-provisioning',
@@ -201,6 +202,7 @@ describe('waste management runtime handlers', () => {
           status: 'blocked' as const,
           messageKey: 'wasteManagement.readiness.managedInterfaceBlocked',
         },
+        { checkId: 'waste-management.iam-data-source-schema', status: 'ready' as const },
       ],
     }));
     const handlers = createWasteManagementPluginOperationExecutionHandlers(
@@ -227,10 +229,45 @@ describe('waste management runtime handlers', () => {
         checks: [
           { checkId: 'waste-management.tenant-provisioning', status: 'blocked' },
           { checkId: 'waste-management.tenant-database-interface', status: 'blocked' },
+          { checkId: 'waste-management.iam-data-source-schema', status: 'ready' },
         ],
       },
     });
     expect(context.progressReporter.reportProgress).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns blocked schema evidence after provisioning instead of assuming readiness', async () => {
+    const readTenantDatabaseReadiness = vi.fn(async () => ({
+      revision: 'waste-tenant-database-v2',
+      checks: [
+        { checkId: 'waste-management.tenant-provisioning', status: 'ready' as const },
+        { checkId: 'waste-management.tenant-database-interface', status: 'ready' as const },
+        {
+          checkId: 'waste-management.iam-data-source-schema',
+          status: 'blocked' as const,
+          messageKey: 'wasteManagement.readiness.iamSchemaBlocked',
+        },
+      ],
+    }));
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ readTenantDatabaseReadiness })
+    );
+    const result = await handlers[
+      wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+    ]?.(
+      createContext({
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+        inputPayload: { studioTenantLifecycle: { operation: 'provision', generation: 1 } },
+        tenantLifecycle: { operation: 'provision', generation: 1 },
+      })
+    );
+
+    expect(readTenantDatabaseReadiness).toHaveBeenCalledWith('instance-1');
+    expect(result?.tenantLifecycle?.checks).toContainEqual({
+      checkId: 'waste-management.iam-data-source-schema',
+      status: 'blocked',
+      messageKey: 'wasteManagement.readiness.iamSchemaBlocked',
+    });
   });
 
   it('propagates provisioning preparation failures without invoking the provisioner', async () => {
@@ -410,10 +447,11 @@ const createRuntime = (
 ): WasteManagementOperationRuntime => ({
   requestTenantDatabaseProvisioning: async () => ({ desiredGeneration: 1 }),
   readTenantDatabaseReadiness: async () => ({
-    revision: 'waste-tenant-database-v1',
+    revision: 'waste-tenant-database-v2',
     checks: [
       { checkId: 'waste-management.tenant-provisioning', status: 'ready' },
       { checkId: 'waste-management.tenant-database-interface', status: 'ready' },
+      { checkId: 'waste-management.iam-data-source-schema', status: 'ready' },
     ],
   }),
   provisionTenantDatabase: async () => ({

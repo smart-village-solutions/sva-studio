@@ -13,7 +13,6 @@ import {
   type WasteManagementSyncWasteTypesJobInput,
 } from '@sva/plugin-sdk';
 import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
-import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 
 import { createImportDataHandler } from './runtime-import-handler.js';
 import {
@@ -23,17 +22,6 @@ import {
 } from './runtime-job-progress.js';
 import { createOperationHandler, getJobTypeDefinition } from './runtime-job-helpers.js';
 import type { WasteManagementOperationRuntime } from './runtime-types.js';
-
-const readyTenantDatabaseChecks = () => [
-  {
-    checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.provisioning,
-    status: 'ready' as const,
-  },
-  {
-    checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.managedInterface,
-    status: 'ready' as const,
-  },
-];
 
 const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationRuntime) => {
   const executeProvisioning =
@@ -73,13 +61,11 @@ const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationR
         },
       },
     });
+    const tenantLifecycle = await runtime.readTenantDatabaseReadiness(context.job.instanceId);
 
     return {
       ...result,
-      tenantLifecycle: {
-        revision: wasteManagementTenantLifecycleContract.revision,
-        checks: readyTenantDatabaseChecks(),
-      },
+      tenantLifecycle,
     };
   };
 };

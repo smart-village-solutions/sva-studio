@@ -330,12 +330,12 @@ describe('auth-runtime health handlers', () => {
       schema: {
         checks: [
           {
-            expectedMigration: '0065_iam_instance_waste_data_sources.sql',
+            expectedMigration: '0014_iam_groups.sql',
             kind: 'table',
             message: 'Kritische IAM-Tabelle fehlt.',
             ok: false,
             reasonCode: 'missing_table',
-            schemaObject: 'iam.instance_waste_data_sources',
+            schemaObject: 'iam.groups',
           },
         ],
         ok: false,

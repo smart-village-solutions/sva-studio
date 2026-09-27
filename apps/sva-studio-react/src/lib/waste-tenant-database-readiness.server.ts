@@ -1,5 +1,6 @@
 import { wasteTenantProvisioningContract } from '@sva/core';
 import {
+  checkWasteDataSourceSchema,
   loadExternalInterfaceRecordByAlias,
   loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
@@ -9,15 +10,21 @@ import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-co
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
 export const createReadWasteTenantDatabaseReadinessOperation =
-  (deps: Pick<WasteOperationRuntimeDeps, 'loadManagedInterface' | 'loadProvisioning'> = {}) =>
+  (
+    deps: Pick<
+      WasteOperationRuntimeDeps,
+      'loadManagedInterface' | 'loadProvisioning' | 'checkSchema'
+    > = {}
+  ) =>
   async (instanceId: string): Promise<PluginTenantLifecycleExecutionResult> => {
-    const [provisioning, managedInterface] = await Promise.all([
+    const [provisioning, managedInterface, schemaReady] = await Promise.all([
       (deps.loadProvisioning ?? loadWasteTenantProvisioningRecord)(instanceId),
       (deps.loadManagedInterface ?? loadExternalInterfaceRecordByAlias)(
         instanceId,
         'postgresql',
         wasteTenantProvisioningContract.interfaceAlias
       ),
+      (deps.checkSchema ?? checkWasteDataSourceSchema)(instanceId),
     ]);
     const provisioningReady = Boolean(
       provisioning &&
@@ -53,6 +60,11 @@ export const createReadWasteTenantDatabaseReadinessOperation =
           ...(managedInterfaceReady
             ? {}
             : { messageKey: 'wasteManagement.readiness.managedInterfaceBlocked' }),
+        },
+        {
+          checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.iamSchema,
+          status: schemaReady ? 'ready' : 'blocked',
+          ...(schemaReady ? {} : { messageKey: 'wasteManagement.readiness.iamSchemaBlocked' }),
         },
       ],
     };

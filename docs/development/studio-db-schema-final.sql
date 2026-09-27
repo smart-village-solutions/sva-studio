@@ -2457,7 +2457,7 @@ ALTER TABLE iam.instance_provisioning_runs
 --
 
 ALTER TABLE iam.instance_provisioning_runs
-    ADD CONSTRAINT instance_provisioning_completion_chk CHECK (((status = ANY (ARRAY['active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])) = (completed_at IS NOT NULL))) NOT VALID;
+    ADD CONSTRAINT instance_provisioning_completion_chk CHECK ((((status = ANY (ARRAY['active'::text, 'failed'::text, 'suspended'::text, 'archived'::text])) OR ((status = 'validated'::text) AND (step_key = 'completed'::text))) = (completed_at IS NOT NULL))) NOT VALID;
 
 
 --

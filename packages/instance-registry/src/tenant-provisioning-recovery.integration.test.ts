@@ -160,6 +160,99 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
 };
 
 integrationDescribe('tenant provisioning recovery persistence', () => {
+  it('completes a validated create run only at the completed step', async () => {
+    assert(databaseName);
+    const completionInstanceId = 'integration-validated-completion';
+    const pool = new Pool({
+      host: process.env.POSTGRES_HOST ?? '127.0.0.1',
+      port: Number.parseInt(process.env.POSTGRES_HOST_PORT ?? '5432', 10),
+      database: databaseName,
+      user: process.env.POSTGRES_USER ?? 'sva',
+      password: process.env.POSTGRES_PASSWORD,
+    });
+    const repository = createInstanceRegistryRepository(createExecutor(pool));
+
+    try {
+      const instance = await repository.createInstance({
+        instanceId: completionInstanceId,
+        displayName: 'Integration Validated Completion',
+        status: 'provisioning',
+        parentDomain: 'dialog.kassel.de',
+        primaryHostname: `${completionInstanceId}.dialog.kassel.de`,
+        realmMode: 'existing',
+        authRealm: completionInstanceId,
+        authClientId: 'sva-studio-login',
+        authIssuerUrl: `https://auth.example.invalid/realms/${completionInstanceId}`,
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        featureFlags: {},
+      });
+      assert(instance);
+      const run = await repository.createProvisioningRun({
+        instanceId: completionInstanceId,
+        operation: 'create',
+        status: 'provisioning',
+        stepKey: 'activate',
+        idempotencyKey: 'integration-validated-completion',
+        payloadFingerprint: 'integration-validated-completion-payload',
+        snapshotVersion: '3.0',
+        desiredSnapshot: { automationMode: 'kassel-traefik-file' },
+      });
+      assert(run);
+
+      await expect(
+        pool.query(
+          `UPDATE iam.instance_provisioning_runs
+           SET status = 'validated', completed_at = now()
+           WHERE id = $1`,
+          [run.id]
+        )
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'instance_provisioning_completion_chk',
+      });
+      await repository.setInstanceStatus({ instanceId: completionInstanceId, status: 'validated' });
+      await pool.query(
+        `UPDATE iam.instance_provisioning_runs
+         SET status = 'validated', step_key = 'completed', completed_at = now()
+         WHERE id = $1`,
+        [run.id]
+      );
+      const readback = await pool.query<{
+        instance_status: string;
+        run_status: string;
+        step_key: string;
+        completed: boolean;
+      }>(
+        `SELECT i.status AS instance_status, r.status AS run_status, r.step_key,
+                (r.completed_at IS NOT NULL) AS completed
+         FROM iam.instance_provisioning_runs r
+         JOIN iam.instances i ON i.id = r.instance_id
+         WHERE r.id = $1`,
+        [run.id]
+      );
+      expect(readback.rows[0]).toEqual({
+        instance_status: 'validated',
+        run_status: 'validated',
+        step_key: 'completed',
+        completed: true,
+      });
+      await expect(
+        pool.query(
+          `UPDATE iam.instance_provisioning_runs
+           SET completed_at = NULL
+           WHERE id = $1`,
+          [run.id]
+        )
+      ).rejects.toMatchObject({
+        code: '23514',
+        constraint: 'instance_provisioning_completion_chk',
+      });
+    } finally {
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [completionInstanceId]);
+      await pool.end();
+    }
+  }, 30_000);
+
   it('commits the durable minimum without background callbacks and rolls it back atomically on audit failure', async () => {
     assert(databaseName);
     const committedInstanceId = 'integration-create-durable-minimum';

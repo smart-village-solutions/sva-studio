@@ -1,6 +1,8 @@
 import { createPostgresSsfAuthorizationProjectionStore } from './authorization-projection-store.js';
 import {
   createSsfAuthorizationProjection,
+  createSsfAuthorizationRevision,
+  SSF_AUTHORIZATION_PROJECTION_VERSION,
   SSF_TENANT_PERMISSION_IDS,
 } from './authorization-projection.js';
 import { readReadySsfAuthorizationRevision } from './authorization-projection-repository.js';
@@ -80,7 +82,14 @@ export const createSsfAccountCreateContribution =
     return createPostgresSsfAuthorizationProjectionStore(rootPool)
       .withTenantLock(input.instanceId, async () => {
         const revision = await readReadySsfAuthorizationRevision(runtimePool, input.instanceId);
-        if (!revision) throw new Error('conflict:SSF-Mandant ist noch nicht bereit.');
+        const expectedRevision = createSsfAuthorizationRevision({
+          contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
+          instanceId: input.instanceId,
+          subjects: [],
+        });
+        if (revision !== expectedRevision) {
+          throw new Error('conflict:SSF-Mandant ist noch nicht bereit.');
+        }
         return input.execute({
           readClaims: async ({ client, keycloakSubject, roleIds, roleNames }) => {
             const permissionIds = await readPermissionsForRoles(client, {

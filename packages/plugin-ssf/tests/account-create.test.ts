@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   createPostgresStore: vi.fn(),
   createProjection: vi.fn(),
+  createRevision: vi.fn(),
   readRevision: vi.fn(),
   readAccess: vi.fn(),
   resolveRuntimePool: vi.fn(),
@@ -15,6 +16,8 @@ vi.mock('../src/authorization-projection-store.js', () => ({
 }));
 vi.mock('../src/authorization-projection.js', () => ({
   createSsfAuthorizationProjection: state.createProjection,
+  createSsfAuthorizationRevision: state.createRevision,
+  SSF_AUTHORIZATION_PROJECTION_VERSION: '2.0',
   SSF_TENANT_PERMISSION_IDS: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
 }));
 vi.mock('../src/authorization-projection-repository.js', () => ({
@@ -36,6 +39,7 @@ describe('withSsfAccountCreate', () => {
     state.resolveRootPool.mockReturnValue({ kind: 'root-pool' });
     state.resolveRuntimePool.mockReturnValue({ kind: 'runtime-pool' });
     state.readRevision.mockResolvedValue('revision-a');
+    state.createRevision.mockReturnValue('revision-a');
     state.withTenantLock.mockImplementation(async (_instanceId, operation) => operation());
     state.createPostgresStore.mockReturnValue({ withTenantLock: state.withTenantLock });
     state.createProjection.mockImplementation(({ subjects }) => ({
@@ -95,6 +99,20 @@ describe('withSsfAccountCreate', () => {
     ).rejects.toThrow('conflict:SSF-Mandant ist noch nicht bereit.');
   });
 
+  it('refuses claims until the tenant has reconciled the current baseline contract', async () => {
+    state.readRevision.mockResolvedValue('previous-contract-revision');
+    const execute = vi.fn();
+    await expect(withSsfAccountCreate({ instanceId: 'tenant-a', execute })).rejects.toThrow(
+      'conflict:SSF-Mandant ist noch nicht bereit.'
+    );
+    expect(execute).not.toHaveBeenCalled();
+    expect(state.createRevision).toHaveBeenCalledWith({
+      contractVersion: '2.0',
+      instanceId: 'tenant-a',
+      subjects: [],
+    });
+  });
+
   it('derives canonical SSF claims under the tenant lock', async () => {
     const client = {
       query: vi.fn().mockResolvedValue({
@@ -133,6 +151,31 @@ describe('withSsfAccountCreate', () => {
         },
       ],
     });
+  });
+
+  it('issues the conversation baseline immediately for a new account without roles', async () => {
+    const actual = await vi.importActual<typeof import('../src/authorization-projection.js')>(
+      '../src/authorization-projection.js'
+    );
+    state.createProjection.mockImplementation(actual.createSsfAuthorizationProjection);
+    const query = vi.fn();
+    const execute = vi.fn(async ({ readClaims }) =>
+      readClaims({
+        client: { query },
+        keycloakSubject: 'regular-user',
+        roleIds: [],
+        roleNames: [],
+      })
+    );
+    await expect(withSsfAccountCreate({ instanceId: 'tenant-a', execute })).resolves.toEqual({
+      attributes: {
+        studio_tenant_id: ['tenant-a'],
+        ssf_roles: ['user'],
+        ssf_permissions: [...actual.SSF_CONVERSATION_PERMISSION_IDS],
+        ssf_authorization_revision: ['revision-a'],
+      },
+    });
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('maps tenant lock contention to a visible create conflict', async () => {

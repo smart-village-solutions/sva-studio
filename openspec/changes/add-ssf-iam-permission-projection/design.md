@@ -26,7 +26,8 @@ Die IAM-Auslese bleibt eine generische Host-Capability. Das SSF-Plugin fordert
 nur seine feste Permission-Allowlist an und übersetzt den zurückgegebenen,
 unveränderten Keycloak-Subject selbst. Nur die tenantlokale Studio-Rolle
 `system_admin` ergibt dabei die SSF-Persona `tenant_admin`; kundenspezifische
-Rollen bleiben auch mit Verwaltungs-Permissions fachlich `user`.
+Rollen bleiben auch mit Verwaltungs-Permissions fachlich `user`. Das unten
+beschriebene Gesprächsmindestrecht ergänzt `user` auch für Tenant-Admins.
 
 Der vollständige externe Reconcile läuft unter einer tenantgebundenen
 PostgreSQL-Advisory-Lock der SSF-Plugin-Datenbank. Damit können verschiedene
@@ -154,3 +155,35 @@ kanonischen Promote-Workflow.
 - Ohne wirksame Begrenzung der Access-Token-Laufzeit können entzogene Rechte
   länger nachwirken. Der exakte Staging-E2E bleibt daher ein separates
   Freigabegate.
+
+## Verbindliches Mindestrecht für Tenant-Nutzer (27.09.2026)
+
+Produktentscheidung: Jeder aktive reguläre Nutzer eines SSF-Tenants erhält
+Gesprächszugriff automatisch, einschließlich tenantlokaler Administratoren und
+Nutzern ohne zugewiesene Verwaltungsrechte. Eine zusätzliche Rollenvergabe oder
+manuelle Freigabe ist dafür nicht vorgesehen. Die Projektion ergänzt für jeden
+aktiven Tenant-Account die vier Basis-Actions `ssf.sessions.create`,
+`ssf.sessions.read`, `ssf.sessions.terminate` und
+`ssf.conversations.participate`. Sie bleiben im signierten `ssf_permissions`-Claim
+sichtbar; Konfigurationsrechte entstehen weiterhin ausschließlich aus IAM.
+
+Die bestehende IAM-Auslese muss auch Accounts ohne passende Rollen oder
+Permissions liefern und dabei aktive Accounts und deren aktuelle
+Instanzmitgliedschaft erzwingen. Root-Identitäten, fremde Tenants und Gäste
+werden dadurch nicht zu Tenant-Nutzern. Die Directory-Berechtigung benötigt
+mindestens einen aktiven Tenant-Nutzer, keine Verwaltungs-Permission.
+
+Nachweise: Projektion eines rollenlosen Nutzers, eines Lesers und eines Admins;
+Kontoerstellung ohne Rollen; tenantgebundene Mitgliedschaft und Ausschluss
+inaktiver Accounts; Gateway-Zugriff ohne Legacy-Rolle; Ablehnung fehlender,
+falscher oder unvollständiger Claims und tenantübergreifender Ressourcen.
+Feedback-Auswertung und technische Betriebsrechte sind kein Gesprächsmindestrecht.
+
+Liefergrenzen: Studio ändert nur die vorhandene Projektionsquelle, Projektion,
+Directory-Readiness und deren Tests/Dokumentation. SSF ändert den vorhandenen
+Token-Guard und hält zusätzliche Gates für Nicht-Gesprächsfunktionen aufrecht.
+Keine neue Datenbankstruktur, kein neuer Dienst, keine zweite Projektion.
+Der erweiterte feste Permission-Katalog ändert die Vertragsrevision. Vor dem
+Gateway-Rollout sind beide Test-Tenants über den vorhandenen Reconciler erneut
+zu projizieren und mit frisch ausgestellten Tokens zu prüfen. Ein grüner Build
+ersetzt nicht die reale Zwei-Tenant-Abnahme.

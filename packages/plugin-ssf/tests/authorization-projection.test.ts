@@ -6,6 +6,7 @@ import {
   createSsfAuthorizationRevision,
   normalizeSsfAuthorizationProjection,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
+  SSF_CONVERSATION_PERMISSION_IDS,
   SSF_TENANT_PERMISSION_IDS,
   SSF_TOKEN_CLAIMS,
   type SsfAuthorizationProjection,
@@ -39,6 +40,7 @@ describe('SSF authorization projection contract', () => {
     expect(SSF_TENANT_PERMISSION_IDS).toEqual([
       'ssf.configuration.tenant.manage',
       'ssf.configuration.tenant.read',
+      ...SSF_CONVERSATION_PERMISSION_IDS,
     ]);
   });
 
@@ -131,21 +133,45 @@ describe('SSF authorization projection contract', () => {
       subjects: [
         {
           subject: 'admin',
-          roles: ['tenant_admin'],
-          permissions: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+          roles: ['tenant_admin', 'user'],
+          permissions: [
+            'ssf.configuration.tenant.manage',
+            'ssf.configuration.tenant.read',
+            ...SSF_CONVERSATION_PERMISSION_IDS,
+          ],
         },
         {
           subject: 'custom-manager',
           roles: ['user'],
-          permissions: ['ssf.configuration.tenant.manage'],
+          permissions: ['ssf.configuration.tenant.manage', ...SSF_CONVERSATION_PERMISSION_IDS],
         },
         {
           subject: 'reader',
           roles: ['user'],
-          permissions: ['ssf.configuration.tenant.read'],
+          permissions: ['ssf.configuration.tenant.read', ...SSF_CONVERSATION_PERMISSION_IDS],
+        },
+        {
+          subject: 'without-ssf-access',
+          roles: ['tenant_admin', 'user'],
+          permissions: [...SSF_CONVERSATION_PERMISSION_IDS],
         },
       ],
     });
+  });
+
+  it('always projects conversation access for an account without roles or permissions', () => {
+    const result = createSsfAuthorizationProjection({
+      instanceId: 'tenant-a',
+      subjects: [{ subject: 'regular-user', roleNames: [], permissionIds: [] }],
+    });
+    expect(result.subjects).toEqual([
+      {
+        subject: 'regular-user',
+        roles: ['user'],
+        permissions: [...SSF_CONVERSATION_PERMISSION_IDS],
+      },
+    ]);
+    expect(result.subjects[0]?.permissions).not.toContain('ssf.configuration.tenant.manage');
   });
 
   it('fails closed for an unrecognized permission in the SSF namespace', () => {

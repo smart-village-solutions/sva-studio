@@ -76,7 +76,7 @@ IAM-Rollen. Für die erste Integration gilt folgende feste Übersetzung:
 | ---------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
 | Rootrolle `instance_registry_admin`      | `system_admin`                        | systemweite SSF-Administration; wird nicht in Tenant-Tokens materialisiert |
 | tenantlokale Defaultrolle `system_admin` | `tenant_admin`                        | Administration genau des aktiven Mandanten                                 |
-| tenantlokale operative SSF-Rolle         | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
+| jeder aktive tenantlokale Nutzer         | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
 | validierte SSF-Gäste-Session             | `guest`                               | sitzungsgebundene Nutzung ohne Studio- oder reguläres Keycloak-Konto       |
 
 ADR-046 bleibt für Studio maßgeblich: `instance_registry_admin` ist die
@@ -96,10 +96,19 @@ Studios verwaltet und erscheinen nicht in Tenant-Tokens. `system_admin` und
 Defaultrollen, aber keine direkte Autorisierungsgrundlage. Serverseitige
 Entscheidungen verwenden ausschließlich vollständig qualifizierte `ssf.*`-
 Actions. Damit können kundenspezifische Rollen dieselben Rechte erhalten, ohne
-Rollennamen als Sonderfall zu behandeln. Ein Mandantenadmin erhält nicht
-automatisch operative Gesprächsrechte. Soll dieselbe Person SSF operativ
-nutzen, erhält sie zusätzlich die Rolle `user` und die zugehörigen operativen
-`ssf.*`-Permissions.
+Rollennamen als Sonderfall zu behandeln. Jeder aktive Nutzer eines SSF-Tenants erhält Gesprächszugriff automatisch als
+Mindestrecht, unabhängig von Rollen und zusätzlichen Verwaltungsrechten. Dies
+gilt auch für Mandantenadmins und rollenlose Nutzer. Die Projektion ergänzt
+immer `ssf.sessions.create`, `ssf.sessions.read`, `ssf.sessions.terminate` und
+`ssf.conversations.participate`. Diese Basisrechte werden nicht separat vergeben
+oder über optionale Rollen entzogen. Gesperrte, gelöschte oder inaktive Konten
+sowie fehlende Tenant-Mitgliedschaften bleiben ausgeschlossen. Gäste und
+Root-Identitäten erhalten dadurch keinen regulären Tenant-Zugang.
+
+Die zusätzlichen Konfigurationsrechte bleiben IAM-gesteuert. Das Mindestrecht
+umfasst weder Feedback-Auswertungen noch technische Betriebsfunktionen.
+Die SSF-Persona `user` wird für jeden projizierten Nutzer gesetzt; tenantlokale
+Administratoren tragen zusätzlich `tenant_admin`.
 
 Gäste bleiben vollständig im bestehenden SSF-Sessionmodell. Sie erhalten kein
 Studio- und kein reguläres Keycloak-Konto. Gast-Token, Session-IDs und
@@ -165,8 +174,15 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 {
   "sub": "keycloak-user-id",
   "studio_tenant_id": "tenant-kassel",
-  "ssf_roles": ["tenant_admin"],
-  "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
+  "ssf_roles": ["tenant_admin", "user"],
+  "ssf_permissions": [
+    "ssf.configuration.tenant.read",
+    "ssf.configuration.tenant.manage",
+    "ssf.conversations.participate",
+    "ssf.sessions.create",
+    "ssf.sessions.read",
+    "ssf.sessions.terminate"
+  ],
   "ssf_authorization_revision": "sha256:...",
   "preferred_username": "erika",
   "name": "Erika Muster",

@@ -10,13 +10,12 @@ const mocks = vi.hoisted(() => ({
   baselineReady: vi.fn(),
 }));
 vi.mock('@sva/auth-runtime/server', () => ({
-  hasActiveTenantPermissionProjectionSubject: mocks.hasActiveSubject,
+  hasActiveTenantProjectionSubject: mocks.hasActiveSubject,
   readConfiguredPluginTenantAccess: mocks.access,
 }));
 vi.mock('@sva/plugin-ssf/runtime', () => ({
   readReadySsfAuthorizationRevision: mocks.revision,
   resolveSsfDatabasePool: mocks.resolvePool,
-  SSF_TENANT_PERMISSION_IDS: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
 }));
 vi.mock('./plugin-activation-policy-bootstrap.server.js', () => ({
   ensurePluginActivationPoliciesConfigured: mocks.configure,
@@ -74,6 +73,5 @@ it('keeps technical runtime readiness independent from directory subject eligibi
   expect(await readStudioSsfAdminLoginReadiness('tenant-a')).toBe(false);
   expect(mocks.hasActiveSubject).toHaveBeenCalledWith({
     instanceId: 'tenant-a',
-    permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
   });
 });

@@ -17,9 +17,18 @@ export const SSF_TOKEN_CLAIMS = {
   authorizationRevision: 'ssf_authorization_revision',
 } as const;
 
+/** Mandatory operational rights of every active regular SSF tenant account. */
+export const SSF_CONVERSATION_PERMISSION_IDS = [
+  'ssf.conversations.participate',
+  'ssf.sessions.create',
+  'ssf.sessions.read',
+  'ssf.sessions.terminate',
+] as const;
+
 export const SSF_TENANT_PERMISSION_IDS = [
   'ssf.configuration.tenant.manage',
   'ssf.configuration.tenant.read',
+  ...SSF_CONVERSATION_PERMISSION_IDS,
 ] as const;
 
 export const SSF_TENANT_ROLE_IDS = ['tenant_admin', 'user'] as const;
@@ -112,7 +121,7 @@ export const createSsfAuthorizationProjection = (input: {
   readonly instanceId: string;
   readonly subjects: readonly SsfEffectiveAuthorizationSubject[];
 }): SsfAuthorizationProjection => {
-  const subjects = input.subjects.flatMap((entry) => {
+  const subjects = input.subjects.map((entry) => {
     const ssfPermissions = sortedUnique(
       entry.permissionIds.filter((permissionId) => permissionId.startsWith(SSF_PERMISSION_PREFIX))
     );
@@ -122,15 +131,11 @@ export const createSsfAuthorizationProjection = (input: {
     if (unknownPermission) {
       throw new Error(`ssf_authorization_projection_unknown_permission:${unknownPermission}`);
     }
-    if (ssfPermissions.length === 0) return [];
-
-    return [
-      {
-        subject: entry.subject,
-        roles: [entry.roleNames.includes('system_admin') ? 'tenant_admin' : 'user'],
-        permissions: ssfPermissions,
-      },
-    ];
+    return {
+      subject: entry.subject,
+      roles: entry.roleNames.includes('system_admin') ? ['tenant_admin', 'user'] : ['user'],
+      permissions: sortedUnique([...SSF_CONVERSATION_PERMISSION_IDS, ...ssfPermissions]),
+    };
   });
 
   return normalizeSsfAuthorizationProjection(

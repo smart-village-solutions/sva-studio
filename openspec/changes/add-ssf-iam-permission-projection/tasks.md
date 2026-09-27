@@ -88,3 +88,11 @@ ersetzt weder den Tokenlaufzeit- noch den gemeinsamen Staging-Nachweis.
 - [x] Veraltetes `ready` erneut prüfen und denselben Readiness-Pfad für Directory und Runtime verwenden
 - [x] Lokale Zwei-Tenant-, Teilfehler- und PostgreSQL-Wiederanlaufnachweise ergänzen
 - [ ] Gemeinsamen echten Zwei-Realm-Login bis SSF-Gateway in Staging nachweisen und Digest dokumentieren
+
+## Gesprächszugriff als Mindestrecht
+
+- [x] Aktive Tenant-Nutzer unabhängig von optionalen Verwaltungsrechten projizieren.
+- [x] Gesprächs-Basisrechte bei Reconcile und Kontoerstellung automatisch ergänzen.
+- [x] Directory-Readiness an aktive Mitgliedschaft binden.
+- [x] Gezielte Unit-, Typ- und Server-Runtime-Gates durchführen.
+- [ ] Studio/Gateway abgestimmt ausrollen, neu projizieren und mit zwei Tenants real abnehmen.

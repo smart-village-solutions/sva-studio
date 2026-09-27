@@ -49,10 +49,7 @@ describe('tenant permission projection source', () => {
       {
         keycloakSubject: 'subject-a',
         roleNames: ['system_admin'],
-        permissionIds: [
-          'ssf.configuration.tenant.manage',
-          'ssf.configuration.tenant.read',
-        ],
+        permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
       },
       {
         keycloakSubject: 'subject-b',
@@ -60,24 +57,33 @@ describe('tenant permission projection source', () => {
         permissionIds: ['ssf.configuration.tenant.read'],
       },
     ]);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("AND a.status = 'active'"),
-      [
-        'tenant-a',
-        ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
-      ]
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("AND a.status = 'active'"), [
+      'tenant-a',
+      ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+    ]);
   });
 
-  it('does not query when no permission allowlist is requested', async () => {
-    const query = vi.fn();
+  it('keeps a roleless active member even when the permission allowlist is empty', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue({
+        rows: [{ keycloak_subject: 'regular-user', role_name: null, permission_key: null }],
+      });
     await expect(
       loadTenantPermissionProjectionSubjectsWithClient(
         { query },
         { instanceId: 'tenant-a', permissionIds: [] }
       )
-    ).resolves.toEqual([]);
-    expect(query).not.toHaveBeenCalled();
+    ).resolves.toEqual([{ keycloakSubject: 'regular-user', roleNames: [], permissionIds: [] }]);
+    const sql = query.mock.calls[0][0];
+    expect(sql).toContain('JOIN iam.instance_memberships membership');
+    expect(sql).toContain('membership.instance_id = a.instance_id');
+    expect(sql).toContain('source.instance_id = a.instance_id');
+    expect(sql).toContain("WHERE a.instance_id = $1\n  AND a.status = 'active'");
+    expect(sql).toContain('AND a.is_blocked = false');
+    expect(sql).toContain('AND a.soft_deleted_at IS NULL');
+    expect(sql).toContain("AND a.deletion_lifecycle_state = 'active'");
+    expect(sql).toContain('permission_module.effective_active = false THEN NULL');
   });
 });
 
@@ -92,46 +98,28 @@ describe('tenant permission projection', () => {
     );
   });
 
-  it('skips the database when no relevant permissions are configured', async () => {
-    const { hasActiveTenantPermissionProjectionSubject } =
-      await import('./tenant-permission-projection.js');
-
-    await expect(
-      hasActiveTenantPermissionProjectionSubject({ instanceId: 'tenant-a', permissionIds: [] })
-    ).resolves.toBe(false);
-    expect(state.withInstanceScopedDb).not.toHaveBeenCalled();
-  });
-
-  it('checks committed IAM state with normalized permission ids', async () => {
+  it('checks active membership without demanding optional permissions', async () => {
     state.query.mockResolvedValueOnce({ rows: [{ present: true }] });
-    const { hasActiveTenantPermissionProjectionSubject } =
-      await import('./tenant-permission-projection.js');
-
-    await expect(
-      hasActiveTenantPermissionProjectionSubject({
-        instanceId: 'tenant-a',
-        permissionIds: ['ssf.write', 'ssf.read', 'ssf.write'],
-      })
-    ).resolves.toBe(true);
-
-    expect(state.withInstanceScopedDb).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    const { hasActiveTenantProjectionSubject } = await import('./tenant-permission-projection.js');
+    await expect(hasActiveTenantProjectionSubject({ instanceId: 'tenant-a' })).resolves.toBe(true);
     expect(state.query).toHaveBeenCalledWith(
       expect.stringContaining('JOIN iam.instance_memberships membership'),
-      ['tenant-a', ['ssf.read', 'ssf.write']]
+      ['tenant-a']
     );
+    expect(state.query.mock.calls[0][0]).toContain("AND a.status = 'active'");
+    expect(state.query.mock.calls[0][0]).not.toContain('role_permissions');
   });
 
   it.each([{ rows: [] }, { rows: [{ present: false }] }])(
     'reports no active subject for result %#',
     async (result) => {
       state.query.mockResolvedValueOnce(result);
-      const { hasActiveTenantPermissionProjectionSubject } =
+      const { hasActiveTenantProjectionSubject } =
         await import('./tenant-permission-projection.js');
 
       await expect(
-        hasActiveTenantPermissionProjectionSubject({
+        hasActiveTenantProjectionSubject({
           instanceId: 'tenant-a',
-          permissionIds: ['ssf.read'],
         })
       ).resolves.toBe(false);
     }

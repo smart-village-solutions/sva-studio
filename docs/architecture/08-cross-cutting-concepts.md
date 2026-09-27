@@ -976,6 +976,12 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   `system_admin`, die tenantlokale Studio-Rolle `system_admin` als SSF-
   `tenant_admin` eingeordnet. Gäste bleiben im SSF-Sessionmodell. Access-Tokens
   gelten standardmäßig fünf und höchstens zehn Minuten.
+- Jeder aktive Tenant-Nutzer erhält automatisch die Gesprächs-Basisrechte
+  `ssf.sessions.create`, `ssf.sessions.read`, `ssf.sessions.terminate` und
+  `ssf.conversations.participate`. Rollenlose Nutzer werden ebenfalls
+  projiziert; Tenant-Admins tragen zusätzlich die Persona `user`. Optionale
+  Konfigurationsrechte bleiben IAM-gesteuert. Gesperrte, gelöschte oder inaktive
+  Konten und fehlende Tenant-Mitgliedschaften bleiben ausgeschlossen.
 - Die vier von Studio verwalteten SSF-Claim-Attribute müssen im
   Keycloak-Benutzerprofil eindeutig, mit korrekter Ein-/Mehrwertigkeit und
   admin-only Sicht-/Bearbeitungsrechten deklariert sein. Die Projektion erhält

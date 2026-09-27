@@ -5,6 +5,7 @@ import {
   createSsfAuthorizationRevision,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
   SSF_TENANT_PERMISSION_IDS,
+  SSF_CONVERSATION_PERMISSION_IDS,
   type SsfAuthorizationProjectionLockedStore,
   type SsfAuthorizationProjectionStore,
   type SsfAuthorizationProjectionTarget,
@@ -119,8 +120,12 @@ describe('SSF authorization projection runtime', () => {
       subjects: [
         {
           subject: 'keycloak-subject-1',
-          roles: ['tenant_admin'],
-          permissions: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+          roles: ['tenant_admin', 'user'],
+          permissions: [
+            'ssf.configuration.tenant.manage',
+            'ssf.configuration.tenant.read',
+            ...SSF_CONVERSATION_PERMISSION_IDS,
+          ],
         },
       ],
     });

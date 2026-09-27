@@ -93,3 +93,26 @@ verwenden; eine während des Read-back wechselnde Revision sperrt die Freigabe.
 - **WHEN** die gemeinsame Readiness-Prüfung nach Aktivierung des Browserclients fehlschlägt
 - **THEN** bleibt die Projektion gesperrt und der Lifecycle erfolglos
 - **AND** versucht der Adapter, ausschließlich die Browser-Tokenausstellung wieder zu sperren
+
+### Requirement: Gesprächszugriff als automatisches Mindestrecht
+
+Studio SHALL jedem aktiven Nutzer eines SSF-Tenants automatisch die vier
+Gesprächsrechte `ssf.sessions.create`, `ssf.sessions.read`,
+`ssf.sessions.terminate` und `ssf.conversations.participate` projizieren.
+Eine manuelle Rollenzuweisung MUST NOT Voraussetzung dieses Mindestrechts sein.
+Zusätzliche Konfigurationsrechte SHALL ausschließlich aus dem IAM stammen.
+
+#### Scenario: Rollenloses Tenant-Konto
+
+- **WHEN** ein aktives, nicht gesperrtes und nicht gelöschtes Konto Mitglied des Tenants ist
+- **THEN** erhält es die Persona `user` und alle vier Gesprächsrechte, auch ohne zusätzliche Permissions
+
+#### Scenario: Kontoerstellung vor Vertragsabgleich
+
+- **WHEN** der Tenant noch nicht die aktuelle Vertragsrevision bestätigt hat
+- **THEN** stellt die Kontoerstellung keine neuen SSF-Claims unter einer veralteten Revision aus
+
+#### Scenario: Kein Tenant-Zugang durch das Mindestrecht
+
+- **WHEN** das Konto inaktiv, gesperrt, gelöscht oder kein Mitglied des Tenants ist
+- **THEN** wird es nicht in dessen SSF-Nutzerprojektion aufgenommen

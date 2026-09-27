@@ -884,57 +884,92 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('assigns requested create modules before capturing the automated provisioning snapshot', async () => {
-    const createdInstance = {
-      ...baseInstance,
-      parentDomain: 'dialog.kassel.de',
-      primaryHostname: 'demo.dialog.kassel.de',
-      assignedModules: [],
-    };
-    const assignedInstance = { ...createdInstance, assignedModules: ['news'] };
-    const repository = createRepository({
-      listInstances: vi.fn(async () => []),
-      getInstanceById: vi
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValue(assignedInstance),
-      createInstance: vi.fn(async () => createdInstance),
-      listAssignedModules: vi.fn().mockResolvedValueOnce([]).mockResolvedValue(['news']),
-      createProvisioningRun: vi.fn(async (input) => ({ ...latestRun, ...input })),
-    });
-    const service = createInstanceRegistryService(
-      createDeps(repository, {
-        isAutomatedTenantProvisioningEnabled: () => true,
-      })
-    );
+  it.each([
+    { moduleId: 'news', activationPolicy: 'automatic', lifecycle: currentNewsLifecycle },
+    {
+      moduleId: 'ssf',
+      activationPolicy: 'optional',
+      lifecycle: {
+        pluginId: 'ssf',
+        contractVersion: 1 as const,
+        contractRevision: 'ssf-1:contract',
+        operations: [{ operation: 'provision' as const, jobTypeId: 'ssf.provision' }],
+        readinessChecks: [],
+      },
+    },
+  ] as const)(
+    'assigns a requested $activationPolicy $moduleId module before capturing the new tenant snapshot',
+    async ({ moduleId, activationPolicy, lifecycle }) => {
+      const createdInstance = {
+        ...baseInstance,
+        parentDomain: 'dialog.kassel.de',
+        primaryHostname: 'demo.dialog.kassel.de',
+        assignedModules: [],
+      };
+      const assignedInstance = { ...createdInstance, assignedModules: [moduleId] };
+      const repository = createRepository({
+        listInstances: vi.fn(async () => []),
+        getInstanceById: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(assignedInstance),
+        createInstance: vi.fn(async () => createdInstance),
+        listAssignedModules: vi.fn().mockResolvedValueOnce([]).mockResolvedValue([moduleId]),
+        createProvisioningRun: vi.fn(async (input) => ({ ...latestRun, ...input })),
+      });
+      const deps = createDeps(repository, {
+        pluginTenantLifecycleRegistry: new Map([[moduleId, lifecycle]]),
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'catalog-1',
+          modules: [{ moduleId, activationPolicy, manifestVersion: 1, policyRevision: 'module-1' }],
+        }),
+      });
+      const service = createInstanceRegistryService({
+        ...deps,
+        moduleIamRegistry: new Map([
+          ...(deps.moduleIamRegistry ?? []),
+          [
+            'ssf',
+            {
+              moduleId: 'ssf',
+              ownerPluginId: 'ssf',
+              permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+            },
+          ] as const,
+        ]),
+      });
 
-    await service.createProvisioningRequest({
-      ...completeCreateIdentity,
-      instanceId: 'demo',
-      displayName: 'Demo',
-      parentDomain: 'dialog.kassel.de',
-      realmMode: 'new',
-      authRealm: 'demo',
-      authClientId: 'sva-studio-login',
-      idempotencyKey: 'idem-create-modules',
-      moduleIds: ['news'],
-    });
+      await service.createProvisioningRequest({
+        ...completeCreateIdentity,
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'dialog.kassel.de',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+        idempotencyKey: 'idem-create-modules',
+        moduleIds: [moduleId],
+      });
 
-    expect(repository.assignModule).toHaveBeenCalledWith(
-      'demo',
-      'news',
-      currentNewsLifecycle.contractRevision
-    );
-    expect(repository.createProvisioningRun).toHaveBeenCalledWith(
-      expect.objectContaining({
-        desiredSnapshot: expect.objectContaining({ assignedModules: ['news'] }),
-      })
-    );
-    expect(vi.mocked(repository.assignModule).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(repository.createProvisioningRun).mock.invocationCallOrder[0] ?? 0
-    );
-  });
+      expect(repository.assignModule).toHaveBeenCalledWith(
+        'demo',
+        moduleId,
+        lifecycle.contractRevision
+      );
+      expect(repository.createProvisioningRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          desiredSnapshot: expect.objectContaining({
+            assignedModules: [moduleId],
+            pluginActivationPolicies: [expect.objectContaining({ moduleId, activationPolicy })],
+          }),
+        })
+      );
+      expect(vi.mocked(repository.assignModule).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(repository.createProvisioningRun).mock.invocationCallOrder[0] ?? 0
+      );
+    }
+  );
 
   it('skips a requested companion module already assigned by an earlier create module', async () => {
     const createdInstance = {
@@ -3938,6 +3973,90 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('seeds core and SSF system-admin grants for an explicitly assigned optional module', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({ ...baseInstance, assignedModules: ['ssf'] })),
+      listAssignedModules: vi.fn(async () => ['ssf']),
+      reconcileModuleActivationPolicies: vi.fn(async () => ({
+        changedModuleIds: [],
+        conflictModuleIds: [],
+        unchangedModuleIds: ['ssf'],
+      })),
+    });
+    const deps = createDeps(repository, {
+      moduleIamRegistry: new Map([
+        [
+          'ssf',
+          {
+            moduleId: 'ssf',
+            ownerPluginId: 'ssf',
+            permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+            systemRoles: [
+              {
+                roleName: 'system_admin',
+                permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+              },
+            ],
+          },
+        ],
+      ]),
+      readModuleActivationPolicySnapshot: () => ({
+        revision: 'ssf-optional-1',
+        modules: [
+          {
+            moduleId: 'ssf',
+            activationPolicy: 'optional',
+            manifestVersion: 1,
+            policyRevision: 'ssf-1',
+          },
+        ],
+      }),
+    });
+
+    await expect(
+      createInstanceRegistryService(deps).seedIamBaseline({
+        instanceId: 'demo',
+        idempotencyKey: 'idem-ssf-optional',
+        actorId: 'actor-1',
+        requestId: 'req-ssf-optional',
+      })
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+      expect.objectContaining({
+        policies: [expect.objectContaining({ moduleId: 'ssf', activationPolicy: 'optional' })],
+      })
+    );
+    expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      role: expect.objectContaining({
+        roleKey: 'system_admin',
+        permissions: expect.arrayContaining([expect.objectContaining({ key: 'iam.user.read' })]),
+      }),
+    });
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        contracts: [
+          expect.objectContaining({
+            moduleId: 'ssf',
+            permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+            systemRoles: [
+              {
+                roleName: 'system_admin',
+                permissionIds: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+              },
+            ],
+          }),
+        ],
+      })
+    );
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      trigger: 'instance_module_iam_seeded',
+    });
   });
 
   it('assigns the host-owned media module when it is present in the module registry', async () => {

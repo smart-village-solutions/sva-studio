@@ -218,23 +218,25 @@ export const buildInstanceDetailCockpitModel = (
   instance: IamInstanceDetail,
   mutationError: IamHttpError | null,
   configurationAssessmentOverride?: InstanceConfigurationAssessment,
-  requiredPluginReadiness: RequiredPluginReadinessAssessment | null = null
+  requiredPluginReadiness: RequiredPluginReadinessAssessment | null = null,
+  planNeedsRefresh = false
 ): InstanceDetailCockpitModel => {
   const configurationAssessment =
     configurationAssessmentOverride ?? evaluateInstanceConfiguration(instance, mutationError);
   const workflowSteps = getSetupWorkflowSteps(instance, mutationError);
   const workflowActions = workflowSteps.flatMap((step) => (step.action ? [step.action] : []));
-  const primaryActionKey =
-    mutationError?.code === 'keycloak_plan_fingerprint_stale'
-      ? 'plan_provisioning'
-      : selectPrimaryAction(instance, workflowActions);
-  const specialisedActions = instance.keycloakPlan?.fingerprint
-    ? workflowActions.filter(
-        (action) =>
-          action === 'provision_admin_client' ||
-          (action === 'reset_tenant_admin' && instance.realmMode === 'existing')
-      )
-    : [];
+  const stalePlan = planNeedsRefresh || mutationError?.code === 'keycloak_plan_fingerprint_stale';
+  const primaryActionKey = stalePlan
+    ? 'plan_provisioning'
+    : selectPrimaryAction(instance, workflowActions);
+  const specialisedActions =
+    !stalePlan && instance.keycloakPlan?.fingerprint
+      ? workflowActions.filter(
+          (action) =>
+            action === 'provision_admin_client' ||
+            (action === 'reset_tenant_admin' && instance.realmMode === 'existing')
+        )
+      : [];
   const cockpitState = buildCockpitState(
     instance,
     configurationAssessment,

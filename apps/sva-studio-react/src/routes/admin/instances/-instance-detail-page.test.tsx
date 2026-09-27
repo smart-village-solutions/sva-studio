@@ -1525,27 +1525,71 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByText('Ungespeicherte Instanzeinstellungen')).toBeTruthy();
   });
   it('replaces execution with a fresh plan action after a stale fingerprint response', async () => {
-    const planKeycloakProvisioning = vi.fn().mockResolvedValue(true);
+    const planKeycloakProvisioning = vi.fn().mockResolvedValueOnce(null);
     const executeKeycloakProvisioning = vi.fn();
-    useInstancesMock.mockReturnValue(
-      createInstancesApiState({
-        planKeycloakProvisioning,
-        executeKeycloakProvisioning,
-        mutationError: { status: 409, code: 'keycloak_plan_fingerprint_stale', message: 'private' },
-        selectedInstance: createSelectedInstance({
-          provisioningReadiness: {
-            state: 'provisioning_waiting',
-            capabilities: [],
-            nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
-          },
-        }),
-      })
-    );
-    render(<InstanceDetailPage instanceId="demo" />);
+    const staleSelectedInstance = {
+      ...createSelectedInstance({
+        provisioningReadiness: {
+          state: 'provisioning_waiting',
+          capabilities: [],
+          nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+        },
+      }),
+      keycloakPlan: { ...createSelectedInstance().keycloakPlan, fingerprint: 'old-plan' },
+    };
+    const apiState = createInstancesApiState({
+      planKeycloakProvisioning,
+      executeKeycloakProvisioning,
+      mutationError: { status: 409, code: 'keycloak_plan_fingerprint_stale', message: 'private' },
+      selectedInstance: staleSelectedInstance,
+    }) as ReturnType<typeof createInstancesApiState> & {
+      mutationError: { status: number; code: string; message: string } | null;
+    };
+    useInstancesMock.mockReturnValue(apiState);
+    const { rerender } = render(<InstanceDetailPage instanceId="demo" />);
     expect(screen.queryByRole('button', { name: 'Provisioning ausführen' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true })
+    ).toBeNull();
     expect(screen.getByText(/Der bestätigte Plan ist veraltet/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Provisioning-Vorschau laden' }));
     await waitFor(() => expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo'));
+    expect(executeKeycloakProvisioning).not.toHaveBeenCalled();
+
+    apiState.mutationError = { status: 503, code: 'keycloak_unavailable', message: 'private' };
+    rerender(<InstanceDetailPage instanceId="demo" />);
+    await openDoctor();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true })
+    ).toBeNull();
+
+    planKeycloakProvisioning.mockImplementationOnce(async () => {
+      staleSelectedInstance.keycloakPlan = {
+        ...staleSelectedInstance.keycloakPlan,
+        fingerprint: 'new-plan',
+      };
+      apiState.mutationError = null;
+      return staleSelectedInstance.keycloakPlan;
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Provisioning-Vorschau laden', hidden: true })
+    );
+    await waitFor(() => expect(planKeycloakProvisioning).toHaveBeenCalledTimes(2));
+    rerender(<InstanceDetailPage instanceId="demo" />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+      ).toBeTruthy()
+    );
+    expect(
+      screen.getByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true })
+    ).toBeTruthy();
     expect(executeKeycloakProvisioning).not.toHaveBeenCalled();
   });
   it('keeps the real stale-plan HTTP response visible without a success reload', async () => {

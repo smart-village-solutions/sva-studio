@@ -147,6 +147,10 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const [actionBusy, setActionBusy] = React.useState(false);
   const actionBusyRef = React.useRef(false);
   const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
+  const [stalePlan, setStalePlan] = React.useState<{
+    instanceId: string;
+    fingerprint: string;
+  } | null>(null);
 
   React.useEffect(() => {
     void loadInstance(instanceId);
@@ -154,6 +158,16 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   const selectedInstance =
     instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
+  const planFingerprint = selectedInstance?.keycloakPlan?.fingerprint;
+  const planNeedsRefresh =
+    instancesApi.mutationError?.code === 'keycloak_plan_fingerprint_stale' ||
+    (Boolean(planFingerprint) &&
+      stalePlan?.instanceId === instanceId &&
+      stalePlan.fingerprint === planFingerprint);
+  React.useEffect(() => {
+    if (instancesApi.mutationError?.code === 'keycloak_plan_fingerprint_stale' && planFingerprint)
+      setStalePlan({ instanceId, fingerprint: planFingerprint });
+  }, [instanceId, instancesApi.mutationError?.code, planFingerprint]);
   const tenantSecretUserInputRequired = readTenantSecretUserInputRequired(
     detailFormValues,
     selectedInstance
@@ -186,7 +200,8 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           selectedInstance,
           instancesApi.mutationError,
           configurationAssessment,
-          requiredPluginReadiness
+          requiredPluginReadiness,
+          planNeedsRefresh
         )
       : null;
   const doctorModel =
@@ -196,6 +211,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           configurationAssessment,
           mutationError: instancesApi.mutationError,
           requiredPluginReadiness,
+          planNeedsRefresh,
         })
       : null;
   const missingWorkerEnvName = readMissingWorkerEnvName(selectedInstance);
@@ -376,13 +392,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     if (!selectedInstance || !detailFormValues) {
       return;
     }
-    const planFingerprint = selectedInstance.keycloakPlan?.fingerprint;
-    if (!planFingerprint) return;
+    const confirmedPlanFingerprint = selectedInstance.keycloakPlan?.fingerprint;
+    if (!confirmedPlanFingerprint || planNeedsRefresh) return;
 
     setActionFeedback(null);
     const result = await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
       intent,
-      planFingerprint,
+      planFingerprint: confirmedPlanFingerprint,
       tenantAdminTemporaryPassword:
         detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
     });
@@ -434,6 +450,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       case 'plan_provisioning': {
         const result = await instancesApi.planKeycloakProvisioning(selectedInstance.instanceId);
         if (result) {
+          setStalePlan(null);
           setActionFeedback({
             tone: 'success',
             message: t('admin.instances.feedback.provisioningPreviewUpdated'),

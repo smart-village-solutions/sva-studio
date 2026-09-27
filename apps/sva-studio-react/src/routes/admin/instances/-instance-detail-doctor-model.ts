@@ -262,11 +262,13 @@ export const buildInstanceDoctorModel = ({
   configurationAssessment,
   mutationError,
   requiredPluginReadiness = null,
+  planNeedsRefresh = false,
 }: {
   instance: IamInstanceDetail;
   configurationAssessment: InstanceConfigurationAssessment;
   mutationError: IamHttpError | null;
   requiredPluginReadiness?: RequiredPluginReadinessAssessment | null;
+  planNeedsRefresh?: boolean;
 }): InstanceDoctorModel => {
   const checks = buildChecks(instance, configurationAssessment, requiredPluginReadiness);
   const validationState = readValidationState(checks);
@@ -274,7 +276,8 @@ export const buildInstanceDoctorModel = ({
     instance,
     mutationError,
     configurationAssessment,
-    requiredPluginReadiness
+    requiredPluginReadiness,
+    planNeedsRefresh
   );
   const firstNonReadyCheck = checks.find((check) => check.status !== 'ready');
 

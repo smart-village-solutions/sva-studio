@@ -850,4 +850,20 @@ describe('instance detail split helpers', () => {
       status: 'pending',
     });
   });
+  it.each(['conditional', 'never'] as const)(
+    'routes an unsafe %s retry to diagnostics',
+    (retryClass) => {
+      const model = buildInstanceDetailCockpitModel(
+        createDetailFixture({
+          provisioningReadiness: {
+            state: 'provisioning_blocked',
+            capabilities: [],
+            nextAction: { action: 'instance.provisioning.retry', retryClass },
+          },
+        }),
+        null
+      );
+      expect(model.primaryAction.action).toBe('open_diagnostics');
+    }
+  );
 });

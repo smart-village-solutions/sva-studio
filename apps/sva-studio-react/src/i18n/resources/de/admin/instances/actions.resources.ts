@@ -1,4 +1,5 @@
 export const actionsInstancesAdminDEResources = {
+  more: 'Weitere Aktionen',
   create: 'Instanz anlegen',
   edit: 'Bearbeiten',
   save: 'Instanz speichern',

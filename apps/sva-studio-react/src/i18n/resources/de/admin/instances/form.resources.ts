@@ -1,4 +1,10 @@
 export const formInstancesAdminDEResources = {
+  general: 'Allgemein',
+  realmAndClients: 'Nutzer-Datenbank und Clients',
+  credentials: 'Zugangsdaten',
+  unsaved: 'Ungespeicherte Instanzeinstellungen',
+  invalidIssuer: 'Bitte eine gültige Issuer-URL angeben.',
+
   title: 'Neue Instanz anlegen',
   subtitle:
     'Die Anlage startet denselben Provisioning-Vertrag wie der Ops-Pfad und hinterlegt Realm-Grundeinstellungen für Keycloak.',

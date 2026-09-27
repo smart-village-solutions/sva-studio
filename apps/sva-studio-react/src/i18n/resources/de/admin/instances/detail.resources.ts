@@ -1,4 +1,6 @@
 export const detailInstancesAdminDEResources = {
+  operationalState: 'Betriebszustand',
+  confirmActivation: 'Die aktuell geprüfte Instanz jetzt aktivieren?',
   title: 'Instanzdetails',
   subtitle: 'Pflegen Sie Registry- und Keycloak-Grundeinstellungen der ausgewählten Instanz.',
   empty: 'Wählen Sie eine Instanz aus der Liste, um Details, Realm-Status und Läufe anzuzeigen.',

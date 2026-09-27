@@ -4,6 +4,123 @@ import { CircleHelp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { t } from '../../../i18n';
+import type { InstanceFieldHelpKey } from './-instances-shared-types';
+
+export const INSTANCE_FIELD_HELP: Record<
+  InstanceFieldHelpKey,
+  {
+    readonly title: string;
+    readonly what: string;
+    readonly value: string;
+    readonly source: string;
+    readonly impact: string;
+    readonly defaultHint?: string;
+  }
+> = {
+  realmMode: {
+    title: t('admin.instances.help.realmMode.title'),
+    what: t('admin.instances.help.realmMode.what'),
+    value: t('admin.instances.help.realmMode.value'),
+    source: t('admin.instances.help.realmMode.source'),
+    impact: t('admin.instances.help.realmMode.impact'),
+    defaultHint: t('admin.instances.help.realmMode.defaultHint'),
+  },
+  instanceId: {
+    title: t('admin.instances.help.instanceId.title'),
+    what: t('admin.instances.help.instanceId.what'),
+    value: t('admin.instances.help.instanceId.value'),
+    source: t('admin.instances.help.instanceId.source'),
+    impact: t('admin.instances.help.instanceId.impact'),
+  },
+  displayName: {
+    title: t('admin.instances.help.displayName.title'),
+    what: t('admin.instances.help.displayName.what'),
+    value: t('admin.instances.help.displayName.value'),
+    source: t('admin.instances.help.displayName.source'),
+    impact: t('admin.instances.help.displayName.impact'),
+  },
+  parentDomain: {
+    title: t('admin.instances.help.parentDomain.title'),
+    what: t('admin.instances.help.parentDomain.what'),
+    value: t('admin.instances.help.parentDomain.value'),
+    source: t('admin.instances.help.parentDomain.source'),
+    impact: t('admin.instances.help.parentDomain.impact'),
+    defaultHint: t('admin.instances.help.parentDomain.defaultHint'),
+  },
+  authRealm: {
+    title: t('admin.instances.help.authRealm.title'),
+    what: t('admin.instances.help.authRealm.what'),
+    value: t('admin.instances.help.authRealm.value'),
+    source: t('admin.instances.help.authRealm.source'),
+    impact: t('admin.instances.help.authRealm.impact'),
+  },
+  authClientId: {
+    title: t('admin.instances.help.authClientId.title'),
+    what: t('admin.instances.help.authClientId.what'),
+    value: t('admin.instances.help.authClientId.value'),
+    source: t('admin.instances.help.authClientId.source'),
+    impact: t('admin.instances.help.authClientId.impact'),
+    defaultHint: t('admin.instances.help.authClientId.defaultHint'),
+  },
+  authIssuerUrl: {
+    title: t('admin.instances.help.authIssuerUrl.title'),
+    what: t('admin.instances.help.authIssuerUrl.what'),
+    value: t('admin.instances.help.authIssuerUrl.value'),
+    source: t('admin.instances.help.authIssuerUrl.source'),
+    impact: t('admin.instances.help.authIssuerUrl.impact'),
+    defaultHint: t('admin.instances.help.authIssuerUrl.defaultHint'),
+  },
+  authClientSecret: {
+    title: t('admin.instances.help.authClientSecret.title'),
+    what: t('admin.instances.help.authClientSecret.what'),
+    value: t('admin.instances.help.authClientSecret.value'),
+    source: t('admin.instances.help.authClientSecret.source'),
+    impact: t('admin.instances.help.authClientSecret.impact'),
+  },
+  tenantAdminClientId: {
+    title: t('admin.instances.help.tenantAdminClientId.title'),
+    what: t('admin.instances.help.tenantAdminClientId.what'),
+    value: t('admin.instances.help.tenantAdminClientId.value'),
+    source: t('admin.instances.help.tenantAdminClientId.source'),
+    impact: t('admin.instances.help.tenantAdminClientId.impact'),
+    defaultHint: t('admin.instances.help.tenantAdminClientId.defaultHint'),
+  },
+  tenantAdminClientSecret: {
+    title: t('admin.instances.help.tenantAdminClientSecret.title'),
+    what: t('admin.instances.help.tenantAdminClientSecret.what'),
+    value: t('admin.instances.help.tenantAdminClientSecret.value'),
+    source: t('admin.instances.help.tenantAdminClientSecret.source'),
+    impact: t('admin.instances.help.tenantAdminClientSecret.impact'),
+  },
+  tenantAdminUsername: {
+    title: t('admin.instances.help.tenantAdminUsername.title'),
+    what: t('admin.instances.help.tenantAdminUsername.what'),
+    value: t('admin.instances.help.tenantAdminUsername.value'),
+    source: t('admin.instances.help.tenantAdminUsername.source'),
+    impact: t('admin.instances.help.tenantAdminUsername.impact'),
+  },
+  tenantAdminEmail: {
+    title: t('admin.instances.help.tenantAdminEmail.title'),
+    what: t('admin.instances.help.tenantAdminEmail.what'),
+    value: t('admin.instances.help.tenantAdminEmail.value'),
+    source: t('admin.instances.help.tenantAdminEmail.source'),
+    impact: t('admin.instances.help.tenantAdminEmail.impact'),
+  },
+  tenantAdminFirstName: {
+    title: t('admin.instances.help.tenantAdminFirstName.title'),
+    what: t('admin.instances.help.tenantAdminFirstName.what'),
+    value: t('admin.instances.help.tenantAdminFirstName.value'),
+    source: t('admin.instances.help.tenantAdminFirstName.source'),
+    impact: t('admin.instances.help.tenantAdminFirstName.impact'),
+  },
+  tenantAdminLastName: {
+    title: t('admin.instances.help.tenantAdminLastName.title'),
+    what: t('admin.instances.help.tenantAdminLastName.what'),
+    value: t('admin.instances.help.tenantAdminLastName.value'),
+    source: t('admin.instances.help.tenantAdminLastName.source'),
+    impact: t('admin.instances.help.tenantAdminLastName.impact'),
+  },
+};
 
 type FieldHelpProps = {
   readonly title: string;
@@ -17,11 +134,15 @@ type FieldHelpProps = {
 const POPOVER_WIDTH_PX = 320;
 const VIEWPORT_PADDING_PX = 12;
 const TRIGGER_OFFSET_PX = 8;
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+const useIsomorphicLayoutEffect =
+  typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
 
 export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: FieldHelpProps) => {
   const [open, setOpen] = React.useState(false);
-  const [popoverPosition, setPopoverPosition] = React.useState<{ left: number; top: number } | null>(null);
+  const [popoverPosition, setPopoverPosition] = React.useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const buttonRef = React.useRef<HTMLButtonElement | null>(null);
   const popoverRef = React.useRef<HTMLDivElement | null>(null);
@@ -36,10 +157,16 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
     const popoverWidth = popoverRef.current.offsetWidth || POPOVER_WIDTH_PX;
     const popoverHeight = popoverRef.current.offsetHeight || 0;
 
-    const maxLeft = Math.max(VIEWPORT_PADDING_PX, window.innerWidth - popoverWidth - VIEWPORT_PADDING_PX);
+    const maxLeft = Math.max(
+      VIEWPORT_PADDING_PX,
+      window.innerWidth - popoverWidth - VIEWPORT_PADDING_PX
+    );
     const left = Math.min(Math.max(triggerRect.left, VIEWPORT_PADDING_PX), maxLeft);
 
-    const maxTop = Math.max(VIEWPORT_PADDING_PX, window.innerHeight - popoverHeight - VIEWPORT_PADDING_PX);
+    const maxTop = Math.max(
+      VIEWPORT_PADDING_PX,
+      window.innerHeight - popoverHeight - VIEWPORT_PADDING_PX
+    );
     const preferredTop = triggerRect.bottom + TRIGGER_OFFSET_PX;
     const canOpenAbove = triggerRect.top - TRIGGER_OFFSET_PX - popoverHeight >= VIEWPORT_PADDING_PX;
     const top =
@@ -57,7 +184,10 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
 
     const handlePointerDown = (event: PointerEvent) => {
       const targetNode = event.target as Node;
-      if (!containerRef.current?.contains(targetNode) && !popoverRef.current?.contains(targetNode)) {
+      if (
+        !containerRef.current?.contains(targetNode) &&
+        !popoverRef.current?.contains(targetNode)
+      ) {
         setOpen(false);
       }
     };
@@ -121,7 +251,11 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
               role="tooltip"
               aria-label={title}
               className="fixed z-[120] w-80 rounded-xl border border-border bg-card p-4 shadow-2xl"
-              style={popoverPosition ? { left: `${popoverPosition.left}px`, top: `${popoverPosition.top}px` } : undefined}
+              style={
+                popoverPosition
+                  ? { left: `${popoverPosition.left}px`, top: `${popoverPosition.top}px` }
+                  : undefined
+              }
             >
               <div className="space-y-3 text-sm">
                 <div>

@@ -1,4 +1,5 @@
 export const actionsInstancesAdminENResources = {
+  more: 'More actions',
   create: 'Create instance',
   edit: 'Edit',
   save: 'Save instance',

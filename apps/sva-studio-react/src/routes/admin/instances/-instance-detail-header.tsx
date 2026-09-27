@@ -25,16 +25,32 @@ export const InstanceDetailHeader = ({
   onOpenDoctor,
   doctorWarning,
 }: InstanceDetailHeaderProps) => (
-  <header className="space-y-5">
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div className="space-y-2">
-        <StudioPageTitle withAccessory>{t('admin.instances.detail.title')}</StudioPageTitle>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          {t('admin.instances.detail.subtitle')}
+  <header className="space-y-3 border-b border-border pb-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 space-y-1">
+        <StudioPageTitle withAccessory>{selectedInstance.displayName}</StudioPageTitle>
+        <p className="break-all text-sm text-muted-foreground">
+          {selectedInstance.primaryHostname} · {selectedInstance.instanceId}
         </p>
+        <dl className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <div>
+            <dt className="inline text-muted-foreground">
+              {t('admin.instances.cockpit.lifecycle')}:{' '}
+            </dt>
+            <dd className="inline">{t(INSTANCE_STATUS_LABELS[selectedInstance.status])}</dd>
+          </div>
+          <div>
+            <dt className="inline text-muted-foreground">
+              {t('admin.instances.detail.operationalState')}:{' '}
+            </dt>
+            <dd className="inline" title={operationalSummary}>
+              {operationalTitle}
+            </dd>
+          </div>
+        </dl>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={onOpenDoctor}>
+        <Button type="button" variant="secondary" onClick={onOpenDoctor}>
           {t('admin.instances.detail.actions.openDoctor')}
         </Button>
         <Button asChild type="button" variant="secondary">
@@ -42,59 +58,10 @@ export const InstanceDetailHeader = ({
         </Button>
       </div>
     </div>
-
-    <div className="grid gap-3 md:grid-cols-3">
-      <div className="rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.instances.cockpit.identity')}
-        </div>
-        <div className="mt-3 space-y-1">
-          <div className="text-lg font-semibold text-foreground">
-            {selectedInstance.displayName}
-          </div>
-          <div className="text-sm text-muted-foreground">{selectedInstance.instanceId}</div>
-          <div className="text-sm text-muted-foreground">
-            {t('admin.instances.detail.primaryHostname', {
-              value: selectedInstance.primaryHostname,
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.instances.cockpit.currentState')}
-        </div>
-        <div className="mt-3 space-y-1">
-          <div className="text-lg font-semibold text-foreground">{operationalTitle}</div>
-          <p className="text-sm text-muted-foreground">{operationalSummary}</p>
-        </div>
-      </div>
-      <div className="rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          {t('admin.instances.cockpit.lifecycle')}
-        </div>
-        <div className="mt-3 space-y-1">
-          <div className="text-lg font-semibold text-foreground">
-            {t(INSTANCE_STATUS_LABELS[selectedInstance.status])}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {t('admin.instances.detail.parentDomain', { value: selectedInstance.parentDomain })}
-          </div>
-        </div>
-      </div>
-    </div>
-
     {doctorWarning ? (
-      <div
-        className={
-          doctorWarning.tone === 'blocked'
-            ? 'rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-900 dark:bg-red-950/40 dark:text-red-200'
-            : 'rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200'
-        }
-      >
-        <div className="font-medium">{doctorWarning.title}</div>
-        <p className="mt-1 text-sm">{doctorWarning.summary}</p>
-      </div>
+      <p role="status" className="text-sm text-muted-foreground">
+        <span>{doctorWarning.title}</span> {doctorWarning.summary}
+      </p>
     ) : null}
   </header>
 );

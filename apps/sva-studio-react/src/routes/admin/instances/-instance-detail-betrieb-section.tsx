@@ -1,6 +1,4 @@
 import { InstanceModulesWorkspace } from '../modules/-instance-modules-workspace';
-import { ModuleActivationTransparencyCard } from './-instance-detail-modules-section';
-import { PluginReadinessCard } from './-instance-plugin-readiness-card';
 
 import type { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import type { IamHttpError } from '../../../lib/iam-api';
@@ -34,6 +32,8 @@ export const InstanceDetailBetriebSection = ({
     <>
       <InstanceModulesWorkspace
         selectedInstance={selectedInstance}
+        pluginReadiness={pluginReadiness}
+        showMutationError={false}
         statusLoading={statusLoading}
         mutationError={mutationError}
         emptyState=""
@@ -42,14 +42,6 @@ export const InstanceDetailBetriebSection = ({
         onSeedIamBaseline={onSeedIamBaseline}
         onBootstrapAdminStructure={onBootstrapAdminStructure}
         showBootstrapAction={false}
-      />
-      <ModuleActivationTransparencyCard selectedInstance={selectedInstance} />
-      <PluginReadinessCard
-        plugins={pluginReadiness.items}
-        isLoading={pluginReadiness.isLoading}
-        activeAction={pluginReadiness.activeAction}
-        error={pluginReadiness.error}
-        onRepair={pluginReadiness.startRepair}
       />
     </>
   );

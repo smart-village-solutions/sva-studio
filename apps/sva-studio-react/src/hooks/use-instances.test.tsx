@@ -1,7 +1,11 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
+
 import { useInstances } from './use-instances';
+
+const useRealInstanceApi = vi.hoisted(() => ({ current: false }));
 
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -56,60 +60,69 @@ const waitForInstancesLoaded = async (
   });
 };
 
-vi.mock('../lib/iam-api', () => ({
-  IamHttpError: class IamHttpError extends Error {
-    status: number;
-    code: string;
+vi.mock('../lib/iam-api', async () => {
+  const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
+  const mocked = {
+    IamHttpError: class IamHttpError extends Error {
+      status: number;
+      code: string;
 
-    constructor(input: { status: number; code: string; message: string }) {
-      super(input.message);
-      this.status = input.status;
-      this.code = input.code;
-    }
-  },
-  asIamError: (cause: unknown) => {
-    if (
-      cause &&
-      typeof cause === 'object' &&
-      'status' in cause &&
-      'code' in cause &&
-      'message' in cause
-    ) {
-      return cause;
-    }
-    return {
-      status: 500,
-      code: 'internal_error',
-      message: cause instanceof Error ? cause.message : String(cause),
-    };
-  },
-  listInstances: (...args: unknown[]) => listInstancesMock(...args),
-  getInstance: (...args: unknown[]) => getInstanceMock(...args),
-  getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
-  getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
-  getInstanceKeycloakProvisioningRun: (...args: unknown[]) =>
-    getInstanceKeycloakProvisioningRunMock(...args),
-  getInstanceAuditRun: (...args: unknown[]) => getInstanceAuditRunMock(...args),
-  getSingleInstanceAuditRun: (...args: unknown[]) => getSingleInstanceAuditRunMock(...args),
-  planInstanceKeycloakProvisioning: (...args: unknown[]) =>
-    planInstanceKeycloakProvisioningMock(...args),
-  executeInstanceKeycloakProvisioning: (...args: unknown[]) =>
-    executeInstanceKeycloakProvisioningMock(...args),
-  rotateInstanceSecret: (...args: unknown[]) => rotateInstanceSecretMock(...args),
-  probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
-  assignInstanceModule: (...args: unknown[]) => assignInstanceModuleMock(...args),
-  bootstrapInstanceAdminStructure: (...args: unknown[]) =>
-    bootstrapInstanceAdminStructureMock(...args),
-  revokeInstanceModule: (...args: unknown[]) => revokeInstanceModuleMock(...args),
-  seedInstanceIamBaseline: (...args: unknown[]) => seedInstanceIamBaselineMock(...args),
-  createInstance: (...args: unknown[]) => createInstanceMock(...args),
-  retryInstanceProvisioning: (...args: unknown[]) => retryInstanceProvisioningMock(...args),
-  updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
-  reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
-  activateInstance: (...args: unknown[]) => activateInstanceMock(...args),
-  suspendInstance: (...args: unknown[]) => suspendInstanceMock(...args),
-  archiveInstance: (...args: unknown[]) => archiveInstanceMock(...args),
-}));
+      constructor(input: { status: number; code: string; message: string }) {
+        super(input.message);
+        this.status = input.status;
+        this.code = input.code;
+      }
+    },
+    asIamError: (cause: unknown) => {
+      if (
+        cause &&
+        typeof cause === 'object' &&
+        'status' in cause &&
+        'code' in cause &&
+        'message' in cause
+      ) {
+        return cause;
+      }
+      return {
+        status: 500,
+        code: 'internal_error',
+        message: cause instanceof Error ? cause.message : String(cause),
+      };
+    },
+    listInstances: (...args: unknown[]) => listInstancesMock(...args),
+    getInstance: (...args: unknown[]) => getInstanceMock(...args),
+    getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
+    getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
+    getInstanceKeycloakProvisioningRun: (...args: unknown[]) =>
+      getInstanceKeycloakProvisioningRunMock(...args),
+    getInstanceAuditRun: (...args: unknown[]) => getInstanceAuditRunMock(...args),
+    getSingleInstanceAuditRun: (...args: unknown[]) => getSingleInstanceAuditRunMock(...args),
+    planInstanceKeycloakProvisioning: (...args: unknown[]) =>
+      planInstanceKeycloakProvisioningMock(...args),
+    executeInstanceKeycloakProvisioning: (...args: unknown[]) =>
+      executeInstanceKeycloakProvisioningMock(...args),
+    rotateInstanceSecret: (...args: unknown[]) => rotateInstanceSecretMock(...args),
+    probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
+    assignInstanceModule: (...args: unknown[]) => assignInstanceModuleMock(...args),
+    bootstrapInstanceAdminStructure: (...args: unknown[]) =>
+      bootstrapInstanceAdminStructureMock(...args),
+    revokeInstanceModule: (...args: unknown[]) => revokeInstanceModuleMock(...args),
+    seedInstanceIamBaseline: (...args: unknown[]) => seedInstanceIamBaselineMock(...args),
+    createInstance: (...args: unknown[]) => createInstanceMock(...args),
+    retryInstanceProvisioning: (...args: unknown[]) => retryInstanceProvisioningMock(...args),
+    updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
+    reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
+    activateInstance: (...args: unknown[]) => activateInstanceMock(...args),
+    suspendInstance: (...args: unknown[]) => suspendInstanceMock(...args),
+    archiveInstance: (...args: unknown[]) => archiveInstanceMock(...args),
+  };
+  return new Proxy(actual, {
+    get(target, key) {
+      if (useRealInstanceApi.current || !(key in mocked)) return Reflect.get(target, key);
+      return Reflect.get(mocked, key);
+    },
+  });
+});
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
@@ -121,6 +134,7 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 
 describe('useInstances', () => {
   beforeEach(() => {
+    useRealInstanceApi.current = false;
     vi.clearAllMocks();
     vi.useRealTimers();
     authMockValue.refreshSession.mockReset();
@@ -579,7 +593,76 @@ describe('useInstances', () => {
     expect(browserLoggerMock.info).not.toHaveBeenCalled();
   });
 
-  it('surfaces normalized non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
+  it.each(['detail', 'preflight', 'plan'] as const)(
+    'preserves structured database errors over HTTP during %s',
+    async (operation) => {
+      useRealInstanceApi.current = true;
+      const failure = () =>
+        HttpResponse.json(
+          {
+            requestId: 'req-db',
+            error: {
+              code: 'database_unavailable',
+              message: 'internal provider text',
+              classification: 'database_or_schema_drift',
+              safeDetails: { errorCodes: ['database_unavailable'] },
+            },
+          },
+          { status: 503 }
+        );
+      studioMswServer.use(
+        http.get('/api/v1/iam/instances', () => HttpResponse.json({ data: [] })),
+        http.get('/api/v1/iam/instances/demo', () =>
+          HttpResponse.json({ data: { instanceId: 'demo' } })
+        ),
+        http.get('/api/v1/iam/instances/demo/keycloak/status', failure),
+        http.get('/api/v1/iam/instances/demo/keycloak/preflight', failure),
+        http.post('/api/v1/iam/instances/demo/keycloak/plan', failure)
+      );
+      const { result } = renderUseInstancesHook();
+      await waitForInstancesLoaded(result);
+      await act(async () => {
+        if (operation === 'detail') await result.current.loadInstance('demo');
+        else if (operation === 'preflight') await result.current.refreshKeycloakPreflight('demo');
+        else await result.current.planKeycloakProvisioning('demo');
+      });
+      expect(result.current.mutationError).toMatchObject({
+        status: 503,
+        code: 'database_unavailable',
+        requestId: 'req-db',
+        classification: 'database_or_schema_drift',
+        safeDetails: { errorCodes: ['database_unavailable'] },
+      });
+    }
+  );
+
+  it('does not invent a Keycloak outage for an unknown HTTP error', async () => {
+    useRealInstanceApi.current = true;
+    studioMswServer.use(
+      http.get('/api/v1/iam/instances', () => HttpResponse.json({ data: [] })),
+      http.get('/api/v1/iam/instances/demo/keycloak/preflight', () =>
+        HttpResponse.json(
+          {
+            requestId: 'req-unknown',
+            error: { code: 'new_unclassified_failure', message: 'private provider text' },
+          },
+          { status: 500 }
+        )
+      )
+    );
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
+    await act(async () => {
+      await result.current.refreshKeycloakPreflight('demo');
+    });
+    expect(result.current.mutationError).toMatchObject({
+      status: 500,
+      code: 'new_unclassified_failure',
+      requestId: 'req-unknown',
+    });
+  });
+
+  it('preserves non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
     getInstanceKeycloakStatusMock.mockRejectedValueOnce({
       status: 500,
       code: 'internal_error',
@@ -595,7 +678,7 @@ describe('useInstances', () => {
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
     expect(result.current.mutationError).toEqual(
-      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+      expect.objectContaining({ status: 500, code: 'internal_error' })
     );
   });
 
@@ -653,7 +736,7 @@ describe('useInstances', () => {
     expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
-  it('normalizes unexpected preflight and plan failures to keycloak_unavailable', async () => {
+  it('preserves unexpected preflight and plan failures', async () => {
     getInstanceKeycloakPreflightMock.mockRejectedValueOnce({
       status: 500,
       code: 'internal_error',
@@ -677,7 +760,7 @@ describe('useInstances', () => {
     });
 
     expect(result.current.mutationError).toEqual(
-      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+      expect.objectContaining({ status: 500, code: 'internal_error' })
     );
 
     await act(async () => {
@@ -686,7 +769,7 @@ describe('useInstances', () => {
     });
 
     expect(result.current.mutationError).toEqual(
-      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+      expect.objectContaining({ status: 500, code: 'internal_error' })
     );
   });
 
@@ -1314,5 +1397,26 @@ describe('useInstances', () => {
     });
 
     expect(result.current.auditLoading).toBe(false);
+  });
+  it('keeps the last detail evidence when a later refresh fails', async () => {
+    const { result } = renderUseInstancesHook();
+    await waitForInstancesLoaded(result);
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+    const lastDetail = result.current.selectedInstance;
+    getInstanceMock.mockRejectedValueOnce({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'unavailable',
+    });
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+    expect(result.current.selectedInstance).toBe(lastDetail);
+    expect(result.current.mutationError).toMatchObject({
+      status: 503,
+      code: 'database_unavailable',
+    });
   });
 });

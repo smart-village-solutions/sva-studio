@@ -1,4 +1,6 @@
 export const detailInstancesAdminENResources = {
+  operationalState: 'Operational state',
+  confirmActivation: 'Activate the currently verified instance now?',
   title: 'Instance details',
   subtitle: 'Maintain registry and Keycloak base settings for the selected instance.',
   empty: 'Select an instance from the list to inspect details, realm status, and runs.',

@@ -193,9 +193,9 @@ describe('InstanceCreatePage', () => {
     useInstancesMock.mockReturnValue(createInstancesApiState());
     render(<InstanceCreatePage />);
 
-    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
     fillBasics('existing-demo');
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
     await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
 
     const realmLabel = screen.getByText('Auth-Realm', { selector: 'label' });
@@ -228,8 +228,8 @@ describe('InstanceCreatePage', () => {
     render(<InstanceCreatePage />);
 
     fillBasics('derived-realm');
-    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
 
     await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
     expect(document.querySelector('#instance-auth-realm')?.textContent).not.toContain(
@@ -245,9 +245,9 @@ describe('InstanceCreatePage', () => {
     useInstancesMock.mockReturnValue(createInstancesApiState());
     render(<InstanceCreatePage />);
 
-    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
     fillBasics('existing-demo');
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
     await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
     fireEvent.click(document.querySelector('#instance-auth-realm') as HTMLButtonElement);
     fireEvent.change(screen.getByPlaceholderText('Nutzer-Datenbanken durchsuchen'), {
@@ -273,9 +273,9 @@ describe('InstanceCreatePage', () => {
     useInstancesMock.mockReturnValue(createInstancesApiState());
     render(<InstanceCreatePage />);
 
-    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
     fillBasics('existing-demo');
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Bestehender Realm:/u }));
 
     await waitFor(() => expect(listRealmCatalogMock).toHaveBeenCalled());
     expect(screen.getByRole('alert').textContent).toContain(

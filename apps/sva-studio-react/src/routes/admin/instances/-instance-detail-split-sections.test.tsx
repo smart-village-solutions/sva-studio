@@ -7,13 +7,8 @@ import { InstanceDetailCockpitSection } from './-instance-detail-cockpit-section
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailHistorySection } from './-instance-detail-history-section';
-import { InstanceDetailOperationsSection } from './-instance-detail-operations-section';
-import { InstanceDetailWorkspaceSections } from './-instance-detail-sections';
 
-import type {
-  ConfigurationSectionProps,
-  OperationsSectionProps,
-} from './-instance-detail-view-shared';
+import type { ConfigurationSectionProps } from './-instance-detail-view-shared';
 
 vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
   usePluginTenantReadiness: () => ({
@@ -231,7 +226,7 @@ describe('instance detail split sections', () => {
   it('renders the cockpit split section and dispatches primary and secondary actions', () => {
     const onRunDetailAction = vi.fn().mockResolvedValue(undefined);
 
-    const { container } = render(
+    render(
       <InstanceDetailCockpitSection
         selectedInstance={createDetailFixture()}
         configurationAssessment={{
@@ -322,14 +317,13 @@ describe('instance detail split sections', () => {
     expect(screen.getAllByText('Weitere Schritte sind erforderlich.').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Instanz fertig einrichten' })).toBeTruthy();
     expect(screen.getByRole('list', { name: 'Fortschritt der Instanzeinrichtung' })).toBeTruthy();
-    expect(screen.getByText('Bereitstellung vorbereiten')).toBeTruthy();
+    expect(screen.getByText('1. Bereitstellung vorbereiten')).toBeTruthy();
     expect(screen.getByText('Änderungen bestätigen')).toBeTruthy();
     expect(screen.getByText('Keycloak-Konfiguration')).toBeTruthy();
     expect(screen.getByText('Lokaler IAM-Abgleich')).toBeTruthy();
     expect(screen.getByText('Access Probe')).toBeTruthy();
-    expect(screen.getByText(/Die Detailseite bleibt bedienbar/)).toBeTruthy();
-    expect(container.firstElementChild?.className).toContain('dark:bg-[radial-gradient');
-    expect(screen.getByText('degraded').className).toContain('dark:text-amber-200');
+    expect(screen.getByRole('heading', { name: 'Änderungen bestätigen' })).toBeTruthy();
+    for (const summary of document.querySelectorAll('summary')) fireEvent.click(summary);
 
     fireEvent.click(screen.getByRole('button', { name: 'Realm abgleichen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
@@ -401,8 +395,8 @@ describe('instance detail split sections', () => {
       screen.getByRole('button', { name: 'Instanz speichern' }).closest('form') as HTMLFormElement
     );
 
-    expect(screen.getByText(/Realm fehlt/)).toBeTruthy();
-    expect(screen.getByText(/Issuer prüfen/)).toBeTruthy();
+    expect(screen.getByText('Allgemein')).toBeTruthy();
+    expect(screen.getByText('Zugangsdaten')).toBeTruthy();
     expect(latestValues).toMatchObject({
       realmMode: 'existing',
       displayName: 'Demo Updated',
@@ -415,144 +409,6 @@ describe('instance detail split sections', () => {
       },
     });
     expect(onUpdateSubmit).toHaveBeenCalledOnce();
-  });
-
-  it('renders the operations split section and dispatches workflow, provisioning, and module actions', () => {
-    const onTriggerWorkflowAction = vi.fn().mockResolvedValue(undefined);
-    const onExecuteProvisioning = vi.fn().mockResolvedValue(undefined);
-    const onSeedIamBaseline = vi.fn().mockResolvedValue(undefined);
-    let latestValues = createDetailFormValues();
-
-    const Harness = () => {
-      const [detailFormValues, setDetailFormValues] = React.useState(createDetailFormValues());
-      latestValues = detailFormValues;
-
-      return (
-        <InstanceDetailOperationsSection
-          selectedInstance={createDetailFixture({ realmMode: 'existing' })}
-          detailFormValues={detailFormValues}
-          effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
-          mutationError={null}
-          statusLoading={false}
-          setDetailFormValues={setDetailFormValues as OperationsSectionProps['setDetailFormValues']}
-          onTriggerWorkflowAction={onTriggerWorkflowAction}
-          onExecuteProvisioning={onExecuteProvisioning}
-          onSeedIamBaseline={onSeedIamBaseline}
-        />
-      );
-    };
-
-    render(<Harness />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
-    screen
-      .getAllByRole('button', { name: 'Vorbedingungen prüfen' })
-      .forEach((button) => fireEvent.click(button));
-    screen
-      .getAllByRole('button', { name: 'Keycloak-Status prüfen' })
-      .forEach((button) => fireEvent.click(button));
-    screen
-      .getAllByRole('button', { name: 'Provisioning-Vorschau laden' })
-      .forEach((button) => fireEvent.click(button));
-    fireEvent.change(document.getElementById('tenant-admin-password') as HTMLInputElement, {
-      target: { value: 'TempPasswort123!' },
-    });
-    fireEvent.click(
-      screen.getAllByRole('button', { name: 'Provisioning ausführen' })[1] as HTMLButtonElement
-    );
-    fireEvent.click(
-      screen.getAllByRole('button', {
-        name: 'Tenant-Admin-Client bereitstellen',
-      })[1] as HTMLButtonElement
-    );
-    fireEvent.click(
-      screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' })[1] as HTMLButtonElement
-    );
-    fireEvent.click(
-      screen.getAllByRole('button', { name: 'Client-Secret rotieren' })[1] as HTMLButtonElement
-    );
-
-    expect(screen.getByText('Probe ausstehend')).toBeTruthy();
-    expect(screen.getByText('news')).toBeTruthy();
-    expect(screen.getByText('Client anlegen')).toBeTruthy();
-    expect(onSeedIamBaseline).toHaveBeenCalledOnce();
-    expect(onTriggerWorkflowAction).toHaveBeenCalledWith('check_preflight');
-    expect(onTriggerWorkflowAction).toHaveBeenCalledWith('check_keycloak_status');
-    expect(onTriggerWorkflowAction).toHaveBeenCalledWith('plan_provisioning');
-    expect(onExecuteProvisioning).toHaveBeenCalledWith('provision');
-    expect(onExecuteProvisioning).toHaveBeenCalledWith('provision_admin_client');
-    expect(onExecuteProvisioning).toHaveBeenCalledWith('reset_tenant_admin');
-    expect(onExecuteProvisioning).toHaveBeenCalledWith('rotate_client_secret');
-    expect(latestValues.tenantAdminTemporaryPassword).toBe('TempPasswort123!');
-  });
-
-  it('hides tenant-admin reset actions while the realm is new', () => {
-    render(
-      <InstanceDetailOperationsSection
-        selectedInstance={createDetailFixture({ realmMode: 'new' })}
-        detailFormValues={createDetailFormValues()}
-        effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
-        mutationError={null}
-        statusLoading={false}
-        setDetailFormValues={vi.fn() as OperationsSectionProps['setDetailFormValues']}
-        onTriggerWorkflowAction={vi.fn().mockResolvedValue(undefined)}
-        onExecuteProvisioning={vi.fn().mockResolvedValue(undefined)}
-        onSeedIamBaseline={vi.fn().mockResolvedValue(undefined)}
-      />
-    );
-
-    expect(screen.queryByRole('button', { name: 'Tenant-Admin neu setzen' })).toBeNull();
-  });
-
-  it('renders the module transparency table with fallback descriptions for missing or empty translation values', () => {
-    render(
-      <InstanceDetailOperationsSection
-        selectedInstance={createDetailFixture({
-          assignedModules: ['news', 'removed-plugin'],
-          moduleActivations: [
-            {
-              instanceId: 'demo',
-              moduleId: 'news',
-              activationPolicy: 'automatic',
-              activationOrigin: 'manual',
-              effectiveActive: true,
-              manualOverride: 'enabled',
-              manifestVersion: 1,
-              policyRevision: 'news-1',
-              stateRevision: 2,
-              createdAt: '2026-01-01T00:00:00.000Z',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-            },
-          ],
-          moduleIamStatus: undefined,
-        })}
-        detailFormValues={createDetailFormValues()}
-        effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
-        mutationError={null}
-        statusLoading={false}
-        setDetailFormValues={vi.fn() as OperationsSectionProps['setDetailFormValues']}
-        onTriggerWorkflowAction={vi.fn().mockResolvedValue(undefined)}
-        onExecuteProvisioning={vi.fn().mockResolvedValue(undefined)}
-        onSeedIamBaseline={vi.fn().mockResolvedValue(undefined)}
-      />
-    );
-
-    expect(screen.getByText('news')).toBeTruthy();
-    expect(screen.getByText('events')).toBeTruthy();
-    expect(screen.getByText('poi')).toBeTruthy();
-    expect(screen.getByText('removed-plugin')).toBeTruthy();
-    expect(screen.getByText('Nicht verfügbar (historische Zuweisung)')).toBeTruthy();
-    expect(screen.getAllByText('Aktiv')).toHaveLength(1);
-    expect(screen.getAllByText('Deaktiviert')).toHaveLength(2);
-    expect(screen.getByText('Automatisch')).toBeTruthy();
-    expect(screen.getByText('Manuelle Änderung')).toBeTruthy();
-    expect(screen.getByText('Aktiviert')).toBeTruthy();
-    expect(screen.getAllByText('Noch nicht materialisiert')).toHaveLength(6);
-    expect(
-      screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')
-    ).toBeTruthy();
-    expect(screen.getAllByText('Keine Modulbeschreibung hinterlegt.')).toHaveLength(3);
-    expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
   });
 
   it('renders the history split section and loads a selected run on demand', () => {
@@ -646,88 +502,5 @@ describe('instance detail split sections', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Run laden' })[0] as HTMLButtonElement);
 
     expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-current');
-  });
-
-  it('renders the workspace wrapper and switches between configuration, operations, and history tabs', () => {
-    const onTriggerWorkflowAction = vi.fn().mockResolvedValue(undefined);
-    const onExecuteProvisioning = vi.fn().mockResolvedValue(undefined);
-    const onAssignModule = vi.fn().mockResolvedValue(undefined);
-    const onRevokeModule = vi.fn().mockResolvedValue(undefined);
-    const onSeedIamBaseline = vi.fn().mockResolvedValue(undefined);
-    const onBootstrapAdminStructure = vi.fn().mockResolvedValue(undefined);
-    const onLoadProvisioningRun = vi.fn().mockResolvedValue(undefined);
-    const onUpdateSubmit = vi
-      .fn()
-      .mockImplementation(async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-      });
-
-    const Harness = () => {
-      const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<
-        'betrieb' | 'doctor' | 'einstellungen'
-      >('einstellungen');
-      const [detailFormValues, setDetailFormValues] = React.useState(createDetailFormValues());
-
-      return (
-        <InstanceDetailWorkspaceSections
-          activeWorkspaceTab={activeWorkspaceTab}
-          selectedInstance={createDetailFixture()}
-          detailFormValues={detailFormValues}
-          configurationAssessment={{
-            overallStatus: 'complete',
-            title: 'Konfiguration ok',
-            body: 'Alle Anforderungen sind erfüllt.',
-            statusLabel: 'Vollständig',
-            satisfiedRequirements: 5,
-            totalRequirements: 5,
-            blockingIssues: [],
-            warningIssues: [],
-          }}
-          effectiveTenantIamStatus={createDetailFixture().tenantIamStatus}
-          tenantSecretUserInputRequired={true}
-          mutationError={null}
-          statusLoading={false}
-          pluginReadiness={{
-            items: [],
-            isLoading: false,
-            activeAction: null,
-            error: null,
-            refresh: vi.fn(),
-            startRepair: vi.fn(),
-          }}
-          setActiveWorkspaceTab={setActiveWorkspaceTab}
-          setDetailFormValues={
-            setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']
-          }
-          onUpdateSubmit={onUpdateSubmit}
-          onTriggerWorkflowAction={onTriggerWorkflowAction}
-          onExecuteProvisioning={onExecuteProvisioning}
-          onAssignModule={onAssignModule}
-          onRevokeModule={onRevokeModule}
-          onSeedIamBaseline={onSeedIamBaseline}
-          onBootstrapAdminStructure={onBootstrapAdminStructure}
-          onLoadProvisioningRun={onLoadProvisioningRun}
-        />
-      );
-    };
-
-    render(<Harness />);
-
-    expect(screen.getByRole('tab', { name: 'Einstellungen' }).getAttribute('data-state')).toBe(
-      'active'
-    );
-    expect(screen.getByRole('button', { name: 'Instanz speichern' })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
-    expect(screen.getByRole('tab', { name: 'Betrieb' }).getAttribute('data-state')).toBe('active');
-    expect(
-      screen.getAllByRole('button', { name: 'IAM-Basis neu aufbauen' }).length
-    ).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Doctor' }));
-    expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');
-    fireEvent.click(screen.getByRole('button', { name: 'Run laden' }));
-
-    expect(onLoadProvisioningRun).toHaveBeenCalledWith('run-history-1');
   });
 });

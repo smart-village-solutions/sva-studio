@@ -1,4 +1,6 @@
 export const errorsInstancesAdminDEResources = {
+  stalePlan:
+    'Der bestätigte Plan ist veraltet. Es wurde keine neue Ausführung freigegeben. Laden und prüfen Sie die aktuelle Provisioning-Vorschau.',
   unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
   recoveryRunning:
     'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',

@@ -20,6 +20,9 @@ export const getInstanceErrorMessage = (error: IamHttpError | null) => {
     });
   }
 
+  if (error.code === 'keycloak_plan_fingerprint_stale')
+    return t('admin.instances.errors.stalePlan');
+
   switch (error.classification) {
     case 'registry_or_provisioning_drift':
       return t('admin.instances.errors.registryOrProvisioningDrift');

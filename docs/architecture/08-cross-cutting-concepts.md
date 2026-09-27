@@ -469,7 +469,8 @@ gleichzeitig beeinflussen.
 
 ### Fortschreibung 2026-04: Tenant-IAM-Status als öffentlicher Diagnosekern
 
-- Die Instanz-Detailseite veröffentlicht für Tenant-IAM nur einen sicheren, kuratierten Diagnosekern; tiefe IdP- oder Laufzeitfehler bleiben im OTEL- und Serverlog-Pfad.
+- Die Instanz-Detailseite veröffentlicht für Tenant-IAM nur einen sicheren, kuratierten Diagnosekern; tiefe IdP- oder Laufzeitfehler bleiben im OTEL- und Serverlog-Pfad. Der Hook bewahrt strukturierte `IamHttpError` einschließlich Status, Code, Request-ID und sicheren Details für Detail-Laden, Preflight und Planung. Er deutet Datenbank- oder unbekannte Fehler nicht in Keycloak-Verfügbarkeit um.
+- Die lokalen RHF-/Zod-Formulare für Anlage, Einstellungen und Einladungsvorlage verwenden Studio-Fehlerübersichten und Feldverknüpfungen. Vorlagen-Save/Reset baut den Request aus dem gespeicherten Instanzsnapshot und der Vorlagenrevision auf; der Settings-Draft bleibt unabhängig. Eine gemeinsame lokale Savesperre verhindert konkurrierende Requests. Fehler und Reauth ohne Seitenwechsel erhalten Entwurf und Secrets; erst ein erfolgreicher Settings-Save entfernt neue Secret-Eingaben. Es gibt keine zusätzliche Browser-Persistenz.
 - Access-Probe- und Reconcile-Befunde nutzen stabile Fehlercodes wie `tenant_admin_client_not_configured`, `tenant_admin_client_secret_missing`, `IDP_FORBIDDEN` und `IDP_UNAVAILABLE`, damit UI, Runbook und Audit auf demselben Vokabular arbeiten.
 - Die Access-Probe wird nie automatisch beim Seitenladen ausgeführt, um unnötige IdP-Last, irreführende Zeitpunktevidenz und verdeckte Schreibnebenwirkungen zu vermeiden.
 - `seedIamBaseline` rekonstruiert ausschließlich `Core + zugewiesene Module` und erzeugt keine Rollenmitgliedschaften für den ausführenden Benutzer.

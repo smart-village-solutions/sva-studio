@@ -1,7 +1,11 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   Button,
   StudioPageTitle,
+  StudioFormSummaryErrors,
+  getStudioFormFieldProps,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -24,13 +28,13 @@ import {
   type IamHttpError,
 } from '../../../lib/iam-api';
 import { useStudioBranding } from '../../../providers/studio-branding-provider';
-import { FieldHelp } from './-field-help';
+import { FieldHelp, INSTANCE_FIELD_HELP } from './-field-help';
 import {
   CREATE_WIZARD_STEPS,
   createEmptyCreateForm,
+  createInstanceFormSchema,
   getCreateStepValidationIssues,
   getCreateStepValidationMessages,
-  INSTANCE_FIELD_HELP,
   readSuggestedParentDomain,
 } from './-instance-form-models';
 import { getErrorMessage } from './-instance-error-messages';
@@ -100,7 +104,7 @@ const FormLabelWithHelp = ({
 const ReviewRow = ({ label, value }: { label: string; value: string }) => (
   <div className="rounded-lg border border-border p-3">
     <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-    <div className="mt-1 text-sm text-foreground">{value}</div>
+    <div className="mt-1 break-all text-sm text-foreground">{value}</div>
   </div>
 );
 
@@ -153,7 +157,13 @@ export const InstanceCreatePage = () => {
   const [stepErrors, setStepErrors] = React.useState<
     readonly { readonly fieldId: string; readonly message: string }[]
   >([]);
-  const [formValues, setFormValues] = React.useState(createEmptyCreateForm());
+  const form = useForm<CreateFormValues>({
+    resolver: zodResolver(createInstanceFormSchema()),
+    defaultValues: createEmptyCreateForm(),
+    shouldUnregister: false,
+  });
+  const formValues = useWatch({ control: form.control }) as CreateFormValues;
+  const [returnToReview, setReturnToReview] = React.useState(false);
   const [realmSearch, setRealmSearch] = React.useState('');
   const [realmCatalog, setRealmCatalog] = React.useState<readonly IamInstanceRealmCatalogEntry[]>(
     []
@@ -165,21 +175,24 @@ export const InstanceCreatePage = () => {
   const [draftReadinessError, setDraftReadinessError] = React.useState<IamHttpError | null>(null);
   const [readinessLoading, setReadinessLoading] = React.useState(false);
   const readinessRequestRef = React.useRef(0);
+  const createInFlight = React.useRef(false);
   const errorSummaryRef = React.useRef<HTMLDivElement | null>(null);
   const saveFeedback = useStudioSaveFeedback();
 
   React.useEffect(() => {
     const parentDomain = readSuggestedParentDomain();
     setSuggestedParentDomain(parentDomain);
-    setFormValues((current) =>
-      current.parentDomain ? current : createEmptyCreateForm(parentDomain)
-    );
+    if (!form.getValues('parentDomain')) form.reset(createEmptyCreateForm(parentDomain));
   }, []);
 
   const updateForm = (updater: (current: CreateFormValues) => CreateFormValues) => {
     readinessRequestRef.current += 1;
     saveFeedback.markDirty();
-    setFormValues((current) => updater(current));
+    const next = updater(form.getValues());
+    for (const key of Object.keys(next) as (keyof CreateFormValues)[]) {
+      form.setValue(key, next[key], { shouldDirty: true });
+    }
+    setReadinessLoading(false);
     setStepErrors([]);
     setDraftReadiness(null);
     setDraftReadinessError(null);
@@ -255,9 +268,14 @@ export const InstanceCreatePage = () => {
 
     setStepErrors([]);
     setCurrentStep(step);
+    if (step === 'review') setReturnToReview(false);
   };
 
   const moveToNextStep = () => {
+    if (returnToReview) {
+      moveToStep('review');
+      return;
+    }
     const currentIndex = getStepIndex(currentStep);
     const nextStep = stepOrder[currentIndex + 1];
     if (!nextStep) {
@@ -292,19 +310,27 @@ export const InstanceCreatePage = () => {
       return;
     }
 
-    const operationId = saveFeedback.beginSaving();
-    const created = await instancesApi.createInstance(buildCreatePayload(formValues));
+    if (createInFlight.current) return;
+    createInFlight.current = true;
+    const readinessSequence = readinessRequestRef.current;
+    try {
+      if (!(await form.trigger()) || readinessSequence !== readinessRequestRef.current) return;
+      const operationId = saveFeedback.beginSaving();
+      const created = await instancesApi.createInstance(buildCreatePayload(formValues));
 
-    if (!created) {
-      saveFeedback.markFailed(operationId);
-      return;
+      if (!created) {
+        saveFeedback.markFailed(operationId);
+        return;
+      }
+
+      saveFeedback.markSaved(operationId);
+      await navigate({
+        to: '/admin/instances/$instanceId',
+        params: { instanceId: created.instanceId },
+      });
+    } finally {
+      createInFlight.current = false;
     }
-
-    saveFeedback.markSaved(operationId);
-    await navigate({
-      to: '/admin/instances/$instanceId',
-      params: { instanceId: created.instanceId },
-    });
   };
 
   const onCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -312,11 +338,21 @@ export const InstanceCreatePage = () => {
     void createCurrentInstance();
   };
 
+  const findingStep = (checkKey: string): CreateWizardStepKey | undefined => {
+    if (['registry_instance_id', 'registry_hostname'].includes(checkKey)) return 'basics';
+    if (['realm_mode', 'realm_selection'].includes(checkKey)) return 'auth';
+    if (checkKey === 'tenant_admin_profile') return 'tenantAdmin';
+    return undefined;
+  };
+
   const errorFor = (fieldId: string) => stepErrors.find((issue) => issue.fieldId === fieldId);
-  const fieldErrorProps = (fieldId: string) => ({
-    'aria-invalid': Boolean(errorFor(fieldId)) || undefined,
-    'aria-describedby': errorFor(fieldId) ? `${fieldId}-error` : undefined,
-  });
+  const fieldErrorProps = (fieldId: string) =>
+    getStudioFormFieldProps({
+      id: fieldId,
+      error: errorFor(fieldId)
+        ? { type: 'validate', message: errorFor(fieldId)?.message }
+        : undefined,
+    }).controlProps;
   const renderFieldError = (fieldId: string) => {
     const issue = errorFor(fieldId);
     return issue ? (
@@ -338,9 +374,9 @@ export const InstanceCreatePage = () => {
     (formValues.authRealm ? { value: formValues.authRealm, label: formValues.authRealm } : null);
 
   return (
-    <section className="space-y-5" aria-busy={instancesApi.isLoading}>
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
+    <section className="min-w-0 space-y-5 break-words" aria-busy={instancesApi.isLoading}>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 basis-64 space-y-2">
           <StudioPageTitle withAccessory>{t('admin.instances.form.title')}</StudioPageTitle>
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('admin.instances.form.subtitle')}
@@ -362,7 +398,7 @@ export const InstanceCreatePage = () => {
       ) : null}
 
       <Card className="space-y-5 p-4">
-        <div className="grid gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-3">
           {CREATE_WIZARD_STEPS.map((step, index) => {
             const isCurrent = step.key === currentStep;
             const isCompleted = getStepIndex(currentStep) > index;
@@ -379,7 +415,7 @@ export const InstanceCreatePage = () => {
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
                   {index + 1}
                 </div>
-                <div className="mt-1 flex items-center justify-between gap-3">
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
                   <span className="font-medium text-foreground">{step.title}</span>
                   <WorkflowStatusBadge status={status} />
                 </div>
@@ -389,28 +425,21 @@ export const InstanceCreatePage = () => {
           })}
         </div>
 
-        {stepErrors.length > 0 ? (
-          <Alert
-            ref={errorSummaryRef}
-            tabIndex={-1}
-            role="alert"
-            className="border-destructive/40 bg-destructive/10 text-destructive"
-          >
-            <AlertDescription>
-              <ul className="space-y-1">
-                {stepErrors.map((issue) => (
-                  <li key={`${issue.fieldId}-${issue.message}`}>
-                    <a className="underline" href={`#${issue.fieldId}`}>
-                      {issue.message}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        ) : null}
+        <div ref={errorSummaryRef} tabIndex={-1}>
+          <StudioFormSummaryErrors
+            errors={stepErrors.map(({ fieldId, message }) => ({ field: fieldId, message }))}
+            onSelectError={({ field }) => {
+              const step = field.startsWith('instance-admin-')
+                ? 'tenantAdmin'
+                : field === 'instance-auth-realm'
+                  ? 'auth'
+                  : 'basics';
+              setCurrentStep(step);
+            }}
+          />
+        </div>
 
-        <form className="space-y-5" onSubmit={onCreateSubmit}>
+        <form className="space-y-5" onSubmit={onCreateSubmit} noValidate>
           {currentStep === 'basics' ? (
             <div className="space-y-4">
               <ReviewRow
@@ -421,6 +450,69 @@ export const InstanceCreatePage = () => {
                     : t('admin.instances.wizard.studioInstanceSva')
                 }
               />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <FormLabelWithHelp
+                    htmlFor="instance-id"
+                    label={t('admin.instances.form.instanceId')}
+                    helpKey="instanceId"
+                  />
+                  <Input
+                    {...fieldErrorProps('instance-id')}
+                    value={formValues.instanceId}
+                    onChange={(event) =>
+                      updateForm((current) => ({
+                        ...current,
+                        instanceId: event.target.value,
+                        authRealm:
+                          current.realmMode === 'new' ? event.target.value : current.authRealm,
+                      }))
+                    }
+                  />
+                  {renderFieldError('instance-id')}
+                </div>
+                <div className="space-y-1">
+                  <FormLabelWithHelp
+                    htmlFor="instance-display-name"
+                    label={t('admin.instances.form.displayName')}
+                    helpKey="displayName"
+                  />
+                  <Input
+                    {...fieldErrorProps('instance-display-name')}
+                    value={formValues.displayName}
+                    onChange={(event) =>
+                      updateForm((current) => ({ ...current, displayName: event.target.value }))
+                    }
+                  />
+                  {renderFieldError('instance-display-name')}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <FormLabelWithHelp
+                  htmlFor="instance-parent-domain"
+                  label={t('admin.instances.form.parentDomain')}
+                  helpKey="parentDomain"
+                />
+                <Input
+                  {...fieldErrorProps('instance-parent-domain')}
+                  value={formValues.parentDomain}
+                  placeholder={suggestedParentDomain || undefined}
+                  onChange={(event) =>
+                    updateForm((current) => ({ ...current, parentDomain: event.target.value }))
+                  }
+                />
+                {renderFieldError('instance-parent-domain')}
+                <p className="break-all text-sm text-muted-foreground" aria-live="polite">
+                  {formValues.instanceId && formValues.parentDomain
+                    ? `${formValues.instanceId.trim()}.${formValues.parentDomain.trim()}`
+                    : null}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {currentStep === 'auth' ? (
+            <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-medium text-foreground">
@@ -471,69 +563,15 @@ export const InstanceCreatePage = () => {
                   <span>{t('admin.instances.flow.realmModeExisting')}</span>
                 </label>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-id"
-                    label={t('admin.instances.form.instanceId')}
-                    helpKey="instanceId"
-                  />
-                  <Input
-                    id="instance-id"
-                    {...fieldErrorProps('instance-id')}
-                    value={formValues.instanceId}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        instanceId: event.target.value,
-                        authRealm:
-                          current.realmMode === 'new' ? event.target.value : current.authRealm,
-                      }))
-                    }
-                  />
-                  {renderFieldError('instance-id')}
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-display-name"
-                    label={t('admin.instances.form.displayName')}
-                    helpKey="displayName"
-                  />
-                  <Input
-                    id="instance-display-name"
-                    {...fieldErrorProps('instance-display-name')}
-                    value={formValues.displayName}
-                    onChange={(event) =>
-                      updateForm((current) => ({ ...current, displayName: event.target.value }))
-                    }
-                  />
-                  {renderFieldError('instance-display-name')}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <FormLabelWithHelp
-                  htmlFor="instance-parent-domain"
-                  label={t('admin.instances.form.parentDomain')}
-                  helpKey="parentDomain"
-                />
-                <Input
-                  id="instance-parent-domain"
-                  {...fieldErrorProps('instance-parent-domain')}
-                  value={formValues.parentDomain}
-                  placeholder={suggestedParentDomain || undefined}
-                  onChange={(event) =>
-                    updateForm((current) => ({ ...current, parentDomain: event.target.value }))
-                  }
-                />
-                {renderFieldError('instance-parent-domain')}
-              </div>
-            </div>
-          ) : null}
-
-          {currentStep === 'auth' ? (
-            <div className="space-y-4">
               {formValues.realmMode === 'new' ? (
                 <>
+                  <Input
+                    readOnly
+                    aria-label={t('admin.instances.form.authRealm')}
+                    value={formValues.authRealm}
+                    {...fieldErrorProps('instance-auth-realm')}
+                  />
+                  {renderFieldError('instance-auth-realm')}
                   <Alert>
                     <AlertDescription>
                       {t('admin.instances.wizard.newRealmBaselineSummary')}
@@ -622,7 +660,6 @@ export const InstanceCreatePage = () => {
                     helpKey="tenantAdminUsername"
                   />
                   <Input
-                    id="instance-admin-username"
                     {...fieldErrorProps('instance-admin-username')}
                     value={formValues.tenantAdminBootstrap.username}
                     onChange={(event) =>
@@ -644,7 +681,6 @@ export const InstanceCreatePage = () => {
                     helpKey="tenantAdminEmail"
                   />
                   <Input
-                    id="instance-admin-email"
                     type="email"
                     {...fieldErrorProps('instance-admin-email')}
                     value={formValues.tenantAdminBootstrap.email}
@@ -669,7 +705,6 @@ export const InstanceCreatePage = () => {
                     helpKey="tenantAdminFirstName"
                   />
                   <Input
-                    id="instance-admin-first-name"
                     {...fieldErrorProps('instance-admin-first-name')}
                     value={formValues.tenantAdminBootstrap.firstName}
                     onChange={(event) =>
@@ -691,7 +726,6 @@ export const InstanceCreatePage = () => {
                     helpKey="tenantAdminLastName"
                   />
                   <Input
-                    id="instance-admin-last-name"
                     {...fieldErrorProps('instance-admin-last-name')}
                     value={formValues.tenantAdminBootstrap.lastName}
                     onChange={(event) =>
@@ -773,6 +807,42 @@ export const InstanceCreatePage = () => {
                   }
                 />
               </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <ReviewRow
+                  label={t('admin.instances.form.tenantAdminEmail')}
+                  value={formValues.tenantAdminBootstrap.email}
+                />
+                <ReviewRow
+                  label={t('admin.instances.form.tenantAdminFirstName')}
+                  value={formValues.tenantAdminBootstrap.firstName}
+                />
+                <ReviewRow
+                  label={t('admin.instances.form.tenantAdminLastName')}
+                  value={formValues.tenantAdminBootstrap.lastName}
+                />
+                {draftReadiness ? (
+                  <ReviewRow
+                    label={t('admin.instances.table.headerHost')}
+                    value={draftReadiness.normalizedDraft.primaryHostname}
+                  />
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {CREATE_WIZARD_STEPS.filter(({ key }) => key !== 'review').map((step) => (
+                  <Button
+                    className="max-w-full whitespace-normal"
+                    key={step.key}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setReturnToReview(true);
+                      moveToStep(step.key);
+                    }}
+                  >
+                    {t('admin.instances.wizard.editGroup', { group: step.title })}
+                  </Button>
+                ))}
+              </div>
               {readinessLoading ? (
                 <p className="text-sm text-muted-foreground" aria-live="polite">
                   {t('admin.instances.wizard.readiness.serverChecking')}
@@ -838,11 +908,16 @@ export const InstanceCreatePage = () => {
                       >
                         {group.title}
                       </h3>
+                      {group.findings.length ? (
+                        <p className="text-sm text-muted-foreground">
+                          {t(`admin.instances.wizard.readiness.impacts.${group.key}`)}
+                        </p>
+                      ) : null}
                       {group.findings.length > 0 ? (
                         group.findings.map((finding) => (
                           <div
                             key={`${group.key}-${finding.checkKey}`}
-                            className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border p-3"
                           >
                             <div>
                               <div className="font-medium text-foreground">
@@ -851,6 +926,36 @@ export const InstanceCreatePage = () => {
                               <p className="mt-1 text-xs text-muted-foreground">
                                 {finding.displaySummary}
                               </p>
+                              {findingStep(finding.checkKey) ? (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setReturnToReview(true);
+                                    const step = findingStep(finding.checkKey);
+                                    if (step) moveToStep(step);
+                                  }}
+                                >
+                                  {t('admin.instances.wizard.editGroup', {
+                                    group:
+                                      CREATE_WIZARD_STEPS.find(
+                                        ({ key }) => key === findingStep(finding.checkKey)
+                                      )?.title ?? '',
+                                  })}
+                                </Button>
+                              ) : (
+                                <p className="mt-1 text-sm">
+                                  {t('admin.instances.wizard.readiness.resolveTechnical')}
+                                </p>
+                              )}
+                              <details className="mt-2">
+                                <summary className="cursor-pointer text-xs">
+                                  {t('admin.instances.wizard.technicalDetails')}
+                                </summary>
+                                <p className="break-all text-xs">
+                                  {finding.checkKey} · {draftReadiness.checkedAt}
+                                </p>
+                              </details>
                             </div>
                             <WorkflowStatusBadge
                               status={finding.status === 'blocked' ? 'blocked' : 'pending'}
@@ -916,7 +1021,11 @@ export const InstanceCreatePage = () => {
               </Button>
               {currentStep !== 'review' ? (
                 <Button type="button" onClick={moveToNextStep}>
-                  {t('admin.instances.wizard.actions.next')}
+                  {t(
+                    returnToReview
+                      ? 'admin.instances.wizard.returnToReview'
+                      : 'admin.instances.wizard.actions.next'
+                  )}
                 </Button>
               ) : null}
             </div>

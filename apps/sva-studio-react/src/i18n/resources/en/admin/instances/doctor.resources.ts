@@ -24,6 +24,8 @@ export const doctorInstancesAdminENResources = {
   warning: {
     title: 'Doctor has identified work that needs attention.',
   },
+  openActivation: 'Go to activation',
+  auditResults: 'Check results',
   steps: {
     overview: {
       title: 'Overview',
@@ -55,7 +57,7 @@ export const doctorInstancesAdminENResources = {
     blocked:
       'Doctor found blocking issues and prioritizes the next action before normal operations continue.',
   },
-  historyTitle: 'History',
+  historyTitle: 'Technical history',
   historySubtitle:
     'Technical runs remain available for diagnosis, but they intentionally follow overview, recommendation, repair, and validation.',
 } as const;

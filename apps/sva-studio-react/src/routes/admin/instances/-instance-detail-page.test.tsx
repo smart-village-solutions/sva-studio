@@ -1,11 +1,16 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import React from 'react';
+import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstanceDetailPage, readActionFeedbackClassName } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
+const realInstances = vi.hoisted(() => ({
+  enabled: false,
+  refreshSession: vi.fn(async () => undefined),
+}));
 const { pluginReadinessRefreshMock } = vi.hoisted(() => ({
   pluginReadinessRefreshMock: vi.fn(async () => undefined),
 }));
@@ -22,8 +27,16 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
-vi.mock('../../../hooks/use-instances', () => ({
-  useInstances: () => useInstancesMock(),
+vi.mock('../../../hooks/use-instances', async () => {
+  const actual = await vi.importActual<typeof import('../../../hooks/use-instances')>(
+    '../../../hooks/use-instances'
+  );
+  return {
+    useInstances: () => (realInstances.enabled ? actual.useInstances() : useInstancesMock()),
+  };
+});
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => ({ refreshSession: realInstances.refreshSession }),
 }));
 
 vi.mock('../../../hooks/use-plugin-tenant-readiness', () => ({
@@ -241,9 +254,72 @@ describe('InstanceDetailPage', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it.each(['requested', 'active'])(
+    'keeps admin-client recovery reachable for %s tenants without the login secret',
+    async (status) => {
+      const selectedInstance = createSelectedInstance({
+        status,
+        authClientSecretConfigured: false,
+      });
+      selectedInstance.keycloakPlan = {
+        ...selectedInstance.keycloakPlan,
+        fingerprint: 'recovery-plan',
+      } as typeof selectedInstance.keycloakPlan;
+      const api = createInstancesApiState({ selectedInstance });
+      useInstancesMock.mockReturnValue(api);
+      render(<InstanceDetailPage instanceId="demo" />);
+      if (status === 'active') await openDoctor();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+      );
+      await waitFor(() =>
+        expect(api.executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
+          intent: 'provision_admin_client',
+          planFingerprint: 'recovery-plan',
+          tenantAdminTemporaryPassword: undefined,
+        })
+      );
+    }
+  );
+
+  it('keeps the temporary password across a failed reset and clears it after successful retry', async () => {
+    const selectedInstance = createSelectedInstance();
+    selectedInstance.keycloakPlan = {
+      ...selectedInstance.keycloakPlan,
+      fingerprint: 'reset-plan',
+    } as typeof selectedInstance.keycloakPlan;
+    const api = createInstancesApiState({ selectedInstance });
+    api.executeKeycloakProvisioning.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    useInstancesMock.mockReturnValue(api);
+    render(<InstanceDetailPage instanceId="demo" />);
+    const password = screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement;
+    fireEvent.change(password, { target: { value: 'Synthetic-Reset-123!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true }));
+    await waitFor(() => expect(api.executeKeycloakProvisioning).toHaveBeenCalledTimes(1));
+    expect(password.value).toBe('Synthetic-Reset-123!');
+    await openDoctor();
+    expect((screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement).value).toBe(
+      'Synthetic-Reset-123!'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true }));
+    await waitFor(() => expect(api.executeKeycloakProvisioning).toHaveBeenCalledTimes(2));
+    expect(api.executeKeycloakProvisioning).toHaveBeenLastCalledWith('demo', {
+      intent: 'reset_tenant_admin',
+      planFingerprint: 'reset-plan',
+      tenantAdminTemporaryPassword: 'Synthetic-Reset-123!',
+    });
+    await waitFor(() =>
+      expect((screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement).value).toBe(
+        ''
+      )
+    );
   });
 
   beforeEach(() => {
+    realInstances.enabled = false;
     useInstancesMock.mockReset();
     pluginReadinessRefreshMock.mockClear();
   });
@@ -278,16 +354,13 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByRole('tab', { name: 'Einstellungen' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Doctor öffnen' })).toBeTruthy();
     expect(screen.getByText('Doctor erkennt aktuell Handlungsbedarf.')).toBeTruthy();
-    const secondaryWorkspace = screen
-      .getByText('Betrieb, Doctor und Einstellungen')
-      .closest('details');
-    expect(secondaryWorkspace?.open).toBe(false);
-
+    expect(screen.queryByText('Betrieb, Doctor und Einstellungen')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Doctor öffnen' }));
-
-    await waitFor(() => {
-      expect(secondaryWorkspace?.open).toBe(true);
-    });
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active')
+    );
+    for (const summary of screen.getAllByText('Technische Details', { selector: 'summary' }))
+      fireEvent.click(summary);
 
     expect(screen.getByText('Überblick')).toBeTruthy();
     expect(screen.getByText('Empfohlene Maßnahme')).toBeTruthy();
@@ -445,6 +518,156 @@ describe('InstanceDetailPage', () => {
         planFingerprint: 'a'.repeat(64),
       })
     );
+  });
+
+  it.each(['active', 'suspended', 'archived'])(
+    'keeps %s instances in operation even with missing evidence',
+    (status) => {
+      useInstancesMock.mockReturnValue(
+        createInstancesApiState({ selectedInstance: createSelectedInstance({ status }) })
+      );
+      render(<InstanceDetailPage instanceId="demo" />);
+      expect(screen.getByRole('tab', { name: 'Betrieb' }).getAttribute('data-state')).toBe(
+        'active'
+      );
+      expect(screen.queryByRole('heading', { name: 'Instanz fertig einrichten' })).toBeNull();
+      expect(screen.getByText('Betriebszustand:')).toBeTruthy();
+    }
+  );
+
+  it('navigates from Doctor to activation without mutating until explicit confirmation', async () => {
+    const activateInstance = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        activateInstance,
+        selectedInstance: createSelectedInstance({
+          status: 'validated',
+          updatedAt: '2026-09-27T12:00:00Z',
+          provisioningReadiness: {
+            state: 'awaiting_activation',
+            capabilities: [],
+            nextAction: { action: 'instance.status.activate', retryClass: 'never' },
+          },
+        }),
+      })
+    );
+    render(<InstanceDetailPage instanceId="demo" />);
+    await openDoctor();
+    expect(screen.queryByRole('heading', { name: 'Instanz fertig einrichten' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Zur Aktivierung' }));
+    await waitFor(() => expect(document.activeElement?.id).toBe('instance-current-task'));
+    expect(activateInstance).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Aktivieren' }));
+    expect(activateInstance).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Aktivieren' })
+    );
+    await waitFor(() => expect(activateInstance).toHaveBeenCalledOnce());
+  });
+
+  it.each(['save', 'reset'] as const)(
+    'keeps dirty settings out of a template %s HTTP payload',
+    async (operation) => {
+      realInstances.enabled = true;
+      let snapshot = createSelectedInstance({ status: 'active' });
+      let payload: Record<string, unknown> | undefined;
+      studioMswServer.use(
+        http.get('/api/v1/iam/instances', () => HttpResponse.json({ data: [snapshot] })),
+        http.get('/api/v1/iam/instances/demo', () => HttpResponse.json({ data: snapshot })),
+        http.get('/api/v1/iam/instances/demo/keycloak/status', () =>
+          HttpResponse.json({ data: snapshot.keycloakStatus })
+        ),
+        http.get('/api/v1/iam/instances/demo/audit', () =>
+          HttpResponse.json({ data: { instances: [], checks: [], summary: {} } })
+        ),
+        http.patch('/api/v1/iam/instances/demo', async ({ request }) => {
+          payload = (await request.json()) as Record<string, unknown>;
+          snapshot = {
+            ...snapshot,
+            accountInvitationTemplateSource: operation === 'save' ? 'instance' : 'sva_default',
+          };
+          return HttpResponse.json({ data: snapshot });
+        })
+      );
+      render(<InstanceDetailPage instanceId="demo" />);
+      await screen.findByRole('button', { name: 'Doctor öffnen' });
+      await activateTab('Einstellungen');
+      fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Unsaved name' } });
+      fireEvent.change(screen.getByLabelText('Auth-Realm'), { target: { value: 'unsaved-realm' } });
+      fireEvent.change(screen.getByLabelText('Tenant-Client-Secret'), {
+        target: { value: 'unsaved-secret' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
+      if (operation === 'reset') {
+        vi.stubGlobal(
+          'confirm',
+          vi.fn(() => true)
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Servervorlage verwenden' }));
+      } else fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
+      await waitFor(() => expect(payload).toBeDefined());
+      expect(payload).toMatchObject({
+        displayName: 'Demo',
+        authRealm: 'demo',
+        accountInvitationTemplateRevision: 0,
+      });
+      expect(JSON.stringify(payload)).not.toContain('unsaved');
+      expect(payload).not.toHaveProperty('authClientSecret');
+      if (operation === 'reset') expect(payload?.accountInvitationTemplate).toBeNull();
+      else expect(payload?.accountInvitationTemplate).not.toHaveProperty('revision');
+      await waitFor(() => expect(screen.getByText(/Vorlage.*gespeichert/)).toBeTruthy());
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+      await activateTab('Doctor');
+      await activateTab('Einstellungen');
+      expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Unsaved name');
+      expect((screen.getByLabelText('Auth-Realm') as HTMLInputElement).value).toBe('unsaved-realm');
+      expect((screen.getByLabelText('Tenant-Client-Secret') as HTMLInputElement).value).toBe(
+        'unsaved-secret'
+      );
+      expect(screen.getByText('Ungespeicherte Instanzeinstellungen')).toBeTruthy();
+    }
+  );
+
+  it.each([
+    { status: 409, code: 'conflict' },
+    { status: 500, code: 'internal_error' },
+    { status: 403, code: 'reauth_required' },
+  ])('preserves template draft and error through HTTP $code', async ({ status, code }) => {
+    realInstances.enabled = true;
+    const snapshot = createSelectedInstance({ status: 'active' });
+    studioMswServer.use(
+      http.get('/api/v1/iam/instances', () => HttpResponse.json({ data: [snapshot] })),
+      http.get('/api/v1/iam/instances/demo', () => HttpResponse.json({ data: snapshot })),
+      http.get('/api/v1/iam/instances/demo/keycloak/status', () =>
+        HttpResponse.json({ data: snapshot.keycloakStatus })
+      ),
+      http.get('/api/v1/iam/instances/demo/audit', () =>
+        HttpResponse.json({ data: { instances: [], checks: [], summary: {} } })
+      ),
+      http.patch('/api/v1/iam/instances/demo', () =>
+        HttpResponse.json({ error: { code, message: 'private diagnostic' } }, { status })
+      )
+    );
+    render(<InstanceDetailPage instanceId="demo" />);
+    await screen.findByRole('button', { name: 'Doctor öffnen' });
+    await activateTab('Einstellungen');
+    fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Unsaved name' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Account-Einladung anpassen' }));
+    const subject = screen.getByLabelText('Betreff');
+    fireEvent.change(subject, { target: { value: 'Draft invitation' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlage speichern' }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          code === 'conflict'
+            ? /Vorlage wurde zwischenzeitlich/
+            : /Vorlage konnte nicht gespeichert/
+        )
+      ).toBeTruthy()
+    );
+    expect((subject as HTMLInputElement).value).toBe('Draft invitation');
+    expect(document.body.textContent).not.toContain('private diagnostic');
+    expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Unsaved name');
   });
 
   it('saves registry configuration while the optional Keycloak plan is unavailable', async () => {
@@ -687,7 +910,7 @@ describe('InstanceDetailPage', () => {
     await activateTab('Doctor');
 
     await waitFor(() => {
-      expect(screen.getByText('Historie')).toBeTruthy();
+      expect(screen.getByText('Technische Historie')).toBeTruthy();
       expect(screen.getByText('Älterer Run fehlgeschlagen.')).toBeTruthy();
       expect(
         screen.getByText(
@@ -834,6 +1057,8 @@ describe('InstanceDetailPage', () => {
 
     await openDoctor();
 
+    for (const summary of screen.getAllByText('Technische Details', { selector: 'summary' }))
+      fireEvent.click(summary);
     fireEvent.click(screen.getByRole('button', { name: 'Vorbedingungen prüfen' }));
 
     await waitFor(() => {
@@ -1140,7 +1365,7 @@ describe('InstanceDetailPage', () => {
     await activateTab('Einstellungen');
 
     await waitFor(() => {
-      expect(screen.getAllByText('Konfiguration vorbereitet').length).toBeGreaterThan(0);
+      expect(screen.getByText('Nutzer-Datenbank und Clients · demo')).toBeTruthy();
     });
     expect(screen.queryByText('Konkrete Blocker')).toBeNull();
 
@@ -1153,7 +1378,7 @@ describe('InstanceDetailPage', () => {
       screen.getAllByText(
         'Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.'
       )
-    ).toHaveLength(2);
+    ).toHaveLength(1);
 
     const tenantAdminClientSecret = screen.getByLabelText('Tenant-Admin-Client-Secret', {
       selector: '#detail-tenant-admin-client-secret',
@@ -1230,6 +1455,11 @@ describe('InstanceDetailPage', () => {
     ).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
+    await waitFor(() =>
+      expect(
+        (screen.getAllByRole('button', { name: 'Modul zuweisen' })[0] as HTMLButtonElement).disabled
+      ).toBe(false)
+    );
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
 
     await waitFor(() => {
@@ -1255,6 +1485,7 @@ describe('InstanceDetailPage', () => {
 
     await activateTab('Doctor');
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();
+    fireEvent.click(screen.getByText('Technische Historie', { selector: 'summary' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Run laden' })[1]);
 
     await waitFor(() => {
@@ -1275,5 +1506,138 @@ describe('InstanceDetailPage', () => {
 
     expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
     expect(screen.queryByText('Überblick')).toBeNull();
+  });
+  it('retains a new secret and the dirty settings draft after a failed settings save', async () => {
+    const updateInstance = vi.fn().mockResolvedValue(null);
+    useInstancesMock.mockReturnValue(createInstancesApiState({ updateInstance }));
+    render(<InstanceDetailPage instanceId="demo" />);
+    await activateTab('Einstellungen');
+    fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Unsaved' } });
+    fireEvent.change(screen.getByLabelText('Tenant-Client-Secret'), {
+      target: { value: 'new-secret' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
+    await waitFor(() => expect(updateInstance).toHaveBeenCalledOnce());
+    expect((screen.getByLabelText('Tenant-Client-Secret') as HTMLInputElement).value).toBe(
+      'new-secret'
+    );
+    expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Unsaved');
+    expect(screen.getByText('Ungespeicherte Instanzeinstellungen')).toBeTruthy();
+  });
+  it('replaces execution with a fresh plan action after a stale fingerprint response', async () => {
+    const planKeycloakProvisioning = vi.fn().mockResolvedValueOnce(null);
+    const executeKeycloakProvisioning = vi.fn();
+    const staleSelectedInstance = {
+      ...createSelectedInstance({
+        provisioningReadiness: {
+          state: 'provisioning_waiting',
+          capabilities: [],
+          nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+        },
+      }),
+      keycloakPlan: { ...createSelectedInstance().keycloakPlan, fingerprint: 'old-plan' },
+    };
+    const apiState = createInstancesApiState({
+      planKeycloakProvisioning,
+      executeKeycloakProvisioning,
+      mutationError: { status: 409, code: 'keycloak_plan_fingerprint_stale', message: 'private' },
+      selectedInstance: staleSelectedInstance,
+    }) as ReturnType<typeof createInstancesApiState> & {
+      mutationError: { status: number; code: string; message: string } | null;
+    };
+    useInstancesMock.mockReturnValue(apiState);
+    const { rerender } = render(<InstanceDetailPage instanceId="demo" />);
+    expect(screen.queryByRole('button', { name: 'Provisioning ausführen' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true })
+    ).toBeNull();
+    expect(screen.getByText(/Der bestätigte Plan ist veraltet/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Provisioning-Vorschau laden' }));
+    await waitFor(() => expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo'));
+    expect(executeKeycloakProvisioning).not.toHaveBeenCalled();
+
+    apiState.mutationError = { status: 503, code: 'keycloak_unavailable', message: 'private' };
+    rerender(<InstanceDetailPage instanceId="demo" />);
+    await openDoctor();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true })
+    ).toBeNull();
+
+    planKeycloakProvisioning.mockImplementationOnce(async () => {
+      staleSelectedInstance.keycloakPlan = {
+        ...staleSelectedInstance.keycloakPlan,
+        fingerprint: 'new-plan',
+      };
+      apiState.mutationError = null;
+      return staleSelectedInstance.keycloakPlan;
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Provisioning-Vorschau laden', hidden: true })
+    );
+    await waitFor(() => expect(planKeycloakProvisioning).toHaveBeenCalledTimes(2));
+    rerender(<InstanceDetailPage instanceId="demo" />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+      ).toBeTruthy()
+    );
+    expect(
+      screen.getByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true })
+    ).toBeTruthy();
+    expect(executeKeycloakProvisioning).not.toHaveBeenCalled();
+  });
+  it('keeps the real stale-plan HTTP response visible without a success reload', async () => {
+    realInstances.enabled = true;
+    let detailReads = 0;
+    let submitted: Record<string, unknown> | undefined;
+    const snapshot = createSelectedInstance({
+      keycloakPlan: {
+        mode: 'existing',
+        overallStatus: 'ready',
+        generatedAt: '2026-09-27T12:00:00Z',
+        fingerprint: 'a'.repeat(64),
+        driftSummary: 'Client anlegen',
+        steps: [],
+      },
+      provisioningReadiness: {
+        state: 'provisioning_waiting',
+        capabilities: [],
+        nextAction: { action: 'instance.keycloak.execute', retryClass: 'conditional' },
+      },
+    });
+    studioMswServer.use(
+      http.get('/api/v1/iam/instances', () => HttpResponse.json({ data: [snapshot] })),
+      http.get('/api/v1/iam/instances/demo', () => {
+        detailReads += 1;
+        return HttpResponse.json({ data: snapshot });
+      }),
+      http.get('/api/v1/iam/instances/demo/keycloak/status', () =>
+        HttpResponse.json({ data: snapshot.keycloakStatus })
+      ),
+      http.get('/api/v1/iam/instances/demo/audit', () => HttpResponse.json({ data: null })),
+      http.post('/api/v1/iam/instances/demo/keycloak/execute', async ({ request }) => {
+        submitted = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            requestId: 'stale-plan-request',
+            error: { code: 'keycloak_plan_fingerprint_stale', message: 'private' },
+          },
+          { status: 409 }
+        );
+      })
+    );
+    render(<InstanceDetailPage instanceId="demo" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Provisioning ausführen' }));
+    await screen.findByText(/Der bestätigte Plan ist veraltet/);
+    expect(submitted).toMatchObject({ intent: 'provision', planFingerprint: 'a'.repeat(64) });
+    expect(detailReads).toBe(1);
+    expect(screen.queryByRole('button', { name: 'Provisioning ausführen' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Provisioning-Vorschau laden' })).toBeTruthy();
   });
 });

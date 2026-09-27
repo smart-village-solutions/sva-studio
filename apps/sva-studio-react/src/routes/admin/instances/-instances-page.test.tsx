@@ -117,6 +117,7 @@ describe('InstancesPage', () => {
       target: { value: 'active' },
     });
     expect(screen.queryByRole('button', { name: 'Aktivieren' })).toBeNull();
+    fireEvent.click(screen.getAllByText('Weitere Aktionen')[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Suspendieren' })[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Archivieren' })[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Gesamt-Audit starten' })[0]!);
@@ -200,7 +201,8 @@ describe('InstancesPage', () => {
 
     render(<InstancesPage />);
 
-    expect(screen.getByText('Audit')).toBeTruthy();
+    fireEvent.click(screen.getAllByText('Audit')[0]!);
+    expect(screen.getAllByText('Audit').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Demo').length).toBeGreaterThan(0);
     expect(screen.getByText('Instanz erreichbar')).toBeTruthy();
     expect(screen.getByText('HTTP 302')).toBeTruthy();

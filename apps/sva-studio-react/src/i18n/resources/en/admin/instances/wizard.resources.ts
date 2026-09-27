@@ -1,4 +1,6 @@
 export const wizardInstancesAdminENResources = {
+  editGroup: 'Edit: {{group}}',
+  returnToReview: 'Back to review',
   steps: {
     basics: {
       title: 'Instance',
@@ -36,6 +38,17 @@ export const wizardInstancesAdminENResources = {
       'Please provide a Supabase project URL once waste management is enabled for the instance.',
   },
   readiness: {
+    impacts: {
+      create:
+        'These findings prevent creation. Correct the input or ask an administrator to check technical access.',
+      provisioning:
+        'Creation is possible. Outstanding technical prerequisites must be resolved before setup can succeed.',
+      activation:
+        'Creation is possible. The instance remains inactive until operational readiness is confirmed.',
+    },
+    resolveTechnical:
+      'Ask the responsible administrator to check technical access or worker configuration, then check again.',
+
     serverChecking: 'Checking server-side readiness.',
     serverUnavailable:
       'Server-side readiness could not be confirmed. The instance cannot be created yet.',

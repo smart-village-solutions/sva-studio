@@ -1260,6 +1260,21 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   });
 
+  it('does not persist a failure after the claim changes between transactions', async () => {
+    const harness = createHarness();
+    Object.assign(harness.getRun(), { status: 'provisioning', stepKey: 'ingress' });
+    vi.mocked(harness.deps.publishTenantIngress).mockRejectedValueOnce(new Error('ingress_failed'));
+    vi.mocked(harness.repository.listProvisioningRuns)
+      .mockImplementationOnce(async () => [harness.getRun()])
+      .mockImplementationOnce(async () => [{ ...harness.getRun(), leaseOwner: 'other-worker' }]);
+
+    await expect(
+      processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now })
+    ).rejects.toThrow('provisioning_claim_lost');
+    expect(harness.repository.setInstanceStatus).not.toHaveBeenCalled();
+    expect(harness.getRun().status).toBe('provisioning');
+  });
+
   it('propagates claim loss after final validation so the enclosing transaction rolls back', async () => {
     vi.useFakeTimers({ now });
     try {

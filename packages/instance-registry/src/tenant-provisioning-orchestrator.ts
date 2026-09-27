@@ -173,6 +173,71 @@ const failRun = async (
   });
 };
 
+const persistStepFailure = (
+  deps: InstanceRegistryServiceDeps,
+  run: InstanceProvisioningRun,
+  workerId: string,
+  error: unknown,
+  failurePhase: TenantProvisioningFailurePhase,
+  currentTime: () => Date
+): Promise<InstanceProvisioningRun> => {
+  const withInstanceProvisioningLock = requireDependency(
+    deps.withInstanceProvisioningLock,
+    'dependency_missing_withInstanceProvisioningLock'
+  );
+  return withInstanceProvisioningLock(run.instanceId, async (lockedDeps) => {
+    const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
+      (candidate) =>
+        candidate.id === run.id &&
+        candidate.leaseOwner === workerId &&
+        candidate.attemptCount === run.attemptCount &&
+        candidate.leaseExpiresAt &&
+        new Date(candidate.leaseExpiresAt).getTime() > currentTime().getTime()
+    );
+    if (!current) throw new Error('provisioning_claim_lost');
+    const code = errorCode(error);
+    const stepKey = code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
+    try {
+      logger.warn('tenant_provisioning_step_exception', {
+        operation: 'create_instance',
+        result: 'failed',
+        request_id: current.requestId,
+        instance_id: current.instanceId,
+        run_id: current.id,
+        step_key: stepKey,
+        failure_phase: failurePhase,
+        error_type: readDiagnosticErrorType(error),
+        error_code: code,
+        classification: code,
+        ...buildProvisioningFailureDiagnostics(error),
+      });
+    } catch {
+      // Diagnostic logging must never replace the provisioning failure.
+    }
+    const failureTime = currentTime();
+    const terminal =
+      isTerminalError(error) ||
+      !isTenantProvisioningFailureRetryable({ status: 'failed', errorCode: code }) ||
+      failureTime.getTime() >= new Date(current.deadlineAt).getTime();
+    if (terminal) {
+      return failRun(lockedDeps, current, workerId, stepKey, error, failureTime);
+    }
+    logger.warn('tenant_provisioning_retry_scheduled', {
+      operation: 'create_instance',
+      instance_id: current.instanceId,
+      run_id: current.id,
+      step_key: stepKey,
+      error_code: code,
+    });
+    return updateClaimedRun(lockedDeps, current, workerId, {
+      stepKey,
+      nextAttemptAt: new Date(failureTime.getTime() + RETRY_MILLISECONDS).toISOString(),
+      errorCode: code,
+      errorMessage: 'Provisionierung wird erneut versucht.',
+    });
+  });
+};
+
 export const processNextTenantProvisioningRun = async (
   deps: InstanceRegistryServiceDeps,
   input: { readonly workerId: string; readonly now?: Date }
@@ -185,23 +250,25 @@ export const processNextTenantProvisioningRun = async (
     parentDomain: KASSEL_PARENT_DOMAIN,
   });
   if (!run) return null;
+  let stepFailure:
+    { readonly error: unknown; readonly phase: TenantProvisioningFailurePhase } | undefined;
   const execute = async (
     lockedDeps: InstanceRegistryServiceDeps,
     assertLeaseActive: () => void
   ) => {
-    const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
-      (candidate) => candidate.id === run.id && candidate.leaseOwner === input.workerId
-    );
-    if (!current) return null;
-    const instance = await lockedDeps.repository.getInstanceById(run.instanceId);
-    const assertExecutionActive = () => {
-      assertLeaseActive();
-      if (currentTime().getTime() >= new Date(current.deadlineAt).getTime()) {
-        throw new Error('provisioning_deadline_exceeded');
-      }
-    };
     let failurePhase: TenantProvisioningFailurePhase = 'execution_guard';
     try {
+      const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
+        (candidate) => candidate.id === run.id && candidate.leaseOwner === input.workerId
+      );
+      if (!current) return null;
+      const instance = await lockedDeps.repository.getInstanceById(run.instanceId);
+      const assertExecutionActive = () => {
+        assertLeaseActive();
+        if (currentTime().getTime() >= new Date(current.deadlineAt).getTime()) {
+          throw new Error('provisioning_deadline_exceeded');
+        }
+      };
       assertExecutionActive();
       failurePhase = 'instance_validation';
       if (!instance) throw new Error('instance_not_found');
@@ -220,56 +287,24 @@ export const processNextTenantProvisioningRun = async (
         assertExecutionActive,
       });
     } catch (error) {
-      const code = errorCode(error);
-      if (code === 'provisioning_claim_lost') throw error;
-      const stepKey = code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
-      try {
-        logger.warn('tenant_provisioning_step_exception', {
-          operation: 'create_instance',
-          result: 'failed',
-          request_id: current.requestId,
-          instance_id: current.instanceId,
-          run_id: current.id,
-          step_key: stepKey,
-          failure_phase: failurePhase,
-          error_type: readDiagnosticErrorType(error),
-          error_code: code,
-          classification: code,
-          ...buildProvisioningFailureDiagnostics(error),
-        });
-      } catch {
-        // Diagnostic logging must never replace the provisioning failure.
+      if (errorCode(error) !== 'provisioning_claim_lost') {
+        stepFailure = { error, phase: failurePhase };
       }
-      const failureTime = currentTime();
-      const terminal =
-        isTerminalError(error) ||
-        !isTenantProvisioningFailureRetryable({ status: 'failed', errorCode: code }) ||
-        failureTime.getTime() >= new Date(current.deadlineAt).getTime();
-      if (terminal) {
-        return failRun(lockedDeps, current, input.workerId, stepKey, error, failureTime);
-      }
-      logger.warn('tenant_provisioning_retry_scheduled', {
-        operation: 'create_instance',
-        instance_id: current.instanceId,
-        run_id: current.id,
-        step_key: stepKey,
-        error_code: code,
-      });
-      return updateClaimedRun(lockedDeps, current, input.workerId, {
-        stepKey,
-        nextAttemptAt: new Date(failureTime.getTime() + RETRY_MILLISECONDS).toISOString(),
-        errorCode: code,
-        errorMessage: 'Provisionierung wird erneut versucht.',
-      });
+      throw error;
     }
   };
   const withInstanceProvisioningLock = requireDependency(
     deps.withInstanceProvisioningLock,
     'dependency_missing_withInstanceProvisioningLock'
   );
-  return withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
-    executeWithLeaseHeartbeat(deps, run, input.workerId, (assertLeaseActive) =>
-      execute(bindWorkerCallbacksToLockedDeps(lockedDeps, deps), assertLeaseActive)
-    )
-  );
+  try {
+    return await withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
+      executeWithLeaseHeartbeat(deps, run, input.workerId, (assertLeaseActive) =>
+        execute(bindWorkerCallbacksToLockedDeps(lockedDeps, deps), assertLeaseActive)
+      )
+    );
+  } catch (error) {
+    if (!stepFailure || stepFailure.error !== error) throw error;
+    return persistStepFailure(deps, run, input.workerId, error, stepFailure.phase, currentTime);
+  }
 };

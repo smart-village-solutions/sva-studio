@@ -1075,6 +1075,10 @@ Tokens, Secrets oder E-Mail-Adressen.
   persistiert; eine fehlende oder leere Composition ist ein terminaler Fehler.
 - Retry und Redelivery sind idempotent und erzeugen einen langlebigen
   Lifecycle-Reconcile-Intent statt eines ausschließlich prozesslokalen Aufrufs.
+- Schlägt ein Provisionierungsschritt fehl, wird seine Transaktion zurückgerollt.
+  Erst danach speichert eine neue Transaktion unter dem Instanz-Lock den
+  terminalen Fehler oder einen zulässigen Retry; dafür müssen Lease und
+  Attempt-Generation weiterhin zum beanspruchten Lauf passen.
 - Öffentliche Veröffentlichung bleibt statusgebunden. Nur die interne
   Lifecycle-Readiness darf eine `provisioning`-Instanz prüfen.
 - Logs und Evidenz enthalten Korrelation, Stufe, Routername und Hash, aber keine

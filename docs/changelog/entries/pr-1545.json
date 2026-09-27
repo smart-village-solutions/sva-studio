@@ -1,0 +1,4 @@
+{
+  "prNumber": 1545,
+  "body": "Neu angelegte Instanzen können nach erfolgreicher Keycloak-Bereitstellung wieder den Rollenabgleich und die manuelle Aktivierung durchlaufen. Die Live-Prüfung erfolgt über den zuständigen Provisioner."
+}

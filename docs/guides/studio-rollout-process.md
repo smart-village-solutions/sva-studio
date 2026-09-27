@@ -36,7 +36,7 @@ Die Registry-Aktivierung allein veröffentlicht keinen Tenant. Bis zu einer sepa
 2. Die Änderung läuft mit dem regulären `Build`-/`Promote`-Pfad aus; der Tenant-Erstellungsprozess verändert Traefik nicht direkt.
 3. Ein gezielter Tenant-Abnahmesmoke nach der Traefik-Änderung weist HTTPS mit einem für den konkreten Host gültigen Einzelzertifikat sowie einen Login-Redirect mit demselben Rückkehr-Host nach. Dieser Nachweis gehört zur Tenant-Freigabe, nicht zum App-Promote.
 
-Dev veröffentlicht zusätzlich `de-teststadt-dev.studio-dev.smart-village.app`, Staging zusätzlich `de-studio-sandbox.studio-staging.smart-village.app`. Die Production-Liste ist versioniert in `deploy/compose.prod.yaml`. Ergänzungen und Entfernungen an dieser Liste sind normale Konfigurationsänderungen und dürfen erst nach erfolgreichem Promote und Smoke in der Registry als extern betriebsbereit behandelt werden. Wildcard-DNS ist kein Freigabenachweis.
+Dev veröffentlicht zusätzlich `de-teststadt-dev.studio-dev.smart-village.app` und `readiness-smoke-20260927.studio-dev.smart-village.app`, Staging zusätzlich `de-studio-sandbox.studio-staging.smart-village.app` und `readiness-smoke-20260927.studio-staging.smart-village.app`. Die Production-Liste ist versioniert in `deploy/compose.prod.yaml`. Ergänzungen und Entfernungen an dieser Liste sind normale Konfigurationsänderungen und dürfen erst nach erfolgreichem Promote und Smoke in der Registry als extern betriebsbereit behandelt werden. Wildcard-DNS ist kein Freigabenachweis.
 
 Die Backup-Endpunkte und Buckets sind fest an die Zielumgebung gebunden:
 

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1541,
+  "body": "Abgeschlossene Kasseler Tenant-Anlagen werden vom Provisioner nicht erneut gestartet. Dadurch entfällt der wiederholte Datenbankfehler nach erfolgreicher technischer Abnahme."
+}

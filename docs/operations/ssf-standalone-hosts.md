@@ -66,6 +66,9 @@ ausschließlich über `http://provisioner:3000` erreichbaren Create-/Readiness-E
 seine eigene Runtime bearbeitet diese Requests lokal und leitet sie nicht erneut weiter.
 Er darf nicht durch einen Worker des regulären Studio-Stacks ersetzt werden: Er muss dieselbe
 Kasseler Datenbank, Redis-Instanz und den lokalen Keycloak verwenden.
+Der SSF-Worker lädt beim Start denselben Plugin-IAM-, Lifecycle- und OIDC-Vertrag wie die
+App; ohne diesen Prozess-Snapshot können explizit zugewiesene SSF-Instanzen nicht
+provisioniert werden.
 
 Der verbindliche Compose-Zusatz und sein fail-closed Startskript liegen unter
 [`deploy/standalone/keycloak-provisioner.compose.yml`](../../deploy/standalone/keycloak-provisioner.compose.yml).

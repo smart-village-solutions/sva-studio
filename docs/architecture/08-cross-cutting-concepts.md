@@ -995,13 +995,24 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   plattformverfügbaren Actions `ssf.configuration.tenant.inspect` und
   `ssf.configuration.tenant.provenance.inspect`; Tenant-Reads verwenden die
   getrennte tenantverfügbare Action `ssf.configuration.tenant.read`.
-- Effektive tenantgebundene `ssf.*`-Permissions werden mit einer tenantweiten
+- Die Benutzerclaims `studio_tenant_id`, `ssf_authorization_revision`,
+  `ssf_permissions` und `ssf_roles` sind seit der Produktentscheidung vom
+  27.09.2026 als Voraussetzung für Gesprächszugriff **deprecated**. Der
+  SSF-Consumer soll reguläre Keycloak-Nutzer ohne zusätzliche Benutzerprojektion
+  zulassen und den Tenant aus dem verifizierten Aussteller und Login-Verzeichnis
+  bestimmen. Umsetzung: [SSF #438](https://github.com/smart-village-solutions/smart-speech-flow/issues/438).
+  Studio erzeugt die Legacy-Felder bis zur geprüften Consumer-Migration weiter;
+  Runtime-Revisionsfelder, Service-Autorisierung und gesonderte Verwaltungsrechte
+  bleiben bestehen. Diese Änderung verändert keine produktiven Readiness-Gates.
+- Im bisherigen Kompatibilitätsbetrieb werden effektive tenantgebundene
+  `ssf.*`-Permissions mit einer tenantweiten
   Revision aus Studio-IAM in den SSF-Client des gemeinsamen Tenant-Realms
   projiziert. Studio und SSF verwenden dort dieselbe Benutzeridentität und
   dasselbe OIDC-`sub`. Vor
   relevanten Änderungen bleiben Client und SSF-Readiness bis zu erfolgreichem
   Reconcile, Session-Widerruf und Verifikation gesperrt. Token- und Runtime-
-  Revision müssen für authentifizierte Vorgänge übereinstimmen.
+  Revision werden vom bisherigen Consumer verglichen; dieser Benutzervergleich
+  ist für Gespräche deprecated und entfällt mit SSF #438.
 - Das installationsweite SSF-Service-Token wird im Studio-Root-Realm
   ausgestellt und trägt keine Tenantrevision. Es weist ausschließlich
   Backend-Identität, Audience und `ssf.runtime-configuration.read` nach; die

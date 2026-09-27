@@ -1,3 +1,23 @@
+## Aktuelle Vertragsentscheidung: Deprecation für Gesprächszugriff
+
+Die Benutzerclaims `studio_tenant_id`, `ssf_authorization_revision`,
+`ssf_permissions` und `ssf_roles` sind als Gesprächszugangskriterien deprecated.
+SSF #438 stellt den vorhandenen Consumer auf gültige reguläre Keycloak-Tokens
+und eindeutige Tenant-Zuordnung über den verifizierten Aussteller um.
+Die bisherige Kopplung der Benutzerrevision an die Runtime-Revision entfällt
+für Gespräche; die Runtime-API und gesonderte Verwaltungsrechte bleiben erhalten.
+
+Der folgende Entwurf beschreibt die weiterhin betriebene Legacy-Projektion.
+Die Studio-Änderung besteht ausschließlich aus Dokumentation und
+Deprecation-Kommentaren. Bestehende Mapper, Benutzerattribute und Producer
+bleiben bis zur geprüften Consumer-Migration erhalten. Kein neuer
+Projektionspfad und keine zusätzliche Rechtevergabe werden eingeführt.
+
+Nachweis auf SSF-Seite: reale Zwei-Tenant-Abnahme mit regulären Konten ohne
+Sonderattribute, Ablehnung ungültiger Tokens und fremder Tenant-Zugriffe,
+sowie weiterhin getrennte Verwaltungsrechte. Lokale Tokenprüfung behält die
+bestehende begrenzte Nachwirkung bereits ausgestellter Tokens bei.
+
 ## Context
 
 Der Runtime-Konfigurations-Change akzeptiert ausschließlich eine hostseitig
@@ -37,7 +57,7 @@ verwaisten Zustand `projecting`, `activation_pending` oder
 `revocation_pending` erneut idempotent
 beanspruchen.
 
-### Token und Runtime-Konfiguration müssen revisionsgleich sein
+### Legacy-Vertrag: Token und Runtime-Konfiguration sind revisionsgleich
 
 Studio und SSF verwenden für einen Tenant denselben Realm und damit dieselbe
 Benutzeridentität. Das OIDC-`sub` eines Tenant-Benutzers gilt in beiden

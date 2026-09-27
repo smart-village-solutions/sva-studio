@@ -59,6 +59,42 @@ Studio and SSF do not share an application database and do not access each
 other's persistence directly. SSF does not maintain a persistent cache of the
 Studio configuration.
 
+## Deprecated: user claims as conversation admission criteria
+
+**Product decision of 2026-09-27; SSF consumer implementation pending:** Every
+active regular Keycloak account in an admitted tenant realm may use
+conversations without an additional SSF role, per-user projection or matching
+Studio-IAM account. SSF validates the ordinary user access token (signature,
+admitted issuer, audience, expiry and subject) and derives the tenant from
+the verified issuer's unique entry in the trusted login directory.
+
+| User claim / Keycloak user attribute | Conversation access status | Replacement                                           |
+| ------------------------------------ | -------------------------- | ----------------------------------------------------- |
+| `studio_tenant_id`                   | **deprecated**             | Verified issuer and login-directory tenant mapping    |
+| `ssf_authorization_revision`         | **deprecated**             | No user revision comparison with the runtime response |
+| `ssf_permissions`                    | **deprecated**             | Valid regular Keycloak login grants conversation use  |
+| `ssf_roles`                          | **deprecated**             | No persona or additional SSF role prerequisite        |
+
+The legacy `ssf-user` role is also unnecessary under the new conversation
+contract. Missing, stale or malformed legacy fields must not block conversation
+access or override the issuer-derived tenant after consumer migration.
+
+This deprecation is scoped to **user fields as conversation admission
+criteria**. Runtime response fields `authorizationRevision` and
+`configurationRevision`, internal `X-Studio-Tenant-Id`, service credentials,
+tenant isolation, guest capabilities and separate administrative permission
+checks remain supported. Conversation access grants no configuration,
+feedback-read or telemetry privileges.
+
+**Transition:** Studio continues producing the legacy claims unchanged.
+[SSF #438](https://github.com/smart-village-solutions/smart-speech-flow/issues/438) changes the existing gateway auth, tenant context
+and user-revision comparison. This documentation change neither migrates a
+running consumer nor alters Studio readiness. Remove producers only after
+all remaining consumers have been assessed and migrated. The projection rules
+below describe compatibility behavior, not new conversation prerequisites.
+The additional mandatory-permission projection proposed in Studio #1542 and
+SSF #437 is superseded.
+
 ## Roles and identities
 
 The SSF domain model uses the following names:
@@ -93,12 +129,10 @@ use only the new values.
 SSF system administrators are represented by `instance_registry_admin` in the
 Studio root context and do not appear in tenant tokens. `system_admin` and
 `tenant_admin` are SSF personas and default roles, not direct authorization
-inputs. Server-side decisions use only fully qualified `ssf.*` actions. Custom
+inputs. Administrative decisions use only fully qualified `ssf.*` actions. Custom
 roles can therefore receive the same rights without special-casing a role
-name. A tenant administrator does not
-automatically receive operational conversation permissions. If the same person
-also uses SSF operationally, that person additionally receives the `user` role
-and the corresponding operational `ssf.*` permissions.
+name. Conversation admission follows the deprecation decision above: tenant
+administrators and roleless users may use conversations after SSF migration.
 
 Guests remain entirely within the existing SSF session model. They receive
 neither a Studio account nor a regular Keycloak account. Guest tokens, session
@@ -118,7 +152,9 @@ The canonical Studio `instanceId` is the shared technical tenant identifier.
 It is materialized as a signed claim when the realm and clients are
 provisioned.
 
-In addition to the standard OIDC claims, an SSF tenant token contains at least:
+Legacy example of a token still projected by Studio. Its four SSF-specific
+user claims are **deprecated** for conversation admission; this is not the
+minimum token shape of the new conversation contract:
 
 ```json
 {
@@ -133,8 +169,8 @@ In addition to the standard OIDC claims, an SSF tenant token contains at least:
 }
 ```
 
-`ssf_permissions` is the authoritative basis for server-side authorization in
-SSF. `ssf_roles` supports domain classification, navigation, and auditing. An
+`ssf_permissions` remains authoritative for separate administrative
+authorization; it is **deprecated** as a conversation admission criterion. `ssf_roles` supports domain classification, navigation, and auditing. An
 email address is not part of the SSF token contract.
 
 Studio IAM remains the authoritative source of effective `ssf.*` permissions.
@@ -152,7 +188,9 @@ boundary. A permission-only change explicitly does not perform a realm-wide
 Keycloak logout, which would also terminate Studio sessions. Only after
 successful verification is the SSF client enabled with the new revision. A
 failure keeps both client and runtime configuration fail-closed in
-`ssf_tenant_not_ready`; SSF rejects a missing or stale revision claim. A failed
+`ssf_tenant_not_ready`; the existing SSF consumer rejects a missing or stale
+revision claim. This user-claim check is **deprecated** for conversation access
+and will be removed by SSF #438. A failed
 projection can therefore neither preserve stale rights nor silently omit valid
 custom-role grants.
 
@@ -260,9 +298,11 @@ revision. Changing a stored value that is ineffective because of a policy or a
 higher-precedence value does not change the runtime response or its revision.
 
 `authorizationRevision` is the currently verified tenant-wide revision of the
-SSF IAM projection. For authenticated operations it must exactly match the
-`ssf_authorization_revision` claim. Guests do not carry this claim and do not
-perform this comparison.
+SSF IAM projection and remains part of the runtime API. Comparing it to the
+user's `ssf_authorization_revision` is **deprecated** for conversation access
+and will be removed by SSF #438. Continue validating the runtime response and
+its exact tenant binding to the verified issuer-derived context. Guest users
+already have no such user claim.
 
 ## Resolving the effective configuration
 

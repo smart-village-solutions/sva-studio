@@ -54,7 +54,12 @@ describe('InvitationTemplatePage', () => {
     await vi.waitFor(() =>
       expect(api.updateTenantAccountInvitationTemplate).toHaveBeenCalledWith({
         expectedRevision: 0,
-        template: expect.objectContaining({ subject: DEFAULT_ACCOUNT_INVITATION_TEMPLATE.subject }),
+        template: {
+          subject: DEFAULT_ACCOUNT_INVITATION_TEMPLATE.subject,
+          body: DEFAULT_ACCOUNT_INVITATION_TEMPLATE.body,
+          passwordSetupLinkLabel: DEFAULT_ACCOUNT_INVITATION_TEMPLATE.passwordSetupLinkLabel,
+          tenantHomepageLinkLabel: DEFAULT_ACCOUNT_INVITATION_TEMPLATE.tenantHomepageLinkLabel,
+        },
       })
     );
     expect((await screen.findByRole('status')).textContent).toContain('gespeichert');

@@ -32,15 +32,29 @@ WHERE roles.role_key = 'system_admin'
   AND roles.instance_id IS NOT NULL
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 
+WITH bumped_revisions AS (
+  INSERT INTO iam.permission_cache_instance_revisions (instance_id, revision, updated_at)
+  SELECT instances.id, 2, NOW()
+  FROM iam.instances instances
+  ON CONFLICT (instance_id) DO UPDATE
+  SET
+    revision = iam.permission_cache_instance_revisions.revision + 1,
+    updated_at = NOW()
+  RETURNING instance_id, revision
+)
 SELECT pg_notify(
   'iam_permission_snapshot_invalidation',
   json_build_object(
+    'eventId', gen_random_uuid()::text,
+    'event', 'PermissionRevisionChanged',
     'instanceId', instance_id,
-    'eventId', format('0102-up-%s-%s', instance_id, txid_current()),
+    'revisionScope', 'instance',
+    'newRevision', revision,
+    'trigger', 'pg_notify',
     'reason', 'invitation_template_permission_migrated'
   )::text
 )
-FROM (SELECT DISTINCT instance_id FROM iam.roles WHERE role_key = 'system_admin' AND instance_id IS NOT NULL) touched_instances;
+FROM bumped_revisions;
 -- +goose StatementEnd
 
 -- +goose Down

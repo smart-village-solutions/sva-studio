@@ -39,7 +39,14 @@ export const InvitationTemplatePage = () => {
     try {
       const response = await updateTenantAccountInvitationTemplate({
         expectedRevision: view.revision,
-        template: draft,
+        template: draft
+          ? {
+              subject: draft.subject,
+              body: draft.body,
+              passwordSetupLinkLabel: draft.passwordSetupLinkLabel,
+              tenantHomepageLinkLabel: draft.tenantHomepageLinkLabel,
+            }
+          : null,
       });
       setView(response.data);
       return true;

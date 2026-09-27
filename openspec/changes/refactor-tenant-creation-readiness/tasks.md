@@ -197,7 +197,7 @@
       Mischzustand, Fokusführung und die sichere Fortsetzung ergänzen.
 
 Gemeinsame UI-Evidenz für 7.16/7.17: umgesetzt durch
-[`refactor-instance-management-ui`](../refactor-instance-management-ui/tasks.md).
+[`refactor-instance-management-ui`](../archive/2026-09-27-refactor-instance-management-ui/tasks.md).
 34 Detailtests einschließlich realem MSW-Hook-/API-Pfad, drei Axe-Fälle und
 sechs Playwright-Szenarien plus Auth-Setup sind grün. Mischzustand,
 teilerhaltender sicherer Retry, Aktivierungsbestätigung, Fokus und Reflow

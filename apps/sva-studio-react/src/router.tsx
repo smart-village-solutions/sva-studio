@@ -383,7 +383,6 @@ export const getRouter = async () => {
         getUser: getRouteGuardUser,
       },
     },
-
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
   });

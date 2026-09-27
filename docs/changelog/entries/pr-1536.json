@@ -1,0 +1,4 @@
+{
+  "prNumber": 1536,
+  "body": "Tenant-Administratoren können die Account-Einladungsvorlage ihrer eigenen Studio-Instanz unter Benutzer → Einladungsvorlage bearbeiten. Die neue Berechtigung iam.invitationTemplate.manage schützt Lesen und Speichern; ohne eigene Vorlage gilt weiter der Server- oder SVA-Standard."
+}

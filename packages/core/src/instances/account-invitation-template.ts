@@ -26,14 +26,6 @@ export type ServerAccountInvitationTemplateView = Readonly<{
   source: Extract<AccountInvitationTemplateSource, 'server' | 'sva_default'>;
 }>;
 
-export type TenantAccountInvitationTemplateView = Readonly<{
-  revision: number;
-  effectiveTemplate: AccountInvitationTemplate;
-  source: AccountInvitationTemplateSource;
-  tenantName: string;
-  tenantHomepageUrl: string;
-}>;
-
 export const toServerAccountInvitationTemplateView = (
   state: ServerAccountInvitationTemplateState
 ): ServerAccountInvitationTemplateView => ({

@@ -1,4 +1,16 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
+import type {
+  AccountInvitationTemplate,
+  AccountInvitationTemplateSource,
+} from '../instances/account-invitation-template.js';
+
+export type TenantAccountInvitationTemplateView = Readonly<{
+  revision: number;
+  effectiveTemplate: AccountInvitationTemplate;
+  source: AccountInvitationTemplateSource;
+  tenantName: string;
+  tenantHomepageUrl: string;
+}>;
 
 export type IamAccountStatus = 'active' | 'inactive' | 'pending';
 export type IamPermissionRuntimeScope = 'instance' | 'record' | 'organization_context';

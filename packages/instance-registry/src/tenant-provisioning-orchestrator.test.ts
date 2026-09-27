@@ -69,7 +69,9 @@ const instance: InstanceRegistryRecord = {
   updatedAt: now.toISOString(),
 };
 
-const createRun = (): InstanceProvisioningRun => ({
+const createRun = (
+  activationPolicy: 'automatic' | 'optional' = 'automatic'
+): InstanceProvisioningRun => ({
   id: '00000000-0000-4000-8000-000000000001',
   instanceId: instance.instanceId,
   operation: 'create',
@@ -92,7 +94,13 @@ const createRun = (): InstanceProvisioningRun => ({
     },
     'fingerprint-1',
     'kassel-traefik-file',
-    pluginSnapshot
+    {
+      ...pluginSnapshot,
+      activationPolicies: pluginSnapshot.activationPolicies.map((policy) => ({
+        ...policy,
+        activationPolicy,
+      })),
+    }
   ),
   attemptCount: 0,
   nextAttemptAt: now.toISOString(),
@@ -125,8 +133,8 @@ const childRun = (overallStatus: InstanceKeycloakProvisioningRun['overallStatus'
   ],
 });
 
-const createHarness = () => {
-  let currentRun = createRun();
+const createHarness = (activationPolicy: 'automatic' | 'optional' = 'automatic') => {
+  let currentRun = createRun(activationPolicy);
   let currentInstance = instance;
   let keycloakStatus: InstanceKeycloakProvisioningRun['overallStatus'] = 'planned';
   let readiness: 'ready' | 'pending' | 'blocked' = 'pending';
@@ -135,7 +143,7 @@ const createHarness = () => {
     modules: [
       {
         moduleId: 'ssf',
-        activationPolicy: 'automatic' as const,
+        activationPolicy,
         manifestVersion: 1,
         policyRevision: 'ssf-1',
       },
@@ -287,8 +295,7 @@ const createHarness = () => {
     },
     confirmPlan: () => {
       const gate = currentRun.terminalEvidence.keycloakPlanGate as
-        | { readonly planFingerprint?: string }
-        | undefined;
+        { readonly planFingerprint?: string } | undefined;
       currentRun = {
         ...currentRun,
         status: 'provisioning',
@@ -425,118 +432,125 @@ describe('tenant provisioning parent orchestrator', () => {
     }
   );
 
-  it('reaches terminal success only after Keycloak, ingress, login, module readiness, and tenant IAM postflight', async () => {
-    const harness = createHarness();
-    const iterate = () =>
-      processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
+  it.each(['automatic', 'optional'] as const)(
+    'reaches terminal success for an explicitly assigned %s SSF module only after Keycloak, ingress, login, module readiness, and tenant IAM postflight',
+    async (activationPolicy) => {
+      const harness = createHarness(activationPolicy);
+      expect(harness.getRun().desiredSnapshot).toMatchObject({
+        assignedModules: ['ssf'],
+        pluginActivationPolicies: [expect.objectContaining({ moduleId: 'ssf', activationPolicy })],
+      });
+      const iterate = () =>
+        processNextTenantProvisioningRun(harness.deps, { workerId: 'worker-1', now });
 
-    await iterate();
-    expect(harness.repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        role: expect.objectContaining({ roleKey: 'system_admin' }),
-      })
-    );
-    expect(harness.getRun()).toMatchObject({
-      status: 'validated',
-      stepKey: 'registry',
-      childKeycloakRunId: undefined,
-      errorCode: undefined,
-      terminalEvidence: {
-        keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
-      },
-    });
-    expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
-
-    harness.confirmPlan();
-    await iterate();
-    expect(harness.getRun().stepKey).toBe('keycloak');
-    expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledWith(
-      expect.objectContaining({
-        runId: '00000000-0000-4000-8000-000000000001',
-        leaseOwner: 'worker-1',
-      })
-    );
-    harness.setKeycloakStatus('succeeded');
-    await iterate();
-    harness.addLiveActivationPolicy();
-    await iterate();
-    expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        reconcileId: 'provisioning:00000000-0000-4000-8000-000000000001',
-        policies: [expect.objectContaining({ moduleId: 'ssf' })],
-      })
-    );
-    expect(harness.repository.syncAssignedModuleIam).toHaveBeenCalledWith(
-      expect.objectContaining({ instanceId: 'tenant-a' })
-    );
-    await iterate();
-    await iterate();
-
-    expect(harness.getInstance().status).toBe('provisioning');
-    expect(harness.getRun()).toMatchObject({
-      status: 'provisioning',
-      stepKey: 'module_readiness',
-      completedAt: undefined,
-    });
-
-    harness.setReadiness('ready');
-    await iterate();
-    expect(harness.getRun().stepKey).toBe('login');
-    expect(harness.getInstance().status).toBe('provisioning');
-    await iterate();
-    expect(harness.getRun().stepKey).toBe('tenant_iam_roles');
-    expect(harness.deps.probeTenantEndpoint).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        expectedRouterName: 'studio-tenant-tenant-a',
-        expectedConfigHash: 'sha256:router',
-      })
-    );
-    expect(harness.getInstance().status).toBe('provisioning');
-    await iterate();
-    expect(harness.getRun().stepKey).toBe('tenant_iam_access');
-    expect(harness.deps.reconcileTenantIamRoles).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedRoleCatalogFingerprint: 'c'.repeat(64) })
-    );
-    expect(harness.getInstance().status).toBe('provisioning');
-    await iterate();
-    expect(harness.getRun().stepKey).toBe('activate');
-    expect(harness.deps.probeTenantIamAccess).toHaveBeenCalledWith(
-      expect.objectContaining({ authClientId: instance.authClientId })
-    );
-    expect(harness.repository.appendAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        eventType: 'tenant_iam_access_probed',
-      })
-    );
-    expect(harness.getInstance().status).toBe('provisioning');
-    await iterate();
-    expect(harness.getRun()).toMatchObject({
-      status: 'validated',
-      stepKey: 'completed',
-      completedAt: now.toISOString(),
-      terminalEvidence: {
-        routerName: 'studio-tenant-tenant-a',
-        ingressStatus: 200,
-        loginStatus: 200,
-        moduleStatus: 'ready',
-        tenantIamRoleReconcile: {
-          outcome: 'success',
-          checkedCount: 1,
-          correctedCount: 1,
+      await iterate();
+      expect(harness.repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: 'tenant-a',
+          role: expect.objectContaining({ roleKey: 'system_admin' }),
+        })
+      );
+      expect(harness.getRun()).toMatchObject({
+        status: 'validated',
+        stepKey: 'registry',
+        childKeycloakRunId: undefined,
+        errorCode: undefined,
+        terminalEvidence: {
+          keycloakPlanGate: expect.objectContaining({ status: 'awaiting_plan_confirmation' }),
         },
-        tenantIamAccess: {
-          status: 'ready',
+      });
+      expect(harness.repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+
+      harness.confirmPlan();
+      await iterate();
+      expect(harness.getRun().stepKey).toBe('keycloak');
+      expect(harness.repository.renewProvisioningRunLease).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runId: '00000000-0000-4000-8000-000000000001',
+          leaseOwner: 'worker-1',
+        })
+      );
+      harness.setKeycloakStatus('succeeded');
+      await iterate();
+      harness.addLiveActivationPolicy();
+      await iterate();
+      expect(harness.repository.reconcileModuleActivationPolicies).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: 'tenant-a',
+          reconcileId: 'provisioning:00000000-0000-4000-8000-000000000001',
+          policies: [expect.objectContaining({ moduleId: 'ssf' })],
+        })
+      );
+      expect(harness.repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+        expect.objectContaining({ instanceId: 'tenant-a' })
+      );
+      await iterate();
+      await iterate();
+
+      expect(harness.getInstance().status).toBe('provisioning');
+      expect(harness.getRun()).toMatchObject({
+        status: 'provisioning',
+        stepKey: 'module_readiness',
+        completedAt: undefined,
+      });
+
+      harness.setReadiness('ready');
+      await iterate();
+      expect(harness.getRun().stepKey).toBe('login');
+      expect(harness.getInstance().status).toBe('provisioning');
+      await iterate();
+      expect(harness.getRun().stepKey).toBe('tenant_iam_roles');
+      expect(harness.deps.probeTenantEndpoint).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          expectedRouterName: 'studio-tenant-tenant-a',
+          expectedConfigHash: 'sha256:router',
+        })
+      );
+      expect(harness.getInstance().status).toBe('provisioning');
+      await iterate();
+      expect(harness.getRun().stepKey).toBe('tenant_iam_access');
+      expect(harness.deps.reconcileTenantIamRoles).toHaveBeenCalledWith(
+        expect.objectContaining({ expectedRoleCatalogFingerprint: 'c'.repeat(64) })
+      );
+      expect(harness.getInstance().status).toBe('provisioning');
+      await iterate();
+      expect(harness.getRun().stepKey).toBe('activate');
+      expect(harness.deps.probeTenantIamAccess).toHaveBeenCalledWith(
+        expect.objectContaining({ authClientId: instance.authClientId })
+      );
+      expect(harness.repository.appendAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          instanceId: 'tenant-a',
+          eventType: 'tenant_iam_access_probed',
+        })
+      );
+      expect(harness.getInstance().status).toBe('provisioning');
+      await iterate();
+      expect(harness.getRun()).toMatchObject({
+        status: 'validated',
+        stepKey: 'completed',
+        completedAt: now.toISOString(),
+        terminalEvidence: {
+          routerName: 'studio-tenant-tenant-a',
+          ingressStatus: 200,
+          loginStatus: 200,
+          moduleStatus: 'ready',
+          tenantIamRoleReconcile: {
+            outcome: 'success',
+            checkedCount: 1,
+            correctedCount: 1,
+          },
+          tenantIamAccess: {
+            status: 'ready',
+          },
         },
-      },
-    });
-    expect(harness.getInstance().status).toBe('validated');
-    expect(harness.repository.setInstanceStatus).not.toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'active' })
-    );
-  });
+      });
+      expect(harness.getInstance().status).toBe('validated');
+      expect(harness.repository.setInstanceStatus).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active' })
+      );
+    }
+  );
 
   it('recovers a plugin snapshot v1 run without persisted activation policies', async () => {
     const harness = createHarness();

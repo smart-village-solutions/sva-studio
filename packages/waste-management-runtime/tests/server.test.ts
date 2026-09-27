@@ -270,6 +270,43 @@ describe('waste management runtime handlers', () => {
     });
   });
 
+  it.each(['provision', 'readiness'] as const)(
+    'keeps %s fail-closed when the readiness query fails',
+    async (operation) => {
+      const readTenantDatabaseReadiness = vi.fn(async () => {
+        throw new Error('iam_read_failed');
+      });
+      const handlers = createWasteManagementPluginOperationExecutionHandlers(
+        createRuntime({ readTenantDatabaseReadiness })
+      );
+      const jobTypeId =
+        operation === 'provision'
+          ? wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+          : wasteManagementOperationsContract.jobTypeIds.tenantReadiness;
+      const result = await handlers[jobTypeId]?.(
+        createContext({
+          jobTypeId,
+          inputPayload: { studioTenantLifecycle: { operation, generation: 1 } },
+          tenantLifecycle: { operation, generation: 1 },
+        })
+      );
+
+      expect(readTenantDatabaseReadiness).toHaveBeenCalledWith('instance-1');
+      expect(result?.tenantLifecycle).toEqual({
+        revision: 'waste-tenant-database-v2',
+        checks: [
+          'waste-management.tenant-provisioning',
+          'waste-management.tenant-database-interface',
+          'waste-management.iam-data-source-schema',
+        ].map((checkId) => ({
+          checkId,
+          status: 'blocked',
+          messageKey: 'wasteManagement.readiness.unavailable',
+        })),
+      });
+    }
+  );
+
   it('propagates provisioning preparation failures without invoking the provisioner', async () => {
     const requestTenantDatabaseProvisioning = vi.fn(async () => {
       throw new Error('waste_provisioning_state_unavailable');

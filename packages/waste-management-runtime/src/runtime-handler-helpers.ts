@@ -13,6 +13,7 @@ import {
   type WasteManagementSyncWasteTypesJobInput,
 } from '@sva/plugin-sdk';
 import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
+import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 
 import { createImportDataHandler } from './runtime-import-handler.js';
 import {
@@ -22,6 +23,26 @@ import {
 } from './runtime-job-progress.js';
 import { createOperationHandler, getJobTypeDefinition } from './runtime-job-helpers.js';
 import type { WasteManagementOperationRuntime } from './runtime-types.js';
+
+const readTenantReadinessFailClosed = async (
+  runtime: WasteManagementOperationRuntime,
+  instanceId: string
+) => {
+  try {
+    return await runtime.readTenantDatabaseReadiness(instanceId);
+  } catch {
+    return {
+      revision: wasteManagementTenantLifecycleContract.revision,
+      checks: Object.values(wasteManagementTenantLifecycleContract.readinessCheckIds).map(
+        (checkId) => ({
+          checkId,
+          status: 'blocked' as const,
+          messageKey: 'wasteManagement.readiness.unavailable',
+        })
+      ),
+    };
+  }
+};
 
 const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationRuntime) => {
   const executeProvisioning =
@@ -61,7 +82,7 @@ const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationR
         },
       },
     });
-    const tenantLifecycle = await runtime.readTenantDatabaseReadiness(context.job.instanceId);
+    const tenantLifecycle = await readTenantReadinessFailClosed(runtime, context.job.instanceId);
 
     return {
       ...result,
@@ -88,7 +109,7 @@ const createTenantReadinessHandler =
     });
     await context.throwIfCancellationRequested();
     await reportJobProgress(context, initialProgress, false);
-    const tenantLifecycle = await runtime.readTenantDatabaseReadiness(context.job.instanceId);
+    const tenantLifecycle = await readTenantReadinessFailClosed(runtime, context.job.instanceId);
     await context.throwIfCancellationRequested();
     const progress = createCompletedJobProgress({
       stepCount: stepKeys.length,

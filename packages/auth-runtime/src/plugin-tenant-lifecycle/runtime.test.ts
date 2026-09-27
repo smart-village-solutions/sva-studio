@@ -487,6 +487,39 @@ describe('configured plugin tenant lifecycle runtime', () => {
     );
   });
 
+  it('rechecks a completed pending lifecycle without repeating provisioning', async () => {
+    state.operations = [
+      { operation: 'provision', jobTypeId: 'speech.provisionTenant' },
+      { operation: 'readiness', jobTypeId: 'speech.checkTenantReadiness' },
+    ];
+    state.getLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      desiredGeneration: 3,
+      completedGeneration: 3,
+      readinessStatus: 'pending',
+      nextRecheckAt: '2020-08-30T12:05:00.000Z',
+      contractRevision: '1.0.0:1',
+    });
+    const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+    await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+    expect(state.createStudioJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          jobTypeId: 'speech.checkTenantReadiness',
+          inputPayload: {
+            studioTenantLifecycle: {
+              operation: 'readiness',
+              generation: 3,
+              contractRevision: '1.0.0:1',
+            },
+          },
+        }),
+      })
+    );
+  });
+
   it('honours a due retry before a later pending recheck', async () => {
     state.getLifecycle.mockResolvedValue({
       ...lifecycleRecord,

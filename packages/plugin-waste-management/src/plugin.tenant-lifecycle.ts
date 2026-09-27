@@ -33,5 +33,10 @@ export const wasteManagementTenantLifecycle: PluginTenantLifecycleDefinition = {
       required: true,
       repairOperation: 'reconcile',
     },
+    {
+      checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.iamSchema,
+      titleKey: 'wasteManagement.readiness.iamSchema',
+      required: true,
+    },
   ],
 };

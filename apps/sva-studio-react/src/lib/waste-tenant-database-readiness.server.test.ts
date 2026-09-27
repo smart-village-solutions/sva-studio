@@ -40,13 +40,15 @@ describe('Waste tenant database readiness', () => {
     const readReadiness = createReadWasteTenantDatabaseReadinessOperation({
       loadProvisioning,
       loadManagedInterface,
+      checkSchema: vi.fn(async () => true),
     });
 
     await expect(readReadiness('tenant-a')).resolves.toEqual({
-      revision: 'waste-tenant-database-v1',
+      revision: 'waste-tenant-database-v2',
       checks: [
         { checkId: 'waste-management.tenant-provisioning', status: 'ready' },
         { checkId: 'waste-management.tenant-database-interface', status: 'ready' },
+        { checkId: 'waste-management.iam-data-source-schema', status: 'ready' },
       ],
     });
     expect(loadProvisioning).toHaveBeenCalledWith('tenant-a');
@@ -69,6 +71,7 @@ describe('Waste tenant database readiness', () => {
     const readReadiness = createReadWasteTenantDatabaseReadinessOperation({
       loadProvisioning: vi.fn(async () => provisioningEvidence),
       loadManagedInterface: vi.fn(async () => interfaceEvidence),
+      checkSchema: vi.fn(async () => true),
     });
 
     const result = await readReadiness('tenant-a');
@@ -79,5 +82,25 @@ describe('Waste tenant database readiness', () => {
         .filter(({ status }) => status === 'blocked')
         .every(({ messageKey }) => messageKey?.startsWith('wasteManagement.readiness.'))
     ).toBe(true);
+  });
+
+  it('blocks a required Waste contribution when its IAM table is absent', async () => {
+    const readReadiness = createReadWasteTenantDatabaseReadinessOperation({
+      loadProvisioning: vi.fn(async () => provisioning),
+      loadManagedInterface: vi.fn(async () => managedInterface),
+      checkSchema: vi.fn(async () => false),
+    });
+
+    await expect(readReadiness('tenant-a')).resolves.toMatchObject({
+      checks: [
+        { status: 'ready' },
+        { status: 'ready' },
+        {
+          checkId: 'waste-management.iam-data-source-schema',
+          status: 'blocked',
+          messageKey: 'wasteManagement.readiness.iamSchemaBlocked',
+        },
+      ],
+    });
   });
 });

@@ -1,6 +1,9 @@
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/server-runtime';
-import type { WasteManagementConnectionCheckRecord, WasteManagementDataSourceRecord } from '@sva/core';
+import type {
+  WasteManagementConnectionCheckRecord,
+  WasteManagementDataSourceRecord,
+} from '@sva/core';
 
 import { createWasteDataSourceRepository } from './waste-data-sources.js';
 import type { SqlStatement } from '../iam/repositories/types.js';
@@ -127,6 +130,23 @@ export const loadWasteDataSourceRecord = async (
     }
   );
 };
+
+export const checkWasteDataSourceSchema = async (
+  instanceId: string,
+  options: { readonly getDatabaseUrl?: () => string | undefined } = {}
+): Promise<boolean> =>
+  withIamDb(
+    {
+      instanceId,
+      getDatabaseUrl: options.getDatabaseUrl ?? (() => process.env.IAM_DATABASE_URL),
+    },
+    async (client) => {
+      const result = await client.query<{ exists: boolean }>(
+        "SELECT to_regclass('iam.instance_waste_data_sources') IS NOT NULL AS exists"
+      );
+      return result.rows[0]?.exists === true;
+    }
+  );
 
 export const saveWasteDataSourceRecord = async (
   record: WasteManagementDataSourceRecord,

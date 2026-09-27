@@ -88,9 +88,9 @@ describe('schema guard helpers', () => {
     } = await import('./schema-guard.js');
 
     expect(CRITICAL_IAM_SCHEMA_GUARD_FIELDS).toContain('groups_exists');
-    expect(CRITICAL_IAM_SCHEMA_GUARD_FIELDS).toContain('instance_waste_data_sources_exists');
+    expect(CRITICAL_IAM_SCHEMA_GUARD_FIELDS).not.toContain('instance_waste_data_sources_exists');
     expect(CRITICAL_IAM_SCHEMA_GUARD_SQL).toContain("to_regclass('iam.groups')");
-    expect(CRITICAL_IAM_SCHEMA_GUARD_SQL).toContain(
+    expect(CRITICAL_IAM_SCHEMA_GUARD_SQL).not.toContain(
       "to_regclass('iam.instance_waste_data_sources')"
     );
 
@@ -101,6 +101,9 @@ describe('schema guard helpers', () => {
     expect(okReport.ok).toBe(true);
     expect(okReport.checks.every((check) => check.ok)).toBe(true);
     expect(summarizeSchemaGuardFailures(okReport)).toBeUndefined();
+    expect(
+      evaluateCriticalIamSchemaGuard({ ...okRow, instance_waste_data_sources_exists: false }).ok
+    ).toBe(true);
 
     const failedReport = evaluateCriticalIamSchemaGuard({
       groups_exists: 'false',
@@ -113,12 +116,6 @@ describe('schema guard helpers', () => {
       ok: false,
       reasonCode: 'missing_table',
       expectedMigration: '0014_iam_groups.sql',
-    });
-    expect(
-      failedReport.checks.find((check) => check.schemaObject === 'iam.instance_waste_data_sources')
-    ).toMatchObject({
-      ok: false,
-      reasonCode: 'missing_table',
     });
     expect(summarizeSchemaGuardFailures(failedReport)).toContain('iam.groups');
   });
@@ -158,7 +155,11 @@ describe('schema guard helpers', () => {
     expect(buildIamDatabaseReadinessSql()).toContain('MAX(version_id)');
 
     const ready = evaluateIamDatabaseReadiness(
-      { ...schemaRow, current_migration_version: '82' },
+      {
+        ...schemaRow,
+        instance_waste_data_sources_exists: false,
+        current_migration_version: '82',
+      },
       expectedMigration
     );
     expect(ready).toMatchObject({

@@ -115,5 +115,12 @@ export const resolveAutomaticProvisioningSchedule = (
     return createSchedule(lifecycle.desiredOperation, now);
   }
   if (hasCurrentReadinessEvidence(definition, activation, lifecycle)) return null;
+  if (
+    lifecycle.readinessStatus === 'pending' &&
+    lifecycle.completedGeneration >= lifecycle.desiredGeneration &&
+    hasOperation(definition, 'readiness')
+  ) {
+    return createSchedule('readiness', now);
+  }
   return createSchedule(resolveInitialOperation(definition), now);
 };

@@ -53,6 +53,7 @@ export type WasteOperationRuntimeDeps = {
   readonly loadProvisioning?: typeof loadWasteTenantProvisioningRecord;
   readonly requestProvisioning?: typeof requestWasteTenantProvisioning;
   readonly loadManagedInterface?: typeof loadExternalInterfaceRecordByAlias;
+  readonly checkSchema?: (instanceId: string) => Promise<boolean>;
   readonly revealSecret?: (
     ciphertext: string | null | undefined,
     aad: string

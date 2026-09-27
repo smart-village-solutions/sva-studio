@@ -24,16 +24,25 @@ import {
 import { createOperationHandler, getJobTypeDefinition } from './runtime-job-helpers.js';
 import type { WasteManagementOperationRuntime } from './runtime-types.js';
 
-const readyTenantDatabaseChecks = () => [
-  {
-    checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.provisioning,
-    status: 'ready' as const,
-  },
-  {
-    checkId: wasteManagementTenantLifecycleContract.readinessCheckIds.managedInterface,
-    status: 'ready' as const,
-  },
-];
+const readTenantReadinessFailClosed = async (
+  runtime: WasteManagementOperationRuntime,
+  instanceId: string
+) => {
+  try {
+    return await runtime.readTenantDatabaseReadiness(instanceId);
+  } catch {
+    return {
+      revision: wasteManagementTenantLifecycleContract.revision,
+      checks: Object.values(wasteManagementTenantLifecycleContract.readinessCheckIds).map(
+        (checkId) => ({
+          checkId,
+          status: 'pending' as const,
+          messageKey: 'wasteManagement.readiness.unavailable',
+        })
+      ),
+    };
+  }
+};
 
 const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationRuntime) => {
   const executeProvisioning =
@@ -73,13 +82,11 @@ const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationR
         },
       },
     });
+    const tenantLifecycle = await readTenantReadinessFailClosed(runtime, context.job.instanceId);
 
     return {
       ...result,
-      tenantLifecycle: {
-        revision: wasteManagementTenantLifecycleContract.revision,
-        checks: readyTenantDatabaseChecks(),
-      },
+      tenantLifecycle,
     };
   };
 };
@@ -102,7 +109,7 @@ const createTenantReadinessHandler =
     });
     await context.throwIfCancellationRequested();
     await reportJobProgress(context, initialProgress, false);
-    const tenantLifecycle = await runtime.readTenantDatabaseReadiness(context.job.instanceId);
+    const tenantLifecycle = await readTenantReadinessFailClosed(runtime, context.job.instanceId);
     await context.throwIfCancellationRequested();
     const progress = createCompletedJobProgress({
       stepCount: stepKeys.length,

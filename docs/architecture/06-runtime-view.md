@@ -1392,6 +1392,10 @@ Nachweis gesperrt.
    der Mutation.
 5. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
    `unknown` sichtbar. Der dauerhafte Auftrag bleibt claimbar.
+6. Nach einem erfolgreichen New-Realm-Lauf prüft der Live-Postflight den
+   nun vorhandenen Realm als eigenen Bestands-Realm. Instanzdetail,
+   Tenant-IAM-Rollenabgleich und Aktivierung laufen über denselben privaten
+   Provisioner, damit der App-Prozess keine Provisioner-Credentials benötigt.
 
 ### Szenario 23: Vererbte Account-Einladung je Studio-Installation und Instanz
 

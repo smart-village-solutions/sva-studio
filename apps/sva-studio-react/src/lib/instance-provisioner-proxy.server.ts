@@ -10,6 +10,13 @@ const forwardedRoutes = new Map<string, ReadonlySet<string>>([
   ['/api/v1/iam/instances/keycloak-realms', new Set(['GET'])],
 ]);
 
+const reservedInstancePaths = new Set(['audit', 'draft-readiness', 'keycloak-realms']);
+const forwardedInstanceRoutes = new Map<string, ReadonlySet<string>>([
+  ['', new Set(['GET'])],
+  ['/tenant-iam/roles/reconcile', new Set(['POST'])],
+  ['/activate', new Set(['POST'])],
+]);
+
 const hopByHopHeaders = new Set([
   'connection',
   'content-length',
@@ -45,8 +52,19 @@ const payloadTooLargeResponse = (): Response =>
     { status: 413 }
   );
 
-const isForwardedRoute = (request: Request, url: URL): boolean =>
-  forwardedRoutes.get(url.pathname)?.has(request.method.toUpperCase()) === true;
+const isForwardedRoute = (request: Request, url: URL): boolean => {
+  const method = request.method.toUpperCase();
+  if (forwardedRoutes.get(url.pathname)?.has(method)) return true;
+  const match =
+    /^\/api\/v1\/iam\/instances\/([^/]+)(\/tenant-iam\/roles\/reconcile|\/activate)?$/u.exec(
+      url.pathname
+    );
+  return Boolean(
+    match &&
+    !reservedInstancePaths.has(match[1]) &&
+    forwardedInstanceRoutes.get(match[2] ?? '')?.has(method)
+  );
+};
 
 const createForwardedHeaders = (request: Request, originalUrl: URL): Headers => {
   const headers = new Headers();

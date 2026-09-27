@@ -4644,6 +4644,67 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('checks an already provisioned new realm as an owned existing realm in live postflight', async () => {
+    const repository = createRepository({
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mutation: 'executeKeycloakProvisioning' as const,
+          idempotencyKey: 'keycloak-idem-1',
+          payloadFingerprint: 'a'.repeat(64),
+          mode: 'new' as const,
+          intent: 'provision' as const,
+          overallStatus: 'succeeded' as const,
+          driftSummary: 'Applied',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:01:00.000Z',
+          steps: [],
+        },
+      ]),
+    });
+    const planKeycloakProvisioning = vi.fn(async () => ({
+      contractVersion: '1.0' as const,
+      fingerprint: 'b'.repeat(64),
+      mode: 'existing' as const,
+      overallStatus: 'ready' as const,
+      generatedAt: '2026-01-01T00:02:00.000Z',
+      driftSummary: 'Live geprüft.',
+      steps: [],
+    }));
+
+    await createPlanKeycloakProvisioningHandler(
+      createDeps(repository, { planKeycloakProvisioning })
+    )('demo', { forceLive: true });
+
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ realmMode: 'existing', realmBaselineApplicable: true })
+    );
+  });
+
+  it('keeps a new realm in create mode before a successful provisioning run', async () => {
+    const repository = createRepository({
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+    });
+    const planKeycloakProvisioning = vi.fn(async () => ({
+      contractVersion: '1.0' as const,
+      fingerprint: 'b'.repeat(64),
+      mode: 'new' as const,
+      overallStatus: 'ready' as const,
+      generatedAt: '2026-01-01T00:02:00.000Z',
+      driftSummary: 'Realm anlegen.',
+      steps: [],
+    }));
+
+    await createPlanKeycloakProvisioningHandler(
+      createDeps(repository, { planKeycloakProvisioning })
+    )('demo', { forceLive: true });
+
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ realmMode: 'new' })
+    );
+  });
+
   it('binds the initial new-realm plan to the same fingerprint as the live worker', async () => {
     const repository = createRepository({ listKeycloakProvisioningRuns: vi.fn(async () => []) });
     const localPlan = await createPlanKeycloakProvisioningHandler(createDeps(repository))('demo');

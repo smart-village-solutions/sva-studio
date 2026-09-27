@@ -44,6 +44,9 @@ describe('instance provisioner proxy', () => {
     ['POST', '/api/v1/iam/instances'],
     ['POST', '/api/v1/iam/instances/draft-readiness'],
     ['GET', '/api/v1/iam/instances/keycloak-realms'],
+    ['GET', '/api/v1/iam/instances/tenant-one'],
+    ['POST', '/api/v1/iam/instances/tenant-one/tenant-iam/roles/reconcile'],
+    ['POST', '/api/v1/iam/instances/tenant-one/activate'],
   ])('forwards the allowlisted %s %s request to the private provisioner', async (method, path) => {
     vi.stubEnv('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL', 'http://provisioner:3000');
     const upstreamResponse = new Response(JSON.stringify({ data: { ready: true } }), {
@@ -182,8 +185,10 @@ describe('instance provisioner proxy', () => {
   it.each([
     ['GET', '/api/v1/iam/instances'],
     ['GET', '/api/v1/iam/instances/draft-readiness'],
+    ['GET', '/api/v1/iam/instances/audit'],
     ['POST', '/api/v1/iam/instances/keycloak-realms'],
     ['POST', '/api/v1/iam/instances/tenant-one/keycloak/execute'],
+    ['PATCH', '/api/v1/iam/instances/tenant-one'],
   ])('does not forward non-allowlisted %s %s requests', async (method, path) => {
     vi.stubEnv('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL', 'http://provisioner:3000');
     const fetchMock = vi.fn();

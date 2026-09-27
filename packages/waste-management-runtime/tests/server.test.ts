@@ -271,7 +271,7 @@ describe('waste management runtime handlers', () => {
   });
 
   it.each(['provision', 'readiness'] as const)(
-    'keeps %s fail-closed when the readiness query fails',
+    'keeps %s pending for a read-only recheck when the readiness query fails',
     async (operation) => {
       const readTenantDatabaseReadiness = vi.fn(async () => {
         throw new Error('iam_read_failed');
@@ -300,7 +300,7 @@ describe('waste management runtime handlers', () => {
           'waste-management.iam-data-source-schema',
         ].map((checkId) => ({
           checkId,
-          status: 'blocked',
+          status: 'pending',
           messageKey: 'wasteManagement.readiness.unavailable',
         })),
       });

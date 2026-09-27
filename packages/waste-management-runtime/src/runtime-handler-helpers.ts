@@ -36,7 +36,7 @@ const readTenantReadinessFailClosed = async (
       checks: Object.values(wasteManagementTenantLifecycleContract.readinessCheckIds).map(
         (checkId) => ({
           checkId,
-          status: 'blocked' as const,
+          status: 'pending' as const,
           messageKey: 'wasteManagement.readiness.unavailable',
         })
       ),

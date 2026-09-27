@@ -627,6 +627,19 @@ test('server invitation template scope keeps inherited reads tenant-visible and 
   );
 });
 
+test('standalone app role can read and update the server invitation template after migration', () => {
+  const sql = readRepoFile(
+    'data/migrations/0100_iam_server_account_invitation_template_app_grant.sql'
+  );
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+
+  expect(upSql).toMatch(/IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'sva_app'\)/);
+  expect(upSql).toMatch(
+    /GRANT SELECT, UPDATE ON iam\.server_account_invitation_templates TO sva_app;/
+  );
+  expect(upSql).not.toMatch(/\b(?:INSERT|DELETE|ALL PRIVILEGES)\b/);
+});
+
 test('organization type migration and schema snapshot support associations and institutions', () => {
   const sql = readRepoFile(
     'data/migrations/0084_iam_organization_types_association_institution.sql'

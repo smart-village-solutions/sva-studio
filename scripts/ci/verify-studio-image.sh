@@ -49,6 +49,8 @@ chmod 700 "${ENV_TMP_DIR}"
 ENV_FILE="${ENV_TMP_DIR}/app.env"
 IMAGE_INSPECT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.image-inspect.json"
 RUNTIME_MANIFEST_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.runtime-manifest.json"
+CHUNK_PROVENANCE_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.chunk-provenance.json"
+CHUNK_FILES_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.chunk-files.json"
 PACKAGE_INVENTORY_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.workspace-packages.txt"
 IMAGE_CONTRACT_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.image-contract.json"
 
@@ -79,7 +81,8 @@ ROOT_AUTH_STATUS="skipped"
 cleanup() {
   docker rm -f "${APP_NAME}" "${KEYCLOAK_NAME}" "${REDIS_NAME}" "${POSTGRES_NAME}" >/dev/null 2>&1 || true
   docker network rm "${NETWORK_NAME}" >/dev/null 2>&1 || true
-  rm -f "${ENV_FILE}" "${IMAGE_INSPECT_PATH}" "${RUNTIME_MANIFEST_PATH}" "${PACKAGE_INVENTORY_PATH}"
+  rm -f "${ENV_FILE}" "${IMAGE_INSPECT_PATH}" "${RUNTIME_MANIFEST_PATH}" \
+    "${CHUNK_PROVENANCE_PATH}" "${CHUNK_FILES_PATH}" "${PACKAGE_INVENTORY_PATH}"
   rmdir "${ENV_TMP_DIR}" 2>/dev/null || true
   for auth_dir in "${AUTH_TMP_DIR}" "${ROOT_DENIED_TMP_DIR}" "${ROOT_ALLOWED_TMP_DIR}"; do
     if [ -n "${auth_dir}" ]; then
@@ -139,14 +142,48 @@ docker run --rm --entrypoint sh "${IMAGE_REF}" -lc '
     done | sort -u
 ' > "${PACKAGE_INVENTORY_PATH}"
 
+if ! docker run --rm --entrypoint cat "${IMAGE_REF}" \
+  .output/server/generated/studio-chunk-provenance.json > "${CHUNK_PROVENANCE_PATH}" ||
+  ! docker run --rm --entrypoint node "${IMAGE_REF}" -e '
+    const { createHash } = require("node:crypto");
+    const { readFileSync, readdirSync } = require("node:fs");
+    const { join, relative, sep } = require("node:path");
+    const root = ".output";
+    const files = [];
+    const walk = (directory) => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name);
+        if (entry.isSymbolicLink()) throw new Error("chunk_provenance_symlink_present");
+        if (entry.isDirectory()) walk(path);
+        else if (entry.isFile() && /\.(?:[cm]?js|map)$/.test(entry.name)) {
+          files.push({
+            path: relative(root, path).split(sep).join("/"),
+            sha256: createHash("sha256").update(readFileSync(path)).digest("hex"),
+          });
+        }
+      }
+    };
+    walk(join(root, "public"));
+    walk(join(root, "server"));
+    process.stdout.write(JSON.stringify(files.sort((a, b) => a.path.localeCompare(b.path))));
+  ' > "${CHUNK_FILES_PATH}"
+then
+  set_phase_var PLUGIN_INVENTORY_STATUS error
+  mark_phase plugin-inventory error
+  fail_verify artifact-inventory-mismatch plugin-inventory "Chunk-Provenienz oder Image-Dateiinventar fehlt."
+  exit 1
+fi
+
 if jq -n \
   --arg imageRef "${IMAGE_REF}" \
   --arg expectedRevision "${EXPECTED_REVISION}" \
   --arg distribution "${SVA_STUDIO_DISTRIBUTION}" \
   --slurpfile inspection "${IMAGE_INSPECT_PATH}" \
   --slurpfile manifest "${RUNTIME_MANIFEST_PATH}" \
+  --slurpfile chunkProvenance "${CHUNK_PROVENANCE_PATH}" \
+  --slurpfile chunkFiles "${CHUNK_FILES_PATH}" \
   --rawfile packages "${PACKAGE_INVENTORY_PATH}" \
-  '{imageRef: $imageRef, expectedRevision: $expectedRevision, distribution: $distribution, inspection: $inspection[0], runtimeManifest: $manifest[0], packages: ($packages | split("\n") | map(select(length > 0)))}' |
+  '{imageRef: $imageRef, expectedRevision: $expectedRevision, distribution: $distribution, inspection: $inspection[0], runtimeManifest: $manifest[0], chunkProvenance: $chunkProvenance[0], chunkFiles: $chunkFiles[0], packages: ($packages | split("\n") | map(select(length > 0)))}' |
   node "$(dirname "${BASH_SOURCE[0]}")/verify-studio-image-contract.mjs" > "${IMAGE_CONTRACT_PATH}"
 then
   set_phase_var PLUGIN_INVENTORY_STATUS ok

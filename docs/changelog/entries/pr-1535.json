@@ -1,0 +1,4 @@
+{
+  "prNumber": 1535,
+  "body": "Fehlgeschlagene Mandanten-Provisionierungen werden nach einem Datenbankfehler zuverlässig als fehlgeschlagen markiert. Wiederholte Versuche desselben unveränderten Laufs werden verhindert."
+}

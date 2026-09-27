@@ -90,9 +90,9 @@ Der ursprüngliche Proposal-Worktree bleibt unverändert.
   Nur Readiness-Tasks 7.16/7.17 erhalten diese gemeinsame UI-Evidenz;
   insbesondere 10.5/10.6 bleiben offen.
 - OpenSpec-Strict-Validierung, Prettier-Check, Dateiplatzierung und
-  `git diff --check` bestanden. Keine Archivierung in diesem Auftrag;
-  der Delta-Abgleich gegen die dann aktuelle Basisspec bleibt Voraussetzung
-  einer späteren Archivierung.
+  `git diff --check` bestanden. Vor der Archivierung wurden die fünf geänderten
+  Requirements und ihre bisherigen Szenarien mit der aktuellen `account-ui`-Spec
+  sowie den übrigen aktiven Deltas abgeglichen.
 
 - PR-Abschluss: Rebase auf `main`, Komplexitäts-Gate ohne neue Findings und
   38 gezielte Fälle für Anlage, Feldhilfen, Modelle und Module bestanden.
@@ -102,3 +102,10 @@ Der ursprüngliche Proposal-Worktree bleibt unverändert.
   fehlgeschlagener Ausführung erhalten und wird erst nach Erfolg geleert.
   Drei zusätzliche Detailfälle prüfen diese Regression einschließlich
   bestehender aktiver Instanzen ohne Login-Secret.
+
+- Lieferung: PR #1539 und der gezielte E2E-Fix PR #1543 wurden gemergt. Der
+  automatische Main-E2E-Lauf 36348316687 bestand mit 61 Tests. Der Digest
+  `sha256:b97d128bca32f0a8a46b9bf6249ff2eddade9155a6f77fd583fc91e1f9de5bda`
+  wurde im Build 36348316930 nach Dev sowie in den Promotes 36349866098 nach
+  Staging und 36350142394 nach Production erfolgreich verifiziert. Diese
+  Release-Evidenz schließt keine realen Provisioning- oder Einladungsabnahmen.

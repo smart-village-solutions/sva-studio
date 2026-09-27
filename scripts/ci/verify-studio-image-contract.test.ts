@@ -134,6 +134,12 @@ describe('verify-studio-image-contract', () => {
       },
     ],
     [
+      'conflicting runtime env',
+      (input: ReturnType<typeof validInput>) => {
+        input.inspection[0]!.Config.Env.push('SVA_STUDIO_DISTRIBUTION=studio');
+      },
+    ],
+    [
       'manifest distribution',
       (input: ReturnType<typeof validInput>) => {
         input.runtimeManifest.distribution = 'studio';

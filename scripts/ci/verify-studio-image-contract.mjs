@@ -54,7 +54,15 @@ export const verifyStudioImageContract = (input) => {
   if (labels?.['org.opencontainers.image.revision'] !== expectedRevision)
     fail('image_revision_mismatch');
   if (labels?.['com.sva-studio.distribution'] !== distribution) fail('image_distribution_mismatch');
-  if (!image.Config?.Env?.includes(`SVA_STUDIO_DISTRIBUTION=${distribution}`)) {
+  const runtimeDistributions = Array.isArray(image.Config?.Env)
+    ? image.Config.Env.filter(
+        (entry) => typeof entry === 'string' && entry.startsWith('SVA_STUDIO_DISTRIBUTION=')
+      )
+    : [];
+  if (
+    runtimeDistributions.length !== 1 ||
+    runtimeDistributions[0] !== `SVA_STUDIO_DISTRIBUTION=${distribution}`
+  ) {
     fail('image_runtime_distribution_mismatch');
   }
   if (

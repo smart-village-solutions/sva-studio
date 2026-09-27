@@ -11,6 +11,10 @@ on:
         description: 'Optionaler Tag fuer Report und Korrelation'
         required: false
         type: string
+      expected_revision:
+        description: 'Verbindlicher 40-stelliger Commit-SHA des Images'
+        required: true
+        type: string
   workflow_call:
     inputs:
       image_digest:
@@ -18,6 +22,9 @@ on:
         type: string
       image_tag:
         required: false
+        type: string
+      expected_revision:
+        required: true
         type: string
     outputs:
       image_ref:
@@ -87,7 +94,8 @@ jobs:
           set -euo pipefail
           bash scripts/ci/verify-studio-image.sh \
             "${{ steps.image.outputs.image_ref }}" \
-            "artifacts/runtime/image-verify"
+            "artifacts/runtime/image-verify" studio \
+            "${{ inputs.expected_revision || github.event.inputs.expected_revision }}"
 
       - name: Publish verify summary
         if: always()

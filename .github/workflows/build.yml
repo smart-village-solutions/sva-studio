@@ -123,7 +123,7 @@ jobs:
           docker pull "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}"
           bash scripts/ci/verify-studio-image.sh \
             "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}" \
-            artifacts/runtime/studio-image-verify studio
+            artifacts/runtime/studio-image-verify studio "${{ github.sha }}"
 
       - name: Verify SSF image
         run: |
@@ -131,7 +131,7 @@ jobs:
           SVA_IMAGE_VERIFY_PORT=39081 SVA_IMAGE_VERIFY_POSTGRES_PORT=35434 \
             bash scripts/ci/verify-studio-image.sh \
               "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}" \
-              artifacts/runtime/ssf-image-verify ssf
+              artifacts/runtime/ssf-image-verify ssf "${{ github.sha }}"
 
       - name: Upload image verification reports
         if: always()

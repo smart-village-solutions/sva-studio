@@ -98,6 +98,77 @@ describe('studio-distribution-artifact', () => {
         'surveys',
         'waste-management',
       ],
+      excludedWorkspacePackages: ['plugin-ssf'],
+    });
+  });
+
+  it('writes the SSF exclusion contract and removes regular plugin packages', () => {
+    const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'studio-distribution-artifact-'));
+    temporaryDirectories.push(temporaryDirectory);
+    const deployRoot = path.join(temporaryDirectory, 'deploy');
+    const outputRoot = path.join(temporaryDirectory, 'output');
+    for (const packageName of ['plugin-ssf', 'plugin-news', 'waste-management-runtime']) {
+      mkdirSync(path.join(deployRoot, 'node_modules', '@sva', packageName), { recursive: true });
+      mkdirSync(
+        path.join(
+          deployRoot,
+          'node_modules',
+          '.pnpm',
+          `${packageName}@1.0.0`,
+          'node_modules',
+          '@sva',
+          packageName
+        ),
+        { recursive: true }
+      );
+    }
+    mkdirSync(outputRoot, { recursive: true });
+
+    runArtifactCommand('prune-deploy', deployRoot, 'ssf');
+    runArtifactCommand('write-manifest', outputRoot, 'ssf');
+
+    expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'plugin-ssf'))).toBe(true);
+    for (const packageName of ['plugin-news', 'waste-management-runtime']) {
+      expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', packageName))).toBe(false);
+      expect(
+        existsSync(
+          path.join(
+            deployRoot,
+            'node_modules',
+            '.pnpm',
+            `${packageName}@1.0.0`,
+            'node_modules',
+            '@sva',
+            packageName
+          )
+        )
+      ).toBe(false);
+    }
+    expect(
+      JSON.parse(
+        readFileSync(
+          path.join(outputRoot, 'server', 'generated', 'studio-distribution.json'),
+          'utf8'
+        )
+      )
+    ).toEqual({
+      schemaVersion: 1,
+      distribution: 'ssf',
+      includedPluginIds: ['ssf'],
+      excludedWorkspacePackages: [
+        'plugin-categories',
+        'plugin-cockpit-cards',
+        'plugin-events',
+        'plugin-faq',
+        'plugin-generic-items',
+        'plugin-news',
+        'plugin-poi',
+        'plugin-projects',
+        'plugin-surveys',
+        'plugin-waste-management',
+        'waste-management-contracts',
+        'waste-management-runtime',
+      ],
     });
   });
 });

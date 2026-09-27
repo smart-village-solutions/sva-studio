@@ -54,24 +54,27 @@ COMMIT;
 `;
 };
 
-export const revokeSsfSql = `
-DELETE FROM iam.role_permissions
-WHERE instance_id = '${instanceId}'
-  AND role_id = '${roleId}'
-  AND permission_id = '${ssfPermissionId}';
+const withPermissionRevision = (mutation: string): string => `
+BEGIN;
+${mutation}
+INSERT INTO iam.permission_cache_instance_revisions (instance_id, revision)
+VALUES ('${instanceId}', 2)
+ON CONFLICT (instance_id) DO UPDATE
+SET revision = iam.permission_cache_instance_revisions.revision + 1, updated_at = NOW();
+COMMIT;
 `;
 
-export const revokeMediaSql = `
+export const revokeMediaSql = withPermissionRevision(`
 DELETE FROM iam.role_permissions
 WHERE instance_id = '${instanceId}'
   AND role_id = '${roleId}'
   AND permission_id = '${mediaPermissionId}';
-`;
+`);
 
-const restoreGrantSql = (permissionId: string): string => `
+const restoreGrantSql = (permissionId: string): string => withPermissionRevision(`
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
 VALUES ('${instanceId}', '${roleId}', '${permissionId}');
-`;
+`);
 
 const run = (mode: string, containerName: string): void => {
   if (!/^studio-image-verify-[0-9]+-postgres$/u.test(containerName)) {
@@ -87,12 +90,8 @@ const run = (mode: string, containerName: string): void => {
       `iam.instances.auth_client_secret:${instanceId}`
     );
     sql = buildSeedSql(ciphertext);
-  } else if (mode === 'revoke-ssf') {
-    sql = revokeSsfSql;
   } else if (mode === 'revoke-media') {
     sql = revokeMediaSql;
-  } else if (mode === 'restore-ssf') {
-    sql = restoreGrantSql(ssfPermissionId);
   } else if (mode === 'restore-media') {
     sql = restoreGrantSql(mediaPermissionId);
   } else {

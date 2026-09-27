@@ -7,6 +7,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 let mock: ChildProcess;
 let origin: string;
 const redirectUri = 'http://tenant.studio.example.invalid/auth/callback';
+const rootRedirectUri = 'http://studio.example.invalid/auth/callback';
 
 const availablePort = async (): Promise<number> =>
   new Promise((resolvePort, reject) => {
@@ -28,6 +29,7 @@ beforeAll(async () => {
       PORT: String(port),
       KEYCLOAK_BASE_URL: origin,
       VERIFY_AUTH_REDIRECT_URI: redirectUri,
+      VERIFY_ROOT_REDIRECT_URI: rootRedirectUri,
     },
     stdio: 'ignore',
   });
@@ -39,6 +41,48 @@ beforeAll(async () => {
     await new Promise((done) => setTimeout(done, 50));
   }
   throw new Error('verify_mock_not_ready');
+});
+
+it('issues the platform role only on the second signed root-host OIDC session', async () => {
+  const claimRoles = async (sequence: number): Promise<unknown> => {
+    const verifier = `verify-root-${sequence}-${'a'.repeat(32)}`;
+    const authorizationUrl = new URL(`${origin}/realms/sva-studio/protocol/openid-connect/auth`);
+    for (const [key, value] of Object.entries({
+      client_id: 'sva-studio',
+      response_type: 'code',
+      redirect_uri: rootRedirectUri,
+      code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+      code_challenge_method: 'S256',
+      state: `root-state-${sequence}`,
+      nonce: `root-nonce-${sequence}`,
+    })) authorizationUrl.searchParams.set(key, value);
+    const authorize = await fetch(authorizationUrl, { redirect: 'manual' });
+    expect(authorize.status).toBe(302);
+    const callback = new URL(authorize.headers.get('location') || '');
+    expect(callback.origin + callback.pathname).toBe(rootRedirectUri);
+    const exchange = await fetch(`${origin}/realms/sva-studio/protocol/openid-connect/token`, {
+      method: 'POST',
+      headers: {
+        authorization: `Basic ${Buffer.from('sva-studio:verify-auth-client-secret').toString('base64')}`,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: callback.searchParams.get('code') || '',
+        code_verifier: verifier,
+        redirect_uri: rootRedirectUri,
+      }),
+    });
+    expect(exchange.status).toBe(200);
+    const token = (await exchange.json() as { access_token: string }).access_token;
+    const payload = JSON.parse(Buffer.from(token.split('.')[1] || '', 'base64url').toString('utf8')) as {
+      realm_access?: { roles: string[] };
+    };
+    return payload.realm_access?.roles;
+  };
+
+  expect(await claimRoles(1)).toBeUndefined();
+  expect(await claimRoles(2)).toEqual(['instance_registry_admin']);
 });
 
 afterAll(() => mock?.kill());

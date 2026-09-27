@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { buildSeedSql, revokeMediaSql, revokeSsfSql } from './image-verify-auth-fixture.ts';
+import { buildSeedSql, revokeMediaSql } from './image-verify-auth-fixture.ts';
 
 it('seeds only the test tenant, OIDC identity, assigned optional SSF module, and two read grants', () => {
   const sql = buildSeedSql('enc:v1:k1:iv:tag:ciphertext');
@@ -10,9 +10,8 @@ it('seeds only the test tenant, OIDC identity, assigned optional SSF module, and
   expect(sql).toContain("'media.read', 'media.read', 'media'");
   expect(sql).toContain("'ssf.configuration.tenant.read', 'ssf.configuration.tenant.read', 'ssf'");
   expect(sql).not.toContain('verify-auth-client-secret');
-  expect(revokeSsfSql).toContain('DELETE FROM iam.role_permissions');
-  expect(revokeSsfSql).toContain("instance_id = 'example-instance'");
   expect(revokeMediaSql).toContain('DELETE FROM iam.role_permissions');
   expect(revokeMediaSql).toContain("instance_id = 'example-instance'");
+  expect(revokeMediaSql).toContain('INSERT INTO iam.permission_cache_instance_revisions');
   expect(() => buildSeedSql("ciphertext'; DROP TABLE iam.instances; --")).toThrow('invalid_verify_auth_ciphertext');
 });

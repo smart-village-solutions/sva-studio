@@ -137,6 +137,23 @@ const pluginSource = (moduleId: string): string | undefined => {
   );
 };
 
+const resolveNitroModules = (
+  chunk: BuildChunk,
+  ssrByFile: ReadonlyMap<string, readonly string[]>
+): string[] => {
+  const modules = [...chunk.modules];
+  for (const id of chunk.modules) {
+    const marker = '/.nitro/vite/services/ssr/';
+    const offset = id.replaceAll('\\', '/').indexOf(marker);
+    if (offset < 0) continue;
+    const ssrFile = id.slice(offset + marker.length);
+    const sources = ssrByFile.get(ssrFile);
+    if (!sources) throw new Error(`chunk_provenance_unknown_ssr_chunk:${ssrFile}`);
+    modules.push(...sources);
+  }
+  return modules;
+};
+
 const writeChunkProvenance = (outputRoot: string, distribution: StudioDistribution): void => {
   assertDirectory(outputRoot);
   const appRoot = resolve(outputRoot, '..');
@@ -156,17 +173,7 @@ const writeChunkProvenance = (outputRoot: string, distribution: StudioDistributi
   for (const chunk of nitro) {
     const path = `server/${chunk.fileName}`;
     if (expected.has(path)) throw new Error(`chunk_provenance_duplicate_chunk:${path}`);
-    const modules = [...chunk.modules];
-    for (const id of chunk.modules) {
-      const marker = '/.nitro/vite/services/ssr/';
-      const offset = id.replaceAll('\\', '/').indexOf(marker);
-      if (offset < 0) continue;
-      const ssrFile = id.slice(offset + marker.length);
-      const sources = ssrByFile.get(ssrFile);
-      if (!sources) throw new Error(`chunk_provenance_unknown_ssr_chunk:${ssrFile}`);
-      modules.push(...sources);
-    }
-    expected.set(path, modules);
+    expected.set(path, resolveNitroModules(chunk, ssrByFile));
   }
   const copiedTslib = [
     'server/node_modules/tslib/tslib.js',

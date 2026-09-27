@@ -1,0 +1,4 @@
+{
+  "prNumber": 1543,
+  "body": "Der Tenant-Admin-Browsertest folgt wieder der aktuellen Instanzdetailansicht und prüft weiterhin den fehlgeschlagenen Speicherversuch bei fehlendem Admin-Client."
+}

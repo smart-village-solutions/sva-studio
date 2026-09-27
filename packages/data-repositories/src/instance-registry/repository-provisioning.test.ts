@@ -496,6 +496,7 @@ describe('instance registry repository provisioning', () => {
     });
     expect(statements[0]?.text).toContain('FOR UPDATE OF run SKIP LOCKED');
     expect(statements[0]?.text).toContain('run.lease_expires_at <= now()');
+    expect(statements[0]?.text).toContain('run.completed_at IS NULL');
     expect(statements[0]?.text).toContain(
       "run.desired_snapshot->>'automationMode' = 'kassel-traefik-file'"
     );

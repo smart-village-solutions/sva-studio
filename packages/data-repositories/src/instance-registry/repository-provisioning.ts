@@ -95,6 +95,7 @@ WITH candidate AS (
   FROM iam.instance_provisioning_runs AS run
   JOIN iam.instances AS instance ON instance.id = run.instance_id
   WHERE run.operation = 'create'
+    AND run.completed_at IS NULL
     AND run.snapshot_version IN ('2.0', '3.0')
     AND run.desired_snapshot->>'automationMode' = 'kassel-traefik-file'
     AND run.status IN ('requested', 'validated', 'provisioning')

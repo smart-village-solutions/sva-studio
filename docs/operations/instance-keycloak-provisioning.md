@@ -452,6 +452,12 @@ betroffenen Schritt erst nach Einordnung erneut auszuführen.
 
 ## Verbindliche Aktivierungsregeln
 
+Ein erfolgreich abgeschlossener Create-Lauf endet mit `validated` und
+`awaiting_activation`. Die ausdrücklich bestätigte Aktivierung führt von dort
+direkt nach `active`; sie prüft erneut die aktuellen Keycloak-, IAM-, Host- und
+Plugin-Nachweise. Ein zusätzlicher Wechsel zurück nach `provisioning` ist nicht
+erforderlich.
+
 - `Active` in der Übersicht allein reicht nicht als Freigabekriterium.
   Maßgeblich ist die vollständige grüne Checkliste auf der Detailseite.
 - Ein bestehender Realm darf nicht versehentlich auf `New realm` stehen.

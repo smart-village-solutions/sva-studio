@@ -86,6 +86,9 @@ describe('instance registry core', () => {
 
   it('models status transitions and traffic states', () => {
     expect(canTransitionInstanceStatus('requested', 'validated')).toBe(true);
+    expect(canTransitionInstanceStatus('validated', 'active')).toBe(true);
+    expect(canTransitionInstanceStatus('requested', 'active')).toBe(false);
+    expect(canTransitionInstanceStatus('failed', 'active')).toBe(false);
     expect(canTransitionInstanceStatus('active', 'validated')).toBe(false);
     expect(isTrafficEnabledInstanceStatus('active')).toBe(true);
     expect(isTrafficEnabledInstanceStatus('suspended')).toBe(false);

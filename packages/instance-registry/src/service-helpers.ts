@@ -13,8 +13,11 @@ import type {
   IamInstanceProvisioningReadiness,
   IamTenantIamAxis,
   IamTenantIamStatus,
-  WasteManagementSettingsRecord,
 } from '@sva/core';
+import type {
+  WasteIamInstanceDetail,
+  WasteManagementSettingsRecord,
+} from '@sva/waste-management-contracts';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { KeycloakTenantStatus } from './keycloak-types.js';
@@ -264,7 +267,7 @@ export const buildInstanceDetail = (
     source: instance.accountInvitationTemplate ? 'instance' : 'sva_default',
   },
   serverAccountInvitationTemplateRevision = 0
-): IamInstanceDetail => ({
+): WasteIamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
     {

@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/core';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { createApiError, parseRequestBody } from '../../shared/request-helpers.js';

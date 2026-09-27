@@ -1,15 +1,25 @@
-import type { WasteDateShiftReasonType } from '@sva/core';
+import type { WasteDateShiftReasonType } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction } from './auth.js';
-import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import {
+  runWasteCreateMutation,
+  runWasteDeleteMutation,
+  runWasteUpdateMutation,
+} from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
+import {
+  getRequestId,
+  normalizeOptionalString,
+  requireActorInstanceId,
+  requireDeps,
+} from './utils.js';
 
-const { createWasteGlobalDateShiftSchema, updateWasteGlobalDateShiftSchema } = wasteManagementTourSchemas;
+const { createWasteGlobalDateShiftSchema, updateWasteGlobalDateShiftSchema } =
+  wasteManagementTourSchemas;
 
 const toGlobalDateShiftInput = (
   id: string,
@@ -40,7 +50,12 @@ export const wasteManagementGlobalDateShiftHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.scheduling.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -80,7 +95,10 @@ export const wasteManagementGlobalDateShiftHandlers = {
           toGlobalDateShiftInput(parsed.data.id, parsed.data)
         ),
       loadSaved: () =>
-        requireDeps(deps.loadWasteGlobalDateShiftById, 'loadWasteGlobalDateShiftById')(instanceId, parsed.data.id),
+        requireDeps(deps.loadWasteGlobalDateShiftById, 'loadWasteGlobalDateShiftById')(
+          instanceId,
+          parsed.data.id
+        ),
     });
   },
   updateWasteManagementGlobalDateShiftInternal: async (
@@ -89,7 +107,12 @@ export const wasteManagementGlobalDateShiftHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.scheduling.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -114,8 +137,14 @@ export const wasteManagementGlobalDateShiftHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    const loadGlobalDateShift = requireDeps(deps.loadWasteGlobalDateShiftById, 'loadWasteGlobalDateShiftById');
-    const saveGlobalDateShift = requireDeps(deps.saveWasteGlobalDateShift, 'saveWasteGlobalDateShift');
+    const loadGlobalDateShift = requireDeps(
+      deps.loadWasteGlobalDateShiftById,
+      'loadWasteGlobalDateShiftById'
+    );
+    const saveGlobalDateShift = requireDeps(
+      deps.saveWasteGlobalDateShift,
+      'saveWasteGlobalDateShift'
+    );
 
     return runWasteUpdateMutation({
       deps,
@@ -143,7 +172,12 @@ export const wasteManagementGlobalDateShiftHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.scheduling.manage', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.scheduling.manage',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -163,7 +197,10 @@ export const wasteManagementGlobalDateShiftHandlers = {
       return csrfError;
     }
 
-    const loadGlobalDateShift = requireDeps(deps.loadWasteGlobalDateShiftById, 'loadWasteGlobalDateShiftById');
+    const loadGlobalDateShift = requireDeps(
+      deps.loadWasteGlobalDateShiftById,
+      'loadWasteGlobalDateShiftById'
+    );
 
     return runWasteDeleteMutation({
       deps,
@@ -180,7 +217,11 @@ export const wasteManagementGlobalDateShiftHandlers = {
         deleteFailed: 'Der globale Waste-Ausweichtermin konnte nicht gelöscht werden.',
       },
       loadExisting: () => loadGlobalDateShift(instanceId, shiftId),
-      remove: () => requireDeps(deps.deleteWasteGlobalDateShift, 'deleteWasteGlobalDateShift')(instanceId, shiftId),
+      remove: () =>
+        requireDeps(deps.deleteWasteGlobalDateShift, 'deleteWasteGlobalDateShift')(
+          instanceId,
+          shiftId
+        ),
     });
   },
 };

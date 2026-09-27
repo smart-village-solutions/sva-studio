@@ -1,4 +1,4 @@
-import type { WasteTourAssignmentRecord } from '@sva/plugin-sdk';
+import type { WasteTourAssignmentRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 import { useState } from 'react';

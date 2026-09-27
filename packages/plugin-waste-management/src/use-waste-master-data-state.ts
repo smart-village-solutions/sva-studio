@@ -1,4 +1,5 @@
-import type { StudioJobResponse, WasteCollectionLocationPage } from '@sva/plugin-sdk';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
+import type { WasteCollectionLocationPage } from '@sva/waste-management-contracts';
 import { startTransition, useState } from 'react';
 
 import type { WasteManagementMasterDataOverview } from './waste-management.api.js';

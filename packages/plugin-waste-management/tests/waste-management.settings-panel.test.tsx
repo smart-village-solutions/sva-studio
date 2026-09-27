@@ -15,10 +15,18 @@ const translationSuffix = vi.hoisted(() => ({ value: '' }));
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : `${key}${translationSuffix.value}`,
-  wasteManagementMasterDataContract: {
-    isWasteHolidayStateCode: (value: string): value is string => value.length > 0,
-  },
 }));
+
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/waste-management-contracts')>();
+  return {
+    ...actual,
+    wasteManagementMasterDataContract: {
+      ...actual.wasteManagementMasterDataContract,
+      isWasteHolidayStateCode: (value: string): value is string => value.length > 0,
+    },
+  };
+});
 
 vi.mock('@sva/studio-ui-react', async () => ({
   ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),

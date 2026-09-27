@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import type { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { formatTourRecurrence } from './waste-management.tours.presentation.js';

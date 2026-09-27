@@ -1,4 +1,4 @@
-import type { WasteMainserverSyncStatusRecord } from '@sva/plugin-sdk';
+import type { WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
 import { Button } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 

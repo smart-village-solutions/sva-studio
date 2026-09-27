@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 
 import {
   createWasteManagementFraction,

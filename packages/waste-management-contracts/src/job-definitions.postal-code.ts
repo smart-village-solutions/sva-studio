@@ -1,4 +1,5 @@
-import { wasteManagementOperationsContract, type PluginJobTypeDefinition } from '@sva/plugin-sdk';
+import type { PluginJobTypeDefinition } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
 
 export const wastePostalCodeJobType = {
   jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,

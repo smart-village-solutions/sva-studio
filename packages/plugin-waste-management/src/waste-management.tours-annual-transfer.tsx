@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { WasteAnnualTourTransferResult } from '@sva/plugin-sdk';
+import type { WasteAnnualTourTransferResult } from '@sva/waste-management-contracts';
 
 import { WasteToursAnnualTransferDialog } from './waste-management.tours-annual-transfer-dialog.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';

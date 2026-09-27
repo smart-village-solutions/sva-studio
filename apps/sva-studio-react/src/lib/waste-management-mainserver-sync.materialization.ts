@@ -2,7 +2,7 @@ import {
   resolveEffectiveWasteTourDateShiftsForYear,
   type WasteLocationTourPickupDateRecord,
   type WasteTourRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import {
   addDays,
   addDaysWithWeekendClampForAdvance,

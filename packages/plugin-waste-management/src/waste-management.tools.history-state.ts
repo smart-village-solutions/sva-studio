@@ -1,4 +1,4 @@
-import type { WasteManagementHistoryOverview } from '@sva/plugin-sdk';
+import type { WasteManagementHistoryOverview } from '@sva/waste-management-contracts';
 import { useEffect, useRef, useState } from 'react';
 
 import { getWasteManagementHistoryOverview } from './waste-management.api.js';

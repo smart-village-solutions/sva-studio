@@ -17,7 +17,7 @@ import {
   AnnualTransferFooter,
   AnnualTransferPreview,
 } from './waste-management.tours-annual-transfer-view.js';
-import type { WasteAnnualTourTransferResult } from '@sva/plugin-sdk';
+import type { WasteAnnualTourTransferResult } from '@sva/waste-management-contracts';
 
 type AnnualTransferController = ReturnType<typeof useWasteAnnualTransferController>;
 type Translate = (key: string, values?: Record<string, string | number>) => string;

@@ -1,4 +1,4 @@
-import type { WasteCityRecord } from '@sva/plugin-sdk';
+import type { WasteCityRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Dialog,
@@ -24,9 +24,12 @@ import {
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
-const withDefaultCityId = (form: StreetFormState, cities: readonly WasteCityRecord[]): StreetFormState => ({
+const withDefaultCityId = (
+  form: StreetFormState,
+  cities: readonly WasteCityRecord[]
+): StreetFormState => ({
   ...form,
-  cityId: form.cityId || (cities.length === 1 ? cities[0]?.id ?? '' : ''),
+  cityId: form.cityId || (cities.length === 1 ? (cities[0]?.id ?? '') : ''),
 });
 
 export const StreetDialog = ({
@@ -119,10 +122,22 @@ const StreetDialogForm = ({
           editTitle={pt('masterData.streets.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
+        <form
+          className="space-y-4"
+          onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)}
+          noValidate
+        >
           <StatusNotice message={message} />
           <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
-          <StreetDialogFields cities={cities} clearErrors={clearErrors} control={control} nameField={nameField} onChange={onChange} pt={pt} register={register} />
+          <StreetDialogFields
+            cities={cities}
+            clearErrors={clearErrors}
+            control={control}
+            nameField={nameField}
+            onChange={onChange}
+            pt={pt}
+            register={register}
+          />
           <MasterDataDialogActions
             cancelLabel={pt('masterData.streets.actions.cancel')}
             mode={mode}

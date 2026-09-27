@@ -1,8 +1,8 @@
+import { type StudioJobStartRequest } from '@sva/core';
 import {
   getWasteManagementImportCatalogEntry,
   wasteManagementOperationsContract,
-  type StudioJobStartRequest,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { z } from 'zod';
 import { storePluginOperationInput } from '../../plugin-operation-artifacts.server.js';
 

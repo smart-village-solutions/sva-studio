@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import type { MailDispatchPayload, MailTransportConfig } from '@sva/core';
 import type {
-  MailDispatchPayload,
-  MailTransportConfig,
   WasteCollectionLocationRecord,
   WasteManagementEmailReminderConfig,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import {
   addDaysUtc,
@@ -17,7 +16,7 @@ import {
 } from './waste-management-email-reminder-dispatch.server';
 
 const createReminderConfig = (
-  overrides: Partial<WasteManagementEmailReminderConfig> = {},
+  overrides: Partial<WasteManagementEmailReminderConfig> = {}
 ): WasteManagementEmailReminderConfig => ({
   enabled: true,
   publicSignupEnabled: true,
@@ -68,7 +67,7 @@ const createReminderConfig = (
 });
 
 const createTransport = (
-  overrides: Partial<Extract<MailTransportConfig, { transportType: 'smtp' }>> = {},
+  overrides: Partial<Extract<MailTransportConfig, { transportType: 'smtp' }>> = {}
 ): Extract<MailTransportConfig, { transportType: 'smtp' }> => ({
   transportId: 'transport-smtp',
   displayName: 'SMTP',
@@ -88,7 +87,7 @@ const createTransport = (
 });
 
 const createReminderPayload = (
-  overrides: Partial<MailDispatchPayload> = {},
+  overrides: Partial<MailDispatchPayload> = {}
 ): MailDispatchPayload => ({
   orderId: 'subscription-1',
   transportId: 'transport-smtp',
@@ -145,10 +144,10 @@ const createDoiPayload = (overrides: Partial<MailDispatchPayload> = {}): MailDis
 describe('waste email reminder dispatch helpers', () => {
   it('builds UTC dates and rejects invalid pickup dates', () => {
     expect(createUtcIsoAtHour(new Date('2026-06-15T12:30:00.000Z'), 6)).toBe(
-      '2026-06-15T06:00:00.000Z',
+      '2026-06-15T06:00:00.000Z'
     );
     expect(addDaysUtc(new Date('2026-06-15T00:00:00.000Z'), 2).toISOString()).toBe(
-      '2026-06-17T00:00:00.000Z',
+      '2026-06-17T00:00:00.000Z'
     );
     expect(parseIsoDateUtc('2026-06-16').toISOString()).toBe('2026-06-16T00:00:00.000Z');
     expect(() => parseIsoDateUtc('invalid-date')).toThrowError('invalid_iso_date:invalid-date');
@@ -213,14 +212,14 @@ describe('waste email reminder dispatch helpers', () => {
         regionId: 'region-1',
         cityId: 'city-1',
         streetId: 'street-1',
-      }).map((location) => location.id),
+      }).map((location) => location.id)
     ).toEqual(['legacy-region-match', 'all-street-match']);
 
     expect(
       matchSelectionLocations(locations, {
         cityId: 'city-1',
         streetId: 'all',
-      }).map((location) => location.id),
+      }).map((location) => location.id)
     ).toEqual(['all-street-match']);
 
     expect(
@@ -228,7 +227,7 @@ describe('waste email reminder dispatch helpers', () => {
         cityId: 'city-1',
         streetId: 'street-1',
         houseNumberId: 'house-1',
-      }).map((location) => location.id),
+      }).map((location) => location.id)
     ).toEqual(['legacy-region-match', 'all-street-match', 'specific-house-match']);
   });
 
@@ -271,10 +270,10 @@ describe('waste email reminder dispatch helpers', () => {
     expect(payload.addresses).toEqual([{ kind: 'to', email: 'max@example.org' }]);
     expect(payload.templatePayload).not.toHaveProperty('serviceLabel');
     expect(payload.templatePayload.hintText).toBe(
-      ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n'),
+      ['Behälter am Vorabend bereitstellen.', '', '- Zufahrt freihalten'].join('\n')
     );
     expect(payload.templatePayload.unsubscribeUrl).toContain(
-      'https://demo.abfallkalender.example/erinnerungen/abmelden?token=',
+      'https://demo.abfallkalender.example/erinnerungen/abmelden?token='
     );
   });
 

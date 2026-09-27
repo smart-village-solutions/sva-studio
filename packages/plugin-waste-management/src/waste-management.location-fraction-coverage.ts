@@ -2,7 +2,7 @@ import type {
   WasteCollectionLocationRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 export type WasteLocationFractionCoverageGap = Readonly<{
   startDate: string;

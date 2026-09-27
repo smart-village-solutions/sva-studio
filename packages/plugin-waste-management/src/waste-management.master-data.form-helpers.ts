@@ -1,4 +1,4 @@
-import type { WasteLocalizedTextRecord } from '@sva/plugin-sdk';
+import type { WasteLocalizedTextRecord } from '@sva/waste-management-contracts';
 
 let localIdCounter = 0;
 
@@ -54,7 +54,7 @@ export const createId = (): string => {
 };
 
 export const compactOptionalString = (value: string): string | undefined =>
-  (value.trim() ? value.trim() : undefined);
+  value.trim() ? value.trim() : undefined;
 
 export const normalizeLocalizedTextRecord = (
   value: WasteLocalizedTextRecord

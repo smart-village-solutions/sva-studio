@@ -1,4 +1,4 @@
-import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
+import type { WasteCollectionLocationRecord } from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementCollectionLocationInput,

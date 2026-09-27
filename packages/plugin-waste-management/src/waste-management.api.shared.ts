@@ -1,9 +1,5 @@
-import type {
-  ApiItemResponse,
-  StudioJobDetail,
-  StudioJobResponse,
-  WasteManagementHistoryOverview,
-} from '@sva/plugin-sdk';
+import type { ApiItemResponse, StudioJobDetail, StudioJobResponse } from '@sva/plugin-sdk';
+import type { WasteManagementHistoryOverview } from '@sva/waste-management-contracts';
 import { createMainserverJsonRequestHeaders, requestMainserverJson } from '@sva/plugin-sdk';
 
 export class WasteManagementApiError extends Error {

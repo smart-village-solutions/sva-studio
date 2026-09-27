@@ -1,4 +1,7 @@
-import { buildWasteAnnualTourTransferPreview, type WasteAnnualTourTransferSource } from '@sva/core';
+import {
+  buildWasteAnnualTourTransferPreview,
+  type WasteAnnualTourTransferSource,
+} from '@sva/waste-management-contracts';
 import { createWasteMasterDataRepository } from '@sva/data-repositories';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

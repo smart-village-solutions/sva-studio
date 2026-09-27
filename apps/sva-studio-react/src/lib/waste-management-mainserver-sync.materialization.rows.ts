@@ -5,8 +5,9 @@ import type {
   WasteHouseNumberRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/core';
-import { buildWasteStreetKey, convertRichTextHtmlToPlainText } from '@sva/core';
+} from '@sva/waste-management-contracts';
+import { convertRichTextHtmlToPlainText } from '@sva/core';
+import { buildWasteStreetKey } from '@sva/waste-management-contracts';
 import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 
 import type { MaterializedLocationTourPickupDateRecord } from './waste-management-mainserver-sync.materialization.js';

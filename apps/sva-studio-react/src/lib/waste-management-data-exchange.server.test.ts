@@ -2,14 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 
+import { type ExternalInterfaceRecord, type StudioJobResultArtifact } from '@sva/core';
 import {
   serializeWasteManagementDataExchangeJson,
-  type ExternalInterfaceRecord,
-  type StudioJobResultArtifact,
   type WasteFractionRecord,
   type WastePdfStaticSettingsRecord,
   type WasteTourRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 /*
  * Keep package construction independent from the export path so import tests can

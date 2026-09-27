@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';

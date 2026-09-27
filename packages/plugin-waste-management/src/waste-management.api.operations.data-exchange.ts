@@ -1,7 +1,5 @@
-import {
-  createMainserverJsonRequestHeaders,
-  type WasteManagementImportSourceFormat,
-} from '@sva/plugin-sdk';
+import { createMainserverJsonRequestHeaders } from '@sva/plugin-sdk';
+import { type WasteManagementImportSourceFormat } from '@sva/waste-management-contracts';
 
 import type { StartWasteManagementExportInput } from './waste-management.api.types.js';
 import {

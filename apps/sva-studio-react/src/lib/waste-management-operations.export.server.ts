@@ -7,7 +7,7 @@ import {
   wasteManagementDataProfileIds,
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { WasteMasterDataRepository } from '@sva/data-repositories';
 import { createHash } from 'node:crypto';
 import { strToU8, zipSync } from 'fflate';
@@ -101,28 +101,28 @@ export const createExportDataOperation =
       await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
       try {
         const snapshotFiles = await Promise.all(
-        uniqueProfileIds.map(async (profileId) => {
-          const profile = getWasteManagementDataProfile(profileId);
-          if (profile === undefined) throw new Error(`unknown_waste_data_profile:${profileId}`);
-          const records = await loadProfileRecords(
-            repository,
-            profileId,
-            portableInterface?.publicConfig
-          );
-          const contents = serializeWasteManagementDataExchangeJson({
-            profileId,
-            exportedAt,
-            records,
-          });
-          return {
-            profileId,
-            fileName: profileFileName(profileId),
-            contents,
-            recordCount: records.length,
-            sha256: sha256(contents),
-            dependencies: profile.dependencies,
-          };
-        })
+          uniqueProfileIds.map(async (profileId) => {
+            const profile = getWasteManagementDataProfile(profileId);
+            if (profile === undefined) throw new Error(`unknown_waste_data_profile:${profileId}`);
+            const records = await loadProfileRecords(
+              repository,
+              profileId,
+              portableInterface?.publicConfig
+            );
+            const contents = serializeWasteManagementDataExchangeJson({
+              profileId,
+              exportedAt,
+              records,
+            });
+            return {
+              profileId,
+              fileName: profileFileName(profileId),
+              contents,
+              recordCount: records.length,
+              sha256: sha256(contents),
+              dependencies: profile.dependencies,
+            };
+          })
         );
         await client.query('COMMIT');
         return snapshotFiles;

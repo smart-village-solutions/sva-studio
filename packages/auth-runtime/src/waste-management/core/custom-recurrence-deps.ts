@@ -1,4 +1,4 @@
-import type { WasteCustomRecurrencePresetRecord } from '@sva/core';
+import type { WasteCustomRecurrencePresetRecord } from '@sva/waste-management-contracts';
 
 export type WasteCustomRecurrencePresetFallback = {
   readonly kind: 'preset' | 'default';

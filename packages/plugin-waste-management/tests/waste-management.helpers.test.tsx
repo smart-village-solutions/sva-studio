@@ -65,12 +65,6 @@ vi.mock('@sva/plugin-sdk', async (importOriginal) => {
       return value === '2026-05-10T10:00:00.000Z' ? '10.05.2026, 12:00:00,000' : value;
     },
     usePluginTranslation: () => (key: string) => key,
-    wasteManagementMasterDataContract: {
-      fractionReminderLeadDayMin: 1,
-    },
-    wasteManagementOperationsContract: {
-      resetConfirmationToken: 'RESET',
-    },
   };
 });
 

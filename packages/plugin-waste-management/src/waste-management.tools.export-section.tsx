@@ -1,5 +1,7 @@
-import type { StudioJobResponse, WasteManagementDataProfileId } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteManagementDataProfiles } from '@sva/plugin-sdk';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
+import type { WasteManagementDataProfileId } from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementDataProfiles } from '@sva/waste-management-contracts';
 import { useState } from 'react';
 import { Button, Checkbox, Select } from '@sva/studio-ui-react';
 
@@ -32,9 +34,19 @@ const WasteExportProfileSelector = ({
         {wasteManagementDataProfiles.map((profile) => {
           const id = `waste-export-${profile.profileId}`;
           return (
-            <label key={profile.profileId} htmlFor={id} className="flex items-start gap-2 rounded-lg border border-border/60 p-3">
-              <Checkbox id={id} checked={profileIds.includes(profile.profileId)} onChange={(event) => onToggle(profile.profileId, event.currentTarget.checked)} />
-              <span className="text-sm">{pt(`tools.exports.profiles.${profileTranslationKeys[profile.profileId]}`)}</span>
+            <label
+              key={profile.profileId}
+              htmlFor={id}
+              className="flex items-start gap-2 rounded-lg border border-border/60 p-3"
+            >
+              <Checkbox
+                id={id}
+                checked={profileIds.includes(profile.profileId)}
+                onChange={(event) => onToggle(profile.profileId, event.currentTarget.checked)}
+              />
+              <span className="text-sm">
+                {pt(`tools.exports.profiles.${profileTranslationKeys[profile.profileId]}`)}
+              </span>
             </label>
           );
         })}

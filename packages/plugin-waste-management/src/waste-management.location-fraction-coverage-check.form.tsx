@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, Select, StudioField } from '@sva/studio-ui-react';
 import { IconChecklist } from '@tabler/icons-react';

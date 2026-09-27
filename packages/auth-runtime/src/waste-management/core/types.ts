@@ -1,8 +1,6 @@
+import type { ExternalInterfaceConnectionCheckRecord, ExternalInterfaceRecord, StudioJobStartRequest } from '@sva/core';
 import type {
-  ExternalInterfaceConnectionCheckRecord,
-  ExternalInterfaceRecord,
   WasteManagementSettingsInterfaceOption,
-  StudioJobStartRequest,
   WasteCollectionLocationRecord,
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
@@ -33,7 +31,7 @@ import type {
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityBulkUpdateResult,
   WasteTenantProvisioningRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { EffectivePermission } from '@sva/iam-core';
 import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 
@@ -250,16 +248,16 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulk
   ) => Promise<void>;
   readonly saveWasteTourAssignment?: (
     instanceId: string,
-    input: Omit<import('@sva/core').WasteTourAssignmentRecord, 'createdAt' | 'updatedAt'>
+    input: Omit<import('@sva/waste-management-contracts').WasteTourAssignmentRecord, 'createdAt' | 'updatedAt'>
   ) => Promise<void>;
   readonly loadWasteTourAssignmentById?: (
     instanceId: string,
     assignmentId: string
-  ) => Promise<import('@sva/core').WasteTourAssignmentRecord | null>;
+  ) => Promise<import('@sva/waste-management-contracts').WasteTourAssignmentRecord | null>;
   readonly listWasteTourAssignments?: (
     instanceId: string,
-    filter?: import('@sva/core').WasteTourAssignmentListFilter
-  ) => Promise<readonly import('@sva/core').WasteTourAssignmentRecord[]>;
+    filter?: import('@sva/waste-management-contracts').WasteTourAssignmentListFilter
+  ) => Promise<readonly import('@sva/waste-management-contracts').WasteTourAssignmentRecord[]>;
   readonly deleteWasteTourAssignment?: (instanceId: string, assignmentId: string) => Promise<void>;
   readonly saveWasteTour?: (
     instanceId: string,

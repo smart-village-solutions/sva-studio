@@ -3,12 +3,12 @@ import type {
   WasteTourRecord,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityDateOperation,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   isWasteTourValidityApplicable,
   resolveWasteTourValidityDates,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import {
   Button,
   Dialog,

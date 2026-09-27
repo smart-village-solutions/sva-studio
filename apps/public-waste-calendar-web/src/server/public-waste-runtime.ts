@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { Pool } from 'pg';
-import type { WasteManagementEmailReminderConfig } from '@sva/core';
+import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
 import { createWasteEmailReminderRepository } from '@sva/data-repositories';
 import type {
   PublicWasteReminderSignupRequest,
@@ -23,7 +23,7 @@ import {
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
 } from '../lib/public-waste-endpoints.server.js';
-import type { WasteCalendarPdfBrandingImage } from '@sva/core/waste-output';
+import type { WasteCalendarPdfBrandingImage } from '@sva/waste-management-contracts';
 import {
   createPublicWasteRepository,
   type PublicWasteRepository,

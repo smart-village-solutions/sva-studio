@@ -1,4 +1,5 @@
-import type { ExternalInterfaceRecord, WasteTenantProvisioningRecord } from '@sva/core';
+import type { ExternalInterfaceRecord } from '@sva/core';
+import type { WasteTenantProvisioningRecord } from '@sva/waste-management-contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createReadWasteTenantDatabaseReadinessOperation } from './waste-tenant-database-readiness.server.js';

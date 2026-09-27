@@ -1,11 +1,13 @@
 import type {
   WasteHolidayRuleRecord,
   WasteHolidayStateCode,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 export const wasteHolidaySyncHorizonYears = 10;
 
-type FeiertageApiResponse = Readonly<Record<string, { readonly datum?: unknown; readonly hinweis?: unknown }>>;
+type FeiertageApiResponse = Readonly<
+  Record<string, { readonly datum?: unknown; readonly hinweis?: unknown }>
+>;
 
 export type WasteHolidayApiEntry = {
   readonly holidayDate: string;
@@ -19,14 +21,20 @@ export const buildWasteHolidayApiUrl = (year: number, stateCode: WasteHolidaySta
   return url;
 };
 
-export const normalizeWasteHolidayApiResponse = (payload: unknown): readonly WasteHolidayApiEntry[] => {
+export const normalizeWasteHolidayApiResponse = (
+  payload: unknown
+): readonly WasteHolidayApiEntry[] => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('invalid_holiday_api_payload');
   }
 
   return Object.entries(payload as FeiertageApiResponse)
     .map(([holidayName, value]) => {
-      if (typeof holidayName !== 'string' || typeof value?.datum !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.datum)) {
+      if (
+        typeof holidayName !== 'string' ||
+        typeof value?.datum !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value.datum)
+      ) {
         return null;
       }
       return {
@@ -35,9 +43,14 @@ export const normalizeWasteHolidayApiResponse = (payload: unknown): readonly Was
       };
     })
     .filter((entry): entry is WasteHolidayApiEntry => entry !== null)
-    .sort((left, right) => left.holidayDate.localeCompare(right.holidayDate) || left.holidayName.localeCompare(right.holidayName));
+    .sort(
+      (left, right) =>
+        left.holidayDate.localeCompare(right.holidayDate) ||
+        left.holidayName.localeCompare(right.holidayName)
+    );
 };
 
 export const deriveHolidayRuleConfigurationStatus = (
   rule: Pick<WasteHolidayRuleRecord, 'scope' | 'strategy'>
-): WasteHolidayRuleRecord['configurationStatus'] => (rule.scope && rule.strategy ? 'configured' : 'draft');
+): WasteHolidayRuleRecord['configurationStatus'] =>
+  rule.scope && rule.strategy ? 'configured' : 'draft';

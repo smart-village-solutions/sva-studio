@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
-import type { WasteManagementEmailReminderConfig } from '@sva/core';
+import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
 import type {
   WasteEmailReminderActivationResult,
   WasteEmailReminderPendingSignupInput,
@@ -784,62 +784,68 @@ describe('public waste reminder action characterization', () => {
       state: 'already_unsubscribed',
     },
     { status: 'invalid' as const, path: 'ungueltig', state: 'invalid' },
-  ])('preserves unsubscribe $status redirects, fixed time, and mutation order', async (testCase) => {
-    const unsubscribeResult: WasteEmailReminderUnsubscribeResult =
-      testCase.status === 'invalid'
-        ? { status: 'invalid' }
-        : {
-            status: testCase.status,
-            subscriptionId: 'subscription-1',
-            locationLabel: 'Perleberg, Ackerstr. 12',
-          };
-    const harness = createReminderActionHarness({ unsubscribeResult });
+  ])(
+    'preserves unsubscribe $status redirects, fixed time, and mutation order',
+    async (testCase) => {
+      const unsubscribeResult: WasteEmailReminderUnsubscribeResult =
+        testCase.status === 'invalid'
+          ? { status: 'invalid' }
+          : {
+              status: testCase.status,
+              subscriptionId: 'subscription-1',
+              locationLabel: 'Perleberg, Ackerstr. 12',
+            };
+      const harness = createReminderActionHarness({ unsubscribeResult });
 
-    const response = await invokeReminderAction({
-      handler: harness.handler,
-      pathname: reminderActionConfig.unsubscribePath,
-      query: { token: createSignedUnsubscribeToken() },
-    });
+      const response = await invokeReminderAction({
+        handler: harness.handler,
+        pathname: reminderActionConfig.unsubscribePath,
+        query: { token: createSignedUnsubscribeToken() },
+      });
 
-    expect(response?.status).toBe(302);
-    expect(response?.headers.get('location')).toBe(
-      testCase.path === 'abgemeldet'
-        ? `https://example.invalid/erinnerungen/abgemeldet?state=${testCase.state}`
-        : 'https://example.invalid/erinnerungen/ungueltig?source=unsubscribe&reason=invalid'
-    );
-    expect(harness.calls).toEqual(['now', 'load', 'unsubscribe']);
-    expect(harness.loadUnsubscribeSubscriptionById).toHaveBeenCalledOnce();
-    expect(harness.unsubscribeByTokenHash).toHaveBeenCalledOnce();
-    expect(harness.unsubscribeByTokenHash).toHaveBeenCalledWith({
-      tokenHash: storedUnsubscribeTokenHash,
-      now: fixedActionNow.toISOString(),
-    });
-  });
+      expect(response?.status).toBe(302);
+      expect(response?.headers.get('location')).toBe(
+        testCase.path === 'abgemeldet'
+          ? `https://example.invalid/erinnerungen/abgemeldet?state=${testCase.state}`
+          : 'https://example.invalid/erinnerungen/ungueltig?source=unsubscribe&reason=invalid'
+      );
+      expect(harness.calls).toEqual(['now', 'load', 'unsubscribe']);
+      expect(harness.loadUnsubscribeSubscriptionById).toHaveBeenCalledOnce();
+      expect(harness.unsubscribeByTokenHash).toHaveBeenCalledOnce();
+      expect(harness.unsubscribeByTokenHash).toHaveBeenCalledWith({
+        tokenHash: storedUnsubscribeTokenHash,
+        now: fixedActionNow.toISOString(),
+      });
+    }
+  );
 
   it.each([
     { status: 'already_unsubscribed' as const, expectedText: 'Bereits abgemeldet' },
     { status: 'invalid' as const, expectedText: 'Abmeldung fehlgeschlagen' },
-  ])('renders the unsubscribe $status fallback response without configured redirects', async (testCase) => {
-    const unsubscribeResult: WasteEmailReminderUnsubscribeResult =
-      testCase.status === 'invalid'
-        ? { status: 'invalid' }
-        : {
-            status: 'already_unsubscribed',
-            subscriptionId: 'subscription-1',
-            locationLabel: 'Perleberg, Ackerstr. 12',
-          };
-    const harness = createReminderActionHarness({ unsubscribeResult });
+  ])(
+    'renders the unsubscribe $status fallback response without configured redirects',
+    async (testCase) => {
+      const unsubscribeResult: WasteEmailReminderUnsubscribeResult =
+        testCase.status === 'invalid'
+          ? { status: 'invalid' }
+          : {
+              status: 'already_unsubscribed',
+              subscriptionId: 'subscription-1',
+              locationLabel: 'Perleberg, Ackerstr. 12',
+            };
+      const harness = createReminderActionHarness({ unsubscribeResult });
 
-    const response = await invokeReminderAction({
-      handler: harness.handler,
-      pathname: reminderActionFallbackConfig.unsubscribePath,
-      query: { token: createSignedUnsubscribeToken() },
-      reminderConfig: reminderActionFallbackConfig,
-    });
+      const response = await invokeReminderAction({
+        handler: harness.handler,
+        pathname: reminderActionFallbackConfig.unsubscribePath,
+        query: { token: createSignedUnsubscribeToken() },
+        reminderConfig: reminderActionFallbackConfig,
+      });
 
-    expect(response?.status).toBe(200);
-    await expect(response?.text()).resolves.toContain(testCase.expectedText);
-  });
+      expect(response?.status).toBe(200);
+      await expect(response?.text()).resolves.toContain(testCase.expectedText);
+    }
+  );
 
   it('returns null for unrelated paths after resolving the fixed time only', async () => {
     const harness = createReminderActionHarness();

@@ -1,4 +1,7 @@
-import type { WasteTourRecord, WasteTourValidityBulkUpdateInput } from '@sva/plugin-sdk';
+import type {
+  WasteTourRecord,
+  WasteTourValidityBulkUpdateInput,
+} from '@sva/waste-management-contracts';
 
 import { WasteToursValidityDialog } from './waste-management.tours-validity-dialog.js';
 

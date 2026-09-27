@@ -1,13 +1,15 @@
 import type {
   StudioJobProgress,
   StudioJobResultArtifact,
+  MailDispatchPayload,
+  MailTransportConfig,
+} from '@sva/core';
+import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementExportJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
   WasteManagementMaterializeEmailRemindersJobInput,
-  MailDispatchPayload,
-  MailTransportConfig,
   WasteManagementProcessEmailReminderOutboxJobInput,
   WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementResetJobInput,
@@ -15,7 +17,7 @@ import type {
   WasteManagementSyncMainserverJobInput,
   WasteManagementSyncWasteTypesJobInput,
   WasteManagementEnrichPostalCodesJobInput,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { MailDispatchMessage } from '@sva/mail-runtime';
 import type {
   loadDefaultExternalInterfaceRecord,

@@ -5,9 +5,10 @@ import {
   type WasteFractionReminderCount,
   type WasteFractionReminderConfig,
   type WasteFractionReminderSlot,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
-const defaultFractionReminderLeadDays = wasteManagementMasterDataContract.fractionReminderLeadDayMin;
+const defaultFractionReminderLeadDays =
+  wasteManagementMasterDataContract.fractionReminderLeadDayMin;
 
 export const createDefaultReminderChannels = (): WasteFractionReminderConfig['channels'] => ({
   push: false,
@@ -25,8 +26,11 @@ type NormalizeFractionReminderConfigOptions = {
 const getReminderSlotCount = (reminderCount: WasteFractionReminderCount): number =>
   reminderCount === 'twice' ? 2 : reminderCount === 'once' ? 1 : 0;
 
-const getReminderSlotId = (fractionId: string, channel: WasteFractionReminderChannel, index: number): string =>
-  `${fractionId}:${channel}:${index === 0 ? 'first' : 'second'}`;
+const getReminderSlotId = (
+  fractionId: string,
+  channel: WasteFractionReminderChannel,
+  index: number
+): string => `${fractionId}:${channel}:${index === 0 ? 'first' : 'second'}`;
 
 const normalizeReminderSlot = (
   fractionId: string,
@@ -35,7 +39,10 @@ const normalizeReminderSlot = (
   slot?: WasteFractionReminderSlot
 ): WasteFractionReminderSlot => {
   const maxLeadDays = slot?.maxLeadDays ?? defaultFractionReminderLeadDays;
-  const defaultLeadDays = Math.min(slot?.defaultLeadDays ?? defaultFractionReminderLeadDays, maxLeadDays);
+  const defaultLeadDays = Math.min(
+    slot?.defaultLeadDays ?? defaultFractionReminderLeadDays,
+    maxLeadDays
+  );
 
   return {
     id: slot?.id?.trim() || getReminderSlotId(fractionId, channel, index),

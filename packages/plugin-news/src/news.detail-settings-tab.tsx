@@ -1,7 +1,5 @@
-import {
-  formatDateTimeInEditorTimeZone,
-  type WasteManagementMasterDataOverview,
-} from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import {
   Checkbox,
@@ -31,7 +29,7 @@ export type NewsDetailSettingsTabProps = Readonly<{
   mode: 'create' | 'edit';
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
   scheduledPublicationField: ScheduledPublicationFieldState;
-  wasteOverview: WasteManagementMasterDataOverview | null;
+  wasteOverview: NewsWasteMasterDataOverview | null;
   wasteTargetingAvailability: WasteTargetingAvailability;
   onLoadWasteOverview: () => Promise<boolean>;
 }>;
@@ -85,7 +83,7 @@ function NewsPushNotificationCard({
   canSendPushNotification: boolean;
   publicationMode: NewsDetailFormValues['publicationMode'];
   pt: NewsDetailSettingsTabProps['pt'];
-  wasteOverview: WasteManagementMasterDataOverview | null;
+  wasteOverview: NewsWasteMasterDataOverview | null;
   wasteTargetingAvailability: WasteTargetingAvailability;
   onLoadWasteOverview: () => Promise<boolean>;
 }>) {

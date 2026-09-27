@@ -1,11 +1,8 @@
-import type { WasteFractionListFilter, WasteFractionRecord } from '@sva/core';
+import type { WasteFractionListFilter, WasteFractionRecord } from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
-import {
-  mapWasteFractionRow,
-  type WasteFractionRow,
-} from './master-data.fractions.shared.js';
+import { mapWasteFractionRow, type WasteFractionRow } from './master-data.fractions.shared.js';
 import {
   serializeReminderConfig,
   toLegacyReminderColumns,
@@ -153,7 +150,10 @@ WHERE id = $1::uuid;
 
 export const createWasteFractionRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteFractions' | 'getWasteFractionById' | 'upsertWasteFraction' | 'deleteWasteFraction'> => ({
+): Pick<
+  WasteMasterDataRepository,
+  'listWasteFractions' | 'getWasteFractionById' | 'upsertWasteFraction' | 'deleteWasteFraction'
+> => ({
   async listWasteFractions(filter) {
     const result = await executor.execute<WasteFractionRow>(buildFractionListStatement(filter));
     return result.rows.map(mapWasteFractionRow);

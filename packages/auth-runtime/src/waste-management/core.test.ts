@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { ExternalInterfaceConnectionCheckRecord } from '@sva/core';
 import type {
-  ExternalInterfaceConnectionCheckRecord,
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementSettingsRecord,
@@ -17,7 +17,7 @@ import type {
   WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 
 const sessionStore = vi.hoisted(() => ({

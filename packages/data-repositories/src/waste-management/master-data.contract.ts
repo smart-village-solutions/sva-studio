@@ -35,7 +35,7 @@ import type {
   WasteTourStatusBulkUpdateInput,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 const defineRepositoryMethod = <T extends (...args: any[]) => Promise<unknown>>() =>
   undefined as unknown as T;

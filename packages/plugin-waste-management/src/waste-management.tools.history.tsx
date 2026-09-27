@@ -1,5 +1,5 @@
-import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import { usePluginTranslation, type StudioJobResponse } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract, type WasteManagementHistoryOverview } from '@sva/waste-management-contracts';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';

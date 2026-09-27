@@ -1,4 +1,5 @@
-import { wasteManagementOperationsContract, type StudioJobStartRequest } from '@sva/core';
+import { type StudioJobStartRequest } from '@sva/core';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import { completeIdempotency, reserveIdempotency } from '../../iam-account-management/shared.js';
 import {

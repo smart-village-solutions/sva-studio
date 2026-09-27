@@ -7,16 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sva/studio-ui-react';
-import {
-  isWasteTourValidityApplicable,
-  resolveEditorLocale,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
+import { resolveEditorLocale, usePluginTranslation } from '@sva/plugin-sdk';
+import { isWasteTourValidityApplicable } from '@sva/waste-management-contracts';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { calculateTourOccurrenceEntriesForYear } from './waste-management.tours.presentation.js';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import type { WasteManagementSearchParams } from './search-params.js';
 import {
   TourYearCalendarDay,

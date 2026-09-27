@@ -33,6 +33,7 @@
     "@opentelemetry/sdk-node": "^0.219.0",
     "@sva/core": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
+    "@sva/waste-management-contracts": "workspace:*",
     "winston": "^3.19.0",
     "winston-transport": "^4.9.0"
   },

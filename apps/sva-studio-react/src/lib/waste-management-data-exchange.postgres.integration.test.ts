@@ -1,8 +1,8 @@
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
   serializeWasteManagementDataExchangeJson,
-  type ExternalInterfaceRecord,
   type WasteManagementDataExchangeRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { createHash } from 'node:crypto';
 import { strToU8, zipSync } from 'fflate';
 import { Pool } from 'pg';
@@ -58,31 +58,44 @@ const createDeps = (body: Uint8Array): WasteOperationRuntimeDeps => ({
   readBinarySource: async () => body,
 });
 
-const jsonBody = (input: Readonly<{
-  profileId: 'waste-management.fraktionen' | 'waste-management.touren';
-  records: readonly WasteManagementDataExchangeRecord[];
-}>): Uint8Array =>
-  strToU8(serializeWasteManagementDataExchangeJson({
-    profileId: input.profileId,
-    exportedAt: '2026-08-24T00:00:00.000Z',
-    records: input.records,
-  }));
+const jsonBody = (
+  input: Readonly<{
+    profileId: 'waste-management.fraktionen' | 'waste-management.touren';
+    records: readonly WasteManagementDataExchangeRecord[];
+  }>
+): Uint8Array =>
+  strToU8(
+    serializeWasteManagementDataExchangeJson({
+      profileId: input.profileId,
+      exportedAt: '2026-08-24T00:00:00.000Z',
+      records: input.records,
+    })
+  );
 
-const packageBody = (files: Readonly<Record<string, Readonly<{
-  profileId: 'waste-management.fraktionen' | 'waste-management.touren';
-  body: Uint8Array;
-}>>>): Uint8Array => {
+const packageBody = (
+  files: Readonly<
+    Record<
+      string,
+      Readonly<{
+        profileId: 'waste-management.fraktionen' | 'waste-management.touren';
+        body: Uint8Array;
+      }>
+    >
+  >
+): Uint8Array => {
   const profiles = Object.entries(files).map(([fileName, file]) => ({
     profileId: file.profileId,
     fileName,
     sha256: createHash('sha256').update(file.body).digest('hex'),
   }));
   return zipSync({
-    'manifest.json': strToU8(JSON.stringify({
-      formatVersion: '1.0.0',
-      pluginId: 'waste-management',
-      profiles,
-    })),
+    'manifest.json': strToU8(
+      JSON.stringify({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profiles,
+      })
+    ),
     ...Object.fromEntries(Object.entries(files).map(([fileName, file]) => [fileName, file.body])),
   });
 };
@@ -105,12 +118,14 @@ describe('Waste data exchange against PostgreSQL', () => {
   it('imports canonical data into an empty Waste database', async () => {
     const body = jsonBody({
       profileId: 'waste-management.fraktionen',
-      records: [{
-        entityType: 'fraction',
-        id: emptyDatabaseFractionId,
-        name: 'Bioabfall',
-        color: '#228833',
-      }],
+      records: [
+        {
+          entityType: 'fraction',
+          id: emptyDatabaseFractionId,
+          name: 'Bioabfall',
+          color: '#228833',
+        },
+      ],
     });
 
     const result = await importCanonicalWasteManagementJson({
@@ -135,19 +150,23 @@ describe('Waste data exchange against PostgreSQL', () => {
        VALUES ($1::uuid, 'Altpapier', 'PPK', '#112233', 'bestehend', false);`,
       [prefilledDatabaseFractionId]
     );
-    const body = strToU8(JSON.stringify({
-      formatVersion: '1.0.0',
-      pluginId: 'waste-management',
-      profileId: 'waste-management.fraktionen',
-      exportedAt: '2026-08-24T00:00:00.000Z',
-      records: [{
-        entityType: 'fraction',
-        id: prefilledDatabaseFractionId,
-        name: 'Papier',
-        pdfShortLabel: 'PAP',
-        color: '#334455',
-      }],
-    }));
+    const body = strToU8(
+      JSON.stringify({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId: 'waste-management.fraktionen',
+        exportedAt: '2026-08-24T00:00:00.000Z',
+        records: [
+          {
+            entityType: 'fraction',
+            id: prefilledDatabaseFractionId,
+            name: 'Papier',
+            pdfShortLabel: 'PAP',
+            color: '#334455',
+          },
+        ],
+      })
+    );
 
     const result = await importCanonicalWasteManagementJson({
       deps: createDeps(body),
@@ -168,13 +187,15 @@ describe('Waste data exchange against PostgreSQL', () => {
       'SELECT name, pdf_short_label, color, description, active FROM waste_fractions WHERE id = $1::uuid;',
       [prefilledDatabaseFractionId]
     );
-    expect(stored.rows).toEqual([{
-      name: 'Papier',
-      pdf_short_label: 'PAP',
-      color: '#334455',
-      description: 'bestehend',
-      active: false,
-    }]);
+    expect(stored.rows).toEqual([
+      {
+        name: 'Papier',
+        pdf_short_label: 'PAP',
+        color: '#334455',
+        description: 'bestehend',
+        active: false,
+      },
+    ]);
   });
 
   it('allocates collision-free fallback labels against the target database and import batch', async () => {
@@ -183,26 +204,28 @@ describe('Waste data exchange against PostgreSQL', () => {
        VALUES ($1::uuid, 'Bio', 'BIO', '#118811');`,
       [existingCollisionFractionId]
     );
-    const body = strToU8(JSON.stringify({
-      formatVersion: '1.0.0',
-      pluginId: 'waste-management',
-      profileId: 'waste-management.fraktionen',
-      exportedAt: '2026-08-24T00:00:00.000Z',
-      records: [
-        {
-          entityType: 'fraction',
-          id: firstCollisionFractionId,
-          name: 'Bioabfall',
-          color: '#228822',
-        },
-        {
-          entityType: 'fraction',
-          id: secondCollisionFractionId,
-          name: 'Biomüll',
-          color: '#338833',
-        },
-      ],
-    }));
+    const body = strToU8(
+      JSON.stringify({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId: 'waste-management.fraktionen',
+        exportedAt: '2026-08-24T00:00:00.000Z',
+        records: [
+          {
+            entityType: 'fraction',
+            id: firstCollisionFractionId,
+            name: 'Bioabfall',
+            color: '#228822',
+          },
+          {
+            entityType: 'fraction',
+            id: secondCollisionFractionId,
+            name: 'Biomüll',
+            color: '#338833',
+          },
+        ],
+      })
+    );
 
     await importCanonicalWasteManagementJson({
       deps: createDeps(body),
@@ -228,34 +251,40 @@ describe('Waste data exchange against PostgreSQL', () => {
   it('rolls back earlier profile writes when a later package profile is invalid', async () => {
     const fractions = jsonBody({
       profileId: 'waste-management.fraktionen',
-      records: [{
-        entityType: 'fraction',
-        id: rolledBackFractionId,
-        name: 'Restabfall',
-        pdfShortLabel: 'RES',
-        color: '#222222',
-      }],
+      records: [
+        {
+          entityType: 'fraction',
+          id: rolledBackFractionId,
+          name: 'Restabfall',
+          pdfShortLabel: 'RES',
+          color: '#222222',
+        },
+      ],
     });
     const tours = jsonBody({
       profileId: 'waste-management.touren',
-      records: [{
-        entityType: 'tour',
-        id: invalidTourId,
-        name: 'Ungültige Tour',
-        wasteFractionIds: [missingFractionId],
-      }],
+      records: [
+        {
+          entityType: 'tour',
+          id: invalidTourId,
+          name: 'Ungültige Tour',
+          wasteFractionIds: [missingFractionId],
+        },
+      ],
     });
     const body = packageBody({
       'fraktionen.json': { profileId: 'waste-management.fraktionen', body: fractions },
       'touren.json': { profileId: 'waste-management.touren', body: tours },
     });
 
-    await expect(importCanonicalWasteManagementPackage({
-      deps: createDeps(body),
-      instanceId,
-      blobRef: 'integration:test-package',
-      dryRun: false,
-    })).rejects.toThrow('missing_waste_data_reference');
+    await expect(
+      importCanonicalWasteManagementPackage({
+        deps: createDeps(body),
+        instanceId,
+        blobRef: 'integration:test-package',
+        dryRun: false,
+      })
+    ).rejects.toThrow('missing_waste_data_reference');
 
     const stored = await pool.query<{ count: string }>(
       'SELECT COUNT(*)::text AS count FROM waste_fractions WHERE id = $1::uuid;',

@@ -130,68 +130,11 @@ export type {
   IamContentStatus,
   StudioJobDetail,
   StudioJobResponse,
-  WasteCityRecord,
-  WasteCollectionLocationRecord,
-  WasteCustomRecurrencePresetRecord,
-  WasteCustomTourDate,
-  WasteDateShiftReasonType,
-  WasteFractionReminderChannel,
-  WasteFractionReminderChannelConfig,
-  WasteFractionReminderChannels,
-  WasteFractionReminderCount,
-  WasteFractionReminderConfig,
-  WasteFractionReminderSlot,
-  WasteFractionRecord,
-  WasteGlobalDateShiftRecord,
-  WasteHolidayRuleRecord,
-  WasteHolidayRuleScope,
-  WasteHolidayRuleStrategy,
-  WasteHolidayStateCode,
-  WasteHolidaySyncStatus,
-  WasteHouseNumberRecord,
-  WasteLocalizedTextRecord,
-  WasteLocationTourPickupDateImportPreview,
-  WasteLocationTourPickupDateRecord,
-  WasteLocationTourLinkBulkCreateResult,
-  WasteLocationTourLinkRecord,
-  WasteManagementCsvDelimiter,
-  WasteManagementApplyMigrationsJobInput,
-  WasteManagementHistoryOverview,
-  WasteManagementImportJobInput,
-  WasteManagementImportProfileCatalogEntry,
-  WasteManagementImportSourceFormat,
-  WasteManagementInitializeJobInput,
-  WasteManagementJobInput,
-  WasteManagementMaterializeEmailRemindersJobInput,
-  WasteManagementMasterDataOverview,
-  WasteManagementProcessEmailReminderOutboxJobInput,
-  WasteManagementProvisionTenantDatabaseJobInput,
-  WasteManagementResetJobInput,
-  WasteManagementSeedJobInput,
-  WasteManagementSyncMainserverJobInput,
-  WasteManagementSyncWasteTypesJobInput,
-  WasteManagementEmailReminderConfig,
-  WasteManagementSettingsInterfaceOption,
-  WasteManagementSettingsRecord,
-  WasteRegionRecord,
-  WasteStreetRecord,
-  WasteTourDateShiftFollowUpMode,
-  WasteTourDateShiftRecord,
-  WasteTourAssignmentRecord,
-  WasteTourRecord,
-  WasteTourRecurrence,
-  WasteTourValidityBulkUpdateInput,
-  WasteTourValidityBulkUpdateResult,
-  WasteTourValidityDateOperation,
 } from './public-api.js';
-export type * from './waste-collection-location-list-public-api.js';
-export type * from './waste-annual-tour-transfer.js';
 export * from './media-content-save-client.js';
 export * from './list-pagination.js';
 export * from './content-media-permissions.js';
-export * from './waste-tour-status-public-api.js';
-export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
-export { buildWasteStreetKey, isValidInstanceId, resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
+export { isValidInstanceId } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,
@@ -309,9 +252,6 @@ export {
   getHostMapGeocodingConfig,
   MapGeocodingClientError,
   usePluginTranslation,
-  wasteManagementImportCatalog,
-  wasteManagementMasterDataContract,
-  wasteManagementOperationsContract,
 } from './public-api.js';
 export * from './plugin-tenant-lifecycle.js';
 export * from './data-exchange-public-api.js';

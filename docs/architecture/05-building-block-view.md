@@ -42,7 +42,7 @@ Abhängigkeiten des aktuellen Systems.
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
    - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung
    - generische Plattformverträge für Studio-Jobs wie Jobstatus, Jobdetail, Jobstart, Jobquelle (`plugin|host`) und Importphasen
-   - baut framework-agnostisch das vollständige `wasteTypes`-Static-Content-Artefakt aus aktiven Fraktionen und den beiden explizit aktivierten Störungstypen, inklusive reservierter Schlüssel, stabiler Sortierung und inhaltsbasiertem Versionshash
+   - enthält keine Waste-Fachverträge oder Waste-Exports; generische Job- und IAM-Grundtypen bleiben hier
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
@@ -166,8 +166,10 @@ Abhängigkeiten des aktuellen Systems.
 
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
+- `@sva/waste-management-contracts` besitzt die browserfähigen Waste-Verträge und reinen Fachfunktionen einschließlich `wasteTypes`-Static-Content, Importprofilen, Jahreswechselregeln und Kalenderausgabe; der Node-basierte PDF-Renderer liegt im Server-Subpath `./pdf`. Core und Plugin-SDK reichen die Fachverträge nicht weiter
+- die bestehende `@sva/waste-management-runtime` bleibt in diesem Lieferabschnitt Owner der Waste-Jobs; die Verlagerung von HTTP-Handlern und Fachpersistenz folgt getrennt
 - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen
-- kontextuelle Ausweichtermin-Aktionen in Tourenliste, Jahreskalender und Terminlogik verwenden dieselbe route-basierte Erfassungsansicht in einem neuen Browser-Tab; die reine Auswahl zwischen jährlicher Grundregel und jahresbezogener Ausnahme gehört framework-agnostisch zu `@sva/core`
+- kontextuelle Ausweichtermin-Aktionen in Tourenliste, Jahreskalender und Terminlogik verwenden dieselbe route-basierte Erfassungsansicht in einem neuen Browser-Tab; die reine Auswahl zwischen jährlicher Grundregel und jahresbezogener Ausnahme gehört framework-agnostisch zu `@sva/waste-management-contracts`
 - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
 - verwaltet Touren mit dem gemeinsamen Statusvertrag `draft | published | archived`; Einzel- und atomare Mehrfachänderungen verwenden denselben expliziten Zielstatus, während nur `published` operative Verbraucher speist
@@ -405,7 +407,7 @@ Abhängigkeiten des aktuellen Systems.
 - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
 - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
 - trennt in der vollständigen Standortansicht Kalender-/Dialog-Ownership vom konkreten Action-Hub; Reminder-Slot-Auswahl und lokaler Panel-/Formularzustand bleiben app-lokal, während Fraktionsfilter und PDF-Download weiterhin aus dem gemeinsamen Standortmodell gespeist werden
-- kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür bewusst gemeinsame Workspace-Verträge aus `@sva/core`, `@sva/data-repositories` und `@sva/waste-management-contracts/unsubscribe-token`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
+- kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür gemeinsame Waste-Verträge aus `@sva/waste-management-contracts` sowie generische Verträge aus `@sva/core` und `@sva/data-repositories`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
 - besitzt zusätzlich eine eigene produktive Node-Runtime unter `src/server/**`, die das gebaute Frontend statisch ausliefert und die öffentlichen Read-Endpunkte `/api/public-waste/*` lokal bedient
 - projiziert über `/api/public-waste/locations` aktive öffentlich auswählbare Abholorte mit vorhandenen IDs, Originalnamen und direkt nutzbarer `calendarQuery`; fehlende Regionen bleiben als `municipality: null` sichtbar, ohne Fallback oder Schreibzugriff
 - hält die Kalender-Repository-Fassade stabil, trennt darunter aber parametrisierte SQL-/I/O-Ownership in `public-waste-calendar-loader.server.ts` von der I/O-freien Normalisierung in `public-waste-calendar-loader.projection.ts` und der Einsatz-Zusammenführung in `public-waste-calendar-loader.assignments.ts`; die zeilenförmigen internen Datenverträge bleiben app-lokal
@@ -462,7 +464,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/core` -> `@sva/iam-core` fuer verbliebene gemeinsame IAM-Vertragstypen waehrend der Hard-Cut-Migration
 - `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
 - `apps/sva-studio-react` -> `@sva/waste-management-runtime/server` für Waste-Jobs sowie `@sva/waste-management-contracts/unsubscribe-token` für signierte Abmeldetoken
-- `apps/public-waste-calendar-web` -> `@sva/core`, `@sva/data-repositories`, `@sva/waste-management-contracts/unsubscribe-token`; die App hält ihren öffentlichen UI- und Node-Laufzeitpfad lokal und lädt für Tokenoperationen weder die hostseitige Waste-Job-Runtime noch den browserseitigen Waste-Plugin-/UI-Abhängigkeitsbaum
+- `apps/public-waste-calendar-web` -> `@sva/core` für generische Verträge, `@sva/waste-management-contracts` für Waste-Fachverträge und `@sva/data-repositories`; die App hält ihren öffentlichen UI- und Node-Laufzeitpfad lokal und lädt für Tokenoperationen weder die hostseitige Waste-Job-Runtime noch den browserseitigen Waste-Plugin-/UI-Abhängigkeitsbaum
 - `apps/*` -> keine direkten Quellimporte aus anderen Anwendungen; gemeinsame Verträge werden über owning Workspace-Packages konsumiert
 
 ### Schichtregel für Plugins

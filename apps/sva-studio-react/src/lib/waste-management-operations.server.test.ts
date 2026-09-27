@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ExcelJS from 'exceljs';
-import type { ExternalInterfaceRecord, WastePdfStaticSettingsRecord } from '@sva/core';
+import type { ExternalInterfaceRecord } from '@sva/core';
+import type { WastePdfStaticSettingsRecord } from '@sva/waste-management-contracts';
 import { protectField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';

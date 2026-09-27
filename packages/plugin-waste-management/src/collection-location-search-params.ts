@@ -1,7 +1,7 @@
 import type {
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 const sortModes = ['address', 'addressWithRegion'] as const;
 const sortDirections = ['asc', 'desc'] as const;

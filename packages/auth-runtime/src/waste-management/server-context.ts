@@ -13,7 +13,7 @@ import {
   saveExternalInterfaceConnectionCheck,
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
-import { wasteManagementOperationsContract } from '@sva/core';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { buildLogContext } from '../log-context.js';

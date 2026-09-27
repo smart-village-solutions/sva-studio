@@ -3,7 +3,7 @@ import type {
   WasteHouseNumberRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import type { ReactNode } from 'react';
 import { Badge, Button } from '@sva/studio-ui-react';
@@ -61,10 +61,17 @@ const HierarchySection = <TRecord,>({
     {records.length ? (
       <div className="space-y-2">
         {records.map((record, index) => (
-          <div key={index} className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3">
+          <div
+            key={index}
+            className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3"
+          >
             <div className="space-y-1">
               <p className="text-sm font-medium">{renderLabel(record)}</p>
-              {renderMeta ? <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">{renderMeta(record)}</div> : null}
+              {renderMeta ? (
+                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                  {renderMeta(record)}
+                </div>
+              ) : null}
             </div>
             <Button type="button" variant="secondary" size="sm" onClick={() => onOpenEdit(record)}>
               {editLabel}
@@ -82,7 +89,10 @@ const WasteRegionHierarchySection = ({
   regions,
   onOpenCreateRegion,
   onOpenEditRegion,
-}: Pick<WasteMasterDataLocationsHierarchyProps, 'regions' | 'onOpenCreateRegion' | 'onOpenEditRegion'>) => {
+}: Pick<
+  WasteMasterDataLocationsHierarchyProps,
+  'regions' | 'onOpenCreateRegion' | 'onOpenEditRegion'
+>) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -92,7 +102,9 @@ const WasteRegionHierarchySection = ({
       emptyLabel={pt('masterData.locationsWorkspace.emptyRegions')}
       records={regions}
       renderLabel={(region) => region.name}
-      renderMeta={(region) => <Badge variant="outline">{pt('masterData.regions.regionId', { value: region.id })}</Badge>}
+      renderMeta={(region) => (
+        <Badge variant="outline">{pt('masterData.regions.regionId', { value: region.id })}</Badge>
+      )}
       onOpenCreate={onOpenCreateRegion}
       onOpenEdit={onOpenEditRegion}
       createLabel={pt('masterData.regions.actions.openCreate')}
@@ -105,7 +117,10 @@ const WasteCityHierarchySection = ({
   cities,
   onOpenCreateCity,
   onOpenEditCity,
-}: Pick<WasteMasterDataLocationsHierarchyProps, 'cities' | 'onOpenCreateCity' | 'onOpenEditCity'>) => {
+}: Pick<
+  WasteMasterDataLocationsHierarchyProps,
+  'cities' | 'onOpenCreateCity' | 'onOpenEditCity'
+>) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -118,7 +133,11 @@ const WasteCityHierarchySection = ({
       renderMeta={(city) => (
         <>
           <Badge variant="outline">{pt('masterData.cities.cityId', { value: city.id })}</Badge>
-          {city.regionId ? <Badge variant="outline">{pt('masterData.cities.regionId', { value: city.regionId })}</Badge> : null}
+          {city.regionId ? (
+            <Badge variant="outline">
+              {pt('masterData.cities.regionId', { value: city.regionId })}
+            </Badge>
+          ) : null}
         </>
       )}
       onOpenCreate={onOpenCreateCity}
@@ -133,7 +152,10 @@ const WasteStreetHierarchySection = ({
   streets,
   onOpenCreateStreet,
   onOpenEditStreet,
-}: Pick<WasteMasterDataLocationsHierarchyProps, 'streets' | 'onOpenCreateStreet' | 'onOpenEditStreet'>) => {
+}: Pick<
+  WasteMasterDataLocationsHierarchyProps,
+  'streets' | 'onOpenCreateStreet' | 'onOpenEditStreet'
+>) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -146,7 +168,9 @@ const WasteStreetHierarchySection = ({
       renderMeta={(street) => (
         <>
           <Badge variant="outline">{pt('masterData.streets.streetId', { value: street.id })}</Badge>
-          <Badge variant="outline">{pt('masterData.streets.cityId', { value: street.cityId })}</Badge>
+          <Badge variant="outline">
+            {pt('masterData.streets.cityId', { value: street.cityId })}
+          </Badge>
         </>
       )}
       onOpenCreate={onOpenCreateStreet}
@@ -161,7 +185,10 @@ const WasteHouseNumberHierarchySection = ({
   houseNumbers,
   onOpenCreateHouseNumber,
   onOpenEditHouseNumber,
-}: Pick<WasteMasterDataLocationsHierarchyProps, 'houseNumbers' | 'onOpenCreateHouseNumber' | 'onOpenEditHouseNumber'>) => {
+}: Pick<
+  WasteMasterDataLocationsHierarchyProps,
+  'houseNumbers' | 'onOpenCreateHouseNumber' | 'onOpenEditHouseNumber'
+>) => {
   const pt = usePluginTranslation('wasteManagement');
 
   return (
@@ -173,8 +200,12 @@ const WasteHouseNumberHierarchySection = ({
       renderLabel={(houseNumber) => houseNumber.number}
       renderMeta={(houseNumber) => (
         <>
-          <Badge variant="outline">{pt('masterData.houseNumbers.houseNumberId', { value: houseNumber.id })}</Badge>
-          <Badge variant="outline">{pt('masterData.houseNumbers.streetId', { value: houseNumber.streetId })}</Badge>
+          <Badge variant="outline">
+            {pt('masterData.houseNumbers.houseNumberId', { value: houseNumber.id })}
+          </Badge>
+          <Badge variant="outline">
+            {pt('masterData.houseNumbers.streetId', { value: houseNumber.streetId })}
+          </Badge>
         </>
       )}
       onOpenCreate={onOpenCreateHouseNumber}

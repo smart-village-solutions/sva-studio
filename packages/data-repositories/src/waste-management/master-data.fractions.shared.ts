@@ -3,7 +3,7 @@ import type {
   WasteFractionReminderChannel,
   WasteFractionReminderChannelConfig,
   WasteFractionReminderSlot,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import { normalizeLocalizedTextRecord } from './master-data.shared.js';
 
@@ -97,7 +97,9 @@ const normalizeReminderSlot = (value: unknown): WasteFractionReminderSlot | null
   };
 };
 
-const normalizeReminderChannelConfig = (value: unknown): WasteFractionReminderChannelConfig | undefined => {
+const normalizeReminderChannelConfig = (
+  value: unknown
+): WasteFractionReminderChannelConfig | undefined => {
   if (!isRecord(value) || !Array.isArray(value.slots)) {
     return undefined;
   }
@@ -105,12 +107,17 @@ const normalizeReminderChannelConfig = (value: unknown): WasteFractionReminderCh
   return {
     slots: value.slots
       .map(normalizeReminderSlot)
-      .filter((slot): slot is NonNullable<ReturnType<typeof normalizeReminderSlot>> => slot !== null),
+      .filter(
+        (slot): slot is NonNullable<ReturnType<typeof normalizeReminderSlot>> => slot !== null
+      ),
   };
 };
 
 const buildReminderSlotsFromLegacy = (
-  row: Pick<WasteFractionRow, 'id' | 'reminder_count' | 'first_reminder_max_lead_days' | 'second_reminder_max_lead_days'>,
+  row: Pick<
+    WasteFractionRow,
+    'id' | 'reminder_count' | 'first_reminder_max_lead_days' | 'second_reminder_max_lead_days'
+  >,
   channel: WasteFractionReminderChannel
 ): readonly WasteFractionReminderSlot[] => {
   const slots: WasteFractionReminderSlot[] = [];
@@ -141,7 +148,9 @@ const hasEnabledReminderChannel = (
 const isEmptyReminderConfig = (config: WasteFractionRecord['reminderConfig']): boolean =>
   config.reminderCount === 'none' && !hasEnabledReminderChannel(config.channels);
 
-const normalizeReminderConfigFromLegacy = (row: WasteFractionRow): WasteFractionRecord['reminderConfig'] => {
+const normalizeReminderConfigFromLegacy = (
+  row: WasteFractionRow
+): WasteFractionRecord['reminderConfig'] => {
   if (!row.reminder_count || row.reminder_count === 'none') {
     return emptyWasteFractionReminderConfig;
   }
@@ -161,11 +170,15 @@ const normalizeReminderConfigFromLegacy = (row: WasteFractionRow): WasteFraction
     channels,
     ...(channels.push ? { push: { slots: buildReminderSlotsFromLegacy(row, 'push') } } : {}),
     ...(channels.email ? { email: { slots: buildReminderSlotsFromLegacy(row, 'email') } } : {}),
-    ...(channels.calendar ? { calendar: { slots: buildReminderSlotsFromLegacy(row, 'calendar') } } : {}),
+    ...(channels.calendar
+      ? { calendar: { slots: buildReminderSlotsFromLegacy(row, 'calendar') } }
+      : {}),
   };
 };
 
-const normalizeReminderConfigFromJson = (value: unknown): WasteFractionRecord['reminderConfig'] | null => {
+const normalizeReminderConfigFromJson = (
+  value: unknown
+): WasteFractionRecord['reminderConfig'] | null => {
   if (!isRecord(value)) {
     return null;
   }
@@ -199,9 +212,15 @@ const normalizeReminderConfigFromJson = (value: unknown): WasteFractionRecord['r
   return {
     reminderCount,
     channels,
-    ...(channels.push ? { push: normalizeReminderChannelConfig(candidate.push) ?? { slots: [] } } : {}),
-    ...(channels.email ? { email: normalizeReminderChannelConfig(candidate.email) ?? { slots: [] } } : {}),
-    ...(channels.calendar ? { calendar: normalizeReminderChannelConfig(candidate.calendar) ?? { slots: [] } } : {}),
+    ...(channels.push
+      ? { push: normalizeReminderChannelConfig(candidate.push) ?? { slots: [] } }
+      : {}),
+    ...(channels.email
+      ? { email: normalizeReminderChannelConfig(candidate.email) ?? { slots: [] } }
+      : {}),
+    ...(channels.calendar
+      ? { calendar: normalizeReminderChannelConfig(candidate.calendar) ?? { slots: [] } }
+      : {}),
   };
 };
 

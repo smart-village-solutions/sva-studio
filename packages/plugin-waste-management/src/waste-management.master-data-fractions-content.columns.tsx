@@ -1,26 +1,39 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { cn, type StudioColumnDef } from '@sva/studio-ui-react';
 
-const createFractionIdentityColumn = (pt: ReturnType<typeof usePluginTranslation>): StudioColumnDef<WasteFractionRecord> => ({
+const createFractionIdentityColumn = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioColumnDef<WasteFractionRecord> => ({
   id: 'nameWithContainerSize',
   header: pt('masterData.fractions.table.nameWithContainerSize'),
   mobileLabel: pt('masterData.fractions.table.nameWithContainerSize'),
   sortable: true,
   sortLabel: pt('masterData.fractions.table.nameWithContainerSize'),
-  sortValue: (fraction) => `${fraction.name.toLocaleLowerCase()}|${fraction.containerSize?.toLocaleLowerCase() ?? ''}`,
-  cell: (fraction) => <p className="font-medium">{fraction.containerSize ? `${fraction.name} (${fraction.containerSize})` : fraction.name}</p>,
+  sortValue: (fraction) =>
+    `${fraction.name.toLocaleLowerCase()}|${fraction.containerSize?.toLocaleLowerCase() ?? ''}`,
+  cell: (fraction) => (
+    <p className="font-medium">
+      {fraction.containerSize ? `${fraction.name} (${fraction.containerSize})` : fraction.name}
+    </p>
+  ),
 });
 
-const createFractionShortLabelColumn = (pt: ReturnType<typeof usePluginTranslation>): StudioColumnDef<WasteFractionRecord> => ({
+const createFractionShortLabelColumn = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioColumnDef<WasteFractionRecord> => ({
   id: 'pdfShortLabel',
   header: pt('masterData.fractions.table.shortLabel'),
   mobileLabel: pt('masterData.fractions.table.shortLabel'),
   cell: (fraction) =>
-    fraction.pdfShortLabel ? <span className="font-mono text-sm uppercase">{fraction.pdfShortLabel}</span> : null,
+    fraction.pdfShortLabel ? (
+      <span className="font-mono text-sm uppercase">{fraction.pdfShortLabel}</span>
+    ) : null,
 });
 
-const createFractionColorColumn = (pt: ReturnType<typeof usePluginTranslation>): StudioColumnDef<WasteFractionRecord> => ({
+const createFractionColorColumn = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioColumnDef<WasteFractionRecord> => ({
   id: 'color',
   header: pt('masterData.fractions.table.color'),
   mobileLabel: pt('masterData.fractions.table.color'),
@@ -39,7 +52,9 @@ const createFractionColorColumn = (pt: ReturnType<typeof usePluginTranslation>):
   ),
 });
 
-const createFractionDescriptionColumn = (pt: ReturnType<typeof usePluginTranslation>): StudioColumnDef<WasteFractionRecord> => ({
+const createFractionDescriptionColumn = (
+  pt: ReturnType<typeof usePluginTranslation>
+): StudioColumnDef<WasteFractionRecord> => ({
   id: 'description',
   header: pt('masterData.fractions.fields.description'),
   mobileLabel: pt('masterData.fractions.fields.description'),
@@ -60,7 +75,10 @@ const createFractionStatusColumn = ({
 }: {
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly saving?: boolean;
-  readonly onToggleFractionStatus: (fraction: WasteFractionRecord, active: boolean) => void | Promise<void>;
+  readonly onToggleFractionStatus: (
+    fraction: WasteFractionRecord,
+    active: boolean
+  ) => void | Promise<void>;
 }): StudioColumnDef<WasteFractionRecord> => ({
   id: 'status',
   header: pt('masterData.fractions.table.status'),
@@ -107,7 +125,10 @@ export const useFractionColumns = ({
   onToggleFractionStatus,
 }: {
   readonly saving?: boolean;
-  readonly onToggleFractionStatus: (fraction: WasteFractionRecord, active: boolean) => void | Promise<void>;
+  readonly onToggleFractionStatus: (
+    fraction: WasteFractionRecord,
+    active: boolean
+  ) => void | Promise<void>;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   return [

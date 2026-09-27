@@ -1,4 +1,4 @@
-import * as wasteOutput from '@sva/core';
+import * as wasteOutput from '@sva/waste-management-contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';

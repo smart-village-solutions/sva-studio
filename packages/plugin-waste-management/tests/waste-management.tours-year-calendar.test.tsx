@@ -10,6 +10,10 @@ vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
   resolveEditorLocale: () => (document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE'),
+}));
+
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/waste-management-contracts')>()),
   isWasteTourValidityApplicable: (tour: { recurrence?: string; customRecurrenceId?: string }) =>
     Boolean(tour.customRecurrenceId) ||
     ['weekly', 'biweekly', 'fourweekly', 'yearly'].includes(tour.recurrence ?? ''),

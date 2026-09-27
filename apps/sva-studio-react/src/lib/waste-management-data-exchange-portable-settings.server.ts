@@ -12,7 +12,7 @@ import {
   wasteManagementMasterDataContract,
   type WasteManagementDataExchangeRecord,
   type WasteHolidayStateCode,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { saveExternalInterfaceRecord } from '@sva/data-repositories/server';
 
 import { loadSelectedWasteInterfaceRecord } from './waste-management-operations.shared.js';
@@ -42,7 +42,9 @@ export const persistPortableWasteSettings = async (
   portableRecord: WasteManagementDataExchangeRecord
 ): Promise<void> => {
   const calendarWebUrl = hasOwnProperty(portableRecord, 'calendarWebUrl')
-    ? typeof portableRecord.calendarWebUrl === 'string' ? portableRecord.calendarWebUrl : undefined
+    ? typeof portableRecord.calendarWebUrl === 'string'
+      ? portableRecord.calendarWebUrl
+      : undefined
     : readWasteManagementCalendarWebUrl(portableInterface.publicConfig);
   const holidayStateCode = readPortableHolidayStateCode(
     portableRecord,
@@ -56,10 +58,14 @@ export const persistPortableWasteSettings = async (
       pdfBrandingAssetUrl: readWasteManagementPdfBrandingAssetUrl(portableInterface.publicConfig),
       pdfContactBlock: readWasteManagementPdfContactBlock(portableInterface.publicConfig),
       emailReminderConfig: readWasteManagementEmailReminderConfig(portableInterface.publicConfig),
-      emailReminderSigningSecret: readWasteManagementEmailReminderSigningSecret(portableInterface.publicConfig),
+      emailReminderSigningSecret: readWasteManagementEmailReminderSigningSecret(
+        portableInterface.publicConfig
+      ),
       holidayStateCode,
       lastHolidaySyncStatus: readWasteManagementHolidaySyncStatus(portableInterface.publicConfig),
-      lastSuccessfulHolidaySyncAt: readWasteManagementLastSuccessfulHolidaySyncAt(portableInterface.publicConfig),
+      lastSuccessfulHolidaySyncAt: readWasteManagementLastSuccessfulHolidaySyncAt(
+        portableInterface.publicConfig
+      ),
     }),
   });
 };

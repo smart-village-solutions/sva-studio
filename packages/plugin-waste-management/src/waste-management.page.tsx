@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { usePluginTranslation, type WasteMainserverSyncStatusRecord } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { type WasteMainserverSyncStatusRecord } from '@sva/waste-management-contracts';
 import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 
 import {

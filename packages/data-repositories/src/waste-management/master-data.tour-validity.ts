@@ -2,7 +2,7 @@ import type {
   WasteTourRecord,
   WasteTourValidityBulkUpdateInput,
   WasteTourValidityRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { SqlStatement } from '../iam/repositories/types.js';
 

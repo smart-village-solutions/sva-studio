@@ -48,11 +48,6 @@ vi.mock('../src/waste-management.api.js', async () => ({
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${JSON.stringify(values)}` : key,
-  wasteManagementOperationsContract: {
-    jobTypeIds: {
-      importData: 'waste-management.import-data',
-    },
-  },
 }));
 
 vi.mock('../src/waste-management.page.support.js', async () => {
@@ -194,13 +189,7 @@ describe('WasteToolsImportSection', () => {
       },
     });
 
-    await waitFor(() => {
-      expect(
-        screen.getAllByText('tools.imports.wizard.steps.validation.title').length
-      ).toBeGreaterThan(0);
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'tools.actions.previewImport' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'tools.actions.previewImport' }));
 
     await waitFor(() => {
       expect(callbacks.onRunPreview).toHaveBeenCalledTimes(1);

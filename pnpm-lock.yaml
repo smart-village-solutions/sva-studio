@@ -518,6 +518,9 @@ importers:
       '@sva/studio-module-iam':
         specifier: workspace:*
         version: link:../studio-module-iam
+      '@sva/waste-management-contracts':
+        specifier: workspace:*
+        version: link:../waste-management-contracts
       cookie-es:
         specifier: ^3.1.1
         version: 3.1.1
@@ -648,6 +651,9 @@ importers:
       '@sva/server-runtime':
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts':
+        specifier: workspace:*
+        version: link:../waste-management-contracts
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -707,6 +713,9 @@ importers:
       '@sva/server-runtime':
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts':
+        specifier: workspace:*
+        version: link:../waste-management-contracts
       postcss:
         specifier: 8.5.23
         version: 8.5.23
@@ -738,6 +747,9 @@ importers:
       '@sva/server-runtime':
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts':
+        specifier: workspace:*
+        version: link:../waste-management-contracts
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -1402,6 +1414,9 @@ importers:
       '@sva/monitoring-client':
         specifier: workspace:*
         version: file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts':
+        specifier: workspace:*
+        version: link:../waste-management-contracts
       winston:
         specifier: ^3.19.0
         version: 3.19.0
@@ -1569,6 +1584,9 @@ importers:
 
   packages/waste-management-contracts:
     dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1576,6 +1594,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
+      fast-check:
+        specifier: ^3.23.2
+        version: 3.23.2
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.2.1(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -5635,6 +5656,9 @@ packages:
 
   '@sva/sva-mainserver@file:packages/sva-mainserver':
     resolution: {directory: packages/sva-mainserver, type: directory}
+
+  '@sva/waste-management-contracts@file:packages/waste-management-contracts':
+    resolution: {directory: packages/waste-management-contracts, type: directory}
 
   '@tabler/icons-react@3.46.0':
     resolution: {integrity: sha512-CCm7xJWhDT2PH4ZIFkP6AgYKtVhq0gpYkjUN+GVh1AzmIQaa77OW0bQPBPQiTE0PsXMR9oSxFqA3qBglzPyrVQ==}
@@ -14522,6 +14546,7 @@ snapshots:
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam': file:packages/studio-module-iam
+      '@sva/waste-management-contracts': file:packages/waste-management-contracts
       cookie-es: 3.1.1
       file-type: 22.0.1
       graphile-worker: 0.16.6(typescript@6.0.3)
@@ -14555,6 +14580,7 @@ snapshots:
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/studio-module-iam': file:packages/studio-module-iam
+      '@sva/waste-management-contracts': file:packages/waste-management-contracts
       cookie-es: 3.1.1
       file-type: 22.0.1
       graphile-worker: 0.16.6(typescript@7.0.2)
@@ -14583,6 +14609,7 @@ snapshots:
     dependencies:
       '@sva/core': file:packages/core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts': file:packages/waste-management-contracts
       pg: 8.22.0
     transitivePeerDependencies:
       - '@opentelemetry/core'
@@ -14607,6 +14634,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts': file:packages/waste-management-contracts
       postcss: 8.5.23
       sanitize-html: 2.17.7
       zod: 4.4.3
@@ -14619,6 +14647,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts': file:packages/waste-management-contracts
       zod: 4.4.3
     transitivePeerDependencies:
       - '@opentelemetry/core'
@@ -14671,6 +14700,7 @@ snapshots:
       '@opentelemetry/sdk-node': 0.219.0(@opentelemetry/api@1.9.1)
       '@sva/core': file:packages/core
       '@sva/monitoring-client': file:packages/monitoring-client(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
+      '@sva/waste-management-contracts': file:packages/waste-management-contracts
       winston: 3.19.0
       winston-transport: 4.9.0
     transitivePeerDependencies:
@@ -14726,6 +14756,11 @@ snapshots:
       - pg-native
       - supports-color
       - typescript
+
+  '@sva/waste-management-contracts@file:packages/waste-management-contracts':
+    dependencies:
+      '@sva/core': file:packages/core
+      '@sva/plugin-sdk': file:packages/plugin-sdk
 
   '@tabler/icons-react@3.46.0(react@19.2.8)':
     dependencies:
@@ -15654,7 +15689,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@6.0.3))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1(bufferutil@4.1.0))(jsdom@29.1.1)(msw@2.15.0(@types/node@25.9.1)(typescript@7.0.2))(vite@8.2.1(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   '@vitest/expect@4.1.10':
     dependencies:

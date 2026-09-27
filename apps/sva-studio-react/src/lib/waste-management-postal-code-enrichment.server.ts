@@ -1,4 +1,4 @@
-import type { WasteCityRecord, WasteStreetRecord } from '@sva/core';
+import type { WasteCityRecord, WasteStreetRecord } from '@sva/waste-management-contracts';
 
 import { withWasteClient } from './waste-management-operations.shared.js';
 import type {

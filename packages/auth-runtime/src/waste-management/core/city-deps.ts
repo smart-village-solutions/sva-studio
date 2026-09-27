@@ -1,4 +1,4 @@
-import type { WasteCityRecord } from '@sva/core';
+import type { WasteCityRecord } from '@sva/waste-management-contracts';
 
 export type WasteCityHandlerDeps = Readonly<{
   saveWasteCity?: (

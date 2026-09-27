@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { MailDispatchPayload, WasteManagementEmailReminderConfig } from '@sva/core';
+import type { MailDispatchPayload } from '@sva/core';
+import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
 
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 import { createWasteEmailReminderRepository } from './email-reminders.js';
@@ -337,20 +338,24 @@ describe('waste email reminder repository', () => {
       })
     ).resolves.toBe(true);
 
-    await expect(repository.markOutboxEntrySent({
-      outboxId: 'outbox-1',
-      now: '2026-06-14T19:05:00.000Z',
-      leasedAt: '2026-06-14T19:00:00.000Z',
-      providerMessageId: 'provider-1',
-    })).resolves.toBe(true);
+    await expect(
+      repository.markOutboxEntrySent({
+        outboxId: 'outbox-1',
+        now: '2026-06-14T19:05:00.000Z',
+        leasedAt: '2026-06-14T19:00:00.000Z',
+        providerMessageId: 'provider-1',
+      })
+    ).resolves.toBe(true);
 
-    await expect(repository.markOutboxEntryFailed({
-      outboxId: 'outbox-2',
-      now: '2026-06-14T19:10:00.000Z',
-      leasedAt: '2026-06-14T19:00:00.000Z',
-      errorMessage: 'smtp_down',
-      retryAt: '2026-06-14T19:25:00.000Z',
-    })).resolves.toBe(true);
+    await expect(
+      repository.markOutboxEntryFailed({
+        outboxId: 'outbox-2',
+        now: '2026-06-14T19:10:00.000Z',
+        leasedAt: '2026-06-14T19:00:00.000Z',
+        errorMessage: 'smtp_down',
+        retryAt: '2026-06-14T19:25:00.000Z',
+      })
+    ).resolves.toBe(true);
 
     expect(statements[0]?.text).toContain('FOR UPDATE SKIP LOCKED');
     expect(statements[0]?.text).toContain("status = 'processing'");

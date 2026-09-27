@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioTableValueAction } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';

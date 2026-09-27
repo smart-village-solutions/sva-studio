@@ -1,6 +1,7 @@
-import type { StudioJobProgress, WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
+import type { StudioJobProgress } from '@sva/core';
+import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/waste-management-contracts';
+import type { PluginTenantLifecycleExecutionResult } from '@sva/plugin-sdk';
 import type {
-  PluginTenantLifecycleExecutionResult,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementExportJobInput,
   WasteManagementImportJobInput,
@@ -12,7 +13,7 @@ import type {
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,
   WasteManagementSyncWasteTypesJobInput,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 export const createProgress = (input: {
   readonly completedSteps: number;
@@ -79,7 +80,7 @@ export type WasteManagementOperationRuntime = {
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
-    readonly artifacts?: readonly import('@sva/plugin-sdk').StudioJobResultArtifact[];
+    readonly artifacts?: readonly import('@sva/core').StudioJobResultArtifact[];
   }>;
   readonly seedData: (
     instanceId: string,

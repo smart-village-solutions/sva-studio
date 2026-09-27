@@ -4,7 +4,7 @@ import {
   type WasteAnnualTourTransferCreateInput,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';

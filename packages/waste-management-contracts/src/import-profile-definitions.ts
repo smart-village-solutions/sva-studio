@@ -1,9 +1,6 @@
-import {
-  definePluginImportProfiles,
-  wasteManagementDataProfiles,
-  wasteManagementOperationsContract,
-  type PluginImportProfileDefinition,
-} from '@sva/plugin-sdk';
+import { definePluginImportProfiles, type PluginImportProfileDefinition } from '@sva/plugin-sdk';
+import { wasteManagementDataProfiles } from './waste-management-data-profiles.js';
+import { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
 
 const pluginNamespace = wasteManagementOperationsContract.pluginId;
 

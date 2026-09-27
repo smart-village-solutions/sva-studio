@@ -1,15 +1,12 @@
+import type { StudioJobResponse } from '@sva/plugin-sdk';
 import type {
-  StudioJobResponse,
   WasteLocationTourPickupDateImportPreview,
   WasteManagementImportProfileCatalogEntry,
   WasteManagementImportSourceFormat,
   WasteManagementSettingsRecord,
-} from '@sva/plugin-sdk';
-import {
-  formatTechnicalDateTimeInEditorTimeZone,
-  usePluginTranslation,
-  wasteManagementOperationsContract,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
+import { formatTechnicalDateTimeInEditorTimeZone, usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import {
   Alert,
   AlertDescription,

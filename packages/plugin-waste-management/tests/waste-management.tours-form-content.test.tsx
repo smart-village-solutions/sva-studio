@@ -6,6 +6,10 @@ import { WasteToursFormContent } from '../src/waste-management.tours-form-conten
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
+}));
+
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/waste-management-contracts')>()),
   isWasteTourValidityApplicable: (tour: { recurrence?: string; customRecurrenceId?: string }) =>
     Boolean(tour.customRecurrenceId) ||
     ['weekly', 'biweekly', 'fourweekly', 'yearly'].includes(tour.recurrence ?? ''),

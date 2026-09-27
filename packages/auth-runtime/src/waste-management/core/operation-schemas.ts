@@ -2,7 +2,7 @@ import {
   wasteManagementDataProfileIds,
   wasteManagementOperationsContract,
   type WasteManagementDataProfileId,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { z } from 'zod';
 
 const wasteManagementDataProfileIdSchema = z.enum(
@@ -21,9 +21,11 @@ const startInitializeSchema = z.object({
   targetSchema: z.string().trim().min(1).optional(),
 });
 
-const pluginOperationInputRefSchema = z.string().regex(
-  /^plugin-operation-input:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-);
+const pluginOperationInputRefSchema = z
+  .string()
+  .regex(
+    /^plugin-operation-input:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  );
 
 const startImportSchema = z.object({
   importProfileId: z.string().trim().min(1),

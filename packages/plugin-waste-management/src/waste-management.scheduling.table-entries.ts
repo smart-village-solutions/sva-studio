@@ -3,7 +3,7 @@ import type {
   WasteHolidayRuleRecord,
   WasteTourRecord,
   WasteTourDateShiftRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import type {
   WasteManagementSchedulingEntryType,
@@ -11,11 +11,12 @@ import type {
   WasteManagementShiftContext,
 } from './search-params.js';
 
-const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+const matchesSearch = (value: string, query: string) =>
+  value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 
 const matchesShiftContext = (
   search: WasteManagementShiftContext,
-  kind: 'holiday' | 'global' | 'tour',
+  kind: 'holiday' | 'global' | 'tour'
 ): boolean => search === 'all' || search === kind;
 
 const editorDateOnlyFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -73,7 +74,8 @@ export type WasteSchedulingTableEntry =
 const createTourNameMap = (availableTours: readonly WasteTourRecord[]) =>
   new Map(availableTours.map((tour) => [tour.id, tour.name]));
 
-const resolveTourName = (tourNames: ReadonlyMap<string, string>, tourId: string) => tourNames.get(tourId) ?? tourId;
+const resolveTourName = (tourNames: ReadonlyMap<string, string>, tourId: string) =>
+  tourNames.get(tourId) ?? tourId;
 
 const createHolidayEntry = (rule: WasteHolidayRuleRecord): WasteSchedulingTableEntry => ({
   id: rule.id,
@@ -89,7 +91,7 @@ const createHolidayEntry = (rule: WasteHolidayRuleRecord): WasteSchedulingTableE
 const createGlobalEntry = (
   shift: WasteGlobalDateShiftRecord,
   tourNames: ReadonlyMap<string, string>,
-  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
+  pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string
 ): WasteSchedulingTableEntry => {
   const affectedTours = shift.tourIds?.length
     ? shift.tourIds.map((tourId) => resolveTourName(tourNames, tourId)).join(', ')
@@ -110,7 +112,7 @@ const createGlobalEntry = (
 
 const createTourEntry = (
   shift: WasteTourDateShiftRecord,
-  tourNames: ReadonlyMap<string, string>,
+  tourNames: ReadonlyMap<string, string>
 ): WasteSchedulingTableEntry => {
   const tourName = resolveTourName(tourNames, shift.tourId);
 
@@ -127,7 +129,10 @@ const createTourEntry = (
   };
 };
 
-const compareSchedulingEntries = (left: WasteSchedulingTableEntry, right: WasteSchedulingTableEntry) => {
+const compareSchedulingEntries = (
+  left: WasteSchedulingTableEntry,
+  right: WasteSchedulingTableEntry
+) => {
   if (left.originalDate !== right.originalDate) {
     return left.originalDate.localeCompare(right.originalDate);
   }
@@ -137,19 +142,24 @@ const compareSchedulingEntries = (left: WasteSchedulingTableEntry, right: WasteS
   return left.sortLabel.localeCompare(right.sortLabel);
 };
 
-const matchesHolidayEntry = (entry: Extract<WasteSchedulingTableEntry, { kind: 'holiday' }>, search: WasteManagementSearchParams) => {
+const matchesHolidayEntry = (
+  entry: Extract<WasteSchedulingTableEntry, { kind: 'holiday' }>,
+  search: WasteManagementSearchParams
+) => {
   if (search.tourId) {
     return false;
   }
   if (!search.q) {
     return true;
   }
-  return [entry.rule.holidayName, entry.rule.holidayDate, entry.rule.stateCode].some((value) => matchesSearch(value, search.q));
+  return [entry.rule.holidayName, entry.rule.holidayDate, entry.rule.stateCode].some((value) =>
+    matchesSearch(value, search.q)
+  );
 };
 
 const matchesShiftEntry = (
   entry: Extract<WasteSchedulingTableEntry, { kind: 'global' | 'tour' }>,
-  search: WasteManagementSearchParams,
+  search: WasteManagementSearchParams
 ) => {
   if (entry.kind === 'global' && search.tourId && !entry.shift.tourIds?.includes(search.tourId)) {
     return false;
@@ -196,14 +206,16 @@ export const createSchedulingTableEntries = ({
 
 export const filterSchedulingTableEntries = (
   entries: readonly WasteSchedulingTableEntry[],
-  search: WasteManagementSearchParams,
+  search: WasteManagementSearchParams
 ): readonly WasteSchedulingTableEntry[] =>
   entries.filter((entry) => {
     if (!matchesShiftContext(search.shiftContext, entry.kind)) {
       return false;
     }
 
-    return entry.kind === 'holiday' ? matchesHolidayEntry(entry, search) : matchesShiftEntry(entry, search);
+    return entry.kind === 'holiday'
+      ? matchesHolidayEntry(entry, search)
+      : matchesShiftEntry(entry, search);
   });
 
 export const findSchedulingTableEntry = ({
@@ -215,4 +227,6 @@ export const findSchedulingTableEntry = ({
   readonly schedulingEntryType?: WasteManagementSchedulingEntryType;
   readonly schedulingEntryId?: string;
 }) =>
-  entries.find((entry) => entry.entryType === schedulingEntryType && entry.id === schedulingEntryId);
+  entries.find(
+    (entry) => entry.entryType === schedulingEntryType && entry.id === schedulingEntryId
+  );

@@ -9,7 +9,7 @@ import type {
   WasteTourRecord,
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteLocationCoverageDataStatus } from './use-waste-master-data-state.js';
 

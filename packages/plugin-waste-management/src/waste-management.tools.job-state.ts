@@ -1,5 +1,5 @@
 import type { StudioJobResponse } from '@sva/plugin-sdk';
-import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import { useEffect, useRef } from 'react';
 
 import {

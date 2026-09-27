@@ -6,7 +6,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview } from './waste-management.api.js';
@@ -14,20 +14,36 @@ import type { WasteManagementSearchParams } from './search-params.js';
 
 type PluginTranslation = ReturnType<typeof usePluginTranslation>;
 
-const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
-const matchesStatusFilter = (status: WasteManagementSearchParams['status'], active: boolean | undefined): boolean =>
+const matchesSearch = (value: string, query: string) =>
+  value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+const matchesStatusFilter = (
+  status: WasteManagementSearchParams['status'],
+  active: boolean | undefined
+): boolean =>
   status === 'all' || active === undefined ? true : status === 'active' ? active : !active;
-const findRegionName = (regions: readonly WasteRegionRecord[], regionId?: string): string | undefined =>
+const findRegionName = (
+  regions: readonly WasteRegionRecord[],
+  regionId?: string
+): string | undefined =>
   regionId ? regions.find((region) => region.id === regionId)?.name : undefined;
 const findCityName = (cities: readonly WasteCityRecord[], cityId: string): string =>
   cities.find((city) => city.id === cityId)?.name ?? cityId;
-const findStreetName = (streets: readonly WasteStreetRecord[], streetId?: string): string | undefined =>
+const findStreetName = (
+  streets: readonly WasteStreetRecord[],
+  streetId?: string
+): string | undefined =>
   streetId ? streets.find((street) => street.id === streetId)?.name : undefined;
-const findHouseNumberValue = (houseNumbers: readonly WasteHouseNumberRecord[], houseNumberId?: string): string | undefined =>
+const findHouseNumberValue = (
+  houseNumbers: readonly WasteHouseNumberRecord[],
+  houseNumberId?: string
+): string | undefined =>
   houseNumberId ? houseNumbers.find((entry) => entry.id === houseNumberId)?.number : undefined;
 
 export const wasteMasterDataPresentation = {
-  filterFractions: (fractions: readonly WasteFractionRecord[], search: WasteManagementSearchParams): readonly WasteFractionRecord[] =>
+  filterFractions: (
+    fractions: readonly WasteFractionRecord[],
+    search: WasteManagementSearchParams
+  ): readonly WasteFractionRecord[] =>
     fractions.filter((fraction) => {
       if (!matchesStatusFilter(search.fractionsStatus ?? 'all', fraction.active)) {
         return false;
@@ -38,22 +54,48 @@ export const wasteMasterDataPresentation = {
             .filter((value): value is string => typeof value === 'string' && value.length > 0)
             .some((value) => matchesSearch(value, search.q));
     }),
-  filterRegions: (regions: readonly WasteRegionRecord[], search: WasteManagementSearchParams): readonly WasteRegionRecord[] =>
+  filterRegions: (
+    regions: readonly WasteRegionRecord[],
+    search: WasteManagementSearchParams
+  ): readonly WasteRegionRecord[] =>
     regions.filter((region) =>
-      search.regionId ? region.id === search.regionId : search.q ? matchesSearch(region.name, search.q) : true
+      search.regionId
+        ? region.id === search.regionId
+        : search.q
+          ? matchesSearch(region.name, search.q)
+          : true
     ),
-  filterCities: (cities: readonly WasteCityRecord[], search: WasteManagementSearchParams): readonly WasteCityRecord[] =>
+  filterCities: (
+    cities: readonly WasteCityRecord[],
+    search: WasteManagementSearchParams
+  ): readonly WasteCityRecord[] =>
     cities.filter((city) => {
       if (search.cityId && city.id !== search.cityId) return false;
       if (search.regionId && city.regionId !== search.regionId) return false;
-      return search.cityId || search.regionId ? true : search.q ? matchesSearch(city.name, search.q) : true;
+      return search.cityId || search.regionId
+        ? true
+        : search.q
+          ? matchesSearch(city.name, search.q)
+          : true;
     }),
-  filterStreets: (streets: readonly WasteStreetRecord[], search: WasteManagementSearchParams): readonly WasteStreetRecord[] =>
-    streets.filter((street) => (search.cityId ? street.cityId === search.cityId : search.q ? matchesSearch(street.name, search.q) : true)),
+  filterStreets: (
+    streets: readonly WasteStreetRecord[],
+    search: WasteManagementSearchParams
+  ): readonly WasteStreetRecord[] =>
+    streets.filter((street) =>
+      search.cityId
+        ? street.cityId === search.cityId
+        : search.q
+          ? matchesSearch(street.name, search.q)
+          : true
+    ),
   filterHouseNumbers: (
     houseNumbers: readonly WasteHouseNumberRecord[],
     search: WasteManagementSearchParams
-  ): readonly WasteHouseNumberRecord[] => houseNumbers.filter((houseNumber) => (search.q ? matchesSearch(houseNumber.number, search.q) : true)),
+  ): readonly WasteHouseNumberRecord[] =>
+    houseNumbers.filter((houseNumber) =>
+      search.q ? matchesSearch(houseNumber.number, search.q) : true
+    ),
   filterCollectionLocations: (
     locations: readonly WasteCollectionLocationRecord[],
     search: WasteManagementSearchParams,
@@ -67,7 +109,9 @@ export const wasteMasterDataPresentation = {
       if (search.regionId && location.regionId !== search.regionId) return false;
       if (search.cityId && location.cityId !== search.cityId) return false;
       if (search.tourId) {
-        return data.locationTourLinks.some((link) => link.locationId === location.id && link.tourId === search.tourId);
+        return data.locationTourLinks.some(
+          (link) => link.locationId === location.id && link.tourId === search.tourId
+        );
       }
       if (!search.q) {
         return true;
@@ -84,14 +128,19 @@ export const wasteMasterDataPresentation = {
     }),
   formatCollectionLocationLabel: (
     pt: PluginTranslation,
-    data: Pick<WasteManagementMasterDataOverview, 'regions' | 'cities' | 'streets' | 'houseNumbers'>,
+    data: Pick<
+      WasteManagementMasterDataOverview,
+      'regions' | 'cities' | 'streets' | 'houseNumbers'
+    >,
     location: WasteCollectionLocationRecord
   ): string =>
     [
       findRegionName(data.regions, location.regionId),
       findCityName(data.cities, location.cityId),
-      findStreetName(data.streets, location.streetId) ?? pt('masterData.collectionLocations.meta.allStreets'),
-      findHouseNumberValue(data.houseNumbers, location.houseNumberId) ?? pt('masterData.collectionLocations.meta.allHouseNumbers'),
+      findStreetName(data.streets, location.streetId) ??
+        pt('masterData.collectionLocations.meta.allStreets'),
+      findHouseNumberValue(data.houseNumbers, location.houseNumberId) ??
+        pt('masterData.collectionLocations.meta.allHouseNumbers'),
     ]
       .filter((value): value is string => Boolean(value))
       .join(' / '),
@@ -114,5 +163,6 @@ export const wasteMasterDataPresentation = {
       label: wasteMasterDataPresentation.formatCollectionLocationLabel(pt, fallback, location),
     }));
   },
-  mapBulkTourId: (tours: readonly WasteTourRecord[]): string => (tours.length === 1 ? tours[0]?.id ?? '' : ''),
+  mapBulkTourId: (tours: readonly WasteTourRecord[]): string =>
+    tours.length === 1 ? (tours[0]?.id ?? '') : '',
 };

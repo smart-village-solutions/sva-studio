@@ -1,5 +1,6 @@
-import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
+import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementMasterDataContract } from '@sva/waste-management-contracts';
 import { Input, Select, StudioField } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 

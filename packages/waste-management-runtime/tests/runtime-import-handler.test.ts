@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PluginJobHandlerContext } from '@sva/plugin-sdk';
-import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import { createImportDataHandler } from '../src/runtime-import-handler.js';
 
@@ -60,7 +60,8 @@ describe('createImportDataHandler', () => {
       return {
         durationMs: 12,
         details: {
-          importProfileId: wasteManagementOperationsContract.importProfileIds.locationTourPickupDates,
+          importProfileId:
+            wasteManagementOperationsContract.importProfileIds.locationTourPickupDates,
           sourceFormat: 'text/csv',
           dryRun: false,
           rowCount: 12,

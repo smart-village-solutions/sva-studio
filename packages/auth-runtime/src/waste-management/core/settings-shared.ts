@@ -8,6 +8,8 @@ import {
 import {
   type ExternalInterfaceConnectionCheckRecord,
   type ExternalInterfaceRecord,
+} from '@sva/core';
+import {
   type WasteManagementDataSourceRecord,
   type WasteManagementSettingsInterfaceOption,
   type WasteManagementSettingsRecord,
@@ -20,7 +22,7 @@ import {
   readWasteManagementLastSuccessfulHolidaySyncAt,
   readWasteManagementPdfBrandingAssetUrl,
   readWasteManagementPdfContactBlock,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { WasteManagementHandlerDeps } from './types.js';
 

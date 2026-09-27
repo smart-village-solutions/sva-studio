@@ -13,28 +13,20 @@ import {
   resolveNewsWasteTargetOptions,
 } from './news.waste-targeting.js';
 
-const timestamp = '2026-08-12T10:00:00.000Z';
-
 describe('News Waste targeting', () => {
   const overview = {
     fractions: [],
-    regions: [{ id: 'r1', name: 'Nord', createdAt: timestamp, updatedAt: timestamp }],
+    regions: [{ id: 'r1', name: 'Nord' }],
     cities: [
       {
         id: 'c1',
         name: 'Musterstadt',
         postalCode: '12345',
         regionId: 'r1',
-        createdAt: timestamp,
-        updatedAt: timestamp,
       },
     ],
-    streets: [
-      { id: 's1', name: 'Hauptstraße', cityId: 'c1', createdAt: timestamp, updatedAt: timestamp },
-    ],
-    houseNumbers: [
-      { id: 'h1', number: '1', streetId: 's1', createdAt: timestamp, updatedAt: timestamp },
-    ],
+    streets: [{ id: 's1', name: 'Hauptstraße', cityId: 'c1' }],
+    houseNumbers: [{ id: 'h1', number: '1', streetId: 's1' }],
     collectionLocations: [
       {
         id: 'l1',
@@ -43,8 +35,6 @@ describe('News Waste targeting', () => {
         streetId: 's1',
         houseNumberId: 'h1',
         active: true,
-        createdAt: timestamp,
-        updatedAt: timestamp,
       },
       {
         id: 'l2',
@@ -53,16 +43,12 @@ describe('News Waste targeting', () => {
         streetId: 's1',
         houseNumberId: 'h1',
         active: true,
-        createdAt: timestamp,
-        updatedAt: timestamp,
       },
       {
         id: 'inactive',
         cityId: 'c1',
         streetId: 's1',
         active: false,
-        createdAt: timestamp,
-        updatedAt: timestamp,
       },
     ],
     locationTourLinks: [],
@@ -115,8 +101,6 @@ describe('News Waste targeting', () => {
             id: 's-all',
             name: 'Alle Straßen',
             cityId: 'c1',
-            createdAt: timestamp,
-            updatedAt: timestamp,
           },
         ],
         houseNumbers: [
@@ -125,37 +109,27 @@ describe('News Waste targeting', () => {
             id: 'h-all-street',
             number: 'Alle Hausnummern',
             streetId: 's1',
-            createdAt: timestamp,
-            updatedAt: timestamp,
           },
           {
             id: 'h-all-city',
             number: 'Alle Hausnummern',
             streetId: 's-all',
-            createdAt: timestamp,
-            updatedAt: timestamp,
           },
         ],
         collectionLocations: [
           {
-            id: 'l-all-street',
             cityId: 'c1',
             regionId: 'r1',
             streetId: 's1',
             houseNumberId: 'h-all-street',
             active: true,
-            createdAt: timestamp,
-            updatedAt: timestamp,
           },
           {
-            id: 'l-all-city',
             cityId: 'c1',
             regionId: 'r1',
             streetId: 's-all',
             houseNumberId: 'h-all-city',
             active: true,
-            createdAt: timestamp,
-            updatedAt: timestamp,
           },
         ],
       }).map((option) => option.key.street)

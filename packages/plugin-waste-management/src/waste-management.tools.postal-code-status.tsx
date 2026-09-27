@@ -1,5 +1,6 @@
 import type { StudioJobResponse } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import { Link } from '@tanstack/react-router';
 
 const activeStatuses = new Set(['queued', 'running', 'retrying']);
@@ -78,7 +79,10 @@ const PostalCodeFailedStatus = ({
   const geocodingDisabled = isGeocodingDisabledError(job);
   const timedOut = isTimeoutError(job);
   return (
-    <section role="alert" className="space-y-1 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+    <section
+      role="alert"
+      className="space-y-1 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
+    >
       <h3 className="text-sm font-semibold">{pt('tools.postalCodes.errorTitle')}</h3>
       <p className="text-sm text-muted-foreground">
         {geocodingDisabled ? (

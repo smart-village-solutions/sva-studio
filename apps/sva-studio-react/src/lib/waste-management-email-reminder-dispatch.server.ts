@@ -1,10 +1,9 @@
+import { type MailDispatchPayload, type MailTransportConfig } from '@sva/core';
 import {
-  type MailDispatchPayload,
-  type MailTransportConfig,
   type WasteCollectionLocationRecord,
   type WasteFractionRecord,
   type WasteManagementEmailReminderConfig,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { MailDispatchMessage, MailDispatchMessageAddress } from '@sva/mail-runtime';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 

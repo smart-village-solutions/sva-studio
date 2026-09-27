@@ -1,6 +1,11 @@
-import type { WasteFractionRecord, WasteFractionReminderSlot } from '@sva/core';
+import type {
+  WasteFractionRecord,
+  WasteFractionReminderSlot,
+} from '@sva/waste-management-contracts';
 
-export const serializeReminderConfig = (reminderConfig: WasteFractionRecord['reminderConfig']): string =>
+export const serializeReminderConfig = (
+  reminderConfig: WasteFractionRecord['reminderConfig']
+): string =>
   JSON.stringify({
     reminder_count: reminderConfig.reminderCount,
     channels: reminderConfig.channels,
@@ -49,11 +54,18 @@ export const toLegacyReminderColumns = (reminderConfig: WasteFractionRecord['rem
   return {
     reminderCount: reminderConfig.reminderCount,
     firstReminderMaxLeadDays:
-      reminderConfig.reminderCount === 'none' ? null : firstAvailableSlots[0]?.maxLeadDays ?? null,
+      reminderConfig.reminderCount === 'none'
+        ? null
+        : (firstAvailableSlots[0]?.maxLeadDays ?? null),
     secondReminderMaxLeadDays:
-      reminderConfig.reminderCount === 'twice' ? firstAvailableSlots[1]?.maxLeadDays ?? null : null,
-    reminderChannelPushEnabled: reminderConfig.reminderCount === 'none' ? false : reminderConfig.channels.push,
-    reminderChannelEmailEnabled: reminderConfig.reminderCount === 'none' ? false : reminderConfig.channels.email,
-    reminderChannelCalendarEnabled: reminderConfig.reminderCount === 'none' ? false : reminderConfig.channels.calendar,
+      reminderConfig.reminderCount === 'twice'
+        ? (firstAvailableSlots[1]?.maxLeadDays ?? null)
+        : null,
+    reminderChannelPushEnabled:
+      reminderConfig.reminderCount === 'none' ? false : reminderConfig.channels.push,
+    reminderChannelEmailEnabled:
+      reminderConfig.reminderCount === 'none' ? false : reminderConfig.channels.email,
+    reminderChannelCalendarEnabled:
+      reminderConfig.reminderCount === 'none' ? false : reminderConfig.channels.calendar,
   };
 };

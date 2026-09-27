@@ -1,13 +1,12 @@
+import type { StudioJobDetail, StudioJobResponse } from '@sva/plugin-sdk';
 import type {
-  StudioJobDetail,
-  StudioJobResponse,
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
   WasteLocationTourPickupDateRecord,
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourAssignmentRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementGlobalDateShiftInput,

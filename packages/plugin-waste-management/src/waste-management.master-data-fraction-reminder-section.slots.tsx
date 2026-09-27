@@ -1,11 +1,9 @@
 import type {
   WasteFractionReminderChannel,
   WasteFractionReminderConfig,
-} from '@sva/plugin-sdk';
-import {
-  usePluginTranslation,
-  wasteManagementMasterDataContract,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementMasterDataContract } from '@sva/waste-management-contracts';
 import { Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { normalizeFractionReminderConfig } from './waste-management.master-data.fraction-reminder-config.js';

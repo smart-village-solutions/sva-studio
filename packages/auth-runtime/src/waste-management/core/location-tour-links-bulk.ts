@@ -1,4 +1,4 @@
-import { type WasteLocationTourLinkBulkCreateResult } from '@sva/core';
+import { type WasteLocationTourLinkBulkCreateResult } from '@sva/waste-management-contracts';
 import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';

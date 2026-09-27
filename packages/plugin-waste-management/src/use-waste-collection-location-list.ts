@@ -2,7 +2,7 @@ import type {
   WasteCollectionLocationPageSize,
   WasteCollectionLocationQuery,
   WasteCollectionLocationSelectionFilter,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { useCallback, useEffect, useRef } from 'react';
 
 import {

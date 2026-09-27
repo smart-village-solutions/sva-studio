@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { Checkbox } from '@sva/studio-ui-react';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -35,7 +35,9 @@ export const WasteSchedulingTourSelection = ({
         );
       })
     ) : (
-      <p className="text-sm text-muted-foreground">{pt('scheduling.global.fields.noToursAvailable')}</p>
+      <p className="text-sm text-muted-foreground">
+        {pt('scheduling.global.fields.noToursAvailable')}
+      </p>
     )}
   </div>
 );

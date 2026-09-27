@@ -1,4 +1,4 @@
-import type { WasteHolidayRuleRecord } from '@sva/core';
+import type { WasteHolidayRuleRecord } from '@sva/waste-management-contracts';
 
 export type CalendarEntryRow = {
   readonly link_id: string;

@@ -1,4 +1,4 @@
-import type { WasteStreetRecord } from '@sva/plugin-sdk';
+import type { WasteStreetRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Dialog,
@@ -24,9 +24,12 @@ import {
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
 
-const withDefaultStreetId = (form: HouseNumberFormState, streets: readonly WasteStreetRecord[]): HouseNumberFormState => ({
+const withDefaultStreetId = (
+  form: HouseNumberFormState,
+  streets: readonly WasteStreetRecord[]
+): HouseNumberFormState => ({
   ...form,
-  streetId: form.streetId || (streets.length === 1 ? streets[0]?.id ?? '' : ''),
+  streetId: form.streetId || (streets.length === 1 ? (streets[0]?.id ?? '') : ''),
 });
 
 export const HouseNumberDialog = ({
@@ -119,10 +122,22 @@ const HouseNumberDialogForm = ({
           editTitle={pt('masterData.houseNumbers.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
+        <form
+          className="space-y-4"
+          onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)}
+          noValidate
+        >
           <StatusNotice message={message} />
           <StudioFormSummaryErrors errors={collectSummaryErrors([numberField])} />
-          <HouseNumberDialogFields clearErrors={clearErrors} control={control} numberField={numberField} onChange={onChange} pt={pt} register={register} streets={streets} />
+          <HouseNumberDialogFields
+            clearErrors={clearErrors}
+            control={control}
+            numberField={numberField}
+            onChange={onChange}
+            pt={pt}
+            register={register}
+            streets={streets}
+          />
           <MasterDataDialogActions
             cancelLabel={pt('masterData.houseNumbers.actions.cancel')}
             mode={mode}
@@ -168,7 +183,10 @@ const HouseNumberDialogFields = ({
         })}
       />
     </StudioField>
-    <StudioField id="waste-house-number-street-id" label={pt('masterData.houseNumbers.fields.streetId')}>
+    <StudioField
+      id="waste-house-number-street-id"
+      label={pt('masterData.houseNumbers.fields.streetId')}
+    >
       <Controller
         name="streetId"
         control={control}

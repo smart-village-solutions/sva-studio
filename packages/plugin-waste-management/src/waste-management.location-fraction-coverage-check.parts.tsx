@@ -1,4 +1,4 @@
-import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
+import type { WasteCollectionLocationRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 import { IconEdit, IconRoute } from '@tabler/icons-react';

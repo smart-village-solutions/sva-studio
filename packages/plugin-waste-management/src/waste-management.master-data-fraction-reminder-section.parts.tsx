@@ -1,4 +1,4 @@
-import type { WasteFractionReminderChannel } from '@sva/plugin-sdk';
+import type { WasteFractionReminderChannel } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Select, StudioField } from '@sva/studio-ui-react';
 
@@ -6,20 +6,28 @@ import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { normalizeFractionReminderConfig } from './waste-management.master-data.fraction-reminder-config.js';
 import type { FractionFormState } from './waste-management.master-data.forms.js';
 
-export const reminderChannels = ['push', 'email', 'calendar'] as const satisfies readonly WasteFractionReminderChannel[];
+export const reminderChannels = [
+  'push',
+  'email',
+  'calendar',
+] as const satisfies readonly WasteFractionReminderChannel[];
 
 const buildReminderCountPatch = (
   reminderCount: FractionFormState['reminderConfig']['reminderCount'],
   form: FractionFormState
 ): Partial<FractionFormState> => ({
-  reminderConfig: normalizeFractionReminderConfig(form.id, {
-    ...form.reminderConfig,
-    reminderCount,
-    channels:
-      reminderCount === 'none'
-        ? { push: false, email: false, calendar: false }
-        : form.reminderConfig.channels,
-  }, { preserveReminderCountWithoutChannels: true }),
+  reminderConfig: normalizeFractionReminderConfig(
+    form.id,
+    {
+      ...form.reminderConfig,
+      reminderCount,
+      channels:
+        reminderCount === 'none'
+          ? { push: false, email: false, calendar: false }
+          : form.reminderConfig.channels,
+    },
+    { preserveReminderCountWithoutChannels: true }
+  ),
 });
 
 const reminderChannelFieldKeys: Record<WasteFractionReminderChannel, string> = {
@@ -135,10 +143,14 @@ export const FractionReminderChannels = ({
             description={pt(reminderChannelFieldHintKeys[channel])}
             onChange={(checked) =>
               onChange({
-                reminderConfig: normalizeFractionReminderConfig(form.id, {
-                  ...form.reminderConfig,
-                  channels: { ...form.reminderConfig.channels, [channel]: checked },
-                }, { preserveReminderCountWithoutChannels: true }),
+                reminderConfig: normalizeFractionReminderConfig(
+                  form.id,
+                  {
+                    ...form.reminderConfig,
+                    channels: { ...form.reminderConfig.channels, [channel]: checked },
+                  },
+                  { preserveReminderCountWithoutChannels: true }
+                ),
               })
             }
           />

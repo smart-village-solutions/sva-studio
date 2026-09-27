@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { WasteTourDateShiftFollowUpMode, WasteTourRecord } from '@sva/core';
+import type {
+  WasteTourDateShiftFollowUpMode,
+  WasteTourRecord,
+} from '@sva/waste-management-contracts';
 
 import {
   buildMaterializedLocationTourPickupDates,

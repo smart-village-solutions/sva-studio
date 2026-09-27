@@ -3,7 +3,7 @@ import type {
   WasteOutputLegendHint,
   WasteOutputPickupEntry,
 } from './waste-management-output.types.js';
-import { convertRichTextHtmlToPlainText } from './rich-text-plain-text.js';
+import { convertRichTextHtmlToPlainText } from '@sva/core';
 import {
   buildHolidayMap,
   formatIsoDate,

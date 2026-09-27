@@ -1,4 +1,7 @@
-import type { WasteTourAssignmentListFilter, WasteTourAssignmentRecord } from '@sva/core';
+import type {
+  WasteTourAssignmentListFilter,
+  WasteTourAssignmentRecord,
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';

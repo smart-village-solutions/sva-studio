@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from 'react';
 
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 

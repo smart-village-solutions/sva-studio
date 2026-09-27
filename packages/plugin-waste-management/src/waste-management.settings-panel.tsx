@@ -1,7 +1,7 @@
 import { startTransition, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState, useStudioSaveFeedback } from '@sva/studio-ui-react';
-import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
+import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
 
 import {
   getWasteManagementSettings,

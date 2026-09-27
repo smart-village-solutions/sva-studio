@@ -25,8 +25,8 @@ import {
   updateHostMediaAsset,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
-  type WasteManagementMasterDataOverview,
 } from '@sva/plugin-sdk';
+import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 import {
   addStudioDestructiveNavigationFeedback,
   Button,
@@ -343,8 +343,9 @@ export const NewsDetailPage = ({
   const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
-  const [wasteOverview, setWasteOverview] =
-    React.useState<WasteManagementMasterDataOverview | null>(null);
+  const [wasteOverview, setWasteOverview] = React.useState<NewsWasteMasterDataOverview | null>(
+    null
+  );
   const [wasteTargetingAvailability, setWasteTargetingAvailability] =
     React.useState<WasteTargetingAvailability>('idle');
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);

@@ -1,4 +1,7 @@
-import type { WasteDateShiftReasonType, WasteTourDateShiftFollowUpMode } from '@sva/core';
+import type {
+  WasteDateShiftReasonType,
+  WasteTourDateShiftFollowUpMode,
+} from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';

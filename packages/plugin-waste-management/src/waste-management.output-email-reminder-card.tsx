@@ -1,7 +1,7 @@
 import type {
   WasteManagementEmailReminderConfig,
   WasteManagementSettingsInterfaceOption,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
 import type { FormEventHandler } from 'react';
 

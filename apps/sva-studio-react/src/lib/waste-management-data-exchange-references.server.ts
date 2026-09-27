@@ -2,7 +2,7 @@ import {
   getWasteManagementDataProfile,
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { WasteMasterDataRepository } from '@sva/data-repositories';
 
 const loadReferenceIds = async (
@@ -10,15 +10,24 @@ const loadReferenceIds = async (
   entityType: string
 ): Promise<ReadonlySet<string>> => {
   switch (entityType) {
-    case 'fraction': return new Set((await repository.listWasteFractions()).map(({ id }) => id));
-    case 'region': return new Set((await repository.listWasteRegions()).map(({ id }) => id));
-    case 'city': return new Set((await repository.listWasteCities()).map(({ id }) => id));
-    case 'street': return new Set((await repository.listWasteStreets()).map(({ id }) => id));
-    case 'houseNumber': return new Set((await repository.listWasteHouseNumbers()).map(({ id }) => id));
-    case 'collectionLocation': return new Set((await repository.listWasteCollectionLocations()).map(({ id }) => id));
-    case 'recurrencePreset': return new Set((await repository.listWasteCustomRecurrencePresets()).map(({ id }) => id));
-    case 'tour': return new Set((await repository.listWasteTours()).map(({ id }) => id));
-    default: return new Set();
+    case 'fraction':
+      return new Set((await repository.listWasteFractions()).map(({ id }) => id));
+    case 'region':
+      return new Set((await repository.listWasteRegions()).map(({ id }) => id));
+    case 'city':
+      return new Set((await repository.listWasteCities()).map(({ id }) => id));
+    case 'street':
+      return new Set((await repository.listWasteStreets()).map(({ id }) => id));
+    case 'houseNumber':
+      return new Set((await repository.listWasteHouseNumbers()).map(({ id }) => id));
+    case 'collectionLocation':
+      return new Set((await repository.listWasteCollectionLocations()).map(({ id }) => id));
+    case 'recurrencePreset':
+      return new Set((await repository.listWasteCustomRecurrencePresets()).map(({ id }) => id));
+    case 'tour':
+      return new Set((await repository.listWasteTours()).map(({ id }) => id));
+    default:
+      return new Set();
   }
 };
 
@@ -49,7 +58,10 @@ export const validateWasteDataReferences = async (
     for (const field of definition.fields) {
       if (field.transfer !== 'included' || field.references === undefined) continue;
       if (!targetIds.has(field.references.entityType)) {
-        targetIds.set(field.references.entityType, await loadReferenceIds(repository, field.references.entityType));
+        targetIds.set(
+          field.references.entityType,
+          await loadReferenceIds(repository, field.references.entityType)
+        );
       }
     }
   }
@@ -61,8 +73,14 @@ export const validateWasteDataReferences = async (
       const ids = Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : [];
       for (const id of ids) {
         const entityType = field.references.entityType;
-        if (!sourceIds.get(entityType)?.has(id) && !packageSourceIds?.get(entityType)?.has(id) && !targetIds.get(entityType)?.has(id)) {
-          throw new Error(`missing_waste_data_reference:${record.entityType}:${String(record.id ?? 'singleton')}:${field.key}:${id}`);
+        if (
+          !sourceIds.get(entityType)?.has(id) &&
+          !packageSourceIds?.get(entityType)?.has(id) &&
+          !targetIds.get(entityType)?.has(id)
+        ) {
+          throw new Error(
+            `missing_waste_data_reference:${record.entityType}:${String(record.id ?? 'singleton')}:${field.key}:${id}`
+          );
         }
       }
     }

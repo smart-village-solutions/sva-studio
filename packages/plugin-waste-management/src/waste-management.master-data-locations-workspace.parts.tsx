@@ -4,7 +4,7 @@ import type {
   WasteHouseNumberRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import { WasteMasterDataLocationsHierarchy } from './waste-management.master-data-locations-hierarchy.js';
 import { WasteMasterDataLocationsOverview } from './waste-management.master-data-locations-overview.js';

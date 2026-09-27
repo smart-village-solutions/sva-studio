@@ -1,6 +1,15 @@
-import type { WasteCityRecord, WasteFractionRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCityRecord,
+  WasteFractionRecord,
+  WasteHouseNumberRecord,
+  WasteRegionRecord,
+  WasteStreetRecord,
+} from '@sva/waste-management-contracts';
 
-import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
+import {
+  wasteMasterDataFormDefaults,
+  wasteMasterDataFormMappers,
+} from './waste-management.master-data.forms.js';
 import type { WasteMasterDataState } from './use-waste-master-data-state.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
@@ -36,7 +45,7 @@ export const createWasteMasterDataEntityActions = (
     state.setCityDialogMode('create');
     state.setCityForm({
       ...wasteMasterDataFormDefaults.createCity(),
-      regionId: state.overview?.regions.length === 1 ? state.overview.regions[0]?.id ?? '' : '',
+      regionId: state.overview?.regions.length === 1 ? (state.overview.regions[0]?.id ?? '') : '',
     });
     state.setMessage(null);
     state.setCityDialogOpen(true);
@@ -51,7 +60,9 @@ export const createWasteMasterDataEntityActions = (
     state.setStreetDialogMode('create');
     state.setStreetForm({
       ...wasteMasterDataFormDefaults.createStreet(),
-      cityId: search.cityId ?? (state.overview?.cities.length === 1 ? state.overview.cities[0]?.id ?? '' : ''),
+      cityId:
+        search.cityId ??
+        (state.overview?.cities.length === 1 ? (state.overview.cities[0]?.id ?? '') : ''),
     });
     state.setMessage(null);
     state.setStreetDialogOpen(true);
@@ -66,7 +77,7 @@ export const createWasteMasterDataEntityActions = (
     state.setHouseNumberDialogMode('create');
     state.setHouseNumberForm({
       ...wasteMasterDataFormDefaults.createHouseNumber(),
-      streetId: state.overview?.streets.length === 1 ? state.overview.streets[0]?.id ?? '' : '',
+      streetId: state.overview?.streets.length === 1 ? (state.overview.streets[0]?.id ?? '') : '',
     });
     state.setMessage(null);
     state.setHouseNumberDialogOpen(true);

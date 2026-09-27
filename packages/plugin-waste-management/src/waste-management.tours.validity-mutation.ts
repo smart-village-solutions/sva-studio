@@ -1,5 +1,5 @@
 import { startTransition } from 'react';
-import type { WasteTourValidityBulkUpdateInput } from '@sva/plugin-sdk';
+import type { WasteTourValidityBulkUpdateInput } from '@sva/waste-management-contracts';
 
 import { updateWasteManagementTourValidityBulk } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';

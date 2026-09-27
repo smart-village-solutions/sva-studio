@@ -19,6 +19,7 @@
   "dependencies": {
     "@sva/core": "workspace:*",
     "@sva/server-runtime": "workspace:*",
+    "@sva/waste-management-contracts": "workspace:*",
     "pg": "^8.22.0"
   },
   "devDependencies": {

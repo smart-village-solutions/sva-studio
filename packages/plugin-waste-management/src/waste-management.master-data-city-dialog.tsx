@@ -1,4 +1,4 @@
-import type { WasteRegionRecord } from '@sva/plugin-sdk';
+import type { WasteRegionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Dialog,

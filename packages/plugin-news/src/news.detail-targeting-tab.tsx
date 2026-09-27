@@ -9,17 +9,15 @@ import {
   wasteLocationKeyId,
 } from './news.waste-targeting.js';
 import type { NewsDetailFormValues, WasteLocationKey } from './news.types.js';
-import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type { NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
 
-const emptyOverview: WasteManagementMasterDataOverview = {
-  fractions: [],
+const emptyOverview: NewsWasteMasterDataOverview = {
   regions: [],
   cities: [],
   streets: [],
   houseNumbers: [],
   collectionLocations: [],
-  locationTourLinks: [],
 };
 
 export type NewsTargetingTranslator = (
@@ -120,7 +118,7 @@ export function NewsDetailTargetingSection({
   availability = 'available',
   onLoadOverview,
 }: Readonly<{
-  overview: WasteManagementMasterDataOverview | null;
+  overview: NewsWasteMasterDataOverview | null;
   pt: NewsTargetingTranslator;
   readOnly?: boolean;
   availability?: WasteTargetingAvailability;

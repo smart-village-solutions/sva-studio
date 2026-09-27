@@ -1,8 +1,8 @@
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
   wasteTenantProvisioningContract,
-  type ExternalInterfaceRecord,
   type WasteManagementProvisionTenantDatabaseJobInput,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import {
   claimWasteTenantProvisioning,
   completeWasteTenantProvisioning,
@@ -18,8 +18,17 @@ import {
 import { Pool } from 'pg';
 
 import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
-import type { OperationSummary, WasteOperationSqlPool } from './waste-management-operations.types.js';
-import { buildWasteTenantDatabaseUrl, createOrUpdateWasteTenantRoles, createWasteTenantDatabasePassword, quoteWasteTenantIdentifier as quoteIdentifier, readExistingWasteRuntimePasswords } from './waste-tenant-database-credentials.server.js';
+import type {
+  OperationSummary,
+  WasteOperationSqlPool,
+} from './waste-management-operations.types.js';
+import {
+  buildWasteTenantDatabaseUrl,
+  createOrUpdateWasteTenantRoles,
+  createWasteTenantDatabasePassword,
+  quoteWasteTenantIdentifier as quoteIdentifier,
+  readExistingWasteRuntimePasswords,
+} from './waste-tenant-database-credentials.server.js';
 
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/server-runtime';
 

@@ -1,5 +1,6 @@
 // prettier-ignore
-import { definePluginJobTypes, wasteManagementOperationsContract, type PluginJobTypeDefinition } from '@sva/plugin-sdk';
+import { definePluginJobTypes, type PluginJobTypeDefinition } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
 
 import { wastePostalCodeJobType } from './job-definitions.postal-code.js';
 import { wasteTenantReadinessJobType } from './tenant-readiness-job-definition.js';

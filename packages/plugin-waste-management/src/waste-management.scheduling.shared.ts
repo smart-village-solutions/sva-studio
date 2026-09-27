@@ -4,7 +4,7 @@ import type {
   WasteHolidayRuleRecord,
   WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementGlobalDateShiftInput,
@@ -25,11 +25,12 @@ export {
   findSchedulingTableEntry,
 } from './waste-management.scheduling.table-entries.js';
 
-const matchesSearch = (value: string, query: string) => value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
+const matchesSearch = (value: string, query: string) =>
+  value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
 
 const matchesShiftContext = (
   search: WasteManagementShiftContext,
-  kind: 'holiday' | 'global' | 'tour',
+  kind: 'holiday' | 'global' | 'tour'
 ): boolean => search === 'all' || search === kind;
 
 export type TourDateShiftFormState = {
@@ -80,7 +81,9 @@ export const createDefaultGlobalDateShiftForm = (): GlobalDateShiftFormState => 
   tourIds: [],
 });
 
-export const mapTourDateShiftToForm = (shift: WasteTourDateShiftRecord): TourDateShiftFormState => ({
+export const mapTourDateShiftToForm = (
+  shift: WasteTourDateShiftRecord
+): TourDateShiftFormState => ({
   id: shift.id,
   tourId: shift.tourId,
   originalDate: shift.originalDate,
@@ -92,7 +95,9 @@ export const mapTourDateShiftToForm = (shift: WasteTourDateShiftRecord): TourDat
   description: shift.description ?? '',
 });
 
-export const mapGlobalDateShiftToForm = (shift: WasteGlobalDateShiftRecord): GlobalDateShiftFormState => ({
+export const mapGlobalDateShiftToForm = (
+  shift: WasteGlobalDateShiftRecord
+): GlobalDateShiftFormState => ({
   id: shift.id,
   originalDate: shift.originalDate,
   actualDate: shift.actualDate,
@@ -103,7 +108,9 @@ export const mapGlobalDateShiftToForm = (shift: WasteGlobalDateShiftRecord): Glo
   tourIds: shift.tourIds ?? [],
 });
 
-export const toCreateTourDateShiftInput = (form: TourDateShiftFormState): CreateWasteManagementTourDateShiftInput => ({
+export const toCreateTourDateShiftInput = (
+  form: TourDateShiftFormState
+): CreateWasteManagementTourDateShiftInput => ({
   id: form.id,
   tourId: form.tourId,
   originalDate: form.originalDate,
@@ -115,7 +122,9 @@ export const toCreateTourDateShiftInput = (form: TourDateShiftFormState): Create
   description: compactOptionalString(form.description),
 });
 
-export const toUpdateTourDateShiftInput = (form: TourDateShiftFormState): UpdateWasteManagementTourDateShiftInput => ({
+export const toUpdateTourDateShiftInput = (
+  form: TourDateShiftFormState
+): UpdateWasteManagementTourDateShiftInput => ({
   tourId: form.tourId,
   originalDate: form.originalDate,
   actualDate: form.actualDate,
@@ -126,7 +135,9 @@ export const toUpdateTourDateShiftInput = (form: TourDateShiftFormState): Update
   description: compactOptionalString(form.description),
 });
 
-export const toCreateGlobalDateShiftInput = (form: GlobalDateShiftFormState): CreateWasteManagementGlobalDateShiftInput => ({
+export const toCreateGlobalDateShiftInput = (
+  form: GlobalDateShiftFormState
+): CreateWasteManagementGlobalDateShiftInput => ({
   id: form.id,
   originalDate: form.originalDate,
   actualDate: form.actualDate,
@@ -137,7 +148,9 @@ export const toCreateGlobalDateShiftInput = (form: GlobalDateShiftFormState): Cr
   tourIds: form.tourIds.length ? form.tourIds : undefined,
 });
 
-export const toUpdateGlobalDateShiftInput = (form: GlobalDateShiftFormState): UpdateWasteManagementGlobalDateShiftInput => ({
+export const toUpdateGlobalDateShiftInput = (
+  form: GlobalDateShiftFormState
+): UpdateWasteManagementGlobalDateShiftInput => ({
   originalDate: form.originalDate,
   actualDate: form.actualDate,
   hasYear: form.hasYear,
@@ -149,7 +162,7 @@ export const toUpdateGlobalDateShiftInput = (form: GlobalDateShiftFormState): Up
 
 export const resolveSchedulingEntryTypeFromShiftContext = (
   shiftContext: WasteManagementShiftContext,
-  availableTours: readonly { readonly id: string }[],
+  availableTours: readonly { readonly id: string }[]
 ): Exclude<WasteManagementSchedulingEntryType, 'holiday-rule'> => {
   if (shiftContext === 'global') {
     return 'global-shift';
@@ -194,7 +207,9 @@ export const filterHolidayRules = (
     if (!search.q) {
       return true;
     }
-    return [rule.holidayName, rule.holidayDate, rule.stateCode].some((value) => matchesSearch(value, search.q));
+    return [rule.holidayName, rule.holidayDate, rule.stateCode].some((value) =>
+      matchesSearch(value, search.q)
+    );
   });
 
 export const filterGlobalDateShifts = (

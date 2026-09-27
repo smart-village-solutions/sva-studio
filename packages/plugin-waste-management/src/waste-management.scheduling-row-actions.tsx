@@ -2,7 +2,7 @@ import type {
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
   WasteTourDateShiftRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
@@ -60,11 +60,7 @@ export const WasteSchedulingRowActions = ({
   const editLabel = resolveEditLabel(pt, row);
   const deleteLabel = pt('scheduling.actions.delete');
   const schedulingEntryType =
-    row.kind === 'holiday'
-      ? 'holiday-rule'
-      : row.kind === 'global'
-        ? 'global-shift'
-        : 'tour-shift';
+    row.kind === 'holiday' ? 'holiday-rule' : row.kind === 'global' ? 'global-shift' : 'tour-shift';
 
   return (
     <div className="flex items-center justify-end gap-1">

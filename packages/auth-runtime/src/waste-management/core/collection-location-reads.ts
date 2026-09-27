@@ -2,7 +2,7 @@ import type {
   WasteCollectionLocationPageSize,
   WasteCollectionLocationQuery,
   WasteCollectionLocationSelectionFilter,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { isUuid } from '../../shared/input-readers.js';

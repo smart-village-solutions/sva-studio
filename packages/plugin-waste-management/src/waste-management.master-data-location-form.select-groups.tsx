@@ -3,7 +3,7 @@ import type {
   WasteHouseNumberRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Select, StudioField } from '@sva/studio-ui-react';
 

@@ -2,7 +2,7 @@ import type {
   WasteCollectionLocationRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { describe, expect, it } from 'vitest';
 
 import { checkLocationFractionCoverage } from '../src/waste-management.location-fraction-coverage.js';

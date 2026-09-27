@@ -5,11 +5,8 @@ import {
   registerStudioJobExecutionHandlers,
   type PluginOperationExecutionRegistration,
 } from '@sva/auth-runtime/server';
-import {
-  wasteManagementOperationsContract,
-  type PluginCatalogEntry,
-  type PluginManifest,
-} from '@sva/plugin-sdk';
+import { type PluginCatalogEntry, type PluginManifest } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,

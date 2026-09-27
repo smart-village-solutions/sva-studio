@@ -2,6 +2,7 @@ import type { WasteHolidayStateCode } from './waste-management/master-data-contr
 import type { WasteCustomRecurrencePresetRecord } from './waste-management/master-data-tours.js';
 import type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
 import type { WasteTenantProvisioningStatus } from './waste-tenant-provisioning-contract.js';
+import type { IamInstanceDetail } from '@sva/core';
 
 const wasteManagementDataSourceProviders = ['postgresql'] as const;
 const wasteManagementDataSourceStatuses = ['not_configured', 'unknown', 'ok', 'error'] as const;
@@ -109,6 +110,11 @@ export type WasteManagementSettingsRecord = {
   readonly updatedAt?: string;
   readonly customRecurrencePresets?: readonly WasteCustomRecurrencePresetRecord[];
 };
+
+export type WasteIamInstanceDetail = IamInstanceDetail &
+  Readonly<{
+    wasteManagementSettings?: WasteManagementSettingsRecord;
+  }>;
 
 export type WasteManagementDataSourceRecord = WasteManagementSettingsRecord & {
   readonly databaseUrlCiphertext?: string;

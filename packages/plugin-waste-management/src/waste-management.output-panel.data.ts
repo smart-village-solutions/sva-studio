@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
+import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
 
 import { getWasteManagementSettings } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
@@ -38,9 +38,7 @@ export const useWasteOutputPanelData = ({
           return;
         }
         const errorKey =
-          resolveApiErrorCode(loadError) === 'forbidden'
-            ? loadForbiddenMessage
-            : loadErrorMessage;
+          resolveApiErrorCode(loadError) === 'forbidden' ? loadForbiddenMessage : loadErrorMessage;
         setError(errorKey);
       } finally {
         if (active) {

@@ -1,4 +1,4 @@
-import type { WasteAnnualTourTransferMappedTour } from '@sva/core';
+import type { WasteAnnualTourTransferMappedTour } from '@sva/waste-management-contracts';
 import type { WasteMasterDataRepository } from '@sva/data-repositories';
 
 type AnnualTourTransferClient = Readonly<{

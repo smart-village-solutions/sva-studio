@@ -1,4 +1,4 @@
-import type { WasteCustomTourDate } from '@sva/plugin-sdk';
+import type { WasteCustomTourDate } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   IconCalendarPlus,

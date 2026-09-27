@@ -1,4 +1,7 @@
-import { wasteManagementMasterDataContract, type WasteHolidayStateCode } from '@sva/plugin-sdk';
+import {
+  wasteManagementMasterDataContract,
+  type WasteHolidayStateCode,
+} from '@sva/waste-management-contracts';
 import { Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';

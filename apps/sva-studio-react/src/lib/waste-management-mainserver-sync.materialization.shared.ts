@@ -7,7 +7,7 @@ import type {
   WasteHolidayRuleRecord,
   WasteLocationTourLinkRecord,
   WasteLocationTourPickupDateRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 export type MaterializationRuleCoverage = 'single_pickup' | 'rest_of_week';
 export type MaterializationRuleDirection = 'advance' | 'postpone';

@@ -7,10 +7,6 @@ import { WasteMasterDataFractionCreateContent } from '../src/waste-management.ma
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
-  wasteManagementMasterDataContract: {
-    fractionReminderLeadDayMin: 1,
-    fractionReminderLeadDayMax: 14,
-  },
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({

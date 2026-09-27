@@ -1,4 +1,7 @@
-import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCustomRecurrencePresetRecord,
+  WasteFractionRecord,
+} from '@sva/waste-management-contracts';
 import { Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 import type { ReactNode } from 'react';
 

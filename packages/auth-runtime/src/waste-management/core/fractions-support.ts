@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ApiItemResponse, StudioJobRecord, WasteFractionRecord } from '@sva/core';
-import { wasteManagementOperationsContract } from '@sva/core';
+import type { ApiItemResponse, StudioJobRecord } from '@sva/core';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { resolveActorInfo } from '../../iam-account-management/shared.js';

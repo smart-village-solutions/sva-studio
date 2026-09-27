@@ -1,4 +1,4 @@
-import type { WasteAnnualTourTransferTourPreview } from '@sva/plugin-sdk';
+import type { WasteAnnualTourTransferTourPreview } from '@sva/waste-management-contracts';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 

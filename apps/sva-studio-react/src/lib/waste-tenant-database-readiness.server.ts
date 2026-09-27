@@ -1,4 +1,4 @@
-import { wasteTenantProvisioningContract } from '@sva/core';
+import { wasteTenantProvisioningContract } from '@sva/waste-management-contracts';
 import {
   checkWasteDataSourceSchema,
   loadExternalInterfaceRecordByAlias,

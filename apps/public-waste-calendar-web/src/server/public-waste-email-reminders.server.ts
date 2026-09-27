@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import type { MailDispatchPayload, WasteManagementEmailReminderConfig } from '@sva/core';
+import type { MailDispatchPayload } from '@sva/core';
+import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
 import type {
   WasteEmailReminderActivationResult,
   WasteEmailReminderPendingSignupInput,
@@ -319,9 +320,7 @@ const buildPendingReminderSignup = (input: {
   consentAcceptedAt: toIsoString(input.now),
   doiTokenHash: input.hashValue(input.confirmToken),
   unsubscribeTokenHash: input.hashValue(input.unsubscribeToken),
-  expiresAt: toIsoString(
-    addHours(input.now, input.request.reminderConfig.doiTokenTtlHours)
-  ),
+  expiresAt: toIsoString(addHours(input.now, input.request.reminderConfig.doiTokenTtlHours)),
   items: input.request.payload.items.map((item) => ({
     id: input.createId(),
     fractionId: item.fractionId,
@@ -351,8 +350,7 @@ const persistPendingReminderSignup = async (input: {
   if (input.deps.persistPendingSignupWithLimitCheck) {
     const result = await input.deps.persistPendingSignupWithLimitCheck({
       signup: input.signup,
-      maxSubscriptionsPerEmailAndLocation:
-        input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
+      maxSubscriptionsPerEmailAndLocation: input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
     });
     if (result === 'subscription_limit_reached') {
       throw new PublicWasteReminderSignupError({
@@ -501,10 +499,7 @@ const renderConfiguredReminderStatusPage = (input: {
   return null;
 };
 
-const renderDoiActionError = (
-  input: ReminderPageInput,
-  result: 'expired' | 'invalid'
-): Response =>
+const renderDoiActionError = (input: ReminderPageInput, result: 'expired' | 'invalid'): Response =>
   input.reminderConfig.invalidTokenPath
     ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
         source: 'doi',

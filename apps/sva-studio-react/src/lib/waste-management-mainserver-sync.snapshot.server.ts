@@ -6,7 +6,7 @@ import type {
   WasteLocationTourLinkRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { WasteMaterializationContext } from './waste-management-mainserver-sync.materialization.shared.js';
 import { withWasteClient } from './waste-management-operations.shared.js';

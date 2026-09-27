@@ -1,12 +1,12 @@
+import { isPlausibleEmailAddress } from '@sva/core';
 import {
-  isPlausibleEmailAddress,
   isValidWasteIsoDateOnly,
   wasteAnnualTourTransferLimits,
   wasteManagementMasterDataContract,
   wasteTourStatusBulkLimit,
   wasteTourStatuses,
   type WasteTourRecurrence,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { z } from 'zod';
 
 const wasteFractionReminderCountSchema = z.enum(

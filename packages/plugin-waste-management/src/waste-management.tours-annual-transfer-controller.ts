@@ -3,7 +3,7 @@ import type {
   WasteAnnualTourTransferPreview,
   WasteAnnualTourTransferResult,
   WasteAnnualTourTransferTourPreview,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import {
   WasteManagementApiError,

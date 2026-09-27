@@ -458,6 +458,7 @@ export type {
   CompiledAccountInvitationTemplate,
   ServerAccountInvitationTemplateState,
   ServerAccountInvitationTemplateView,
+  TenantAccountInvitationTemplateView,
 } from './instances/account-invitation-template.js';
 export {
   canDisableTenantModule,

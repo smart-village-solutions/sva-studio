@@ -137,6 +137,10 @@ Schreibzugriffe bleiben auf den Plattformkontext ohne gesetzte
 Migration `0100` gibt der vorhandenen, nicht erbenden Standalone-App-Rolle
 `sva_app` die für Lesen und Aktualisieren dieser Tabelle erforderlichen Rechte.
 Der strukturelle Soll-Snapshot ändert sich nicht, da er ohne ACLs erzeugt wird.
+Migration `0102` ergänzt die Tenant-Permission `iam.invitationTemplate.manage`
+für bestehende Instanzen und weist sie deren `system_admin`-Rolle zu.
+Die Instanzvorlage bleibt in `iam.instances.account_invitation_template`;
+es wird keine neue Vorlagentabelle angelegt.
 
 Migration `0095` erzwingt pro Keycloak-Provisioning-Lauf höchstens einen
 `queued`-Schritt. Vor dem Indexaufbau behält sie bei historischen Duplikaten

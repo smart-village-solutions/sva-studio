@@ -32,6 +32,8 @@ export const invitationInstancesAdminDEResources = {
   invalid: 'Die Vorlage ist ungültig.',
   pageTitle: 'Templates',
   pageDescription: 'Textvorlagen dieser Studio-Installation verwalten.',
+  tenantPageTitle: 'Einladungsvorlage',
+  tenantPageDescription: 'Text für Account-Einladungen Ihrer Instanz verwalten.',
   loading: 'Vorlage wird geladen.',
   loadFailed: 'Die Vorlage konnte nicht geladen werden.',
   sampleTenantName: 'Beispiel-Tenant',

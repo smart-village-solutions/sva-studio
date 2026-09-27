@@ -15,7 +15,7 @@ describe('iam seed plan', () => {
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    expect(iamSeedPlan.permissions.length).toBe(61);
+    expect(iamSeedPlan.permissions.length).toBe(62);
     expect(iamSeedPlan.permissions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'content.transferOwnership' }),

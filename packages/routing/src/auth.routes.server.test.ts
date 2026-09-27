@@ -126,6 +126,8 @@ const authServerMocks = vi.hoisted(() => {
     syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
+    getTenantInvitationTemplateHandler: vi.fn(async () => response('getTenantInvitationTemplateHandler')),
+    updateTenantInvitationTemplateHandler: vi.fn(async () => response('updateTenantInvitationTemplateHandler')),
     listGroupsHandler: vi.fn(async () => response('listGroupsHandler')),
     createGroupHandler: vi.fn(async () => response('createGroupHandler')),
     getGroupHandler: vi.fn(async () => response('getGroupHandler')),

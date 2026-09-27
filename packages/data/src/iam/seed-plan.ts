@@ -17,6 +17,11 @@ const permissionIdFixtures = [
   ],
   ['40111111-1111-1111-1111-111111111111', 'iam.user.read', 'Read account data'],
   ['40111111-1111-1111-1111-111111111112', 'iam.user.write', 'Modify account data'],
+  [
+    '40111111-1111-1111-1111-111111111172',
+    'iam.invitationTemplate.manage',
+    'Manage tenant account invitation template',
+  ],
   ['40111111-1111-1111-1111-111111111113', 'iam.role.read', 'Read role assignments'],
   ['40111111-1111-1111-1111-111111111114', 'iam.role.write', 'Modify role assignments'],
   ['40111111-1111-1111-1111-111111111115', 'iam.org.read', 'Read organization data'],

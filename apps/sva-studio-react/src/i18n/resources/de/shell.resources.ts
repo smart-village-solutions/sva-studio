@@ -151,6 +151,7 @@ export const shellDEResources = {
     organizations: 'Organisationen',
     instances: 'Instanzen',
     templates: 'Templates',
+    invitationTemplate: 'Einladungsvorlage',
     roles: 'Rollen',
     groups: 'Gruppen',
     legalTexts: 'Rechtstexte',

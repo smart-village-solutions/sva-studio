@@ -33,6 +33,7 @@ const tenantPermission = <const TKey extends string>(
 export const corePermissionCatalog = [
   tenantPermission('iam.user.read', 'Read account data'),
   tenantPermission('iam.user.write', 'Modify account data'),
+  tenantPermission('iam.invitationTemplate.manage', 'Manage tenant account invitation template'),
   tenantPermission('iam.role.read', 'Read role assignments'),
   tenantPermission('iam.role.write', 'Modify role assignments'),
   tenantPermission('iam.org.read', 'Read organization data'),

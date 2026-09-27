@@ -25,6 +25,7 @@ import { OrganizationCreatePage } from '../routes/admin/organizations/-organizat
 import { RoleCreatePage } from '../routes/admin/roles/-role-create-page';
 import { RoleDetailPage } from '../routes/admin/roles/-role-detail-page';
 import { UserCreatePage } from '../routes/admin/users/-user-create-page';
+import { InvitationTemplatePage } from '../routes/admin/users/-invitation-template-page';
 import { UserListPage } from '../routes/admin/users/-user-list-page';
 import { MediaPage } from '../routes/admin/media/-media-page';
 import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
@@ -185,6 +186,7 @@ export const coreAppRouteBindings = {
   adminUsers: UserListPage,
   adminUserCreate: UserCreatePage,
   adminUserDetail: UserEditRoutePage,
+  adminUserInvitationTemplate: InvitationTemplatePage,
   adminOrganizations: OrganizationsRoutePage,
   adminOrganizationCreate: OrganizationCreatePage,
   adminOrganizationDetail: OrganizationDetailRoutePage,

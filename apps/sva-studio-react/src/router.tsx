@@ -98,6 +98,7 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
   permissionActions: [
     'iam.user.read',
     'iam.user.write',
+    'iam.invitationTemplate.manage',
     'iam.role.read',
     'iam.role.write',
     'iam.org.read',

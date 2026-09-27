@@ -140,6 +140,12 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     documentation: page('admin.users.detail', 'detail'),
   },
   {
+    binding: 'adminUserInvitationTemplate',
+    path: uiRoutePaths.adminUserInvitationTemplate,
+    guard: 'adminUserInvitationTemplate',
+    documentation: page('admin.users.invitation-template', 'detail'),
+  },
+  {
     binding: 'adminOrganizations',
     path: uiRoutePaths.adminOrganizations,
     guard: 'adminOrganizations',

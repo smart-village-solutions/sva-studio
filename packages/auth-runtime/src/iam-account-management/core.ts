@@ -5,6 +5,10 @@ import { deactivateUserInternal } from './user-deactivate-handler.js';
 import { deleteUserInternal } from './user-delete-handler.js';
 import { syncUsersFromKeycloakInternal } from './user-import-sync-handler.js';
 import { sendPasswordSetupEmailInternal } from './user-password-setup-email-handler.js';
+import {
+  getTenantInvitationTemplateInternal,
+  updateTenantInvitationTemplateInternal,
+} from './tenant-invitation-template-handler.js';
 import { reprovisionMainserverUserInternal } from './user-reprovision-mainserver-handler.js';
 import { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
 import { reconcilePlaceholderInternal } from './reconcile-handler.js';
@@ -48,6 +52,12 @@ export const createUserHandler = async (request: Request): Promise<Response> =>
 
 export const sendPasswordSetupEmailHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal);
+
+export const getTenantInvitationTemplateHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, getTenantInvitationTemplateInternal);
+
+export const updateTenantInvitationTemplateHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedIamHandler(request, updateTenantInvitationTemplateInternal);
 
 export const reprovisionMainserverUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, reprovisionMainserverUserInternal);

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1533,
+  "body": "Technisch abgeschlossene Tenant-Provisionierung bleibt ohne automatische Freischaltung im Zustand validated. Der Datenbankvertrag erlaubt den abgeschlossenen Create-Lauf und weist widersprüchliche Zustände weiterhin ab."
+}

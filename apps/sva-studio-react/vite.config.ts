@@ -389,6 +389,9 @@ const config = defineConfig({
       '@sva/waste-management-contracts/unsubscribe-token': resolveAppPath(
         '../../packages/waste-management-contracts/src/unsubscribe-token.server.ts'
       ),
+      '@sva/waste-management-contracts': resolveAppPath(
+        '../../packages/waste-management-contracts/src/index.ts'
+      ),
       '@sva/core/rich-text-html-policy': resolveAppPath(
         '../../packages/core/src/rich-text-html-policy.ts'
       ),

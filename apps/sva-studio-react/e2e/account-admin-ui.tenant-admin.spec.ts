@@ -39,8 +39,7 @@ test('tenant admin mutations fail closed in the browser when the admin client co
 
   await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/admin/instances/demo');
-  await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
-  await page.getByText('Betrieb, Doctor und Einstellungen', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Demo' })).toBeVisible({ timeout: 10000 });
   await page.getByRole('tab', { name: 'Einstellungen' }).click();
   await navigateClientSide(page, '/admin/users/account-2');
   await page.getByRole('tab', { name: 'Verwaltung' }).click();

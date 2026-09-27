@@ -257,6 +257,67 @@ describe('InstanceDetailPage', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(['requested', 'active'])(
+    'keeps admin-client recovery reachable for %s tenants without the login secret',
+    async (status) => {
+      const selectedInstance = createSelectedInstance({
+        status,
+        authClientSecretConfigured: false,
+      });
+      selectedInstance.keycloakPlan = {
+        ...selectedInstance.keycloakPlan,
+        fingerprint: 'recovery-plan',
+      } as typeof selectedInstance.keycloakPlan;
+      const api = createInstancesApiState({ selectedInstance });
+      useInstancesMock.mockReturnValue(api);
+      render(<InstanceDetailPage instanceId="demo" />);
+      if (status === 'active') await openDoctor();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Tenant-Admin-Client bereitstellen', hidden: true })
+      );
+      await waitFor(() =>
+        expect(api.executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
+          intent: 'provision_admin_client',
+          planFingerprint: 'recovery-plan',
+          tenantAdminTemporaryPassword: undefined,
+        })
+      );
+    }
+  );
+
+  it('keeps the temporary password across a failed reset and clears it after successful retry', async () => {
+    const selectedInstance = createSelectedInstance();
+    selectedInstance.keycloakPlan = {
+      ...selectedInstance.keycloakPlan,
+      fingerprint: 'reset-plan',
+    } as typeof selectedInstance.keycloakPlan;
+    const api = createInstancesApiState({ selectedInstance });
+    api.executeKeycloakProvisioning.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    useInstancesMock.mockReturnValue(api);
+    render(<InstanceDetailPage instanceId="demo" />);
+    const password = screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement;
+    fireEvent.change(password, { target: { value: 'Synthetic-Reset-123!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true }));
+    await waitFor(() => expect(api.executeKeycloakProvisioning).toHaveBeenCalledTimes(1));
+    expect(password.value).toBe('Synthetic-Reset-123!');
+    await openDoctor();
+    expect((screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement).value).toBe(
+      'Synthetic-Reset-123!'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-Admin neu setzen', hidden: true }));
+    await waitFor(() => expect(api.executeKeycloakProvisioning).toHaveBeenCalledTimes(2));
+    expect(api.executeKeycloakProvisioning).toHaveBeenLastCalledWith('demo', {
+      intent: 'reset_tenant_admin',
+      planFingerprint: 'reset-plan',
+      tenantAdminTemporaryPassword: 'Synthetic-Reset-123!',
+    });
+    await waitFor(() =>
+      expect((screen.getByLabelText('Temporäres Admin-Passwort') as HTMLInputElement).value).toBe(
+        ''
+      )
+    );
+  });
+
   beforeEach(() => {
     realInstances.enabled = false;
     useInstancesMock.mockReset();

@@ -3,7 +3,8 @@ import { useForm, useWatch } from 'react-hook-form';
 import type { DetailFormValues } from './-instances-shared-types';
 import type { AccountInvitationTemplateSaveResult } from './-account-invitation-template-card';
 import React from 'react';
-import { useStudioSaveFeedback } from '@sva/studio-ui-react';
+import { StudioField, useStudioSaveFeedback } from '@sva/studio-ui-react';
+import { Input } from '../../../components/ui/input';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -565,6 +566,30 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     globalThis.setTimeout(() => document.getElementById('instance-current-task')?.focus(), 0);
   };
 
+  const tenantAdminPasswordInput = cockpitModel?.secondaryActions.some(
+    ({ action }) => action === 'reset_tenant_admin'
+  ) ? (
+    <StudioField
+      id="tenant-admin-password"
+      label={t('admin.instances.keycloakPanel.temporaryPassword')}
+      description={t('admin.instances.keycloakPanel.passwordHint')}
+    >
+      <Input
+        id="tenant-admin-password"
+        type="password"
+        autoComplete="new-password"
+        aria-describedby="tenant-admin-password-description"
+        disabled={statusLoading || actionBusy}
+        value={detailFormValues?.tenantAdminTemporaryPassword ?? ''}
+        onChange={(event) =>
+          detailForm.setValue('tenantAdminTemporaryPassword', event.target.value, {
+            shouldDirty: true,
+          })
+        }
+      />
+    </StudioField>
+  ) : null;
+
   return (
     <section
       className="min-w-0 space-y-5 break-words"
@@ -629,6 +654,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
               selectedInstance={selectedInstance}
               configurationAssessment={configurationAssessment}
               cockpitModel={cockpitModel}
+              tenantAdminPasswordInput={tenantAdminPasswordInput}
               mutationError={instancesApi.mutationError}
               onRunDetailAction={runDetailAction}
               statusLoading={instancesApi.statusLoading || actionBusy}
@@ -668,6 +694,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
               {doctorModel && historyModel ? (
                 <InstanceDetailDoctorSection
                   doctorModel={doctorModel}
+                  tenantAdminPasswordInput={tenantAdminPasswordInput}
                   secondaryActions={cockpitModel.secondaryActions}
                   onRunDetailAction={runDetailAction}
                   onOpenActivation={openActivation}

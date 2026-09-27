@@ -51,6 +51,7 @@ export type HistorySectionProps = {
 };
 
 export type CockpitSectionProps = {
+  readonly tenantAdminPasswordInput?: React.ReactNode;
   readonly selectedInstance: SelectedInstance;
   readonly configurationAssessment: InstanceConfigurationAssessment | null;
   readonly cockpitModel: InstanceDetailCockpitModel;

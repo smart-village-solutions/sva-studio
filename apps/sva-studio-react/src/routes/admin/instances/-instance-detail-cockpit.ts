@@ -228,6 +228,13 @@ export const buildInstanceDetailCockpitModel = (
     mutationError?.code === 'keycloak_plan_fingerprint_stale'
       ? 'plan_provisioning'
       : selectPrimaryAction(instance, workflowActions);
+  const specialisedActions = instance.keycloakPlan?.fingerprint
+    ? workflowActions.filter(
+        (action) =>
+          action === 'provision_admin_client' ||
+          (action === 'reset_tenant_admin' && instance.realmMode === 'existing')
+      )
+    : [];
   const cockpitState = buildCockpitState(
     instance,
     configurationAssessment,
@@ -243,11 +250,11 @@ export const buildInstanceDetailCockpitModel = (
       action: primaryActionKey,
       label: getDetailActionLabel(primaryActionKey),
     },
-    secondaryActions: ORDERED_SECONDARY_ACTIONS.filter((action) => action !== primaryActionKey).map(
-      (action) => ({
+    secondaryActions: [...ORDERED_SECONDARY_ACTIONS, ...specialisedActions]
+      .filter((action) => action !== primaryActionKey)
+      .map((action) => ({
         action,
         label: getDetailActionLabel(action),
-      })
-    ),
+      })),
   };
 };

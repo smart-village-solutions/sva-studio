@@ -93,3 +93,12 @@ Der ursprüngliche Proposal-Worktree bleibt unverändert.
   `git diff --check` bestanden. Keine Archivierung in diesem Auftrag;
   der Delta-Abgleich gegen die dann aktuelle Basisspec bleibt Voraussetzung
   einer späteren Archivierung.
+
+- PR-Abschluss: Rebase auf `main`, Komplexitäts-Gate ohne neue Findings und
+  38 gezielte Fälle für Anlage, Feldhilfen, Modelle und Module bestanden.
+  Spezialisierte Admin-Client-Reparatur und Tenant-Admin-Reset bleiben über
+  dieselben Detail-Handler in Cockpit und Doctor erreichbar; der aktuelle
+  Plan-Fingerprint ist Voraussetzung. Das temporäre Passwort bleibt nach
+  fehlgeschlagener Ausführung erhalten und wird erst nach Erfolg geleert.
+  Drei zusätzliche Detailfälle prüfen diese Regression einschließlich
+  bestehender aktiver Instanzen ohne Login-Secret.

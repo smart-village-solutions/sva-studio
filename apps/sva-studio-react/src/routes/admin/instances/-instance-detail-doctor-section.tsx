@@ -13,6 +13,7 @@ import type { SelectedInstance } from './-instances-shared-types';
 import type { InstanceDoctorModel } from './-instance-detail-doctor-model';
 
 type InstanceDetailDoctorSectionProps = {
+  readonly tenantAdminPasswordInput?: ReactNode;
   readonly onRunDetailAction?: (
     action: DetailWorkflowAction | 'focus_configuration'
   ) => Promise<void>;
@@ -46,6 +47,7 @@ const DoctorStepCard = ({
 
 export const InstanceDetailDoctorSection = ({
   doctorModel,
+  tenantAdminPasswordInput,
   onRunDetailAction,
   onOpenActivation,
   statusLoading,
@@ -146,6 +148,7 @@ export const InstanceDetailDoctorSection = ({
         <summary className="cursor-pointer text-sm">
           {t('admin.instances.wizard.technicalDetails')}
         </summary>
+        {tenantAdminPasswordInput}
         <div className="flex flex-wrap gap-2">
           {secondaryActions
             .filter((action) => action.action !== doctorModel.recommendedAction.action)

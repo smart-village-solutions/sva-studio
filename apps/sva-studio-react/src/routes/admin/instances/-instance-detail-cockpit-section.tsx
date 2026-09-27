@@ -6,6 +6,7 @@ import { formatDateTime, type CockpitSectionProps } from './-instance-detail-vie
 
 export const InstanceDetailCockpitSection = ({
   selectedInstance,
+  tenantAdminPasswordInput,
   cockpitModel,
   onRunDetailAction,
   statusLoading,
@@ -118,6 +119,7 @@ export const InstanceDetailCockpitSection = ({
           {cockpitModel.dominantEvidence.sourceLabel} ·{' '}
           {formatDateTime(cockpitModel.dominantEvidence.checkedAt)}
         </p>
+        {tenantAdminPasswordInput}
         <div className="flex flex-wrap gap-2">
           {cockpitModel.secondaryActions.map((action) => (
             <Button

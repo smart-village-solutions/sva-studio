@@ -362,6 +362,18 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         completed: true,
       });
       await expect(
+        repository.claimNextProvisioningRun({
+          workerId: 'completed-run-worker',
+          leaseExpiresAt: new Date(Date.now() + 30_000).toISOString(),
+          parentDomain: 'dialog.kassel.de',
+        })
+      ).resolves.toBeNull();
+      expect((await repository.listProvisioningRuns(completionInstanceId))[0]).toMatchObject({
+        status: 'validated',
+        stepKey: 'completed',
+        attemptCount: 0,
+      });
+      await expect(
         pool.query(
           `UPDATE iam.instance_provisioning_runs
            SET completed_at = NULL

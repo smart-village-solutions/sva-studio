@@ -18,7 +18,7 @@ export const SSF_TOKEN_CLAIMS = {
 } as const;
 
 /** Mandatory operational rights of every active regular SSF tenant account. */
-export const SSF_CONVERSATION_PERMISSION_IDS = [
+const SSF_CONVERSATION_PERMISSION_IDS = [
   'ssf.conversations.participate',
   'ssf.sessions.create',
   'ssf.sessions.read',

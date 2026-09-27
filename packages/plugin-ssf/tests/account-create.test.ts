@@ -171,7 +171,12 @@ describe('withSsfAccountCreate', () => {
       attributes: {
         studio_tenant_id: ['tenant-a'],
         ssf_roles: ['user'],
-        ssf_permissions: [...actual.SSF_CONVERSATION_PERMISSION_IDS],
+        ssf_permissions: [
+          'ssf.conversations.participate',
+          'ssf.sessions.create',
+          'ssf.sessions.read',
+          'ssf.sessions.terminate',
+        ],
         ssf_authorization_revision: ['revision-a'],
       },
     });

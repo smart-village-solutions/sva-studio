@@ -5,11 +5,17 @@ import {
   createSsfAuthorizationRevision,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
   SSF_TENANT_PERMISSION_IDS,
-  SSF_CONVERSATION_PERMISSION_IDS,
   type SsfAuthorizationProjectionLockedStore,
   type SsfAuthorizationProjectionStore,
   type SsfAuthorizationProjectionTarget,
 } from '../src/runtime.js';
+
+const conversationPermissions = [
+  'ssf.conversations.participate',
+  'ssf.sessions.create',
+  'ssf.sessions.read',
+  'ssf.sessions.terminate',
+] as const;
 
 describe('SSF authorization projection runtime', () => {
   it.each([
@@ -124,7 +130,7 @@ describe('SSF authorization projection runtime', () => {
           permissions: [
             'ssf.configuration.tenant.manage',
             'ssf.configuration.tenant.read',
-            ...SSF_CONVERSATION_PERMISSION_IDS,
+            ...conversationPermissions,
           ],
         },
       ],

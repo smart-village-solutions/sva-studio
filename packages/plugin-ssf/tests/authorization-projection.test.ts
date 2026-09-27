@@ -6,11 +6,17 @@ import {
   createSsfAuthorizationRevision,
   normalizeSsfAuthorizationProjection,
   SSF_AUTHORIZATION_PROJECTION_VERSION,
-  SSF_CONVERSATION_PERMISSION_IDS,
   SSF_TENANT_PERMISSION_IDS,
   SSF_TOKEN_CLAIMS,
   type SsfAuthorizationProjection,
 } from '../src/authorization-projection.js';
+
+const conversationPermissions = [
+  'ssf.conversations.participate',
+  'ssf.sessions.create',
+  'ssf.sessions.read',
+  'ssf.sessions.terminate',
+] as const;
 
 const projection = (instanceId = 'tenant-a'): SsfAuthorizationProjection => ({
   contractVersion: SSF_AUTHORIZATION_PROJECTION_VERSION,
@@ -40,7 +46,7 @@ describe('SSF authorization projection contract', () => {
     expect(SSF_TENANT_PERMISSION_IDS).toEqual([
       'ssf.configuration.tenant.manage',
       'ssf.configuration.tenant.read',
-      ...SSF_CONVERSATION_PERMISSION_IDS,
+      ...conversationPermissions,
     ]);
   });
 
@@ -137,23 +143,23 @@ describe('SSF authorization projection contract', () => {
           permissions: [
             'ssf.configuration.tenant.manage',
             'ssf.configuration.tenant.read',
-            ...SSF_CONVERSATION_PERMISSION_IDS,
+            ...conversationPermissions,
           ],
         },
         {
           subject: 'custom-manager',
           roles: ['user'],
-          permissions: ['ssf.configuration.tenant.manage', ...SSF_CONVERSATION_PERMISSION_IDS],
+          permissions: ['ssf.configuration.tenant.manage', ...conversationPermissions],
         },
         {
           subject: 'reader',
           roles: ['user'],
-          permissions: ['ssf.configuration.tenant.read', ...SSF_CONVERSATION_PERMISSION_IDS],
+          permissions: ['ssf.configuration.tenant.read', ...conversationPermissions],
         },
         {
           subject: 'without-ssf-access',
           roles: ['tenant_admin', 'user'],
-          permissions: [...SSF_CONVERSATION_PERMISSION_IDS],
+          permissions: [...conversationPermissions],
         },
       ],
     });
@@ -168,7 +174,7 @@ describe('SSF authorization projection contract', () => {
       {
         subject: 'regular-user',
         roles: ['user'],
-        permissions: [...SSF_CONVERSATION_PERMISSION_IDS],
+        permissions: [...conversationPermissions],
       },
     ]);
     expect(result.subjects[0]?.permissions).not.toContain('ssf.configuration.tenant.manage');

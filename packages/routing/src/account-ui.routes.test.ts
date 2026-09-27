@@ -275,6 +275,32 @@ describe('accountUiRouteGuards', () => {
     ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
   });
 
+  it('allows tenant invitation templates only with the dedicated permission', async () => {
+    const guard = accountUiRouteGuards.adminUserInvitationTemplate;
+    await expect(
+      invoke(
+        guard,
+        { roles: ['editor'], permissionActions: ['iam.invitationTemplate.manage'] },
+        '/admin/users/invitation-template'
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(
+        guard,
+        { roles: ['system_admin'], permissionActions: ['iam.user.write'] },
+        '/admin/users/invitation-template'
+      )
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.invitationTemplate.manage'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
+  });
+
   it('requires write access for the role creation route', async () => {
     await expect(
       invoke(

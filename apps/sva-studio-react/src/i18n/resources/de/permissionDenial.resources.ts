@@ -36,6 +36,7 @@ export const permissionDenialDEResources = {
     iamMonitoringRead: 'IAM-Monitoring anzeigen',
     iamMonitoringWrite: 'IAM-Monitoring ausführen',
     iamAccountsDelete: 'Benutzerkonten endgültig löschen',
+    iamInvitationTemplateManage: 'Account-Einladungsvorlage verwalten',
     experimentalRead: 'Experimentelle Funktionen verwenden',
     appRead: 'App-Verknüpfung anzeigen',
     cockpitRead: 'Cockpit-Verknüpfung anzeigen',

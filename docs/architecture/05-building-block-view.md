@@ -1031,6 +1031,9 @@ Details offen.
   `System -> Templates` und die optionale Abweichung weiterhin an der
   Instanz an. Beide Ansichten verwenden denselben Editor und zeigen die
   wirksame Quelle.
+- Auf dem Tenant-Host zeigt `Benutzer -> Einladungsvorlage` denselben Editor
+  mit einer auf die Session-Instanz begrenzten API. `@sva/auth-runtime` prüft
+  `iam.invitationTemplate.manage`; die Registry-Persistenz bleibt gemeinsam.
 - `@sva/auth-runtime` stellt unmittelbar vor Create-Einladung und Resend über
   den vorhandenen Tenant-Admin-Client das E-Mail-Theme und genau drei deutsche
   Realmwerte idempotent sicher. Erst ein exakter Readback erlaubt den Versand;

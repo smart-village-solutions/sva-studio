@@ -34,6 +34,7 @@ import type {
   IamRoleListItem,
   IamRoleReconcileReport,
   ServerAccountInvitationTemplateView,
+  TenantAccountInvitationTemplateView,
   IamTenantDeletionRulesOverview,
   StudioJobDetail,
   StudioJobDetailResponse,
@@ -592,6 +593,11 @@ export type UpdateServerAccountInvitationTemplatePayload = {
   readonly template: UpdateInstancePayload['accountInvitationTemplate'];
 };
 
+export type UpdateTenantAccountInvitationTemplatePayload = {
+  readonly expectedRevision: number;
+  readonly template: UpdateInstancePayload['accountInvitationTemplate'];
+};
+
 export type ReconcileInstanceKeycloakPayload = {
   readonly planFingerprint: string;
   readonly tenantAdminTemporaryPassword?: string;
@@ -1130,6 +1136,21 @@ export const updateServerAccountInvitationTemplate = async (
     ApiItemResponse<ServerAccountInvitationTemplateView>,
     UpdateServerAccountInvitationTemplatePayload
   >('/api/v1/iam/templates/account-invitation', payload);
+
+export const getTenantAccountInvitationTemplate = async (): Promise<
+  ApiItemResponse<TenantAccountInvitationTemplateView>
+> =>
+  requestJson<ApiItemResponse<TenantAccountInvitationTemplateView>>(
+    '/api/v1/iam/users/me/invitation-template'
+  );
+
+export const updateTenantAccountInvitationTemplate = async (
+  payload: UpdateTenantAccountInvitationTemplatePayload
+): Promise<ApiItemResponse<TenantAccountInvitationTemplateView>> =>
+  patchJson<
+    ApiItemResponse<TenantAccountInvitationTemplateView>,
+    UpdateTenantAccountInvitationTemplatePayload
+  >('/api/v1/iam/users/me/invitation-template', payload);
 
 export const getInstanceKeycloakStatus = async (
   instanceId: string

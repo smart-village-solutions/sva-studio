@@ -24,6 +24,7 @@ export const authRoutePaths = [
   '/api/v1/iam/users/bulk-deactivate',
   '/api/v1/iam/users/bulk-reprovision-mainserver',
   '/api/v1/iam/users/me/profile',
+  '/api/v1/iam/users/me/invitation-template',
   '/api/v1/iam/organizations',
   '/api/v1/iam/organizations/$organizationId',
   '/api/v1/iam/organizations/$organizationId/provision-mainserver',

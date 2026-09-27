@@ -860,6 +860,15 @@ export default function Sidebar({
     isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(accessUser);
   const canAccessAdminInstances =
     isAuthenticated && isIamAdminEnabled() && hasPlatformInstanceAdminAccess(accessUser);
+  const canAccessTenantInvitationTemplate =
+    isAuthenticated &&
+    isIamAdminEnabled() &&
+    Boolean(user?.instanceId) &&
+    hasPermissionAction(
+      'iam.invitationTemplate.manage',
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
   const canAccessAdminRoles =
     isAuthenticated &&
     isIamAdminEnabled() &&
@@ -1128,6 +1137,17 @@ export default function Sidebar({
             },
           ]
         : []),
+      ...(canAccessTenantInvitationTemplate
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'invitation-template',
+              to: '/admin/users/invitation-template',
+              label: t('shell.sidebar.invitationTemplate'),
+              icon: IconTemplate,
+            },
+          ]
+        : []),
       ...(canAccessAdminOrganizations
         ? [
             {
@@ -1287,6 +1307,7 @@ export default function Sidebar({
     canAccessAdminPrivacy,
     canAccessAdminRoles,
     canAccessAdminUsers,
+    canAccessTenantInvitationTemplate,
     canAccessApplicationLink,
     canAccessCockpitLink,
     canAccessInterfaces,

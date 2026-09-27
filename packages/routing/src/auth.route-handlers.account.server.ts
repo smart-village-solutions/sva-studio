@@ -60,6 +60,10 @@ export const accountAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.getMyProfileHandler),
     PATCH: routeHandler(authRuntimeRoutes.updateMyProfileHandler),
   },
+  '/api/v1/iam/users/me/invitation-template': {
+    GET: routeHandler(authRuntimeRoutes.getTenantInvitationTemplateHandler),
+    PATCH: routeHandler(authRuntimeRoutes.updateTenantInvitationTemplateHandler),
+  },
   '/api/v1/iam/organizations': {
     GET: routeHandler(authRuntimeRoutes.listOrganizationsHandler),
     POST: routeHandler(authRuntimeRoutes.createOrganizationHandler),

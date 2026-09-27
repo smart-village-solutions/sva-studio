@@ -147,6 +147,7 @@ export const shellENResources = {
     organizations: 'Organizations',
     instances: 'Instances',
     templates: 'Templates',
+    invitationTemplate: 'Invitation template',
     roles: 'Roles',
     groups: 'Groups',
     legalTexts: 'Legal texts',

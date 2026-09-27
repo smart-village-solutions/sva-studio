@@ -1395,6 +1395,12 @@ Nachweis gesperrt.
 
 ### Szenario 23: Vererbte Account-Einladung je Studio-Installation und Instanz
 
+Ein Tenant-Benutzer mit `iam.invitationTemplate.manage` kann den Override der
+eigenen Instanz unter `/admin/users/invitation-template` bearbeiten. Die API
+bezieht die Instanz ausschließlich aus der Session, prüft den Actor und nutzt
+einen scoped Registry-Zugriff mit derselben Validierung und Revisionierung.
+Ein angegebener Fremd-Instanzparameter wird abgewiesen.
+
 1. Ein Plattformadministrator speichert unter `/admin/templates` die
    Servervorlage oder an der Instanz eine abweichende Vorlage zusammen mit der
    zuletzt gelesenen Revision. Ein Reset entfernt nur den jeweiligen Override.

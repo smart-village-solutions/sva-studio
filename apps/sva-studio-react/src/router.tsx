@@ -98,6 +98,7 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
   permissionActions: [
     'iam.user.read',
     'iam.user.write',
+    'iam.invitationTemplate.manage',
     'iam.role.read',
     'iam.role.write',
     'iam.org.read',
@@ -382,7 +383,6 @@ export const getRouter = async () => {
         getUser: getRouteGuardUser,
       },
     },
-
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
   });

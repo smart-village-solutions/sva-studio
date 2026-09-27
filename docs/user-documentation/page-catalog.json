@@ -202,6 +202,14 @@
       }
     },
     {
+      "id": "admin.users.invitation-template",
+      "path": "/admin/users/invitation-template",
+      "pageType": "detail",
+      "owner": {
+        "kind": "host"
+      }
+    },
+    {
       "id": "admin.users.list",
       "path": "/admin/users",
       "pageType": "list",

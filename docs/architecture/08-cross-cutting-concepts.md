@@ -1099,6 +1099,10 @@ Tokens, Secrets oder E-Mail-Adressen.
 
 ### Sichere Textvorlagen für Account-Einladungen
 
+- Tenant-Self-Service ist an `iam.invitationTemplate.manage` gebunden.
+  Navigation und Route blenden die Seite ohne Recht aus; GET und PATCH prüfen
+  das Recht erneut serverseitig. Der Instanzkontext stammt aus der Session,
+  nicht aus einem Client-Parameter.
 - Vorlagen sind Text, kein HTML. Erlaubt sind nur `tenantName`,
   `passwordSetupLink`, `tenantHomepageLink` und `linkExpiresIn`; der
   Passwortlink muss genau einmal vorkommen.

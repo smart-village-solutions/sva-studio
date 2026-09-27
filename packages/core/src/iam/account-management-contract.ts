@@ -16,6 +16,8 @@ export type ApiErrorCode =
   | 'forbidden'
   | 'not_found'
   | 'invalid_request'
+  | 'invalid_account_invitation_template'
+  | 'account_invitation_template_revision_conflict'
   | 'invalid_instance_id'
   | 'invalid_organization_id'
   | 'organization_inactive'

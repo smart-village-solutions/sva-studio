@@ -674,7 +674,28 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Templates' }).getAttribute('href')).toBe(
       '/admin/templates'
     );
+    expect(screen.queryByRole('link', { name: 'Einladungsvorlage' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
+  });
+
+  it('zeigt die Einladungsvorlage nur mit Tenant-Kontext und eigener Permission', () => {
+    const user = createSidebarUser({
+      instanceId: 'de-musterhausen',
+      roles: ['editor'],
+      permissionActions: ['iam.invitationTemplate.manage'],
+    });
+    const view = renderSidebar({ user });
+    fireEvent.click(screen.getByRole('button', { name: 'Benutzer' }));
+    expect(screen.getByRole('link', { name: 'Einladungsvorlage' }).getAttribute('href')).toBe(
+      '/admin/users/invitation-template'
+    );
+
+    view.unmount();
+    renderSidebar({
+      user: { ...user, permissionActions: ['iam.user.write'] },
+      contentAccess: createContentAccessState({ permissionActions: [] }),
+    });
+    expect(screen.queryByRole('link', { name: 'Einladungsvorlage' })).toBeNull();
   });
 
   it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {

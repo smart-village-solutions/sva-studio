@@ -20,6 +20,7 @@ export type AccountUiRouteGuardKey =
   | 'adminUsers'
   | 'adminUserCreate'
   | 'adminUserDetail'
+  | 'adminUserInvitationTemplate'
   | 'adminOrganizations'
   | 'adminOrganizationCreate'
   | 'adminOrganizationDetail'
@@ -86,6 +87,11 @@ const accountUiRouteGuardDefinitions: Record<
     kind: 'admin',
     route: uiRoutePaths.adminUserDetail,
     requiredPermissions: ['iam.user.read'],
+  },
+  adminUserInvitationTemplate: {
+    kind: 'protected',
+    route: uiRoutePaths.adminUserInvitationTemplate,
+    requiredPermissions: ['iam.invitationTemplate.manage'],
   },
   adminOrganizations: {
     kind: 'admin',
@@ -225,6 +231,10 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     adminUsers: createAccountUiRouteGuard('adminUsers', diagnostics),
     adminUserCreate: createAccountUiRouteGuard('adminUserCreate', diagnostics),
     adminUserDetail: createAccountUiRouteGuard('adminUserDetail', diagnostics),
+    adminUserInvitationTemplate: createAccountUiRouteGuard(
+      'adminUserInvitationTemplate',
+      diagnostics
+    ),
     adminOrganizations: createAccountUiRouteGuard('adminOrganizations', diagnostics),
     adminOrganizationCreate: createAccountUiRouteGuard('adminOrganizationCreate', diagnostics),
     adminOrganizationDetail: createAccountUiRouteGuard('adminOrganizationDetail', diagnostics),

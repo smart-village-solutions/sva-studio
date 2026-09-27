@@ -10,6 +10,7 @@ import type { PermissionKey } from './types.js';
 const permissionIds = {
   'iam.user.read': '40111111-1111-1111-1111-111111111111',
   'iam.user.write': '40111111-1111-1111-1111-111111111112',
+  'iam.invitationTemplate.manage': '40111111-1111-1111-1111-111111111172',
   'iam.role.read': '40111111-1111-1111-1111-111111111113',
   'iam.role.write': '40111111-1111-1111-1111-111111111114',
   'iam.org.read': '40111111-1111-1111-1111-111111111115',
@@ -48,20 +49,24 @@ const permissionIds = {
   'modules.read': '40111111-1111-1111-1111-111111111169',
 } as const satisfies Readonly<Record<CorePermissionKey, string>>;
 
-export const iamSeedPermissions = corePermissionCatalog.map((definition) => [
-  permissionIds[definition.key],
-  definition.key,
-  definition.description,
-] as const) satisfies readonly [string, PermissionKey, string][];
+export const iamSeedPermissions = corePermissionCatalog.map(
+  (definition) => [permissionIds[definition.key], definition.key, definition.description] as const
+) satisfies readonly [string, PermissionKey, string][];
 
 export const rootOnlySeedPermissionKeys = rootPermissionCatalog.map(
   (definition) => definition.key
 ) satisfies readonly PermissionKey[];
 
-export const tenantBootstrapPermissionKeys = tenantCoreSystemAdminPermissionKeys satisfies readonly PermissionKey[];
+export const tenantBootstrapPermissionKeys =
+  tenantCoreSystemAdminPermissionKeys satisfies readonly PermissionKey[];
 
-export const experimentalShellPermissionKeys = ['experimental.read'] as const satisfies readonly PermissionKey[];
-export const applicationReadPermissionKeys = ['app.read', 'cockpit.read'] as const satisfies readonly PermissionKey[];
+export const experimentalShellPermissionKeys = [
+  'experimental.read',
+] as const satisfies readonly PermissionKey[];
+export const applicationReadPermissionKeys = [
+  'app.read',
+  'cockpit.read',
+] as const satisfies readonly PermissionKey[];
 export const mediaReadPermissionKeys = ['media.read'] as const;
 export const mediaManagePermissionKeys = [
   'media.read',

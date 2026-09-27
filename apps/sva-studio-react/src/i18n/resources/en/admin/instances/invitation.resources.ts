@@ -32,6 +32,8 @@ export const invitationInstancesAdminENResources = {
   invalid: 'The template is invalid.',
   pageTitle: 'Templates',
   pageDescription: 'Manage text templates for this Studio installation.',
+  tenantPageTitle: 'Invitation template',
+  tenantPageDescription: 'Manage the account invitation text for your instance.',
   loading: 'Loading template.',
   loadFailed: 'The template could not be loaded.',
   sampleTenantName: 'Example tenant',

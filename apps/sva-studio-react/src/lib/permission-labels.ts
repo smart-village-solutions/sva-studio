@@ -7,6 +7,7 @@ import { studioBuildTimeRegistry } from './plugins';
 const HOST_PERMISSION_TITLE_KEYS = {
   'iam.user.read': 'permissionDenial.titles.iamUserRead',
   'iam.user.write': 'permissionDenial.titles.iamUserWrite',
+  'iam.invitationTemplate.manage': 'permissionDenial.titles.iamInvitationTemplateManage',
   'iam.role.read': 'permissionDenial.titles.iamRoleRead',
   'iam.role.write': 'permissionDenial.titles.iamRoleWrite',
   'iam.org.read': 'permissionDenial.titles.iamOrgRead',
@@ -95,7 +96,8 @@ export const resolvePermissionTitle = (permissionId: string): string | undefined
       : undefined;
   }
 
-  const titleKey = HOST_PERMISSION_TITLE_KEYS[permissionId as keyof typeof HOST_PERMISSION_TITLE_KEYS];
+  const titleKey =
+    HOST_PERMISSION_TITLE_KEYS[permissionId as keyof typeof HOST_PERMISSION_TITLE_KEYS];
   if (!titleKey) {
     return undefined;
   }

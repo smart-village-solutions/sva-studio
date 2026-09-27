@@ -1,9 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import {
-  SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
-  readSsfLoginClientRequirement,
-} from '@sva/plugin-ssf/provisioning';
+import { resolvePluginAuthComposition } from '#studio-plugin-auth-composition';
 
 let configuredRevision: string | undefined;
 let reconciledRevision: string | undefined;
@@ -41,14 +38,11 @@ const configurePluginActivationPolicies =
       [import('./plugins'), import('@sva/auth-runtime/server')]
     );
     const activationPolicies = studioPluginSnapshot.tenantActivationPolicySnapshot;
-    const pluginOidcClientRequirements = studioPluginSnapshot.pluginSources.some(
-      ({ pluginId }) => pluginId === SSF_TENANT_OIDC_CLIENT_REQUIREMENT.pluginId
-    )
-      ? [
-          SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
-          ...[readSsfLoginClientRequirement()].filter((entry) => entry !== null),
-        ]
-      : [];
+    const { accountCreateContribution, pluginOidcClientRequirements } =
+      resolvePluginAuthComposition({
+        pluginSources: studioPluginSnapshot.pluginSources,
+        readConfiguredPluginTenantAccess: authRuntime.readConfiguredPluginTenantAccess,
+      });
     const revision = pluginOidcClientRequirements.length
       ? `${activationPolicies.revision}:oidc:${createHash('sha256')
           .update(JSON.stringify(pluginOidcClientRequirements))
@@ -58,6 +52,7 @@ const configurePluginActivationPolicies =
       authRuntime.configureInstanceRegistryPluginRuntimeSnapshot({
         activationPolicies,
         pluginOidcClientRequirements,
+        accountCreateContribution,
         tenantLifecycles: studioPluginSnapshot.registry.tenantLifecycles,
         moduleIamContracts: [
           ...studioPluginSnapshot.registry.pluginModuleIamContracts,

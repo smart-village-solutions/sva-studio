@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   configureInstanceRegistryPluginActivationPolicies,
   configureInstanceRegistryPluginRuntimeSnapshot,
+  readAccountCreateContribution,
+  withCapturedInstanceRegistryPluginRuntimeSnapshot,
+  type AccountCreateContribution,
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
   readInstanceRegistryPluginOidcClientRequirements,
@@ -13,6 +16,26 @@ import {
 afterEach(resetInstanceRegistryPluginActivationPoliciesForTests);
 
 describe('instance registry plugin activation policy snapshot', () => {
+  it('captures the optional account-create contribution without replacing an in-flight request', () => {
+    const contribution: AccountCreateContribution = async ({ execute }) =>
+      execute({ readClaims: async () => ({ attributes: { ssf_roles: ['reader'] } }) });
+    const configure = (accountCreateContribution?: AccountCreateContribution) =>
+      configureInstanceRegistryPluginRuntimeSnapshot({
+        activationPolicies: { revision: 'catalog-1', modules: [] },
+        moduleIamContracts: [],
+        tenantLifecycles: [],
+        pluginOidcClientRequirements: [],
+        accountCreateContribution,
+      });
+
+    configure(contribution);
+    withCapturedInstanceRegistryPluginRuntimeSnapshot(() => {
+      configure();
+      expect(readAccountCreateContribution()).toBe(contribution);
+    });
+    expect(readAccountCreateContribution()).toBeUndefined();
+  });
+
   it('stores a sorted immutable copy of the host-validated snapshot', () => {
     configureInstanceRegistryPluginActivationPolicies({
       revision: 'catalog-2',

@@ -149,6 +149,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-039: Medienmanagement als Host-Capability mit eigenem Domänenpackage, internem Storage-Port und Plugin-SDK-kompatibler Referenzgrenze (Abschnitt 03, 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-040: `graphile-worker` als aktueller Host-Standard für Hintergrundprozesse; Temporal bleibt dokumentierte Eskalationsoption, Trigger.dev ist ausgeschlossen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-041: Plugin-Plattform v2 für externe Distribution, Katalog/Loader-Snapshot und host-owned Runtime; ADR-034 bleibt als v1-Zwischenstand bestehen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
+- Die Fortschreibung von ADR-041 zur Auth-Composition bindet den optionalen Account-Create-Beitrag ausschließlich am SSF-Buildprofil; `@sva/auth-runtime` bleibt ohne konkrete SSF-Runtime-Abhängigkeit (Abschnitt 04, 05, 06, 08).
 - ADR-042: Externe Schnittstellen als host-owned Registry mit zentralem Secret-Store, Default-Auflösung und plugin-konsumierbarem Typkatalog (Abschnitt 03, 05, 08, 09, 11, 12)
 - ADR-043: Formular-Foundation mit `react-hook-form` und `zodResolver` als verbindlichem Standardpfad für neue oder grundlegend überarbeitete Formular-Flows (Abschnitt 05, 08, 09, 10)
 - ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)

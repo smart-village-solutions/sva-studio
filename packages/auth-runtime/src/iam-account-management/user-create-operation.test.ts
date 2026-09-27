@@ -19,21 +19,20 @@ const state = vi.hoisted(() => ({
   logger: {
     error: vi.fn(),
   },
-  withSsfAccountCreate: vi.fn(
+  accountCreateContribution: vi.fn(
     async ({
       execute,
     }: {
       execute: (context: { readClaims: () => Promise<unknown> }) => Promise<unknown>;
     }) => execute({ readClaims: async () => ({ attributes: {} }) })
   ),
+  readAccountCreateContribution: vi.fn(),
 }));
 
 vi.mock('./user-create-persistence.js', () => ({
   persistCreatedUser: state.persistCreatedUser,
   prepareCreatedUserAssignments: state.prepareCreatedUserAssignments,
 }));
-
-vi.mock('./ssf-account-create.js', () => ({ withSsfAccountCreate: state.withSsfAccountCreate }));
 
 vi.mock('./shared-managed-role-sync.js', () => ({
   ensureManagedRealmRolesExist: state.ensureManagedRealmRolesExist,
@@ -53,6 +52,7 @@ vi.mock('../config.js', () => ({
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
   readInstanceRegistryPluginTenantLifecycleRegistry:
     state.readInstanceRegistryPluginTenantLifecycleRegistry,
+  readAccountCreateContribution: state.readAccountCreateContribution,
 }));
 
 vi.mock('../iam-instance-registry/repository.js', () => ({
@@ -94,6 +94,62 @@ describe('executeCreateUser', () => {
     state.readInstanceRegistryPluginTenantLifecycleRegistry.mockReturnValue(new Map());
     state.persistPluginTenantLifecycleReconcileIntents.mockResolvedValue([]);
     state.provisionMainserverUserCredentials.mockResolvedValue(null);
+    state.readAccountCreateContribution.mockReturnValue(state.accountCreateContribution);
+  });
+
+  it('creates a Core user without SSF claims when no plugin contribution is installed', async () => {
+    state.readAccountCreateContribution.mockReturnValueOnce(undefined);
+    const createUser = vi.fn(async () => ({ externalId: 'kc-user-1' }));
+    const { executeCreateUser } = await import('./user-create-operation.js');
+
+    await executeCreateUser({
+      actor: { instanceId: 'instance-1', actorAccountId: 'actor-1' },
+      actorSubject: 'kc-actor-1',
+      identityProvider: {
+        provider: { createUser, syncRoles: vi.fn(async () => undefined) },
+        realm: 'tenant-realm',
+        source: 'instance',
+        clientId: 'tenant-admin',
+        adminRealm: 'tenant-realm',
+        executionMode: 'tenant_admin',
+      },
+      payload: {
+        email: 'alice@example.com',
+        roleIds: [],
+        sendPasswordSetupEmail: false,
+      },
+    });
+
+    expect(createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ attributes: { instanceId: 'instance-1' } })
+    );
+    expect(state.accountCreateContribution).not.toHaveBeenCalled();
+  }, 15_000);
+
+  it('fails closed before the Keycloak write when the installed contribution is not ready', async () => {
+    state.accountCreateContribution.mockRejectedValueOnce(
+      new Error('conflict:SSF-Mandant ist noch nicht bereit.')
+    );
+    const createUser = vi.fn(async () => ({ externalId: 'kc-user-1' }));
+    const { executeCreateUser } = await import('./user-create-operation.js');
+
+    await expect(
+      executeCreateUser({
+        actor: { instanceId: 'instance-1', actorAccountId: 'actor-1' },
+        actorSubject: 'kc-actor-1',
+        identityProvider: {
+          provider: { createUser, syncRoles: vi.fn(async () => undefined) },
+          realm: 'tenant-realm',
+          source: 'instance',
+          clientId: 'tenant-admin',
+          adminRealm: 'tenant-realm',
+          executionMode: 'tenant_admin',
+        },
+        payload: { email: 'alice@example.com', roleIds: [], sendPasswordSetupEmail: false },
+      })
+    ).rejects.toThrow('conflict:SSF-Mandant ist noch nicht bereit.');
+
+    expect(createUser).not.toHaveBeenCalled();
   });
 
   it('skips the Keycloak write when the Mainserver attributes are already current', async () => {

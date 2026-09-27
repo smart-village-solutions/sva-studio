@@ -4,8 +4,10 @@ export {
   readInstanceRegistryModuleIamRegistry,
   readInstanceRegistryPluginActivationPolicies,
   readInstanceRegistryPluginOidcClientRequirements,
+  readAccountCreateContribution,
   readInstanceRegistryPluginTenantLifecycleRegistry,
   type InstanceRegistryModuleIamSnapshotEntry,
+  type AccountCreateContribution,
 } from './iam-instance-registry/plugin-activation-policy-snapshot.js';
 export {
   readPluginActivationPolicyFleetReconcileReport,

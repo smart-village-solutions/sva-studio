@@ -17,6 +17,7 @@ Abhängigkeiten des aktuellen Systems.
 
 1. App (`apps/sva-studio-react`)
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
+   - profilgebundene Auth-Composition: Das Standard-Studio bindet keinen SSF-Beitrag; das SSF-Profil bindet Account-Create-Beitrag und OIDC-Anforderungen vor Veröffentlichung des Runtime-Snapshots und verlangt dafür ein installiertes SSF-Plugin
    - offizieller Server-Entry unter `apps/sva-studio-react/src/server.ts`; der finale Release-Vertrag wird am gebauten `.output/server/**`-Artefakt, nicht an `.nitro/vite/services/ssr/**`, beurteilt
    - der App-Build enthält neben `build` einen expliziten Final-Artifact-Check `verify:runtime-artifact`, der den finalen Node-Output mit Health-Probes und Artefakt-Assertions verifiziert
    - Shell-Bausteine: `Header`, `Sidebar`, `AppShell` (Layout-Komposition)
@@ -50,6 +51,7 @@ Abhängigkeiten des aktuellen Systems.
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
+   - der bestehende Plugin-Runtime-Snapshot trägt einen optionalen Account-Create-Beitrag; die gemeinsame Benutzeranlage ruft ihn auf oder erzeugt nur Core-Attribute und importiert keine SSF-Runtime
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
    - hostgeführter Plugin-Tenant-Lifecycle mit generationsgebundenem Ledger, Readiness-Read-Modell und zentraler Access-Entscheidung; `/auth/me` entfernt nicht freigegebene lifecycle-verwaltete Module aus `assignedModules`, normale Plugin-Jobs prüfen dieselbe Entscheidung vor Idempotenzreservierung und Queueing
@@ -68,6 +70,7 @@ Abhängigkeiten des aktuellen Systems.
    - der Build-time-Snapshot veröffentlicht getrennte Plattform-/Tenant-Sichten für Route und Navigation; `@sva/routing` materialisiert pro Host nur die passende Sicht
    - `@sva/core` definiert die framework-unabhängige Aktivierungsauflösung; `@sva/data-repositories` materialisiert Policy, Override und Revision im vorhandenen Instanz-Modulsatz
    - die Studio-App injiziert Aktivierungsrichtlinien und Plugin-IAM-Verträge atomar aus demselben validierten Snapshot in `@sva/auth-runtime`; nur hosteigene Module wie `media` werden zusätzlich ergänzt, ein zweiter statischer Plugin-IAM-Katalog ist keine Runtime-Quelle
+   - `@sva/plugin-ssf` besitzt die SSF-spezifische synchrone Claim-Ableitung einschließlich Readiness, Tenant-Sperre und Projektionsrevision; der Host behält Account-Persistenz, Keycloak-Aufruf und Kompensation
    - `@sva/auth-runtime` konfiguriert eine neue Snapshot-Revision im kurzen Bootstrap-Pfad; der App-Prozess mit `default`-Lane startet als alleiniger Standard-Owner den kontrollierten Fleet-Reconcile erst nach Registrierung der Plugin-Operations-Handler im Hintergrund. Der Lauf bindet Aktivierungsrichtlinien, IAM-Verträge, Tenant-Lifecycles und OIDC-Anforderungen als eine unveränderliche Ausführungssicht, synchronisiert IAM-Verträge auch bei unveränderten Aktivierungszeilen und veröffentlicht Teilfehler nur für die beim Abschluss weiterhin aktuelle Snapshot-Generation. Retrybare Fehler folgen 1/5/15 Minuten Backoff, dauerhaft degradierte Zustände einer 30-minütigen Kontrollprobe; bei gemischten Klassen gilt der kürzere Takt. Der privilegierte Provisioner registriert keine konkurrierende Fleet-Metriksicht
    - der scoped Instance-Registry-Runtime meldet erfolgreich committete Aktivierungs-Reconciles über einen fehlertoleranten Post-Commit-Hook; der Fleet-Reconcile wartet auf diese Folgeplanung und wertet ihren Fehler als revisionsgebundene Degradierung. Die Instanzanlage plant dieselbe Prüfung explizit ein, und `@sva/auth-runtime` startet darüber fehlende oder retryable `provision`-Läufe automatisch für `automatic`- und `required`-Plugins mit Tenant-Lifecycle, ohne fertige Readiness-Evidenz erneut zu provisionieren. Eine explizite Wiederzuweisung eines optionalen Plugins entfernt atomar dessen alte terminale Retry-Sperre; terminale Job- und Lifecycle-Zustände werden ansonsten gemeinsam in einer Tenant-DB-Transaktion persistiert
 6. Studio UI React (`packages/studio-ui-react`)

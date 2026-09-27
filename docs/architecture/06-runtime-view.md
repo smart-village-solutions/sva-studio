@@ -1,5 +1,12 @@
 # 06 Laufzeitsicht
 
+## Profilgebundene Benutzeranlage
+
+1. Die App veröffentlicht Aktivierungsrichtlinien, IAM- und OIDC-Verträge sowie den optionalen Account-Create-Beitrag als eine Runtime-Snapshot-Generation. Das Studio-Profil bindet keinen SSF-Beitrag; das SSF-Profil verlangt das SSF-Plugin und bindet dessen Beitrag.
+2. `@sva/auth-runtime` liest den Beitrag aus der Request-Generation. Ohne Beitrag führt es die Core-Benutzeranlage mit `instanceId`, aber ohne SSF-Claims aus.
+3. Bei aktivem SSF prüft der Plugin-Beitrag die Tenant-Readiness, beide Datenbank-Pools und die bestätigte Projektionsrevision unter der Tenant-Sperre, bevor Keycloak den Nutzer erzeugt. Fehlende Voraussetzungen und Sperrkonflikte bleiben sichtbare Konfliktfehler.
+4. Unter derselben Sperre leitet das Plugin aus den wirksamen Rollen und Berechtigungen `studio_tenant_id`, `ssf_roles`, `ssf_permissions` und `ssf_authorization_revision` ab. Die bestehende Host-Benutzeranlage übernimmt Keycloak-Write, Rollenabgleich, lokale Persistenz und Kompensation unverändert.
+
 ## Scopegebundene UI-Autorisierung
 
 1. `/auth/me` löst ausschließlich Identität, Session, technische Plattformrollen und die fail-closed Modulprojektion auf.

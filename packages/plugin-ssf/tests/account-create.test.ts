@@ -10,23 +10,24 @@ const state = vi.hoisted(() => ({
   withTenantLock: vi.fn(),
 }));
 
-vi.mock('@sva/plugin-ssf/runtime', () => ({
+vi.mock('../src/authorization-projection-store.js', () => ({
   createPostgresSsfAuthorizationProjectionStore: state.createPostgresStore,
+}));
+vi.mock('../src/authorization-projection.js', () => ({
   createSsfAuthorizationProjection: state.createProjection,
+  SSF_TENANT_PERMISSION_IDS: ['ssf.configuration.tenant.read', 'ssf.configuration.tenant.manage'],
+}));
+vi.mock('../src/authorization-projection-repository.js', () => ({
   readReadySsfAuthorizationRevision: state.readRevision,
+}));
+vi.mock('../src/database.js', () => ({
   resolveSsfDatabasePool: state.resolveRuntimePool,
   resolveSsfRootDatabasePool: state.resolveRootPool,
-  SSF_TENANT_PERMISSION_IDS: [
-    'ssf.configuration.tenant.read',
-    'ssf.configuration.tenant.manage',
-  ],
 }));
 
-vi.mock('../plugin-tenant-lifecycle/access.js', () => ({
-  readConfiguredPluginTenantAccess: state.readAccess,
-}));
+import { createSsfAccountCreateContribution } from '../src/account-create.js';
 
-import { withSsfAccountCreate } from './ssf-account-create.js';
+const withSsfAccountCreate = createSsfAccountCreateContribution(state.readAccess);
 
 describe('withSsfAccountCreate', () => {
   beforeEach(() => {
@@ -49,12 +50,14 @@ describe('withSsfAccountCreate', () => {
     'keeps %s tenants outside the SSF-specific create path',
     async (reason) => {
       state.readAccess.mockResolvedValue({ allowed: false, reason });
-      const execute = vi.fn(async ({ readClaims }) => readClaims({
-        client: { query: vi.fn() },
-        keycloakSubject: 'new-account',
-        roleIds: [],
-        roleNames: [],
-      }));
+      const execute = vi.fn(async ({ readClaims }) =>
+        readClaims({
+          client: { query: vi.fn() },
+          keycloakSubject: 'new-account',
+          roleIds: [],
+          roleNames: [],
+        })
+      );
 
       await expect(withSsfAccountCreate({ instanceId: 'tenant-a', execute })).resolves.toEqual({
         attributes: {},

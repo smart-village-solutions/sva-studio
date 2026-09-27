@@ -6,3 +6,4 @@ export {
   SSF_LOGIN_CLIENT_ID,
   readSsfLoginClientRequirement,
 } from './keycloak-client-requirement.js';
+export { createSsfAccountCreateContribution } from './account-create.js';

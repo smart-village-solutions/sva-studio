@@ -1,5 +1,9 @@
 # 08 Querschnittliche Konzepte
 
+## Plugin-Auth-Composition
+
+Der Auth-Runtime-Snapshot transportiert einen optionalen, typisierten Account-Create-Beitrag statt einer statischen Abhängigkeit auf `@sva/plugin-ssf`. Die Buildprofile bestimmen an der App-Composition-Root, ob der Beitrag und SSF-OIDC-Anforderungen vorhanden sind. Die Plugin-Fachlogik darf weder den Host-Account persistieren noch dessen Keycloak-Fehler- und Kompensationsvertrag ersetzen; sie liefert ausschließlich tenantgebundene Claims innerhalb der bestehenden Create-Operation. Das SSF-Profil scheitert beim Bootstrap, wenn sein Plugin im Katalog fehlt. Die allgemeine Installationsauswahl bleibt eine separate Plattformaufgabe.
+
 ## Zweck
 
 Dieser Abschnitt sammelt übergreifende Konzepte, die mehrere Bausteine

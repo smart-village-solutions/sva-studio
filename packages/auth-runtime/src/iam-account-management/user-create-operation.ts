@@ -18,7 +18,10 @@ import { maskEmail } from './user-mapping.js';
 import { provisionMainserverUserCredentials } from './mainserver-user-provisioning.js';
 import { persistProvisionedMainserverCredentials } from './mainserver-credential-persistence.js';
 import { logMainserverProvisioningFailure } from './user-create-mainserver-provisioning-log.js';
-import { withSsfAccountCreate } from './ssf-account-create.js';
+import {
+  readAccountCreateContribution,
+  type AccountCreateContribution,
+} from '../iam-instance-registry/plugin-activation-policy-snapshot.js';
 type InvitationResult = IamCreateUserResult['invitation'];
 
 const buildCreateUserResult = (
@@ -192,6 +195,9 @@ const deleteCreatedExternalUser = async (input: {
   );
 };
 
+const createCoreAccountWithoutPluginClaims: AccountCreateContribution = async ({ execute }) =>
+  execute({ readClaims: async () => ({ attributes: {} }) });
+
 export const executeCreateUser = async (input: {
   actor: CreateUserActorInfo;
   actorSubject: string;
@@ -202,7 +208,7 @@ export const executeCreateUser = async (input: {
   let createdExternalId: string | undefined;
 
   try {
-    return await withSsfAccountCreate({
+    return await (readAccountCreateContribution() ?? createCoreAccountWithoutPluginClaims)({
       instanceId: actor.instanceId,
       execute: async ({ readClaims }) => {
         const assignments = await withInstanceScopedDb(actor.instanceId, (client) =>

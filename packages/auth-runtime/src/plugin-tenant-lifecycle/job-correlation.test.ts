@@ -266,7 +266,7 @@ describe('plugin tenant lifecycle job correlation', () => {
       job,
       error: {
         code: 'plugin_operation_execution_failed',
-        category: 'permanent',
+        category: 'retryable',
         details: {
           plugin: {
             code: 'speech.databaseUnavailable',
@@ -295,7 +295,7 @@ describe('plugin tenant lifecycle job correlation', () => {
       job,
       error: {
         code: 'plugin_operation_execution_failed',
-        category: 'permanent',
+        category: 'retryable',
         details: {
           plugin: {
             code: 'speech.databaseUnavailable',

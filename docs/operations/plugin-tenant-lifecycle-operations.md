@@ -113,6 +113,22 @@ Sollzustand auslösen. Falls SSF dort nicht vorgesehen ist, die zuständige
 Aktivierungsrichtlinie korrigieren. Historische Jobzeilen werden dabei nicht
 gelöscht oder direkt umgeschrieben.
 
+### Ausgeschöpftes Job-Budget
+
+Ein retrybarer Plugin-Fehler darf das endgültige Fehlerurteil des Workers nicht
+überschreiben. Nach dem letzten zulässigen Jobversuch bleibt der Lifecycle
+`blocked` mit `retry_kind=terminal` und dem konkreten Plugin-Fehlercode; es gibt
+bei unverändertem aktuellem Lifecycle-Vertrag keine automatische neue Generation
+mit zurückgesetztem Versuchszähler. Eine
+bereits geplante Lifecycle-Kontrolle startet für diesen unveränderten terminalen
+Zustand ebenfalls keinen neuen Job.
+
+Die Ursache zuerst über Jobevent und Lifecycle diagnostizieren und beheben.
+Danach die bestehende autorisierte Retry-/Repair-Aktion verwenden. Sie darf eine
+neue Generation anlegen; ein direktes Zurücksetzen von Attempts oder Queue-Zeilen
+ist weiterhin unzulässig. Dieser Fix ersetzt keinen Live-Nachweis für historische
+SSF-Reconcile-Jobs.
+
 ### Allgemeine Recovery
 
 1. **Abwarten:** Bei einem frischen Heartbeat, einer noch nicht fälligen Deadline oder innerhalb des dokumentierten 150-Sekunden-Recovery-Budgets keine zweite Arbeit anlegen.

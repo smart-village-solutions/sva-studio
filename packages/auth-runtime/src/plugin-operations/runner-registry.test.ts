@@ -525,7 +525,7 @@ describe('plugin operation runner registry', () => {
     );
   });
 
-  it('persists lifecycle failure and schedules its durable retry deadline', async () => {
+  it.each([false, true])('honours host retry exhaustion: %s', async (exhausted) => {
     const registry = await import('./runner-registry.js');
     const run = vi.fn(async () => undefined);
     const transitionJobStateAndAppendEvent = vi.fn(async (input) => ({
@@ -533,7 +533,10 @@ describe('plugin operation runner registry', () => {
       job: input,
     }));
     const failLifecycle = vi.fn(
-      async (input: { readonly retryKind: 'retryable'; readonly retryAfter?: string }) => ({
+      async (input: {
+        readonly retryKind: 'retryable' | 'terminal';
+        readonly retryAfter?: string;
+      }) => ({
         outcome: 'applied' as const,
         record: input,
       })
@@ -553,7 +556,8 @@ describe('plugin operation runner registry', () => {
           contractRevision: 'waste-1:1',
         },
       },
-      attempts: 5,
+      // This snapshot may predate the worker attempt used by the error mapper.
+      attempts: 1,
       maxAttempts: 5,
       idempotencyKey: 'waste-management:tenant-lifecycle:provision:3',
       scheduledAt: '2026-08-30T12:00:00.000Z',
@@ -584,22 +588,23 @@ describe('plugin operation runner registry', () => {
     const [{ loadRepository }] = state.createJobLifecycleOrchestrator.mock.calls.at(0) ?? [];
     const repository = await loadRepository('tenant-a');
     await repository.getJobById('tenant-a', lifecycleJob.id);
+    const { createExecutionErrorPayload } = await import('./job-error-mapper.js');
     const terminalInput = {
       jobId: lifecycleJob.id,
       instanceId: 'tenant-a',
       status: 'failed' as const,
       attempts: 5,
-      errorPayload: {
-        code: 'provision_failed',
-        category: 'transient' as const,
-        details: {
-          plugin: {
+      errorPayload: createExecutionErrorPayload(
+        { source: 'plugin' },
+        Object.assign(new Error('authorization_reconcile_blocked'), {
+          cause: {
             code: 'waste-management.databaseUnavailable',
             messageKey: 'waste-management.errors.databaseUnavailable',
-            retry: { kind: 'retryable' as const, retryAfterMs: 600_000 },
+            retry: { kind: 'retryable', retryAfterMs: 600_000 },
           },
-        },
-      },
+        }),
+        exhausted
+      ),
     };
     await repository.persistTerminalState({
       state: { ...terminalInput, workerId: 'worker-1' },
@@ -611,6 +616,7 @@ describe('plugin operation runner registry', () => {
         jobId: lifecycleJob.id,
         generation: 3,
         errorCode: 'waste-management.databaseUnavailable',
+        retryKind: exhausted ? 'terminal' : 'retryable',
       })
     );
     expect(transitionJobStateAndAppendEvent).toHaveBeenCalledWith(
@@ -621,6 +627,12 @@ describe('plugin operation runner registry', () => {
       expect.any(Function)
     );
     const persistedRetryAfter = failLifecycle.mock.calls[0]?.[0].retryAfter;
+    if (exhausted) {
+      expect(persistedRetryAfter).toBeUndefined();
+      expect(state.enqueuePluginTenantLifecycleRetry).not.toHaveBeenCalled();
+      expect(state.scheduleConfiguredPluginTenantProvisioning).toHaveBeenCalledWith('tenant-a');
+      return;
+    }
     expect(persistedRetryAfter).toEqual(expect.any(String));
     expect(state.enqueuePluginTenantLifecycleRetry).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

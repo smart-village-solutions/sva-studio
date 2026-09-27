@@ -1,5 +1,22 @@
 # Change: Revisionsgebundene SSF-IAM-Permission-Projektion einführen
 
+## Zuschnitt ab 27.09.2026: Gesprächszugriff ohne Benutzerprojektion
+
+Die vier Benutzerclaims `studio_tenant_id`, `ssf_authorization_revision`,
+`ssf_permissions` und `ssf_roles` sind als Voraussetzung für Gesprächszugriff
+**deprecated**. Aktive reguläre Keycloak-Konten eines zugelassenen Tenant-Realms
+erhalten Gesprächszugriff über ihr gültiges OIDC-Token; der verifizierte
+Aussteller bestimmt den Tenant. Der Claim-/Runtime-Revisionsvergleich entfällt
+für Gespräche auf SSF-Seite ([SSF #438](https://github.com/smart-village-solutions/smart-speech-flow/issues/438)).
+
+Dieser Studio-Lieferabschnitt dokumentiert die Deprecation und kennzeichnet die
+zentralen Claim-Konstanten. Er ändert keine Producer, Runtime-Schemas,
+Verwaltungsrechte oder Readiness-Gates. Die nachfolgenden Projektionsregeln
+beschreiben den bestehenden Kompatibilitätsbetrieb. Insbesondere die bisherige
+Pflicht gleicher Benutzer- und Runtime-Revision ist für Gesprächszugriff
+abgelöst; die Runtime-Revision selbst bleibt unterstützt. Producer-Abbau folgt
+erst nach geprüfter Migration aller verbleibenden Verbraucher.
+
 ## Why
 
 Der interne SSF-Runtime-Konfigurationsendpunkt ist implementiert, bleibt aber

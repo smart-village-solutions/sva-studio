@@ -1,4 +1,4 @@
 {
   "prNumber": 1542,
-  "body": "Alle aktiven Nutzer eines Gesprächsmandanten erhalten automatisch Zugriff auf Gespräche. Das gilt auch ohne zusätzliche Rolle und für Mandantenadministratoren; Verwaltungsrechte werden weiterhin separat vergeben."
+  "body": "Der Integrationsvertrag für Smart Speech Flow kennzeichnet zusätzliche Benutzerfelder als auslaufende Voraussetzung für den Gesprächszugriff. Die Umstellung in SSF wird separat umgesetzt; diese Änderung verändert bestehende Zugriffsrechte noch nicht."
 }

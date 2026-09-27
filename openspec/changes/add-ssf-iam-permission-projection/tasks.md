@@ -89,10 +89,11 @@ ersetzt weder den Tokenlaufzeit- noch den gemeinsamen Staging-Nachweis.
 - [x] Lokale Zwei-Tenant-, Teilfehler- und PostgreSQL-Wiederanlaufnachweise ergänzen
 - [ ] Gemeinsamen echten Zwei-Realm-Login bis SSF-Gateway in Staging nachweisen und Digest dokumentieren
 
-## Gesprächszugriff als Mindestrecht
+## Deprecation der Gesprächszugangsclaims (27.09.2026)
 
-- [x] Aktive Tenant-Nutzer unabhängig von optionalen Verwaltungsrechten projizieren.
-- [x] Gesprächs-Basisrechte bei Reconcile und Kontoerstellung automatisch ergänzen.
-- [x] Directory-Readiness an aktive Mitgliedschaft binden.
-- [x] Gezielte Unit-, Typ- und Server-Runtime-Gates durchführen.
-- [ ] Studio/Gateway abgestimmt ausrollen, neu projizieren und mit zwei Tenants real abnehmen.
+- [x] Benutzerclaims im deutschen und englischen Vertrag sowie in arc42 als deprecated kennzeichnen.
+- [x] Zentrale Claim-Konstanten mit auf Gesprächszugriff begrenzten `@deprecated`-Hinweisen versehen.
+- [x] Die zusätzliche Gesprächsrechteprojektion aus PR #1542 zurücknehmen; bestehendes Runtime-Verhalten erhalten.
+- [x] SSF-Verbraucherumstellung mit Abnahmekriterien in [SSF #438](https://github.com/smart-village-solutions/smart-speech-flow/issues/438) erfassen.
+- [ ] SSF-Verbraucher umstellen und den echten Zwei-Tenant-Nachweis erbringen (SSF #438).
+- [ ] Nach Consumer-Migration verbleibende administrative Verbraucher prüfen und entbehrliche Producer entfernen.

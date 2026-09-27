@@ -1,3 +1,23 @@
+## Aktuelle Vertragsentscheidung: Deprecation für Gesprächszugriff
+
+Die Benutzerclaims `studio_tenant_id`, `ssf_authorization_revision`,
+`ssf_permissions` und `ssf_roles` sind als Gesprächszugangskriterien deprecated.
+SSF #438 stellt den vorhandenen Consumer auf gültige reguläre Keycloak-Tokens
+und eindeutige Tenant-Zuordnung über den verifizierten Aussteller um.
+Die bisherige Kopplung der Benutzerrevision an die Runtime-Revision entfällt
+für Gespräche; die Runtime-API und gesonderte Verwaltungsrechte bleiben erhalten.
+
+Der folgende Entwurf beschreibt die weiterhin betriebene Legacy-Projektion.
+Die Studio-Änderung besteht ausschließlich aus Dokumentation und
+Deprecation-Kommentaren. Bestehende Mapper, Benutzerattribute und Producer
+bleiben bis zur geprüften Consumer-Migration erhalten. Kein neuer
+Projektionspfad und keine zusätzliche Rechtevergabe werden eingeführt.
+
+Nachweis auf SSF-Seite: reale Zwei-Tenant-Abnahme mit regulären Konten ohne
+Sonderattribute, Ablehnung ungültiger Tokens und fremder Tenant-Zugriffe,
+sowie weiterhin getrennte Verwaltungsrechte. Lokale Tokenprüfung behält die
+bestehende begrenzte Nachwirkung bereits ausgestellter Tokens bei.
+
 ## Context
 
 Der Runtime-Konfigurations-Change akzeptiert ausschließlich eine hostseitig
@@ -26,8 +46,7 @@ Die IAM-Auslese bleibt eine generische Host-Capability. Das SSF-Plugin fordert
 nur seine feste Permission-Allowlist an und übersetzt den zurückgegebenen,
 unveränderten Keycloak-Subject selbst. Nur die tenantlokale Studio-Rolle
 `system_admin` ergibt dabei die SSF-Persona `tenant_admin`; kundenspezifische
-Rollen bleiben auch mit Verwaltungs-Permissions fachlich `user`. Das unten
-beschriebene Gesprächsmindestrecht ergänzt `user` auch für Tenant-Admins.
+Rollen bleiben auch mit Verwaltungs-Permissions fachlich `user`.
 
 Der vollständige externe Reconcile läuft unter einer tenantgebundenen
 PostgreSQL-Advisory-Lock der SSF-Plugin-Datenbank. Damit können verschiedene
@@ -38,7 +57,7 @@ verwaisten Zustand `projecting`, `activation_pending` oder
 `revocation_pending` erneut idempotent
 beanspruchen.
 
-### Token und Runtime-Konfiguration müssen revisionsgleich sein
+### Legacy-Vertrag: Token und Runtime-Konfiguration sind revisionsgleich
 
 Studio und SSF verwenden für einen Tenant denselben Realm und damit dieselbe
 Benutzeridentität. Das OIDC-`sub` eines Tenant-Benutzers gilt in beiden
@@ -155,35 +174,3 @@ kanonischen Promote-Workflow.
 - Ohne wirksame Begrenzung der Access-Token-Laufzeit können entzogene Rechte
   länger nachwirken. Der exakte Staging-E2E bleibt daher ein separates
   Freigabegate.
-
-## Verbindliches Mindestrecht für Tenant-Nutzer (27.09.2026)
-
-Produktentscheidung: Jeder aktive reguläre Nutzer eines SSF-Tenants erhält
-Gesprächszugriff automatisch, einschließlich tenantlokaler Administratoren und
-Nutzern ohne zugewiesene Verwaltungsrechte. Eine zusätzliche Rollenvergabe oder
-manuelle Freigabe ist dafür nicht vorgesehen. Die Projektion ergänzt für jeden
-aktiven Tenant-Account die vier Basis-Actions `ssf.sessions.create`,
-`ssf.sessions.read`, `ssf.sessions.terminate` und
-`ssf.conversations.participate`. Sie bleiben im signierten `ssf_permissions`-Claim
-sichtbar; Konfigurationsrechte entstehen weiterhin ausschließlich aus IAM.
-
-Die bestehende IAM-Auslese muss auch Accounts ohne passende Rollen oder
-Permissions liefern und dabei aktive Accounts und deren aktuelle
-Instanzmitgliedschaft erzwingen. Root-Identitäten, fremde Tenants und Gäste
-werden dadurch nicht zu Tenant-Nutzern. Die Directory-Berechtigung benötigt
-mindestens einen aktiven Tenant-Nutzer, keine Verwaltungs-Permission.
-
-Nachweise: Projektion eines rollenlosen Nutzers, eines Lesers und eines Admins;
-Kontoerstellung ohne Rollen; tenantgebundene Mitgliedschaft und Ausschluss
-inaktiver Accounts; Gateway-Zugriff ohne Legacy-Rolle; Ablehnung fehlender,
-falscher oder unvollständiger Claims und tenantübergreifender Ressourcen.
-Feedback-Auswertung und technische Betriebsrechte sind kein Gesprächsmindestrecht.
-
-Liefergrenzen: Studio ändert nur die vorhandene Projektionsquelle, Projektion,
-Directory-Readiness und deren Tests/Dokumentation. SSF ändert den vorhandenen
-Token-Guard und hält zusätzliche Gates für Nicht-Gesprächsfunktionen aufrecht.
-Keine neue Datenbankstruktur, kein neuer Dienst, keine zweite Projektion.
-Der erweiterte feste Permission-Katalog ändert die Vertragsrevision. Vor dem
-Gateway-Rollout sind beide Test-Tenants über den vorhandenen Reconciler erneut
-zu projizieren und mit frisch ausgestellten Tokens zu prüfen. Ein grüner Build
-ersetzt nicht die reale Zwei-Tenant-Abnahme.

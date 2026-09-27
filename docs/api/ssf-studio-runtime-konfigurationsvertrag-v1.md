@@ -41,6 +41,46 @@ implementiert und bleiben ohne diese Provider fail-closed.
 Auswertungen, Gesprächsdaten, ClickHouse, Supportzugriffe und eine
 SSF-seitige Mandantenverwaltung sind nicht Bestandteil von V1.
 
+## Deprecated: Benutzerclaims als Voraussetzung für Gesprächszugriff
+
+**Produktentscheidung vom 27.09.2026; Umsetzung des SSF-Verbrauchers noch offen:**
+Jedes aktive reguläre Keycloak-Konto in einem zugelassenen Tenant-Realm darf
+SSF-Gespräche nutzen. Eine zusätzliche SSF-Rolle, Benutzerprojektion oder ein
+entsprechender Studio-IAM-Account ist dafür keine Voraussetzung. SSF prüft das
+normale Benutzer-Access-Token (Signatur, zugelassener Aussteller, Audience,
+Ablauf und `sub`) und bestimmt den Tenant ausschließlich aus dem verifizierten
+Aussteller und dessen eindeutiger Zuordnung im vertrauenswürdigen Login-Verzeichnis.
+
+| Benutzerclaim / Keycloak-Benutzerattribut | Status für Gesprächszugriff | Ersatz                                                            |
+| ----------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| `studio_tenant_id`                        | **deprecated**              | Tenant aus verifiziertem Aussteller und Login-Verzeichnis         |
+| `ssf_authorization_revision`              | **deprecated**              | Kein Vergleich einer Benutzerrevision mit der Runtime-Antwort     |
+| `ssf_permissions`                         | **deprecated**              | Gültiger regulärer Keycloak-Login berechtigt zur Gesprächsnutzung |
+| `ssf_roles`                               | **deprecated**              | Keine Persona oder zusätzliche SSF-Rolle als Zugangskriterium     |
+
+Auch die Legacy-Rolle `ssf-user` ist keine Voraussetzung des neuen
+Gesprächsvertrags. Fehlende, veraltete oder fehlerhaft geformte Legacy-Felder
+dürfen nach der SSF-Umstellung den Gesprächszugriff nicht blockieren und niemals
+die aus dem Aussteller bestimmte Tenant-Zuordnung überschreiben.
+
+Die Deprecation betrifft ausschließlich die **Benutzerfelder als
+Gesprächszugangskriterium**. `authorizationRevision` und `configurationRevision`
+der Runtime-API, der interne Header `X-Studio-Tenant-Id`, Service-Token,
+Tenant-Isolation, Gastfähigkeiten und gesonderte Verwaltungsberechtigungen
+bleiben bestehen. Konfiguration, Feedback-Auswertung und technische
+Betriebsfunktionen werden durch Gesprächszugriff nicht freigegeben.
+
+**Übergang:** Studio erzeugt die bestehenden Claims und Benutzerattribute
+unverändert weiter. Erst [SSF #438](https://github.com/smart-village-solutions/smart-speech-flow/issues/438) stellt Authentifizierung,
+Tenant-Kontext und den Benutzer-Revisionsvergleich im bestehenden Gateway-Pfad
+um. Diese Dokumentationsänderung schaltet keinen produktiven Consumer um und
+ändert keine Studio-Readiness-Prüfung. Die Claim-Producer dürfen erst entfernt
+werden, wenn ihre verbleibenden Verbraucher geprüft und migriert sind.
+Die bisherigen, nachfolgend beschriebenen Projektionsregeln dokumentieren
+bis dahin den Kompatibilitätsbetrieb; sie begründen keine neue
+Gesprächszugangspflicht. Der Entwurf einer zusätzlichen automatischen
+Gesprächsrechteprojektion aus Studio #1542 / SSF #437 ist damit abgelöst.
+
 ## System- und Datenverantwortung
 
 Eine Studio-Installation läuft gemeinsam mit genau einer SSF-Installation.
@@ -70,13 +110,14 @@ Das SSF-Fachmodell verwendet folgende Bezeichnungen:
 | `guest`          | Gast                 | eine konkrete SSF-Session                   |
 
 Diese Werte sind SSF-Personas und keine Umbenennung der kanonischen Studio-
-IAM-Rollen. Für die erste Integration gilt folgende feste Übersetzung:
+IAM-Rollen. Für die bestehende administrative und Legacy-Projektion gilt
+folgende Übersetzung; sie ist keine Rollenpflicht für Gesprächszugriff:
 
 | Studio-IAM-Quelle                        | SSF-Persona beziehungsweise Tokenwert | Bedeutung                                                                  |
 | ---------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
 | Rootrolle `instance_registry_admin`      | `system_admin`                        | systemweite SSF-Administration; wird nicht in Tenant-Tokens materialisiert |
 | tenantlokale Defaultrolle `system_admin` | `tenant_admin`                        | Administration genau des aktiven Mandanten                                 |
-| jeder aktive tenantlokale Nutzer         | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
+| tenantlokale operative SSF-Rolle         | `user`                                | Nutzung der Gesprächsfunktionen gemäß effektiven `ssf.*`-Permissions       |
 | validierte SSF-Gäste-Session             | `guest`                               | sitzungsgebundene Nutzung ohne Studio- oder reguläres Keycloak-Konto       |
 
 ADR-046 bleibt für Studio maßgeblich: `instance_registry_admin` ist die
@@ -94,21 +135,11 @@ SSF-Systemadmins werden über `instance_registry_admin` im Root-Kontext des
 Studios verwaltet und erscheinen nicht in Tenant-Tokens. `system_admin` und
 `tenant_admin` sind SSF-Personas und
 Defaultrollen, aber keine direkte Autorisierungsgrundlage. Serverseitige
-Entscheidungen verwenden ausschließlich vollständig qualifizierte `ssf.*`-
+Verwaltungsentscheidungen verwenden ausschließlich vollständig qualifizierte `ssf.*`-
 Actions. Damit können kundenspezifische Rollen dieselben Rechte erhalten, ohne
-Rollennamen als Sonderfall zu behandeln. Jeder aktive Nutzer eines SSF-Tenants erhält Gesprächszugriff automatisch als
-Mindestrecht, unabhängig von Rollen und zusätzlichen Verwaltungsrechten. Dies
-gilt auch für Mandantenadmins und rollenlose Nutzer. Die Projektion ergänzt
-immer `ssf.sessions.create`, `ssf.sessions.read`, `ssf.sessions.terminate` und
-`ssf.conversations.participate`. Diese Basisrechte werden nicht separat vergeben
-oder über optionale Rollen entzogen. Gesperrte, gelöschte oder inaktive Konten
-sowie fehlende Tenant-Mitgliedschaften bleiben ausgeschlossen. Gäste und
-Root-Identitäten erhalten dadurch keinen regulären Tenant-Zugang.
-
-Die zusätzlichen Konfigurationsrechte bleiben IAM-gesteuert. Das Mindestrecht
-umfasst weder Feedback-Auswertungen noch technische Betriebsfunktionen.
-Die SSF-Persona `user` wird für jeden projizierten Nutzer gesetzt; tenantlokale
-Administratoren tragen zusätzlich `tenant_admin`.
+Rollennamen als Sonderfall zu behandeln. Für Gesprächszugriff gilt die oben
+festgelegte Deprecation: Auch Mandantenadmins und Nutzer ohne zusätzliche
+Rolle dürfen nach der SSF-Umstellung Gespräche nutzen.
 
 Gäste bleiben vollständig im bestehenden SSF-Sessionmodell. Sie erhalten kein
 Studio- und kein reguläres Keycloak-Konto. Gast-Token, Session-IDs und
@@ -168,21 +199,16 @@ Nach jeder Erzeugung oder Rotation geheimnistragender Clients liest der
 Registry-Sync ausschließlich deren Secrets über den schmalen Secret-Port; er
 inspiziert in diesem kritischen Abschnitt weder SSF-Client noch Mapper erneut.
 
-Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
+Legacy-Beispiel eines weiterhin von Studio projizierten Tenant-Tokens. Die vier
+SSF-spezifischen Benutzerclaims sind für Gesprächszugriff **deprecated**; das
+Beispiel ist kein Mindestumfang des neuen Gesprächsvertrags:
 
 ```json
 {
   "sub": "keycloak-user-id",
   "studio_tenant_id": "tenant-kassel",
-  "ssf_roles": ["tenant_admin", "user"],
-  "ssf_permissions": [
-    "ssf.configuration.tenant.read",
-    "ssf.configuration.tenant.manage",
-    "ssf.conversations.participate",
-    "ssf.sessions.create",
-    "ssf.sessions.read",
-    "ssf.sessions.terminate"
-  ],
+  "ssf_roles": ["tenant_admin"],
+  "ssf_permissions": ["ssf.configuration.tenant.read", "ssf.configuration.tenant.manage"],
   "ssf_authorization_revision": "sha256:...",
   "preferred_username": "erika",
   "name": "Erika Muster",
@@ -190,8 +216,8 @@ Ein Tenant-Token für SSF enthält neben den üblichen OIDC-Claims mindestens:
 }
 ```
 
-`ssf_permissions` ist die verbindliche Grundlage der serverseitigen
-Autorisierung in SSF. `ssf_roles` dient der fachlichen Einordnung, Navigation
+`ssf_permissions` bleibt Grundlage der gesonderten administrativen
+Autorisierung; als Voraussetzung für Gesprächszugriff ist es **deprecated**. `ssf_roles` dient der fachlichen Einordnung, Navigation
 und Auditierung. Eine E-Mail-Adresse ist nicht Teil des SSF-Tokenvertrags.
 
 Studio-IAM bleibt die führende Quelle der effektiven `ssf.*`-Permissions. Ein
@@ -211,7 +237,8 @@ nicht zu einem realmweiten Keycloak-Logout, der auch Studio-Sitzungen beenden
 würde. Erst nach erfolgreicher Verifikation wird der SSF-Client mit der neuen
 Revision wieder freigegeben. Ein Fehler lässt Client und Runtime-Konfiguration
 fail-closed im Zustand `ssf_tenant_not_ready`; ein alter oder fehlender
-Revisionsclaim wird von SSF abgelehnt. Dadurch kann eine fehlerhafte Projektion
+Revisionsclaim wird vom bisherigen SSF-Consumer abgelehnt. Diese
+Benutzerclaim-Prüfung ist für Gesprächszugriff **deprecated** und wird mit SSF #438 entfernt. Dadurch kann eine fehlerhafte Projektion
 weder veraltete Rechte fortschreiben noch gültige kundenspezifische Grants
 stillschweigend auslassen.
 
@@ -321,9 +348,11 @@ höher priorisierten Wert unwirksamen gespeicherten Werten verändern die
 Runtime-Antwort und damit die Revision nicht.
 
 `authorizationRevision` ist die aktuell verifizierte tenantweite Revision der
-SSF-IAM-Projektion. Bei authentifizierten Vorgängen muss sie exakt dem Claim
-`ssf_authorization_revision` entsprechen. Gäste besitzen diesen Claim nicht;
-für sie wird der Vergleich nicht ausgeführt.
+SSF-IAM-Projektion und bleibt Teil der Runtime-API. Der bisherige Vergleich
+mit dem Benutzerclaim `ssf_authorization_revision` ist für Gesprächszugriff
+**deprecated** und entfällt mit SSF #438. Die Antwort wird weiterhin dem
+serverseitig aus dem verifizierten Aussteller bestimmten Tenant zugeordnet
+und validiert. Gäste besitzen diesen Benutzerclaim bereits heute nicht.
 
 ## Auflösung der effektiven Konfiguration
 

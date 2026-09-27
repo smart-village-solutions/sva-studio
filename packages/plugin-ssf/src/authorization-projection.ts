@@ -10,25 +10,26 @@ import { z } from 'zod';
  */
 export const SSF_AUTHORIZATION_PROJECTION_VERSION = '2.0' as const;
 
+/**
+ * Legacy user claims retained for existing consumers and administrative permissions.
+ * Conversation admission moves to verified OIDC identity and issuer-derived tenancy.
+ * Producer removal follows the consumer migration in smart-speech-flow#438.
+ * Runtime API revision fields and service-token authorization are not deprecated.
+ */
 export const SSF_TOKEN_CLAIMS = {
+  /** @deprecated Conversation admission derives the tenant from the verified issuer; retain for legacy consumers. */
   instanceId: 'studio_tenant_id',
+  /** @deprecated Not a conversation admission criterion; retain personas for existing administrative consumers. */
   roles: 'ssf_roles',
+  /** @deprecated Not a conversation admission criterion; administrative permission checks remain independent. */
   permissions: 'ssf_permissions',
+  /** @deprecated No user-token revision comparison for conversations after SSF migration; runtime API revision remains supported. */
   authorizationRevision: 'ssf_authorization_revision',
 } as const;
-
-/** Mandatory operational rights of every active regular SSF tenant account. */
-const SSF_CONVERSATION_PERMISSION_IDS = [
-  'ssf.conversations.participate',
-  'ssf.sessions.create',
-  'ssf.sessions.read',
-  'ssf.sessions.terminate',
-] as const;
 
 export const SSF_TENANT_PERMISSION_IDS = [
   'ssf.configuration.tenant.manage',
   'ssf.configuration.tenant.read',
-  ...SSF_CONVERSATION_PERMISSION_IDS,
 ] as const;
 
 export const SSF_TENANT_ROLE_IDS = ['tenant_admin', 'user'] as const;
@@ -121,7 +122,7 @@ export const createSsfAuthorizationProjection = (input: {
   readonly instanceId: string;
   readonly subjects: readonly SsfEffectiveAuthorizationSubject[];
 }): SsfAuthorizationProjection => {
-  const subjects = input.subjects.map((entry) => {
+  const subjects = input.subjects.flatMap((entry) => {
     const ssfPermissions = sortedUnique(
       entry.permissionIds.filter((permissionId) => permissionId.startsWith(SSF_PERMISSION_PREFIX))
     );
@@ -131,11 +132,15 @@ export const createSsfAuthorizationProjection = (input: {
     if (unknownPermission) {
       throw new Error(`ssf_authorization_projection_unknown_permission:${unknownPermission}`);
     }
-    return {
-      subject: entry.subject,
-      roles: entry.roleNames.includes('system_admin') ? ['tenant_admin', 'user'] : ['user'],
-      permissions: sortedUnique([...SSF_CONVERSATION_PERMISSION_IDS, ...ssfPermissions]),
-    };
+    if (ssfPermissions.length === 0) return [];
+
+    return [
+      {
+        subject: entry.subject,
+        roles: [entry.roleNames.includes('system_admin') ? 'tenant_admin' : 'user'],
+        permissions: ssfPermissions,
+      },
+    ];
   });
 
   return normalizeSsfAuthorizationProjection(

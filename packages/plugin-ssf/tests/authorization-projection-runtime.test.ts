@@ -10,13 +10,6 @@ import {
   type SsfAuthorizationProjectionTarget,
 } from '../src/runtime.js';
 
-const conversationPermissions = [
-  'ssf.conversations.participate',
-  'ssf.sessions.create',
-  'ssf.sessions.read',
-  'ssf.sessions.terminate',
-] as const;
-
 describe('SSF authorization projection runtime', () => {
   it.each([
     { revisions: [null], targetReady: true, expected: null },
@@ -126,12 +119,8 @@ describe('SSF authorization projection runtime', () => {
       subjects: [
         {
           subject: 'keycloak-subject-1',
-          roles: ['tenant_admin', 'user'],
-          permissions: [
-            'ssf.configuration.tenant.manage',
-            'ssf.configuration.tenant.read',
-            ...conversationPermissions,
-          ],
+          roles: ['tenant_admin'],
+          permissions: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
         },
       ],
     });

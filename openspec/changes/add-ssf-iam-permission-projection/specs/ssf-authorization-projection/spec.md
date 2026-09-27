@@ -21,26 +21,44 @@ Testkonstanten MUST im Produktivprofil als Revisionsquelle abgewiesen werden.
 - **THEN** bleibt der Tenant für SSF-Autorisierung nicht bereit
 - **AND** wird keine frühere oder gewünschte Revision als erfolgreich ausgegeben
 
-### Requirement: Token und Runtime-Antwort sind revisionsgebunden
+### Requirement: Gesprächszugriff benötigt keine projizierten Benutzerclaims
 
-Das System MUST SSF-Tenant-Benutzertokenclaims und Runtime-Konfiguration für
-einen Tenant an dieselbe bestätigte `authorizationRevision` binden. Das
-installationsweite SSF-Service-Token MUST davon unabhängig bleiben und nur die
-technische Backend-Identität, Audience und Action nachweisen. Ein Mismatch des
-Benutzertokenclaims MUST fail-closed behandelt werden.
+Das System MUST die Benutzerclaims `studio_tenant_id`,
+`ssf_authorization_revision`, `ssf_permissions` und `ssf_roles` als Voraussetzung
+für Gesprächszugriff als deprecated kennzeichnen. Nach der Consumer-Umstellung in SSF #438
+MUST ein gültiges reguläres Keycloak-Benutzertoken eines zugelassenen
+Tenant-Realms für Gesprächszugriff ausreichen. Der Tenant MUST ausschließlich
+über den verifizierten Aussteller und dessen eindeutige Zuordnung im
+vertrauenswürdigen Login-Verzeichnis bestimmt werden.
 
-#### Scenario: Revisionen stimmen überein
+Der Vergleich einer Benutzerrevision mit der Runtime-Antwort MUST für
+Gesprächszugriff entfallen. Die Runtime-Felder `authorizationRevision` und
+`configurationRevision`, Service-Autorisierung, Tenant-Isolation und gesonderte
+Verwaltungsberechtigungen MUST erhalten bleiben. Studio MUST die vorhandenen
+Producer bis zur geprüften Migration ihrer verbleibenden Verbraucher erhalten.
+Diese Deprecation allein MUST keine Studio-Readiness-Gates abschalten.
 
-- **GIVEN** Tenant-Benutzertokenclaim, bestätigte Projektion und Runtime-Antwort besitzen dieselbe Revision
-- **WHEN** SSF eine neue Session aufbaut
-- **THEN** darf SSF die projizierten Permissions verwenden
+#### Scenario: Aktives Konto ohne SSF-Sonderattribute
 
-#### Scenario: Token ist veraltet
+- **GIVEN** SSF #438 ist umgesetzt und der Tenant ist veröffentlicht und betriebsbereit
+- **AND** ein reguläres Keycloak-Konto besitzt ein gültiges SSF-Benutzertoken ohne die deprecated Claims
+- **WHEN** der Nutzer eine Gesprächsfunktion aufruft
+- **THEN** berechtigt der gültige Login zur Nutzung innerhalb des aus dem Aussteller bestimmten Tenants
+- **AND** ist kein entsprechender Studio-IAM-Account als zusätzliche Gesprächsvoraussetzung erforderlich
 
-- **GIVEN** der Tenant-Benutzertokenclaim entspricht nicht mehr der bestätigten Tenantprojektion
-- **WHEN** SSF den Token verwendet
-- **THEN** wird der Zugriff abgewiesen
-- **AND** ist eine erneute Tokenausstellung erforderlich
+#### Scenario: Legacy-Felder ändern keine Gesprächsberechtigung
+
+- **GIVEN** der SSF-Consumer wurde umgestellt und der Tenant aus dem verifizierten Aussteller bestimmt
+- **WHEN** deprecated Benutzerfelder fehlen, veraltet oder fehlerhaft geformt sind
+- **THEN** blockieren diese Felder allein den Gesprächszugriff nicht
+- **AND** können sie weder die Tenant-Zuordnung ändern noch Verwaltungsrechte freigeben
+
+#### Scenario: Producer bleibt während der Migration kompatibel
+
+- **GIVEN** bisherige Consumer benötigen noch projizierte Claims
+- **WHEN** Studio die Deprecation dokumentiert
+- **THEN** bleiben bestehende Claims, Schemas und Laufzeitprüfungen unverändert
+- **AND** erfolgt die Entfernung erst nach verifizierter Consumer-Migration
 
 ### Requirement: Alte Rechte laufen begrenzt aus
 
@@ -93,26 +111,3 @@ verwenden; eine während des Read-back wechselnde Revision sperrt die Freigabe.
 - **WHEN** die gemeinsame Readiness-Prüfung nach Aktivierung des Browserclients fehlschlägt
 - **THEN** bleibt die Projektion gesperrt und der Lifecycle erfolglos
 - **AND** versucht der Adapter, ausschließlich die Browser-Tokenausstellung wieder zu sperren
-
-### Requirement: Gesprächszugriff als automatisches Mindestrecht
-
-Studio SHALL jedem aktiven Nutzer eines SSF-Tenants automatisch die vier
-Gesprächsrechte `ssf.sessions.create`, `ssf.sessions.read`,
-`ssf.sessions.terminate` und `ssf.conversations.participate` projizieren.
-Eine manuelle Rollenzuweisung MUST NOT Voraussetzung dieses Mindestrechts sein.
-Zusätzliche Konfigurationsrechte SHALL ausschließlich aus dem IAM stammen.
-
-#### Scenario: Rollenloses Tenant-Konto
-
-- **WHEN** ein aktives, nicht gesperrtes und nicht gelöschtes Konto Mitglied des Tenants ist
-- **THEN** erhält es die Persona `user` und alle vier Gesprächsrechte, auch ohne zusätzliche Permissions
-
-#### Scenario: Kontoerstellung vor Vertragsabgleich
-
-- **WHEN** der Tenant noch nicht die aktuelle Vertragsrevision bestätigt hat
-- **THEN** stellt die Kontoerstellung keine neuen SSF-Claims unter einer veralteten Revision aus
-
-#### Scenario: Kein Tenant-Zugang durch das Mindestrecht
-
-- **WHEN** das Konto inaktiv, gesperrt, gelöscht oder kein Mitglied des Tenants ist
-- **THEN** wird es nicht in dessen SSF-Nutzerprojektion aufgenommen

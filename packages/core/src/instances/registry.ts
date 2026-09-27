@@ -271,7 +271,7 @@ export const classifyHost = (
 
 const allowedTransitions: Readonly<Record<InstanceStatus, readonly InstanceStatus[]>> = {
   requested: ['validated', 'failed', 'archived'],
-  validated: ['provisioning', 'failed', 'archived'],
+  validated: ['provisioning', 'active', 'failed', 'archived'],
   provisioning: ['active', 'failed', 'archived'],
   active: ['suspended', 'archived'],
   failed: ['validated', 'provisioning', 'archived'],

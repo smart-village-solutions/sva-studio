@@ -2381,19 +2381,28 @@ describe('instance registry service facade', () => {
     }
   );
 
-  it.each([
-    ['standard', false, ['news'], false, false, false, false, false, false],
-    ['kassel', true, ['news'], false, false, false, false, false, false],
-    ['moduleless', false, [], false, false, false, false, false, false],
-    ['kassel-disabled-runtime', false, ['news'], true, false, false, false, false, false],
-    ['live-keycloak-drift', false, ['news'], false, true, false, false, false, false],
-    ['plugin-pending', false, ['news'], false, false, true, false, false, false],
-    ['stale-tenant-iam', false, ['news'], false, false, false, true, false, false],
-    ['keycloak-running', false, ['news'], false, true, false, false, true, false],
-    ['keycloak-failed', false, ['news'], false, false, false, false, false, true],
-  ] as const)(
-    'activates the %s profile only with current successful postflight and IAM evidence',
+  it.each(
+    (
+      [
+        ['standard', false, ['news'], false, false, false, false, false, false],
+        ['kassel', true, ['news'], false, false, false, false, false, false],
+        ['moduleless', false, [], false, false, false, false, false, false],
+        ['kassel-disabled-runtime', false, ['news'], true, false, false, false, false, false],
+        ['live-keycloak-drift', false, ['news'], false, true, false, false, false, false],
+        ['plugin-pending', false, ['news'], false, false, true, false, false, false],
+        ['stale-tenant-iam', false, ['news'], false, false, false, true, false, false],
+        ['keycloak-running', false, ['news'], false, true, false, false, true, false],
+        ['keycloak-failed', false, ['news'], false, false, false, false, false, true],
+      ] as const
+    ).flatMap((scenario) =>
+      (['validated', 'suspended'] as const).map(
+        (initialStatus) => [initialStatus, ...scenario] as const
+      )
+    )
+  )(
+    'activates from %s for the %s profile only with current successful postflight and IAM evidence',
     async (
+      initialStatus,
       profile,
       automated,
       assignedModules,
@@ -2404,12 +2413,12 @@ describe('instance registry service facade', () => {
       keycloakRunInProgress,
       keycloakRunFailed
     ) => {
-      const suspendedInstance = {
+      const activationCandidate = {
         ...baseInstance,
-        status: 'suspended' as const,
+        status: initialStatus,
         assignedModules: [...assignedModules],
       };
-      const inputFingerprint = buildKeycloakSnapshotInputFingerprint(suspendedInstance, {
+      const inputFingerprint = buildKeycloakSnapshotInputFingerprint(activationCandidate, {
         authClientSecretCiphertext: 'auth-cipher',
         tenantAdminClientSecretCiphertext: 'tenant-admin-cipher',
       });
@@ -2437,7 +2446,7 @@ describe('instance registry service facade', () => {
         smtpPasswordConfigured: true,
       };
       const repository = createRepository({
-        getInstanceById: vi.fn(async () => suspendedInstance),
+        getInstanceById: vi.fn(async () => activationCandidate),
         listAssignedModules: vi.fn(async () => assignedModules),
         setInstanceStatus: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
         listProvisioningRuns: vi.fn(async () => [
@@ -2684,7 +2693,7 @@ describe('instance registry service facade', () => {
       expect(repository.appendAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'instance_activated',
-          details: { previousStatus: 'suspended', nextStatus: 'active' },
+          details: { previousStatus: initialStatus, nextStatus: 'active' },
         })
       );
       expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');

@@ -2,6 +2,7 @@ import {
   registerPluginTranslationResolver,
   type PluginCatalogEntry,
   type PluginManifest,
+  type PluginModuleIamRegistryEntry,
 } from '@sva/plugin-sdk';
 import { createBrowserLogger } from '@sva/monitoring-client/logging';
 import type { StudioModuleIamContract } from '@sva/studio-module-iam';
@@ -24,7 +25,10 @@ import {
   getWorkspacePluginModuleCandidates,
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
-import { filterPluginCatalogForDistribution, resolveStudioDistribution } from './studio-distribution.js';
+import {
+  filterPluginCatalogForDistribution,
+  resolveStudioDistribution,
+} from './studio-distribution.js';
 import {
   nodeManifestModules,
   nodePluginModuleLoaders,
@@ -32,10 +36,7 @@ import {
   workspaceManifestModules,
   workspacePluginModuleLoaders,
 } from '#studio-plugin-client-inputs';
-import {
-  studioHostModuleContracts,
-  studioPluginModuleContracts,
-} from '#studio-module-iam-inputs';
+import { studioHostModuleContracts } from '#studio-module-iam-inputs';
 
 export const studioDistribution = resolveStudioDistribution(
   import.meta.env.VITE_SVA_STUDIO_DISTRIBUTION
@@ -123,9 +124,29 @@ export const studioPluginCatalog = studioPluginCatalogReport.catalog;
 export const studioPluginCatalogIssues = studioPluginCatalogReport.issues;
 export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
 export const studioHostModuleIamContracts = studioHostModuleContracts;
-export const studioModuleIamContracts: readonly StudioModuleIamContract[] =
-  [...studioPluginModuleContracts, ...studioHostModuleIamContracts];
-export const studioModuleIamRegistry: ReadonlyMap<string, StudioModuleIamContract> = new Map(
+type StudioModuleCatalogEntry = Pick<
+  StudioModuleIamContract,
+  'moduleId' | 'descriptionKey' | 'permissionIds' | 'systemRoles'
+>;
+
+export const createStudioModuleIamContracts = (
+  pluginContracts: readonly PluginModuleIamRegistryEntry[],
+  hostContracts: readonly StudioModuleIamContract[]
+): readonly StudioModuleCatalogEntry[] => [
+  ...pluginContracts.map((contract) => ({
+    moduleId: contract.moduleId,
+    descriptionKey: `plugins.${contract.ownerPluginId}.description`,
+    permissionIds: contract.permissionIds,
+    systemRoles: contract.systemRoles,
+  })),
+  ...hostContracts,
+];
+
+export const studioModuleIamContracts = createStudioModuleIamContracts(
+  studioPluginSnapshot.registry.pluginModuleIamContracts,
+  studioHostModuleIamContracts
+);
+export const studioModuleIamRegistry: ReadonlyMap<string, StudioModuleCatalogEntry> = new Map(
   studioModuleIamContracts.map((contract) => [contract.moduleId, contract] as const)
 );
 

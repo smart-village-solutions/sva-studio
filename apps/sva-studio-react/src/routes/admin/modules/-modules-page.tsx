@@ -17,6 +17,10 @@ const TenantModulesPage = ({
   readonly assignedModules: readonly string[];
 }) => {
   const assignedModuleIds = new Set(assignedModules);
+  const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
+  const unavailableModuleIds = [...assignedModuleIds].filter(
+    (moduleId) => !availableModuleIds.has(moduleId)
+  );
 
   return (
     <section className="space-y-5">
@@ -56,6 +60,17 @@ const TenantModulesPage = ({
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {resolveModuleDescription(module.descriptionKey)}
+                  </td>
+                </tr>
+              ))}
+              {unavailableModuleIds.map((moduleId) => (
+                <tr key={moduleId} className="border-t border-border align-top">
+                  <td className="px-3 py-2 font-medium text-foreground">{moduleId}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {t('admin.instances.instanceModules.detail.status.unavailable')}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {t('admin.instances.instanceModules.detail.descriptionFallback')}
                   </td>
                 </tr>
               ))}

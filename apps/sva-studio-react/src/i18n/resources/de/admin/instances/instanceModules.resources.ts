@@ -9,7 +9,8 @@ export const instanceModulesInstancesAdminDEResources = {
   },
   assigned: {
     title: 'Zugewiesene Module',
-    subtitle: 'Diese Module sind für die gewählte Instanz aktiv.',
+    subtitle:
+      'Diese Module sind der gewählten Instanz zugewiesen. Nicht mehr verfügbare Module werden gesondert angezeigt.',
     empty: 'Der Instanz sind aktuell keine Module zugewiesen.',
   },
   available: {
@@ -32,6 +33,7 @@ export const instanceModulesInstancesAdminDEResources = {
     status: {
       active: 'Aktiv',
       inactive: 'Deaktiviert',
+      unavailable: 'Nicht verfügbar (historische Zuweisung)',
     },
     policy: {
       optional: 'Optional',

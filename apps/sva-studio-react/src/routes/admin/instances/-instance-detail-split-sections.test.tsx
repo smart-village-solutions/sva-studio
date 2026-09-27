@@ -508,7 +508,7 @@ describe('instance detail split sections', () => {
     render(
       <InstanceDetailOperationsSection
         selectedInstance={createDetailFixture({
-          assignedModules: ['news'],
+          assignedModules: ['news', 'removed-plugin'],
           moduleActivations: [
             {
               instanceId: 'demo',
@@ -540,16 +540,18 @@ describe('instance detail split sections', () => {
     expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
     expect(screen.getByText('poi')).toBeTruthy();
+    expect(screen.getByText('removed-plugin')).toBeTruthy();
+    expect(screen.getByText('Nicht verfügbar (historische Zuweisung)')).toBeTruthy();
     expect(screen.getAllByText('Aktiv')).toHaveLength(1);
     expect(screen.getAllByText('Deaktiviert')).toHaveLength(2);
     expect(screen.getByText('Automatisch')).toBeTruthy();
     expect(screen.getByText('Manuelle Änderung')).toBeTruthy();
     expect(screen.getByText('Aktiviert')).toBeTruthy();
-    expect(screen.getAllByText('Noch nicht materialisiert')).toHaveLength(4);
+    expect(screen.getAllByText('Noch nicht materialisiert')).toHaveLength(6);
     expect(
       screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')
     ).toBeTruthy();
-    expect(screen.getAllByText('Keine Modulbeschreibung hinterlegt.')).toHaveLength(2);
+    expect(screen.getAllByText('Keine Modulbeschreibung hinterlegt.')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
   });
 

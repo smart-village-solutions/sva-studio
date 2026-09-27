@@ -52,7 +52,7 @@ describe('SSF Studio distribution inputs', () => {
     expect(serverInputs.nodeServerModuleLoaders).toEqual({});
   });
 
-  it('uses the SSF catalog and IAM contract while leaving generic ownership empty', async () => {
+  it('uses the SSF catalog and host IAM contract while leaving generic ownership empty', async () => {
     const catalogInputs = await import('./plugin-catalog-inputs.ssf');
     const iamInputs = await import('./module-iam-inputs.ssf');
     const ownershipInputs = await import('./mainserver-generic-type-inputs.ssf.server');
@@ -60,7 +60,9 @@ describe('SSF Studio distribution inputs', () => {
     expect(catalogInputs.pluginCatalogConfig).toEqual([
       { pluginId: 'ssf', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-ssf' },
     ]);
-    expect(iamInputs.studioPluginModuleContracts).toHaveLength(1);
+    expect(iamInputs.studioHostModuleContracts.map((contract) => contract.moduleId)).toEqual([
+      'media',
+    ]);
     expect(ownershipInputs.workspaceOwnershipModules).toEqual({});
     expect(ownershipInputs.nodeOwnershipModules).toEqual({});
   });

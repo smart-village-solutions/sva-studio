@@ -9,7 +9,8 @@ export const instanceModulesInstancesAdminENResources = {
   },
   assigned: {
     title: 'Assigned modules',
-    subtitle: 'These modules are currently active for the selected instance.',
+    subtitle:
+      'These modules are assigned to the selected instance. Modules no longer available are shown separately.',
     empty: 'No modules are currently assigned to this instance.',
   },
   available: {
@@ -31,6 +32,7 @@ export const instanceModulesInstancesAdminENResources = {
     status: {
       active: 'Active',
       inactive: 'Inactive',
+      unavailable: 'Unavailable (historical assignment)',
     },
     policy: {
       optional: 'Optional',

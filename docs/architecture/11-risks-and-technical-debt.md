@@ -701,4 +701,4 @@ Referenzen:
 
 ### Distributionsdrift
 
-Ein versehentlich übernommener allgemeiner Plugin-Glob kann eine ausgeschlossene Fähigkeit erneut in ein Image ziehen. Profilierte Eingabemodule, ein eingebettetes Manifest und die Image-Verifikation begrenzen diese Drift; die CI prüft beide Images getrennt.
+Ein versehentlich übernommener allgemeiner Plugin-Glob oder Seiten-Import kann eine ausgeschlossene Fähigkeit erneut in ein Image ziehen. Profilierte Eingabemodule und Seiten-Bindings begrenzen die Importkante. Ein Buildzeit-Nachweis ordnet alle finalen Browser- und Server-JavaScript-Dateien ihren Plugin-Quellmodulen und finalen Hashes zu; die Image-Verifikation hasht die Dateien im Container erneut und verwirft unbekannte Dateien, geänderte Bytes oder ausgeschlossene Quellen. Die CI prüft beide Images getrennt; Source Maps sind nicht Teil des Images.

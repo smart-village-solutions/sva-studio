@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { devtools } from '@tanstack/devtools-vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
@@ -6,6 +6,8 @@ import { codecovRollupPlugin } from '@codecov/rollup-plugin';
 import { nitro } from 'nitro/vite';
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 const resolveAppPath = (relativePath: string) =>
@@ -13,6 +15,41 @@ const resolveAppPath = (relativePath: string) =>
 
 const appRoot = normalizeDirectory(new URL('./', import.meta.url));
 const workspaceRoot = normalizeDirectory(new URL('../../', import.meta.url));
+const chunkProvenanceRoot = join(appRoot, '.generated', 'chunk-provenance');
+const chunkProvenanceEnvironments = ['client', 'ssr', 'nitro'] as const;
+const chunkProvenancePlugin = (): Plugin => ({
+  name: 'studio-chunk-provenance',
+  generateBundle(_options: unknown, bundle: Record<string, unknown>) {
+    const environment = this.environment.name;
+    if (!chunkProvenanceEnvironments.some((name) => name === environment)) return;
+    mkdirSync(chunkProvenanceRoot, { recursive: true });
+    const chunks = Object.values(bundle)
+      .filter(
+        (output): output is { type: 'chunk'; fileName: string; modules: Record<string, unknown> } =>
+          typeof output === 'object' &&
+          output !== null &&
+          'type' in output &&
+          output.type === 'chunk'
+      )
+      .map((chunk) => ({
+        fileName: chunk.fileName,
+        modules: Object.entries(chunk.modules)
+          .filter(
+            ([, info]) =>
+              typeof info === 'object' &&
+              info !== null &&
+              'renderedLength' in info &&
+              typeof info.renderedLength === 'number' &&
+              info.renderedLength > 0
+          )
+          .map(([id]) => id),
+      }));
+    writeFileSync(join(chunkProvenanceRoot, `${environment}.json`), JSON.stringify(chunks));
+  },
+});
+for (const environment of chunkProvenanceEnvironments) {
+  rmSync(join(chunkProvenanceRoot, `${environment}.json`), { force: true });
+}
 const tanstackRouterBasepath = '/';
 const tanstackServerFnBase = '/_server';
 const tanstackServerFnTransportBase = `${tanstackServerFnBase}/`;
@@ -98,6 +135,11 @@ const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
+      '#studio-app-route-bindings': resolveAppPath(
+        studioDistribution === 'ssf'
+          ? './src/routing/app-route-bindings.ssf.tsx'
+          : './src/routing/app-route-bindings.tsx'
+      ),
       '#studio-plugin-auth-composition': resolveAppPath(
         studioDistribution === 'ssf'
           ? './src/lib/plugin-auth-composition.ssf.server.ts'
@@ -406,6 +448,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    chunkProvenancePlugin(),
     tanstackStartClientEnvCompatPlugin(),
     ...(tanstackDevtoolsEnabled ? [devtools()] : []),
     tailwindcss(),

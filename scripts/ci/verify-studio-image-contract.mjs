@@ -33,8 +33,78 @@ const fail = (code) => {
   throw new Error(code);
 };
 
+const verifyChunkProvenance = (distribution, provenance, files) => {
+  if (
+    provenance?.schemaVersion !== 1 ||
+    provenance.distribution !== distribution ||
+    !Array.isArray(provenance.chunks) ||
+    provenance.chunks.length === 0
+  )
+    fail('chunk_provenance_manifest_invalid');
+  if (!Array.isArray(files) || files.length === 0) fail('chunk_provenance_file_inventory_invalid');
+  const allowed = new Set(['plugin-sdk', ...pluginIds[distribution].map((id) => `plugin-${id}`)]);
+  const excluded = new Set(excludedWorkspacePackages[distribution]);
+  const paths = new Set();
+  const actual = new Map();
+  for (const file of files) {
+    if (
+      typeof file?.path !== 'string' ||
+      !/^(?:public|server)\/[^\s]+\.(?:[cm]?js)$/.test(file.path) ||
+      file.path.split('/').includes('..') ||
+      !/^[a-f0-9]{64}$/.test(file.sha256) ||
+      actual.has(file.path)
+    )
+      fail('chunk_provenance_file_inventory_invalid');
+    actual.set(file.path, file.sha256);
+  }
+  for (const chunk of provenance.chunks) {
+    if (
+      typeof chunk?.path !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(chunk.sha256) ||
+      !Array.isArray(chunk.pluginPackages) ||
+      paths.has(chunk.path)
+    )
+      fail('chunk_provenance_manifest_invalid');
+    paths.add(chunk.path);
+    if (actual.get(chunk.path) !== chunk.sha256)
+      fail(`chunk_provenance_hash_mismatch:${chunk.path}`);
+    for (const name of chunk.pluginPackages) {
+      if (typeof name !== 'string' || !/^plugin-[a-z0-9-]+$/.test(name)) {
+        fail('chunk_provenance_manifest_invalid');
+      }
+      if (excluded.has(name) || !allowed.has(name))
+        fail(`chunk_provenance_excluded_plugin:${name}`);
+    }
+  }
+  if (paths.size !== actual.size) fail('chunk_provenance_file_inventory_mismatch');
+  const required = distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news';
+  if (
+    !provenance.chunks.some(
+      (chunk) => chunk.path.startsWith('public/') && chunk.pluginPackages.includes(required)
+    ) ||
+    !provenance.chunks.some(
+      (chunk) => chunk.path.startsWith('server/_ssr/') && chunk.pluginPackages.includes(required)
+    )
+  ) {
+    fail(`chunk_provenance_required_plugin_missing:${required}`);
+  }
+  return {
+    chunks: paths.size,
+    pluginPackages: [...new Set(provenance.chunks.flatMap((chunk) => chunk.pluginPackages))].sort(),
+  };
+};
+
 export const verifyStudioImageContract = (input) => {
-  const { imageRef, expectedRevision, distribution, inspection, runtimeManifest, packages } = input;
+  const {
+    imageRef,
+    expectedRevision,
+    distribution,
+    inspection,
+    runtimeManifest,
+    packages,
+    chunkProvenance,
+    chunkFiles,
+  } = input;
   const repository = repositories[distribution];
   if (!repository) fail('invalid_studio_distribution');
   if (!/^[a-f0-9]{40}$/.test(expectedRevision)) fail('invalid_expected_revision');
@@ -106,6 +176,7 @@ export const verifyStudioImageContract = (input) => {
   ) {
     fail('waste_management_workspace_package_missing');
   }
+  const verifiedChunks = verifyChunkProvenance(distribution, chunkProvenance, chunkFiles);
   return {
     imageRef,
     revision: expectedRevision,
@@ -115,6 +186,7 @@ export const verifyStudioImageContract = (input) => {
     presentWorkspacePackages: [...present]
       .filter((name) => name.startsWith('plugin-') || name.startsWith('waste-management-'))
       .sort(),
+    verifiedChunks,
   };
 };
 

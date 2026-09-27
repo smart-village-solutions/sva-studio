@@ -121,7 +121,9 @@ Die App registriert CRUD-artige Admin-Flächen deklarativ über `AdminResourceDe
 
 Ablauf in `getRouter()`:
 
-1. Die App importiert `appRouteBindings`.
+1. Die App importiert per Buildprofil die Seiten-Bindings. Im SSF-Profil werden
+   ausgeschlossene Standard-Plugin-Seiten nicht importiert; Core-, Admin- und
+   Medien-Bindings bleiben gemeinsam.
 2. Die App erzeugt in `src/lib/plugins.ts` einen Build-time-Registry-Snapshot über `createBuildTimeRegistry(...)`.
 3. Der Snapshot enthält normalisierte Plugin-Beiträge, die registrierten Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen.
 4. Server und Client laden isomorph die passende Factory-Menge aus `@sva/routing`.
@@ -129,6 +131,10 @@ Ablauf in `getRouter()`:
 6. `createRouter({ routeTree, ... })`
 
 Damit bleibt die Route-Komposition zentralisiert, während die App weiterhin die Seiten selbst rendert.
+Die hosteigenen Legacy-Pfade `/categories`, `/admin/content*` und `/content*`
+bleiben im SSF-Profil mit ihren bestehenden Guards beziehungsweise Redirects
+erhalten. Ihr SSF-Binding ist nach dem Guard daten- und aktionsfrei; ein
+HTTP-404-Status wird dadurch nicht zugesichert.
 
 ### 5) Root Route (`apps/sva-studio-react/src/routes/__root.tsx`)
 

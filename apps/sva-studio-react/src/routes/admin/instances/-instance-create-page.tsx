@@ -28,14 +28,13 @@ import {
   type IamHttpError,
 } from '../../../lib/iam-api';
 import { useStudioBranding } from '../../../providers/studio-branding-provider';
-import { FieldHelp } from './-field-help';
+import { FieldHelp, INSTANCE_FIELD_HELP } from './-field-help';
 import {
   CREATE_WIZARD_STEPS,
   createEmptyCreateForm,
   createInstanceFormSchema,
   getCreateStepValidationIssues,
   getCreateStepValidationMessages,
-  INSTANCE_FIELD_HELP,
   readSuggestedParentDomain,
 } from './-instance-form-models';
 import { getErrorMessage } from './-instance-error-messages';

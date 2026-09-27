@@ -40,6 +40,33 @@ const formatRoleNames = (roleNames: readonly string[]) => roleNames.join(', ');
 
 type StudioModuleContract = (typeof studioModuleIamContracts)[number];
 
+const getModulePresentation = (
+  moduleId: string,
+  instance: ModuleWorkspaceInstance,
+  pluginReadiness: InstanceModulesWorkspaceProps['pluginReadiness']
+) => {
+  const pluginId = studioPluginSnapshot.registry.pluginModuleIamContracts.find(
+    (entry) => entry.moduleId === moduleId
+  )?.ownerPluginId;
+  const plugin = pluginId ? studioPluginSnapshot.registry.pluginRegistry.get(pluginId) : undefined;
+  const lifecycle = studioPluginSnapshot.registry.tenantLifecycles.find(
+    (entry) => entry.pluginId === pluginId
+  );
+  const readiness = pluginReadiness?.items.find((entry) => entry.pluginId === pluginId);
+  const activation = instance.moduleActivations?.find((entry) => entry.moduleId === moduleId);
+  const policy =
+    activation?.activationPolicy ??
+    studioPluginSnapshot.tenantActivationPolicySnapshot.modules.find(
+      (entry) => entry.moduleId === moduleId
+    )?.activationPolicy;
+  const readinessLabel = !lifecycle
+    ? t('admin.instances.instanceModules.noLifecycle')
+    : !readiness || pluginReadiness?.error
+      ? t('admin.instances.instanceModules.notVerified')
+      : t(`admin.instances.pluginReadiness.status.${readiness.status}`);
+  return { plugin, readiness, activation, policy, readinessLabel };
+};
+
 const ModuleRow = ({
   module,
   instance,
@@ -55,27 +82,11 @@ const ModuleRow = ({
   onAction: (moduleId: string) => void;
   pluginReadiness?: ReturnType<typeof usePluginTenantReadiness>;
 }) => {
-  const pluginId = studioPluginSnapshot.registry.pluginModuleIamContracts.find(
-    (entry) => entry.moduleId === module.moduleId
-  )?.ownerPluginId;
-  const plugin = pluginId ? studioPluginSnapshot.registry.pluginRegistry.get(pluginId) : undefined;
-  const lifecycle = studioPluginSnapshot.registry.tenantLifecycles.find(
-    (entry) => entry.pluginId === pluginId
+  const { plugin, readiness, activation, policy, readinessLabel } = getModulePresentation(
+    module.moduleId,
+    instance,
+    pluginReadiness
   );
-  const readiness = pluginReadiness?.items.find((entry) => entry.pluginId === pluginId);
-  const activation = instance.moduleActivations?.find(
-    (entry) => entry.moduleId === module.moduleId
-  );
-  const policy =
-    activation?.activationPolicy ??
-    studioPluginSnapshot.tenantActivationPolicySnapshot.modules.find(
-      (entry) => entry.moduleId === module.moduleId
-    )?.activationPolicy;
-  const readinessLabel = !lifecycle
-    ? t('admin.instances.instanceModules.noLifecycle')
-    : !readiness || pluginReadiness?.error
-      ? t('admin.instances.instanceModules.notVerified')
-      : t(`admin.instances.pluginReadiness.status.${readiness.status}`);
   return (
     <section className="space-y-3 rounded-lg border border-border p-3" aria-label={module.moduleId}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -182,6 +193,32 @@ const ModuleRow = ({
   );
 };
 
+const getModuleAssignments = (selectedInstance: ModuleWorkspaceInstance | null) => {
+  const assignedModuleIds = new Set(selectedInstance?.assignedModules ?? []);
+  const assignedModules = studioModuleIamContracts.filter((module) =>
+    assignedModuleIds.has(module.moduleId)
+  );
+  const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
+  const persistedModuleIds = new Set([
+    ...assignedModuleIds,
+    ...(selectedInstance?.moduleActivations ?? []).map((activation) => activation.moduleId),
+  ]);
+  const unavailableModuleIds = [...persistedModuleIds].filter(
+    (moduleId) => !availableModuleIds.has(moduleId)
+  );
+  const availableModules = studioModuleIamContracts.filter(
+    (module) => !assignedModuleIds.has(module.moduleId)
+  );
+  const groups = [
+    { key: 'assigned', modules: assignedModules, unavailableModuleIds },
+    { key: 'available', modules: availableModules, unavailableModuleIds: [] },
+  ].map((group) => ({
+    ...group,
+    isEmpty: group.modules.length === 0 && group.unavailableModuleIds.length === 0,
+  }));
+  return { assignedModules, groups };
+};
+
 export const InstanceModulesWorkspace = ({
   selectedInstance,
   pluginReadiness,
@@ -211,21 +248,8 @@ export const InstanceModulesWorkspace = ({
     }
   };
 
-  const assignedModuleIds = new Set(selectedInstance?.assignedModules ?? []);
-  const assignedModules = studioModuleIamContracts.filter((module) =>
-    assignedModuleIds.has(module.moduleId)
-  );
-  const availableModuleIds = new Set(studioModuleIamContracts.map((module) => module.moduleId));
-  const persistedModuleIds = new Set([
-    ...assignedModuleIds,
-    ...(selectedInstance?.moduleActivations ?? []).map((activation) => activation.moduleId),
-  ]);
-  const unavailableModuleIds = [...persistedModuleIds].filter(
-    (moduleId) => !availableModuleIds.has(moduleId)
-  );
-  const availableModules = studioModuleIamContracts.filter(
-    (module) => !assignedModuleIds.has(module.moduleId)
-  );
+  const { assignedModules, groups } = getModuleAssignments(selectedInstance);
+  const controlsDisabled = statusLoading || busy;
   const pendingRevokeModule =
     assignedModules.find((module) => module.moduleId === pendingRevokeModuleId) ?? null;
 
@@ -243,7 +267,7 @@ export const InstanceModulesWorkspace = ({
             <Button
               type="button"
               variant="secondary"
-              disabled={statusLoading || busy}
+              disabled={controlsDisabled}
               onClick={() => void run(() => onSeedIamBaseline(selectedInstance.instanceId))}
             >
               {t('admin.instances.instanceModules.actions.seedIamBaseline')}
@@ -252,7 +276,7 @@ export const InstanceModulesWorkspace = ({
               <Button
                 type="button"
                 variant="secondary"
-                disabled={statusLoading || busy}
+                disabled={controlsDisabled}
                 onClick={() => setBootstrapConfirmOpen(true)}
               >
                 {t('admin.instances.instanceModules.actions.bootstrapAdminStructure')}
@@ -264,10 +288,7 @@ export const InstanceModulesWorkspace = ({
               <AlertDescription>{getErrorMessage(pluginReadiness.error)}</AlertDescription>
             </Alert>
           ) : null}
-          {[
-            { key: 'assigned', modules: assignedModules },
-            { key: 'available', modules: availableModules },
-          ].map((group) => (
+          {groups.map((group) => (
             <Card key={group.key} className="space-y-3 p-4">
               <h2 className="font-medium">
                 {t(`admin.instances.instanceModules.${group.key}.title`)}
@@ -278,7 +299,7 @@ export const InstanceModulesWorkspace = ({
                   module={module}
                   instance={selectedInstance}
                   assigned={group.key === 'assigned'}
-                  statusLoading={statusLoading || busy || Boolean(pluginReadiness?.activeAction)}
+                  statusLoading={controlsDisabled || Boolean(pluginReadiness?.activeAction)}
                   pluginReadiness={pluginReadiness}
                   onAction={
                     group.key === 'assigned'
@@ -288,21 +309,18 @@ export const InstanceModulesWorkspace = ({
                   }
                 />
               ))}
-              {group.key === 'assigned'
-                ? unavailableModuleIds.map((moduleId) => (
-                    <section
-                      key={moduleId}
-                      className="rounded-lg border border-border p-3"
-                      aria-label={moduleId}
-                    >
-                      <h3>{moduleId}</h3>
-                      <p>{t('admin.instances.instanceModules.detail.status.unavailable')}</p>
-                      <p>{t('admin.instances.instanceModules.notVerified')}</p>
-                    </section>
-                  ))
-                : null}
-              {group.modules.length === 0 &&
-              (group.key !== 'assigned' || unavailableModuleIds.length === 0) ? (
+              {group.unavailableModuleIds.map((moduleId) => (
+                <section
+                  key={moduleId}
+                  className="rounded-lg border border-border p-3"
+                  aria-label={moduleId}
+                >
+                  <h3>{moduleId}</h3>
+                  <p>{t('admin.instances.instanceModules.detail.status.unavailable')}</p>
+                  <p>{t('admin.instances.instanceModules.notVerified')}</p>
+                </section>
+              ))}
+              {group.isEmpty ? (
                 <p className="text-sm text-muted-foreground">
                   {t(`admin.instances.instanceModules.${group.key}.empty`)}
                 </p>

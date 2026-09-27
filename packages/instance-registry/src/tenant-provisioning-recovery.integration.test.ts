@@ -160,6 +160,131 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
 };
 
 integrationDescribe('tenant provisioning recovery persistence', () => {
+  it('terminalizes a provisioning SQL error after rolling back the failed transaction', async () => {
+    assert(databaseName);
+    const failedInstanceId = 'integration-provisioning-sql-failure';
+    const pool = new Pool({
+      host: process.env.POSTGRES_HOST ?? '127.0.0.1',
+      port: Number.parseInt(process.env.POSTGRES_HOST_PORT ?? '5432', 10),
+      database: databaseName,
+      user: process.env.POSTGRES_USER ?? 'sva',
+      password: process.env.POSTGRES_PASSWORD,
+      max: 4,
+    });
+    const repository = createInstanceRegistryRepository(createExecutor(pool));
+    let injectConstraintFailure = true;
+    const runtime = createInstanceRegistryRuntime({
+      resolvePool: () => ({
+        connect: async () => {
+          const client = await pool.connect();
+          return {
+            query: async <TRow = Record<string, unknown>>(
+              text: string,
+              values?: readonly unknown[]
+            ) => {
+              const result = await client.query<TRow>(text, [...(values ?? [])]);
+              return { rowCount: result.rowCount ?? result.rows.length, rows: result.rows };
+            },
+            release: () => client.release(),
+          };
+        },
+      }),
+      createRepository: (executor) => {
+        const scopedRepository = createInstanceRegistryRepository(executor);
+        return {
+          ...scopedRepository,
+          updateProvisioningRun: async (input) => {
+            if (injectConstraintFailure) {
+              injectConstraintFailure = false;
+              await executor.execute({
+                text: `UPDATE iam.instance_provisioning_runs
+                       SET status = 'validated', step_key = 'activate', completed_at = now()
+                       WHERE id = $1`,
+                values: [input.runId],
+              });
+            }
+            return scopedRepository.updateProvisioningRun(input);
+          },
+        };
+      },
+      serviceDeps: {
+        invalidateHost: () => undefined,
+        protectSecret: (value: string | undefined) => value ?? null,
+        revealSecret: (value: string | null | undefined) => value ?? undefined,
+        readPluginOidcClientRequirements: () => [],
+      },
+    });
+
+    try {
+      const created = await repository.createInstance({
+        instanceId: failedInstanceId,
+        displayName: 'Integration Provisioning SQL Failure',
+        status: 'provisioning',
+        parentDomain: 'dialog.kassel.de',
+        primaryHostname: `${failedInstanceId}.dialog.kassel.de`,
+        realmMode: 'existing',
+        authRealm: failedInstanceId,
+        authClientId: 'sva-studio-login',
+        authIssuerUrl: `https://auth.example.invalid/realms/${failedInstanceId}`,
+        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        featureFlags: {},
+      });
+      assert(created);
+      const payloadFingerprint = 'integration-provisioning-sql-failure-payload';
+      const run = await repository.createProvisioningRun({
+        instanceId: failedInstanceId,
+        operation: 'create',
+        status: 'provisioning',
+        stepKey: 'activate',
+        idempotencyKey: failedInstanceId,
+        payloadFingerprint,
+        snapshotVersion: '3.0',
+        desiredSnapshot: buildTenantProvisioningSnapshot(
+          created,
+          {
+            instanceId: failedInstanceId,
+            displayName: created.displayName,
+            parentDomain: created.parentDomain,
+            primaryHostname: created.primaryHostname,
+            realmMode: created.realmMode,
+            authRealm: created.authRealm,
+            authClientId: created.authClientId,
+            authIssuerUrl: created.authIssuerUrl,
+            tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+            idempotencyKey: failedInstanceId,
+            featureFlags: {},
+          },
+          payloadFingerprint,
+          'kassel-traefik-file'
+        ),
+      });
+      const processed = await runtime.withRegistryProvisioningWorkerDeps((deps) =>
+        processNextTenantProvisioningRun(deps, { workerId: 'sql-failure-worker' })
+      );
+      expect(processed).toMatchObject({
+        id: run.id,
+        status: 'failed',
+        stepKey: 'activate',
+        errorCode: 'tenant_provisioning_step_failed',
+      });
+      expect(await repository.getInstanceById(failedInstanceId)).toMatchObject({
+        status: 'failed',
+      });
+      expect((await repository.listProvisioningRuns(failedInstanceId))[0]).toMatchObject({
+        status: 'failed',
+        attemptCount: 1,
+      });
+      await expect(
+        runtime.withRegistryProvisioningWorkerDeps((deps) =>
+          processNextTenantProvisioningRun(deps, { workerId: 'another-worker' })
+        )
+      ).resolves.toBeNull();
+    } finally {
+      await pool.query('DELETE FROM iam.instances WHERE id = $1', [failedInstanceId]);
+      await pool.end();
+    }
+  }, 30_000);
+
   it('completes a validated create run only at the completed step', async () => {
     assert(databaseName);
     const completionInstanceId = 'integration-validated-completion';

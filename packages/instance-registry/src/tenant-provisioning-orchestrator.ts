@@ -185,23 +185,25 @@ export const processNextTenantProvisioningRun = async (
     parentDomain: KASSEL_PARENT_DOMAIN,
   });
   if (!run) return null;
+  let stepFailure:
+    { readonly error: unknown; readonly phase: TenantProvisioningFailurePhase } | undefined;
   const execute = async (
     lockedDeps: InstanceRegistryServiceDeps,
     assertLeaseActive: () => void
   ) => {
-    const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
-      (candidate) => candidate.id === run.id && candidate.leaseOwner === input.workerId
-    );
-    if (!current) return null;
-    const instance = await lockedDeps.repository.getInstanceById(run.instanceId);
-    const assertExecutionActive = () => {
-      assertLeaseActive();
-      if (currentTime().getTime() >= new Date(current.deadlineAt).getTime()) {
-        throw new Error('provisioning_deadline_exceeded');
-      }
-    };
     let failurePhase: TenantProvisioningFailurePhase = 'execution_guard';
     try {
+      const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
+        (candidate) => candidate.id === run.id && candidate.leaseOwner === input.workerId
+      );
+      if (!current) return null;
+      const instance = await lockedDeps.repository.getInstanceById(run.instanceId);
+      const assertExecutionActive = () => {
+        assertLeaseActive();
+        if (currentTime().getTime() >= new Date(current.deadlineAt).getTime()) {
+          throw new Error('provisioning_deadline_exceeded');
+        }
+      };
       assertExecutionActive();
       failurePhase = 'instance_validation';
       if (!instance) throw new Error('instance_not_found');
@@ -220,8 +222,36 @@ export const processNextTenantProvisioningRun = async (
         assertExecutionActive,
       });
     } catch (error) {
+      if (errorCode(error) !== 'provisioning_claim_lost') {
+        stepFailure = { error, phase: failurePhase };
+      }
+      throw error;
+    }
+  };
+  const withInstanceProvisioningLock = requireDependency(
+    deps.withInstanceProvisioningLock,
+    'dependency_missing_withInstanceProvisioningLock'
+  );
+  try {
+    return await withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
+      executeWithLeaseHeartbeat(deps, run, input.workerId, (assertLeaseActive) =>
+        execute(bindWorkerCallbacksToLockedDeps(lockedDeps, deps), assertLeaseActive)
+      )
+    );
+  } catch (error) {
+    if (!stepFailure || stepFailure.error !== error) throw error;
+    const failurePhase = stepFailure.phase;
+    return withInstanceProvisioningLock(run.instanceId, async (lockedDeps) => {
+      const current = (await lockedDeps.repository.listProvisioningRuns(run.instanceId)).find(
+        (candidate) =>
+          candidate.id === run.id &&
+          candidate.leaseOwner === input.workerId &&
+          candidate.attemptCount === run.attemptCount &&
+          candidate.leaseExpiresAt &&
+          new Date(candidate.leaseExpiresAt).getTime() > currentTime().getTime()
+      );
+      if (!current) throw new Error('provisioning_claim_lost');
       const code = errorCode(error);
-      if (code === 'provisioning_claim_lost') throw error;
       const stepKey = code === 'provisioning_step_invalid' ? 'registry' : readStep(current);
       try {
         logger.warn('tenant_provisioning_step_exception', {
@@ -261,15 +291,6 @@ export const processNextTenantProvisioningRun = async (
         errorCode: code,
         errorMessage: 'Provisionierung wird erneut versucht.',
       });
-    }
-  };
-  const withInstanceProvisioningLock = requireDependency(
-    deps.withInstanceProvisioningLock,
-    'dependency_missing_withInstanceProvisioningLock'
-  );
-  return withInstanceProvisioningLock(run.instanceId, (lockedDeps) =>
-    executeWithLeaseHeartbeat(deps, run, input.workerId, (assertLeaseActive) =>
-      execute(bindWorkerCallbacksToLockedDeps(lockedDeps, deps), assertLeaseActive)
-    )
-  );
+    });
+  }
 };

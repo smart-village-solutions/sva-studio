@@ -26,7 +26,6 @@ const excludedPackages: Readonly<Record<StudioDistribution, readonly string[]>> 
     'plugin-projects',
     'plugin-surveys',
     'plugin-waste-management',
-    'waste-management-contracts',
     'waste-management-runtime',
   ],
 };

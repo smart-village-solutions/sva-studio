@@ -24,7 +24,6 @@ const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
   ssf: [
     ...regularPlugins.map((id) => `plugin-${id}`),
-    'waste-management-contracts',
     'waste-management-runtime',
   ],
 };
@@ -171,8 +170,8 @@ export const verifyStudioImageContract = (input) => {
     if (present.has(name)) fail(`excluded_workspace_package_present:${name}`);
   }
   if (
-    distribution === 'studio' &&
-    (!present.has('waste-management-contracts') || !present.has('waste-management-runtime'))
+    !present.has('waste-management-contracts') ||
+    (distribution === 'studio' && !present.has('waste-management-runtime'))
   ) {
     fail('waste_management_workspace_package_missing');
   }

@@ -36,11 +36,15 @@ const rowKey = (contentType: string, entityId: string): string => `${contentType
 
 const reconciledAuthorDisplay = (
   row: ReconciledMainserverProjectionRow,
-  actorDisplayName: string
-) => ({
-  authorDisplayMode: row.organizationId ? row.authorDisplayMode : 'user',
-  authorDisplayName: row.organizationId ? row.author : actorDisplayName,
-});
+  actorDisplayName: string,
+  actingPrincipalType: 'organization' | 'user'
+) => {
+  const isPersonalAuthor = actingPrincipalType === 'user' || !row.organizationId;
+  return {
+    authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
+    authorDisplayName: isPersonalAuthor ? actorDisplayName : row.author,
+  };
+};
 
 const loadDeferredMainserverMutationRows = async (input: {
   readonly instanceId: string;
@@ -156,7 +160,7 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       payload: row.payload,
       status: row.status,
       ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-      ...reconciledAuthorDisplay(row, actorDisplayName),
+      ...reconciledAuthorDisplay(row, actorDisplayName, input.actingPrincipalType),
     });
     const independentReconciliationError =
       typeof entry.last_error_code === 'string' &&

@@ -96,6 +96,7 @@ const recordMutationAudit = async (
   const auditActorAccountId = target.auditActorAccountId ?? target.actorAccountId;
   if (!auditActorAccountId || !target.actorDisplayName || !target.mutationRef) return;
   if (input.operation !== 'create' && input.operation !== 'update') return;
+  const isPersonalAuthor = target.actingPrincipalType === 'user' || !row.organizationId;
   await recordSuccessfulExternalContentMutation({
     instanceId: target.instanceId,
     actorAccountId: auditActorAccountId,
@@ -111,8 +112,8 @@ const recordMutationAudit = async (
     payload: row.payload,
     status: row.status,
     ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-    authorDisplayMode: row.organizationId ? row.authorDisplayMode : 'user',
-    authorDisplayName: row.organizationId ? row.author : target.actorDisplayName,
+    authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
+    authorDisplayName: isPersonalAuthor ? target.actorDisplayName : row.author,
   });
 };
 

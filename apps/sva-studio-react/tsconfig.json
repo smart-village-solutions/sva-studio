@@ -71,6 +71,7 @@
       ],
       "@sva/plugin-ssf/runtime": ["../../packages/plugin-ssf/src/runtime.ts"],
       "@sva/routing": ["../../packages/routing/src/index.ts"],
+      "@sva/routing/auth": ["../../packages/routing/src/auth.routes.ts"],
       "@sva/routing/documentation": ["../../packages/routing/src/route-documentation.ts"],
       "@sva/routing/route-search": ["../../packages/routing/src/route-search.ts"],
       "@sva/routing/server": ["../../packages/routing/src/index.server.ts"],
@@ -91,6 +92,9 @@
       "@sva/plugin-poi": ["../../packages/plugin-poi/src/index.ts"],
       "@sva/media": ["../../packages/media/src/index.ts"],
       "@sva/waste-management-runtime": ["../../packages/waste-management-runtime/src/index.ts"],
+      "@sva/waste-management-runtime/repositories": [
+        "../../packages/waste-management-runtime/src/repositories.ts"
+      ],
       "@sva/waste-management-runtime/server": [
         "../../packages/waste-management-runtime/src/server.ts"
       ],

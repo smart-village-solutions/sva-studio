@@ -5,7 +5,7 @@ import {
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
 import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
-import { wasteManagementMasterDataSchemas } from './schemas.js';
+import { wasteManagementMasterDataSchemas } from '@sva/waste-management-runtime/server';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
 

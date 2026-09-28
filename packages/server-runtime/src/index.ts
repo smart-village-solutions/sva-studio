@@ -60,6 +60,18 @@ export {
 } from './external-interfaces.server.js';
 export type { JsonErrorResponseOptions } from './server/json-error-response.server.js';
 export { toJsonErrorResponse } from './server/json-error-response.server.js';
+export {
+  asApiItem,
+  asApiList,
+  createApiError,
+  jsonResponse,
+  parseRequestBody,
+  readInstanceIdFromRequest,
+  readPage,
+  readPathSegment,
+  requireIdempotencyKey,
+  toPayloadHash,
+} from './server/request-helpers.server.js';
 export type {
   AuthorizedMutation,
   IdempotentMutation,

@@ -11,7 +11,8 @@ const state = vi.hoisted(() => ({
 
 const poolOnMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: vi.fn(() => state.logger),
 }));
 

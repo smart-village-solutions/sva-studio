@@ -6,7 +6,7 @@ import { validateCsrf } from '../../shared/request-security.js';
 import { authorizeWasteManagementAction } from './auth.js';
 import { deriveHolidayRuleConfigurationStatus } from '@sva/waste-management-contracts';
 import { runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
-import { wasteManagementTourSchemas } from './schemas.js';
+import { wasteManagementTourSchemas } from '@sva/waste-management-runtime/server';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 

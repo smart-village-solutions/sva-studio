@@ -25,7 +25,8 @@
     "@sva/data-repositories": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/server-runtime": "workspace:*",
-    "@sva/waste-management-contracts": "workspace:*"
+    "@sva/waste-management-contracts": "workspace:*",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.10",

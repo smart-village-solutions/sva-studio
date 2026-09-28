@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { wasteManagementMasterDataSchemas, wasteManagementSettingsSchemas } from './schemas.js';
+import { wasteManagementMasterDataSchemas, wasteManagementSettingsSchemas } from './http-schemas.js';
 
 describe('waste-management schemas', () => {
   const baseSettingsPayload = {

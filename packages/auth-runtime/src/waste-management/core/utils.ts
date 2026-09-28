@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { createApiError } from '../../shared/request-helpers.js';
-import { wasteManagementTourSchemas } from './schemas.js';
+import { wasteManagementTourSchemas } from '@sva/waste-management-runtime/server';
 import type { WasteManagementHandlerDeps } from './types.js';
 
 const { wasteCustomTourDateSchema } = wasteManagementTourSchemas;

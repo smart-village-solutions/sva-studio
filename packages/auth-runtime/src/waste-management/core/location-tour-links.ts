@@ -7,7 +7,7 @@ import {
   runWasteDeleteMutation,
   runWasteUpdateMutation,
 } from './mutation-helpers.js';
-import { wasteManagementTourSchemas } from './schemas.js';
+import { wasteManagementTourSchemas } from '@sva/waste-management-runtime/server';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireDeps } from './utils.js';
 

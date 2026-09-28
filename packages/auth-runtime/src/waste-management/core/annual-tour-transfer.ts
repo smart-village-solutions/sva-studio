@@ -20,7 +20,7 @@ import {
   reserveAnnualTourTransfer,
   startAnnualTourTransferLeaseHeartbeat,
 } from './annual-tour-transfer-idempotency.js';
-import { wasteManagementTourSchemas } from './schemas.js';
+import { wasteManagementTourSchemas } from '@sva/waste-management-runtime/server';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 

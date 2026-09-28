@@ -8,7 +8,7 @@ import {
   requireIdempotencyKey,
 } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
-import { wasteManagementSettingsSchemas } from './schemas.js';
+import { wasteManagementSettingsSchemas } from '@sva/waste-management-runtime/server';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import {
   runWasteManagementHolidaySyncAfterValidation,

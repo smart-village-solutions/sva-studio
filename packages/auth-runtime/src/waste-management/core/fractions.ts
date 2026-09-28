@@ -16,7 +16,7 @@ import {
   authorizeWasteMasterDataMutationRequest,
 } from './master-data-request-guards.js';
 import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
-import { wasteManagementMasterDataSchemas } from './schemas.js';
+import { wasteManagementMasterDataSchemas } from '@sva/waste-management-runtime/server';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { normalizeOptionalString, requireDeps } from './utils.js';

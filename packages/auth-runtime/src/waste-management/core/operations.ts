@@ -18,7 +18,7 @@ import {
   emitWasteAuditEvent,
   getAuthorizedWasteManagementInstanceId,
 } from './auth.js';
-import { wasteManagementOperationSchemas } from './operation-schemas.js';
+import { wasteManagementOperationSchemas } from '@sva/waste-management-runtime/server';
 import { loadConfiguredWasteSettings } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireDeps } from './utils.js';

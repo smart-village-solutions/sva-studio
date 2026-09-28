@@ -3,7 +3,7 @@ import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction } from './auth.js';
 import { runWasteCreateMutation, runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
-import { wasteManagementTourSchemas } from './schemas.js';
+import { wasteManagementTourSchemas } from '@sva/waste-management-runtime/server';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
 

@@ -2,7 +2,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
-import { wasteManagementTourSchemas } from './schemas.js';
+import { wasteManagementTourSchemas } from '@sva/waste-management-runtime/server';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import {
   createWasteTourDeleteErrorResponse,

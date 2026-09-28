@@ -25,7 +25,7 @@ import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../midd
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
 import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import { createApiError } from '../shared/request-helpers.js';
-import { startPluginOperationJobFromFacade } from './core/operations-support.js';
+import { startPluginOperationJobFromFacade } from './operations-support.js';
 
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 

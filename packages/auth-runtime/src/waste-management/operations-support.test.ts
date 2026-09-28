@@ -6,12 +6,12 @@ const createPluginOperationJobMock = vi.hoisted(() => vi.fn());
 const markPluginOperationEnqueueFailedMock = vi.hoisted(() => vi.fn(async () => undefined));
 const queuePluginOperationJobMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock('../../iam-account-management/shared.js', () => ({
+vi.mock('../iam-account-management/shared.js', () => ({
   reserveIdempotency: reserveIdempotencyMock,
   completeIdempotency: completeIdempotencyMock,
 }));
 
-vi.mock('../../plugin-operations/core.shared.js', () => ({
+vi.mock('../plugin-operations/core.shared.js', () => ({
   createPluginOperationJob: createPluginOperationJobMock,
   markPluginOperationEnqueueFailed: markPluginOperationEnqueueFailedMock,
   createJsonItemResponse: (status: number, item: unknown, requestId: string | undefined) =>
@@ -21,7 +21,7 @@ vi.mock('../../plugin-operations/core.shared.js', () => ({
     }),
 }));
 
-vi.mock('../../plugin-operations/runner.js', () => ({
+vi.mock('../plugin-operations/runner.js', () => ({
   queuePluginOperationJob: queuePluginOperationJobMock,
 }));
 

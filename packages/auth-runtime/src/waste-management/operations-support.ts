@@ -1,14 +1,14 @@
 import { type StudioJobStartRequest } from '@sva/core';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
-import { completeIdempotency, reserveIdempotency } from '../../iam-account-management/shared.js';
+import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import {
   createJsonItemResponse,
   createPluginOperationJob,
   markPluginOperationEnqueueFailed,
-} from '../../plugin-operations/core.shared.js';
-import { queuePluginOperationJob } from '../../plugin-operations/runner.js';
-import { createApiError, toPayloadHash } from '../../shared/request-helpers.js';
+} from '../plugin-operations/core.shared.js';
+import { queuePluginOperationJob } from '../plugin-operations/runner.js';
+import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
 
 const isActivePostalCodeJobConflict = (error: unknown): boolean =>
   typeof error === 'object' &&

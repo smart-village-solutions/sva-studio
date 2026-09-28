@@ -23,7 +23,7 @@ const hostCapabilityMocks = vi.hoisted(() => ({
   storePluginOperationInput: vi.fn(),
 }));
 
-vi.mock('./core/operations-support.js', () => ({
+vi.mock('./operations-support.js', () => ({
   startPluginOperationJobFromFacade: hostCapabilityMocks.startPluginOperationJobFromFacade,
 }));
 

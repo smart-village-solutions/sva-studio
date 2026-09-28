@@ -16,6 +16,7 @@ import {
   syncTechnicalRoleCreate,
   type PreparedRoleCreate,
 } from './role-create-sync.js';
+import { UnavailableRolePermissionError } from './role-mutation-persistence.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -55,16 +56,31 @@ const preparedCreate = {
 } satisfies PreparedRoleCreate<typeof payload>;
 
 const createDeps = createTestDepsBuilder<
-  CreateRoleHandlerDeps<typeof payload, { readonly displayName: string; readonly instanceId: string; readonly roleKey: string }, typeof identityProvider, typeof roleItem>
+  CreateRoleHandlerDeps<
+    typeof payload,
+    { readonly displayName: string; readonly instanceId: string; readonly roleKey: string },
+    typeof identityProvider,
+    typeof roleItem
+  >
 >(() => ({
   asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
-  buildRoleAttributes: vi.fn(({ displayName, instanceId, roleKey }) => ({ displayName, instanceId, roleKey })),
+  buildRoleAttributes: vi.fn(({ displayName, instanceId, roleKey }) => ({
+    displayName,
+    instanceId,
+    roleKey,
+  })),
   buildRoleSyncFailure: vi.fn(({ fallbackMessage, requestId }) =>
-    createJsonResponse(503, { error: { code: 'keycloak_unavailable', message: fallbackMessage }, requestId })
+    createJsonResponse(503, {
+      error: { code: 'keycloak_unavailable', message: fallbackMessage },
+      requestId,
+    })
   ),
   completeIdempotency: vi.fn(async () => undefined),
   createApiError: vi.fn((status, code, message, requestId, details) =>
-    createJsonResponse(status, { error: { code, message, ...(details ? { details } : {}) }, requestId })
+    createJsonResponse(status, {
+      error: { code, message, ...(details ? { details } : {}) },
+      requestId,
+    })
   ),
   iamRoleSyncCounter: {
     add: vi.fn(),
@@ -77,13 +93,19 @@ const createDeps = createTestDepsBuilder<
     error: vi.fn(),
   },
   mapRoleSyncErrorCode: vi.fn(() => 'IDP_UNAVAILABLE'),
-  parseCreateRoleBody: vi.fn(async () => ({ ok: true, data: payload, rawBody: JSON.stringify(payload) })),
+  parseCreateRoleBody: vi.fn(async () => ({
+    ok: true,
+    data: payload,
+    rawBody: JSON.stringify(payload),
+  })),
   persistCreatedRole: vi.fn(async () => roleItem),
   requireIdempotencyKey: vi.fn(() => ({ key: 'idem-1' })),
   requireRoleIdentityProvider: vi.fn(async () => identityProvider),
   reserveIdempotency: vi.fn(async () => ({ status: 'reserved' as const })),
   resolveRoleMutationActor: vi.fn(async () => ({ actor })),
-  sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
+  sanitizeRoleErrorMessage: vi.fn((error) =>
+    error instanceof Error ? error.message : String(error)
+  ),
   toPayloadHash: vi.fn(() => 'hash-1'),
   trackKeycloakCall: vi.fn(async (_operation, work) => work()),
 })) satisfies CreateRoleHandlerDeps<
@@ -183,13 +205,50 @@ describe('role-create-sync', () => {
     });
   });
 
+  it('returns invalid_request and completes idempotency when a module changes before persistence', async () => {
+    const deps = createDeps({
+      persistCreatedRole: vi.fn(async () => {
+        throw new UnavailableRolePermissionError();
+      }),
+    });
+    const response = await persistLocalRoleCreate(deps, preparedCreate);
+    expect(response.status).toBe(400);
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 400,
+      })
+    );
+  });
+
+  it('compensates a technical role before reporting a late unavailable permission', async () => {
+    const deps = createDeps({
+      persistCreatedRole: vi.fn(async () => {
+        throw new UnavailableRolePermissionError();
+      }),
+    });
+    const response = await syncTechnicalRoleCreate(deps, preparedCreate);
+    expect(response.status).toBe(400);
+    expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('editor');
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 400,
+      })
+    );
+  });
+
   it('covers create failure helpers with logging and idempotency completion', async () => {
     const unavailableDeps = createDeps();
     const unavailableResponse = await failCreateRoleUnavailable(unavailableDeps, preparedCreate);
     expect(unavailableResponse.status).toBe(503);
 
     const createdRoleFailureDeps = createDeps();
-    const createdRoleFailure = await failCreatedRole(createdRoleFailureDeps, preparedCreate, new Error('keycloak down'));
+    const createdRoleFailure = await failCreatedRole(
+      createdRoleFailureDeps,
+      preparedCreate,
+      new Error('keycloak down')
+    );
     expect(createdRoleFailure.status).toBe(503);
     expect(createdRoleFailureDeps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'create_role',
@@ -197,7 +256,11 @@ describe('role-create-sync', () => {
     });
 
     const localWriteDeps = createDeps();
-    const localWriteFailure = await failLocalRoleCreateDatabaseWrite(localWriteDeps, preparedCreate, new Error('db write failed'));
+    const localWriteFailure = await failLocalRoleCreateDatabaseWrite(
+      localWriteDeps,
+      preparedCreate,
+      new Error('db write failed')
+    );
     expect(localWriteFailure.status).toBe(409);
     expect(localWriteDeps.logger.error).toHaveBeenCalledWith(
       'Role create database write failed',
@@ -280,7 +343,10 @@ describe('role-create-sync', () => {
         throw new Error('db write failed');
       }),
     });
-    const compensatedDbFailure = await syncTechnicalRoleCreate(compensatedDbFailureDeps, preparedCreate);
+    const compensatedDbFailure = await syncTechnicalRoleCreate(
+      compensatedDbFailureDeps,
+      preparedCreate
+    );
     expect(compensatedDbFailure.status).toBe(409);
     expect(identityProvider.provider.deleteRole).toHaveBeenCalledWith('editor');
 
@@ -295,7 +361,10 @@ describe('role-create-sync', () => {
         return work();
       }),
     });
-    const compensationFailure = await syncTechnicalRoleCreate(compensationFailureDeps, preparedCreate);
+    const compensationFailure = await syncTechnicalRoleCreate(
+      compensationFailureDeps,
+      preparedCreate
+    );
     expect(compensationFailure.status).toBe(500);
   });
 });

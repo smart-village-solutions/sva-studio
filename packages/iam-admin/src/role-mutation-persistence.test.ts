@@ -80,8 +80,8 @@ const createDeps = (client: QueryClient) => ({
 describe('role mutation persistence', () => {
   it('persists created roles with permissions, audit events and invalidation', async () => {
     const { client, queries } = createClient([
-      [{ id: roleId }],
       [{ id: 'permission-1', permission_key: 'content.updatePayload' }],
+      [{ id: roleId }],
       [],
       [roleListRow],
     ]);
@@ -103,8 +103,8 @@ describe('role mutation persistence', () => {
       permissions: [{ id: 'permission-1', permissionKey: 'content.updatePayload' }],
     });
 
-    expect(queries[0]?.text).toContain('INSERT INTO iam.roles');
-    expect(queries[1]?.text).toContain('SELECT id::text AS id, permission_key');
+    expect(queries[0]?.text).toContain('SELECT id::text AS id, permission_key');
+    expect(queries[1]?.text).toContain('INSERT INTO iam.roles');
     expect(queries[2]?.text).toContain('INSERT INTO iam.role_permissions');
     expect(deps.emitRoleAuditEvent).toHaveBeenCalledTimes(2);
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
@@ -312,8 +312,8 @@ describe('role mutation persistence', () => {
 
   it('persists updated roles and replaces permissions when provided', async () => {
     const { client, queries } = createClient([
-      [],
       [{ id: 'permission-1', permission_key: 'content.updatePayload' }],
+      [],
       [],
       [],
       [roleListRow],
@@ -334,8 +334,8 @@ describe('role mutation persistence', () => {
       })
     ).resolves.toMatchObject({ id: roleId, roleName: 'Editor' });
 
-    expect(queries[0]?.text).toContain('UPDATE iam.roles');
-    expect(queries[1]?.text).toContain('SELECT id::text AS id, permission_key');
+    expect(queries[0]?.text).toContain('SELECT id::text AS id, permission_key');
+    expect(queries[1]?.text).toContain('UPDATE iam.roles');
     expect(queries[2]?.text).toContain('DELETE FROM iam.role_permissions');
     expect(queries[3]?.text).toContain('INSERT INTO iam.role_permissions');
     expect(queries[3]?.text).not.toContain('$1::uuid');
@@ -347,11 +347,11 @@ describe('role mutation persistence', () => {
 
   it('normalizes non-scope permission assignments to accessScope all before persisting', async () => {
     const { client, queries } = createClient([
-      [{ id: roleId }],
       [
         { id: 'permission-1', permission_key: 'content.updatePayload' },
-        { id: 'permission-2', permission_key: 'iam.configure' },
+        { id: 'permission-2', permission_key: 'iam.role.read' },
       ],
+      [{ id: roleId }],
       [],
       [roleListRow],
     ]);
@@ -415,6 +415,63 @@ describe('role mutation persistence', () => {
       },
       requestId: 'request-1',
     });
+  });
+
+  it.each([
+    ['disabled', []],
+    ['missing', []],
+    ['active', [{ module_id: 'ssf' }]],
+  ])('checks %s module permissions before role creation', async (_status, activeRows) => {
+    const { client, queries } = createClient([
+      [{ id: 'permission-ssf', permission_key: 'ssf.configuration.tenant.read' }],
+      activeRows,
+    ]);
+    const response = await createRoleMutationPersistence(
+      createDeps(client)
+    ).validateRequestedPermissions({
+      actor,
+      permissionIds: ['permission-ssf'],
+    });
+    expect(response?.status ?? 200).toBe(activeRows.length ? 200 : 400);
+    expect(queries[1]?.text).toContain('effective_active = true');
+  });
+
+  it('rejects a module revoked after prevalidation before writing a role', async () => {
+    const { client, queries } = createClient([
+      [{ id: 'permission-ssf', permission_key: 'ssf.configuration.tenant.read' }],
+      [],
+    ]);
+    await expect(
+      createRoleMutationPersistence(createDeps(client)).persistCreatedRole({
+        actor,
+        roleKey: 'editor',
+        displayName: 'Editor',
+        externalRoleName: 'Editor',
+        roleLevel: 20,
+        permissionIds: ['permission-ssf'],
+      })
+    ).rejects.toThrow('tenant_permission_unavailable');
+    expect(queries.every(({ text }) => !text.includes('INSERT INTO iam.roles'))).toBe(true);
+  });
+
+  it('rejects a revoked module before updating an existing role', async () => {
+    const { client, queries } = createClient([
+      [{ id: 'permission-ssf', permission_key: 'ssf.configuration.tenant.manage' }],
+      [],
+    ]);
+    await expect(
+      createRoleMutationPersistence(createDeps(client)).persistUpdatedRole({
+        actor,
+        roleId,
+        existing: mutableRole,
+        displayName: 'Editor',
+        roleLevel: 20,
+        externalRoleName: 'Editor',
+        permissionIds: ['permission-ssf'],
+        operation: 'update',
+      })
+    ).rejects.toThrow('tenant_permission_unavailable');
+    expect(queries.every(({ text }) => !text.includes('UPDATE iam.roles'))).toBe(true);
   });
 
   it('protects delete resolution and deletes editable roles', async () => {

@@ -4,6 +4,7 @@ import type {
   CreateRoleIdentityProvider,
   CreateRolePayloadShape,
 } from './role-create-handler.js';
+import { UnavailableRolePermissionError } from './role-mutation-persistence.js';
 import {
   completeCreateRoleIdempotency,
   CREATE_ROLE_ENDPOINT,
@@ -22,6 +23,32 @@ export type PreparedRoleCreate<TPayload extends CreateRolePayloadShape> = {
   readonly idempotencyKey: string;
   readonly roleKey: string;
   readonly generateUniqueRoleKey: boolean;
+};
+
+const failUnavailablePermission = async <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
+  input: PreparedRoleCreate<TPayload>
+): Promise<Response> => {
+  const response = deps.createApiError(
+    400,
+    'invalid_request',
+    'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
+    input.actor.requestId
+  );
+  await completeCreateRoleIdempotency(deps, {
+    actor: input.actor,
+    idempotencyKey: input.idempotencyKey,
+    status: 'FAILED',
+    responseStatus: 400,
+    responseBody: await response.clone().json(),
+  });
+  deps.iamUserOperationsCounter.add(1, { action: 'create_role', result: 'failure' });
+  return response;
 };
 
 const persistPreparedRole = async <
@@ -119,6 +146,9 @@ export const persistLocalRoleCreate = async <
   try {
     return await finishCreatedRole(deps, input, await persistPreparedRole(deps, input));
   } catch (error) {
+    if (error instanceof UnavailableRolePermissionError) {
+      return failUnavailablePermission(deps, input);
+    }
     return failLocalRoleCreateDatabaseWrite(deps, input, error);
   }
 };
@@ -172,6 +202,9 @@ export const syncTechnicalRoleCreate = async <
       );
     } catch (compensationError) {
       return failCreateCompensation(deps, input, compensationError);
+    }
+    if (error instanceof UnavailableRolePermissionError) {
+      return failUnavailablePermission(deps, input);
     }
     return failTechnicalRoleDatabaseWrite(deps, input, error);
   }

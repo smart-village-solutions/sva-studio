@@ -5,6 +5,7 @@ import {
 } from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import type { IamPermission } from '@sva/core';
+import { tenantCorePermissionCatalog } from '@sva/core';
 
 import { jsonResponse, type QueryClient } from '../db.js';
 import {
@@ -36,14 +37,19 @@ const loadPermissions = async (
     instance_id: string;
     permission_key: string;
     description: string | null;
+    module_active: boolean | null;
   }>(
     `
 SELECT
   p.id,
   p.instance_id,
   p.permission_key,
-  p.description
+  p.description,
+  permission_module.effective_active AS module_active
 FROM iam.permissions p
+LEFT JOIN iam.instance_modules permission_module
+  ON permission_module.instance_id = p.instance_id
+ AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE p.instance_id = $1
 ORDER BY p.permission_key ASC;
 `,
@@ -52,6 +58,11 @@ ORDER BY p.permission_key ASC;
 
   return result.rows
     .filter((row) => isTenantVisiblePermissionKey(row.permission_key))
+    .filter(
+      (row) =>
+        tenantCorePermissionCatalog.some(({ key }) => key === row.permission_key) ||
+        row.module_active === true
+    )
     .map((row) => ({
       id: row.id,
       instanceId: row.instance_id,

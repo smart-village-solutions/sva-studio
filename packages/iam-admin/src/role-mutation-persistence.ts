@@ -1,5 +1,6 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
 import type { IamRoleListItem } from '@sva/core';
+import { tenantCorePermissionCatalog } from '@sva/core';
 import type { ManagedRoleRow } from './types.js';
 
 import { getManagedPermissionMetadata, isRootOnlyPermissionKey } from './managed-permissions.js';
@@ -32,6 +33,14 @@ type StoredRolePermissionAssignment = {
   readonly permissionId: string;
   readonly accessScope: IamRolePermissionAssignmentScope;
 };
+
+const tenantCorePermissionKeys = new Set(tenantCorePermissionCatalog.map(({ key }) => key));
+
+export class UnavailableRolePermissionError extends Error {
+  constructor() {
+    super('tenant_permission_unavailable');
+  }
+}
 
 const normalizeRolePermissionAssignments = (
   permissionIds: readonly string[] | undefined,
@@ -79,6 +88,31 @@ WHERE instance_id = $1
   return new Map(result.rows.map((row) => [row.id, row.permission_key] as const));
 };
 
+const hasUnavailableModulePermission = async (
+  client: QueryClient,
+  instanceId: string,
+  permissionKeys: readonly string[]
+): Promise<boolean> => {
+  const moduleIds = [
+    ...new Set(
+      permissionKeys
+        .filter((key) => !tenantCorePermissionKeys.has(key))
+        .map((key) => key.split('.')[0] ?? '')
+    ),
+  ];
+  if (moduleIds.length === 0) return false;
+
+  // The row lock keeps a concurrent module revocation behind the role write.
+  const result = await client.query<{ module_id: string }>(
+    `SELECT module_id FROM iam.instance_modules
+WHERE instance_id = $1 AND module_id = ANY($2::text[]) AND effective_active = true
+FOR SHARE;`,
+    [instanceId, moduleIds]
+  );
+  const activeModules = new Set(result.rows.map((row) => row.module_id));
+  return moduleIds.some((moduleId) => !activeModules.has(moduleId));
+};
+
 const normalizeStoredAccessScope = (
   accessScope: IamRolePermissionAssignmentScope,
   permissionKey: string | undefined
@@ -102,6 +136,14 @@ const normalizeAssignmentsForPersistence = async (
     instanceId,
     assignments.map((assignment) => assignment.permissionId)
   );
+
+  if (
+    permissionKeyById.size !== assignments.length ||
+    [...permissionKeyById.values()].some(isRootOnlyPermissionKey) ||
+    (await hasUnavailableModulePermission(client, instanceId, [...permissionKeyById.values()]))
+  ) {
+    throw new UnavailableRolePermissionError();
+  }
 
   return assignments.map((assignment) => ({
     permissionId: assignment.permissionId,
@@ -399,6 +441,19 @@ ORDER BY a.keycloak_subject ASC
         );
       }
 
+      if (
+        await hasUnavailableModulePermission(client, input.actor.instanceId, [
+          ...permissionKeyById.values(),
+        ])
+      ) {
+        return deps.createApiError(
+          400,
+          'invalid_request',
+          'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
+          input.actor.requestId
+        );
+      }
+
       return null;
     });
 
@@ -436,6 +491,12 @@ WHERE instance_id = $1
         roleKey = createRoleKeyCandidate(input.roleKey, sequence);
       }
 
+      const permissionAssignments = await normalizeAssignmentsForPersistence(
+        client,
+        input.actor.instanceId,
+        normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
+      );
+
       const inserted = await client.query<{ readonly id: string }>(
         `
 INSERT INTO iam.roles (
@@ -469,12 +530,6 @@ RETURNING id;
       if (!roleId) {
         throw new Error('conflict');
       }
-
-      const permissionAssignments = await normalizeAssignmentsForPersistence(
-        client,
-        input.actor.instanceId,
-        normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
-      );
 
       if (permissionAssignments.length > 0) {
         await client.query(
@@ -628,6 +683,14 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     readonly operation: 'update' | 'retry';
   }) =>
     deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
+      const permissionAssignments =
+        input.permissionIds || input.permissionAssignments
+          ? await normalizeAssignmentsForPersistence(
+              client,
+              input.actor.instanceId,
+              normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
+            )
+          : undefined;
       await client.query(
         `
 UPDATE iam.roles
@@ -651,12 +714,7 @@ WHERE instance_id = $1
         ]
       );
 
-      if (input.permissionIds || input.permissionAssignments) {
-        const permissionAssignments = await normalizeAssignmentsForPersistence(
-          client,
-          input.actor.instanceId,
-          normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
-        );
+      if (permissionAssignments) {
         await client.query(
           'DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;',
           [input.actor.instanceId, input.roleId]

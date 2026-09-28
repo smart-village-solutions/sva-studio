@@ -1,4 +1,5 @@
 import type { EffectivePermission } from '@sva/iam-core';
+import { tenantCorePermissionCatalog } from '@sva/core';
 
 import type { QueryClient } from '../db.js';
 
@@ -15,6 +16,7 @@ export type PermissionLookupInput = {
 };
 
 const SCOPE_SENSITIVE_PERMISSION_KEYS = listScopeSensitivePermissionKeys();
+const TENANT_CORE_PERMISSION_KEYS = tenantCorePermissionCatalog.map((permission) => permission.key);
 
 export const ROLE_ASSIGNMENT_SOURCE_SQL = `
   SELECT ar.account_id, ar.role_id, ar.instance_id, NULL::uuid AS group_id, NULL::text AS group_key, 'direct_role'::text AS source_kind
@@ -101,12 +103,13 @@ LEFT JOIN iam.instance_modules permission_module
 WHERE a.instance_id = $1
   AND a.status = 'active'
   AND p.permission_key = ANY($2::text[])
-  AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
+  AND (p.permission_key = ANY($3::text[]) OR permission_module.effective_active = true)
 ORDER BY a.keycloak_subject, r.role_name, p.permission_key
 `,
     [
       input.instanceId,
       [...new Set(input.permissionIds)].sort((left, right) => left.localeCompare(right)),
+      TENANT_CORE_PERMISSION_KEYS,
     ]
   );
 
@@ -169,7 +172,7 @@ LEFT JOIN iam.instance_modules permission_module
  AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
-  AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
+  AND (p.permission_key = ANY($5::text[]) OR permission_module.effective_active = true)
   AND (
     (
       rp.access_scope IS NULL
@@ -204,7 +207,13 @@ WHERE a.keycloak_subject = $2
     )
   )
 `,
-    [input.instanceId, input.keycloakSubject, input.organizationId, SCOPE_SENSITIVE_PERMISSION_KEYS]
+    [
+      input.instanceId,
+      input.keycloakSubject,
+      input.organizationId,
+      SCOPE_SENSITIVE_PERMISSION_KEYS,
+      TENANT_CORE_PERMISSION_KEYS,
+    ]
   );
 
   return scopedQuery.rows;
@@ -240,9 +249,14 @@ LEFT JOIN iam.instance_modules permission_module
  AND permission_module.module_id = split_part(p.permission_key, '.', 1)
 WHERE a.keycloak_subject = $2
   AND a.instance_id = $1
-  AND (permission_module.module_id IS NULL OR permission_module.effective_active = true)
+  AND (p.permission_key = ANY($4::text[]) OR permission_module.effective_active = true)
 `,
-    [input.instanceId, input.keycloakSubject, SCOPE_SENSITIVE_PERMISSION_KEYS]
+    [
+      input.instanceId,
+      input.keycloakSubject,
+      SCOPE_SENSITIVE_PERMISSION_KEYS,
+      TENANT_CORE_PERMISSION_KEYS,
+    ]
   );
 
   return unscopedQuery.rows;

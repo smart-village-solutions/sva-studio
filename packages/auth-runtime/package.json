@@ -31,6 +31,14 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./waste-host": {
+      "types": "./dist/waste-host.d.ts",
+      "default": "./dist/waste-host.js"
+    },
+    "./waste-readiness": {
+      "types": "./dist/waste-readiness.d.ts",
+      "default": "./dist/waste-readiness.js"
+    },
     "./service-token": {
       "types": "./dist/service-token.d.ts",
       "default": "./dist/service-token.js"
@@ -55,6 +63,7 @@
     "@sva/server-runtime": "workspace:*",
     "@sva/studio-module-iam": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*",
+    "@sva/waste-management-runtime": "workspace:*",
     "cookie-es": "^3.1.1",
     "file-type": "^22.0.1",
     "graphile-worker": "^0.16.6",

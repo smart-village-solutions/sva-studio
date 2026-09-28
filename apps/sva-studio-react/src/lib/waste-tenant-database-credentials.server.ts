@@ -3,8 +3,8 @@ import { randomBytes } from 'node:crypto';
 import type { ExternalInterfaceRecord } from '@sva/core';
 import {
   buildExternalInterfaceSecretConfigAad,
-  type WasteTenantDatabaseNames,
 } from '@sva/server-runtime';
+import type { WasteTenantDatabaseNames } from '@sva/waste-management-runtime/repositories';
 import type { SqlClient } from './waste-management-operations.types.js';
 
 const existingSecretUnreadable = 'waste_database_existing_secret_unreadable';

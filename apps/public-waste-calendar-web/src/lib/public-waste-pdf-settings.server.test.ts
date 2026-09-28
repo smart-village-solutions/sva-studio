@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExternalInterfaceRecord } from '@sva/core';
-import { createWasteMasterDataRepository } from '@sva/data-repositories';
+import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -14,8 +14,8 @@ const repositoryMock = vi.hoisted(() => ({
 const poolConnectMock = vi.hoisted(() => vi.fn());
 const poolEndMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock('@sva/data-repositories', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+vi.mock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
   return {
     ...actual,
     createWasteMasterDataRepository: vi.fn(() => repositoryMock),

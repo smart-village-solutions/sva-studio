@@ -3,7 +3,7 @@ import {
   readWasteManagementEmailReminderSigningSecret,
   type WasteManagementEmailReminderConfig,
 } from '@sva/waste-management-contracts';
-import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
+import { deriveWasteTenantDatabaseNames } from '@sva/waste-management-runtime/repositories';
 
 export type PublicWasteConfig = {
   readonly instanceId: string;

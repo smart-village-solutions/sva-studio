@@ -1,0 +1,126 @@
+import { type StudioJobStartRequest } from '@sva/core';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
+
+import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
+import {
+  createJsonItemResponse,
+  createPluginOperationJob,
+  markPluginOperationEnqueueFailed,
+} from '../plugin-operations/core.shared.js';
+import { queuePluginOperationJob } from '../plugin-operations/runner.js';
+import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
+
+const isActivePostalCodeJobConflict = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === '23505' &&
+  'constraint' in error &&
+  error.constraint === 'idx_studio_jobs_active_waste_postal_code_enrichment';
+
+const createJobCreationError = (
+  error: unknown,
+  rejectWhenActiveJobExists: boolean | undefined,
+  requestId: string | undefined
+): Response => {
+  if (rejectWhenActiveJobExists === true && isActivePostalCodeJobConflict(error)) {
+    return createApiError(
+      409,
+      'active_job_exists',
+      'Für diese Instanz läuft bereits eine Postleitzahl-Anreicherung.',
+      requestId
+    );
+  }
+  return createApiError(
+    503,
+    'database_unavailable',
+    'Der Waste-Job konnte nicht angelegt werden.',
+    requestId
+  );
+};
+
+export const startPluginOperationJobFromFacade = async (input: {
+  readonly instanceId: string;
+  readonly actorAccountId: string;
+  readonly endpoint: string;
+  readonly idempotencyKey: string;
+  readonly requestId?: string;
+  readonly scheduledAt: string;
+  readonly data: StudioJobStartRequest;
+  readonly rejectWhenActiveJobExists?: boolean;
+}): Promise<Response> => {
+  const reserved = await reserveIdempotency({
+    instanceId: input.instanceId,
+    actorAccountId: input.actorAccountId,
+    endpoint: input.endpoint,
+    idempotencyKey: input.idempotencyKey,
+    payloadHash: toPayloadHash(JSON.stringify(input.data)),
+  });
+
+  if (reserved.status === 'replay') {
+    return new Response(JSON.stringify(reserved.responseBody), {
+      status: reserved.responseStatus,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (reserved.status === 'conflict') {
+    return createApiError(409, 'idempotency_key_reuse', reserved.message, input.requestId);
+  }
+
+  const complete = async (response: Response): Promise<Response> => {
+    const responseBody = await response.clone().json();
+    await completeIdempotency({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      endpoint: input.endpoint,
+      idempotencyKey: input.idempotencyKey,
+      status: response.status >= 400 ? 'FAILED' : 'COMPLETED',
+      responseStatus: response.status,
+      responseBody,
+    });
+    return response;
+  };
+
+  try {
+    const isPrivilegedProvisioningJob =
+      input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase;
+    const job = await createPluginOperationJob({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      idempotencyKey: input.idempotencyKey,
+      requestId: input.requestId,
+      scheduledAt: input.scheduledAt,
+      queueName: isPrivilegedProvisioningJob
+        ? wasteManagementOperationsContract.provisioningQueueName
+        : wasteManagementOperationsContract.queueName,
+      data: input.data,
+    });
+
+    try {
+      await queuePluginOperationJob({
+        instanceId: input.instanceId,
+        jobId: job.id,
+        queueName: job.queueName,
+        maxAttempts: job.maxAttempts,
+        executionLane: isPrivilegedProvisioningJob ? 'privileged' : 'default',
+      });
+    } catch {
+      await markPluginOperationEnqueueFailed({ instanceId: input.instanceId, job });
+      return complete(
+        createApiError(
+          503,
+          'database_unavailable',
+          'Der Waste-Job konnte nicht in die Host-Queue gestellt werden.',
+          input.requestId
+        )
+      );
+    }
+
+    return complete(createJsonItemResponse(202, job, input.requestId));
+  } catch (error) {
+    return complete(
+      createJobCreationError(error, input.rejectWhenActiveJobExists, input.requestId)
+    );
+  }
+};

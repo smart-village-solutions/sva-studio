@@ -245,7 +245,6 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   return {
     ...actual,
     createSdkLogger: vi.fn(() => loggerMock),
-    resolveWasteDataSource: resolveWasteDataSourceMock,
   };
 });
 
@@ -270,7 +269,14 @@ vi.mock('../plugin-operations/repository.js', () => ({
   withStudioJobRepository: withStudioJobRepositoryMock,
 }));
 
-vi.mock('@sva/data-repositories', () => ({
+vi.mock('@sva/waste-management-runtime/repositories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>()),
+  createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
+  resolveWasteDataSource: resolveWasteDataSourceMock,
+}));
+
+vi.mock('../../../waste-management-runtime/src/repositories/master-data.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../waste-management-runtime/src/repositories/master-data.js')>()),
   createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
 }));
 

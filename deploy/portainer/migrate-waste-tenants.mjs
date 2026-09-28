@@ -198,7 +198,7 @@ export const isWasteMigrationEntrypoint = (moduleUrl, executablePath) =>
 export const runWasteTenantMigrations = async () => {
   const [{ default: pg }, { deriveWasteTenantDatabaseNames }] = await Promise.all([
     import('pg'),
-    import('@sva/server-runtime'),
+    import('@sva/waste-management-runtime/repositories'),
   ]);
   const { Client } = pg;
   const passwordFile = required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE');

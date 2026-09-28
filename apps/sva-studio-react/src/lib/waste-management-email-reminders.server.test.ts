@@ -53,7 +53,7 @@ describe('waste management operations runtime', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.doUnmock('@sva/server-runtime');
-    vi.doUnmock('@sva/data-repositories');
+    vi.doUnmock('@sva/waste-management-runtime/repositories');
     vi.doUnmock('@sva/sva-mainserver/server');
     vi.doUnmock('./waste-management-operations.import.js');
     vi.doUnmock('./waste-management-mainserver-sync.materialization.js');
@@ -135,8 +135,8 @@ describe('waste management operations runtime', () => {
       markOutboxEntryFailed: vi.fn(async () => undefined),
     };
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -238,8 +238,8 @@ describe('waste management operations runtime', () => {
       markOutboxEntryFailed,
     };
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -425,8 +425,8 @@ describe('waste management operations runtime', () => {
       markOutboxEntryFailed,
     };
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -497,8 +497,8 @@ describe('waste management operations runtime', () => {
       markOutboxEntryFailed: vi.fn(async () => undefined),
     };
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -606,8 +606,8 @@ describe('waste management operations runtime', () => {
       markOutboxEntryFailed: vi.fn(async () => undefined),
     };
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -760,8 +760,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -899,8 +899,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1011,8 +1011,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1159,8 +1159,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1294,8 +1294,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1417,8 +1417,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1549,8 +1549,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1682,8 +1682,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1854,8 +1854,8 @@ describe('waste management operations runtime', () => {
       listWasteHolidayRules: vi.fn(async () => []),
     });
 
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),

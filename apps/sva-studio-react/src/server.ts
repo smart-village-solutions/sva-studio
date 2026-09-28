@@ -267,7 +267,7 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
     }
 
     if (
-      requestPath.startsWith('/api/v1/plugins/') ||
+      requestPath.startsWith('/api/v1/') ||
       requestPath.startsWith('/internal/plugins/')
     ) {
       const dispatchPluginServerHandler = await getPluginServerHandlerDispatcher();

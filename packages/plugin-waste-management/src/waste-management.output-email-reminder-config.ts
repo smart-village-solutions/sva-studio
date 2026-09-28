@@ -1,12 +1,9 @@
-import type {
-  WasteManagementEmailReminderConfig,
-  WasteManagementSettingsInterfaceOption,
-} from '@sva/waste-management-contracts';
-
 import {
   fixedWasteEmailReminderPaths,
   withFixedWasteEmailReminderPaths,
-} from './waste-management.email-reminder-paths.js';
+  type WasteManagementEmailReminderConfig,
+  type WasteManagementSettingsInterfaceOption,
+} from '@sva/waste-management-contracts';
 
 export const getMailTransportOptions = (
   options: readonly WasteManagementSettingsInterfaceOption[]

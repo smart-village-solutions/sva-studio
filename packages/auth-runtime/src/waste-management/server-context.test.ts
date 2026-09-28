@@ -15,6 +15,50 @@ const authMocks = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
 }));
 
+const hostCapabilityMocks = vi.hoisted(() => ({
+  emitAuthAuditEvent: vi.fn(),
+  resolveEffectivePermissions: vi.fn(),
+  resolveActorInfo: vi.fn(),
+  startPluginOperationJobFromFacade: vi.fn(),
+  storePluginOperationInput: vi.fn(),
+  revealField: vi.fn(),
+  resolveWasteDataSource: vi.fn(),
+  runWasteConnectionCheck: vi.fn(),
+  poolConnect: vi.fn(),
+  poolEnd: vi.fn(async () => undefined),
+}));
+
+vi.mock('pg', () => ({
+  Pool: vi.fn(function MockPool() {
+    return { connect: hostCapabilityMocks.poolConnect, end: hostCapabilityMocks.poolEnd };
+  }),
+}));
+
+vi.mock('./operations-support.js', () => ({
+  startPluginOperationJobFromFacade: hostCapabilityMocks.startPluginOperationJobFromFacade,
+}));
+
+vi.mock('../plugin-operation-artifacts.server.js', () => ({
+  storePluginOperationInput: hostCapabilityMocks.storePluginOperationInput,
+}));
+
+vi.mock('../iam-account-management/shared.js', () => ({
+  resolveActorInfo: hostCapabilityMocks.resolveActorInfo,
+  reserveIdempotency: vi.fn(),
+  renewIdempotencyLease: vi.fn(),
+  releaseIdempotencyReservation: vi.fn(),
+  hasIdempotentAuditEvent: vi.fn(),
+  completeIdempotency: vi.fn(),
+}));
+
+vi.mock('../audit-events.js', () => ({
+  emitAuthAuditEvent: hostCapabilityMocks.emitAuthAuditEvent,
+}));
+
+vi.mock('../iam-authorization/permission-store.js', () => ({
+  resolveEffectivePermissions: hostCapabilityMocks.resolveEffectivePermissions,
+}));
+
 vi.mock('@sva/data-repositories/server', () => ({
   listExternalInterfaceRecords: dataRepositoryMocks.listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord: dataRepositoryMocks.loadDefaultExternalInterfaceRecord,
@@ -25,7 +69,8 @@ vi.mock('@sva/data-repositories/server', () => ({
   saveExternalInterfaceRecord: dataRepositoryMocks.saveExternalInterfaceRecord,
 }));
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => ({
     error: vi.fn(),
   }),
@@ -34,9 +79,14 @@ vi.mock('@sva/server-runtime', () => ({
   withRequestContext: async (_input: unknown, work: () => Promise<unknown>) => work(),
 }));
 
+vi.mock('@sva/waste-management-runtime/repositories', () => ({
+  resolveWasteDataSource: hostCapabilityMocks.resolveWasteDataSource,
+  runWasteConnectionCheck: hostCapabilityMocks.runWasteConnectionCheck,
+}));
+
 vi.mock('../iam-account-management/encryption.js', () => ({
   protectField: vi.fn(),
-  revealField: vi.fn(),
+  revealField: hostCapabilityMocks.revealField,
 }));
 
 vi.mock('../log-context.js', () => ({
@@ -57,7 +107,91 @@ import {
 } from './server-context.js';
 
 describe('sharedWasteManagementDeps', () => {
-  it('exposes the default interface loader for waste settings write operations', () => {
+  it('resolves secrets and probes the connection within the host', async () => {
+    vi.clearAllMocks();
+    const dataSource = {
+      instanceId: 'tenant-a',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://db',
+      provider: 'postgresql',
+      enabled: true,
+    };
+    hostCapabilityMocks.resolveWasteDataSource.mockResolvedValueOnce(dataSource);
+    const query = vi.fn(async () => ({ rows: [{ '?column?': 1 }] }));
+    const release = vi.fn();
+    hostCapabilityMocks.poolConnect.mockResolvedValueOnce({ query, release });
+    hostCapabilityMocks.runWasteConnectionCheck.mockImplementationOnce(async ({ probe }) => {
+      await probe(dataSource);
+      return {
+        instanceId: 'tenant-a',
+        checkedAt: '2026-05-10T12:00:00.000Z',
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+      };
+    });
+    const interfaceRecord = { id: 'interface-1', instanceId: 'tenant-a' };
+    dataRepositoryMocks.listExternalInterfaceRecords.mockResolvedValueOnce([interfaceRecord]);
+
+    const result = await sharedWasteManagementDeps.checkWasteConnection(
+      'tenant-a',
+      'interface-1'
+    );
+
+    expect(result).toMatchObject({ checkStatus: 'succeeded' });
+    expect(hostCapabilityMocks.resolveWasteDataSource).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      loadDefaultInterface: expect.any(Function),
+      loadProvisioning: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+      revealSecret: hostCapabilityMocks.revealField,
+    });
+    expect(query).toHaveBeenCalledWith('SELECT 1;');
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(hostCapabilityMocks.poolEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an interface outside the authenticated instance before secret resolution', async () => {
+    vi.clearAllMocks();
+    dataRepositoryMocks.listExternalInterfaceRecords.mockResolvedValueOnce([]);
+    dataRepositoryMocks.loadDefaultExternalInterfaceRecord.mockResolvedValueOnce({
+      id: 'interface-1',
+      instanceId: 'tenant-b',
+    });
+
+    await expect(
+      sharedWasteManagementDeps.checkWasteConnection('tenant-a', 'interface-1')
+    ).rejects.toThrow('waste_interface_not_found');
+    expect(hostCapabilityMocks.resolveWasteDataSource).not.toHaveBeenCalled();
+    expect(hostCapabilityMocks.revealField).not.toHaveBeenCalled();
+  });
+
+  it('binds the host services for waste settings and handler actions', async () => {
+    expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
+    hostCapabilityMocks.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [{ action: 'waste-management.read', resourceType: 'waste-management' }],
+    });
+    await expect(sharedWasteManagementDeps.authorizeAction({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+      action: 'waste-management.read',
+      requestId: 'req-1',
+    })).resolves.toBeNull();
+    expect(hostCapabilityMocks.resolveEffectivePermissions).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+    });
+    expect(sharedWasteManagementDeps.startPluginOperationJob).toBe(
+      hostCapabilityMocks.startPluginOperationJobFromFacade
+    );
+    expect(sharedWasteManagementDeps.storeWasteImportSource).toBe(
+      hostCapabilityMocks.storePluginOperationInput
+    );
+    const request = new Request('https://studio.example/api/v1/waste-management/settings');
+    const context = { sessionId: 'session-1', user: { id: 'user-1', roles: [] } };
+    await sharedWasteManagementDeps.resolveActorInfo(request, context);
+    expect(hostCapabilityMocks.resolveActorInfo).toHaveBeenCalledWith(request, context, {
+      requireActorMembership: true,
+    });
     expect(sharedWasteManagementDeps.loadDefaultInterfaceRecord).toBe(
       dataRepositoryMocks.loadDefaultExternalInterfaceRecord
     );
@@ -73,6 +207,26 @@ describe('sharedWasteManagementDeps', () => {
     expect(sharedWasteManagementDeps.failWasteTenantProvisioningRequest).toBe(
       dataRepositoryMocks.failWasteTenantProvisioningRequest
     );
+  });
+
+  it('denies missing Waste permissions and fails closed when permission storage is unavailable', async () => {
+    const input = {
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+      action: 'waste-management.tours.manage',
+      requestId: 'req-2',
+    };
+    hostCapabilityMocks.resolveEffectivePermissions.mockResolvedValueOnce({ ok: true, permissions: [] });
+    const denied = await sharedWasteManagementDeps.authorizeAction(input);
+    expect(denied?.status).toBe(403);
+    await expect(denied?.json()).resolves.toMatchObject({
+      error: { code: 'forbidden', details: { action: input.action } },
+    });
+
+    hostCapabilityMocks.resolveEffectivePermissions.mockRejectedValueOnce(new Error('db down'));
+    const unavailable = await sharedWasteManagementDeps.authorizeAction(input);
+    expect(unavailable?.status).toBe(503);
+    await expect(unavailable?.json()).resolves.toMatchObject({ error: { code: 'database_unavailable' } });
   });
 
   it('blocks dedicated waste handlers when tenant lifecycle access is not ready', async () => {

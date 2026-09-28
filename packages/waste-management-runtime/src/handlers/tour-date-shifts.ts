@@ -1,0 +1,255 @@
+import type {
+  WasteDateShiftReasonType,
+  WasteTourDateShiftFollowUpMode,
+} from '@sva/waste-management-contracts';
+
+import type { AuthenticatedRequestContext } from './types.js';
+import { validateCsrf } from './host-controls.js';
+import { createApiError, parseRequestBody, readPathSegment } from '@sva/server-runtime';
+import { authorizeWasteManagementAction } from './auth.js';
+import {
+  runWasteCreateMutation,
+  runWasteDeleteMutation,
+  runWasteUpdateMutation,
+} from './mutation-helpers.js';
+import { wasteManagementTourSchemas } from '../http-schemas.js';
+import type { WasteManagementHandlerDeps } from './types.js';
+import {
+  getRequestId,
+  normalizeOptionalString,
+  requireActorInstanceId,
+  requireDeps,
+} from './utils.js';
+
+const { createWasteTourDateShiftSchema, updateWasteTourDateShiftSchema } =
+  wasteManagementTourSchemas;
+
+const tourDateShiftUniqueConstraints = new Set([
+  'waste_tour_date_shifts_pkey',
+  'uq_waste_tour_date_shifts_specific_origin',
+  'uq_waste_tour_date_shifts_annual_origin',
+]);
+
+const mapTourDateShiftPersistenceConflict = (error: unknown) => {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const candidate = error as { readonly code?: unknown; readonly constraint?: unknown };
+  if (
+    candidate.code !== '23505' ||
+    typeof candidate.constraint !== 'string' ||
+    !tourDateShiftUniqueConstraints.has(candidate.constraint)
+  ) {
+    return undefined;
+  }
+  return {
+    status: 409,
+    code: 'conflict' as const,
+    reasonCode: 'tour_date_shift_conflict',
+    message:
+      'Für diese Tour und diesen Ursprung existiert bereits ein Ausweichtermin derselben Gültigkeit.',
+  };
+};
+
+const toTourDateShiftInput = (
+  id: string,
+  data: {
+    tourId: string;
+    originalDate: string;
+    actualDate: string;
+    hasYear: boolean;
+    reasonType?: WasteDateShiftReasonType;
+    reasonKey?: string;
+    followUpMode?: WasteTourDateShiftFollowUpMode;
+    description?: string;
+  }
+) => ({
+  id,
+  tourId: data.tourId,
+  originalDate: data.originalDate,
+  actualDate: data.actualDate,
+  hasYear: data.hasYear,
+  reasonType: data.reasonType,
+  reasonKey: normalizeOptionalString(data.reasonKey),
+  followUpMode: data.followUpMode,
+  description: normalizeOptionalString(data.description),
+});
+
+export const wasteManagementTourDateShiftHandlers = {
+  createWasteManagementTourDateShiftInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.scheduling.manage',
+      deps,
+      requestId
+    );
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const csrfError = validateCsrf(deps, request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const parsed = await parseRequestBody(request, createWasteTourDateShiftSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, requestId);
+    }
+
+    return runWasteCreateMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: parsed.data.id,
+      audit: {
+        actionId: 'waste-management.tour-date-shift.created',
+        resourceType: 'waste_tour_date_shift',
+      },
+      messages: {
+        verificationFailed:
+          'Der tourbezogene Waste-Ausweichtermin konnte nicht verifiziert werden.',
+        persistenceFailed: 'Der tourbezogene Waste-Ausweichtermin konnte nicht gespeichert werden.',
+        mapPersistenceError: mapTourDateShiftPersistenceConflict,
+      },
+      save: () =>
+        requireDeps(deps.createWasteTourDateShift, 'createWasteTourDateShift')(
+          instanceId,
+          toTourDateShiftInput(parsed.data.id, parsed.data)
+        ),
+      loadSaved: () =>
+        requireDeps(deps.loadWasteTourDateShiftById, 'loadWasteTourDateShiftById')(
+          instanceId,
+          parsed.data.id
+        ),
+    });
+  },
+  updateWasteManagementTourDateShiftInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.scheduling.manage',
+      deps,
+      requestId
+    );
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const shiftId = readPathSegment(request, 4)?.trim();
+    if (!shiftId) {
+      return createApiError(400, 'invalid_request', 'shiftId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(deps, request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const parsed = await parseRequestBody(request, updateWasteTourDateShiftSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, requestId);
+    }
+
+    const loadTourDateShift = requireDeps(
+      deps.loadWasteTourDateShiftById,
+      'loadWasteTourDateShiftById'
+    );
+    const saveTourDateShift = requireDeps(deps.saveWasteTourDateShift, 'saveWasteTourDateShift');
+
+    return runWasteUpdateMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: shiftId,
+      audit: {
+        actionId: 'waste-management.tour-date-shift.updated',
+        resourceType: 'waste_tour_date_shift',
+      },
+      messages: {
+        notFound: 'Der tourbezogene Waste-Ausweichtermin wurde nicht gefunden.',
+        verificationFailed:
+          'Der tourbezogene Waste-Ausweichtermin konnte nicht verifiziert werden.',
+        persistenceFailed: 'Der tourbezogene Waste-Ausweichtermin konnte nicht gespeichert werden.',
+        mapPersistenceError: mapTourDateShiftPersistenceConflict,
+      },
+      loadExisting: () => loadTourDateShift(instanceId, shiftId),
+      save: () => saveTourDateShift(instanceId, toTourDateShiftInput(shiftId, parsed.data)),
+      loadSaved: () => loadTourDateShift(instanceId, shiftId),
+    });
+  },
+  deleteWasteManagementTourDateShiftInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.scheduling.manage',
+      deps,
+      requestId
+    );
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const shiftId = readPathSegment(request, 4)?.trim();
+    if (!shiftId) {
+      return createApiError(400, 'invalid_request', 'shiftId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(deps, request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const loadTourDateShift = requireDeps(
+      deps.loadWasteTourDateShiftById,
+      'loadWasteTourDateShiftById'
+    );
+
+    return runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: shiftId,
+      audit: {
+        actionId: 'waste-management.tour-date-shift.deleted',
+        resourceType: 'waste_tour_date_shift',
+      },
+      messages: {
+        notFound: 'Der tourbezogene Waste-Ausweichtermin wurde nicht gefunden.',
+        deleteFailed: 'Der tourbezogene Waste-Ausweichtermin konnte nicht gelöscht werden.',
+      },
+      loadExisting: () => loadTourDateShift(instanceId, shiftId),
+      remove: () =>
+        requireDeps(deps.deleteWasteTourDateShift, 'deleteWasteTourDateShift')(instanceId, shiftId),
+    });
+  },
+};

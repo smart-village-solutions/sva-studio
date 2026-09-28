@@ -2,9 +2,8 @@ import { createPoolResolver } from '../db.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import {
   invalidateInstanceRegistryHost,
-  loadWasteDataSourceRecord,
-  saveWasteDataSourceRecord,
 } from '@sva/data-repositories/server';
+import { loadWasteDataSourceRecord, saveWasteDataSourceRecord } from '../waste-management/waste-data-sources.server.js';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
 import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 import {

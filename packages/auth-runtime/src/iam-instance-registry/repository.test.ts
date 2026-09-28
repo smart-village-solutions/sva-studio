@@ -113,6 +113,9 @@ vi.mock('@sva/data-repositories', () => ({
 
 vi.mock('@sva/data-repositories/server', () => ({
   invalidateInstanceRegistryHost: vi.fn(),
+}));
+
+vi.mock('../waste-management/waste-data-sources.server.js', () => ({
   loadWasteDataSourceRecord: vi.fn(),
   saveWasteDataSourceRecord: vi.fn(),
 }));

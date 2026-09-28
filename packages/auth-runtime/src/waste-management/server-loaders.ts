@@ -1,9 +1,5 @@
-import {
-  createWasteMasterDataRepository,
-  type SqlExecutionResult,
-  type SqlExecutor,
-  type SqlStatement,
-} from '@sva/data-repositories';
+import { type SqlExecutionResult, type SqlExecutor, type SqlStatement } from '@sva/data-repositories';
+import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -12,7 +8,6 @@ import {
 import {
   findSelectedWasteManagementInterfaceRecord,
   deriveWasteMainserverSyncStatus,
-  buildWasteAnnualTourTransferFingerprint,
   buildWasteAnnualTourTransferPreview,
   toWasteAnnualTourTransferPublicPreview,
   isWasteTourValidityApplicable,
@@ -45,14 +40,13 @@ import {
   type WasteTourStatusBulkUpdateInput,
   type WasteTourStatusBulkUpdateResult,
   type WasteAnnualTourTransferCreateInput,
-  type WasteAnnualTourTransferMappedTour,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
-  type WasteAnnualTourTransferSource,
   type WasteTourValidityBulkUpdateInput,
   type WasteTourValidityBulkUpdateResult,
 } from '@sva/waste-management-contracts';
-import { createSdkLogger, resolveWasteDataSource } from '@sva/server-runtime';
+import { createSdkLogger } from '@sva/server-runtime';
+import { resolveWasteDataSource } from '@sva/waste-management-runtime/repositories';
 import {
   listWasteManagementAuditRecords,
   listWasteManagementTechnicalAuditRecords,
@@ -67,10 +61,14 @@ import {
   deriveHolidayRuleConfigurationStatus,
   normalizeWasteHolidayApiResponse,
   wasteHolidaySyncHorizonYears,
-} from './core/holiday-sync.js';
-import type { SaveWasteCustomRecurrencePresetsInput } from './core/custom-recurrence-deps.js';
-import { writeWasteAnnualMappedTours } from './core/annual-tour-transfer-write.js';
-import { previewWasteLocationTourPickupDateImport as buildWasteLocationTourPickupDateImportPreview } from './import-preview.js';
+} from '@sva/waste-management-contracts';
+import type { SaveWasteCustomRecurrencePresetsInput } from '@sva/waste-management-runtime/server';
+import {
+  createWasteAnnualTourTransferInTransaction,
+  loadWasteAnnualTourTransferSource,
+  previewWasteLocationTourPickupDateImport as buildWasteLocationTourPickupDateImportPreview,
+} from '@sva/waste-management-runtime/repositories';
+import { readPluginOperationInput } from '../plugin-operation-artifacts.server.js';
 
 const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
@@ -118,7 +116,6 @@ const createSqlExecutor = (client: {
 });
 
 type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;
-type WasteAnnualTourTransferClient = Parameters<typeof createSqlExecutor>[0];
 type WasteDataSource = Awaited<ReturnType<typeof resolveWasteDataSource>>;
 type WasteTechnicalJobHistoryRow = {
   readonly id: string;
@@ -1293,7 +1290,7 @@ const previewWasteLocationTourPickupDateImport = (input: {
             sourceFormat: input.sourceFormat,
             blobRef: input.blobRef,
             delimiterOverride: input.delimiterOverride,
-          })
+          }, readPluginOperationInput)
       )
   );
 
@@ -1617,20 +1614,6 @@ const updateWasteTourStatusBulk = async (
     }
   });
 
-const loadWasteAnnualTourTransferSource = async (
-  repository: WasteRepository
-): Promise<WasteAnnualTourTransferSource> => {
-  const [tours, locationTourLinks, locationTourPickupDates, tourAssignments, tourDateShifts] =
-    await Promise.all([
-      repository.listWasteTours(),
-      repository.listWasteLocationTourLinks(),
-      repository.listWasteLocationTourPickupDates(),
-      repository.listWasteTourAssignments(),
-      repository.listWasteTourDateShifts(),
-    ]);
-  return { tours, locationTourLinks, locationTourPickupDates, tourAssignments, tourDateShifts };
-};
-
 const previewWasteAnnualTourTransfer = async (input: {
   readonly instanceId: string;
   readonly sourceYear: number;
@@ -1655,165 +1638,6 @@ const previewWasteAnnualTourTransfer = async (input: {
       );
     }
   );
-
-const comparableMappedTour = (
-  snapshot: WasteAnnualTourTransferSource,
-  mapped: WasteAnnualTourTransferMappedTour
-): WasteAnnualTourTransferMappedTour | null => {
-  const targetTour = snapshot.tours.find((tour) => tour.id === mapped.targetTour.id);
-  if (!targetTour) return null;
-  return {
-    sourceTourId: mapped.sourceTourId,
-    targetTour: {
-      id: targetTour.id,
-      name: targetTour.name,
-      description: targetTour.description,
-      wasteFractionIds: targetTour.wasteFractionIds,
-      recurrence: targetTour.recurrence,
-      customRecurrenceId: targetTour.customRecurrenceId,
-      customRecurrenceName: targetTour.customRecurrenceName,
-      customRecurrenceIntervalDays: targetTour.customRecurrenceIntervalDays,
-      firstDate: targetTour.firstDate,
-      endDate: targetTour.endDate,
-      customDates: targetTour.customDates,
-      status: targetTour.status,
-      locationCount: targetTour.locationCount,
-    },
-    locationTourLinks: snapshot.locationTourLinks
-      .filter((item) => item.tourId === targetTour.id)
-      .map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...item }) => item),
-    locationTourPickupDates: snapshot.locationTourPickupDates
-      .filter((item) => item.tourId === targetTour.id)
-      .map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...item }) => item),
-    tourAssignments: snapshot.tourAssignments
-      .filter((item) => item.tourId === targetTour.id)
-      .map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...item }) => item),
-    tourDateShifts: snapshot.tourDateShifts
-      .filter((item) => item.tourId === targetTour.id)
-      .map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...item }) => item),
-  };
-};
-
-const mappedTourMatches = async (
-  snapshot: WasteAnnualTourTransferSource,
-  mapped: WasteAnnualTourTransferMappedTour
-): Promise<boolean> => {
-  const current = comparableMappedTour(snapshot, mapped);
-  if (!current) return false;
-  const normalize = (value: WasteAnnualTourTransferMappedTour) => ({
-    ...value,
-    locationTourLinks: [...value.locationTourLinks].sort((a, b) => a.id.localeCompare(b.id)),
-    locationTourPickupDates: [...value.locationTourPickupDates].sort((a, b) =>
-      a.id.localeCompare(b.id)
-    ),
-    tourAssignments: [...value.tourAssignments].sort((a, b) => a.id.localeCompare(b.id)),
-    tourDateShifts: [...value.tourDateShifts].sort((a, b) => a.id.localeCompare(b.id)),
-  });
-  return (
-    (await buildWasteAnnualTourTransferFingerprint(normalize(current))) ===
-    (await buildWasteAnnualTourTransferFingerprint(normalize(mapped)))
-  );
-};
-
-export const createWasteAnnualTourTransferInTransaction = async (input: {
-  readonly client: WasteAnnualTourTransferClient;
-  readonly instanceId: string;
-  readonly create: WasteAnnualTourTransferCreateInput;
-  readonly currentYear?: number;
-}): Promise<WasteAnnualTourTransferResult> => {
-  const { client } = input;
-  try {
-    await client.query('BEGIN');
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
-      input.instanceId,
-      `waste-annual-tour-transfer:${input.create.sourceYear + 1}`,
-    ]);
-    await client.query(`
-LOCK TABLE
-  waste_tours,
-  waste_custom_recurrence_presets,
-  waste_location_tour_links,
-  waste_location_tour_pickup_dates,
-  waste_tour_assignments,
-  waste_tour_assignment_locations,
-  waste_tour_date_shifts
-IN SHARE ROW EXCLUSIVE MODE;`);
-    const repository = createWasteMasterDataRepository(createSqlExecutor(client));
-    const snapshot = await loadWasteAnnualTourTransferSource(repository);
-    const preview = await buildWasteAnnualTourTransferPreview({
-      instanceId: input.instanceId,
-      sourceYear: input.create.sourceYear,
-      currentYear: input.currentYear ?? new Date().getUTCFullYear(),
-      source: snapshot,
-      target: snapshot,
-      selectedTourIds: input.create.selectedTourIds,
-      replacementDates: input.create.replacementDates,
-      allowObsoleteReplacementDates: true,
-    });
-    if (preview.previewFingerprint !== input.create.previewFingerprint) {
-      throw new Error(
-        `preview_stale:${JSON.stringify(toWasteAnnualTourTransferPublicPreview(preview))}`
-      );
-    }
-    const acknowledgements = new Set(input.create.acknowledgedConflictTourIds);
-    const selected = new Set(input.create.selectedTourIds);
-    const selectedPreviews = preview.tours.filter((item) => selected.has(item.sourceTourId));
-    if (
-      selectedPreviews.length !== selected.size ||
-      selectedPreviews.some((item) => item.classification !== 'transferable' || !item.mappedTour)
-    ) {
-      throw new Error('invalid_transfer_selection');
-    }
-    if (
-      selectedPreviews.some(
-        (item) => item.conflicts.length > 0 && !acknowledgements.has(item.sourceTourId)
-      )
-    ) {
-      throw new Error('unacknowledged_target_conflict');
-    }
-
-    const createdTourIds: string[] = [];
-    const existingTourIds: string[] = [];
-    const mappedToursToCreate: WasteAnnualTourTransferMappedTour[] = [];
-    for (const item of selectedPreviews) {
-      const mapped = item.mappedTour as WasteAnnualTourTransferMappedTour;
-      const existing = snapshot.tours.some((tour) => tour.id === mapped.targetTour.id);
-      if (existing) {
-        if (!(await mappedTourMatches(snapshot, mapped))) {
-          throw new Error(
-            `target_identity_conflict:${JSON.stringify(toWasteAnnualTourTransferPublicPreview(preview))}`
-          );
-        }
-        existingTourIds.push(mapped.targetTour.id);
-        continue;
-      }
-      mappedToursToCreate.push(mapped);
-      createdTourIds.push(mapped.targetTour.id);
-    }
-    await writeWasteAnnualMappedTours(client, repository, mappedToursToCreate);
-    await client.query('COMMIT');
-    return {
-      sourceYear: input.create.sourceYear,
-      targetYear: preview.targetYear,
-      createdTourIds,
-      existingTourIds,
-      createdCount: createdTourIds.length,
-      existingCount: existingTourIds.length,
-      classificationCounts: {
-        transferable: preview.summary.transferable,
-        alreadyEffective: preview.summary.alreadyEffective,
-        blocked: preview.summary.blocked,
-      },
-      listTarget: {
-        tourValidityPeriod: preview.targetYear === new Date().getUTCFullYear() ? 'current' : 'next',
-        status: 'draft',
-      },
-    };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  }
-};
 
 const createWasteAnnualTourTransfer = async (input: {
   readonly instanceId: string;

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createWasteEmailReminderRepository } from '@sva/data-repositories';
+import { createWasteEmailReminderRepository } from '@sva/waste-management-runtime/repositories';
 
 import { buildMaterializedLocationTourPickupDates } from './waste-management-mainserver-sync.materialization.js';
 import {

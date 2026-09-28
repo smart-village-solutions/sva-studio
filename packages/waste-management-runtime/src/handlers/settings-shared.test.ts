@@ -1,0 +1,643 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  loadConfiguredWasteSettings,
+  sanitizeWasteSettings,
+  updateWasteVisibleStatus,
+} from './settings-shared.js';
+
+const createEmailReminderConfig = () => ({
+  enabled: true,
+  publicSignupEnabled: true,
+  transportId: 'mail-transport-1',
+  publicBaseUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+  doiConfirmPath: '/email-reminders/confirm',
+  unsubscribePath: '/email-reminders/unsubscribe',
+  signupSuccessPath: '/email-reminders/pending',
+  activationSuccessPath: '/email-reminders/active',
+  unsubscribeSuccessPath: '/email-reminders/unsubscribed',
+  invalidTokenPath: '/email-reminders/invalid-token',
+  fromName: 'Landkreis Prignitz',
+  fromEmail: 'abfall@example.org',
+  replyToEmail: 'reply@example.org',
+  serviceLabel: 'Mülli',
+  privacyPolicyUrl: 'https://example.org/privacy',
+  imprintUrl: 'https://example.org/imprint',
+  consentLabel: 'Ich stimme zu.',
+  consentVersion: '2026-06-14',
+  dataControllerLabel: 'Landkreis Prignitz',
+  dataProtectionContactEmail: 'datenschutz@example.org',
+  doiSubjectTemplate: 'Bitte bestätigen',
+  doiIntroText: 'Bitte bestätigen Sie die Einrichtung.',
+  doiButtonLabel: 'Jetzt aktivieren',
+  reminderSubjectTemplate: 'Nicht vergessen',
+  reminderIntroTemplate: 'Morgen wird geleert.',
+  unsubscribeLinkLabel: 'Abmelden',
+  unsubscribeSuccessHeadline: 'Abgemeldet',
+  unsubscribeSuccessBody: 'Sie wurden abgemeldet.',
+  maxSubscriptionsPerEmailAndLocation: 5,
+  signupRateLimitPerIpPerHour: 20,
+  signupRateLimitPerEmailPerHour: 10,
+  doiTokenTtlHours: 48,
+  pendingSubscriptionTtlHours: 72,
+  materializationLookaheadDays: 7,
+});
+
+describe('waste-management settings shared helpers', () => {
+  it('requires the host interface loader when no selected interface exists', async () => {
+    await expect(
+      loadConfiguredWasteSettings(
+        { listInterfaceRecords: vi.fn(async () => []) },
+        'tenant-a'
+      )
+    ).rejects.toThrow('missing_dependency:loadDefaultInterfaceRecord');
+  });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'));
+  });
+
+  it('sanitizes persisted settings records without leaking secret ciphertexts', () => {
+    expect(sanitizeWasteSettings(null)).toBeNull();
+
+    expect(
+      sanitizeWasteSettings({
+        instanceId: 'tenant-a',
+        provider: 'postgresql',
+        schemaName: 'wm',
+        enabled: true,
+        calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+        pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+        pdfContactBlock: 'Abfallberatung 03395 / 1234',
+        emailReminderConfig: createEmailReminderConfig(),
+        databaseUrlConfigured: true,
+        databaseUrlCiphertext: 'cipher-db',
+        visibleStatus: 'warning',
+        lastCheckedAt: '2026-05-09T10:00:00.000Z',
+        lastCheckStatus: 'failed',
+        lastCheckErrorCode: 'connection_failed',
+        lastCheckErrorMessage: 'boom',
+        holidayStateCode: 'NW',
+        lastHolidaySyncStatus: 'partial_success',
+        updatedAt: '2026-05-09T10:00:00.000Z',
+        customRecurrencePresets: [],
+      })
+    ).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+      emailReminderConfig: createEmailReminderConfig(),
+      databaseUrlConfigured: true,
+      visibleStatus: 'warning',
+      lastCheckedAt: '2026-05-09T10:00:00.000Z',
+      lastCheckStatus: 'failed',
+      lastCheckErrorCode: 'connection_failed',
+      lastCheckErrorMessage: 'boom',
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'partial_success',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+      customRecurrencePresets: [],
+    });
+  });
+
+  it('prefers the configured supabase interface over the legacy waste datasource record', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'error',
+          lastCheckedAt: '2026-05-09T10:00:00.000Z',
+          lastCheckStatus: 'failed',
+          lastCheckErrorCode: 'database_auth_failed',
+          lastCheckErrorMessage: 'DB auth failed',
+          updatedAt: '2026-05-09T11:00:00.000Z',
+          publicConfig: {
+            schemaName: 'wm',
+            calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+            emailReminderConfig: createEmailReminderConfig(),
+            holidayStateCode: 'NW',
+            lastHolidaySyncStatus: 'success',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => ({
+          pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+          pdfContactBlock: 'Abfallberatung aus Waste-DB',
+        })),
+        loadWasteCustomRecurrencePresets: vi.fn(async () => [
+          {
+            id: 'preset-10',
+            name: '10 Tage',
+            intervalDays: 10,
+            createdAt: '2026-05-09T09:00:00.000Z',
+            updatedAt: '2026-05-09T09:30:00.000Z',
+          },
+        ]),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'wm',
+      enabled: true,
+      selectedInterfaceId: 'supabase-1',
+      selectedInterfaceName: 'Supabase',
+      selectedInterfaceTypeKey: 'postgresql',
+      availableInterfaces: [
+        {
+          id: 'supabase-1',
+          name: 'Supabase',
+          typeKey: 'postgresql',
+          enabled: true,
+          visibleStatus: 'error',
+          isSelected: true,
+        },
+      ],
+      calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+      pdfContactBlock: 'Abfallberatung aus Waste-DB',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      emailReminderConfig: createEmailReminderConfig(),
+      databaseUrlConfigured: true,
+      visibleStatus: 'error',
+      lastCheckedAt: '2026-05-09T10:00:00.000Z',
+      lastCheckStatus: 'failed',
+      lastCheckErrorCode: 'database_auth_failed',
+      lastCheckErrorMessage: 'DB auth failed',
+      holidayStateCode: 'NW',
+      lastHolidaySyncStatus: 'success',
+      lastSuccessfulHolidaySyncAt: undefined,
+      updatedAt: '2026-05-09T11:00:00.000Z',
+      customRecurrencePresets: [
+        {
+          id: 'preset-10',
+          name: '10 Tage',
+          intervalDays: 10,
+          createdAt: '2026-05-09T09:00:00.000Z',
+          updatedAt: '2026-05-09T09:30:00.000Z',
+        },
+      ],
+    });
+  });
+
+  it('falls back to interface pdf settings when no waste pdf settings are stored yet', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'ok',
+          publicConfig: {
+            schemaName: 'wm',
+            calendarWebUrl: 'https://bb-prignitz.abfallkalender.smart-village.app/',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+    });
+  });
+
+  it('falls back to interface pdf settings when the waste settings row has no usable values', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'ok',
+          publicConfig: {
+            schemaName: 'wm',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => ({
+          pdfBrandingAssetUrl: undefined,
+          pdfContactBlock: undefined,
+        })),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+    });
+  });
+
+  it('falls back to legacy interface pdf settings when the waste_settings table is absent', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'ok',
+          publicConfig: {
+            schemaName: 'wm',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => {
+          const error = new Error('relation "waste_settings" does not exist');
+          Object.assign(error, { code: '42P01' });
+          throw error;
+        }),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+    });
+  });
+
+  it('merges partial waste pdf settings rows with legacy interface values per field', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'ok',
+          publicConfig: {
+            schemaName: 'wm',
+            pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
+            pdfContactBlock: 'Abfallberatung 03395 / 1234',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        loadWastePdfStaticSettings: vi.fn(async () => ({
+          pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+          pdfContactBlock: undefined,
+        })),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+      pdfContactBlock: 'Abfallberatung 03395 / 1234',
+    });
+  });
+
+  it('does not swallow non-missing-table waste settings errors that merely mention the table name', async () => {
+    await expect(
+      loadConfiguredWasteSettings(
+        {
+          loadDefaultInterfaceRecord: vi.fn(async () => ({
+            id: 'supabase-1',
+            instanceId: 'tenant-a',
+            typeKey: 'postgresql',
+            ownerKind: 'host',
+            ownerId: 'host',
+            displayName: 'Supabase',
+            alias: 'default',
+            enabled: true,
+            isDefault: true,
+            category: 'database',
+            statusCheckKind: 'postgresql',
+            visibleStatus: 'ok',
+            publicConfig: {
+              schemaName: 'wm',
+            },
+            secretConfigCiphertext: 'cipher-secret',
+          })),
+          loadWastePdfStaticSettings: vi.fn(async () => {
+            const error = new Error('permission denied for table waste_settings');
+            Object.assign(error, { code: '42501' });
+            throw error;
+          }),
+        },
+        'tenant-a'
+      )
+    ).rejects.toThrow('permission denied for table waste_settings');
+  });
+
+  it('skips waste pdf lookup while the waste datasource is not configured yet', async () => {
+    const loadWastePdfStaticSettings = vi.fn(async () => ({
+      pdfBrandingAssetUrl: 'https://cdn.example/logo-from-waste.svg',
+      pdfContactBlock: 'Abfallberatung aus Waste-DB',
+    }));
+
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        loadWastePdfStaticSettings,
+      },
+      'tenant-a'
+    );
+
+    expect(loadWastePdfStaticSettings).not.toHaveBeenCalled();
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'public',
+      enabled: false,
+      availableInterfaces: [],
+      databaseUrlConfigured: false,
+      visibleStatus: 'not_configured',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    });
+  });
+
+  it('returns a not-configured settings shell when no interface can be resolved', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'public',
+      enabled: false,
+      availableInterfaces: [],
+      databaseUrlConfigured: false,
+      visibleStatus: 'not_configured',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    });
+  });
+
+  it('projects the tenant provisioning state without exposing provisioning secrets', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => []),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        loadWasteTenantProvisioning: vi.fn(async () => ({
+          instanceId: 'tenant-a',
+          status: 'failed',
+          desiredGeneration: 2,
+          completedGeneration: 0,
+          errorCode: 'migration_failed',
+          errorMessage: 'sensitive database detail',
+          requestedAt: '2026-08-02T10:00:00.000Z',
+          updatedAt: '2026-08-02T10:05:00.000Z',
+        })),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toMatchObject({
+      provisioningStatus: 'failed',
+      provisioningErrorCode: 'migration_failed',
+      provisioningUpdatedAt: '2026-08-02T10:05:00.000Z',
+    });
+    expect(settings).not.toHaveProperty('provisioningErrorMessage');
+  });
+
+  it('maps non-supabase interfaces into a not-configured waste settings shell while preserving interface options', async () => {
+    const settings = await loadConfiguredWasteSettings(
+      {
+        listInterfaceRecords: vi.fn(async () => [
+          {
+            id: 's3-1',
+            instanceId: 'tenant-a',
+            typeKey: 's3',
+            ownerKind: 'host',
+            ownerId: 'host',
+            displayName: 'S3',
+            alias: 'default',
+            enabled: true,
+            isDefault: true,
+            category: 'object_storage',
+            statusCheckKind: 's3',
+            visibleStatus: 'ok',
+            publicConfig: {
+              wasteManagementSelected: true,
+              calendarWebUrl: 'https://ignored.example',
+            },
+          },
+        ]),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+      },
+      'tenant-a'
+    );
+
+    expect(settings).toEqual({
+      instanceId: 'tenant-a',
+      provider: 'postgresql',
+      schemaName: 'public',
+      enabled: false,
+      availableInterfaces: [
+        {
+          id: 's3-1',
+          name: 'S3',
+          typeKey: 's3',
+          enabled: true,
+          visibleStatus: 'ok',
+          isSelected: false,
+        },
+      ],
+      databaseUrlConfigured: false,
+      visibleStatus: 'not_configured',
+      disruptionLocationEnabled: false,
+      disruptionAllLocationsEnabled: false,
+      customRecurrencePresets: [],
+    });
+  });
+
+  it('updates visible status optimistically on successful writes and revalidates persisted settings', async () => {
+    const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
+    const checkWasteConnection = vi.fn(async () => ({
+      instanceId: 'tenant-a',
+      checkedAt: '2026-05-10T12:00:00.000Z',
+      checkStatus: 'succeeded' as const,
+      visibleStatus: 'ok' as const,
+    }));
+
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'unknown',
+          publicConfig: {},
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        saveExternalInterfaceConnectionCheck,
+      },
+      'tenant-a',
+      'success'
+    );
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          visibleStatus: 'unknown',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          publicConfig: {
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        saveExternalInterfaceConnectionCheck,
+        checkWasteConnection,
+      },
+      'tenant-a',
+      'revalidate'
+    );
+
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenNthCalledWith(1, {
+      instanceId: 'tenant-a',
+      interfaceId: 'supabase-1',
+      checkedAt: '2026-05-10T12:00:00.000Z',
+      checkStatus: 'succeeded',
+      visibleStatus: 'ok',
+    });
+    expect(checkWasteConnection).toHaveBeenCalledWith('tenant-a', 'supabase-1');
+  });
+
+  it('persists failed connection checks when revalidation throws and skips incomplete dependency sets', async () => {
+    const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
+    const checkWasteConnection = vi.fn(async () => {
+      throw Object.assign(new Error('Probe fehlgeschlagen.'), { code: 'probe_failed' });
+    });
+
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        saveExternalInterfaceConnectionCheck,
+      },
+      'tenant-a',
+      'revalidate'
+    );
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        saveExternalInterfaceConnectionCheck,
+        checkWasteConnection,
+      },
+      'tenant-a',
+      'revalidate'
+    );
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'postgresql',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'postgresql',
+          visibleStatus: 'unknown',
+          publicConfig: {},
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        saveExternalInterfaceConnectionCheck,
+        checkWasteConnection,
+      },
+      'tenant-a',
+      'revalidate'
+    );
+
+    expect(checkWasteConnection).toHaveBeenCalledTimes(1);
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledTimes(1);
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      interfaceId: 'supabase-1',
+      checkedAt: '2026-05-10T12:00:00.000Z',
+      checkStatus: 'failed',
+      visibleStatus: 'error',
+      errorCode: 'probe_failed',
+      errorMessage: 'Probe fehlgeschlagen.',
+    });
+  });
+});

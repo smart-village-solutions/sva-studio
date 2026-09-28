@@ -1,12 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { MailDispatchPayload } from '@sva/core';
 import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
-import type {
-  WasteEmailReminderActivationResult,
-  WasteEmailReminderPendingSignupInput,
-  WasteEmailReminderUnsubscribeSubscription,
-  WasteEmailReminderUnsubscribeResult,
-} from '@sva/data-repositories';
+import type { WasteEmailReminderActivationResult, WasteEmailReminderPendingSignupInput, WasteEmailReminderUnsubscribeSubscription, WasteEmailReminderUnsubscribeResult } from '@sva/waste-management-runtime/repositories';
 import {
   readWasteManagementUnsubscribeTokenSubscriptionId,
   verifyWasteManagementUnsubscribeToken,

@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./repositories": {
+      "types": "./dist/repositories.d.ts",
+      "default": "./dist/repositories.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
@@ -18,10 +22,14 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
-    "@sva/waste-management-contracts": "workspace:*"
+    "@sva/server-runtime": "workspace:*",
+    "@sva/waste-management-contracts": "workspace:*",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@sva/iam-core": "workspace:*",
     "@vitest/coverage-v8": "^4.1.10",
     "vitest": "^4.1.10"
   }

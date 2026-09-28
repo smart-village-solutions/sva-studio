@@ -554,6 +554,21 @@ describe('plugin registries', () => {
       });
     });
 
+    it('accepts only the owning plugin domain prefix for tenant server handlers', () => {
+      const plugin = pluginWithLinkedRequirements(tenantRequirement());
+      const handler = {
+        id: 'news.load-item',
+        path: '/api/v1/news/items/$itemId',
+        method: 'GET' as const,
+        actionId: 'news.open',
+        accessRequirement: tenantRequirement(),
+      };
+      expect(() => createPluginRegistry([{ ...plugin, serverHandlers: [handler] }])).not.toThrow();
+      expect(() =>
+        createPluginRegistry([{ ...plugin, serverHandlers: [{ ...handler, path: '/api/v1/waste-management/items/$itemId' }] }])
+      ).toThrow('plugin_server_handler_path_invalid:news:news.load-item');
+    });
+
     it('publishes canonical access actions for server handlers and their linked actions', () => {
       const requirement = tenantRequirement({
         actions: { mode: 'allOf', values: [' news.read '] },

@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sharedWasteManagementDepsMock = vi.hoisted(() => ({
   dependencyMarker: 'shared-waste-management-deps',
+  authorizeAction: vi.fn(async () => null),
+  emitAuditEvent: vi.fn(async () => undefined),
 }));
 
 const requestContextMock = vi.hoisted(() => ({
   instanceId: 'instance-1',
+  user: { id: 'user-1', email: 'actor@example.test', displayName: 'Actor' },
 }));
 
 const withAuthenticatedWasteManagementHandlerMock = vi.hoisted(() =>
@@ -89,6 +92,8 @@ const coreHandlerMocks = vi.hoisted(() => ({
   ),
   startWasteManagementInitializeInternal: vi.fn(async () => new Response('start-initialize')),
   startWasteManagementImportInternal: vi.fn(async () => new Response('start-import')),
+  uploadWasteManagementImportSourceInternal: vi.fn(async () => new Response('upload-import')),
+  startWasteManagementExportInternal: vi.fn(async () => new Response('start-export')),
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
   startWasteManagementMainserverSyncInternal: vi.fn(
     async () => new Response('start-mainserver-sync')
@@ -202,7 +207,7 @@ vi.mock('./server-context.js', () => ({
   withAuthenticatedWasteManagementHandler: withAuthenticatedWasteManagementHandlerMock,
 }));
 
-vi.mock('./core.js', () => ({
+vi.mock('@sva/waste-management-runtime/server', () => ({
   wasteManagementCoreHandlers: coreHandlerMocks,
 }));
 
@@ -705,14 +710,27 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startInitialize',
         internal: coreHandlerMocks.startWasteManagementInitializeInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startMigrations',
         internal: coreHandlerMocks.startWasteManagementMigrationsInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startImport',
         internal: coreHandlerMocks.startWasteManagementImportInternal,
+        deps: sharedWasteManagementDepsMock,
+      },
+      {
+        handlerKey: 'uploadImportSource',
+        internal: coreHandlerMocks.uploadWasteManagementImportSourceInternal,
+        deps: sharedWasteManagementDepsMock,
+      },
+      {
+        handlerKey: 'startExport',
+        internal: coreHandlerMocks.startWasteManagementExportInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'previewLocationTourPickupDateImport',
@@ -726,22 +744,27 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startSeed',
         internal: coreHandlerMocks.startWasteManagementSeedInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startMainserverSync',
         internal: coreHandlerMocks.startWasteManagementMainserverSyncInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startSyncWasteTypes',
         internal: coreHandlerMocks.startWasteManagementSyncWasteTypesInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startEnrichPostalCodes',
         internal: coreHandlerMocks.startWasteManagementEnrichPostalCodesInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startReset',
         internal: coreHandlerMocks.startWasteManagementResetInternal,
+        deps: sharedWasteManagementDepsMock,
       },
     ] as const;
 
@@ -754,12 +777,42 @@ describe('wasteManagementHandlers', () => {
       );
       expect(entry.internal).toHaveBeenCalledTimes(1);
       if ('deps' in entry) {
-        expect(entry.internal).toHaveBeenCalledWith(request, requestContextMock, entry.deps);
+        expect(entry.internal).toHaveBeenCalledWith(
+          request,
+          requestContextMock,
+          expect.objectContaining({
+            ...entry.deps,
+            emitAuditEvent: expect.any(Function),
+          })
+        );
       } else {
         expect(entry.internal).toHaveBeenCalledWith(request, requestContextMock);
       }
       expect(await response.text()).not.toHaveLength(0);
       vi.clearAllMocks();
     }
+  });
+
+  it('binds the authenticated actor to Waste audit events', async () => {
+    const request = new Request('https://studio.test/api/v1/waste-management/history');
+    await wasteManagementHandlers.getHistory(request);
+    const [, , deps] = coreHandlerMocks.getWasteManagementHistoryInternal.mock.calls[0] as unknown as [
+      Request,
+      typeof requestContextMock,
+      { emitAuditEvent: typeof import('./server-context.js').sharedWasteManagementDeps.emitAuditEvent },
+    ];
+    const event = {
+      eventType: 'plugin_action_authorized',
+      scope: { kind: 'instance', instanceId: 'instance-1' },
+    } as Parameters<typeof deps.emitAuditEvent>[0];
+
+    await deps.emitAuditEvent(event);
+
+    expect(sharedWasteManagementDepsMock.emitAuditEvent).toHaveBeenCalledWith({
+      ...event,
+      actorUserId: 'user-1',
+      actorEmail: 'actor@example.test',
+      actorDisplayName: 'Actor',
+    });
   });
 });

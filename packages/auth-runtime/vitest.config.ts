@@ -20,6 +20,10 @@ export default defineConfig({
         find: /^@sva\/data-repositories$/,
         replacement: resolve(currentDir, '../data-repositories/src/index.ts'),
       },
+      {
+        find: /^@sva\/waste-management-runtime\/repositories$/,
+        replacement: resolve(currentDir, '../waste-management-runtime/src/repositories.ts'),
+      },
       { find: /^@sva\/media$/, replacement: resolve(currentDir, '../media/src/index.ts') },
       {
         find: /^@sva\/monitoring-client\/logging$/,

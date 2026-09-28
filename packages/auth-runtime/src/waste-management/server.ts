@@ -1,4 +1,5 @@
-import { wasteManagementCoreHandlers } from './core.js';
+import { wasteManagementCoreHandlers } from '@sva/waste-management-runtime/server';
+import type { AuthenticatedRequestContext } from '../middleware.js';
 import {
   sharedWasteManagementDeps,
   withAuthenticatedWasteManagementHandler,
@@ -8,6 +9,17 @@ import {
   wasteManagementEntitySavers,
   wasteManagementOverviewLoaders,
 } from './server-loaders.js';
+
+const bindWasteAuditActor = (ctx: AuthenticatedRequestContext) => ({
+  ...sharedWasteManagementDeps,
+  emitAuditEvent: (event: Parameters<typeof sharedWasteManagementDeps.emitAuditEvent>[0]) =>
+    sharedWasteManagementDeps.emitAuditEvent({
+      ...event,
+      actorUserId: ctx.user.id,
+      actorEmail: ctx.user.email,
+      actorDisplayName: ctx.user.displayName,
+    }),
+});
 
 const {
   createWasteManagementCityInternal,
@@ -146,35 +158,35 @@ export const wasteManagementHandlers = {
   getMainserverSyncStatus: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementMainserverSyncStatusInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteMainserverSyncStatus,
       })
     ),
   getCollectionLocations: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementCollectionLocationsInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteCollectionLocationPage,
       })
     ),
   getCollectionLocationIds: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementCollectionLocationIdsInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteCollectionLocationIds,
       })
     ),
   getHistory: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementHistoryInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteHistoryOverview,
       })
     ),
   getMasterDataOverview: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementMasterDataOverviewInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadMasterDataOverview,
         loadMasterDataFractionsOverview,
         loadMasterDataLocationsOverview,
@@ -184,35 +196,35 @@ export const wasteManagementHandlers = {
   getToursOverview: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementToursOverviewInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadToursOverview,
       })
     ),
   previewAnnualTourTransfer: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       previewWasteAnnualTourTransferInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         previewWasteAnnualTourTransfer,
       })
     ),
   createAnnualTourTransfer: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteAnnualTourTransferInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         createWasteAnnualTourTransfer,
       })
     ),
   getSchedulingOverview: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementSchedulingOverviewInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadSchedulingOverview,
       })
     ),
   getSettings: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementSettingsInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteCustomRecurrencePresets,
         loadWastePdfStaticSettings,
       })
@@ -220,7 +232,7 @@ export const wasteManagementHandlers = {
   updateSettings: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementSettingsInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteCustomRecurrencePresets,
         loadWastePdfStaticSettings,
         saveWasteCustomRecurrencePresets,
@@ -231,7 +243,7 @@ export const wasteManagementHandlers = {
   runHolidaySync: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       runWasteManagementHolidaySyncInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadWasteCustomRecurrencePresets,
         loadWastePdfStaticSettings,
         saveWastePdfStaticSettings,
@@ -241,13 +253,13 @@ export const wasteManagementHandlers = {
   retryProvisioning: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       retryWasteTenantProvisioningInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
       })
     ),
   createFraction: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementFractionInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
@@ -256,7 +268,7 @@ export const wasteManagementHandlers = {
   deleteFraction: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementFractionInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteFraction,
         loadWasteFractionById,
       })
@@ -264,7 +276,7 @@ export const wasteManagementHandlers = {
   updateFraction: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementFractionInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         loadMasterDataFractionsOverview,
         saveWasteFraction,
         loadWasteFractionById,
@@ -273,7 +285,7 @@ export const wasteManagementHandlers = {
   createRegion: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementRegionInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteRegion,
         loadWasteRegionById,
       })
@@ -281,7 +293,7 @@ export const wasteManagementHandlers = {
   updateRegion: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementRegionInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteRegion,
         loadWasteRegionById,
       })
@@ -289,7 +301,7 @@ export const wasteManagementHandlers = {
   createCity: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementCityInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteCity,
         loadWasteCityById,
       })
@@ -297,7 +309,7 @@ export const wasteManagementHandlers = {
   updateCity: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementCityInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         patchWasteCity,
         loadWasteCityById,
       })
@@ -305,7 +317,7 @@ export const wasteManagementHandlers = {
   createStreet: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementStreetInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteStreet,
         loadWasteStreetById,
       })
@@ -313,7 +325,7 @@ export const wasteManagementHandlers = {
   updateStreet: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementStreetInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteStreet,
         loadWasteStreetById,
       })
@@ -321,7 +333,7 @@ export const wasteManagementHandlers = {
   createHouseNumber: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementHouseNumberInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteHouseNumber,
         loadWasteHouseNumberById,
       })
@@ -329,7 +341,7 @@ export const wasteManagementHandlers = {
   updateHouseNumber: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementHouseNumberInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteHouseNumber,
         loadWasteHouseNumberById,
       })
@@ -337,7 +349,7 @@ export const wasteManagementHandlers = {
   createCollectionLocation: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementCollectionLocationInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
       })
@@ -345,7 +357,7 @@ export const wasteManagementHandlers = {
   deleteCollectionLocation: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementCollectionLocationInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteCollectionLocation,
         loadWasteCollectionLocationById,
       })
@@ -353,7 +365,7 @@ export const wasteManagementHandlers = {
   updateCollectionLocation: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementCollectionLocationInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
       })
@@ -361,7 +373,7 @@ export const wasteManagementHandlers = {
   createLocationTourLink: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementLocationTourLinkInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
       })
@@ -369,7 +381,7 @@ export const wasteManagementHandlers = {
   updateLocationTourLink: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementLocationTourLinkInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
       })
@@ -377,7 +389,7 @@ export const wasteManagementHandlers = {
   deleteLocationTourLink: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementLocationTourLinkInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteLocationTourLink,
         loadWasteLocationTourLinkById,
       })
@@ -385,14 +397,14 @@ export const wasteManagementHandlers = {
   createLocationTourLinksBulk: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementLocationTourLinksBulkInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteLocationTourLinksBulk,
       })
     ),
   createLocationTourPickupDate: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementLocationTourPickupDateInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteLocationTourPickupDate,
         loadWasteLocationTourPickupDateById,
         listWasteLocationTourPickupDates,
@@ -401,7 +413,7 @@ export const wasteManagementHandlers = {
   updateLocationTourPickupDate: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementLocationTourPickupDateInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteLocationTourPickupDate,
         loadWasteLocationTourPickupDateById,
         listWasteLocationTourPickupDates,
@@ -410,7 +422,7 @@ export const wasteManagementHandlers = {
   deleteLocationTourPickupDate: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementLocationTourPickupDateInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteLocationTourPickupDate,
         loadWasteLocationTourPickupDateById,
       })
@@ -418,7 +430,7 @@ export const wasteManagementHandlers = {
   createTourAssignment: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementTourAssignmentInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteTourAssignment,
         loadWasteTourAssignmentById,
       })
@@ -426,7 +438,7 @@ export const wasteManagementHandlers = {
   updateTourAssignment: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementTourAssignmentInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteTourAssignment,
         loadWasteTourAssignmentById,
       })
@@ -434,7 +446,7 @@ export const wasteManagementHandlers = {
   deleteTourAssignment: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementTourAssignmentInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteTourAssignment,
         loadWasteTourAssignmentById,
       })
@@ -442,7 +454,7 @@ export const wasteManagementHandlers = {
   createTour: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementTourInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteTour,
         loadWasteTourById,
         listWasteLocationTourLinksByTourId,
@@ -459,7 +471,7 @@ export const wasteManagementHandlers = {
   updateTour: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementTourInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteTour,
         loadWasteTourById,
       })
@@ -467,21 +479,21 @@ export const wasteManagementHandlers = {
   updateTourValidityBulk: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementTourValidityBulkInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         updateWasteTourValidityBulk,
       })
     ),
   updateTourStatusBulk: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementTourStatusBulkInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         updateWasteTourStatusBulk,
       })
     ),
   deleteTour: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementTourInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteTour,
         listWasteLocationTourLinksByTourId,
         deleteWasteLocationTourLink,
@@ -495,7 +507,7 @@ export const wasteManagementHandlers = {
   createTourDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementTourDateShiftInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         createWasteTourDateShift,
         loadWasteTourDateShiftById,
       })
@@ -503,7 +515,7 @@ export const wasteManagementHandlers = {
   deleteTourDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementTourDateShiftInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteTourDateShift,
         loadWasteTourDateShiftById,
       })
@@ -511,7 +523,7 @@ export const wasteManagementHandlers = {
   updateTourDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementTourDateShiftInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteTourDateShift,
         loadWasteTourDateShiftById,
       })
@@ -519,7 +531,7 @@ export const wasteManagementHandlers = {
   createGlobalDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementGlobalDateShiftInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
       })
@@ -527,7 +539,7 @@ export const wasteManagementHandlers = {
   deleteGlobalDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementGlobalDateShiftInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
       })
@@ -535,7 +547,7 @@ export const wasteManagementHandlers = {
   updateGlobalDateShift: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementGlobalDateShiftInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
       })
@@ -543,7 +555,7 @@ export const wasteManagementHandlers = {
   deleteHolidayRule: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       deleteWasteManagementHolidayRuleInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         deleteWasteHolidayRule,
         loadWasteHolidayRuleById,
       })
@@ -551,56 +563,56 @@ export const wasteManagementHandlers = {
   updateHolidayRule: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementHolidayRuleInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         saveWasteHolidayRule,
         loadWasteHolidayRuleById,
       })
     ),
   startMigrations: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementMigrationsInternal(nextRequest, ctx)
+      startWasteManagementMigrationsInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startInitialize: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementInitializeInternal(nextRequest, ctx)
+      startWasteManagementInitializeInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startImport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementImportInternal(nextRequest, ctx)
+      startWasteManagementImportInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   uploadImportSource: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      uploadWasteManagementImportSourceInternal(nextRequest, ctx)
+      uploadWasteManagementImportSourceInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startExport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementExportInternal(nextRequest, ctx)
+      startWasteManagementExportInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   previewLocationTourPickupDateImport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       previewWasteManagementLocationTourPickupDateImportInternal(nextRequest, ctx, {
-        ...sharedWasteManagementDeps,
+        ...bindWasteAuditActor(ctx),
         previewWasteLocationTourPickupDateImport,
       })
     ),
   startSeed: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementSeedInternal(nextRequest, ctx)
+      startWasteManagementSeedInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startMainserverSync: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementMainserverSyncInternal(nextRequest, ctx)
+      startWasteManagementMainserverSyncInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startSyncWasteTypes: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementSyncWasteTypesInternal(nextRequest, ctx)
+      startWasteManagementSyncWasteTypesInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startEnrichPostalCodes: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementEnrichPostalCodesInternal(nextRequest, ctx)
+      startWasteManagementEnrichPostalCodesInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
   startReset: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
-      startWasteManagementResetInternal(nextRequest, ctx)
+      startWasteManagementResetInternal(nextRequest, ctx, bindWasteAuditActor(ctx))
     ),
 };

@@ -1,5 +1,13 @@
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import { createWasteRuntimeOperationHandlers } from './runtime-handler-helpers.js';
+export {
+  wasteManagementMasterDataSchemas,
+  wasteManagementSettingsSchemas,
+  wasteManagementTourSchemas,
+} from './http-schemas.js';
+export { wasteManagementOperationSchemas } from './http-operation-schemas.js';
+export { wasteManagementCoreHandlers } from './handlers.js';
+export type { SaveWasteCustomRecurrencePresetsInput } from './handlers/custom-recurrence-deps.js';
 export type { WasteManagementOperationRuntime } from './runtime-types.js';
 
 export const createWasteManagementPluginOperationExecutionHandlers = (

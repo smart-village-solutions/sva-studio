@@ -2170,11 +2170,11 @@
       "status": "open",
       "summary": "Import-Sektion in kleinere Formular- und Statusbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/core/operations.ts:functionLines": {
+    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-waste-management-core-operations-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
-      "summary": "lange Waste-Management-Operationsfunktionen in kleinere Ausfuehrungs- und Mapping-Schritte aufteilen (packages/auth-runtime/src/waste-management/core/operations.ts)"
+      "summary": "lange Waste-Management-Operationsfunktionen in kleinere Ausfuehrungs- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/handlers/operations.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts:cyclomaticComplexity": {
       "ticketId": "baseline-frontend-app-src-lib-instance-interface-healthcheck-server-ts",
@@ -2254,17 +2254,17 @@
       "status": "open",
       "summary": "Tours-Loader in kleinere Lade- und Normalisierungsschritte aufteilen (packages/plugin-waste-management/src/waste-management.tours.loaders.ts)"
     },
-    "packages-default:packages/server-runtime/src/waste/data-source.server.ts:cyclomaticComplexity": {
+    "packages-default:packages/waste-management-runtime/src/repositories/data-source.server.ts:cyclomaticComplexity": {
       "ticketId": "baseline-server-runtime-waste-data-source-server-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
-      "summary": "Kontrollfluss der Waste-Datasource-Aufloesung in kleinere Entscheidungsbausteine zerlegen (packages/server-runtime/src/waste/data-source.server.ts)"
+      "summary": "Kontrollfluss der Waste-Datasource-Aufloesung in kleinere Entscheidungsbausteine zerlegen (packages/waste-management-runtime/src/repositories/data-source.server.ts)"
     },
-    "packages-default:packages/server-runtime/src/waste/data-source.server.ts:functionLines": {
+    "packages-default:packages/waste-management-runtime/src/repositories/data-source.server.ts:functionLines": {
       "ticketId": "baseline-server-runtime-waste-data-source-server-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
-      "summary": "lange Waste-Datasource-Funktionen in kleinere Aufloesungs- und Fehlerpfade aufteilen (packages/server-runtime/src/waste/data-source.server.ts)"
+      "summary": "lange Waste-Datasource-Funktionen in kleinere Aufloesungs- und Fehlerpfade aufteilen (packages/waste-management-runtime/src/repositories/data-source.server.ts)"
     },
     "sva-mainserver:packages/sva-mainserver/src/server/content-route-helpers.ts:cyclomaticComplexity": {
       "ticketId": "baseline-sva-mainserver-content-route-helpers-ts",
@@ -2332,11 +2332,11 @@
       "status": "open",
       "summary": "Plugin-Plattform-Resolution in kleinere Aufloesungs- und Kompatibilitaetsbausteine splitten (packages/plugin-sdk/src/plugin-platform-resolution.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/core/operations.ts:fileLines": {
+    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-001",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Waste-Operations-Handler in kleinere StartJob- und Preview-Bausteine splitten (packages/auth-runtime/src/waste-management/core/operations.ts)"
+      "summary": "Waste-Operations-Handler in kleinere StartJob- und Preview-Bausteine splitten (packages/waste-management-runtime/src/handlers/operations.ts)"
     },
     "auth-runtime:packages/auth-runtime/src/waste-management/server.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-002",
@@ -3040,11 +3040,11 @@
       "status": "open",
       "summary": "Lange Runtime-Factories in kleinere Resolver- und Defaulting-Schritte aufteilen (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/core/schemas.ts:fileLines": {
+    "packages-default:packages/waste-management-runtime/src/http-schemas.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-030",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Waste-Schema-Bausteine in kleinere Themenmodule fuer Settings, Imports und Reminder splitten (packages/auth-runtime/src/waste-management/core/schemas.ts)"
+      "summary": "Waste-Schema-Bausteine in kleinere Themenmodule fuer Settings, Imports und Reminder splitten (packages/waste-management-runtime/src/http-schemas.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/lib/instance-interfaces-server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-INTERFACES-COMPLEXITY-001",
@@ -3112,23 +3112,23 @@
       "status": "open",
       "summary": "Public-Waste-Settings-Datei in kleinere Parsing- und Konstantenmodule splitten (packages/waste-management-contracts/src/waste-management-settings-public-config.ts)"
     },
-    "packages-default:packages/data-repositories/src/waste-management/email-reminders.ts:cyclomaticComplexity": {
+    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-035",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Email-Reminder-Repository-Verzweigungen in kleinere Query-, Upsert- und Token-Pfade zerlegen (packages/data-repositories/src/waste-management/email-reminders.ts)"
+      "summary": "Email-Reminder-Repository-Verzweigungen in kleinere Query-, Upsert- und Token-Pfade zerlegen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
     },
-    "packages-default:packages/data-repositories/src/waste-management/email-reminders.ts:fileLines": {
+    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-035",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Email-Reminder-Repository-Datei in kleinere Persistence- und Projection-Module splitten (packages/data-repositories/src/waste-management/email-reminders.ts)"
+      "summary": "Email-Reminder-Repository-Datei in kleinere Persistence- und Projection-Module splitten (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
     },
-    "packages-default:packages/data-repositories/src/waste-management/email-reminders.ts:functionLines": {
+    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-035",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Lange Email-Reminder-Repository-Funktionen in kleinere SQL- und Mapping-Schritte aufteilen (packages/data-repositories/src/waste-management/email-reminders.ts)"
+      "summary": "Lange Email-Reminder-Repository-Funktionen in kleinere SQL- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
     },
     "packages-default:packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-036",
@@ -3334,19 +3334,19 @@
       "status": "open",
       "summary": "Barrel-Exports in kleinere Runtime- und Type-Segmente aufteilen (packages/plugin-generic-items/src/index.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/core/settings-shared.ts:fileLines": {
+    "packages-default:packages/waste-management-runtime/src/handlers/settings-shared.ts:fileLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Waste-Einstellungsprojektionen in fachliche Lese- und Statusbausteine aufteilen"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/core/settings-write-support.ts:fileLines": {
+    "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:fileLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Waste-Einstellungspersistenz und Provisionierungssteuerung in getrennte Module aufteilen"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/core/settings-write-support.ts:functionLines": {
+    "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:functionLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
       "status": "open",
@@ -3723,6 +3723,120 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Plugin-Vertragsauflösung in kleinere Validierungs- und Kompatibilitätsbausteine zerlegen"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-waste-ownership-1506-plugin-server-handlers-dispatcher",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Waste-Plugin-Komposition nach cyclomaticComplexity vereinfachen (packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts:fileLines": {
+      "ticketId": "baseline-waste-ownership-1506-plugin-server-handlers-dispatcher",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Waste-Plugin-Komposition nach fileLines vereinfachen (packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-plugin-server-handlers-dispatcher",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Waste-Plugin-Komposition nach functionLines vereinfachen (packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/plugin.tsx:fileLines": {
+      "ticketId": "baseline-waste-ownership-1506-plugin",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Waste-Plugin-Komposition nach fileLines vereinfachen (packages/plugin-waste-management/src/plugin.tsx)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/annual-tour-transfer-execution.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-annual-tour-transfer-execution",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/annual-tour-transfer-execution.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/location-tour-links-bulk.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-location-tour-links-bulk",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/location-tour-links-bulk.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/mutation-helpers.ts:fileLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-mutation-helpers",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/mutation-helpers.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-operations",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/operations.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/read-handlers.ts:fileLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-read-handlers",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/read-handlers.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-settings-write-support",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/settings-write-support.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/tour-status-bulk.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-tour-status-bulk",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tour-status-bulk.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/tour-validity-bulk.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-tour-validity-bulk",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tour-validity-bulk.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/tours-delete-support.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-tours-delete-support",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/tours-delete-support.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/tours-write-support.ts:fileLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-tours-write-support",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/tours-write-support.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/tours-write-support.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-tours-write-support",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tours-write-support.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/tours.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-tours",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tours.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/handlers/types.ts:fileLines": {
+      "ticketId": "baseline-waste-ownership-1506-handlers-types",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/types.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/repositories.ts:publicExports": {
+      "ticketId": "baseline-waste-ownership-1506-repositories",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach publicExports vereinfachen (packages/waste-management-runtime/src/repositories.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/repositories/annual-tour-transfer.ts:functionLines": {
+      "ticketId": "baseline-waste-ownership-1506-repositories-annual-tour-transfer",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/repositories/annual-tour-transfer.ts)"
     }
   }
 }

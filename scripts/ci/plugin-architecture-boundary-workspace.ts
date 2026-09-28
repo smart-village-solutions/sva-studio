@@ -8,7 +8,10 @@ export const WORKSPACE_DEPENDENCY_FIELDS = [
 ] as const;
 export const ALLOWED_WORKSPACE_DEPENDENCIES = new Set(['@sva/plugin-sdk', '@sva/studio-ui-react']);
 const PLUGIN_SPECIFIC_WORKSPACE_DEPENDENCIES = new Map<string, ReadonlySet<string>>([
-  ['@sva/plugin-waste-management', new Set(['@sva/waste-management-contracts'])],
+  [
+    '@sva/plugin-waste-management',
+    new Set(['@sva/waste-management-contracts', '@sva/auth-runtime']),
+  ],
 ]);
 export const FORBIDDEN_HOST_WORKSPACE_PACKAGES = new Set([
   '@sva/core',
@@ -78,6 +81,12 @@ export const isAllowedWorkspaceModuleSpecifier = (
   pluginPackageName: string,
   moduleSpecifier: string
 ): boolean => {
+  if (
+    pluginPackageName === '@sva/plugin-waste-management' &&
+    (moduleSpecifier === '@sva/auth-runtime' || moduleSpecifier.startsWith('@sva/auth-runtime/'))
+  ) {
+    return moduleSpecifier === '@sva/auth-runtime/waste-host';
+  }
   const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
   return workspacePackageName
     ? isAllowedWorkspaceDependency(pluginPackageName, workspacePackageName)

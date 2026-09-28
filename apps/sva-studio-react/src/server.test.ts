@@ -218,6 +218,23 @@ describe('server transport', () => {
     expect(response).toBe(pluginResponse);
   });
 
+  it('dispatches declared Waste domain paths through the plugin snapshot', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const pluginResponse = new Response('waste', { status: 200 });
+    const startFetch = vi.fn().mockResolvedValue(new Response('start'));
+    createStartHandlerMock.mockReturnValue(startFetch);
+    dispatchPluginServerHandlerMock.mockResolvedValue(pluginResponse);
+
+    const mod = await import('./server');
+    const request = new Request('http://localhost:3000/api/v1/waste-management/tours/tour-1');
+    const response = await mod.default.fetch(request);
+
+    expect(dispatchPluginServerHandlerMock).toHaveBeenCalledWith(request);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    expect(response).toBe(pluginResponse);
+  });
+
   it('dispatches internal SSF runtime configuration before auth and TanStack Start', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const pluginResponse = new Response('plugin', { status: 200 });

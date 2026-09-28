@@ -4,7 +4,7 @@ import {
   wasteManagementOperationsContract,
 } from '@sva/waste-management-contracts';
 import { createOrUpdateSvaMainserverStaticContent } from '@sva/sva-mainserver/server';
-import { runWasteConnectionCheck } from '@sva/server-runtime';
+import { runWasteConnectionCheck } from '@sva/waste-management-runtime/repositories';
 
 import {
   executeImport,

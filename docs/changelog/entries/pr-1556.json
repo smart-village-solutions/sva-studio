@@ -1,0 +1,4 @@
+{
+  "prNumber": 1556,
+  "body": "Die Waste-Management-API wird jetzt über den Server-Entry des Plugins bereitgestellt. Fachhandler und Fachpersistenz liegen in der Waste-Runtime; bestehende API-Pfade, Rechte, Jahreswechsel und öffentliche Abfallkalender bleiben erhalten. Eine Distribution ohne Waste-Plugin lädt keine Waste-Handler."
+}

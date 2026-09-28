@@ -12,9 +12,8 @@ import {
 } from '@sva/data-repositories/server';
 import {
   buildExternalInterfaceSecretConfigAad,
-  deriveWasteTenantDatabaseNames,
-  type WasteTenantDatabaseNames,
 } from '@sva/server-runtime';
+import { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/waste-management-runtime/repositories';
 import { Pool } from 'pg';
 
 import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
@@ -30,7 +29,7 @@ import {
   readExistingWasteRuntimePasswords,
 } from './waste-tenant-database-credentials.server.js';
 
-export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/server-runtime';
+export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/waste-management-runtime/repositories';
 
 type ProvisioningPool = WasteOperationSqlPool;
 

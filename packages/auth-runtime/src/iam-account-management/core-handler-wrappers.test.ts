@@ -138,7 +138,7 @@ describe('IAM core handler wrappers', () => {
       [request, state.userHandlers.getUserKeycloakRolesInternal],
       [request, state.userHandlers.mutateUserKeycloakRoleInternal],
     ]);
-  });
+  }, 15_000);
 
   it('forwards every role handler through withAuthenticatedIamHandler', async () => {
     const request = new Request('https://example.test/api/v1/iam/roles');

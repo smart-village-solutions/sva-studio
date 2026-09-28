@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { Pool } from 'pg';
 import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
-import { createWasteEmailReminderRepository } from '@sva/data-repositories';
+import { createWasteEmailReminderRepository } from '@sva/waste-management-runtime/repositories';
 import type {
   PublicWasteReminderSignupRequest,
   PublicWasteReminderSignupResponse,

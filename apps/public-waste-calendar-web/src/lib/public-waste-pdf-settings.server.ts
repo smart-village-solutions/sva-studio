@@ -5,7 +5,7 @@ import {
   readWasteManagementPdfContactBlock,
   type WastePdfStaticSettingsRecord,
 } from '@sva/waste-management-contracts';
-import { createWasteMasterDataRepository } from '@sva/data-repositories';
+import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,

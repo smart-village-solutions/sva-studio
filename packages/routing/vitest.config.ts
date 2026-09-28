@@ -13,6 +13,8 @@ export default defineConfig({
     alias: [
       { find: '@sva/core/security', replacement: resolve(__dirname, '../core/src/security/index.ts') },
       { find: '@sva/core', replacement: resolve(__dirname, '../core/src/index.ts') },
+      { find: /^@sva\/waste-management-runtime\/repositories$/, replacement: resolve(__dirname, '../waste-management-runtime/src/repositories.ts') },
+      { find: /^@sva\/waste-management-runtime\/server$/, replacement: resolve(__dirname, '../waste-management-runtime/src/server.ts') },
       { find: /^@sva\/waste-management-contracts$/, replacement: resolve(__dirname, '../waste-management-contracts/src/index.ts') },
       { find: '@sva/auth-runtime/routes', replacement: resolve(__dirname, '../auth-runtime/src/routes.ts') },
       { find: '@sva/auth-runtime/runtime-routes', replacement: resolve(__dirname, '../auth-runtime/src/runtime-routes.ts') },

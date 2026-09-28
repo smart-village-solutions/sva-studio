@@ -1,4 +1,5 @@
 import {
+  definePluginActions,
   definePluginAuditEvents,
   definePluginPermissions,
   type PluginDefinition,
@@ -12,6 +13,7 @@ import {
 import { wasteManagementPluginTranslations } from './plugin.translations.js';
 import { wasteManagementTenantLifecycle } from './plugin.tenant-lifecycle.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
+import { wasteManagementServerRoutes } from './server-routes.js';
 import { wasteManagementModuleIam } from './waste-management.module-iam.js';
 import { WasteManagementPage } from './waste-management.page.js';
 
@@ -50,6 +52,45 @@ export const wasteManagementPermissionDefinitions = definePluginPermissions('was
     titleKey: 'wasteManagement.permissions.settingsManage.title',
   },
 ]);
+
+export const wasteManagementActionDefinitions = definePluginActions('waste-management', [
+  ...wasteManagementPermissionDefinitions.map(({ id, titleKey }) => ({
+    id,
+    titleKey,
+    requiredAction: id,
+    accessRequirement: {
+      kind: 'tenant' as const,
+      moduleId: 'waste-management',
+      actions: { mode: 'allOf' as const, values: [id] },
+    },
+  })),
+  {
+    id: 'waste-management.annual-transfer.execute',
+    titleKey: 'wasteManagement.actions.annualTransfer',
+    accessRequirement: {
+      kind: 'tenant',
+      moduleId: 'waste-management',
+      actions: {
+        mode: 'allOf',
+        values: ['waste-management.tours.manage', 'waste-management.scheduling.manage'],
+      },
+    },
+  },
+]);
+
+const wasteManagementServerHandlerDefinitions = wasteManagementServerRoutes.map(
+  ([path, method, handlerName, actionId]) => {
+    const action = wasteManagementActionDefinitions.find((candidate) => candidate.id === actionId);
+    if (!action?.accessRequirement) throw new Error(`missing_waste_server_action:${actionId}`);
+    return {
+      id: `waste-management.${handlerName}.${method.toLowerCase()}`,
+      path,
+      method,
+      actionId,
+      accessRequirement: action.accessRequirement,
+    };
+  }
+);
 
 export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('waste-management', [
   {
@@ -240,6 +281,8 @@ export const pluginWasteManagement: PluginDefinition = {
     },
   ],
   permissions: wasteManagementPermissionDefinitions,
+  actions: wasteManagementActionDefinitions,
+  serverHandlers: wasteManagementServerHandlerDefinitions,
   moduleIam: wasteManagementModuleIam,
   auditEvents: wasteManagementAuditEventDefinitions,
   contentHistory: { mode: 'domain', reasonCode: 'domain_history' },

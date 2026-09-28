@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./repositories": {
+      "types": "./dist/repositories.d.ts",
+      "default": "./dist/repositories.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
@@ -18,6 +22,7 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*"
   },

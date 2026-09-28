@@ -6,7 +6,7 @@ import {
   type WasteManagementCsvDelimiter,
   type WasteManagementImportSourceFormat,
 } from '@sva/waste-management-contracts';
-import type { createWasteMasterDataRepository } from '@sva/data-repositories';
+import type { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import { readPluginOperationInput } from '../plugin-operation-artifacts.server.js';
 
 type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;

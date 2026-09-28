@@ -1,6 +1,6 @@
 import type { MailDispatchPayload } from '@sva/core';
 
-import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 
 export type WasteEmailReminderPendingSignupItem = Readonly<{
   id: string;

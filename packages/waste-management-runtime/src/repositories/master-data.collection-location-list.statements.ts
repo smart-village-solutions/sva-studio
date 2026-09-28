@@ -3,7 +3,7 @@ import type {
   WasteCollectionLocationSelectionFilter,
 } from '@sva/waste-management-contracts';
 
-import type { SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlPrimitive, SqlStatement } from '@sva/data-repositories';
 
 const escapeLikePattern = (value: string): string => value.replace(/[!%_]/g, '!$&');
 

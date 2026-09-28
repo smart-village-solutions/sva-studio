@@ -15,6 +15,7 @@
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*",
+    "@sva/waste-management-runtime": "workspace:*",
     "@tabler/icons-react": "^3.46.0",
     "dompurify": "^3.4.14",
     "pg": "^8.22.0",

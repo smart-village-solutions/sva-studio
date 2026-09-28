@@ -1,6 +1,6 @@
 import type { WasteCustomRecurrencePresetRecord } from '@sva/waste-management-contracts';
 
-import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
 
 type WasteCustomRecurrencePresetRow = {

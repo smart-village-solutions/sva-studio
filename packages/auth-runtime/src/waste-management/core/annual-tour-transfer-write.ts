@@ -1,5 +1,5 @@
 import type { WasteAnnualTourTransferMappedTour } from '@sva/waste-management-contracts';
-import type { WasteMasterDataRepository } from '@sva/data-repositories';
+import type { WasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 
 type AnnualTourTransferClient = Readonly<{
   query: (text: string, values?: readonly unknown[]) => Promise<unknown>;

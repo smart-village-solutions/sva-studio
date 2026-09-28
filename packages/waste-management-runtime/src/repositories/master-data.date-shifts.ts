@@ -1,4 +1,4 @@
-import type { SqlExecutor } from '../iam/repositories/types.js';
+import type { SqlExecutor } from '@sva/data-repositories';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
 
 import {

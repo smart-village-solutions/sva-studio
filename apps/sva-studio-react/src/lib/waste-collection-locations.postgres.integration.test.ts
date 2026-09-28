@@ -1,4 +1,4 @@
-import { createWasteMasterDataRepository } from '@sva/data-repositories';
+import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

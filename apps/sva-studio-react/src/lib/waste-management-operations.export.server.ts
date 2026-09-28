@@ -8,7 +8,7 @@ import {
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
 } from '@sva/waste-management-contracts';
-import type { WasteMasterDataRepository } from '@sva/data-repositories';
+import type { WasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import { createHash } from 'node:crypto';
 import { strToU8, zipSync } from 'fflate';
 

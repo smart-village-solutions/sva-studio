@@ -82,8 +82,8 @@ const repository = vi.hoisted(() => ({
   upsertWastePdfStaticSettings: vi.fn(async () => undefined),
 }));
 
-vi.mock('@sva/data-repositories', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@sva/data-repositories')>()),
+vi.mock('@sva/waste-management-runtime/repositories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>()),
   createWasteMasterDataRepository: vi.fn(() => repository),
 }));
 

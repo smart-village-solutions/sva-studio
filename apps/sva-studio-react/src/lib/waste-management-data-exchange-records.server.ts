@@ -17,7 +17,7 @@ import type {
   WasteTourRecord,
 } from '@sva/waste-management-contracts';
 import { getWasteManagementDataProfile } from '@sva/waste-management-contracts';
-import type { WasteMasterDataRepository } from '@sva/data-repositories';
+import type { WasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 
 const hasOwnProperty = (value: object, key: PropertyKey): boolean =>
   Object.prototype.hasOwnProperty.call(value, key);

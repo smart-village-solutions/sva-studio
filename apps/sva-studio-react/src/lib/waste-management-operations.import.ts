@@ -17,7 +17,7 @@ import {
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
 } from '@sva/waste-management-contracts';
-import type { createWasteMasterDataRepository } from '@sva/data-repositories';
+import type { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 
 import {
   defaultReadBinarySource,

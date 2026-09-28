@@ -1,4 +1,4 @@
-import type { SqlStatement } from '../iam/repositories/types.js';
+import type { SqlStatement } from '@sva/data-repositories';
 
 export const buildCityPostalCodeIfMissingStatement = (
   id: string,

@@ -2,12 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
 import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
-import type {
-  WasteEmailReminderActivationResult,
-  WasteEmailReminderPendingSignupInput,
-  WasteEmailReminderUnsubscribeResult,
-  WasteEmailReminderUnsubscribeSubscription,
-} from '@sva/data-repositories';
+import type { WasteEmailReminderActivationResult, WasteEmailReminderPendingSignupInput, WasteEmailReminderUnsubscribeResult, WasteEmailReminderUnsubscribeSubscription } from '@sva/waste-management-runtime/repositories';
 import {
   createPublicWasteReminderPageHandler as createReminderPageHandler,
   createPublicWasteReminderSignupRateLimitConsumer as createReminderSignupRateLimitConsumer,

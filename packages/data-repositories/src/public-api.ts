@@ -8,5 +8,3 @@ export * from './integrations/waste-data-sources.js';
 export * from './instance-registry/index.js';
 export * from './media/index.js';
 export * from './plugin-operations/index.js';
-export * from './waste-management/master-data.js';
-export * from './waste-management/email-reminders.js';

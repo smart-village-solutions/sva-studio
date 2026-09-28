@@ -20,16 +20,12 @@ export {
   createMediaRepository,
   createStudioJobRepository,
   createWasteDataSourceRepository,
-  createWasteEmailReminderRepository,
-  createWasteMasterDataRepository,
   externalInterfaceStatements,
   iamSeedPlan,
   iamSeedStatements,
   instanceIntegrationStatements,
   mediaStatements,
-  wasteEmailReminderStatements,
   wasteDataSourceStatements,
-  wasteMasterDataStatements,
 } from './public-api.js';
 export { createPluginTenantLifecycleRepository } from './plugin-tenant-lifecycle/index.js';
 
@@ -67,17 +63,7 @@ export type {
   SqlExecutor,
   SqlPrimitive,
   SqlStatement,
-  WasteEmailReminderActivationResult,
-  WasteEmailReminderActiveSubscription,
-  WasteEmailReminderOutboxEntryInput,
-  WasteEmailReminderOutboxLease,
-  WasteEmailReminderPendingSignupInput,
-  WasteEmailReminderPendingSignupItem,
-  WasteEmailReminderRepository,
-  WasteEmailReminderUnsubscribeSubscription,
-  WasteEmailReminderUnsubscribeResult,
   WasteDataSourceRepository,
-  WasteMasterDataRepository,
 } from './public-api.js';
 export type {
   PluginTenantAccessState,

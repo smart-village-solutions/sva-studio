@@ -1,6 +1,6 @@
 import type { WasteTourStatusBulkUpdateInput } from '@sva/waste-management-contracts';
 
-import type { SqlStatement } from '../iam/repositories/types.js';
+import type { SqlStatement } from '@sva/data-repositories';
 
 export const buildTourStatusBulkUpdateStatement = (
   input: WasteTourStatusBulkUpdateInput

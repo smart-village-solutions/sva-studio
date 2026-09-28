@@ -137,6 +137,7 @@
       "@sva/sva-mainserver/server": ["packages/sva-mainserver/src/index.server.ts"],
       "@sva/plugin-poi": ["packages/plugin-poi/src/index.ts"],
       "@sva/waste-management-runtime": ["packages/waste-management-runtime/src/index.ts"],
+      "@sva/waste-management-runtime/repositories": ["packages/waste-management-runtime/src/repositories.ts"],
       "@sva/waste-management-runtime/server": ["packages/waste-management-runtime/src/server.ts"],
       "@sva/waste-management-contracts": ["packages/waste-management-contracts/src/index.ts"],
       "@sva/waste-management-contracts/job-definitions": [

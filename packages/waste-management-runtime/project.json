@@ -32,14 +32,14 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/waste-management-runtime",
-        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/waste-management-runtime",
-        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:types": {

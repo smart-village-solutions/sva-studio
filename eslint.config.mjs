@@ -96,6 +96,7 @@ export default [
                 'scope:iam-governance',
                 'scope:instance-registry',
                 'scope:auth-runtime',
+                'scope:plugin-runtime',
                 'scope:plugin-contracts',
               ],
             },
@@ -166,6 +167,7 @@ export default [
                 'scope:plugin-contracts',
                 'scope:plugin',
                 'scope:plugin-runtime',
+                'scope:data-repositories',
               ],
             },
             {

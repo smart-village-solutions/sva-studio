@@ -1,6 +1,6 @@
 import type { WasteFractionListFilter, WasteFractionRecord } from '@sva/waste-management-contracts';
 
-import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutor, SqlPrimitive, SqlStatement } from '@sva/data-repositories';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
 import { mapWasteFractionRow, type WasteFractionRow } from './master-data.fractions.shared.js';
 import {

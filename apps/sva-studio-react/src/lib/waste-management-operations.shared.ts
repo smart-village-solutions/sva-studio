@@ -1,9 +1,5 @@
-import {
-  createWasteMasterDataRepository,
-  type SqlExecutionResult,
-  type SqlExecutor,
-  type SqlStatement,
-} from '@sva/data-repositories';
+import { type SqlExecutionResult, type SqlExecutor, type SqlStatement } from '@sva/data-repositories';
+import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 import {
   loadDefaultExternalInterfaceRecord,
   loadWasteTenantProvisioningRecord,

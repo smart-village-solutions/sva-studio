@@ -380,6 +380,9 @@ const config = defineConfig({
         '../../packages/monitoring-client/src/logging.ts'
       ),
       '@sva/monitoring-client': resolveAppPath('../../packages/monitoring-client/src/index.ts'),
+      '@sva/waste-management-runtime/repositories': resolveAppPath(
+        '../../packages/waste-management-runtime/src/repositories.ts'
+      ),
       '@sva/waste-management-runtime/server': resolveAppPath(
         '../../packages/waste-management-runtime/src/server.ts'
       ),

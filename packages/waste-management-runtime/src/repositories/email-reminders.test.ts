@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { MailDispatchPayload } from '@sva/core';
 import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
 
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import { createWasteEmailReminderRepository } from './email-reminders.js';
 
 const createExecutor = () => {

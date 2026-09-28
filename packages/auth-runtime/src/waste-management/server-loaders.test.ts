@@ -270,7 +270,7 @@ vi.mock('../plugin-operations/repository.js', () => ({
   withStudioJobRepository: withStudioJobRepositoryMock,
 }));
 
-vi.mock('@sva/data-repositories', () => ({
+vi.mock('@sva/waste-management-runtime/repositories', () => ({
   createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
 }));
 

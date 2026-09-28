@@ -271,6 +271,7 @@ type PluginUserServerHandlerExecutionContext = Readonly<{
   pluginId: string;
   handlerId: string;
   scope: 'platform' | 'tenant';
+  pathParams: Readonly<Record<string, string>>;
   activeOrganizationId?: string;
   actor: Readonly<{
     id: string;
@@ -896,6 +897,7 @@ const assertPluginRegistryServerHandlers = ({
   const supportedMethods = new Set<string>(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
   const handlerIds = new Set<string>();
   const userPathPrefix = `/api/v1/plugins/${pluginNamespace}`;
+  const domainPathPrefix = `/api/v1/${pluginNamespace}`;
   const servicePathPrefix = `/internal/plugins/${pluginNamespace}/`;
   for (const handler of plugin.serverHandlers ?? []) {
     const handlerId = normalizePluginIdentifier(handler.id);
@@ -917,7 +919,10 @@ const assertPluginRegistryServerHandlers = ({
     const isServiceHandler = handler.accessRequirement?.kind === 'service';
     const hasAllowedPath = isServiceHandler
       ? normalizedPath.startsWith(servicePathPrefix)
-      : normalizedPath === userPathPrefix || normalizedPath.startsWith(`${userPathPrefix}/`);
+      : normalizedPath === userPathPrefix ||
+        normalizedPath.startsWith(`${userPathPrefix}/`) ||
+        normalizedPath === domainPathPrefix ||
+        normalizedPath.startsWith(`${domainPathPrefix}/`);
     if (!hasAllowedPath) {
       throw new Error(`plugin_server_handler_path_invalid:${pluginNamespace}:${handlerId}`);
     }

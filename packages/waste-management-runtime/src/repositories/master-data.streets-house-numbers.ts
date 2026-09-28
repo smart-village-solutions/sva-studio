@@ -5,7 +5,7 @@ import type {
   WasteStreetRecord,
 } from '@sva/waste-management-contracts';
 
-import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutor, SqlPrimitive, SqlStatement } from '@sva/data-repositories';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
 import { buildLikePattern } from './master-data.shared.js';
 

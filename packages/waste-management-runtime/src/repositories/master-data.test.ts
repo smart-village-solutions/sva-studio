@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import { createWasteMasterDataRepository, wasteMasterDataStatements } from './master-data.js';
 
 const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {

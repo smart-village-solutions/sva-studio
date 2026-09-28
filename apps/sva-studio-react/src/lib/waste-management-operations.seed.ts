@@ -1,4 +1,4 @@
-import type { createWasteMasterDataRepository } from '@sva/data-repositories';
+import type { createWasteMasterDataRepository } from '@sva/waste-management-runtime/repositories';
 
 export const baselineIds = {
   region: '00000000-0000-4000-8000-000000000001',

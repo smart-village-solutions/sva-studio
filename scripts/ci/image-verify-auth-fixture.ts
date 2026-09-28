@@ -49,7 +49,9 @@ VALUES
   ('${instanceId}', '${roleId}', '${mediaPermissionId}'),
   ('${instanceId}', '${roleId}', '${ssfPermissionId}');
 INSERT INTO iam.instance_modules (instance_id, module_id, activation_policy, activation_origin, effective_active)
-VALUES ('${instanceId}', 'ssf', 'optional', 'manual', true);
+VALUES
+  ('${instanceId}', 'media', 'optional', 'manual', true),
+  ('${instanceId}', 'ssf', 'optional', 'manual', true);
 COMMIT;
 `;
 };

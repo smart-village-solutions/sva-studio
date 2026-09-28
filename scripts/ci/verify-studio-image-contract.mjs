@@ -22,10 +22,7 @@ const pluginIds = { studio: regularPlugins, ssf: ['ssf'] };
 const packagedRegularPlugins = regularPlugins.filter((id) => id !== 'waste-management');
 const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
-  ssf: [
-    ...regularPlugins.map((id) => `plugin-${id}`),
-    'waste-management-runtime',
-  ],
+  ssf: [...regularPlugins.map((id) => `plugin-${id}`)],
 };
 
 const fail = (code) => {
@@ -169,10 +166,7 @@ export const verifyStudioImageContract = (input) => {
   for (const name of excludedWorkspacePackages[distribution]) {
     if (present.has(name)) fail(`excluded_workspace_package_present:${name}`);
   }
-  if (
-    !present.has('waste-management-contracts') ||
-    (distribution === 'studio' && !present.has('waste-management-runtime'))
-  ) {
+  if (!present.has('waste-management-contracts') || !present.has('waste-management-runtime')) {
     fail('waste_management_workspace_package_missing');
   }
   const verifiedChunks = verifyChunkProvenance(distribution, chunkProvenance, chunkFiles);

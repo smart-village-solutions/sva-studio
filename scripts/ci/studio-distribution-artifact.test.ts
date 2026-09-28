@@ -201,6 +201,7 @@ describe('studio-distribution-artifact', () => {
     for (const packageName of [
       'plugin-ssf',
       'plugin-news',
+      'plugin-waste-management',
       'waste-management-contracts',
       'waste-management-runtime',
     ]) {
@@ -224,8 +225,26 @@ describe('studio-distribution-artifact', () => {
     runArtifactCommand('write-manifest', outputRoot, 'ssf');
 
     expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'plugin-ssf'))).toBe(true);
-    expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'waste-management-contracts'))).toBe(true);
-    for (const packageName of ['plugin-news', 'waste-management-runtime']) {
+    expect(
+      existsSync(path.join(deployRoot, 'node_modules', '@sva', 'waste-management-contracts'))
+    ).toBe(true);
+    expect(
+      existsSync(path.join(deployRoot, 'node_modules', '@sva', 'waste-management-runtime'))
+    ).toBe(true);
+    expect(
+      existsSync(
+        path.join(
+          deployRoot,
+          'node_modules',
+          '.pnpm',
+          'waste-management-runtime@1.0.0',
+          'node_modules',
+          '@sva',
+          'waste-management-runtime'
+        )
+      )
+    ).toBe(true);
+    for (const packageName of ['plugin-news', 'plugin-waste-management']) {
       expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', packageName))).toBe(false);
       expect(
         existsSync(
@@ -263,7 +282,6 @@ describe('studio-distribution-artifact', () => {
         'plugin-projects',
         'plugin-surveys',
         'plugin-waste-management',
-        'waste-management-runtime',
       ],
     });
   });

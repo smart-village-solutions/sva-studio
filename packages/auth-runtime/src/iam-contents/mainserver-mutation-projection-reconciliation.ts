@@ -34,6 +34,14 @@ export type ReconciledMainserverProjectionRow = Readonly<{
 
 const rowKey = (contentType: string, entityId: string): string => `${contentType}\0${entityId}`;
 
+const reconciledAuthorDisplay = (
+  row: ReconciledMainserverProjectionRow,
+  actorDisplayName: string
+) => ({
+  authorDisplayMode: row.organizationId ? row.authorDisplayMode : 'user',
+  authorDisplayName: row.organizationId ? row.author : actorDisplayName,
+});
+
 const loadDeferredMainserverMutationRows = async (input: {
   readonly instanceId: string;
   readonly actingPrincipalType: 'organization' | 'user';
@@ -148,8 +156,7 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       payload: row.payload,
       status: row.status,
       ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-      authorDisplayMode: row.organizationId ? row.authorDisplayMode : 'user',
-      authorDisplayName: row.organizationId ? row.author : actorDisplayName,
+      ...reconciledAuthorDisplay(row, actorDisplayName),
     });
     const independentReconciliationError =
       typeof entry.last_error_code === 'string' &&

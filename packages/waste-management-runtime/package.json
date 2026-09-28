@@ -23,8 +23,6 @@
   "dependencies": {
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
-    "@sva/iam-core": "workspace:*",
-    "@sva/iam-governance": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*",
@@ -32,6 +30,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@sva/iam-core": "workspace:*",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.10",
     "vitest": "^4.1.10"

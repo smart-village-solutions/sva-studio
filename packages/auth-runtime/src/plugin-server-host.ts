@@ -1,4 +1,9 @@
 import { emitAuthAuditEvent } from './audit-events.js';
+import { evaluateAuthorizeDecision } from '@sva/iam-core';
+import {
+  listWasteManagementAuditRecords,
+  listWasteManagementTechnicalAuditRecords,
+} from '@sva/iam-governance';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -37,6 +42,30 @@ import { translatePluginTenantLifecycleMessage } from './plugin-tenant-lifecycle
 import { createApiError, toPayloadHash } from './shared/request-helpers.js';
 import { validateCsrf } from './shared/request-security.js';
 
+const authorizePluginAction = async (input: {
+  instanceId: string;
+  keycloakSubject: string;
+  action: string;
+  resourceType: string;
+  requestId?: string;
+}) => {
+  const resolved = await resolveEffectivePermissions({
+    instanceId: input.instanceId,
+    keycloakSubject: input.keycloakSubject,
+  });
+  if (!resolved.ok) return { ok: false as const };
+  const decision = evaluateAuthorizeDecision(
+    {
+      instanceId: input.instanceId,
+      action: input.action,
+      resource: { type: input.resourceType },
+      context: input.requestId ? { requestId: input.requestId } : {},
+    },
+    resolved.permissions
+  );
+  return { ok: true as const, allowed: decision.allowed, reason: decision.reason };
+};
+
 export const pluginServerHost = {
   emitAuthAuditEvent,
   listExternalInterfaceRecords,
@@ -54,7 +83,9 @@ export const pluginServerHost = {
   renewIdempotencyLease,
   reserveIdempotency,
   resolveActorInfo,
-  resolveEffectivePermissions,
+  authorizePluginAction,
+  listWasteManagementAuditRecords,
+  listWasteManagementTechnicalAuditRecords,
   buildLogContext,
   withAuthenticatedUser,
   readPluginOperationInput,

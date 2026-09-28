@@ -14,4 +14,7 @@ export const {
   withStudioJobRepository: pluginServerHost.withStudioJobRepository,
   revealField: pluginServerHost.revealField,
   readPluginOperationInput: pluginServerHost.readPluginOperationInput,
+  listWasteManagementAuditRecords: pluginServerHost.listWasteManagementAuditRecords,
+  listWasteManagementTechnicalAuditRecords:
+    pluginServerHost.listWasteManagementTechnicalAuditRecords,
 });

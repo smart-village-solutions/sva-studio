@@ -3,6 +3,11 @@ import {
   type SqlExecutor,
   type SqlStatement,
 } from '@sva/data-repositories';
+import type {
+  listExternalInterfaceRecords,
+  loadDefaultExternalInterfaceRecord,
+  loadWasteTenantProvisioningRecord,
+} from '@sva/data-repositories/server';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
 import {
   findSelectedWasteManagementInterfaceRecord,
@@ -22,6 +27,8 @@ import {
   WasteLocationTourLinkBulkCreateInput,
   WasteLocationTourLinkRecord,
   WasteManagementHistoryOverview,
+  type WasteManagementAuditOverview,
+  type WasteManagementAuditQuery,
   type WasteMainserverSourceRevisionRecord,
   type WasteMainserverSyncJobSummary,
   type WasteMainserverSyncStatusRecord,
@@ -29,6 +36,7 @@ import {
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementTechnicalHistoryRecord,
+  type WasteManagementTechnicalHistoryOverview,
   WasteManagementToursOverview,
   WasteRegionRecord,
   WasteStreetRecord,
@@ -46,10 +54,6 @@ import {
 } from '@sva/waste-management-contracts';
 import { createSdkLogger } from '@sva/server-runtime';
 import { resolveWasteDataSource } from './repositories/data-source.server.js';
-import {
-  listWasteManagementAuditRecords,
-  listWasteManagementTechnicalAuditRecords,
-} from '@sva/iam-governance';
 import { Pool } from 'pg';
 
 import {
@@ -74,9 +78,9 @@ type IamQueryClient = {
 };
 
 export type WasteServerLoaderHost = Readonly<{
-  listExternalInterfaceRecords: typeof import('@sva/data-repositories/server').listExternalInterfaceRecords;
-  loadDefaultExternalInterfaceRecord: typeof import('@sva/data-repositories/server').loadDefaultExternalInterfaceRecord;
-  loadWasteTenantProvisioningRecord: typeof import('@sva/data-repositories/server').loadWasteTenantProvisioningRecord;
+  listExternalInterfaceRecords: typeof listExternalInterfaceRecords;
+  loadDefaultExternalInterfaceRecord: typeof loadDefaultExternalInterfaceRecord;
+  loadWasteTenantProvisioningRecord: typeof loadWasteTenantProvisioningRecord;
   withInstanceDb: <T>(
     instanceId: string,
     work: (client: IamQueryClient) => Promise<T>
@@ -90,6 +94,14 @@ export type WasteServerLoaderHost = Readonly<{
     instanceId: string;
     blobRef: string;
   }) => Promise<{ body: Uint8Array }>;
+  listWasteManagementAuditRecords: (
+    client: IamQueryClient,
+    query: WasteManagementAuditQuery
+  ) => Promise<WasteManagementAuditOverview>;
+  listWasteManagementTechnicalAuditRecords: (
+    client: IamQueryClient,
+    query: WasteManagementAuditQuery
+  ) => Promise<WasteManagementTechnicalHistoryOverview>;
 }>;
 
 export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
@@ -101,6 +113,8 @@ export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {
     withStudioJobRepository,
     revealField,
     readPluginOperationInput,
+    listWasteManagementAuditRecords,
+    listWasteManagementTechnicalAuditRecords,
   } = host;
 
   const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -949,7 +963,7 @@ FROM last_success
     }> => {
       const items: WasteManagementTechnicalHistoryRecord[] = [];
       let currentPage = 1;
-      let total = 0;
+      let total: number;
 
       do {
         const technicalAuditPage = await withInstanceDb(query.instanceId, (client) =>

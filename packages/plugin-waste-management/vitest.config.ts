@@ -15,6 +15,10 @@ export default mergeConfig(
           currentDir,
           '../auth-runtime/src/plugin-server-host.ts'
         ),
+        '@sva/waste-management-runtime/server': resolve(
+          currentDir,
+          '../waste-management-runtime/src/server.ts'
+        ),
         '@sva/core/rich-text-html-policy': resolve(
           currentDir,
           '../core/src/rich-text-html-policy.ts'

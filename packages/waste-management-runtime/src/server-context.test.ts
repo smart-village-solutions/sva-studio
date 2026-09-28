@@ -17,7 +17,7 @@ const authMocks = vi.hoisted(() => ({
 
 const hostCapabilityMocks = vi.hoisted(() => ({
   emitAuthAuditEvent: vi.fn(),
-  resolveEffectivePermissions: vi.fn(),
+  authorizePluginAction: vi.fn(),
   resolveActorInfo: vi.fn(),
   startPluginOperationJobFromFacade: vi.fn(),
   storePluginOperationInput: vi.fn(),
@@ -140,9 +140,10 @@ describe('sharedWasteManagementDeps', () => {
 
   it('binds the host services for waste settings and handler actions', async () => {
     expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
-    hostCapabilityMocks.resolveEffectivePermissions.mockResolvedValueOnce({
+    hostCapabilityMocks.authorizePluginAction.mockResolvedValueOnce({
       ok: true,
-      permissions: [{ action: 'waste-management.read', resourceType: 'waste-management' }],
+      allowed: true,
+      reason: 'allowed',
     });
     await expect(
       sharedWasteManagementDeps.authorizeAction({
@@ -152,9 +153,12 @@ describe('sharedWasteManagementDeps', () => {
         requestId: 'req-1',
       })
     ).resolves.toBeNull();
-    expect(hostCapabilityMocks.resolveEffectivePermissions).toHaveBeenCalledWith({
+    expect(hostCapabilityMocks.authorizePluginAction).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       keycloakSubject: 'user-1',
+      action: 'waste-management.read',
+      resourceType: 'waste-management',
+      requestId: 'req-1',
     });
     expect(sharedWasteManagementDeps.startPluginOperationJob).toBe(
       hostCapabilityMocks.startPluginOperationJobFromFacade
@@ -192,9 +196,10 @@ describe('sharedWasteManagementDeps', () => {
       action: 'waste-management.tours.manage',
       requestId: 'req-2',
     };
-    hostCapabilityMocks.resolveEffectivePermissions.mockResolvedValueOnce({
+    hostCapabilityMocks.authorizePluginAction.mockResolvedValueOnce({
       ok: true,
-      permissions: [],
+      allowed: false,
+      reason: 'permission_missing',
     });
     const denied = await sharedWasteManagementDeps.authorizeAction(input);
     expect(denied?.status).toBe(403);
@@ -202,7 +207,7 @@ describe('sharedWasteManagementDeps', () => {
       error: { code: 'forbidden', details: { action: input.action } },
     });
 
-    hostCapabilityMocks.resolveEffectivePermissions.mockRejectedValueOnce(new Error('db down'));
+    hostCapabilityMocks.authorizePluginAction.mockRejectedValueOnce(new Error('db down'));
     const unavailable = await sharedWasteManagementDeps.authorizeAction(input);
     expect(unavailable?.status).toBe(503);
     await expect(unavailable?.json()).resolves.toMatchObject({

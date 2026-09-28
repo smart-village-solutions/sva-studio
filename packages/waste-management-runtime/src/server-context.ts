@@ -7,10 +7,13 @@ import {
 import { resolveWasteDataSource, runWasteConnectionCheck } from './repositories.js';
 import { Pool } from 'pg';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
-import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
+import type {
+  listExternalInterfaceRecords,
+  loadDefaultExternalInterfaceRecord,
+  loadWasteTenantProvisioningRecord,
+} from '@sva/data-repositories/server';
 
-import type { EffectivePermission } from '@sva/iam-core';
 import type {
   AuthenticatedRequestContext,
   WasteAuditEvent,
@@ -42,10 +45,13 @@ export type WasteServerContextHost = Readonly<{
     requestId?: string,
     details?: Record<string, unknown>
   ) => Response;
-  resolveEffectivePermissions: (input: {
+  authorizePluginAction: (input: {
     instanceId: string;
     keycloakSubject: string;
-  }) => Promise<{ ok: true; permissions: readonly EffectivePermission[] } | { ok: false }>;
+    action: string;
+    resourceType: string;
+    requestId?: string;
+  }) => Promise<{ ok: true; allowed: boolean; reason: string } | { ok: false }>;
   resolveIamActorInfo: (
     request: Request,
     ctx: AuthenticatedRequestContext,
@@ -67,9 +73,9 @@ export type WasteServerContextHost = Readonly<{
   releaseIdempotencyReservation: RequiredDependency<'releaseIdempotencyReservation'>;
   hasIdempotentAuditEvent: RequiredDependency<'hasIdempotentAuditEvent'>;
   completeIdempotency: RequiredDependency<'completeIdempotency'>;
-  listExternalInterfaceRecords: typeof import('@sva/data-repositories/server').listExternalInterfaceRecords;
-  loadDefaultExternalInterfaceRecord: typeof import('@sva/data-repositories/server').loadDefaultExternalInterfaceRecord;
-  loadWasteTenantProvisioningRecord: typeof import('@sva/data-repositories/server').loadWasteTenantProvisioningRecord;
+  listExternalInterfaceRecords: typeof listExternalInterfaceRecords;
+  loadDefaultExternalInterfaceRecord: typeof loadDefaultExternalInterfaceRecord;
+  loadWasteTenantProvisioningRecord: typeof loadWasteTenantProvisioningRecord;
   requestWasteTenantProvisioning: RequiredDependency<'requestWasteTenantProvisioning'>;
   failWasteTenantProvisioningRequest: RequiredDependency<'failWasteTenantProvisioningRequest'>;
   saveExternalInterfaceRecord: RequiredDependency<'saveExternalInterfaceRecord'>;
@@ -133,12 +139,9 @@ const createWasteActionAuthorizer =
     action: string;
     requestId?: string;
   }): Promise<Response | null> => {
-    let resolved: Awaited<ReturnType<typeof host.resolveEffectivePermissions>>;
+    let resolved: Awaited<ReturnType<typeof host.authorizePluginAction>>;
     try {
-      resolved = await host.resolveEffectivePermissions({
-        instanceId: input.instanceId,
-        keycloakSubject: input.keycloakSubject,
-      });
+      resolved = await host.authorizePluginAction({ ...input, resourceType: 'waste-management' });
     } catch {
       return host.createApiError(
         503,
@@ -155,25 +158,16 @@ const createWasteActionAuthorizer =
         input.requestId
       );
     }
-    const decision = evaluateAuthorizeDecision(
-      {
-        instanceId: input.instanceId,
-        action: input.action,
-        resource: { type: 'waste-management' },
-        context: input.requestId ? { requestId: input.requestId } : {},
-      },
-      resolved.permissions
-    );
-    if (decision.allowed) return null;
+    if (resolved.allowed) return null;
     return host.createApiError(
       403,
       'forbidden',
       'Keine Berechtigung für diese Waste-Management-Operation.',
       input.requestId,
       {
-        ...createPermissionDenialDetailsForAction(input.action, decision.reason),
+        ...createPermissionDenialDetailsForAction(input.action, resolved.reason),
         action: input.action,
-        reason_code: decision.reason,
+        reason_code: resolved.reason,
       }
     );
   };

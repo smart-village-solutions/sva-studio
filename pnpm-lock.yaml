@@ -1621,12 +1621,6 @@ importers:
       '@sva/data-repositories':
         specifier: workspace:*
         version: link:../data-repositories
-      '@sva/iam-core':
-        specifier: workspace:*
-        version: link:../iam-core
-      '@sva/iam-governance':
-        specifier: workspace:*
-        version: link:../iam-governance
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1643,6 +1637,9 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
     devDependencies:
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
@@ -14804,8 +14801,6 @@ snapshots:
     dependencies:
       '@sva/core': file:packages/core
       '@sva/data-repositories': file:packages/data-repositories(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
-      '@sva/iam-core': file:packages/iam-core
-      '@sva/iam-governance': file:packages/iam-governance(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/waste-management-contracts': file:packages/waste-management-contracts

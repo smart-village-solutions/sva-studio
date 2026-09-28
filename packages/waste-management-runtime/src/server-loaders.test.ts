@@ -248,11 +248,6 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   };
 });
 
-vi.mock('@sva/iam-governance', () => ({
-  listWasteManagementAuditRecords: listWasteManagementAuditRecordsMock,
-  listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
-}));
-
 vi.mock('./repositories/data-source.server.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./repositories/data-source.server.js')>()),
   resolveWasteDataSource: resolveWasteDataSourceMock,
@@ -282,6 +277,8 @@ const {
   withStudioJobRepository: withStudioJobRepositoryMock,
   revealField: revealFieldMock,
   readPluginOperationInput: vi.fn(async () => ({ body: new Uint8Array() })),
+  listWasteManagementAuditRecords: listWasteManagementAuditRecordsMock,
+  listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
 } as unknown as WasteServerLoaderHost);
 
 describe('waste-management server loaders', () => {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sharedWasteManagementDepsMock = vi.hoisted(() => ({
   dependencyMarker: 'shared-waste-management-deps',
+  authorizeAction: vi.fn(async () => null),
   emitAuditEvent: vi.fn(async () => undefined),
 }));
 
@@ -91,6 +92,8 @@ const coreHandlerMocks = vi.hoisted(() => ({
   ),
   startWasteManagementInitializeInternal: vi.fn(async () => new Response('start-initialize')),
   startWasteManagementImportInternal: vi.fn(async () => new Response('start-import')),
+  uploadWasteManagementImportSourceInternal: vi.fn(async () => new Response('upload-import')),
+  startWasteManagementExportInternal: vi.fn(async () => new Response('start-export')),
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
   startWasteManagementMainserverSyncInternal: vi.fn(
     async () => new Response('start-mainserver-sync')
@@ -707,14 +710,27 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startInitialize',
         internal: coreHandlerMocks.startWasteManagementInitializeInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startMigrations',
         internal: coreHandlerMocks.startWasteManagementMigrationsInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startImport',
         internal: coreHandlerMocks.startWasteManagementImportInternal,
+        deps: sharedWasteManagementDepsMock,
+      },
+      {
+        handlerKey: 'uploadImportSource',
+        internal: coreHandlerMocks.uploadWasteManagementImportSourceInternal,
+        deps: sharedWasteManagementDepsMock,
+      },
+      {
+        handlerKey: 'startExport',
+        internal: coreHandlerMocks.startWasteManagementExportInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'previewLocationTourPickupDateImport',
@@ -728,22 +744,27 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startSeed',
         internal: coreHandlerMocks.startWasteManagementSeedInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startMainserverSync',
         internal: coreHandlerMocks.startWasteManagementMainserverSyncInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startSyncWasteTypes',
         internal: coreHandlerMocks.startWasteManagementSyncWasteTypesInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startEnrichPostalCodes',
         internal: coreHandlerMocks.startWasteManagementEnrichPostalCodesInternal,
+        deps: sharedWasteManagementDepsMock,
       },
       {
         handlerKey: 'startReset',
         internal: coreHandlerMocks.startWasteManagementResetInternal,
+        deps: sharedWasteManagementDepsMock,
       },
     ] as const;
 

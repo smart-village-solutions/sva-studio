@@ -11,6 +11,7 @@ export default mergeConfig(
   defineConfig({
     resolve: {
       alias: {
+        '@sva/auth-runtime/waste-host': resolve(currentDir, '../auth-runtime/src/waste-host.ts'),
         '@sva/core/rich-text-html-policy': resolve(currentDir, '../core/src/rich-text-html-policy.ts'),
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
         '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),

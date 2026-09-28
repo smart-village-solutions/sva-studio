@@ -302,6 +302,7 @@ export const createPluginTenantLifecycleOrchestrator = (
       instanceId: input.instanceId,
       pluginId: input.pluginId,
       operation: input.operation,
+      ...(lifecycle.contractRevision ? { contractRevision: lifecycle.contractRevision } : {}),
     });
     const generation = requestedLifecycle.desiredGeneration;
     const job = await createLifecycleJob(dependencies, input, {

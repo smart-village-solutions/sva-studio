@@ -611,8 +611,9 @@ zwei festen Schritten:
    Login-Client, Tenant-Admin-Client, Rollen und Serviceaccount-Zustand in
    fester Reihenfolge. Die globale Provisioner-Identität bleibt dem privaten
    Provisioner-Prozess vorbehalten. Sie wird weder in den App-Prozess noch an
-   Browser oder MCP weitergegeben; nur die drei allowlisteten Create-Control-
-   Plane-Requests erreichen den Provisioner über das interne Netz.
+   Browser oder MCP weitergegeben. Draft, Realm-Katalog, Create sowie
+   Instanzdetail, Tenant-IAM-Rollenabgleich und Aktivierung erreichen den
+   Provisioner nur über einzeln allowlistete App-Routen im internen Netz.
 2. Eine reine Bewertung leitet aus dem typisierten Snapshot die bestehenden
    vierzehn Check-Ergebnisse ab. Check-IDs, Titel, Zusammenfassungen, Details
    und Fail-/Warn-/Skip-Semantik sind ein stabiler Betriebsvertrag.

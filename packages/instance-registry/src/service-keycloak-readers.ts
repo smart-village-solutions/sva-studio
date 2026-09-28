@@ -352,8 +352,13 @@ export const createPlanKeycloakProvisioningHandler =
     );
     if (options?.forceLive) {
       if (!deps.planKeycloakProvisioning) return null;
+      const completedNewRealmRun =
+        loaded.instance.realmMode === 'new' &&
+        runs[0]?.mode === 'new' &&
+        runs[0].overallStatus === 'succeeded';
       const plan = await deps.planKeycloakProvisioning({
         ...loaded.instance,
+        ...(completedNewRealmRun ? { realmMode: 'existing' as const } : {}),
         authClientSecret: loaded.authClientSecret,
         tenantAdminClientSecret: loaded.tenantAdminClientSecret,
         pluginOidcClients,

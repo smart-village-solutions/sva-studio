@@ -162,6 +162,10 @@ const resolveLifecycleFailure = (
       pluginId,
       pluginError as PluginTenantLifecycleError
     );
+    // The worker's final classification includes its authoritative retry budget.
+    if (error.category === 'permanent') {
+      return { readinessStatus: 'blocked', errorCode: lifecycleError.code, retryKind: 'terminal' };
+    }
     const retryAfterMs =
       lifecycleError.retry.kind === 'retryable'
         ? (lifecycleError.retry.retryAfterMs ?? pluginTenantLifecycleDefaultRetryDelayMs)

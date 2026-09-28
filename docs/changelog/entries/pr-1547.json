@@ -1,0 +1,4 @@
+{
+  "prNumber": 1547,
+  "body": "Plugin-Aufträge bleiben nach ausgeschöpften Wiederholungsversuchen bei unverändertem aktuellem Lifecycle-Vertrag terminal gesperrt. Die automatische Planung startet dafür keinen neuen Lauf mit zurückgesetztem Versuchszähler; der konkrete Fehler bleibt zur Diagnose erhalten."
+}

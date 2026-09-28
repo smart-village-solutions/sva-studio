@@ -113,6 +113,36 @@ Sollzustand auslösen. Falls SSF dort nicht vorgesehen ist, die zuständige
 Aktivierungsrichtlinie korrigieren. Historische Jobzeilen werden dabei nicht
 gelöscht oder direkt umgeschrieben.
 
+### Ausgeschöpftes Job-Budget
+
+Ein retrybarer Plugin-Fehler darf das endgültige Fehlerurteil des Workers nicht
+überschreiben. Nach dem letzten zulässigen Jobversuch bleibt der Lifecycle
+`blocked` mit `retry_kind=terminal` und dem konkreten Plugin-Fehlercode; es gibt
+bei unverändertem aktuellem Lifecycle-Vertrag keine automatische neue Generation
+mit zurückgesetztem Versuchszähler. Eine
+bereits geplante Lifecycle-Kontrolle startet für diesen unveränderten terminalen
+Zustand ebenfalls keinen neuen Job.
+
+Die Vertragsrevision wird beim Anfordern einer Generation gemeinsam mit deren
+Sollzustand gespeichert. Nach erfolgreichem Vertrag A und fehlgeschlagenem
+Vertrag B erkennt die Planung dadurch B als bereits versucht: Bei terminalem
+Fehler bleibt sie gesperrt, bei retrybarem Fehler gilt dessen Frist. Ein neuer
+Vertrag C bleibt ein Anlass für Reconcile. Die zuletzt erfolgreiche
+Readiness-Revision und Abschlussgeneration werden dabei nicht vorgezogen;
+Readiness aus A belegt keine Bereitschaft für B.
+
+Historische Zeilen können noch A als Vertragsrevision enthalten, obwohl B
+bereits fehlgeschlagen ist. Ohne direkte Datenkorrektur kann nach dem Rollout
+ein weiterer, durch das Job-Budget begrenzter B-Lauf entstehen. Dessen Start
+speichert B; die Live-Abnahme muss anschließend den terminalen Zustand und
+mehrere automatische Kontrollen ohne weitere Generation nachweisen.
+
+Die Ursache zuerst über Jobevent und Lifecycle diagnostizieren und beheben.
+Danach die bestehende autorisierte Retry-/Repair-Aktion verwenden. Sie darf eine
+neue Generation anlegen; ein direktes Zurücksetzen von Attempts oder Queue-Zeilen
+ist weiterhin unzulässig. Dieser Fix ersetzt keinen Live-Nachweis für historische
+SSF-Reconcile-Jobs.
+
 ### Allgemeine Recovery
 
 1. **Abwarten:** Bei einem frischen Heartbeat, einer noch nicht fälligen Deadline oder innerhalb des dokumentierten 150-Sekunden-Recovery-Budgets keine zweite Arbeit anlegen.

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { TenantModuleActivationRecord } from '@sva/core';
+import type { PluginTenantLifecycleRecord } from '@sva/data-repositories';
+import { createPluginTenantReadinessReadModel } from '@sva/plugin-sdk';
+
+import { resolveAutomaticProvisioningSchedule } from './automatic-schedule.js';
+
 const state = vi.hoisted(() => ({
   createStudioJob: vi.fn(),
   markPluginOperationEnqueueFailed: vi.fn(async () => undefined),
@@ -262,6 +268,12 @@ describe('configured plugin tenant lifecycle runtime', () => {
       job,
     });
 
+    expect(state.requestLifecycle).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      operation: 'provision',
+      contractRevision: '1.0.0:1',
+    });
     expect(state.getModuleActivationPolicy).toHaveBeenCalledWith('tenant-a', 'speech');
     expect(state.createStudioJob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -387,6 +399,78 @@ describe('configured plugin tenant lifecycle runtime', () => {
       expect.objectContaining({ operation: 'reconcile' })
     );
   });
+
+  it.each(['terminal', 'retryable'] as const)(
+    'remembers a failed new contract and respects its %s state instead of rediscovering drift',
+    async (retryKind) => {
+      state.operations = [
+        { operation: 'provision', jobTypeId: 'speech.provisionTenant' },
+        { operation: 'reconcile', jobTypeId: 'speech.reconcileTenant' },
+      ];
+      let persisted: PluginTenantLifecycleRecord = {
+        ...lifecycleRecord,
+        readinessStatus: 'ready',
+        completedGeneration: 3,
+        contractRevision: '0.9.0:1',
+        readinessRevision: JSON.stringify(['0.9.0:1', 'schema:3']),
+      };
+      state.getLifecycle.mockImplementationOnce(async () => persisted);
+      state.requestLifecycle.mockImplementationOnce(async (request) => {
+        persisted = {
+          ...persisted,
+          desiredGeneration: 4,
+          desiredOperation: request.operation,
+          readinessStatus: 'pending',
+          contractRevision: request.contractRevision ?? persisted.contractRevision,
+        };
+        return persisted;
+      });
+      const { ensureConfiguredPluginTenantProvisioning } = await import('./runtime.js');
+
+      await ensureConfiguredPluginTenantProvisioning('tenant-a');
+      persisted = {
+        ...persisted,
+        readinessStatus: 'blocked',
+        retryKind,
+        ...(retryKind === 'retryable' ? { retryAfter: '2999-08-30T12:05:00.000Z' } : {}),
+      };
+      state.getLifecycle.mockResolvedValue(persisted);
+      await ensureConfiguredPluginTenantProvisioning('tenant-a');
+      await ensureConfiguredPluginTenantProvisioning('tenant-a');
+
+      expect(state.requestLifecycle).toHaveBeenCalledTimes(1);
+      expect(state.createStudioJob).toHaveBeenCalledTimes(1);
+      const definition = {
+        pluginId: 'speech',
+        contractVersion: 1 as const,
+        contractRevision: '1.0.0:1',
+        operations: state.operations,
+        readinessChecks: [],
+      };
+      const activation: TenantModuleActivationRecord = {
+        instanceId: 'tenant-a',
+        moduleId: 'speech',
+        activationPolicy: 'automatic',
+        activationOrigin: 'policy_reconcile',
+        manifestVersion: 1,
+        policyRevision: 'speech-1',
+        effectiveActive: true,
+        stateRevision: 1,
+        createdAt: lifecycleRecord.updatedAt,
+        updatedAt: lifecycleRecord.updatedAt,
+      };
+      expect(
+        createPluginTenantReadinessReadModel({ definition, activation, evidence: persisted })
+      ).toMatchObject({ evidenceState: 'invalid' });
+      expect(
+        resolveAutomaticProvisioningSchedule(
+          { ...definition, contractRevision: '2.0.0:1' },
+          activation,
+          persisted
+        )
+      ).toMatchObject({ operation: 'reconcile' });
+    }
+  );
 
   it('does not reschedule an unchanged terminal generation', async () => {
     state.getLifecycle.mockResolvedValueOnce({

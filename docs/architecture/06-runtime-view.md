@@ -110,8 +110,10 @@ Fehlerpfad:
 5. Fehlt Lifecycle-Evidenz, passt sie nicht mehr zur aktuellen Readiness-Deklaration oder ist ein früherer Lauf retryable gescheitert, startet der Hook dieselbe generische Lifecycle-Orchestrierung wie eine manuelle Reparatur. Queue- oder Datenbankfehler werden beim normalen Post-Commit-Hook protokolliert und verändern nicht die Antwort einer bereits committeten Registry-Mutation; der Fleet-Reconcile wartet dagegen auf die Folgeplanung und meldet deren Fehler als `degraded`. Eine erfolgreiche explizite Wiederzuweisung entfernt atomar eine alte terminale Retry-Sperre, damit der anschließende Hook eine neue Provisionierungsgeneration anlegen kann. Aktive Jobs, suspendierte Zustände, sonstige terminale Fehler und valide aktuelle `ready`- oder `degraded`-Evidenz erzeugen keinen zweiten Lauf.
 6. Das Beanspruchen eines Lifecycle-Jobs und das Einplanen seines separaten Recovery-Tasks erfolgen in derselben Tenant-Transaktion. Der Recovery-Task prüft den persistierten Studio-Job nach dem Claim-Fenster und stellt einen noch `queued` vorliegenden Graphile-Job idempotent über dessen stabilen Job-Key wieder her; laufende oder terminale Jobs werden nicht erneut enqueued.
 7. Retryable Plugin-Lifecycle-Fehler ohne eigene Deadline erhalten beim Persistieren einen hostdefinierten Backoff von 60 Sekunden. Dieser persistente Lifecycle-Retry ist vom prozesslokalen Fleet-Reconcile-Backoff aus Schritt 2 getrennt. Aktivierungsänderungen im geöffneten Instanzdetail stoßen nach erfolgreicher Mutation zusätzlich einen unmittelbaren Readiness-Refresh an.
-8. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
-9. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
+8. Die permanente Fehlerklassifikation des Workers hat Vorrang vor einem retrybaren Plugin-Fehler. Nach ausgeschöpftem Job-Budget bleibt der Lifecycle mit seinem konkreten Plugin-Fehlercode terminal gesperrt; bei unverändertem aktuellem Lifecycle-Vertrag darf ein automatischer Folgelauf kein frisches Budget durch eine neue Generation eröffnen. Eine autorisierte Reparatur oder ein geänderter Vertrag bleibt ein expliziter neuer Anlass.
+9. Jede Lifecycle-Anforderung speichert ihre Vertragsrevision atomar mit der neuen Sollgeneration. Der Driftvergleich bezieht sich damit auf den bereits angeforderten Vertrag; ein fehlgeschlagener neuer Vertrag kann nicht wiederholt als unversucht eingeplant werden. Erfolgreiche Readiness bleibt separat an `readiness_revision` und `completed_generation` gebunden.
+9. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
+10. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
 
 ### Self-Service-Datenexport über Host-Worker
 
@@ -1392,6 +1394,10 @@ Nachweis gesperrt.
    der Mutation.
 5. Fehlende Background-Fähigkeiten bleiben als `waiting`, `blocked` oder
    `unknown` sichtbar. Der dauerhafte Auftrag bleibt claimbar.
+6. Nach einem erfolgreichen New-Realm-Lauf prüft der Live-Postflight den
+   nun vorhandenen Realm als eigenen Bestands-Realm. Instanzdetail,
+   Tenant-IAM-Rollenabgleich und Aktivierung laufen über denselben privaten
+   Provisioner, damit der App-Prozess keine Provisioner-Credentials benötigt.
 
 ### Szenario 23: Vererbte Account-Einladung je Studio-Installation und Instanz
 

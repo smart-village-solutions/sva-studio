@@ -1,0 +1,4 @@
+{
+  "prNumber": 1550,
+  "body": "Das SSF-Image behält den von der gemeinsamen Auth-Runtime benötigten Waste-Vertrag. Damit startet die Image-Verifikation wieder, während Waste-Plugin und Waste-Job-Runtime ausgeschlossen bleiben."
+}

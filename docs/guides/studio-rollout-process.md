@@ -1,8 +1,10 @@
-# Kanonischer Studio-Rollout für Dev, Staging und Production
+# Kanonischer Studio-Rollout für zentrale Umgebungen und Kassel-Standalone
 
 Status: **verbindlicher Betriebsvertrag**
 
-Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-Rollouts. Technische Wahrheit sind die Workflows [Build](../../.github/workflows/build.yml) und [Promote](../../.github/workflows/promote.yml). Andere Runbooks dürfen Diagnose, Recovery oder Infrastrukturaufbau beschreiben, aber keinen konkurrierenden Deploymentpfad definieren.
+Dieses Dokument legt die verbindlichen Rolloutpfade fest. Für die zentralen Studio-Umgebungen Dev, Staging und Production sind die Workflows [Build](../../.github/workflows/build.yml) und [Promote](../../.github/workflows/promote.yml) maßgeblich. Für die eigenständige Kasseler Studio-/SSF-Installation gilt der ausdrücklich zugelassene [Standalone-Pfad](#kassel-standalone-zugelassener-rolloutpfad). Andere Runbooks dürfen diese Vorgaben konkretisieren sowie Diagnose, Recovery oder Infrastrukturaufbau beschreiben, aber keine weiteren Deploymentpfade freigeben.
+
+Die folgenden Abschnitte von „Unveränderliche Grundregeln“ bis einschließlich „Diagnose und Recovery“ beschreiben den zentralen Promote-Pfad unter `*.smart-village.app`. Seine GitHub-Environments, Swarm-Ziele und Staging-Paritätsnachweise gelten nicht für Kassel; dort gelten die im Standalone-Abschnitt festgelegten Prüfungen.
 
 ## Unveränderliche Grundregeln
 
@@ -207,6 +209,21 @@ Lokale Befehle wie `env:status:*`, `env:doctor:*`, `env:precheck:*` und `env:smo
 
 Historische Reports unter `docs/reports/`, zeitgebundene Staging-Unterlagen unter `docs/staging/`, PR-Dokumente unter `docs/pr/`, Planungsunterlagen unter `docs/superpowers/` und archivierte OpenSpec-Changes sind Evidenz, aber keine Bedienanleitung.
 
+## Kassel-Standalone: zugelassener Rolloutpfad
+
+Die eigenständige Studio-/SSF-Installation unter `/root/projects/sva-studio-ssf` mit Studio-Root `https://studio.dialog.kassel.de` ist kein Ziel des zentralen `Promote`-Workflows. Kassel besitzt keine separate Staging-Instanz. Ein beauftragtes Update dieser Installation darf regulär über den bestehenden Standalone-Pfad erfolgen; die Aufnahme in `Promote` ist dafür keine Voraussetzung.
+
+Verbindliche Betriebsdetails stehen im [Kasseler Standalone-Runbook](../operations/ssf-standalone-hosts.md), insbesondere unter [„Eigenständiger Provisioner“](../operations/ssf-standalone-hosts.md#eigenständiger-provisioner) und [„Folge-Releases auf der SSF-Distribution“](../operations/ssf-standalone-hosts.md#folge-releases-auf-der-ssf-distribution). Für diesen Pfad gelten:
+
+1. Das Zielimage stammt aus dem erfolgreichen zentralen `Build` und dessen Image-Verifikation. Es wird als unveränderlicher Digest aus `ghcr.io/smart-village-solutions/sva-studio-ssf` verwendet; OCI-Revision und Distribution müssen zum freigegebenen Release passen. Kein lokaler Ersatzbuild und kein Überspringen fehlgeschlagener Image-Prüfungen.
+2. Vor dem Update werden tatsächlicher Live-Digest, Konfiguration, betroffene Dienste und noch verarbeitbare Provisionierungsaufträge lesend geprüft. Der vollständige Diff vom laufenden zum neuen Release bestimmt die Schema-, Queue- und Host-/Issuer-Risiken.
+3. Vor jeder Deployment-Mutation liegen aktuelle, auf Lesbarkeit geprüfte Sicherungen der betroffenen Datenbanken und Konfiguration sowie ein Rückweg zum bisherigen Digest vor. Neue Schreibvorgänge und Migrationskompatibilität sind beim Rückweg zu berücksichtigen. Secrets bleiben in der geschützten Installationskonfiguration und außerhalb von Logs und Nachweisen.
+4. Die Aktivierung verwendet ausschließlich das bestehende [`deploy/standalone/up.sh`](../../deploy/standalone/up.sh) und die zugehörigen Compose-Dateien aus dem freigegebenen Release, einschließlich des benötigten Kassel-Ingress-Overlays. Der Migrationsschritt muss erfolgreich sein, bevor App und Provisioner mit demselben geprüften Digest aktualisiert werden.
+5. Bei Schema-, Queue-, Distributions- oder Host-/Issuer-Wechseln gelten die strengeren Cutover- und Kompatibilitätsprüfungen des Standalone-Runbooks. Die vereinfachte Patch-Abnahme darf diese nicht ersetzen.
+6. Erfolgreich ist das Update erst nach Prüfung der tatsächlich laufenden Digests von App und Provisioner, Live/Ready und der betroffenen authentifizierten SSF-Abläufe. Release, Backup, Ergebnisse und Rückweg werden redigiert dokumentiert. Ein grüner zentraler Staging-Lauf ersetzt diese Kasseler Abnahme nicht; fehlgeschlagene Prüfungen stoppen den Ablauf.
+
+Diese Ausnahme gilt ausschließlich für die Kasseler Studio-/SSF-Installation. Sie erweitert weder den zentralen Promote-Vertrag noch erlaubt sie direkte Änderungen an dessen Swarm-Stacks. Der separate SSF-Gateway-/Frontend-Rollout gehört nicht zu diesem Studio-Updatepfad.
+
 ## Verbindliche Referenzen
 
 - Workflow: [`.github/workflows/build.yml`](../../.github/workflows/build.yml)
@@ -216,3 +233,4 @@ Historische Reports unter `docs/reports/`, zeitgebundene Staging-Unterlagen unte
 - Sicherheits- und Evidenzvertrag: [`08-cross-cutting-concepts.md`](../architecture/08-cross-cutting-concepts.md)
 - Backup-Entscheidung: [`ADR-048`](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
 - Infrastruktur, Diagnose und Restore: [`swarm-deployment-runbook.md`](../operations/swarm-deployment-runbook.md)
+- Zugelassener Kasseler Standalone-Pfad: [`ssf-standalone-hosts.md`](../operations/ssf-standalone-hosts.md)

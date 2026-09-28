@@ -1,0 +1,4 @@
+{
+  "prNumber": 1551,
+  "body": "Die Rollout-Dokumentation erlaubt für die eigenständige Kasseler Studio-/SSF-Installation ausdrücklich den bestehenden Standalone-Updatepfad. Geprüfte Images, Datensicherungen, ein Rückweg und die Prüfung der betroffenen Funktionen bleiben verpflichtend. Der zentrale Rollout für Dev, Staging und Production bleibt unverändert."
+}

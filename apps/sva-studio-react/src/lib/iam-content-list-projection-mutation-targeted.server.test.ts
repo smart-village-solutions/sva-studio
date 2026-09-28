@@ -68,6 +68,7 @@ describe('targeted content projection mutations', () => {
       expect.objectContaining({
         actorAccountId: 'account-1',
         actorDisplayName: 'Redaktion',
+        authorDisplayMode: 'organization',
         contentType: 'poi.point-of-interest',
         mutationRef: 'mutation-1',
         operation: 'update',
@@ -76,6 +77,47 @@ describe('targeted content projection mutations', () => {
       })
     );
   });
+
+  it.each([undefined, 'org-1'])(
+    'attributes a personal Mainserver event mutation to the actor (organization: %s)',
+    async (organizationId) => {
+      state.getSvaMainserverEvent.mockResolvedValue({
+        id: 'event-personal-1',
+        title: 'Persönlicher Termin',
+        contentType: 'events.event-record',
+        dates: [],
+        addresses: [],
+        contacts: [],
+        urls: [],
+        tags: [],
+        createdAt: '2026-09-25T13:59:00.000Z',
+        updatedAt: '2026-09-25T13:59:00.000Z',
+      });
+
+      await refreshProjectedContentsForMainserverMutation({
+        contentType: 'events.event-record',
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'kc-user-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'mutation-personal-1',
+        actingPrincipalType: 'user',
+        organizationId,
+        credentialFingerprint: 'a'.repeat(64),
+        operation: 'create',
+        entityId: 'event-personal-1',
+      });
+
+      expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorAccountId: 'account-1',
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Redaktion',
+          sourceEntityId: 'event-personal-1',
+        })
+      );
+    }
+  );
 
   it('records survey mutations through the targeted projection loader', async () => {
     state.getSvaMainserverSurvey.mockResolvedValue({

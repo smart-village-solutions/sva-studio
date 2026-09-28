@@ -2146,18 +2146,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/sva-mainserver/src/types.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/server-loaders.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-LOADERS-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Management-Loaderdatei in kleinere serverseitige Ladebausteine zerlegen (packages/auth-runtime/src/waste-management/server-loaders.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/waste-management/server-loaders.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-LOADERS-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "lange Waste-Management-Loaderfunktionen in kleinere Lade- und Mapping-Schritte aufteilen (packages/auth-runtime/src/waste-management/server-loaders.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.tools-panel.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-TOOLS-001",
       "ticketSystem": "backlog",
@@ -2338,11 +2326,35 @@
       "status": "open",
       "summary": "Waste-Operations-Handler in kleinere StartJob- und Preview-Bausteine splitten (packages/waste-management-runtime/src/handlers/operations.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/waste-management/server.ts:fileLines": {
+    "packages-default:packages/waste-management-runtime/src/server-handlers.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-002",
       "ticketSystem": "backlog",
       "status": "open",
-      "summary": "Waste-Server-Fassade in thematische Handler-Gruppen aufteilen (packages/auth-runtime/src/waste-management/server.ts)"
+      "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/server-handlers.ts:functionLines": {
+      "ticketId": "QUAL-WASTE-COMPLEXITY-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:cyclomaticComplexity": {
+      "ticketId": "QUAL-WASTE-LOADERS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Bestehende Waste-Loader-Komplexitaet im neuen Owner schrittweise zerlegen (packages/waste-management-runtime/src/server-loaders.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-LOADERS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Management-Loaderdatei in kleinere serverseitige Ladebausteine zerlegen (packages/waste-management-runtime/src/server-loaders.ts)"
+    },
+    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:functionLines": {
+      "ticketId": "QUAL-WASTE-LOADERS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "lange Waste-Management-Loaderfunktionen in kleinere Lade- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/server-loaders.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/components/Header.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-003",

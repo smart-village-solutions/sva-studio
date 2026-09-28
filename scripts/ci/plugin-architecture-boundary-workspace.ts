@@ -10,7 +10,11 @@ export const ALLOWED_WORKSPACE_DEPENDENCIES = new Set(['@sva/plugin-sdk', '@sva/
 const PLUGIN_SPECIFIC_WORKSPACE_DEPENDENCIES = new Map<string, ReadonlySet<string>>([
   [
     '@sva/plugin-waste-management',
-    new Set(['@sva/waste-management-contracts', '@sva/auth-runtime']),
+    new Set([
+      '@sva/waste-management-contracts',
+      '@sva/waste-management-runtime',
+      '@sva/auth-runtime',
+    ]),
   ],
 ]);
 export const FORBIDDEN_HOST_WORKSPACE_PACKAGES = new Set([
@@ -79,13 +83,20 @@ export const isAllowedWorkspaceDependency = (
 
 export const isAllowedWorkspaceModuleSpecifier = (
   pluginPackageName: string,
-  moduleSpecifier: string
+  moduleSpecifier: string,
+  sourcePath: string
 ): boolean => {
+  const wasteServerSource =
+    pluginPackageName === '@sva/plugin-waste-management' &&
+    /packages\/plugin-waste-management\/src\/server(?:-context|-loaders)?\.ts$/.test(sourcePath);
   if (
     pluginPackageName === '@sva/plugin-waste-management' &&
     (moduleSpecifier === '@sva/auth-runtime' || moduleSpecifier.startsWith('@sva/auth-runtime/'))
   ) {
-    return moduleSpecifier === '@sva/auth-runtime/waste-host';
+    return wasteServerSource && moduleSpecifier === '@sva/auth-runtime/plugin-server-host';
+  }
+  if (moduleSpecifier === '@sva/waste-management-runtime/server') {
+    return wasteServerSource;
   }
   const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
   return workspacePackageName

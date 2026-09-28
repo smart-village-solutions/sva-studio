@@ -202,16 +202,11 @@ const saverMocks = vi.hoisted(() => ({
   saveWasteTourDateShift: vi.fn(async () => null),
 }));
 
-vi.mock('./server-context.js', () => ({
-  sharedWasteManagementDeps: sharedWasteManagementDepsMock,
-  withAuthenticatedWasteManagementHandler: withAuthenticatedWasteManagementHandlerMock,
-}));
-
-vi.mock('@sva/waste-management-runtime/server', () => ({
+vi.mock('./handlers.js', () => ({
   wasteManagementCoreHandlers: coreHandlerMocks,
 }));
 
-vi.mock('./server-loaders.js', () => ({
+const serverLoadersMock = {
   wasteManagementOverviewLoaders: {
     loadWasteMainserverSyncStatus: loaderMocks.loadWasteMainserverSyncStatus,
     loadMasterDataOverview: loaderMocks.loadMasterDataOverview,
@@ -278,9 +273,15 @@ vi.mock('./server-loaders.js', () => ({
     createWasteTourDateShift: saverMocks.createWasteTourDateShift,
     saveWasteTourDateShift: saverMocks.saveWasteTourDateShift,
   },
-}));
+};
 
-import { wasteManagementHandlers } from './server.js';
+import { createWasteManagementHandlers } from './server-handlers.js';
+
+const wasteManagementHandlers = createWasteManagementHandlers({
+  host: sharedWasteManagementDepsMock,
+  withAuthenticatedHandler: withAuthenticatedWasteManagementHandlerMock,
+  loaders: serverLoadersMock,
+} as unknown as Parameters<typeof createWasteManagementHandlers>[0]);
 
 describe('wasteManagementHandlers', () => {
   beforeEach(() => {
@@ -796,10 +797,13 @@ describe('wasteManagementHandlers', () => {
   it('binds the authenticated actor to Waste audit events', async () => {
     const request = new Request('https://studio.test/api/v1/waste-management/history');
     await wasteManagementHandlers.getHistory(request);
-    const [, , deps] = coreHandlerMocks.getWasteManagementHistoryInternal.mock.calls[0] as unknown as [
+    const [, , deps] = coreHandlerMocks.getWasteManagementHistoryInternal.mock
+      .calls[0] as unknown as [
       Request,
       typeof requestContextMock,
-      { emitAuditEvent: typeof import('./server-context.js').sharedWasteManagementDeps.emitAuditEvent },
+      {
+        emitAuditEvent: typeof import('./server-context.js').sharedWasteManagementDeps.emitAuditEvent;
+      },
     ];
     const event = {
       eventType: 'plugin_action_authorized',

@@ -6,26 +6,26 @@ const createPluginOperationJobMock = vi.hoisted(() => vi.fn());
 const markPluginOperationEnqueueFailedMock = vi.hoisted(() => vi.fn(async () => undefined));
 const queuePluginOperationJobMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock('../iam-account-management/shared.js', () => ({
+import { createWasteJobStarter, type WasteJobHost } from './server-job-start.js';
+
+const startPluginOperationJobFromFacade = createWasteJobStarter({
   reserveIdempotency: reserveIdempotencyMock,
   completeIdempotency: completeIdempotencyMock,
-}));
-
-vi.mock('../plugin-operations/core.shared.js', () => ({
   createPluginOperationJob: createPluginOperationJobMock,
   markPluginOperationEnqueueFailed: markPluginOperationEnqueueFailedMock,
+  queuePluginOperationJob: queuePluginOperationJobMock,
   createJsonItemResponse: (status: number, item: unknown, requestId: string | undefined) =>
     new Response(JSON.stringify({ data: item, requestId }), {
       status,
       headers: { 'Content-Type': 'application/json' },
     }),
-}));
-
-vi.mock('../plugin-operations/runner.js', () => ({
-  queuePluginOperationJob: queuePluginOperationJobMock,
-}));
-
-import { startPluginOperationJobFromFacade } from './operations-support.js';
+  createApiError: (status: number, code: string, message: string, requestId?: string) =>
+    new Response(JSON.stringify({ error: { code, message }, requestId }), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  toPayloadHash: () => 'hash',
+} as WasteJobHost);
 
 describe('waste-management operations support', () => {
   const input = {

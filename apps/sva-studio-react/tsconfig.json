@@ -48,7 +48,7 @@
       "@sva/auth-runtime/runtime-health": ["../../packages/auth-runtime/src/runtime-health.ts"],
       "@sva/auth-runtime/runtime-routes": ["../../packages/auth-runtime/src/runtime-routes.ts"],
       "@sva/auth-runtime/server": ["../../packages/auth-runtime/dist/server.d.ts"],
-      "@sva/auth-runtime/waste-host": ["../../packages/auth-runtime/dist/waste-host.d.ts"],
+      "@sva/auth-runtime/plugin-server-host": ["../../packages/auth-runtime/dist/plugin-server-host.d.ts"],
       "@sva/auth-runtime/waste-readiness": ["../../packages/auth-runtime/dist/waste-readiness.d.ts"],
       "@sva/data-repositories": ["../../packages/data-repositories/src/index.ts"],
       "@sva/data-repositories/server": ["../../packages/data-repositories/src/server.ts"],

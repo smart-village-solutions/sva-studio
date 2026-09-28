@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
+import { deriveWasteTenantDatabaseNames } from '@sva/waste-management-runtime/repositories';
 
 import {
   readPublicWasteBootstrapStateFromEnvironment,

@@ -53,6 +53,7 @@ describe('waste management operations runtime', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.doUnmock('@sva/server-runtime');
+    vi.doUnmock('@sva/waste-management-runtime/repositories');
     vi.doUnmock('@sva/data-repositories');
     vi.doUnmock('@sva/sva-mainserver/server');
     vi.doUnmock('./waste-management-operations.import.js');
@@ -391,8 +392,8 @@ describe('waste management operations runtime', () => {
       enabled: true,
     }));
 
-    vi.doMock('@sva/server-runtime', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/server-runtime')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         resolveWasteDataSource,
@@ -672,8 +673,8 @@ describe('waste management operations runtime', () => {
 
   it('reads import workbooks from inline base64 data urls', async () => {
     const repository = createRepositoryMock();
-    vi.doMock('@sva/data-repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1498,8 +1499,8 @@ const createRuntimeWithRepositoryMock = async (
   workbookBytes?: Uint8Array,
   query: SqlClient['query'] = vi.fn(async () => ({ rowCount: 0, rows: [] }))
 ) => {
-  vi.doMock('@sva/data-repositories', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@sva/data-repositories')>();
+  vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
     return {
       ...actual,
       createWasteMasterDataRepository: vi.fn(() => repository),

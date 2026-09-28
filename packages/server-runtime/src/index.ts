@@ -51,7 +51,6 @@ export type {
   ExternalInterfaceSettingsRecord,
   ResolvedExternalInterface,
 } from '@sva/core';
-export type { ResolvedWasteDataSource, WasteRuntimeErrorCode } from './waste/data-source.server.js';
 export {
   buildExternalInterfaceSecretConfigAad,
   ExternalInterfaceRuntimeError,
@@ -59,15 +58,6 @@ export {
   runExternalInterfaceConnectionCheck,
   sanitizeExternalInterfaceRecord,
 } from './external-interfaces.server.js';
-export {
-  resolveWasteDataSource,
-  runWasteConnectionCheck,
-  WasteRuntimeError,
-} from './waste/data-source.server.js';
-export {
-  deriveWasteTenantDatabaseNames,
-  type WasteTenantDatabaseNames,
-} from './waste/tenant-database-identifiers.server.js';
 export type { JsonErrorResponseOptions } from './server/json-error-response.server.js';
 export { toJsonErrorResponse } from './server/json-error-response.server.js';
 export type {

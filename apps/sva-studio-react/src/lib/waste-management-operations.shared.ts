@@ -15,7 +15,7 @@ import type {
 } from '@sva/waste-management-contracts';
 import { revealField } from '@sva/auth-runtime/server';
 import { readPluginOperationInput } from '@sva/auth-runtime/server';
-import { resolveWasteDataSource, type ResolvedWasteDataSource } from '@sva/server-runtime';
+import { resolveWasteDataSource, type ResolvedWasteDataSource } from '@sva/waste-management-runtime/repositories';
 import { Pool } from 'pg';
 
 import type {

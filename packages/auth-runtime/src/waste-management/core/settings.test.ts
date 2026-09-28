@@ -2,29 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
-const resolveWasteDataSourceMock = vi.hoisted(() =>
-  vi.fn(async () => ({ databaseUrl: 'postgres://waste', schemaName: 'wm' }))
-);
-const runWasteConnectionCheckMock = vi.hoisted(() =>
-  vi.fn(async () => ({
-    instanceId: 'tenant-a',
-    checkedAt: '2026-05-10T10:00:00.000Z',
-    checkStatus: 'failed',
-    visibleStatus: 'error',
-    errorCode: 'connection_failed',
-    errorMessage: 'Probe failed',
-  }))
-);
-
-vi.mock('@sva/server-runtime', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/server-runtime')>();
-  return {
-    ...actual,
-    resolveWasteDataSource: resolveWasteDataSourceMock,
-    runWasteConnectionCheck: runWasteConnectionCheckMock,
-  };
-});
-
 import { wasteManagementSettingsHandlers } from './settings.js';
 
 const actor: AuthenticatedRequestContext = {
@@ -82,14 +59,13 @@ const createDeps = () => ({
   })),
   protectSecret: vi.fn((value: string) => `enc:${value}`),
   revealSecret: vi.fn(() => 'revealed'),
+  checkWasteConnection: vi.fn(),
   saveExternalInterfaceConnectionCheck: vi.fn(async () => undefined),
   emitAuditEvent: vi.fn(async () => undefined),
 });
 
 describe('waste-management settings handlers', () => {
   beforeEach(() => {
-    resolveWasteDataSourceMock.mockClear();
-    runWasteConnectionCheckMock.mockClear();
   });
 
   it('retries failed tenant provisioning with a new generation and a correlated plugin job', async () => {
@@ -412,7 +388,7 @@ describe('waste-management settings handlers', () => {
     );
 
     expect(response.status).toBe(409);
-    expect(runWasteConnectionCheckMock).not.toHaveBeenCalled();
+    expect(deps.checkWasteConnection).not.toHaveBeenCalled();
   });
 
   it('still returns guard errors before the managed-via-interfaces rejection', async () => {

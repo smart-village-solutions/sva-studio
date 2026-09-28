@@ -71,6 +71,9 @@ vi.mock('@sva/server-runtime', () => ({
   toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: vi.fn(),
   withRequestContext: async (_input: unknown, work: () => Promise<unknown>) => work(),
+}));
+
+vi.mock('@sva/waste-management-runtime/repositories', () => ({
   resolveWasteDataSource: hostCapabilityMocks.resolveWasteDataSource,
   runWasteConnectionCheck: hostCapabilityMocks.runWasteConnectionCheck,
 }));

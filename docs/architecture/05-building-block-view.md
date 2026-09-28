@@ -457,7 +457,8 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/waste-management-contracts` -> `@sva/core`, `@sva/plugin-sdk`; `@sva/data-repositories`, `@sva/iam-governance` und `@sva/instance-registry` beziehen ihre Waste-Fachverträge direkt daraus
 - `@sva/plugin-sdk` definiert zusätzlich den fail-closed `contentHistory`-Contribution-Vertrag und den gemeinsamen History-Read-Client; `@sva/studio-ui-react` stellt dafür die schreibgeschützte, barrierefreie Darstellung bereit
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
-- `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`, `@sva/waste-management-contracts` (Waste-Datenquellentypen)
+- `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`; die allgemeine Schnittstellenauflösung bleibt hier, Waste-Datenquellen und Tenant-Datenbanknamen liegen in `@sva/waste-management-runtime/repositories`
+- `@sva/waste-management-runtime` -> `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts` für Waste-Fachpersistenz und Datenquellenauflösung
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
 - `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module

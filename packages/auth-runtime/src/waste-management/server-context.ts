@@ -1,11 +1,10 @@
 import {
   createSdkLogger,
-  resolveWasteDataSource,
-  runWasteConnectionCheck,
   toJsonErrorResponse,
   toSafeLogPath,
   withRequestContext,
 } from '@sva/server-runtime';
+import { resolveWasteDataSource, runWasteConnectionCheck } from '@sva/waste-management-runtime/repositories';
 import { Pool } from 'pg';
 import {
   listExternalInterfaceRecords,

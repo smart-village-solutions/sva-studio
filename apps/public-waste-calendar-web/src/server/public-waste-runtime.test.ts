@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
+import { deriveWasteTenantDatabaseNames } from '@sva/waste-management-runtime/repositories';
 
 import { createPublicWasteRuntime } from './public-waste-runtime.js';
 

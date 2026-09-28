@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildExternalInterfaceSecretConfigAad } from '../external-interfaces.server.js';
+import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import {
   WasteRuntimeError,
   resolveWasteDataSource,

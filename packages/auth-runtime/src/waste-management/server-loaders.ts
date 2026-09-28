@@ -8,7 +8,6 @@ import {
 import {
   findSelectedWasteManagementInterfaceRecord,
   deriveWasteMainserverSyncStatus,
-  buildWasteAnnualTourTransferFingerprint,
   buildWasteAnnualTourTransferPreview,
   toWasteAnnualTourTransferPublicPreview,
   isWasteTourValidityApplicable,
@@ -41,14 +40,13 @@ import {
   type WasteTourStatusBulkUpdateInput,
   type WasteTourStatusBulkUpdateResult,
   type WasteAnnualTourTransferCreateInput,
-  type WasteAnnualTourTransferMappedTour,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
-  type WasteAnnualTourTransferSource,
   type WasteTourValidityBulkUpdateInput,
   type WasteTourValidityBulkUpdateResult,
 } from '@sva/waste-management-contracts';
-import { createSdkLogger, resolveWasteDataSource } from '@sva/server-runtime';
+import { createSdkLogger } from '@sva/server-runtime';
+import { resolveWasteDataSource } from '@sva/waste-management-runtime/repositories';
 import {
   listWasteManagementAuditRecords,
   listWasteManagementTechnicalAuditRecords,

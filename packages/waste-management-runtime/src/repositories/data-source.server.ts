@@ -1,12 +1,9 @@
 import type { ExternalInterfaceRecord, ExternalInterfaceRuntimeErrorCode } from '@sva/core';
+import { ExternalInterfaceRuntimeError, resolveExternalInterface } from '@sva/server-runtime';
 import type {
   WasteManagementDataSourceStatus,
   WasteTenantProvisioningRecord,
 } from '@sva/waste-management-contracts';
-import {
-  ExternalInterfaceRuntimeError,
-  resolveExternalInterface,
-} from '../external-interfaces.server.js';
 
 export type WasteRuntimeErrorCode =
   | 'not_configured'

@@ -16,7 +16,6 @@ import {
 } from './settings-write-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
-import { startPluginOperationJobFromFacade } from './operations-support.js';
 
 const { updateWasteSettingsSchema } = wasteManagementSettingsSchemas;
 
@@ -64,7 +63,7 @@ export const wasteManagementSettingsHandlers = {
     }
 
     const requested = await deps.requestWasteTenantProvisioning(instanceId);
-    const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
+    const response = await requireDeps(deps.startPluginOperationJob, 'startPluginOperationJob')({
       instanceId,
       actorAccountId: actorResolution.actor.actorAccountId,
       endpoint: '/api/v1/waste-management/settings/provisioning/retry',

@@ -12,7 +12,6 @@ vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
 
 import { getWasteManagementImportCatalogEntry } from '@sva/waste-management-contracts';
 
-import * as operationsSupport from './operations-support.js';
 import { wasteManagementOperationHandlers } from './operations.js';
 
 const mockedGetWasteManagementImportCatalogEntry = vi.mocked(getWasteManagementImportCatalogEntry);
@@ -797,11 +796,9 @@ describe('waste-management operation handlers', () => {
     );
   });
 
-  it('uses the facade fallback for migrations, preserves optional payload fields as undefined, and falls back to job_start_failed', async () => {
+  it('uses the host job binding for migrations, preserves optional payload fields as undefined, and falls back to job_start_failed', async () => {
     const emitAuditEvent = vi.fn(async () => undefined);
-    const facadeSpy = vi
-      .spyOn(operationsSupport, 'startPluginOperationJobFromFacade')
-      .mockResolvedValueOnce(
+    const facadeSpy = vi.fn().mockResolvedValueOnce(
         new Response(JSON.stringify({ data: { id: 42 } }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
@@ -814,6 +811,7 @@ describe('waste-management operation handlers', () => {
       {
         ...createDeps(),
         emitAuditEvent,
+        startPluginOperationJob: facadeSpy,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: [

@@ -6,7 +6,6 @@ import { wasteManagementOperationsContract } from '@sva/waste-management-contrac
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { asApiItem, createApiError } from '../../shared/request-helpers.js';
-import { startPluginOperationJobFromFacade } from './operations-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireDeps } from './utils.js';
 
@@ -126,7 +125,7 @@ export const enqueueWasteTypesSyncAfterMutation = async (
       return { syncStatus: 'failed' };
     }
 
-    const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
+    const response = await requireDeps(deps.startPluginOperationJob, 'startPluginOperationJob')({
       instanceId: actorResolution.actor.instanceId,
       actorAccountId: actorResolution.actor.actorAccountId,
       endpoint: 'POST:/api/v1/waste-management/tools/sync-waste-types',

@@ -19,6 +19,16 @@ const hostCapabilityMocks = vi.hoisted(() => ({
   emitAuthAuditEvent: vi.fn(),
   resolveEffectivePermissions: vi.fn(),
   resolveActorInfo: vi.fn(),
+  startPluginOperationJobFromFacade: vi.fn(),
+  storePluginOperationInput: vi.fn(),
+}));
+
+vi.mock('./core/operations-support.js', () => ({
+  startPluginOperationJobFromFacade: hostCapabilityMocks.startPluginOperationJobFromFacade,
+}));
+
+vi.mock('../plugin-operation-artifacts.server.js', () => ({
+  storePluginOperationInput: hostCapabilityMocks.storePluginOperationInput,
 }));
 
 vi.mock('../iam-account-management/shared.js', () => ({
@@ -79,6 +89,12 @@ describe('sharedWasteManagementDeps', () => {
     expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
     expect(sharedWasteManagementDeps.resolvePermissions).toBe(
       hostCapabilityMocks.resolveEffectivePermissions
+    );
+    expect(sharedWasteManagementDeps.startPluginOperationJob).toBe(
+      hostCapabilityMocks.startPluginOperationJobFromFacade
+    );
+    expect(sharedWasteManagementDeps.storeWasteImportSource).toBe(
+      hostCapabilityMocks.storePluginOperationInput
     );
     const request = new Request('https://studio.example/api/v1/waste-management/settings');
     const context = { sessionId: 'session-1', user: { id: 'user-1', roles: [] } };

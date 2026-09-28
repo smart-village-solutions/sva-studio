@@ -19,11 +19,13 @@ import { emitAuthAuditEvent } from '../audit-events.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { resolveActorInfo as resolveIamActorInfo } from '../iam-account-management/shared.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
+import { storePluginOperationInput } from '../plugin-operation-artifacts.server.js';
 import { buildLogContext } from '../log-context.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
 import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import { createApiError } from '../shared/request-helpers.js';
+import { startPluginOperationJobFromFacade } from './core/operations-support.js';
 
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 
@@ -73,6 +75,8 @@ export const withAuthenticatedWasteManagementHandler = (
   });
 
 export const sharedWasteManagementDeps = {
+  startPluginOperationJob: startPluginOperationJobFromFacade,
+  storeWasteImportSource: storePluginOperationInput,
   resolveActorInfo: (
     request: Request,
     context: AuthenticatedRequestContext

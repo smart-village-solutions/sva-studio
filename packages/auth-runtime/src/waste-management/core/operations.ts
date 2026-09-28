@@ -4,7 +4,6 @@ import {
   wasteManagementOperationsContract,
 } from '@sva/waste-management-contracts';
 import { z } from 'zod';
-import { storePluginOperationInput } from '../../plugin-operation-artifacts.server.js';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
@@ -20,7 +19,6 @@ import {
   getAuthorizedWasteManagementInstanceId,
 } from './auth.js';
 import { wasteManagementOperationSchemas } from './operation-schemas.js';
-import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { loadConfiguredWasteSettings } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireDeps } from './utils.js';
@@ -201,7 +199,7 @@ const startToolJob = async (
     normalizedData.targetSchema = boundTargetSchema;
   }
 
-  const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)(
+  const response = await requireDeps(deps.startPluginOperationJob, 'startPluginOperationJob')(
     withActiveJobConflictPolicy(
       {
         instanceId,
@@ -280,7 +278,7 @@ export const wasteManagementOperationHandlers = {
       return createApiError(413, 'invalid_request', 'Importdatei ist zu groß.', requestId);
     }
     const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
-    const blobRef = await (deps.storeWasteImportSource ?? storePluginOperationInput)({
+    const blobRef = await requireDeps(deps.storeWasteImportSource, 'storeWasteImportSource')({
       instanceId,
       body,
       contentType,

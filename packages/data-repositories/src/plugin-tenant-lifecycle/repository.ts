@@ -34,10 +34,10 @@ const createRequestLifecycle =
         `
 INSERT INTO iam.instance_plugin_lifecycle (
   instance_id, plugin_id, access_state, readiness_status, desired_operation,
-  desired_generation, completed_generation, requested_at, updated_at
+  desired_generation, completed_generation, contract_revision, requested_at, updated_at
 )
 VALUES ($1, $2, CASE WHEN $3 = 'suspend' THEN 'suspended' ELSE 'active' END,
-  'pending', $3, 1, 0, NOW(), NOW())
+  'pending', $3, 1, 0, $4, NOW(), NOW())
 ON CONFLICT (instance_id, plugin_id) DO UPDATE
 SET access_state = CASE
       WHEN EXCLUDED.desired_operation = 'suspend' THEN 'suspended'
@@ -45,6 +45,7 @@ SET access_state = CASE
     END,
     readiness_status = 'pending',
     desired_operation = EXCLUDED.desired_operation,
+    contract_revision = EXCLUDED.contract_revision,
     desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1,
     claimed_generation = NULL,
     active_job_id = NULL,
@@ -60,7 +61,7 @@ WHERE iam.instance_plugin_lifecycle.active_job_id IS NULL
   AND iam.instance_plugin_lifecycle.claimed_generation IS NULL
 RETURNING *;
 `,
-        [input.instanceId, input.pluginId, input.operation]
+        [input.instanceId, input.pluginId, input.operation, input.contractRevision ?? null]
       )
     );
     if (!record) throw new Error('plugin_tenant_lifecycle_request_conflict');

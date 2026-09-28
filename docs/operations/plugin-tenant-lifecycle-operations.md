@@ -123,6 +123,20 @@ mit zurückgesetztem Versuchszähler. Eine
 bereits geplante Lifecycle-Kontrolle startet für diesen unveränderten terminalen
 Zustand ebenfalls keinen neuen Job.
 
+Die Vertragsrevision wird beim Anfordern einer Generation gemeinsam mit deren
+Sollzustand gespeichert. Nach erfolgreichem Vertrag A und fehlgeschlagenem
+Vertrag B erkennt die Planung dadurch B als bereits versucht: Bei terminalem
+Fehler bleibt sie gesperrt, bei retrybarem Fehler gilt dessen Frist. Ein neuer
+Vertrag C bleibt ein Anlass für Reconcile. Die zuletzt erfolgreiche
+Readiness-Revision und Abschlussgeneration werden dabei nicht vorgezogen;
+Readiness aus A belegt keine Bereitschaft für B.
+
+Historische Zeilen können noch A als Vertragsrevision enthalten, obwohl B
+bereits fehlgeschlagen ist. Ohne direkte Datenkorrektur kann nach dem Rollout
+ein weiterer, durch das Job-Budget begrenzter B-Lauf entstehen. Dessen Start
+speichert B; die Live-Abnahme muss anschließend den terminalen Zustand und
+mehrere automatische Kontrollen ohne weitere Generation nachweisen.
+
 Die Ursache zuerst über Jobevent und Lifecycle diagnostizieren und beheben.
 Danach die bestehende autorisierte Retry-/Repair-Aktion verwenden. Sie darf eine
 neue Generation anlegen; ein direktes Zurücksetzen von Attempts oder Queue-Zeilen

@@ -91,6 +91,12 @@ describe('plugin tenant lifecycle orchestrator', () => {
       lifecycle: expect.objectContaining({ claimedGeneration: 3, activeJobId: job.id }),
       job,
     });
+    expect(dependencies.repository.requestLifecycle).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      operation: 'provision',
+      contractRevision: 'speech-1:1',
+    });
     expect(dependencies.createJob).toHaveBeenCalledWith(
       expect.objectContaining({
         jobTypeId: 'speech.provisionTenant',

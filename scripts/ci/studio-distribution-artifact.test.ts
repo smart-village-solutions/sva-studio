@@ -198,7 +198,12 @@ describe('studio-distribution-artifact', () => {
     temporaryDirectories.push(temporaryDirectory);
     const deployRoot = path.join(temporaryDirectory, 'deploy');
     const outputRoot = path.join(temporaryDirectory, 'output');
-    for (const packageName of ['plugin-ssf', 'plugin-news', 'waste-management-runtime']) {
+    for (const packageName of [
+      'plugin-ssf',
+      'plugin-news',
+      'waste-management-contracts',
+      'waste-management-runtime',
+    ]) {
       mkdirSync(path.join(deployRoot, 'node_modules', '@sva', packageName), { recursive: true });
       mkdirSync(
         path.join(
@@ -219,6 +224,7 @@ describe('studio-distribution-artifact', () => {
     runArtifactCommand('write-manifest', outputRoot, 'ssf');
 
     expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'plugin-ssf'))).toBe(true);
+    expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'waste-management-contracts'))).toBe(true);
     for (const packageName of ['plugin-news', 'waste-management-runtime']) {
       expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', packageName))).toBe(false);
       expect(
@@ -257,7 +263,6 @@ describe('studio-distribution-artifact', () => {
         'plugin-projects',
         'plugin-surveys',
         'plugin-waste-management',
-        'waste-management-contracts',
         'waste-management-runtime',
       ],
     });

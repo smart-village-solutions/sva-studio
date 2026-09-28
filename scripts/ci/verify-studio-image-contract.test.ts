@@ -22,7 +22,6 @@ const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
   ssf: [
     ...regularPlugins.map((id) => `plugin-${id}`),
-    'waste-management-contracts',
     'waste-management-runtime',
   ],
 };
@@ -63,7 +62,7 @@ const validInput = (distribution: 'studio' | 'ssf') => {
             'waste-management-contracts',
             'waste-management-runtime',
           ]
-        : ['plugin-sdk', 'plugin-ssf'],
+        : ['plugin-sdk', 'plugin-ssf', 'waste-management-contracts'],
     chunkProvenance: {
       schemaVersion: 1,
       distribution,
@@ -194,6 +193,12 @@ describe('verify-studio-image-contract', () => {
       'missing ssf plugin',
       (input: ReturnType<typeof validInput>) => {
         input.packages = ['plugin-sdk'];
+      },
+    ],
+    [
+      'missing shared waste contracts',
+      (input: ReturnType<typeof validInput>) => {
+        input.packages = input.packages.filter((name) => name !== 'waste-management-contracts');
       },
     ],
     [

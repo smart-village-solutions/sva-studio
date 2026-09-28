@@ -64,7 +64,8 @@ const mocks = vi.hoisted(() => ({
 
 class MockDsrAccountSnapshotNotFoundError extends Error {}
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => mocks.logger,
   getWorkspaceContext: mocks.getWorkspaceContext,
   withRequestContext: mocks.withRequestContext,

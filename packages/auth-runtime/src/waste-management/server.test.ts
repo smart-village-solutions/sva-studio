@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sharedWasteManagementDepsMock = vi.hoisted(() => ({
   dependencyMarker: 'shared-waste-management-deps',
+  emitAuditEvent: vi.fn(async () => undefined),
 }));
 
 const requestContextMock = vi.hoisted(() => ({
   instanceId: 'instance-1',
+  user: { id: 'user-1', email: 'actor@example.test', displayName: 'Actor' },
 }));
 
 const withAuthenticatedWasteManagementHandlerMock = vi.hoisted(() =>
@@ -202,7 +204,7 @@ vi.mock('./server-context.js', () => ({
   withAuthenticatedWasteManagementHandler: withAuthenticatedWasteManagementHandlerMock,
 }));
 
-vi.mock('./core.js', () => ({
+vi.mock('@sva/waste-management-runtime/server', () => ({
   wasteManagementCoreHandlers: coreHandlerMocks,
 }));
 
@@ -754,12 +756,42 @@ describe('wasteManagementHandlers', () => {
       );
       expect(entry.internal).toHaveBeenCalledTimes(1);
       if ('deps' in entry) {
-        expect(entry.internal).toHaveBeenCalledWith(request, requestContextMock, entry.deps);
+        expect(entry.internal).toHaveBeenCalledWith(
+          request,
+          requestContextMock,
+          expect.objectContaining({
+            ...entry.deps,
+            emitAuditEvent: expect.any(Function),
+          })
+        );
       } else {
         expect(entry.internal).toHaveBeenCalledWith(request, requestContextMock);
       }
       expect(await response.text()).not.toHaveLength(0);
       vi.clearAllMocks();
     }
+  });
+
+  it('binds the authenticated actor to Waste audit events', async () => {
+    const request = new Request('https://studio.test/api/v1/waste-management/history');
+    await wasteManagementHandlers.getHistory(request);
+    const [, , deps] = coreHandlerMocks.getWasteManagementHistoryInternal.mock.calls[0] as unknown as [
+      Request,
+      typeof requestContextMock,
+      { emitAuditEvent: typeof import('./server-context.js').sharedWasteManagementDeps.emitAuditEvent },
+    ];
+    const event = {
+      eventType: 'plugin_action_authorized',
+      scope: { kind: 'instance', instanceId: 'instance-1' },
+    } as Parameters<typeof deps.emitAuditEvent>[0];
+
+    await deps.emitAuditEvent(event);
+
+    expect(sharedWasteManagementDepsMock.emitAuditEvent).toHaveBeenCalledWith({
+      ...event,
+      actorUserId: 'user-1',
+      actorEmail: 'actor@example.test',
+      actorDisplayName: 'Actor',
+    });
   });
 });

@@ -64,7 +64,8 @@ const authConfigBase = {
   authRealm: 'test',
 };
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => mocks.logger,
   getWorkspaceContext: () => ({ requestId: 'req-test', traceId: 'trace-test' }),
   initializeOtelSdk: vi.fn(async () => undefined),

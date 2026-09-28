@@ -1322,6 +1322,9 @@ importers:
 
   packages/plugin-waste-management:
     dependencies:
+      '@sva/auth-runtime':
+        specifier: workspace:*
+        version: file:packages/auth-runtime(@types/node@25.9.1)(typescript@7.0.2)
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -1628,6 +1631,9 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
     devDependencies:
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)

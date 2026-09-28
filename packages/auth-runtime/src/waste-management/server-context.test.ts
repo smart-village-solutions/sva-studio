@@ -44,6 +44,11 @@ vi.mock('../plugin-operation-artifacts.server.js', () => ({
 
 vi.mock('../iam-account-management/shared.js', () => ({
   resolveActorInfo: hostCapabilityMocks.resolveActorInfo,
+  reserveIdempotency: vi.fn(),
+  renewIdempotencyLease: vi.fn(),
+  releaseIdempotencyReservation: vi.fn(),
+  hasIdempotentAuditEvent: vi.fn(),
+  completeIdempotency: vi.fn(),
 }));
 
 vi.mock('../audit-events.js', () => ({
@@ -64,7 +69,8 @@ vi.mock('@sva/data-repositories/server', () => ({
   saveExternalInterfaceRecord: dataRepositoryMocks.saveExternalInterfaceRecord,
 }));
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => ({
     error: vi.fn(),
   }),
@@ -160,9 +166,20 @@ describe('sharedWasteManagementDeps', () => {
 
   it('binds the host services for waste settings and handler actions', async () => {
     expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
-    expect(sharedWasteManagementDeps.resolvePermissions).toBe(
-      hostCapabilityMocks.resolveEffectivePermissions
-    );
+    hostCapabilityMocks.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [{ action: 'waste-management.read', resourceType: 'waste-management' }],
+    });
+    await expect(sharedWasteManagementDeps.authorizeAction({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+      action: 'waste-management.read',
+      requestId: 'req-1',
+    })).resolves.toBeNull();
+    expect(hostCapabilityMocks.resolveEffectivePermissions).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+    });
     expect(sharedWasteManagementDeps.startPluginOperationJob).toBe(
       hostCapabilityMocks.startPluginOperationJobFromFacade
     );
@@ -190,6 +207,26 @@ describe('sharedWasteManagementDeps', () => {
     expect(sharedWasteManagementDeps.failWasteTenantProvisioningRequest).toBe(
       dataRepositoryMocks.failWasteTenantProvisioningRequest
     );
+  });
+
+  it('denies missing Waste permissions and fails closed when permission storage is unavailable', async () => {
+    const input = {
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+      action: 'waste-management.tours.manage',
+      requestId: 'req-2',
+    };
+    hostCapabilityMocks.resolveEffectivePermissions.mockResolvedValueOnce({ ok: true, permissions: [] });
+    const denied = await sharedWasteManagementDeps.authorizeAction(input);
+    expect(denied?.status).toBe(403);
+    await expect(denied?.json()).resolves.toMatchObject({
+      error: { code: 'forbidden', details: { action: input.action } },
+    });
+
+    hostCapabilityMocks.resolveEffectivePermissions.mockRejectedValueOnce(new Error('db down'));
+    const unavailable = await sharedWasteManagementDeps.authorizeAction(input);
+    expect(unavailable?.status).toBe(503);
+    await expect(unavailable?.json()).resolves.toMatchObject({ error: { code: 'database_unavailable' } });
   });
 
   it('blocks dedicated waste handlers when tenant lifecycle access is not ready', async () => {

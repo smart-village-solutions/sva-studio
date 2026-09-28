@@ -13,6 +13,7 @@ import {
 import { wasteManagementPluginTranslations } from './plugin.translations.js';
 import { wasteManagementTenantLifecycle } from './plugin.tenant-lifecycle.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
+import { wasteManagementServerRoutes } from './server-routes.js';
 import { wasteManagementModuleIam } from './waste-management.module-iam.js';
 import { WasteManagementPage } from './waste-management.page.js';
 
@@ -76,6 +77,20 @@ export const wasteManagementActionDefinitions = definePluginActions('waste-manag
     },
   },
 ]);
+
+const wasteManagementServerHandlerDefinitions = wasteManagementServerRoutes.map(
+  ([path, method, handlerName, actionId]) => {
+    const action = wasteManagementActionDefinitions.find((candidate) => candidate.id === actionId);
+    if (!action?.accessRequirement) throw new Error(`missing_waste_server_action:${actionId}`);
+    return {
+      id: `waste-management.${handlerName}.${method.toLowerCase()}`,
+      path,
+      method,
+      actionId,
+      accessRequirement: action.accessRequirement,
+    };
+  }
+);
 
 export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('waste-management', [
   {
@@ -267,6 +282,7 @@ export const pluginWasteManagement: PluginDefinition = {
   ],
   permissions: wasteManagementPermissionDefinitions,
   actions: wasteManagementActionDefinitions,
+  serverHandlers: wasteManagementServerHandlerDefinitions,
   moduleIam: wasteManagementModuleIam,
   auditEvents: wasteManagementAuditEventDefinitions,
   contentHistory: { mode: 'domain', reasonCode: 'domain_history' },

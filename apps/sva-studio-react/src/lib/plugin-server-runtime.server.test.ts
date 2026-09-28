@@ -69,6 +69,23 @@ describe('plugin server runtime loader', () => {
     expect(loadServerModule).toHaveBeenCalledWith(source('news'));
   });
 
+  it('registers no Waste HTTP binding when the plugin is absent from the snapshot', async () => {
+    const loadServerModule = vi.fn();
+    await expect(createPluginServerExecutionHandlersFromSnapshot({
+      pluginSources: [],
+      loadServerModule,
+    })).resolves.toEqual({});
+    expect(loadServerModule).not.toHaveBeenCalled();
+  });
+
+  it('loads all Waste bindings from the declared server entry', async () => {
+    const bindings = await createPluginServerExecutionHandlersFromSnapshot({
+      pluginSources: [source('waste-management')],
+    });
+    expect(Object.keys(bindings)).toHaveLength(62);
+    expect(bindings['waste-management.getHistory.get']).toBeTypeOf('function');
+  }, 15_000);
+
   it('fails closed for a missing factory or duplicate handler binding', async () => {
     await expect(
       createPluginServerExecutionHandlersFromSnapshot({

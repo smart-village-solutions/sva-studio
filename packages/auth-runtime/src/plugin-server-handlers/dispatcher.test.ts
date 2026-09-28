@@ -182,6 +182,17 @@ describe('plugin server handler dispatcher', () => {
     ).toThrow('ambiguous_plugin_server_endpoint');
   });
 
+  it('rejects a plugin endpoint that overlaps a fixed host path', () => {
+    const descriptor = wasteDescriptor();
+    expect(() =>
+      assertPluginServerHandlerCoverage({
+        descriptors: new Map([[descriptor.id, descriptor]]),
+        handlers: { [descriptor.id]: () => new Response('ok') },
+        reservedPaths: ['/api/v1/waste-management/$section'],
+      })
+    ).toThrow('plugin_server_endpoint_conflicts_with_host');
+  });
+
   it('keeps domain authorization and tenant readiness ahead of the Waste handler', async () => {
     const descriptor = wasteDescriptor();
     const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('ok'));

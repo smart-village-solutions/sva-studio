@@ -16,10 +16,19 @@ import {
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
+import { evaluateAuthorizeDecision } from '@sva/iam-core';
+import { createPermissionDenialDetailsForAction } from '@sva/core';
 
 import { emitAuthAuditEvent } from '../audit-events.js';
 import { revealField } from '../iam-account-management/encryption.js';
 import { resolveActorInfo as resolveIamActorInfo } from '../iam-account-management/shared.js';
+import {
+  completeIdempotency,
+  hasIdempotentAuditEvent,
+  releaseIdempotencyReservation,
+  renewIdempotencyLease,
+  reserveIdempotency,
+} from '../iam-account-management/shared.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import { storePluginOperationInput } from '../plugin-operation-artifacts.server.js';
 import { buildLogContext } from '../log-context.js';
@@ -28,6 +37,7 @@ import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/acc
 import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import { createApiError } from '../shared/request-helpers.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
+import { validateCsrf } from '../shared/request-security.js';
 
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 
@@ -77,6 +87,49 @@ export const withAuthenticatedWasteManagementHandler = (
   });
 
 export const sharedWasteManagementDeps = {
+  authorizeAction: async (input: {
+    instanceId: string;
+    keycloakSubject: string;
+    action: string;
+    requestId?: string;
+  }): Promise<Response | null> => {
+    let resolved: Awaited<ReturnType<typeof resolveEffectivePermissions>>;
+    try {
+      resolved = await resolveEffectivePermissions({
+        instanceId: input.instanceId,
+        keycloakSubject: input.keycloakSubject,
+      });
+    } catch {
+      return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', input.requestId);
+    }
+    if (!resolved.ok) {
+      return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', input.requestId);
+    }
+    const decision = evaluateAuthorizeDecision({
+      instanceId: input.instanceId,
+      action: input.action,
+      resource: { type: 'waste-management' },
+      context: input.requestId ? { requestId: input.requestId } : {},
+    }, resolved.permissions);
+    if (decision.allowed) return null;
+    return createApiError(
+      403,
+      'forbidden',
+      'Keine Berechtigung für diese Waste-Management-Operation.',
+      input.requestId,
+      {
+        ...createPermissionDenialDetailsForAction(input.action, decision.reason),
+        action: input.action,
+        reason_code: decision.reason,
+      }
+    );
+  },
+  validateCsrf,
+  reserveIdempotency,
+  renewIdempotencyLease,
+  releaseIdempotencyReservation,
+  hasIdempotentAuditEvent,
+  completeIdempotency,
   startPluginOperationJob: startPluginOperationJobFromFacade,
   storeWasteImportSource: storePluginOperationInput,
   resolveActorInfo: (
@@ -84,7 +137,6 @@ export const sharedWasteManagementDeps = {
     context: AuthenticatedRequestContext
   ) => resolveIamActorInfo(request, context, { requireActorMembership: true }),
   emitAuditEvent: emitAuthAuditEvent,
-  resolvePermissions: resolveEffectivePermissions,
   loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,
   listInterfaceRecords: listExternalInterfaceRecords,
   loadWasteTenantProvisioning: loadWasteTenantProvisioningRecord,

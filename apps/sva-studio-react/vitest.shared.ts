@@ -61,6 +61,12 @@ export const sharedVitestConfig = defineConfig({
       '@sva/auth-runtime/server': fileURLToPath(
         new URL('../../packages/auth-runtime/src/server.ts', import.meta.url)
       ),
+      '@sva/auth-runtime/waste-host': fileURLToPath(
+        new URL('../../packages/auth-runtime/src/waste-host.ts', import.meta.url)
+      ),
+      '@sva/auth-runtime/waste-readiness': fileURLToPath(
+        new URL('../../packages/auth-runtime/src/waste-readiness.ts', import.meta.url)
+      ),
       '@sva/auth-runtime/routes': fileURLToPath(
         new URL('../../packages/auth-runtime/src/routes.ts', import.meta.url)
       ),

@@ -26,7 +26,8 @@ const state = vi.hoisted(() => ({
   asApiItem: vi.fn(),
 }));
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({ requestId: 'req-1', traceId: 'trace-1' }),
   withRequestContext: async (_input: unknown, work: () => Promise<Response>) => work(),

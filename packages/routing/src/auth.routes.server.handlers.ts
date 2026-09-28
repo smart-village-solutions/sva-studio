@@ -2,7 +2,6 @@ import * as authRuntimeRoutes from '@sva/auth-runtime/runtime-routes';
 
 import type { AuthHandlers, AuthRoutePath } from './auth.route-handlers.types.js';
 import { createMethodNotAllowedHandler } from './auth.route-runtime.server.js';
-import { wasteAuthHandlerMap } from './auth.route-handlers.waste.server.js';
 const routeHandler =
   (handler: (request: Request) => Promise<Response> | Response) =>
   async ({ request }: { request: Request }): Promise<Response> =>
@@ -80,13 +79,6 @@ export const governanceAuthHandlerMap = {
   '/iam/admin/data-subject-rights/maintenance': {
     POST: routeHandler(authRuntimeRoutes.dataSubjectMaintenanceHandler),
   },
-  '/api/v1/waste-management/history': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getHistory),
-  },
-  '/api/v1/waste-management/master-data': {
-    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getMasterDataOverview),
-  },
-  ...wasteAuthHandlerMap,
   '/api/v1/plugin-operations/jobs': {
     GET: routeHandler(authRuntimeRoutes.listPluginOperationJobsHandler),
     POST: routeHandler(authRuntimeRoutes.startPluginOperationJobHandler),

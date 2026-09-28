@@ -45,7 +45,8 @@ vi.mock('@sva/iam-core', async (importOriginal) => {
   };
 });
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => ({
     error: vi.fn(),
     warn: vi.fn(),

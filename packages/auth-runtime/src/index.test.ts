@@ -17,13 +17,7 @@ describe('@sva/auth-runtime package scaffold', () => {
     expect(authRoutePaths).toContain('/api/v1/iam/health/ready');
     expect(authRoutePaths).toContain('/api/v1/iam/instances/audit');
     expect(authRoutePaths).toContain('/api/v1/iam/instances/$instanceId/audit');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/master-data');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/history');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/scheduling');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/tours');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/tours/annual-transfer');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/tours/annual-transfer/preview');
-    expect(authRoutePaths).toContain('/api/v1/waste-management/settings');
+    expect(authRoutePaths.filter((path) => path.startsWith('/api/v1/waste-management/'))).toEqual([]);
   });
 
   it('exposes auth runtime server contracts through the target edge', () => {

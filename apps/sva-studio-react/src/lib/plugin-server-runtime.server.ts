@@ -8,6 +8,7 @@ import type {
   PluginServerExecutionHandler,
   PluginServerHandlerModuleFactory,
 } from '@sva/plugin-sdk';
+import { authRoutePaths } from '@sva/routing/auth';
 
 import {
   createPluginBuildRegistries,
@@ -110,6 +111,7 @@ export const createStudioPluginServerHandlerDispatcher = async (
   const dispatchPlugin = createPluginServerHandlerDispatcher({
     descriptors: studioPluginSnapshot.registry.pluginServerHandlerRegistry,
     handlers,
+    reservedPaths: authRoutePaths,
     dependencies: {
       ...createStudioSsfRuntimeServiceAccess(),
       ...input.dependencies,

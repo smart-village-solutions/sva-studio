@@ -28,7 +28,8 @@ vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceByHostname: state.loadInstanceByHostname,
 }));
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: state.createSdkLogger,
   getInstanceConfig: state.getInstanceConfig,
   getWorkspaceContext: state.getWorkspaceContext,

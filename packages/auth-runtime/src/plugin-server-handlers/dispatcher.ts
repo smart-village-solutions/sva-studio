@@ -297,10 +297,15 @@ const authorizeTenantHandler = async (input: {
 export const assertPluginServerHandlerCoverage = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
   readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
+  readonly reservedPaths?: readonly string[];
 }): void => {
   const endpoints = new Map<string, string>();
   const examined: PluginServerHandlerRegistryEntry[] = [];
   for (const descriptor of input.descriptors.values()) {
+    const reservedPath = input.reservedPaths?.find((path) => pathsOverlap(path, descriptor.path));
+    if (reservedPath) {
+      throw new Error(`plugin_server_endpoint_conflicts_with_host:${descriptor.id}:${reservedPath}`);
+    }
     const endpointKey = `${descriptor.method} ${endpointShape(descriptor.path)}`;
     const existingHandlerId = endpoints.get(endpointKey);
     if (existingHandlerId) {
@@ -336,6 +341,7 @@ export const assertPluginServerHandlerCoverage = (input: {
 export const createPluginServerHandlerDispatcher = (input: {
   readonly descriptors: ReadonlyMap<string, PluginServerHandlerRegistryEntry>;
   readonly handlers: Readonly<Record<string, PluginServerExecutionHandler>>;
+  readonly reservedPaths?: readonly string[];
   readonly dependencies?: PluginServerHandlerDispatcherDependencies;
 }): ((request: Request) => Promise<Response | null>) => {
   assertPluginServerHandlerCoverage(input);

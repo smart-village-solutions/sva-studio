@@ -167,10 +167,10 @@ Abhängigkeiten des aktuellen Systems.
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
 - `@sva/waste-management-contracts` besitzt die browserfähigen Waste-Verträge und reinen Fachfunktionen einschließlich `wasteTypes`-Static-Content, Importprofilen, Jahreswechselregeln und Kalenderausgabe; der Node-basierte PDF-Renderer liegt im Server-Subpath `./pdf`. Core und Plugin-SDK reichen die Fachverträge nicht weiter
-- die bestehende `@sva/waste-management-runtime` bleibt in diesem Lieferabschnitt Owner der Waste-Jobs; die Verlagerung von HTTP-Handlern und Fachpersistenz folgt getrennt
+- `@sva/waste-management-runtime/server` besitzt die fachlichen HTTP-Handler und Jobs; `./repositories` besitzt Waste-SQL und die transaktionalen Schreibvorgänge
 - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen
 - kontextuelle Ausweichtermin-Aktionen in Tourenliste, Jahreskalender und Terminlogik verwenden dieselbe route-basierte Erfassungsansicht in einem neuen Browser-Tab; die reine Auswahl zwischen jährlicher Grundregel und jahresbezogener Ausnahme gehört framework-agnostisch zu `@sva/waste-management-contracts`
-- konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
+- deklariert alle 49 Waste-Pfade und 62 Methoden unter `/api/v1/waste-management/*` im Plugin-Server-Snapshot; der Host prüft Authentifizierung, Tenant, Rechte und CSRF vor der Fachausführung
 - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
 - verwaltet Touren mit dem gemeinsamen Statusvertrag `draft | published | archived`; Einzel- und atomare Mehrfachänderungen verwenden denselben expliziten Zielstatus, während nur `published` operative Verbraucher speist
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
@@ -214,11 +214,11 @@ Abhängigkeiten des aktuellen Systems.
 
 15. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
 
-- `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows und technische Tool-Starts
+- `@sva/auth-runtime/waste-host` bindet die Waste-Handler an Host-Fähigkeiten für Authentifizierung, Berechtigungsentscheidung, Audit, Idempotenz, Jobs, Artefakte und tenantgebundene Datenbankzugriffe; die allgemeinen Auth-Routen enthalten keine Waste-Pfade mehr
 - derselbe Hostpfad startet auch den dedizierten Job `waste-management.sync-waste-types`; die eigentliche Mainserver-Schreiboperation bleibt dahinter in der Studio-Runtime und `@sva/sva-mainserver`
 - der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
-- `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
+- `@sva/data-repositories` hält die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres; die fachlichen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie liegen in `@sva/waste-management-runtime/repositories`
 - `@sva/waste-management-contracts` definiert den Tourstatusvertrag für Repository und Host-Fassade; Public-Waste, Reminder, Abdeckungsprüfung, Mainserver-Materialisierung und Folgejahr-Quellauswahl lesen ausschließlich `published`
 - der Mainserver-Terminabgleich liest seine tenantlokale Quellrevision zusammen mit allen Materialisierungstabellen in einem PostgreSQL-Snapshot; `iam.studio_jobs` bleibt alleinige Wahrheit für aktiven Lauf, letzten Erfolg, Progress und Fehler
 - Tourverschiebungen überschreiten die Repository-Grenze als ISO-Kalenderdaten; PostgreSQL persistiert sie als `DATE` und erzwingt ihre Eindeutigkeit über partielle Indizes
@@ -450,7 +450,7 @@ Abhängigkeiten des aktuellen Systems.
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
-- `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts`
+- `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-runtime` für die Host-Bindung der Waste-Handler
 - `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog
 - `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/plugin-sdk` -> `@sva/core`
@@ -458,10 +458,10 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/plugin-sdk` definiert zusätzlich den fail-closed `contentHistory`-Contribution-Vertrag und den gemeinsamen History-Read-Client; `@sva/studio-ui-react` stellt dafür die schreibgeschützte, barrierefreie Darstellung bereit
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`; die allgemeine Schnittstellenauflösung bleibt hier, Waste-Datenquellen und Tenant-Datenbanknamen liegen in `@sva/waste-management-runtime/repositories`
-- `@sva/waste-management-runtime` -> `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts` für Waste-Fachpersistenz und Datenquellenauflösung
+- `@sva/waste-management-runtime` -> `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts` für Waste-Handler, Fachpersistenz und Datenquellenauflösung
 - Die SQL-Statements für `iam.instance_waste_data_sources` gehören zur Waste-Runtime; `@sva/auth-runtime` hält die IAM-Poolwahl und die instanzgebundene Transaktion für Registry und Studio-Readiness.
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
-- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
+- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; der getrennte Server-Entry bindet die Host-Fassade `@sva/auth-runtime/waste-host` an die deklarativen `/api/v1/waste-management/*`-Routen
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/core` -> `@sva/iam-core` fuer verbliebene gemeinsame IAM-Vertragstypen waehrend der Hard-Cut-Migration
@@ -885,7 +885,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 - `@sva/plugin-waste-management` besitzt ausschließlich den zugänglichen Drei-Schritt-Assistenten, die Auswahl und die ausdrückliche Konfliktbestätigung. Das Zieljahr ist dort nur Anzeige und kein frei wählbarer Parameter.
 - `@sva/waste-management-contracts` besitzt die frameworkunabhängige Klassifikation, Datums- und Taktabbildung, stabile Zielidentitäten, Konflikterkennung, Fingerprint-Bildung sowie die zentralen Grenzen von 1.000 Touren und 100.000 Beziehungen.
-- `@sva/auth-runtime` besitzt Mandanten-, Berechtigungs-, CSRF- und Idempotenzgrenze. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.
+- `@sva/auth-runtime` bindet Mandantenkontext, Berechtigungsentscheidung, CSRF und technische Idempotenz ein; der ausführbare Jahreswechsel-Handler liegt in `@sva/waste-management-runtime`. Die Waste-Repository-Operation lädt Quelle und Ziel erneut und schreibt den vollständigen inaktiven Tourensatz unter Advisory Lock in genau einer Transaktion.
 
 ### Ergänzung 2026-08: Kontextbezogene Anwenderdokumentation
 

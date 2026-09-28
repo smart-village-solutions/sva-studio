@@ -31,6 +31,14 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./waste-host": {
+      "types": "./dist/waste-host.d.ts",
+      "default": "./dist/waste-host.js"
+    },
+    "./waste-readiness": {
+      "types": "./dist/waste-readiness.d.ts",
+      "default": "./dist/waste-readiness.js"
+    },
     "./service-token": {
       "types": "./dist/service-token.d.ts",
       "default": "./dist/service-token.js"

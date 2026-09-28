@@ -21,13 +21,14 @@ describe('pluginWasteManagement contract', () => {
     );
   });
 
-  it('keeps the plugin manifest aligned with the browser-only plugin package contents', () => {
+  it('keeps the browser and server entries aligned with the plugin package', () => {
     const currentDir = dirname(fileURLToPath(import.meta.url));
     const manifest = JSON.parse(
       readFileSync(resolve(currentDir, '../plugin.manifest.json'), 'utf8')
     ) as {
       readonly entryPoints?: {
         readonly browser?: string;
+        readonly server?: string;
         readonly jobs?: string;
       };
       readonly runtimeRequirements?: {
@@ -36,8 +37,21 @@ describe('pluginWasteManagement contract', () => {
     };
 
     expect(manifest.entryPoints?.browser).toBe('./dist/index.js');
+    expect(manifest.entryPoints?.server).toBe('./dist/server.js');
     expect(manifest.entryPoints?.jobs).toBeUndefined();
     expect(manifest.runtimeRequirements?.jobs).toBeUndefined();
+  });
+
+  it('declares each existing Waste method and path once as a server handler', () => {
+    const descriptors = pluginWasteManagement.serverHandlers ?? [];
+    expect(descriptors).toHaveLength(62);
+    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(49);
+    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(62);
+    expect(descriptors).toContainEqual(expect.objectContaining({
+      path: '/api/v1/waste-management/tours/annual-transfer',
+      method: 'POST',
+      actionId: 'waste-management.annual-transfer.execute',
+    }));
   });
 
   it('declares the canonical free plugin route, module iam and job registrations', () => {

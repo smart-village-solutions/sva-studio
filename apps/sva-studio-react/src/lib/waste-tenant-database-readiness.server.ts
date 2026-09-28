@@ -3,7 +3,7 @@ import {
   loadExternalInterfaceRecordByAlias,
   loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
-import { checkWasteDataSourceSchema } from '@sva/auth-runtime/server';
+import { checkWasteDataSourceSchema } from '@sva/auth-runtime/waste-readiness';
 import type { PluginTenantLifecycleExecutionResult } from '@sva/plugin-sdk';
 import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 

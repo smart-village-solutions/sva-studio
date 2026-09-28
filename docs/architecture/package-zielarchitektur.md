@@ -42,9 +42,9 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/studio-ui-react` ist Owner der wiederverwendbaren Listen-/Template-UI; App-spezifische i18n-Labels bleiben Consumer-Verantwortung.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration und exportiert die kanonischen serverseitigen Host-Verträge für News, Events, POI und Mainserver-Schnittstellen.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
-- `@sva/plugin-waste-management` ist jetzt auf den browserseitigen Plugin-Schnitt reduziert und enthaelt keine host-owned Runtime-Entry-Points mehr.
+- `@sva/plugin-waste-management` trennt Browser-UI und deklarative Server-Routen; sein Server-Entry bindet nur die öffentliche Waste-Host-Fassade.
 - `@sva/waste-management-contracts` kapselt gemeinsame deklarative Waste-Verträge und den signierten Abmeldetokenvertrag außerhalb von Apps, Browser-Plugin und Jobausführung.
-- `@sva/waste-management-runtime` kapselt die host-owned Waste-Management-Jobausführung und konsumiert deren deklarative Definitionen aus dem Contracts-Package.
+- `@sva/waste-management-runtime` kapselt Waste-Handler, Fachpersistenz und Jobausführung und konsumiert deren deklarative Definitionen aus dem Contracts-Package.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und nur noch dünne App-Adapter für Package-Verträge.
 
 Die größte frühere strukturelle Last aus `@sva/auth` ist fachlich aufgelöst. Das Package ist kein aktiver Workspace-Baustein mehr.
@@ -136,10 +136,18 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/studio-ui-react`            | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views                                                              | `packages/studio-ui-react`                                                                              | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. Wiederverwendbare Host-Tabellen und Seiten-Templates gehören hierher.                                                                                                                                                                                                |
 | `@sva/*-integration`              | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern                                               | `packages/sva-mainserver`                                                                               | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups, Fehlerabbildung und kanonische serverseitige Host-Verträge.                                                                                                                                                                                                                                              |
 | `@sva/plugin-*`                   | Fachliche Erweiterungen ueber Plugin-SDK-Vertraege und gemeinsame Studio-UI                                                             | `packages/plugin-news`                                                                                  | Standard Path: nur `@sva/plugin-sdk` und optional `@sva/studio-ui-react`; das sind die einzigen erlaubten internen Plugin-Einstiegspunkte. Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data*`, `@sva/studio-module-iam` oder App-Modulen. Advanced Path nur ueber explizite oeffentliche Host-Vertraege. |
-| `@sva/plugin-waste-management`    | Browserseitiges Waste-Management-Plugin mit UI, deklarativen Plugin-Beitraegen und Browser-Manifest                                     | `packages/plugin-waste-management`                                                                      | Das Package folgt dem Plugin-Schnitt fuer Browser-Code. Host-owned Jobausführung liegt in `@sva/waste-management-runtime`; gemeinsame Jobdefinitionen liegen in `@sva/waste-management-contracts`, dessen `/job-definitions`-Export nur dieses owning Plugin als zusätzliche freigegebene Package-Kante konsumiert. Dafür besteht keine Import-Allowlist-Ausnahme.   |
+| `@sva/plugin-waste-management` | Waste-UI und deklarative Server-Descriptoren | `packages/plugin-waste-management` | Browser- und Server-Entry-Points sind getrennt. Nur der Server-Entry-Point importiert `@sva/auth-runtime/waste-host` als öffentlichen, pluginbezogenen Host-Vertrag; fachliche HTTP-Ausführung und Joblogik liegen in `@sva/waste-management-runtime`. |
 | `apps/sva-studio-react`           | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter                                                             | `apps/sva-studio-react`                                                                                 | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle.                                                                                                                                                                                                                                                                         |
 
 ## Erlaubte Abhängigkeitsrichtung
+
+Für den Waste-Server-Entry-Point gilt eine enge Advanced-Path-Ausnahme: Nur
+`@sva/plugin-waste-management/server` importiert den öffentlichen Host-Vertrag
+`@sva/auth-runtime/waste-host`. Dieser bindet die fachlichen Handler aus
+`@sva/waste-management-runtime/server` an Authentifizierung, Tenantzugriff,
+Audit und technische Host-Operationen. Der Browser-Entry-Point und andere
+Plugin-Module importieren Auth-Runtime nicht. Die feste Waste-Route im
+allgemeinen Auth-/Routing-Pfad entfällt.
 
 Die Zielrichtung ist eine gerichtete Schichtung:
 
@@ -259,7 +267,7 @@ Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufen
 - Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
 - `check:plugin-ui-boundary` bleibt fuer `packages/plugin-*` ein Detail-Gate; `check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only auf demselben Scope.
 - `check:plugin-architecture-boundary` bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten; bekannte importkantenbezogene Brownfield-Ausnahmen liegen in `config/plugin-architecture-allowlist.json`.
-- `@sva/plugin-waste-management` ist nach der Runtime-Extraktion auf den browserseitigen Schnitt zurueckgefuehrt und benoetigt aktuell keinen aktiven Allowlist-Eintrag.
+- `@sva/plugin-waste-management` bindet den Server-Entry ausschließlich über `@sva/auth-runtime/waste-host`; andere Auth-Runtime-Importe bleiben gesperrt.
 - Die heutige Allowlist ersetzt fruehere Baseline-Klassen wie Workspace-Dependencies oder Dateipfad-Signale nicht vollstaendig eins zu eins.
 - Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.
 

@@ -62,7 +62,7 @@ import {
   normalizeWasteHolidayApiResponse,
   wasteHolidaySyncHorizonYears,
 } from '@sva/waste-management-contracts';
-import type { SaveWasteCustomRecurrencePresetsInput } from './core/custom-recurrence-deps.js';
+import type { SaveWasteCustomRecurrencePresetsInput } from '@sva/waste-management-runtime/server';
 import {
   createWasteAnnualTourTransferInTransaction,
   loadWasteAnnualTourTransferSource,

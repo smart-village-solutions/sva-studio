@@ -93,6 +93,14 @@ export default defineConfig({
       '@sva/routing/server': resolve(__dirname, '../routing/src/index.server.ts'),
       '@sva/routing': resolve(__dirname, '../routing/src/index.ts'),
       '@sva/server-runtime': resolve(__dirname, '../server-runtime/src/index.ts'),
+      '@sva/waste-management-runtime/repositories': resolve(
+        __dirname,
+        '../waste-management-runtime/src/repositories.ts'
+      ),
+      '@sva/waste-management-runtime/server': resolve(
+        __dirname,
+        '../waste-management-runtime/src/server.ts'
+      ),
     },
   },
 });

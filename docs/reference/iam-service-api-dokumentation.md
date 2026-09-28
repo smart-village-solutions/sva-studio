@@ -65,6 +65,7 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
   - `permissionTrace[].runtimeScope` verwendet die stabilen Werte `instance`, `record` und `organization_context`
   - instanzweite Trace-Einträge transportieren kein fachlich künstliches `organizationId`, nur weil ein aktiver Organisationskontext vorhanden ist
 - `POST /api/v1/iam/users`
+  - legt administrativ erstellte Accounts ohne ausdrücklichen `status` als `active` an; ein ausdrücklich übergebener Status bleibt erhalten. Die automatische Account-Anlage beim ersten Login bleibt davon getrennt und beginnt mit `pending`.
   - akzeptiert additiv `groupIds: string[]` für initiale Gruppenmitgliedschaften im aktiven Instanzkontext
   - akzeptiert weiterhin optionale direkte `roleIds: string[]` als additive Sonderfälle
   - akzeptiert additiv `sendPasswordSetupEmail?: boolean`

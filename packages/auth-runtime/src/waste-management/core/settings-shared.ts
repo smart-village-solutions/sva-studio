@@ -1,9 +1,3 @@
-import { Pool } from 'pg';
-import {
-  resolveWasteDataSource,
-  runWasteConnectionCheck,
-  type ResolvedWasteDataSource,
-} from '@sva/server-runtime';
 import {
   type ExternalInterfaceConnectionCheckRecord,
   type ExternalInterfaceRecord,
@@ -267,28 +261,6 @@ export const loadConfiguredWasteSettings = async (
   );
 };
 
-export const defaultRunConnectionProbe = async (
-  dataSource: ResolvedWasteDataSource
-): Promise<void> => {
-  const pool = new Pool({
-    connectionString: dataSource.databaseUrl,
-    max: 1,
-    idleTimeoutMillis: 5_000,
-    connectionTimeoutMillis: 5_000,
-  });
-
-  try {
-    const client = await pool.connect();
-    try {
-      await client.query('SELECT 1;');
-    } finally {
-      client.release();
-    }
-  } finally {
-    await pool.end();
-  }
-};
-
 const persistWasteConnectionState = async (
   deps: WasteManagementHandlerDeps,
   record: ExternalInterfaceConnectionCheckRecord
@@ -328,7 +300,7 @@ export const updateWasteVisibleStatus = async (
     return;
   }
 
-  if (!deps.revealSecret) {
+  if (!deps.checkWasteConnection) {
     return;
   }
 
@@ -336,17 +308,7 @@ export const updateWasteVisibleStatus = async (
     if (interfaceRecord.typeKey !== 'postgresql') {
       throw new Error('connection_failed');
     }
-    const dataSource = await resolveWasteDataSource({
-      instanceId,
-      loadDefaultInterface: async () => interfaceRecord,
-      loadProvisioning: deps.loadWasteTenantProvisioning ?? (async () => null),
-      revealSecret: (ciphertext, aad) => deps.revealSecret?.(ciphertext, aad) ?? undefined,
-    });
-    const connectionCheck = await runWasteConnectionCheck({
-      dataSource,
-      probe: deps.runConnectionProbe ?? defaultRunConnectionProbe,
-      now: () => new Date(),
-    });
+    const connectionCheck = await deps.checkWasteConnection(instanceId, interfaceRecord);
     await persistWasteConnectionState(deps, {
       ...connectionCheck,
       interfaceId: interfaceRecord.id,

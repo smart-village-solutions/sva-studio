@@ -12,7 +12,6 @@ import type {
   WasteLocationTourPickupDateListFilter,
   WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkRecord,
-  WasteManagementAuditOverview,
   WasteManagementAuditQuery,
   WasteManagementCsvDelimiter,
   WasteManagementHistoryOverview,
@@ -33,11 +32,9 @@ import type {
   WasteTenantProvisioningRecord,
 } from '@sva/waste-management-contracts';
 import type { EffectivePermission } from '@sva/iam-core';
-import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 
 import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import type { Session } from '../../types.js';
 import type { WasteAnnualTourTransferHandlerDeps } from './annual-tour-transfer-deps.js';
 import type { WasteCityHandlerDeps } from './city-deps.js';
 import type { WasteCollectionLocationReadHandlerDeps } from './collection-location-read-deps.js';
@@ -61,7 +58,6 @@ type ResolveWasteActorInfoResult =
 
 type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulkHandlerDeps & {
   readonly getRequestId?: () => string | undefined;
-  readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
   readonly loadDefaultInterfaceRecord?: (
     instanceId: string,
     typeKey: string
@@ -85,12 +81,10 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulk
   readonly saveExternalInterfaceConnectionCheck?: (
     record: ExternalInterfaceConnectionCheckRecord
   ) => Promise<void>;
-  readonly protectSecret?: (value: string, aad: string) => string | null | undefined;
-  readonly revealSecret?: (
-    ciphertext: string | null | undefined,
-    aad: string
-  ) => string | null | undefined;
-  readonly runConnectionProbe?: (dataSource: ResolvedWasteDataSource) => Promise<void>;
+  readonly checkWasteConnection?: (
+    instanceId: string,
+    interfaceRecord: ExternalInterfaceRecord
+  ) => Promise<Omit<ExternalInterfaceConnectionCheckRecord, 'interfaceId'>>;
   readonly resolvePermissions?: (input: {
     readonly instanceId: string;
     readonly keycloakSubject: string;
@@ -123,9 +117,6 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulk
     input: Readonly<{ instanceId: string; body: Uint8Array; contentType: string }>
   ) => Promise<string>;
   readonly emitAuditEvent?: typeof emitAuthAuditEvent;
-  readonly loadWasteAuditOverview?: (
-    query: WasteManagementAuditQuery
-  ) => Promise<WasteManagementAuditOverview>;
   readonly loadWasteHistoryOverview?: (
     query: WasteManagementAuditQuery
   ) => Promise<WasteManagementHistoryOverview>;

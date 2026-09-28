@@ -1,30 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const resolveWasteDataSourceMock = vi.hoisted(() => vi.fn());
-const runWasteConnectionCheckMock = vi.hoisted(() => vi.fn());
-const poolConnectMock = vi.hoisted(() => vi.fn());
-const poolEndMock = vi.hoisted(() => vi.fn(async () => undefined));
-
-vi.mock('@sva/server-runtime', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/server-runtime')>();
-  return {
-    ...actual,
-    resolveWasteDataSource: resolveWasteDataSourceMock,
-    runWasteConnectionCheck: runWasteConnectionCheckMock,
-  };
-});
-
-vi.mock('pg', () => ({
-  Pool: vi.fn(function MockPool() {
-    return {
-      connect: poolConnectMock,
-      end: poolEndMock,
-    };
-  }),
-}));
-
 import {
-  defaultRunConnectionProbe,
   loadConfiguredWasteSettings,
   sanitizeWasteSettings,
   updateWasteVisibleStatus,
@@ -535,40 +511,14 @@ describe('waste-management settings shared helpers', () => {
     });
   });
 
-  it('runs the default connection probe through a short-lived pg pool', async () => {
-    const release = vi.fn();
-    const query = vi.fn(async () => ({ rows: [{ '?column?': 1 }] }));
-    poolConnectMock.mockResolvedValue({ query, release });
-
-    await defaultRunConnectionProbe({
-      instanceId: 'tenant-a',
-      schemaName: 'wm',
-      databaseUrl: 'postgres://db',
-      provider: 'postgresql',
-      enabled: true,
-    });
-
-    expect(poolConnectMock).toHaveBeenCalledTimes(1);
-    expect(query).toHaveBeenCalledWith('SELECT 1;');
-    expect(release).toHaveBeenCalledTimes(1);
-    expect(poolEndMock).toHaveBeenCalledTimes(1);
-  });
-
   it('updates visible status optimistically on successful writes and revalidates persisted settings', async () => {
     const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
-    resolveWasteDataSourceMock.mockResolvedValue({
-      instanceId: 'tenant-a',
-      schemaName: 'wm',
-      databaseUrl: 'postgres://db',
-      provider: 'postgresql',
-      enabled: true,
-    });
-    runWasteConnectionCheckMock.mockResolvedValue({
+    const checkWasteConnection = vi.fn(async () => ({
       instanceId: 'tenant-a',
       checkedAt: '2026-05-10T12:00:00.000Z',
-      checkStatus: 'succeeded',
-      visibleStatus: 'ok',
-    });
+      checkStatus: 'succeeded' as const,
+      visibleStatus: 'ok' as const,
+    }));
 
     await updateWasteVisibleStatus(
       {
@@ -614,10 +564,7 @@ describe('waste-management settings shared helpers', () => {
           secretConfigCiphertext: 'cipher-secret',
         })),
         saveExternalInterfaceConnectionCheck,
-        revealSecret: vi.fn((ciphertext: string | null | undefined) =>
-          ciphertext?.replace('cipher-', 'revealed-')
-        ),
-        runConnectionProbe: vi.fn(async () => undefined),
+        checkWasteConnection,
       },
       'tenant-a',
       'revalidate'
@@ -630,15 +577,17 @@ describe('waste-management settings shared helpers', () => {
       checkStatus: 'succeeded',
       visibleStatus: 'ok',
     });
-    expect(resolveWasteDataSourceMock).toHaveBeenCalledTimes(1);
-    expect(runWasteConnectionCheckMock).toHaveBeenCalledTimes(1);
+    expect(checkWasteConnection).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({ id: 'supabase-1' })
+    );
   });
 
   it('persists failed connection checks when revalidation throws and skips incomplete dependency sets', async () => {
     const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
-    resolveWasteDataSourceMock.mockRejectedValue(
-      Object.assign(new Error('Probe fehlgeschlagen.'), { code: 'probe_failed' })
-    );
+    const checkWasteConnection = vi.fn(async () => {
+      throw Object.assign(new Error('Probe fehlgeschlagen.'), { code: 'probe_failed' });
+    });
 
     await updateWasteVisibleStatus(
       {
@@ -652,7 +601,7 @@ describe('waste-management settings shared helpers', () => {
       {
         loadDefaultInterfaceRecord: vi.fn(async () => null),
         saveExternalInterfaceConnectionCheck,
-        revealSecret: vi.fn(),
+        checkWasteConnection,
       },
       'tenant-a',
       'revalidate'
@@ -676,12 +625,13 @@ describe('waste-management settings shared helpers', () => {
           secretConfigCiphertext: 'cipher-secret',
         })),
         saveExternalInterfaceConnectionCheck,
-        revealSecret: vi.fn(),
+        checkWasteConnection,
       },
       'tenant-a',
       'revalidate'
     );
 
+    expect(checkWasteConnection).toHaveBeenCalledTimes(1);
     expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledTimes(1);
     expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

@@ -21,6 +21,17 @@ const hostCapabilityMocks = vi.hoisted(() => ({
   resolveActorInfo: vi.fn(),
   startPluginOperationJobFromFacade: vi.fn(),
   storePluginOperationInput: vi.fn(),
+  revealField: vi.fn(),
+  resolveWasteDataSource: vi.fn(),
+  runWasteConnectionCheck: vi.fn(),
+  poolConnect: vi.fn(),
+  poolEnd: vi.fn(async () => undefined),
+}));
+
+vi.mock('pg', () => ({
+  Pool: vi.fn(function MockPool() {
+    return { connect: hostCapabilityMocks.poolConnect, end: hostCapabilityMocks.poolEnd };
+  }),
 }));
 
 vi.mock('./operations-support.js', () => ({
@@ -60,11 +71,13 @@ vi.mock('@sva/server-runtime', () => ({
   toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: vi.fn(),
   withRequestContext: async (_input: unknown, work: () => Promise<unknown>) => work(),
+  resolveWasteDataSource: hostCapabilityMocks.resolveWasteDataSource,
+  runWasteConnectionCheck: hostCapabilityMocks.runWasteConnectionCheck,
 }));
 
 vi.mock('../iam-account-management/encryption.js', () => ({
   protectField: vi.fn(),
-  revealField: vi.fn(),
+  revealField: hostCapabilityMocks.revealField,
 }));
 
 vi.mock('../log-context.js', () => ({
@@ -85,6 +98,46 @@ import {
 } from './server-context.js';
 
 describe('sharedWasteManagementDeps', () => {
+  it('resolves secrets and probes the connection within the host', async () => {
+    const dataSource = {
+      instanceId: 'tenant-a',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://db',
+      provider: 'postgresql',
+      enabled: true,
+    };
+    hostCapabilityMocks.resolveWasteDataSource.mockResolvedValueOnce(dataSource);
+    const query = vi.fn(async () => ({ rows: [{ '?column?': 1 }] }));
+    const release = vi.fn();
+    hostCapabilityMocks.poolConnect.mockResolvedValueOnce({ query, release });
+    hostCapabilityMocks.runWasteConnectionCheck.mockImplementationOnce(async ({ probe }) => {
+      await probe(dataSource);
+      return {
+        instanceId: 'tenant-a',
+        checkedAt: '2026-05-10T12:00:00.000Z',
+        checkStatus: 'succeeded',
+        visibleStatus: 'ok',
+      };
+    });
+    const interfaceRecord = { id: 'interface-1', instanceId: 'tenant-a' };
+
+    const result = await sharedWasteManagementDeps.checkWasteConnection(
+      'tenant-a',
+      interfaceRecord as Parameters<typeof sharedWasteManagementDeps.checkWasteConnection>[1]
+    );
+
+    expect(result).toMatchObject({ checkStatus: 'succeeded' });
+    expect(hostCapabilityMocks.resolveWasteDataSource).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      loadDefaultInterface: expect.any(Function),
+      loadProvisioning: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+      revealSecret: hostCapabilityMocks.revealField,
+    });
+    expect(query).toHaveBeenCalledWith('SELECT 1;');
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(hostCapabilityMocks.poolEnd).toHaveBeenCalledTimes(1);
+  });
+
   it('binds the host services for waste settings and handler actions', async () => {
     expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
     expect(sharedWasteManagementDeps.resolvePermissions).toBe(

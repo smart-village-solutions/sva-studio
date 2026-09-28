@@ -1,9 +1,13 @@
 import {
   createSdkLogger,
+  resolveWasteDataSource,
+  runWasteConnectionCheck,
   toJsonErrorResponse,
   toSafeLogPath,
   withRequestContext,
 } from '@sva/server-runtime';
+import { Pool } from 'pg';
+import type { ExternalInterfaceRecord } from '@sva/core';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -16,7 +20,7 @@ import {
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import { emitAuthAuditEvent } from '../audit-events.js';
-import { protectField, revealField } from '../iam-account-management/encryption.js';
+import { revealField } from '../iam-account-management/encryption.js';
 import { resolveActorInfo as resolveIamActorInfo } from '../iam-account-management/shared.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import { storePluginOperationInput } from '../plugin-operation-artifacts.server.js';
@@ -90,6 +94,34 @@ export const sharedWasteManagementDeps = {
   failWasteTenantProvisioningRequest,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
-  protectSecret: protectField,
-  revealSecret: revealField,
+  checkWasteConnection: async (instanceId: string, interfaceRecord: ExternalInterfaceRecord) => {
+    const dataSource = await resolveWasteDataSource({
+      instanceId,
+      loadDefaultInterface: async () => interfaceRecord,
+      loadProvisioning: loadWasteTenantProvisioningRecord,
+      revealSecret: revealField,
+    });
+    return runWasteConnectionCheck({
+      dataSource,
+      probe: async (source) => {
+        const pool = new Pool({
+          connectionString: source.databaseUrl,
+          max: 1,
+          idleTimeoutMillis: 5_000,
+          connectionTimeoutMillis: 5_000,
+        });
+        try {
+          const client = await pool.connect();
+          try {
+            await client.query('SELECT 1;');
+          } finally {
+            client.release();
+          }
+        } finally {
+          await pool.end();
+        }
+      },
+      now: () => new Date(),
+    });
+  },
 } as const;

@@ -8,10 +8,7 @@ import type {
   UpdateRoleActor,
 } from './role-update-handler.js';
 
-export type PreparedRoleUpdate<
-  TPayload extends UpdateRolePayloadShape,
-  TRole extends MutableRoleShape,
-> = {
+export type PreparedRoleUpdate<TPayload extends UpdateRolePayloadShape, TRole extends MutableRoleShape> = {
   readonly actor: UpdateRoleActor;
   readonly roleId: string;
   readonly existing: TRole;
@@ -80,16 +77,10 @@ const failLocalRoleDatabaseWrite = <
     error_code: 'DB_WRITE_FAILED',
     error: deps.sanitizeRoleErrorMessage(error),
   });
-  return deps.createApiError(
-    500,
-    'internal_error',
-    'Rolle konnte nicht aktualisiert werden.',
-    input.actor.requestId,
-    {
-      syncState: 'failed',
-      syncError: { code: 'DB_WRITE_FAILED' },
-    }
-  );
+  return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', input.actor.requestId, {
+    syncState: 'failed',
+    syncError: { code: 'DB_WRITE_FAILED' },
+  });
 };
 
 export const persistLocalRoleUpdate = async <
@@ -106,12 +97,7 @@ export const persistLocalRoleUpdate = async <
     return buildUpdatedRoleResponse(deps, input, await persistPreparedRoleUpdate(deps, input));
   } catch (error) {
     if (error instanceof UnavailableRolePermissionError) {
-      return deps.createApiError(
-        400,
-        'invalid_request',
-        'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
-        input.actor.requestId
-      );
+      return deps.createApiError(400, 'invalid_request', 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.', input.actor.requestId);
     }
     return failLocalRoleDatabaseWrite(deps, input, error);
   }
@@ -171,16 +157,10 @@ const failTechnicalRoleCompensation = async <
     result: 'failure',
     error_code: 'COMPENSATION_FAILED',
   });
-  return deps.createApiError(
-    500,
-    'internal_error',
-    'Rolle konnte nicht konsistent aktualisiert werden.',
-    input.actor.requestId,
-    {
-      syncState: 'failed',
-      syncError: { code: 'COMPENSATION_FAILED' },
-    }
-  );
+  return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht konsistent aktualisiert werden.', input.actor.requestId, {
+    syncState: 'failed',
+    syncError: { code: 'COMPENSATION_FAILED' },
+  });
 };
 
 const persistTechnicalRoleUpdate = async <
@@ -195,16 +175,8 @@ const persistTechnicalRoleUpdate = async <
   identityProvider: TIdentityProvider
 ): Promise<Response> => {
   try {
-    const response = buildUpdatedRoleResponse(
-      deps,
-      input,
-      await persistPreparedRoleUpdate(deps, input)
-    );
-    deps.iamRoleSyncCounter.add(1, {
-      operation: input.operation,
-      result: 'success',
-      error_code: 'none',
-    });
+    const response = buildUpdatedRoleResponse(deps, input, await persistPreparedRoleUpdate(deps, input));
+    deps.iamRoleSyncCounter.add(1, { operation: input.operation, result: 'success', error_code: 'none' });
     return response;
   } catch (error) {
     try {
@@ -232,12 +204,7 @@ const persistTechnicalRoleUpdate = async <
         externalRoleName: input.externalRoleName,
         syncState: 'synced',
       });
-      return deps.createApiError(
-        400,
-        'invalid_request',
-        'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
-        input.actor.requestId
-      );
+      return deps.createApiError(400, 'invalid_request', 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.', input.actor.requestId);
     }
 
     await deps.markRoleSyncState({
@@ -264,16 +231,10 @@ const persistTechnicalRoleUpdate = async <
       role_key: input.existing.role_key,
       error: deps.sanitizeRoleErrorMessage(error),
     });
-    return deps.createApiError(
-      500,
-      'internal_error',
-      'Rolle konnte nicht aktualisiert werden.',
-      input.actor.requestId,
-      {
-        syncState: 'failed',
-        syncError: { code: 'DB_WRITE_FAILED' },
-      }
-    );
+    return deps.createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', input.actor.requestId, {
+      syncState: 'failed',
+      syncError: { code: 'DB_WRITE_FAILED' },
+    });
   }
 };
 
@@ -287,10 +248,7 @@ export const syncTechnicalRoleUpdate = async <
   deps: UpdateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole, TRoleItem>,
   input: PreparedRoleUpdate<TPayload, TRole>
 ): Promise<Response> => {
-  const identityProvider = await deps.requireRoleIdentityProvider(
-    input.actor.instanceId,
-    input.actor.requestId
-  );
+  const identityProvider = await deps.requireRoleIdentityProvider(input.actor.instanceId, input.actor.requestId);
   if (identityProvider instanceof Response) {
     return identityProvider;
   }
@@ -318,11 +276,7 @@ export const syncTechnicalRoleUpdate = async <
     );
   } catch (error) {
     const errorCode = deps.mapRoleSyncErrorCode(error);
-    deps.iamRoleSyncCounter.add(1, {
-      operation: input.operation,
-      result: 'failure',
-      error_code: errorCode,
-    });
+    deps.iamRoleSyncCounter.add(1, { operation: input.operation, result: 'failure', error_code: errorCode });
     await deps.markRoleSyncState({
       actor: input.actor,
       roleId: input.roleId,

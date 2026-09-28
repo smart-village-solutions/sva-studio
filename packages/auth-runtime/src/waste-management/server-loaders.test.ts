@@ -270,7 +270,13 @@ vi.mock('../plugin-operations/repository.js', () => ({
   withStudioJobRepository: withStudioJobRepositoryMock,
 }));
 
-vi.mock('@sva/waste-management-runtime/repositories', () => ({
+vi.mock('@sva/waste-management-runtime/repositories', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>()),
+  createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
+}));
+
+vi.mock('../../../waste-management-runtime/src/repositories/master-data.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../waste-management-runtime/src/repositories/master-data.js')>()),
   createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
 }));
 

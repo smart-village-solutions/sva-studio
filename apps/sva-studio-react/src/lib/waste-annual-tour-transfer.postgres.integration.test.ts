@@ -6,7 +6,7 @@ import { createWasteMasterDataRepository } from '@sva/waste-management-runtime/r
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createWasteAnnualTourTransferInTransaction } from '../../../../packages/auth-runtime/src/waste-management/server-loaders.js';
+import { createWasteAnnualTourTransferInTransaction } from '@sva/waste-management-runtime/repositories';
 import { applySchemaStatements } from './waste-management-operations.schema.js';
 import { createSqlExecutor } from './waste-management-operations.shared.js';
 

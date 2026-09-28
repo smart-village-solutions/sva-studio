@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { previewWasteLocationTourPickupDateImport } from './import-preview.js';
 
+const readStoredSource = async (): Promise<{ body: Uint8Array }> => { throw new Error('unexpected_stored_source'); };
+
 const createRepositoryMock = () => ({
   listWasteFractions: vi.fn(async () => [
     {
@@ -80,7 +82,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
         'Prignitz;Perleberg;Ackerstraße;PPK.7.2;BIO.3.1',
         'Prignitz;Bad Wilsnack;;PPK.7.2;',
       ]),
-    });
+    }, readStoredSource);
 
     expect(preview).toMatchObject({
       profileId: 'waste-management.ortsbezogene-tourtermine',
@@ -108,7 +110,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
         instanceId: 'tenant-a',
         sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         blobRef: createCsvDataUrl(['Ort;Papier', 'Perleberg;PPK.7.2']),
-      })
+      }, readStoredSource)
     ).rejects.toThrowError(
       'unsupported_import_source_format:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
@@ -120,7 +122,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
       sourceFormat: 'text/csv',
       blobRef: `data:text/csv,${encodeURIComponent('Ort,Papier\nPerleberg,PPK.7.2')}`,
       delimiterOverride: ',',
-    });
+    }, readStoredSource);
 
     expect(preview).toMatchObject({
       delimiter: ',',
@@ -138,7 +140,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
         instanceId: 'tenant-a',
         sourceFormat: 'text/csv',
         blobRef: '/tmp/import.csv',
-      })
+      }, readStoredSource)
     ).rejects.toThrowError('unsupported_blob_ref:local_file');
   });
 
@@ -148,7 +150,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
         instanceId: 'tenant-a',
         sourceFormat: 'text/csv',
         blobRef: 'data:text/csv;base64',
-      })
+      }, readStoredSource)
     ).rejects.toThrowError('invalid_blob_ref:data_url');
   });
 });

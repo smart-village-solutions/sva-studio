@@ -4,7 +4,7 @@ import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { authorizeWasteManagementAction } from './auth.js';
-import { deriveHolidayRuleConfigurationStatus } from './holiday-sync.js';
+import { deriveHolidayRuleConfigurationStatus } from '@sva/waste-management-contracts';
 import { runWasteDeleteMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementTourSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';

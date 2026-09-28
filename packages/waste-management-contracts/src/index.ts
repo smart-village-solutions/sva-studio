@@ -253,3 +253,6 @@ export {
   buildWasteAnnualTourTransferPreview,
   toWasteAnnualTourTransferPublicPreview,
 } from './waste-management-annual-tour-transfer.preview.js';
+
+export { buildWasteHolidayApiUrl, deriveHolidayRuleConfigurationStatus, normalizeWasteHolidayApiResponse, wasteHolidaySyncHorizonYears } from './waste-management-holiday-sync.js';
+export type { WasteHolidayApiEntry } from './waste-management-holiday-sync.js';

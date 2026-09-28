@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { storePluginOperationInput } from '../../plugin-operation-artifacts.server.js';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import {
   asApiItem,
@@ -24,7 +23,7 @@ import { wasteManagementOperationSchemas } from './operation-schemas.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { loadConfiguredWasteSettings } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId } from './utils.js';
+import { getRequestId, requireDeps } from './utils.js';
 
 const {
   previewLocationTourPickupDateImportSchema,
@@ -171,11 +170,10 @@ const startToolJob = async (
     return createApiError(400, 'invalid_request', parsed.message, requestId);
   }
 
-  const actorResolution = await (
-    deps.resolveActorInfo ??
-    ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
-  )(request, ctx);
+  const actorResolution = await requireDeps(deps.resolveActorInfo, 'resolveActorInfo')(
+    request,
+    ctx
+  );
   if ('error' in actorResolution) {
     return actorResolution.error;
   }

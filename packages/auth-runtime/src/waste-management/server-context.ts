@@ -17,6 +17,7 @@ import { wasteManagementOperationsContract } from '@sva/waste-management-contrac
 
 import { emitAuthAuditEvent } from '../audit-events.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
+import { resolveActorInfo as resolveIamActorInfo } from '../iam-account-management/shared.js';
 import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import { buildLogContext } from '../log-context.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
@@ -72,6 +73,10 @@ export const withAuthenticatedWasteManagementHandler = (
   });
 
 export const sharedWasteManagementDeps = {
+  resolveActorInfo: (
+    request: Request,
+    context: AuthenticatedRequestContext
+  ) => resolveIamActorInfo(request, context, { requireActorMembership: true }),
   emitAuditEvent: emitAuthAuditEvent,
   resolvePermissions: resolveEffectivePermissions,
   loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,

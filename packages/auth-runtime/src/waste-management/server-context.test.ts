@@ -18,6 +18,11 @@ const authMocks = vi.hoisted(() => ({
 const hostCapabilityMocks = vi.hoisted(() => ({
   emitAuthAuditEvent: vi.fn(),
   resolveEffectivePermissions: vi.fn(),
+  resolveActorInfo: vi.fn(),
+}));
+
+vi.mock('../iam-account-management/shared.js', () => ({
+  resolveActorInfo: hostCapabilityMocks.resolveActorInfo,
 }));
 
 vi.mock('../audit-events.js', () => ({
@@ -70,11 +75,17 @@ import {
 } from './server-context.js';
 
 describe('sharedWasteManagementDeps', () => {
-  it('exposes the default interface loader for waste settings write operations', () => {
+  it('binds the host services for waste settings and handler actions', async () => {
     expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
     expect(sharedWasteManagementDeps.resolvePermissions).toBe(
       hostCapabilityMocks.resolveEffectivePermissions
     );
+    const request = new Request('https://studio.example/api/v1/waste-management/settings');
+    const context = { sessionId: 'session-1', user: { id: 'user-1', roles: [] } };
+    await sharedWasteManagementDeps.resolveActorInfo(request, context);
+    expect(hostCapabilityMocks.resolveActorInfo).toHaveBeenCalledWith(request, context, {
+      requireActorMembership: true,
+    });
     expect(sharedWasteManagementDeps.loadDefaultInterfaceRecord).toBe(
       dataRepositoryMocks.loadDefaultExternalInterfaceRecord
     );

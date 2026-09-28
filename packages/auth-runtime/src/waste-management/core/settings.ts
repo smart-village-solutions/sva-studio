@@ -1,7 +1,6 @@
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import {
   createApiError,
@@ -16,7 +15,7 @@ import {
   updateWasteManagementSettingsAfterValidation,
 } from './settings-write-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, requireActorInstanceId } from './utils.js';
+import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 
 const { updateWasteSettingsSchema } = wasteManagementSettingsSchemas;
@@ -55,11 +54,10 @@ export const wasteManagementSettingsHandlers = {
         requestId
       );
     }
-    const actorResolution = await (
-      deps.resolveActorInfo ??
-      ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-        resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
-    )(request, ctx);
+    const actorResolution = await requireDeps(deps.resolveActorInfo, 'resolveActorInfo')(
+      request,
+      ctx
+    );
     if ('error' in actorResolution) return actorResolution.error;
     if (!actorResolution.actor.actorAccountId) {
       return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', requestId);

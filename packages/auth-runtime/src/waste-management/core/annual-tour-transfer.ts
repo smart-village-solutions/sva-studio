@@ -6,7 +6,6 @@ import {
   type WasteAnnualTourTransferResult,
 } from '@sva/waste-management-contracts';
 
-import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import {
   asApiItem,
@@ -236,11 +235,10 @@ export const wasteManagementAnnualTourTransferHandlers = {
       wasteManagementTourSchemas.createWasteAnnualTourTransferSchema
     );
     if (!parsed.ok) return createApiError(400, 'invalid_request', parsed.message, requestId);
-    const actorResolution = await (
-      deps.resolveActorInfo ??
-      ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-        resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
-    )(request, ctx);
+    const actorResolution = await requireDeps(deps.resolveActorInfo, 'resolveActorInfo')(
+      request,
+      ctx
+    );
     if ('error' in actorResolution) return actorResolution.error;
     const actorAccountId = actorResolution.actor.actorAccountId;
     if (!actorAccountId) {

@@ -5,7 +5,6 @@ import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
-import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { asApiItem, createApiError } from '../../shared/request-helpers.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 import type { WasteManagementHandlerDeps } from './types.js';
@@ -119,11 +118,10 @@ export const enqueueWasteTypesSyncAfterMutation = async (
   instanceId: string
 ): Promise<WasteTypesSyncMetadata> => {
   try {
-    const actorResolution = await (
-      deps.resolveActorInfo ??
-      ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-        resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
-    )(request, ctx);
+    const actorResolution = await requireDeps(deps.resolveActorInfo, 'resolveActorInfo')(
+      request,
+      ctx
+    );
     if ('error' in actorResolution || !actorResolution.actor.actorAccountId) {
       return { syncStatus: 'failed' };
     }

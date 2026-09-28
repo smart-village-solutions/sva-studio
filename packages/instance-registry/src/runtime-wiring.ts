@@ -38,6 +38,10 @@ export type InstanceRegistryRuntimeDeps = {
   readonly resolvePool: () => InstanceRegistryPool | null;
   readonly createRepository: (executor: SqlExecutor) => InstanceRegistryRepository;
   readonly serviceDeps: Omit<InstanceRegistryServiceDeps, 'repository'>;
+  readonly readScopedRoleCatalogFingerprint?: (
+    instanceId: string,
+    client: InstanceRegistryQueryClient
+  ) => Promise<string>;
   readonly provisioningWorkerServiceDeps?: Omit<InstanceRegistryServiceDeps, 'repository'>;
   readonly afterModuleActivationPolicyReconcile?: (input: {
     readonly instanceId: string;
@@ -152,13 +156,25 @@ const runScopedRegistryService = async <T>(
   repository: InstanceRegistryRepository,
   deps: InstanceRegistryRuntimeDeps,
   instanceId: string,
+  client: InstanceRegistryQueryClient,
   work: (service: InstanceRegistryService) => Promise<T>,
   options: ScopedRegistryServiceOptions
 ) => {
   let nestedReconcileResult: ModuleActivationPolicyReconcileResult | null = null;
+  const readScopedRoleCatalogFingerprint = deps.readScopedRoleCatalogFingerprint;
   const serviceDeps = {
     repository,
     ...deps.serviceDeps,
+    ...(readScopedRoleCatalogFingerprint
+      ? {
+          readRoleCatalogFingerprint: (targetInstanceId: string) => {
+            if (targetInstanceId !== instanceId) {
+              throw new Error('role_catalog_fingerprint_instance_mismatch');
+            }
+            return readScopedRoleCatalogFingerprint(targetInstanceId, client);
+          },
+        }
+      : {}),
     captureModuleActivationPolicyReconcileResult: (
       result: ModuleActivationPolicyReconcileResult
     ) => {
@@ -227,8 +243,15 @@ export const createInstanceRegistryRuntime = (deps: InstanceRegistryRuntimeDeps)
     work: (service: InstanceRegistryService) => Promise<T>,
     options: ScopedRegistryServiceOptions = {}
   ): Promise<T> => {
-    const scopedResult = await withScopedRegistryRepository(instanceId, (repository) =>
-      runScopedRegistryService(repository, deps, instanceId, work, options)
+    const scopedResult = await withScopedClient(instanceId, (client) =>
+      runScopedRegistryService(
+        deps.createRepository(createExecutor(client)),
+        deps,
+        instanceId,
+        client,
+        work,
+        options
+      )
     );
     await completeScopedActivationPolicyFollowUp(
       deps,

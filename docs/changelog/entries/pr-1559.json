@@ -1,0 +1,4 @@
+{
+  "prNumber": 1559,
+  "body": "Die Image-Verifikation aktiviert das Media-Modul für ihren Testmandanten ausdrücklich und prüft den Media-Read-/Deny-Pfad wieder unter dem fail-closed IAM-Vertrag."
+}

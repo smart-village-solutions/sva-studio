@@ -6,6 +6,7 @@ it('seeds only the test tenant, OIDC identity, assigned optional SSF module, and
   const sql = buildSeedSql('enc:v1:k1:iv:tag:ciphertext');
   expect(sql).toContain("'example-instance.studio.example.invalid'");
   expect(sql).toContain("'verify-ssf-user', 'active', 'example-instance'");
+  expect(sql).toContain("'media', 'optional', 'manual', true");
   expect(sql).toContain("'ssf', 'optional', 'manual', true");
   expect(sql).toContain("'media.read', 'media.read', 'media'");
   expect(sql).toContain("'ssf.configuration.tenant.read', 'ssf.configuration.tenant.read', 'ssf'");

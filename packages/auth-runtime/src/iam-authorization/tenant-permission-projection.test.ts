@@ -49,10 +49,7 @@ describe('tenant permission projection source', () => {
       {
         keycloakSubject: 'subject-a',
         roleNames: ['system_admin'],
-        permissionIds: [
-          'ssf.configuration.tenant.manage',
-          'ssf.configuration.tenant.read',
-        ],
+        permissionIds: ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
       },
       {
         keycloakSubject: 'subject-b',
@@ -60,13 +57,11 @@ describe('tenant permission projection source', () => {
         permissionIds: ['ssf.configuration.tenant.read'],
       },
     ]);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("AND a.status = 'active'"),
-      [
-        'tenant-a',
-        ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
-      ]
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("AND a.status = 'active'"), [
+      'tenant-a',
+      ['ssf.configuration.tenant.manage', 'ssf.configuration.tenant.read'],
+      expect.arrayContaining(['content.read', 'iam.role.read']),
+    ]);
   });
 
   it('does not query when no permission allowlist is requested', async () => {

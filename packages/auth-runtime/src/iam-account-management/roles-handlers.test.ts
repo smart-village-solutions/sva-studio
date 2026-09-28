@@ -32,8 +32,9 @@ vi.mock('../db.js', () => ({
 }));
 
 vi.mock('../instance-permission-authorization.js', () => ({
-  authorizeInstancePermissionForUser: (...args: Parameters<typeof mocks.authorizeInstancePermissionForUser>) =>
-    mocks.authorizeInstancePermissionForUser(...args),
+  authorizeInstancePermissionForUser: (
+    ...args: Parameters<typeof mocks.authorizeInstancePermissionForUser>
+  ) => mocks.authorizeInstancePermissionForUser(...args),
   toInstancePermissionApiErrorCode: () => 'forbidden',
 }));
 
@@ -52,10 +53,13 @@ vi.mock('./api-helpers.js', () => ({
     ...(requestId ? { requestId } : {}),
   }),
   createApiError: (status: number, code: string, message: string, requestId?: string) =>
-    new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }),
+    new Response(
+      JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }),
+      {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }
+    ),
   parseRequestBody: vi.fn(),
   readInstanceIdFromRequest: vi.fn(),
   readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
@@ -91,12 +95,15 @@ vi.mock('./role-query.js', () => ({
 
 vi.mock('./shared-actor-resolution.js', () => ({
   requireRoles: () => null,
-  resolveActorInfo: (...args: Parameters<typeof mocks.resolveActorInfo>) => mocks.resolveActorInfo(...args),
+  resolveActorInfo: (...args: Parameters<typeof mocks.resolveActorInfo>) =>
+    mocks.resolveActorInfo(...args),
 }));
 
 vi.mock('./shared-runtime.js', () => ({
-  withInstanceScopedDb: async (_instanceId: string, callback: (client: { query: typeof mocks.query }) => Promise<unknown>) =>
-    callback({ query: mocks.query }),
+  withInstanceScopedDb: async (
+    _instanceId: string,
+    callback: (client: { query: typeof mocks.query }) => Promise<unknown>
+  ) => callback({ query: mocks.query }),
 }));
 
 vi.mock('./user-keycloak-role-assignments.js', () => ({
@@ -104,8 +111,7 @@ vi.mock('./user-keycloak-role-assignments.js', () => ({
     mocks.createKeycloakRoleOperationError(...args),
   loadKeycloakRoleCatalog: (...args: unknown[]) => mocks.loadKeycloakRoleCatalog(...args),
   projectKeycloakRoleCatalog: (...args: unknown[]) => mocks.projectKeycloakRoleCatalog(...args),
-  requireKeycloakRoleProvider: (...args: unknown[]) =>
-    mocks.requireKeycloakRoleProvider(...args),
+  requireKeycloakRoleProvider: (...args: unknown[]) => mocks.requireKeycloakRoleProvider(...args),
 }));
 
 describe('roles-handlers listPermissionsInternal', () => {
@@ -148,19 +154,36 @@ describe('roles-handlers listPermissionsInternal', () => {
           permission_key: 'instance.registry.manage',
           description: null,
         },
+        {
+          id: 'perm-ssf',
+          instance_id: 'de-musterhausen',
+          permission_key: 'ssf.configuration.tenant.read',
+          description: null,
+          module_active: false,
+        },
+        {
+          id: 'perm-orphan',
+          instance_id: 'de-musterhausen',
+          permission_key: 'waste-management.read',
+          description: null,
+          module_active: null,
+        },
       ],
     });
   });
 
   it('returns runtimeScope metadata and filters root-only permissions from tenant permission lists', async () => {
-    const response = await listPermissionsInternal(new Request('http://localhost/api/v1/iam/permissions'), {
-      sessionId: 'session-1',
-      user: {
-        id: 'kc-actor-1',
-        instanceId: 'de-musterhausen',
-        roles: ['system_admin'],
-      },
-    });
+    const response = await listPermissionsInternal(
+      new Request('http://localhost/api/v1/iam/permissions'),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'de-musterhausen',
+          roles: ['system_admin'],
+        },
+      }
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -191,6 +214,40 @@ describe('roles-handlers listPermissionsInternal', () => {
       action: 'iam.role.read',
       instanceId: 'de-musterhausen',
     });
+  });
+
+  it('lists permissions of active modules alongside tenant core permissions', async () => {
+    mocks.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'perm-core',
+          instance_id: 'de-musterhausen',
+          permission_key: 'iam.role.read',
+          description: null,
+          module_active: null,
+        },
+        {
+          id: 'perm-ssf',
+          instance_id: 'de-musterhausen',
+          permission_key: 'ssf.configuration.tenant.read',
+          description: null,
+          module_active: true,
+        },
+      ],
+    });
+    const response = await listPermissionsInternal(
+      new Request('http://localhost/api/v1/iam/permissions'),
+      {
+        sessionId: 'session-1',
+        user: { id: 'kc-actor-1', instanceId: 'de-musterhausen', roles: ['system_admin'] },
+      }
+    );
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as { data: { permissionKey: string }[] };
+    expect(payload.data.map(({ permissionKey }) => permissionKey)).toEqual([
+      'iam.role.read',
+      'ssf.configuration.tenant.read',
+    ]);
   });
 
   it('preserves Keycloak-specific errors when the role catalog cannot be loaded', async () => {

@@ -16,6 +16,7 @@ import {
   syncTechnicalRoleUpdate,
   type PreparedRoleUpdate,
 } from './role-update-sync.js';
+import { UnavailableRolePermissionError } from './role-mutation-persistence.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -418,6 +419,16 @@ describe('createUpdateRoleHandlerInternal', () => {
     await expect(failureResponse.json()).resolves.toMatchObject(
       dbWriteFailedErrorBody('internal_error', 'req-update-role')
     );
+  });
+
+  it('reports invalid_request when a module is revoked before local role persistence', async () => {
+    const deps = createDeps({
+      persistUpdatedRole: vi.fn(async () => {
+        throw new UnavailableRolePermissionError();
+      }),
+    });
+    const response = await persistLocalRoleUpdate(deps, preparedRetryUpdate);
+    expect(response.status).toBe(400);
   });
 
   it('redirects retry sync requests to reconcile with a stable payload', async () => {

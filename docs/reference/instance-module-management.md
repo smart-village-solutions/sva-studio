@@ -50,7 +50,9 @@ Alternativ kann derselbe Entzug direkt im Tab `Betrieb` der Instanz-Detailseite 
 Erwartetes Ergebnis:
 
 - der Eintrag in `iam.instance_modules` wird entfernt
-- modulbezogene Permissions und `role_permissions` werden hart entfernt
+- modulverwaltete `role_permissions` werden entfernt; historische Permission-Definitionen
+  und manuell angelegte Grants können für Audit und Datenintegrität erhalten bleiben,
+  sind bei deaktiviertem oder entzogenem Modul aber weder neu zuweisbar noch wirksam
 - Core-Berechtigungen der Instanz bleiben unverändert
 
 ## IAM-Basis reparieren

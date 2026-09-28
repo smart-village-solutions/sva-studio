@@ -75,8 +75,11 @@ describe('permission-store queries', () => {
       KEYCLOAK_SUBJECT,
       ORGANIZATION_ID,
       expect.arrayContaining(['content.read']),
+      expect.arrayContaining(['content.read', 'iam.role.read']),
     ]);
-    expect(state.query.mock.calls[0]?.[0]).toContain('permission_module.effective_active = true');
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      'p.permission_key = ANY($5::text[]) OR permission_module.effective_active = true'
+    );
   });
 
   it('projects organization ids only for scope-sensitive permissions on unscoped loads', async () => {
@@ -126,7 +129,10 @@ describe('permission-store queries', () => {
       INSTANCE_ID,
       KEYCLOAK_SUBJECT,
       expect.arrayContaining(['content.read']),
+      expect.arrayContaining(['content.read', 'iam.role.read']),
     ]);
-    expect(state.query.mock.calls[0]?.[0]).toContain('permission_module.effective_active = true');
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      'p.permission_key = ANY($4::text[]) OR permission_module.effective_active = true'
+    );
   });
 });

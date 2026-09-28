@@ -1,0 +1,4 @@
+{
+  "prNumber": 1558,
+  "body": "Studio bietet Modulrechte nur bei effektiv aktivem Tenant-Modul zur Rollenverwaltung an. Rollenänderungen prüfen den Modulzustand erneut bei der Speicherung; historisch verbliebene Modulrechte ohne aktiven Moduleintrag werden bei der effektiven Autorisierung nicht mehr gewährt."
+}

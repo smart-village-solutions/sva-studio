@@ -1,4 +1,5 @@
 import { getRoleDisplayName } from './role-audit.js';
+import { UnavailableRolePermissionError } from './role-mutation-persistence.js';
 import type {
   MutableRoleShape,
   UpdateRoleHandlerDeps,
@@ -95,6 +96,9 @@ export const persistLocalRoleUpdate = async <
   try {
     return buildUpdatedRoleResponse(deps, input, await persistPreparedRoleUpdate(deps, input));
   } catch (error) {
+    if (error instanceof UnavailableRolePermissionError) {
+      return deps.createApiError(400, 'invalid_request', 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.', input.actor.requestId);
+    }
     return failLocalRoleDatabaseWrite(deps, input, error);
   }
 };
@@ -188,6 +192,19 @@ const persistTechnicalRoleUpdate = async <
       );
     } catch {
       return failTechnicalRoleCompensation(deps, input);
+    }
+
+    if (error instanceof UnavailableRolePermissionError) {
+      await deps.markRoleSyncState({
+        actor: input.actor,
+        roleId: input.roleId,
+        operation: input.operation,
+        result: 'success',
+        roleKey: input.existing.role_key,
+        externalRoleName: input.externalRoleName,
+        syncState: 'synced',
+      });
+      return deps.createApiError(400, 'invalid_request', 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.', input.actor.requestId);
     }
 
     await deps.markRoleSyncState({

@@ -1,5 +1,5 @@
-import nxPlugin from '@nx/eslint-plugin';
-import noEffectApiObjectDepsForLoadersRule from './config/eslint/no-effect-api-object-deps-for-loaders.mjs';
+import nxPlugin from '@nx/eslint-plugin'
+import noEffectApiObjectDepsForLoadersRule from './config/eslint/no-effect-api-object-deps-for-loaders.mjs'
 
 export default [
   ...nxPlugin.configs['flat/base'],
@@ -158,11 +158,7 @@ export default [
             },
             {
               sourceTag: 'scope:plugin-contracts',
-              onlyDependOnLibsWithTags: [
-                'scope:core',
-                'scope:plugin-sdk',
-                'scope:plugin-contracts',
-              ],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk', 'scope:plugin-contracts'],
             },
             {
               sourceTag: 'scope:plugin-runtime',
@@ -228,13 +224,11 @@ export default [
             },
             {
               name: '@sva/auth/runtime-routes',
-              message:
-                'Routing darf Runtime-Routen nur über @sva/auth-runtime/runtime-routes anbinden.',
+              message: 'Routing darf Runtime-Routen nur über @sva/auth-runtime/runtime-routes anbinden.',
             },
             {
               name: '@sva/auth/runtime-health',
-              message:
-                'Routing darf Runtime-Health nur über @sva/auth-runtime/runtime-health anbinden.',
+              message: 'Routing darf Runtime-Health nur über @sva/auth-runtime/runtime-health anbinden.',
             },
             {
               name: '@sva/sdk',
@@ -280,18 +274,15 @@ export default [
             },
             {
               name: '@sva/data',
-              message:
-                'Zielpackages verwenden @sva/data-repositories oder @sva/data-client statt @sva/data.',
+              message: 'Zielpackages verwenden @sva/data-repositories oder @sva/data-client statt @sva/data.',
             },
             {
               name: '@sva/data/server',
-              message:
-                'Zielpackages verwenden @sva/data-repositories/server statt @sva/data/server.',
+              message: 'Zielpackages verwenden @sva/data-repositories/server statt @sva/data/server.',
             },
             {
               name: '@sva/sdk',
-              message:
-                'Zielpackages verwenden Core, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
+              message: 'Zielpackages verwenden Core, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
             },
             {
               name: '@sva/sdk/server',
@@ -305,8 +296,7 @@ export default [
             },
             {
               group: ['@sva/auth-runtime/src/**', '@sva/sva-mainserver/src/**'],
-              message:
-                'Zielpackages verwenden nur öffentliche Package-Verträge statt interner src-Pfade.',
+              message: 'Zielpackages verwenden nur öffentliche Package-Verträge statt interner src-Pfade.',
             },
             {
               group: ['@sva/data/*'],
@@ -330,20 +320,17 @@ export default [
           paths: [
             {
               name: '@sva/sdk',
-              message:
-                'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk importieren.',
+              message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk importieren.',
             },
             {
               name: '@sva/sdk/server',
-              message:
-                'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk/server importieren.',
+              message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk/server importieren.',
             },
           ],
           patterns: [
             {
               group: ['@sva/sdk/*'],
-              message:
-                'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
+              message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
             },
           ],
         },
@@ -359,8 +346,7 @@ export default [
           paths: [
             {
               name: '@sva/plugin-sdk',
-              message:
-                'Studio UI darf nur den schmalen Content-Media-Vertrag des Plugin-SDK importieren.',
+              message: 'Studio UI darf nur den schmalen Content-Media-Vertrag des Plugin-SDK importieren.',
             },
           ],
           patterns: [
@@ -382,15 +368,13 @@ export default [
           paths: [
             {
               name: '@sva/sdk',
-              message:
-                'plugin-sdk ist die Zielgrenze und darf nicht zurück auf @sva/sdk importieren.',
+              message: 'plugin-sdk ist die Zielgrenze und darf nicht zurück auf @sva/sdk importieren.',
             },
           ],
           patterns: [
             {
               group: ['@sva/sdk/*'],
-              message:
-                'plugin-sdk ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
+              message: 'plugin-sdk ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
             },
           ],
         },
@@ -406,8 +390,7 @@ export default [
           paths: [
             {
               name: '@sva/data',
-              message:
-                'data-client ist die Zielgrenze und darf nicht zurück auf @sva/data importieren.',
+              message: 'data-client ist die Zielgrenze und darf nicht zurück auf @sva/data importieren.',
             },
             {
               name: '@sva/data/server',
@@ -417,8 +400,7 @@ export default [
           patterns: [
             {
               group: ['@sva/data/*'],
-              message:
-                'data-client ist die Zielgrenze und darf nicht zurück auf @sva/data-Subpaths importieren.',
+              message: 'data-client ist die Zielgrenze und darf nicht zurück auf @sva/data-Subpaths importieren.',
             },
           ],
         },
@@ -434,13 +416,11 @@ export default [
           paths: [
             {
               name: '@sva/data',
-              message:
-                'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data importieren.',
+              message: 'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data importieren.',
             },
             {
               name: '@sva/data/server',
-              message:
-                'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data/server importieren.',
+              message: 'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data/server importieren.',
             },
             {
               name: '@sva/sdk/server',
@@ -450,8 +430,7 @@ export default [
           patterns: [
             {
               group: ['@sva/data/*'],
-              message:
-                'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data-Subpaths importieren.',
+              message: 'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data-Subpaths importieren.',
             },
             {
               group: ['@sva/sdk/*'],
@@ -471,13 +450,11 @@ export default [
           paths: [
             {
               name: '@sva/auth/server',
-              message:
-                'sva-mainserver verwendet Auth-Server-Verträge über @sva/auth-runtime/server.',
+              message: 'sva-mainserver verwendet Auth-Server-Verträge über @sva/auth-runtime/server.',
             },
             {
               name: '@sva/data/server',
-              message:
-                'sva-mainserver verwendet Repository-Zugriffe über @sva/data-repositories/server.',
+              message: 'sva-mainserver verwendet Repository-Zugriffe über @sva/data-repositories/server.',
             },
             {
               name: '@sva/sdk/server',
@@ -490,13 +467,8 @@ export default [
               message: 'sva-mainserver verwendet Zielpackages statt @sva/data-Subpaths.',
             },
             {
-              group: [
-                '@sva/auth-runtime/src/**',
-                '@sva/iam-admin/src/**',
-                '@sva/instance-registry/src/**',
-              ],
-              message:
-                'sva-mainserver verwendet nur öffentliche Package-Verträge statt interner src-Pfade.',
+              group: ['@sva/auth-runtime/src/**', '@sva/iam-admin/src/**', '@sva/instance-registry/src/**'],
+              message: 'sva-mainserver verwendet nur öffentliche Package-Verträge statt interner src-Pfade.',
             },
             {
               group: ['@sva/sdk/*'],
@@ -558,8 +530,7 @@ export default [
             },
             {
               name: '@sva/sdk',
-              message:
-                'Die App nutzt Core, Monitoring, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
+              message: 'Die App nutzt Core, Monitoring, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
             },
             {
               name: '@sva/sdk/admin-resources',
@@ -576,14 +547,8 @@ export default [
           ],
           patterns: [
             {
-              group: [
-                '@sva/auth-runtime/src/**',
-                '@sva/iam-admin/src/**',
-                '@sva/instance-registry/src/**',
-                '@sva/sva-mainserver/src/**',
-              ],
-              message:
-                'Die App verwendet nur öffentliche Package-Verträge statt interner src-Pfade.',
+              group: ['@sva/auth-runtime/src/**', '@sva/iam-admin/src/**', '@sva/instance-registry/src/**', '@sva/sva-mainserver/src/**'],
+              message: 'Die App verwendet nur öffentliche Package-Verträge statt interner src-Pfade.',
             },
             {
               group: ['@sva/sdk/*'],
@@ -612,13 +577,8 @@ export default [
           ],
           patterns: [
             {
-              group: [
-                'apps/sva-studio-react/src/**',
-                '../../apps/sva-studio-react/src/**',
-                '../../../apps/sva-studio-react/src/**',
-              ],
-              message:
-                'Plugins müssen gemeinsame UI über @sva/studio-ui-react statt App-internen Komponenten importieren.',
+              group: ['apps/sva-studio-react/src/**', '../../apps/sva-studio-react/src/**', '../../../apps/sva-studio-react/src/**'],
+              message: 'Plugins müssen gemeinsame UI über @sva/studio-ui-react statt App-internen Komponenten importieren.',
             },
             {
               group: ['@sva/core/*'],
@@ -633,4 +593,4 @@ export default [
       ],
     },
   },
-];
+]

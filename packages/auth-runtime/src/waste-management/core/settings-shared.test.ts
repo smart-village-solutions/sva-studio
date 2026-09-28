@@ -577,10 +577,7 @@ describe('waste-management settings shared helpers', () => {
       checkStatus: 'succeeded',
       visibleStatus: 'ok',
     });
-    expect(checkWasteConnection).toHaveBeenCalledWith(
-      'tenant-a',
-      expect.objectContaining({ id: 'supabase-1' })
-    );
+    expect(checkWasteConnection).toHaveBeenCalledWith('tenant-a', 'supabase-1');
   });
 
   it('persists failed connection checks when revalidation throws and skips incomplete dependency sets', async () => {

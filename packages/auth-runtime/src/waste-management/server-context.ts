@@ -7,7 +7,6 @@ import {
   withRequestContext,
 } from '@sva/server-runtime';
 import { Pool } from 'pg';
-import type { ExternalInterfaceRecord } from '@sva/core';
 import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
@@ -94,7 +93,13 @@ export const sharedWasteManagementDeps = {
   failWasteTenantProvisioningRequest,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
-  checkWasteConnection: async (instanceId: string, interfaceRecord: ExternalInterfaceRecord) => {
+  checkWasteConnection: async (instanceId: string, interfaceId: string) => {
+    const interfaceRecord =
+      (await listExternalInterfaceRecords(instanceId)).find((record) => record.id === interfaceId) ??
+      (await loadDefaultExternalInterfaceRecord(instanceId, 'postgresql'));
+    if (!interfaceRecord || interfaceRecord.id !== interfaceId || interfaceRecord.instanceId !== instanceId) {
+      throw new Error('waste_interface_not_found');
+    }
     const dataSource = await resolveWasteDataSource({
       instanceId,
       loadDefaultInterface: async () => interfaceRecord,

@@ -308,7 +308,7 @@ export const updateWasteVisibleStatus = async (
     if (interfaceRecord.typeKey !== 'postgresql') {
       throw new Error('connection_failed');
     }
-    const connectionCheck = await deps.checkWasteConnection(instanceId, interfaceRecord);
+    const connectionCheck = await deps.checkWasteConnection(instanceId, interfaceRecord.id);
     await persistWasteConnectionState(deps, {
       ...connectionCheck,
       interfaceId: interfaceRecord.id,

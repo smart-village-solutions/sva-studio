@@ -83,7 +83,7 @@ type WasteManagementHandlerDepsBase = WasteCityHandlerDeps & WasteTourStatusBulk
   ) => Promise<void>;
   readonly checkWasteConnection?: (
     instanceId: string,
-    interfaceRecord: ExternalInterfaceRecord
+    interfaceId: string
   ) => Promise<Omit<ExternalInterfaceConnectionCheckRecord, 'interfaceId'>>;
   readonly resolvePermissions?: (input: {
     readonly instanceId: string;

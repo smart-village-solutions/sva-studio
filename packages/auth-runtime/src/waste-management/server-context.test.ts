@@ -99,6 +99,7 @@ import {
 
 describe('sharedWasteManagementDeps', () => {
   it('resolves secrets and probes the connection within the host', async () => {
+    vi.clearAllMocks();
     const dataSource = {
       instanceId: 'tenant-a',
       schemaName: 'wm',
@@ -120,10 +121,11 @@ describe('sharedWasteManagementDeps', () => {
       };
     });
     const interfaceRecord = { id: 'interface-1', instanceId: 'tenant-a' };
+    dataRepositoryMocks.listExternalInterfaceRecords.mockResolvedValueOnce([interfaceRecord]);
 
     const result = await sharedWasteManagementDeps.checkWasteConnection(
       'tenant-a',
-      interfaceRecord as Parameters<typeof sharedWasteManagementDeps.checkWasteConnection>[1]
+      'interface-1'
     );
 
     expect(result).toMatchObject({ checkStatus: 'succeeded' });
@@ -136,6 +138,21 @@ describe('sharedWasteManagementDeps', () => {
     expect(query).toHaveBeenCalledWith('SELECT 1;');
     expect(release).toHaveBeenCalledTimes(1);
     expect(hostCapabilityMocks.poolEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an interface outside the authenticated instance before secret resolution', async () => {
+    vi.clearAllMocks();
+    dataRepositoryMocks.listExternalInterfaceRecords.mockResolvedValueOnce([]);
+    dataRepositoryMocks.loadDefaultExternalInterfaceRecord.mockResolvedValueOnce({
+      id: 'interface-1',
+      instanceId: 'tenant-b',
+    });
+
+    await expect(
+      sharedWasteManagementDeps.checkWasteConnection('tenant-a', 'interface-1')
+    ).rejects.toThrow('waste_interface_not_found');
+    expect(hostCapabilityMocks.resolveWasteDataSource).not.toHaveBeenCalled();
+    expect(hostCapabilityMocks.revealField).not.toHaveBeenCalled();
   });
 
   it('binds the host services for waste settings and handler actions', async () => {

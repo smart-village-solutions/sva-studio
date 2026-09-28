@@ -1,0 +1,4 @@
+{
+  "prNumber": 1561,
+  "body": "Eigene und organisationsgebundene Mainserver-Inhalte lassen sich in den Detailansichten für News, Veranstaltungen, POI, generische Inhalte, FAQ, Kacheln und Umfragen wieder öffnen. Der Lesezugriff wird anhand des tatsächlichen DataProviders geprüft; fremde Inhalte bleiben gesperrt."
+}

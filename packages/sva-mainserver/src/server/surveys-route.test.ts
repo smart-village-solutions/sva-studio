@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
+  authorizeMainserverDataProviderAccess: vi.fn(),
   validateCsrf: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
@@ -30,11 +31,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
     authorizationMode: 'exact',
     reason: 'allowed',
   })),
-  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
-    allowed: true,
-    authorizationMode: 'exact',
-    reason: 'allowed',
-  })),
+  authorizeMainserverDataProviderAccess: state.authorizeMainserverDataProviderAccess,
   resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
@@ -106,6 +103,11 @@ const mockAuthorizedRequest = () => {
 
 describe('dispatchSvaMainserverSurveysRequest', () => {
   beforeEach(() => {
+    state.authorizeMainserverDataProviderAccess.mockResolvedValue({
+      allowed: true,
+      authorizationMode: 'exact',
+      reason: 'allowed',
+    });
     state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
       status: 'verified',
       dataProviderId: 'dp-org-1',
@@ -240,6 +242,58 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       },
     });
     expect(state.getSvaMainserverSurveyResults).not.toHaveBeenCalled();
+  });
+
+  it('denies survey details when the principal cannot read the DataProvider', async () => {
+    mockAuthorizedRequest();
+    state.getSvaMainserverSurvey.mockResolvedValue({
+      id: 'survey-1',
+      dataProvider: { id: 'dp-other' },
+    });
+    const request = () =>
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
+        headers: { 'X-SVA-Acting-Principal-Type': 'organization' },
+      });
+    const allowed = await dispatchSvaMainserverSurveysRequest(request());
+    expect(allowed?.status).toBe(200);
+    expect(state.getSvaMainserverSurvey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
+    expect(state.getSvaMainserverSurveyResults).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
+    state.authorizeMainserverDataProviderAccess.mockClear();
+    state.getSvaMainserverSurveyResults.mockClear();
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Forbidden' });
+    state.authorizeMainserverDataProviderAccess.mockImplementation(async (input) => ({
+      allowed: input.action !== 'surveys.read',
+      authorizationMode: 'exact',
+      reason: input.action === 'surveys.read' ? 'data_provider_mismatch' : 'allowed',
+    }));
+
+    const response = await dispatchSvaMainserverSurveysRequest(request());
+
+    expect(response?.status).toBe(403);
+    expect(state.getSvaMainserverSurveyResults).not.toHaveBeenCalled();
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'surveys.read',
+        dataProviderId: 'dp-other',
+        forceExactScopeAuthorization: true,
+      })
+    );
   });
 
   it('fetches survey results for detail reads with export access', async () => {

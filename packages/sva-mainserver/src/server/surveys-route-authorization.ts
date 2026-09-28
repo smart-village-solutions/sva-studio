@@ -31,7 +31,8 @@ export type SurveyAuthorizationFailure = Extract<AuthorizationDecision, { readon
 export const authorizeSurveyOrResponse = async (
   ctx: AuthenticatedRequestContext,
   action: 'read' | 'create' | 'update' | 'delete' | 'moderate',
-  contentId?: string
+  contentId?: string,
+  credentialVisibleRead = true
 ): Promise<SurveyContentActor | Response> => {
   if (!ctx.user.instanceId) {
     return errorJson(400, 'invalid_instance_id', 'Kein Instanzkontext für Umfragen vorhanden.');
@@ -43,7 +44,8 @@ export const authorizeSurveyOrResponse = async (
       contentType: SURVEYS_CONTENT_TYPE,
       ...(contentId ? { contentId } : {}),
     },
-    credentialVisibleCompatibility: action !== 'read',
+    credentialVisibleCompatibility:
+      action !== 'read' || (Boolean(contentId) && credentialVisibleRead),
   });
   if (!result.ok) {
     const workspaceContext = getWorkspaceContext();

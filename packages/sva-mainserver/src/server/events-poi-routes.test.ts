@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
+  authorizeMainserverDataProviderAccess: vi.fn(),
   validateCsrf: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
@@ -40,11 +41,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
     authorizationMode: 'exact',
     reason: 'allowed',
   })),
-  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
-    allowed: true,
-    authorizationMode: 'exact',
-    reason: 'allowed',
-  })),
+  authorizeMainserverDataProviderAccess: state.authorizeMainserverDataProviderAccess,
   resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
@@ -139,6 +136,11 @@ const mockAuthorizedMutation = () => {
 
 describe('mainserver content route contracts', () => {
   beforeEach(() => {
+    state.authorizeMainserverDataProviderAccess.mockResolvedValue({
+      allowed: true,
+      authorizationMode: 'exact',
+      reason: 'allowed',
+    });
     state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
       status: 'verified',
       dataProviderId: 'dp-org-1',
@@ -314,6 +316,66 @@ describe('mainserver content route contracts', () => {
       expect.objectContaining({ field_path: 'dates[]', deviation_code: 'unexpected_type' })
     );
   });
+
+  it.each([
+    [
+      'events',
+      dispatchSvaMainserverEventsRequest,
+      state.getSvaMainserverEventDetail,
+      'events.read',
+    ],
+    ['poi', dispatchSvaMainserverPoiRequest, state.getSvaMainserverPoiDetail, 'poi.read'],
+  ])(
+    'denies %s detail when the principal cannot read its DataProvider',
+    async (path, dispatch, getDetail, action) => {
+      mockAuthorizedMutation();
+      getDetail.mockResolvedValue({
+        data: { id: 'item-1', dataProvider: { id: 'dp-other' } },
+        deviations: [],
+      });
+      const request = () =>
+        createRequest(`https://studio.test/api/v1/mainserver/${path}/item-1`, {
+          headers: { 'X-SVA-Acting-Principal-Type': 'organization' },
+        });
+      const allowed = await dispatch(request());
+      expect(allowed?.status).toBe(200);
+      expect(getDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actingPrincipalType: 'organization',
+          credentialFingerprint: 'a'.repeat(64),
+        })
+      );
+      state.authorizeMainserverDataProviderAccess.mockClear();
+      state.authorizeContentPrimitiveForUser
+        .mockResolvedValueOnce({
+          ok: true,
+          actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+          permissions: [],
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+          error: 'forbidden',
+          message: 'Forbidden',
+        });
+      state.authorizeMainserverDataProviderAccess.mockImplementation(async (input) => ({
+        allowed: input.action !== action,
+        authorizationMode: 'exact',
+        reason: input.action === action ? 'data_provider_mismatch' : 'allowed',
+      }));
+
+      const response = await dispatch(request());
+
+      expect(response?.status).toBe(403);
+      expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action,
+          dataProviderId: 'dp-other',
+          forceExactScopeAuthorization: true,
+        })
+      );
+    }
+  );
 
   it('creates events with parsed dates, contact, URLs, addresses, recurrence and POI link', async () => {
     mockAuthorizedMutation();

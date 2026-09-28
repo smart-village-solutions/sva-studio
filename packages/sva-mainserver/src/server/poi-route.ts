@@ -18,7 +18,10 @@ import {
   readString,
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
-import { withMainserverContextBinding } from './content-route-context.js';
+import {
+  MAINSERVER_ACTING_PRINCIPAL_HEADER,
+  withMainserverContextBinding,
+} from './content-route-context.js';
 import {
   parseAccessibilityInformation,
   parseAddressList,
@@ -222,7 +225,8 @@ const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
   contentKind: ContentKind,
   action: string,
-  contentId?: string
+  contentId?: string,
+  credentialVisibleRead = true
 ): Promise<ContentActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
     ctx,
@@ -231,7 +235,8 @@ const authorizeOrResponse = async (
       contentType: contentTypeFor(contentKind),
       ...(contentId ? { contentId } : {}),
     },
-    credentialVisibleCompatibility: action !== 'poi.read',
+    credentialVisibleCompatibility:
+      action !== 'poi.read' || (Boolean(contentId) && credentialVisibleRead),
   });
   if (!result.ok) {
     const workspaceContext = getWorkspaceContext();
@@ -285,7 +290,8 @@ const handleItemRead = async (
     ctx,
     route.contentKind,
     pluginActionFor(route.contentKind, 'read'),
-    route.itemId
+    route.itemId,
+    request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
   );
   if (isResponse(actor)) {
     return actor;
@@ -296,11 +302,15 @@ const handleItemRead = async (
     ctx,
     authorizedActor: actor,
   });
-  const detail = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
+  const detail = await getSvaMainserverPoiDetail({
+    ...(resourceActor ?? actor),
+    poiId: route.itemId,
+  });
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
         actions: [
+          `${route.contentKind}.read`,
           `${route.contentKind}.update`,
           `${route.contentKind}.delete`,
           'content.publish',
@@ -308,8 +318,22 @@ const handleItemRead = async (
         ],
         contentType: POI_CONTENT_TYPE,
         item: detail.data,
+        forceExactScopeActions: [`${route.contentKind}.read`],
       })
     : {};
+  if (
+    (resourceActor && !access[`${route.contentKind}.read`]) ||
+    (!resourceActor && request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER))
+  ) {
+    const exactRead = await authorizeOrResponse(
+      ctx,
+      route.contentKind,
+      `${route.contentKind}.read`,
+      route.itemId,
+      false
+    );
+    if (isResponse(exactRead)) return exactRead;
+  }
   for (const deviation of detail.deviations) {
     logger.warn('Mainserver detail response degraded', {
       operation: 'mainserver_poi_detail',

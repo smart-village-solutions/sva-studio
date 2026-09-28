@@ -13,6 +13,7 @@ import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
+  SvaMainserverConnectionInput,
   SvaMainserverNewsInput,
   SvaMainserverNewsPayload,
   SvaMainserverWasteLocationKey,
@@ -26,7 +27,10 @@ import {
   readNumber,
   readString,
 } from './content-route-core.js';
-import { withMainserverContextBinding } from './content-route-context.js';
+import {
+  MAINSERVER_ACTING_PRINCIPAL_HEADER,
+  withMainserverContextBinding,
+} from './content-route-context.js';
 import {
   parseAddress,
   parseCategories,
@@ -756,7 +760,12 @@ const handleItemRead = async (
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, newsId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, 'news.read', route.newsId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    'news.read',
+    route.newsId,
+    request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
+  );
   if (isResponse(actor)) {
     return actor;
   }
@@ -766,11 +775,12 @@ const handleItemRead = async (
     ctx,
     authorizedActor: actor,
   });
-  const data = await getNewsForRoute(route, actor);
+  const data = await getNewsForRoute(route, resourceActor ?? actor);
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
         actions: [
+          'news.read',
           'news.update',
           'news.delete',
           'news.pushNotification',
@@ -779,8 +789,16 @@ const handleItemRead = async (
         ],
         contentType: NEWS_CONTENT_TYPE,
         item: data,
+        forceExactScopeActions: ['news.read'],
       })
     : {};
+  if (
+    (resourceActor && !access['news.read']) ||
+    (!resourceActor && request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER))
+  ) {
+    const exactRead = await authorizeOrResponse(ctx, 'news.read', route.newsId, false);
+    if (isResponse(exactRead)) return exactRead;
+  }
   logSuccess('mainserver_news_detail', route.newsId);
   return json(resourceActor ? { data, meta: { access } } : { data });
 };
@@ -1216,7 +1234,8 @@ const handleVisibilityUpdate = async (
 const authorize = async (
   ctx: AuthenticatedRequestContext,
   action: string,
-  newsId?: string
+  newsId?: string,
+  credentialVisibleRead = true
 ): Promise<ReturnType<typeof authorizeContentPrimitiveForUser>> =>
   authorizeContentPrimitiveForUser({
     ctx,
@@ -1225,13 +1244,15 @@ const authorize = async (
       contentType: NEWS_CONTENT_TYPE,
       ...(newsId ? { contentId: newsId } : {}),
     },
-    credentialVisibleCompatibility: action !== 'news.read',
+    credentialVisibleCompatibility:
+      action !== 'news.read' || (Boolean(newsId) && credentialVisibleRead),
   });
 
 const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
   action: string,
-  newsId?: string
+  newsId?: string,
+  credentialVisibleRead = true
 ): Promise<
   | {
       readonly instanceId: string;
@@ -1240,7 +1261,7 @@ const authorizeOrResponse = async (
     }
   | Response
 > => {
-  const result = await authorize(ctx, action, newsId);
+  const result = await authorize(ctx, action, newsId, credentialVisibleRead);
   if (!result.ok) {
     const workspaceContext = getWorkspaceContext();
     logger.warn('Mainserver News local authorization denied', {
@@ -1303,11 +1324,7 @@ const listNewsForRequest = async (
 
 const getNewsForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: {
-    readonly instanceId: string;
-    readonly keycloakSubject: string;
-    readonly activeOrganizationId?: string;
-  }
+  actor: SvaMainserverConnectionInput
 ) => getSvaMainserverNews({ ...actor, newsId: route.newsId });
 
 const updateNewsForRoute = async (

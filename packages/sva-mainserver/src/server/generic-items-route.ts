@@ -14,7 +14,10 @@ import {
   matchRequestRoute,
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
-import { withMainserverContextBinding } from './content-route-context.js';
+import {
+  MAINSERVER_ACTING_PRINCIPAL_HEADER,
+  withMainserverContextBinding,
+} from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { mergeFaqPayload, validateFaqWriteOrResponse } from './generic-items-route-faq.js';
 import {
@@ -125,7 +128,8 @@ const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
   action: string,
   contentType: string,
-  contentId?: string
+  contentId?: string,
+  credentialVisibleRead = true
 ): Promise<ContentActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
     ctx,
@@ -134,7 +138,8 @@ const authorizeOrResponse = async (
       contentType,
       ...(contentId ? { contentId } : {}),
     },
-    credentialVisibleCompatibility: !action.endsWith('.read'),
+    credentialVisibleCompatibility:
+      !action.endsWith('.read') || (Boolean(contentId) && credentialVisibleRead),
   });
 
   if (!result.ok) {
@@ -263,7 +268,8 @@ const handleDetailRequest = async (
     ctx,
     pluginActionFor(contentKind, 'read'),
     contentTypeFor(contentKind),
-    itemId
+    itemId,
+    request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
   );
   if (isResponse(actor)) {
     return actor;
@@ -274,7 +280,10 @@ const handleDetailRequest = async (
     ctx,
     authorizedActor: actor,
   });
-  const data = await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
+  const data = await getSvaMainserverGenericItem({
+    ...(resourceActor ?? actor),
+    genericItemId: itemId,
+  });
   if (contentKind === 'faq' && data.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
@@ -284,6 +293,7 @@ const handleDetailRequest = async (
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
         actions: [
+          pluginActionFor(contentKind, 'read'),
           pluginActionFor(contentKind, 'update'),
           pluginActionFor(contentKind, 'delete'),
           'content.publish',
@@ -291,8 +301,22 @@ const handleDetailRequest = async (
         ],
         contentType: contentTypeFor(contentKind),
         item: data,
+        forceExactScopeActions: [pluginActionFor(contentKind, 'read')],
       })
     : {};
+  if (
+    (resourceActor && !access[pluginActionFor(contentKind, 'read')]) ||
+    (!resourceActor && request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER))
+  ) {
+    const exactRead = await authorizeOrResponse(
+      ctx,
+      pluginActionFor(contentKind, 'read'),
+      contentTypeFor(contentKind),
+      itemId,
+      false
+    );
+    if (isResponse(exactRead)) return exactRead;
+  }
   logSuccess('mainserver_generic-items_detail', itemId);
   return json(resourceActor ? { data, meta: { access } } : { data });
 };

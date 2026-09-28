@@ -909,7 +909,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
 });
 
 test(
-  'portable docker runtime guard follows reachable modules and excludes only the known optional helper',
+  'portable docker runtime guard follows reachable modules and excludes known compiler references',
   { timeout: 30_000 },
   () => {
     const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
@@ -944,8 +944,11 @@ test(
       );
       writeFileSync(
         resolve(ssrDir, 'ssr.mjs'),
-        'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs";\n'
+        'import "./server-test.mjs"; import "../_libs/hast-util-to-jsx-runtime+[...].mjs"; import "../_libs/typescript.mjs";\n'
       );
+      const typeScriptCompilerReferences =
+        'function getRuntime(base, options) {\n  return base ? `${base}/${options.jsx === 5 ? "jsx-dev-runtime" : "jsx-runtime"}` : void 0;\n}\nfunction getFactory(compilerOptions, isStaticChildren) {\n  return compilerOptions.jsx === 5 ? "jsxDEV" : isStaticChildren ? "jsxs" : "jsx";\n}\n';
+      writeFileSync(resolve(libraryDir, 'typescript.mjs'), typeScriptCompilerReferences);
       writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'export const chunk = "prod-runtime";\n');
       writeFileSync(resolve(ssrDir, 'commonjs.cjs'), 'require("./resolution-target");\n');
       writeFileSync(resolve(ssrDir, 'resolution-target.cjs'), 'export const decoy = "jsxDEV";\n');
@@ -967,6 +970,15 @@ test(
       );
 
       execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);
+
+      writeFileSync(
+        resolve(libraryDir, 'typescript.mjs'),
+        `${typeScriptCompilerReferences}import "react/jsx-dev-runtime";\n`
+      );
+      expect(() => execFileSync('node', ['--import', 'tsx', guardScript, tempRoot])).toThrowError(
+        /Command failed/
+      );
+      writeFileSync(resolve(libraryDir, 'typescript.mjs'), typeScriptCompilerReferences);
 
       writeFileSync(resolve(ssrDir, 'server-test.mjs'), 'import "./commonjs.cjs";\n');
       execFileSync('node', ['--import', 'tsx', guardScript, tempRoot]);

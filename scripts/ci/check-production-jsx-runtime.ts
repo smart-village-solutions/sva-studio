@@ -12,7 +12,10 @@ type RuntimeSpecifier = {
   readonly value: string;
 };
 
-const collectRuntimeSpecifiers = (filePath: string, sourceText: string): readonly RuntimeSpecifier[] => {
+const collectRuntimeSpecifiers = (
+  filePath: string,
+  sourceText: string
+): readonly RuntimeSpecifier[] => {
   const sourceFile = ts.createSourceFile(
     filePath,
     sourceText,
@@ -103,7 +106,8 @@ const stripKnownOptionalJsxDevReferences = (sourceText: string): string => {
   const guardedHelperRegion = helperRegion
     .split(/\r?\n/u)
     .map((line) =>
-      line.includes('jsxDEV') && knownOptionalReferencePatterns.some((pattern) => pattern.test(line))
+      line.includes('jsxDEV') &&
+      knownOptionalReferencePatterns.some((pattern) => pattern.test(line))
         ? line.replaceAll('jsxDEV', 'jsxOptionalDevelopmentHelper')
         : line
     )
@@ -113,6 +117,17 @@ const stripKnownOptionalJsxDevReferences = (sourceText: string): string => {
     regionEndOffset
   )}`;
 };
+
+const stripKnownTypeScriptCompilerReferences = (sourceText: string): string =>
+  sourceText
+    .replace(
+      /^(\s*return base \? `\$\{base\}\/\$\{options\.jsx === 5 \? ")jsx-dev-runtime(" : "jsx-runtime"\}` : void 0;)$/gmu,
+      '$1jsxOptionalCompilerRuntime$2'
+    )
+    .replace(
+      /^(\s*return compilerOptions\.jsx === 5 \? ")jsxDEV(" : isStaticChildren \? "jsxs" : "jsx";)$/gmu,
+      '$1jsxOptionalCompilerFactory$2'
+    );
 
 export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly string[] => {
   const appDirectory = resolve(appDirectoryInput);
@@ -148,7 +163,9 @@ export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly s
     }
 
     const sourceText = readFileSync(filePath, 'utf8');
-    const guardedSourceText = stripKnownOptionalJsxDevReferences(sourceText);
+    const guardedSourceText = stripKnownTypeScriptCompilerReferences(
+      stripKnownOptionalJsxDevReferences(sourceText)
+    );
     if (guardedSourceText.includes('jsx-dev-runtime')) {
       throw new Error(`Erreichbarer Server-Output enthält React Development-JSX: ${filePath}`);
     }
@@ -170,7 +187,9 @@ export const checkProductionJsxRuntime = (appDirectoryInput: string): readonly s
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     const reachablePaths = checkProductionJsxRuntime(process.argv[2] ?? 'apps/sva-studio-react');
-    process.stdout.write(`Production-JSX-Runtime-Guard geprüft: ${reachablePaths.length} erreichbare Dateien.\n`);
+    process.stdout.write(
+      `Production-JSX-Runtime-Guard geprüft: ${reachablePaths.length} erreichbare Dateien.\n`
+    );
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

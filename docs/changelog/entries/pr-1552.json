@@ -1,0 +1,4 @@
+{
+  "prNumber": 1552,
+  "body": "Der Rollenabgleich nach der Keycloak-Bereitstellung neuer Instanzen verwendet nun den aktuellen Core-Rollenkatalog. Dadurch wird ein unmittelbar nach der Bereitstellung veralteter Rollen-Fingerprint vermieden."
+}

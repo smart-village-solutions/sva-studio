@@ -1,0 +1,4 @@
+{
+  "prNumber": 1554,
+  "body": "Der erste Keycloak-Lauf einer neuen Instanz erfasst den IAM-Rollenkatalog jetzt innerhalb derselben Registry-Transaktion wie die Anlage der geschützten Systemrolle. Der anschließende Rollenabgleich verwendet dadurch den bestätigten Katalog ohne zweiten Keycloak-Lauf."
+}

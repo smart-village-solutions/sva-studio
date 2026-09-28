@@ -31,7 +31,10 @@ import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { syncTenantAdminBootstrapAccount } from './tenant-admin-bootstrap-sync.js';
 import { resolveConfiguredProvisioningAuthIssuerUrl } from '../kassel-provisioning-auth.js';
 import { probeTenantIamAccess, reconcileTenantIamRoles } from './tenant-provisioning-iam.js';
-import { readRoleCatalogFingerprint } from '../iam-account-management/reconcile-core.js';
+import {
+  readRoleCatalogFingerprint,
+  readRoleCatalogFingerprintInTransaction,
+} from '../iam-account-management/reconcile-core.js';
 
 const pluginTenantLifecycleLogger = createSdkLogger({
   component: 'plugin-tenant-lifecycle-scheduler',
@@ -127,6 +130,7 @@ const readReservedInstanceHostnames = (): readonly string[] => {
 const registryRuntime = createInstanceRegistryRuntime({
   resolvePool,
   createRepository: createInstanceRegistryRepository,
+  readScopedRoleCatalogFingerprint: readRoleCatalogFingerprintInTransaction,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     resolveProvisioningAuthIssuerUrl: resolveConfiguredProvisioningAuthIssuerUrl,

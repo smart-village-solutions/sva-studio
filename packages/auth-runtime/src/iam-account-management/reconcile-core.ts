@@ -4,6 +4,7 @@ import {
   type ReconcileReport,
   type RoleCatalogReconciliationDeps,
 } from '@sva/iam-admin';
+import type { QueryClient } from '../db.js';
 
 import {
   emitRoleAuditEvent,
@@ -42,4 +43,21 @@ export const readRoleCatalogFingerprint = async (instanceId: string): Promise<st
   readIamAdminRoleCatalogFingerprint({
     deps: roleCatalogReconciliationDeps,
     instanceId,
+  });
+
+export const readRoleCatalogFingerprintInTransaction = async (
+  instanceId: string,
+  client: QueryClient
+): Promise<string> =>
+  readIamAdminRoleCatalogFingerprint({
+    instanceId,
+    deps: {
+      ...roleCatalogReconciliationDeps,
+      withInstanceScopedDb: async (scopedInstanceId, work) => {
+        if (scopedInstanceId !== instanceId) {
+          throw new Error('role_catalog_fingerprint_instance_mismatch');
+        }
+        return work(client);
+      },
+    },
   });

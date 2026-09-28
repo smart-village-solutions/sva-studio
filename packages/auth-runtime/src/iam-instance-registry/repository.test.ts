@@ -150,6 +150,7 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 
 vi.mock('../iam-account-management/reconcile-core.js', () => ({
   readRoleCatalogFingerprint: readRoleCatalogFingerprintMock,
+  readRoleCatalogFingerprintInTransaction: vi.fn(async () => 'c'.repeat(64)),
   runRoleCatalogReconciliation: runRoleCatalogReconciliationMock,
 }));
 
@@ -281,6 +282,7 @@ describe('iam instance registry repository wiring', () => {
         readRoleCatalogFingerprint: expect.any(Function),
       })
     );
+    expect(runtimeConfig?.readScopedRoleCatalogFingerprint).toEqual(expect.any(Function));
     expect(runtimeConfig?.provisioningWorkerServiceDeps).toEqual(
       expect.objectContaining({ readKeycloakStateViaProvisioner: expect.any(Function) })
     );

@@ -791,6 +791,12 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         });
       const allowed = await dispatchSvaMainserverGenericItemsRequest(request());
       expect(allowed?.status).toBe(200);
+      expect(state.getSvaMainserverGenericItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actingPrincipalType: 'organization',
+          credentialFingerprint: 'a'.repeat(64),
+        })
+      );
       state.authorizeMainserverDataProviderAccess.mockClear();
       state.authorizeContentPrimitiveForUser
         .mockResolvedValueOnce({

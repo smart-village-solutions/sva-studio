@@ -280,7 +280,10 @@ const handleDetailRequest = async (
     ctx,
     authorizedActor: actor,
   });
-  const data = await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
+  const data = await getSvaMainserverGenericItem({
+    ...(resourceActor ?? actor),
+    genericItemId: itemId,
+  });
   if (contentKind === 'faq' && data.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }

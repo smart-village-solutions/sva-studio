@@ -13,6 +13,7 @@ import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
 import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
+  SvaMainserverConnectionInput,
   SvaMainserverNewsInput,
   SvaMainserverNewsPayload,
   SvaMainserverWasteLocationKey,
@@ -774,7 +775,7 @@ const handleItemRead = async (
     ctx,
     authorizedActor: actor,
   });
-  const data = await getNewsForRoute(route, actor);
+  const data = await getNewsForRoute(route, resourceActor ?? actor);
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
@@ -1323,11 +1324,7 @@ const listNewsForRequest = async (
 
 const getNewsForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: {
-    readonly instanceId: string;
-    readonly keycloakSubject: string;
-    readonly activeOrganizationId?: string;
-  }
+  actor: SvaMainserverConnectionInput
 ) => getSvaMainserverNews({ ...actor, newsId: route.newsId });
 
 const updateNewsForRoute = async (

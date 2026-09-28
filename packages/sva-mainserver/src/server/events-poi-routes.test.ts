@@ -339,6 +339,12 @@ describe('mainserver content route contracts', () => {
         });
       const allowed = await dispatch(request());
       expect(allowed?.status).toBe(200);
+      expect(getDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actingPrincipalType: 'organization',
+          credentialFingerprint: 'a'.repeat(64),
+        })
+      );
       state.authorizeMainserverDataProviderAccess.mockClear();
       state.authorizeContentPrimitiveForUser
         .mockResolvedValueOnce({

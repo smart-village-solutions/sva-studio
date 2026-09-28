@@ -440,7 +440,10 @@ const handleItemRead = async (
     ctx,
     authorizedActor: actor,
   });
-  const detail = await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
+  const detail = await getSvaMainserverEventDetail({
+    ...(resourceActor ?? actor),
+    eventId: route.itemId,
+  });
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,

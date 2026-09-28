@@ -299,6 +299,8 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       expect.objectContaining({
         keycloakSubject: 'subject-1',
         newsId: 'news-1',
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
       })
     );
     expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(6);

@@ -256,6 +256,18 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
       });
     const allowed = await dispatchSvaMainserverSurveysRequest(request());
     expect(allowed?.status).toBe(200);
+    expect(state.getSvaMainserverSurvey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
+    expect(state.getSvaMainserverSurveyResults).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
     state.authorizeMainserverDataProviderAccess.mockClear();
     state.getSvaMainserverSurveyResults.mockClear();
     state.authorizeContentPrimitiveForUser

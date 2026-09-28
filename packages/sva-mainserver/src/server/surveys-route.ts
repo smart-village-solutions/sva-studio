@@ -63,12 +63,12 @@ const handleGetItem = async (
     request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
   );
   if (actor instanceof Response) return actor;
-  const survey = await getSvaMainserverSurvey({ ...actor, surveyId });
   const resourceActor = await resolveMainserverResourceActor({
     request,
     ctx,
     authorizedActor: actor,
   });
+  const survey = await getSvaMainserverSurvey({ ...(resourceActor ?? actor), surveyId });
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
@@ -113,7 +113,7 @@ const handleGetItem = async (
   if (!moderationAccess.ok && !exportAccess.ok) {
     return json(resourceActor ? { data: survey, meta: { access } } : { data: survey });
   }
-  const results = await getSvaMainserverSurveyResults({ ...actor, surveyId });
+  const results = await getSvaMainserverSurveyResults({ ...(resourceActor ?? actor), surveyId });
   const data = { ...survey, results };
   return json(resourceActor ? { data, meta: { access } } : { data });
 };

@@ -95,8 +95,11 @@ export const isAllowedWorkspaceModuleSpecifier = (
   ) {
     return wasteServerSource && moduleSpecifier === '@sva/auth-runtime/plugin-server-host';
   }
-  if (moduleSpecifier === '@sva/waste-management-runtime/server') {
-    return wasteServerSource;
+  if (
+    moduleSpecifier === '@sva/waste-management-runtime' ||
+    moduleSpecifier.startsWith('@sva/waste-management-runtime/')
+  ) {
+    return wasteServerSource && moduleSpecifier === '@sva/waste-management-runtime/server';
   }
   const workspacePackageName = getWorkspacePackageName(moduleSpecifier);
   return workspacePackageName

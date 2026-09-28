@@ -147,10 +147,15 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
     const workspaceRoot = createTempWorkspace();
     createPluginPackage(workspaceRoot, 'plugin-waste-management', {
       packageName: '@sva/plugin-waste-management',
-      dependencies: { '@sva/auth-runtime': 'workspace:*' },
+      dependencies: {
+        '@sva/auth-runtime': 'workspace:*',
+        '@sva/waste-management-runtime': 'workspace:*',
+      },
       sourceFiles: {
         'src/server.ts': `import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';\nexport const authenticate = pluginServerHost.withAuthenticatedUser;\n`,
+        'src/server-loaders.ts': `import { wasteManagementHttpRuntime } from '@sva/waste-management-runtime/server';\nexport const loaders = wasteManagementHttpRuntime.createWasteServerLoaders;\n`,
         'src/client.ts': `import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';\nexport const authenticate = pluginServerHost.withAuthenticatedUser;\n`,
+        'src/client-repositories.ts': `import { wasteDataSourceStatements } from '@sva/waste-management-runtime/repositories';\nexport const statements = wasteDataSourceStatements;\n`,
         'src/other.ts': `import { getAuthConfig } from '@sva/auth-runtime/server';\nexport const config = getAuthConfig;\n`,
       },
     });
@@ -173,6 +178,20 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
           violation.relativePath.endsWith('src/client.ts') && violation.rule === 'workspace-import'
       )
     ).toBe(true);
+    expect(
+      violations.some(
+        (violation) =>
+          violation.relativePath.endsWith('src/client-repositories.ts') &&
+          violation.rule === 'workspace-import'
+      )
+    ).toBe(true);
+    expect(
+      violations.some(
+        (violation) =>
+          violation.relativePath.endsWith('src/server-loaders.ts') &&
+          violation.rule === 'workspace-import'
+      )
+    ).toBe(false);
   });
 
   it('rejects the Waste contracts dependency for unrelated plugins', async () => {

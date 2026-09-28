@@ -1,4 +1,5 @@
 import {
+  definePluginActions,
   definePluginAuditEvents,
   definePluginPermissions,
   type PluginDefinition,
@@ -48,6 +49,31 @@ export const wasteManagementPermissionDefinitions = definePluginPermissions('was
   {
     id: 'waste-management.settings.manage',
     titleKey: 'wasteManagement.permissions.settingsManage.title',
+  },
+]);
+
+export const wasteManagementActionDefinitions = definePluginActions('waste-management', [
+  ...wasteManagementPermissionDefinitions.map(({ id, titleKey }) => ({
+    id,
+    titleKey,
+    requiredAction: id,
+    accessRequirement: {
+      kind: 'tenant' as const,
+      moduleId: 'waste-management',
+      actions: { mode: 'allOf' as const, values: [id] },
+    },
+  })),
+  {
+    id: 'waste-management.annual-transfer.execute',
+    titleKey: 'wasteManagement.actions.annualTransfer',
+    accessRequirement: {
+      kind: 'tenant',
+      moduleId: 'waste-management',
+      actions: {
+        mode: 'allOf',
+        values: ['waste-management.tours.manage', 'waste-management.scheduling.manage'],
+      },
+    },
   },
 ]);
 
@@ -240,6 +266,7 @@ export const pluginWasteManagement: PluginDefinition = {
     },
   ],
   permissions: wasteManagementPermissionDefinitions,
+  actions: wasteManagementActionDefinitions,
   moduleIam: wasteManagementModuleIam,
   auditEvents: wasteManagementAuditEventDefinitions,
   contentHistory: { mode: 'domain', reasonCode: 'domain_history' },

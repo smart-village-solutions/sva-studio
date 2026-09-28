@@ -3,16 +3,24 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
-import { createPluginTenantReadinessReadModel, evaluatePluginTenantAccess } from '@sva/plugin-sdk';
+import { createPluginRegistry, createPluginTenantReadinessReadModel, evaluatePluginTenantAccess } from '@sva/plugin-sdk';
 
 import {
   pluginWasteManagement,
+  wasteManagementActionDefinitions,
   wasteManagementAuditEventDefinitions,
   wasteManagementPermissionDefinitions,
 } from '../src/plugin.js';
 import { wasteManagementModuleIam } from '../src/waste-management.module-iam.js';
 
 describe('pluginWasteManagement contract', () => {
+  it('registers the declared actions with the plugin permissions', () => {
+    const registry = createPluginRegistry([pluginWasteManagement]);
+    expect(registry.get('waste-management')?.actions?.map(({ id }) => id)).toEqual(
+      wasteManagementActionDefinitions.map(({ id }) => id)
+    );
+  });
+
   it('keeps the plugin manifest aligned with the browser-only plugin package contents', () => {
     const currentDir = dirname(fileURLToPath(import.meta.url));
     const manifest = JSON.parse(
@@ -33,6 +41,22 @@ describe('pluginWasteManagement contract', () => {
   });
 
   it('declares the canonical free plugin route, module iam and job registrations', () => {
+    expect(pluginWasteManagement.actions).toEqual(wasteManagementActionDefinitions);
+    expect(wasteManagementActionDefinitions).toHaveLength(10);
+    expect(wasteManagementActionDefinitions.slice(0, 9).map(({ id }) => id)).toEqual(
+      wasteManagementPermissionDefinitions.map(({ id }) => id)
+    );
+    expect(wasteManagementActionDefinitions[9]).toMatchObject({
+      id: 'waste-management.annual-transfer.execute',
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'waste-management',
+        actions: {
+          mode: 'allOf',
+          values: ['waste-management.tours.manage', 'waste-management.scheduling.manage'],
+        },
+      },
+    });
     expect(pluginWasteManagement.navigation).toEqual([
       {
         id: 'waste-management.navigation',

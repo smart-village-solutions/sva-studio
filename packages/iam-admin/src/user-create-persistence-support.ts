@@ -79,7 +79,7 @@ export const buildCreateAccountParams = (
   payload.avatarUrl ?? null,
   payload.preferredLanguage ?? null,
   payload.timezone ?? null,
-  payload.status ?? 'pending',
+  payload.status ?? 'active',
   payload.notes ?? null,
   payload.isTechnicalAccount ?? false,
 ];
@@ -169,7 +169,7 @@ export const buildCreatedUserResult = (
     timezone: payload.timezone,
     avatarUrl: payload.avatarUrl,
     notes: payload.notes,
-    status: payload.status ?? 'pending',
+    status: payload.status ?? 'active',
     isTechnicalAccount: payload.isTechnicalAccount ?? false,
     roles: mapRoles(assignedRoleRows),
     mainserverUserApplicationSecretSet: false,

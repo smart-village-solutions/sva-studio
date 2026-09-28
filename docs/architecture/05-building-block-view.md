@@ -235,6 +235,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth-runtime` (`routes`, `auth-server`, `oidc`, Session, Cookies, Runtime-Health)
 - Account- und Rollenmanagement inkl. IdP-Synchronisation:
   - `packages/iam-admin` (User-, Rollen-, Gruppen-, Organisations-, Actor-, Reconcile- und Keycloak-Admin-Orchestrierung)
+  - Die bewusste administrative Account-Anlage beginnt ohne ausdrücklichen Status als `active`; die automatische JIT-Anlage beim Login bleibt standardmäßig `pending`. Die Keycloak-Passwort-Einladung ändert den IAM-Status nicht.
   - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
   - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
   - der privilegierte Tenant-Account-Hard-Delete läuft ebenfalls über `packages/iam-admin`: Permission-Gate `iam.accounts.delete`, Schutz für `system_admin`-Zielaccounts, inhaltsbezogene Vorbereinigung, Session-Widerruf, Keycloak-Delete und finaler Studio-Hard-Delete bleiben in diesem Baustein gebündelt

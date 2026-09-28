@@ -129,7 +129,7 @@ describe('user-create-persistence', () => {
         keycloakSubject: 'subject-new',
         displayName: 'Ada Lovelace',
         email: 'user@example.test',
-        status: 'pending',
+        status: 'active',
         isTechnicalAccount: false,
         roles: [expect.objectContaining({ roleKey: 'editor' })],
       }),
@@ -160,7 +160,7 @@ describe('user-create-persistence', () => {
       null,
       null,
       null,
-      'pending',
+      'active',
       null,
       false,
     ]);
@@ -204,6 +204,24 @@ describe('user-create-persistence', () => {
       trigger: 'user_group_changed',
     });
   });
+
+  it.each(['pending', 'inactive'] as const)(
+    'preserves an explicitly requested %s status',
+    async (status) => {
+      const client = createInsertClient('account-1');
+      const persistence = createUserCreatePersistence(createDeps());
+
+      const result = await persistCreatedTestUser(persistence, client, {
+        payload: { status },
+      });
+
+      expect(result.responseData.status).toBe(status);
+      expect(client.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO iam.accounts'),
+        expect.arrayContaining([status])
+      );
+    }
+  );
 
   it('reuses assignments prepared before the external account write', async () => {
     const deps = createDeps();

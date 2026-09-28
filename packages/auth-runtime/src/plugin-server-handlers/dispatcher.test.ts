@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@sva/server-runtime', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   getWorkspaceContext: () => ({ requestId: 'request-1' }),
+  isCanonicalAuthHost: () => false,
 }));
 
 import {
@@ -139,13 +140,38 @@ describe('plugin server handler dispatcher', () => {
     expect(authenticate).not.toHaveBeenCalled();
   });
 
+  it('sorts allowed methods for a shared plugin path', async () => {
+    const get = tenantDescriptor();
+    const patch = { ...get, id: 'news.patch', method: 'PATCH' as const };
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([
+        [patch.id, patch],
+        [get.id, get],
+      ]),
+      handlers: { [patch.id]: vi.fn(), [get.id]: vi.fn() },
+    });
+
+    const response = await dispatch(
+      new Request('https://tenant.test/api/v1/plugins/news/items', { method: 'POST' })
+    );
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('Allow')).toBe('GET, PATCH');
+  });
+
   it('binds path parameters, prefers static paths, and rejects ambiguous templates', async () => {
-    const dynamic = { ...tenantDescriptor(), id: 'news.detail', path: '/api/v1/news/items/$itemId' };
+    const dynamic = {
+      ...tenantDescriptor(),
+      id: 'news.detail',
+      path: '/api/v1/news/items/$itemId',
+    };
     const fixed = { ...tenantDescriptor(), id: 'news.special', path: '/api/v1/news/items/special' };
     const dynamicHandler = vi.fn<PluginServerExecutionHandler>(() => new Response('detail'));
     const fixedHandler = vi.fn<PluginServerExecutionHandler>(() => new Response('special'));
     const dispatch = createPluginServerHandlerDispatcher({
-      descriptors: new Map([[dynamic.id, dynamic], [fixed.id, fixed]]),
+      descriptors: new Map([
+        [dynamic.id, dynamic],
+        [fixed.id, fixed],
+      ]),
       handlers: { [dynamic.id]: dynamicHandler, [fixed.id]: fixedHandler },
       dependencies: {
         authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }, 'org-a'),
@@ -157,9 +183,15 @@ describe('plugin server handler dispatcher', () => {
       },
     });
 
-    expect((await dispatch(new Request('https://tenant.test/api/v1/news/items/article-1')))?.status).toBe(200);
-    expect(dynamicHandler).toHaveBeenCalledWith(expect.objectContaining({ pathParams: { itemId: 'article-1' } }));
-    expect((await dispatch(new Request('https://tenant.test/api/v1/news/items/special')))?.status).toBe(200);
+    expect(
+      (await dispatch(new Request('https://tenant.test/api/v1/news/items/article-1')))?.status
+    ).toBe(200);
+    expect(dynamicHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ pathParams: { itemId: 'article-1' } })
+    );
+    expect(
+      (await dispatch(new Request('https://tenant.test/api/v1/news/items/special')))?.status
+    ).toBe(200);
     expect(fixedHandler).toHaveBeenCalledTimes(1);
     expect(dynamicHandler).toHaveBeenCalledTimes(1);
     expect(() =>
@@ -221,12 +253,17 @@ describe('plugin server handler dispatcher', () => {
 
     readTenantAccess.mockResolvedValue({ allowed: true, reason: 'ready' });
     expect((await dispatch(request))?.status).toBe(200);
-    expect(resolvePermissions).toHaveBeenCalledWith({ instanceId: 'tenant-a', keycloakSubject: 'user-1' });
+    expect(resolvePermissions).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+    });
     expect(handler).toHaveBeenCalledTimes(1);
     resolvePermissions.mockResolvedValue({ ok: true, permissions: [] });
     const denied = await dispatch(request);
     expect(denied?.status).toBe(403);
-    expect(await denied?.json()).toMatchObject({ error: { code: 'forbidden', details: { action: 'waste-management.read' } } });
+    expect(await denied?.json()).toMatchObject({
+      error: { code: 'forbidden', details: { action: 'waste-management.read' } },
+    });
     expect(handler).toHaveBeenCalledTimes(1);
     resolvePermissions.mockResolvedValue({ ok: false, error: 'unavailable' });
     expect((await dispatch(request))?.status).toBe(503);
@@ -235,6 +272,38 @@ describe('plugin server handler dispatcher', () => {
     expect(methodDenied?.status).toBe(405);
     expect(methodDenied?.headers.get('Allow')).toBe('GET');
     expect(await methodDenied?.json()).toMatchObject({ error: 'method_not_allowed' });
+  });
+
+  it('accepts any one granted domain action', async () => {
+    const descriptor = {
+      ...wasteDescriptor(),
+      accessRequirement: {
+        kind: 'tenant' as const,
+        moduleId: 'waste-management',
+        actions: {
+          mode: 'anyOf' as const,
+          values: ['waste-management.write', 'waste-management.read'],
+        },
+      },
+    };
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('ok'));
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }),
+        readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
+        resolvePermissions: vi.fn().mockResolvedValue({
+          ok: true,
+          permissions: [{ action: 'waste-management.read', resourceType: 'waste-management' }],
+        }),
+      },
+    });
+
+    expect(
+      (await dispatch(new Request('https://tenant.test/api/v1/waste-management/history')))?.status
+    ).toBe(200);
+    expect(handler).toHaveBeenCalledOnce();
   });
 
   it('authenticates a technical service before binding tenant context and invoking the handler', async () => {
@@ -625,6 +694,23 @@ describe('plugin server handler dispatcher', () => {
     expect(
       (await platformDispatch(new Request('https://tenant.test/api/v1/plugins/news/platform')))
         ?.status
+    ).toBe(403);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('uses the canonical host check for platform routes by default', async () => {
+    const descriptor = platformDescriptor();
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('unexpected'));
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'admin-1', roles: ['instance_registry_admin'] }),
+      },
+    });
+
+    expect(
+      (await dispatch(new Request('https://tenant.test/api/v1/plugins/news/platform')))?.status
     ).toBe(403);
     expect(handler).not.toHaveBeenCalled();
   });

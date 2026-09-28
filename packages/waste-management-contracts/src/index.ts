@@ -19,6 +19,7 @@ export {
   readWasteManagementPdfContactBlock,
 } from './waste-management-settings-public-config.js';
 export type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
+export { fixedWasteEmailReminderPaths, withFixedWasteEmailReminderPaths } from './waste-management-email-reminder-paths.js';
 export type {
   WasteManagementAuditOverview,
   WasteManagementAuditOutcome,

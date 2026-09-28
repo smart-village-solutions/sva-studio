@@ -4,6 +4,7 @@ import {
   type WasteHolidaySyncStatus,
   type WasteManagementEmailReminderConfig,
   type WasteManagementSettingsRecord,
+  withFixedWasteEmailReminderPaths,
 } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
@@ -14,7 +15,6 @@ import {
   persistWasteSettingsInterfaceSelection,
   resolveTargetInterfaceRecord,
 } from './settings-write-support.interface-selection.js';
-import { withFixedWasteEmailReminderPaths } from './email-reminder-paths.js';
 import {
   enqueueWasteTypesSyncAfterMutation,
   type WasteTypesSyncMetadata,

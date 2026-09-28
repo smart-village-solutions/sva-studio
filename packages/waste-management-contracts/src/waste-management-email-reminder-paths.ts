@@ -1,4 +1,4 @@
-import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
+import type { WasteManagementEmailReminderConfig } from './waste-management-settings-public-config.js';
 
 export const fixedWasteEmailReminderPaths = {
   doiConfirmPath: '/email-reminders/confirm',

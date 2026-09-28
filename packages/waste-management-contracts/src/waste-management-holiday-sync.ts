@@ -1,7 +1,5 @@
-import type {
-  WasteHolidayRuleRecord,
-  WasteHolidayStateCode,
-} from '@sva/waste-management-contracts';
+import type { WasteHolidayRuleRecord } from './waste-management/master-data-scheduling.js';
+import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
 
 export const wasteHolidaySyncHorizonYears = 10;
 

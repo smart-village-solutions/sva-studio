@@ -24,6 +24,7 @@ export type PluginTenantLifecycleRecord = {
   readonly retryKind?: PluginTenantLifecycleRetryKind;
   readonly retryAfter?: string;
   readonly nextRecheckAt?: string;
+  /** Contract requested for the current desired generation; readiness has its own revision. */
   readonly contractRevision?: string;
   readonly recoveryErrorCode?: string;
   readonly requestedAt: string;
@@ -37,6 +38,7 @@ export type PluginTenantLifecycleRepository = {
     readonly instanceId: string;
     readonly pluginId: string;
     readonly operation: PluginTenantLifecycleOperation;
+    readonly contractRevision?: string;
   }) => Promise<PluginTenantLifecycleRecord>;
   readonly getLifecycle: (
     instanceId: string,

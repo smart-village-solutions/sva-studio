@@ -63,7 +63,7 @@ describe('plugin tenant lifecycle repository', () => {
     });
 
     expect(result.desiredGeneration).toBe(2);
-    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile']);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile', null]);
     expect(statements[0]?.text).toContain(
       'desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1'
     );
@@ -75,6 +75,22 @@ describe('plugin tenant lifecycle repository', () => {
     expect(statements[0]?.text).toContain(
       'AND iam.instance_plugin_lifecycle.claimed_generation IS NULL'
     );
+  });
+
+  it('persists the requested contract with its generation without replacing successful readiness', async () => {
+    const { executor, statements } = createExecutor();
+    const request = {
+      instanceId: 'tenant-a',
+      pluginId: 'speech',
+      operation: 'reconcile' as const,
+      contractRevision: 'speech-2:1',
+    };
+    await createPluginTenantLifecycleRepository(executor).requestLifecycle(request);
+
+    expect(statements[0]?.values).toEqual(['tenant-a', 'speech', 'reconcile', 'speech-2:1']);
+    expect(statements[0]?.text).toContain('contract_revision = EXCLUDED.contract_revision');
+    expect(statements[0]?.text).not.toContain('readiness_revision =');
+    expect(statements[0]?.text).not.toContain('completed_generation =');
   });
 
   it('rejects a concurrent request while a lifecycle job is in flight', async () => {

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1549,
+  "body": "Fehlgeschlagene Plugin-Aufträge starten nach einem Vertragswechsel nicht mehr wiederholt mit einem neuen Versuchszähler. Studio merkt sich den bereits angeforderten Vertrag und respektiert dessen Fehlerstatus und Wartefrist. Ein weiterer Vertragswechsel oder eine autorisierte Reparatur bleibt möglich."
+}

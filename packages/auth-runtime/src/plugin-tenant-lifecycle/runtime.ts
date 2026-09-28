@@ -43,6 +43,7 @@ const persistAtomicLifecycleStart: PersistPluginTenantLifecycleStart = async ({
         instanceId: request.instanceId,
         pluginId: request.pluginId,
         operation: request.operation,
+        ...(contractRevision ? { contractRevision } : {}),
       });
       const jobId = randomUUID();
       const job = await studioJobs.createJob({

@@ -4,7 +4,10 @@ import {
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
 
-import { withMainserverContextBinding } from './content-route-context.js';
+import {
+  MAINSERVER_ACTING_PRINCIPAL_HEADER,
+  withMainserverContextBinding,
+} from './content-route-context.js';
 import { errorJson, json } from './content-route-core.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
@@ -53,7 +56,12 @@ const handleGetItem = async (
   ctx: AuthenticatedRequestContext,
   surveyId: string
 ): Promise<Response> => {
-  const actor = await authorizeSurveyOrResponse(ctx, 'read', surveyId);
+  const actor = await authorizeSurveyOrResponse(
+    ctx,
+    'read',
+    surveyId,
+    request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
+  );
   if (actor instanceof Response) return actor;
   const survey = await getSvaMainserverSurvey({ ...actor, surveyId });
   const resourceActor = await resolveMainserverResourceActor({
@@ -65,6 +73,7 @@ const handleGetItem = async (
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
         actions: [
+          'surveys.read',
           'surveys.update',
           'surveys.delete',
           'content.publish',
@@ -74,8 +83,16 @@ const handleGetItem = async (
         ],
         contentType: SURVEYS_CONTENT_TYPE,
         item: survey,
+        forceExactScopeActions: ['surveys.read'],
       })
     : {};
+  if (
+    (resourceActor && !access['surveys.read']) ||
+    (!resourceActor && request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER))
+  ) {
+    const exactRead = await authorizeSurveyOrResponse(ctx, 'read', surveyId, false);
+    if (exactRead instanceof Response) return exactRead;
+  }
   const [moderationAccess, exportAccess] = await Promise.all([
     authorizeContentPrimitiveForUser({
       ctx,

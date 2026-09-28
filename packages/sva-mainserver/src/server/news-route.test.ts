@@ -301,7 +301,14 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         newsId: 'news-1',
       })
     );
-    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(5);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(6);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'news.read',
+        dataProviderId: 'dp-org-1',
+        forceExactScopeAuthorization: true,
+      })
+    );
     await expect(response?.json()).resolves.toEqual({
       data: {
         id: 'news-1',
@@ -310,6 +317,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       },
       meta: {
         access: {
+          'news.read': true,
           'news.delete': true,
           'news.pushNotification': true,
           'news.update': true,
@@ -318,6 +326,37 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         },
       },
     });
+  });
+  it('denies a principal-bound detail when the DataProvider does not grant read access', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({ ok: false, status: 403, error: 'forbidden', message: 'Forbidden' });
+    state.authorizeMainserverDataProviderAccess.mockImplementation(async (input) => ({
+      allowed: input.action !== 'news.read',
+      authorizationMode: 'exact',
+      resolverMode: 'automatic',
+      reason: input.action === 'news.read' ? 'data_provider_mismatch' : 'allowed',
+    }));
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        headers: { 'X-SVA-Acting-Principal-Type': 'organization' },
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.getSvaMainserverNews).toHaveBeenCalledTimes(1);
+    await expect(response?.json()).resolves.toMatchObject({ error: 'forbidden' });
   });
   it('normalizes invalid pagination query parameters for news lists', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));

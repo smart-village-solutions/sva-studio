@@ -1,0 +1,4 @@
+{
+  "prNumber": 1562,
+  "body": "Der Studio-Docker-Build erkennt die optionalen JSX-Compiler-Strings im gebündelten TypeScript korrekt und blockiert weiterhin echte React-Development-JSX-Runtime-Imports."
+}

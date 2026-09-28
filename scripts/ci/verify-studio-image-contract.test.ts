@@ -20,10 +20,7 @@ const regularPlugins = [
 ];
 const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
-  ssf: [
-    ...regularPlugins.map((id) => `plugin-${id}`),
-    'waste-management-runtime',
-  ],
+  ssf: [...regularPlugins.map((id) => `plugin-${id}`)],
 };
 
 const validInput = (distribution: 'studio' | 'ssf') => {
@@ -62,7 +59,7 @@ const validInput = (distribution: 'studio' | 'ssf') => {
             'waste-management-contracts',
             'waste-management-runtime',
           ]
-        : ['plugin-sdk', 'plugin-ssf', 'waste-management-contracts'],
+        : ['plugin-sdk', 'plugin-ssf', 'waste-management-contracts', 'waste-management-runtime'],
     chunkProvenance: {
       schemaVersion: 1,
       distribution,
@@ -202,9 +199,9 @@ describe('verify-studio-image-contract', () => {
       },
     ],
     [
-      'excluded runtime',
+      'missing required runtime',
       (input: ReturnType<typeof validInput>) => {
-        input.packages.push('waste-management-runtime');
+        input.packages = input.packages.filter((name) => name !== 'waste-management-runtime');
       },
     ],
   ])('rejects %s mismatch', (_reason, mutate) => {

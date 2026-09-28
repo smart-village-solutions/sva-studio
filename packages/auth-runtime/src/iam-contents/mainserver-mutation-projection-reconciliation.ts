@@ -148,8 +148,8 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       payload: row.payload,
       status: row.status,
       ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-      authorDisplayMode: row.authorDisplayMode,
-      authorDisplayName: row.author,
+      authorDisplayMode: row.organizationId ? row.authorDisplayMode : 'user',
+      authorDisplayName: row.organizationId ? row.author : actorDisplayName,
     });
     const independentReconciliationError =
       typeof entry.last_error_code === 'string' &&

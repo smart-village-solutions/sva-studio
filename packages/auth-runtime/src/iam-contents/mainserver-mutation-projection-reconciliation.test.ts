@@ -95,6 +95,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
       expect.objectContaining({
         actorDisplayName: 'Redaktion',
+        authorDisplayMode: 'organization',
         mutationRef: 'operation-1',
         operation: 'update',
         contentType: 'projects.project',
@@ -110,6 +111,49 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       completedSteps: ['projection_history_reconciled'],
       contentId: '11111111-1111-4111-8111-111111111111',
     });
+  });
+
+  it('attributes deferred personal content history to the actor', async () => {
+    state.query.mockResolvedValue({
+      rows: [{
+        operation_external_id: 'operation-personal-1',
+        action_id: 'events.create',
+        content_type: 'events.event-record',
+        content_id: 'event-personal-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1',
+        display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-25T14:00:00.000Z',
+      }],
+    });
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'user',
+      actingPrincipalId: '22222222-2222-4222-8222-222222222222',
+      credentialFingerprint: 'a'.repeat(64),
+      rows: [{
+        sourceEntityType: 'events.event-record',
+        sourceEntityId: 'event-personal-1',
+        contentType: 'events.event-record',
+        title: 'Persönlicher Termin',
+        payload: {},
+        status: 'draft',
+        authorDisplayMode: 'organization',
+        author: 'mainserver',
+        updatedAt: '2026-09-25T13:59:00.000Z',
+      }],
+    });
+
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: '22222222-2222-4222-8222-222222222222',
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Redaktion',
+      })
+    );
   });
 
   it('keeps an entry deferred when its actor display name cannot be recovered', async () => {

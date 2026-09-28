@@ -78,6 +78,8 @@ const {
   updateWasteManagementTourInternal,
 } = wasteManagementCoreHandlers;
 
+const defaultAuditDeps = { emitAuditEvent: vi.fn(async () => undefined) };
+
 const actor: AuthenticatedRequestContext = {
   sessionId: 'session-1',
   user: {
@@ -140,6 +142,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -220,6 +223,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadMasterDataOverview: vi.fn(async () => overview),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -243,6 +247,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadWasteHistoryOverview: vi.fn(async () => ({
           audit: {
             items: [
@@ -331,6 +336,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadMasterDataOverview: vi.fn(async () => overview),
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         saveExternalInterfaceConnectionCheck,
@@ -373,6 +379,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadToursOverview: vi.fn(async () => overview),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -435,6 +442,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadSchedulingOverview: vi.fn(async () => overview),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -492,6 +500,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveExternalInterfaceConnectionCheck,
         saveExternalInterfaceRecord,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
@@ -540,6 +549,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveExternalInterfaceRecord,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         loadWasteCustomRecurrencePresets: vi.fn(async () => []),
@@ -670,6 +680,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         emitAuditEvent,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         loadMasterDataFractionsOverview,
@@ -848,6 +859,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         loadMasterDataFractionsOverview,
         saveWasteFraction,
@@ -929,6 +941,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteRegion,
         loadWasteRegionById,
         resolvePermissions: vi.fn(async () => ({
@@ -984,6 +997,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteRegion,
         loadWasteRegionById,
         resolvePermissions: vi.fn(async () => ({
@@ -1033,6 +1047,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteCity,
         loadWasteCityById,
         resolvePermissions: vi.fn(async () => ({
@@ -1091,6 +1106,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         patchWasteCity,
         loadWasteCityById,
         resolvePermissions: vi.fn(async () => ({
@@ -1144,6 +1160,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         patchWasteCity,
         loadWasteCityById,
         resolvePermissions: vi.fn(async () => ({
@@ -1192,6 +1209,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         patchWasteCity,
         loadWasteCityById,
         resolvePermissions: vi.fn(async () => ({
@@ -1236,6 +1254,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteStreet,
         loadWasteStreetById,
         resolvePermissions: vi.fn(async () => ({
@@ -1294,6 +1313,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteStreet,
         loadWasteStreetById,
         resolvePermissions: vi.fn(async () => ({
@@ -1344,6 +1364,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteHouseNumber,
         loadWasteHouseNumberById,
         resolvePermissions: vi.fn(async () => ({
@@ -1402,6 +1423,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteHouseNumber,
         loadWasteHouseNumberById,
         resolvePermissions: vi.fn(async () => ({
@@ -1458,6 +1480,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
         resolvePermissions: vi.fn(async () => ({
@@ -1524,6 +1547,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteCollectionLocation,
         loadWasteCollectionLocationById,
         resolvePermissions: vi.fn(async () => ({
@@ -1577,6 +1601,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
         resolvePermissions: vi.fn(async () => ({
@@ -1637,6 +1662,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         emitAuditEvent,
         saveWasteLocationTourLink,
         loadWasteLocationTourLinkById,
@@ -1695,6 +1721,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         emitAuditEvent,
         deleteWasteLocationTourLink,
         loadWasteLocationTourLinkById,
@@ -1763,6 +1790,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTour,
         loadWasteTourById,
         resolvePermissions: vi.fn(async () => ({
@@ -1890,6 +1918,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTour,
         loadWasteTourById,
         listWasteLocationTourLinksByTourId,
@@ -1983,6 +2012,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTour,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -2037,6 +2067,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTour,
         loadWasteTourById,
         listWasteLocationTourLinksByTourId,
@@ -2104,6 +2135,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTour,
         loadWasteTourById,
         resolvePermissions: vi.fn(async () => ({
@@ -2167,6 +2199,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTour,
         loadWasteTourById,
         resolvePermissions: vi.fn(async () => ({
@@ -2233,6 +2266,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         createWasteTourDateShift,
         loadWasteTourDateShiftById,
         resolvePermissions: vi.fn(async () => ({
@@ -2308,6 +2342,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteTourDateShift,
         loadWasteTourDateShiftById,
         resolvePermissions: vi.fn(async () => ({
@@ -2374,6 +2409,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
         resolvePermissions: vi.fn(async () => ({
@@ -2445,6 +2481,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteGlobalDateShift,
         loadWasteGlobalDateShiftById,
         resolvePermissions: vi.fn(async () => ({
@@ -2514,6 +2551,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteHolidayRule,
         loadWasteHolidayRuleById,
         resolvePermissions: vi.fn(async () => ({
@@ -2659,6 +2697,7 @@ describe('waste-management auth runtime handlers', () => {
         actor,
         {
           getRequestId: () => `req-${testCase.label}`,
+          ...defaultAuditDeps,
           resolvePermissions: vi.fn(async () => ({
             ok: true as const,
             permissions: allowPermission(testCase.permission),
@@ -2839,6 +2878,7 @@ describe('waste-management auth runtime handlers', () => {
         actor,
         {
           getRequestId: () => `req-${testCase.label}`,
+          ...defaultAuditDeps,
           resolvePermissions: vi.fn(async () => ({
             ok: true as const,
             permissions: allowPermission(testCase.permission),
@@ -2880,6 +2920,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         startPluginOperationJob: startJob,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         loadDefaultInterfaceRecord: vi.fn(async () => ({
@@ -2937,6 +2978,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         startPluginOperationJob: startJob,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         loadDefaultInterfaceRecord: vi.fn(async () => ({
@@ -2991,6 +3033,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         startPluginOperationJob: startJob,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         loadDefaultInterfaceRecord: vi.fn(async () => ({
@@ -3055,6 +3098,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteLocationTourLinksBulk,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -3104,6 +3148,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         startPluginOperationJob: startJob,
         resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         resolvePermissions: vi.fn(async () => ({
@@ -3150,6 +3195,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         startPluginOperationJob: vi.fn(),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -3174,6 +3220,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         loadDefaultInterfaceRecord,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -3200,6 +3247,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         getSessionById,
         loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         resolvePermissions,
@@ -3235,6 +3283,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteFraction,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -3266,6 +3315,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteRegion,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -3298,6 +3348,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         saveWasteCity,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -3327,6 +3378,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
+        ...defaultAuditDeps,
         startPluginOperationJob,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,

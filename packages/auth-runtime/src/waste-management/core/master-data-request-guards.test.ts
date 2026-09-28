@@ -35,6 +35,23 @@ const createDeps = (action = 'waste-management.master-data.manage'): WasteManage
 });
 
 describe('authorizeWasteMasterDataMutationRequest', () => {
+  it('fails closed when the host permission resolver is missing', async () => {
+    const result = await authorizeWasteMasterDataMutationRequest(
+      new Request('https://studio.test/api/v1/waste-management/regions', {
+        method: 'POST',
+        headers: createHeaders(),
+      }),
+      actor,
+      { getRequestId: () => 'req-test' }
+    );
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(503);
+    await expect((result as Response).json()).resolves.toMatchObject({
+      error: { code: 'database_unavailable' },
+    });
+  });
+
   it('returns the authorized request context for create mutations', async () => {
     const result = await authorizeWasteMasterDataMutationRequest(
       new Request('https://studio.test/api/v1/waste-management/regions', {

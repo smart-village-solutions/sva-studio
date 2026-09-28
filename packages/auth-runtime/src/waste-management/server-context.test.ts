@@ -15,6 +15,19 @@ const authMocks = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
 }));
 
+const hostCapabilityMocks = vi.hoisted(() => ({
+  emitAuthAuditEvent: vi.fn(),
+  resolveEffectivePermissions: vi.fn(),
+}));
+
+vi.mock('../audit-events.js', () => ({
+  emitAuthAuditEvent: hostCapabilityMocks.emitAuthAuditEvent,
+}));
+
+vi.mock('../iam-authorization/permission-store.js', () => ({
+  resolveEffectivePermissions: hostCapabilityMocks.resolveEffectivePermissions,
+}));
+
 vi.mock('@sva/data-repositories/server', () => ({
   listExternalInterfaceRecords: dataRepositoryMocks.listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord: dataRepositoryMocks.loadDefaultExternalInterfaceRecord,
@@ -58,6 +71,10 @@ import {
 
 describe('sharedWasteManagementDeps', () => {
   it('exposes the default interface loader for waste settings write operations', () => {
+    expect(sharedWasteManagementDeps.emitAuditEvent).toBe(hostCapabilityMocks.emitAuthAuditEvent);
+    expect(sharedWasteManagementDeps.resolvePermissions).toBe(
+      hostCapabilityMocks.resolveEffectivePermissions
+    );
     expect(sharedWasteManagementDeps.loadDefaultInterfaceRecord).toBe(
       dataRepositoryMocks.loadDefaultExternalInterfaceRecord
     );

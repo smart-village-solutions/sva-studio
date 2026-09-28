@@ -2,12 +2,11 @@ import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-co
 import { createPermissionDenialDetailsForAction } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
-import { emitAuthAuditEvent } from '../../audit-events.js';
-import { resolveEffectivePermissions } from '../../iam-authorization/permission-store.js';
+import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { createApiError } from '../../shared/request-helpers.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { requireActorInstanceId } from './utils.js';
+import { requireActorInstanceId, requireDeps } from './utils.js';
 
 export const emitWasteAuditEvent = async (input: {
   readonly deps: WasteManagementHandlerDeps;
@@ -24,7 +23,7 @@ export const emitWasteAuditEvent = async (input: {
   >['batchSummary'];
 }) => {
   const context = getWorkspaceContext();
-  await (input.deps.emitAuditEvent ?? emitAuthAuditEvent)({
+  await requireDeps(input.deps.emitAuditEvent, 'emitAuditEvent')({
     eventType:
       input.result === 'success'
         ? 'plugin_action_authorized'
@@ -65,7 +64,7 @@ export const authorizeWasteManagementAction = async (
 
   let permissions: readonly EffectivePermission[];
   try {
-    const resolved = await (deps.resolvePermissions ?? resolveEffectivePermissions)({
+    const resolved = await requireDeps(deps.resolvePermissions, 'resolvePermissions')({
       instanceId,
       keycloakSubject: ctx.user.id,
     });

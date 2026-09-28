@@ -15,7 +15,9 @@ import {
 } from '@sva/data-repositories/server';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
+import { emitAuthAuditEvent } from '../audit-events.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
+import { resolveEffectivePermissions } from '../iam-authorization/permission-store.js';
 import { buildLogContext } from '../log-context.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
 import { readConfiguredPluginTenantAccess } from '../plugin-tenant-lifecycle/access.js';
@@ -70,6 +72,8 @@ export const withAuthenticatedWasteManagementHandler = (
   });
 
 export const sharedWasteManagementDeps = {
+  emitAuditEvent: emitAuthAuditEvent,
+  resolvePermissions: resolveEffectivePermissions,
   loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,
   listInterfaceRecords: listExternalInterfaceRecords,
   loadWasteTenantProvisioning: loadWasteTenantProvisioningRecord,

@@ -1,5 +1,4 @@
 import { Pool } from 'pg';
-import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import {
   resolveWasteDataSource,
   runWasteConnectionCheck,
@@ -25,6 +24,7 @@ import {
 } from '@sva/waste-management-contracts';
 
 import type { WasteManagementHandlerDeps } from './types.js';
+import { requireDeps } from './utils.js';
 
 const normalizeInterfaceWasteVisibleStatus = (
   status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled'
@@ -165,8 +165,9 @@ const loadSelectedWasteSettingsInterface = async (
     return { records, selectedInterface };
   }
 
-  const fallbackDefault = await (
-    deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord
+  const fallbackDefault = await requireDeps(
+    deps.loadDefaultInterfaceRecord,
+    'loadDefaultInterfaceRecord'
   )(instanceId, 'postgresql');
   return {
     records,

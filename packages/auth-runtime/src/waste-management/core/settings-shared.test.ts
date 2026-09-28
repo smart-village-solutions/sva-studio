@@ -68,6 +68,14 @@ const createEmailReminderConfig = () => ({
 });
 
 describe('waste-management settings shared helpers', () => {
+  it('requires the host interface loader when no selected interface exists', async () => {
+    await expect(
+      loadConfiguredWasteSettings(
+        { listInterfaceRecords: vi.fn(async () => []) },
+        'tenant-a'
+      )
+    ).rejects.toThrow('missing_dependency:loadDefaultInterfaceRecord');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();

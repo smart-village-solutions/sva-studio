@@ -23,7 +23,7 @@ export default defineConfig({
     },
   },
   test: {
-    setupFiles: ['tests/host-controls.setup.ts'],
+    setupFiles: ['tests/test-utils/host-controls.setup.ts'],
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',

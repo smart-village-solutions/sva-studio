@@ -1057,6 +1057,13 @@ describe('service-keycloak-execution', () => {
       } as never)
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'queued' });
 
+    expect(state.syncProtectedSystemAdminPermissions).toHaveBeenCalledWith(
+      expect.anything(),
+      'instance-1'
+    );
+    expect(state.syncProtectedSystemAdminPermissions.mock.invocationCallOrder[0]).toBeLessThan(
+      state.createQueuedRun.mock.invocationCallOrder[0] ?? 0
+    );
     expect(state.createQueuedRun).toHaveBeenCalled();
     expect(repository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
   });

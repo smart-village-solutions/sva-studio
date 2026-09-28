@@ -4,6 +4,7 @@ import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.
 import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
+import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
 import { readParentKeycloakPlanGate } from './tenant-provisioning-state.js';
 import {
@@ -583,6 +584,7 @@ export const createExecuteKeycloakProvisioningHandler =
       });
     }
 
+    await syncProtectedSystemAdminPermissions(deps, input.instanceId);
     const { run } = await createQueuedRun(deps, loaded, {
       ...input,
       confirmedPlan: currentPlan,

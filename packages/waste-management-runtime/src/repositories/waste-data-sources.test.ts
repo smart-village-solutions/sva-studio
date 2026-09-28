@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../index.js';
-import { createWasteDataSourceRepository, wasteDataSourceStatements } from '../index.js';
+import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '@sva/data-repositories';
+import {
+  createWasteDataSourceRepository,
+  wasteDataSourceStatements,
+} from './waste-data-sources.js';
 
 const record = {
   instanceId: 'tenant-a',
@@ -37,7 +40,7 @@ const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
   return { executor, statements };
 };
 
-describe('waste data source repository (data package coverage)', () => {
+describe('waste data source repository', () => {
   it('maps selected rows including secret-configured flags and returns null when missing', async () => {
     const { executor, statements } = createExecutor([
       {
@@ -96,7 +99,7 @@ describe('waste data source repository (data package coverage)', () => {
       null,
       null,
     ]);
-    expect(wasteDataSourceStatements.upsert(record).values[7]).toBe('ok');
+    expect(wasteDataSourceStatements.upsert(record).values.at(7)).toBe('ok');
   });
 
   it('updates only the visible connection-check state for operational probes', async () => {

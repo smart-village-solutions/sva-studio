@@ -4,7 +4,7 @@ import type {
   WasteManagementDataSourceRecord,
 } from '@sva/waste-management-contracts';
 
-import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 
 export type WasteDataSourceRepository = {
   getByInstanceId(instanceId: string): Promise<WasteManagementDataSourceRecord | null>;

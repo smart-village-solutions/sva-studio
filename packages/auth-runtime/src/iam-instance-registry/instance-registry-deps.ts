@@ -3,7 +3,7 @@ import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service
 import {
   loadWasteDataSourceRecord,
   saveWasteDataSourceRecord,
-} from '@sva/data-repositories/server';
+} from '../waste-management/waste-data-sources.server.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import {

@@ -5,8 +5,8 @@ import type {
   WasteManagementDataSourceRecord,
 } from '@sva/waste-management-contracts';
 
-import { createWasteDataSourceRepository } from './waste-data-sources.js';
-import type { SqlStatement } from '../iam/repositories/types.js';
+import { createWasteDataSourceRepository } from '@sva/waste-management-runtime/repositories';
+import type { SqlStatement } from '@sva/data-repositories';
 
 const logger = createSdkLogger({ component: 'waste-data-sources-server', level: 'info' });
 

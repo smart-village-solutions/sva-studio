@@ -1,9 +1,9 @@
 import { wasteTenantProvisioningContract } from '@sva/waste-management-contracts';
 import {
-  checkWasteDataSourceSchema,
   loadExternalInterfaceRecordByAlias,
   loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
+import { checkWasteDataSourceSchema } from '@sva/auth-runtime/server';
 import type { PluginTenantLifecycleExecutionResult } from '@sva/plugin-sdk';
 import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 

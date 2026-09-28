@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   saveWasteDataSourceRecord: vi.fn(),
 }));
 
-vi.mock('@sva/data-repositories/server', () => ({
+vi.mock('../waste-management/waste-data-sources.server.js', () => ({
   loadWasteDataSourceRecord: mocks.loadWasteDataSourceRecord,
   saveWasteDataSourceRecord: mocks.saveWasteDataSourceRecord,
 }));

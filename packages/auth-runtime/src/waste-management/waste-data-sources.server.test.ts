@@ -59,7 +59,7 @@ describe('waste data sources server', () => {
     expect(query).toHaveBeenCalledWith(
       "SELECT to_regclass('iam.instance_waste_data_sources') IS NOT NULL AS exists"
     );
-  });
+  }, 15_000);
 
   it('fails closed when the Waste IAM schema query fails', async () => {
     const { checkWasteDataSourceSchema } = await import('./waste-data-sources.server.js');

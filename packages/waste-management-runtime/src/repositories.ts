@@ -8,3 +8,5 @@ export { createWasteAnnualTourTransferInTransaction, loadWasteAnnualTourTransfer
 export type { ResolvedWasteDataSource, WasteRuntimeErrorCode } from './repositories/data-source.server.js';
 export { resolveWasteDataSource, runWasteConnectionCheck, WasteRuntimeError } from './repositories/data-source.server.js';
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from './repositories/tenant-database-identifiers.server.js';
+export { createWasteDataSourceRepository, wasteDataSourceStatements } from './repositories/waste-data-sources.js';
+export type { WasteDataSourceRepository } from './repositories/waste-data-sources.js';

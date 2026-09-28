@@ -459,6 +459,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`; die allgemeine Schnittstellenauflösung bleibt hier, Waste-Datenquellen und Tenant-Datenbanknamen liegen in `@sva/waste-management-runtime/repositories`
 - `@sva/waste-management-runtime` -> `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts` für Waste-Fachpersistenz und Datenquellenauflösung
+- Die SQL-Statements für `iam.instance_waste_data_sources` gehören zur Waste-Runtime; `@sva/auth-runtime` hält die IAM-Poolwahl und die instanzgebundene Transaktion für Registry und Studio-Readiness.
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
 - `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module

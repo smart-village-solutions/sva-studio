@@ -9,6 +9,7 @@ export {
   type InstanceRegistryModuleIamSnapshotEntry,
   type AccountCreateContribution,
 } from './iam-instance-registry/plugin-activation-policy-snapshot.js';
+export { checkWasteDataSourceSchema } from './waste-management/waste-data-sources.server.js';
 export {
   readPluginActivationPolicyFleetReconcileReport,
   reconcileConfiguredPluginActivationPoliciesForAllInstances,

@@ -19,13 +19,11 @@ export {
   DEFAULT_INSTANCE_INTEGRATION_CACHE_TTL_MS,
   createMediaRepository,
   createStudioJobRepository,
-  createWasteDataSourceRepository,
   externalInterfaceStatements,
   iamSeedPlan,
   iamSeedStatements,
   instanceIntegrationStatements,
   mediaStatements,
-  wasteDataSourceStatements,
 } from './public-api.js';
 export { createPluginTenantLifecycleRepository } from './plugin-tenant-lifecycle/index.js';
 
@@ -63,7 +61,6 @@ export type {
   SqlExecutor,
   SqlPrimitive,
   SqlStatement,
-  WasteDataSourceRepository,
 } from './public-api.js';
 export type {
   PluginTenantAccessState,
@@ -82,30 +79,3 @@ export type {
   InstanceProvisioningRun,
   InstanceRegistryRecord,
 } from '@sva/core';
-export type {
-  WasteCollectionLocationListFilter,
-  WasteCollectionLocationRecord,
-  WasteCustomRecurrencePresetRecord,
-  WasteCustomTourDate,
-  WasteCityListFilter,
-  WasteCityRecord,
-  WasteFractionListFilter,
-  WasteFractionRecord,
-  WasteGlobalDateShiftListFilter,
-  WasteGlobalDateShiftRecord,
-  WasteHouseNumberListFilter,
-  WasteHouseNumberRecord,
-  WasteLocationTourPickupDateListFilter,
-  WasteLocationTourPickupDateRecord,
-  WasteLocationTourLinkListFilter,
-  WasteLocationTourLinkRecord,
-  WasteRegionListFilter,
-  WasteRegionRecord,
-  WasteStreetListFilter,
-  WasteStreetRecord,
-  WasteTourDateShiftListFilter,
-  WasteTourDateShiftRecord,
-  WasteTourListFilter,
-  WasteTourRecurrence,
-  WasteTourRecord,
-} from '@sva/waste-management-contracts';

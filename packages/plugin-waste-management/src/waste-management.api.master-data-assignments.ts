@@ -1,4 +1,7 @@
-import type { WasteLocationTourLinkBulkCreateResult, WasteLocationTourLinkRecord } from '@sva/plugin-sdk';
+import type {
+  WasteLocationTourLinkBulkCreateResult,
+  WasteLocationTourLinkRecord,
+} from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementLocationTourLinkInput,

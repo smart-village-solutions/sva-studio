@@ -1,7 +1,17 @@
-import type { WasteTourRecord } from '@sva/plugin-sdk';
-import { Checkbox, Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
+import {
+  Checkbox,
+  Input,
+  Select,
+  StudioField,
+  StudioFieldGroup,
+  Textarea,
+} from '@sva/studio-ui-react';
 
-import { wasteFollowUpModeOptions, wasteReasonTypeOptions } from './waste-management.scheduling.options.js';
+import {
+  wasteFollowUpModeOptions,
+  wasteReasonTypeOptions,
+} from './waste-management.scheduling.options.js';
 import type { TourDateShiftFormState } from './waste-management.scheduling.shared.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;

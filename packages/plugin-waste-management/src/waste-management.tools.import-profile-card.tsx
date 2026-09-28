@@ -1,10 +1,15 @@
-import type { WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
+import type { WasteManagementImportSourceFormat } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button } from '@sva/studio-ui-react';
 
-import { downloadImportPreviewErrors, downloadImportTemplate } from './waste-management.page.support.js';
+import {
+  downloadImportPreviewErrors,
+  downloadImportTemplate,
+} from './waste-management.page.support.js';
 
-type ImportCatalogEntry = ReturnType<typeof import('./waste-management.api.js').getWasteManagementImportCatalog>[number];
+type ImportCatalogEntry = ReturnType<
+  typeof import('./waste-management.api.js').getWasteManagementImportCatalog
+>[number];
 
 export const WasteToolsImportProfileCard = ({
   profile,
@@ -21,7 +26,9 @@ export const WasteToolsImportProfileCard = ({
   readonly sourceFormat: WasteManagementImportSourceFormat;
   readonly running: boolean;
   readonly importBlobRef: string;
-  readonly previewResult: Awaited<ReturnType<typeof import('./waste-management.api.js').previewWasteLocationTourPickupDateImport>> | null;
+  readonly previewResult: Awaited<
+    ReturnType<typeof import('./waste-management.api.js').previewWasteLocationTourPickupDateImport>
+  > | null;
   readonly previewReady: boolean;
   readonly fileInputId: string;
   readonly onRunPreview: () => void;
@@ -45,7 +52,9 @@ export const WasteToolsImportProfileCard = ({
           <p>{pt('tools.imports.previewHintDates')}</p>
         </div>
       ) : null}
-      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{pt('tools.imports.templateColumns')}</p>
+      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {pt('tools.imports.templateColumns')}
+      </p>
       <div className="mt-2 flex flex-wrap gap-2">
         {profile.requiredColumns.map((column) => (
           <Badge key={column.key} variant="secondary">
@@ -59,25 +68,46 @@ export const WasteToolsImportProfileCard = ({
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" variant="secondary" onClick={() => void downloadImportTemplate(profile, sourceFormat)}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => void downloadImportTemplate(profile, sourceFormat)}
+        >
           {pt('tools.actions.downloadTemplate')}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => document.getElementById(fileInputId)?.click()}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => document.getElementById(fileInputId)?.click()}
+        >
           {pt('tools.imports.blobRefLabel')}
         </Button>
         {requiresPreview ? (
-          <Button type="button" variant="secondary" disabled={running || !importBlobRef.startsWith('plugin-operation-input:')} onClick={onRunPreview}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={running || !importBlobRef.startsWith('plugin-operation-input:')}
+            onClick={onRunPreview}
+          >
             {pt('tools.actions.previewImport')}
           </Button>
         ) : null}
         {requiresPreview && previewResult && previewResult.errors.length > 0 ? (
-          <Button type="button" variant="secondary" onClick={() => downloadImportPreviewErrors(previewResult)}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => downloadImportPreviewErrors(previewResult)}
+          >
             {pt('tools.actions.downloadErrorFile')}
           </Button>
         ) : null}
         <Button
           type="button"
-          disabled={running || !importBlobRef.startsWith('plugin-operation-input:') || (requiresPreview && !previewReady)}
+          disabled={
+            running ||
+            !importBlobRef.startsWith('plugin-operation-input:') ||
+            (requiresPreview && !previewReady)
+          }
           onClick={onStartImport}
         >
           {running ? pt('tools.actions.starting') : pt('tools.actions.startImport')}
@@ -97,7 +127,8 @@ export const WasteToolsImportProfileCard = ({
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             {pt('tools.imports.previewDelimiter', {
-              detected: previewResult.detectedDelimiter === '\t' ? 'Tab' : previewResult.detectedDelimiter,
+              detected:
+                previewResult.detectedDelimiter === '\t' ? 'Tab' : previewResult.detectedDelimiter,
               active: previewResult.delimiter === '\t' ? 'Tab' : previewResult.delimiter,
             })}
           </p>

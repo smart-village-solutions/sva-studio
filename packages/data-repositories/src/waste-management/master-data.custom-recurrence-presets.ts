@@ -1,4 +1,4 @@
-import type { WasteCustomRecurrencePresetRecord } from '@sva/core';
+import type { WasteCustomRecurrencePresetRecord } from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -92,11 +92,15 @@ export const createWasteCustomRecurrencePresetRepositoryPart = (
   | 'deleteWasteCustomRecurrencePreset'
 > => ({
   async listWasteCustomRecurrencePresets() {
-    const result = await executor.execute<WasteCustomRecurrencePresetRow>(buildCustomRecurrencePresetListStatement());
+    const result = await executor.execute<WasteCustomRecurrencePresetRow>(
+      buildCustomRecurrencePresetListStatement()
+    );
     return result.rows.map(mapWasteCustomRecurrencePresetRow);
   },
   async getWasteCustomRecurrencePresetById(id) {
-    const result = await executor.execute<WasteCustomRecurrencePresetRow>(buildCustomRecurrencePresetSelectStatement(id));
+    const result = await executor.execute<WasteCustomRecurrencePresetRow>(
+      buildCustomRecurrencePresetSelectStatement(id)
+    );
     return result.rows[0] ? mapWasteCustomRecurrencePresetRow(result.rows[0]) : null;
   },
   async upsertWasteCustomRecurrencePreset(input) {

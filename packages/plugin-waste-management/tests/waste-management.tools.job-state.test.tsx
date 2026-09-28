@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import { useWasteTrackedJob } from '../src/waste-management.tools.job-state.js';
 
@@ -369,7 +369,9 @@ describe('useWasteTrackedJob', () => {
     });
 
     expect(getWasteManagementJobDetailMock).toHaveBeenCalledTimes(2);
-    expect(setLastJob).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'job-3', status: 'running' }));
+    expect(setLastJob).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'job-3', status: 'running' })
+    );
     expect(refreshTechnicalHistory).toHaveBeenCalledTimes(1);
   });
 
@@ -413,8 +415,12 @@ describe('useWasteTrackedJob', () => {
       await Promise.resolve();
     });
 
-    expect(setLastJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-4', status: 'failed' }));
-    expect(onTerminalJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-4', status: 'failed' }));
+    expect(setLastJob).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'job-4', status: 'failed' })
+    );
+    expect(onTerminalJob).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'job-4', status: 'failed' })
+    );
   });
 
   it('keeps polling stable when the terminal callback identity changes between renders', async () => {
@@ -499,7 +505,9 @@ describe('useWasteTrackedJob', () => {
     });
 
     expect(firstOnTerminalJob).not.toHaveBeenCalled();
-    expect(secondOnTerminalJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-5', status: 'failed' }));
+    expect(secondOnTerminalJob).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'job-5', status: 'failed' })
+    );
     expect(setIntervalSpy).toHaveBeenCalledTimes(1);
   });
 });

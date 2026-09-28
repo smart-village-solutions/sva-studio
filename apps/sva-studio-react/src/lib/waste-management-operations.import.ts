@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 import ExcelJS from 'exceljs';
+import { type StudioJobProgress } from '@sva/core';
 import {
   getWasteManagementImportCatalogEntry,
   normalizeWasteImportPickupDate,
@@ -9,14 +10,13 @@ import {
   planWasteLocationTourPickupDateImport,
   wasteManagementMasterDataContract,
   wasteTourStatuses,
-  type StudioJobProgress,
   type WasteLocationTourPickupDateImportPlan,
   type WasteLocationTourPickupDateImportParseResult,
   type WasteLocationTourPickupDateImportPlanningSnapshot,
   type WasteLocationTourPickupDateImportPreview,
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { createWasteMasterDataRepository } from '@sva/data-repositories';
 
 import {

@@ -1,0 +1,23 @@
+## 1. Vorbereitende Evidenz
+
+- [x] 1.1 Vor Codebeginn die Bestandsmatrix aus `design.md` gegen das dann aktuelle `origin/main` und offene Waste-Changes aktualisieren; Core-/SDK-Exports sowie alle Browser-, Worker-, Auth-, Registry- und Public-Waste-Verbraucher vollständig abgleichen. Die Plan-Baseline am `dda6ea8c9` umfasst 49 Pfadmuster und 62 Methodenbindungen.
+- [x] 1.2 Ziel/ Nicht-Ziele/maximale Bereiche für den tatsächlichen ersten Implementierungs-PR festschreiben; Baseline-Tests mit realer Testzahl ausführen.
+
+## 2. #1505 – Verträge und reine Fachlogik
+
+- [x] 2.1 Waste-Jobinputs, Profile, Daten-/Settings-Verträge und reine Jahreswechsel-, Import-, PDF-/Kalenderfunktionen in vorhandene Waste-Pakete verschieben; Browser-/Server-Exports getrennt halten und zyklische SDK-Abhängigkeit beseitigen.
+- [x] 2.2 Plugin-UI, Waste-Jobs, Auth, Data-Repositories, Instance-Registry/Instanzdetail und Public-Waste direkt auf Waste-Owner umstellen; `IamInstanceDetail` um das Waste-Feld reduzieren und den bestehenden JSON-Vertrag über den Waste-eigenen zusammengesetzten Antworttyp erhalten.
+- [x] 2.3 Waste-Exports, `./waste-output` und fachliche SDK-Weiterreichungen samt ersetzten Core-Dateien im selben Abschnitt entfernen; Abwesenheit und Core-/SDK-Build ohne Waste prüfen.
+- [x] 2.4 Migrierte Unit-/Type-Tests, PDF-/Import-/Jahreswechsel-Vergleich, Public-Waste-Build und `check:server-runtime` ausführen; Abschnitt nur bei grünem Zwischenstand abschließen.
+
+## 3. #1506 – Handler und Fachpersistenz
+
+- [ ] 3.1 Fach-Repositories und SQL einschließlich Jahreswechsel-, Reminder- und Datenquellenpfad in `@sva/waste-management-runtime/repositories` verschieben; generische Host-DB-/Secret-Capabilities und Transaktionsgrenzen erhalten. Public-Waste direkt auf diesen Server-Subpath umstellen und nachweisen, dass er den Job-/Browser-Entry-Point nicht lädt.
+- [ ] 3.2 Die neun bestehenden Waste-Permissions als passende Plugin-Actions und den Jahreswechsel-Descriptor mit `allOf(tours.manage, scheduling.manage)` deklarieren; bestehende Titel-Keys wiederverwenden und einen nötigen neuen Key in de/en ergänzen. Waste-Handler über `plugin-waste-management/src/server.ts` und den vorhandenen Snapshot binden. SDK-Pfadvalidierung, App-Einstieg und Host-Dispatcher für den namespacegleichen Fachprefix, `$param`-Pfade und Host-Routenkollisionen erweitern. Die Action-Prüfung mit `evaluateAuthorizeDecision` samt bedingter Zusatzprüfung bei `duplicateFromTourId` hostgeführt binden; nur benötigte Context-Eingaben ergänzen, ohne rohe Secrets, Pools, Runner- oder Lease-Interna freizugeben.
+- [ ] 3.3 Alle bisherigen Waste-HTTP-Methoden und Pfade mit gleicher Auth-, Tenant-, Rechte-, CSRF-, Audit- und Fehlersemantik abdecken; im selben Cutover die 49 Pfade aus `auth-runtime/src/routes.ts`, die 62 Bindungen aus den Routing-Handler-Maps, `wasteManagementHandlers` aus `runtime-routes.ts` sowie fachliche Host-Reexports löschen. Client- und Server-Route-Factories dürfen danach keine Waste-Route mehr materialisieren.
+- [ ] 3.4 Gezielt Unit-, echte DB-Integrations-, Negativ- und Route-Coverage-Tests ausführen; alle 62 Methode/Pfad-Bindungen, alte/neue Autorisierungs- und Fehlerantworten, Audit-Daten, Jahreswechsel-Rollback und -Idempotenz, Kollisionen, die Server-Entry-Reihenfolge und die Abwesenheit des Waste-Codes im Build ohne Plugin belegen. Ein deklarierter Pfad muss mit Plugin genau einen Ausführungspfad haben; nicht deklarierte Pfade und der Build ohne Waste dürfen keinen festen oder Plugin-Handler erreichen. Bei fehlender Vergleichs-, Negativ- oder DB-Evidenz #1506 nicht freigeben.
+
+## 4. Abschluss
+
+- [ ] 4.1 Betroffene arc42-Abschnitte und Plugin-/Public-Waste-Dokumentation auf die tatsächliche Ownership aktualisieren; keine historische Beschreibung als neue Rollout-Norm verwenden.
+- [ ] 4.2 `openspec validate refactor-waste-plugin-ownership --strict`, `pnpm check:file-placement`, Architekturgrenze und die risikobezogenen Pflicht-Gates auf dem Implementierungs-HEAD prüfen; Umfang hinzugefügter und entfernter Konzepte/Dateien/Ausführungspfade vergleichen.

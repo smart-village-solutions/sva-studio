@@ -2,7 +2,7 @@ import type {
   WasteCollectionLocationListItem,
   WasteCollectionLocationRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   IconBuildingCommunity,

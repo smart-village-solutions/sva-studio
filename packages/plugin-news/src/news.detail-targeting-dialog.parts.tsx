@@ -4,14 +4,14 @@ import type { NewsTargetingTranslator } from './news.detail-targeting-tab.js';
 import type { NewsWasteTargetOption } from './news.waste-targeting.js';
 import type { WasteLocationKey } from './news.types.js';
 import type {
-  WasteCityRecord,
-  WasteHouseNumberRecord,
-  WasteManagementMasterDataOverview,
-  WasteStreetRecord,
-} from '@sva/plugin-sdk';
+  NewsWasteCity,
+  NewsWasteHouseNumber,
+  NewsWasteMasterDataOverview,
+  NewsWasteStreet,
+} from './news.waste-targeting.js';
 
 type TargetingFiltersProps = Readonly<{
-  overview: WasteManagementMasterDataOverview;
+  overview: NewsWasteMasterDataOverview;
   pt: NewsTargetingTranslator;
   filters: Readonly<{
     query: string;
@@ -20,9 +20,9 @@ type TargetingFiltersProps = Readonly<{
     streetId: string;
     houseNumberId: string;
   }>;
-  cities: readonly WasteCityRecord[];
-  streets: readonly WasteStreetRecord[];
-  houseNumbers: readonly WasteHouseNumberRecord[];
+  cities: readonly NewsWasteCity[];
+  streets: readonly NewsWasteStreet[];
+  houseNumbers: readonly NewsWasteHouseNumber[];
   cityContextLabel: (cityId: string) => string;
   streetContextLabel: (streetId: string) => string;
   updateFilters: (next: Partial<TargetingFiltersProps['filters']>) => void;

@@ -2,7 +2,7 @@ import type {
   WasteAnnualTourTransferCreateInput,
   WasteAnnualTourTransferPreview,
   WasteAnnualTourTransferResult,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import {
   completeIdempotency,

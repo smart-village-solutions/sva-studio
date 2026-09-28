@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
+}));
+
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/waste-management-contracts')>()),
   wasteManagementDataProfiles: [
     { profileId: 'waste-management.fraktionen' },
     { profileId: 'waste-management.touren' },

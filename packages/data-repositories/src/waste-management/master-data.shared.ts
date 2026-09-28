@@ -1,4 +1,7 @@
-import type { WasteCustomTourDate, WasteLocalizedTextRecord } from '@sva/core';
+import type {
+  WasteCustomTourDate,
+  WasteLocalizedTextRecord,
+} from '@sva/waste-management-contracts';
 
 export const buildLikePattern = (value: string): string => `%${value.trim()}%`;
 
@@ -10,7 +13,9 @@ export const normalizeStringArray = (value: unknown): readonly string[] => {
   return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
-export const normalizeLocalizedTextRecord = (value: unknown): WasteLocalizedTextRecord | undefined => {
+export const normalizeLocalizedTextRecord = (
+  value: unknown
+): WasteLocalizedTextRecord | undefined => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return undefined;
   }
@@ -30,18 +35,27 @@ export const normalizeLocalizedTextRecord = (value: unknown): WasteLocalizedText
   return Object.freeze(Object.fromEntries(entries));
 };
 
-export const normalizeCustomDates = (value: unknown): readonly WasteCustomTourDate[] | undefined => {
+export const normalizeCustomDates = (
+  value: unknown
+): readonly WasteCustomTourDate[] | undefined => {
   if (!Array.isArray(value)) {
     return undefined;
   }
 
   return value.flatMap((entry) => {
-    if (typeof entry !== 'object' || entry === null || !('date' in entry) || typeof entry.date !== 'string') {
+    if (
+      typeof entry !== 'object' ||
+      entry === null ||
+      !('date' in entry) ||
+      typeof entry.date !== 'string'
+    ) {
       return [];
     }
 
     const description =
-      'description' in entry && typeof entry.description === 'string' ? entry.description : undefined;
+      'description' in entry && typeof entry.description === 'string'
+        ? entry.description
+        : undefined;
 
     return [{ date: entry.date, description }];
   });

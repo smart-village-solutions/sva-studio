@@ -13,11 +13,18 @@ import type { FractionFormState } from '../src/waste-management.master-data.form
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
-  wasteManagementMasterDataContract: {
-    fractionReminderLeadDayMin: 1,
-    fractionReminderLeadDayMax: 3,
-  },
 }));
+
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/waste-management-contracts')>();
+  return {
+    ...actual,
+    wasteManagementMasterDataContract: {
+      ...actual.wasteManagementMasterDataContract,
+      fractionReminderLeadDayMax: 3,
+    },
+  };
+});
 
 vi.mock('@sva/studio-ui-react', () => ({
   Select: ({

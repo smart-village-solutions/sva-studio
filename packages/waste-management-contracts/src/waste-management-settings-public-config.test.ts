@@ -13,7 +13,7 @@ import {
   readWasteManagementPdfBrandingAssetUrl,
   readWasteManagementPdfContactBlock,
 } from './waste-management-settings-public-config.js';
-import type { ExternalInterfaceRecord } from './external-interfaces-contract.js';
+import type { ExternalInterfaceRecord } from '@sva/core';
 
 const createInterfaceRecord = (
   input: Partial<ExternalInterfaceRecord> & Pick<ExternalInterfaceRecord, 'id' | 'typeKey'>

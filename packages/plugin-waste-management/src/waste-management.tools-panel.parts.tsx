@@ -1,6 +1,6 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
-import type { WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
+import type { WasteManagementImportSourceFormat } from '@sva/waste-management-contracts';
 
 import type { StartWasteManagementImportInput } from './waste-management.api.js';
 import { ResetConfirmationDialog } from './waste-management.page.support.js';
@@ -55,7 +55,9 @@ export const createImportSelectionHandlers = ({
   readonly setImportProfileId: (value: StartWasteManagementImportInput['importProfileId']) => void;
   readonly setImportSourceFormat: (value: WasteManagementImportSourceFormat) => void;
   readonly setImportBlobRef: (value: string) => void;
-  readonly setDelimiterOverride: (value: StartWasteManagementImportInput['delimiterOverride']) => void;
+  readonly setDelimiterOverride: (
+    value: StartWasteManagementImportInput['delimiterOverride']
+  ) => void;
 }) => ({
   onImportProfileIdChange: (nextProfileId: StartWasteManagementImportInput['importProfileId']) => {
     const matchingProfile = importCatalog.find((profile) => profile.profileId === nextProfileId);

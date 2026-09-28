@@ -5,7 +5,7 @@ import type {
   WasteLocationTourPickupDateRecord,
   WasteLocationTourLinkRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementLocationTourLinkInput,

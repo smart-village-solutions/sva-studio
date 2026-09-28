@@ -2,7 +2,7 @@ import type {
   WasteTourRecord,
   WasteTourStatusBulkUpdateInput,
   WasteTourValidityBulkUpdateInput,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import type {
   WasteManagementMasterDataOverview,

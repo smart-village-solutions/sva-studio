@@ -4,7 +4,7 @@ import {
   WasteAnnualTourTransferError,
   type WasteAnnualTourTransferPreview,
   type WasteAnnualTourTransferResult,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
 const idempotency = vi.hoisted(() => ({

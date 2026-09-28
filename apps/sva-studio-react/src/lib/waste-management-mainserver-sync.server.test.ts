@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { deriveWasteMainserverSyncStatus, type StudioJobProgress } from '@sva/core';
+import { type StudioJobProgress } from '@sva/core';
+import { deriveWasteMainserverSyncStatus } from '@sva/waste-management-contracts';
 
 type WasteSyncClientState = {
   readonly tours: readonly {

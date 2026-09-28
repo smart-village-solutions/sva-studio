@@ -1,7 +1,7 @@
 import type {
   WasteCollectionLocationQuery,
   WasteCollectionLocationSelectionFilter,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 

@@ -3,7 +3,7 @@ import type {
   WasteHouseNumberRecord,
   WasteStreetListFilter,
   WasteStreetRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -86,7 +86,9 @@ LIMIT 1;
   values: [id],
 });
 
-const buildStreetUpsertStatement = (input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>): SqlStatement => ({
+const buildStreetUpsertStatement = (
+  input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>
+): SqlStatement => ({
   text: `
 INSERT INTO waste_streets (
   id,
@@ -188,7 +190,9 @@ export const createWasteStreetHouseNumberRepositoryPart = (
     await executor.execute(buildStreetUpsertStatement(input));
   },
   async listWasteHouseNumbers(filter) {
-    const result = await executor.execute<WasteHouseNumberRow>(buildHouseNumberListStatement(filter));
+    const result = await executor.execute<WasteHouseNumberRow>(
+      buildHouseNumberListStatement(filter)
+    );
     return result.rows.map(mapWasteHouseNumberRow);
   },
   async getWasteHouseNumberById(id) {

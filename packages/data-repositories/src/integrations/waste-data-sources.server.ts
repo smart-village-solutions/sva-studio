@@ -3,7 +3,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import type {
   WasteManagementConnectionCheckRecord,
   WasteManagementDataSourceRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import { createWasteDataSourceRepository } from './waste-data-sources.js';
 import type { SqlStatement } from '../iam/repositories/types.js';

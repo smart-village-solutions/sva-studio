@@ -7,4 +7,4 @@ export type {
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';

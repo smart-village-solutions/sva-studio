@@ -1,4 +1,4 @@
-import type { StudioJobDetail, StudioJobStatus } from './plugin-operations-contract.js';
+import type { StudioJobDetail, StudioJobStatus } from '@sva/core';
 
 export type WasteManagementAuditOutcome = 'success' | 'failure' | 'denied';
 

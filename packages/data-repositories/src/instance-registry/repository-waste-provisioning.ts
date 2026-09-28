@@ -1,4 +1,4 @@
-import type { WasteTenantProvisioningRecord } from '@sva/core';
+import type { WasteTenantProvisioningRecord } from '@sva/waste-management-contracts';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
@@ -85,7 +85,9 @@ RETURNING *;
 
   async getWasteProvisioning(instanceId) {
     const result = await executor.execute<WasteProvisioningRow>(
-      statement('SELECT * FROM iam.instance_waste_provisioning WHERE instance_id = $1;', [instanceId])
+      statement('SELECT * FROM iam.instance_waste_provisioning WHERE instance_id = $1;', [
+        instanceId,
+      ])
     );
     return result.rows[0] ? mapRow(result.rows[0]) : null;
   },
@@ -154,7 +156,13 @@ WHERE instance_id = $1
   AND status = 'provisioning'
 RETURNING *;
 `,
-        [input.instanceId, input.jobId, input.desiredGeneration, input.databaseName, input.interfaceId]
+        [
+          input.instanceId,
+          input.jobId,
+          input.desiredGeneration,
+          input.databaseName,
+          input.interfaceId,
+        ]
       )
     );
     return result.rows[0] ? mapRow(result.rows[0]) : null;
@@ -177,7 +185,13 @@ WHERE instance_id = $1
   AND status = 'provisioning'
 RETURNING *;
 `,
-        [input.instanceId, input.jobId, input.desiredGeneration, input.errorCode, input.errorMessage]
+        [
+          input.instanceId,
+          input.jobId,
+          input.desiredGeneration,
+          input.errorCode,
+          input.errorMessage,
+        ]
       )
     );
     return result.rows[0] ? mapRow(result.rows[0]) : null;

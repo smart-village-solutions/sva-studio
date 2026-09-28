@@ -65,7 +65,7 @@ Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er 
 
 - Repo verantwortet App-, Routing-, Auth-, IAM-, Instanz-, Plugin-, Mainserver-, Waste- und Doku-Logik
 - Die öffentliche Abfallkalender-App bleibt fachlich im selben Repo, aber technisch von der Studio-Admin-Oberfläche getrennt und nutzt dafür nur app-lokale Auswahl-, Kalender- und Präferenzlogik.
-- Die öffentliche Abfallkalender-App nutzt für ihren Serverpfad bewusst gemeinsame Workspace-Verträge aus `@sva/core` und `@sva/data-repositories`, bleibt aber deploy- und UI-seitig von `sva-studio-react` getrennt.
+- Die öffentliche Abfallkalender-App nutzt für ihren Serverpfad bewusst generische Verträge aus `@sva/core`, Waste-Fachverträge aus `@sva/waste-management-contracts` und Repository-Zugriffe aus `@sva/data-repositories`, bleibt aber deploy- und UI-seitig von `sva-studio-react` getrennt.
 - Der öffentliche E-Mail-Erinnerungsdienst bleibt fachlich Teil von Waste: CTA, Formular, Double-Opt-In, Tokenseiten, Reminder-Materialisierung und Outbox liegen im Waste-Kontext; technische SMTP- oder Provider-Credentials liegen dagegen ausschließlich in der zentralen Schnittstelle `mail_transport`.
 - Der eigentliche Mailversand ist bewusst an eine separate Dispatch-App oder einen äquivalenten Runtime-Adapter anschließbar; Studio und Public-Waste-App materialisieren dafür nur transportagnostische Versandaufträge.
 - Repo verantwortet die serverseitige Delegation an den externen SVA-Mainserver, aber nicht dessen Betrieb, Schema oder Berechtigungsmodell

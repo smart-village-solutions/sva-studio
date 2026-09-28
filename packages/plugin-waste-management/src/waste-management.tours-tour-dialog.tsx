@@ -1,4 +1,7 @@
-import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCustomRecurrencePresetRecord,
+  WasteFractionRecord,
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,

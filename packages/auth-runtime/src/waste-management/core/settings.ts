@@ -1,4 +1,4 @@
-import { wasteManagementOperationsContract } from '@sva/core';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { resolveActorInfo } from '../../iam-account-management/shared.js';

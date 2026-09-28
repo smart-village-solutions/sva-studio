@@ -1,7 +1,7 @@
 import {
   buildWasteAnnualTourTransferFingerprint,
   type WasteAnnualTourTransferCreateInput,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import { renewIdempotencyLease, reserveIdempotency } from '../../iam-account-management/shared.js';
 import { createApiError } from '../../shared/request-helpers.js';

@@ -1,5 +1,5 @@
 import type { Dispatch, ReactNode, RefObject, SetStateAction } from 'react';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 import { WasteToursBulkValidityDialog } from './waste-management.tours-bulk-validity.js';

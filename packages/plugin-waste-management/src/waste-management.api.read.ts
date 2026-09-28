@@ -7,7 +7,7 @@ import {
   type WasteManagementHistoryOverview,
   type WasteMainserverSyncStatusRecord,
   type WasteManagementSettingsRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import type {
   WasteManagementMasterDataOverview,

@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/plugin-sdk';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 import { Checkbox } from '@sva/studio-ui-react';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -47,7 +47,9 @@ export const WasteToursFractionSelection = ({
             />
             <div className="min-w-0 flex-1">
               <span className="truncate font-medium text-foreground">
-                {fraction.containerSize ? `${fraction.name} (${fraction.containerSize})` : fraction.name}
+                {fraction.containerSize
+                  ? `${fraction.name} (${fraction.containerSize})`
+                  : fraction.name}
               </span>
             </div>
           </label>

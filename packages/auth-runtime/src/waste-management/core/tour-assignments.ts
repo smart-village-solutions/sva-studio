@@ -1,4 +1,4 @@
-import type { WasteTourAssignmentRecord } from '@sva/core';
+import type { WasteTourAssignmentRecord } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';

@@ -2,7 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
 import sharp from 'sharp';
-import type { WasteCalendarPdfBrandingImage } from '@sva/core/waste-output';
+import type { WasteCalendarPdfBrandingImage } from '@sva/waste-management-contracts';
 
 const BRANDING_TARGET_WIDTH = 326;
 const BRANDING_TARGET_HEIGHT = 124;
@@ -27,7 +27,15 @@ const isPrivateIpv4Address = (address: string): boolean => {
 
 const isPrivateIpv6Address = (address: string): boolean => {
   const normalized = address.toLowerCase();
-  return normalized === '::1' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb');
+  return (
+    normalized === '::1' ||
+    normalized.startsWith('fc') ||
+    normalized.startsWith('fd') ||
+    normalized.startsWith('fe8') ||
+    normalized.startsWith('fe9') ||
+    normalized.startsWith('fea') ||
+    normalized.startsWith('feb')
+  );
 };
 
 const isPrivateIpAddress = (address: string): boolean => {
@@ -36,18 +44,22 @@ const isPrivateIpAddress = (address: string): boolean => {
     return isPrivateIpv4Address(normalized.slice('::ffff:'.length));
   }
 
-  return isIP(normalized) === 4 ? isPrivateIpv4Address(normalized) : isPrivateIpv6Address(normalized);
+  return isIP(normalized) === 4
+    ? isPrivateIpv4Address(normalized)
+    : isPrivateIpv6Address(normalized);
 };
 
 const isExplicitDevOriginHost = (hostname: string): boolean => {
   const normalized = hostname.trim().toLowerCase();
-  return normalized === 'localhost' || normalized.endsWith('.localhost') || normalized === '127.0.0.1' || normalized === '::1';
+  return (
+    normalized === 'localhost' ||
+    normalized.endsWith('.localhost') ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1'
+  );
 };
 
-const parseBrandingUrls = (input: {
-  readonly assetUrl: string;
-  readonly requestUrl?: string;
-}) => {
+const parseBrandingUrls = (input: { readonly assetUrl: string; readonly requestUrl?: string }) => {
   const requestUrl = input.requestUrl ? new URL(input.requestUrl) : null;
   const assetUrl = requestUrl ? new URL(input.assetUrl, requestUrl) : new URL(input.assetUrl);
 
@@ -79,7 +91,10 @@ const resolvePublicBrandingHostname = async (assetUrl: URL): Promise<boolean> =>
   }
 
   const resolvedAddresses = await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
-  return resolvedAddresses.length > 0 && resolvedAddresses.every((entry) => !isPrivateIpAddress(entry.address));
+  return (
+    resolvedAddresses.length > 0 &&
+    resolvedAddresses.every((entry) => !isPrivateIpAddress(entry.address))
+  );
 };
 
 const resolveSafeBrandingAssetUrl = async (input: {
@@ -122,7 +137,10 @@ const readBrandingAssetBuffer = async (response: Response): Promise<Buffer | nul
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
-      return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), totalLength);
+      return Buffer.concat(
+        chunks.map((chunk) => Buffer.from(chunk)),
+        totalLength
+      );
     }
 
     totalLength += value.length;
@@ -133,12 +151,10 @@ const readBrandingAssetBuffer = async (response: Response): Promise<Buffer | nul
   }
 };
 
-export const loadPublicWastePdfBrandingImage = async (
-  input: {
-    readonly assetUrl: string;
-    readonly requestUrl?: string;
-  }
-): Promise<WasteCalendarPdfBrandingImage | undefined> => {
+export const loadPublicWastePdfBrandingImage = async (input: {
+  readonly assetUrl: string;
+  readonly requestUrl?: string;
+}): Promise<WasteCalendarPdfBrandingImage | undefined> => {
   const safeAssetUrl = await resolveSafeBrandingAssetUrl(input).catch(() => null);
   if (!safeAssetUrl) {
     return undefined;

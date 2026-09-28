@@ -1,4 +1,4 @@
-import type { WasteCustomTourDate } from '@sva/core';
+import type { WasteCustomTourDate } from '@sva/waste-management-contracts';
 import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
@@ -8,7 +8,8 @@ import type { WasteManagementHandlerDeps } from './types.js';
 
 const { wasteCustomTourDateSchema } = wasteManagementTourSchemas;
 
-export const getRequestId = (deps: WasteManagementHandlerDeps): string | undefined => deps.getRequestId?.();
+export const getRequestId = (deps: WasteManagementHandlerDeps): string | undefined =>
+  deps.getRequestId?.();
 
 export const requireActorInstanceId = (
   ctx: AuthenticatedRequestContext,

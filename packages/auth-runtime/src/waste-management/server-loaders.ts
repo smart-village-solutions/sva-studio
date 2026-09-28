@@ -51,7 +51,7 @@ import {
   type WasteAnnualTourTransferSource,
   type WasteTourValidityBulkUpdateInput,
   type WasteTourValidityBulkUpdateResult,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { createSdkLogger, resolveWasteDataSource } from '@sva/server-runtime';
 import {
   listWasteManagementAuditRecords,

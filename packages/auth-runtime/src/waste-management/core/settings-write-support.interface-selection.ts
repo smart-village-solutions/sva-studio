@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
   buildWasteManagementPublicConfig,
   isWasteManagementInterfaceSelected,
@@ -8,12 +9,11 @@ import {
   readWasteManagementHolidayStateCode,
   readWasteManagementHolidaySyncStatus,
   readWasteManagementLastSuccessfulHolidaySyncAt,
-  type ExternalInterfaceRecord,
   type WasteHolidayStateCode,
   type WasteHolidaySyncStatus,
   type WasteManagementEmailReminderConfig,
   type WasteManagementSettingsRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
@@ -24,14 +24,16 @@ export const resolveTargetInterfaceRecord = (
   selectedInterfaceId?: string
 ): ExternalInterfaceRecord | null => {
   const explicitMatch = selectedInterfaceId
-    ? interfaceRecords.find((record) => record.id === selectedInterfaceId) ?? null
+    ? (interfaceRecords.find((record) => record.id === selectedInterfaceId) ?? null)
     : null;
   if (explicitMatch) {
     return explicitMatch;
   }
 
   if (current.selectedInterfaceId) {
-    const currentMatch = interfaceRecords.find((record) => record.id === current.selectedInterfaceId);
+    const currentMatch = interfaceRecords.find(
+      (record) => record.id === current.selectedInterfaceId
+    );
     if (currentMatch) {
       return currentMatch;
     }
@@ -79,7 +81,10 @@ export const persistWasteSettingsInterfaceSelection = async ({
   readonly lastHolidaySyncStatus?: WasteHolidaySyncStatus;
   readonly lastSuccessfulHolidaySyncAt?: string;
 }): Promise<void> => {
-  const saveExternalInterfaceRecord = requireDeps(deps.saveExternalInterfaceRecord, 'saveExternalInterfaceRecord');
+  const saveExternalInterfaceRecord = requireDeps(
+    deps.saveExternalInterfaceRecord,
+    'saveExternalInterfaceRecord'
+  );
   const recordsToPersist = interfaceRecords.filter(
     (record) => record.id === targetInterfaceRecord.id || isWasteManagementInterfaceSelected(record)
   );
@@ -89,19 +94,25 @@ export const persistWasteSettingsInterfaceSelection = async ({
     await saveExternalInterfaceRecord(
       createInterfaceSettingsRecord(record, {
         selected: isTarget,
-        calendarWebUrl: isTarget ? calendarWebUrl : readWasteManagementCalendarWebUrl(record.publicConfig),
+        calendarWebUrl: isTarget
+          ? calendarWebUrl
+          : readWasteManagementCalendarWebUrl(record.publicConfig),
         emailReminderConfig: isTarget
           ? emailReminderConfig
           : readWasteManagementEmailReminderConfig(record.publicConfig),
         emailReminderSigningSecret: isTarget
-          ? (emailReminderConfig
-              ? (emailReminderSigningSecret ??
-                readWasteManagementEmailReminderSigningSecret(record.publicConfig) ??
-                createEmailReminderSigningSecret())
-              : readWasteManagementEmailReminderSigningSecret(record.publicConfig))
+          ? emailReminderConfig
+            ? (emailReminderSigningSecret ??
+              readWasteManagementEmailReminderSigningSecret(record.publicConfig) ??
+              createEmailReminderSigningSecret())
+            : readWasteManagementEmailReminderSigningSecret(record.publicConfig)
           : readWasteManagementEmailReminderSigningSecret(record.publicConfig),
-        holidayStateCode: isTarget ? holidayStateCode : readWasteManagementHolidayStateCode(record.publicConfig),
-        lastHolidaySyncStatus: isTarget ? lastHolidaySyncStatus : readWasteManagementHolidaySyncStatus(record.publicConfig),
+        holidayStateCode: isTarget
+          ? holidayStateCode
+          : readWasteManagementHolidayStateCode(record.publicConfig),
+        lastHolidaySyncStatus: isTarget
+          ? lastHolidaySyncStatus
+          : readWasteManagementHolidaySyncStatus(record.publicConfig),
         lastSuccessfulHolidaySyncAt: isTarget
           ? lastSuccessfulHolidaySyncAt
           : readWasteManagementLastSuccessfulHolidaySyncAt(record.publicConfig),

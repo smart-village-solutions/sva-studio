@@ -1,10 +1,10 @@
 import type { ChangeEvent, ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
 import type {
-  StudioJobResponse,
   WasteManagementCsvDelimiter,
   WasteManagementImportSourceFormat,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Badge,

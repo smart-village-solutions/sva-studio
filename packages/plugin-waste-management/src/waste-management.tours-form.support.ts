@@ -1,4 +1,4 @@
-import type { WasteCustomRecurrencePresetRecord } from '@sva/plugin-sdk';
+import type { WasteCustomRecurrencePresetRecord } from '@sva/waste-management-contracts';
 
 import type { TourFormState } from './waste-management.tours.types.js';
 

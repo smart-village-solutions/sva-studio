@@ -3,7 +3,7 @@ import type { BrowserContext, Page, Route } from '@playwright/test';
 import type {
   WasteAnnualTourTransferPreview,
   WasteAnnualTourTransferResult,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import {
   establishServerReadableAuthSession,

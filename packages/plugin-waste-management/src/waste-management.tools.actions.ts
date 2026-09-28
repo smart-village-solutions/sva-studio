@@ -1,4 +1,5 @@
-import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
+import type { WasteManagementHistoryOverview } from '@sva/waste-management-contracts';
 
 import {
   deleteWasteManagementHistoryJob,

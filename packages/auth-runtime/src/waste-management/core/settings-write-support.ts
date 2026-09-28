@@ -1,10 +1,10 @@
+import { type ExternalInterfaceRecord } from '@sva/core';
 import {
-  type ExternalInterfaceRecord,
   type WasteHolidayStateCode,
   type WasteHolidaySyncStatus,
   type WasteManagementEmailReminderConfig,
   type WasteManagementSettingsRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { asApiItem, createApiError } from '../../shared/request-helpers.js';

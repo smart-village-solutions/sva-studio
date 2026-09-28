@@ -1,6 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { WasteTourStatus, WasteTourStatusBulkUpdateInput } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteTourStatusBulkLimit } from '@sva/plugin-sdk';
+import type {
+  WasteTourStatus,
+  WasteTourStatusBulkUpdateInput,
+} from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteTourStatusBulkLimit } from '@sva/waste-management-contracts';
 import {
   Button,
   Dialog,

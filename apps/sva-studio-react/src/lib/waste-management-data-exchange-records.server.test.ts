@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { WasteManagementDataExchangeRecord } from '@sva/core';
+import type { WasteManagementDataExchangeRecord } from '@sva/waste-management-contracts';
 
 import {
   comparableWasteDataRecord,
@@ -173,25 +173,25 @@ describe('Waste data exchange record helpers', () => {
   it.each([
     ['omitted', {}],
     ['null', { pdfShortLabel: null }],
-  ])('derives the PostgreSQL storage label when the optional PDF short label is %s', (
-    _label,
-    optionalFields
-  ) => {
-    const result = materializeWasteDataRecord(
-      'waste-management.fraktionen',
-      {
-        entityType: 'fraction',
-        id: 'fraction-1',
-        name: 'Bio-Abfall',
-        color: '#00aa00',
-        ...optionalFields,
-      } as WasteManagementDataExchangeRecord,
-      null,
-      []
-    );
+  ])(
+    'derives the PostgreSQL storage label when the optional PDF short label is %s',
+    (_label, optionalFields) => {
+      const result = materializeWasteDataRecord(
+        'waste-management.fraktionen',
+        {
+          entityType: 'fraction',
+          id: 'fraction-1',
+          name: 'Bio-Abfall',
+          color: '#00aa00',
+          ...optionalFields,
+        } as WasteManagementDataExchangeRecord,
+        null,
+        []
+      );
 
-    expect(result).toMatchObject({ pdfShortLabel: 'BIO' });
-  });
+      expect(result).toMatchObject({ pdfShortLabel: 'BIO' });
+    }
+  );
 
   it('normalizes records for stable comparisons', () => {
     expect(

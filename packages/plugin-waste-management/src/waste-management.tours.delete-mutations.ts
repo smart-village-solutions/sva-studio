@@ -1,5 +1,5 @@
 import { startTransition } from 'react';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { deleteWasteManagementTour } from './waste-management.api.js';
 import {
   logWasteTourDeleteError,

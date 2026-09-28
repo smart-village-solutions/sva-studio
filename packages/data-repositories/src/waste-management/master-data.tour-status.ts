@@ -1,4 +1,4 @@
-import type { WasteTourStatusBulkUpdateInput } from '@sva/core';
+import type { WasteTourStatusBulkUpdateInput } from '@sva/waste-management-contracts';
 
 import type { SqlStatement } from '../iam/repositories/types.js';
 

@@ -4,8 +4,9 @@ import type {
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
-import { isWasteTourValidityApplicable, usePluginTranslation } from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { isWasteTourValidityApplicable } from '@sva/waste-management-contracts';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';

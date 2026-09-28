@@ -92,12 +92,14 @@ export type {
   ExternalInterfaceConnectionCheckRecord,
   ExternalInterfaceRecord,
   ExternalInterfaceTypeDefinition,
-  WasteCollectionLocationListFilter,
-  WasteCollectionLocationRecord,
-  WasteCustomRecurrencePresetRecord,
   InstanceAuditEvent,
   InstanceProvisioningRun,
   InstanceRegistryRecord,
+} from '@sva/core';
+export type {
+  WasteCollectionLocationListFilter,
+  WasteCollectionLocationRecord,
+  WasteCustomRecurrencePresetRecord,
   WasteCustomTourDate,
   WasteCityListFilter,
   WasteCityRecord,
@@ -120,4 +122,4 @@ export type {
   WasteTourListFilter,
   WasteTourRecurrence,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';

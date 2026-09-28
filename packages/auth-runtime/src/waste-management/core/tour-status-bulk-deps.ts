@@ -1,4 +1,7 @@
-import type { WasteTourStatusBulkUpdateInput, WasteTourStatusBulkUpdateResult } from '@sva/core';
+import type {
+  WasteTourStatusBulkUpdateInput,
+  WasteTourStatusBulkUpdateResult,
+} from '@sva/waste-management-contracts';
 
 export type WasteTourStatusBulkHandlerDeps = {
   readonly updateWasteTourStatusBulk?: (

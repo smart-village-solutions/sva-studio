@@ -4,10 +4,10 @@ import {
   getWasteManagementDataProfile,
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
-vi.mock('@sva/core', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@sva/core')>();
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@sva/waste-management-contracts')>();
   return {
     ...original,
     getWasteManagementDataProfile: vi.fn(original.getWasteManagementDataProfile),
@@ -188,8 +188,6 @@ describe('Waste data exchange reference validation', () => {
       validate('waste-management.fraktionen', [
         { entityType: 'testEntity', id: 'test-1', unsupportedId: 'missing' },
       ])
-    ).rejects.toThrow(
-      'missing_waste_data_reference:testEntity:test-1:unsupportedId:missing'
-    );
+    ).rejects.toThrow('missing_waste_data_reference:testEntity:test-1:unsupportedId:missing');
   });
 });

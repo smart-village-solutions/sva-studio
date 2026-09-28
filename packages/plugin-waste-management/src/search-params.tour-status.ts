@@ -1,4 +1,4 @@
-import type { WasteTourStatus } from '@sva/plugin-sdk';
+import type { WasteTourStatus } from '@sva/waste-management-contracts';
 
 export type WasteManagementTourStatusFilter = 'all' | WasteTourStatus;
 

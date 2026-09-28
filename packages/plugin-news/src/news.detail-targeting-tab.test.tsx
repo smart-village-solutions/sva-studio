@@ -5,32 +5,25 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { createDefaultNewsDetailFormValues } from './news.detail-form.js';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsDetailFormValues } from './news.types.js';
-import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type { NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 
-const timestamp = '2026-08-12T10:00:00.000Z';
 const houseNumbers = Array.from({ length: 26 }, (_, index) => ({
   id: `h${index + 1}`,
   number: String(index + 1),
   streetId: 's1',
-  createdAt: timestamp,
-  updatedAt: timestamp,
 }));
 const overview = {
   fractions: [],
-  regions: [{ id: 'r1', name: 'Nord', createdAt: timestamp, updatedAt: timestamp }],
+  regions: [{ id: 'r1', name: 'Nord' }],
   cities: [
     {
       id: 'c1',
       name: 'Musterstadt',
       postalCode: '12345',
       regionId: 'r1',
-      createdAt: timestamp,
-      updatedAt: timestamp,
     },
   ],
-  streets: [
-    { id: 's1', name: 'Hauptstraße', cityId: 'c1', createdAt: timestamp, updatedAt: timestamp },
-  ],
+  streets: [{ id: 's1', name: 'Hauptstraße', cityId: 'c1' }],
   houseNumbers,
   collectionLocations: houseNumbers.map((houseNumber) => ({
     id: `l${houseNumber.id}`,
@@ -39,8 +32,6 @@ const overview = {
     streetId: 's1',
     houseNumberId: houseNumber.id,
     active: true,
-    createdAt: timestamp,
-    updatedAt: timestamp,
   })),
   locationTourLinks: [],
 } as const;
@@ -64,7 +55,7 @@ function Subject({
   initialTargets = [],
   readOnly = false,
 }: Readonly<{
-  masterData?: WasteManagementMasterDataOverview | null;
+  masterData?: NewsWasteMasterDataOverview | null;
   initialTargets?: NewsDetailFormValues['wasteLocationKeys'];
   readOnly?: boolean;
 }>) {
@@ -125,12 +116,9 @@ describe('NewsDetailTargetingTab', () => {
   });
 
   it('cascades region filters into streets and house numbers and labels their parent context', () => {
-    const hierarchicalOverview: WasteManagementMasterDataOverview = {
+    const hierarchicalOverview: NewsWasteMasterDataOverview = {
       ...overview,
-      regions: [
-        ...overview.regions,
-        { id: 'r2', name: 'Süd', createdAt: timestamp, updatedAt: timestamp },
-      ],
+      regions: [...overview.regions, { id: 'r2', name: 'Süd' }],
       cities: [
         ...overview.cities,
         {
@@ -138,29 +126,18 @@ describe('NewsDetailTargetingTab', () => {
           name: 'Südstadt',
           postalCode: '54321',
           regionId: 'r2',
-          createdAt: timestamp,
-          updatedAt: timestamp,
         },
       ],
-      streets: [
-        ...overview.streets,
-        { id: 's2', name: 'Parkweg', cityId: 'c2', createdAt: timestamp, updatedAt: timestamp },
-      ],
-      houseNumbers: [
-        ...overview.houseNumbers,
-        { id: 'h-south', number: '9', streetId: 's2', createdAt: timestamp, updatedAt: timestamp },
-      ],
+      streets: [...overview.streets, { id: 's2', name: 'Parkweg', cityId: 'c2' }],
+      houseNumbers: [...overview.houseNumbers, { id: 'h-south', number: '9', streetId: 's2' }],
       collectionLocations: [
         ...overview.collectionLocations,
         {
-          id: 'l-south',
           cityId: 'c2',
           regionId: 'r2',
           streetId: 's2',
           houseNumberId: 'h-south',
           active: true,
-          createdAt: timestamp,
-          updatedAt: timestamp,
         },
       ],
     };

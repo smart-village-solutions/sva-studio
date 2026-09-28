@@ -1,4 +1,4 @@
-import type { WasteAnnualTourTransferTourPreview } from '@sva/plugin-sdk';
+import type { WasteAnnualTourTransferTourPreview } from '@sva/waste-management-contracts';
 import { Button, Checkbox, Input } from '@sva/studio-ui-react';
 
 import type { WasteAnnualTransferController } from './waste-management.tours-annual-transfer-controller.js';

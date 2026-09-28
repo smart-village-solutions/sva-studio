@@ -1,4 +1,4 @@
-import type { WasteTourValidityDateOperation } from '@sva/plugin-sdk';
+import type { WasteTourValidityDateOperation } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Input, Select, StudioField } from '@sva/studio-ui-react';
 

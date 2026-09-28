@@ -55,7 +55,12 @@ export default [
             },
             {
               sourceTag: 'scope:data-repositories',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:data-repositories'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:server-runtime',
+                'scope:data-repositories',
+                'scope:plugin-contracts',
+              ],
             },
             {
               sourceTag: 'scope:sdk',
@@ -91,6 +96,7 @@ export default [
                 'scope:iam-governance',
                 'scope:instance-registry',
                 'scope:auth-runtime',
+                'scope:plugin-contracts',
               ],
             },
             {
@@ -111,6 +117,7 @@ export default [
                 'scope:data-repositories',
                 'scope:iam-core',
                 'scope:iam-governance',
+                'scope:plugin-contracts',
               ],
             },
             {
@@ -121,6 +128,7 @@ export default [
                 'scope:data-repositories',
                 'scope:iam-core',
                 'scope:instance-registry',
+                'scope:plugin-contracts',
               ],
             },
             {
@@ -148,7 +156,7 @@ export default [
             },
             {
               sourceTag: 'scope:plugin-contracts',
-              onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:plugin-contracts'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk', 'scope:plugin-contracts'],
             },
             {
               sourceTag: 'scope:plugin-runtime',

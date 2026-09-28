@@ -17,7 +17,7 @@ import type {
   WasteTourStatusBulkUpdateInput,
   WasteTourValidityBulkUpdateInput,
   WasteAnnualTourTransferCreateInput,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 export type WasteManagementSettingsInput = Readonly<{
   provider: 'postgresql';

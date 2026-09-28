@@ -1,4 +1,7 @@
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/plugin-sdk';
+import type {
+  WasteGlobalDateShiftRecord,
+  WasteTourDateShiftRecord,
+} from '@sva/waste-management-contracts';
 
 import {
   createDefaultGlobalDateShiftForm,
@@ -13,7 +16,7 @@ export const createWasteSchedulingActions = (state: WasteSchedulingState) => ({
     state.setDialogMode('create');
     state.setTourShiftForm({
       ...createDefaultTourDateShiftForm(),
-      tourId: state.availableTours.length === 1 ? state.availableTours[0]?.id ?? '' : '',
+      tourId: state.availableTours.length === 1 ? (state.availableTours[0]?.id ?? '') : '',
     });
     state.setMessage(null);
     state.setDialogOpen(true);

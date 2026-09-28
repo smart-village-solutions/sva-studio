@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   serializeWasteManagementDataExchangeJson,
   wasteManagementDataProfileIds,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import {
   collectWasteDataPackageSourceIds,
@@ -20,17 +20,18 @@ const profileBody = strToU8(
   serializeWasteManagementDataExchangeJson({
     profileId,
     exportedAt: '2026-08-16T09:00:00.000Z',
-    records: [{
-      entityType: 'fraction',
-      id: 'fraction-1',
-      name: 'Bio',
-      pdfShortLabel: 'BIO',
-      color: '#00aa00',
-    }],
+    records: [
+      {
+        entityType: 'fraction',
+        id: 'fraction-1',
+        name: 'Bio',
+        pdfShortLabel: 'BIO',
+        color: '#00aa00',
+      },
+    ],
   })
 );
-const checksum = (body: Uint8Array): string =>
-  createHash('sha256').update(body).digest('hex');
+const checksum = (body: Uint8Array): string => createHash('sha256').update(body).digest('hex');
 const manifestProfile = (overrides: Record<string, unknown> = {}) => ({
   profileId,
   fileName,
@@ -54,7 +55,10 @@ const packageManifest = (profiles: unknown = [manifestProfile()]) => ({
 describe('Waste data exchange package helpers', () => {
   it('reads a valid package and collects only stable string ids', () => {
     expect(readWasteDataPackage(archive(packageManifest()))).toMatchObject([
-      { manifest: { profileId, fileName }, records: [{ entityType: 'fraction', id: 'fraction-1' }] },
+      {
+        manifest: { profileId, fileName },
+        records: [{ entityType: 'fraction', id: 'fraction-1' }],
+      },
     ]);
 
     const ids = collectWasteDataPackageSourceIds([
@@ -71,9 +75,7 @@ describe('Waste data exchange package helpers', () => {
   });
 
   it('rejects missing and malformed manifests', () => {
-    expect(() => readWasteDataPackage(zipSync({}))).toThrow(
-      'missing_waste_data_package_manifest'
-    );
+    expect(() => readWasteDataPackage(zipSync({}))).toThrow('missing_waste_data_package_manifest');
     expect(() =>
       readWasteDataPackage(archive({ ...packageManifest(), formatVersion: '2.0.0' }))
     ).toThrow('invalid_waste_data_package_manifest');
@@ -102,13 +104,11 @@ describe('Waste data exchange package helpers', () => {
         archive(packageManifest([manifestProfile({ profileId: 'waste-management.unknown' })]))
       )
     ).toThrow('unknown_waste_data_profile:waste-management.unknown');
+    expect(() => readWasteDataPackage(archive(packageManifest(), {}))).toThrow(
+      `missing_waste_data_package_file:${fileName}`
+    );
     expect(() =>
-      readWasteDataPackage(archive(packageManifest(), {}))
-    ).toThrow(`missing_waste_data_package_file:${fileName}`);
-    expect(() =>
-      readWasteDataPackage(
-        archive(packageManifest([manifestProfile({ sha256: 'wrong' })]))
-      )
+      readWasteDataPackage(archive(packageManifest([manifestProfile({ sha256: 'wrong' })])))
     ).toThrow(`waste_data_package_checksum_mismatch:${fileName}`);
   });
 
@@ -116,10 +116,9 @@ describe('Waste data exchange package helpers', () => {
     const invalidBody = strToU8('{}');
     expect(() =>
       readWasteDataPackage(
-        archive(
-          packageManifest([manifestProfile({ sha256: checksum(invalidBody) })]),
-          { [fileName]: invalidBody }
-        )
+        archive(packageManifest([manifestProfile({ sha256: checksum(invalidBody) })]), {
+          [fileName]: invalidBody,
+        })
       )
     ).toThrow(`invalid_waste_data_package_file:${fileName}`);
     expect(() =>
@@ -133,9 +132,9 @@ describe('Waste data exchange package helpers', () => {
     ).toThrow('waste_data_package_compressed_size_limit_exceeded');
 
     const oversizedEntry = new Uint8Array(wasteDataPackageLimits.maxEntryBytes + 1);
-    expect(() =>
-      readWasteDataPackage(zipSync({ 'oversized.json': oversizedEntry }))
-    ).toThrow('waste_data_package_entry_size_limit_exceeded:oversized.json');
+    expect(() => readWasteDataPackage(zipSync({ 'oversized.json': oversizedEntry }))).toThrow(
+      'waste_data_package_entry_size_limit_exceeded:oversized.json'
+    );
 
     const excessiveEntries = Object.fromEntries(
       Array.from({ length: wasteDataPackageLimits.maxEntries + 1 }, (_, index) => [
@@ -149,8 +148,8 @@ describe('Waste data exchange package helpers', () => {
   });
 
   it('rejects unsafe entry paths before package parsing', () => {
-    expect(() =>
-      readWasteDataPackage(zipSync({ '../manifest.json': strToU8('{}') }))
-    ).toThrow('invalid_waste_data_package_entry:../manifest.json');
+    expect(() => readWasteDataPackage(zipSync({ '../manifest.json': strToU8('{}') }))).toThrow(
+      'invalid_waste_data_package_entry:../manifest.json'
+    );
   });
 });

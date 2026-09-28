@@ -1,4 +1,4 @@
-import type { WasteManagementAuditQuery } from '@sva/core';
+import type { WasteManagementAuditQuery } from '@sva/waste-management-contracts';
 
 export type WasteAuditFilters = WasteManagementAuditQuery & {
   readonly actionIds?: readonly string[];

@@ -1,4 +1,4 @@
-import type { StudioJobProgress, StudioJobStatus } from './plugin-operations-contract.js';
+import type { StudioJobProgress, StudioJobStatus } from '@sva/core';
 
 export type WasteMainserverSourceState = 'clean' | 'pending' | 'unknown';
 

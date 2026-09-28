@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ExternalInterfaceRecord, WasteManagementSettingsRecord } from '@sva/core';
+import type { ExternalInterfaceRecord } from '@sva/core';
+import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
@@ -599,9 +600,7 @@ describe('waste-management settings write support', () => {
     });
     const saveWastePdfStaticSettings = vi.fn(async () => undefined);
     const startPluginOperationJob = vi.fn();
-    loadConfiguredWasteSettingsMock
-      .mockResolvedValueOnce(current)
-      .mockResolvedValueOnce(current);
+    loadConfiguredWasteSettingsMock.mockResolvedValueOnce(current).mockResolvedValueOnce(current);
 
     const response = await updateWasteManagementSettingsAfterValidation({
       deps: {

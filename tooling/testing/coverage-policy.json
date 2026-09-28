@@ -22,7 +22,7 @@
     "core": {
       "lines": 94,
       "statements": 94,
-      "functions": 98,
+      "functions": 96,
       "branches": 86
     },
     "auth-runtime": {
@@ -170,10 +170,10 @@
       "branches": 52
     },
     "waste-management-contracts": {
-      "lines": 100,
-      "statements": 100,
-      "functions": 100,
-      "branches": 100
+      "lines": 97,
+      "statements": 96,
+      "functions": 98,
+      "branches": 88
     },
     "waste-management-runtime": {
       "lines": 63,
@@ -248,7 +248,7 @@
       "minimumFloors": {
         "lines": 94,
         "statements": 94,
-        "functions": 98,
+        "functions": 96,
         "branches": 86
       },
       "hotspotFloors": [

@@ -9,7 +9,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Input, StudioField, StudioPageHeader } from '@sva/studio-ui-react';
 

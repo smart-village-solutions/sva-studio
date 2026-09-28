@@ -7,7 +7,7 @@ import type {
   WasteHolidayRuleSourceStatus,
   WasteHolidayRuleStrategy,
   WasteHolidayStateCode,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -27,7 +27,9 @@ type WasteHolidayRuleRow = {
   readonly updated_at: string;
 };
 
-const normalizeWasteHolidayRuleScope = (value: string | null): WasteHolidayRuleScope | undefined => {
+const normalizeWasteHolidayRuleScope = (
+  value: string | null
+): WasteHolidayRuleScope | undefined => {
   if (value === 'holiday-only' || value === 'full-week') {
     return value;
   }
@@ -156,9 +158,14 @@ WHERE id = $1::uuid;
 
 export const createWasteHolidayRuleRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteHolidayRules' | 'upsertWasteHolidayRule' | 'deleteWasteHolidayRule'> => ({
+): Pick<
+  WasteMasterDataRepository,
+  'listWasteHolidayRules' | 'upsertWasteHolidayRule' | 'deleteWasteHolidayRule'
+> => ({
   async listWasteHolidayRules(filter) {
-    const result = await executor.execute<WasteHolidayRuleRow>(buildHolidayRuleListStatement(filter));
+    const result = await executor.execute<WasteHolidayRuleRow>(
+      buildHolidayRuleListStatement(filter)
+    );
     return result.rows.map(mapWasteHolidayRuleRow);
   },
   async upsertWasteHolidayRule(input) {

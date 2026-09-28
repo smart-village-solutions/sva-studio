@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { WasteHolidayRuleRecord } from '@sva/plugin-sdk';
+import type { WasteHolidayRuleRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Select } from '@sva/studio-ui-react';
 
@@ -17,7 +17,9 @@ export const WasteHolidayRuleForm = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const [scope, setScope] = useState<WasteHolidayRuleRecord['scope'] | ''>(rule.scope ?? '');
-  const [strategy, setStrategy] = useState<WasteHolidayRuleRecord['strategy'] | ''>(rule.strategy ?? '');
+  const [strategy, setStrategy] = useState<WasteHolidayRuleRecord['strategy'] | ''>(
+    rule.strategy ?? ''
+  );
 
   useEffect(() => {
     setScope(rule.scope ?? '');
@@ -34,7 +36,9 @@ export const WasteHolidayRuleForm = ({
           onChange={(event) => setScope(event.target.value as WasteHolidayRuleRecord['scope'] | '')}
         >
           <option value="">{pt('scheduling.holidayRules.scopeUnset')}</option>
-          <option value="holiday-only">{pt('scheduling.holidayRules.scopeOptions.holidayOnly')}</option>
+          <option value="holiday-only">
+            {pt('scheduling.holidayRules.scopeOptions.holidayOnly')}
+          </option>
           <option value="full-week">{pt('scheduling.holidayRules.scopeOptions.fullWeek')}</option>
         </Select>
       </div>
@@ -43,7 +47,9 @@ export const WasteHolidayRuleForm = ({
         <Select
           value={strategy}
           aria-label={pt('scheduling.holidayRules.strategyLabel')}
-          onChange={(event) => setStrategy(event.target.value as WasteHolidayRuleRecord['strategy'] | '')}
+          onChange={(event) =>
+            setStrategy(event.target.value as WasteHolidayRuleRecord['strategy'] | '')
+          }
         >
           <option value="">{pt('scheduling.holidayRules.strategyUnset')}</option>
           <option value="advance">{pt('scheduling.holidayRules.strategyOptions.advance')}</option>

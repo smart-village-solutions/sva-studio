@@ -1,12 +1,12 @@
+import { convertRichTextHtmlToPlainText } from '@sva/core';
 import {
   buildWasteCalendarPdfDocument,
-  convertRichTextHtmlToPlainText,
-  renderWasteCalendarPdf,
   type WasteManagementEmailReminderConfig,
   type WasteCalendarPdfBrandingImage,
   type WasteOutputLegendHint,
   type WasteOutputPickupEntry,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
+import { renderWasteCalendarPdf } from '@sva/waste-management-contracts/pdf';
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 
 import {

@@ -1,14 +1,17 @@
 import type {
   WasteCollectionLocationSortDirection,
   WasteCollectionLocationSortMode,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import {
   normalizeWasteCollectionLocationSortDirection,
   normalizeWasteCollectionLocationSortMode,
 } from './collection-location-search-params.js';
 import { normalizePageSize, normalizePositiveInteger } from './pagination-search-params.js';
-import { normalizeTourStatus, type WasteManagementTourStatusFilter } from './search-params.tour-status.js';
+import {
+  normalizeTourStatus,
+  type WasteManagementTourStatusFilter,
+} from './search-params.tour-status.js';
 
 const wasteManagementTabs = [
   'fractions',
@@ -222,10 +225,7 @@ export const normalizeWasteManagementSearchParams = (
     pageSize,
     fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
-    tourStatus: normalizeTourStatus(
-      search.tourStatus,
-      tab === 'tours' ? search.status : undefined
-    ),
+    tourStatus: normalizeTourStatus(search.tourStatus, tab === 'tours' ? search.status : undefined),
     tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),

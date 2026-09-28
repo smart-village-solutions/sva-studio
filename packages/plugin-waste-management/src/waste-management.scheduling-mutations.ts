@@ -1,4 +1,4 @@
-import type { WasteHolidayRuleRecord } from '@sva/plugin-sdk';
+import type { WasteHolidayRuleRecord } from '@sva/waste-management-contracts';
 import {
   deleteWasteManagementHolidayRule,
   deleteWasteManagementGlobalDateShift,

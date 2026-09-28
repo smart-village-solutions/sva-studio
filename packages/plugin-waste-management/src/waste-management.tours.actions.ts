@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { getWasteManagementSchedulingOverview } from './waste-management.api.js';
 
 import {
@@ -20,7 +20,9 @@ export const createWasteToursActions = (state: WasteToursState) => ({
   openEditDialog: (tour: WasteTourRecord) => {
     state.setDialogMode('edit');
     state.setSelectedTour(tour);
-    state.setTourForm(mapTourWithPickupDatesToForm(tour, state.schedulingOverview?.locationTourPickupDates ?? []));
+    state.setTourForm(
+      mapTourWithPickupDatesToForm(tour, state.schedulingOverview?.locationTourPickupDates ?? [])
+    );
     state.setMessage(null);
     state.setDialogOpen(true);
   },
@@ -32,7 +34,9 @@ export const createWasteToursActions = (state: WasteToursState) => ({
     state.setAssignmentsDialogOpen(true);
   },
   openEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => {
-    const existingLink = state.masterDataOverview?.locationTourLinks.find((link) => link.id === linkId);
+    const existingLink = state.masterDataOverview?.locationTourLinks.find(
+      (link) => link.id === linkId
+    );
     state.setSelectedTour(tour);
     state.setAssignmentsDialogMode('edit');
     state.setLinkForm(

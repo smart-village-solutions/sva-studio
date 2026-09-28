@@ -2,7 +2,7 @@ import {
   readWasteManagementEmailReminderConfig,
   readWasteManagementEmailReminderSigningSecret,
   type WasteManagementEmailReminderConfig,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { deriveWasteTenantDatabaseNames } from '@sva/server-runtime';
 
 export type PublicWasteConfig = {

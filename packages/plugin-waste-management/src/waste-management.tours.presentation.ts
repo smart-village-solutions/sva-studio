@@ -1,4 +1,4 @@
-import { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/plugin-sdk';
+import { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/waste-management-contracts';
 
 import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 

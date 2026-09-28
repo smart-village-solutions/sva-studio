@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { useNavigate } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';

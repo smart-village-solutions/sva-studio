@@ -1,4 +1,7 @@
-import type { WastePdfStaticSettingsRecord, WastePdfStaticSettingsWriteInput } from '@sva/core';
+import type {
+  WastePdfStaticSettingsRecord,
+  WastePdfStaticSettingsWriteInput,
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
-import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementMasterDataContract } from '@sva/waste-management-contracts';
+import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
 
 import {
   getWasteManagementSettings,

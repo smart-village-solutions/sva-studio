@@ -2,7 +2,7 @@ import type {
   WasteDateShiftReasonType,
   WasteGlobalDateShiftListFilter,
   WasteGlobalDateShiftRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -34,7 +34,9 @@ const mapWasteGlobalDateShiftRow = (row: WasteGlobalDateShiftRow): WasteGlobalDa
   updatedAt: row.updated_at,
 });
 
-const buildGlobalDateShiftListStatement = (filter: WasteGlobalDateShiftListFilter = {}): SqlStatement => {
+const buildGlobalDateShiftListStatement = (
+  filter: WasteGlobalDateShiftListFilter = {}
+): SqlStatement => {
   const values: SqlPrimitive[] = [];
   const conditions: string[] = [];
 
@@ -138,14 +140,21 @@ export const createWasteGlobalDateShiftRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteGlobalDateShifts' | 'getWasteGlobalDateShiftById' | 'upsertWasteGlobalDateShift' | 'deleteWasteGlobalDateShift'
+  | 'listWasteGlobalDateShifts'
+  | 'getWasteGlobalDateShiftById'
+  | 'upsertWasteGlobalDateShift'
+  | 'deleteWasteGlobalDateShift'
 > => ({
   async listWasteGlobalDateShifts(filter) {
-    const result = await executor.execute<WasteGlobalDateShiftRow>(buildGlobalDateShiftListStatement(filter));
+    const result = await executor.execute<WasteGlobalDateShiftRow>(
+      buildGlobalDateShiftListStatement(filter)
+    );
     return result.rows.map(mapWasteGlobalDateShiftRow);
   },
   async getWasteGlobalDateShiftById(id) {
-    const result = await executor.execute<WasteGlobalDateShiftRow>(buildGlobalDateShiftSelectStatement(id));
+    const result = await executor.execute<WasteGlobalDateShiftRow>(
+      buildGlobalDateShiftSelectStatement(id)
+    );
     return result.rows[0] ? mapWasteGlobalDateShiftRow(result.rows[0]) : null;
   },
   async upsertWasteGlobalDateShift(input) {

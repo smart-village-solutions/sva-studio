@@ -4,7 +4,7 @@ import {
   readWasteManagementPdfBrandingAssetUrl,
   readWasteManagementPdfContactBlock,
   type WastePdfStaticSettingsRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { createWasteMasterDataRepository } from '@sva/data-repositories';
 import {
   listExternalInterfaceRecords,

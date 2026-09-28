@@ -1,9 +1,8 @@
+import type { ExternalInterfaceRecord, ExternalInterfaceRuntimeErrorCode } from '@sva/core';
 import type {
-  ExternalInterfaceRecord,
-  ExternalInterfaceRuntimeErrorCode,
   WasteManagementDataSourceStatus,
   WasteTenantProvisioningRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import {
   ExternalInterfaceRuntimeError,
   resolveExternalInterface,

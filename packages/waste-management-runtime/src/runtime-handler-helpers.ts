@@ -1,6 +1,6 @@
+import { type PluginJobHandlerContext } from '@sva/plugin-sdk';
 import {
   wasteManagementOperationsContract,
-  type PluginJobHandlerContext,
   type WasteManagementApplyMigrationsJobInput,
   type WasteManagementExportJobInput,
   type WasteManagementInitializeJobInput,
@@ -11,8 +11,8 @@ import {
   type WasteManagementSeedJobInput,
   type WasteManagementSyncMainserverJobInput,
   type WasteManagementSyncWasteTypesJobInput,
-} from '@sva/plugin-sdk';
-import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
+} from '@sva/waste-management-contracts';
+import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/waste-management-contracts';
 import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 
 import { createImportDataHandler } from './runtime-import-handler.js';

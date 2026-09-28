@@ -15,16 +15,22 @@
       "types": "./dist/job-definitions.d.ts",
       "default": "./dist/job-definitions.js"
     },
+    "./pdf": {
+      "types": "./dist/waste-management-output.d.ts",
+      "default": "./dist/waste-management-output.js"
+    },
     "./unsubscribe-token": {
       "types": "./dist/unsubscribe-token.server.d.ts",
       "default": "./dist/unsubscribe-token.server.js"
     }
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
     "@sva/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.10",
+    "fast-check": "^3.23.2",
     "vitest": "^4.1.10"
   }
 }

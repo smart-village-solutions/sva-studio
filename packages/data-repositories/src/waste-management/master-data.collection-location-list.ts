@@ -1,4 +1,7 @@
-import type { WasteCollectionLocationListItem, WasteCollectionLocationPage } from '@sva/core';
+import type {
+  WasteCollectionLocationListItem,
+  WasteCollectionLocationPage,
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';

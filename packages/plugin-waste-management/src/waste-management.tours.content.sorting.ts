@@ -1,4 +1,4 @@
-import type { WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { useMemo, useState } from 'react';
 

@@ -38,6 +38,10 @@ export default defineConfig({
         replacement: resolve(currentDir, '../plugin-sdk/src/index.ts'),
       },
       {
+        find: /^@sva\/waste-management-contracts$/,
+        replacement: resolve(currentDir, '../waste-management-contracts/src/index.ts'),
+      },
+      {
         find: /^@sva\/server-runtime$/,
         replacement: resolve(currentDir, '../server-runtime/src/index.ts'),
       },

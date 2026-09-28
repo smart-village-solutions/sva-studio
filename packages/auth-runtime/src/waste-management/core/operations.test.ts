@@ -2,15 +2,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 
-vi.mock('@sva/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/core')>();
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/waste-management-contracts')>();
   return {
     ...actual,
     getWasteManagementImportCatalogEntry: vi.fn(actual.getWasteManagementImportCatalogEntry),
   };
 });
 
-import { getWasteManagementImportCatalogEntry } from '@sva/core';
+import { getWasteManagementImportCatalogEntry } from '@sva/waste-management-contracts';
 
 import * as operationsSupport from './operations-support.js';
 import { wasteManagementOperationHandlers } from './operations.js';
@@ -114,22 +114,23 @@ const actorWithoutInstance: AuthenticatedRequestContext = {
 
 describe('waste-management operation handlers', () => {
   it('stores import uploads before queuing and returns only an opaque reference', async () => {
-    const storeWasteImportSource = vi.fn(async () =>
-      'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+    const storeWasteImportSource = vi.fn(
+      async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'
     );
-    const response = await wasteManagementOperationHandlers.uploadWasteManagementImportSourceInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/imports/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/zip',
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: new Uint8Array([1, 2, 3]),
-      }),
-      actor,
-      { ...createDeps(), storeWasteImportSource }
-    );
+    const response =
+      await wasteManagementOperationHandlers.uploadWasteManagementImportSourceInternal(
+        new Request('https://studio.test/api/v1/waste-management/tools/imports/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/zip',
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: new Uint8Array([1, 2, 3]),
+        }),
+        actor,
+        { ...createDeps(), storeWasteImportSource }
+      );
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toMatchObject({
@@ -147,20 +148,21 @@ describe('waste-management operation handlers', () => {
 
   it('rejects oversized import uploads before writing storage', async () => {
     const storeWasteImportSource = vi.fn();
-    const response = await wasteManagementOperationHandlers.uploadWasteManagementImportSourceInternal(
-      new Request('https://studio.test/api/v1/waste-management/tools/imports/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/zip',
-          'Content-Length': String(16 * 1024 * 1024 + 1),
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: new Uint8Array([1]),
-      }),
-      actor,
-      { ...createDeps(), storeWasteImportSource }
-    );
+    const response =
+      await wasteManagementOperationHandlers.uploadWasteManagementImportSourceInternal(
+        new Request('https://studio.test/api/v1/waste-management/tools/imports/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/zip',
+            'Content-Length': String(16 * 1024 * 1024 + 1),
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: new Uint8Array([1]),
+        }),
+        actor,
+        { ...createDeps(), storeWasteImportSource }
+      );
 
     expect(response.status).toBe(413);
     expect(storeWasteImportSource).not.toHaveBeenCalled();
@@ -414,10 +416,12 @@ describe('waste-management operation handlers', () => {
         ...createDeps(),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
-          permissions: [{
-            action: 'waste-management.export.execute',
-            resourceType: 'waste-management',
-          }],
+          permissions: [
+            {
+              action: 'waste-management.export.execute',
+              resourceType: 'waste-management',
+            },
+          ],
         })),
         startPluginOperationJob,
       }

@@ -1,4 +1,4 @@
-import type { WasteManagementHistoryOverview } from '@sva/plugin-sdk';
+import type { WasteManagementHistoryOverview } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button } from '@sva/studio-ui-react';
 
@@ -50,7 +50,9 @@ export const WasteToolsHistoryEntry = ({
             aria-expanded={isOpen}
             onClick={onToggle}
           >
-            {pt(isOpen ? 'tools.meta.historyCloseDetailsAction' : 'tools.meta.historyDetailsAction')}
+            {pt(
+              isOpen ? 'tools.meta.historyCloseDetailsAction' : 'tools.meta.historyDetailsAction'
+            )}
           </Button>
           {jobId && canDelete ? (
             <Button type="button" variant="tertiary" onClick={() => onDelete?.(jobId)}>
@@ -65,9 +67,15 @@ export const WasteToolsHistoryEntry = ({
           className="mt-3 space-y-1 border-t border-border/60 pt-3 text-sm text-muted-foreground"
         >
           {jobId ? <p>{pt('overview.meta.jobId', { value: jobId })}</p> : null}
-          {item.jobTypeId ? <p>{pt('overview.meta.jobTypeId', { value: item.jobTypeId })}</p> : null}
-          {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
-          {item.errorCode ? <p>{pt('overview.meta.reasonCode', { value: item.errorCode })}</p> : null}
+          {item.jobTypeId ? (
+            <p>{pt('overview.meta.jobTypeId', { value: item.jobTypeId })}</p>
+          ) : null}
+          {item.requestId ? (
+            <p>{pt('overview.meta.requestId', { value: item.requestId })}</p>
+          ) : null}
+          {item.errorCode ? (
+            <p>{pt('overview.meta.reasonCode', { value: item.errorCode })}</p>
+          ) : null}
         </div>
       ) : null}
     </div>

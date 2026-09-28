@@ -2,14 +2,13 @@ import type {
   InstanceAuditRun,
   InstanceRealmMode,
   InstanceStatus,
-  IamInstanceDetail,
   IamInstanceListItem,
   IamTenantIamAxis,
   IamTenantIamStatus,
-  WasteManagementDataSourceRecord,
   TenantModuleActivationPolicySnapshot,
   ServerAccountInvitationTemplateView,
 } from '@sva/core';
+import type { WasteIamInstanceDetail, WasteManagementDataSourceRecord } from '@sva/waste-management-contracts';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
   AssignInstanceModuleInput,
@@ -127,7 +126,7 @@ export type InstanceRegistryService = {
     actorId?: string;
     requestId?: string;
   }): Promise<ServerAccountInvitationTemplateView>;
-  getInstanceDetail(instanceId: string): Promise<IamInstanceDetail | null>;
+  getInstanceDetail(instanceId: string): Promise<WasteIamInstanceDetail | null>;
   createProvisioningRequest(
     input: CreateInstanceProvisioningInput
   ): Promise<CreateInstanceProvisioningResult>;
@@ -138,7 +137,7 @@ export type InstanceRegistryService = {
     pageSize?: number;
   }): Promise<RealmCatalog>;
   retryTenantProvisioning(input: RetryTenantProvisioningInput): Promise<IamInstanceListItem | null>;
-  updateInstance(input: UpdateInstanceInput): Promise<IamInstanceDetail | null>;
+  updateInstance(input: UpdateInstanceInput): Promise<WasteIamInstanceDetail | null>;
   changeStatus(input: ChangeInstanceStatusInput): Promise<ChangeInstanceStatusResult>;
   getKeycloakStatus(instanceId: string): Promise<KeycloakTenantStatus | null>;
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;

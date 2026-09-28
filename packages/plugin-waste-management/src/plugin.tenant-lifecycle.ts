@@ -1,7 +1,5 @@
-import {
-  wasteManagementOperationsContract,
-  type PluginTenantLifecycleDefinition,
-} from '@sva/plugin-sdk';
+import { type PluginTenantLifecycleDefinition } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import { wasteManagementTenantLifecycleContract } from '@sva/waste-management-contracts';
 
 export const wasteManagementTenantLifecycle: PluginTenantLifecycleDefinition = {

@@ -1,4 +1,4 @@
-import type { WasteTourDateShiftRecord } from '@sva/core';
+import type { WasteTourDateShiftRecord } from '@sva/waste-management-contracts';
 
 type WasteTourDateShiftWriteInput = Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>;
 

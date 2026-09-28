@@ -1,4 +1,4 @@
-import type { WasteCustomTourDate, WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteCustomTourDate, WasteTourRecord } from '@sva/waste-management-contracts';
 
 export type LocationTourLinkFormState = {
   readonly id: string;

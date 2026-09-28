@@ -18,10 +18,10 @@ import type { NewsTargetingTranslator } from './news.detail-targeting-tab.js';
 import type { NewsWasteTargetOption } from './news.waste-targeting.js';
 import type { WasteLocationKey } from './news.types.js';
 import type { WasteTargetingAvailability } from './news.waste-payload.js';
-import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type { NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 
 type NewsDetailTargetingDialogProps = Readonly<{
-  overview: WasteManagementMasterDataOverview;
+  overview: NewsWasteMasterDataOverview;
   options: readonly NewsWasteTargetOption[];
   selected: readonly WasteLocationKey[];
   pt: NewsTargetingTranslator;

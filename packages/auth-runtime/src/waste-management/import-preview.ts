@@ -5,7 +5,7 @@ import {
   type WasteLocationTourPickupDateImportPreview,
   type WasteManagementCsvDelimiter,
   type WasteManagementImportSourceFormat,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { createWasteMasterDataRepository } from '@sva/data-repositories';
 import { readPluginOperationInput } from '../plugin-operation-artifacts.server.js';
 
@@ -31,17 +31,20 @@ const decodeBlobRef = async (instanceId: string, blobRef: string): Promise<strin
   return new TextDecoder('utf-8').decode(buffer);
 };
 
-const loadPlanningSnapshot = async (repository: WasteRepository): Promise<WasteLocationTourPickupDateImportPlanningSnapshot> => {
-  const [fractions, regions, cities, streets, houseNumbers, locations, tours, assignments] = await Promise.all([
-    repository.listWasteFractions(),
-    repository.listWasteRegions(),
-    repository.listWasteCities(),
-    repository.listWasteStreets(),
-    repository.listWasteHouseNumbers(),
-    repository.listWasteCollectionLocations(),
-    repository.listWasteTours(),
-    repository.listWasteLocationTourLinks(),
-  ]);
+const loadPlanningSnapshot = async (
+  repository: WasteRepository
+): Promise<WasteLocationTourPickupDateImportPlanningSnapshot> => {
+  const [fractions, regions, cities, streets, houseNumbers, locations, tours, assignments] =
+    await Promise.all([
+      repository.listWasteFractions(),
+      repository.listWasteRegions(),
+      repository.listWasteCities(),
+      repository.listWasteStreets(),
+      repository.listWasteHouseNumbers(),
+      repository.listWasteCollectionLocations(),
+      repository.listWasteTours(),
+      repository.listWasteLocationTourLinks(),
+    ]);
 
   return {
     fractions,

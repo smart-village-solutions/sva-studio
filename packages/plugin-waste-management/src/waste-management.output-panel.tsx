@@ -9,7 +9,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type {
   WasteManagementEmailReminderConfig,
   WasteManagementSettingsRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import {
   getWasteManagementSettings,

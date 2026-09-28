@@ -1,5 +1,7 @@
-import type { StudioJobResponse, WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
+import type { WasteManagementImportSourceFormat } from '@sva/waste-management-contracts';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import { useEffect, useId, useMemo, useState } from 'react';
 
 import type {

@@ -2,8 +2,8 @@ import {
   normalizeHost,
   type InstanceRegistryRecord,
   type ServerAccountInvitationTemplateState,
-  type WasteTenantProvisioningRecord,
 } from '@sva/core';
+import { type WasteTenantProvisioningRecord } from '@sva/waste-management-contracts';
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/server-runtime';
 

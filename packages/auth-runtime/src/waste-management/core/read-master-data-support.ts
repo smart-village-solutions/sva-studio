@@ -1,4 +1,4 @@
-import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type { WasteManagementMasterDataOverview } from '@sva/waste-management-contracts';
 
 import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';

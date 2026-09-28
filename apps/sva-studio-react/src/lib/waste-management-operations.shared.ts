@@ -8,15 +8,15 @@ import {
   loadDefaultExternalInterfaceRecord,
   loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
-import { findSelectedWasteManagementInterfaceRecord } from '@sva/core';
+import { findSelectedWasteManagementInterfaceRecord } from '@sva/waste-management-contracts';
+import type { ExternalInterfaceRecord } from '@sva/core';
 import type {
-  ExternalInterfaceRecord,
   WasteCustomTourDate,
   WasteDateShiftReasonType,
   WasteManagementImportProfileId,
   WasteTourDateShiftFollowUpMode,
   WasteTourRecurrence,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { revealField } from '@sva/auth-runtime/server';
 import { readPluginOperationInput } from '@sva/auth-runtime/server';
 import { resolveWasteDataSource, type ResolvedWasteDataSource } from '@sva/server-runtime';

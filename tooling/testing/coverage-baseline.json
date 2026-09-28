@@ -21,7 +21,7 @@
     "core": {
       "lines": 97.07,
       "statements": 97.06,
-      "functions": 98.32,
+      "functions": 96.83,
       "branches": 89.03
     },
     "data": {
@@ -40,7 +40,7 @@
       "lines": 95.31,
       "statements": 94.72,
       "functions": 92.36,
-      "branches": 85.02
+      "branches": 84.51
     },
     "iam-admin": {
       "lines": 89.59,
@@ -169,10 +169,10 @@
       "branches": 70.73
     },
     "waste-management-contracts": {
-      "lines": 100,
-      "statements": 100,
-      "functions": 100,
-      "branches": 100
+      "lines": 97.67,
+      "statements": 96.31,
+      "functions": 98.64,
+      "branches": 88.38
     }
   }
 }

@@ -1,4 +1,7 @@
-import type { WasteFractionReminderConfig, WasteLocalizedTextRecord } from '@sva/plugin-sdk';
+import type {
+  WasteFractionReminderConfig,
+  WasteLocalizedTextRecord,
+} from '@sva/waste-management-contracts';
 
 export type CreateWasteManagementFractionInput = Readonly<{
   id: string;

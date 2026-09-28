@@ -19,11 +19,6 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
-  wasteManagementOperationsContract: {
-    jobTypeIds: {
-      importData: 'waste-management.import-data',
-    },
-  },
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({

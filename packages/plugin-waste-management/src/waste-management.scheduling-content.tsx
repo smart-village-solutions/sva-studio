@@ -4,7 +4,7 @@ import type {
   WasteTourRecord,
   WasteGlobalDateShiftRecord,
   WasteTourDateShiftRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioEmptyState } from '@sva/studio-ui-react';
 import { type FormEvent, useState } from 'react';

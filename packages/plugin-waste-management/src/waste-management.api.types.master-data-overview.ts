@@ -6,7 +6,7 @@ import type {
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 export type WasteManagementMasterDataOverview = Readonly<{
   fractions: readonly WasteFractionRecord[];

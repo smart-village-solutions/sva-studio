@@ -1,7 +1,7 @@
 import type {
   WasteCollectionLocationRecord,
   WasteManagementMasterDataOverview,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 
 import { wasteMasterDataPresentation } from './waste-management.master-data.presentation.js';
 import { wasteMasterDataFormDefaults } from './waste-management.master-data.forms.js';

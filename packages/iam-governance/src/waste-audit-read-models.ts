@@ -3,13 +3,14 @@ import type {
   WasteManagementAuditOutcome,
   WasteManagementTechnicalHistoryOverview,
   WasteManagementTechnicalHistoryRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { QueryClient } from './query-client.js';
 import { loadWasteAuditRows } from './waste-audit-read-models.queries.js';
 import type { WasteAuditFilters, WasteAuditRow } from './waste-audit-read-models.types.js';
 
-const readString = (value: unknown): string | undefined => (typeof value === 'string' && value.length > 0 ? value : undefined);
+const readString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.length > 0 ? value : undefined;
 
 const readOutcome = (row: WasteAuditRow): WasteManagementAuditOutcome => {
   const result = readString(row.payload?.result);
@@ -22,7 +23,11 @@ const readOutcome = (row: WasteAuditRow): WasteManagementAuditOutcome => {
     return outcome;
   }
 
-  return row.event_type === 'plugin_action_denied' ? 'denied' : row.event_type === 'plugin_action_failed' ? 'failure' : 'success';
+  return row.event_type === 'plugin_action_denied'
+    ? 'denied'
+    : row.event_type === 'plugin_action_failed'
+      ? 'failure'
+      : 'success';
 };
 
 const mapWasteAuditRow = (row: WasteAuditRow): WasteManagementAuditOverview['items'][number] => ({

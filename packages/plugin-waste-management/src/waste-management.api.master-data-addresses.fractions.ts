@@ -1,4 +1,5 @@
-import type { StudioJobResponse, WasteFractionRecord } from '@sva/plugin-sdk';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
+import type { WasteFractionRecord } from '@sva/waste-management-contracts';
 
 import type {
   CreateWasteManagementFractionInput,
@@ -24,12 +25,20 @@ const updateWasteManagementFraction = async (
   fractionId: string,
   input: UpdateWasteManagementFractionInput
 ): Promise<WasteFractionMutationResponse<WasteFractionRecord>> =>
-  requestWasteManagementMutationResponse(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, input, 'PUT');
+  requestWasteManagementMutationResponse(
+    `/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`,
+    input,
+    'PUT'
+  );
 
 const deleteWasteManagementFraction = async (
   fractionId: string
 ): Promise<WasteFractionMutationResponse<{ readonly id: string }>> =>
-  requestWasteManagementMutationResponse(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, undefined, 'DELETE');
+  requestWasteManagementMutationResponse(
+    `/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`,
+    undefined,
+    'DELETE'
+  );
 
 export {
   createWasteManagementFraction,

@@ -1,4 +1,4 @@
-import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
+import type { WasteManagementSettingsRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioConfirmDialog, StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
 import { useState } from 'react';

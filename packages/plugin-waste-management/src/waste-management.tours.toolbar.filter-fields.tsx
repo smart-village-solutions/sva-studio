@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { usePluginTranslation, type WasteTourStatus } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { type WasteTourStatus } from '@sva/waste-management-contracts';
 import { Input, Select } from '@sva/studio-ui-react';
 
 import type { WasteManagementTourValidityPeriod } from './search-params.js';

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { useNavigate } from '@tanstack/react-router';
 
 import { mapTourWithPickupDatesToForm } from './waste-management.tours.shared.js';

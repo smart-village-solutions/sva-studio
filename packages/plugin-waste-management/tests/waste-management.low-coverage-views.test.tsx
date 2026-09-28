@@ -20,10 +20,18 @@ vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
   formatTechnicalDateTimeInEditorTimeZone: (value: string) => value,
-  wasteManagementMasterDataContract: {
-    holidayStateCodes: ['BW', 'BY', 'NW'],
-  },
 }));
+
+vi.mock('@sva/waste-management-contracts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/waste-management-contracts')>();
+  return {
+    ...actual,
+    wasteManagementMasterDataContract: {
+      ...actual.wasteManagementMasterDataContract,
+      holidayStateCodes: ['BW', 'BY', 'NW'],
+    },
+  };
+});
 
 vi.mock('@sva/studio-ui-react', async () => ({
   StudioDestructiveActionDialog: ({

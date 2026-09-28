@@ -3,7 +3,7 @@ import {
   parseWasteManagementDataExchangeJson,
   type WasteManagementDataExchangeRecord,
   type WasteManagementDataProfileId,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import type { WasteMasterDataRepository } from '@sva/data-repositories';
 
 import {
@@ -75,8 +75,9 @@ const allocateFractionShortLabels = async (
       .filter((label) => label.length > 0)
   );
 
-  for (const entry of fractionEntries.filter((candidate) =>
-    candidate.materialized.active !== false && !usesDerivedFractionShortLabel(candidate)
+  for (const entry of fractionEntries.filter(
+    (candidate) =>
+      candidate.materialized.active !== false && !usesDerivedFractionShortLabel(candidate)
   )) {
     const label = normalizeFractionShortLabel(entry.materialized.pdfShortLabel);
     if (label.length === 0 || usedLabels.has(label)) {
@@ -102,14 +103,16 @@ const allocateFractionShortLabels = async (
   });
 };
 
-const executeAtomicCanonicalImport = async <T>(input: Readonly<{
-  deps: WasteOperationRuntimeDeps;
-  instanceId: string;
-  dryRun: boolean;
-  portableInterface: PortableInterface | null;
-  portableRecord?: WasteManagementDataExchangeRecord;
-  apply: (repository: WasteMasterDataRepository) => Promise<T>;
-}>): Promise<T> =>
+const executeAtomicCanonicalImport = async <T>(
+  input: Readonly<{
+    deps: WasteOperationRuntimeDeps;
+    instanceId: string;
+    dryRun: boolean;
+    portableInterface: PortableInterface | null;
+    portableRecord?: WasteManagementDataExchangeRecord;
+    apply: (repository: WasteMasterDataRepository) => Promise<T>;
+  }>
+): Promise<T> =>
   withWasteClient(input.deps, input.instanceId, async ({ client, repository }) => {
     await client.query('BEGIN');
     let portableSettingsPersisted = false;
@@ -182,7 +185,8 @@ const applyCanonicalRecords = async (
     preparedRecords
   )) {
     if (existing === null) created += 1;
-    else if (comparableWasteDataRecord(existing) === comparableWasteDataRecord(materialized)) unchanged += 1;
+    else if (comparableWasteDataRecord(existing) === comparableWasteDataRecord(materialized))
+      unchanged += 1;
     else updated += 1;
     if (!dryRun) await upsertWasteDataRecord(repository, materialized);
   }

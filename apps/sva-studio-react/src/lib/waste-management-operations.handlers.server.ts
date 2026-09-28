@@ -2,7 +2,7 @@ import {
   buildWasteTypesStaticContent,
   getWasteManagementImportCatalogEntry,
   wasteManagementOperationsContract,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 import { createOrUpdateSvaMainserverStaticContent } from '@sva/sva-mainserver/server';
 import { runWasteConnectionCheck } from '@sva/server-runtime';
 

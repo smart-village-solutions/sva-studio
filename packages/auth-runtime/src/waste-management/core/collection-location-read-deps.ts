@@ -2,7 +2,7 @@ import type {
   WasteCollectionLocationPage,
   WasteCollectionLocationQuery,
   WasteCollectionLocationSelectionFilter,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 export type WasteCollectionLocationReadHandlerDeps = {
   readonly loadWasteCollectionLocationPage?: (

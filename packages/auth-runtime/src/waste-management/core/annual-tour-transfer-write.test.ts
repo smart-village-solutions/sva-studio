@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { WasteAnnualTourTransferMappedTour } from '@sva/core';
+import type { WasteAnnualTourTransferMappedTour } from '@sva/waste-management-contracts';
 import type { WasteMasterDataRepository } from '@sva/data-repositories';
 
 import { writeWasteAnnualMappedTours } from './annual-tour-transfer-write.js';

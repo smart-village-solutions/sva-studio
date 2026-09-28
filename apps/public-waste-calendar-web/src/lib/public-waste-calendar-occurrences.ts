@@ -1,4 +1,7 @@
-import { resolveEffectiveWasteTourDateShiftsForYear, type WasteHolidayRuleRecord } from '@sva/core';
+import {
+  resolveEffectiveWasteTourDateShiftsForYear,
+  type WasteHolidayRuleRecord,
+} from '@sva/waste-management-contracts';
 
 import type {
   PublicWasteCalendarEntry,

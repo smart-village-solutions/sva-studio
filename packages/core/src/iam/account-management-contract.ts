@@ -4,7 +4,6 @@ import type {
   IamUuid,
 } from '@sva/iam-core';
 import type { IamPermissionRuntimeScope } from './account-management.js';
-import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 import type { TenantModuleActivationRecord } from '../instances/module-activation.js';
 
 export type ApiErrorCode =
@@ -920,7 +919,6 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly moduleIamStatus?: IamInstanceModuleIamStatus;
   readonly provisioningReadiness?: IamInstanceProvisioningReadiness;
   readonly moduleActivations: readonly TenantModuleActivationRecord[];
-  readonly wasteManagementSettings?: WasteManagementSettingsRecord;
 };
 
 export type IamOrganizationChildItem = {

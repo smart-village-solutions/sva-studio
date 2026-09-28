@@ -4,4 +4,4 @@ export type {
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';

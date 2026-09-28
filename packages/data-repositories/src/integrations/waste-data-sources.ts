@@ -2,7 +2,7 @@ import type {
   WasteManagementConnectionCheckRecord,
   WasteManagementDataSourceProvider,
   WasteManagementDataSourceRecord,
-} from '@sva/core';
+} from '@sva/waste-management-contracts';
 
 import type { SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
 

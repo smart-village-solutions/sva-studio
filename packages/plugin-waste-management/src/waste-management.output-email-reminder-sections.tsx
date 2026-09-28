@@ -1,7 +1,7 @@
 import type {
   WasteManagementEmailReminderConfig,
   WasteManagementSettingsInterfaceOption,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { Input, StudioField, Textarea } from '@sva/studio-ui-react';
 import type { ComponentProps } from 'react';
 

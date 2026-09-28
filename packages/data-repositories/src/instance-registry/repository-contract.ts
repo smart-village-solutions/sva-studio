@@ -11,8 +11,8 @@ import type {
   InstanceStatus,
   TenantModuleActivationRecord,
   TenantModuleActivationPolicyDescriptor,
-  WasteTenantProvisioningRecord,
 } from '@sva/core';
+import type { WasteTenantProvisioningRecord } from '@sva/waste-management-contracts';
 
 export type TenantModuleActivationPolicyInput = TenantModuleActivationPolicyDescriptor;
 

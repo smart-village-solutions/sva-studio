@@ -39,4 +39,4 @@ const encodeWinAnsi = (value: string): string =>
   }).join('');
 
 export const escapePdfText = (value: string): string =>
-  encodeWinAnsi(value).replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
+  encodeWinAnsi(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');

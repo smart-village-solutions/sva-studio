@@ -167,6 +167,14 @@ export default defineConfig({
         import.meta.dirname,
         '../../packages/waste-management-contracts/src/unsubscribe-token.server.ts'
       ),
+      '@sva/waste-management-contracts/pdf': resolve(
+        import.meta.dirname,
+        '../../packages/waste-management-contracts/src/waste-management-output.ts'
+      ),
+      '@sva/waste-management-contracts': resolve(
+        import.meta.dirname,
+        '../../packages/waste-management-contracts/src/index.ts'
+      ),
     },
   },
 });

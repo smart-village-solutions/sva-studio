@@ -1,6 +1,6 @@
-import type { ExternalInterfaceRecord } from './external-interfaces-contract.js';
+import type { ExternalInterfaceRecord } from '@sva/core';
 import type { WasteHolidayStateCode } from './waste-management/master-data-contract.js';
-import { isPlausibleEmailAddress } from './email-address.js';
+import { isPlausibleEmailAddress } from '@sva/core';
 import { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 import {
   wasteManagementDataSourceContract,

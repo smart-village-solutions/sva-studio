@@ -1,4 +1,5 @@
-import { usePluginTranslation, type WasteTourStatus } from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
+import { type WasteTourStatus } from '@sva/waste-management-contracts';
 import { Button } from '@sva/studio-ui-react';
 
 import { WasteToursToolbarActions } from './waste-management.tours.toolbar.actions.js';

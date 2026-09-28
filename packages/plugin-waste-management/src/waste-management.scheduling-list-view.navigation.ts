@@ -2,7 +2,7 @@ import type {
   WasteGlobalDateShiftRecord,
   WasteHolidayRuleRecord,
   WasteTourDateShiftRecord,
-} from '@sva/plugin-sdk';
+} from '@sva/waste-management-contracts';
 import { useNavigate } from '@tanstack/react-router';
 
 import type {

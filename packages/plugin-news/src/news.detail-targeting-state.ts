@@ -3,7 +3,7 @@ import * as React from 'react';
 import { wasteLocationKeyId } from './news.waste-targeting.js';
 import type { NewsWasteTargetOption } from './news.waste-targeting.js';
 import type { WasteLocationKey } from './news.types.js';
-import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type { NewsWasteMasterDataOverview } from './news.waste-targeting.js';
 
 const pageSize = 25;
 
@@ -53,7 +53,7 @@ const deriveTargetingSelection = (
 };
 
 export const useNewsTargetingEditor = (
-  overview: WasteManagementMasterDataOverview,
+  overview: NewsWasteMasterDataOverview,
   options: readonly NewsWasteTargetOption[],
   selected: readonly WasteLocationKey[]
 ) => {

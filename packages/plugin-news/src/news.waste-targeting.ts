@@ -1,14 +1,29 @@
-import {
-  buildWasteStreetKey,
-  requestMainserverJson,
-  type WasteCityRecord,
-  type WasteHouseNumberRecord,
-  type WasteManagementMasterDataOverview,
-  type WasteRegionRecord,
-  type WasteStreetRecord,
-} from '@sva/plugin-sdk';
+import { requestMainserverJson } from '@sva/plugin-sdk';
 
 import type { WasteLocationKey } from './news.types.js';
+
+export type NewsWasteRegion = Readonly<{ id: string; name: string }>;
+export type NewsWasteCity = Readonly<{
+  id: string;
+  name: string;
+  postalCode?: string;
+  regionId?: string;
+}>;
+export type NewsWasteStreet = Readonly<{ id: string; name: string; cityId: string }>;
+export type NewsWasteHouseNumber = Readonly<{ id: string; number: string; streetId: string }>;
+export type NewsWasteMasterDataOverview = Readonly<{
+  regions: readonly NewsWasteRegion[];
+  cities: readonly NewsWasteCity[];
+  streets: readonly NewsWasteStreet[];
+  houseNumbers: readonly NewsWasteHouseNumber[];
+  collectionLocations: readonly Readonly<{
+    active: boolean;
+    cityId: string;
+    streetId?: string;
+    houseNumberId?: string;
+    regionId?: string;
+  }>[];
+}>;
 
 export type NewsWasteTargetOption = Readonly<{
   id: string;
@@ -30,19 +45,23 @@ const byId = <T extends { readonly id: string }>(items: readonly T[]) =>
 
 const compact = (value: string | undefined): string => value?.trim() ?? '';
 
+const formatWasteStreetKey = (street: string, houseNumber?: string): string => {
+  const normalizedHouseNumber = houseNumber?.trim() ?? '';
+  const isAllHouseNumbers =
+    normalizedHouseNumber.localeCompare('Alle Hausnummern', 'de', { sensitivity: 'base' }) === 0;
+  return [street.trim(), isAllHouseNumbers ? '' : normalizedHouseNumber].filter(Boolean).join(' ');
+};
+
 export const wasteLocationKeyId = (key: WasteLocationKey): string =>
   JSON.stringify([key.street.trim(), key.zip.trim(), key.city.trim()]);
 
 export const resolveNewsWasteTargetOptions = (
-  overview: Pick<
-    WasteManagementMasterDataOverview,
-    'regions' | 'cities' | 'streets' | 'houseNumbers' | 'collectionLocations'
-  >
+  overview: NewsWasteMasterDataOverview
 ): readonly NewsWasteTargetOption[] => {
-  const regions = byId<WasteRegionRecord>(overview.regions);
-  const cities = byId<WasteCityRecord>(overview.cities);
-  const streets = byId<WasteStreetRecord>(overview.streets);
-  const houseNumbers = byId<WasteHouseNumberRecord>(overview.houseNumbers);
+  const regions = byId(overview.regions);
+  const cities = byId(overview.cities);
+  const streets = byId(overview.streets);
+  const houseNumbers = byId(overview.houseNumbers);
 
   const unique = new Map<string, NewsWasteTargetOption>();
   for (const location of overview.collectionLocations) {
@@ -59,7 +78,7 @@ export const resolveNewsWasteTargetOptions = (
     const streetName = compact(street?.name);
     if (!cityName || !postalCode || !streetName) continue;
 
-    const streetWithHouseNumber = buildWasteStreetKey(streetName, houseNumber?.number);
+    const streetWithHouseNumber = formatWasteStreetKey(streetName, houseNumber?.number);
     const key = { street: streetWithHouseNumber, zip: postalCode, city: cityName };
     const id = wasteLocationKeyId(key);
     if (unique.has(id)) continue;
@@ -81,9 +100,9 @@ export const resolveNewsWasteTargetOptions = (
   return [...unique.values()].sort((left, right) => left.label.localeCompare(right.label, 'de'));
 };
 
-export const loadNewsWasteMasterData = async (): Promise<WasteManagementMasterDataOverview> => {
+export const loadNewsWasteMasterData = async (): Promise<NewsWasteMasterDataOverview> => {
   const response = await requestMainserverJson<
-    { readonly data: WasteManagementMasterDataOverview },
+    { readonly data: NewsWasteMasterDataOverview },
     Error
   >({
     url: '/api/v1/waste-management/master-data?scope=targeting',

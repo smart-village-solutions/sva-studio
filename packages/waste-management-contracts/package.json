@@ -29,8 +29,8 @@
     "@sva/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "fast-check": "^3.23.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

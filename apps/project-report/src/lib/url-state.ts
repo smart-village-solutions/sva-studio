@@ -9,7 +9,7 @@ export type ReportFilterState = Readonly<{
   q: string;
 }>;
 
-export const defaultReportFilterState: ReportFilterState = {
+const defaultReportFilterState: ReportFilterState = {
   view: 'milestones',
   milestone: 'all',
   status: 'all',

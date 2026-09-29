@@ -200,6 +200,7 @@
     "test:unit:server": {
       "executor": "nx:run-commands",
       "cache": true,
+      "dependsOn": ["^build"],
       "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {

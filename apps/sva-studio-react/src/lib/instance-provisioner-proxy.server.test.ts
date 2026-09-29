@@ -46,6 +46,7 @@ describe('instance provisioner proxy', () => {
     ['GET', '/api/v1/iam/instances/keycloak-realms'],
     ['GET', '/api/v1/iam/instances/tenant-one'],
     ['POST', '/api/v1/iam/instances/tenant-one/tenant-iam/roles/reconcile'],
+    ['POST', '/api/v1/iam/instances/tenant-one/actions/instance.status.activate/confirmation'],
     ['POST', '/api/v1/iam/instances/tenant-one/activate'],
   ])('forwards the allowlisted %s %s request to the private provisioner', async (method, path) => {
     vi.stubEnv('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL', 'http://provisioner:3000');
@@ -188,6 +189,7 @@ describe('instance provisioner proxy', () => {
     ['GET', '/api/v1/iam/instances/audit'],
     ['POST', '/api/v1/iam/instances/keycloak-realms'],
     ['POST', '/api/v1/iam/instances/tenant-one/keycloak/execute'],
+    ['POST', '/api/v1/iam/instances/tenant-one/actions/instance.status.archive/confirmation'],
     ['PATCH', '/api/v1/iam/instances/tenant-one'],
   ])('does not forward non-allowlisted %s %s requests', async (method, path) => {
     vi.stubEnv('SVA_INSTANCE_PROVISIONER_INTERNAL_BASE_URL', 'http://provisioner:3000');

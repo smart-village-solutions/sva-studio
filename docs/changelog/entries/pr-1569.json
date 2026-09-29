@@ -1,0 +1,4 @@
+{
+  "prNumber": 1569,
+  "body": "Die Test-Infrastruktur verwendet Vitest und den zugehörigen Coverage-Provider in Version 4.1.11. Das behebt Inkompatibilitäten zwischen Testläufer und Coverage-Auswertung."
+}

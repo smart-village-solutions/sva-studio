@@ -1,0 +1,4 @@
+{
+  "prNumber": 1563,
+  "body": "Die Waste-Management-Funktionen sind intern klarer dem Waste-Plugin zugeordnet. Bestehende API-Pfade, Berechtigungen und Abläufe bleiben erhalten. Eine Distribution ohne Waste-Plugin lädt weiterhin keine Waste-Fachhandler."
+}

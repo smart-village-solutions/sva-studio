@@ -212,9 +212,9 @@ Abhängigkeiten des aktuellen Systems.
 - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil öffentlicher Plugin- oder Self-Service-Verträge
 - die Runtime trennt den enqueue-only Zugriff der App von der Ausführung über den dedizierten Datenbank-Principal `sva_job_worker`; Schema-Migrationen gehören ausschließlich zum privilegierten Deploy-One-shot
 
-15. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
+15. Waste-Server-Komposition (`packages/plugin-waste-management`, `packages/waste-management-runtime`, `packages/auth-runtime`)
 
-- `@sva/auth-runtime/waste-host` bindet die Waste-Handler an Host-Fähigkeiten für Authentifizierung, Berechtigungsentscheidung, Audit, Idempotenz, Jobs, Artefakte und tenantgebundene Datenbankzugriffe; die allgemeinen Auth-Routen enthalten keine Waste-Pfade mehr
+- Der Waste-Server-Entry bindet Handler, Fach-Loader und Jobentscheidungen aus `@sva/waste-management-runtime/server` an die generischen Host-Fähigkeiten aus `@sva/auth-runtime/plugin-server-host`; die allgemeinen Auth-Routen enthalten keine Waste-Pfade mehr
 - derselbe Hostpfad startet auch den dedizierten Job `waste-management.sync-waste-types`; die eigentliche Mainserver-Schreiboperation bleibt dahinter in der Studio-Runtime und `@sva/sva-mainserver`
 - der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
@@ -462,7 +462,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/waste-management-runtime` -> `@sva/data-repositories`, `@sva/server-runtime`, `@sva/waste-management-contracts` für Waste-Handler, Fachpersistenz und Datenquellenauflösung
 - Die SQL-Statements für `iam.instance_waste_data_sources` gehören zur Waste-Runtime; `@sva/auth-runtime` hält die IAM-Poolwahl und die instanzgebundene Transaktion für Registry und Studio-Readiness.
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
-- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; der getrennte Server-Entry bindet die Host-Fassade `@sva/auth-runtime/waste-host` an die deklarativen `/api/v1/waste-management/*`-Routen
+- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; der getrennte Server-Entry bindet `@sva/waste-management-runtime/server` und `@sva/auth-runtime/plugin-server-host` an die deklarativen `/api/v1/waste-management/*`-Routen
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/core` -> `@sva/iam-core` fuer verbliebene gemeinsame IAM-Vertragstypen waehrend der Hard-Cut-Migration

@@ -8,7 +8,7 @@
     "rootDir": "src",
     "types": ["react", "react-dom"],
     "paths": {
-      "@sva/auth-runtime/waste-host": ["packages/auth-runtime/dist/waste-host.d.ts"],
+      "@sva/auth-runtime/plugin-server-host": ["packages/auth-runtime/dist/plugin-server-host.d.ts"],
       "@sva/core": ["packages/core/dist/index.d.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
       "@sva/studio-module-iam": ["packages/studio-module-iam/dist/index.d.ts"],

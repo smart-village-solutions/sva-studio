@@ -31,9 +31,9 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
-    "./waste-host": {
-      "types": "./dist/waste-host.d.ts",
-      "default": "./dist/waste-host.js"
+    "./plugin-server-host": {
+      "types": "./dist/plugin-server-host.d.ts",
+      "default": "./dist/plugin-server-host.js"
     },
     "./waste-readiness": {
       "types": "./dist/waste-readiness.d.ts",

@@ -131,7 +131,7 @@ const collectPackageViolations = async (
       );
       if (
         !resolvedTarget ||
-        isAllowedWorkspaceModuleSpecifier(pluginPackage.packageName, resolvedTarget)
+        isAllowedWorkspaceModuleSpecifier(pluginPackage.packageName, resolvedTarget, relativePath)
       ) {
         continue;
       }

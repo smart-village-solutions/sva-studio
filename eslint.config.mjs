@@ -151,6 +151,7 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:plugin-sdk',
                 'scope:plugin-contracts',
+                'scope:plugin-runtime',
                 'scope:studio-ui-react',
                 'scope:plugin',
               ],
@@ -164,6 +165,7 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:core',
                 'scope:plugin-sdk',
+                'scope:server-runtime',
                 'scope:plugin-contracts',
                 'scope:plugin',
                 'scope:plugin-runtime',

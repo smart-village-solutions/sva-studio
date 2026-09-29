@@ -215,8 +215,12 @@ const config = defineConfig({
       '@sva/routing/route-search': resolveAppPath('../../packages/routing/src/route-search.ts'),
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
       '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
-      '@sva/auth-runtime/waste-host': resolveAppPath('../../packages/auth-runtime/src/waste-host.ts'),
-      '@sva/auth-runtime/waste-readiness': resolveAppPath('../../packages/auth-runtime/src/waste-readiness.ts'),
+      '@sva/auth-runtime/plugin-server-host': resolveAppPath(
+        '../../packages/auth-runtime/src/plugin-server-host.ts'
+      ),
+      '@sva/auth-runtime/waste-readiness': resolveAppPath(
+        '../../packages/auth-runtime/src/waste-readiness.ts'
+      ),
       '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),
       '@sva/auth-runtime/runtime-routes': resolveAppPath(
         '../../packages/auth-runtime/src/runtime-routes.ts'

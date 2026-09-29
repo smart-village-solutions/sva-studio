@@ -1334,6 +1334,9 @@ importers:
       '@sva/waste-management-contracts':
         specifier: workspace:*
         version: link:../waste-management-contracts
+      '@sva/waste-management-runtime':
+        specifier: workspace:*
+        version: link:../waste-management-runtime
       '@tabler/icons-react':
         specifier: ^3.46.0
         version: 3.46.0(react@19.2.8)
@@ -1627,6 +1630,9 @@ importers:
       '@sva/waste-management-contracts':
         specifier: workspace:*
         version: link:../waste-management-contracts
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -1634,6 +1640,9 @@ importers:
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../iam-core
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
@@ -14795,6 +14804,7 @@ snapshots:
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@sva/waste-management-contracts': file:packages/waste-management-contracts
+      pg: 8.22.0
       zod: 4.4.3
     transitivePeerDependencies:
       - '@opentelemetry/core'

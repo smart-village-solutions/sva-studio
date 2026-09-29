@@ -1,16 +1,28 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const hostHandler = vi.hoisted(() => vi.fn(async () => new Response('waste-host')));
+const wasteHandler = vi.hoisted(() => vi.fn(async () => new Response('waste-handler')));
 
-vi.mock('@sva/auth-runtime/waste-host', () => ({
-  wasteManagementHandlers: new Proxy({}, { get: () => hostHandler }),
+vi.mock('@sva/waste-management-runtime/server', () => ({
+  wasteManagementHttpRuntime: {
+    createWasteManagementHandlers: () => new Proxy({}, { get: () => wasteHandler }),
+  },
+}));
+vi.mock('../src/server-context.js', () => ({
+  sharedWasteManagementDeps: {},
+  withAuthenticatedWasteManagementHandler: vi.fn(),
+}));
+vi.mock('../src/server-loaders.js', () => ({
+  wasteManagementOverviewLoaders: {},
+  wasteManagementEntityLoaders: {},
+  wasteManagementEntitySavers: {},
+  wasteManagementServerLoaderInternals: {},
 }));
 
 import { pluginWasteManagement } from '../src/plugin.js';
 import { createPluginServerHandlers } from '../src/server.js';
 
 describe('Waste server entry', () => {
-  it('binds every declared method to the host-composed Waste handler', async () => {
+  it('binds every declared method to the Waste handler', async () => {
     const bindings = createPluginServerHandlers();
     const descriptors = pluginWasteManagement.serverHandlers ?? [];
     expect(Object.keys(bindings).sort()).toEqual(descriptors.map(({ id }) => id).sort());
@@ -25,6 +37,6 @@ describe('Waste server entry', () => {
       actor: { id: 'user-1', roles: [], instanceId: 'tenant-a' },
     });
     expect(response?.status).toBe(200);
-    expect(hostHandler).toHaveBeenCalledWith(request);
+    expect(wasteHandler).toHaveBeenCalledWith(request);
   });
 });

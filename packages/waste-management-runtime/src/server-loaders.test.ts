@@ -248,35 +248,13 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   };
 });
 
-vi.mock('@sva/iam-governance', () => ({
-  listWasteManagementAuditRecords: listWasteManagementAuditRecordsMock,
-  listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
-}));
-
-vi.mock('../db.js', () => ({
-  withInstanceDb: withInstanceDbMock,
-}));
-
-vi.mock('../iam-account-management/encryption.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../iam-account-management/encryption.js')>();
-  return {
-    ...actual,
-    revealField: revealFieldMock,
-  };
-});
-
-vi.mock('../plugin-operations/repository.js', () => ({
-  withStudioJobRepository: withStudioJobRepositoryMock,
-}));
-
-vi.mock('@sva/waste-management-runtime/repositories', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>()),
-  createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
+vi.mock('./repositories/data-source.server.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./repositories/data-source.server.js')>()),
   resolveWasteDataSource: resolveWasteDataSourceMock,
 }));
 
-vi.mock('../../../waste-management-runtime/src/repositories/master-data.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../../waste-management-runtime/src/repositories/master-data.js')>()),
+vi.mock('./repositories/master-data.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./repositories/master-data.js')>()),
   createWasteMasterDataRepository: createWasteMasterDataRepositoryMock,
 }));
 
@@ -284,12 +262,24 @@ vi.mock('pg', () => ({
   Pool: PoolMock,
 }));
 
-import {
+import { createWasteServerLoaders, type WasteServerLoaderHost } from './server-loaders.js';
+
+const {
   wasteManagementEntityLoaders,
   wasteManagementEntitySavers,
   wasteManagementOverviewLoaders,
   wasteManagementServerLoaderInternals,
-} from './server-loaders.js';
+} = createWasteServerLoaders({
+  listExternalInterfaceRecords: vi.fn(async () => []),
+  loadDefaultExternalInterfaceRecord: vi.fn(async () => null),
+  loadWasteTenantProvisioningRecord: vi.fn(async () => null),
+  withInstanceDb: withInstanceDbMock,
+  withStudioJobRepository: withStudioJobRepositoryMock,
+  revealField: revealFieldMock,
+  readPluginOperationInput: vi.fn(async () => ({ body: new Uint8Array() })),
+  listWasteManagementAuditRecords: listWasteManagementAuditRecordsMock,
+  listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
+} as unknown as WasteServerLoaderHost);
 
 describe('waste-management server loaders', () => {
   beforeEach(async () => {

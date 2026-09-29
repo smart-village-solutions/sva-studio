@@ -45,6 +45,6 @@
     "@vitest/coverage-v8": "^4.1.10",
     "happy-dom": "^20.11.1",
     "react-hook-form": "^7.80.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

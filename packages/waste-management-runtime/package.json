@@ -33,6 +33,6 @@
     "@sva/iam-core": "workspace:*",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

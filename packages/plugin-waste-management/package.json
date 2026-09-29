@@ -50,6 +50,6 @@
     "happy-dom": "^20.11.1",
     "msw": "^2.14.6",
     "tooling-testing": "workspace:*",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

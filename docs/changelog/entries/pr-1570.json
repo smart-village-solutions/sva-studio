@@ -1,0 +1,4 @@
+{
+  "prNumber": 1570,
+  "body": "Der Mailversand verwendet Nodemailer 10. Die vorhandene SMTP-Konfiguration und der Versandpfad bleiben erhalten."
+}

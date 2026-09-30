@@ -7,7 +7,7 @@ const envelope = (items: ReturnType<typeof finding>[]) => ({ kind: 'dead-code', 
 
 describe('Fallow local loop selection', () => {
   it('keeps only coherent, bounded app file groups', () => {
-    const groups = selectGroups(envelope([finding('first', 1), finding('second', 2), finding('danger', 1, 'packages/core/src/lib/index.ts'), finding('role', 3, 'apps/example/src/lib/iam-role.ts')]));
+    const groups = selectGroups(envelope([finding('first', 1), finding('second', 2), finding('danger', 1, 'packages/core/src/lib/index.ts'), finding('role', 3, 'apps/example/src/lib/iam-role.ts'), finding('escape', 4, 'apps/example/src/lib/../../escape.ts')]));
     expect(groups).toHaveLength(1);
     expect(groups[0]?.findings.map((f) => f.export_name)).toEqual(['first', 'second']);
   });

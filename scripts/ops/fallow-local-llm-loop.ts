@@ -33,6 +33,7 @@ export function selectGroups(input: unknown): Group[] {
   const byFile = new Map<string, Finding[]>();
   for (const f of envelope.unused_exports) {
     if (!/^apps\/[a-z0-9-]+\/src\/(?:lib|components\/ui)\/[a-z0-9./-]+\.tsx?$/.test(f.path)) continue;
+    if (f.path.split('/').includes('..')) continue;
     if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) continue;
     if (f.is_type_only || f.is_re_export || !/^[A-Za-z_$][\w$]*$/.test(f.export_name)) continue;
     if (!f.actions?.some((a) => a.type === 'remove-export' && a.auto_fixable)) continue;
@@ -85,6 +86,7 @@ function scan(cwd: string): { kind: string; unused_exports: Finding[] } {
 }
 
 async function askModel(group: Group, files: Map<string, string>): Promise<Decision> {
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(new URL(apiUrl).hostname)) throw new Error('Model endpoint must be local');
   const snippets = group.findings.map((f) => {
     const lines = files.get(f.path)!.split('\n');
     return { path: f.path, name: f.export_name, line: f.line, old: lines[f.line - 1], context: lines.slice(Math.max(0, f.line - 12), f.line + 2) };

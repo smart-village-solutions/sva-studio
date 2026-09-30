@@ -63,8 +63,8 @@ export function validateDecision(group: Group, response: unknown, files: Map<str
     const lines = original.split('\n');
     const at = edit.line - 1;
     if (lines[at] !== edit.old) throw new Error('Stale declaration');
-    const declaration = new RegExp(`^\\s*export\\s+(?:const|let|function|async function|class)\\s+${edit.name.replace(/[$]/g, '\\$&')}\\b`).test(edit.old);
-    const named = new RegExp(`^\\s*${edit.name.replace(/[$]/g, '\\$&')},\\s*$`).test(edit.old)
+    const declaration = /^\s*export\s+(?:const|let|function|async function|class)\s+([A-Za-z_$][\w$]*)\b/.exec(edit.old)?.[1] === edit.name;
+    const named = edit.old.trim() === `${edit.name},`
       && lines.slice(Math.max(0, at - 20), at).some((line) => /^export \{$/.test(line))
       && lines.slice(at + 1, at + 20).some((line) => /^\};$/.test(line));
     if (declaration) {
@@ -163,6 +163,45 @@ function publish(cwd: string, group: Group, branch: string, base: string): numbe
   return number;
 }
 
+async function runGroup(group: Group, base: string): Promise<boolean> {
+  const branch = `automation/fallow-${group.id}-${base.slice(0, 8)}`;
+  const existing = command(root, 'git', ['ls-remote', '--heads', 'origin', branch]);
+  if (existing) { record(group.id, { base, status: 'remote-branch-exists', branch, at: new Date().toISOString() }); return false; }
+  const worktree = join(stateRoot, 'worktrees', branch.replaceAll('/', '-'));
+  if (existsSync(worktree)) { record(group.id, { base, status: 'worktree-exists', branch, at: new Date().toISOString() }); return false; }
+  mkdirSync(dirname(worktree), { recursive: true });
+  command(root, 'git', ['worktree', 'add', '-b', branch, worktree, base]);
+  try {
+    command(worktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
+    const content = readFileSync(join(worktree, group.path), 'utf8');
+    const files = new Map([[group.path, content]]);
+    const decision = await askModel(group, files);
+    const changed = validateDecision(group, decision, files);
+    // An unused export must not be referenced from any other file, including tests.
+    for (const f of group.findings) {
+      const refs = command(worktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
+      if (refs.some((path) => path !== f.path)) throw new Error(`${f.export_name} has external references`);
+    }
+    writeFileSync(join(worktree, group.path), changed.get(group.path)!);
+    command(worktree, 'git', ['diff', '--check']);
+    const delta = command(worktree, 'git', ['diff', '--numstat']);
+    if (!delta || delta.split('\n').some((line) => !line.endsWith(`\t${group.path}`))) throw new Error('Diff escaped selected file');
+    const after = scan(worktree);
+    if (group.findings.some((f) => after.unused_exports.some((a) => a.path === f.path && a.export_name === f.export_name))) throw new Error('Fallow finding remains');
+    for (const target of ['test:unit', 'test:types']) if (projectTarget(worktree, group.project, target)) command(worktree, 'pnpm', ['nx', 'run', `${group.project}:${target}`], 1_800_000);
+    command(worktree, 'pnpm', ['check:file-placement'], 120_000);
+    const pr = publish(worktree, group, branch, base);
+    console.log(`Draft PR #${pr}: ${group.path}`);
+    return true;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    record(group.id, { base, status: 'failed', reason, branch, pr: previous(group.id)?.pr, at: new Date().toISOString() });
+    console.error(`${group.path}: ${reason}`);
+    if (/gh |git push|PR head|checks/.test(reason)) throw error;
+    return false;
+  }
+}
+
 async function main(): Promise<void> {
   const dry = process.argv.includes('--dry-run');
   mkdirSync(stateRoot, { recursive: true });
@@ -199,41 +238,7 @@ async function main(): Promise<void> {
     let published = 0;
     for (const group of eligible) {
       if (published >= maxPrs || Date.now() >= deadline) break;
-      const branch = `automation/fallow-${group.id}-${base.slice(0, 8)}`;
-      const existing = command(root, 'git', ['ls-remote', '--heads', 'origin', branch]);
-      if (existing) { record(group.id, { base, status: 'remote-branch-exists', branch, at: new Date().toISOString() }); continue; }
-      const worktree = join(stateRoot, 'worktrees', branch.replaceAll('/', '-'));
-      if (existsSync(worktree)) { record(group.id, { base, status: 'worktree-exists', branch, at: new Date().toISOString() }); continue; }
-      mkdirSync(dirname(worktree), { recursive: true });
-      command(root, 'git', ['worktree', 'add', '-b', branch, worktree, base]);
-      try {
-        command(worktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
-        const content = readFileSync(join(worktree, group.path), 'utf8');
-        const files = new Map([[group.path, content]]);
-        const decision = await askModel(group, files);
-        const changed = validateDecision(group, decision, files);
-        // An unused export must not be referenced from any other file, including tests.
-        for (const f of group.findings) {
-          const refs = command(worktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
-          if (refs.some((path) => path !== f.path)) throw new Error(`${f.export_name} has external references`);
-        }
-        writeFileSync(join(worktree, group.path), changed.get(group.path)!);
-        command(worktree, 'git', ['diff', '--check']);
-        const delta = command(worktree, 'git', ['diff', '--numstat']);
-        if (!delta || delta.split('\n').some((line) => !line.endsWith(`\t${group.path}`))) throw new Error('Diff escaped selected file');
-        const after = scan(worktree);
-        if (group.findings.some((f) => after.unused_exports.some((a) => a.path === f.path && a.export_name === f.export_name))) throw new Error('Fallow finding remains');
-        for (const target of ['test:unit', 'test:types']) if (projectTarget(worktree, group.project, target)) command(worktree, 'pnpm', ['nx', 'run', `${group.project}:${target}`], 1_800_000);
-        command(worktree, 'pnpm', ['check:file-placement'], 120_000);
-        const pr = publish(worktree, group, branch, base);
-        console.log(`Draft PR #${pr}: ${group.path}`);
-        published += 1;
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        record(group.id, { base, status: 'failed', reason, branch, pr: previous(group.id)?.pr, at: new Date().toISOString() });
-        console.error(`${group.path}: ${reason}`);
-        if (/gh |git push|PR head|checks/.test(reason)) throw error;
-      }
+      if (await runGroup(group, base)) published += 1;
     }
     console.log(`Run complete: ${published} Draft PR(s)`);
   } finally { rmSync(lock, { recursive: true, force: true }); }

@@ -20,7 +20,9 @@ const maxPrs = 2;
 const maxHours = 8;
 
 function command(cwd: string, file: string, args: string[], timeout = 300_000, allowed = [0]): string {
-  const run = spawnSync(file, args, { cwd, encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  if (file === 'pnpm') { delete env.GH_TOKEN; delete env.GITHUB_TOKEN; }
+  const run = spawnSync(file, args, { cwd, encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024, env });
   if (run.error || !allowed.includes(run.status ?? -1)) throw new Error(`${file} ${args.join(' ')}: ${(run.error?.message || run.stderr || run.stdout).slice(0, 600)}`);
   return run.stdout.trim();
 }

@@ -84,7 +84,20 @@ Der Snapshot ist bewusst im Repo eingecheckt, damit das Team denselben Skill-Sta
 
 `scripts/ops/fallow-local-llm-loop.ts` verarbeitet Fallow-Befunde ohne Einzel-Issues. Die erste Aufgabenart umfasst ausschließlich Gruppen von zwei bis sechs ungenutzten Exports in derselben App-Datei unter `src/lib` oder `src/components/ui`; sensible Auth-, IAM-, Plugin-, Server- und Vertragsbereiche sind ausgeschlossen. Der Controller erzeugt höchstens zwei Draft-PRs pro Lauf und führt keinen Merge aus. Einzelbefunde bleiben liegen, bis ein sinnvoller gemeinsamer Scope vorliegt.
 
-Voraussetzungen auf dem Z640: ein Clone dieses Repositories, `pnpm install --frozen-lockfile`, ein laufender lokaler `llama-server` mit OpenAI-kompatiblem Endpoint unter `http://127.0.0.1:8080/v1/chat/completions`, sowie ein dort separat authentifiziertes `gh` mit Zugriff auf dieses Repository. Mac-Zugangsdaten gehören nicht auf den Server. Das Label `local-llm` muss im Repository existieren. Der vorhandene `sva-llama-server.service` startet das Modell nach einem Reboot.
+Voraussetzungen auf dem Z640: ein Clone dieses Repositories, `pnpm install --frozen-lockfile`, ein laufender lokaler `llama-server` mit OpenAI-kompatiblem Endpoint unter `http://127.0.0.1:8080/v1/chat/completions`, sowie ein dort installiertes `gh`. Mac-Zugangsdaten gehören nicht auf den Server. Für `gh` wird einmalig ein auf `smart-village-solutions/sva-studio` begrenzter Fine-grained GitHub-Token eingerichtet. Er braucht Schreibrechte für Contents, Pull requests und Issues (PR-Label) sowie Leserechte für Checks; Metadaten-Lesen ist automatisch enthalten. Der Token liegt ausschließlich auf dem Z640 in `~/.config/sva-fallow-loop/github.env` (Modus 0600), nicht im Repository. Das Label `local-llm` muss im Repository existieren. Der vorhandene `sva-llama-server.service` startet das Modell nach einem Reboot.
+
+Die Token-Einrichtung erfolgt in einer interaktiven SSH-Sitzung, ohne den Wert in Chat, Shell-History oder Logs zu kopieren:
+
+```bash
+install -d -m 700 ~/.config/sva-fallow-loop
+read -rs 'token?GitHub-Token: '
+printf 'GH_TOKEN=%s\n' "$token" > ~/.config/sva-fallow-loop/github.env
+chmod 600 ~/.config/sva-fallow-loop/github.env
+GH_TOKEN="$token" gh auth setup-git
+unset token
+```
+
+In Bash statt zsh lautet die `read`-Zeile `read -r -s -p 'GitHub-Token: ' token; echo`. Für einen manuellen Probelauf wird die Umgebungsdatei in die aktuelle Shell geladen: `set -a; . ~/.config/sva-fallow-loop/github.env; set +a`. Der `systemd`-Dienst liest sie selbst.
 
 Im Clone zuerst Kandidaten ohne Modell- oder GitHub-Mutation prüfen:
 

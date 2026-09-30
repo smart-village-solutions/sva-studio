@@ -105,6 +105,19 @@ async function askModel(group: Group, files: Map<string, string>): Promise<Decis
   } finally { clearTimeout(timer); }
 }
 
+async function waitForModelReady(): Promise<void> {
+  const endpoint = new URL('/health', apiUrl);
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname)) throw new Error('Model endpoint must be local');
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    let status = 0;
+    try { status = (await fetch(endpoint, { signal: AbortSignal.timeout(5_000) })).status; } catch { /* Server may still be starting. */ }
+    if (status === 200) return;
+    if (status !== 0 && status !== 503) throw new Error(`llama-server health HTTP ${status}`);
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+  throw new Error('llama-server did not become ready within five minutes');
+}
+
 function record(id: string, data: RunRecord): void {
   mkdirSync(join(stateRoot, 'results'), { recursive: true });
   const path = join(stateRoot, 'results', `${id}.json`);
@@ -235,6 +248,7 @@ async function main(): Promise<void> {
     const completed = new Set(groups.filter((g) => previous(g.id)?.base === base).map((g) => g.id));
     const eligible = eligibleGroups(groups, blocked, completed);
     if (dry) { console.log(JSON.stringify({ base, groups: eligible.map((g) => ({ id: g.id, project: g.project, path: g.path, names: g.findings.map((f) => f.export_name) })) }, null, 2)); return; }
+    if (eligible.length > 0) await waitForModelReady();
     let published = 0;
     for (const group of eligible) {
       if (published >= maxPrs || Date.now() >= deadline) break;

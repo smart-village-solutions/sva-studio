@@ -469,6 +469,32 @@ describe('ContentListPage', () => {
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
   });
 
+  it.each([
+    ['news.article', 'Neue Nachricht', '/admin/news/new'],
+    ['events.event-record', 'Neue Veranstaltung', '/admin/events/new'],
+    ['poi.point-of-interest', 'Neuer Ort', '/admin/poi/new'],
+    ['surveys.survey', 'Neue Umfrage', '/admin/surveys/new'],
+  ])('links directly to the filtered %s editor', (type, label, path) => {
+    searchState = { type };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('link', { name: label }).getAttribute('href')).toBe(path);
+    expect(screen.queryByRole('link', { name: 'Neuer Inhalt' })).toBeNull();
+  });
+
+  it('keeps the general creation flow when the filtered type cannot be created', () => {
+    searchState = { type: 'faq.faq' };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe(
+      '/admin/content/new'
+    );
+  });
+
   it('places the collapsed author diagnostics after the content table', () => {
     useContentAccessMock.mockReturnValue({
       access: {

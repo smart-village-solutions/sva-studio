@@ -74,6 +74,7 @@ JOIN iam.accounts AS accounts
 WHERE journal.instance_id = $1
   AND journal.reconciliation_status = 'reconciliation_required'
   AND journal.completed_steps ? 'projection_follow_up_deferred'
+  AND NOT (journal.completed_steps ? 'projection_history_reconciled')
   AND journal.provider_outcome = 'succeeded'
   AND (
     (

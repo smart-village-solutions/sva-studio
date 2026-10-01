@@ -568,7 +568,8 @@ function Editor({
       const operationId = saveFeedback.beginSaving();
       setMediaSavePhaseKey(null);
       try {
-        const saveContent = (
+        let visibilitySavePartialFailure = false;
+        const saveContent = async (
           draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
           mediaSaveContext?: Readonly<{ operationId: string }>
         ) => {
@@ -591,9 +592,22 @@ function Editor({
               ? createCockpitCard(input, actingPrincipalType, mutationOptions)
               : createCockpitCard(input, actingPrincipalType);
           }
-          return mutationOptions
-            ? updateCockpitCard(contentId as string, input, actingPrincipalType, mutationOptions)
-            : updateCockpitCard(contentId as string, input, actingPrincipalType);
+          try {
+            return await (mutationOptions
+              ? updateCockpitCard(contentId as string, input, actingPrincipalType, mutationOptions)
+              : updateCockpitCard(contentId as string, input, actingPrincipalType));
+          } catch (cause) {
+            if (
+              cause instanceof Error &&
+              'code' in cause &&
+              cause.code === 'visibility_update_failed' &&
+              loadedItem
+            ) {
+              visibilitySavePartialFailure = true;
+              return loadedItem;
+            }
+            throw cause;
+          }
         };
         const result = requiresReferenceSync
           ? await saveContentWithHostMediaReferences({
@@ -613,6 +627,11 @@ function Editor({
         const handledResult = mediaReferenceSync.consumeSaveResult(result);
         if (handledResult.referenceFailed) {
           setMutationError(pt('messages.mediaReferencePartialFailure'));
+          saveFeedback.markFailed(operationId);
+          return;
+        }
+        if (visibilitySavePartialFailure) {
+          setMutationError(pt('messages.visibilitySavePartialFailure'));
           saveFeedback.markFailed(operationId);
           return;
         }

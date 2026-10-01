@@ -61,11 +61,12 @@ const chunkProvenancePlugin = (): Plugin => ({
         output.type !== 'asset' || !('fileName' in output) ||
         typeof output.fileName !== 'string' || !output.fileName.endsWith('.js')
       ) continue;
+      const fileName = output.fileName;
       const owners = workerChunks.filter((chunk) =>
-        output.fileName.startsWith(`assets/${chunk.name}-`)
+        fileName.startsWith(`assets/${chunk.name}-`)
       );
-      if (owners.length !== 1) throw new Error(`chunk_provenance_worker_owner_missing:${output.fileName}`);
-      chunks.push({ fileName: output.fileName, modules: [owners[0].facadeModuleId] });
+      if (owners.length !== 1) throw new Error(`chunk_provenance_worker_owner_missing:${fileName}`);
+      chunks.push({ fileName, modules: [owners[0].facadeModuleId] });
     }
     writeFileSync(join(chunkProvenanceRoot, `${environment}.json`), JSON.stringify(chunks));
   },

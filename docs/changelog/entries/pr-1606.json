@@ -1,4 +1,4 @@
 {
   "prNumber": 1606,
-  "body": "Die Prüfung von Dienst- und Anmeldetokens verwendet die aktualisierte jose-Version 6.2.12."
+  "body": "Die Prüfung von Diensttokens für angebundene Dienste wurde aktualisiert."
 }

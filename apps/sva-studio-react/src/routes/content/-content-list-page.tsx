@@ -664,6 +664,28 @@ export const ContentListPage = ({
     (contentAccessApi.access
       ? !contentAccessApi.access.canCreate
       : contentsApi.error?.code === 'forbidden');
+  const selectedCreatableType = creatableContentTypes.find(
+    (definition) => definition.contentType === routeState.type
+  );
+  const createLabel = selectedCreatableType
+    ? t('content.actions.createForType', {
+        type: resolveStudioContentTypeLabel(selectedCreatableType),
+      })
+    : t('content.actions.create');
+  const specificCreateLabels: Readonly<Record<string, string>> = {
+    'news.article': t('content.actions.createNews'),
+    'events.event-record': t('content.actions.createEvent'),
+    'poi.point-of-interest': t('content.actions.createPoi'),
+    'surveys.survey': t('content.actions.createSurvey'),
+    'faq.faq': t('content.actions.createFaq'),
+    'generic-items.generic-item': t('content.actions.createGenericItem'),
+    'cockpit-cards.cockpit-card': t('content.actions.createCockpitCard'),
+    'projects.project': t('content.actions.createProject'),
+  };
+  const tableCreateLabel = selectedCreatableType
+    ? specificCreateLabels[selectedCreatableType.contentType] ?? createLabel
+    : createLabel;
+  const tableCreatePath = selectedCreatableType?.createPath ?? '/admin/content/new';
 
   const registeredContents = React.useMemo(
     () =>
@@ -1073,11 +1095,11 @@ export const ContentListPage = ({
               </Button>
               {createDisabled ? (
                 <Button type="button" disabled>
-                  {t('content.actions.create')}
+                  {tableCreateLabel}
                 </Button>
               ) : (
                 <Button asChild>
-                  <Link to="/admin/content/new">{t('content.actions.create')}</Link>
+                  <Link to={tableCreatePath}>{tableCreateLabel}</Link>
                 </Button>
               )}
             </div>

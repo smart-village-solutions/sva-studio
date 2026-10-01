@@ -68,7 +68,7 @@
     "file-type": "^22.0.1",
     "graphile-worker": "^0.16.6",
     "ioredis": "^5.10.1",
-    "jose": "^6.2.5",
+    "jose": "^6.2.12",
     "openid-client": "^6.8.4",
     "pg": "^8.22.0",
     "postcss": "^8.5.23",

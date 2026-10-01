@@ -540,8 +540,8 @@ importers:
         specifier: ^5.10.1
         version: 5.11.0
       jose:
-        specifier: ^6.2.5
-        version: 6.2.7
+        specifier: ^6.2.12
+        version: 6.2.12
       openid-client:
         specifier: ^6.8.4
         version: 6.8.4
@@ -8003,6 +8003,9 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
+
   jose@6.2.7:
     resolution: {integrity: sha512-hq1OB1bALKfydZNoViyg6hPVGV4i93ny9Op+n4zP5RSf7SCZEXa/TsG2O3IEr7+WlHRTPnpqDmHfMH6qXAD60w==}
 
@@ -14585,7 +14588,7 @@ snapshots:
       file-type: 22.0.1
       graphile-worker: 0.16.6(typescript@6.0.3)
       ioredis: 5.11.1
-      jose: 6.2.7
+      jose: 6.2.12
       openid-client: 6.8.4
       pg: 8.22.0
       postcss: 8.5.23
@@ -14620,7 +14623,7 @@ snapshots:
       file-type: 22.0.1
       graphile-worker: 0.16.6(typescript@7.0.2)
       ioredis: 5.11.1
-      jose: 6.2.7
+      jose: 6.2.12
       openid-client: 6.8.4
       pg: 8.22.0
       postcss: 8.5.23
@@ -17319,6 +17322,8 @@ snapshots:
       istanbul-lib-report: 3.0.1
 
   jiti@2.7.0: {}
+
+  jose@6.2.12: {}
 
   jose@6.2.7: {}
 

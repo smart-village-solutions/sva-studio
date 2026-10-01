@@ -17,7 +17,7 @@
     "nodemailer": "^10.0.2"
   },
   "devDependencies": {
-    "@types/nodemailer": "^8.0.1",
+    "@types/nodemailer": "^8.0.2",
     "@vitest/coverage-v8": "^4.1.11",
     "vitest": "^4.1.11"
   }

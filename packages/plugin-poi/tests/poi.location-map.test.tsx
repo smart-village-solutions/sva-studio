@@ -100,13 +100,18 @@ vi.mock('maplibre-gl', () => {
     default: {
       Map: MockMap,
       Marker: MockMarker,
+      setWorkerUrl: vi.fn(),
     },
     Map: MockMap,
     Marker: MockMarker,
+    setWorkerUrl: vi.fn(),
   };
 });
 
 vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}));
+vi.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url', () => ({
+  default: '/assets/maplibre-worker-test.js',
+}));
 
 describe('PoiLocationMap', () => {
   afterEach(() => {

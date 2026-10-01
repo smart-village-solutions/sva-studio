@@ -8,6 +8,7 @@ export type PoiLocationMapRuntimeLoaderDependencies = {
   readonly hasWindow: () => boolean;
   readonly loadCss: () => Promise<unknown>;
   readonly loadRuntime: () => Promise<PoiMapLibreModule>;
+  readonly loadWorkerUrl: () => Promise<string>;
 };
 
 const retryableImport = <T>(load: () => Promise<T>, clear: () => void): Promise<T> =>
@@ -32,7 +33,14 @@ export const createPoiLocationMapRuntimeLoader = (
         cssPromise = null;
       });
     const currentRuntimePromise =
-      runtimePromise ??= retryableImport(dependencies.loadRuntime, () => {
+      runtimePromise ??= retryableImport(async () => {
+        const [runtime, workerUrl] = await Promise.all([
+          dependencies.loadRuntime(),
+          dependencies.loadWorkerUrl(),
+        ]);
+        runtime.setWorkerUrl(workerUrl);
+        return runtime;
+      }, () => {
         runtimePromise = null;
       });
 
@@ -45,4 +53,6 @@ export const loadPoiLocationMapRuntime = createPoiLocationMapRuntimeLoader({
   hasWindow: () => typeof window !== 'undefined',
   loadCss: () => import('maplibre-gl/dist/maplibre-gl.css'),
   loadRuntime: () => import('maplibre-gl'),
+  loadWorkerUrl: () =>
+    import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url').then((module) => module.default),
 });

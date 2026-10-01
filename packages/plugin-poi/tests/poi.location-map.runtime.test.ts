@@ -3,11 +3,26 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPoiLocationMapRuntimeLoader } from '../src/poi.location-map.runtime.js';
 
 describe('loadPoiLocationMapRuntime', () => {
+  it('configures the bundled worker before returning the runtime', async () => {
+    const setWorkerUrl = vi.fn();
+    const loadPoiLocationMapRuntime = createPoiLocationMapRuntimeLoader({
+      hasWindow: () => true,
+      loadCss: async () => undefined,
+      loadWorkerUrl: async () => '/assets/maplibre-worker-test.js',
+      loadRuntime: async () => ({ setWorkerUrl }) as never,
+    });
+
+    await loadPoiLocationMapRuntime();
+
+    expect(setWorkerUrl).toHaveBeenCalledExactlyOnceWith('/assets/maplibre-worker-test.js');
+  });
+
   it('retries the runtime import after a transient failure', async () => {
     let runtimeAttempts = 0;
     const loadPoiLocationMapRuntime = createPoiLocationMapRuntimeLoader({
       hasWindow: () => true,
       loadCss: async () => undefined,
+      loadWorkerUrl: async () => '/assets/maplibre-worker-test.js',
       loadRuntime: async () => {
         runtimeAttempts += 1;
         if (runtimeAttempts === 1) {
@@ -21,6 +36,7 @@ describe('loadPoiLocationMapRuntime', () => {
           },
           Map: class MockMap {},
           Marker: class MockMarker {},
+          setWorkerUrl: vi.fn(),
         } as never;
       },
     });
@@ -40,6 +56,7 @@ describe('loadPoiLocationMapRuntime', () => {
     let cssAttempts = 0;
     const loadPoiLocationMapRuntime = createPoiLocationMapRuntimeLoader({
       hasWindow: () => true,
+      loadWorkerUrl: async () => '/assets/maplibre-worker-test.js',
       loadCss: async () => {
         cssAttempts += 1;
         if (cssAttempts === 1) {
@@ -54,6 +71,7 @@ describe('loadPoiLocationMapRuntime', () => {
           },
           Map: class MockMap {},
           Marker: class MockMarker {},
+          setWorkerUrl: vi.fn(),
         }) as never,
     });
 
@@ -73,6 +91,7 @@ describe('loadPoiLocationMapRuntime', () => {
       hasWindow: () => false,
       loadCss: vi.fn(),
       loadRuntime: vi.fn(),
+      loadWorkerUrl: vi.fn(),
     });
 
     await expect(loadPoiLocationMapRuntime()).rejects.toThrow('map_runtime_unavailable');

@@ -627,7 +627,11 @@ function Editor({
       } catch (cause) {
         const reason = cause instanceof Error ? cause.message : '';
         setMutationError(
-          reason
+          cause instanceof Error &&
+            'code' in cause &&
+            cause.code === 'visibility_update_failed'
+            ? pt('messages.visibilitySavePartialFailure')
+            : reason
             ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
             : pt('messages.saveError')
         );

@@ -102,6 +102,8 @@ export const pluginCockpitCardsTranslations = {
         loadError: 'Kachel konnte nicht geladen werden.',
         saveError: 'Kachel konnte nicht gespeichert werden.',
         saveErrorWithReason: 'Kachel konnte nicht gespeichert werden: {{reason}}',
+        visibilitySavePartialFailure:
+          'Der Kachelinhalt wurde gespeichert, aber die Sichtbarkeit konnte nicht bestätigt werden.',
         deleteError: 'Kachel konnte nicht gelöscht werden.',
         validationError: 'Bitte prüfe die markierten Felder.',
         categoriesLoading: 'Kategorien werden geladen.',
@@ -223,6 +225,8 @@ export const pluginCockpitCardsTranslations = {
         loadError: 'Could not load cockpit card.',
         saveError: 'Could not save cockpit card.',
         saveErrorWithReason: 'Could not save cockpit card: {{reason}}',
+        visibilitySavePartialFailure:
+          'The cockpit card content was saved, but its visibility could not be confirmed.',
         deleteError: 'Could not delete cockpit card.',
         validationError: 'Please check the highlighted fields.',
         categoriesLoading: 'Loading categories.',

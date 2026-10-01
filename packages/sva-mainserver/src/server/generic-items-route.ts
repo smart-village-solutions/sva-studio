@@ -43,6 +43,7 @@ import {
   type MainserverMutationActor,
 } from './mutation-principal.js';
 import {
+  changeSvaMainserverGenericItemVisibility,
   createSvaMainserverGenericItem,
   deleteSvaMainserverGenericItem,
   getSvaMainserverGenericItem,
@@ -444,7 +445,7 @@ const handleUpdateRequest = async (
           : [],
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
-      const data = await updateSvaMainserverGenericItem({
+      let data = await updateSvaMainserverGenericItem({
         ...actor,
         genericItemId: itemId,
         genericItem:
@@ -462,11 +463,44 @@ const handleUpdateRequest = async (
                 }
               : preserveEditorialAuthor(genericItem, existingItem),
       });
+      const requestedVisibility =
+        contentKind === 'cockpit-cards' ? genericItem.visible : undefined;
+      const visibilityChanged =
+        typeof requestedVisibility === 'boolean' &&
+        requestedVisibility !== existingItem.visible;
+      if (visibilityChanged) {
+        try {
+          await changeSvaMainserverGenericItemVisibility({
+            ...actor,
+            genericItemId: itemId,
+            visible: requestedVisibility,
+          });
+          data = await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
+          if (data.visible !== requestedVisibility) {
+            throw new Error('mainserver_visibility_not_persisted');
+          }
+        } catch {
+          await finalizeMainserverMutation({
+            actor,
+            providerOutcome: 'succeeded',
+            reconciliationStatus: 'reconciliation_required',
+            completedSteps: ['provider_write'],
+            contentId: itemId,
+            observedDataProviderId: existingItem.dataProvider?.id,
+            lastErrorCode: 'mainserver_visibility_update_failed',
+          });
+          return errorJson(
+            502,
+            'visibility_update_failed',
+            'Der Kachelinhalt wurde gespeichert, aber die Sichtbarkeit konnte nicht bestätigt werden.'
+          );
+        }
+      }
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',
         reconciliationStatus: 'complete',
-        completedSteps: ['provider_write'],
+        completedSteps: visibilityChanged ? ['provider_write', 'visibility_write'] : ['provider_write'],
         contentId: itemId,
         observedDataProviderId: existingItem?.dataProvider?.id,
       });

@@ -181,7 +181,7 @@ export const recordSuccessfulExternalContentDeletion = async (
     });
     await client.query(
       `UPDATE iam.contents
-       SET status = 'archived', updated_by = $3::uuid, updated_at = NOW()
+       SET status = 'archived', updater_account_id = $3::uuid, updated_at = NOW()
        WHERE instance_id = $1 AND id = $2::uuid;`,
       [input.instanceId, reference.contentId, input.actorAccountId]
     );

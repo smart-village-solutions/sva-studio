@@ -291,11 +291,10 @@ describe('external content references', () => {
       'content-1',
       'history-1'
     );
-    expect(state.query).toHaveBeenCalledWith(expect.stringContaining("SET status = 'archived'"), [
-      'tenant-1',
-      'content-1',
-      'account-1',
-    ]);
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("SET status = 'archived', updater_account_id = $3::uuid"),
+      ['tenant-1', 'content-1', 'account-1']
+    );
   });
 
   it('creates and binds a local core for the first successful provider mutation', async () => {

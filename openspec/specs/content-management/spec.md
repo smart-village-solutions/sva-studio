@@ -173,21 +173,21 @@ Das System MUST in der Tabellenansicht einen klaren Einstieg zum Anlegen neuer I
 
 #### Scenario: Neuer Inhalt wird gestartet
 
-- **WENN** ein berechtigter Benutzer die Tabellenansicht ohne konkreten Typfilter oeffnet
+- **WENN** ein berechtigter Benutzer die Tabellenansicht ohne konkreten Typfilter öffnet
 - **DANN** ist ein sichtbarer Button `Neuer Inhalt` vorhanden
-- **UND** der Button fuehrt zur Auswahl eines anlegbaren Inhaltstyps
+- **UND** der Button führt zur Auswahl eines anlegbaren Inhaltstyps
 
 #### Scenario: Gefilterter Inhaltstyp wird direkt angelegt
 
 - **WENN** die Tabellenansicht auf einen registrierten Inhaltstyp mit Erstellungsrecht gefiltert ist, auch durch die Seitenleiste
 - **DANN** benennt der Button den anzulegenden Inhaltstyp
-- **UND** fuehrt unmittelbar zu dessen registrierter Erstellungsroute, ohne erneut den Inhaltstyp abzufragen
+- **UND** führt unmittelbar zu dessen registrierter Erstellungsroute, ohne erneut den Inhaltstyp abzufragen
 
 #### Scenario: Gefilterter Inhaltstyp ohne Erstellungsrecht
 
-- **WENN** der gefilterte Inhaltstyp nicht angelegt werden darf, aber andere Inhaltstypen angelegt werden duerfen
-- **DANN** bleibt der allgemeine Einstieg `Neuer Inhalt` zur Typauswahl verfuegbar
-- **UND** der Seitenleisten-Button `Inhalt erstellen` fuehrt unabhaengig vom Typfilter immer zur Typauswahl
+- **WENN** der gefilterte Inhaltstyp nicht angelegt werden darf, aber andere Inhaltstypen angelegt werden dürfen
+- **DANN** bleibt der allgemeine Einstieg `Neuer Inhalt` zur Typauswahl verfügbar
+- **UND** der Seitenleisten-Button `Inhalt erstellen` führt unabhängig vom Typfilter immer zur Typauswahl
 
 #### Scenario: Survey ist als neuer Inhalt waehlbar
 

@@ -99,6 +99,30 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       createPath: '/admin/surveys/new',
       detailPath: '/admin/surveys/$contentId',
     },
+    {
+      contentType: 'generic-items.generic-item',
+      displayName: 'Generische Inhalte',
+      requiredReadAction: 'generic-items.read',
+      requiredCreateAction: 'generic-items.create',
+      createPath: '/admin/generic-items/new',
+      detailPath: '/admin/generic-items/$contentId',
+    },
+    {
+      contentType: 'cockpit-cards.cockpit-card',
+      displayName: 'Kacheln',
+      requiredReadAction: 'cockpit-cards.read',
+      requiredCreateAction: 'cockpit-cards.create',
+      createPath: '/admin/cockpit-cards/new',
+      detailPath: '/admin/cockpit-cards/$contentId',
+    },
+    {
+      contentType: 'projects.project',
+      displayName: 'Projekte',
+      requiredReadAction: 'projects.read',
+      requiredCreateAction: 'projects.create',
+      createPath: '/admin/projects/new',
+      detailPath: '/admin/projects/$contentId',
+    },
   ] as const,
 }));
 
@@ -470,13 +494,46 @@ describe('ContentListPage', () => {
   });
 
   it.each([
-    ['news.article', 'Neue Nachricht', '/admin/news/new'],
-    ['events.event-record', 'Neue Veranstaltung', '/admin/events/new'],
-    ['poi.point-of-interest', 'Neuer Ort', '/admin/poi/new'],
-    ['surveys.survey', 'Neue Umfrage', '/admin/surveys/new'],
-  ])('links directly to the filtered %s editor', (type, label, path) => {
+    ['news.article', 'Neue Nachricht', '/admin/news/new', 'news.read', 'news.create'],
+    [
+      'events.event-record',
+      'Neue Veranstaltung',
+      '/admin/events/new',
+      'events.read',
+      'events.create',
+    ],
+    ['poi.point-of-interest', 'Neuer Ort', '/admin/poi/new', 'poi.read', 'poi.create'],
+    ['surveys.survey', 'Neue Umfrage', '/admin/surveys/new', 'surveys.read', 'surveys.create'],
+    ['faq.faq', 'Neuer FAQ-Eintrag', '/admin/faq/new', 'faq.read', 'faq.create'],
+    [
+      'generic-items.generic-item',
+      'Neuer generischer Inhalt',
+      '/admin/generic-items/new',
+      'generic-items.read',
+      'generic-items.create',
+    ],
+    [
+      'cockpit-cards.cockpit-card',
+      'Neue Kachel',
+      '/admin/cockpit-cards/new',
+      'cockpit-cards.read',
+      'cockpit-cards.create',
+    ],
+    [
+      'projects.project',
+      'Neues Projekt',
+      '/admin/projects/new',
+      'projects.read',
+      'projects.create',
+    ],
+  ])('links directly to the filtered %s editor', (type, label, path, readAction, createAction) => {
     searchState = { type };
     useContentsMock.mockReturnValue(createContentsApiResult());
+    const access = useContentAccessMock();
+    useContentAccessMock.mockReturnValue({
+      ...access,
+      permissionActions: [...access.permissionActions, readAction, createAction],
+    });
 
     render(<ContentListPage />);
 

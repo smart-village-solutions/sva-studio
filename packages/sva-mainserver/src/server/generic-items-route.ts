@@ -424,7 +424,7 @@ const completeGenericItemUpdate = async (input: {
         actor,
         providerOutcome: 'succeeded',
         reconciliationStatus: 'reconciliation_required',
-        completedSteps: ['provider_write'],
+        completedSteps: ['provider_write', 'projection_follow_up_deferred'],
         contentId: itemId,
         observedDataProviderId: existingItem.dataProvider?.id,
         lastErrorCode: 'mainserver_visibility_update_failed',

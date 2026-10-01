@@ -493,7 +493,7 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       expect.objectContaining({
         providerOutcome: 'succeeded',
         reconciliationStatus: 'reconciliation_required',
-        completedSteps: ['provider_write'],
+        completedSteps: ['provider_write', 'projection_follow_up_deferred'],
       })
     );
   });

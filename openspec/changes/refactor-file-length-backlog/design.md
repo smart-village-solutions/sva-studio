@@ -26,8 +26,8 @@ ermittelt; parallele Arbeit kann sie verändern.
 Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
 PR: Die letzte Spalte benennt die fachlichen Schnittkandidaten. Das
-Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06 und PR 07
-auf derzeit 43 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
+Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06, PR 07 und PR 08
+auf derzeit 46 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
 PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
 in vier seriell bearbeitbare Teile 06a bis 06d aufgeteilt. Nach dem Merge
 von 06c zeigte die erneute Messung für 06d 3.066 Zeilen über vier Dateien.
@@ -47,6 +47,14 @@ API-Serverfunktionen, Dialoge und Instanz-Hook. Deshalb werden sie als
 seinen benannten Befund und nutzt die bereits vorhandenen Pfadtests; die
 Schnittstellenverträge bleiben dabei unverändert.
 
+Vor PR 08 ergab die erneute Messung vier Dateien mit zusammen 3.607 Zeilen.
+Content-Liste, Content-Editor, Waste-Import und Medien-Hook besitzen getrennte
+Verbraucher und Ausführungsgrenzen. Sie werden als 08a bis 08d nacheinander
+geliefert: Jede Änderung beseitigt ihren eigenen Befund, erhält die
+betreffenden Bedien- und Datenverträge und besitzt einen eigenen Changelog.
+Der separate Change `refactor-sva-studio-react-package-boundaries` bleibt
+für die UI-Package-Konsolidierung zuständig.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und
@@ -57,8 +65,8 @@ Schnittstellenverträge bleiben dabei unverändert.
    Konsumenten/Verträge bearbeiten. Wenn ein konkreter Vertrag mit einem
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
-3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2 und 07a
-   bis 07f werden genau
+3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
+   bis 07f und 08a bis 08d werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

@@ -188,21 +188,52 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 07f — Instanz-Hook (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/hooks/use-instances.ts` nach Lade- und
+- [x] `apps/sva-studio-react/src/hooks/use-instances.ts` nach Lade- und
       Mutationsverantwortung aufteilen. Cache-Zustand, Fehler und
       Berechtigungsreaktionen mit den Hook-Tests prüfen.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1646.json` eingebracht;
+      PR #1646 am 02.10.2026 als
+      `94f8c78bd2159c86e022fd67c082531fd7f9114c` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
+
+### PR 08a — Content-Liste (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/routes/content/-content-list-page.tsx`
+      entlang URL-Zustand, Listenanzeige und Löschaktionen aufteilen.
+      Filter, Sortierung, Pagination, Zeilenrechte, Bulk-Aktionen und
+      Projektionsmeldungen mit `-content-list-page.test.tsx` prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1648.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 08b — Content-Editor (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/routes/content/-content-editor-page.tsx`
+      nach Formularzustand und Speicherung aufteilen. Validierung,
+      Berechtigungen, Speichern und Fehlerrückmeldungen mit den vorhandenen
+      Editor-Seitentests prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 08 — Content und Medien im Frontend (4 Befunde)
+### PR 08c — Waste-Import (1 Befund)
 
-- [ ] In `apps/sva-studio-react/src/` `routes/content/-content-list-page.tsx`,
-      `routes/content/-content-editor-page.tsx`,
-      `lib/waste-management-operations.import.ts` und `hooks/use-media.ts`
-      bereinigen. Content-Filter, Editor-Speicherung, Import- und
-      Medienzustände mit passenden Tests erhalten.
+- [ ] `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
+      nach Importvalidierung und Ausführung aufteilen. Dateiformate,
+      Vorschau, Fehler und Schreiboperationen mit den vorhandenen
+      Import-/Operationstests prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 08d — Medien-Hook (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/hooks/use-media.ts` nach Laden,
+      Mutation und lokalem Zustand aufteilen. Upload, Auswahl,
+      Löschung und Fehlerzustände mit den vorhandenen Hook-Tests prüfen.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit

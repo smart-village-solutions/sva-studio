@@ -1804,12 +1804,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/server-runtime/src/logger/index.server.ts)"
     },
-    "packages-default:packages/server-runtime/src/logger/index.server.ts:fileLines": {
-      "ticketId": "baseline-packages-default-server-runtime-src-logger-index-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/server-runtime/src/logger/index.server.ts)"
-    },
     "packages-default:packages/server-runtime/src/logger/index.server.ts:functionLines": {
       "ticketId": "baseline-packages-default-server-runtime-src-logger-index-server-ts",
       "ticketSystem": "policy-baseline",
@@ -3459,12 +3453,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Projekt-Create-Lifecycle in kleinere Ablaufbausteine aufteilen"
-    },
-    "packages-default:packages/server-runtime/src/external-interfaces.server.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "PostgreSQL-spezifische Interface-Auflösung aus dem allgemeinen Runtime-Modul ausgliedern"
     },
     "auth-runtime:packages/auth-runtime/src/plugin-operations/job-lifecycle-orchestrator.ts:functionLines": {
       "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",

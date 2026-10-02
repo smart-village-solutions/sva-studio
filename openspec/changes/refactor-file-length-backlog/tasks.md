@@ -306,8 +306,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Verträge und Autorisierung bleiben gleich.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 09d
+      `docs/changelog/entries/pr-1656.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1656
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10 — Rollen-, Gruppen- und Organisationsverwaltung (7 Befunde)

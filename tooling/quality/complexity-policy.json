@@ -1012,12 +1012,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/organization-mutation-handlers.ts)"
     },
-    "iam-admin:packages/iam-admin/src/organization-query.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-organization-query-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/organization-query.ts)"
-    },
     "iam-admin:packages/iam-admin/src/organization-query.ts:publicExports": {
       "ticketId": "baseline-iam-admin-src-organization-query-ts",
       "ticketSystem": "policy-baseline",

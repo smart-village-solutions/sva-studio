@@ -297,7 +297,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 09d — Admin-Benutzerlesen und -aktualisierung (2 Befunde)
 
-- [ ] `packages/iam-admin/src/user-read-handlers.ts` und
+- [x] `packages/iam-admin/src/user-read-handlers.ts` und
       `user-update-handler.ts` nach Leseprojektion und Update-/Kompensations-
       schritten aufteilen. Die vorhandenen `user-read-handlers.test.ts` und
       `user-update-handler.test.ts` prüfen Tenant-/Plattform-Scope,
@@ -305,23 +305,88 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Datenbank-Persistenz, Kompensation und Fehlerabbildung. Öffentliche
       Verträge und Autorisierung bleiben gleich.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1656.json` mit
       passender `prNumber` und nutzerverständlichem `body` in PR #1656
-      anlegen; Changelog-Gate vor Merge grün.
+      eingebracht; PR #1656 am 02.10.2026 als
+      `1140d7e4f56bb846e80cb5985f580d839af8cc74` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
-### PR 10 — Rollen-, Gruppen- und Organisationsverwaltung (7 Befunde)
+### PR 10a — Organisations-Lesequeries (1 Befund)
 
-- [ ] In `packages/iam-admin/src/` `organization-mutation-handlers.ts`,
-      `organization-query.ts`, `reconcile-core.ts`,
-      `role-mutation-persistence.ts`, `group-mutation-handlers.ts`,
-      `legacy-group-mutation-handlers.ts` und `index.ts` bereinigen.
-      Mutations-/Reconcile-Invarianten und öffentliche Verträge prüfen.
+- [ ] `packages/iam-admin/src/organization-query.ts` unter 320 Zeilen
+      bringen. Projektion/Filter, lesende SQL-Abfragen und Hierarchieoperationen
+      entlang ihrer Verantwortung trennen; die bestehenden Exporte und den
+      separaten `publicExports`-Befund erhalten. `organization-query.test.ts`
+      und `organization-read-handlers.test.ts` prüfen Tenant-Scope,
+      verschlüsselte Namen, Filter/Escaping, Sortierung/Pagination sowie
+      Hierarchiefehler und Subtree-Update. Keine DB- oder API-Änderung.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR 10a anlegen; Changelog-Gate vor Merge grün.
+
+### PR 10b — Organisationsmutationen (1 Befund)
+
+- [ ] `packages/iam-admin/src/organization-mutation-handlers.ts` nach
+      Request-/Autorisierungsgrenze und Create-/Update-/Mitgliedschafts-
+      transaktionen aufteilen. `organization-mutation-handlers.test.ts`
+      sichert Tenant- und Parent-Scope, Idempotenz, Rate-Limit,
+      Credential- und Membership-Schreibfolgen, Fehler und Kompensation.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 10b
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 10c — Rollenpersistenz (1 Befund)
+
+- [ ] `packages/iam-admin/src/role-mutation-persistence.ts` nach
+      Permission-Normalisierung und Rollen-/Zuordnungs-Persistenz trennen.
+      `role-mutation-persistence.test.ts` sowie Create-/Update-/Delete-Tests
+      sichern Tenant-Scope, Verfügbarkeit von Berechtigungen, Audit,
+      Rollback und Sync-Vertrag.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 10c
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 10d — Rollen-Reconcile (1 Befund)
+
+- [ ] `packages/iam-admin/src/reconcile-core.ts` nach Katalogabgleich,
+      Identity-Provider-Abgleich und Ergebnis-/Fehlerpersistenz aufteilen.
+      `reconcile-core.test.ts` und `reconcile-handler.test.ts` sichern
+      Tenant-Grenze, Import-/Update-Entscheidungen, Idempotenz,
+      Fehlerbericht und Audit.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 10d
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 10e — Moderne und Legacy-Gruppenmutationen (2 Befunde)
+
+- [ ] `packages/iam-admin/src/group-mutation-handlers.ts` und
+      `legacy-group-mutation-handlers.ts` an ihren jeweiligen
+      Gruppenoperationen und gemeinsamen Vertragsgrenzen aufteilen.
+      Beide vorhandenen Mutationstestdateien sichern Auth-/Tenant-Scope,
+      Rollen- und Mitgliedschaftsänderungen, Fehlerabbildung und Audit;
+      moderne und Legacy-Endpunkte bleiben kompatibel.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 10e
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 10f — Öffentliche IAM-Admin-Exporte (1 Befund)
+
+- [ ] `packages/iam-admin/src/index.ts` unter 320 Zeilen bringen, ohne
+      Namen oder Laufzeitpfade der veröffentlichten Package-API zu ändern.
+      `index.test.ts`, Package-Build und Server-Runtime-Check sichern
+      Exportparität; der separate `publicExports`-Befund wird nur bei
+      tatsächlich erfüllter Schwelle entfernt.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 10f
+      anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 11 — Betroffenenrechte und Governance (10 Befunde)
 

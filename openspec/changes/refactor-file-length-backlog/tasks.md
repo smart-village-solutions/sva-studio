@@ -167,14 +167,14 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 07d — Schnittstellen-API (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/lib/interfaces-api.ts` nach
+- [x] `apps/sva-studio-react/src/lib/interfaces-api.ts` nach
       Serverfunktionen und ihren bestehenden Berechtigungs- und
       Fehlerverträgen aufteilen. Instanzkontext, Autorisierung und
       Anfragevalidierung mit den API-Tests prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1638.json` mit
+      Nutzertext eingebracht; PR #1638 am 02.10.2026 als
+      `e97a456c56db59004cd2f07b844fb0b3e866a913` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 07e — Schnittstellen-Dialoge (1 Befund)
 

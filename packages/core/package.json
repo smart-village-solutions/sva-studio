@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@types/html-to-text": "^9.0.4",
-    "@types/sanitize-html": "^2.16.1",
+    "@types/sanitize-html": "^2.16.2",
     "fast-check": "^3.23.2",
     "vitest": "^4.1.11"
   }

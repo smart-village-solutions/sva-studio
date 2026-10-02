@@ -255,6 +255,5 @@ export const createSdkLogger = ({
       unregisterOtelAwareLogger(logger);
     });
   }
-
   return logger;
 };

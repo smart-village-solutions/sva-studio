@@ -3,7 +3,7 @@ import {
   type TestSyncState,
 } from './iam-content-list-projection.test-database-sync-state.js';
 import type { TestProjectionRow } from './iam-content-list-projection.test-database-types.js';
-import { removeTransferredProjectionRows } from './iam-content-list-projection.test-database-transfer.js';
+import { deleteProjectionQueryResult } from './iam-content-list-projection.test-database-delete.js';
 type TestQueryResult = { rows: unknown[]; rowCount: number };
 const readNullableString = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
@@ -272,58 +272,6 @@ const scopedCountQueryResult = (
   return { rows: [{ total }], rowCount: 1 };
 };
 
-const deleteProjectionQueryResult = (
-  text: string,
-  values: readonly unknown[] | undefined
-): TestQueryResult | null => {
-  if (!text.includes('DELETE FROM iam.content_list_projection')) {
-    return null;
-  }
-  if (text.includes('projection_scope_key <> $5')) {
-    fixture.projectionRows = removeTransferredProjectionRows(fixture.projectionRows, values);
-    return { rows: [], rowCount: 0 };
-  }
-  const instanceId = String(queryValue(values, 0));
-  const contentType = String(queryValue(values, 1));
-  const hasScopePredicate =
-    fixture.projectionScopeKeyColumnAvailable && text.includes('projection_scope_key =');
-  const scopeValue = hasScopePredicate ? queryValue(values, 2) : null;
-  const entityParameter = text.match(/(?:projection\.)?source_entity_id = (?:ANY\()?\$(\d+)/);
-  const entityValue = entityParameter
-    ? queryValue(values, Number(entityParameter[1]) - 1, null)
-    : null;
-  const sourceEntityId = typeof entityValue === 'string' ? entityValue : null;
-  const retainedEntityIds = Array.isArray(entityValue)
-    ? entityValue.filter((value): value is string => typeof value === 'string')
-    : null;
-  fixture.projectionRows = fixture.projectionRows.filter((row) => {
-    const matchingScope =
-      row.instance_id === instanceId &&
-      row.source_system === 'mainserver' &&
-      row.content_type === contentType &&
-      (!hasScopePredicate ||
-        (Array.isArray(scopeValue)
-          ? scopeValue.includes(row.projection_scope_key)
-          : row.projection_scope_key === scopeValue));
-    const matchingEntity = retainedEntityIds
-      ? !retainedEntityIds.includes(row.source_entity_id)
-      : sourceEntityId === null || row.source_entity_id === sourceEntityId;
-    const targetScopeKey = String(queryValue(values, 3, ''));
-    const currentRefresh = fixture.syncStates.get(`${contentType}::${targetScopeKey}`);
-    const siblingRefresh = fixture.syncStates.get(`${contentType}::${row.projection_scope_key}`);
-    const newerSibling =
-      text.includes('sync_state AS sibling') &&
-      row.projection_scope_key !== targetScopeKey &&
-      Boolean(
-        currentRefresh?.last_started_at &&
-        siblingRefresh?.last_succeeded_at &&
-        siblingRefresh.last_succeeded_at >= currentRefresh.last_started_at
-      );
-    return !(matchingScope && matchingEntity && !newerSibling);
-  });
-  return { rows: [], rowCount: 0 };
-};
-
 const throwLegacyProjectionConflict = (): never => {
   fixture.simulateLegacyProjectionSchemaMismatchOnce = false;
   const error = new Error(
@@ -402,7 +350,8 @@ export const createProjectionDatabaseQuery =
       syncStateHandlers.insert,
       syncStateHandlers.update,
       scopedCountQueryResult,
-      deleteProjectionQueryResult,
+      (text: string, values: readonly unknown[] | undefined) =>
+        deleteProjectionQueryResult(fixture, text, values, queryValue),
       insertProjectionQueryResult,
       listQueryResult,
     ];

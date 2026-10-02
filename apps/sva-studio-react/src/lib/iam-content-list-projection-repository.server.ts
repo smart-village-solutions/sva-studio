@@ -8,15 +8,18 @@ import {
 } from './iam-content-list-projection-model.server.js';
 import { reconcilePersistedMainserverProjectionRows } from './iam-content-list-projection-reconciliation.server.js';
 import {
-  buildMainserverReadScopeKeys,
   buildMainserverSyncScopeKey,
   buildProjectionTargetKey,
+  buildRefreshDeletionScopeKeys,
   loadProjectionSyncStateSchemaMode,
   loadProjectionTableSchemaMode,
   type ProjectionSyncStateSchemaMode,
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
-import { countProjectedRowsForScopeWithClient } from './iam-content-list-projection-repository-sync-state.server.js';
+import {
+  countProjectedRowsForScopeWithClient,
+  newerSiblingRefreshGuardSql,
+} from './iam-content-list-projection-repository-sync-state.server.js';
 import { deleteTransferredProjectionRowsFromOtherScopes } from './iam-content-list-projection-repository-transfer.server.js';
 import {
   legacyMainserverProjectionUpsertSql,
@@ -47,39 +50,11 @@ const deleteMainserverProjectionRows = async (
     ];
     if (schemaMode === 'scoped' && selector.kind !== 'entity') {
       const targetKey = buildProjectionTargetKey(target);
-      const scopeKeys =
-        target.actingPrincipalType || !refreshCredentialSource
-          ? [targetKey]
-          : buildMainserverReadScopeKeys({
-              instanceId: target.instanceId,
-              contentTypes: [target.contentType],
-              actorAccountId: target.actorAccountId,
-              activeOrganizationId: target.organizationId,
-            }).filter(
-              (scopeKey) =>
-                scopeKey === targetKey || scopeKey.includes(`::${refreshCredentialSource}::`)
-            );
-      values.push(scopeKeys);
+      values.push(buildRefreshDeletionScopeKeys(target, refreshCredentialSource));
       predicates.push(`projection.projection_scope_key = ANY($${values.length}::text[])`);
       if (!target.actingPrincipalType) {
         values.push(targetKey);
-        predicates.push(`(
-          projection.projection_scope_key = $${values.length}
-          OR NOT EXISTS (
-            SELECT 1
-            FROM iam.content_list_projection_sync_state AS sibling
-            JOIN iam.content_list_projection_sync_state AS current_refresh
-              ON current_refresh.instance_id = sibling.instance_id
-             AND current_refresh.source_system = sibling.source_system
-             AND current_refresh.content_type = sibling.content_type
-            WHERE sibling.instance_id = $1
-              AND sibling.source_system = 'mainserver'
-              AND sibling.content_type = $2
-              AND sibling.sync_scope_key = projection.projection_scope_key
-              AND current_refresh.sync_scope_key = $${values.length}
-              AND sibling.last_succeeded_at >= current_refresh.last_started_at
-          )
-        )`);
+        predicates.push(newerSiblingRefreshGuardSql);
       }
     }
     if (selector.kind !== 'all') {
@@ -101,24 +76,6 @@ WHERE ${predicates.join('\n  AND ')};
       values
     );
   });
-};
-
-const deleteMainserverProjectionRowsNotInSet = async (
-  client: ProjectionDbClient,
-  target: ContentProjectionSyncTarget,
-  retainedEntityIds: readonly string[],
-  refreshCredentialSource?: 'user' | 'organization'
-): Promise<void> => {
-  if (retainedEntityIds.length === 0) {
-    await deleteMainserverProjectionRows(client, target, { kind: 'all' }, refreshCredentialSource);
-    return;
-  }
-  await deleteMainserverProjectionRows(
-    client,
-    target,
-    { kind: 'except', retainedEntityIds },
-    refreshCredentialSource
-  );
 };
 
 export const deleteMainserverProjectionRowByEntity = async (
@@ -386,10 +343,12 @@ const finalizeProgressiveProjectionRefresh = async (
   rows: readonly MainserverProjectionRowInput[]
 ): Promise<void> => {
   if (!input.finalize || input.skippedInvalidCount !== 0) return;
-  await deleteMainserverProjectionRowsNotInSet(
+  await deleteMainserverProjectionRows(
     client,
     input.target,
-    rows.map((row) => row.sourceEntityId),
+    rows.length === 0
+      ? { kind: 'all' }
+      : { kind: 'except', retainedEntityIds: rows.map((row) => row.sourceEntityId) },
     input.refreshCredentialSource
   );
   const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);

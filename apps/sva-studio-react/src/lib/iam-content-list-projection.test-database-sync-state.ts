@@ -20,6 +20,22 @@ type SyncStateFixture = {
   syncScopeKeyColumnAvailable: boolean;
 };
 
+export const hasNewerSiblingSync = (
+  fixture: Pick<SyncStateFixture, 'syncStates'>,
+  contentType: string,
+  targetScopeKey: string,
+  rowScopeKey: string | undefined
+): boolean => {
+  if (!rowScopeKey || rowScopeKey === targetScopeKey) return false;
+  const current = fixture.syncStates.get(`${contentType}::${targetScopeKey}`);
+  const sibling = fixture.syncStates.get(`${contentType}::${rowScopeKey}`);
+  return Boolean(
+    current?.last_started_at &&
+    sibling?.last_succeeded_at &&
+    sibling.last_succeeded_at >= current.last_started_at
+  );
+};
+
 type QueryResult = { rows: unknown[]; rowCount: number };
 type QueryValue = (
   values: readonly unknown[] | undefined,

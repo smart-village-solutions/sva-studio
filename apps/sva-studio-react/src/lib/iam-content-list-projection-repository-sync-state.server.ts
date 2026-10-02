@@ -14,6 +14,24 @@ import {
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
 
+export const newerSiblingRefreshGuardSql = `(
+  projection.projection_scope_key = $4
+  OR NOT EXISTS (
+    SELECT 1
+    FROM iam.content_list_projection_sync_state AS sibling
+    JOIN iam.content_list_projection_sync_state AS current_refresh
+      ON current_refresh.instance_id = sibling.instance_id
+     AND current_refresh.source_system = sibling.source_system
+     AND current_refresh.content_type = sibling.content_type
+    WHERE sibling.instance_id = $1
+      AND sibling.source_system = 'mainserver'
+      AND sibling.content_type = $2
+      AND sibling.sync_scope_key = projection.projection_scope_key
+      AND current_refresh.sync_scope_key = $4
+      AND sibling.last_succeeded_at >= current_refresh.last_started_at
+  )
+)`;
+
 export const loadProjectionSyncState = async (
   target: ContentProjectionSyncTarget
 ): Promise<ProjectionSyncStateRow | null> =>

@@ -2,6 +2,9 @@ import type { IamUserDetail } from '@sva/core';
 
 import { protectField } from './encryption.js';
 import type { QueryClient } from './query-client.js';
+import { buildNormalizedSessionProfile, shouldRepairProfileFromSession, type SessionProfileSeed } from './profile-session-seed.js';
+
+export type { SessionProfileSeed } from './profile-session-seed.js';
 
 export type ProfileUpdatePayload = {
   readonly username?: string;
@@ -14,14 +17,6 @@ export type ProfileUpdatePayload = {
   readonly department?: string;
   readonly preferredLanguage?: string;
   readonly timezone?: string;
-};
-
-export type SessionProfileSeed = {
-  readonly username?: string;
-  readonly email?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly displayName?: string;
 };
 
 export type ProfileActorInfo = {
@@ -107,67 +102,6 @@ const buildProfileUpdateParams = (
   payload.preferredLanguage ?? null,
   payload.timezone ?? null,
 ];
-
-const normalizeSeedValue = (value: string | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
-};
-
-const buildSeedDisplayName = (input: SessionProfileSeed): string | undefined => {
-  const explicitDisplayName = normalizeSeedValue(input.displayName);
-  if (explicitDisplayName) {
-    return explicitDisplayName;
-  }
-
-  const fullName = [normalizeSeedValue(input.firstName), normalizeSeedValue(input.lastName)]
-    .filter((value): value is string => Boolean(value))
-    .join(' ')
-    .trim();
-
-  return fullName || normalizeSeedValue(input.username);
-};
-
-const buildNormalizedSessionProfile = (
-  sessionProfile: SessionProfileSeed | undefined
-): {
-  readonly username?: string;
-  readonly email?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly displayName?: string;
-} => ({
-  username: normalizeSeedValue(sessionProfile?.username),
-  email: normalizeSeedValue(sessionProfile?.email),
-  firstName: normalizeSeedValue(sessionProfile?.firstName),
-  lastName: normalizeSeedValue(sessionProfile?.lastName),
-  displayName: buildSeedDisplayName(sessionProfile ?? {}),
-});
-
-const isMissingOrPlaceholder = (value: string | undefined, placeholder?: string): boolean => {
-  const normalizedValue = normalizeSeedValue(value);
-  if (!normalizedValue) {
-    return true;
-  }
-  return placeholder !== undefined && normalizedValue === placeholder;
-};
-
-const shouldRepairProfileFromSession = (
-  detail: IamUserDetail | undefined,
-  sessionProfile: ReturnType<typeof buildNormalizedSessionProfile>
-): boolean => {
-  if (!detail) {
-    return false;
-  }
-
-  return (
-    (sessionProfile.username !== undefined && isMissingOrPlaceholder(detail.username)) ||
-    (sessionProfile.email !== undefined && isMissingOrPlaceholder(detail.email)) ||
-    (sessionProfile.firstName !== undefined && isMissingOrPlaceholder(detail.firstName)) ||
-    (sessionProfile.lastName !== undefined && isMissingOrPlaceholder(detail.lastName)) ||
-    (sessionProfile.displayName !== undefined &&
-      isMissingOrPlaceholder(detail.displayName, detail.keycloakSubject))
-  );
-};
 
 const PROFILE_SESSION_SEED_SAVEPOINT = 'iam_profile_session_seed';
 

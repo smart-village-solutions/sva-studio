@@ -27,7 +27,7 @@ Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
 PR: Die letzte Spalte benennt die fachlichen Schnittkandidaten. Das
 Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06, PR 07 und PR 08
-auf derzeit 46 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
+auf derzeit 49 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
 PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
 in vier seriell bearbeitbare Teile 06a bis 06d aufgeteilt. Nach dem Merge
 von 06c zeigte die erneute Messung für 06d 3.066 Zeilen über vier Dateien.
@@ -55,6 +55,14 @@ betreffenden Bedien- und Datenverträge und besitzt einen eigenen Changelog.
 Der separate Change `refactor-sva-studio-react-package-boundaries` bleibt
 für die UI-Package-Konsolidierung zuständig.
 
+Vor PR 09 ergab die erneute Messung sieben Dateien mit zusammen 3.995 Zeilen.
+Die Profil-Handler in `auth-runtime` und Profil-Commands in `iam-admin`
+bilden gemeinsam den Self-Service-Vertrag (09a). Schema-Readiness und
+Fehlerdiagnose bleiben im selben Runtime-Pfad (09b). Der Tenant-Keycloak-Import
+(09c) und Admin-Benutzerlesen/-aktualisierung (09d) besitzen getrennte
+Mutations- und Testgrenzen. Diese vier PRs folgen seriell aufeinander, jeweils
+direkt auf aktuellem `main`, und erhalten jeweils einen eigenen Changelog.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und
@@ -66,7 +74,7 @@ für die UI-Package-Konsolidierung zuständig.
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
 3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
-   bis 07f und 08a bis 08d werden genau
+   bis 07f, 08a bis 08d und 09a bis 09d werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

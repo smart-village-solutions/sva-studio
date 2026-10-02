@@ -33,7 +33,6 @@ import {
 } from './-content-list-route-state';
 import { useContentListDeletion } from './-content-list-deletion';
 import { ContentListTable } from './-content-list-table';
-import { useContentColumns } from './-content-list-row-actions';
 import { MainserverAuthoringDiagnosticsPanel } from './-mainserver-authoring-diagnostics';
 
 const EMPTY_PERMISSION_ACTIONS: readonly string[] = [];
@@ -270,12 +269,6 @@ export const ContentListPage = ({
     unscopedPermissionActions,
   });
 
-  const contentColumns = useContentColumns({
-    contentsApi,
-    enabledMainserverMutationActions,
-    principalControl,
-  });
-
   return (
     <section
       ref={deleteFocusFallbackRef}
@@ -324,7 +317,6 @@ export const ContentListPage = ({
         contentAccessPending={contentAccessPending}
         routeState={routeState}
         registeredContents={registeredContents}
-        contentColumns={contentColumns}
         bulkActionButtons={bulkActionButtons}
         readableContentTypes={readableContentTypes}
         effectivePermissionActions={effectivePermissionActions}

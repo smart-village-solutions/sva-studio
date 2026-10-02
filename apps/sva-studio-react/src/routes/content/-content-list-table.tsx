@@ -3,7 +3,6 @@ import {
   StudioDataTable,
   type MainserverPrincipalControlModel,
   type StudioBulkAction,
-  type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import {
@@ -30,6 +29,7 @@ import {
   ContentRowActions,
   isBulkActionableContent,
   resolveListMutationPrincipal,
+  useContentColumns,
   type RegisteredContentRow,
 } from './-content-list-row-actions';
 
@@ -157,7 +157,6 @@ export const ContentListTable = ({
   contentAccessPending,
   routeState,
   registeredContents,
-  contentColumns,
   bulkActionButtons,
   readableContentTypes,
   effectivePermissionActions,
@@ -176,7 +175,6 @@ export const ContentListTable = ({
   contentAccessPending: boolean;
   routeState: ContentListRouteState;
   registeredContents: readonly RegisteredContentRow[];
-  contentColumns: readonly StudioColumnDef<RegisteredContentRow>[];
   bulkActionButtons: readonly StudioBulkAction<RegisteredContentRow>[];
   readableContentTypes: readonly (typeof studioContentTypes)[number][];
   effectivePermissionActions: readonly string[];
@@ -191,6 +189,11 @@ export const ContentListTable = ({
 }>) => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
+  const contentColumns = useContentColumns({
+    contentsApi,
+    enabledMainserverMutationActions,
+    principalControl,
+  });
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
   const safePage = Math.max(1, contentsApi.pagination.page);
@@ -315,9 +318,7 @@ export const ContentListTable = ({
             mutationPrincipalAvailable={
               resolveListMutationPrincipal(item, principalControl) !== undefined
             }
-            onRequestDelete={(itemToDelete) => {
-              onRequestDelete(itemToDelete);
-            }}
+            onRequestDelete={onRequestDelete}
           />
         )}
       />

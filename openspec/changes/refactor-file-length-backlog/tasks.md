@@ -282,16 +282,18 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 09c — Tenant-Keycloak-Import (1 Befund)
 
-- [ ] `packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts`
+- [x] `packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts`
       nach Identitätsabgleich und Persistenz aufteilen. Die vorhandenen
       `user-import-sync-handler.*.test.ts` prüfen Tenant-/Permission-Grenzen,
       Reparaturentscheidungen, Transaktions-Rollback, Reihenfolge,
       Teilfehler und PII-Redaction. Bericht und Fehlercodes bleiben gleich.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 09c
-      anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1655.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1655
+      eingebracht. Finaler PR-HEAD `773fb0b9abd58bf35e09e7a2ca894c7558b4c982`:
+      alle Checks grün, keine offenen Review-Threads; Merge-Commit
+      `325038668bde144514f36b83edb163a1799a9d82`.
 
 ### PR 09d — Admin-Benutzerlesen und -aktualisierung (2 Befunde)
 
@@ -304,8 +306,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Verträge und Autorisierung bleiben gleich.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 09d
+      `docs/changelog/entries/pr-1656.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1656
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10 — Rollen-, Gruppen- und Organisationsverwaltung (7 Befunde)

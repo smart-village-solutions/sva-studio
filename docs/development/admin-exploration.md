@@ -75,6 +75,7 @@ Lokale Ergebnisse liegen unter `docs/reports/admin-exploration/<mission>/` bezie
 - `report.md`: deutscher Bericht mit Findings und Story-Bezug
 - `transcript.jsonl`: Schrittprotokoll; im Einzelmissionsmodus derzeit ein Bootstrap-Platzhalter
 - `overlay.json`: Story-Ergebnisse des Story-Loops
-- Screenshots der implementierten Story-Loop-Browserpfade
+
+Screenshots werden derzeit in keinem der beiden Laufmodi erfasst. Die Einzelmission schreibt lediglich den oben genannten Bootstrap-Platzhalter statt eines vollständigen Schrittprotokolls. Diese bereits bestehende Abweichung vom spezifizierten Evidenzvertrag ist als [Follow-up #1618](https://github.com/smart-village-solutions/sva-studio/issues/1618) erfasst.
 
 Die Outputs sind lokal und werden nicht versioniert. Alte Laufartefakte werden nicht automatisch übernommen. Pfade in Berichten werden portabel dargestellt; ohne positive und erforderliche negative Evidenz wird keine Story als erfüllt gewertet. Ergebnisse dienen dem Review und ersetzen keine fachliche Abnahme.

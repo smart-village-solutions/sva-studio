@@ -198,14 +198,16 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 08a — Content-Liste (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/routes/content/-content-list-page.tsx`
+- [x] `apps/sva-studio-react/src/routes/content/-content-list-page.tsx`
       entlang URL-Zustand, Listenanzeige und Löschaktionen aufteilen.
       Filter, Sortierung, Pagination, Zeilenrechte, Bulk-Aktionen und
       Projektionsmeldungen mit `-content-list-page.test.tsx` prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1648.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und nutzerverständlichem `body` eingebracht;
+      PR #1648 am 02.10.2026 als
+      `59db02770b29eae2fe2c117a841b8d92d86fe44b` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 08b — Content-Editor (1 Befund)
 

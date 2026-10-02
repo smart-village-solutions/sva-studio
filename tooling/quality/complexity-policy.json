@@ -754,12 +754,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/hooks/use-instances.ts)"
     },
-    "frontend-app:apps/sva-studio-react/src/hooks/use-instances.ts:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-hooks-use-instances-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/hooks/use-instances.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/hooks/use-instances.ts:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-hooks-use-instances-ts",
       "ticketSystem": "policy-baseline",

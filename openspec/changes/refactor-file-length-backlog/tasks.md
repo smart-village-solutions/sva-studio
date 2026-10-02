@@ -178,13 +178,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 07e — Schnittstellen-Dialoge (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/routes/interfaces/-interfaces-page.dialogs.tsx`
+- [x] `apps/sva-studio-react/src/routes/interfaces/-interfaces-page.dialogs.tsx`
       entlang der vorhandenen Schnittstellentypen aufteilen. Eingaben,
       Dialogzustände, Tastaturbedienung und Fehlerrückmeldungen prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1644.json` eingebracht;
+      PR #1644 am 02.10.2026 als
+      `52b636bfd7ef930b88c8f72f9b1822e76fa4ad1c` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 07f — Instanz-Hook (1 Befund)
 

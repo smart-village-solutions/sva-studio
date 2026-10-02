@@ -952,12 +952,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/content/-content-editor-page.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/content/-content-editor-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-content-content-editor-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/content/-content-editor-page.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/content/-content-editor-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-content-content-editor-page-tsx",
       "ticketSystem": "policy-baseline",

@@ -9,7 +9,7 @@ import type {
 import { ContentMediaUrlField } from './content-media-url-field.js';
 import type { ContentMediaUsage, ContentMediaUsagePatch } from './content-media-usage.js';
 import { Input } from './input.js';
-import { StudioField, StudioFieldGroup } from './studio-primitives.js';
+import { StudioField, StudioFieldGroup } from './studio-form-fields.js';
 
 type ItemProps = Readonly<{
   usage: ContentMediaUsage;

@@ -1828,12 +1828,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/studio-ui-react/src/studio-data-table.tsx)"
     },
-    "packages-default:packages/studio-ui-react/src/studio-data-table.tsx:fileLines": {
-      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-data-table-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/studio-ui-react/src/studio-data-table.tsx)"
-    },
     "packages-default:packages/studio-ui-react/src/studio-data-table.tsx:functionLines": {
       "ticketId": "baseline-packages-default-studio-ui-react-src-studio-data-table-tsx",
       "ticketSystem": "policy-baseline",
@@ -1851,18 +1845,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/studio-ui-react/src/studio-detail-tabs.tsx)"
-    },
-    "packages-default:packages/studio-ui-react/src/studio-primitives.tsx:fileLines": {
-      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-primitives-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/studio-ui-react/src/studio-primitives.tsx)"
-    },
-    "packages-default:packages/studio-ui-react/src/studio-primitives.tsx:publicExports": {
-      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-primitives-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/studio-ui-react/src/studio-primitives.tsx)"
     },
     "packages-default:packages/studio-ui-react/src/studio-surfaces.tsx:publicExports": {
       "ticketId": "baseline-packages-default-studio-ui-react-src-studio-surfaces-tsx",
@@ -2955,12 +2937,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Rich-Text-Editor-Verzweigungen in kleinere Toolbar-, Blocktyp- und Link-Handler zerlegen (packages/studio-ui-react/src/rich-text-html-editor.tsx)"
-    },
-    "packages-default:packages/studio-ui-react/src/rich-text-html-editor.tsx:fileLines": {
-      "ticketId": "QUAL-STUDIO-UI-RTE-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Rich-Text-Editor-Datei in kleinere Toolbar-, Editor-Setup- und Utility-Module splitten (packages/studio-ui-react/src/rich-text-html-editor.tsx)"
     },
     "packages-default:packages/studio-ui-react/src/rich-text-html-editor.tsx:functionLines": {
       "ticketId": "QUAL-STUDIO-UI-RTE-001",

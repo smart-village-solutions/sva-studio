@@ -240,9 +240,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Löschung und Fehlerzustände mit den vorhandenen Hook-Tests prüfen.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      `docs/changelog/entries/pr-1651.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1651 eingebracht;
+      Changelog-Gate vor Merge prüfen.
 
 ## IAM und Auth
 

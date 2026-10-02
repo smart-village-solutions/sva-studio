@@ -35,6 +35,7 @@ export const resolveGenericItemProjectionContentType = (genericType: string): st
   );
 export type MainserverProjectionLoadedPage = Readonly<{
   readonly rows: readonly MainserverProjectionRowInput[];
+  readonly refreshCredentialSource?: 'user' | 'organization';
   readonly hasNextPage: boolean;
   readonly nextPage: number;
   readonly nextGenericItemScanOffset?: number;

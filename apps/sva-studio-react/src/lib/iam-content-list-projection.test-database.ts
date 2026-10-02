@@ -283,25 +283,43 @@ const deleteProjectionQueryResult = (
     fixture.projectionRows = removeTransferredProjectionRows(fixture.projectionRows, values);
     return { rows: [], rowCount: 0 };
   }
+  const instanceId = String(queryValue(values, 0));
   const contentType = String(queryValue(values, 1));
-  const projectionScopeKey = fixture.projectionScopeKeyColumnAvailable
-    ? String(queryValue(values, 2))
+  const hasScopePredicate =
+    fixture.projectionScopeKeyColumnAvailable && text.includes('projection_scope_key =');
+  const scopeValue = hasScopePredicate ? queryValue(values, 2) : null;
+  const entityParameter = text.match(/(?:projection\.)?source_entity_id = (?:ANY\()?\$(\d+)/);
+  const entityValue = entityParameter
+    ? queryValue(values, Number(entityParameter[1]) - 1, null)
     : null;
-  const entityValue = queryValue(values, fixture.projectionScopeKeyColumnAvailable ? 4 : 3, null);
   const sourceEntityId = typeof entityValue === 'string' ? entityValue : null;
   const retainedEntityIds = Array.isArray(entityValue)
     ? entityValue.filter((value): value is string => typeof value === 'string')
     : null;
   fixture.projectionRows = fixture.projectionRows.filter((row) => {
     const matchingScope =
+      row.instance_id === instanceId &&
       row.source_system === 'mainserver' &&
       row.content_type === contentType &&
-      (!fixture.projectionScopeKeyColumnAvailable ||
-        row.projection_scope_key === projectionScopeKey);
+      (!hasScopePredicate ||
+        (Array.isArray(scopeValue)
+          ? scopeValue.includes(row.projection_scope_key)
+          : row.projection_scope_key === scopeValue));
     const matchingEntity = retainedEntityIds
       ? !retainedEntityIds.includes(row.source_entity_id)
       : sourceEntityId === null || row.source_entity_id === sourceEntityId;
-    return !(matchingScope && matchingEntity);
+    const targetScopeKey = String(queryValue(values, 3, ''));
+    const currentRefresh = fixture.syncStates.get(`${contentType}::${targetScopeKey}`);
+    const siblingRefresh = fixture.syncStates.get(`${contentType}::${row.projection_scope_key}`);
+    const newerSibling =
+      text.includes('sync_state AS sibling') &&
+      row.projection_scope_key !== targetScopeKey &&
+      Boolean(
+        currentRefresh?.last_started_at &&
+        siblingRefresh?.last_succeeded_at &&
+        siblingRefresh.last_succeeded_at >= currentRefresh.last_started_at
+      );
+    return !(matchingScope && matchingEntity && !newerSibling);
   });
   return { rows: [], rowCount: 0 };
 };

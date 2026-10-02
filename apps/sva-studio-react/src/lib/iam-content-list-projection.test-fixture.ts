@@ -204,9 +204,9 @@ export const registerProjectionFixture = (): void => {
     });
     state.resolveActorAccountId.mockResolvedValue('account-1');
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
-      async (input: { actingPrincipalType: 'organization' | 'user' }) => ({
+      async (input: { actingPrincipalType?: 'organization' | 'user' }) => ({
         status: 'ok',
-        source: input.actingPrincipalType,
+        source: input.actingPrincipalType ?? 'user',
         credentials: { apiKey: 'key', apiSecret: 'secret' },
         credentialFingerprint:
           input.actingPrincipalType === 'organization' ? 'b'.repeat(64) : 'a'.repeat(64),

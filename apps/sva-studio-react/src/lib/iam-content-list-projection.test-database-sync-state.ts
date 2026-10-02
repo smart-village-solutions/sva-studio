@@ -119,7 +119,8 @@ const buildInsertedSyncState = (
   const current =
     (context.fixture.syncScopeKeyColumnAvailable
       ? context.fixture.syncStates.get(`${contentType}::${syncScopeKey}`)
-      : storedSyncState(context.fixture, contentType, syncScopeKey)) ?? initialSyncState(syncScopeKey);
+      : storedSyncState(context.fixture, contentType, syncScopeKey)) ??
+    initialSyncState(syncScopeKey);
   const firstPayloadIndex = context.fixture.syncScopeKeyColumnAvailable ? 3 : 2;
   if (text.includes("'partial_running'")) {
     return partialRunningSyncState(context, current, values, firstPayloadIndex);
@@ -138,7 +139,10 @@ const readSyncState = (
   text: string,
   values: readonly unknown[] | undefined
 ): QueryResult | null => {
-  if (!text.includes('FROM iam.content_list_projection_sync_state')) {
+  if (
+    !text.trimStart().startsWith('SELECT') ||
+    !text.includes('FROM iam.content_list_projection_sync_state')
+  ) {
     return null;
   }
   const contentType = String(context.queryValue(values, 1));

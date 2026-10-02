@@ -4,6 +4,7 @@ import {
   registerProjectionFixture,
   ctx,
   fixture,
+  mapInsertedProjectionRow,
   listProjectedContentsForTest as listProjectedContents,
   refreshProjectedContentsForTest as refreshProjectedContents,
   getProjectionTestState,
@@ -13,6 +14,101 @@ const state = getProjectionTestState();
 
 describe('content projection reconciliation scopes', () => {
   registerProjectionFixture();
+
+  it('removes stale principal-scope rows after a complete mainserver refresh', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'cockpit-cards.read', resourceType: 'cockpit-cards' }],
+    });
+    const stale = mapInsertedProjectionRow({
+      id: 'card-deleted-1',
+      instance_id: 'de-musterhausen',
+      projection_scope_key: 'de-musterhausen::account-1::org-1::user::cockpit-cards.cockpit-card',
+      organization_id: 'org-1',
+      owner_subject_id: null,
+      owner_user_id: null,
+      owner_organization_id: null,
+      content_type: 'cockpit-cards.cockpit-card',
+      title: 'Deleted card',
+      published_at: null,
+      publish_from: null,
+      publish_until: null,
+      created_at: '2026-06-20T10:00:00.000Z',
+      created_by: 'mainserver',
+      updated_at: '2026-06-21T10:00:00.000Z',
+      updated_by: 'mainserver',
+      author_display_mode: 'user',
+      author_display_name: 'Editor',
+      payload_json: {},
+      status: 'published',
+      validation_state: 'valid',
+      history_ref: 'mainserver:cockpit-cards.cockpit-card:card-deleted-1',
+      current_revision_ref: null,
+      last_audit_event_ref: null,
+      source_data_provider_id: null,
+      source_data_provider_name: null,
+      credential_source: 'user',
+      credential_fingerprint: null,
+      authorization_mode: 'credential_visible_compatibility',
+      source_system: 'mainserver',
+      source_entity_type: 'cockpit-cards.cockpit-card',
+      source_entity_id: 'card-deleted-1',
+    });
+    fixture.projectionRows = [
+      stale,
+      {
+        ...stale,
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      },
+      {
+        ...stale,
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::cockpit-cards.cockpit-card',
+        credential_source: 'organization',
+      },
+    ];
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
+    );
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      }),
+      expect.objectContaining({
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::cockpit-cards.cockpit-card',
+      }),
+    ]);
+
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
+      async (input: { actingPrincipalType?: 'user' | 'organization' }) => ({
+        status: 'ok',
+        source: input.actingPrincipalType ?? 'organization',
+        credentials: { apiKey: 'key', apiSecret: 'secret' },
+        credentialFingerprint: 'b'.repeat(64),
+      })
+    );
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      }),
+    ]);
+  });
 
   it('stores the same mainserver entity separately for different projection scopes', async () => {
     state.listSvaMainserverEvents.mockResolvedValue({

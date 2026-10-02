@@ -8,6 +8,7 @@ import {
 } from './iam-content-list-projection-model.server.js';
 import { reconcilePersistedMainserverProjectionRows } from './iam-content-list-projection-reconciliation.server.js';
 import {
+  buildMainserverReadScopeKeys,
   buildMainserverSyncScopeKey,
   buildProjectionTargetKey,
   loadProjectionSyncStateSchemaMode,
@@ -33,30 +34,68 @@ type ProjectionDeleteSelector =
 const deleteMainserverProjectionRows = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget,
-  selector: ProjectionDeleteSelector
+  selector: ProjectionDeleteSelector,
+  refreshCredentialSource?: 'user' | 'organization'
 ): Promise<void> => {
   await withProjectionSchemaModeRetry(target, 'table', async () => {
     const schemaMode = await loadProjectionTableSchemaMode(client, target.instanceId);
     const values: unknown[] = [target.instanceId, target.contentType];
-    const predicates = ['instance_id = $1', "source_system = 'mainserver'", 'content_type = $2'];
-    if (schemaMode === 'scoped') {
-      values.push(buildProjectionTargetKey(target));
-      predicates.push(`projection_scope_key = $${values.length}`);
+    const predicates = [
+      'projection.instance_id = $1',
+      "projection.source_system = 'mainserver'",
+      'projection.content_type = $2',
+    ];
+    if (schemaMode === 'scoped' && selector.kind !== 'entity') {
+      const targetKey = buildProjectionTargetKey(target);
+      const scopeKeys =
+        target.actingPrincipalType || !refreshCredentialSource
+          ? [targetKey]
+          : buildMainserverReadScopeKeys({
+              instanceId: target.instanceId,
+              contentTypes: [target.contentType],
+              actorAccountId: target.actorAccountId,
+              activeOrganizationId: target.organizationId,
+            }).filter(
+              (scopeKey) =>
+                scopeKey === targetKey || scopeKey.includes(`::${refreshCredentialSource}::`)
+            );
+      values.push(scopeKeys);
+      predicates.push(`projection.projection_scope_key = ANY($${values.length}::text[])`);
+      if (!target.actingPrincipalType) {
+        values.push(targetKey);
+        predicates.push(`(
+          projection.projection_scope_key = $${values.length}
+          OR NOT EXISTS (
+            SELECT 1
+            FROM iam.content_list_projection_sync_state AS sibling
+            JOIN iam.content_list_projection_sync_state AS current_refresh
+              ON current_refresh.instance_id = sibling.instance_id
+             AND current_refresh.source_system = sibling.source_system
+             AND current_refresh.content_type = sibling.content_type
+            WHERE sibling.instance_id = $1
+              AND sibling.source_system = 'mainserver'
+              AND sibling.content_type = $2
+              AND sibling.sync_scope_key = projection.projection_scope_key
+              AND current_refresh.sync_scope_key = $${values.length}
+              AND sibling.last_succeeded_at >= current_refresh.last_started_at
+          )
+        )`);
+      }
     }
     if (selector.kind !== 'all') {
       values.push(target.contentType);
-      predicates.push(`source_entity_type = $${values.length}`);
+      predicates.push(`projection.source_entity_type = $${values.length}`);
       if (selector.kind === 'entity') {
         values.push(selector.sourceEntityId);
-        predicates.push(`source_entity_id = $${values.length}`);
+        predicates.push(`projection.source_entity_id = $${values.length}`);
       } else {
         values.push(selector.retainedEntityIds);
-        predicates.push(`NOT (source_entity_id = ANY($${values.length}::text[]))`);
+        predicates.push(`NOT (projection.source_entity_id = ANY($${values.length}::text[]))`);
       }
     }
     await client.query(
       `
-DELETE FROM iam.content_list_projection
+DELETE FROM iam.content_list_projection AS projection
 WHERE ${predicates.join('\n  AND ')};
     `,
       values
@@ -67,13 +106,19 @@ WHERE ${predicates.join('\n  AND ')};
 const deleteMainserverProjectionRowsNotInSet = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget,
-  retainedEntityIds: readonly string[]
+  retainedEntityIds: readonly string[],
+  refreshCredentialSource?: 'user' | 'organization'
 ): Promise<void> => {
   if (retainedEntityIds.length === 0) {
-    await deleteMainserverProjectionRows(client, target, { kind: 'all' });
+    await deleteMainserverProjectionRows(client, target, { kind: 'all' }, refreshCredentialSource);
     return;
   }
-  await deleteMainserverProjectionRows(client, target, { kind: 'except', retainedEntityIds });
+  await deleteMainserverProjectionRows(
+    client,
+    target,
+    { kind: 'except', retainedEntityIds },
+    refreshCredentialSource
+  );
 };
 
 export const deleteMainserverProjectionRowByEntity = async (
@@ -271,6 +316,7 @@ type ProgressiveProjectionPersistenceInput = Readonly<{
   readonly page: number;
   readonly refreshRunId: string;
   readonly skippedInvalidCount: number;
+  readonly refreshCredentialSource?: 'user' | 'organization';
 }>;
 
 const loadProjectionRefreshLeader = async (
@@ -343,7 +389,8 @@ const finalizeProgressiveProjectionRefresh = async (
   await deleteMainserverProjectionRowsNotInSet(
     client,
     input.target,
-    rows.map((row) => row.sourceEntityId)
+    rows.map((row) => row.sourceEntityId),
+    input.refreshCredentialSource
   );
   const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);
   await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount);

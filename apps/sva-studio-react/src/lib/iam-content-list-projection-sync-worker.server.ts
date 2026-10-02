@@ -68,6 +68,7 @@ export const refreshMainserverProjectionBatch = (
   const accumulatedRows = new Map<string, MainserverProjectionRowInput[]>();
   const refreshRunIds = new Map<string, string>();
   const skippedInvalidCounts = new Map<string, number>();
+  const refreshCredentialSources = new Map<string, 'user' | 'organization'>();
   const genericItemScanOffsets = new Map<string, number>();
   let resolveHotCompletion: ((responses: Map<string, Response | null>) => void) | undefined;
   const hotCompletion = new Promise<Map<string, Response | null>>((resolve) => {
@@ -94,6 +95,9 @@ export const refreshMainserverProjectionBatch = (
           ...pageQuery,
           ...(genericItemScanOffset !== undefined ? { genericItemScanOffset } : {}),
         });
+        if (result.refreshCredentialSource) {
+          refreshCredentialSources.set(targetKey, result.refreshCredentialSource);
+        }
         if (result.nextGenericItemScanOffset !== undefined) {
           genericItemScanOffsets.set(targetKey, result.nextGenericItemScanOffset);
         } else {
@@ -186,6 +190,7 @@ export const refreshMainserverProjectionBatch = (
         keycloakSubject: target.keycloakSubject,
         actorAccountId: target.actorAccountId,
         rows: accumulatedRows.get(targetKey) ?? [],
+        refreshCredentialSource: refreshCredentialSources.get(targetKey),
         finalize: true,
         page: Math.max(
           1,

@@ -964,12 +964,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-edit-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-edit-page-tsx",
       "ticketSystem": "policy-baseline",
@@ -981,12 +975,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-list-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-list-page-tsx",

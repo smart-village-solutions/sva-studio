@@ -63,6 +63,26 @@ Fehlerdiagnose bleiben im selben Runtime-Pfad (09b). Der Tenant-Keycloak-Import
 Mutations- und Testgrenzen. Diese vier PRs folgen seriell aufeinander, jeweils
 direkt auf aktuellem `main`, und erhalten jeweils einen eigenen Changelog.
 
+Vor PR 10 ergab die erneute Messung sieben Dateien mit zusammen 6.092 Zeilen.
+Organisationslesen (10a) und Organisationsmutationen (10b) besitzen getrennte
+Ausführungsgrenzen. Rollenpersistenz (10c) und Identity-Provider-Reconcile
+(10d) werden wegen unterschiedlicher Fehler- und Auditpfade getrennt geprüft.
+Moderne und Legacy-Gruppenmutationen (10e) betreffen denselben Gruppenvertrag
+und werden gemeinsam, aber mit beiden vorhandenen Testpfaden bearbeitet.
+Die öffentliche Package-Oberfläche (10f) benötigt einen eigenen Export- und
+Runtime-Nachweis. Jeder Abschnitt startet nach dem Merge des vorigen auf
+aktuellem `main` und enthält einen eigenen Studio-Changelog.
+
+Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
+`iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
+Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;
+die bisherigen Exporte und SQL-Parameter bleiben identisch. Kritische
+Invarianten sind `instance_id` auf allen Organisations- und
+Mitgliedschaftsqueries, verschlüsselte Account-Felder nur über `revealField`,
+escapte ILIKE-Suche, stabile Sort-/Seitenreihenfolge sowie Zyklus- und
+Inaktivitätsfehler vor dem rekursiven Subtree-Update. Die vorhandenen
+Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und
@@ -74,7 +94,7 @@ direkt auf aktuellem `main`, und erhalten jeweils einen eigenen Changelog.
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
 3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
-   bis 07f, 08a bis 08d und 09a bis 09d werden genau
+   bis 07f, 08a bis 08d, 09a bis 09d und 10a bis 10f werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

@@ -17,6 +17,7 @@ import {
   readOrganizationTypeFilter,
   readOrganizationListSort,
   readStatusFilter,
+  rebuildOrganizationSubtree,
   resolveHierarchyFields,
   type OrganizationRow,
 } from './organization-query.js';
@@ -335,5 +336,54 @@ describe('organization query helpers', () => {
         parentOrganizationId: 'org-1',
       })
     ).resolves.toEqual(expect.objectContaining({ ok: false, code: 'conflict' }));
+  });
+
+  it('keeps parent lookup tenant scoped and rejects inactive or cyclic parents', async () => {
+    const queries: { readonly text: string; readonly values?: readonly unknown[] }[] = [];
+    const client: QueryClient = {
+      query: vi.fn(async (text: string, values?: readonly unknown[]) => {
+        queries.push({ text, values });
+        return {
+          rowCount: 1,
+          rows: [{ ...organizationRow, id: 'parent-1', is_active: false }],
+        };
+      }),
+    };
+
+    await expect(
+      resolveHierarchyFields(client, {
+        instanceId: 'de-musterhausen',
+        organizationId: 'org-1',
+        parentOrganizationId: 'parent-1',
+      })
+    ).resolves.toEqual(expect.objectContaining({ ok: false, code: 'organization_inactive' }));
+    expect(queries[0]?.text).toContain('organization.instance_id = $1');
+    expect(queries[0]?.values).toEqual(['de-musterhausen', 'parent-1']);
+
+    vi.mocked(client.query).mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ ...organizationRow, id: 'parent-1', hierarchy_path: ['org-1'] }],
+    });
+    await expect(
+      resolveHierarchyFields(client, {
+        instanceId: 'de-musterhausen',
+        organizationId: 'org-1',
+        parentOrganizationId: 'parent-1',
+      })
+    ).resolves.toEqual(expect.objectContaining({ ok: false, code: 'conflict' }));
+  });
+
+  it('updates only the requested tenant subtree and guards recursive cycles', async () => {
+    const query = vi.fn(async () => ({ rowCount: 0, rows: [] }));
+    await rebuildOrganizationSubtree({ query }, {
+      instanceId: 'de-musterhausen',
+      organizationId: 'org-1',
+    });
+
+    expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0]?.[1]).toEqual(['de-musterhausen', 'org-1']);
+    expect(query.mock.calls[0]?.[0]).toContain('organization.instance_id = $1');
+    expect(query.mock.calls[0]?.[0]).toContain('organization.instance_id = organization_tree.instance_id');
+    expect(query.mock.calls[0]?.[0]).toContain('WHERE NOT child.id = ANY(organization_tree.traversed_ids)');
   });
 });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1657,
+  "body": "Die Organisationsverwaltung funktioniert wie bisher. Ihre Leseabfragen, Filter und Hierarchieprüfung sind intern übersichtlicher getrennt, damit Änderungen leichter wartbar bleiben."
+}

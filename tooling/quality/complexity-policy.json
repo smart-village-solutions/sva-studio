@@ -742,12 +742,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/components/Sidebar.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/components/Sidebar.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-components-sidebar-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/components/Sidebar.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/components/Sidebar.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-components-sidebar-tsx",
       "ticketSystem": "policy-baseline",
@@ -814,12 +808,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/providers/auth-provider.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/providers/auth-provider.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-providers-auth-provider-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/providers/auth-provider.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/providers/auth-provider.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-providers-auth-provider-tsx",
       "ticketSystem": "policy-baseline",
@@ -831,12 +819,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routing/app-route-bindings.tsx:fileLines": {
-      "ticketId": "QUAL-ACCOUNT-UI-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Route-Bindings in kleinere Lazy-Loader-, Placeholder- und Detail-Resolver-Module aufteilen (apps/sva-studio-react/src/routing/app-route-bindings.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/-iam-page.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-iam-page-tsx",
@@ -2283,12 +2265,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Header-Entscheidungslogik in kleinere Navigations- und Diagnose-Helfer zerlegen (apps/sva-studio-react/src/components/Header.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/components/Header.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Header-Datei in kleinere Navigations-, Dialog- und Diagnose-Teile splitten (apps/sva-studio-react/src/components/Header.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/components/Header.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-003",

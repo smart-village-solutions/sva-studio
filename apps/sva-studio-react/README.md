@@ -76,6 +76,12 @@ Kurzübersicht:
 - Router-Komposition: `src/router.tsx` konsumiert ausschließlich `@sva/routing`
 - Produktives Plugin: `@sva/plugin-news`
 
+Die Route-Bindings komponieren Seitenadapter aus `app-route-pages.tsx` und den
+Mainserver-Principal-Modulen im selben Ordner. In der Shell liegen Menü- und
+Navigationsbausteine neben `Header.tsx` und `Sidebar.tsx`; der `AuthProvider`
+stellt weiterhin den Context bereit und bezieht Session-Laden, Recovery und
+Timer aus den benachbarten `auth-session-*`-Modulen.
+
 Weitere Details:
 
 - Routing-Kurzinfo: [docs/reference/routing.md](../../docs/reference/routing.md)

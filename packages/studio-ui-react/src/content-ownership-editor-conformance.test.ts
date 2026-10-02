@@ -62,7 +62,9 @@ describe('content ownership editor conformance', () => {
   }
 
   it('keeps transfer activation dependent on server capability and effective authorization', () => {
-    const boundary = workspaceFile('apps/sva-studio-react/src/routing/app-route-bindings.tsx');
+    const boundary = workspaceFile(
+      'apps/sva-studio-react/src/routing/mainserver-resource-principal-boundary.tsx'
+    );
 
     expect(boundary).toMatch(
       /enabledActions\.includes\(\s*'content\.transferOwnership'\s*\)/u

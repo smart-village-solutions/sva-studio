@@ -111,14 +111,14 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 06d1 — Benutzerseiten (2 Befunde)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`,
+- [x] `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`,
       `routes/admin/users/-user-list-page.tsx` nach Formular-Panels,
       Listenaktionen und Rückmeldungen aufteilen. Formulare,
       Berechtigungen, Mitgliedschaft und Suche gezielt prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1630.json` eingebracht;
+      PR #1630 am 02.10.2026 als
+      `d7eb9cede602c225e88e7d52d52caab638435ec8` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 06d2 — Organisationen und Auswahl (2 Befunde)
 

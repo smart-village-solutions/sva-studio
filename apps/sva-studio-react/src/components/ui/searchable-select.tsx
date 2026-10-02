@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@sva/studio-ui-react';
 import { Input } from './input';
 import {
+  filterSearchableSelectOptions,
+  findEnabledOptionIndex,
   getSearchableSelectOptionId,
   SearchableSelectOptionList,
   type SearchableSelectOption,
@@ -38,36 +40,6 @@ type SearchableSelectUncontrolledSearchProps = {
 
 type SearchableSelectProps = SearchableSelectBaseProps &
   (SearchableSelectControlledSearchProps | SearchableSelectUncontrolledSearchProps);
-
-const normalizeSearch = (value: string) => value.trim().toLocaleLowerCase();
-export const matchesSearchableSelectOption = (option: SearchableSelectOption, search: string) => {
-  const normalizedSearch = normalizeSearch(search);
-  if (!normalizedSearch) {
-    return true;
-  }
-
-  return [option.label, ...(option.keywords ?? [])].some((value) =>
-    value.toLocaleLowerCase().includes(normalizedSearch)
-  );
-};
-
-const findEnabledOptionIndex = (
-  options: readonly SearchableSelectOption[],
-  start: number,
-  direction: 1 | -1
-): number => {
-  if (options.length === 0) return -1;
-  for (let offset = 0; offset < options.length; offset += 1) {
-    const index = (start + offset * direction + options.length) % options.length;
-    if (!options[index]?.disabled) return index;
-  }
-  return -1;
-};
-
-export const filterSearchableSelectOptions = (
-  options: readonly SearchableSelectOption[],
-  searchValue: string
-) => options.filter((option) => matchesSearchableSelectOption(option, searchValue));
 
 const SearchableSelectTrigger = ({
   close,

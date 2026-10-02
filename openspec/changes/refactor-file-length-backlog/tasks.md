@@ -256,8 +256,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Fehlercodes und PII-arme Diagnose. Öffentliche Verträge bleiben gleich.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 09a
+      `docs/changelog/entries/pr-1652.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1652
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 09b — IAM-Schema-Readiness und Diagnose (2 Befunde)

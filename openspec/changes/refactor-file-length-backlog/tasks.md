@@ -122,27 +122,75 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 06d2 — Organisationen und Auswahl (2 Befunde)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx`
+- [x] `apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx`
       und `components/ui/searchable-select.tsx` nach Organisationsformular,
       Mitgliedschaft und Auswahlzustand aufteilen. Suche und Tastaturbedienung
       gezielt prüfen.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1631.json` eingebracht;
+      PR #1631 am 02.10.2026 als
+      `745f0a458aa522c6137bca1a2a80529005757777` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
+
+### PR 07a — Instanz-Anlageassistent (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx`
+      entlang der vorhandenen Assistentenschritte und Bereitschaftsanzeige
+      aufteilen. Formularvalidierung, Realm-Auswahl, serverseitige
+      Bereitschaft und Anlage mit dem bestehenden Seitentest prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1635.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 07b — Instanz-Betriebsmodelle und Detailseite (2 Befunde)
+
+- [ ] `apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx`
+      und `-instance-detail-page.tsx` entlang New-Realm- und
+      Existing-Realm-Betriebsmodell sowie Cockpit-Aktionen aufteilen.
+      Schrittstatus, Berechtigungen, Nachladen und Fehlerzustände mit
+      den vorhandenen Modell- und Seitentests prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 07 — Instanzen und Schnittstellen im Frontend (8 Befunde)
+### PR 07c — Schnittstellen-Speicherung und Healthcheck (2 Befunde)
 
-- [ ] In `apps/sva-studio-react/src/` `lib/instance-interfaces-server.ts`,
-      `routes/admin/instances/-instance-create-page.tsx`,
-      `routes/admin/instances/-instances-shared.tsx`,
-      `routes/admin/instances/-instance-detail-page.tsx`,
-      `lib/interfaces-api.ts`,
-      `routes/interfaces/-interfaces-page.dialogs.tsx`,
-      `lib/instance-interface-healthcheck.server.ts` und
-      `hooks/use-instances.ts` bereinigen. Provisionierungs- und
-      Healthcheck-Verträge sowie UI-Fehlerzustände gezielt prüfen.
+- [ ] `apps/sva-studio-react/src/lib/instance-interfaces-server.ts`
+      und `instance-interface-healthcheck.server.ts` nach Speicherung,
+      Validierung und Prüftypen aufteilen. Mandantengrenzen, Secrets,
+      CRUD, Timeouts und Fehlerabbildung mit den Server-Tests prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+### PR 07d — Schnittstellen-API (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/lib/interfaces-api.ts` nach
+      Serverfunktionen und ihren bestehenden Berechtigungs- und
+      Fehlerverträgen aufteilen. Instanzkontext, Autorisierung und
+      Anfragevalidierung mit den API-Tests prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 07e — Schnittstellen-Dialoge (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/routes/interfaces/-interfaces-page.dialogs.tsx`
+      entlang der vorhandenen Schnittstellentypen aufteilen. Eingaben,
+      Dialogzustände, Tastaturbedienung und Fehlerrückmeldungen prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 07f — Instanz-Hook (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/hooks/use-instances.ts` nach Lade- und
+      Mutationsverantwortung aufteilen. Cache-Zustand, Fehler und
+      Berechtigungsreaktionen mit den Hook-Tests prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in

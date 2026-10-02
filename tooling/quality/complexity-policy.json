@@ -1996,18 +1996,6 @@
       "status": "open",
       "summary": "Kontrollfluss der Schnittstellen-Healthchecks in kleinere Probe- und Fehlerpfade zerlegen (apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts)"
     },
-    "frontend-app:apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts:fileLines": {
-      "ticketId": "baseline-frontend-app-src-lib-instance-interface-healthcheck-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei fuer Schnittstellen-Healthchecks in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts)"
-    },
-    "frontend-app:apps/sva-studio-react/src/lib/instance-interfaces-server.ts:fileLines": {
-      "ticketId": "baseline-frontend-app-src-lib-instance-interfaces-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Serverseitige Schnittstellenverwaltung in kleinere Persistenz- und Projektionsbausteine aufteilen (apps/sva-studio-react/src/lib/instance-interfaces-server.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx:fileLines": {
       "ticketId": "baseline-frontend-app-src-routes-interfaces-interfaces-page-tsx",
       "ticketSystem": "policy-baseline",

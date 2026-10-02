@@ -203,7 +203,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Filter, Sortierung, Pagination, Zeilenrechte, Bulk-Aktionen und
       Projektionsmeldungen mit `-content-list-page.test.tsx` prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1648.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

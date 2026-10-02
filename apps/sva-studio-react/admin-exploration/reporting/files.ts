@@ -1,9 +1,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import type { AdminExplorationMissionArtifacts } from '../runtime/execute.js';
 import { toPortableArtifactPath } from './path-utils.js';
 import { renderAdminExplorationMarkdownReport, type AdminExplorationMissionReport } from './report.js';
+
+export interface AdminExplorationMissionArtifacts {
+  readonly reportPath: string;
+  readonly statusPath: string;
+  readonly transcriptPath: string;
+}
 
 export function writeAdminExplorationMissionArtifacts(
   artifacts: AdminExplorationMissionArtifacts,

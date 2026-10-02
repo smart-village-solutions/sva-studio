@@ -1,15 +1,14 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
-import { createMissionPrompt } from './missions/admin-users-overview.js';
+import type { Page } from '@playwright/test';
+
 import { getAdminExplorationMission } from './missions/registry.js';
-import { writeAdminExplorationMissionArtifacts } from './reporting/files.js';
+import { writeAdminExplorationMissionArtifacts, type AdminExplorationMissionArtifacts } from './reporting/files.js';
 import type { AdminExplorationMissionReport } from './reporting/report.js';
 import { detectAdminExplorationAuthIssue } from './runtime/auth.js';
 import { parseAdminExplorationConfig } from './runtime/config.js';
 import { assertAdminExplorationReadiness, type AdminExplorationFetch, type AdminExplorationReadinessResult } from './runtime/readiness.js';
-import type { Page } from '@playwright/test';
-
 import { launchExplorationBrowser } from './runtime/browser.js';
 import { runAdminExplorationStoryLoop, type RunAdminExplorationStoryLoopOptions, type AdminExplorationStoryLoopSummary } from './runtime/story-loop.js';
 import type { AdminExplorationConfig } from './runtime/types.js';
@@ -59,12 +58,6 @@ interface RunAdminExplorationCliOptions {
   readonly generatedAt?: string;
   readonly reportsRoot?: string;
   readonly storySourcePath?: string;
-}
-
-interface AdminExplorationMissionArtifacts {
-  readonly reportPath: string;
-  readonly statusPath: string;
-  readonly transcriptPath: string;
 }
 
 interface AdminExplorationMissionRunResult {
@@ -127,16 +120,6 @@ function findFirstMarker(markers: readonly string[], bodyText: string): string |
   return markers.find((marker) => bodyText.includes(marker)) ?? null;
 }
 
-function createMissionPromptInvariant(prompt: string): void {
-  if (
-    prompt.includes('/admin/users') === false ||
-    prompt.includes('Login') === false ||
-    prompt.includes('Forbidden') === false
-  ) {
-    throw new Error('AdminExploration admin-users-overview prompt invariant failed.');
-  }
-}
-
 function createBaseFindings(readiness: AdminExplorationReadinessResult, startUrl: string): string[] {
   return [
     `Lokale Readiness erfolgreich: ${readiness.checkedUrl} (HTTP ${readiness.httpStatus}).`,
@@ -178,10 +161,6 @@ async function executeAdminUsersOverviewMission(
   const artifacts = createArtifacts(reportsRoot, mission.name);
   const readiness = await assertAdminExplorationReadiness(config.baseUrl, fetchImpl);
   const startUrl = createStartUrl(config.baseUrl, mission.startPath);
-  const prompt = createMissionPrompt({ startUrl, stories });
-
-  createMissionPromptInvariant(prompt);
-
   const response = await fetchImpl(startUrl, HTML_REQUEST_INIT);
   const browser = await launchBrowser(config);
   const bodyText = await (async () => {

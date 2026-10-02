@@ -100,22 +100,32 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 06c — Rollen und Gruppen (2 Befunde)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx`
+- [x] `apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx`
       und `routes/admin/groups/-group-detail-page.tsx` nach ihren
       bestehenden Formular- und Berechtigungsverantwortungen aufteilen.
       Rollenvergabe und Gruppenmitgliedschaft gezielt prüfen.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1628.json` eingebracht;
+      PR #1628 am 02.10.2026 als
+      `1535fb65d1b37fcf1d88a4062238704723640e16` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
+
+### PR 06d1 — Benutzerseiten (2 Befunde)
+
+- [ ] `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`,
+      `routes/admin/users/-user-list-page.tsx` nach Formular-Panels,
+      Listenaktionen und Rückmeldungen aufteilen. Formulare,
+      Berechtigungen, Mitgliedschaft und Suche gezielt prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 06d — Benutzer, Organisationen und Auswahl (4 Befunde)
+### PR 06d2 — Organisationen und Auswahl (2 Befunde)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`,
-      `routes/admin/users/-user-list-page.tsx`,
-      `routes/admin/organizations/-organization-detail-page.tsx` und
-      `components/ui/searchable-select.tsx` aufteilen. Formulare,
-      Mitgliedschaft, Suche und Tastaturbedienung gezielt prüfen.
+- [ ] `apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx`
+      und `components/ui/searchable-select.tsx` nach Organisationsformular,
+      Mitgliedschaft und Auswahlzustand aufteilen. Suche und Tastaturbedienung
+      gezielt prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in

@@ -352,12 +352,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-account-management/profile-handlers.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-account-management-profile-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/profile-handlers.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/schema-guard.ts:fileLines": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-schema-guard-ts",
       "ticketSystem": "policy-baseline",
@@ -1065,12 +1059,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/profile-commands.ts)"
-    },
-    "iam-admin:packages/iam-admin/src/profile-commands.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-profile-commands-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/profile-commands.ts)"
     },
     "iam-admin:packages/iam-admin/src/reconcile-core.ts:fileLines": {
       "ticketId": "baseline-iam-admin-src-reconcile-core-ts",

@@ -189,6 +189,59 @@ describe('profile handlers', () => {
     });
   });
 
+  it('stops tenant profile writes at the feature gate before actor resolution', async () => {
+    state.ensureFeature.mockReturnValue(state.createApiError(403, 'forbidden', 'disabled'));
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+
+    expect(response.status).toBe(403);
+    expect(state.resolveActorInfo).not.toHaveBeenCalled();
+    expect(state.validateCsrf).not.toHaveBeenCalled();
+    expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
+  });
+
+  it('stops tenant profile writes at CSRF before rate limit and profile loading', async () => {
+    state.validateCsrf.mockReturnValue(state.createApiError(403, 'forbidden', 'csrf'));
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+
+    expect(response.status).toBe(403);
+    expect(state.validateCsrf).toHaveBeenCalledWith(expect.any(Request), 'req-profile');
+    expect(state.consumeRateLimit).not.toHaveBeenCalled();
+    expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
+  });
+
+  it('stops tenant profile writes at rate limit before loading and mutation', async () => {
+    state.consumeRateLimit.mockReturnValue(state.createApiError(429, 'rate_limited', 'limit'));
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+
+    expect(response.status).toBe(429);
+    expect(state.consumeRateLimit).toHaveBeenCalledWith({
+      instanceId: 'de-studio-sandbox',
+      actorKeycloakSubject: 'kc-session-user',
+      scope: 'write',
+      requestId: 'req-profile',
+    });
+    expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
+    expect(state.updateMyProfileDetail).not.toHaveBeenCalled();
+  });
+
   it('logs tenant identity metadata and skips the local profile write when keycloak sync fails', async () => {
     const updateUser = vi.fn(async () => {
       throw new KeycloakAdminUnavailableError('keycloak unavailable');

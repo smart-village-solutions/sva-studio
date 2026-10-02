@@ -246,19 +246,61 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ## IAM und Auth
 
-### PR 09 — Account- und User-Handler (7 Befunde)
+### PR 09a — Self-Service-Profil (2 Befunde)
 
-- [ ] In `packages/auth-runtime/src/iam-account-management/`
-      `profile-handlers.ts`, `schema-guard.ts`,
-      `user-import-sync-handler.ts`, `diagnostics.ts` und in
-      `packages/iam-admin/src/` `user-update-handler.ts`,
-      `user-read-handlers.ts`, `profile-commands.ts` bereinigen.
-      Validierung, Mandantengrenzen, Fehlercodes und PII-Redaction testen.
+- [ ] `packages/auth-runtime/src/iam-account-management/profile-handlers.ts`
+      und `packages/iam-admin/src/profile-commands.ts` fachlich aufteilen.
+      Die vorhandenen Profil-Handler- und Command-Tests prüfen Plattform- und
+      Tenant-Grenzen, Feature-Gate, CSRF, Rate Limit, Keycloak-Synchronisierung
+      samt Kompensation, Session-Seed mit Savepoint, Audit, Projektion,
+      Fehlercodes und PII-arme Diagnose. Öffentliche Verträge bleiben gleich.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und nutzerverständlichem `body` in PR 09a
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 09b — IAM-Schema-Readiness und Diagnose (2 Befunde)
+
+- [ ] `packages/auth-runtime/src/iam-account-management/schema-guard.ts`
+      und `diagnostics.ts` nach Schema-Prüfung und Fehlerklassifikation
+      aufteilen. `schema-guard.test.ts` und `diagnostics.test.ts` prüfen
+      Goose-Head, kritische Checks, Cache, Schema-Drift, RLS,
+      Verschlüsselung und sanitierte Diagnosedaten. Readiness- und
+      Fehlerverträge bleiben gleich.
+
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 09b
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 09c — Tenant-Keycloak-Import (1 Befund)
+
+- [ ] `packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts`
+      nach Identitätsabgleich und Persistenz aufteilen. Die vorhandenen
+      `user-import-sync-handler.*.test.ts` prüfen Tenant-/Permission-Grenzen,
+      Reparaturentscheidungen, Transaktions-Rollback, Reihenfolge,
+      Teilfehler und PII-Redaction. Bericht und Fehlercodes bleiben gleich.
+
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 09c
+      anlegen; Changelog-Gate vor Merge grün.
+
+### PR 09d — Admin-Benutzerlesen und -aktualisierung (2 Befunde)
+
+- [ ] `packages/iam-admin/src/user-read-handlers.ts` und
+      `user-update-handler.ts` nach Leseprojektion und Update-/Kompensations-
+      schritten aufteilen. Die vorhandenen `user-read-handlers.test.ts` und
+      `user-update-handler.test.ts` prüfen Tenant-/Plattform-Scope,
+      Filter/Pagination, Projektion, technische Rollendifferenzen,
+      Datenbank-Persistenz, Kompensation und Fehlerabbildung. Öffentliche
+      Verträge und Autorisierung bleiben gleich.
+
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 09d
+      anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10 — Rollen-, Gruppen- und Organisationsverwaltung (7 Befunde)
 

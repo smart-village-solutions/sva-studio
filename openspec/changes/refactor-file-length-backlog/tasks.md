@@ -133,14 +133,14 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 07a — Instanz-Anlageassistent (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx`
+- [x] `apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx`
       entlang der vorhandenen Assistentenschritte und Bereitschaftsanzeige
       aufteilen. Formularvalidierung, Realm-Auswahl, serverseitige
       Bereitschaft und Anlage mit dem bestehenden Seitentest prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-1635.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1635.json` eingebracht;
+      PR #1635 am 02.10.2026 als
+      `9728cd478f2acc7f25027f566e750795435bc91d` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 07b — Instanz-Betriebsmodelle und Detailseite (2 Befunde)
 
@@ -150,7 +150,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Schrittstatus, Berechtigungen, Nachladen und Fehlerzustände mit
       den vorhandenen Modell- und Seitentests prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1636.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

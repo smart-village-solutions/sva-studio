@@ -850,12 +850,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-detail-page-tsx",
       "ticketSystem": "policy-baseline",
@@ -867,12 +861,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instances-shared-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instances-shared-tsx",

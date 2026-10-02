@@ -683,8 +683,8 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI
 
-1. `apps/sva-studio-react/src/routes/admin/-iam-page.tsx`
-   - URL-gesteuertes Transparenz-Cockpit für `rights`, `governance` und `dsr`.
+1. `apps/sva-studio-react/src/routes/admin/-iam-page.tsx` und benachbarte `-iam-page-*`-Module
+   - URL-gesteuertes Transparenz-Cockpit mit zentraler Tab-Navigation und getrennten Panels für Rechte, Governance, DSR und Löschregeln.
 2. `apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx`
    - Self-Service-Datenschutzansicht unter `/account/privacy` ohne eigenen Sidebar-Eintrag.
 3. `packages/core/src/iam/transparency-contract.ts`

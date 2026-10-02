@@ -80,13 +80,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 06a — IAM-API-Client (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/lib/iam-api.ts` entlang seiner bestehenden
+- [x] `apps/sva-studio-react/src/lib/iam-api.ts` entlang seiner bestehenden
       Ressourcenverträge aufteilen. Exporte, HTTP-Fehlerabbildung und
       Anfrageparameter mit den gezielten API-Tests erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1626.json` eingebracht; PR #1626
+      am 02.10.2026 als `dded9ab44926e47a67bd7f1f44e72d4c58d7c4dd`
+      gemergt. Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 06b — IAM-Cockpit (1 Befund)
 

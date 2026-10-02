@@ -26,8 +26,9 @@ ermittelt; parallele Arbeit kann sie verändern.
 Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
 PR: Die letzte Spalte benennt die fachlichen Schnittkandidaten. Das
-aktuelle Budget von 38 PRs entspricht den einzeln beschriebenen Aufgaben in
-`tasks.md`. PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
+Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06 und PR 07
+auf derzeit 43 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
+PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
 in vier seriell bearbeitbare Teile 06a bis 06d aufgeteilt. Nach dem Merge
 von 06c zeigte die erneute Messung für 06d 3.066 Zeilen über vier Dateien.
 Die getrennten Benutzer- und Organisationsoberflächen werden daher als 06d1
@@ -37,6 +38,14 @@ definieren eine serielle Reihenfolge, keine Quote:
 Wenn neue Evidenz einen anderen Schnitt erfordert, wird die betreffende
 Aufgabe vor ihrer Umsetzung konkret geändert. Ein Maximum geänderter Dateien
 ersetzt die Risikoprüfung nicht.
+
+Nach PR 06d2 ergab die Messung für PR 07 acht Dateien mit 6.959 Zeilen.
+Sie liegen in unterschiedlichen Ausführungsgrenzen: Anlageassistent,
+Betriebsmodelle mit Detailseite, serverseitige Speicherung mit Healthcheck,
+API-Serverfunktionen, Dialoge und Instanz-Hook. Deshalb werden sie als
+07a bis 07f in dieser Reihenfolge geliefert. Jeder Teil beseitigt
+seinen benannten Befund und nutzt die bereits vorhandenen Pfadtests; die
+Schnittstellenverträge bleiben dabei unverändert.
 
 ## Lieferreihenfolge
 
@@ -48,7 +57,8 @@ ersetzt die Risikoprüfung nicht.
    Konsumenten/Verträge bearbeiten. Wenn ein konkreter Vertrag mit einem
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
-3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2 werden genau
+3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2 und 07a
+   bis 07f werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

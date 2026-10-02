@@ -322,12 +322,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/iam-account-management/core.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-account-management/diagnostics.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-account-management-diagnostics-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/diagnostics.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/diagnostics.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-diagnostics-ts",
       "ticketSystem": "policy-baseline",
@@ -351,12 +345,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-account-management/schema-guard.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-account-management-schema-guard-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/schema-guard.ts)"
     },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/shared.ts:publicExports": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-shared-ts",

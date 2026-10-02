@@ -248,14 +248,14 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 09a — Self-Service-Profil (2 Befunde)
 
-- [ ] `packages/auth-runtime/src/iam-account-management/profile-handlers.ts`
+- [x] `packages/auth-runtime/src/iam-account-management/profile-handlers.ts`
       und `packages/iam-admin/src/profile-commands.ts` fachlich aufteilen.
       Die vorhandenen Profil-Handler- und Command-Tests prüfen Plattform- und
       Tenant-Grenzen, Feature-Gate, CSRF, Rate Limit, Keycloak-Synchronisierung
       samt Kompensation, Session-Seed mit Savepoint, Audit, Projektion,
       Fehlercodes und PII-arme Diagnose. Öffentliche Verträge bleiben gleich.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1652.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1652
       anlegen; Changelog-Gate vor Merge grün.

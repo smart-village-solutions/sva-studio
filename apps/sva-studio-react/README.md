@@ -94,6 +94,13 @@ enthält weiterhin die Benutzer-API. Die übrigen Anfragen und Payload-Typen
 liegen nach Ressourcen in benachbarten `iam-api-*`-Modulen: Rollen/Gruppen,
 Organisationen, Content, Medien, Instanzen, Runtime und Governance.
 
+## IAM-Cockpit
+
+`src/routes/admin/-iam-page.tsx` bleibt der Importpunkt und hält die
+URL-gesteuerte Tab-Navigation. Rechte, Governance, DSR und Löschregeln liegen
+in benachbarten `-iam-page-*`-Modulen. Die vorhandenen Berechtigungs- und
+Anfrageverträge bleiben maßgeblich.
+
 ## Data Fetching
 
 There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.

@@ -556,6 +556,49 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('messages.saveError')).toBeTruthy();
   });
 
+  it('explains a partial save when the visibility update fails', async () => {
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.update.mockRejectedValue(
+      Object.assign(new Error('visibility_update_failed'), { code: 'visibility_update_failed' })
+    );
+    const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsEditPage />);
+    await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1)!);
+    expect(await screen.findByText('messages.visibilitySavePartialFailure')).toBeTruthy();
+  });
+
+  it('lets media reference saving finish after a partial visibility update', async () => {
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.listReferences.mockResolvedValue([
+      { assetId: 'image-1', role: 'gallery_item', sortOrder: 0 },
+    ]);
+    state.update.mockRejectedValue(
+      Object.assign(new Error('visibility_update_failed'), { code: 'visibility_update_failed' })
+    );
+    state.saveWithReferences.mockImplementation(async ({ saveContent, getTargetId }) => {
+      const saved = await saveContent([], { operationId: 'media-operation-1' });
+      expect(getTargetId(saved)).toBe('card-1');
+      return { status: 'complete', saved };
+    });
+
+    const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsEditPage />);
+    await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1)!);
+
+    expect(await screen.findByText('messages.visibilitySavePartialFailure')).toBeTruthy();
+    expect(state.saveWithReferences).toHaveBeenCalledOnce();
+    expect(state.update).toHaveBeenCalledWith(
+      'card-1',
+      expect.any(Object),
+      expect.any(String),
+      { contentMediaSaveOperationId: 'media-operation-1' }
+    );
+  });
+
   it('adds, reorders and removes manual images through the shared block', async () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);

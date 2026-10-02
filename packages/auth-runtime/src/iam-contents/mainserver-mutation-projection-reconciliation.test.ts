@@ -90,6 +90,9 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       "journal.action_id <> 'content.transferOwnership'"
     );
     expect(state.query.mock.calls[0]?.[0]).toContain('journal.acting_principal_id::text = $3');
+    expect(state.query.mock.calls[0]?.[0]).toContain(
+      "NOT (journal.completed_steps ? 'projection_history_reconciled')"
+    );
     expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
       expect.objectContaining({
         actorDisplayName: 'Redaktion',

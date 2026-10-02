@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   finalizeMainserverMutationJournal: vi.fn(),
   createSvaMainserverGenericItem: vi.fn(),
   updateSvaMainserverGenericItem: vi.fn(),
+  changeSvaMainserverGenericItemVisibility: vi.fn(),
   listSvaMainserverGenericItems: vi.fn(),
   getSvaMainserverGenericItem: vi.fn(),
   deleteSvaMainserverGenericItem: vi.fn(),
@@ -61,6 +62,7 @@ vi.mock('@sva/server-runtime', async () => {
 vi.mock('./service.js', () => ({
   createSvaMainserverGenericItem: state.createSvaMainserverGenericItem,
   updateSvaMainserverGenericItem: state.updateSvaMainserverGenericItem,
+  changeSvaMainserverGenericItemVisibility: state.changeSvaMainserverGenericItemVisibility,
   listSvaMainserverGenericItems: state.listSvaMainserverGenericItems,
   getSvaMainserverGenericItem: state.getSvaMainserverGenericItem,
   deleteSvaMainserverGenericItem: state.deleteSvaMainserverGenericItem,
@@ -424,6 +426,76 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       })
     );
     expect(deleteResponse?.status).toBe(200);
+  });
+
+  it('persists a cockpit card visibility change before reporting a successful save', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem
+      .mockResolvedValueOnce({ id: 'card-1', genericType: 'COCKPIT_CARD', visible: true })
+      .mockResolvedValueOnce({ id: 'card-1', genericType: 'COCKPIT_CARD', visible: false });
+    state.updateSvaMainserverGenericItem.mockResolvedValue({
+      id: 'card-1',
+      genericType: 'COCKPIT_CARD',
+      visible: true,
+    });
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/card-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Karte',
+          genericType: 'COCKPIT_CARD',
+          visible: false,
+          payload: { languageCode: 'de', sortWeight: 0 },
+          categories: [{ name: 'Startseite' }],
+        }),
+      })
+    );
+
+    expect(state.changeSvaMainserverGenericItemVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItemId: 'card-1', visible: false })
+    );
+    expect(state.changeSvaMainserverGenericItemVisibility.mock.invocationCallOrder[0]).toBeGreaterThan(
+      state.updateSvaMainserverGenericItem.mock.invocationCallOrder[0]!
+    );
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({ data: { visible: false } });
+  });
+
+  it('reports a partial cockpit card save when visibility cannot be changed', async () => {
+    mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'card-1',
+      genericType: 'COCKPIT_CARD',
+      visible: true,
+    });
+    state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'card-1', visible: true });
+    state.changeSvaMainserverGenericItemVisibility.mockRejectedValue(
+      new Error('visibility_unavailable')
+    );
+
+    const response = await dispatchSvaMainserverGenericItemsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/cockpit-cards/card-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: 'Karte',
+          genericType: 'COCKPIT_CARD',
+          visible: false,
+          payload: { languageCode: 'de', sortWeight: 0 },
+          categories: [{ name: 'Startseite' }],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toMatchObject({ error: 'visibility_update_failed' });
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'reconciliation_required',
+        completedSteps: ['provider_write', 'projection_follow_up_deferred'],
+      })
+    );
   });
 
   it('returns not found for non-cockpit-card detail and mutation targets', async () => {

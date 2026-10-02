@@ -13,9 +13,8 @@ import {
 } from './logging-runtime.server.js';
 import { redactLogMeta } from '../logging/redaction.js';
 
-export const redactObject = (value: Record<string, unknown>): Record<string, unknown> => {
-  return redactLogMeta(value);
-};
+export const redactObject = (value: Record<string, unknown>): Record<string, unknown> =>
+  redactLogMeta(value);
 
 export const enrichLogInfoWithContext = (
   info: Logform.TransformableInfo
@@ -146,46 +145,29 @@ const patchLoggerCloseForRegistryCleanup = (logger: Logger, cleanup: () => void)
 
 let hasReportedMissingTransport = false;
 
-const resolveEffectiveLoggingMode = (input: {
-  readonly consoleEnabled: boolean;
-  readonly otelEnabled: boolean;
-}): 'console_to_loki' | 'otel_to_loki' | 'degraded' => {
-  if (input.otelEnabled) {
-    return 'otel_to_loki';
-  }
-  if (input.consoleEnabled) {
-    return 'console_to_loki';
-  }
-  return 'degraded';
-};
-
 const buildConsoleTransport = (
   environment: string,
   emergencyFallback = false
 ): winston.transport => {
-  if (environment === 'development' && !emergencyFallback) {
-    return new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp(),
-        enrichWithContext(),
-        redactSensitive(),
-        winston.format.printf(({ timestamp, level, message, ...meta }) => {
-          const metaString = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
-          return `${timestamp} ${level}: ${message} ${metaString}`.trim();
-        })
-      ),
-    });
-  }
-
-  return new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      enrichWithContext(),
-      redactSensitive(),
-      winston.format.json()
-    ),
-  });
+  const format =
+    environment === 'development' && !emergencyFallback
+      ? winston.format.combine(
+          winston.format.colorize(),
+          winston.format.timestamp(),
+          enrichWithContext(),
+          redactSensitive(),
+          winston.format.printf(({ timestamp, level, message, ...meta }) => {
+            const metaString = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
+            return `${timestamp} ${level}: ${message} ${metaString}`.trim();
+          })
+        )
+      : winston.format.combine(
+          winston.format.timestamp(),
+          enrichWithContext(),
+          redactSensitive(),
+          winston.format.json()
+        );
+  return new winston.transports.Console({ format });
 };
 
 export const createSdkLogger = ({
@@ -199,10 +181,11 @@ export const createSdkLogger = ({
   const effectiveLevel = runtimeConfig.levelOverride ?? level ?? 'info';
   const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
   const otelEnabled = enableOtel ?? runtimeConfig.otelRequested;
-  const loggingMode = resolveEffectiveLoggingMode({
-    consoleEnabled,
-    otelEnabled,
-  });
+  const loggingMode = otelEnabled
+    ? 'otel_to_loki'
+    : consoleEnabled
+      ? 'console_to_loki'
+      : 'degraded';
   const transportsArray: winston.transport[] = [];
   let otelTransport: DirectOtelTransport | null = null;
 
@@ -211,12 +194,8 @@ export const createSdkLogger = ({
     transportsArray.push(otelTransport);
   }
 
-  if (consoleEnabled) {
-    transportsArray.push(buildConsoleTransport(environment));
-  }
-
-  if (transportsArray.length === 0) {
-    transportsArray.push(buildConsoleTransport(environment, true));
+  if (consoleEnabled || transportsArray.length === 0) {
+    transportsArray.push(buildConsoleTransport(environment, !consoleEnabled));
   }
 
   const logger = winston.createLogger({

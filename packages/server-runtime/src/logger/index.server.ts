@@ -178,7 +178,11 @@ export const createSdkLogger = ({
   enableOtel,
 }: LoggerOptions): Logger => {
   const runtimeConfig = getLoggingRuntimeConfig();
-  const effectiveLevel = runtimeConfig.levelOverride ?? level ?? 'info';
+  const requestedLevel = runtimeConfig.levelOverride ?? level ?? 'info';
+  const effectiveLevel =
+    runtimeConfig.environment === 'production' && requestedLevel === 'debug'
+      ? 'info'
+      : requestedLevel;
   const consoleEnabled = enableConsole ?? runtimeConfig.consoleEnabled;
   const otelEnabled = enableOtel ?? runtimeConfig.otelRequested;
   const loggingMode = otelEnabled

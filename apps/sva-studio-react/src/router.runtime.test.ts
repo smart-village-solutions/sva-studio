@@ -611,7 +611,7 @@ describe('router runtime helpers', () => {
     );
   });
 
-  it('uses platform routes for invalid non-tenant hosts without hiding other auth failures', async () => {
+  it('uses platform routes for invalid hosts and a compact response for missing tenants', async () => {
     const { getRouter } = await import('./router');
 
     routerMocks.executionMode.current = 'server';
@@ -628,9 +628,24 @@ describe('router runtime helpers', () => {
     );
 
     routerMocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
-      Object.assign(new Error('tenant database unavailable'), {
+      Object.assign(new Error('tenant not found'), {
         name: 'TenantAuthResolutionError',
         reason: 'tenant_not_found',
+        publicMessage: 'Anmeldung ist momentan nicht verfügbar.',
+      })
+    );
+
+    const missingTenantResponse = await getRouter().catch((error: unknown) => error);
+    expect(missingTenantResponse).toBeInstanceOf(Response);
+    expect((missingTenantResponse as Response).status).toBe(503);
+    expect(await (missingTenantResponse as Response).text()).toBe(
+      'Anmeldung ist momentan nicht verfügbar.'
+    );
+
+    routerMocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      Object.assign(new Error('tenant database unavailable'), {
+        name: 'TenantAuthResolutionError',
+        reason: 'tenant_lookup_failed',
       })
     );
 

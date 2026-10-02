@@ -922,12 +922,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-organizations-organization-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-organizations-organization-detail-page-tsx",
       "ticketSystem": "policy-baseline",
@@ -3381,12 +3375,6 @@
       "ticketSystem": "github",
       "status": "open",
       "summary": "Keycloak-Admin-Client in kleinere Lese-, Schreib- und Fehlerpfade zerlegen"
-    },
-    "frontend-app:apps/sva-studio-react/src/components/ui/searchable-select.tsx:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Searchable Select entlang Zustands-, Listen- und Interaktionslogik zerlegen"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-page.tsx:functionLines": {
       "ticketId": "#1448",

@@ -11,6 +11,8 @@ import { cn } from './utils.js';
 type StudioDataTableViewProps<TData extends RowData> = Readonly<{
   table: LegacyTable<TData>;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  hasRows: boolean;
+  emptyState: React.ReactNode;
   ariaLabel: string;
   caption?: string;
   labels: StudioDataTableLabels;
@@ -144,6 +146,8 @@ function StudioDataTableCompact<TData extends RowData>({
 export function StudioDataTableView<TData extends RowData>({
   table,
   containerRef,
+  hasRows,
+  emptyState,
   ariaLabel,
   caption,
   labels,
@@ -156,28 +160,38 @@ export function StudioDataTableView<TData extends RowData>({
 }: StudioDataTableViewProps<TData>) {
   return (
     <div
-      ref={containerRef}
-      className="overflow-hidden rounded-xl border border-border bg-card shadow-shell"
-      aria-busy="false"
-      data-selected-rows={selectedRowCount}
-      data-layout={isCompact ? 'compact' : 'wide'}
+      ref={hasRows ? containerRef : undefined}
+      className={cn(
+        'rounded-xl border border-border bg-card shadow-shell',
+        hasRows && 'overflow-hidden'
+      )}
+      aria-busy={hasRows ? 'false' : undefined}
+      data-selected-rows={hasRows ? selectedRowCount : undefined}
+      data-layout={hasRows ? (isCompact ? 'compact' : 'wide') : undefined}
     >
       {toolbarContent}
-
-      <StudioDataTableWide
-        table={table}
-        ariaLabel={ariaLabel}
-        caption={caption}
-        isCompact={isCompact}
-      />
-      <StudioDataTableCompact
-        table={table}
-        ariaLabel={ariaLabel}
-        labels={labels}
-        selectionMode={selectionMode}
-        isCompact={isCompact}
-        mobileSortingControls={mobileSortingControls}
-      />
+      {hasRows ? (
+        <>
+          <StudioDataTableWide
+            table={table}
+            ariaLabel={ariaLabel}
+            caption={caption}
+            isCompact={isCompact}
+          />
+          <StudioDataTableCompact
+            table={table}
+            ariaLabel={ariaLabel}
+            labels={labels}
+            selectionMode={selectionMode}
+            isCompact={isCompact}
+            mobileSortingControls={mobileSortingControls}
+          />
+        </>
+      ) : (
+        <div className="p-6" role="status" aria-live="polite">
+          {emptyState}
+        </div>
+      )}
       {footerContent}
     </div>
   );

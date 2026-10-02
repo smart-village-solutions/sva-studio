@@ -1,10 +1,6 @@
 import * as React from 'react';
 import { type RowData, type RowSelectionState, type SortingState } from '@tanstack/react-table';
-import {
-  getCoreRowModel,
-  getSortedRowModel,
-  useLegacyTable,
-} from '@tanstack/react-table/legacy';
+import { getCoreRowModel, getSortedRowModel, useLegacyTable } from '@tanstack/react-table/legacy';
 
 import { createStudioDataTableColumns } from './studio-data-table-columns.js';
 import {
@@ -84,6 +80,7 @@ export function StudioDataTable<TData extends RowData>({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isCompact, setIsCompact] = React.useState(false);
+  const hasRows = data.length > 0;
   const selectionScopeKey = React.useMemo(
     () =>
       [...data]
@@ -114,7 +111,7 @@ export function StudioDataTable<TData extends RowData>({
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [hasRows, isLoading]);
 
   React.useEffect(() => {
     const availableRowIds = new Set(data.map((row) => getRowId(row)));
@@ -219,22 +216,12 @@ export function StudioDataTable<TData extends RowData>({
     );
   }
 
-  if (data.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card shadow-shell">
-        {toolbarContent}
-        <div className="p-6" role="status" aria-live="polite">
-          {emptyState}
-        </div>
-        {footerContent}
-      </div>
-    );
-  }
-
   return (
     <StudioDataTableView
       table={table}
       containerRef={containerRef}
+      hasRows={hasRows}
+      emptyState={emptyState}
       ariaLabel={ariaLabel}
       caption={caption}
       labels={labels}

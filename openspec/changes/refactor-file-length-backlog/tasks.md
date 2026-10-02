@@ -227,10 +227,10 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       nach Importvalidierung und Ausführung aufteilen. Dateiformate,
       Vorschau, Fehler und Schreiboperationen mit den vorhandenen
       Import-/Operationstests prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1650.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1650 eingebracht;
+      Changelog-Gate vor Merge prüfen.
 
 ### PR 08d — Medien-Hook (1 Befund)
 

@@ -323,9 +323,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Hierarchiefehler und Subtree-Update. Keine DB- oder API-Änderung.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1657.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      PR 10a anlegen; Changelog-Gate vor Merge grün.
+      PR #1657 anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10b — Organisationsmutationen (1 Befund)
 

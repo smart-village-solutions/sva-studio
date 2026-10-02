@@ -87,6 +87,13 @@ Weitere Details:
 - Routing-Kurzinfo: [docs/reference/routing.md](../../docs/reference/routing.md)
 - Architektur: [docs/architecture/routing-architecture.md](../../docs/architecture/routing-architecture.md)
 
+## IAM-API
+
+`src/lib/iam-api.ts` bleibt der Importpfad für bestehende Verbraucher und
+enthält weiterhin die Benutzer-API. Die übrigen Anfragen und Payload-Typen
+liegen nach Ressourcen in benachbarten `iam-api-*`-Modulen: Rollen/Gruppen,
+Organisationen, Content, Medien, Instanzen, Runtime und Governance.
+
 ## Data Fetching
 
 There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.

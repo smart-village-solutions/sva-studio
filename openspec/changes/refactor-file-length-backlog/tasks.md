@@ -161,7 +161,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Validierung und Prüftypen aufteilen. Mandantengrenzen, Secrets,
       CRUD, Timeouts und Fehlerabbildung mit den Server-Tests prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1637.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

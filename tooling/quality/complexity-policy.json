@@ -2152,12 +2152,6 @@
       "status": "open",
       "summary": "Header-Komponente in kleinere Layout- und Aktionsbausteine aufteilen (apps/sva-studio-react/src/components/Header.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/lib/waste-management-operations.import.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-004",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Import-App-Adapter in Parsing-, Preview- und Persistenzschritte aufteilen (apps/sva-studio-react/src/lib/waste-management-operations.import.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/-home-page.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-005",
       "ticketSystem": "backlog",

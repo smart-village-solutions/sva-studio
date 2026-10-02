@@ -1,10 +1,10 @@
+import type { ContentJsonValue } from './content-management-access-state.js';
 import type {
-  ContentJsonValue,
   IamContentListSortDirection,
   IamContentListSortField,
   IamContentStatus,
   IamContentValidationState,
-} from './content-management-foundation.js';
+} from './content-management-status.js';
 import type { IamContentAccessSummary } from './content-management-access.js';
 
 import type { IamContentHistoryEntry } from './content-management-ownership.js';

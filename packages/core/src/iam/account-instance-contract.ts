@@ -1,4 +1,7 @@
-import type { InstanceRealmMode, InstanceStatus } from './account-management-contract.js';
+export type InstanceStatus =
+  'requested' | 'validated' | 'provisioning' | 'active' | 'failed' | 'suspended' | 'archived';
+
+export type InstanceRealmMode = 'new' | 'existing';
 
 export type IamInstanceProvisioningOperation = 'create' | 'activate' | 'suspend' | 'archive';
 

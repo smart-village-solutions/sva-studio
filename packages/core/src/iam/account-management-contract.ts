@@ -142,11 +142,6 @@ export type IamRuntimeDiagnostics = {
   readonly safeDetails?: IamRuntimeSafeDetails;
 };
 
-export type InstanceStatus =
-  'requested' | 'validated' | 'provisioning' | 'active' | 'failed' | 'suspended' | 'archived';
-
-export type InstanceRealmMode = 'new' | 'existing';
-
 export type ApiPagination = {
   readonly page: number;
   readonly pageSize: number;

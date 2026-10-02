@@ -1,4 +1,4 @@
-import type { IamContentStatus } from './content-management-foundation.js';
+import type { IamContentStatus } from './content-management-status.js';
 
 export type IamContentHistoryEntry = {
   readonly id: string;

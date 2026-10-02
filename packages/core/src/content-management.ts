@@ -1,20 +1,20 @@
 import {
   iamContentDomainCapabilities,
   iamContentPrimitiveActions,
-  iamContentStatuses,
-  iamContentValidationStates,
-} from './content-management-foundation.js';
+} from './content-management-capability.js';
+import { iamContentStatuses, iamContentValidationStates } from './content-management-status.js';
 import type {
-  ContentJsonValue,
   IamContentCapabilityMapping,
   IamContentDomainCapability,
   IamContentPrimitiveAction,
-  IamContentStatus,
-  IamContentValidationState,
   ResolvedIamContentCapabilityMapping,
-} from './content-management-foundation.js';
+} from './content-management-capability.js';
+import type { ContentJsonValue } from './content-management-access-state.js';
+import type { IamContentStatus, IamContentValidationState } from './content-management-status.js';
 
-export * from './content-management-foundation.js';
+export * from './content-management-status.js';
+export * from './content-management-capability.js';
+export * from './content-management-access-state.js';
 export * from './content-management-contract.js';
 export * from './content-management-access.js';
 

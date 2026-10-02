@@ -1,7 +1,7 @@
 import type {
   IamContentAccessReasonCode,
   IamContentAccessState,
-} from './content-management-foundation.js';
+} from './content-management-access-state.js';
 
 type ContentPermissionView = {
   readonly action: string;

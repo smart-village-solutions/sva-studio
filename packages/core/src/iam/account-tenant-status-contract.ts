@@ -1,6 +1,6 @@
 import type { TenantModuleActivationRecord } from '../instances/module-activation.js';
-import type { InstanceRealmMode } from './account-management-contract.js';
 import type {
+  InstanceRealmMode,
   IamInstanceAuditEvent,
   IamInstanceKeycloakPlan,
   IamInstanceKeycloakPreflight,

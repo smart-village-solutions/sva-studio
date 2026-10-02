@@ -223,14 +223,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 08c — Waste-Import (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
+- [x] `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
       nach Importvalidierung und Ausführung aufteilen. Dateiformate,
       Vorschau, Fehler und Schreiboperationen mit den vorhandenen
       Import-/Operationstests prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1650.json` mit passender `prNumber` und
-      nutzerverständlichem `body` in PR #1650 eingebracht;
-      Changelog-Gate vor Merge prüfen.
+      nutzerverständlichem `body` eingebracht; PR #1650 am 03.10.2026 als
+      `8f85d262e30cdaf010a34afc5668367c65d7c430` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 08d — Medien-Hook (1 Befund)
 

@@ -54,15 +54,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 04 — Plugin-SDK-Vertragsfläche (4 Befunde)
 
-- [ ] In `packages/plugin-sdk/src/` `plugins.ts`, `admin-resources.ts`,
+- [x] In `packages/plugin-sdk/src/` `plugins.ts`, `admin-resources.ts`,
       `plugin-operations.ts` und `plugin-platform-resolution.ts` an ihren
       bestehenden SDK-Zuständigkeiten aufteilen. Exporte und Registrierung
       mit Package-Tests und Typprüfung absichern.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1624.json` mit
+      Nutzertext eingebracht; PR #1624 am 02.10.2026 als
+      `45b36bc8560e1b2cf3aafd7049e66d0f196d3e87` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ## Studio-Frontend
 

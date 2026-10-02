@@ -144,15 +144,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 07b — Instanz-Betriebsmodelle und Detailseite (2 Befunde)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx`
+- [x] `apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx`
       und `-instance-detail-page.tsx` entlang New-Realm- und
       Existing-Realm-Betriebsmodell sowie Cockpit-Aktionen aufteilen.
       Schrittstatus, Berechtigungen, Nachladen und Fehlerzustände mit
       den vorhandenen Modell- und Seitentests prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-1636.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1636.json` eingebracht;
+      PR #1636 am 02.10.2026 als
+      `be22f2c5b713f2c7090717d9feb667f19e577091` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 07c — Schnittstellen-Speicherung und Healthcheck (2 Befunde)
 

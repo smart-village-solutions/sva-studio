@@ -314,7 +314,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 10a — Organisations-Lesequeries (1 Befund)
 
-- [ ] `packages/iam-admin/src/organization-query.ts` unter 320 Zeilen
+- [x] `packages/iam-admin/src/organization-query.ts` unter 320 Zeilen
       bringen. Projektion/Filter, lesende SQL-Abfragen und Hierarchieoperationen
       entlang ihrer Verantwortung trennen; die bestehenden Exporte und den
       separaten `publicExports`-Befund erhalten. `organization-query.test.ts`
@@ -322,10 +322,12 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       verschlüsselte Namen, Filter/Escaping, Sortierung/Pagination sowie
       Hierarchiefehler und Subtree-Update. Keine DB- oder API-Änderung.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1657.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      PR #1657 anlegen; Changelog-Gate vor Merge grün.
+      PR #1657 eingebracht; PR #1657 am 03.10.2026 als
+      `72059978e40fbed48838297f15834b09540c0ddd` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 10b — Organisationsmutationen (1 Befund)
 

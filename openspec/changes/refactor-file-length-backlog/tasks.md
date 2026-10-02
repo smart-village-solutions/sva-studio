@@ -68,27 +68,54 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 05 — Shell und Navigation (4 Befunde)
 
-- [ ] In `apps/sva-studio-react/src/` `components/Sidebar.tsx`,
+- [x] In `apps/sva-studio-react/src/` `components/Sidebar.tsx`,
       `components/Header.tsx`, `providers/auth-provider.tsx` und
       `routing/app-route-bindings.tsx` bereinigen. Navigation, Auth-Zustand,
       Rollen-Sichtbarkeit und typsichere Routen gezielt testen.
 
+- [x] Studio-Changelog `docs/changelog/entries/pr-1625.json` mit
+      Nutzertext eingebracht; PR #1625 am 02.10.2026 als
+      `6438ab98d9ce16ae3cbdbb85cfc80caf720368a5` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
+
+### PR 06a — IAM-API-Client (1 Befund)
+
+- [ ] `apps/sva-studio-react/src/lib/iam-api.ts` entlang seiner bestehenden
+      Ressourcenverträge aufteilen. Exporte, HTTP-Fehlerabbildung und
+      Anfrageparameter mit den gezielten API-Tests erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 06 — IAM-Administrationsoberfläche (8 Befunde)
+### PR 06b — IAM-Cockpit (1 Befund)
 
-- [ ] In `apps/sva-studio-react/src/` `routes/admin/-iam-page.tsx`,
-      `lib/iam-api.ts`, `routes/admin/roles/-role-detail-page.tsx`,
-      `routes/admin/users/-user-edit-page.tsx`,
+- [ ] `apps/sva-studio-react/src/routes/admin/-iam-page.tsx` nach
+      Rechte-, Governance-, DSR- und Löschregel-Panels aufteilen.
+      Tab-Navigation und Berechtigungssicht gezielt prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 06c — Rollen und Gruppen (2 Befunde)
+
+- [ ] `apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx`
+      und `routes/admin/groups/-group-detail-page.tsx` nach ihren
+      bestehenden Formular- und Berechtigungsverantwortungen aufteilen.
+      Rollenvergabe und Gruppenmitgliedschaft gezielt prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 06d — Benutzer, Organisationen und Auswahl (4 Befunde)
+
+- [ ] `apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx`,
       `routes/admin/users/-user-list-page.tsx`,
-      `routes/admin/organizations/-organization-detail-page.tsx`,
-      `routes/admin/groups/-group-detail-page.tsx` und
-      `components/ui/searchable-select.tsx` bereinigen. Berechtigungen,
-      Suche/Auswahl, Formularzustand und API-Vertrag charakterisieren.
-
+      `routes/admin/organizations/-organization-detail-page.tsx` und
+      `components/ui/searchable-select.tsx` aufteilen. Formulare,
+      Mitgliedschaft, Suche und Tastaturbedienung gezielt prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in

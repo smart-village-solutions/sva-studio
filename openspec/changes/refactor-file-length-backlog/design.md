@@ -12,7 +12,7 @@ ermittelt; parallele Arbeit kann sie verändern.
 | Bereich | Aktuelle Dateien über Limit | PR-Startbudget | Startzuschnitt für Liefer-PRs |
 | --- | ---: | ---: | --- |
 | Core, Routing, Server-Runtime | 10 | 2 | Verträge/Exports; Routing und Runtime nach eigener Risiko- und Testgrenze |
-| Studio-Frontend | 24 | 4 | Shell/Navigation; IAM-Administration; Instanzen/Schnittstellen; Content/Medien |
+| Studio-Frontend | 24 | 7 | Shell/Navigation; IAM-API; IAM-Cockpit; Rollen/Gruppen; Benutzer/Organisationen/Auswahl; Instanzen/Schnittstellen; Content/Medien |
 | Auth-Runtime, IAM-Admin, IAM-Governance | 37 | 5 | Account/Rollen; DSR/Governance; Auth/Session; Plugin-/Content-/Media-Pfade |
 | Data-Repositories, Instance-Registry | 17 | 3 | Media/Operations; Instanz-Repository; Provisionierung/Keycloak |
 | Plugin-SDK, Studio-UI | 7 | 2 | SDK-Vertragsfläche; bestehende UI-Primitives/Editoren |
@@ -21,13 +21,15 @@ ermittelt; parallele Arbeit kann sie verändern.
 | SVA-Mainserver | 9 | 2 | Content-Routen; Service/Wiring; Typen und interne Mapper |
 | Öffentlicher Waste-Kalender | 8 | 2 | öffentliche Daten-/Reminder-Pfade; Panels/Route |
 | CI-/Ops-Skripte, Studio-MCP | 14 | 4 | Complexity/Coverage/Sonar; DB-/Runtime-Prüfer; Ops; MCP |
-| **Gesamt** | **164** | **34** | |
+| **Gesamt** | **164** | **37** | |
 
 Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
 PR: Die letzte Spalte benennt die fachlichen Schnittkandidaten. Das
-Startbudget von 34 PRs entspricht den einzeln beschriebenen Aufgaben in
-`tasks.md`. Die Nummern definieren eine serielle Reihenfolge, keine Quote:
+Startbudget von 37 PRs entspricht den einzeln beschriebenen Aufgaben in
+`tasks.md`. PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
+in vier seriell bearbeitbare Teile 06a bis 06d aufgeteilt. Die Nummern
+definieren eine serielle Reihenfolge, keine Quote:
 Wenn neue Evidenz einen anderen Schnitt erfordert, wird die betreffende
 Aufgabe vor ihrer Umsetzung konkret geändert. Ein Maximum geänderter Dateien
 ersetzt die Risikoprüfung nicht.
@@ -42,8 +44,8 @@ ersetzt die Risikoprüfung nicht.
    Konsumenten/Verträge bearbeiten. Wenn ein konkreter Vertrag mit einem
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
-3. **Produktbereiche:** PR 05 bis PR 34 werden genau in der Reihenfolge von
-   `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
+3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d werden genau
+   in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.
    Ein Restbefund wird als konkret benannter weiterer PR-Task ergänzt und

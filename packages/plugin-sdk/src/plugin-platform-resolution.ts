@@ -5,7 +5,6 @@ import {
   definePluginCatalogEntry,
   type LoadedPluginEntry,
   type PluginCatalogEntry,
-  type PluginCatalogSourceType,
   type PluginManifestCapability,
   type PluginSnapshot,
 } from './plugin-platform-contracts.js';
@@ -14,26 +13,6 @@ export type PluginPlatformHost = {
   readonly studioVersion: string;
   readonly sdkVersion: string;
   readonly capabilities: readonly PluginManifestCapability[];
-};
-
-export type PluginCatalogIssueCode =
-  | 'plugin_disabled'
-  | 'plugin_incompatible_sdk_version'
-  | 'plugin_incompatible_studio_version'
-  | 'plugin_missing_host_capability'
-  | 'plugin_missing_browser_entry'
-  | 'plugin_module_missing'
-  | 'plugin_module_mismatch';
-
-export type PluginCatalogIssueSeverity = 'info' | 'error';
-
-export type PluginCatalogIssue = {
-  readonly pluginId: string;
-  readonly sourceType: PluginCatalogSourceType;
-  readonly sourceRef: string;
-  readonly severity: PluginCatalogIssueSeverity;
-  readonly code: PluginCatalogIssueCode;
-  readonly message: string;
 };
 
 export type ResolvedPluginCatalog = {
@@ -71,86 +50,17 @@ type ResolvePluginCatalogState = {
   readonly loadedPlugins: LoadedPluginEntry[];
 };
 
-const parseVersion = (
-  rawVersion: string
-): { readonly major: number; readonly minor: number; readonly patch: number } | undefined => {
-  const match = rawVersion.trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
-  if (!match) {
-    return undefined;
-  }
-
-  return {
-    major: Number.parseInt(match[1] ?? '', 10),
-    minor: Number.parseInt(match[2] ?? '', 10),
-    patch: Number.parseInt(match[3] ?? '', 10),
-  };
-};
-
-const compareVersions = (
-  left: { readonly major: number; readonly minor: number; readonly patch: number },
-  right: { readonly major: number; readonly minor: number; readonly patch: number }
-): number => {
-  if (left.major !== right.major) {
-    return left.major - right.major;
-  }
-  if (left.minor !== right.minor) {
-    return left.minor - right.minor;
-  }
-
-  return left.patch - right.patch;
-};
-
-const satisfiesVersionRange = (version: string, range: string): boolean => {
-  const normalizedRange = range.trim();
-  if (normalizedRange === '*') {
-    return true;
-  }
-
-  const parsedVersion = parseVersion(version);
-  if (!parsedVersion) {
-    return false;
-  }
-
-  if (normalizedRange.startsWith('^')) {
-    const baseVersion = parseVersion(normalizedRange.slice(1));
-    if (!baseVersion) {
-      return false;
-    }
-    if (compareVersions(parsedVersion, baseVersion) < 0) {
-      return false;
-    }
-
-    if (baseVersion.major > 0) {
-      return parsedVersion.major === baseVersion.major;
-    }
-    if (baseVersion.minor > 0) {
-      return parsedVersion.major === 0 && parsedVersion.minor === baseVersion.minor;
-    }
-
-    return (
-      parsedVersion.major === 0 &&
-      parsedVersion.minor === 0 &&
-      parsedVersion.patch === baseVersion.patch
-    );
-  }
-
-  const exactVersion = parseVersion(normalizedRange);
-  return exactVersion ? compareVersions(parsedVersion, exactVersion) === 0 : false;
-};
-
-const createIssue = (
-  entry: PluginCatalogEntry,
-  severity: PluginCatalogIssueSeverity,
-  code: PluginCatalogIssueCode,
-  message: string
-): PluginCatalogIssue => ({
-  pluginId: entry.pluginId,
-  sourceType: entry.sourceType,
-  sourceRef: entry.sourceRef,
-  severity,
-  code,
-  message,
-});
+import { satisfiesVersionRange } from './plugin-platform/version-range.js';
+import {
+  createIssue,
+  type PluginCatalogIssue,
+  type PluginCatalogIssueCode,
+} from './plugin-platform/catalog-issues.js';
+export type {
+  PluginCatalogIssue,
+  PluginCatalogIssueCode,
+  PluginCatalogIssueSeverity,
+} from './plugin-platform/catalog-issues.js';
 
 const rejectPluginEntry = (
   state: ResolvePluginCatalogState,
@@ -176,7 +86,12 @@ const validateEnabledPluginEntry = (
     return false;
   }
 
-  if (!satisfiesVersionRange(state.host.studioVersion, entry.manifest.hostCompatibility.studioVersionRange)) {
+  if (
+    !satisfiesVersionRange(
+      state.host.studioVersion,
+      entry.manifest.hostCompatibility.studioVersionRange
+    )
+  ) {
     rejectPluginEntry(
       state,
       entry,
@@ -244,7 +159,14 @@ const tryLoadPluginEntry = (state: ResolvePluginCatalogState, entry: PluginCatal
 const resolveCatalogEntry = (state: ResolvePluginCatalogState, entry: PluginCatalogEntry): void => {
   if (!entry.enabled) {
     state.inactiveCatalog.push(entry);
-    state.issues.push(createIssue(entry, 'info', 'plugin_disabled', `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`));
+    state.issues.push(
+      createIssue(
+        entry,
+        'info',
+        'plugin_disabled',
+        `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`
+      )
+    );
     return;
   }
 
@@ -295,7 +217,14 @@ const resolveCatalogEntryAsync = async (
 ): Promise<void> => {
   if (!entry.enabled) {
     state.inactiveCatalog.push(entry);
-    state.issues.push(createIssue(entry, 'info', 'plugin_disabled', `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`));
+    state.issues.push(
+      createIssue(
+        entry,
+        'info',
+        'plugin_disabled',
+        `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`
+      )
+    );
     return;
   }
 

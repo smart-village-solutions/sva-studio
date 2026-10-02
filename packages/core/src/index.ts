@@ -178,20 +178,8 @@ export type {
 } from './plugin-operations-contract.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
-export {
-  buildPrimaryHostname,
-  canTransitionInstanceStatus,
-  classifyHost,
-  isReservedTenantHostname,
-  instanceStatuses,
-  isInstanceStatus,
-  isTrafficEnabledInstanceStatus,
-  isValidHostname,
-  isValidInstanceId,
-  isValidParentDomain,
-  normalizeHost,
-  trafficEnabledInstanceStatuses,
-} from './instances/registry.js';
+export * from './instances/registry.js';
+export type { InstanceStatus } from './instances/registry.js';
 export {
   ACCOUNT_INVITATION_TEMPLATE_KEY,
   compileAccountInvitationTemplate,
@@ -231,24 +219,7 @@ export {
   isInstanceTenantAdminRequired,
   isInstanceKeycloakRequirementSatisfied,
 } from './instances/keycloak-checklist.js';
-export type {
-  HostClassification,
-  InstanceAuditEvent,
-  InstanceKeycloakCheckStatus,
-  InstanceKeycloakPreflightCheck,
-  InstanceKeycloakProvisioningIntent,
-  InstanceKeycloakProvisioningPlanStep,
-  InstanceKeycloakProvisioningRun,
-  InstanceKeycloakProvisioningRunStep,
-  InstanceKeycloakProvisioningRunStatus,
-  InstanceKeycloakProvisioningStepStatus,
-  InstanceProvisioningOperation,
-  InstanceProvisioningRun,
-  InstanceRealmMode,
-  InstanceRegistryRecord,
-  InstanceStatus,
-  TrafficEnabledInstanceStatus,
-} from './instances/registry.js';
+
 export type {
   InstanceKeycloakRequirement,
   InstanceKeycloakRequirementKey,

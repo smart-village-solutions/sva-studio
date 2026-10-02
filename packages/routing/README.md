@@ -53,6 +53,8 @@ packages/routing/
 │   ├── app.routes.ts
 │   ├── app.routes.server.ts
 │   ├── app.routes.shared.ts
+│   ├── app-route-definitions.ts
+│   ├── app-admin-route-definitions.ts
 │   ├── auth.routes.ts
 │   ├── auth.routes.server.ts
 │   ├── guards.ts
@@ -65,7 +67,7 @@ packages/routing/
 └── vitest.config.ts
 ```
 
-Die Kernlogik liegt in `app.routes.shared.ts` und den zugehörigen Guard-, Plugin- und Admin-Route-Modulen. `index.ts` und `index.server.ts` definieren die öffentlichen Entry-Points für Client und Server.
+`app.routes.shared.ts` führt die Standard- und Admin-Route-Definitionen in ihrer bisherigen Reihenfolge zusammen. Guard-, Plugin- und Admin-Route-Module enthalten die zugehörige Logik. `index.ts` und `index.server.ts` definieren die öffentlichen Entry-Points für Client und Server.
 
 ## Nx-Konfiguration
 

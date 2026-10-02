@@ -28,15 +28,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 02 — Studio-UI-Bausteine (3 Befunde)
 
-- [ ] In `packages/studio-ui-react/src/` `studio-primitives.tsx`,
+- [x] In `packages/studio-ui-react/src/` `studio-primitives.tsx`,
       `studio-data-table.tsx` und `rich-text-html-editor.tsx` nach vorhandenen
       Komponentenverantwortungen zerlegen. DOM-, A11y- und Editor-Verhalten
       mit gezielten Komponenten- und Typprüfungen erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1622.json` mit
+      Nutzertext eingebracht; PR #1622 am 02.10.2026 als
+      `310b84e14a7a97518077192202e891a7a6f4e98d` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 03 — Core- und Routing-Verträge (8 Befunde)
 

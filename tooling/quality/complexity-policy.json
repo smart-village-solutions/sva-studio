@@ -2488,12 +2488,6 @@
       "status": "open",
       "summary": "Storage-S3-Datei in kleinere Listing-, Konfigurations- und Delivery-Bausteine aufteilen (packages/auth-runtime/src/iam-media/storage-s3.ts)"
     },
-    "frontend-app:apps/sva-studio-react/src/hooks/use-media.ts:fileLines": {
-      "ticketId": "QUAL-FRONTEND-MEDIA-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "useMedia in kleinere Query-, Selection- und Mutation-Helfer zerlegen (apps/sva-studio-react/src/hooks/use-media.ts)"
-    },
     "instance-registry-service:packages/instance-registry/src/service-audit-keycloak.ts:fileLines": {
       "ticketId": "QUAL-INSTANCE-REGISTRY-002",
       "ticketSystem": "backlog",

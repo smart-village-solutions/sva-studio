@@ -138,7 +138,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       aufteilen. Formularvalidierung, Realm-Auswahl, serverseitige
       Bereitschaft und Anlage mit dem bestehenden Seitentest prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1635.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

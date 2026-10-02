@@ -75,6 +75,45 @@ export const refreshMainserverProjectionBatch = (
     resolveHotCompletion = resolve;
   });
 
+  const recordTargetFailure = async (
+    target: ContentProjectionSyncTarget,
+    pageCount: number,
+    error: unknown,
+    phase: 'page' | 'final'
+  ): Promise<void> => {
+    const errorCode = normalizeApiErrorCode(
+      error && typeof error === 'object' && 'code' in error
+        ? (error as { code?: unknown }).code
+        : undefined
+    );
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
+    contentProjectionLogger.warn(
+      phase === 'page'
+        ? 'mainserver_projection_page_failed'
+        : 'mainserver_projection_reconciliation_failed',
+      {
+        ...buildProjectionLogContext(target, trigger),
+        error_code: errorCode,
+        error_message: errorMessage,
+        page: pageCount,
+        page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+      }
+    );
+    await markProjectionSyncFailed(
+      target,
+      refreshRunIds.get(buildProjectionTargetKey(target)) as string,
+      errorCode,
+      errorMessage
+    );
+    responses.set(
+      buildProjectionTargetKey(target),
+      createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
+    );
+  };
+
   const completion = (async () => {
     for (const target of targets) {
       const targetKey = buildProjectionTargetKey(target);
@@ -144,32 +183,7 @@ export const refreshMainserverProjectionBatch = (
         });
       },
       async (target, _pages, error) => {
-        const errorCode = normalizeApiErrorCode(
-          error && typeof error === 'object' && 'code' in error
-            ? (error as { code?: unknown }).code
-            : undefined
-        );
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
-        contentProjectionLogger.warn('mainserver_projection_page_failed', {
-          ...buildProjectionLogContext(target, trigger),
-          error_code: errorCode,
-          error_message: errorMessage,
-          page: _pages.length + 1,
-          page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
-        });
-        await markProjectionSyncFailed(
-          target,
-          refreshRunIds.get(buildProjectionTargetKey(target)) as string,
-          errorCode,
-          errorMessage
-        );
-        responses.set(
-          buildProjectionTargetKey(target),
-          createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
-        );
+        await recordTargetFailure(target, _pages.length + 1, error, 'page');
       },
       async () => {
         resolveHotCompletion?.(new Map(responses));
@@ -192,23 +206,27 @@ export const refreshMainserverProjectionBatch = (
         continue;
       }
 
-      await persistMainserverProjectionRowsProgressively({
-        target,
-        keycloakSubject: target.keycloakSubject,
-        actorAccountId: target.actorAccountId,
-        rows: accumulatedRows.get(targetKey) ?? [],
-        refreshCredentialSource: refreshCredentialSources.get(targetKey),
-        finalize: true,
-        page: Math.max(
-          1,
-          Math.ceil(
-            (accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE
-          )
-        ),
-        refreshRunId: refreshRunIds.get(targetKey) as string,
-        skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
-      });
-      responses.set(targetKey, null);
+      try {
+        await persistMainserverProjectionRowsProgressively({
+          target,
+          keycloakSubject: target.keycloakSubject,
+          actorAccountId: target.actorAccountId,
+          rows: accumulatedRows.get(targetKey) ?? [],
+          refreshCredentialSource: refreshCredentialSources.get(targetKey),
+          finalize: true,
+          page: Math.max(
+            1,
+            Math.ceil(
+              (accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE
+            )
+          ),
+          refreshRunId: refreshRunIds.get(targetKey) as string,
+          skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
+        });
+        responses.set(targetKey, null);
+      } catch (error) {
+        await recordTargetFailure(target, 0, error, 'final');
+      }
     }
 
     resolveHotCompletion?.(new Map(responses));

@@ -26,11 +26,7 @@ export const runMainserverProjectionRoundRobin = async <TTarget, TPageData>(
     pages: readonly TPageData[],
     latestPage: TPageData
   ) => Promise<void>,
-  onPageFailed?: (
-    target: TTarget,
-    pages: readonly TPageData[],
-    error: unknown
-  ) => Promise<void>,
+  onPageFailed?: (target: TTarget, pages: readonly TPageData[], error: unknown) => Promise<void>,
   onHotPhaseCompleted?: () => Promise<void>
 ): Promise<readonly MainserverProjectionRoundRobinState<TTarget, TPageData>[]> => {
   const states = targets.map((target) => ({
@@ -53,17 +49,17 @@ export const runMainserverProjectionRoundRobin = async <TTarget, TPageData>(
           page: state.nextPage,
           pageSize,
         });
+        const pages = [...state.data, pageResult.data];
+        if (onPageLoaded) {
+          await onPageLoaded(state.target, pages, pageResult.data);
+        }
+        state.data.push(pageResult.data);
       } catch (error) {
         state.completed = true;
         if (onPageFailed) {
           await onPageFailed(state.target, state.data, error);
         }
         continue;
-      }
-
-      state.data.push(pageResult.data);
-      if (onPageLoaded) {
-        await onPageLoaded(state.target, state.data, pageResult.data);
       }
 
       state.completed = pageResult.hasNextPage === false;

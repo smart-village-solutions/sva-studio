@@ -211,14 +211,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 08b — Content-Editor (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/routes/content/-content-editor-page.tsx`
+- [x] `apps/sva-studio-react/src/routes/content/-content-editor-page.tsx`
       nach Formularzustand und Speicherung aufteilen. Validierung,
       Berechtigungen, Speichern und Fehlerrückmeldungen mit den vorhandenen
       Editor-Seitentests prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1649.json` mit passender `prNumber` und
+      nutzerverständlichem `body` eingebracht; PR #1649 am 02.10.2026 als
+      `00a5e1af0a0c5fe9b6b2aaae7118eecac7c336b9` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 08c — Waste-Import (1 Befund)
 
@@ -227,9 +228,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Vorschau, Fehler und Schreiboperationen mit den vorhandenen
       Import-/Operationstests prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      `docs/changelog/entries/pr-1650.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1650 eingebracht;
+      Changelog-Gate vor Merge prüfen.
 
 ### PR 08d — Medien-Hook (1 Befund)
 

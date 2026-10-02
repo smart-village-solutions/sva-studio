@@ -409,6 +409,16 @@ describe('waste-management-operations.import', () => {
     expect(repository.upsertWasteFraction).toHaveBeenCalledTimes(1);
     expect(repository.upsertWasteTour).toHaveBeenCalledTimes(1);
     expect(repository.upsertWasteLocationTourLink).toHaveBeenCalledTimes(2);
+    const orderedWrites = [
+      repository.upsertWasteCity,
+      repository.upsertWasteStreet,
+      repository.upsertWasteHouseNumber,
+      repository.upsertWasteCollectionLocation,
+      repository.upsertWasteFraction,
+      repository.upsertWasteTour,
+      repository.upsertWasteLocationTourLink,
+    ].map((write) => write.mock.invocationCallOrder[0]);
+    expect(orderedWrites).toEqual([...orderedWrites].sort((left, right) => left - right));
     expect(result).toMatchObject({
       rowCount: 2,
       createdFractions: 1,

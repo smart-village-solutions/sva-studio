@@ -156,14 +156,14 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 07c — Schnittstellen-Speicherung und Healthcheck (2 Befunde)
 
-- [ ] `apps/sva-studio-react/src/lib/instance-interfaces-server.ts`
+- [x] `apps/sva-studio-react/src/lib/instance-interfaces-server.ts`
       und `instance-interface-healthcheck.server.ts` nach Speicherung,
       Validierung und Prüftypen aufteilen. Mandantengrenzen, Secrets,
       CRUD, Timeouts und Fehlerabbildung mit den Server-Tests prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-1637.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1637.json` eingebracht;
+      PR #1637 am 02.10.2026 als
+      `3c54567f0547f4d6a66fd4f2db0722902667a96d` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 07d — Schnittstellen-API (1 Befund)
 

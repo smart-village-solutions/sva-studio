@@ -790,12 +790,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (apps/sva-studio-react/src/lib/iam-api.ts)"
     },
-    "frontend-app:apps/sva-studio-react/src/lib/interfaces-api.ts:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-lib-interfaces-api-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/lib/interfaces-api.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/providers/auth-provider.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-sva-studio-react-src-providers-auth-provider-tsx",
       "ticketSystem": "policy-baseline",

@@ -91,14 +91,11 @@ describe('content projection reconciliation scopes', () => {
       }),
     ]);
 
-    state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
-      async (input: { actingPrincipalType?: 'user' | 'organization' }) => ({
-        status: 'ok',
-        source: input.actingPrincipalType ?? 'organization',
-        credentials: { apiKey: 'key', apiSecret: 'secret' },
-        credentialFingerprint: 'b'.repeat(64),
-      })
-    );
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
     await refreshProjectedContents(ctx, {
       visibleTypes: ['cockpit-cards.cockpit-card'],
       force: true,
@@ -108,6 +105,33 @@ describe('content projection reconciliation scopes', () => {
         projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
       }),
     ]);
+
+    fixture.projectionRows.push(stale);
+    fixture.syncStates.set(
+      'cockpit-cards.cockpit-card::de-musterhausen::account-1::org-1::user::cockpit-cards.cockpit-card',
+      {
+        sync_scope_key: stale.projection_scope_key,
+        last_started_at: '2999-01-01T00:00:00.000Z',
+        last_succeeded_at: '2999-01-01T00:00:00.000Z',
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 1,
+      }
+    );
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'user',
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    const superseded = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await superseded.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    );
+    expect(fixture.projectionRows).toContainEqual(stale);
   });
 
   it('stores the same mainserver entity separately for different projection scopes', async () => {

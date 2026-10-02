@@ -200,8 +200,16 @@ describe('content projection mutation recovery and audit', () => {
 
     releaseBatchList.current?.();
 
-    await expect(batchRefreshPromise).resolves.toBeInstanceOf(Response);
+    const supersededBatch = await batchRefreshPromise;
+    expect(supersededBatch.status).toBe(200);
+    expect((await supersededBatch.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    );
     await expect(mutationRefreshPromise).resolves.toBeUndefined();
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['poi.point-of-interest'],
+      force: true,
+    });
     expect(fixture.projectionRows).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source_entity_id: 'poi-batch-1' }),

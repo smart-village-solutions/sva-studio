@@ -96,6 +96,12 @@ export const refreshMainserverProjectionBatch = (
           ...(genericItemScanOffset !== undefined ? { genericItemScanOffset } : {}),
         });
         if (result.refreshCredentialSource) {
+          const previousSource = refreshCredentialSources.get(targetKey);
+          if (previousSource && previousSource !== result.refreshCredentialSource) {
+            throw Object.assign(new Error('Mainserver-Zugang wechselte während des Abgleichs.'), {
+              code: 'projection_credential_changed_during_refresh',
+            });
+          }
           refreshCredentialSources.set(targetKey, result.refreshCredentialSource);
         }
         if (result.nextGenericItemScanOffset !== undefined) {

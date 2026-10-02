@@ -19,6 +19,7 @@ import {
   buildProjectionLogContext,
   countProjectedRowsForScopeWithClient,
   deleteMainserverProjectionRowByEntity,
+  lockMainserverProjectionType,
   markMainserverProjectionSyncSucceeded,
   markProjectionSyncFailed,
   markProjectionSyncStarted,
@@ -75,6 +76,7 @@ const deleteProjectionMutation = async (
 ): Promise<void> => {
   await recordDeletionAudit(input);
   await withInstanceScopedDb(input.target.instanceId, async (client) => {
+    await lockMainserverProjectionType(client, input.target);
     const leader = await client.query<{ refresh_run_id?: string | null }>(
       `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
        WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
@@ -241,7 +243,10 @@ const deleteStaleGenericItemSiblingProjection = async (
 ): Promise<void> => {
   await enqueueProjectionWork(target, () =>
     withInstanceScopedDb(target.instanceId, async (client) => {
+      await lockMainserverProjectionType(client, target);
       await deleteMainserverProjectionRowByEntity(client, target, entityId);
+      const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
+      await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
     })
   );
 };

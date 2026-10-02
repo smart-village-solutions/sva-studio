@@ -98,6 +98,9 @@ const buildLoadedProjectionPage = <TItem>(input: {
   const nextPage = pagingResult.pagination.page ?? input.pageQuery.page;
 
   return {
+    ...(input.result.credentialSource
+      ? { refreshCredentialSource: input.result.credentialSource }
+      : {}),
     rows: input.result.data.map((item) => input.mapRow(item, credentialSource)),
     hasNextPage: hasNextProjectionPage(pagingResult, input.pageQuery, input.continueAfterEmptyPage),
     nextPage: nextPage + 1,

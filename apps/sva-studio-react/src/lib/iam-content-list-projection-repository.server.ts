@@ -18,7 +18,10 @@ import {
 } from './iam-content-list-projection-repository-schema.server.js';
 import {
   countProjectedRowsForScopeWithClient,
-  newerSiblingRefreshGuardSql,
+  hasNewerMainserverProjectionSuccess,
+  loadProjectionRefreshLeader,
+  lockMainserverProjectionType,
+  markProjectionSyncFailed,
 } from './iam-content-list-projection-repository-sync-state.server.js';
 import { deleteTransferredProjectionRowsFromOtherScopes } from './iam-content-list-projection-repository-transfer.server.js';
 import {
@@ -49,13 +52,8 @@ const deleteMainserverProjectionRows = async (
       'projection.content_type = $2',
     ];
     if (schemaMode === 'scoped' && selector.kind !== 'entity') {
-      const targetKey = buildProjectionTargetKey(target);
       values.push(buildRefreshDeletionScopeKeys(target, refreshCredentialSource));
       predicates.push(`projection.projection_scope_key = ANY($${values.length}::text[])`);
-      if (!target.actingPrincipalType) {
-        values.push(targetKey);
-        predicates.push(newerSiblingRefreshGuardSql);
-      }
     }
     if (selector.kind !== 'all') {
       values.push(target.contentType);
@@ -165,14 +163,14 @@ export const upsertSingleMainserverProjectionRow = async (
   );
 
   await withInstanceScopedDb(target.instanceId, async (client) => {
-    const leader = await client.query<{ refresh_run_id?: string | null }>(
-      `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
-       WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
-         AND sync_scope_key = $3 FOR UPDATE;`,
-      [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
-    );
-    if (leader.rows[0]?.refresh_run_id !== refreshRunId) {
-      return;
+    await lockMainserverProjectionType(client, target);
+    const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
+    const leader = await loadProjectionRefreshLeader(client, target, schemaMode);
+    if (leader?.refresh_run_id !== refreshRunId) return;
+    if (await hasNewerMainserverProjectionSuccess(client, target, leader.last_started_at)) {
+      throw Object.assign(new Error('Ein neuerer Mainserver-Abgleich hat diesen Lauf überholt.'), {
+        code: 'projection_refresh_superseded',
+      });
     }
     await upsertMainserverProjectionRows(client, target, projectionPayloadJson);
     await deleteTransferredProjectionRowsFromOtherScopes(client, target, row);
@@ -184,7 +182,8 @@ export const upsertSingleMainserverProjectionRow = async (
 export const markMainserverProjectionSyncSucceeded = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget,
-  projectedCount: number
+  projectedCount: number,
+  preserveRefreshStart = false
 ): Promise<void> => {
   await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
     const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
@@ -207,11 +206,11 @@ INSERT INTO iam.content_list_projection_sync_state (
   is_total_final,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, $3, 'full_refresh', NOW(), NOW(), NULL, NULL, $4, 'complete_fresh', $4, TRUE, NOW())
+VALUES ($1, 'mainserver', $2, $3, 'full_refresh', statement_timestamp(), statement_timestamp(), NULL, NULL, $4, 'complete_fresh', $4, TRUE, NOW())
 ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
 DO UPDATE SET
-  last_started_at = NOW(),
-  last_succeeded_at = NOW(),
+  last_started_at = CASE WHEN $5::boolean THEN iam.content_list_projection_sync_state.last_started_at ELSE statement_timestamp() END,
+  last_succeeded_at = statement_timestamp(),
   last_error_code = NULL,
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
@@ -222,7 +221,13 @@ DO UPDATE SET
   refresh_phase = NULL,
   updated_at = NOW();
       `,
-        [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target), projectedCount]
+        [
+          target.instanceId,
+          target.contentType,
+          buildMainserverSyncScopeKey(target),
+          projectedCount,
+          preserveRefreshStart,
+        ]
       );
       return;
     }
@@ -244,11 +249,11 @@ INSERT INTO iam.content_list_projection_sync_state (
   is_total_final,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, 'full_refresh', NOW(), NOW(), NULL, NULL, $3, 'complete_fresh', $3, TRUE, NOW())
+VALUES ($1, 'mainserver', $2, 'full_refresh', statement_timestamp(), statement_timestamp(), NULL, NULL, $3, 'complete_fresh', $3, TRUE, NOW())
 ON CONFLICT (instance_id, source_system, content_type)
 DO UPDATE SET
-  last_started_at = NOW(),
-  last_succeeded_at = NOW(),
+  last_started_at = CASE WHEN $4::boolean THEN iam.content_list_projection_sync_state.last_started_at ELSE statement_timestamp() END,
+  last_succeeded_at = statement_timestamp(),
   last_error_code = NULL,
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
@@ -259,7 +264,7 @@ DO UPDATE SET
   refresh_phase = NULL,
   updated_at = NOW();
     `,
-      [target.instanceId, target.contentType, projectedCount]
+      [target.instanceId, target.contentType, projectedCount, preserveRefreshStart]
     );
   });
 };
@@ -275,26 +280,6 @@ type ProgressiveProjectionPersistenceInput = Readonly<{
   readonly skippedInvalidCount: number;
   readonly refreshCredentialSource?: 'user' | 'organization';
 }>;
-
-const loadProjectionRefreshLeader = async (
-  client: ProjectionDbClient,
-  target: ContentProjectionSyncTarget,
-  schemaMode: ProjectionSyncStateSchemaMode
-): Promise<string | null> => {
-  const result = await client.query<{ refresh_run_id?: string | null }>(
-    schemaMode === 'scoped'
-      ? `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
-         WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
-           AND sync_scope_key = $3 LIMIT 1 FOR UPDATE;`
-      : `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
-         WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
-         LIMIT 1 FOR UPDATE;`,
-    schemaMode === 'scoped'
-      ? [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
-      : [target.instanceId, target.contentType]
-  );
-  return result.rows[0]?.refresh_run_id ?? null;
-};
 
 const updateProjectionRefreshProgress = async (
   client: ProjectionDbClient,
@@ -352,7 +337,7 @@ const finalizeProgressiveProjectionRefresh = async (
     input.refreshCredentialSource
   );
   const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);
-  await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount);
+  await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount, true);
 };
 
 export const persistMainserverProjectionRowsProgressively = async (
@@ -369,11 +354,15 @@ export const persistMainserverProjectionRowsProgressively = async (
       : null;
 
   let rowsPersisted = false;
+  let superseded = false;
   await withInstanceScopedDb(input.target.instanceId, async (client) => {
+    await lockMainserverProjectionType(client, input.target);
     await withProjectionSchemaModeRetry(input.target, 'sync-state', async () => {
       const schemaMode = await loadProjectionSyncStateSchemaMode(client, input.target.instanceId);
-      const persistedRunId = await loadProjectionRefreshLeader(client, input.target, schemaMode);
-      if (persistedRunId !== input.refreshRunId) {
+      const leader = await loadProjectionRefreshLeader(client, input.target, schemaMode);
+      if (leader?.refresh_run_id !== input.refreshRunId) return;
+      if (await hasNewerMainserverProjectionSuccess(client, input.target, leader.last_started_at)) {
+        superseded = true;
         return;
       }
 
@@ -386,6 +375,17 @@ export const persistMainserverProjectionRowsProgressively = async (
       await finalizeProgressiveProjectionRefresh(client, input, dedupedRows);
     });
   });
+  if (superseded) {
+    await markProjectionSyncFailed(
+      input.target,
+      input.refreshRunId,
+      'projection_refresh_superseded',
+      'Ein neuerer Mainserver-Abgleich hat diesen Lauf überholt.'
+    );
+    throw Object.assign(new Error('Ein neuerer Mainserver-Abgleich hat diesen Lauf überholt.'), {
+      code: 'projection_refresh_superseded',
+    });
+  }
   if (rowsPersisted) {
     await reconcilePersistedMainserverProjectionRows(input.target, dedupedRows);
   }

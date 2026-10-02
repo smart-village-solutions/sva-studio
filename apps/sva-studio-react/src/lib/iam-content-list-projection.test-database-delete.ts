@@ -1,8 +1,5 @@
 import type { TestProjectionRow } from './iam-content-list-projection.test-database-types.js';
-import {
-  hasNewerSiblingSync,
-  type TestSyncState,
-} from './iam-content-list-projection.test-database-sync-state.js';
+import type { TestSyncState } from './iam-content-list-projection.test-database-sync-state.js';
 
 export const removeTransferredProjectionRows = (
   rows: readonly TestProjectionRow[],
@@ -76,11 +73,7 @@ export const deleteProjectionQueryResult = (
     const matchingEntity = retainedEntityIds
       ? !retainedEntityIds.includes(row.source_entity_id)
       : sourceEntityId === null || row.source_entity_id === sourceEntityId;
-    const targetScopeKey = String(queryValue(values, 3, ''));
-    const newerSibling =
-      text.includes('sync_state AS sibling') &&
-      hasNewerSiblingSync(fixture, contentType, targetScopeKey, row.projection_scope_key);
-    return !(matchingScope && matchingEntity && !newerSibling);
+    return !(matchingScope && matchingEntity);
   });
   return { rows: [], rowCount: 0 };
 };

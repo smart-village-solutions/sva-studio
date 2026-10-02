@@ -275,9 +275,12 @@ export const loadMainserverProjectionPage = async (
       includeInvisible: true,
       ...pageQuery,
     });
-    const credentialSource = result.credentialSource ?? target.actingPrincipalType ?? 'user';
+    const credentialSource =
+      result.credentialSource ?? target.actingPrincipalType ?? refreshCredentialSource ?? 'user';
     return enrichProjectionRowsWithBindingState(target, {
-      ...(refreshCredentialSource ? { refreshCredentialSource } : {}),
+      ...(result.credentialSource || refreshCredentialSource
+        ? { refreshCredentialSource: result.credentialSource ?? refreshCredentialSource }
+        : {}),
       rows: result.data.map((item: SvaMainserverProjectionListItem) =>
         mapSlimProjectionRow(target, credentialSource, item)
       ),
@@ -295,10 +298,10 @@ export const loadMainserverProjectionPage = async (
     });
   }
   return enrichProjectionRowsWithBindingState(target, {
+    ...(refreshCredentialSource ? { refreshCredentialSource } : {}),
     ...(await mainserverProjectionPageLoaders[target.contentType]({
       target,
       pageQuery,
     })),
-    ...(refreshCredentialSource ? { refreshCredentialSource } : {}),
   });
 };

@@ -738,10 +738,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 2. `apps/sva-studio-react/src/routes/admin/organizations/*`
    - Organisationsverwaltung trennt Liste, Anlage und Detail/Mitgliedschaften in eigenständige Routen ohne modalbasierten CRUD-State.
 3. `apps/sva-studio-react/src/routes/admin/groups/*`
-   - Gruppenverwaltung trennt Liste, Anlage und Detail/Rollen/Mitgliedschaften in eigenständige Routen.
-4. `apps/sva-studio-react/src/routes/admin/legal-texts/*`
+   - Gruppenverwaltung trennt Liste, Anlage und Detail/Rollen/Mitgliedschaften in eigenständige Routen. Die Detailroute hält Laden und Mutationen; Formular und Mitgliedschaften liegen in benachbarten Ansichtsmodulen.
+4. `apps/sva-studio-react/src/routes/admin/roles/-role-detail-*`
+   - Die Rollendetailroute hält Tab-Navigation und Fehlerzustände; benachbarte Module trennen Stammdaten, Permission-Entwurf und -Tabelle, Benutzerzuweisungen und Sync-Ansicht.
+5. `apps/sva-studio-react/src/routes/admin/legal-texts/*`
    - Rechtstextverwaltung trennt Liste, Anlage und versionsbezogene Detailbearbeitung in eigenständige Routen.
-5. `packages/routing/src/account-ui.routes.ts`
+6. `packages/routing/src/account-ui.routes.ts`
    - Enthält die kanonischen Guard-Pfade für Listen-, Create- und Detailrouten dieser CRUD-artigen Admin-Ressourcen.
 
 ### Ergänzung 2026-04: Admin-Ressourcen-Registry

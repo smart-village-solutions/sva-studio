@@ -814,18 +814,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx)"
     },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx:cyclomaticComplexity": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-group-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-group-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-group-detail-page-tsx",
       "ticketSystem": "policy-baseline",
@@ -951,18 +939,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/organizations/-organizations-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx:cyclomaticComplexity": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-role-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-role-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-role-detail-page-tsx",

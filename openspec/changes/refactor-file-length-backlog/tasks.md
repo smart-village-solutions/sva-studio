@@ -90,13 +90,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 06b — IAM-Cockpit (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/routes/admin/-iam-page.tsx` nach
+- [x] `apps/sva-studio-react/src/routes/admin/-iam-page.tsx` nach
       Rechte-, Governance-, DSR- und Löschregel-Panels aufteilen.
       Tab-Navigation und Berechtigungssicht gezielt prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1627.json` eingebracht; PR #1627
+      am 02.10.2026 als `006760cfc308b4d367dd12f2180af90326dc872a`
+      gemergt. Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 06c — Rollen und Gruppen (2 Befunde)
 

@@ -223,11 +223,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 08c — Waste-Import (1 Befund)
 
-- [x] `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
+- [ ] `apps/sva-studio-react/src/lib/waste-management-operations.import.ts`
       nach Importvalidierung und Ausführung aufteilen. Dateiformate,
       Vorschau, Fehler und Schreiboperationen mit den vorhandenen
       Import-/Operationstests prüfen.
-- [x] Eigenen Studio-Changelog-Eintrag
+- [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1650.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1650 eingebracht;
       Changelog-Gate vor Merge prüfen.

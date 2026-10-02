@@ -42,11 +42,20 @@ packages/plugin-sdk/
 |   |-- index.ts
 |   |-- public-api.ts
 |   |-- plugins.ts
+|   |-- plugin-definition-types.ts
+|   |-- plugin-definition-validation.ts
+|   |-- plugin-registry-*.ts
+|   |-- plugin-operations.ts
+|   |-- plugin-job-types.ts
+|   |-- plugin-profile-definitions.ts
 |   |-- plugin-platform/
 |   |   |-- access-requirements.ts
-|   |   `-- plugin-actions.ts
+|   |   |-- plugin-actions.ts
+|   |   |-- catalog-issues.ts
+|   |   `-- version-range.ts
 |   |-- build-time-registry.ts
 |   |-- admin-resources.ts
+|   |-- admin-resource-*.ts
 |   |-- content-types.ts
 |   |-- standard-content-plugin.ts
 |   |-- mainserver-client.ts
@@ -66,10 +75,13 @@ packages/plugin-sdk/
 
 Orientierung innerhalb von `src/`:
 
-- [`plugins.ts`](./src/plugins.ts): zentrale Plugin-Typen, Merge-Logik und Registries für Actions, Permissions, Audit-Events und IAM
+- [`plugins.ts`](./src/plugins.ts): Plugin-Registry-Komposition und bisherige öffentliche SDK-Exporte; Definitionen, Validierung und Registry-Aggregation liegen in den benachbarten `plugin-*`-Modulen
 - [`plugin-platform/`](./src/plugin-platform/): interne, frameworkfreie Vergleichs- und Validierungsphasen für Access-Anforderungen und Action-Registries; diese Module sind keine öffentlichen Package-Subpaths
 - [`build-time-registry.ts`](./src/build-time-registry.ts): Aggregation aller Plugin-Beiträge für die Build-Zeit
-- [`admin-resources.ts`](./src/admin-resources.ts) und [`content-types.ts`](./src/content-types.ts): fachliche Verträge inklusive Validierung
+- [`admin-resources.ts`](./src/admin-resources.ts): Admin-Resource-Registry und bisherige öffentliche Exporte; Verträge und Validierung liegen in `admin-resource-*`-Modulen
+- [`plugin-operations.ts`](./src/plugin-operations.ts): Operations-Registries und bisherige öffentliche Exporte; Job- und Profildefinitionen liegen in eigenen Modulen
+- [`plugin-platform-resolution.ts`](./src/plugin-platform-resolution.ts): Katalogauflösung; Versionsvergleich und Issue-Verträge liegen unter `plugin-platform/`
+- [`content-types.ts`](./src/content-types.ts): Content-Type-Verträge und Validierung
 - [`standard-content-plugin.ts`](./src/standard-content-plugin.ts): Opinionated Factory-Funktionen für Standard-Content-Plugins
 - [`mainserver-client.ts`](./src/mainserver-client.ts), [`media-picker*.ts`](./src/media-picker.ts), [`plugin-translations.ts`](./src/plugin-translations.ts): Integrationshilfen zum Host-System
 

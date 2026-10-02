@@ -40,17 +40,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 03 — Core- und Routing-Verträge (8 Befunde)
 
-- [ ] In `packages/core/src/` `iam/account-management-contract.ts`,
+- [x] In `packages/core/src/` `iam/account-management-contract.ts`,
       `content-management.ts`, `plugin-operations-contract.ts`,
       `iam/runtime-diagnostics.ts`, `instances/registry.ts`, `index.ts`,
       `runtime-profile.ts` sowie `packages/routing/src/app.routes.shared.ts`
       bereinigen. Öffentliche Exporte, Runtime-Imports, IAM- und
       Routing-Verträge gezielt prüfen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1623.json` mit
+      Nutzertext eingebracht; PR #1623 am 02.10.2026 als
+      `b28199a3166f53cd5620ee8bc39258eae0a3dcba` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 04 — Plugin-SDK-Vertragsfläche (4 Befunde)
 

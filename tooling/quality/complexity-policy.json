@@ -1894,12 +1894,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/plugin.translations.ts)"
     },
-    "plugin-sdk:packages/plugin-sdk/src/admin-resources.ts:fileLines": {
-      "ticketId": "baseline-plugin-sdk-src-admin-resources-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-sdk/src/admin-resources.ts)"
-    },
     "plugin-sdk:packages/plugin-sdk/src/admin-resources.ts:publicExports": {
       "ticketId": "baseline-plugin-sdk-src-admin-resources-ts",
       "ticketSystem": "policy-baseline",
@@ -1911,12 +1905,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/plugin-sdk/src/index.ts)"
-    },
-    "plugin-sdk:packages/plugin-sdk/src/plugins.ts:fileLines": {
-      "ticketId": "baseline-plugin-sdk-src-plugins-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-sdk/src/plugins.ts)"
     },
     "plugin-sdk:packages/plugin-sdk/src/plugins.ts:publicExports": {
       "ticketId": "baseline-plugin-sdk-src-plugins-ts",
@@ -1989,12 +1977,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Plugin-Operations-Repository-Verzweigungen in kleinere Where-Clause- und Query-Builder zerlegen"
-    },
-    "plugin-sdk:packages/plugin-sdk/src/plugin-operations.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-OPS-006",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-SDK fuer Operations in kleinere Registrierungs- und Vertragshilfen aufteilen"
     },
     "auth-runtime:packages/auth-runtime/src/plugin-operations/runner.ts:publicExports": {
       "ticketId": "QUAL-PLUGIN-OPS-007",
@@ -2259,12 +2241,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Gemeinsame Mainserver-Service-Utilities in kleinere Exportsegmente aufteilen (packages/sva-mainserver/src/server/service-internals/shared.ts)"
-    },
-    "plugin-sdk:packages/plugin-sdk/src/plugin-platform-resolution.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-SDK-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Plattform-Resolution in kleinere Aufloesungs- und Kompatibilitaetsbausteine splitten (packages/plugin-sdk/src/plugin-platform-resolution.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-001",

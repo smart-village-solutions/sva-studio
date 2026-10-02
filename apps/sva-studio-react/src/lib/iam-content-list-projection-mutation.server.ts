@@ -247,8 +247,6 @@ const deleteStaleGenericItemSiblingProjection = async (
     withInstanceScopedDb(target.instanceId, async (client) => {
       await lockMainserverProjectionType(client, target);
       await deleteMainserverProjectionRowByEntity(client, target, entityId);
-      const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
-      await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
       await markMainserverGlobalMutationSucceeded(client, target);
     })
   );

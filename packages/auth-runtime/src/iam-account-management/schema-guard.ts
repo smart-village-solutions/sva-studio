@@ -3,11 +3,7 @@ import { resolve } from 'node:path';
 import { Client, type ClientConfig } from 'pg';
 
 import type { QueryClient } from '../db.js';
-import {
-  CRITICAL_IAM_SCHEMA_GUARD_FIELDS,
-  REQUIRED_SCHEMA_CHECKS,
-  type SchemaGuardRow,
-} from './schema-guard-checks.js';
+import { REQUIRED_SCHEMA_CHECKS, type SchemaGuardRow } from './schema-guard-checks.js';
 import {
   CRITICAL_IAM_SCHEMA_GUARD_SQL,
   GRAPHILE_WORKER_READINESS_FIELDS,

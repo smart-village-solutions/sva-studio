@@ -358,12 +358,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-account-management-user-import-sync-handler-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-user-import-sync-handler-ts",
       "ticketSystem": "policy-baseline",

@@ -235,14 +235,16 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 08d — Medien-Hook (1 Befund)
 
-- [ ] `apps/sva-studio-react/src/hooks/use-media.ts` nach Laden,
+- [x] `apps/sva-studio-react/src/hooks/use-media.ts` nach Laden,
       Mutation und lokalem Zustand aufteilen. Upload, Auswahl,
       Löschung und Fehlerzustände mit den vorhandenen Hook-Tests prüfen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1651.json` mit passender `prNumber` und
-      nutzerverständlichem `body` in PR #1651 eingebracht;
-      Changelog-Gate vor Merge prüfen.
+      nutzerverständlichem `body` in PR #1651 eingebracht. Finaler PR-HEAD
+      `1a339058cddc1f1182ae4a60fdefa17e2e4de35c`: alle Checks grün,
+      keine offenen Review-Threads; Merge-Commit
+      `59901732612960db96b25ab5a9da9dc1961b5e0c`.
 
 ## IAM und Auth
 
@@ -257,22 +259,26 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1652.json` mit passender `prNumber` und
-      nutzerverständlichem `body` in PR #1652
-      anlegen; Changelog-Gate vor Merge grün.
+      nutzerverständlichem `body` in PR #1652 eingebracht. Finaler PR-HEAD
+      `87710c30cb0deb9c812d5602ed1550979fdf2878`: alle Checks grün,
+      keine offenen Review-Threads; Merge-Commit
+      `13f3f3d2691bd2ec8996d6091ecb371a7b287637`.
 
 ### PR 09b — IAM-Schema-Readiness und Diagnose (2 Befunde)
 
-- [ ] `packages/auth-runtime/src/iam-account-management/schema-guard.ts`
+- [x] `packages/auth-runtime/src/iam-account-management/schema-guard.ts`
       und `diagnostics.ts` nach Schema-Prüfung und Fehlerklassifikation
       aufteilen. `schema-guard.test.ts` und `diagnostics.test.ts` prüfen
       Goose-Head, kritische Checks, Cache, Schema-Drift, RLS,
       Verschlüsselung und sanitierte Diagnosedaten. Readiness- und
       Fehlerverträge bleiben gleich.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 09b
-      anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1653.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1653
+      eingebracht. Finaler PR-HEAD `d56d4f092da911c68adf90d3f2b81f3d671f0ad8`:
+      alle Checks grün, keine offenen Review-Threads; Merge-Commit
+      `0aa9c7777ad0aa368a11ac578277e46145298f22`.
 
 ### PR 09c — Tenant-Keycloak-Import (1 Befund)
 

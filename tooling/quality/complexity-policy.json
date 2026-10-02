@@ -658,12 +658,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-new-code-gate.ts)"
     },
-    "core-iam:packages/core/src/iam/account-management-contract.ts:fileLines": {
-      "ticketId": "baseline-core-src-iam-account-management-contract-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/iam/account-management-contract.ts)"
-    },
     "core-iam:packages/core/src/iam/account-management-contract.ts:publicExports": {
       "ticketId": "baseline-core-src-iam-account-management-contract-ts",
       "ticketSystem": "policy-baseline",
@@ -1654,12 +1648,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/core/src/content-management.ts)"
     },
-    "packages-default:packages/core/src/content-management.ts:fileLines": {
-      "ticketId": "baseline-packages-default-core-src-content-management-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/content-management.ts)"
-    },
     "packages-default:packages/core/src/content-management.ts:publicExports": {
       "ticketId": "baseline-packages-default-core-src-content-management-ts",
       "ticketSystem": "policy-baseline",
@@ -1672,23 +1660,11 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/index.ts)"
     },
-    "packages-default:packages/core/src/instances/registry.ts:fileLines": {
-      "ticketId": "baseline-packages-default-core-src-instances-registry-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/instances/registry.ts)"
-    },
     "packages-default:packages/core/src/instances/registry.ts:publicExports": {
       "ticketId": "baseline-packages-default-core-src-instances-registry-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/instances/registry.ts)"
-    },
-    "packages-default:packages/core/src/runtime-profile.ts:fileLines": {
-      "ticketId": "baseline-packages-default-core-src-runtime-profile-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/runtime-profile.ts)"
     },
     "packages-default:packages/data-client/src/index.ts:functionLines": {
       "ticketId": "baseline-packages-default-data-client-src-index-ts",
@@ -1989,12 +1965,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Modul-Mutationsservice in gemeinsame Sync- und Audit-Helfer zerlegen"
-    },
-    "packages-default:packages/core/src/plugin-operations-contract.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-OPS-004",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Operations-Contract in kleinere Vertragsdateien fuer Runtime-, Progress- und Monitoring-Typen aufteilen"
     },
     "packages-default:packages/core/src/plugin-operations-contract.ts:publicExports": {
       "ticketId": "QUAL-PLUGIN-OPS-004",
@@ -3070,12 +3040,6 @@
       "status": "open",
       "summary": "External-Interfaces-Contract in kleinere Vertrags- und Re-Export-Segmente aufteilen (packages/core/src/external-interfaces-contract.ts)"
     },
-    "packages-default:packages/core/src/index.ts:fileLines": {
-      "ticketId": "QUAL-CORE-COMPLEXITY-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Core-Index-Reexports in kleinere thematische Einstiegspunkte aufteilen (packages/core/src/index.ts)"
-    },
     "packages-default:packages/waste-management-contracts/src/waste-management-operations-contract.ts:publicExports": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-032",
       "ticketSystem": "backlog",
@@ -3526,12 +3490,6 @@
       "status": "open",
       "summary": "Keycloak-Admin-Client in kleinere Lese-, Schreib- und Fehlerpfade zerlegen"
     },
-    "core-iam:packages/core/src/iam/runtime-diagnostics.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Runtime-Diagnosevertrag in fokussierte Typ- und Mappingmodule zerlegen"
-    },
     "frontend-app:apps/sva-studio-react/src/components/ui/searchable-select.tsx:fileLines": {
       "ticketId": "#1448",
       "ticketSystem": "github",
@@ -3687,12 +3645,6 @@
       "ticketSystem": "github",
       "status": "open",
       "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
-    },
-    "routing:packages/routing/src/app.routes.shared.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Gemeinsame App-Routen nach fachlichen Ressourcenmodulen aufteilen"
     },
     "plugin-sdk:packages/plugin-sdk/src/plugins.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-SDK-001",

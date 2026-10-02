@@ -57,6 +57,44 @@ export const enqueueProjectionWork = async <TResult>(
   return queuedWork;
 };
 
+const recordProjectionTargetFailure = async (input: {
+  target: ContentProjectionSyncTarget;
+  refreshRunId: string;
+  trigger: ProjectionRefreshTrigger;
+  pageCount: number;
+  error: unknown;
+  phase: 'page' | 'final';
+  responses: Map<string, Response | null>;
+}): Promise<void> => {
+  const { target, refreshRunId, trigger, pageCount, error, phase, responses } = input;
+  const errorCode = normalizeApiErrorCode(
+    error && typeof error === 'object' && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined
+  );
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
+  contentProjectionLogger.warn(
+    phase === 'page'
+      ? 'mainserver_projection_page_failed'
+      : 'mainserver_projection_reconciliation_failed',
+    {
+      ...buildProjectionLogContext(target, trigger),
+      error_code: errorCode,
+      error_message: errorMessage,
+      page: pageCount,
+      page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+    }
+  );
+  await markProjectionSyncFailed(target, refreshRunId, errorCode, errorMessage);
+  responses.set(
+    buildProjectionTargetKey(target),
+    createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
+  );
+};
+
 export const refreshMainserverProjectionBatch = (
   targets: readonly ContentProjectionSyncTarget[],
   trigger: ProjectionRefreshTrigger
@@ -74,45 +112,6 @@ export const refreshMainserverProjectionBatch = (
   const hotCompletion = new Promise<Map<string, Response | null>>((resolve) => {
     resolveHotCompletion = resolve;
   });
-
-  const recordTargetFailure = async (
-    target: ContentProjectionSyncTarget,
-    pageCount: number,
-    error: unknown,
-    phase: 'page' | 'final'
-  ): Promise<void> => {
-    const errorCode = normalizeApiErrorCode(
-      error && typeof error === 'object' && 'code' in error
-        ? (error as { code?: unknown }).code
-        : undefined
-    );
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
-    contentProjectionLogger.warn(
-      phase === 'page'
-        ? 'mainserver_projection_page_failed'
-        : 'mainserver_projection_reconciliation_failed',
-      {
-        ...buildProjectionLogContext(target, trigger),
-        error_code: errorCode,
-        error_message: errorMessage,
-        page: pageCount,
-        page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
-      }
-    );
-    await markProjectionSyncFailed(
-      target,
-      refreshRunIds.get(buildProjectionTargetKey(target)) as string,
-      errorCode,
-      errorMessage
-    );
-    responses.set(
-      buildProjectionTargetKey(target),
-      createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
-    );
-  };
 
   const completion = (async () => {
     for (const target of targets) {
@@ -183,7 +182,15 @@ export const refreshMainserverProjectionBatch = (
         });
       },
       async (target, _pages, error) => {
-        await recordTargetFailure(target, _pages.length + 1, error, 'page');
+        await recordProjectionTargetFailure({
+          target,
+          refreshRunId: refreshRunIds.get(buildProjectionTargetKey(target)) as string,
+          trigger,
+          pageCount: _pages.length + 1,
+          error,
+          phase: 'page',
+          responses,
+        });
       },
       async () => {
         resolveHotCompletion?.(new Map(responses));
@@ -225,7 +232,15 @@ export const refreshMainserverProjectionBatch = (
         });
         responses.set(targetKey, null);
       } catch (error) {
-        await recordTargetFailure(target, 0, error, 'final');
+        await recordProjectionTargetFailure({
+          target,
+          refreshRunId: refreshRunIds.get(targetKey) as string,
+          trigger,
+          pageCount: 0,
+          error,
+          phase: 'final',
+          responses,
+        });
       }
     }
 

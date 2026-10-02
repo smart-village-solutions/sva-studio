@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildRefreshDeletionScopeKeys } from './iam-content-list-projection-repository-schema.server.js';
 import {
   registerProjectionFixture,
   ctx,
@@ -14,6 +15,25 @@ const state = getProjectionTestState();
 
 describe('content projection reconciliation scopes', () => {
   registerProjectionFixture();
+
+  it('includes the readable unscoped key for an explicit principal refresh', () => {
+    expect(
+      buildRefreshDeletionScopeKeys(
+        {
+          instanceId: 'de-musterhausen',
+          actorAccountId: 'account-1',
+          keycloakSubject: 'kc-user-1',
+          organizationId: 'org-1',
+          actingPrincipalType: 'organization',
+          contentType: 'cockpit-cards.cockpit-card',
+        },
+        'organization'
+      )
+    ).toEqual([
+      'de-musterhausen::account-1::org-1::organization::cockpit-cards.cockpit-card',
+      'de-musterhausen::account-1::org-1::cockpit-cards.cockpit-card',
+    ]);
+  });
 
   it('removes stale principal-scope rows after a complete mainserver refresh', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({

@@ -121,6 +121,10 @@ describe('content projection mutation recovery and audit', () => {
         source_entity_id: 'poi-delete-1',
       }),
     ]);
+    expect(
+      fixture.syncStates.get('poi.point-of-interest::__mainserver_global_mutation__')
+        ?.last_succeeded_at
+    ).toBeTruthy();
   });
 
   it('runs targeted mutation refreshes independently from the automatic batch scope', async () => {
@@ -197,19 +201,15 @@ describe('content projection mutation recovery and audit', () => {
     });
 
     await expect.poll(() => state.getSvaMainserverPoi.mock.calls.length).toBe(1);
+    await expect(mutationRefreshPromise).resolves.toBeUndefined();
 
     releaseBatchList.current?.();
 
-    const supersededBatch = await batchRefreshPromise;
-    expect(supersededBatch.status).toBe(200);
-    expect((await supersededBatch.json()) as { data: { status: string } }).toEqual(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    const independentBatch = await batchRefreshPromise;
+    expect(independentBatch.status).toBe(200);
+    expect((await independentBatch.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
     );
-    await expect(mutationRefreshPromise).resolves.toBeUndefined();
-    await refreshProjectedContents(ctx, {
-      visibleTypes: ['poi.point-of-interest'],
-      force: true,
-    });
     expect(fixture.projectionRows).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source_entity_id: 'poi-batch-1' }),

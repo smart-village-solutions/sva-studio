@@ -21,10 +21,12 @@ import {
   hasNewerMainserverProjectionSuccess,
   loadProjectionRefreshLeader,
   lockMainserverProjectionType,
+  markMainserverGlobalMutationSucceeded,
   markProjectionSyncFailed,
 } from './iam-content-list-projection-repository-sync-state.server.js';
 import { deleteTransferredProjectionRowsFromOtherScopes } from './iam-content-list-projection-repository-transfer.server.js';
 import {
+  buildMainserverProjectionPayloadJson,
   legacyMainserverProjectionUpsertSql,
   scopedMainserverProjectionUpsertSql,
 } from './iam-content-list-projection-repository-sql.server.js';
@@ -84,56 +86,6 @@ export const deleteMainserverProjectionRowByEntity = async (
   await deleteMainserverProjectionRows(client, target, { kind: 'entity', sourceEntityId });
 };
 
-const toNullableProjectionValue = <T>(value: T | null | undefined): T | null => value ?? null;
-
-const toRequiredProjectionReference = (value: string | null | undefined): string => value ?? '';
-
-const mapMainserverProjectionPayloadRow = (
-  row: MainserverProjectionRowInput,
-  _actorAccountId: string | undefined,
-  projectionScopeKey: string
-) => ({
-  id: row.id,
-  instance_id: row.instanceId,
-  projection_scope_key: projectionScopeKey,
-  organization_id: toNullableProjectionValue(row.organizationId),
-  owner_user_id: toNullableProjectionValue(row.ownerUserId),
-  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId),
-  content_type: row.contentType,
-  title: row.title,
-  published_at: toNullableProjectionValue(row.publishedAt),
-  publish_from: toNullableProjectionValue(row.publishFrom),
-  publish_until: toNullableProjectionValue(row.publishUntil),
-  created_at: row.createdAt,
-  created_by: row.createdBy,
-  updated_at: row.updatedAt,
-  updated_by: row.updatedBy,
-  author_display_mode: row.authorDisplayMode,
-  author_display_name: row.author,
-  source_data_provider_id: toNullableProjectionValue(row.sourceDataProviderId),
-  source_data_provider_name: toNullableProjectionValue(row.sourceDataProviderName),
-  credential_source: toNullableProjectionValue(row.credentialSource),
-  credential_fingerprint: toNullableProjectionValue(row.credentialFingerprint),
-  authorization_mode: row.authorizationMode ?? 'credential_visible_compatibility',
-  payload_json: row.payload,
-  status: row.status,
-  validation_state: row.validationState,
-  history_ref: row.historyRef,
-  current_revision_ref: toRequiredProjectionReference(row.currentRevisionRef),
-  last_audit_event_ref: toRequiredProjectionReference(row.lastAuditEventRef),
-  source_entity_type: row.sourceEntityType,
-  source_entity_id: row.sourceEntityId,
-});
-
-const buildMainserverProjectionPayloadJson = (
-  rows: readonly MainserverProjectionRowInput[],
-  actorAccountId: string | undefined,
-  projectionScopeKey: string
-): string =>
-  JSON.stringify(
-    rows.map((row) => mapMainserverProjectionPayloadRow(row, actorAccountId, projectionScopeKey))
-  );
-
 const upsertMainserverProjectionRows = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget,
@@ -167,7 +119,15 @@ export const upsertSingleMainserverProjectionRow = async (
     const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
     const leader = await loadProjectionRefreshLeader(client, target, schemaMode);
     if (leader?.refresh_run_id !== refreshRunId) return;
-    if (await hasNewerMainserverProjectionSuccess(client, target, leader.last_started_at)) {
+    if (
+      await hasNewerMainserverProjectionSuccess(
+        client,
+        target,
+        leader.last_started_at,
+        schemaMode,
+        row.credentialSource
+      )
+    ) {
       throw Object.assign(new Error('Ein neuerer Mainserver-Abgleich hat diesen Lauf überholt.'), {
         code: 'projection_refresh_superseded',
       });
@@ -176,6 +136,7 @@ export const upsertSingleMainserverProjectionRow = async (
     await deleteTransferredProjectionRowsFromOtherScopes(client, target, row);
     const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
     await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
+    if (target.ownershipPrincipal) await markMainserverGlobalMutationSucceeded(client, target);
   });
 };
 
@@ -361,7 +322,15 @@ export const persistMainserverProjectionRowsProgressively = async (
       const schemaMode = await loadProjectionSyncStateSchemaMode(client, input.target.instanceId);
       const leader = await loadProjectionRefreshLeader(client, input.target, schemaMode);
       if (leader?.refresh_run_id !== input.refreshRunId) return;
-      if (await hasNewerMainserverProjectionSuccess(client, input.target, leader.last_started_at)) {
+      if (
+        await hasNewerMainserverProjectionSuccess(
+          client,
+          input.target,
+          leader.last_started_at,
+          schemaMode,
+          input.refreshCredentialSource
+        )
+      ) {
         superseded = true;
         return;
       }

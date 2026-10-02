@@ -132,6 +132,49 @@ describe('content projection reconciliation scopes', () => {
       expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
     );
     expect(fixture.projectionRows).toContainEqual(stale);
+
+    fixture.syncStates.delete(
+      'cockpit-cards.cockpit-card::de-musterhausen::account-1::org-1::user::cockpit-cards.cockpit-card'
+    );
+    fixture.syncStates.set(
+      'cockpit-cards.cockpit-card::de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      {
+        sync_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+        last_started_at: '2999-01-01T00:00:00.000Z',
+        last_succeeded_at: '2999-01-01T00:00:00.000Z',
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 1,
+      }
+    );
+    const unrelatedAccount = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await unrelatedAccount.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
+    );
+    expect(fixture.projectionRows).not.toContainEqual(stale);
+
+    fixture.projectionRows.push(stale);
+    fixture.syncStates.set('cockpit-cards.cockpit-card::__mainserver_global_mutation__', {
+      sync_scope_key: '__mainserver_global_mutation__',
+      last_started_at: '2999-01-01T00:00:00.000Z',
+      last_succeeded_at: '2999-01-01T00:00:00.000Z',
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 0,
+    });
+    const globalMutation = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await globalMutation.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    );
+    expect(fixture.projectionRows).toContainEqual(stale);
   });
 
   it('stores the same mainserver entity separately for different projection scopes', async () => {

@@ -150,9 +150,11 @@ const readSyncState = (
   const contentType = String(context.queryValue(values, 1));
   if (text.includes('AS superseded')) {
     const lastStartedAt = String(context.queryValue(values, 2));
+    const affectedScopeKeys = context.queryValue(values, 3);
     const superseded = [...context.fixture.syncStates.entries()].some(
       ([key, state]) =>
         key.startsWith(`${contentType}::`) &&
+        (!Array.isArray(affectedScopeKeys) || affectedScopeKeys.includes(state.sync_scope_key)) &&
         Boolean(
           state.last_started_at &&
           state.last_started_at > lastStartedAt &&

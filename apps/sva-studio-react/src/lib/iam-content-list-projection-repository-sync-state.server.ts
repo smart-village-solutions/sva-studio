@@ -8,11 +8,14 @@ import type {
 import {
   buildMainserverSyncScopeKey,
   buildProjectionTargetKey,
+  buildRefreshDeletionScopeKeys,
   loadProjectionSyncStateSchemaMode,
   loadProjectionTableSchemaMode,
   type ProjectionSyncStateSchemaMode,
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
+
+const globalMutationScopeKey = '__mainserver_global_mutation__';
 
 export const lockMainserverProjectionType = async (
   client: ProjectionDbClient,
@@ -27,7 +30,9 @@ export const lockMainserverProjectionType = async (
 export const hasNewerMainserverProjectionSuccess = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget,
-  lastStartedAt: string | null | undefined
+  lastStartedAt: string | null | undefined,
+  schemaMode: ProjectionSyncStateSchemaMode,
+  credentialSource?: 'user' | 'organization'
 ): Promise<boolean> => {
   if (!lastStartedAt) return false;
   const result = await client.query<{ superseded: boolean }>(
@@ -36,10 +41,38 @@ export const hasNewerMainserverProjectionSuccess = async (
        WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
          AND last_started_at > $3::timestamptz
          AND last_succeeded_at >= last_started_at
+         ${schemaMode === 'scoped' ? 'AND sync_scope_key = ANY($4::text[])' : ''}
      ) AS superseded;`,
-    [target.instanceId, target.contentType, lastStartedAt]
+    schemaMode === 'scoped'
+      ? [
+          target.instanceId,
+          target.contentType,
+          lastStartedAt,
+          [...buildRefreshDeletionScopeKeys(target, credentialSource), globalMutationScopeKey],
+        ]
+      : [target.instanceId, target.contentType, lastStartedAt]
   );
   return result.rows[0]?.superseded === true;
+};
+
+export const markMainserverGlobalMutationSucceeded = async (
+  client: ProjectionDbClient,
+  target: ContentProjectionSyncTarget
+): Promise<void> => {
+  await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
+    if ((await loadProjectionSyncStateSchemaMode(client, target.instanceId)) !== 'scoped') return;
+    await client.query(
+      `INSERT INTO iam.content_list_projection_sync_state (
+         instance_id, source_system, content_type, sync_scope_key, sync_mode,
+         last_started_at, last_succeeded_at, snapshot_state, updated_at
+       ) VALUES ($1, 'mainserver', $2, $3, 'full_refresh', statement_timestamp(),
+         statement_timestamp(), 'complete_fresh', NOW())
+       ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
+       DO UPDATE SET last_started_at = statement_timestamp(),
+         last_succeeded_at = statement_timestamp(), updated_at = NOW();`,
+      [target.instanceId, target.contentType, globalMutationScopeKey]
+    );
+  });
 };
 
 export const loadProjectionRefreshLeader = async (

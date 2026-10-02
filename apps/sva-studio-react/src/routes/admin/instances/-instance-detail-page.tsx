@@ -1,46 +1,34 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { createInstanceDetailActions } from './-instance-detail-actions';
+import { InstanceDetailFeedback } from './-instance-detail-feedback';
+import { InstanceDetailWorkspace } from './-instance-detail-workspace';
 import { useForm, useWatch } from 'react-hook-form';
 import type { DetailFormValues } from './-instances-shared-types';
 import type { AccountInvitationTemplateSaveResult } from './-account-invitation-template-card';
 import React from 'react';
-import { StudioField, useStudioSaveFeedback } from '@sva/studio-ui-react';
-import { Input } from '../../../components/ui/input';
+import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 
-import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Card } from '../../../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { studioPluginSnapshot } from '../../../lib/plugins';
 import { t } from '../../../i18n';
-import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import {
   clearSensitiveDetailFields,
-  formatDateTime,
   readActionFeedbackClassName,
   readMissingWorkerEnvName,
   readOperationsModel,
-  readPreflightTimestamp,
   readTenantSecretUserInputRequired,
   readWorkerPendingProjection,
   readWorkerUnavailableWarning,
   type ActionFeedback,
 } from './-instance-detail-page-helpers';
-import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section';
-import { InstanceDetailAuditSection } from './-instance-detail-audit-section';
-import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
-import { InstanceDetailCockpitSection } from './-instance-detail-cockpit-section';
-import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
-import { InstanceDetailHeader } from './-instance-detail-header';
 import {
   buildInstanceDoctorModel,
   buildInstanceDetailCockpitModel,
   buildHistoryWorkspaceModel,
-  type DetailWorkflowAction,
   evaluateInstanceConfiguration,
 } from './-instance-detail-models';
-import { getErrorMessage } from './-instance-error-messages';
 import {
   createDetailForm,
   createEmptyCreateForm,
@@ -64,60 +52,6 @@ const ACTION_FEEDBACK_VISIBLE_MS = 15_000;
 const ACTION_FEEDBACK_FADE_MS = 300;
 
 export { readActionFeedbackClassName };
-
-const InstanceRuntimeEvidence = ({
-  classification,
-  instance,
-}: {
-  classification?: string;
-  instance: ReturnType<typeof useInstances>['selectedInstance'];
-}) => {
-  if (!instance) {
-    return null;
-  }
-
-  if (
-    classification !== 'registry_or_provisioning_drift' &&
-    classification !== 'keycloak_reconcile'
-  ) {
-    return null;
-  }
-
-  const preflightTimestamp = readPreflightTimestamp(instance);
-  const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
-
-  if (!instance.keycloakPreflight && !instance.keycloakPlan && !latestRun) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-1 text-xs text-muted-foreground">
-      {instance.keycloakPreflight ? (
-        <p>
-          {t('admin.instances.diagnostics.preflightEvidence', {
-            status: instance.keycloakPreflight.overallStatus,
-            checkedAt: formatDateTime(preflightTimestamp),
-          })}
-        </p>
-      ) : null}
-      {instance.keycloakPlan ? (
-        <p>
-          {t('admin.instances.diagnostics.planEvidence', {
-            summary: instance.keycloakPlan.driftSummary,
-          })}
-        </p>
-      ) : null}
-      {latestRun ? (
-        <p>
-          {t('admin.instances.diagnostics.latestRunEvidence', {
-            requestId: latestRun.requestId ?? t('shell.runtimeHealth.notAvailable'),
-            status: latestRun.overallStatus,
-          })}
-        </p>
-      ) : null}
-    </div>
-  );
-};
 
 export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const instancesApi = useInstances();
@@ -386,403 +320,72 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
-  const executeProvisioning = async (
-    intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret'
-  ) => {
-    if (!selectedInstance || !detailFormValues) {
-      return;
-    }
-    const confirmedPlanFingerprint = selectedInstance.keycloakPlan?.fingerprint;
-    if (!confirmedPlanFingerprint || planNeedsRefresh) return;
-
-    setActionFeedback(null);
-    const result = await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
-      intent,
-      planFingerprint: confirmedPlanFingerprint,
-      tenantAdminTemporaryPassword:
-        detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
-    });
-    if (result) {
-      setActionFeedback({
-        tone: 'success',
-        message: t('admin.instances.feedback.provisioningQueued'),
-      });
-    }
-    if (result) detailForm.setValue('tenantAdminTemporaryPassword', '', { shouldDirty: false });
-  };
-
-  const triggerWorkflowAction = async (
-    action:
-      | 'check_preflight'
-      | 'check_keycloak_status'
-      | 'plan_provisioning'
-      | 'execute_provisioning'
-      | 'provision_admin_client'
-      | 'reset_tenant_admin'
-      | 'activate_instance'
-  ) => {
-    if (!selectedInstance) {
-      return;
-    }
-
-    setActionFeedback(null);
-    switch (action) {
-      case 'check_preflight': {
-        const result = await instancesApi.refreshKeycloakPreflight(selectedInstance.instanceId);
-        if (result) {
-          setActionFeedback({
-            tone: 'success',
-            message: t('admin.instances.feedback.preflightUpdated'),
-          });
-        }
-        return;
-      }
-      case 'check_keycloak_status': {
-        const result = await instancesApi.refreshKeycloakStatus(selectedInstance.instanceId);
-        if (result) {
-          setActionFeedback({
-            tone: 'success',
-            message: t('admin.instances.feedback.keycloakStatusUpdated'),
-          });
-        }
-        return;
-      }
-      case 'plan_provisioning': {
-        const result = await instancesApi.planKeycloakProvisioning(selectedInstance.instanceId);
-        if (result) {
-          setStalePlan(null);
-          setActionFeedback({
-            tone: 'success',
-            message: t('admin.instances.feedback.provisioningPreviewUpdated'),
-          });
-        }
-        return;
-      }
-      case 'execute_provisioning':
-        await executeProvisioning('provision');
-        return;
-      case 'provision_admin_client':
-        await executeProvisioning('provision_admin_client');
-        return;
-      case 'reset_tenant_admin':
-        await executeProvisioning('reset_tenant_admin');
-        return;
-      case 'activate_instance':
-        if (
-          selectedInstance.provisioningReadiness?.nextAction?.action === 'instance.status.activate'
-        ) {
-          setActivationConfirmation(selectedInstance.updatedAt);
-        }
-    }
-  };
-
-  const probeTenantIamAccess = async () => {
-    if (!selectedInstance) {
-      return;
-    }
-    setActionFeedback(null);
-    const result = await instancesApi.probeTenantIamAccess(selectedInstance.instanceId);
-    if (result) {
-      setActionFeedback({
-        tone: 'success',
-        message: t('admin.instances.feedback.tenantIamProbeUpdated'),
-      });
-    }
-  };
-
-  const retryTenantProvisioning = async () => {
-    if (!selectedInstance || !canRetryTenantProvisioning) return;
-    setActionFeedback(null);
-    const result = await instancesApi.retryTenantProvisioning(selectedInstance.instanceId);
-    if (result) {
-      setActionFeedback({
-        tone: 'success',
-        message: t('admin.instances.feedback.provisioningRetryQueued'),
-      });
-    }
-  };
-
-  const performDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
-    switch (action) {
-      case 'refresh_readiness':
-        if (!selectedInstance) return;
-        setActionFeedback(null);
-        if (await instancesApi.loadInstance(selectedInstance.instanceId)) {
-          setActionFeedback({
-            tone: 'success',
-            message: t('admin.instances.feedback.readinessUpdated'),
-          });
-        }
-        return;
-      case 'open_diagnostics':
-        if (!selectedInstance) return;
-        await instancesApi.loadInstance(selectedInstance.instanceId);
-        setActiveWorkspaceTab('doctor');
-
-        return;
-      case 'focus_configuration':
-        setActiveWorkspaceTab('einstellungen');
-
-        return;
-      case 'probeTenantIamAccess':
-        await probeTenantIamAccess();
-        return;
-      case 'reconcileKeycloak':
-        if (!selectedInstance) {
-          return;
-        }
-        if (!selectedInstance.keycloakPlan?.fingerprint) return;
-        await instancesApi.reconcileKeycloak(selectedInstance.instanceId, {
-          planFingerprint: selectedInstance.keycloakPlan.fingerprint,
-        });
-        return;
-      case 'reconcileTenantIamRoles': {
-        if (!selectedInstance) return;
-        const latestRun =
-          selectedInstance.latestKeycloakProvisioningRun ??
-          selectedInstance.keycloakProvisioningRuns[0];
-        const confirmedPlanFingerprint = latestRun?.steps.find(
-          ({ stepKey }) => stepKey === 'queued'
-        )?.details.confirmedPlanFingerprint;
-        if (
-          typeof confirmedPlanFingerprint !== 'string' ||
-          !/^[a-f0-9]{64}$/u.test(confirmedPlanFingerprint)
-        ) {
-          return;
-        }
-        await instancesApi.reconcileTenantIamRoles(selectedInstance.instanceId, {
-          planFingerprint: confirmedPlanFingerprint,
-        });
-        return;
-      }
-      case 'rotate_client_secret':
-        await executeProvisioning('rotate_client_secret');
-        return;
-      case 'retry_tenant_provisioning':
-        await retryTenantProvisioning();
-        return;
-      default:
-        await triggerWorkflowAction(action);
-    }
-  };
-
-  const runDetailAction = async (action: DetailWorkflowAction | 'focus_configuration') => {
-    if (action === 'activate_instance') return performDetailAction(action);
-    if (actionBusyRef.current) return;
-    actionBusyRef.current = true;
-    setActionBusy(true);
-    try {
-      await performDetailAction(action);
-    } finally {
-      actionBusyRef.current = false;
-      setActionBusy(false);
-    }
-  };
+  const { runDetailAction } = createInstanceDetailActions({
+    selectedInstance,
+    detailFormValues,
+    detailForm,
+    instancesApi,
+    planNeedsRefresh,
+    canRetryTenantProvisioning,
+    setActionFeedback,
+    setStalePlan,
+    setActivationConfirmation,
+    setActiveWorkspaceTab,
+    actionBusyRef,
+    setActionBusy,
+  });
   const openActivation = () => {
     setActiveWorkspaceTab('betrieb');
     globalThis.setTimeout(() => document.getElementById('instance-current-task')?.focus(), 0);
   };
-
-  const tenantAdminPasswordInput = cockpitModel?.secondaryActions.some(
-    ({ action }) => action === 'reset_tenant_admin'
-  ) ? (
-    <StudioField
-      id="tenant-admin-password"
-      label={t('admin.instances.keycloakPanel.temporaryPassword')}
-      description={t('admin.instances.keycloakPanel.passwordHint')}
-    >
-      <Input
-        id="tenant-admin-password"
-        type="password"
-        autoComplete="new-password"
-        aria-describedby="tenant-admin-password-description"
-        disabled={statusLoading || actionBusy}
-        value={detailFormValues?.tenantAdminTemporaryPassword ?? ''}
-        onChange={(event) =>
-          detailForm.setValue('tenantAdminTemporaryPassword', event.target.value, {
-            shouldDirty: true,
-          })
-        }
-      />
-    </StudioField>
-  ) : null;
 
   return (
     <section
       className="min-w-0 space-y-5 break-words"
       aria-busy={instancesApi.isLoading || instancesApi.detailLoading}
     >
-      {actionFeedback ? (
-        <Alert className={readActionFeedbackClassName(actionFeedback, actionFeedbackFading)}>
-          <AlertDescription>{actionFeedback.message}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {missingWorkerEnvName ? (
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>
-            {t('admin.instances.feedback.workerEnvMissing', {
-              envName: missingWorkerEnvName,
-            })}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {workerPendingProjection && !missingWorkerEnvName ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
-          <AlertDescription>{t('admin.instances.feedback.workerProjectionHint')}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {workerUnavailableWarning && !missingWorkerEnvName ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200">
-          <AlertDescription>{t('admin.instances.feedback.workerUnavailable')}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {instancesApi.mutationError ? (
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription className="flex flex-col gap-3">
-            <span>{getErrorMessage(instancesApi.mutationError)}</span>
-            <IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />
-            <InstanceRuntimeEvidence
-              classification={instancesApi.mutationError.classification}
-              instance={selectedInstance}
-            />
-          </AlertDescription>
-        </Alert>
-      ) : null}
+      <InstanceDetailFeedback
+        actionFeedback={actionFeedback}
+        actionFeedbackFading={actionFeedbackFading}
+        missingWorkerEnvName={missingWorkerEnvName}
+        workerPendingProjection={workerPendingProjection}
+        workerUnavailableWarning={workerUnavailableWarning}
+        mutationError={instancesApi.mutationError}
+        selectedInstance={selectedInstance}
+      />
 
       {selectedInstance && detailFormValues && operationsModel && cockpitModel ? (
-        <div className="space-y-5">
-          <InstanceDetailHeader
-            selectedInstance={selectedInstance}
-            operationalTitle={cockpitModel.overallTitle}
-            operationalSummary={operationsModel.summary}
-            onOpenDoctor={() => {
-              setActiveWorkspaceTab('doctor');
-            }}
-            doctorWarning={doctorModel?.warning}
-          />
-
-          {!['active', 'suspended', 'archived'].includes(selectedInstance.status) &&
-          activeWorkspaceTab === 'betrieb' ? (
-            <InstanceDetailCockpitSection
-              selectedInstance={selectedInstance}
-              configurationAssessment={configurationAssessment}
-              cockpitModel={cockpitModel}
-              tenantAdminPasswordInput={tenantAdminPasswordInput}
-              mutationError={instancesApi.mutationError}
-              onRunDetailAction={runDetailAction}
-              statusLoading={instancesApi.statusLoading || actionBusy}
-            />
-          ) : null}
-
-          <Tabs
-            value={activeWorkspaceTab}
-            onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)}
-            className="space-y-4"
-          >
-            <TabsList
-              aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
-              className="h-auto flex-wrap justify-start"
-            >
-              <TabsTrigger value="betrieb">{t('admin.instances.detail.tabs.betrieb')}</TabsTrigger>
-              <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
-              <TabsTrigger value="einstellungen">
-                {t('admin.instances.detail.tabs.einstellungen')}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="betrieb" className="space-y-5">
-              <InstanceDetailBetriebSection
-                selectedInstance={selectedInstance}
-                statusLoading={instancesApi.statusLoading}
-                mutationError={instancesApi.mutationError}
-                pluginReadiness={pluginReadiness}
-                onAssignModule={assignModuleAndRefreshReadiness}
-                onRevokeModule={revokeModuleAndRefreshReadiness}
-                onSeedIamBaseline={instancesApi.seedIamBaseline}
-                onBootstrapAdminStructure={instancesApi.bootstrapAdminStructure}
-              />
-            </TabsContent>
-
-            <TabsContent value="doctor" className="space-y-5">
-              {doctorModel && historyModel ? (
-                <InstanceDetailDoctorSection
-                  doctorModel={doctorModel}
-                  tenantAdminPasswordInput={tenantAdminPasswordInput}
-                  secondaryActions={cockpitModel.secondaryActions}
-                  onRunDetailAction={runDetailAction}
-                  onOpenActivation={openActivation}
-                  statusLoading={statusLoading || actionBusy}
-                  auditContent={
-                    <InstanceDetailAuditSection
-                      auditRun={instancesApi.instanceAuditRun}
-                      auditLoading={instancesApi.auditLoading}
-                      onRefresh={async () =>
-                        instancesApi.refreshInstanceAudit(selectedInstance.instanceId)
-                      }
-                    />
-                  }
-                  historyModel={historyModel}
-                  selectedInstance={selectedInstance}
-                  onLoadProvisioningRun={(runId) =>
-                    instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
-                  }
-                />
-              ) : null}
-            </TabsContent>
-
-            <TabsContent
-              value="einstellungen"
-              forceMount
-              hidden={activeWorkspaceTab !== 'einstellungen'}
-              className="space-y-5"
-            >
-              <InstanceDetailConfigurationSection
-                selectedInstance={selectedInstance}
-                form={detailForm}
-                saving={settingsSaving}
-                detailFormValues={detailFormValues}
-                statusLoading={statusLoading}
-                configurationAssessment={configurationAssessment}
-                tenantSecretUserInputRequired={tenantSecretUserInputRequired}
-                setDetailFormValues={(value) => {
-                  saveFeedback.markDirty();
-                  setDetailFormValues(value);
-                }}
-                onUpdateSubmit={onUpdateSubmit}
-                onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
-                saveStatus={saveFeedback.status}
-              />
-            </TabsContent>
-          </Tabs>
-
-          <ConfirmDialog
-            open={activationConfirmation !== null}
-            title={t('admin.instances.actions.activate')}
-            description={t('admin.instances.detail.confirmActivation')}
-            confirmLabel={t('admin.instances.actions.activate')}
-            cancelLabel={t('account.actions.cancel')}
-            onCancel={() => setActivationConfirmation(null)}
-            onConfirm={() => {
-              const stillCurrent =
-                activationConfirmation === selectedInstance.updatedAt &&
-                selectedInstance.provisioningReadiness?.nextAction?.action ===
-                  'instance.status.activate';
-              setActivationConfirmation(null);
-              if (stillCurrent && !actionBusyRef.current) {
-                actionBusyRef.current = true;
-                setActionBusy(true);
-                void instancesApi.activateInstance(selectedInstance.instanceId).finally(() => {
-                  actionBusyRef.current = false;
-                  setActionBusy(false);
-                });
-              }
-            }}
-          />
-        </div>
+        <InstanceDetailWorkspace
+          selectedInstance={selectedInstance}
+          detailFormValues={detailFormValues}
+          operationsModel={operationsModel}
+          cockpitModel={cockpitModel}
+          doctorModel={doctorModel}
+          historyModel={historyModel}
+          configurationAssessment={configurationAssessment}
+          pluginReadiness={pluginReadiness}
+          instancesApi={instancesApi}
+          activeWorkspaceTab={activeWorkspaceTab}
+          setActiveWorkspaceTab={setActiveWorkspaceTab}
+          runDetailAction={runDetailAction}
+          statusLoading={statusLoading}
+          actionBusy={actionBusy}
+          assignModuleAndRefreshReadiness={assignModuleAndRefreshReadiness}
+          revokeModuleAndRefreshReadiness={revokeModuleAndRefreshReadiness}
+          openActivation={openActivation}
+          detailForm={detailForm}
+          settingsSaving={settingsSaving}
+          tenantSecretUserInputRequired={tenantSecretUserInputRequired}
+          setDetailFormValues={setDetailFormValues}
+          onUpdateSubmit={onUpdateSubmit}
+          onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
+          saveStatus={saveFeedback.status}
+          markDirty={saveFeedback.markDirty}
+          activationConfirmation={activationConfirmation}
+          setActivationConfirmation={setActivationConfirmation}
+          actionBusyRef={actionBusyRef}
+          setActionBusy={setActionBusy}
+        />
       ) : (
         <Card className="p-4">
           <p className="text-sm text-muted-foreground">{t('content.messages.loading')}</p>

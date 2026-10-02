@@ -136,6 +136,7 @@ export const refreshMainserverProjectionBatch = (
           keycloakSubject: target.keycloakSubject,
           actorAccountId: target.actorAccountId,
           rows: latestPage,
+          refreshCredentialSource: refreshCredentialSources.get(targetKey),
           finalize: false,
           page: pages.length,
           refreshRunId: refreshRunIds.get(targetKey) as string,

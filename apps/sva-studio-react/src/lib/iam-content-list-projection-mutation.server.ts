@@ -84,11 +84,11 @@ const deleteProjectionMutation = async (
       input.target,
       await loadProjectionSyncStateSchemaMode(client, input.target.instanceId)
     );
-    if (leader?.refresh_run_id !== refreshRunId) return;
     await deleteMainserverProjectionRowByEntity(client, input.target, input.entityId);
+    await markMainserverGlobalMutationSucceeded(client, input.target);
+    if (leader?.refresh_run_id !== refreshRunId) return;
     const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);
     await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount);
-    await markMainserverGlobalMutationSucceeded(client, input.target);
   });
 };
 

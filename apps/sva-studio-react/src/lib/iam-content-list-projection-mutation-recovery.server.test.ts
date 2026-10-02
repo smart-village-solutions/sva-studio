@@ -101,6 +101,12 @@ describe('content projection mutation recovery and audit', () => {
         projected_count: 2,
       }
     );
+    state.recordSuccessfulExternalContentDeletion.mockImplementation(async () => {
+      const syncState = fixture.syncStates.get(
+        'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest'
+      );
+      if (syncState) syncState.refresh_run_id = '00000000-0000-4000-8000-000000000002';
+    });
 
     await refreshProjectedContentsForMainserverMutation({
       contentType: 'poi.point-of-interest',
@@ -108,6 +114,8 @@ describe('content projection mutation recovery and audit', () => {
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
       organizationId: 'org-1',
+      actorDisplayName: 'Editor',
+      mutationRef: 'mutation-delete-1',
       operation: 'delete',
       entityId: 'poi-delete-1',
     });

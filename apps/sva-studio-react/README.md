@@ -89,10 +89,10 @@ Weitere Details:
 
 ## IAM-API
 
-`src/lib/iam-api.ts` bleibt der Importpfad für bestehende Verbraucher. Die
-Anfragen und Payload-Typen liegen nach Ressourcen in benachbarten
-`iam-api-*`-Modulen: Benutzer, Rollen/Gruppen, Organisationen, Content,
-Medien, Instanzen, Runtime und Governance.
+`src/lib/iam-api.ts` bleibt der Importpfad für bestehende Verbraucher und
+enthält weiterhin die Benutzer-API. Die übrigen Anfragen und Payload-Typen
+liegen nach Ressourcen in benachbarten `iam-api-*`-Modulen: Rollen/Gruppen,
+Organisationen, Content, Medien, Instanzen, Runtime und Governance.
 
 ## Data Fetching
 

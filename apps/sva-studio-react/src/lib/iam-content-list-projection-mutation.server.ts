@@ -190,7 +190,7 @@ const isMutationFollowUpDue = async (target: ContentProjectionSyncTarget): Promi
   });
 };
 
-const deferMutationHistory = async (input: MutationRefreshInput): Promise<true | undefined> => {
+const deferMutationHistory = async (input: MutationRefreshInput, strict = false): Promise<true | undefined> => {
   if ((input.operation !== 'create' && input.operation !== 'update') ||
       !(input.target.auditActorAccountId ?? input.target.actorAccountId) ||
       !input.target.actorDisplayName || !input.target.mutationRef) return undefined;
@@ -198,7 +198,7 @@ const deferMutationHistory = async (input: MutationRefreshInput): Promise<true |
     instanceId: input.target.instanceId,
     operationExternalId: input.target.mutationRef,
   });
-  if (!deferred && input.target.ownershipPrincipal) {
+  if (!deferred && strict && input.target.ownershipPrincipal) {
     const journal = await loadMainserverMutationJournal({
       instanceId: input.target.instanceId,
       operationExternalId: input.target.mutationRef,
@@ -372,7 +372,7 @@ export const refreshGenericItemSiblingProjections = async (
   if (loadedItem.failed) {
     let deferred: true | undefined;
     if (input.target.ownershipPrincipal) {
-      deferred = await deferMutationHistory(input);
+      deferred = await deferMutationHistory(input, true);
       if (!deferred) return undefined;
     }
     await refreshGenericItemProjectionSnapshots(input.target);

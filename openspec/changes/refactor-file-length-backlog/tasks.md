@@ -1115,9 +1115,14 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+      Merge-Nachweis: PR #1714, HEAD
+      `a61d7a75440ae5523244ce9771821337ce2c0826`, Merge-Commit
+      `a0391f6f50099fa51a92bda64eaaa232d1f6ee3b`; Changelog
+      `docs/changelog/entries/pr-1714.json`.
+
 ### PR 26c — Waste-Handler-Komposition und Lesen (2 Befunde)
 
-- [ ] In `packages/waste-management-runtime/src/` `server-handlers.ts`
+- [x] In `packages/waste-management-runtime/src/` `server-handlers.ts`
       und `handlers/read-handlers.ts` bereinigen. Handler-Registrierung,
       Tenant-Scope, Leseantworten und Fehlerbehandlung mit gezielten
       Handler-, Lese- und Server-Runtime-Tests erhalten.

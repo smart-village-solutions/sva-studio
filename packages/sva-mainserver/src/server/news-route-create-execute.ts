@@ -68,7 +68,7 @@ type CreateExecutionInput = {
 };
 
 const persistNewsCreate = async (input: CreateExecutionInput): Promise<Response> => {
-  const { request, context, actor, actorInfo, idempotencyKey, parsed, logSuccess } = input;
+  const { context, actor, actorInfo, idempotencyKey, parsed, logSuccess } = input;
   const principalAuthorization = await authorizeMainserverCreateForPrincipal({
     actor,
     action: 'news.create',
@@ -137,7 +137,7 @@ const respondToNewsCreateFailure = async (
   input: CreateExecutionInput,
   error: unknown
 ): Promise<Response> => {
-  const { request, context, actor, actorInfo, idempotencyKey, parsed, logSuccess } = input;
+  const { request, context, actor, actorInfo, idempotencyKey, parsed } = input;
   await finalizeMainserverMutationFailure({ actor, error });
   const response = toMainserverErrorResponse(error, 'Mainserver-News-Anfrage ist fehlgeschlagen.');
   const workspaceContext = getWorkspaceContext();

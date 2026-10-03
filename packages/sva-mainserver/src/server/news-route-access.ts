@@ -1,6 +1,5 @@
 import {
   authorizeContentPrimitiveForUser,
-  validateCsrf,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';

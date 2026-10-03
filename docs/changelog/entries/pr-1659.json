@@ -1,0 +1,4 @@
+{
+  "prNumber": 1659,
+  "body": "Die Rollenverwaltung funktioniert wie bisher. Die Prüfung von Berechtigungen und das Anlegen, Ändern und Löschen von Rollen sind intern klarer getrennt, damit Tenant-Grenzen, Audit und Fehlerbehandlung leichter nachvollziehbar bleiben."
+}

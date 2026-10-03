@@ -331,15 +331,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 10b — Organisationsmutationen (1 Befund)
 
-- [ ] `packages/iam-admin/src/organization-mutation-handlers.ts` nach
+- [x] `packages/iam-admin/src/organization-mutation-handlers.ts` nach
       Request-/Autorisierungsgrenze und Create-/Update-/Mitgliedschafts-
       transaktionen aufteilen. `organization-mutation-handlers.test.ts`
       sichert Tenant- und Parent-Scope, Idempotenz, Rate-Limit,
       Credential- und Membership-Schreibfolgen, Fehler und Kompensation.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1658.json` mit
       passender `prNumber` und nutzerverständlichem `body` in PR #1658
-      anlegen; Changelog-Gate vor Merge grün.
+      angelegt; PR #1658 am 03.10.2026 als
+      `8588d9741b3947fef8b14b2c0934c5e30b690f0a` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 10c — Rollenpersistenz (1 Befund)
 
@@ -349,8 +351,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       sichern Tenant-Scope, Verfügbarkeit von Berechtigungen, Audit,
       Rollback und Sync-Vertrag.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 10c
+      `docs/changelog/entries/pr-1659.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1659
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10d — Rollen-Reconcile (1 Befund)

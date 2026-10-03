@@ -1066,12 +1066,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/role-mutation-persistence.ts)"
     },
-    "iam-admin:packages/iam-admin/src/role-mutation-persistence.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-role-mutation-persistence-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/role-mutation-persistence.ts)"
-    },
     "iam-admin:packages/iam-admin/src/role-mutation-persistence.ts:functionLines": {
       "ticketId": "baseline-iam-admin-src-role-mutation-persistence-ts",
       "ticketSystem": "policy-baseline",

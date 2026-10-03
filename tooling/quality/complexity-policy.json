@@ -1720,18 +1720,6 @@
       "status": "open",
       "summary": "Waste-Operations-Handler in kleinere StartJob- und Preview-Bausteine splitten (packages/waste-management-runtime/src/handlers/operations.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/server-handlers.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/server-handlers.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
-    },
     "packages-default:packages/waste-management-runtime/src/server-loaders.ts:functionLines": {
       "ticketId": "QUAL-WASTE-LOADERS-001",
       "ticketSystem": "backlog",
@@ -2703,12 +2691,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/operations.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/read-handlers.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-read-handlers",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/read-handlers.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:cyclomaticComplexity": {
       "ticketId": "baseline-waste-ownership-1506-handlers-settings-write-support",

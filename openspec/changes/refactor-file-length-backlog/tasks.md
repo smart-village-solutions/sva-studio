@@ -1061,7 +1061,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       `projects-route.ts` bereinigen. Validierung, Fehlercodes,
       Berechtigungen und Antwortformat gezielt testen.
 
-      Implementierungsstand auf Ausgangs-HEAD
+      Draft-PR #1704; Implementierungsstand auf Ausgangs-HEAD
       `702af348e0bd9c0cc170589144f138eac4f6fda2`: Die fünf Routen
       wurden nach Eingabe, Zugriff, Lesen und Mutation getrennt. Die
       ursprünglichen Zeilenzahlen 1458/846/681/633/516 liegen nach dem
@@ -1071,7 +1071,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       HEAD-Gate-Nachweis bleiben für das Abhaken ausstehend.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1704.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

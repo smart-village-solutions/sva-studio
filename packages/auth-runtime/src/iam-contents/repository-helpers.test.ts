@@ -40,6 +40,7 @@ const {
   emitContentUpdatedActivity,
   emitExternalContentUpdatedActivity,
   insertContentRow,
+  persistContentUpdateHistory,
   resolveCreateAuthorDisplay,
   resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
@@ -299,6 +300,22 @@ describe('iam content repository helpers', () => {
     });
   });
 
+  it('uses the provider author when first binding a confirmed personal transfer', async () => {
+    const client = createClient();
+    await expect(resolveCreateAuthorDisplay(client, createCreateInput({
+      confirmedExternalOwner: {
+        type: 'account',
+        id: '00000000-0000-0000-0000-000000000002',
+      },
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Provider-Autorin',
+      actorDisplayName: 'Ausführende Person',
+    }))).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Provider-Autorin',
+    });
+  });
+
   it('derives update author display snapshots from the selected mode', async () => {
     const client = createClient();
     client.query.mockResolvedValueOnce({
@@ -536,6 +553,31 @@ describe('iam content repository helpers', () => {
       2,
       expect.stringContaining('SET history_ref = $3, current_revision_ref = $3'),
       ['instance-1', 'content-1', 'history-2']
+    );
+  });
+
+  it('amends an existing transfer history without creating a second revision', async () => {
+    const client = createClient();
+    client.query.mockResolvedValue({ rows: [] });
+
+    await persistContentUpdateHistory(
+      client,
+      createUpdateInput({ mutationRef: 'transfer-1' }),
+      createContentRow(),
+      {
+        changedFields: ['ownerUserId', 'ownerOrganizationId'],
+        status: 'draft',
+        payload: { body: 'Text' },
+        historyAction: 'updated',
+        historySummary: 'Inhalt aktualisiert',
+        mutationFinalized: true,
+      }
+    );
+
+    expect(client.query).toHaveBeenCalledOnce();
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.content_history'),
+      ['instance-1', 'content-1', 'transfer-1', ['ownerUserId', 'ownerOrganizationId']]
     );
   });
 

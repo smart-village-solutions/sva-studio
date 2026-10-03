@@ -12,7 +12,6 @@ import {
 import type { CreateContentInput, UpdateContentInput } from './repository-types.js';
 
 export type ExternalContentReconciliationStatus = 'pending' | 'bound' | 'reconciliation_required' | 'failed';
-
 export type ExternalContentReference = Readonly<{
   id: string;
   instanceId: string;
@@ -24,7 +23,6 @@ export type ExternalContentReference = Readonly<{
   reconciliationStatus: ExternalContentReconciliationStatus;
   lastErrorCode?: string;
 }>;
-
 type ExternalContentReferenceRow = {
   readonly id: string;
   readonly instance_id: string;
@@ -36,7 +34,6 @@ type ExternalContentReferenceRow = {
   readonly reconciliation_status: ExternalContentReconciliationStatus;
   readonly last_error_code: string | null;
 };
-
 const mapReference = (row: ExternalContentReferenceRow): ExternalContentReference => ({
   id: row.id,
   instanceId: row.instance_id,
@@ -163,14 +160,17 @@ export const loadExternalContentReferenceBySourceEntity = async (input: {
   readonly sourceEntityId: string;
 }): Promise<ExternalContentReference | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const sourceEntityTypes = input.sourceEntityType === 'projects.project'
+      ? ['GenericItem', 'projects.project'] : [input.sourceEntityType];
     const result = await client.query<ExternalContentReferenceRow>(
       `${referenceSelect}
 WHERE instance_id = $1
   AND source_system = $2
-  AND source_entity_type = $3
+  AND source_entity_type = ANY($3::text[])
   AND source_entity_id = $4
+ORDER BY array_position($3::text[], source_entity_type)
 LIMIT 1;`,
-      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
+      [input.instanceId, input.sourceSystem, sourceEntityTypes, input.sourceEntityId]
     );
     return result.rows[0] ? mapReference(result.rows[0]) : undefined;
   });

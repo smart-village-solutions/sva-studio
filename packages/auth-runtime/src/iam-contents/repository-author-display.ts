@@ -80,6 +80,8 @@ export const resolveCreateAuthorDisplay = async (
       actorDisplayName: input.actorDisplayName,
       mode: authorDisplayMode,
       organization,
+      requestedDisplayName:
+        input.confirmedExternalOwner?.type === 'account' ? input.authorDisplayName : undefined,
     }),
   };
 };

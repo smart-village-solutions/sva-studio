@@ -25,6 +25,7 @@ import {
   emitContentUpdatedActivity,
   emitContentOwnershipTransferredActivity,
   insertContentRow,
+  persistContentUpdateHistory,
   resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
   updateContentRow,
@@ -99,14 +100,14 @@ export const createContent = async (input: CreateContentInput): Promise<string> 
 
 export const updateContent = async (input: UpdateContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    if (
-      input.mutationRef &&
-      (await isContentMutationFinalized(client, {
+    const mutationFinalized = input.mutationRef
+      ? await isContentMutationFinalized(client, {
         instanceId: input.instanceId,
         contentId: input.contentId,
         mutationRef: input.mutationRef,
-      }))
-    ) {
+      })
+      : false;
+    if (mutationFinalized && !input.confirmedExternalOwner) {
       return input.contentId;
     }
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
@@ -117,6 +118,12 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
+    const owner = resolveCurrentOwnerPrincipal(current);
+    if (
+      mutationFinalized && input.confirmedExternalOwner &&
+      owner?.type === input.confirmedExternalOwner.type &&
+      owner.id === input.confirmedExternalOwner.id
+    ) return input.contentId;
     if ('expectedSourcePrincipal' in input) {
       const sourcePrincipal = resolveCurrentOwnerPrincipal(current);
       const expectedSourcePrincipal = input.expectedSourcePrincipal ?? undefined;
@@ -166,20 +173,14 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       current.status,
       nextStatus
     );
-    const historyId = await insertContentHistory(client, {
-      instanceId: input.instanceId,
-      contentId: input.contentId,
-      actorAccountId: input.actorAccountId,
-      actorDisplayName: input.actorDisplayName,
-      action: historyAction,
+    await persistContentUpdateHistory(client, input, current, {
       changedFields,
-      previousStatus: current.status,
-      nextStatus,
-      summary: historySummary,
-      snapshot: nextPayload,
-      mutationRef: input.mutationRef,
+      status: nextStatus,
+      payload: nextPayload,
+      historyAction,
+      historySummary,
+      mutationFinalized,
     });
-    await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
     await emitContentUpdatedActivity(client, stateInput, current, {
       eventType: activityEventType,
       action: resolveAuditAction({ changedFields, previousStatus: current.status, nextStatus }),

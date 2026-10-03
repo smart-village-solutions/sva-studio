@@ -57,6 +57,7 @@ export type CreateContentInput = {
   organizationId?: string;
   confirmedExternalOwner?: IamContentOwnerPrincipal;
   authorDisplayMode?: IamContentAuthorDisplayMode;
+  authorDisplayName?: string;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;

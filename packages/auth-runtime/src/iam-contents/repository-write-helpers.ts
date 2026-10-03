@@ -1,5 +1,6 @@
 import type { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import { resolveCreateAuthorDisplay } from './repository-author-display.js';
+import { insertContentHistory } from './repository-shared.js';
 import type { ContentRow, CreateContentInput, UpdateContentInput } from './repository-types.js';
 
 export {
@@ -16,6 +17,46 @@ export {
 } from './repository-activity.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+
+export const persistContentUpdateHistory = async (
+  client: InstanceScopedClient,
+  input: UpdateContentInput,
+  current: ContentRow,
+  next: {
+    readonly changedFields: readonly string[];
+    readonly status: ContentRow['status'];
+    readonly payload: ContentRow['payload_json'];
+    readonly historyAction: 'created' | 'updated' | 'status_changed';
+    readonly historySummary: string;
+    readonly mutationFinalized: boolean;
+  }
+): Promise<void> => {
+  if (next.mutationFinalized) {
+    await client.query(
+      `UPDATE iam.content_history
+       SET changed_fields = ARRAY(
+         SELECT DISTINCT field FROM unnest(changed_fields || $4::text[]) AS field ORDER BY field
+       )
+       WHERE instance_id = $1 AND content_id = $2::uuid AND mutation_ref = $3;`,
+      [input.instanceId, input.contentId, input.mutationRef, next.changedFields]
+    );
+    return;
+  }
+  const historyId = await insertContentHistory(client, {
+    instanceId: input.instanceId,
+    contentId: input.contentId,
+    actorAccountId: input.actorAccountId,
+    actorDisplayName: input.actorDisplayName,
+    action: next.historyAction,
+    changedFields: next.changedFields,
+    previousStatus: current.status,
+    nextStatus: next.status,
+    summary: next.historySummary,
+    snapshot: next.payload,
+    mutationRef: input.mutationRef,
+  });
+  await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
+};
 
 export const insertContentRow = async (
   client: InstanceScopedClient,

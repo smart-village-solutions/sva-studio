@@ -220,6 +220,23 @@ describe('external content references', () => {
     );
   });
 
+  it('resolves project reads through GenericItem and older project references', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_type: 'GenericItem', source_entity_id: 'project-1' }],
+    });
+
+    await expect(loadExternalContentReferenceBySourceEntity({
+      instanceId: 'tenant-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+    })).resolves.toEqual(expect.objectContaining({ contentId: 'content-1' }));
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('ORDER BY array_position($3::text[], source_entity_type)'),
+      ['tenant-1', 'mainserver', ['GenericItem', 'projects.project'], 'project-1']
+    );
+  });
+
   it('records a successful provider mutation against an existing content core', async () => {
     state.query.mockResolvedValueOnce({
       rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],
@@ -312,8 +329,8 @@ describe('external content references', () => {
       authorDisplayName: 'Organisation',
     });
 
-    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = $3'), [
-      'tenant-1', 'mainserver', 'GenericItem', 'project-1',
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = ANY($3::text[])'), [
+      'tenant-1', 'mainserver', ['GenericItem'], 'project-1',
     ]);
     expect(state.insertContentRow).not.toHaveBeenCalled();
     expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({
@@ -349,8 +366,8 @@ describe('external content references', () => {
       authorDisplayName: 'Organisation',
     });
 
-    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = $3'), [
-      'tenant-1', 'mainserver', 'projects.project', 'project-1',
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = ANY($3::text[])'), [
+      'tenant-1', 'mainserver', ['GenericItem', 'projects.project'], 'project-1',
     ]);
     expect(state.insertContentRow).not.toHaveBeenCalled();
     expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({

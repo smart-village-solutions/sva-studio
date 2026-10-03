@@ -1786,24 +1786,6 @@
       "status": "open",
       "summary": "Waste-Import-API in kleinere Typ- und Funktionsoberflaechen aufteilen (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-import.ts)"
     },
-    "packages-default:packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "CSV-Parser in kleinere Header-, Fraktions- und Zeilenparser zerlegen (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "CSV-Parser-Datei in kleinere Parsing-Module splitten (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-planner.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-008",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Import-Planer in Entity-Resolver und Assignment-Schritte aufteilen (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-planner.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/server.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-009",
       "ticketSystem": "backlog",
@@ -2373,18 +2355,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Waste-Operations-Contract in kleinere Vertrags- und Re-Export-Segmente aufteilen (packages/waste-management-contracts/src/waste-management-operations-contract.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-output.render.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-033",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Output-Renderer in kleinere Layout-, Table- und Footer-Helfer splitten (packages/waste-management-contracts/src/waste-management-output.render.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-settings-public-config.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-034",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Settings-Datei in kleinere Parsing- und Konstantenmodule splitten (packages/waste-management-contracts/src/waste-management-settings-public-config.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-035",

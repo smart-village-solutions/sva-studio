@@ -647,14 +647,19 @@ prüfen die Paketgrenze und die vier `fileLines`-Befunde.
    bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f, 12a bis
    12d und 13a bis 13f wurden seriell geliefert. Ab PR 23 laufen höchstens
    zwei getrennte Worktrees parallel: Strang A bearbeitet PR 23, PR 24a,
-   PR 24b, PR 25 und PR 26 und danach PR 31 bis PR 34; Strang B
+   PR 24b, PR 25a, PR 25b und PR 26 und danach PR 31 bis PR 34; Strang B
    bearbeitet PR 27 bis PR 30. PR 29
    wartet auf den Merge von PR 26. PR 24 wurde nach der ersten
    Complexity-Prüfung in zwei fachliche Abschnitte getrennt: PR 24a umfasst
    Import-Wizard, Job-Aktionen und Tourenlogik; PR 24b umfasst die drei
    großen UI-Ansichten für Orte, Zuordnungen und individuelle Termine.
    Die zunächst gemeinsame Extraktion hätte 21 private Module und zwölf
-   neue Complexity-Findings in einem PR erzeugt. Innerhalb jedes Strangs
+   neue Complexity-Findings in einem PR erzeugt. PR 25 ist an der
+   Package-Grenze geteilt: PR 25a bearbeitet vier Vertragsfunktionen für
+   öffentliche Settings, CSV-Import und PDF-Ausgabe; PR 25b bearbeitet
+   vier Runtime-Dateien für HTTP-Validierung und Settings-Handler.
+   Die acht ursprünglichen Ziele umfassen 3.737 Zeilen und haben getrennte
+   Typ-, Unit- und Runtime-Targets. Innerhalb jedes Strangs
    ist der vorherige Merge
    Voraussetzung für den nächsten Abschnitt. Vor jedem Merge wird der Branch
    gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter

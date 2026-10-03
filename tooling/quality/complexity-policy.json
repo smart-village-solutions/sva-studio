@@ -2344,12 +2344,6 @@
       "status": "open",
       "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
     },
-    "ci-scripts:scripts/ci/verify-graphile-worker-database-contract.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Graphile-Worker-Datenbankverifier in wiederverwendbare Setup-, Prüf- und Cleanup-Bausteine gliedern"
-    },
     "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:fileLines": {
       "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
       "ticketSystem": "backlog",

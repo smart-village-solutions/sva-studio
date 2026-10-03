@@ -1328,17 +1328,21 @@ eigenständig reviewbare Abschluss-PR 35.
 
 ### PR 32b — IAM-Evidence und Authorize-Performance (2 Befunde)
 
-- [ ] `scripts/ci/run-iam-evidence.ts` und
+- [x] `scripts/ci/run-iam-evidence.ts` und
       `scripts/ci/run-iam-authorize-performance.ts` entlang ihrer bestehenden
       Nachweis- und Messpfade aufteilen. Redaction, Prüfreihenfolge,
       Fehlertexte und Exitcodes mit vorhandenen Skript-Tests und Skript-Typecheck
       erhalten; Live-Credential-Acceptance nur in einer nachweislich sicheren
       vorhandenen Umgebung ausführen, andernfalls den fehlenden Live-Nachweis
-      ausdrücklich dokumentieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      ausdrücklich dokumentieren. PR #1725 wurde am geprüften HEAD
+      `7635744a309bc29d52e7fa353f63f26a222150c0` mit grünen finalen
+      GitHub-Gates und ohne offene Review-Threads gemergt; Merge-Commit
+      `c553238a14aa787a4b02ea5a067916cb4a3d33cd`. Der nicht ausgeführte
+      Live-Credential-Nachweis ist im PR dokumentiert.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1725.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1725 angelegt; Changelog-Gate vor Merge grün.
 
 ### PR 32c — Graphile-Worker-Datenbankvertrag (1 Befund)
 
@@ -1347,7 +1351,7 @@ eigenständig reviewbare Abschluss-PR 35.
       Cleanup, Exitcodes und Fehlertexte mit gezielten Contract-Tests,
       Skript-Typecheck und dem vorhandenen Integrationstarget erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1727.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

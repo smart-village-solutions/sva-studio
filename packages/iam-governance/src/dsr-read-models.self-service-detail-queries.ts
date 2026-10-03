@@ -1,39 +1,14 @@
 import type { QueryClient } from './query-client.js';
-
 import type {
-  AccountSnapshotRow,
-  DsrSelfServiceRows,
   ExportJobRow,
   LegalAcceptanceRow,
   LegalHoldRow,
   RequestRow,
 } from './dsr-read-models.types.js';
 
-export class DsrAccountSnapshotNotFoundError extends Error {
-  constructor(accountId: string) {
-    super(`account_snapshot_not_found:${accountId}`);
-    this.name = 'DsrAccountSnapshotNotFoundError';
-  }
-}
-
-const queryAccountSnapshot = (
+const querySelfServiceRequestByCaseId = (
   client: QueryClient,
-  input: { instanceId: string; accountId: string }
-) =>
-  client.query<AccountSnapshotRow>(
-    `
-SELECT id, processing_restricted_at::text, processing_restriction_reason, non_essential_processing_opt_out_at::text
-FROM iam.accounts
-WHERE instance_id = $1
-  AND id = $2::uuid
-LIMIT 1;
-`,
-    [input.instanceId, input.accountId]
-  );
-
-const querySelfServiceRequests = (
-  client: QueryClient,
-  input: { instanceId: string; accountId: string }
+  input: { instanceId: string; accountId: string; caseId: string }
 ) =>
   client.query<RequestRow>(
     `
@@ -62,15 +37,15 @@ JOIN iam.accounts target
   ON target.id = request.target_account_id
 WHERE request.instance_id = $1
   AND request.target_account_id = $2::uuid
-ORDER BY request.request_accepted_at DESC
-LIMIT 50;
+  AND request.id = $3::uuid
+LIMIT 1;
 `,
-    [input.instanceId, input.accountId]
+    [input.instanceId, input.accountId, input.caseId]
   );
 
-const querySelfServiceExportJobs = (
+const querySelfServiceExportJobByCaseId = (
   client: QueryClient,
-  input: { instanceId: string; accountId: string }
+  input: { instanceId: string; accountId: string; caseId: string }
 ) =>
   client.query<ExportJobRow>(
     `
@@ -99,15 +74,15 @@ LEFT JOIN iam.accounts requester
 WHERE job.instance_id = $1
   AND job.target_account_id = $2::uuid
   AND job.requested_by_account_id = $2::uuid
-ORDER BY job.created_at DESC
-LIMIT 50;
+  AND job.id = $3::uuid
+LIMIT 1;
 `,
-    [input.instanceId, input.accountId]
+    [input.instanceId, input.accountId, input.caseId]
   );
 
-const querySelfServiceLegalHolds = (
+const querySelfServiceLegalHoldByCaseId = (
   client: QueryClient,
-  input: { instanceId: string; accountId: string }
+  input: { instanceId: string; accountId: string; caseId: string }
 ) =>
   client.query<LegalHoldRow>(
     `
@@ -136,15 +111,15 @@ LEFT JOIN iam.accounts creator
   ON creator.id = hold.created_by_account_id
 WHERE hold.instance_id = $1
   AND hold.account_id = $2::uuid
-ORDER BY hold.created_at DESC
-LIMIT 20;
+  AND hold.id = $3::uuid
+LIMIT 1;
 `,
-    [input.instanceId, input.accountId]
+    [input.instanceId, input.accountId, input.caseId]
   );
 
-const querySelfServiceLegalAcceptances = (
+const querySelfServiceLegalAcceptanceByCaseId = (
   client: QueryClient,
-  input: { instanceId: string; accountId: string }
+  input: { instanceId: string; accountId: string; caseId: string }
 ) =>
   client.query<LegalAcceptanceRow>(
     `
@@ -169,34 +144,35 @@ JOIN iam.accounts account
   ON account.id = acceptance.account_id
 WHERE acceptance.instance_id = $1
   AND acceptance.account_id = $2::uuid
-ORDER BY acceptance.accepted_at DESC
-LIMIT 50;
+  AND acceptance.id = $3::uuid
+LIMIT 1;
 `,
-    [input.instanceId, input.accountId]
+    [input.instanceId, input.accountId, input.caseId]
   );
 
-export const loadDsrSelfServiceRows = async (
+export const findSelfServiceActivityItemByCaseId = async (
   client: QueryClient,
-  input: { instanceId: string; accountId: string }
-): Promise<DsrSelfServiceRows> => {
-  const accountResult = await queryAccountSnapshot(client, input);
-  const requestResult = await querySelfServiceRequests(client, input);
-  const exportResult = await querySelfServiceExportJobs(client, input);
-  const holdResult = await querySelfServiceLegalHolds(client, input);
-  const legalAcceptanceResult = await querySelfServiceLegalAcceptances(client, input);
-
-  const account = accountResult.rows[0];
-  if (!account) {
-    throw new DsrAccountSnapshotNotFoundError(input.accountId);
+  input: { instanceId: string; accountId: string; caseId: string }
+) => {
+  const requestResult = await querySelfServiceRequestByCaseId(client, input);
+  if (requestResult.rows[0]) {
+    return { request: requestResult.rows[0] };
   }
 
-  return {
-    account,
-    requests: requestResult.rows,
-    exportJobs: exportResult.rows,
-    legalHolds: holdResult.rows,
-    legalAcceptances: legalAcceptanceResult.rows,
-  };
-};
+  const exportResult = await querySelfServiceExportJobByCaseId(client, input);
+  if (exportResult.rows[0]) {
+    return { exportJob: exportResult.rows[0] };
+  }
 
-export { findSelfServiceActivityItemByCaseId } from './dsr-read-models.self-service-detail-queries.js';
+  const holdResult = await querySelfServiceLegalHoldByCaseId(client, input);
+  if (holdResult.rows[0]) {
+    return { legalHold: holdResult.rows[0] };
+  }
+
+  const legalAcceptanceResult = await querySelfServiceLegalAcceptanceByCaseId(client, input);
+  if (legalAcceptanceResult.rows[0]) {
+    return { legalAcceptance: legalAcceptanceResult.rows[0] };
+  }
+
+  return null;
+};

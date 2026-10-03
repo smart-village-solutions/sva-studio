@@ -271,6 +271,7 @@ Abhängigkeiten des aktuellen Systems.
   - besitzt in `dsr-persistence.ts` die kanonischen, mandantengebundenen Persistenzprimitiven für aktive Legal Holds, DSR-Request-Events und DSR-Audit-Events; Auth-Runtime, Export-Flows und Wartung konsumieren diese Verträge ohne eigene SQL-Kopien
   - enthält auch die kanonische Legal-Text-Sanitisierung; React-Consumer importieren keinen app-lokalen HTML-Sanitizer mehr
   - liefert für den Account-Self-Service sowohl die Overview-Projektion mit `activityItems` als auch den `caseId`-basierten Detailzugriff für Deep-Links auf einzelne Datenschutzvorgänge
+  - trennt DSR-Leseprojektionen intern in gemeinsame Fall-Mapper, Admin-Filter und Self-Service-Aktivitäten sowie Übersichts- und fallbezogene Abfragen; die bestehenden Paket-Entrypoints und SQL-Scope-Bedingungen bleiben bestehen
 - Inhaltsverwaltung als Core-Element:
   - `packages/core` (`content-management.ts`) für Kernvertrag
   - `packages/plugin-sdk` für Erweiterungspunkte, Registries und Namespace-Verträge

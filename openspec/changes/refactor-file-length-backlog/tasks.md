@@ -418,16 +418,20 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 11b — DSR-Export und Queue (3 Befunde)
 
-- [ ] `packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts`
+- [x] `packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts`
       sowie `packages/iam-governance/src/dsr-export-flows.ts` und
       `dsr-export-payload.ts` entlang Queue-/Job-Abschluss,
       Idempotenz-/Exportantrag und Payload-/Formatprojektion aufteilen.
       Die jeweiligen Tests sichern Tenant-Scope, Export-Vollständigkeit,
       Verschlüsselung, JSON/CSV/XML, Retry-/Fehlerstatus und Audit.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Umsetzung in PR #1664; der finale PR-HEAD
+      `1c4dace13838e66b5a09898a4acd442cae414661` wurde am
+      03.10.2026 als `4bb372c8bca46b8053ca138ce65a4e2e291a9373`
+      gemergt.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1664.json` mit
-      passender `prNumber` und Nutzertext in PR #1664 anlegen;
-      Changelog-Gate vor Merge grün.
+      passender `prNumber` und Nutzertext in PR #1664 angelegt;
+      Changelog- und Complexity-Gate vor Merge grün.
 
 ### PR 11c — DSR-Leseprojektionen (2 Befunde)
 
@@ -435,10 +439,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       `dsr-read-models.self-service-queries.ts` nach Admin-/Self-Service-
       Projektion und Query-/Detailauflösung aufteilen. Die Read-Model-Tests
       sichern Tenant-/Account-Scope, Statusabbildung, Suche, Reihenfolge,
-      Pagination und Fall-Details.
+      Pagination und Fall-Details. Umsetzung in PR #1665; Abschluss nach
+      Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11c anlegen;
+      `docs/changelog/entries/pr-1665.json` mit
+      passender `prNumber` und Nutzertext in PR #1665 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 11d — Governance-Workflow-Ausführung (1 Befund)

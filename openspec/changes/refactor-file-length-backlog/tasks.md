@@ -1314,14 +1314,17 @@ eigenständig reviewbare Abschluss-PR 35.
 
 ### PR 32a — Server-Package-Runtime-Guard (1 Befund)
 
-- [ ] `scripts/ci/check-server-package-runtime.ts` entlang statischer
+- [x] `scripts/ci/check-server-package-runtime.ts` entlang statischer
       Importprüfung und Dist-Smoke-Check aufteilen. Öffentliche Exporte,
       Prüfreihenfolge, pnpm-Dist-Abgleich, Exitcodes und Fehlertexte mit
       gezielten Tests, Skript-Typecheck und `pnpm check:server-runtime` erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Merge-Nachweis: PR #1723, HEAD
+      `f48d3a0de2743b0589dbca60f97c02486b299462`, Merge-Commit
+      `9c318d9a211f0bc7e7ec758add494804f562e465`.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1723.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1723 angelegt; Changelog-Gate grün.
 
 ### PR 32b — IAM-Evidence und Authorize-Performance (2 Befunde)
 

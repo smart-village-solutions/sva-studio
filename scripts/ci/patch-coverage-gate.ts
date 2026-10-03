@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-
-import { assertCoveragePolicy, findCoverageArtifacts, readJson, type CoveragePolicy } from './coverage-gate.ts';
+import { listChangedFiles, loadPolicy, resolveProjectRoots } from './new-code-coverage-scope.ts';
+import {
+  isLikelyExecutableLine,
+  isLikelyNonExecutableFile,
+  readSourceLines,
+} from './new-code-coverage-source.ts';
+import { parseLcovLineCoverage } from './patch-coverage-lcov.ts';
 import { isSonarCoverageExcludedPath, readSonarCoverageExclusions } from './sonar-paths.ts';
 
 interface RunPatchCoverageGateOptions {
@@ -13,23 +16,6 @@ interface RunPatchCoverageGateOptions {
   baseRef?: string;
   headRef?: string;
   targetPct?: number;
-}
-
-interface ChangedFile {
-  path: string;
-  changedLines: number[];
-}
-
-interface FileLineCoverage {
-  coveredLines: Set<number>;
-  instrumentedLines: Set<number>;
-}
-
-interface LcovCandidate {
-  lcovPath: string;
-  projectRoot: string;
-  priority: number;
-  modifiedAt: number;
 }
 
 interface UncoveredFileSummary {
@@ -50,427 +36,9 @@ export interface RunPatchCoverageGateResult {
 }
 
 const defaultTargetPct = 85;
-const gitDiffMaxBuffer = 32 * 1024 * 1024;
-
-function loadPolicy(rootDir: string): CoveragePolicy {
-  const policyPath = path.join(rootDir, 'tooling/testing/coverage-policy.json');
-  const policy = readJson<unknown>(policyPath);
-  assertCoveragePolicy(policy);
-  return policy;
-}
-
-function resolveProjectRoots(rootDir: string, policy: CoveragePolicy): string[] {
-  const exemptProjects = new Set(policy.exemptProjects ?? []);
-  const newCodeExemptProjects = new Set(
-    ((policy as CoveragePolicy & { newCodeExemptProjects?: string[] }).newCodeExemptProjects ?? [])
-  );
-  const projectNames = Object.keys(policy.perProjectFloors ?? {}).filter(
-    (projectName) => !exemptProjects.has(projectName) && !newCodeExemptProjects.has(projectName)
-  );
-  const roots = projectNames.flatMap((projectName) => {
-    const appRoot = path.join(rootDir, 'apps', projectName);
-    if (fs.existsSync(appRoot)) {
-      return [appRoot];
-    }
-
-    const packageRoot = path.join(rootDir, 'packages', projectName);
-    if (fs.existsSync(packageRoot)) {
-      return [packageRoot];
-    }
-
-    return [];
-  });
-
-  return roots.sort();
-}
-
-function normalizeRelativePath(rootDir: string, filePath: string): string {
-  return path.relative(rootDir, filePath).split(path.sep).join('/');
-}
-
-function resolveLcovSourcePath(rootDir: string, projectRoot: string, sourceFilePath: string): string {
-  const absoluteFilePath = path.isAbsolute(sourceFilePath)
-    ? sourceFilePath
-    : path.join(projectRoot, sourceFilePath);
-
-  const extension = path.extname(absoluteFilePath);
-  const extensionFallbacks =
-    extension === '.js'
-      ? ['.ts', '.tsx']
-      : extension === '.jsx'
-        ? ['.tsx', '.ts']
-        : extension === '.mjs'
-          ? ['.mts', '.ts']
-          : [];
-
-  for (const fallbackExtension of extensionFallbacks) {
-    const fallbackPath = absoluteFilePath.slice(0, -extension.length) + fallbackExtension;
-    if (fs.existsSync(fallbackPath)) {
-      return normalizeRelativePath(rootDir, fallbackPath);
-    }
-  }
-
-  if (fs.existsSync(absoluteFilePath)) {
-    return normalizeRelativePath(rootDir, absoluteFilePath);
-  }
-
-  return normalizeRelativePath(rootDir, absoluteFilePath);
-}
-
-function isCoverableSourceFile(filePath: string): boolean {
-  if (!/\.(ts|tsx|js|jsx)$/.test(filePath)) {
-    return false;
-  }
-
-  if (filePath.endsWith('.d.ts')) {
-    return false;
-  }
-
-  if (
-    filePath.includes('/node_modules/') ||
-    filePath.includes('/dist/') ||
-    filePath.includes('/build/') ||
-    filePath.includes('/coverage/') ||
-    filePath.includes('/.nx/') ||
-    filePath.includes('/.turbo/') ||
-    filePath.includes('/__tests__/') ||
-    filePath.includes('/__mocks__/') ||
-    filePath.includes('/test-utils/') ||
-    filePath.includes('/examples/') ||
-    filePath.includes('/e2e/') ||
-    filePath.includes('/scripts/') ||
-    filePath.includes('/tools/')
-  ) {
-    return false;
-  }
-
-  return !/(\.test|\.spec|\.config)\.(ts|tsx|js|jsx)$/.test(filePath);
-}
-
-function listChangedFiles(rootDir: string, baseRef: string, headRef: string, projectRoots: string[]): ChangedFile[] {
-  if (projectRoots.length === 0) {
-    return [];
-  }
-
-  const relativeRoots = projectRoots.map((projectRoot) => normalizeRelativePath(rootDir, projectRoot));
-  const diffArgs = ['diff', '--unified=0', '--diff-filter=AM', `${baseRef}...${headRef}`, '--', ...relativeRoots];
-  const result = spawnSync('git', diffArgs, {
-    cwd: rootDir,
-    encoding: 'utf8',
-    maxBuffer: gitDiffMaxBuffer,
-  });
-
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || `git ${diffArgs.join(' ')} failed`);
-  }
-
-  const files = new Map<string, Set<number>>();
-  let currentFile: string | null = null;
-  let nextNewLineNumber: number | null = null;
-
-  for (const line of result.stdout.split('\n')) {
-    const fileMatch = line.match(/^\+\+\+ b\/(.+)$/);
-    if (fileMatch) {
-      currentFile = fileMatch[1];
-      nextNewLineNumber = null;
-      if (!files.has(currentFile)) {
-        files.set(currentFile, new Set<number>());
-      }
-      continue;
-    }
-
-    const hunkMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
-    if (hunkMatch) {
-      nextNewLineNumber = Number(hunkMatch[1]);
-      continue;
-    }
-
-    if (!currentFile || nextNewLineNumber === null) {
-      continue;
-    }
-
-    if (line.startsWith('+') && !line.startsWith('+++')) {
-      files.get(currentFile)?.add(nextNewLineNumber);
-      nextNewLineNumber += 1;
-      continue;
-    }
-
-    if (line.startsWith(' ')) {
-      nextNewLineNumber += 1;
-    }
-  }
-
-  return [...files.entries()]
-    .map(([filePath, lines]) => ({
-      path: filePath,
-      changedLines: [...lines].sort((left, right) => left - right),
-    }))
-    .filter((entry) => entry.changedLines.length > 0 && isCoverableSourceFile(entry.path));
-}
-
-function findNxCacheCoverageArtifacts(rootDir: string, projectRoots: readonly string[], fileName: string): string[] {
-  const nxCacheRoot = path.join(rootDir, '.nx', 'cache');
-  if (!fs.existsSync(nxCacheRoot)) {
-    return [];
-  }
-
-  const relativeProjectRoots = projectRoots.map((projectRoot) => path.relative(rootDir, projectRoot));
-  const results: string[] = [];
-
-  for (const entry of fs.readdirSync(nxCacheRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    for (const relativeProjectRoot of relativeProjectRoots) {
-      const candidate = path.join(nxCacheRoot, entry.name, relativeProjectRoot, 'coverage', fileName);
-      if (fs.existsSync(candidate)) {
-        results.push(candidate);
-      }
-    }
-  }
-
-  return results;
-}
-
-function parseLcovLineCoverage(rootDir: string, projectRoots: readonly string[]): Map<string, FileLineCoverage> {
-  const workspaceLcovFiles = projectRoots.flatMap((projectRoot) => findCoverageArtifacts(projectRoot, 'lcov.info'));
-  const cacheLcovFiles = findNxCacheCoverageArtifacts(rootDir, projectRoots, 'lcov.info');
-  const selectedLcovFiles = selectLcovArtifacts(rootDir, [...workspaceLcovFiles, ...cacheLcovFiles]);
-  const coverageByFile = new Map<string, FileLineCoverage>();
-
-  for (const candidate of selectedLcovFiles) {
-    const { lcovPath, projectRoot } = candidate;
-    const contents = fs.readFileSync(lcovPath, 'utf8');
-    const records = contents.split('end_of_record');
-
-    for (const record of records) {
-      const trimmed = record.trim();
-      if (!trimmed) {
-        continue;
-      }
-
-      const sfMatch = trimmed.match(/^SF:(.+)$/m);
-      if (!sfMatch) {
-        continue;
-      }
-
-      const sourceFilePath = sfMatch[1].trim();
-      const normalizedFilePath = resolveLcovSourcePath(rootDir, projectRoot, sourceFilePath);
-      const coveredLines = new Set<number>();
-      const instrumentedLines = new Set<number>();
-
-      for (const entryLine of trimmed.split('\n')) {
-        const daMatch = entryLine.match(/^DA:(\d+),(\d+)/);
-        if (!daMatch) {
-          continue;
-        }
-
-        const lineNumber = Number(daMatch[1]);
-        const hits = Number(daMatch[2]);
-        instrumentedLines.add(lineNumber);
-        if (hits > 0) {
-          coveredLines.add(lineNumber);
-        }
-      }
-
-      coverageByFile.set(normalizedFilePath, {
-        coveredLines,
-        instrumentedLines,
-      });
-    }
-  }
-
-  return coverageByFile;
-}
-
-function resolveWorkspaceProjectRootFromCachePath(rootDir: string, lcovPath: string): string | null {
-  const normalizedRoot = rootDir.split(path.sep).join('/').replace(/\/$/, '');
-  const escapedRoot = normalizedRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const normalizedPath = lcovPath.split(path.sep).join('/');
-  const pattern = new RegExp(String.raw`^${escapedRoot}/\.nx/cache/[^/]+/(apps|packages)/([^/]+)/coverage/lcov\.info$`);
-  const match = pattern.exec(normalizedPath);
-  if (!match) {
-    return null;
-  }
-
-  return path.join(rootDir, match[1], match[2]);
-}
-
-function selectLcovArtifacts(rootDir: string, lcovFiles: string[]): LcovCandidate[] {
-  const bestByProjectRoot = new Map<string, LcovCandidate>();
-
-  for (const lcovPath of lcovFiles) {
-    const isCacheArtifact = lcovPath.includes(`${path.sep}.nx${path.sep}cache${path.sep}`);
-    const resolvedProjectRoot =
-      (isCacheArtifact ? resolveWorkspaceProjectRootFromCachePath(rootDir, lcovPath) : null) ??
-      path.dirname(path.dirname(lcovPath));
-    const priority = isCacheArtifact ? 1 : 2;
-    const modifiedAt = fs.statSync(lcovPath).mtimeMs;
-    const existing = bestByProjectRoot.get(resolvedProjectRoot);
-
-    if (!existing) {
-      bestByProjectRoot.set(resolvedProjectRoot, {
-        lcovPath,
-        projectRoot: resolvedProjectRoot,
-        priority,
-        modifiedAt,
-      });
-      continue;
-    }
-
-    if (priority > existing.priority || (priority === existing.priority && modifiedAt > existing.modifiedAt)) {
-      bestByProjectRoot.set(resolvedProjectRoot, {
-        lcovPath,
-        projectRoot: resolvedProjectRoot,
-        priority,
-        modifiedAt,
-      });
-    }
-  }
-
-  return [...bestByProjectRoot.values()];
-}
-
-function isLikelyExecutableLine(sourceLine: string): boolean {
-  const trimmed = sourceLine.trim();
-  if (!trimmed) {
-    return false;
-  }
-
-  if (
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('/*') ||
-    trimmed.startsWith('*') ||
-    trimmed.startsWith('*/') ||
-    trimmed === '{' ||
-    trimmed === '}' ||
-    trimmed === '};' ||
-    trimmed === '];' ||
-    trimmed === '),' ||
-    trimmed === ');'
-  ) {
-    return false;
-  }
-
-  if (
-    trimmed.startsWith('import ') ||
-    trimmed.startsWith('export type ') ||
-    trimmed.startsWith('type ') ||
-    trimmed.startsWith('interface ') ||
-    trimmed.startsWith('declare ') ||
-    trimmed.startsWith('export {') ||
-    trimmed.startsWith('export interface ') ||
-    trimmed.startsWith('export declare ')
-  ) {
-    return false;
-  }
-
-  if (
-    /^from\s+['"][^'"]+['"];?$/.test(trimmed) ||
-    /^['"`][^'"`]+['"`][;,]?$/.test(trimmed) ||
-    /^[A-Za-z_$][\w$]*,?$/.test(trimmed) ||
-    /^(readonly\s+)?[A-Za-z_$][\w$]*\??:\s.+;?$/.test(trimmed) ||
-    /^(export\s+)?type\s+[A-Za-z_$][\w$]*\s*=\s*.+;?$/.test(trimmed) ||
-    /^}[,\s]*from\s+['"][^'"]+['"];?$/.test(trimmed) ||
-    trimmed === '}[];'
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-function isLikelyTypeOnlyOrReexportLine(sourceLine: string): boolean {
-  const trimmed = sourceLine.trim();
-  if (!trimmed) {
-    return true;
-  }
-
-  if (
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('/*') ||
-    trimmed.startsWith('*') ||
-    trimmed.startsWith('*/') ||
-    trimmed.startsWith('import type ') ||
-    trimmed.startsWith('export type ') ||
-    trimmed.startsWith('type ') ||
-    trimmed.startsWith('interface ') ||
-    trimmed.startsWith('export interface ') ||
-    trimmed.startsWith('declare ') ||
-    trimmed.startsWith('export declare ') ||
-    trimmed.startsWith('readonly ') ||
-    trimmed.startsWith('export {') ||
-    trimmed.startsWith('export * from ')
-  ) {
-    return true;
-  }
-
-  if (
-    /^(readonly\s+)?[A-Za-z_$][\w$]*\??:\s.+;?$/.test(trimmed) ||
-    /^(export\s+)?type\s+[A-Za-z_$][\w$]*\s*=\s*.+;?$/.test(trimmed) ||
-    /^(\||&)\s+['"`][^'"`]+['"`][;,]?$/.test(trimmed) ||
-    /^['"`][^'"`]+['"`][;,]?$/.test(trimmed) ||
-    /^from\s+['"][^'"]+['"];?$/.test(trimmed) ||
-    /^}[,\s]*from\s+['"][^'"]+['"];?$/.test(trimmed) ||
-    /^[A-Za-z_$][\w$]*,?$/.test(trimmed) ||
-    trimmed === '{' ||
-    trimmed === '}' ||
-    trimmed === '};' ||
-    trimmed === '}[];'
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function isLikelyGeneratedFile(filePath: string, sourceLines: readonly string[]): boolean {
-  const normalizedPath = filePath.replaceAll('\\', '/');
-  if (
-    normalizedPath.endsWith('.gen.ts') ||
-    normalizedPath.endsWith('.gen.tsx') ||
-    normalizedPath.endsWith('.generated.ts') ||
-    normalizedPath.endsWith('.generated.tsx')
-  ) {
-    return true;
-  }
-
-  const leadingLines = sourceLines
-    .slice(0, 12)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join('\n');
-
-  return (
-    leadingLines.includes('This file was automatically generated') ||
-    leadingLines.includes('You should NOT make any changes in this file')
-  );
-}
-
-function isLikelyNonExecutableFile(filePath: string, sourceLines: readonly string[]): boolean {
-  if (isLikelyGeneratedFile(filePath, sourceLines)) {
-    return true;
-  }
-
-  const significantLines = sourceLines.map((line) => line.trim()).filter(Boolean);
-  if (significantLines.length === 0) {
-    return true;
-  }
-
-  return significantLines.every(isLikelyTypeOnlyOrReexportLine);
-}
-
-function readSourceLines(rootDir: string, filePath: string): string[] {
-  const absoluteFilePath = path.join(rootDir, filePath);
-  if (!fs.existsSync(absoluteFilePath)) {
-    return [];
-  }
-
-  return fs.readFileSync(absoluteFilePath, 'utf8').split('\n');
-}
-
-export function runPatchCoverageGate(options: RunPatchCoverageGateOptions = {}): RunPatchCoverageGateResult {
+export function runPatchCoverageGate(
+  options: RunPatchCoverageGateOptions = {}
+): RunPatchCoverageGateResult {
   const rootDir = path.resolve(options.rootDir ?? process.cwd());
   const baseRef = options.baseRef ?? 'origin/main';
   const headRef = options.headRef ?? 'HEAD';
@@ -491,7 +59,8 @@ export function runPatchCoverageGate(options: RunPatchCoverageGateOptions = {}):
   for (const changedFile of changedFiles) {
     const sourceLines = readSourceLines(rootDir, changedFile.path);
     const fileCoverage = coverageByFile.get(changedFile.path);
-    const ignoreFileWithoutCoverage = !fileCoverage && isLikelyNonExecutableFile(changedFile.path, sourceLines);
+    const ignoreFileWithoutCoverage =
+      !fileCoverage && isLikelyNonExecutableFile(changedFile.path, sourceLines);
     let fileCovered = 0;
     let fileMissed = 0;
 
@@ -540,7 +109,8 @@ export function runPatchCoverageGate(options: RunPatchCoverageGateOptions = {}):
   }
 
   const totalLines = coveredLines + missedLines;
-  const coveragePct = totalLines === 0 ? 100 : Number(((coveredLines / totalLines) * 100).toFixed(2));
+  const coveragePct =
+    totalLines === 0 ? 100 : Number(((coveredLines / totalLines) * 100).toFixed(2));
 
   return {
     passed: coveragePct >= targetPct,

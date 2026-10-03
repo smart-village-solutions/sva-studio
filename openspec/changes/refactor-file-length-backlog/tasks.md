@@ -1256,10 +1256,13 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 31b — Coverage-Gate (1 Dateilängenbefund)
 
-- [ ] `scripts/ci/coverage-gate.ts` entlang seiner bestehenden Coverage-
+- [x] `scripts/ci/coverage-gate.ts` entlang seiner bestehenden Coverage-
       Berechnung und CLI-Ausgabe aufteilen. Exitcodes, CLI-Optionen,
       Schwellwerte und Reportformat mit gezielten Skript-Tests und
       Skript-Typecheck erhalten; bestehendes Complexity-Finding mit abbauen.
+      Merge-Nachweis: PR #1719, HEAD
+      `d6f61806ecbe13a5aafff01524bfc7cc9af87783`, Merge-Commit
+      `2275fe96f25081fdc49fb58bf016ffef2e079941`.
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1719.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1719 angelegt; Changelog-Gate grün.

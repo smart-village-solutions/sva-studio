@@ -831,13 +831,18 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 16c — Keycloak-Audit (1 Befund)
 
-- [ ] `packages/instance-registry/src/service-audit-keycloak.ts` entlang
+- [x] `packages/instance-registry/src/service-audit-keycloak.ts` entlang
       Reader, Mapping und Checks unter das Dateilimit bringen. Audit-Umfang,
       PII-Schutz und Fehlerklassen mit gezielten Audit-Tests und zuständigen
       Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1692, HEAD
+      `53857c310f5ff30630318d20b29d0b8c464b5850`, Merge-Commit
+      `ece5097cd712846092d9e39302a15d7673b221b4`; Changelog
+      `docs/changelog/entries/pr-1692.json`.
 
 ### PR 16d — Modul-Mutationen (1 Befund)
 

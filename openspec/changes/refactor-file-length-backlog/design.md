@@ -439,6 +439,18 @@ PR 16 wird seriell und einzeln reviewbar in 16a Execution, 16b Readers,
 Service Helpers umgesetzt. Jeder Abschnitt beseitigt seine benannten
 Dateilängenbefunde und enthält einen eigenen Studio-Changelog-Eintrag.
 
+**PR-Auftrag 16d:** Nach #1692 hat `service-module-mutations.ts` 516 Zeilen
+und einen registrierten `fileLines`-Befund. Ziel ist die Trennung des
+Bootstrap-/IAM-Baseline-Syncs von Zuweisung und Entzug bei unverändertem
+öffentlichen Service-Importpfad. Das direkt genutzte interne
+`service-module-mutations-sync.ts` hält die Core-IAM-Synchronisierung,
+Reconcile-Zusammenführung, Bootstrap-Zuweisungen samt Rollback und das
+Baseline-Seeding. Zuweisung und Entzug bleiben im bisherigen Modul;
+Statuscodes, Modulreihenfolge, Idempotenz, Aktivierungsschutz, Audit-Details,
+Cache-Invalidierung und Waste-Provisioning bleiben unverändert. Nicht-Ziele
+sind neue Modul-Funktionen, Auth-Verträge und andere Services. Gezielte
+Service-Tests sowie Auth-/Data-/Security-/Runtime-Gates prüfen die Parität.
+
 **PR-Auftrag 16b:** Nach #1690 hat `service-keycloak-readers.ts` 432 Zeilen
 und einen registrierten `fileLines`-Befund. Der bestehende Service-Importpfad
 bleibt für Status, Preflight, Plan, Run-Read und Runtime-Resolver erhalten.

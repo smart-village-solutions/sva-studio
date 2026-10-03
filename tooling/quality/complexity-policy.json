@@ -1732,18 +1732,6 @@
       "status": "open",
       "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-LOADERS-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Bestehende Waste-Loader-Komplexitaet im neuen Owner schrittweise zerlegen (packages/waste-management-runtime/src/server-loaders.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-LOADERS-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Management-Loaderdatei in kleinere serverseitige Ladebausteine zerlegen (packages/waste-management-runtime/src/server-loaders.ts)"
-    },
     "packages-default:packages/waste-management-runtime/src/server-loaders.ts:functionLines": {
       "ticketId": "QUAL-WASTE-LOADERS-001",
       "ticketSystem": "backlog",

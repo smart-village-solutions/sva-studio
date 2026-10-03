@@ -911,15 +911,20 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 19 — Generic-Items-Editor (2 Befunde)
 
-- [ ] In `packages/plugin-generic-items/src/`
+- [x] In `packages/plugin-generic-items/src/`
       `generic-items.detail-content-tab.tsx` und
       `generic-items.detail-page.tsx` bereinigen. Content-Tab-Ownership,
       Formular- und Medienverträge gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1698, HEAD
+      `ca55010b5002efdd60b283b0161bb11723d6b243`, Merge-Commit
+      `d239bbc395d13591d7d8919212dc6246d7140cdc`; Changelog
+      `docs/changelog/entries/pr-1698.json`.
 
 ### PR 20 — POI-Editor (1 Befund)
 

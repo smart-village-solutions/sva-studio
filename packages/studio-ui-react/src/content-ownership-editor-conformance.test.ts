@@ -20,8 +20,8 @@ const editors = [
   },
   {
     name: 'POI',
-    panel: 'packages/plugin-poi/src/poi.detail-page.tsx',
-    actions: 'packages/plugin-poi/src/poi.detail-page.tsx',
+    panel: 'packages/plugin-poi/src/poi.detail-page.view-panels.tsx',
+    actions: 'packages/plugin-poi/src/poi.detail-page.view.tsx',
   },
   {
     name: 'Generic Items',

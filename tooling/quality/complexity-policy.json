@@ -1576,12 +1576,6 @@
       "status": "open",
       "summary": "Import-Sektion in kleinere Formular- und Statusbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
     },
-    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:functionLines": {
-      "ticketId": "baseline-auth-runtime-src-waste-management-core-operations-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Waste-Management-Operationsfunktionen in kleinere Ausfuehrungs- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/handlers/operations.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts:cyclomaticComplexity": {
       "ticketId": "baseline-frontend-app-src-lib-instance-interface-healthcheck-server-ts",
       "ticketSystem": "policy-baseline",
@@ -1713,12 +1707,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Gemeinsame Mainserver-Service-Utilities in kleinere Exportsegmente aufteilen (packages/sva-mainserver/src/server/service-internals/shared.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Operations-Handler in kleinere StartJob- und Preview-Bausteine splitten (packages/waste-management-runtime/src/handlers/operations.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/server-loaders.ts:functionLines": {
       "ticketId": "QUAL-WASTE-LOADERS-001",
@@ -2680,18 +2668,6 @@
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/location-tour-links-bulk.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/handlers/mutation-helpers.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-mutation-helpers",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/mutation-helpers.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-operations",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/operations.ts)"
-    },
     "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:cyclomaticComplexity": {
       "ticketId": "baseline-waste-ownership-1506-handlers-settings-write-support",
       "ticketSystem": "policy-baseline",
@@ -2715,18 +2691,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/tours-delete-support.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/tours-write-support.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-tours-write-support",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/tours-write-support.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/tours-write-support.ts:functionLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-tours-write-support",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tours-write-support.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/handlers/tours.ts:functionLines": {
       "ticketId": "baseline-waste-ownership-1506-handlers-tours",

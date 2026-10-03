@@ -1132,6 +1132,11 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+      Merge-Nachweis: PR #1715, HEAD
+      `ee7e082247affd8553feaef425df62e2197e39b1`, Merge-Commit
+      `7b585cab1952aed5b417e5075a221de38bc496bf`; Changelog
+      `docs/changelog/entries/pr-1715.json`.
+
 ### PR 26d — Waste-Operationen und Mutationen (3 Befunde)
 
 - [ ] In `packages/waste-management-runtime/src/`
@@ -1140,7 +1145,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Tour-Abhängigkeiten, Mutationsantworten, Audit und Fehlerbehandlung
       mit gezielten Datenintegritäts- und Server-Runtime-Tests erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.

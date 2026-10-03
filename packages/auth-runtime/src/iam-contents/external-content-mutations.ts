@@ -160,9 +160,14 @@ export const recordSuccessfulExternalContentMutation = async (
   input: SuccessfulExternalContentMutation
 ): Promise<string> => {
   const mutation =
-    input.contentType === 'projects.project' ? { ...input, sourceEntityType: 'GenericItem' } : input;
+    input.contentType === 'projects.project' && input.ownershipPrincipal
+      ? { ...input, sourceEntityType: 'GenericItem' }
+      : input;
   const existingReference =
-    (await loadExternalContentReferenceBySourceEntity(mutation)) ??
+    (await loadExternalContentReferenceBySourceEntity({
+      ...mutation,
+      exactSourceEntityType: input.contentType === 'projects.project' && !input.ownershipPrincipal,
+    })) ??
     (mutation !== input ? await loadExternalContentReferenceBySourceEntity(input) : undefined);
   if (existingReference) return updateExistingContent(mutation, existingReference.contentId);
   if (mutation.preserveExistingContentState) {

@@ -36,7 +36,7 @@ export const persistContentUpdateHistory = async (
       `UPDATE iam.content_history
        SET changed_fields = ARRAY(
          SELECT DISTINCT field FROM unnest(changed_fields || $4::text[]) AS field ORDER BY field
-       )
+       ), summary = 'Inhaber übertragen'
        WHERE instance_id = $1 AND content_id = $2::uuid AND mutation_ref = $3;`,
       [input.instanceId, input.contentId, input.mutationRef, next.changedFields]
     );
@@ -51,7 +51,7 @@ export const persistContentUpdateHistory = async (
     changedFields: next.changedFields,
     previousStatus: current.status,
     nextStatus: next.status,
-    summary: next.historySummary,
+    summary: input.confirmedExternalOwner ? 'Inhaber übertragen' : next.historySummary,
     snapshot: next.payload,
     mutationRef: input.mutationRef,
   });

@@ -376,6 +376,39 @@ describe('external content references', () => {
     }));
   });
 
+  it('keeps normal project archive updates on their existing project reference', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_type: 'projects.project', source_entity_id: 'project-1' }],
+    });
+    state.updateContent.mockResolvedValue('content-1');
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-archive-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      title: 'Projekt',
+      payload: { body: 'Bestehender Inhalt' },
+      status: 'archived',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    });
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('source_entity_type = ANY($3::text[])'),
+      ['tenant-1', 'mainserver', ['projects.project'], 'project-1']
+    );
+    expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'archived',
+      payload: { body: 'Bestehender Inhalt' },
+    }));
+  });
+
   it('does not attribute a newer provider payload to a deferred transfer', async () => {
     state.query.mockResolvedValueOnce({
       rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],

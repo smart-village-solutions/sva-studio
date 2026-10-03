@@ -114,7 +114,6 @@ export const createExternalContentReference = async (input: {
   readonly operationExternalId: string;
 }): Promise<ExternalContentReference> =>
   withInstanceScopedDb(input.instanceId, (client) => insertExternalContentReference(client, input));
-
 export const loadExternalContentReferenceByContentId = async (input: {
   readonly instanceId: string;
   readonly contentId: string;
@@ -158,9 +157,10 @@ export const loadExternalContentReferenceBySourceEntity = async (input: {
   readonly sourceSystem: string;
   readonly sourceEntityType: string;
   readonly sourceEntityId: string;
+  readonly exactSourceEntityType?: boolean;
 }): Promise<ExternalContentReference | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const sourceEntityTypes = input.sourceEntityType === 'projects.project'
+    const sourceEntityTypes = input.sourceEntityType === 'projects.project' && !input.exactSourceEntityType
       ? ['GenericItem', 'projects.project'] : [input.sourceEntityType];
     const result = await client.query<ExternalContentReferenceRow>(
       `${referenceSelect}

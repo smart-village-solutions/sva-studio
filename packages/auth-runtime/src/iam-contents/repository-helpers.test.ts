@@ -581,6 +581,37 @@ describe('iam content repository helpers', () => {
     );
   });
 
+  it('labels new confirmed transfer history as an ownership transfer', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({ rows: [{ id: 'history-1' }] });
+    client.query.mockResolvedValueOnce({ rows: [] });
+
+    await persistContentUpdateHistory(
+      client,
+      createUpdateInput({
+        mutationRef: 'transfer-1',
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '00000000-0000-0000-0000-000000000002',
+        },
+      }),
+      createContentRow(),
+      {
+        changedFields: ['ownerOrganizationId'],
+        status: 'draft',
+        payload: { body: 'Text' },
+        historyAction: 'updated',
+        historySummary: 'Inhalt aktualisiert',
+        mutationFinalized: false,
+      }
+    );
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.content_history'),
+      expect.arrayContaining(['Inhaber übertragen'])
+    );
+  });
+
   it('inserts a newly bound transfer with the confirmed personal owner', async () => {
     const client = createClient();
     client.query.mockResolvedValueOnce({ rows: [{ id: 'content-1' }] });
@@ -641,6 +672,49 @@ describe('iam content repository helpers', () => {
           primitive_action: 'content.delete',
           domain_capability: 'content.manage',
           title: 'Titel',
+        }),
+      })
+    );
+  });
+
+  it('emits confirmed external ownership as transfer audit', async () => {
+    const client = createClient();
+    await emitContentUpdatedActivity(
+      client,
+      createUpdateInput({
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '00000000-0000-0000-0000-000000000002',
+        },
+      }),
+      createContentRow({ owner_user_id: '00000000-0000-0000-0000-000000000001' }),
+      {
+        eventType: 'iam.content.updated',
+        action: 'content.updateMetadata',
+        changedFields: ['ownerUserId', 'ownerOrganizationId'],
+        nextStatus: 'draft',
+        nextTitle: 'Titel',
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: '00000000-0000-0000-0000-000000000002',
+        nextAuthorDisplayMode: 'organization',
+        nextAuthorDisplayName: 'Zielorganisation',
+      }
+    );
+
+    expect(state.emitActivityLogMock).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        eventType: 'iam.content.ownership_transferred',
+        payload: expect.objectContaining({
+          action: 'content.transferOwnership',
+          source_principal: {
+            type: 'account',
+            id: '00000000-0000-0000-0000-000000000001',
+          },
+          target_principal: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
         }),
       })
     );

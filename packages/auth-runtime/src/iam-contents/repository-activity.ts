@@ -4,6 +4,7 @@ import {
   type IamContentOwnerPrincipal,
 } from '@sva/core';
 import { emitActivityLog, type withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { resolveCurrentOwnerPrincipal } from './repository-ownership.js';
 import type {
   ContentRow,
   CreateContentInput,
@@ -148,8 +149,20 @@ export const emitContentUpdatedActivity = (
     readonly nextAuthorDisplayMode: ContentRow['author_display_mode'];
     readonly nextAuthorDisplayName: string;
   }
-): Promise<void> =>
-  emitActivityLog(client, {
+): Promise<void> => {
+  if (input.confirmedExternalOwner) {
+    return emitContentOwnershipTransferredActivity(client, {
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      contentId: input.contentId,
+      contentType: current.content_type,
+      sourcePrincipal: resolveCurrentOwnerPrincipal(current),
+      targetPrincipal: input.confirmedExternalOwner,
+    });
+  }
+  return emitActivityLog(client, {
     instanceId: input.instanceId,
     accountId: input.actorAccountId,
     eventType: event.eventType,
@@ -170,6 +183,7 @@ export const emitContentUpdatedActivity = (
     requestId: input.requestId,
     traceId: input.traceId,
   });
+};
 
 export const emitContentOwnershipTransferredActivity = (
   client: InstanceScopedClient,

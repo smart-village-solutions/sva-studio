@@ -1078,21 +1078,22 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 27 — Mainserver-Content-Routen (5 Befunde)
 
-- [ ] In `packages/sva-mainserver/src/server/` `news-route.ts`,
+- [x] In `packages/sva-mainserver/src/server/` `news-route.ts`,
       `events-route.ts`, `generic-items-route.ts`, `poi-route.ts`,
       `projects-route.ts` bereinigen. Validierung, Fehlercodes,
       Berechtigungen und Antwortformat gezielt testen.
 
-      Draft-PR #1704; Implementierungsstand auf Ausgangs-HEAD
-      `702af348e0bd9c0cc170589144f138eac4f6fda2`: Die fünf Routen
+      PR #1704 wurde am 03.10.2026 mit geprüftem HEAD
+      `93c0200a9a113cdb8ec13bc14d98bef926b2b2e3` gemergt
+      (Merge-Commit `a1f1ce19749fca6740a7641f0c19170c0a68278b`). Die fünf Routen
       wurden nach Eingabe, Zugriff, Lesen und Mutation getrennt. Die
       ursprünglichen Zeilenzahlen 1458/846/681/633/516 liegen nach dem
       Schnitt bei 127/110/128/250/312 (News/Events/Generic Items/POI/Projects).
       Die fünf `fileLines`-Registereinträge sind entfernt; der vollständige
-      Complexity-Lauf meldet keine neuen Befunde. Merge- und finaler
-      HEAD-Gate-Nachweis bleiben für das Abhaken ausstehend.
+      Complexity-Lauf meldete keine neuen Befunde; die finalen GitHub-Gates
+      waren grün und es gab keine offenen Review-Threads.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1704.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
@@ -1104,8 +1105,16 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       `server/service-internals/mappers-shared.ts` bereinigen.
       Service-Komposition, Interface-Vertrag und Runtime-Imports prüfen.
 
+      Ausgangs-HEAD `a1f1ce19749fca6740a7641f0c19170c0a68278b`:
+      1216/906/669/459 Zeilen (Service/Typen/Interface-Vertrag/Mapper).
+      Der Schnitt behält die öffentlichen Importpfade und teilt die interne
+      Ausführung nach Verbindung, Fachoperationen und Diagnostik sowie die
+      Typen und Interface-Verträge nach Verantwortung. Ziel sind vier
+      beseitigte `fileLines`-Befunde, unveränderte Antworten und Fehler sowie
+      grüne Service-, Interface-, Mapping- und Runtime-Gates.
+
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1708.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

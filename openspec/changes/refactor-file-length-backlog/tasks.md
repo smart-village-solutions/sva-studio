@@ -796,7 +796,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 16a — Keycloak-Ausführung (1 Befund)
 
-- [ ] `packages/instance-registry/src/service-keycloak-execution.ts` entlang
+- [x] `packages/instance-registry/src/service-keycloak-execution.ts` entlang
       Queue/Handler, Worker-Snapshot, Run-Ausführung und Finalisierung unter
       das Dateilimit bringen. Öffentliche Exporte, Run-/Tenant-/Attempt-/Lease-
       Bindung, Plan-Fingerprint, Secret-Synchronisierung, Cleanup,
@@ -804,10 +804,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Finalize- und Reconcile-Tests sowie Auth-/Data-/Security-/Runtime-Gates
       erhalten; bestehende Complexity-Befunde der Datei gesondert messen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` anlegen;
       Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1690, HEAD
+      `8c0c560138a4f25ad3e2ef380a182b10854b6c6b`, Merge-Commit
+      `13ddd101ae1fb2289b44ebe23036fa73b92bd27b`; Changelog
+      `docs/changelog/entries/pr-1690.json`.
 
 ### PR 16b — Keycloak-Reader (1 Befund)
 

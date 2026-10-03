@@ -12,7 +12,10 @@ import {
   KEYCLOAK_REALM_BASELINE_FINGERPRINT,
 } from './keycloak-realm-baseline.js';
 import type { KeycloakTenantPlan, KeycloakTenantStatus } from './keycloak-types.js';
-import { KEYCLOAK_SNAPSHOT_POLICY_VERSION } from './provisioning-auth-policy.js';
+import {
+  buildKeycloakSnapshotInputFingerprint,
+  KEYCLOAK_SNAPSHOT_POLICY_VERSION,
+} from './provisioning-auth-policy.js';
 import {
   decryptAuthClientSecret,
   decryptTenantAdminClientSecret,
@@ -20,7 +23,10 @@ import {
   loadPersistedSnapshotSecretVersions,
 } from './service-keycloak-secrets.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { readLatestQueuedPluginOidcClientRequirements } from './service-keycloak-execution-payload.js';
+import {
+  readLatestQueuedPluginOidcClientRequirements,
+  readQueuedPluginOidcClientRequirements,
+} from './service-keycloak-execution-payload.js';
 import type { PluginOidcClientRequirement } from './provisioning-auth-types.js';
 import { buildKeycloakPlanFingerprint } from './provisioning-auth-plan.js';
 
@@ -35,6 +41,31 @@ const logger = createSdkLogger({
   component: 'iam-instance-registry-keycloak-snapshots',
   level: 'info',
 });
+
+export const buildSnapshotInputFingerprintForRun = (
+  deps: InstanceRegistryServiceDeps,
+  run: Awaited<ReturnType<InstanceRegistryRepository['listKeycloakProvisioningRuns']>>[number],
+  instance: Parameters<typeof buildKeycloakSnapshotInputFingerprint>[0],
+  secretVersions: Parameters<typeof buildKeycloakSnapshotInputFingerprint>[1]
+): string | readonly string[] => {
+  const queued = run.steps.find((step) => step.stepKey === 'queued');
+  if (!queued) {
+    return buildKeycloakSnapshotInputFingerprint(
+      instance,
+      secretVersions,
+      deps.readPluginOidcClientRequirements?.()
+    );
+  }
+  try {
+    return buildKeycloakSnapshotInputFingerprint(
+      instance,
+      secretVersions,
+      readQueuedPluginOidcClientRequirements(queued.details, instance)
+    );
+  } catch {
+    return [];
+  }
+};
 
 export const isLiveKeycloakStatusReadyForActivation = async (
   deps: InstanceRegistryServiceDeps,

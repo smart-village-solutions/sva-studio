@@ -35,8 +35,8 @@ const editors = [
   },
   {
     name: 'Cockpit Cards',
-    panel: 'packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx',
-    actions: 'packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx',
+    panel: 'packages/plugin-cockpit-cards/src/cockpit-cards.editor-fields.tsx',
+    actions: 'packages/plugin-cockpit-cards/src/cockpit-cards.editor-view.tsx',
   },
   {
     name: 'Featured Projects',

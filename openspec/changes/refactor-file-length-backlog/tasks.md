@@ -944,14 +944,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 21 — Projects-Seite (1 Befund)
 
-- [ ] `packages/plugin-projects/src/projects.pages.tsx` entlang der
+- [x] `packages/plugin-projects/src/projects.pages.tsx` entlang der
       bestehenden Seitenverantwortung bereinigen. Listen-, Detail- und
       Speicherverhalten gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1700.json` mit passender
+      `prNumber` und nutzerverständlichem `body` angelegt; Changelog-Gate vor
+      Merge grün. Merge-Nachweis: PR #1700, HEAD
+      `f63a6f0902f0ecad362ffddb933a547f729d3280`, Merge-Commit
+      `4f96d3ed4fd9167ebdcc14e3b436b5b0df7e51fe`.
 
 ### PR 22 — Cockpit-Cards-Seite (1 Befund)
 

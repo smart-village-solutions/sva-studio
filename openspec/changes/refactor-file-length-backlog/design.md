@@ -417,6 +417,28 @@ escapte ILIKE-Suche, stabile Sort-/Seitenreihenfolge sowie Zyklus- und
 Inaktivitätsfehler vor dem rekursiven Subtree-Update. Die vorhandenen
 Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
 
+**PR-Auftrag 16a:** Auf `origin/main` nach #1689 hat
+`packages/instance-registry/src/service-keycloak-execution.ts` 715 Zeilen;
+der aktuelle `fileLines`-Befund und zwei bereits registrierte Complexity-
+Befunde betreffen diese Datei. Ziel ist eine kleinere Execution-Datei mit
+unveränderten öffentlichen Exporten. Nicht-Ziele sind die fünf weiteren
+PR-16-Dateien sowie API-, Keycloak- und Datenbankverhalten. Der direkte
+Verbraucher bleibt `service-keycloak.ts` und der öffentliche Package-Index.
+Die bereits vorhandenen Shared-, Failure-, Payload-, Finalize- und Worker-
+Claim-Module werden weiterverwendet; sie können die noch in der 715-Zeilen-
+Datei zusammenliegenden Snapshot-, Post-Provisioning- und Worker-Phasen nicht
+ohne erneutes Dateiwachstum aufnehmen. Kleine interne Module besitzen jeweils
+eine dieser Phasen, während die bisherigen Handler am Importpfad bleiben.
+Der Worker bindet Run, Tenant und Fingerprint an den geladenen Snapshot;
+Secret-Sync, Parent-Abschluss und Realm-Cleanup behalten ihre Reihenfolge und
+Fehlerklassen. Execution-, Failure-, Payload-, Finalize- und Reconcile-Tests
+sowie Auth-/Data-/Security-/Runtime-Gates weisen diese Grenzen nach.
+
+PR 16 wird seriell und einzeln reviewbar in 16a Execution, 16b Readers,
+16c Audit Keycloak, 16d Module Mutations und 16e Draft Readiness plus
+Service Helpers umgesetzt. Jeder Abschnitt beseitigt seine benannten
+Dateilängenbefunde und enthält einen eigenen Studio-Changelog-Eintrag.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

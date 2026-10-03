@@ -997,6 +997,10 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.
   Die Worker-Ausführung selbst hält dieselbe instanzbezogene Sperre im vollständigen
   RLS-Kontext; verwaiste Claims werden erst nach Ablauf und erfolgreicher Lock-Probe beendet.
+  Innerhalb des Registry-Service trennen Queue-Handler, Worker-Snapshotprüfung und
+  Post-Provisioning-Finalisierung die Phasen dieses Laufs. Der öffentliche
+  Execution-Import bleibt gleich; Fingerprint-Prüfung, Secret-Synchronisierung,
+  Statusabschluss und Realm-Cleanup laufen in der bisherigen Reihenfolge.
   Ein bereits verwalteter Tenant-Admin-Bootstrap kann nicht entfernt werden.
 
 Der genaue Payload- und Fehlervertrag ist im

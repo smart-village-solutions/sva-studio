@@ -2914,12 +2914,6 @@
       "status": "open",
       "summary": "Modul-Mutationsservice in gemeinsame Sync- und Audit-Helfer zerlegen"
     },
-    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution.ts:fileLines": {
-      "ticketId": "#1327",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
-    },
     "auth-runtime:packages/auth-runtime/src/keycloak-admin-client/core.ts:cyclomaticComplexity": {
       "ticketId": "#1448",
       "ticketSystem": "github",

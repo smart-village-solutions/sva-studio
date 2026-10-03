@@ -16,7 +16,12 @@ import {
 import type { ParentStep } from './tenant-provisioning-state.js';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
 import { tenantIamAccessStep, tenantIamRolesStep } from './tenant-provisioning-iam-steps.js';
-import { buildProvisioningFailureDiagnostics, readDiagnosticErrorType } from './observability.js';
+import {
+  buildProvisioningFailureDiagnostics,
+  readDiagnosticErrorCode,
+  readDiagnosticErrorType,
+  readProperty,
+} from './observability.js';
 import { reconcileProvisioningModuleActivationPolicies } from './service-module-activation.js';
 import { syncProtectedSystemAdminPermissions } from './service-module-mutations.js';
 
@@ -35,32 +40,7 @@ const logger = createSdkLogger({
   component: 'iam-instance-registry-tenant-provisioning',
   level: 'info',
 });
-const readProperty = (value: unknown, key: string): unknown => {
-  if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
-    return undefined;
-  }
-  try {
-    return Reflect.get(value, key);
-  } catch {
-    return undefined;
-  }
-};
-
 const INGRESS_FAILURE_CLASSIFICATION = 'tenant_provisioning_step_failed';
-
-const readDiagnosticString = (value: unknown, key: string): string | undefined => {
-  const candidate = readProperty(value, key);
-  return typeof candidate === 'string' ? candidate : undefined;
-};
-
-const readDiagnosticErrorCode = (error: unknown): string => {
-  const code = readDiagnosticString(error, 'code');
-  if (code && /^[A-Za-z0-9_:-]{2,100}$/u.test(code)) return code;
-  const message = readDiagnosticString(error, 'message');
-  return message && /^[a-z][a-z0-9_:-]{2,100}$/u.test(message)
-    ? message
-    : INGRESS_FAILURE_CLASSIFICATION;
-};
 
 const registryStep: StepHandler = async ({
   deps,
@@ -193,7 +173,7 @@ const ingressStep: StepHandler = async ({
         run_id: run.id,
         step_key: 'ingress',
         error_type: readDiagnosticErrorType(error),
-        error_code: readDiagnosticErrorCode(error),
+        error_code: readDiagnosticErrorCode(error, INGRESS_FAILURE_CLASSIFICATION),
         classification: INGRESS_FAILURE_CLASSIFICATION,
         ...buildProvisioningFailureDiagnostics(error, { includeNodeSystemFields: true }),
       });

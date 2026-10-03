@@ -1,9 +1,12 @@
-import { createLegalTextSchema, updateLegalTextSchema } from './legal-text-schemas.js';
-import { LegalTextDeleteConflictError, type DeleteLegalTextInput } from './legal-text-repository.js';
+import { updateLegalTextSchema } from './legal-text-schemas.js';
+import { createLegalTextResponse, requireActorAccountId } from './legal-text-create-handler.js';
+import {
+  LegalTextDeleteConflictError,
+  type DeleteLegalTextInput,
+} from './legal-text-repository.js';
 import type { CreateLegalTextInput, UpdateLegalTextInput } from './legal-text-repository-shared.js';
 
 const UUID_LIKE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CREATE_LEGAL_TEXT_ENDPOINT = 'POST:/api/v1/iam/legal-texts';
 
 type CreateApiError = (
   status: number,
@@ -45,7 +48,7 @@ type CompleteIdempotency = (input: {
   responseBody: Record<string, unknown>;
 }) => Promise<void>;
 
-type LegalTextMutationActor = {
+export type LegalTextMutationActor = {
   instanceId: string;
   actorAccountId?: string;
   requestId?: string;
@@ -67,153 +70,22 @@ export type LegalTextMutationHandlerDeps = {
     readonly createLegalTextVersion: (input: CreateLegalTextInput) => Promise<string | undefined>;
     readonly updateLegalTextVersion: (input: UpdateLegalTextInput) => Promise<string | undefined>;
     readonly deleteLegalTextVersion: (input: DeleteLegalTextInput) => Promise<string | undefined>;
-    readonly loadLegalTextById: (instanceId: string, legalTextVersionId: string) => Promise<unknown | undefined>;
+    readonly loadLegalTextById: (
+      instanceId: string,
+      legalTextVersionId: string
+    ) => Promise<unknown | undefined>;
   };
   readonly logError: (message: string, fields: Record<string, unknown>) => void;
 };
 
-const withRequestId = (requestId: string | undefined, body: Record<string, unknown>) => ({
-  ...body,
-  ...(requestId ? { requestId } : {}),
-});
-
-const requireActorAccountId = (
-  deps: LegalTextMutationHandlerDeps,
-  actor: LegalTextMutationActor
-): string | Response =>
-  actor.actorAccountId ??
-  deps.createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actor.requestId);
-
-const completeCreateIdempotency = async (
-  deps: LegalTextMutationHandlerDeps,
-  actor: LegalTextMutationActor,
-  actorAccountId: string,
-  idempotencyKey: string,
-  responseStatus: number,
-  responseBody: Record<string, unknown>
-) =>
-  deps.completeIdempotency({
-    instanceId: actor.instanceId,
-    actorAccountId,
-    endpoint: CREATE_LEGAL_TEXT_ENDPOINT,
-    idempotencyKey,
-    status: responseStatus >= 400 ? 'FAILED' : 'COMPLETED',
-    responseStatus,
-    responseBody,
-  });
-
-const createFailureResponse = async (
-  deps: LegalTextMutationHandlerDeps,
-  actor: LegalTextMutationActor,
-  actorAccountId: string,
-  idempotencyKey: string,
-  status: number,
-  code: string,
-  message: string
-) => {
-  const responseBody = withRequestId(actor.requestId, { error: { code, message } });
-  await completeCreateIdempotency(deps, actor, actorAccountId, idempotencyKey, status, responseBody);
-  return deps.jsonResponse(status, responseBody);
-};
-
 export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDeps) => ({
-  createLegalTextResponse: async (request: Request, actor: LegalTextMutationActor): Promise<Response> => {
-    const csrfError = deps.validateCsrf(request, actor.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
+  createLegalTextResponse: (request: Request, actor: LegalTextMutationActor): Promise<Response> =>
+    createLegalTextResponse(deps, request, actor),
 
-    const idempotencyKey = deps.requireIdempotencyKey(request, actor.requestId);
-    if ('error' in idempotencyKey) {
-      return idempotencyKey.error;
-    }
-    const actorAccountId = requireActorAccountId(deps, actor);
-    if (actorAccountId instanceof Response) {
-      return actorAccountId;
-    }
-
-    const parsed = await deps.parseRequestBody<Omit<CreateLegalTextInput, 'instanceId' | 'actorAccountId' | 'requestId' | 'traceId'>>(
-      request,
-      createLegalTextSchema
-    );
-    if (!parsed.ok) {
-      return deps.createApiError(400, 'invalid_request', parsed.message, actor.requestId);
-    }
-
-    const reserve = await deps.reserveIdempotency({
-      instanceId: actor.instanceId,
-      actorAccountId,
-      endpoint: CREATE_LEGAL_TEXT_ENDPOINT,
-      idempotencyKey: idempotencyKey.key,
-      payloadHash: deps.toPayloadHash(parsed.rawBody),
-    });
-    if (reserve.status === 'replay') {
-      return deps.jsonResponse(reserve.responseStatus, reserve.responseBody);
-    }
-    if (reserve.status === 'conflict') {
-      return deps.createApiError(409, 'idempotency_key_reuse', reserve.message, actor.requestId);
-    }
-
-    try {
-      const createdId = await deps.repository.createLegalTextVersion({
-        instanceId: actor.instanceId,
-        actorAccountId,
-        requestId: actor.requestId,
-        traceId: actor.traceId,
-        ...parsed.data,
-      });
-      if (!createdId) {
-        return createFailureResponse(
-          deps,
-          actor,
-          actorAccountId,
-          idempotencyKey.key,
-          409,
-          'conflict',
-          'Diese Rechtstext-Version existiert bereits.'
-        );
-      }
-
-      const item = await deps.repository.loadLegalTextById(actor.instanceId, createdId);
-      if (!item) {
-        throw new Error('created_legal_text_not_found');
-      }
-
-      const responseBody = deps.asApiItem(item, actor.requestId);
-      await completeCreateIdempotency(deps, actor, actorAccountId, idempotencyKey.key, 201, responseBody);
-      return deps.jsonResponse(201, responseBody);
-    } catch (error) {
-      if (error instanceof Error && error.message === 'legal_text_published_at_required') {
-        return createFailureResponse(
-          deps,
-          actor,
-          actorAccountId,
-          idempotencyKey.key,
-          400,
-          'invalid_request',
-          'Veröffentlichungsdatum ist für gültige Rechtstexte erforderlich.'
-        );
-      }
-      deps.logError('Legal text create failed', {
-        operation: 'legal_text_create',
-        instance_id: actor.instanceId,
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return createFailureResponse(
-        deps,
-        actor,
-        actorAccountId,
-        idempotencyKey.key,
-        503,
-        'database_unavailable',
-        'Rechtstext konnte nicht gespeichert werden.'
-      );
-    }
-  },
-
-  updateLegalTextResponse: async (request: Request, actor: LegalTextMutationActor): Promise<Response> => {
+  updateLegalTextResponse: async (
+    request: Request,
+    actor: LegalTextMutationActor
+  ): Promise<Response> => {
     const csrfError = deps.validateCsrf(request, actor.requestId);
     if (csrfError) {
       return csrfError;
@@ -224,10 +96,12 @@ export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDe
       return deps.createApiError(400, 'invalid_request', 'Rechtstext-ID fehlt.', actor.requestId);
     }
 
-    const parsed = await deps.parseRequestBody<Omit<UpdateLegalTextInput, 'instanceId' | 'actorAccountId' | 'requestId' | 'traceId' | 'legalTextVersionId'>>(
-      request,
-      updateLegalTextSchema
-    );
+    const parsed = await deps.parseRequestBody<
+      Omit<
+        UpdateLegalTextInput,
+        'instanceId' | 'actorAccountId' | 'requestId' | 'traceId' | 'legalTextVersionId'
+      >
+    >(request, updateLegalTextSchema);
     if (!parsed.ok) {
       return deps.createApiError(400, 'invalid_request', parsed.message, actor.requestId);
     }
@@ -246,13 +120,23 @@ export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDe
         ...parsed.data,
       });
       if (!updatedId) {
-        return deps.createApiError(404, 'not_found', 'Rechtstext-Version wurde nicht gefunden.', actor.requestId);
+        return deps.createApiError(
+          404,
+          'not_found',
+          'Rechtstext-Version wurde nicht gefunden.',
+          actor.requestId
+        );
       }
 
       const item = await deps.repository.loadLegalTextById(actor.instanceId, updatedId);
       return item
         ? deps.jsonResponse(200, deps.asApiItem(item, actor.requestId))
-        : deps.createApiError(404, 'not_found', 'Rechtstext-Version wurde nicht gefunden.', actor.requestId);
+        : deps.createApiError(
+            404,
+            'not_found',
+            'Rechtstext-Version wurde nicht gefunden.',
+            actor.requestId
+          );
     } catch (error) {
       if (error instanceof Error && error.message === 'legal_text_published_at_required') {
         return deps.createApiError(
@@ -270,11 +154,19 @@ export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDe
         legal_text_version_id: legalTextVersionId,
         error: error instanceof Error ? error.message : String(error),
       });
-      return deps.createApiError(503, 'database_unavailable', 'Rechtstext konnte nicht aktualisiert werden.', actor.requestId);
+      return deps.createApiError(
+        503,
+        'database_unavailable',
+        'Rechtstext konnte nicht aktualisiert werden.',
+        actor.requestId
+      );
     }
   },
 
-  deleteLegalTextResponse: async (request: Request, actor: LegalTextMutationActor): Promise<Response> => {
+  deleteLegalTextResponse: async (
+    request: Request,
+    actor: LegalTextMutationActor
+  ): Promise<Response> => {
     const csrfError = deps.validateCsrf(request, actor.requestId);
     if (csrfError) {
       return csrfError;
@@ -285,7 +177,12 @@ export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDe
       return deps.createApiError(400, 'invalid_request', 'Rechtstext-ID fehlt.', actor.requestId);
     }
     if (!UUID_LIKE_PATTERN.test(legalTextVersionId)) {
-      return deps.createApiError(400, 'invalid_request', 'Rechtstext-ID ist ungültig.', actor.requestId);
+      return deps.createApiError(
+        400,
+        'invalid_request',
+        'Rechtstext-ID ist ungültig.',
+        actor.requestId
+      );
     }
     const actorAccountId = requireActorAccountId(deps, actor);
     if (actorAccountId instanceof Response) {
@@ -303,7 +200,12 @@ export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDe
 
       return deletedId
         ? deps.jsonResponse(200, deps.asApiItem({ id: deletedId }, actor.requestId))
-        : deps.createApiError(404, 'not_found', 'Rechtstext-Version wurde nicht gefunden.', actor.requestId);
+        : deps.createApiError(
+            404,
+            'not_found',
+            'Rechtstext-Version wurde nicht gefunden.',
+            actor.requestId
+          );
     } catch (error) {
       if (error instanceof LegalTextDeleteConflictError) {
         return deps.createApiError(
@@ -321,7 +223,12 @@ export const createLegalTextMutationHandlers = (deps: LegalTextMutationHandlerDe
         legal_text_version_id: legalTextVersionId,
         error: error instanceof Error ? error.message : String(error),
       });
-      return deps.createApiError(503, 'database_unavailable', 'Rechtstext konnte nicht gelöscht werden.', actor.requestId);
+      return deps.createApiError(
+        503,
+        'database_unavailable',
+        'Rechtstext konnte nicht gelöscht werden.',
+        actor.requestId
+      );
     }
   },
 });

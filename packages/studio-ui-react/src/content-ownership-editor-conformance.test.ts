@@ -11,22 +11,22 @@ const editors = [
   {
     name: 'News',
     panel: 'packages/plugin-news/src/news.detail-basis-tab.tsx',
-    actions: 'packages/plugin-news/src/news.detail-page.tsx',
+    actions: 'packages/plugin-news/src/news.detail-page-view.tsx',
   },
   {
     name: 'Events',
-    panel: 'packages/plugin-events/src/events.detail-page.tsx',
-    actions: 'packages/plugin-events/src/events.detail-page.tsx',
+    panel: 'packages/plugin-events/src/events.detail-editor-tabs.tsx',
+    actions: 'packages/plugin-events/src/events.detail-page-view.tsx',
   },
   {
     name: 'POI',
-    panel: 'packages/plugin-poi/src/poi.detail-page.tsx',
-    actions: 'packages/plugin-poi/src/poi.detail-page.tsx',
+    panel: 'packages/plugin-poi/src/poi.detail-page.view-panels.tsx',
+    actions: 'packages/plugin-poi/src/poi.detail-page.view.tsx',
   },
   {
     name: 'Generic Items',
     panel: 'packages/plugin-generic-items/src/generic-items.detail-page.tabs.tsx',
-    actions: 'packages/plugin-generic-items/src/generic-items.detail-page.tsx',
+    actions: 'packages/plugin-generic-items/src/generic-items.detail-page.view.tsx',
   },
   {
     name: 'FAQ',
@@ -35,13 +35,13 @@ const editors = [
   },
   {
     name: 'Cockpit Cards',
-    panel: 'packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx',
-    actions: 'packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx',
+    panel: 'packages/plugin-cockpit-cards/src/cockpit-cards.editor-fields.tsx',
+    actions: 'packages/plugin-cockpit-cards/src/cockpit-cards.editor-view.tsx',
   },
   {
     name: 'Featured Projects',
-    panel: 'packages/plugin-projects/src/projects.pages.tsx',
-    actions: 'packages/plugin-projects/src/projects.pages.tsx',
+    panel: 'packages/plugin-projects/src/projects.editor-tabs.tsx',
+    actions: 'packages/plugin-projects/src/projects.editor-view.tsx',
   },
   {
     name: 'Surveys',

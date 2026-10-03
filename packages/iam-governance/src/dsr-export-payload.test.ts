@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const encryption = vi.hoisted(() => ({
+  decryptFieldValue: vi.fn((value: string) => `decrypted:${value}`),
+  parseFieldEncryptionConfigFromEnv: vi.fn(() => ({ keyring: {} })),
+}));
+
+vi.mock('@sva/core/security', () => encryption);
+
 import {
   collectDsrExportPayload,
   serializeDsrExportPayload,
@@ -37,48 +44,56 @@ describe('dsr-export-payload', () => {
       })
       .mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{
-          id: 'hold-1',
-          active: true,
-          hold_reason: 'audit',
-          hold_until: null,
-          created_at: '2026-01-03T00:00:00.000Z',
-        }],
+        rows: [
+          {
+            id: 'hold-1',
+            active: true,
+            hold_reason: 'audit',
+            hold_until: null,
+            created_at: '2026-01-03T00:00:00.000Z',
+          },
+        ],
       })
       .mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{
-          group_id: 'group-1',
-          group_key: 'district-editors',
-          display_name: 'District Editors',
-          group_type: 'custom',
-          origin: 'direct',
-          valid_from: '2026-01-05T00:00:00.000Z',
-          valid_until: null,
-        }],
+        rows: [
+          {
+            group_id: 'group-1',
+            group_key: 'district-editors',
+            display_name: 'District Editors',
+            group_type: 'custom',
+            origin: 'direct',
+            valid_from: '2026-01-05T00:00:00.000Z',
+            valid_until: null,
+          },
+        ],
       })
       .mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{
-          id: 'request-1',
-          request_type: 'access',
-          status: 'completed',
-          request_accepted_at: '2026-01-04T00:00:00.000Z',
-          completed_at: '2026-01-04T01:00:00.000Z',
-        }],
+        rows: [
+          {
+            id: 'request-1',
+            request_type: 'access',
+            status: 'completed',
+            request_accepted_at: '2026-01-04T00:00:00.000Z',
+            completed_at: '2026-01-04T01:00:00.000Z',
+          },
+        ],
       })
       .mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{
-          id: 'acceptance-1',
-          legal_text_id: 'privacy-policy',
-          legal_text_version: '2026-05',
-          name: 'Datenschutzhinweise',
-          locale: 'de',
-          accepted_at: '2026-01-06T00:00:00.000Z',
-          revoked_at: null,
-          action_type: 'accepted',
-        }],
+        rows: [
+          {
+            id: 'acceptance-1',
+            legal_text_id: 'privacy-policy',
+            legal_text_version: '2026-05',
+            name: 'Datenschutzhinweise',
+            locale: 'de',
+            accepted_at: '2026-01-06T00:00:00.000Z',
+            revoked_at: null,
+            action_type: 'accepted',
+          },
+        ],
       });
 
     const payload = await collectDsrExportPayload(
@@ -91,25 +106,29 @@ describe('dsr-export-payload', () => {
       account: { id: 'account-1', isBlocked: false },
       organizations: [{ id: 'org-1', organizationKey: 'city', displayName: 'Musterhausen' }],
       roles: [{ id: 'role-1', roleName: 'citizen', description: null }],
-      groups: [{
-        groupId: 'group-1',
-        groupKey: 'district-editors',
-        displayName: 'District Editors',
-        groupType: 'custom',
-        origin: 'direct',
-        validFrom: '2026-01-05T00:00:00.000Z',
-      }],
+      groups: [
+        {
+          groupId: 'group-1',
+          groupKey: 'district-editors',
+          displayName: 'District Editors',
+          groupType: 'custom',
+          origin: 'direct',
+          validFrom: '2026-01-05T00:00:00.000Z',
+        },
+      ],
       legalHolds: [{ id: 'hold-1', active: true, holdReason: 'audit' }],
       dsrRequests: [{ id: 'request-1', requestType: 'access', status: 'completed' }],
-      legalAcceptances: [{
-        id: 'acceptance-1',
-        legalTextId: 'privacy-policy',
-        legalTextVersion: '2026-05',
-        name: 'Datenschutzhinweise',
-        locale: 'de',
-        acceptedAt: '2026-01-06T00:00:00.000Z',
-        actionType: 'accepted',
-      }],
+      legalAcceptances: [
+        {
+          id: 'acceptance-1',
+          legalTextId: 'privacy-policy',
+          legalTextVersion: '2026-05',
+          name: 'Datenschutzhinweise',
+          locale: 'de',
+          acceptedAt: '2026-01-06T00:00:00.000Z',
+          actionType: 'accepted',
+        },
+      ],
       consents: { nonEssentialProcessingAllowed: true },
     });
     expect(payload.meta).not.toHaveProperty('subject');
@@ -117,6 +136,38 @@ describe('dsr-export-payload', () => {
     expect(payload.account).not.toHaveProperty('encryptedEmail');
     expect(payload.account).not.toHaveProperty('encryptedDisplayName');
     expect(query).toHaveBeenCalledTimes(6);
+    for (const [, parameters] of query.mock.calls) {
+      expect(parameters).toEqual(['de-musterhausen', 'account-1']);
+    }
+  });
+
+  it('decrypts account fields with the existing subject-specific AAD', async () => {
+    const query = vi.fn<QueryClient['query']>().mockResolvedValue({ rowCount: 0, rows: [] });
+    const payload = await collectDsrExportPayload(
+      { query },
+      {
+        instanceId: 'de-musterhausen',
+        account: {
+          ...account,
+          email_ciphertext: 'enc:v1:email',
+          display_name_ciphertext: 'enc:v1:name',
+        },
+        format: 'json',
+      }
+    );
+
+    expect(payload.account.email).toBe('decrypted:enc:v1:email');
+    expect(payload.account.displayName).toBe('decrypted:enc:v1:name');
+    expect(encryption.decryptFieldValue).toHaveBeenCalledWith(
+      'enc:v1:email',
+      expect.anything(),
+      'iam.accounts.email:kc-user-1'
+    );
+    expect(encryption.decryptFieldValue).toHaveBeenCalledWith(
+      'enc:v1:name',
+      expect.anything(),
+      'iam.accounts.display_name:kc-user-1'
+    );
   });
 
   it('serializes payloads as json, csv and xml', () => {

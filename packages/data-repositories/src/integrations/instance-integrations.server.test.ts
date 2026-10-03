@@ -160,4 +160,81 @@ describe('instance integrations server', () => {
       })
     );
   });
+
+  it('sets the tenant inside the transaction before querying and commits afterward', async () => {
+    const { loadInstanceIntegrationRecord } = await import('./instance-integrations.server.js');
+    const queries: Array<{ text: string; values?: readonly unknown[] }> = [];
+    const release = vi.fn();
+    mocks.poolFactory.mockReturnValue({
+      connect: vi.fn(async () => ({
+        query: vi.fn(async (text: string, values?: readonly unknown[]) => {
+          queries.push({ text, values });
+          return { rowCount: 0, rows: [] };
+        }),
+        release,
+      })),
+    });
+
+    await loadInstanceIntegrationRecord('tenant-a', 'sva_mainserver', {
+      getDatabaseUrl: () => 'postgres://db.example/sva',
+    });
+
+    expect(queries.map(({ text }) => text)).toEqual([
+      'BEGIN',
+      'SELECT set_config($1, $2, true);',
+      expect.stringContaining('FROM iam.instance_integrations'),
+      'COMMIT',
+    ]);
+    expect(queries[1]?.values).toEqual(['app.instance_id', 'tenant-a']);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the original failure when rollback also fails', async () => {
+    const { saveInstanceIntegrationRecord } = await import('./instance-integrations.server.js');
+    const originalError = new Error('write failed');
+    const release = vi.fn();
+    mocks.poolFactory.mockReturnValue({
+      connect: vi.fn(async () => ({
+        query: vi.fn(async (text: string) => {
+          if (text.includes('INSERT INTO iam.instance_integrations')) throw originalError;
+          if (text === 'ROLLBACK') throw new Error('rollback failed');
+          return { rowCount: 0, rows: [] };
+        }),
+        release,
+      })),
+    });
+
+    await expect(
+      saveInstanceIntegrationRecord(record, {
+        getDatabaseUrl: () => 'postgres://db.example/sva',
+      })
+    ).rejects.toBe(originalError);
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'instance_integration_db_tx_failed',
+      expect.objectContaining({ error: 'write failed' })
+    );
+  });
+
+  it('closes the pooled connection on reset', async () => {
+    const { loadInstanceIntegrationRecord, resetInstanceIntegrationServerState } = await import('./instance-integrations.server.js');
+    const end = vi.fn(async () => {});
+    mocks.poolFactory.mockReturnValue({
+      connect: vi.fn(async () => ({
+        query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+        release: vi.fn(),
+      })),
+      end,
+    });
+
+    await loadInstanceIntegrationRecord('tenant-a', 'sva_mainserver', {
+      getDatabaseUrl: () => 'postgres://db.example/sva',
+    });
+    await resetInstanceIntegrationServerState();
+    expect(end).toHaveBeenCalledTimes(1);
+    await loadInstanceIntegrationRecord('tenant-a', 'sva_mainserver', {
+      getDatabaseUrl: () => 'postgres://db.example/sva',
+    });
+    expect(mocks.poolFactory).toHaveBeenCalledTimes(2);
+  });
 });

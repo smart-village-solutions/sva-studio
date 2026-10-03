@@ -1,3 +1,5 @@
+import type { IamInstanceDetail } from '@sva/core';
+import { isLiveKeycloakStatusReadyForActivation } from './service-keycloak-snapshot-reader.js';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
@@ -61,3 +63,60 @@ export const requiresAutomatedProvisioningEvidence = (run: {
 }): boolean =>
   isSupportedTenantProvisioningSnapshotVersion(run.snapshotVersion) &&
   run.desiredSnapshot.automationMode === 'kassel-traefik-file';
+
+export const isAssignedPluginLifecycleReady = async (
+  deps: InstanceRegistryServiceDeps,
+  input: Pick<IamInstanceDetail, 'instanceId' | 'assignedModules'>
+): Promise<boolean> => {
+  const lifecycles = input.assignedModules.flatMap((moduleId) => {
+    const lifecycle = deps.pluginTenantLifecycleRegistry?.get(moduleId);
+    return lifecycle ? [lifecycle] : [];
+  });
+  if (lifecycles.length === 0) return true;
+
+  try {
+    const readiness = await deps.readProvisioningModuleReadiness?.({
+      instanceId: input.instanceId,
+      lifecycles,
+    });
+    return readiness?.status === 'ready';
+  } catch {
+    return false;
+  }
+};
+
+export const collectActivationReadinessBlockers = async (
+  deps: InstanceRegistryServiceDeps,
+  detail: IamInstanceDetail
+): Promise<readonly string[]> => {
+  const blockers: string[] = [];
+  if (!(await isLiveKeycloakStatusReadyForActivation(deps, detail.instanceId))) {
+    blockers.push('keycloak_live_postflight_not_ready');
+  }
+  if (detail.latestKeycloakProvisioningRun?.overallStatus !== 'succeeded') {
+    blockers.push('keycloak_postflight_missing');
+  }
+  if (detail.keycloakPlan?.overallStatus !== 'ready') blockers.push('keycloak_plan_not_ready');
+  if (detail.keycloakPlan?.steps.some(({ action }) => action === 'create' || action === 'update')) {
+    blockers.push('keycloak_drift_present');
+  }
+  if (detail.tenantIamStatus?.overall.status !== 'ready') blockers.push('tenant_iam_not_ready');
+  if (detail.assignedModules.length > 0 && detail.moduleIamStatus?.overall.status !== 'ready') {
+    blockers.push('module_readiness_not_ready');
+  }
+  if (!(await isAssignedPluginLifecycleReady(deps, detail))) {
+    blockers.push('plugin_readiness_not_ready');
+  }
+  if (detail.provisioningRuns.some(requiresAutomatedProvisioningEvidence)) {
+    const completed = detail.provisioningRuns.some(
+      (run) =>
+        run.operation === 'create' &&
+        requiresAutomatedProvisioningEvidence(run) &&
+        run.status === 'validated' &&
+        run.stepKey === 'completed' &&
+        Boolean(run.completedAt)
+    );
+    if (!completed) blockers.push('host_readiness_missing');
+  }
+  return blockers;
+};

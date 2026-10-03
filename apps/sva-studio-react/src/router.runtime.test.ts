@@ -35,6 +35,8 @@ const routerMocks = vi.hoisted(() => {
   const parseRuntimeProfile = vi.fn((value: unknown) => (typeof value === 'string' ? value : null));
   const isMockAuthRuntimeProfile = vi.fn((value: unknown) => value === 'mock-profile');
   const resolveAuthConfigForRequest = vi.fn(async () => ({ kind: 'platform' as const }));
+  const warnSpy = vi.fn();
+  const createSdkLoggerSpy = vi.fn(() => ({ warn: warnSpy }));
 
   return {
     createRouterSpy,
@@ -48,6 +50,8 @@ const routerMocks = vi.hoisted(() => {
     rootRoute,
     routeFactorySpy,
     resolveAuthConfigForRequest,
+    warnSpy,
+    createSdkLoggerSpy,
   };
 });
 
@@ -96,6 +100,10 @@ vi.mock('@sva/routing/server', () => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   resolveAuthConfigForRequest: routerMocks.resolveAuthConfigForRequest,
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: routerMocks.createSdkLoggerSpy,
 }));
 
 vi.mock('@sva/core', async (importOriginal) => ({
@@ -155,6 +163,7 @@ describe('router runtime helpers', () => {
     routerMocks.routeFactorySpy.mockClear();
     routerMocks.resolveAuthConfigForRequest.mockClear();
     routerMocks.resolveAuthConfigForRequest.mockResolvedValue({ kind: 'platform' });
+    routerMocks.warnSpy.mockClear();
     routerMocks.rootRoute.addChildren.mockClear();
     routerMocks.parseRuntimeProfile.mockClear();
     routerMocks.isMockAuthRuntimeProfile.mockClear();
@@ -611,7 +620,7 @@ describe('router runtime helpers', () => {
     );
   });
 
-  it('uses platform routes for invalid non-tenant hosts without hiding other auth failures', async () => {
+  it('uses platform routes for invalid hosts and a compact response for missing tenants', async () => {
     const { getRouter } = await import('./router');
 
     routerMocks.executionMode.current = 'server';
@@ -628,9 +637,33 @@ describe('router runtime helpers', () => {
     );
 
     routerMocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
-      Object.assign(new Error('tenant database unavailable'), {
+      Object.assign(new Error('tenant not found'), {
         name: 'TenantAuthResolutionError',
         reason: 'tenant_not_found',
+        host: 'missing.example.org',
+        publicMessage: 'Anmeldung ist momentan nicht verfügbar.',
+      })
+    );
+
+    const missingTenantResponse = await getRouter().catch((error: unknown) => error);
+    expect(missingTenantResponse).toBeInstanceOf(Response);
+    expect((missingTenantResponse as Response).status).toBe(503);
+    expect(await (missingTenantResponse as Response).text()).toBe(
+      'Anmeldung ist momentan nicht verfügbar.'
+    );
+    expect(routerMocks.warnSpy).toHaveBeenCalledExactlyOnceWith(
+      'Tenant plugin route scope unavailable',
+      {
+        operation: 'resolve_server_plugin_route_scope',
+        reason_code: 'tenant_not_found',
+        tenant_host: 'missing.example.org',
+      }
+    );
+
+    routerMocks.resolveAuthConfigForRequest.mockRejectedValueOnce(
+      Object.assign(new Error('tenant database unavailable'), {
+        name: 'TenantAuthResolutionError',
+        reason: 'tenant_lookup_failed',
       })
     );
 

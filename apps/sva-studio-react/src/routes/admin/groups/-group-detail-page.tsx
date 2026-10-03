@@ -1,4 +1,3 @@
-import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import type { IamGroupDetail as IamAdminGroupDetail } from '@sva/iam-core';
 import {
   Button,
@@ -6,25 +5,24 @@ import {
   removeStudioSaveFeedback,
   StudioPageTitle,
   StudioPersistentFormError,
-  StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
-import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
-import { Checkbox } from '../../../components/ui/checkbox';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
 import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
-import { formatEditorDateTime, parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
-import { diffGroupRoleIds, groupErrorMessage, GroupTextFields } from './-group-shared';
+import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
+import { diffGroupRoleIds, groupErrorMessage } from './-group-shared';
+
+import { GroupDetailEditForm } from './-group-detail-edit-form';
+import { GroupDetailMemberships } from './-group-detail-memberships';
 
 type GroupDetailPageProps = {
   readonly groupId: string;
@@ -49,14 +47,7 @@ const emptyMembershipForm = (): MembershipFormState => ({
   validUntil: '',
 });
 
-const formatDateTime = (value?: string) => {
-  if (!value) {
-    return t('admin.groups.labels.noValidity');
-  }
-  return formatEditorDateTime(value) ?? value;
-};
-
-export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
+const useGroupDetailState = ({ groupId }: GroupDetailPageProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const groupsApi = useGroups();
@@ -224,6 +215,44 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     }
   };
 
+  return {
+    isLoading,
+    detailError,
+    mutationError,
+    rolesApi,
+    group,
+    canUpdateGroup,
+    canDeleteGroup,
+    formError,
+    formValues,
+    setDirtyFormValues,
+    membershipForm,
+    setMembershipForm,
+    deleteConfirmOpen,
+    setDeleteConfirmOpen,
+    saveFeedback,
+    onEdit,
+    onAssignMembership,
+    onRemoveMembership,
+    onDelete,
+  };
+};
+
+export type GroupDetailState = ReturnType<typeof useGroupDetailState>;
+
+export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
+  const state = useGroupDetailState({ groupId });
+  const {
+    isLoading,
+    detailError,
+    mutationError,
+    group,
+    canDeleteGroup,
+    formError,
+    deleteConfirmOpen,
+    setDeleteConfirmOpen,
+    onDelete,
+  } = state;
   return (
     <section className="space-y-5" aria-busy={isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -265,232 +294,9 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
       {group ? (
         <>
-          <Card className="space-y-4 p-4">
-            <form className="grid gap-4" aria-readonly={!canUpdateGroup} onSubmit={onEdit}>
-              <fieldset className="contents" disabled={!canUpdateGroup}>
-                <GroupTextFields
-                  descriptionId="edit-group-description"
-                  displayNameId="edit-group-name"
-                  formValues={formValues}
-                  setFormValues={setDirtyFormValues}
-                />
-                <fieldset className="grid gap-2 text-sm text-foreground">
-                  <legend>{t('admin.groups.dialogs.rolesLabel')}</legend>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {rolesApi.roles.map((role) => {
-                      const checked = formValues.roleIds.includes(role.id);
-                      return (
-                        <Label
-                          key={role.id}
-                          className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2"
-                        >
-                          <Checkbox
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) =>
-                              setDirtyFormValues((current) => ({
-                                ...current,
-                                roleIds: event.target.checked
-                                  ? [...current.roleIds, role.id]
-                                  : current.roleIds.filter((entry) => entry !== role.id),
-                              }))
-                            }
-                          />
-                          <span>{role.roleName}</span>
-                        </Label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-                <Label className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
-                  <Checkbox
-                    type="checkbox"
-                    checked={formValues.isActive}
-                    onChange={(event) =>
-                      setDirtyFormValues((current) => ({
-                        ...current,
-                        isActive: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>{t('admin.groups.labels.active')}</span>
-                </Label>
-                <div className="flex justify-end gap-3">
-                  {canDeleteGroup ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => setDeleteConfirmOpen(true)}
-                    >
-                      {t('admin.groups.actions.delete')}
-                    </Button>
-                  ) : null}
-                  <StudioSaveButton
-                    type="submit"
-                    status={saveFeedback.status}
-                    labels={{
-                      idle: t('admin.groups.actions.save'),
-                      saving: t('account.actions.saving'),
-                      saved: t('account.actions.saved'),
-                    }}
-                  />
-                </div>
-              </fieldset>
-            </form>
-          </Card>
+          <GroupDetailEditForm state={state} />
 
-          <section className="space-y-3">
-            <header className="space-y-1">
-              <h2 className="text-base font-semibold text-foreground">
-                {t('admin.groups.memberships.title')}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {t('admin.groups.memberships.subtitle')}
-              </p>
-            </header>
-            <form
-              className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"
-              aria-readonly={!canUpdateGroup}
-              onSubmit={onAssignMembership}
-            >
-              <fieldset className="contents" disabled={!canUpdateGroup}>
-                <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="group-membership-subject">
-                    {t('admin.groups.memberships.subjectLabel')}
-                  </Label>
-                  <Input
-                    id="group-membership-subject"
-                    required
-                    value={membershipForm.keycloakSubject}
-                    onChange={(event) =>
-                      setMembershipForm((current) => ({
-                        ...current,
-                        keycloakSubject: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="group-membership-valid-from">
-                    {t('admin.groups.memberships.validFromLabel')}
-                  </Label>
-                  <Input
-                    id="group-membership-valid-from"
-                    type="datetime-local"
-                    value={membershipForm.validFrom}
-                    onChange={(event) =>
-                      setMembershipForm((current) => ({
-                        ...current,
-                        validFrom: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="group-membership-valid-until">
-                    {t('admin.groups.memberships.validUntilLabel')}
-                  </Label>
-                  <Input
-                    id="group-membership-valid-until"
-                    type="datetime-local"
-                    value={membershipForm.validUntil}
-                    onChange={(event) =>
-                      setMembershipForm((current) => ({
-                        ...current,
-                        validUntil: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button type="submit">{t('admin.groups.memberships.assign')}</Button>
-                </div>
-              </fieldset>
-            </form>
-
-            <StudioTableSurface tone="background">
-              <table
-                className="min-w-full border-collapse"
-                aria-label={t('admin.groups.memberships.tableAriaLabel')}
-              >
-                <caption className="sr-only">{t('admin.groups.memberships.caption')}</caption>
-                <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th scope="col" className="px-3 py-3">
-                      {t('admin.groups.memberships.tableSubject')}
-                    </th>
-                    <th scope="col" className="px-3 py-3">
-                      {t('admin.groups.memberships.tableValidity')}
-                    </th>
-                    <th scope="col" className="px-3 py-3">
-                      {t('admin.groups.memberships.tableOrigin')}
-                    </th>
-                    <th scope="col" className="px-3 py-3 text-right">
-                      {t('admin.groups.memberships.tableActions')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.memberships.length > 0 ? (
-                    group.memberships.map((membership) => (
-                      <tr
-                        key={`${membership.groupId}-${membership.accountId}`}
-                        className="border-t border-border text-sm text-foreground"
-                      >
-                        <th scope="row" className="px-3 py-3 text-left font-medium">
-                          <div className="space-y-1">
-                            <div>
-                              {membership.displayName ??
-                                (membership.keycloakSubject || membership.accountId)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {membership.keycloakSubject || membership.accountId}
-                            </div>
-                          </div>
-                        </th>
-                        <td className="px-3 py-3">
-                          {membership.validFrom || membership.validUntil
-                            ? t('admin.groups.memberships.validityRange', {
-                                from: formatDateTime(membership.validFrom),
-                                to: formatDateTime(membership.validUntil),
-                              })
-                            : t('admin.groups.labels.noValidity')}
-                        </td>
-                        <td className="px-3 py-3">
-                          {membership.assignedByAccountId
-                            ? t('admin.groups.memberships.originManual', {
-                                accountId: membership.assignedByAccountId,
-                              })
-                            : t('admin.groups.memberships.originUnknown')}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex justify-end">
-                            {canUpdateGroup ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                disabled={!membership.keycloakSubject}
-                                onClick={() => void onRemoveMembership(membership.keycloakSubject)}
-                              >
-                                {t('admin.groups.memberships.remove')}
-                              </Button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="border-t border-border text-sm text-muted-foreground">
-                      <td colSpan={4} className="px-3 py-4">
-                        {t('admin.groups.memberships.empty')}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </StudioTableSurface>
-          </section>
+          <GroupDetailMemberships state={state} />
         </>
       ) : null}
 

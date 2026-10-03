@@ -15,6 +15,7 @@ export default defineConfig({
       'tests/**/*.test.ts',
       '../../scripts/ci/guardrail-report.test.ts',
       '../../scripts/ci/pr-scope.test.ts',
+      '../../scripts/ci/sync-injected-workspace-packages.test.ts',
       '../../scripts/ci/affected-unit-gate.test.ts',
       '../../scripts/ci/app-e2e-evidence.test.ts',
       '../../scripts/ci/affected-coverage-gate.test.ts',

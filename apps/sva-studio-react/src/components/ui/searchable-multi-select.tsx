@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { filterSearchableSelectOptions } from './searchable-select';
+import { filterSearchableSelectOptions } from './searchable-select-option-list';
 import {
   SearchableMultiSelectPopover,
   SearchableMultiSelectTrigger,

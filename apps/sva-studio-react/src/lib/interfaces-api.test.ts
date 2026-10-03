@@ -330,6 +330,29 @@ describe('interfaces app adapter', () => {
     });
   });
 
+  it('does not load stored interfaces when the overview belongs to another instance', async () => {
+    setAuthenticatedUserContext();
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
+      instanceId: 'other-instance',
+      config: {
+        providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://foreign.example/graphql',
+        oauthTokenUrl: 'https://foreign.example/oauth/token',
+        enabled: true,
+      },
+      status: { status: 'connected', checkedAt: '2026-05-03T17:00:00.000Z' },
+    });
+    state.loadInstanceById.mockResolvedValue({ assignedModules: [] });
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).resolves.toMatchObject({
+      instanceId: 'de-musterhausen',
+      entries: [],
+    });
+    expect(state.listStoredInterfaces).not.toHaveBeenCalled();
+  });
+
   it('upserts Geoapify interfaces and triggers a follow-up healthcheck', async () => {
     setAuthenticatedUserContext({
       id: 'subject-1',

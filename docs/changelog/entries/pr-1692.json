@@ -1,0 +1,4 @@
+{
+  "prNumber": 1692,
+  "body": "Der Keycloak-Audit der Instanzverwaltung wurde intern übersichtlicher aufgeteilt. Die Prüfung von Realm, Clients und administrativen Rollen sowie die Hinweise bei fehlendem Live-Zugriff bleiben unverändert."
+}

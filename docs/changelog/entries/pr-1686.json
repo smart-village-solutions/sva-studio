@@ -1,0 +1,4 @@
+{
+  "prNumber": 1686,
+  "body": "Interne Paketabhängigkeiten werden vor dem Build zuverlässig aktualisiert. Dadurch werden Dependency-Updates nicht mehr durch fehlende, bereits gebaute Typdefinitionen im Auth-Paket blockiert."
+}

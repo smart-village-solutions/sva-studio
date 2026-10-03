@@ -660,6 +660,64 @@ describe('governance workflow executor', () => {
     expect(accepted.queries[2]?.params?.[1]).toBe('tenant-a');
   });
 
+  it('preserves an explicit workspace for legal acceptance writes', async () => {
+    const accepted = createClient([[{ id: 'actor-account' }], [{ id: 'version-1' }], [], []]);
+
+    await runWithWorkspaceContext({ workspaceId: 'workspace-a' }, () =>
+      createGovernanceWorkflowExecutor(createDeps()).executeWorkflow(accepted.client, actor, {
+        operation: 'accept_legal_text',
+        instanceId: 'tenant-a',
+        payload: { legalTextId: 'terms', legalTextVersion: '1.0' },
+      })
+    );
+
+    expect(accepted.queries[2]?.params?.slice(0, 5)).toEqual([
+      'tenant-a',
+      'workspace-a',
+      'actor-subject',
+      'version-1',
+      'actor-account',
+    ]);
+  });
+
+  it('expires an impersonation before auditing the timeout and keeps pseudonyms in logs', async () => {
+    const deps = createDeps();
+    const expired = createClient([
+      [{ id: 'actor-account' }],
+      [{ id: 'target-account' }],
+      [{ id: uuid, expires_at: '2026-01-10T11:59:00.000Z', ticket_id: 'JIRA-3' }],
+      [],
+      [],
+    ]);
+
+    await expect(
+      createGovernanceWorkflowExecutor(deps).resolveImpersonationSubject({
+        instanceId: 'tenant-a',
+        actorKeycloakSubject: 'raw-actor-subject@example.org',
+        targetKeycloakSubject: 'raw-target-subject@example.org',
+        withInstanceScopedDb: async (_instanceId, work) => work(expired.client),
+      })
+    ).resolves.toEqual({ ok: false, reasonCode: 'DENY_IMPERSONATION_DURATION_EXCEEDED' });
+
+    expect(expired.queries[3]?.sql).toContain("SET status = 'expired'");
+    expect(expired.queries[3]?.params).toEqual([uuid, 'tenant-a']);
+    expect(expired.queries[4]?.sql).toContain('INSERT INTO iam.activity_logs');
+    expect(expired.queries[4]?.params?.slice(0, 3)).toEqual([
+      'tenant-a',
+      'actor-account',
+      'governance_impersonation_expired',
+    ]);
+    expect(deps.logWarn).toHaveBeenCalledWith(
+      'Governance audit event emitted',
+      expect.objectContaining({
+        actor_pseudonym: expect.any(String),
+        target_pseudonym: expect.any(String),
+      })
+    );
+    expect(JSON.stringify(deps.logWarn.mock.calls)).not.toContain('raw-actor-subject@example.org');
+    expect(JSON.stringify(deps.logWarn.mock.calls)).not.toContain('raw-target-subject@example.org');
+  });
+
   it('resolves active, expired and missing impersonation subjects', async () => {
     const executor = createGovernanceWorkflowExecutor(createDeps());
 

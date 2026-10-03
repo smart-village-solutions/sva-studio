@@ -1,0 +1,4 @@
+{
+  "prNumber": 1655,
+  "body": "Der Import von Benutzern aus Keycloak funktioniert wie bisher. Profilreparatur und Speicherung sind intern klarer getrennt, sodass sich der Ablauf langfristig leichter warten lässt."
+}

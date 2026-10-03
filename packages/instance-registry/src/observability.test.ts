@@ -6,11 +6,32 @@ import {
   buildInstanceRegistryFailureLog,
   buildKeycloakPlanComparisonDiagnostics,
   buildKeycloakPlanLogFields,
+  readDiagnosticErrorCode,
+  readProperty,
   readInstanceRegistryStepKey,
   runInstanceRegistryStep,
 } from './observability.js';
 
 describe('instance registry observability', () => {
+  it('reads safe diagnostic codes without invoking untrusted getters outside the guard', () => {
+    expect(readDiagnosticErrorCode({ code: 'EPERM' }, 'tenant_provisioning_step_failed')).toBe(
+      'EPERM'
+    );
+    expect(
+      readDiagnosticErrorCode(new Error('kassel_traefik_dynamic_dir_missing'), 'fallback')
+    ).toBe('kassel_traefik_dynamic_dir_missing');
+    const unsafe = {
+      get code(): string {
+        throw new Error('secret');
+      },
+      message: 'user@example.test password=secret',
+    };
+    expect(readDiagnosticErrorCode(unsafe, 'tenant_provisioning_step_failed')).toBe(
+      'tenant_provisioning_step_failed'
+    );
+    expect(readProperty(unsafe, 'code')).toBeUndefined();
+  });
+
   it('allowlists PostgreSQL diagnostics and correlation fields', () => {
     const error = Object.assign(new Error('secret@example.test password=hunter2'), {
       code: '23505',

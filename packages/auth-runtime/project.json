@@ -5,6 +5,7 @@
   "projectType": "library",
   "targets": {
     "build": {
+      "parallelism": false,
       "cache": false,
       "executor": "nx:run-commands",
       "dependsOn": ["^build"],
@@ -47,6 +48,7 @@
       }
     },
     "test:types": {
+      "parallelism": false,
       "cache": false,
       "executor": "nx:run-commands",
       "dependsOn": ["^build"],

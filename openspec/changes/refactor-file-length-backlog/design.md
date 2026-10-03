@@ -493,6 +493,46 @@ PII aus Exceptions in Logs oder Audit-Details übertragen; ein Snapshot ist
 nur sekundärer Befund und ersetzt keinen erfolgreichen Live-Read. Gezielte
 Audit-Tests sowie Auth-/Data-/Security-/Runtime-Gates prüfen diese Grenzen.
 
+### PR 17: Events-Editor
+
+Ausgangsstand nach PR 16e: `events.detail-page.tsx` 1.183 Zeilen,
+`plugin.translations.ts` 800 Zeilen und `events.detail-form.ts` 307 Zeilen
+bei einem Limit von 260. Die bestehende `EventsDetailPage` bleibt der
+Einstiegspunkt. Paketinterne Module übernehmen Laden und Rechte, Medienauswahl,
+Validierung und Speichern sowie die Tab-Darstellung. Der Formular-Mapper
+behält seine bisherigen Imports und trennt Typen und Defaultwerte; die
+Übersetzungen werden je Sprache in Feld-/Aktions- und Editor-/Meldungsgruppen
+zusammengesetzt. Die ersetzten Blöcke entfallen in den Ausgangsdateien.
+
+Kritische Invarianten: Die geschützten Feldpfade und Fokusziele bleiben
+identisch; Mainserver-Deviations werden nur nach Bestätigung überschrieben;
+die Medienreferenz-Speichersequenz, Create-Navigation und Delete-Rückmeldung
+bleiben erhalten. Die bestehenden Events-Detail-, Formular- und Plugin-Tests
+sowie Type-, Lint-, Build- und Complexity-Gates belegen den Schnitt. Nur die
+drei behobenen `fileLines`-Einträge werden aus der Policy entfernt.
+
+### PR 18: News-Editor
+
+Ausgangsstand nach PR 17: `news.detail-page.tsx` 1.347 Zeilen,
+`plugin.translations.ts` 961 Zeilen und `news.detail-form.ts` 910 Zeilen.
+`NewsDetailPage` bleibt der öffentliche Einstiegspunkt. Die Seite delegiert
+Zugriff, Optionen, Laden, Medienauswahl, Speichern/Löschen und Darstellung an
+direkt genutzte paketinterne Module. Der bestehende Formularimport bleibt für
+API und Tests erhalten; Schema, Legacy-Aliasse, Snapshot-Synchronisierung,
+Mutation und Dirty-Tab-Ableitung besitzen jeweils eine zuständige Quelle.
+Die Übersetzungen werden pro Sprache in Feld-/Navigations- und
+Editor-/Meldungsgruppen zusammengesetzt. Ersetzte Implementierungen entfallen
+aus den Ausgangsdateien.
+
+Kritische Invarianten: Der bestehende Feld- und Übersetzungsschlüsselvertrag,
+Datums- und Medienvalidierung, Legacy-Fallbacks, Berechtigungen,
+Waste-Targeting und globale Push-Bestätigung bleiben erhalten. Bei Save bleibt
+die Reihenfolge aus Content-Persistierung, Medienreferenz-Synchronisierung,
+Create-Navigation beziehungsweise Edit-Reset samt Retry-Rückmeldung erhalten.
+Die News-Detail-, Formular-, Editor-Modell- und Übersetzungstests sowie Type-,
+Lint-, Build- und Complexity-Gates prüfen diesen Schnitt. Nur die drei
+behobenen `fileLines`-Einträge werden aus der Policy entfernt.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

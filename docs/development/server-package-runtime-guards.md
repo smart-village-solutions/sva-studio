@@ -29,6 +29,8 @@ Bei `injectWorkspacePackages: true` können installierte pnpm-Paketkopien noch o
 
 Beide Targets sind ungecacht: Der Sync verändert installierte Paketkopien außerhalb der deklarierten Build-Outputs und muss auch nach einer frischen Installation mit gecachten Dependency-Builds laufen. Die Dependency-Builds selbst behalten ihr Cache-Verhalten.
 
+Die Sync-Helfer und die Runtime-Guards aktualisieren gemeinsame installierte `dist`-Verzeichnisse. Deshalb laufen `auth-runtime:build`, `auth-runtime:test:types`, `public-waste-calendar-web:build`, `public-waste-calendar-web:test:unit` und alle `check:runtime`-Targets mit `parallelism: false`. Nx führt diese Tasks innerhalb eines Task-Runners exklusiv aus; Dependency-Builds behalten ihre Parallelität. Das verhindert überlappende Lösch- und Kopiervorgänge, die sonst mit `EEXIST` scheitern können. Mehrere unabhängige Nx-Prozesse dürfen denselben installierten Workspace während dieser Vorgänge nicht gleichzeitig verändern.
+
 ## Was als Runtime-Import zählt
 
 Als Runtime-Import gelten insbesondere:

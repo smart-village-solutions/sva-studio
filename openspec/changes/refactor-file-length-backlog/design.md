@@ -589,6 +589,22 @@ Lint-, Build- und Complexity-Gates prüfen den Schnitt. Die erledigten
 `fileLines`-, `functionLines`- und Cyclomatic-Findings der Ausgangsdatei
 entfallen aus der Policy; es entstehen keine neuen Findings.
 
+### PR 22: Cockpit-Cards-Seite
+
+Ausgangsstand nach PR 21: `cockpit-cards.pages.tsx` 1.183 Zeilen.
+Die bestehenden öffentlichen Seiten-Exporte bleiben erhalten. Listenansicht,
+Editor-Felder, Medienauswahl, Laden, Speichern und die Ansicht werden von den
+Seiten direkt genutzt; die ersetzten Blöcke entfallen aus der Ausgangsdatei.
+Die zugehörigen `fileLines`-, `functionLines`- und Cyclomatic-Findings dieser
+Datei werden nach dem Schnitt aus der Complexity-Policy entfernt.
+
+Kritische Invarianten: Sichtbarkeit und Lebenszyklusberechtigung, Listen- und
+Medienreihenfolge, Laden/Speichern/Löschen, Referenz-Retry, öffentliche
+Medien-URLs, Principal und Ownership sowie Fehlerrückmeldungen bleiben
+unverändert. Cockpit-Cards-Seitentests, Ownership-Konformitätstest und Type-,
+Lint-, Build- und Complexity-Gates prüfen den Schnitt. Ein eigener Studio-
+Changelog-Eintrag dokumentiert den Abschnitt.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

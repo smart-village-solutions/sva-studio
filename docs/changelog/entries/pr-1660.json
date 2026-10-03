@@ -1,4 +1,4 @@
 {
   "prNumber": 1660,
-  "body": "Der automatische Rollenabgleich bleibt in seiner Bedienung unverändert. Katalogprüfung, Abgleich mit dem Identity Provider und Fehlerberichte sind intern klarer getrennt, damit sich Abweichungen und fehlgeschlagene Importe leichter nachvollziehen lassen."
+  "body": "Allgemeine Verbesserungen"
 }

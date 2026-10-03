@@ -328,6 +328,53 @@ würde den aktuellen Laufzeitvertrag ändern. Die öffentlichen Server-Exporte,
 Tenant-`set_config`, Transaktionsreihenfolge, Fehlerpriorität bei Rollback,
 Pool-Reset sowie Cache-Schlüssel/Invalidierung bleiben erhalten.
 
+Vor PR 15 ergeben die sieben verbliebenen Instanz-Registry-Dateien fünf
+eigenständig prüfbare Grenzen. Auf `origin/main` nach #1682 liegen die
+Repository-Dateien bei 463/389/451 Zeilen und die Service-Dateien bei
+623/427/402/335 Zeilen. 15a bearbeitet den Repository-Vertrag und die
+Parent-Provisionierung; 15b den Server-Einstieg; 15c den Keycloak-Zustand;
+15d Evaluation und Plan; 15e die Tenant-Schritte. Jeder Abschnitt wird
+seriell auf dem aktuellen `main` aufgebaut und erhält einen eigenen
+Studio-Changelog.
+
+**PR-Auftrag 15a:** `repository-contract.ts` und
+`repository-provisioning.ts` unter das jeweilige Dateilimit bringen.
+Nicht-Ziele sind `server.ts`, die vier Service-Dateien aus PR 15, Schema,
+Produktverhalten, neue Dependencies und Gates. Maximal betroffen sind die
+beiden Repository-Dateien, unmittelbar verwendete interne Segmente und Tests,
+betroffene Architektur-Doku, tatsächlich erledigte `fileLines`-Einträge,
+dieser Change und der eigene Changelog. Der bisherige
+`InstanceRegistryRepository`-Importpfad und seine Signatur bleiben erhalten.
+Der Vertrag trennt allgemeine Instanz-/Modul-/Leseoperationen von
+Provisionierungs-/Mutationsoperationen. Die Planbestätigung und
+Remediation werden im bestehenden Provisionierungsrepository fokussiert;
+SQL-Text und Parameterreihenfolge bleiben identisch. Tenant-Bindung,
+Run-Status, Idempotenz, Claim-/Lease-/Retry-Grenzen und Audit-Reihenfolge
+werden mit gezielten Repository-Tests und Data-/Security-/Runtime-Gates
+abgesichert.
+
+**PR-Auftrag 15b:** `packages/data-repositories/src/instance-registry/server.ts`
+unter das Dateilimit bringen; Nicht-Ziele sind 15c–15e, Schema und neue
+Server-Verträge. Die vorhandenen Pool-, Host- und Fassaden-Verbraucher
+bestimmen den Schnitt; öffentliche Exporte, URL-Auflösung,
+Pool-/Client-Lifecycle, Host-Cache/Fallback, Repository-Aufrufe mit
+Instance-ID-Filter und Fehlerweitergabe bleiben erhalten.
+
+**PR-Auftrag 15c:** `packages/instance-registry/src/provisioning-auth-state.ts`
+unter das Dateilimit bringen; Nicht-Ziele sind Evaluation, Plan und
+Tenant-Schritte. Zustand, Tenant-/Realm-Bindung und Retry-Semantik bleiben
+an den bestehenden Provisionierungs-Verbrauchern nachweisbar.
+
+**PR-Auftrag 15d:** `provisioning-auth-evaluation.ts` und
+`provisioning-auth-plan.ts` unter das Dateilimit bringen; Nicht-Ziele sind
+15e und neue Auth-Verträge. Preflight, Ownership, Fingerprint und Gate-Status
+bleiben in der bisherigen Reihenfolge und Fehlerklassifikation erhalten.
+
+**PR-Auftrag 15e:** `tenant-provisioning-steps.ts` unter das Dateilimit
+bringen; Nicht-Ziele sind die übrigen PR-15-Dateien, Schema und Features.
+Schrittfolge, idempotente Wiederaufnahme, Lease, Retry, Terminalstatus und
+Audit-Ereignisse bleiben durch Orchestrator-Tests belegt.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

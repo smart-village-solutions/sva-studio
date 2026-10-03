@@ -454,9 +454,10 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Berechtigungsänderung, Delegation/Impersonation und Rechtsannahme
       aufteilen. `governance-workflow-executor.test.ts` und Policy-Tests
       sichern Freigabegrenzen, Zustandswechsel, Audit, Ablauf und Fehlerpfade.
+      Umsetzung in PR #1666; Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11d anlegen;
+      `docs/changelog/entries/pr-1666.json` mit
+      passender `prNumber` und Nutzertext in PR #1666 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 11e — Governance-HTTP-Handler (1 Befund)

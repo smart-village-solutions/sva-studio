@@ -292,6 +292,18 @@ describe('legal-text-repository', () => {
     expect(state.client.query).toHaveBeenCalledTimes(4);
     expect(state.client.query.mock.calls[0]?.[0]).toContain('SELECT legal_text_id');
     expect(state.client.query.mock.calls[1]?.[0]).toContain('INSERT INTO iam.legal_text_versions');
+    expect(state.client.query.mock.calls[1]?.[1]).toEqual([
+      'de-musterhausen',
+      'privacy_policy_existing',
+      'Privacy Policy',
+      '2026-04',
+      'de-DE',
+      '<p>Legal text</p>',
+      'valid',
+      expect.any(String),
+      true,
+      '2026-03-16T09:00:00.000Z',
+    ]);
     expect(state.client.query.mock.calls[2]?.[0]).toContain('INSERT INTO iam.legal_text_target_roles');
     expect(state.client.query.mock.calls[2]?.[1]).toEqual([
       'de-musterhausen',
@@ -311,12 +323,17 @@ describe('legal-text-repository', () => {
       state.client,
       expect.objectContaining({
         eventType: 'iam.legal_text.created',
+        requestId: 'req-legal-text',
+        traceId: 'trace-legal-text',
         payload: expect.objectContaining({
           legal_text_version_id: legalTextRow.id,
           legal_text_version: '2026-04',
           status: 'valid',
         }),
       })
+    );
+    expect(vi.mocked(state.deps.emitActivityLog).mock.invocationCallOrder[0]).toBeGreaterThan(
+      state.client.query.mock.invocationCallOrder[3] ?? 0
     );
   });
 
@@ -371,6 +388,18 @@ describe('legal-text-repository', () => {
     expect(state.client.query).toHaveBeenCalledTimes(6);
     expect(state.client.query.mock.calls[0]?.[0]).toContain('FROM iam.legal_text_versions version');
     expect(state.client.query.mock.calls[1]?.[0]).toContain('UPDATE iam.legal_text_versions');
+    expect(state.client.query.mock.calls[1]?.[1]).toEqual([
+      'de-musterhausen',
+      legalTextRow.id,
+      'Updated Privacy Policy',
+      null,
+      null,
+      '<p>Existing legal text</p>',
+      'archived',
+      expect.any(String),
+      false,
+      '2026-03-16T09:00:00.000Z',
+    ]);
     expect(state.client.query.mock.calls[2]?.[0]).toContain('DELETE FROM iam.legal_text_target_roles');
     expect(state.client.query.mock.calls[3]?.[0]).toContain('INSERT INTO iam.legal_text_target_roles');
     expect(state.client.query.mock.calls[3]?.[1]).toEqual([
@@ -392,11 +421,16 @@ describe('legal-text-repository', () => {
       state.client,
       expect.objectContaining({
         eventType: 'iam.legal_text.updated',
+        requestId: 'req-legal-text',
+        traceId: 'trace-legal-text',
         payload: expect.objectContaining({
           legal_text_version_id: legalTextRow.id,
           updated_fields: expect.arrayContaining(['targetRoleIds', 'targetGroupIds']),
         }),
       })
+    );
+    expect(vi.mocked(state.deps.emitActivityLog).mock.invocationCallOrder[0]).toBeGreaterThan(
+      state.client.query.mock.invocationCallOrder[5] ?? 0
     );
   });
 

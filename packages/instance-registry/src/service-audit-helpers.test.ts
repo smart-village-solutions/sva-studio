@@ -124,7 +124,7 @@ describe('service-audit helpers', () => {
     const result = await resolveKeycloakStatus(
       createDeps(repository, {
         getKeycloakStatus: vi.fn(async () => {
-          throw new Error('HTTP 403 Forbidden');
+          throw new Error('HTTP 403 Forbidden: alice@example.org');
         }),
       }),
       'demo',
@@ -137,6 +137,7 @@ describe('service-audit helpers', () => {
       fallbackEvidenceSource: 'keycloak_snapshot',
     });
     expect(result.fallbackStatus).toBeTruthy();
+    expect(JSON.stringify(result)).not.toContain('alice@example.org');
   });
 
   it('reports separate fallback errors when live and snapshot keycloak reads both fail', async () => {

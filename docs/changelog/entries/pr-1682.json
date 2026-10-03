@@ -1,0 +1,4 @@
+{
+  "prNumber": 1682,
+  "body": "Die Speicherung von Instanz-Integrationen ist intern übersichtlicher strukturiert. Mandantenbindung und Zwischenspeicherung bleiben unverändert."
+}

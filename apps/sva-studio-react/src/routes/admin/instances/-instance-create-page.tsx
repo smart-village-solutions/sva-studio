@@ -7,28 +7,24 @@ import {
   StudioFormSummaryErrors,
   getStudioFormFieldProps,
   StudioPersistentFormError,
-  StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
 
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
-import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { SearchableSelect } from '../../../components/ui/searchable-select';
+import { CreateAuthStep, CreateBasicsStep, CreateTenantAdminStep } from './-instance-create-fields';
+import { buildCreatePayload, CreateReviewStep } from './-instance-create-review';
+import { CreateWizardNavigation, readStepStatus } from './-instance-create-navigation';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import {
   asIamError,
   getInstanceDraftReadiness,
   listInstanceRealmCatalog,
-  type CreateInstancePayload,
   type IamHttpError,
 } from '../../../lib/iam-api';
 import { useStudioBranding } from '../../../providers/studio-branding-provider';
-import { FieldHelp, INSTANCE_FIELD_HELP } from './-field-help';
 import {
   CREATE_WIZARD_STEPS,
   createEmptyCreateForm,
@@ -44,109 +40,7 @@ import type { CreateFormValues, CreateWizardStepKey } from './-instances-shared-
 import type { IamInstanceDraftReadiness, IamInstanceRealmCatalogEntry } from '@sva/core';
 
 const stepOrder = CREATE_WIZARD_STEPS.map((step) => step.key);
-const readinessFindingKeys = new Set([
-  'platform_access',
-  'keycloak_admin_access',
-  'realm_mode',
-  'tenant_secret',
-  'tenant_admin_client',
-  'tenant_admin_profile',
-  'realm_ownership',
-  'registry_instance_id',
-  'registry_hostname',
-  'realm_selection',
-  'realm_create_capability',
-]);
-const readinessCapabilityReasonCodes = new Set([
-  'worker_heartbeat_unavailable',
-  'durable_queue_available',
-  'callback_readiness_unavailable',
-  'provisioner_adapter_available',
-  'provisioner_worker_readiness_unavailable',
-  'ingress_automation_available',
-  'ingress_worker_readiness_unavailable',
-  'ingress_automation_not_required',
-  'plugin_lifecycle_registry_available',
-  'plugin_lifecycle_registry_unavailable',
-]);
-
-const getReadinessFindingTitle = (checkKey: string) =>
-  t(
-    `admin.instances.wizard.readiness.findings.titles.${readinessFindingKeys.has(checkKey) ? checkKey : 'unknown'}`
-  );
-const getReadinessFindingSummary = (status: string) =>
-  t(
-    `admin.instances.wizard.readiness.findings.status.${['ready', 'warning', 'blocked'].includes(status) ? status : 'unknown'}`
-  );
-const getReadinessCapabilitySummary = (reasonCode: string) =>
-  t(
-    `admin.instances.wizard.readiness.capabilityReasons.${readinessCapabilityReasonCodes.has(reasonCode) ? reasonCode : 'unknown'}`
-  );
-
-const FormLabelWithHelp = ({
-  htmlFor,
-  label,
-  helpKey,
-}: {
-  htmlFor: string;
-  label: string;
-  helpKey: keyof typeof INSTANCE_FIELD_HELP;
-}) => {
-  const help = INSTANCE_FIELD_HELP[helpKey];
-  return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      <FieldHelp {...help} />
-    </div>
-  );
-};
-
-const ReviewRow = ({ label, value }: { label: string; value: string }) => (
-  <div className="rounded-lg border border-border p-3">
-    <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-    <div className="mt-1 break-all text-sm text-foreground">{value}</div>
-  </div>
-);
-
 const getStepIndex = (step: CreateWizardStepKey) => stepOrder.indexOf(step);
-const getRealmModeLabel = (realmMode: 'new' | 'existing') =>
-  realmMode === 'new'
-    ? t('admin.instances.flow.realmModeNewLabel')
-    : t('admin.instances.flow.realmModeExistingLabel');
-const readStepStatus = (isCompleted: boolean, isCurrent: boolean) => {
-  if (isCompleted) {
-    return 'done' as const;
-  }
-
-  if (isCurrent) {
-    return 'current' as const;
-  }
-
-  return 'pending' as const;
-};
-const buildCreatePayload = (formValues: CreateFormValues): CreateInstancePayload => {
-  const instanceId = formValues.instanceId.trim();
-  return {
-    instanceId,
-    displayName: formValues.displayName.trim(),
-    parentDomain: formValues.parentDomain.trim(),
-    realmMode: formValues.realmMode,
-    authRealm: formValues.realmMode === 'new' ? instanceId : formValues.authRealm.trim(),
-    authClientId: 'sva-studio-login',
-    authIssuerUrl: undefined,
-    authClientSecret: undefined,
-    tenantAdminClient: {
-      clientId: 'sva-studio-realm-admin',
-      secret: undefined,
-    },
-    tenantAdminBootstrap: {
-      username: formValues.tenantAdminBootstrap.username.trim(),
-      email: formValues.tenantAdminBootstrap.email.trim(),
-      firstName: formValues.tenantAdminBootstrap.firstName.trim(),
-      lastName: formValues.tenantAdminBootstrap.lastName.trim(),
-    },
-  };
-};
 
 export const InstanceCreatePage = () => {
   const instancesApi = useInstances();
@@ -338,13 +232,6 @@ export const InstanceCreatePage = () => {
     void createCurrentInstance();
   };
 
-  const findingStep = (checkKey: string): CreateWizardStepKey | undefined => {
-    if (['registry_instance_id', 'registry_hostname'].includes(checkKey)) return 'basics';
-    if (['realm_mode', 'realm_selection'].includes(checkKey)) return 'auth';
-    if (checkKey === 'tenant_admin_profile') return 'tenantAdmin';
-    return undefined;
-  };
-
   const errorFor = (fieldId: string) => stepErrors.find((issue) => issue.fieldId === fieldId);
   const fieldErrorProps = (fieldId: string) =>
     getStudioFormFieldProps({
@@ -441,609 +328,61 @@ export const InstanceCreatePage = () => {
 
         <form className="space-y-5" onSubmit={onCreateSubmit} noValidate>
           {currentStep === 'basics' ? (
-            <div className="space-y-4">
-              <ReviewRow
-                label={t('admin.instances.wizard.studioInstanceLabel')}
-                value={
-                  branding === 'kassel-dialog'
-                    ? t('admin.instances.wizard.studioInstanceKassel')
-                    : t('admin.instances.wizard.studioInstanceSva')
-                }
-              />
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-id"
-                    label={t('admin.instances.form.instanceId')}
-                    helpKey="instanceId"
-                  />
-                  <Input
-                    {...fieldErrorProps('instance-id')}
-                    value={formValues.instanceId}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        instanceId: event.target.value,
-                        authRealm:
-                          current.realmMode === 'new' ? event.target.value : current.authRealm,
-                      }))
-                    }
-                  />
-                  {renderFieldError('instance-id')}
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-display-name"
-                    label={t('admin.instances.form.displayName')}
-                    helpKey="displayName"
-                  />
-                  <Input
-                    {...fieldErrorProps('instance-display-name')}
-                    value={formValues.displayName}
-                    onChange={(event) =>
-                      updateForm((current) => ({ ...current, displayName: event.target.value }))
-                    }
-                  />
-                  {renderFieldError('instance-display-name')}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <FormLabelWithHelp
-                  htmlFor="instance-parent-domain"
-                  label={t('admin.instances.form.parentDomain')}
-                  helpKey="parentDomain"
-                />
-                <Input
-                  {...fieldErrorProps('instance-parent-domain')}
-                  value={formValues.parentDomain}
-                  placeholder={suggestedParentDomain || undefined}
-                  onChange={(event) =>
-                    updateForm((current) => ({ ...current, parentDomain: event.target.value }))
-                  }
-                />
-                {renderFieldError('instance-parent-domain')}
-                <p className="break-all text-sm text-muted-foreground" aria-live="polite">
-                  {formValues.instanceId && formValues.parentDomain
-                    ? `${formValues.instanceId.trim()}.${formValues.parentDomain.trim()}`
-                    : null}
-                </p>
-              </div>
-            </div>
+            <CreateBasicsStep
+              formValues={formValues}
+              updateForm={updateForm}
+              fieldErrorProps={fieldErrorProps}
+              renderFieldError={renderFieldError}
+              branding={branding}
+              suggestedParentDomain={suggestedParentDomain}
+            />
           ) : null}
 
           {currentStep === 'auth' ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-medium text-foreground">
-                    {t('admin.instances.flow.realmModeTitle')}
-                  </h2>
-                  <FieldHelp {...INSTANCE_FIELD_HELP.realmMode} />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('admin.instances.flow.realmModeSubtitle')}
-                </p>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-                  <input
-                    type="radio"
-                    name="instance-realm-mode"
-                    checked={formValues.realmMode === 'new'}
-                    onChange={() =>
-                      updateForm((current) => ({
-                        ...current,
-                        realmMode: 'new',
-                        authRealm: current.instanceId,
-                        authClientId: 'sva-studio-login',
-                        authIssuerUrl: '',
-                        authClientSecret: '',
-                        tenantAdminClient: {
-                          clientId: 'sva-studio-realm-admin',
-                          secret: '',
-                        },
-                      }))
-                    }
-                  />
-                  <span>{t('admin.instances.flow.realmModeNew')}</span>
-                </label>
-                <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-                  <input
-                    type="radio"
-                    name="instance-realm-mode"
-                    checked={formValues.realmMode === 'existing'}
-                    onChange={() =>
-                      updateForm((current) => ({
-                        ...current,
-                        realmMode: 'existing',
-                        authRealm: '',
-                      }))
-                    }
-                  />
-                  <span>{t('admin.instances.flow.realmModeExisting')}</span>
-                </label>
-              </div>
-              {formValues.realmMode === 'new' ? (
-                <>
-                  <Input
-                    readOnly
-                    aria-label={t('admin.instances.form.authRealm')}
-                    value={formValues.authRealm}
-                    {...fieldErrorProps('instance-auth-realm')}
-                  />
-                  {renderFieldError('instance-auth-realm')}
-                  <Alert>
-                    <AlertDescription>
-                      {t('admin.instances.wizard.newRealmBaselineSummary')}
-                    </AlertDescription>
-                  </Alert>
-                  <details className="rounded-lg border border-border p-3">
-                    <summary className="cursor-pointer text-sm font-medium text-foreground">
-                      {t('admin.instances.wizard.technicalDetails')}
-                    </summary>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {t('admin.instances.wizard.existingRealmTechnicalDetails', {
-                        loginClient: 'sva-studio-login',
-                        adminClient: 'sva-studio-realm-admin',
-                      })}
-                    </p>
-                  </details>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="instance-auth-realm">
-                        {t('admin.instances.form.authRealm')}
-                      </Label>
-                      <FieldHelp {...INSTANCE_FIELD_HELP.authRealm} />
-                    </div>
-                    <SearchableSelect
-                      id="instance-auth-realm"
-                      label={t('admin.instances.form.authRealm')}
-                      showLabel={false}
-                      value={formValues.authRealm}
-                      placeholder={t('admin.instances.wizard.realmCatalog.placeholder')}
-                      searchPlaceholder={t('admin.instances.wizard.realmCatalog.search')}
-                      emptyText={t('admin.instances.wizard.realmCatalog.empty')}
-                      options={realmOptions}
-                      selectedOption={selectedRealmOption}
-                      searchValue={realmSearch}
-                      onSearchValueChange={setRealmSearch}
-                      onValueChange={(value) =>
-                        updateForm((current) => ({ ...current, authRealm: value }))
-                      }
-                      ariaInvalid={Boolean(errorFor('instance-auth-realm')) || undefined}
-                      describedBy={
-                        errorFor('instance-auth-realm') ? 'instance-auth-realm-error' : undefined
-                      }
-                    />
-                    {renderFieldError('instance-auth-realm')}
-                    {realmCatalogError ? (
-                      <StudioPersistentFormError
-                        message={getErrorMessage(realmCatalogError)}
-                        details={<IamRuntimeDiagnosticDetails error={realmCatalogError} />}
-                      />
-                    ) : null}
-                  </div>
-                  <details className="rounded-lg border border-border p-3">
-                    <summary className="cursor-pointer text-sm font-medium text-foreground">
-                      {t('admin.instances.wizard.technicalDetails')}
-                    </summary>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {t('admin.instances.wizard.existingRealmTechnicalDetails', {
-                        loginClient: 'sva-studio-login',
-                        adminClient: 'sva-studio-realm-admin',
-                      })}
-                    </p>
-                  </details>
-                </>
-              )}
-            </div>
+            <CreateAuthStep
+              formValues={formValues}
+              updateForm={updateForm}
+              fieldErrorProps={fieldErrorProps}
+              renderFieldError={renderFieldError}
+              realmOptions={realmOptions}
+              selectedRealmOption={selectedRealmOption}
+              realmSearch={realmSearch}
+              setRealmSearch={setRealmSearch}
+              realmCatalogError={realmCatalogError}
+              errorFor={errorFor}
+            />
           ) : null}
 
           {currentStep === 'tenantAdmin' ? (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium text-foreground">
-                  {t('admin.instances.form.tenantAdminTitle')}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {t('admin.instances.form.tenantAdminSubtitle')}
-                </p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-admin-username"
-                    label={t('admin.instances.form.tenantAdminUsername')}
-                    helpKey="tenantAdminUsername"
-                  />
-                  <Input
-                    {...fieldErrorProps('instance-admin-username')}
-                    value={formValues.tenantAdminBootstrap.username}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        tenantAdminBootstrap: {
-                          ...current.tenantAdminBootstrap,
-                          username: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                  {renderFieldError('instance-admin-username')}
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-admin-email"
-                    label={t('admin.instances.form.tenantAdminEmail')}
-                    helpKey="tenantAdminEmail"
-                  />
-                  <Input
-                    type="email"
-                    {...fieldErrorProps('instance-admin-email')}
-                    value={formValues.tenantAdminBootstrap.email}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        tenantAdminBootstrap: {
-                          ...current.tenantAdminBootstrap,
-                          email: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                  {renderFieldError('instance-admin-email')}
-                </div>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-admin-first-name"
-                    label={t('admin.instances.form.tenantAdminFirstName')}
-                    helpKey="tenantAdminFirstName"
-                  />
-                  <Input
-                    {...fieldErrorProps('instance-admin-first-name')}
-                    value={formValues.tenantAdminBootstrap.firstName}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        tenantAdminBootstrap: {
-                          ...current.tenantAdminBootstrap,
-                          firstName: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                  {renderFieldError('instance-admin-first-name')}
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="instance-admin-last-name"
-                    label={t('admin.instances.form.tenantAdminLastName')}
-                    helpKey="tenantAdminLastName"
-                  />
-                  <Input
-                    {...fieldErrorProps('instance-admin-last-name')}
-                    value={formValues.tenantAdminBootstrap.lastName}
-                    onChange={(event) =>
-                      updateForm((current) => ({
-                        ...current,
-                        tenantAdminBootstrap: {
-                          ...current.tenantAdminBootstrap,
-                          lastName: event.target.value,
-                        },
-                      }))
-                    }
-                  />
-                  {renderFieldError('instance-admin-last-name')}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('admin.instances.wizard.tenantAdminOptional')}
-              </p>
-            </div>
+            <CreateTenantAdminStep
+              formValues={formValues}
+              updateForm={updateForm}
+              fieldErrorProps={fieldErrorProps}
+              renderFieldError={renderFieldError}
+            />
           ) : null}
 
           {currentStep === 'review' ? (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium text-foreground">
-                  {t('admin.instances.wizard.reviewTitle')}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {t('admin.instances.wizard.reviewSubtitle')}
-                </p>
-              </div>
-              {formValues.realmMode === 'new' ? (
-                <Alert>
-                  <AlertDescription>
-                    {t('admin.instances.wizard.newRealmBaselineSummary')}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              <div className="grid gap-3 md:grid-cols-2">
-                <ReviewRow
-                  label={t('admin.instances.form.instanceId')}
-                  value={formValues.instanceId || '—'}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.displayName')}
-                  value={formValues.displayName || '—'}
-                />
-                <ReviewRow
-                  label={t('admin.instances.flow.realmModeTitle')}
-                  value={getRealmModeLabel(formValues.realmMode)}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.parentDomain')}
-                  value={formValues.parentDomain || '—'}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.authRealm')}
-                  value={formValues.authRealm || '—'}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.authClientId')}
-                  value={formValues.authClientId || '—'}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.tenantAdminClientId')}
-                  value={formValues.tenantAdminClient.clientId || '—'}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.authIssuerUrl')}
-                  value={
-                    formValues.authIssuerUrl || t('admin.instances.wizard.reviewDefaultIssuer')
-                  }
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.tenantAdminUsername')}
-                  value={
-                    formValues.tenantAdminBootstrap.username ||
-                    t('admin.instances.wizard.reviewNotConfigured')
-                  }
-                />
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <ReviewRow
-                  label={t('admin.instances.form.tenantAdminEmail')}
-                  value={formValues.tenantAdminBootstrap.email}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.tenantAdminFirstName')}
-                  value={formValues.tenantAdminBootstrap.firstName}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.tenantAdminLastName')}
-                  value={formValues.tenantAdminBootstrap.lastName}
-                />
-                {draftReadiness ? (
-                  <ReviewRow
-                    label={t('admin.instances.table.headerHost')}
-                    value={draftReadiness.normalizedDraft.primaryHostname}
-                  />
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {CREATE_WIZARD_STEPS.filter(({ key }) => key !== 'review').map((step) => (
-                  <Button
-                    className="max-w-full whitespace-normal"
-                    key={step.key}
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setReturnToReview(true);
-                      moveToStep(step.key);
-                    }}
-                  >
-                    {t('admin.instances.wizard.editGroup', { group: step.title })}
-                  </Button>
-                ))}
-              </div>
-              {readinessLoading ? (
-                <p className="text-sm text-muted-foreground" aria-live="polite">
-                  {t('admin.instances.wizard.readiness.serverChecking')}
-                </p>
-              ) : draftReadiness ? (
-                <div className="space-y-4">
-                  {[
-                    {
-                      key: 'create',
-                      title: t('admin.instances.wizard.readiness.createGroup'),
-                      findings: draftReadiness.createBlockers.map((finding) => ({
-                        ...finding,
-                        displayTitle: getReadinessFindingTitle(finding.checkKey),
-                        displaySummary: getReadinessFindingSummary(finding.status),
-                      })),
-                    },
-                    {
-                      key: 'provisioning',
-                      title: t('admin.instances.wizard.readiness.provisioningGroup'),
-                      findings: [
-                        ...draftReadiness.provisioningBlockers.map((finding) => ({
-                          ...finding,
-                          displayTitle: getReadinessFindingTitle(finding.checkKey),
-                          displaySummary: getReadinessFindingSummary(finding.status),
-                        })),
-                        ...draftReadiness.backgroundCapabilities
-                          .filter(
-                            (capability) =>
-                              capability.status !== 'ready' && capability.status !== 'not_required'
-                          )
-                          .map((capability) => ({
-                            checkKey: capability.capability,
-                            displayTitle: t(
-                              `admin.instances.wizard.capabilities.${capability.capability}`
-                            ),
-                            status:
-                              capability.status === 'blocked'
-                                ? ('blocked' as const)
-                                : ('warning' as const),
-                            displaySummary: getReadinessCapabilitySummary(capability.reasonCode),
-                            details: { reasonCode: capability.reasonCode },
-                          })),
-                      ],
-                    },
-                    {
-                      key: 'activation',
-                      title: t('admin.instances.wizard.readiness.activationGroup'),
-                      findings: draftReadiness.activationBlockers.map((finding) => ({
-                        ...finding,
-                        displayTitle: getReadinessFindingTitle(finding.checkKey),
-                        displaySummary: getReadinessFindingSummary(finding.status),
-                      })),
-                    },
-                  ].map((group) => (
-                    <section
-                      key={group.key}
-                      className="space-y-2"
-                      aria-labelledby={`readiness-${group.key}`}
-                    >
-                      <h3
-                        id={`readiness-${group.key}`}
-                        className="text-sm font-medium text-foreground"
-                      >
-                        {group.title}
-                      </h3>
-                      {group.findings.length ? (
-                        <p className="text-sm text-muted-foreground">
-                          {t(`admin.instances.wizard.readiness.impacts.${group.key}`)}
-                        </p>
-                      ) : null}
-                      {group.findings.length > 0 ? (
-                        group.findings.map((finding) => (
-                          <div
-                            key={`${group.key}-${finding.checkKey}`}
-                            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border p-3"
-                          >
-                            <div>
-                              <div className="font-medium text-foreground">
-                                {finding.displayTitle}
-                              </div>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {finding.displaySummary}
-                              </p>
-                              {findingStep(finding.checkKey) ? (
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  onClick={() => {
-                                    setReturnToReview(true);
-                                    const step = findingStep(finding.checkKey);
-                                    if (step) moveToStep(step);
-                                  }}
-                                >
-                                  {t('admin.instances.wizard.editGroup', {
-                                    group:
-                                      CREATE_WIZARD_STEPS.find(
-                                        ({ key }) => key === findingStep(finding.checkKey)
-                                      )?.title ?? '',
-                                  })}
-                                </Button>
-                              ) : (
-                                <p className="mt-1 text-sm">
-                                  {t('admin.instances.wizard.readiness.resolveTechnical')}
-                                </p>
-                              )}
-                              <details className="mt-2">
-                                <summary className="cursor-pointer text-xs">
-                                  {t('admin.instances.wizard.technicalDetails')}
-                                </summary>
-                                <p className="break-all text-xs">
-                                  {finding.checkKey} · {draftReadiness.checkedAt}
-                                </p>
-                              </details>
-                            </div>
-                            <WorkflowStatusBadge
-                              status={finding.status === 'blocked' ? 'blocked' : 'pending'}
-                            />
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {t('admin.instances.wizard.readiness.noBlockers')}
-                        </p>
-                      )}
-                    </section>
-                  ))}
-                  {draftReadiness.realmSuitability ? (
-                    <Alert>
-                      <AlertDescription>
-                        {t(
-                          `admin.instances.wizard.realmSuitability.${draftReadiness.realmSuitability.classification}`
-                        )}{' '}
-                        {t(
-                          `admin.instances.wizard.realmSuitabilityRemediation.${draftReadiness.realmSuitability.classification}`
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  ) : null}
-                </div>
-              ) : draftReadinessError ? (
-                <>
-                  <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-                    <AlertDescription>
-                      {t('admin.instances.wizard.readiness.serverUnavailable')}
-                    </AlertDescription>
-                  </Alert>
-                  <StudioPersistentFormError
-                    message={getErrorMessage(draftReadinessError)}
-                    details={<IamRuntimeDiagnosticDetails error={draftReadinessError} />}
-                  />
-                </>
-              ) : null}
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={readinessLoading}
-                onClick={() => void refreshDraftReadiness()}
-              >
-                {t('admin.instances.wizard.readiness.recheck')}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                {t('admin.instances.flow.createHint')}
-              </p>
-            </div>
+            <CreateReviewStep
+              formValues={formValues}
+              draftReadiness={draftReadiness}
+              draftReadinessError={draftReadinessError}
+              readinessLoading={readinessLoading}
+              setReturnToReview={setReturnToReview}
+              moveToStep={moveToStep}
+              refreshDraftReadiness={refreshDraftReadiness}
+            />
           ) : null}
 
-          <div className="flex flex-wrap justify-between gap-2">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={moveToPreviousStep}
-                disabled={currentStep === 'basics'}
-              >
-                {t('admin.instances.wizard.actions.back')}
-              </Button>
-              {currentStep !== 'review' ? (
-                <Button type="button" onClick={moveToNextStep}>
-                  {t(
-                    returnToReview
-                      ? 'admin.instances.wizard.returnToReview'
-                      : 'admin.instances.wizard.actions.next'
-                  )}
-                </Button>
-              ) : null}
-            </div>
-            {currentStep === 'review' ? (
-              <StudioSaveButton
-                type="submit"
-                status={saveFeedback.status}
-                disabled={
-                  readinessLoading || !draftReadiness || draftReadiness.createBlockers.length > 0
-                }
-                labels={{
-                  idle: t('admin.instances.actions.create'),
-                  saving: t('account.actions.saving'),
-                  saved: t('account.actions.saved'),
-                }}
-              />
-            ) : null}
-          </div>
+          <CreateWizardNavigation
+            currentStep={currentStep}
+            returnToReview={returnToReview}
+            moveToPreviousStep={moveToPreviousStep}
+            moveToNextStep={moveToNextStep}
+            saveStatus={saveFeedback.status}
+            readinessLoading={readinessLoading}
+            draftReadiness={draftReadiness}
+          />
         </form>
       </Card>
     </section>

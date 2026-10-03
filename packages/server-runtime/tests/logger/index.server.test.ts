@@ -113,4 +113,20 @@ describe('logger/index.server logging mode metadata', () => {
       log_level: 'debug',
     });
   });
+
+  it('keeps production at info when a callsite requests debug without an override', () => {
+    process.env.NODE_ENV = 'production';
+
+    const logger = createSdkLogger({
+      component: 'logging-level-test',
+      level: 'debug',
+      enableConsole: true,
+      enableOtel: false,
+    });
+
+    expect(logger.level).toBe('info');
+    expect(
+      (logger as unknown as { defaultMeta?: Record<string, unknown> }).defaultMeta
+    ).toMatchObject({ log_level: 'info' });
+  });
 });

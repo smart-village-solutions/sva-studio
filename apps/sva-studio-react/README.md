@@ -101,6 +101,14 @@ URL-gesteuerte Tab-Navigation. Rechte, Governance, DSR und Löschregeln liegen
 in benachbarten `-iam-page-*`-Modulen. Die vorhandenen Berechtigungs- und
 Anfrageverträge bleiben maßgeblich.
 
+## IAM-Rollen und Gruppen
+
+Die Detailrouten `src/routes/admin/roles/-role-detail-page.tsx` und
+`src/routes/admin/groups/-group-detail-page.tsx` bleiben die Importpunkte.
+Benachbarte Module halten Rollen-Stammdaten, Permissions, Zuweisungen und Sync
+sowie Gruppenformular und Mitgliedschaften. Die bestehenden IAM-Hooks führen
+die Datenänderungen und Berechtigungsprüfungen aus.
+
 ## Data Fetching
 
 There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.

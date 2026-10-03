@@ -51,10 +51,14 @@ Abhängigkeiten des aktuellen Systems.
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
+   - die Governance-HTTP-Handler liegen getrennt nach Workflow, Fallliste, Compliance-/Consent-Export und Self-Service unter `iam-governance/`; `core.ts` bleibt der bestehende Route-Importvertrag, und gemeinsame DB-/Berechtigungshelfer bleiben auf diesen Handlerbereich begrenzt
    - der bestehende Plugin-Runtime-Snapshot trägt einen optionalen Account-Create-Beitrag; die gemeinsame Benutzeranlage ruft ihn auf oder erzeugt nur Core-Attribute und importiert keine SSF-Runtime
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
+   - Der IAM-Content-Persistenzpfad hält `iam-contents/repository.ts` und `repository-write-helpers.ts` als bestehende Importverträge. Interne Module trennen Listen-/Detail-Lesen, Ownership-Ziele, Author-Display-Regeln, SQL-Writes und Activity-Emission; `withInstanceScopedDb`, parametrisierte Queries und die Mutation-History-/Activity-Reihenfolge bleiben an der bisherigen Transaktionsgrenze.
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
+   - Im IAM-Account-Management hält `schema-guard.ts` die Readiness-Auswertung und bisherigen Importpfade; `schema-guard-checks.ts` besitzt die kritischen Prüfdefinitionen und `schema-guard-sql.ts` deren SQL-Abfrage. `diagnostics.ts` hält die OTEL-Annotationen und den bisherigen Importpfad, `diagnostics-classification.ts` die Fehlerklassifikation. Readiness-, Fehler- und Telemetrieverträge bleiben unverändert.
    - hostgeführter Plugin-Tenant-Lifecycle mit generationsgebundenem Ledger, Readiness-Read-Modell und zentraler Access-Entscheidung; `/auth/me` entfernt nicht freigegebene lifecycle-verwaltete Module aus `assignedModules`, normale Plugin-Jobs prüfen dieselbe Entscheidung vor Idempotenzreservierung und Queueing
+   - Der Tenant-Lifecycle-Orchestrator hält atomaren und gestuften Start getrennt; sein internes Planmodul prüft für beide Pfade denselben Vertrag, Aktivierungszustand, Retry-Übergang und registrierten Handler vor einer Persistenzmutation.
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge sowie hostpublizierter, read-only Session-Access-Snapshot für Plugin-UI
    - erweitert um deklarative Operations-Beiträge für registrierte Jobtypen und Importprofile im bestehenden Build-time-Snapshot
@@ -99,8 +103,10 @@ Abhängigkeiten des aktuellen Systems.
 9. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
    - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
+   - der öffentliche Medien-Repository-Entrypoint `media/index.ts` hält `createMediaRepository`, `mediaStatements` und die Typverträge; interne Module trennen Asset-, Upload-, Storage-/Referenz- und Content-Save-Statements, Row-Mapping und Repository-Methoden ohne Änderung der SQL- oder Tenant-Verträge
    - enthält den führenden zentralen Job-Store für generische Studio-Jobs im Studio-Postgres
    - hält zusätzlich den kanonischen Registry-Store für `external_interface_types` und `instance_external_interfaces`
+   - hält den öffentlichen `InstanceRegistryRepository`-Vertrag im bestehenden Registry-Importpfad; das interne Instanz-/Lese-Segment und die Parent-Provisionierungsadapter trennen Vertrag, Claim/Lease sowie Plan-/Remediation-Übergänge ohne Änderung der SQL- und Tenant-Bindung
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
 10. SVA Mainserver (`packages/sva-mainserver`)
 
@@ -185,16 +191,20 @@ Abhängigkeiten des aktuellen Systems.
 - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
 - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
 - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
+- Der öffentliche `provisioning-auth-state`-Subpath bündelt unverändert die Keycloak-Adapter; interne Module halten Client-Vertrag, Tenant-Admin-Bootstrap, Realm-Readback und Artifact-Reconcile samt Realm-Cleanup getrennt. Der injizierte Client bleibt an den jeweiligen Realm gebunden; das allgemeine Status-Readback liefert Secrets nur für Studio-eigene Clients.
+- `provisioning-auth-evaluation` bleibt der Exportpfad für Preflight, Status und Plan. Interne Module trennen Preflight-Checks, geordnete Ownership-Konflikte und Live-Status; `provisioning-auth-plan` hält Fingerprint und Step-Reihenfolge, während ein internes Modul die einzelnen Artefakt-Schritte erzeugt.
 - Die serverseitige New-Realm-Baseline besitzt ausschließlich nicht geheime, installationsweit einheitliche Realm-, Theme-, Locale-, Event-, SMTP-, Benutzerprofil- und Mapper-Werte. Der konfigurierte Keycloak-Endpunkt liefert den Issuer; das SMTP-Passwort bleibt außerhalb von Quellcode, Registry und Browservertrag eine sichtbare manuelle Nacharbeit.
 - Root-Entry exportiert bewusst nur die stabile Capability-Fläche; interne Service-, HTTP- und Provisioning-Helfer bleiben auf Subpath- oder interne Module begrenzt
 - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
 - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
+- Die Entwurfs-Readiness bleibt über `service-draft-readiness.ts` erreichbar; interne Projektionen bilden Fingerprint, Provisioning-Eingabe und Capabilities. Die Realm-Eignung bleibt beim Handler, Aktivierungsprüfungen liegen beim bestehenden Active-Provisioning-Pfad und die Tenant-IAM-Statusprojektion bei der Tenant-IAM-Evidenz. Die bisherigen Service-Importpfade bleiben erhalten.
 - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
 - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
 - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
 - `@sva/data-repositories` setzt Create- und Update-Werte der Registry aus fachlich benannten, puren Segmenten in einer festen SQL-Parameterreihenfolge zusammen; Secret-Erhalt, explizites Löschen und Ersetzen bleiben dabei eigenständige Positionsverträge
+- Der Registry-Server in `@sva/data-repositories/server` bündelt die öffentlichen Lade- und Waste-Provisionierungsaufrufe; interne Client-/Pool- und Host-Module halten URL-Auflösung, Pool-Reset sowie Host-Cache und Fallback getrennt. Die Waste-Aufrufe verwenden weiterhin ihre tenantgebundene Transaktion, einfache Registry-Lesezugriffe nur den Client-Lifecycle.
 - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
-- HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
+- HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen. Die Keycloak-Reader trennen Status, Preflight und Plan bei stabilem öffentlichen Service-Importpfad; die gemeinsame Snapshot-Fingerprint-Prüfung liegt beim vorhandenen Snapshot-Reader.
   13a. Lokaler Studio-MCP (`packages/studio-mcp`)
 - lokaler stdio-Server und dünner, typisierter Client der bestehenden Studio-HTTP-API
 - hält Tool-Schemata, Korrelation, Idempotenz, Redaction und begrenzte Read-only-Diagnose, aber keine Registry-Fachlogik
@@ -207,6 +217,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/auth-runtime` veröffentlicht die hostgeführten Start-, Status- und Worker-Integrationspfade für generische Studio-Jobs
 - `@sva/routing` führt die öffentlichen Plugin-Operation-Endpunkte weiterhin typsicher; die interne Worker-Ausführung läuft über den generischen Task `studio_job_execute`
 - `@sva/data-repositories` hält den kanonischen Jobdatensatz mit `source`, Status, Progress, Payload-, Retry- und Fehlerfeldern
+- Die Plugin-Operations-Repository-Fassade bündelt die öffentlichen Jobmethoden; intern liegen Row-Mapping, Job-, Zustands-, Lease-/Attempt-, Event- und Listen-SQL in direkt genutzten Modulen. Die SQL- und Tenant-Grenzen bleiben in der Repository-Schicht.
 - `@sva/iam-governance` bleibt fachlicher Owner der DSR-Exportdatensätze; Self-Service-Exporte verknüpfen diese Datensätze zusätzlich mit einem Host-Job über `studio_job_id`
 - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin- oder DSR-spezifische Nebenspeicher ausgelagert
 - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil öffentlicher Plugin- oder Self-Service-Verträge
@@ -237,6 +248,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/iam-admin` (User-, Rollen-, Gruppen-, Organisations-, Actor-, Reconcile- und Keycloak-Admin-Orchestrierung)
   - Die bewusste administrative Account-Anlage beginnt ohne ausdrücklichen Status als `active`; die automatische JIT-Anlage beim Login bleibt standardmäßig `pending`. Die Keycloak-Passwort-Einladung ändert den IAM-Status nicht.
   - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
+  - `user-read-handlers.ts` hält Access-, Rate-Limit- und HTTP-Grenzen; `user-read-projection.ts` bündelt die tenantgebundene Listen- und Detailprojektion. `user-update-handler.ts` hält Update-Persistenz, Kompensation und Fehlerabbildung; `user-update-identity.ts` bündelt die Keycloak- und technischen Rollenschritte, `user-update-contract.ts` deren gemeinsame Typverträge.
   - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
   - der privilegierte Tenant-Account-Hard-Delete läuft ebenfalls über `packages/iam-admin`: Permission-Gate `iam.accounts.delete`, Schutz für `system_admin`-Zielaccounts, inhaltsbezogene Vorbereinigung, Session-Widerruf, Keycloak-Delete und finaler Studio-Hard-Delete bleiben in diesem Baustein gebündelt
   - `isTechnicalAccount` klassifiziert technische Accounts unabhängig von Status, Rollen und Login. Listen schließen sie standardmäßig vor Pagination aus; der Inaktivitäts-Lifecycle überspringt sie, explizite Deaktivierung und privilegierter Hard Delete bleiben grundsätzlich möglich.
@@ -250,6 +262,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/iam-core` für zentrale Autorisierungsverträge und Entscheidungen; Runtime-Adapter liegen in `packages/auth-runtime`.
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
   - `packages/iam-admin`, `packages/instance-registry` und `packages/data-repositories` über klar getrennte Fach- und Repository-Verträge
+  - Das IAM-Seed-Repository in `packages/data-repositories` hält `statements.ts` als bestehenden Importvertrag. Die SQL-Statements liegen nach Organisation, Zugriff und Account getrennt; Tenant-Filter und Parameterbindung bleiben an den bisherigen Repository-Methoden.
 - Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
   - `packages/auth-runtime` liefert die serverseitig gebundene Fresh-Reauth-Evidenz für kritische Root-Host-Mutationen; `packages/instance-registry` verwendet nur diesen Kontext und keine klientseitigen Marker als Sicherheitsnachweis
@@ -266,9 +279,11 @@ Abhängigkeiten des aktuellen Systems.
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/iam-governance`
   - trennt bei der Delegationserstellung die frameworkfreie Payload-/Policy-Entscheidung vom explizit sequenziellen Wiring für instanzgebundene Account-Auflösung, Persistenz und Audit; Reason Codes, Zeitgrenzen und SQL-/Auditverträge bleiben Eigentum des bestehenden Governance-Workflows
+  - hält `createGovernanceWorkflowExecutor` als öffentlichen Einstieg und trennt dessen interne Ausführung in Berechtigungsanfrage und -entscheidung, Delegation, Impersonation mit Session-Prüfung, Rechtsannahme und gemeinsames Audit; die instanzgebundenen SQL-, Freigabe- und Ereignisverträge bleiben unverändert
   - besitzt in `dsr-persistence.ts` die kanonischen, mandantengebundenen Persistenzprimitiven für aktive Legal Holds, DSR-Request-Events und DSR-Audit-Events; Auth-Runtime, Export-Flows und Wartung konsumieren diese Verträge ohne eigene SQL-Kopien
   - enthält auch die kanonische Legal-Text-Sanitisierung; React-Consumer importieren keinen app-lokalen HTML-Sanitizer mehr
   - liefert für den Account-Self-Service sowohl die Overview-Projektion mit `activityItems` als auch den `caseId`-basierten Detailzugriff für Deep-Links auf einzelne Datenschutzvorgänge
+  - trennt DSR-Leseprojektionen intern in gemeinsame Fall-Mapper, Admin-Filter und Self-Service-Aktivitäten sowie Übersichts- und fallbezogene Abfragen; die bestehenden Paket-Entrypoints und SQL-Scope-Bedingungen bleiben bestehen
 - Inhaltsverwaltung als Core-Element:
   - `packages/core` (`content-management.ts`) für Kernvertrag
   - `packages/plugin-sdk` für Erweiterungspunkte, Registries und Namespace-Verträge
@@ -355,7 +370,7 @@ Abhängigkeiten des aktuellen Systems.
    - Implementiert serverseitige Pagination/Count für Realm-Rollen und User sowie differenzierte Fehlerabbildung für Keycloak-Admin-Aufrufe.
 4. `packages/iam-admin/src`
    - Trennt Platform-Admin-Client, Tenant-Admin-Client, DB-only-Rollen-CRUD, technische Keycloak-Sonderrollen-Synchronisation und Drift-/Diagnoseprojektion.
-   - `role-governance.ts` definiert den technischen Keycloak-Schnitt (`system_admin`, `instance_registry_admin`); `reconcile-core.ts` repariert nur diesen Schnitt und berichtet nicht-technische Keycloak-Rollen als Legacy-/Drift-Diagnose.
+   - `role-governance.ts` definiert den technischen Keycloak-Schnitt (`system_admin`, `instance_registry_admin`); `reconcile-core.ts` steuert den Abgleich, während `reconcile-catalog.ts`, `reconcile-identity.ts`, `reconcile-database.ts`, `reconcile-import.ts`, `reconcile-persistence.ts` und `reconcile-report.ts` Katalog, Identity-Provider-Abgleich, Persistenz und Fehlerbericht trennen. Nur technische Sonderrollen werden repariert; nicht-technische Keycloak-Rollen erscheinen als Legacy-/Drift-Diagnose.
    - `user-projection.ts` hält `roles` IAM-kanonisch und reicht rohe Keycloak-Rollen separat als `keycloakRoles` durch.
 5. `apps/sva-studio-react/src/routes/admin/users` und `apps/sva-studio-react/src/routes/admin/roles`
    - Rendern IAM-Rollen als fachliche Sicht sowie Keycloak-Rollen nur als technische Diagnose; blockierte oder read-only Aktionen bleiben sichtbar, aber deaktiviert.
@@ -442,6 +457,7 @@ Abhängigkeiten des aktuellen Systems.
    - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
 4. `packages/instance-registry`
    - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
+   - hält Zuweisung und Entzug im Modul-Mutationsservice; ein internes Sync-Modul bündelt Bootstrap, geschützte System-Admin-Rechte und IAM-Baseline. Die bisherigen Service-Exporte bleiben am bestehenden Importpfad.
 5. `packages/auth-runtime`
    - reichert `/auth/me` für Instanz-Sessions mit `assignedModules` an.
 6. `packages/routing` und `apps/sva-studio-react`
@@ -607,6 +623,10 @@ Referenzen:
 - `packages/server-runtime/src/index.ts`
 - `packages/data/migrations/0001_iam_core.sql` (historischer Migrationsort)
 - `packages/data/migrations/0013_iam_instance_integrations.sql` (historischer Migrationsort)
+- `packages/data-repositories/src/integrations/instance-integrations.server.ts`
+  - hält den öffentlichen Server-Einstieg für Instanz-Integrationen und die gecachten Loader; nach dem Speichern werden alle Loader invalidiert
+- `packages/data-repositories/src/integrations/instance-integrations.db.ts`
+  - kapselt Pool, tenantgebundene Transaktion und SQL-Executor für diese Integrationen; der Server-Reset schließt die Pools
 - `packages/sva-mainserver/src/server/service.ts`
 - `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`
@@ -635,6 +655,9 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
    - Frontend-Datenzugriff auf IAM-v1-Endpunkte mit Fehler-/403-Behandlung.
 6. `packages/routing/src/account-ui.routes.ts`, `packages/auth-runtime/src/auth-route-handlers.ts`
    - Zentrale Guard- und Runtime-Konfiguration für `/account`, `/admin/users`, `/admin/users/$userId`, `/admin/roles` sowie den serverseitigen Keycloak-AIA-Einstieg `/auth/account-action`.
+   - Der Auth-Route-Entrypoint behält die sieben Handler-Exporte und die OTEL-Initialisierung beim Import. Interne `auth-route-*`-Module trennen Login/Account-Action, Callback, `/auth/me`, Logout und gemeinsame Response-/Cookie-/State-Hilfen; `auth-server/*` bleibt für OIDC- und Session-Operationen zuständig.
+
+Im Self-Service-Profilpfad hält `packages/auth-runtime/src/iam-account-management/profile-handlers.ts` die HTTP-Orchestrierung. `profile-request-context.ts` prüft Feature, Actor, CSRF und Rate Limit; `profile-update-flow.ts` synchronisiert Keycloak und kompensiert bei lokalen Fehlern; `profile-errors.ts` bildet die bestehenden Fehlerantworten ab. `packages/iam-admin/src/profile-commands.ts` besitzt weiterhin die tenantgebundene Persistenz, während `profile-session-seed.ts` die Sessiondaten für Seed und Reparatur normalisiert.
 
 ### Erweiterung 2026-03: Keycloak-Rollen-Katalog-Sync
 
@@ -738,10 +761,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 2. `apps/sva-studio-react/src/routes/admin/organizations/*`
    - Organisationsverwaltung trennt Liste, Anlage und Detail/Mitgliedschaften in eigenständige Routen ohne modalbasierten CRUD-State.
 3. `apps/sva-studio-react/src/routes/admin/groups/*`
-   - Gruppenverwaltung trennt Liste, Anlage und Detail/Rollen/Mitgliedschaften in eigenständige Routen.
-4. `apps/sva-studio-react/src/routes/admin/legal-texts/*`
+   - Gruppenverwaltung trennt Liste, Anlage und Detail/Rollen/Mitgliedschaften in eigenständige Routen. Die Detailroute hält Laden und Mutationen; Formular und Mitgliedschaften liegen in benachbarten Ansichtsmodulen.
+4. `apps/sva-studio-react/src/routes/admin/roles/-role-detail-*`
+   - Die Rollendetailroute hält Tab-Navigation und Fehlerzustände; benachbarte Module trennen Stammdaten, Permission-Entwurf und -Tabelle, Benutzerzuweisungen und Sync-Ansicht.
+5. `apps/sva-studio-react/src/routes/admin/legal-texts/*`
    - Rechtstextverwaltung trennt Liste, Anlage und versionsbezogene Detailbearbeitung in eigenständige Routen.
-5. `packages/routing/src/account-ui.routes.ts`
+6. `packages/routing/src/account-ui.routes.ts`
    - Enthält die kanonischen Guard-Pfade für Listen-, Create- und Detailrouten dieser CRUD-artigen Admin-Ressourcen.
 
 ### Ergänzung 2026-04: Admin-Ressourcen-Registry
@@ -769,7 +794,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
    - Binden die Aktion „Aus Keycloak synchronisieren“ in `/admin/users` an, zeigen Statusfeedback an und laden die User-Liste nach erfolgreichem Import neu.
 6. `packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts`
-   - Trennt die reine Profilreparatur-Entscheidung vom tenantgebundenen Seed-Lookup, der optionalen Keycloak-Mutation, der IAM-Persistenz und der Reportbildung. Quellwerte bleiben vor lokalen Seed-Werten vorrangig; nur für eine weiterhin fehlende E-Mail darf ein syntaktisch gültiger Username dienen.
+   - Hält Tenant-Auflösung, Berechtigungsprüfung und HTTP-Fehlerabbildung zusammen. `user-import-sync-profile.ts` verantwortet Profilnormalisierung und Reparaturentscheidung; `user-import-sync-persistence.ts` verantwortet Savepoint, IAM-Upsert, Importbericht und Audit. Quellwerte bleiben vor lokalen Seed-Werten vorrangig; nur für eine weiterhin fehlende E-Mail darf ein syntaktisch gültiger Username dienen.
    - Seed-Lookup, Provider-Update und Persistenz bleiben an dieselbe `instanceId` und dasselbe Keycloak-Subject gebunden; das Provider-Update enthält ausschließlich tatsächlich geänderte Felder. Eine nach den zulässigen Fallbacks weiterhin fehlende E-Mail oder eine fehlgeschlagene erforderliche E-Mail-Reparatur bleibt fail-closed. Fehlende Vor- oder Nachnamen bleiben dagegen optional: Leerzeichen werden vor der IAM-Persistenz als abwesend normalisiert, und nur wenn sämtliche strukturierten Keycloak-Feldfehler ausschließlich schreibgeschützte Vor- oder Nachnamen betreffen, blockiert eine reine Namensreparatur weder Account-Upsert noch Membership. Technische, retrybare, Not-found-, gemischte Validierungs- und unbekannte Fehler bleiben fail-closed. Es werden keine Default-Namen nach Keycloak oder IAM geschrieben. Logs enthalten nur einen gehashten Subject-Verweis, Ursachen und Reparaturflags.
 7. Medienvertrag (`packages/media`)
    - kanonische Typen für `MediaAsset`, `MediaVariant`, `MediaReference`, Rollen, Sichtbarkeit, Upload- und Processing-Status
@@ -780,6 +805,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - hostseitige Media-HTTP-Endpunkte
    - interner Storage-Port und S3-/MinIO-Adapter
    - Audit, Autorisierung und Upload-Processing für Medien
+   - `iam-media/processing.ts` koordiniert Claim, Finalisierung und Fehlerpfade; `processing-variants.ts` erzeugt Bildvarianten und bereinigt Varianten abgelöster Claims. `storage-s3.ts` hält den Storage-Port, während `storage-s3-config.ts` die Instanz-/Umgebungskonfiguration und `storage-s3-listing.ts` die tenantgebundene Objektauflistung tragen.
    - hält `iam-media/core.ts` als schmale öffentliche Fassade; Bibliotheks-/Asset-, Upload-, Content-Save- und Referenz-Handler sowie Request-, Schema- und HTTP-Helfer liegen in fachlich getrennten Modulen
    - verbindet registrierte Assets und Bucket-Objekte über einen versionierten Storage-Key-Cursor, ohne Gesamtzählung oder vollständigen Bucket-Scan
 10. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
@@ -836,6 +862,11 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 ### Ergänzung 2026-08: Operativer Keycloak-Instanz-Audit
 
+- `@sva/instance-registry` hält den internen Audit-Reader unter
+  `service-audit-keycloak.ts`, die Check-Ableitung unter
+  `service-audit-keycloak-checks.ts` und die Behandlung nicht live lesbarer
+  Realms unter `service-audit-keycloak-unavailable.ts`. Der bisherige
+  Service-Importpfad bleibt für den Audit-Orchestrator erhalten.
 - `scripts/ops/studio-instance-audit/keycloak.ts` besitzt die read-only
   `kcadm`-Erhebung, die kurzlebige Auth-Konfiguration und deren Cleanup.
 - `scripts/ops/studio-instance-audit/keycloak-evaluation.ts` besitzt den
@@ -973,6 +1004,10 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.
   Die Worker-Ausführung selbst hält dieselbe instanzbezogene Sperre im vollständigen
   RLS-Kontext; verwaiste Claims werden erst nach Ablauf und erfolgreicher Lock-Probe beendet.
+  Innerhalb des Registry-Service trennen Queue-Handler, Worker-Snapshotprüfung und
+  Post-Provisioning-Finalisierung die Phasen dieses Laufs. Der öffentliche
+  Execution-Import bleibt gleich; Fingerprint-Prüfung, Secret-Synchronisierung,
+  Statusabschluss und Realm-Cleanup laufen in der bisherigen Reihenfolge.
   Ein bereits verwalteter Tenant-Admin-Bootstrap kann nicht entfernt werden.
 
 Der genaue Payload- und Fehlervertrag ist im

@@ -6,14 +6,18 @@ import { describe, expect, it } from 'vitest';
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const readWorkspaceFile = (path: string): string => readFileSync(resolve(rootDir, path), 'utf8');
+const readRuntimeWorker = () => ({
+  entry: readWorkspaceFile('packages/auth-runtime/src/plugin-operations/runner-worker.ts'),
+  support: readWorkspaceFile(
+    'packages/auth-runtime/src/plugin-operations/runner-worker-support.ts'
+  ),
+});
 
 describe('Graphile worker migration contract', () => {
   it('runs Graphile migrations only from the privileged migration one-shot', () => {
     const migrator = readWorkspaceFile('deploy/portainer/migrate-graphile-worker.mjs');
     const migrationEntrypoint = readWorkspaceFile('deploy/portainer/migrate-entrypoint.sh');
-    const runtimeWorker = readWorkspaceFile(
-      'packages/auth-runtime/src/plugin-operations/runner-worker.ts'
-    );
+    const runtimeWorker = readRuntimeWorker();
 
     expect(migrator).toContain('await runMigrations({ pgPool: pool })');
     expect(migrator).toContain(
@@ -25,20 +29,22 @@ describe('Graphile worker migration contract', () => {
     expect(migrator).toContain("c.relkind <> 'S'");
     expect(migrator).toContain("d.deptype IN ('a', 'i')");
     expect(migrationEntrypoint).toContain('node "${GRAPHILE_WORKER_MIGRATOR}"');
-    expect(runtimeWorker).toContain('graphileWorker.runTaskList(');
-    expect(runtimeWorker).not.toContain('runMigrations');
-    expect(runtimeWorker).not.toContain('bootstrapStudioAppDbUserIfNeeded');
+    expect(runtimeWorker.entry).toContain("from './runner-worker-support.js'");
+    expect(runtimeWorker.support).toContain('graphileWorker.runTaskList(');
+    expect(runtimeWorker.entry + runtimeWorker.support).not.toContain('runMigrations');
+    expect(runtimeWorker.entry + runtimeWorker.support).not.toContain(
+      'bootstrapStudioAppDbUserIfNeeded'
+    );
   });
 
   it('binds enqueue to the tenant role boundary and processing to the worker pool', () => {
-    const runtimeWorker = readWorkspaceFile(
-      'packages/auth-runtime/src/plugin-operations/runner-worker.ts'
-    );
+    const runtimeWorker = readRuntimeWorker();
     const queueWorker = readWorkspaceFile(
       'packages/auth-runtime/src/plugin-operations/runner-queue.ts'
     );
 
-    expect(runtimeWorker).toContain('const pool = resolveStudioJobWorkerPool()');
+    expect(runtimeWorker.entry).toContain('createGraphileWorkerRunner(');
+    expect(runtimeWorker.support).toContain('const pool = resolveStudioJobWorkerPool()');
     expect(queueWorker).toContain('withInstanceDb(input.instanceId');
     expect(queueWorker).not.toContain('resolveStudioJobWorkerPool');
     expect(queueWorker).toContain('graphile_worker.sva_enqueue_job');

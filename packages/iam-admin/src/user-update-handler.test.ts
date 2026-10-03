@@ -205,6 +205,12 @@ describe('createUpdateUserHandlerInternal', () => {
       payload,
       nextMainserverCredentialState: { mainserverUserApplicationId: 'app-1', mainserverUserApplicationSecretSet: true },
     });
+    expect(identityProvider.provider.updateUser.mock.invocationCallOrder[0]).toBeLessThan(
+      identityProvider.provider.assignRealmRoles.mock.invocationCallOrder[0] ?? 0
+    );
+    expect(identityProvider.provider.assignRealmRoles.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.persistUpdatedUserDetail).mock.invocationCallOrder[0] ?? 0
+    );
     expect(deps.iamUserOperationsCounter.add).toHaveBeenCalledWith(1, {
       action: 'update_user',
       result: 'success',
@@ -475,6 +481,9 @@ describe('createUpdateUserHandlerInternal', () => {
       restoreIdentityAttributes: { displayName: ['Alice Example'] },
       identityProvider,
     });
+    expect(vi.mocked(deps.persistUpdatedUserDetail).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.compensateUserIdentityUpdate).mock.invocationCallOrder[0] ?? 0
+    );
   });
 
   it('uses the injected Keycloak error mapping before generic mutation errors', async () => {

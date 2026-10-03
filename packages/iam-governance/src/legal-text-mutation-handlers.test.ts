@@ -101,6 +101,28 @@ describe('legal-text-mutation-handlers', () => {
     expect(deps.repository.createLegalTextVersion).not.toHaveBeenCalled();
   });
 
+  it('replays a failed create response without rerunning the mutation or completion', async () => {
+    const responseBody = {
+      error: { code: 'conflict', message: 'Diese Rechtstext-Version existiert bereits.' },
+      requestId: actor.requestId,
+    };
+    vi.mocked(deps.reserveIdempotency).mockResolvedValueOnce({
+      status: 'replay',
+      responseStatus: 409,
+      responseBody,
+    });
+
+    const response = await createLegalTextMutationHandlers(deps).createLegalTextResponse(
+      new Request('https://example.org'),
+      actor
+    );
+
+    expect(response.status).toBe(409);
+    await expect(readBody(response)).resolves.toEqual(responseBody);
+    expect(deps.repository.createLegalTextVersion).not.toHaveBeenCalled();
+    expect(deps.completeIdempotency).not.toHaveBeenCalled();
+  });
+
   it('returns the required idempotency error before parsing the create body', async () => {
     const idempotencyError = new Response('missing-idempotency', { status: 400 });
     vi.mocked(deps.requireIdempotencyKey).mockReturnValueOnce({ error: idempotencyError });

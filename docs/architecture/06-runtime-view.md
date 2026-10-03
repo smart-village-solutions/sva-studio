@@ -609,7 +609,10 @@ Fehlerpfad:
    Dedizierte Plugin-Serverrouten werden aus dem Manifest-`server`-Entry geladen.
    Der Dispatcher verlangt vollständige Handler-Abdeckung, gleicht Pfad und
    Methode exakt ab und übergibt erst nach der hostseitigen Scope- und
-   Rechteprüfung einen hosterzeugten Execution-Context.
+   Rechteprüfung einen hosterzeugten Execution-Context. Interne Module prüfen
+   Routenabdeckung und Pfadparameter sowie die allgemeine und domainspezifische
+   Tenant-Autorisierung; der bestehende Dispatcher-Importvertrag bleibt der
+   Eintrittspunkt für die Service- und Benutzerpfade.
 5. Der Readiness-Aggregatstatus wird aus den aktuell deklarierten Checks und der aktuellen `required`-Kennzeichnung neu berechnet; gespeicherte Evidenz kann eine nachträglich verschärfte Check-Deklaration nicht freigeben.
 6. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
 7. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.

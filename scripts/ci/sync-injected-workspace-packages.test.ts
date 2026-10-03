@@ -1,10 +1,14 @@
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { collectWorkspacePackages, findReachableWorkspacePackageNames } from './sync-injected-workspace-packages.js';
+import {
+  collectWorkspacePackages,
+  findReachableWorkspacePackageNames,
+  syncWorkspacePackage,
+} from './sync-injected-workspace-packages.js';
 
 const tempDirs: string[] = [];
 
@@ -18,6 +22,56 @@ describe('sync-injected-workspace-packages', () => {
     for (const tempDir of tempDirs.splice(0)) {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it('refreshes missing and stale injected declarations after dependency builds', async () => {
+    const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'sync-injected-auth-runtime-'));
+    tempDirs.push(tempRoot);
+    const sourceDir = path.join(tempRoot, 'packages', 'instance-registry');
+    const injectedDir = path.join(
+      tempRoot,
+      'node_modules',
+      '.pnpm',
+      '@sva+instance-registry@file+packages+instance-registry',
+      'node_modules',
+      '@sva',
+      'instance-registry'
+    );
+    writePackageJson(sourceDir, '@sva/instance-registry');
+    writePackageJson(injectedDir, '@sva/instance-registry');
+    const [workspacePackage] = await collectWorkspacePackages(tempRoot);
+    expect(workspacePackage).toBeDefined();
+    if (!workspacePackage) throw new Error('Missing fixture workspace package');
+
+    // Installation happened before the dependency build (or its cache restore).
+    mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
+    const declaration = 'export declare const tenantIngress: string;\n';
+    writeFileSync(path.join(sourceDir, 'dist', 'kassel-tenant-ingress.d.ts'), declaration);
+    expect(await syncWorkspacePackage(tempRoot, workspacePackage)).toEqual({
+      skipped: false,
+      updatedCopies: 1,
+    });
+    expect(readFileSync(path.join(injectedDir, 'dist', 'kassel-tenant-ingress.d.ts'), 'utf8')).toBe(
+      declaration
+    );
+
+    // A subsequent dependency build must replace old files, not leave stale exports.
+    rmSync(path.join(sourceDir, 'dist', 'kassel-tenant-ingress.d.ts'));
+    writeFileSync(
+      path.join(sourceDir, 'dist', 'repositories.d.ts'),
+      'export declare const repository: string;\n'
+    );
+    expect(await syncWorkspacePackage(tempRoot, workspacePackage)).toEqual({
+      skipped: false,
+      updatedCopies: 1,
+    });
+    expect(readFileSync(path.join(injectedDir, 'dist', 'repositories.d.ts'), 'utf8')).toContain(
+      'repository'
+    );
+    expect(() => readFileSync(path.join(injectedDir, 'dist', 'kassel-tenant-ingress.d.ts'))).toThrow();
+    expect(readFileSync(path.join(sourceDir, 'dist', 'repositories.d.ts'), 'utf8')).toContain(
+      'repository'
+    );
   });
 
   it('limits reachable workspace packages to the consumer dependency graph', async () => {

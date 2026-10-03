@@ -1139,7 +1139,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 26d — Waste-Operationen und Mutationen (3 Befunde)
 
-- [x] In `packages/waste-management-runtime/src/`
+- [ ] In `packages/waste-management-runtime/src/`
       `handlers/operations.ts`, `handlers/tours-write-support.ts` und
       `handlers/mutation-helpers.ts` bereinigen. Job-Start,
       Tour-Abhängigkeiten, Mutationsantworten, Audit und Fehlerbehandlung

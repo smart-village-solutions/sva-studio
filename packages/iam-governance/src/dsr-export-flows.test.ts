@@ -113,6 +113,7 @@ describe('dsr-export-flows', () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('application/json');
     await expect(response.text()).resolves.toBe('{"ok":true}');
     expect(query).toHaveBeenCalledTimes(1);
     expect(deps.createAsyncStudioJob).not.toHaveBeenCalled();

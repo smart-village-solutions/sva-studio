@@ -424,12 +424,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/server-authorization.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-contents/repository.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-contents-repository-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-contents/repository.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-media/storage-s3.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-media-storage-s3-ts",
       "ticketSystem": "policy-baseline",
@@ -609,12 +603,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Content-State-Wertelogik in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-contents/repository-state-values.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-contents/repository-write-helpers.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-iam-contents-repository-write-helpers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Content-Write-Helfer in kleinere Persistenz- und Author-Display-Bausteine zerlegen (packages/auth-runtime/src/iam-contents/repository-write-helpers.ts)"
     },
     "iam-core:packages/iam-core/src/authorization-contract.ts:fileLines": {
       "ticketId": "baseline-iam-core-authorization-contract-ts",

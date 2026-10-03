@@ -543,34 +543,99 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 12d — IAM-Authorization shared (1 Dateilängenbefund)
 
-- [ ] `packages/auth-runtime/src/iam-authorization/shared.ts` entlang
+- [x] `packages/auth-runtime/src/iam-authorization/shared.ts` entlang
       Scope-/DB-Zugriff und Autorisierungsantwort aufteilen. Direkte
       Authorization- und Handler-Tests sichern Tenant-/Permission-Grenzen,
       Fail-Closed, Fehlerabbildung und bestehende Exporte. Separate
       Cyclomatic- und `publicExports`-Befunde nur bei wirklich erfüllter
       Schwelle entfernen; Auth-/Security- und Server-Runtime-Gates prüfen.
-      Umsetzung in PR #1672; Abschluss nach Merge- und Gate-Nachweis markieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Umsetzung in PR #1672; am 03.10.2026 nach grünen Gates am HEAD
+      `02ebda80531d2fc0928e06a6a32b0a1020459aab` als
+      `09a3dfd636d9c33a9ad7681742ff6449311fb492` gemergt.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1672.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       PR #1672 anlegen; Changelog-Gate vor Merge grün.
 
-### PR 13 — Plugin-, Content- und Media-Runtime in Auth (9 Befunde)
+### PR 13a — Content-Repository und Write-Helfer (2 Befunde)
 
-- [ ] In `packages/auth-runtime/src/` `iam-contents/repository.ts`,
-      `iam-contents/repository-write-helpers.ts`,
-      `iam-media/processing.ts`, `iam-media/storage-s3.ts`,
-      `plugin-server-handlers/dispatcher.ts`,
-      `plugin-operations/runner-registry.ts`,
-      `plugin-operations/runner-worker.ts`,
-      `plugin-operations/job-state-writer.ts` und
-      `plugin-tenant-lifecycle/orchestrator.ts` bereinigen. Tenant-,
-      Storage-, Retry- und Job-State-Grenzen gezielt testen.
-
+- [ ] `packages/auth-runtime/src/iam-contents/repository.ts` und
+      `iam-contents/repository-write-helpers.ts` entlang Listen-/Detail-Lesezugriff,
+      Ownership-Zielauflösung, Mutationen, Author-Display-Regeln, SQL-Writes
+      und Activity-Emission aufteilen. Bestehende `repository.js`- und
+      `repository-write-helpers.js`-Exporte, Tenant-Scope, parametrisierte SQL,
+      Transaktion, History-/Activity-Reihenfolge, Ownership- und
+      State-Validation-Verträge erhalten. `repository.test.ts`,
+      `repository-helpers.test.ts` und direkt betroffene
+      `external-content-*.test.ts` ausführen; Auth-/Data-/Security- und
+      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und nutzerverständlichem `body` in PR 13a anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 13b — Media-Verarbeitung und S3-Speicher (2 Befunde)
+
+- [ ] `packages/auth-runtime/src/iam-media/processing.ts` und
+      `iam-media/storage-s3.ts` nach Bildverarbeitung und S3-Operationen
+      aufteilen. Media-/Storage-Tests sichern Größen-, MIME- und
+      Berechtigungsvalidierung, Tenant-/Objektschlüsselbindung, Upload-/Delete-
+      Reihenfolge sowie Fehlerabbildung; Auth-/Security- und
+      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 13b anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 13c — Plugin-Server-Dispatcher (1 Befund)
+
+- [ ] `packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts`
+      entlang Request-Validierung, Tenant-/Plugin-Autorisierung und Dispatch
+      aufteilen. Dispatcher-/Handler-Tests sichern Plugin-Namespace,
+      Fail-Closed, Fehlerstatus und Response-Vertrag; Auth-/Security- und
+      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 13c anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 13d — Plugin-Operations Runner (2 Befunde)
+
+- [ ] `packages/auth-runtime/src/plugin-operations/runner-registry.ts`
+      und `plugin-operations/runner-worker.ts` entlang Registrierung,
+      Claim/Ausführung und Retry aufteilen. Registry-/Worker-Tests sichern
+      Lease-/Attempt-Grenzen, Idempotenz, Tenant-/Plugin-Bindung und
+      Terminalzustände; Auth-/Data-/Security- und Server-Runtime-Gates prüfen.
+      Abschluss nach Merge- und Gate-Nachweis.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 13d anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 13e — Plugin-Operations Job-State-Writer (1 Befund)
+
+- [ ] `packages/auth-runtime/src/plugin-operations/job-state-writer.ts`
+      nach Zustandsvalidierung und Persistenz aufteilen. Writer-/Worker-Tests
+      sichern erlaubte Übergänge, Tenant-/Job-Bindung, Attempt-/Lease-Prüfung,
+      Event-Reihenfolge und Wiederholbarkeit; Auth-/Data-/Security- und
+      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 13e anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 13f — Plugin-Tenant-Lifecycle-Orchestrator (1 Befund)
+
+- [ ] `packages/auth-runtime/src/plugin-tenant-lifecycle/orchestrator.ts`
+      entlang Plan-/Ausführungsschritten und Ergebnis-/Retry-Abbildung
+      aufteilen. Orchestrator-/Lifecycle-Tests sichern Tenant- und
+      Generation-Bindung, Reihenfolge, Idempotenz, Recovery und
+      Terminalzustände; Auth-/Data-/Security- und Server-Runtime-Gates prüfen.
+      Abschluss nach Merge- und Gate-Nachweis.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR 13f anlegen;
+      Changelog-Gate vor Merge grün.
 
 ## Daten und Provisionierung
 

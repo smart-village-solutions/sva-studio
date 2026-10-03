@@ -112,6 +112,24 @@ in `tooling/quality/complexity-policy.json`, dieser OpenSpec-Change und der
 eigene Changelog-Eintrag. Ausgangs-HEAD ist `8608bdf376f469b9d5510bcba2fb18dafac9795b`;
 die benannte Datei hat 1.614 Zeilen und muss höchstens 320 Zeilen haben.
 
+**PR-Auftrag 12b:** Die Datei `redis-session.ts` unter das 320-Zeilen-Limit
+bringen, indem Session-Speicherung, Login-State und Session-Kontrolle in
+direkt genutzte interne Module aufgeteilt werden; der öffentliche
+`redis-session.js`-Importvertrag, TTL, Schlüsselpräfixe, Tenant-Bindung,
+Rotation, Audit und Fail-Closed bleiben erhalten. Der genehmigte Nachweis
+eines atomaren Login-State-Verbrauchs erfordert, das bestehende Redis-`GET`
+plus `DEL` durch `GETDEL` zu ersetzen und konkurrierende Aufrufe zu testen;
+die projektierten Redis-7-Images und ioredis 5 unterstützen dieses Kommando.
+Nicht-Ziele sind 12c/12d, Produktfeatures, weitere API-/DB-/Keycloak-Semantik,
+neue Dependencies und Gates. Maximal betroffen sind `redis-session.ts`,
+direkt benötigte interne Module und Tests, tatsächlich betroffene Package-
+oder Architekturdokumentation, der erledigte `fileLines`-Policy-Eintrag,
+dieser OpenSpec-Change und ein eigener Changelog-Eintrag. Ausgangs-HEAD ist
+`43e504339cab1a85442cbc54ce89502fe0df2f95`; die benannte Datei hat
+659 Zeilen. Die bisher an `runWithRequiredRedisSessionStore` übergebenen
+In-Memory-Callbacks sind unerreichbar, weil der Wrapper ausschließlich
+Redis ausführt; ihre Entfernung erhält das produktive Fail-Closed-Verhalten.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

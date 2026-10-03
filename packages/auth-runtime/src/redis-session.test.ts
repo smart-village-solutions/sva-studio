@@ -17,6 +17,13 @@ const mocks = vi.hoisted(() => {
       return this.data.get(key) ?? null;
     }
 
+    async getdel(key: string): Promise<string | null> {
+      const value = this.data.get(key) ?? null;
+      this.data.delete(key);
+      this.expirations.delete(key);
+      return value;
+    }
+
     async set(key: string, value: string, mode?: string, ttl?: number): Promise<'OK'> {
       this.data.set(key, value);
       if (mode === 'EX' && ttl !== undefined) {
@@ -217,6 +224,46 @@ describe('redis-backed auth runtime session store', () => {
     await setSessionControlState('user-a', controlState, 300);
 
     await expect(getSessionControlState('user-a')).resolves.toEqual(controlState);
+  });
+
+  it('allows only one concurrent consumer to claim a login state atomically', async () => {
+    await createLoginState('concurrent-state', createLoginStateInput({
+      kind: 'instance',
+      instanceId: 'tenant-a',
+    }));
+
+    const results = await Promise.all([
+      consumeLoginState('concurrent-state'),
+      consumeLoginState('concurrent-state'),
+    ]);
+
+    expect(results.filter((result) => result !== undefined)).toEqual([
+      expect.objectContaining({ kind: 'instance', instanceId: 'tenant-a' }),
+    ]);
+    expect(mocks.emitAuthAuditEvent).toHaveBeenCalledTimes(2);
+    expect(mocks.emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'login_state_consumed',
+        scope: { kind: 'instance', instanceId: 'tenant-a' },
+        workspaceId: 'tenant-a',
+      })
+    );
+  });
+
+  it('fails closed and permits a retry when the atomic consume command fails', async () => {
+    await createLoginState('retry-state', createLoginStateInput());
+    const originalGetdel = mocks.redis.getdel.bind(mocks.redis);
+    mocks.redis.getdel = vi.fn().mockRejectedValueOnce(new Error('redis unavailable'))
+      .mockImplementation(originalGetdel) as typeof mocks.redis.getdel;
+
+    await expect(consumeLoginState('retry-state')).rejects.toThrow(
+      'Session store unavailable during consume_login_state'
+    );
+    await expect(consumeLoginState('retry-state')).resolves.toMatchObject({
+      codeVerifier: 'verifier',
+    });
+    await expect(consumeLoginState('retry-state')).resolves.toBeUndefined();
+    mocks.redis.getdel = originalGetdel;
   });
 
   it('persists session control state without redis expiry when no ttl is supplied', async () => {

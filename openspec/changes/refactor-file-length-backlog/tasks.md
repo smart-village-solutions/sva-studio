@@ -380,8 +380,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Rollen- und Mitgliedschaftsänderungen, Fehlerabbildung und Audit;
       moderne und Legacy-Endpunkte bleiben kompatibel.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 10e
+      `docs/changelog/entries/pr-1661.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1661
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10f — Öffentliche IAM-Admin-Exporte (1 Befund)

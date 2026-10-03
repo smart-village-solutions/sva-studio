@@ -1011,7 +1011,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 24a — Waste-Plugin-Import und Tourenlogik (4 Befunde)
 
-- [ ] In `packages/plugin-waste-management/src/`
+- [x] In `packages/plugin-waste-management/src/`
       `waste-management.tools.import-section.parts.tsx`,
       `waste-management.tours.presentation.ts`,
       `waste-management.tools.actions.ts`,
@@ -1019,10 +1019,15 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Job-Aktionen, Tourenfilter und Kalendervorschau mit gezielten UI-,
       Unit- und Typprüfungen erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1705, HEAD
+      `4271d847d1045620bc29c2ee4bb7938dcf7aabd3`, Merge-Commit
+      `fa264443ccebeb454c6ee7dbf9ab319f322ae06e`; Changelog
+      `docs/changelog/entries/pr-1705.json`.
 
 ### PR 24b — Waste-Plugin-Ortsauswahl und individuelle Tourtermine (3 Befunde)
 

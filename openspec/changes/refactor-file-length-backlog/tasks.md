@@ -14,8 +14,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
 
-**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31a → PR 31b → PR 31c → PR 31d → PR 32 → PR 33 → PR 34.
-**Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
+**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31a → PR 31b → PR 31c → PR 31d → PR 32a → PR 32b → PR 32c → PR 32d.
+**Strang B:** PR 27 → PR 28 → PR 29 → PR 30; nach dem Merge von PR 32a
+folgen unabhängig von PR 32b bis PR 32d die PRs 33 → 34. PR 29 beginnt erst nach dem
 Merge von PR 26d, weil der öffentliche Waste-Kalender die dann integrierten
 Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
 Mainserver-Waste-Schnittstelle gegen die laufenden Änderungen aus Strang A;
@@ -29,6 +30,8 @@ einzeln: Vor dem finalen Nachweis wird jeder Branch mit dem dann aktuellen
 Review-Threads nur für den neuen exakten HEAD. Gemeinsame Änderungen an
 `tasks.md`, `design.md` und der Complexity-Policy werden dabei aufgelöst,
 bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
+Falls danach verwaiste `fileLines`-Registereinträge verbleiben, folgt der
+eigenständig reviewbare Abschluss-PR 35.
 
 ## Pilot und Grundlagen
 
@@ -1234,7 +1237,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 30 — Öffentliche Waste-Oberfläche (2 Befunde)
 
-- [ ] In `apps/public-waste-calendar-web/src/`
+- [x] In `apps/public-waste-calendar-web/src/`
       `components/public-waste-calendar-panels.tsx` und `routes/index.tsx`
       bereinigen. Anzeige, Navigation und Barrierefreiheit gezielt testen.
 
@@ -1244,11 +1247,15 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       in direkt benutzte private Module derselben App schneiden. Ziel sind
       zwei beseitigte `fileLines`-Befunde bei unverändertem Tab-Fokus,
       Termin-Dialog, Cookie-Restore/Reset und Fail-Closed-Fehlerverhalten.
+      Merge-Nachweis: PR #1721, geprüfter HEAD
+      `4bd4e894f836fd19f7aa00c860347c582eee1478`, Merge-Commit
+      `603a7af668fc6fc31b6b316e56fa456d0c499776`; finaler Intake grün
+      mit null offenen Review-Threads.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1721.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1721 angelegt; Changelog-Gate vor Merge grün.
 
 ## Tooling und MCP
 
@@ -1295,21 +1302,59 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 31d — Sonar-Hotspots (1 Dateilängenbefund)
 
-- [ ] `scripts/ci/sonar-hotspots.ts` nach bestehenden CLI-, API- und
+- [x] `scripts/ci/sonar-hotspots.ts` nach bestehenden CLI-, API- und
       Berichtspfaden aufteilen. Authentisierung, Paging, Finding-Erkennung,
       Exitcodes und Berichtsformat mit gezielten Skript-Tests und
-      Skript-Typecheck erhalten.
+      Skript-Typecheck erhalten. Merge-Nachweis: PR #1722, HEAD
+      `629998dcfb49350c117e210fd3363a1c30e055d2`, Merge-Commit
+      `75366a9115174f53472b0a7680e1d53ba4e91c50`.
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1722.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1722 angelegt; Changelog-Gate grün.
 
-### PR 32 — CI-Vertrags- und IAM-Prüfer (5 Befunde)
+### PR 32a — Server-Package-Runtime-Guard (1 Befund)
 
-- [ ] In `scripts/ci/` `verify-plugin-lifecycle-database-contract.ts`,
-      `run-iam-evidence.ts`, `run-iam-authorize-performance.ts`,
-      `check-server-package-runtime.ts`,
-      `verify-graphile-worker-database-contract.ts` bereinigen.
-      Prüfreihenfolge, Exitcodes, Fehlertexte und Redaction testen.
+- [ ] `scripts/ci/check-server-package-runtime.ts` entlang statischer
+      Importprüfung und Dist-Smoke-Check aufteilen. Öffentliche Exporte,
+      Prüfreihenfolge, pnpm-Dist-Abgleich, Exitcodes und Fehlertexte mit
+      gezielten Tests, Skript-Typecheck und `pnpm check:server-runtime` erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1723.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 32b — IAM-Evidence und Authorize-Performance (2 Befunde)
+
+- [ ] `scripts/ci/run-iam-evidence.ts` und
+      `scripts/ci/run-iam-authorize-performance.ts` entlang ihrer bestehenden
+      Nachweis- und Messpfade aufteilen. Redaction, Prüfreihenfolge,
+      Fehlertexte und Exitcodes mit vorhandenen Skript-Tests und Skript-Typecheck
+      erhalten; Live-Credential-Acceptance nur in einer nachweislich sicheren
+      vorhandenen Umgebung ausführen, andernfalls den fehlenden Live-Nachweis
+      ausdrücklich dokumentieren.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 32c — Graphile-Worker-Datenbankvertrag (1 Befund)
+
+- [ ] `scripts/ci/verify-graphile-worker-database-contract.ts` nach seinen
+      bestehenden Schema-, Job- und Worker-Prüfungen aufteilen. Prüfreihenfolge,
+      Cleanup, Exitcodes und Fehlertexte mit gezielten Contract-Tests,
+      Skript-Typecheck und dem vorhandenen Integrationstarget erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 32d — Plugin-Lifecycle-Datenbankvertrag (1 Befund)
+
+- [ ] `scripts/ci/verify-plugin-lifecycle-database-contract.ts` entlang der
+      vorhandenen Lifecycle-Fallgruppen aufteilen. Fallreihenfolge,
+      Transaktionen, Cleanup, Exitcodes und Fehlertexte mit gezielten
+      Contract-Tests, Skript-Typecheck und dem vorhandenen Integrationstarget
+      erhalten; keine neue generische Testinfrastruktur einführen.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
@@ -1338,7 +1383,22 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-## Abschluss nach allen PRs 23 bis 34
+### PR 35 — Bedingter Registerabgleich und integrierter Null-Nachweis
+
+- [ ] Nach den Merges von PR 23 bis PR 34 den vollständigen
+      `pnpm complexity-gate`-Befund auf integriertem `main` gegen die
+      `fileLines`-Registereinträge abgleichen. Nur nachweislich verwaiste
+      `fileLines`-Einträge in einem eigenen PR entfernen, sofern solche
+      Altlasten verbleiben; null aktuelle Dateilängenverstöße und null
+      verwaiste Einträge am exakten HEAD belegen. Gibt es keine Altlasten,
+      diesen Task mit dem Main-Gate-Nachweis ohne PR 35 abschließen.
+- [ ] Falls PR 35 nötig ist, einen eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Changelog-Gate vor
+      Merge grün. Andernfalls den entfallenen PR mit dem Gate-Nachweis
+      dokumentieren.
+
+## Abschluss nach allen PRs 23 bis 34 und gegebenenfalls PR 35
 
 - [ ] Auf integriertem `main` einen vollständigen `pnpm complexity-gate`-Lauf
       mit null aktuellen `fileLines`-Verstößen und null verwaisten

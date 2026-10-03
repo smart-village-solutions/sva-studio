@@ -674,8 +674,9 @@ unveränderte öffentliche Oberfläche.
    12d und 13a bis 13f wurden seriell geliefert. Ab PR 23 laufen höchstens
    zwei getrennte Worktrees parallel: Strang A bearbeitet PR 23, PR 24a,
    PR 24b, PR 25a, PR 25b, PR 26a bis PR 26d und danach PR 31a bis PR 31d
-   sowie PR 32 bis PR 34;
-   Strang B bearbeitet PR 27 bis PR 30. PR 29
+   sowie PR 32a bis PR 32d;
+   Strang B bearbeitet PR 27 bis PR 30 und nach dem Merge von PR 32a die
+   unabhängigen PR 33 und PR 34. PR 29
    wartet auf den Merge von PR 26d. PR 24 wurde nach der ersten
    Complexity-Prüfung in zwei fachliche Abschnitte getrennt: PR 24a umfasst
    Import-Wizard, Job-Aktionen und Tourenlogik; PR 24b umfasst die drei
@@ -696,14 +697,31 @@ unveränderte öffentliche Oberfläche.
    Patch-/New-Code-Verbraucher und 31d Sonar-Hotspots geteilt. Jeder Abschnitt
    erhält eigene Skript-Tests und behält Exitcodes und Berichtformat bei;
    PR 31b beginnt erst nach dem Merge von 31a, die folgenden entsprechend.
+   Die fünf Skripte des ursprünglich gemeinsamen PR 32 bilden vier
+   unterschiedliche Prüfgrenzen und zusammen 4.378 Zeilen: PR 32a trennt
+   statische Importprüfung und Dist-Smoke-Check des Server-Runtime-Guards;
+   PR 32b behandelt die beiden gemeinsam genutzten IAM-Nachweis- und
+   Performance-Pfade; PR 32c isoliert den Graphile-Worker-Datenbankvertrag;
+   PR 32d isoliert die große Plugin-Lifecycle-Fallmatrix. Jeder dieser vier
+   PRs erhält seinen eigenen Changelog und zielgerichtete Vertragsprüfungen.
+   Die vorhandenen Live-Credential-Tests für PR 32b werden nur in einer
+   nachweislich sicheren vorhandenen Acceptance-Umgebung ausgeführt; sonst
+   wird die verbleibende Evidenzgrenze ausdrücklich benannt. PR 33 und PR 34
+   ändern weder diese Prüfer noch deren Tests und können nach PR 32a im
+   zweiten Strang seriell bearbeitet werden. Alle Merges und Main-Syncs bleiben
+   einzeln.
    Innerhalb jedes Strangs
    ist der vorherige Merge
    Voraussetzung für den nächsten Abschnitt. Vor jedem Merge wird der Branch
    gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter
    HEAD vollständig geprüft. Nur ein PR wird zur selben Zeit gemergt.
 4. **Schlusslauf:** Nach allen PRs 23 bis 34 wird der vollständige Scope erneut gemessen.
-   Ein Restbefund wird als konkret benannter weiterer PR-Task ergänzt und
-   abgearbeitet, bevor der Change abgeschlossen wird.
+   Verbleibende verwaiste `fileLines`-Registereinträge werden nur nach
+   Abgleich mit den tatsächlich aktuellen Verstößen in einem eigenen,
+   reviewbaren PR 35 entfernt. Gibt es keine Altlasten, entfällt PR 35 mit
+   dokumentiertem Main-Gate-Nachweis. Ein aktueller Restverstoß wird als
+   konkret benannter weiterer PR-Task ergänzt und abgearbeitet, bevor der
+   Change abgeschlossen wird.
 
 ## Regeln für jeden PR-Abschnitt
 

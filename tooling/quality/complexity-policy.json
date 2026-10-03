@@ -2938,23 +2938,11 @@
       "status": "open",
       "summary": "Draft-Readiness in Anlage-, Bereitstellungs- und Aktivierungsprüfungen zerlegen"
     },
-    "instance-registry-service:packages/instance-registry/src/service-draft-readiness.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Draft-Readiness in Anlage-, Bereitstellungs- und Aktivierungsprüfungen zerlegen"
-    },
     "instance-registry-service:packages/instance-registry/src/service-draft-readiness.ts:functionLines": {
       "ticketId": "#1448",
       "ticketSystem": "github",
       "status": "open",
       "summary": "Draft-Readiness in Anlage-, Bereitstellungs- und Aktivierungsprüfungen zerlegen"
-    },
-    "instance-registry-service:packages/instance-registry/src/service-helpers.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Registry-Helfer entlang ihrer fachlichen Projektionen aufteilen"
     },
     "instance-registry-service:packages/instance-registry/src/service-instance-mutations.ts:cyclomaticComplexity": {
       "ticketId": "#1448",

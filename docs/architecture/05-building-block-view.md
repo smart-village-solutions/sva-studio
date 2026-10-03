@@ -197,6 +197,7 @@ Abhängigkeiten des aktuellen Systems.
 - Root-Entry exportiert bewusst nur die stabile Capability-Fläche; interne Service-, HTTP- und Provisioning-Helfer bleiben auf Subpath- oder interne Module begrenzt
 - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
 - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
+- Die Entwurfs-Readiness bleibt über `service-draft-readiness.ts` erreichbar; interne Projektionen bilden Fingerprint, Provisioning-Eingabe und Capabilities. Die Realm-Eignung bleibt beim Handler, Aktivierungsprüfungen liegen beim bestehenden Active-Provisioning-Pfad und die Tenant-IAM-Statusprojektion bei der Tenant-IAM-Evidenz. Die bisherigen Service-Importpfade bleiben erhalten.
 - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
 - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
 - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile

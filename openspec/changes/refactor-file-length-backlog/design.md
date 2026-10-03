@@ -439,6 +439,22 @@ PR 16 wird seriell und einzeln reviewbar in 16a Execution, 16b Readers,
 Service Helpers umgesetzt. Jeder Abschnitt beseitigt seine benannten
 Dateilängenbefunde und enthält einen eigenen Studio-Changelog-Eintrag.
 
+**PR-Auftrag 16e:** Nach #1693 überschreiten `service-draft-readiness.ts`
+(482 Zeilen) und `service-helpers.ts` (347 Zeilen) das Dateilimit. Ziel ist
+die Trennung der Entwurfs-Readiness von ihren Projektionen und der
+Tenant-IAM-Evidenz von allgemeinen Service-Projektionen bei unveränderten
+Exportpfaden. Nicht-Ziele sind neue Readiness-Funktionen, Vertrags- oder
+Datenmodelländerungen und andere Services. Aktivierungsprüfungen gehören in
+das bestehende `service-active-provisioning.ts`, die Tenant-IAM-Projektion
+in `tenant-iam-evidence.ts`. Die Entwurfs-Fingerprints, Capability-Anzeigen
+und Provisioning-Eingabe benötigen ein direkt genutztes kleines
+`service-draft-readiness-projection.ts`, weil keines der bestehenden Module
+diese Entwurfsprojektionen aufnimmt, ohne wieder über das Dateilimit zu
+wachsen. Die Realm-Eignung bleibt direkt am Readiness-Handler. Status,
+Validierung, Tenantbezug, Fehlerklassen und Projektionen
+bleiben erhalten; Readiness- und Service-Tests sowie Auth-/Data-/Security-/
+Runtime-Gates prüfen die Parität.
+
 **PR-Auftrag 16d:** Nach #1692 hat `service-module-mutations.ts` 516 Zeilen
 und einen registrierten `fileLines`-Befund. Ziel ist die Trennung des
 Bootstrap-/IAM-Baseline-Syncs von Zuweisung und Entzug bei unverändertem

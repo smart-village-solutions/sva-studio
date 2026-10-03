@@ -20,7 +20,7 @@
     "@sva/core": "workspace:*"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.11",
-    "vitest": "^4.1.11"
+    "@vitest/coverage-v8": "^5.0.2",
+    "vitest": "^5.0.1"
   }
 }

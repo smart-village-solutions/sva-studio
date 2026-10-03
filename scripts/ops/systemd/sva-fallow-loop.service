@@ -1,0 +1,12 @@
+[Unit]
+Description=Bounded local Fallow LLM review loop
+Wants=sva-llama-server.service
+After=sva-llama-server.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/sva-studio-worktrees/local-fallow-review-loop
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=%h/.config/sva-fallow-loop/github.env
+ExecStart=%h/.local/bin/pnpm exec tsx scripts/ops/fallow-local-llm-loop.ts
+TimeoutStartSec=8h

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1573,
+  "body": "Interne Verbesserung\n\n- Ein begrenzter lokaler Fallow-Loop kann zusammengehörige ungenutzte Exports prüfen und als Draft-PR zur manuellen Prüfung vorbereiten."
+}

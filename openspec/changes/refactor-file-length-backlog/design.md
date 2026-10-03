@@ -360,6 +360,16 @@ bestimmen den Schnitt; öffentliche Exporte, URL-Auflösung,
 Pool-/Client-Lifecycle, Host-Cache/Fallback, Repository-Aufrufe mit
 Instance-ID-Filter und Fehlerweitergabe bleiben erhalten.
 
+Der konkrete Schnitt hält `server.ts` als bisherigen öffentlichen Einstieg,
+`server-client.ts` für URL-Auflösung, Pool und Client-Lifecycle sowie
+`server-host.ts` für Host-Cache und Fallback. Beide internen Module werden
+direkt vom Einstieg beziehungsweise Hostpfad genutzt. Der bisherige
+`withClient`-Pfad öffnet keine Transaktion und setzt keinen Tenant-Kontext;
+nur die bereits vorhandene Waste-Provisionierungsfassade nutzt
+`BEGIN`/`set_config`/`COMMIT` mit `ROLLBACK` im Fehlerfall. Der eigene
+`publicExports`-Policy-Befund für diese Fassade bleibt als separater Backlog
+stehen.
+
 **PR-Auftrag 15c:** `packages/instance-registry/src/provisioning-auth-state.ts`
 unter das Dateilimit bringen; Nicht-Ziele sind Evaluation, Plan und
 Tenant-Schritte. Zustand, Tenant-/Realm-Bindung und Retry-Semantik bleiben

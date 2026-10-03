@@ -277,6 +277,21 @@ function renderTab(defaultValues?: Partial<GenericItemsDetailFormValues>) {
 }
 
 describe('GenericItemsDetailContentTab', () => {
+  it('keeps text, contact and opening-hour fields in the same form', async () => {
+    const { getValues } = renderTab();
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Hinweis' } });
+    fireEvent.change(screen.getByLabelText('Intro'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Alex' } });
+    fireEvent.change(screen.getByLabelText('Datum von'), { target: { value: '2026-10-05' } });
+
+    await waitFor(() => {
+      expect(getValues().contentBlocks[0]).toMatchObject({ title: 'Hinweis', intro: 'Kurztext' });
+      expect(getValues().contacts[0].firstName).toBe('Alex');
+      expect(getValues().openingHours[0].dateFrom).toBe('2026-10-05');
+    });
+  });
+
   it('renders time inputs for date times', async () => {
     renderTab();
     await screen.findAllByRole('button', { name: 'Kartenpunkt setzen' });

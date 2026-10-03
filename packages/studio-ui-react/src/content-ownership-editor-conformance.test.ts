@@ -26,7 +26,7 @@ const editors = [
   {
     name: 'Generic Items',
     panel: 'packages/plugin-generic-items/src/generic-items.detail-page.tabs.tsx',
-    actions: 'packages/plugin-generic-items/src/generic-items.detail-page.tsx',
+    actions: 'packages/plugin-generic-items/src/generic-items.detail-page.view.tsx',
   },
   {
     name: 'FAQ',

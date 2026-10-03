@@ -2,7 +2,10 @@ import { revealField } from '@sva/iam-admin';
 import type { ContentJsonValue, IamContentAuthorDisplayMode, IamContentStatus } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
-import { recordSuccessfulExternalContentMutation } from './external-content-mutations.js';
+import {
+  recordSuccessfulExternalContentMutation,
+  type SuccessfulExternalContentMutation,
+} from './external-content-mutations.js';
 import { finalizeMainserverMutationJournal } from './mainserver-mutation-journal.js';
 
 type DeferredMutationRow = Readonly<{
@@ -81,6 +84,20 @@ const replayModeFor = (
       : row.ownerOrganizationId === actingPrincipalId && !row.ownerUserId;
   if (!ownerMatches) return 'skip';
   return 'owner-only';
+};
+
+const recordReconciledMutation = async (
+  input: SuccessfulExternalContentMutation
+): Promise<string | undefined> => {
+  try {
+    return await recordSuccessfulExternalContentMutation(input);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'external_content_core_reference_required_for_owner_only_replay'
+    ) return undefined;
+    throw error;
+  }
 };
 
 const loadDeferredMainserverMutationRows = async (input: {
@@ -179,7 +196,7 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       input.actingPrincipalId
     );
     if (!row || !actorDisplayName || replayMode === 'skip') continue;
-    const contentId = await recordSuccessfulExternalContentMutation({
+    const contentId = await recordReconciledMutation({
       instanceId: input.instanceId,
       actorAccountId: entry.actor_account_id,
       actorDisplayName,
@@ -203,11 +220,11 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
           }
         : reconciledAuthorDisplay(row, actorDisplayName, input.actingPrincipalType)),
     });
+    if (!contentId) continue;
     const independentReconciliationError =
-      typeof entry.last_error_code === 'string' &&
-      entry.last_error_code !== 'mainserver_projection_credential_cooldown'
-        ? entry.last_error_code
-        : undefined;
+      [null, 'mainserver_projection_credential_cooldown'].includes(entry.last_error_code)
+        ? undefined
+        : entry.last_error_code;
     await finalizeMainserverMutationJournal({
       instanceId: input.instanceId,
       operationExternalId: entry.operation_external_id,

@@ -356,6 +356,51 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledOnce();
   });
 
+  it('keeps a transfer without a Core reference deferred and replays the next entry', async () => {
+    state.query.mockResolvedValue({
+      rows: ['missing', 'bound'].map((id) => ({
+        operation_external_id: `transfer-${id}`,
+        action_id: 'content.transferOwnership',
+        content_type: 'news.article',
+        content_id: id,
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1',
+        display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+      })),
+    });
+    state.recordSuccessfulExternalContentMutation
+      .mockRejectedValueOnce(new Error('external_content_core_reference_required_for_owner_only_replay'))
+      .mockResolvedValueOnce('11111111-1111-4111-8111-111111111111');
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'organization',
+      actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+      credentialFingerprint: 'b'.repeat(64),
+      rows: ['missing', 'bound'].map((id) => ({
+        sourceEntityType: 'news.article',
+        sourceEntityId: id,
+        contentType: 'news.article',
+        ownerOrganizationId: '33333333-3333-4333-8333-333333333333',
+        title: id,
+        payload: { languageCode: 'de' },
+        status: 'published' as const,
+        authorDisplayMode: 'organization' as const,
+        author: 'Zielorganisation',
+        updatedAt: '2026-09-13T12:01:00.000Z',
+      })),
+    })).resolves.toBe(1);
+
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledTimes(2);
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledOnce();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ operationExternalId: 'transfer-bound' })
+    );
+  });
+
   it('uses the newer provider author when replaying ownership for a personal target', async () => {
     state.query.mockResolvedValue({
       rows: [{

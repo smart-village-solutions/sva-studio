@@ -85,4 +85,29 @@ describe('audit database transaction', () => {
     expect(mocks.query.mock.calls[3]?.[1]).toEqual(['app.instance_id', '']);
     expect(mocks.release).toHaveBeenCalledOnce();
   });
+
+  it('fails closed before tenant writes when the runtime role bypasses RLS', async () => {
+    mocks.query.mockImplementation(async (text: string) => {
+      if (text.includes('FROM pg_roles')) {
+        return { rowCount: 1, rows: [{ rolsuper: false, rolbypassrls: true }] };
+      }
+      return { rowCount: 1, rows: [] };
+    });
+
+    await expect(
+      persistAuthAuditEventToDb({
+        eventType: 'logout',
+        workspaceId: 'de-musterhausen',
+        outcome: 'success',
+      })
+    ).rejects.toMatchObject({ reasonCode: 'tenant_audit_unavailable' });
+
+    expect(mocks.query.mock.calls.map(([text]: [string]) => text.trim())).toEqual([
+      'BEGIN',
+      'SET LOCAL ROLE iam_app;',
+      expect.stringContaining('FROM pg_roles'),
+      'ROLLBACK',
+    ]);
+    expect(mocks.release).toHaveBeenCalledOnce();
+  });
 });

@@ -2338,24 +2338,6 @@
       "status": "open",
       "summary": "Waste-Operations-Contract in kleinere Vertrags- und Re-Export-Segmente aufteilen (packages/waste-management-contracts/src/waste-management-operations-contract.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-035",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Email-Reminder-Repository-Verzweigungen in kleinere Query-, Upsert- und Token-Pfade zerlegen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-035",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Email-Reminder-Repository-Datei in kleinere Persistence- und Projection-Module splitten (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-035",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Email-Reminder-Repository-Funktionen in kleinere SQL- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-038",
       "ticketSystem": "backlog",

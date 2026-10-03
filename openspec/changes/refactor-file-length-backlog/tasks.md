@@ -1098,9 +1098,14 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+      Merge-Nachweis: PR #1713, HEAD
+      `9638df0ad89d1f7e73df1153c103807d1f32dc0d`, Merge-Commit
+      `b7600a090e303c673ac356b4dce60ebc57cf8aaa`; Changelog
+      `docs/changelog/entries/pr-1713.json`.
+
 ### PR 26b — Waste-Reminder-Repository (1 Befund)
 
-- [ ] In `packages/waste-management-runtime/src/repositories/email-reminders.ts`
+- [x] In `packages/waste-management-runtime/src/repositories/email-reminders.ts`
       Subscription-, Outbox- und Dispatch-Abfragen trennen.
       Token-Bindung, Lease-Verhalten und Versandstatus mit gezielten
       Repository- und Server-Runtime-Tests erhalten.

@@ -1876,12 +1876,6 @@
       "status": "open",
       "summary": "Scheduling-Shared-API in Form-, Filter- und Table-Helfer aufteilen (packages/plugin-waste-management/src/waste-management.scheduling.shared.ts)"
     },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tools.actions.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-018",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tools-Actions in Preview-, Import- und Maintenance-Aktionen splitten (packages/plugin-waste-management/src/waste-management.tools.actions.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.tools.actions.ts:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-018",
       "ticketSystem": "backlog",
@@ -1917,24 +1911,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Import-Profile-Card in kleinere Darstellungsbausteine aufteilen (packages/plugin-waste-management/src/waste-management.tools.import-profile-card.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tools.import-section.parts.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Import-Wizard-Parts in Wizard-Chrome, Upload- und Preview-Module splitten (packages/plugin-waste-management/src/waste-management.tools.import-section.parts.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tools.import-section.parts.tsx:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Import-Wizard-Parts-Funktionen in kleinere UI-Bausteine aufteilen (packages/plugin-waste-management/src/waste-management.tools.import-section.parts.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tools.import-section.parts.tsx:publicExports": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-022",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Import-Wizard-Exports in kleinere Teiloberflaechen aufteilen (packages/plugin-waste-management/src/waste-management.tools.import-section.parts.tsx)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.tools.import-section.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-023",
@@ -2505,24 +2481,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Custom-Date-Editor in Liste, Dialog und Hilfsbausteine splitten (packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours.presentation.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-042",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tours-Presentation-Verzweigungen in kleinere Summary-, Calendar- und Badge-Helfer zerlegen (packages/plugin-waste-management/src/waste-management.tours.presentation.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours.presentation.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-042",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tours-Presentation-Datei in kleinere Presentation- und Mapping-Module splitten (packages/plugin-waste-management/src/waste-management.tours.presentation.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours.shared.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-043",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tours-Shared-Datei in kleinere Shared-Types, Search- und Helper-Module splitten (packages/plugin-waste-management/src/waste-management.tours.shared.ts)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.tours.shared.ts:publicExports": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-043",

@@ -357,7 +357,7 @@ Abhängigkeiten des aktuellen Systems.
    - Implementiert serverseitige Pagination/Count für Realm-Rollen und User sowie differenzierte Fehlerabbildung für Keycloak-Admin-Aufrufe.
 4. `packages/iam-admin/src`
    - Trennt Platform-Admin-Client, Tenant-Admin-Client, DB-only-Rollen-CRUD, technische Keycloak-Sonderrollen-Synchronisation und Drift-/Diagnoseprojektion.
-   - `role-governance.ts` definiert den technischen Keycloak-Schnitt (`system_admin`, `instance_registry_admin`); `reconcile-core.ts` repariert nur diesen Schnitt und berichtet nicht-technische Keycloak-Rollen als Legacy-/Drift-Diagnose.
+   - `role-governance.ts` definiert den technischen Keycloak-Schnitt (`system_admin`, `instance_registry_admin`); `reconcile-core.ts` steuert den Abgleich, während `reconcile-catalog.ts`, `reconcile-identity.ts`, `reconcile-database.ts`, `reconcile-import.ts`, `reconcile-persistence.ts` und `reconcile-report.ts` Katalog, Identity-Provider-Abgleich, Persistenz und Fehlerbericht trennen. Nur technische Sonderrollen werden repariert; nicht-technische Keycloak-Rollen erscheinen als Legacy-/Drift-Diagnose.
    - `user-projection.ts` hält `roles` IAM-kanonisch und reicht rohe Keycloak-Rollen separat als `keycloakRoles` durch.
 5. `apps/sva-studio-react/src/routes/admin/users` und `apps/sva-studio-react/src/routes/admin/roles`
    - Rendern IAM-Rollen als fachliche Sicht sowie Keycloak-Rollen nur als technische Diagnose; blockierte oder read-only Aktionen bleiben sichtbar, aber deaktiviert.

@@ -549,10 +549,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Fail-Closed, Fehlerabbildung und bestehende Exporte. Separate
       Cyclomatic- und `publicExports`-Befunde nur bei wirklich erfüllter
       Schwelle entfernen; Auth-/Security- und Server-Runtime-Gates prüfen.
+      Umsetzung in PR #1672; Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1672.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1672 anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 13 — Plugin-, Content- und Media-Runtime in Auth (9 Befunde)
 

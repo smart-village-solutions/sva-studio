@@ -634,30 +634,62 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 13f — Plugin-Tenant-Lifecycle-Orchestrator (1 Befund)
 
-- [ ] `packages/auth-runtime/src/plugin-tenant-lifecycle/orchestrator.ts`
+- [x] `packages/auth-runtime/src/plugin-tenant-lifecycle/orchestrator.ts`
       entlang Plan-/Ausführungsschritten und Ergebnis-/Retry-Abbildung
       aufteilen. Orchestrator-/Lifecycle-Tests sichern Tenant- und
       Generation-Bindung, Reihenfolge, Idempotenz, Recovery und
       Terminalzustände; Auth-/Data-/Security- und Server-Runtime-Gates prüfen.
-      Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13f anlegen;
-      Changelog-Gate vor Merge grün.
+      Abschluss: PR #1678, HEAD `5868f939cba7da197f496e70d20ffd559b8a100d`,
+      Merge-Commit `e5ba769bae7c0301f74e92a65b73022b3b3cae30` nach grünen Gates.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1678.json` mit passender `prNumber` und
+      nutzerverständlichem `body` angelegt; Changelog-Gate vor Merge grün.
 
 ## Daten und Provisionierung
 
-### PR 14 — Repository-Entrypoints und Integrationen (4 Befunde)
+### PR 14a — Medien-Repository (1 Befund)
 
-- [ ] In `packages/data-repositories/src/` `media/index.ts`,
-      `plugin-operations/index.ts`, `iam/repositories/statements.ts` und
-      `integrations/instance-integrations.server.ts` bereinigen. Bestehende
-      Entrypoints und SQL-/Mapping-Verträge erhalten.
-
+- [ ] `packages/data-repositories/src/media/index.ts` entlang Asset-,
+      Upload-, Storage-/Referenz- und Content-Save-Verantwortungen unter das
+      Dateilimit bringen. `createMediaRepository`, `mediaStatements`, alle
+      öffentlichen Typen, SQL-Text und Parameterreihenfolge bleiben erhalten;
+      Tenant-Bindung, Claim-/Quota-Atomizität und Content-Save-Recovery mit
+      den vorhandenen Media-Tests und Data-/Security-/Runtime-Gates prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 14b — Plugin-Operations-Repository (1 Befund)
+
+- [ ] `packages/data-repositories/src/plugin-operations/index.ts` nach
+      Job-State-, Lease-/Attempt- und Event-Persistenz aufteilen. Öffentlichen
+      Entrypoint, SQL-Parameter, Tenant-/Job-Bindung, Zustandsübergänge und
+      atomare Event-Reihenfolge mit Repository-/Worker-Tests und
+      Data-/Security-/Runtime-Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 14c — IAM-SQL-Statements (1 Befund)
+
+- [ ] `packages/data-repositories/src/iam/repositories/statements.ts` nach
+      bestehenden IAM-Ressourcen gruppieren. Statement-Exports, SQL-Text,
+      Platzhalterreihenfolge, Tenant-Filter und Rückgabemapping mit den
+      IAM-Repository-Tests und Data-/Security-/Runtime-Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 14d — Instanz-Integrationen (1 Befund)
+
+- [ ] `packages/data-repositories/src/integrations/instance-integrations.server.ts`
+      entlang Konfiguration, Secrets und Status-/Health-Zugriff aufteilen.
+      Serverseitige Exportform, Mandantengrenzen, Verschlüsselung, SQL-Parameter
+      und Fehlerrückgaben mit den Integrationstests und
+      Data-/Security-/Runtime-Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
 ### PR 15 — Instanz-Repository und Provisionierungsplan (7 Befunde)
 

@@ -372,8 +372,15 @@ stehen.
 
 **PR-Auftrag 15c:** `packages/instance-registry/src/provisioning-auth-state.ts`
 unter das Dateilimit bringen; Nicht-Ziele sind Evaluation, Plan und
-Tenant-Schritte. Zustand, Tenant-/Realm-Bindung und Retry-Semantik bleiben
-an den bestehenden Provisionierungs-Verbrauchern nachweisbar.
+Tenant-Schritte. Der bestehende Subpath und die Root-Exporte bleiben eine
+Fassade. Interne, direkt genutzte Module trennen Client-Vertrag und Factory,
+Tenant-Admin-Bootstrap, Realm-Readback sowie Artifact-Reconcile. Diese
+konkreten Verantwortungen sprengen das Dateilimit; die Fassade allein kann
+keine von ihnen aufnehmen, ohne erneut zu wachsen. Realm-Bindung, Ownership,
+Secret-Readback, Client-Reihenfolge, Idempotenz und Cleanup-/Fehlerpriorität
+bleiben an den bestehenden Provisionierungs-Verbrauchern nachweisbar. Plan-,
+Run- und Retry-Zustände liegen in anderen Modulen und gehören zu späteren
+Abschnitten.
 
 **PR-Auftrag 15d:** `provisioning-auth-evaluation.ts` und
 `provisioning-auth-plan.ts` unter das Dateilimit bringen; Nicht-Ziele sind

@@ -1126,12 +1126,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/instance-registry/src/mutation-input-builders.ts)"
     },
-    "instance-registry-service:packages/instance-registry/src/provisioning-auth-state.ts:fileLines": {
-      "ticketId": "baseline-instance-registry-src-provisioning-auth-state-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/provisioning-auth-state.ts)"
-    },
     "instance-registry-service:packages/instance-registry/src/service-keycloak-execution-shared.ts:fileLines": {
       "ticketId": "baseline-instance-registry-src-service-keycloak-execution-shared-ts",
       "ticketSystem": "policy-baseline",

@@ -732,21 +732,28 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 15b — Instanz-Repository-Server (1 Befund)
 
-- [ ] `packages/data-repositories/src/instance-registry/server.ts` entlang
+- [x] `packages/data-repositories/src/instance-registry/server.ts` entlang
       der vorhandenen Pool-, Host- und Server-Fassaden unter das Dateilimit
       bringen. Öffentliche Exporte, URL-Auflösung, Pool-/Client-Lifecycle,
       Host-Cache/Fallback, Repository-Aufrufe mit Instance-ID-Filter und
       Fehlerweitergabe mit
       Server-Repository-Tests sowie Data-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
+      Nachweis: PR #1684 mit HEAD
+      `da6327abda420b70fe16e880f1fb1a61e4178ab3` als
+      `c3e4c1b3d5c0134a17e82484691f55a0ca8ebff6` gemergt;
+      `docs/changelog/entries/pr-1684.json` enthalten.
+
 ### PR 15c — Keycloak-Provisionierungszustand (1 Befund)
 
-- [ ] `packages/instance-registry/src/provisioning-auth-state.ts` nach
-      Zustandsverantwortung unter das Dateilimit bringen. Tenant-/Realm-Bindung,
-      Plan-/Run-Zustände, Idempotenz und Fehlerzuordnung mit den vorhandenen
+- [ ] `packages/instance-registry/src/provisioning-auth-state.ts` entlang
+      Client-Vertrag, Tenant-Admin-Bootstrap, Realm-Readback und
+      Artifact-Reconcile unter das Dateilimit bringen. Öffentlichen Subpath,
+      Tenant-/Realm-Bindung, Ownership, Secret-Readback, Idempotenz,
+      Reihenfolge und Cleanup-/Fehlerzuordnung mit den vorhandenen
       Provisionierungstests sowie Auth-/Security-/Runtime-Gates erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender

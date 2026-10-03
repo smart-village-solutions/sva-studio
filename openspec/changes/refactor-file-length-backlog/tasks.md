@@ -625,10 +625,10 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       sichern erlaubte Übergänge, Tenant-/Job-Bindung, Attempt-/Lease-Prüfung,
       Event-Reihenfolge und Wiederholbarkeit; Auth-/Data-/Security- und
       Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13e anlegen;
-      Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1677.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1677 angelegt; Changelog-Gate lokal
+      grün, PR-Gate vor Merge prüfen.
 
 ### PR 13f — Plugin-Tenant-Lifecycle-Orchestrator (1 Befund)
 

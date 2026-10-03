@@ -27,7 +27,7 @@ Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
 PR: Die letzte Spalte benennt die fachlichen Schnittkandidaten. Das
 Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06 bis PR 11
-auf derzeit 59 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
+auf derzeit 62 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
 PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
 in vier seriell bearbeitbare Teile 06a bis 06d aufgeteilt. Nach dem Merge
 von 06c zeigte die erneute Messung für 06d 3.066 Zeilen über vier Dateien.
@@ -85,6 +85,33 @@ Jeder Teil beseitigt alle eigenen aktuellen `fileLines`-Befunde, erhält
 Grenzen, PII-Schutz, Audit, Idempotenz, Export-Vollständigkeit und
 Transaktionen werden am jeweils betroffenen Pfad gezielt nachgewiesen.
 
+Vor PR 12 zeigt die erneute Messung vier Dateien mit zusammen 3.173 Zeilen:
+`auth-route-handlers.ts` (1.614), `redis-session.ts` (659),
+`audit-db-sink.ts` (541) und `iam-authorization/shared.ts` (359).
+HTTP-Auth, Redis-Session-State, Audit-Persistenz und IAM-Autorisierung
+liegen an unterschiedlichen Trust- und Ausführungsgrenzen. Deshalb folgen
+12a bis 12d seriell und direkt auf dem jeweils aktuellen `main`. Jeder
+Teil beseitigt seinen eigenen `fileLines`-Befund und erhält einen eigenen
+Changelog. Für 12a bleibt `auth-route-handlers.ts` der Importvertrag der
+sieben `runtime-routes.ts`-Handler und löst die OTEL-Initialisierung weiter
+beim Modulimport aus. Bestehende `auth-server/{login,callback,logout,session*}`-
+Module werden als Verbraucher und Implementierungen genutzt; es entsteht
+kein zweiter Auth-Pfad. Side-Effect-Reihenfolge, Cookie-/State-Lifecycle,
+Tenant-/Session-Scope, Fail-Closed und PII-arme Audit-Logs sind mit den
+vorhandenen Handler-, Auth-Server- und Session-Tests zu prüfen.
+
+**PR-Auftrag 12a:** Die Datei `auth-route-handlers.ts` unter das
+320-Zeilen-Limit bringen, indem ihre bestehenden Handler und Hilfen nach
+fachlicher Verantwortung aufgeteilt werden, während Route-Exporte und
+Auth-Verhalten unverändert bleiben. Nicht-Ziele sind 12b–12d, neue Features,
+API-/DB-/Keycloak-Semantik, Migrationen, Dependencies und Gates. Maximal
+betroffen sind `packages/auth-runtime/src/auth-route-handlers.ts`, seine
+direkten neuen internen Module und gezielten Tests, die bestehende Package-
+und Bausteindokumentation, die `fileLines`-Eintragung
+in `tooling/quality/complexity-policy.json`, dieser OpenSpec-Change und der
+eigene Changelog-Eintrag. Ausgangs-HEAD ist `8608bdf376f469b9d5510bcba2fb18dafac9795b`;
+die benannte Datei hat 1.614 Zeilen und muss höchstens 320 Zeilen haben.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;
@@ -106,7 +133,8 @@ Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
 3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
-   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f und 11a bis 11f werden genau
+   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f und 12a bis
+   12d werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

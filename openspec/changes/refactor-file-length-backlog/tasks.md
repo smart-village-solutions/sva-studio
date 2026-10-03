@@ -477,24 +477,70 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 11f — Rechtstexte-Mutationen (2 Befunde)
 
-- [ ] `packages/iam-governance/src/legal-text-repository.ts` und
+- [x] `packages/iam-governance/src/legal-text-repository.ts` und
       `legal-text-mutation-handlers.ts` nach Persistenz/Zielgruppen und
       Request-/Idempotenzgrenze aufteilen. Repository-, Mutation- und
       HTTP-Tests sichern Tenant-Scope, Rollen-/Gruppenziele, Sanitizing,
       Konflikte, Audit und Fehlerabbildung. Umsetzung in PR #1668;
-      Abschluss nach Merge- und Gate-Nachweis markieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      PR #1668 am 03.10.2026 nach grünen Gates am HEAD
+      `514ffb68d6898a2265eed10dd074925aef9ecca8` als
+      `8608bdf376f469b9d5510bcba2fb18dafac9795b` gemergt.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1668.json` mit
       passender `prNumber` und Nutzertext in PR #1668 anlegen;
       Changelog-Gate vor Merge grün.
 
-### PR 12 — Auth-Routen, Session und Audit (4 Befunde)
+### PR 12a — Auth-Routen (1 Befund)
 
-- [ ] In `packages/auth-runtime/src/` `auth-route-handlers.ts`,
-      `redis-session.ts`, `audit-db-sink.ts` und
-      `iam-authorization/shared.ts` bereinigen. Fail-closed-Verhalten,
-      Session-Lifecycle, Audit-Redaction und Server-Runtime prüfen.
+- [ ] `packages/auth-runtime/src/auth-route-handlers.ts` entlang
+      Login/Account-Action, Callback, `/auth/me`, Logout und gemeinsamen
+      Cookie-/Fehlerhilfen aufteilen. Die sieben Exporte von
+      `runtime-routes.ts` und die OTEL-Initialisierung beim Modulimport
+      erhalten. `auth-route-handlers.test.ts` sowie direkte Auth-Server-
+      und Session-Tests sichern Redirect/State, Tenant-/Session-Scope,
+      Fail-Closed, CSRF, Cookie-Rotation, Silent SSO, Audit-Redaction und
+      Response-/Header-Verträge. Auth-/Security- und Server-Runtime-Gates
+      aus `DEVELOPMENT_RULES.md` Abschnitt 5.2 ausführen. Umsetzung in
+      PR #1669; Abschluss nach Merge- und Gate-Nachweis markieren.
 
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1669.json` mit passender `prNumber`
+      und nutzerverständlichem `body` in PR #1669 anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 12b — Redis-Session (1 Befund)
+
+- [ ] `packages/auth-runtime/src/redis-session.ts` nach
+      Session-Speicherung, Login-State und Session-Kontrolle aufteilen.
+      `redis-session.test.ts`, `auth-server/session.test.ts` und
+      `auth-route-handlers.test.ts` sichern TTL, Rotation, atomaren
+      State-Verbrauch, Tenant-Bindung, Ausfall/Retry und Fail-Closed.
+      Auth-/Security- und Server-Runtime-Gates aus Abschnitt 5.2 ausführen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 12c — Audit-DB-Sink (1 Befund)
+
+- [ ] `packages/auth-runtime/src/audit-db-sink.ts` nach
+      Event-Mapping, tenantgebundener Persistenz und Fehlerabbildung
+      aufteilen. `audit-db-sink.test.ts` und direkte Audit-Consumer-Tests
+      sichern Redaction/PII-Schutz, Tenant-Grenze, Event-Reihenfolge und
+      Ausfallverhalten; Server-Runtime- und Auth-/Security-Gates prüfen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 12d — IAM-Authorization shared (1 Dateilängenbefund)
+
+- [ ] `packages/auth-runtime/src/iam-authorization/shared.ts` entlang
+      Scope-/DB-Zugriff und Autorisierungsantwort aufteilen. Direkte
+      Authorization- und Handler-Tests sichern Tenant-/Permission-Grenzen,
+      Fail-Closed, Fehlerabbildung und bestehende Exporte. Separate
+      Cyclomatic- und `publicExports`-Befunde nur bei wirklich erfüllter
+      Schwelle entfernen; Auth-/Security- und Server-Runtime-Gates prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in

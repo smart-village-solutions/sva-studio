@@ -15,7 +15,7 @@ const state = getProjectionTestState();
 describe('content projection mutation recovery and audit', () => {
   registerProjectionFixture();
 
-  it('removes only the targeted mainserver projection row after delete mutations', async () => {
+  it('removes a deleted mainserver entity from every tenant scope', async () => {
     fixture.projectionRows = [
       {
         id: 'poi-delete-1',
@@ -76,6 +76,19 @@ describe('content projection mutation recovery and audit', () => {
         source_entity_id: 'poi-keep-1',
       },
     ];
+    const deletedRow = fixture.projectionRows[0];
+    if (!deletedRow) throw new Error('missing deleted-row fixture');
+    fixture.projectionRows.push(
+      {
+        ...deletedRow,
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::poi.point-of-interest',
+      },
+      {
+        ...deletedRow,
+        instance_id: 'other-instance',
+        projection_scope_key: 'other-instance::account-1::org-1::user::poi.point-of-interest',
+      }
+    );
     fixture.syncStates.set(
       'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       {
@@ -88,6 +101,12 @@ describe('content projection mutation recovery and audit', () => {
         projected_count: 2,
       }
     );
+    state.recordSuccessfulExternalContentDeletion.mockImplementation(async () => {
+      const syncState = fixture.syncStates.get(
+        'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest'
+      );
+      if (syncState) syncState.refresh_run_id = '00000000-0000-4000-8000-000000000002';
+    });
 
     await refreshProjectedContentsForMainserverMutation({
       contentType: 'poi.point-of-interest',
@@ -95,6 +114,8 @@ describe('content projection mutation recovery and audit', () => {
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
       organizationId: 'org-1',
+      actorDisplayName: 'Editor',
+      mutationRef: 'mutation-delete-1',
       operation: 'delete',
       entityId: 'poi-delete-1',
     });
@@ -103,7 +124,15 @@ describe('content projection mutation recovery and audit', () => {
       expect.objectContaining({
         source_entity_id: 'poi-keep-1',
       }),
+      expect.objectContaining({
+        instance_id: 'other-instance',
+        source_entity_id: 'poi-delete-1',
+      }),
     ]);
+    expect(
+      fixture.syncStates.get('poi.point-of-interest::__mainserver_global_mutation__')
+        ?.last_succeeded_at
+    ).toBeTruthy();
   });
 
   it('runs targeted mutation refreshes independently from the automatic batch scope', async () => {
@@ -180,11 +209,15 @@ describe('content projection mutation recovery and audit', () => {
     });
 
     await expect.poll(() => state.getSvaMainserverPoi.mock.calls.length).toBe(1);
+    await expect(mutationRefreshPromise).resolves.toBeUndefined();
 
     releaseBatchList.current?.();
 
-    await expect(batchRefreshPromise).resolves.toBeInstanceOf(Response);
-    await expect(mutationRefreshPromise).resolves.toBeUndefined();
+    const independentBatch = await batchRefreshPromise;
+    expect(independentBatch.status).toBe(200);
+    expect((await independentBatch.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
+    );
     expect(fixture.projectionRows).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source_entity_id: 'poi-batch-1' }),

@@ -365,7 +365,11 @@ describe('GenericItem content projection mutations', () => {
     ]);
     expect(fixture.projectionRows.some((row) => row.content_type === 'faq.faq')).toBe(false);
     expect(fixture.projectionRows).toHaveLength(1);
-    expect([...fixture.syncStates.keys()].some((key) => key.startsWith('faq.faq::'))).toBe(false);
+    expect(
+      [...fixture.syncStates.keys()].some(
+        (key) => key.startsWith('faq.faq::') && key !== 'faq.faq::__mainserver_global_mutation__'
+      )
+    ).toBe(false);
   });
 
   it('falls back to the generic projection when a specialized item gets an unclaimed type', async () => {

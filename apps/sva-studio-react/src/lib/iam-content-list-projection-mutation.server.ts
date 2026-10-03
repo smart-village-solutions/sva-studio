@@ -15,10 +15,13 @@ import type {
   MainserverProjectionRowInput,
 } from './iam-content-list-projection-model.server.js';
 import {
-  buildMainserverSyncScopeKey,
   buildProjectionLogContext,
   countProjectedRowsForScopeWithClient,
   deleteMainserverProjectionRowByEntity,
+  lockMainserverProjectionType,
+  loadProjectionRefreshLeader,
+  loadProjectionSyncStateSchemaMode,
+  markMainserverGlobalMutationSucceeded,
   markMainserverProjectionSyncSucceeded,
   markProjectionSyncFailed,
   markProjectionSyncStarted,
@@ -75,14 +78,15 @@ const deleteProjectionMutation = async (
 ): Promise<void> => {
   await recordDeletionAudit(input);
   await withInstanceScopedDb(input.target.instanceId, async (client) => {
-    const leader = await client.query<{ refresh_run_id?: string | null }>(
-      `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
-       WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
-         AND sync_scope_key = $3 FOR UPDATE;`,
-      [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target)]
+    await lockMainserverProjectionType(client, input.target);
+    const leader = await loadProjectionRefreshLeader(
+      client,
+      input.target,
+      await loadProjectionSyncStateSchemaMode(client, input.target.instanceId)
     );
-    if (leader.rows[0]?.refresh_run_id !== refreshRunId) return;
     await deleteMainserverProjectionRowByEntity(client, input.target, input.entityId);
+    await markMainserverGlobalMutationSucceeded(client, input.target);
+    if (leader?.refresh_run_id !== refreshRunId) return;
     const projectedCount = await countProjectedRowsForScopeWithClient(client, input.target);
     await markMainserverProjectionSyncSucceeded(client, input.target, projectedCount);
   });
@@ -241,7 +245,9 @@ const deleteStaleGenericItemSiblingProjection = async (
 ): Promise<void> => {
   await enqueueProjectionWork(target, () =>
     withInstanceScopedDb(target.instanceId, async (client) => {
+      await lockMainserverProjectionType(client, target);
       await deleteMainserverProjectionRowByEntity(client, target, entityId);
+      await markMainserverGlobalMutationSucceeded(client, target);
     })
   );
 };

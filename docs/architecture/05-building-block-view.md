@@ -854,6 +854,7 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/sva-mainserver/server` stellt neben den unveränderten Fachadaptern schlanke Projection-List-Operationen bereit. Sie lesen ausschließlich Identität, Titel, Zeitpunkte, Sichtbarkeit, Status und Datenprovider; fachliche Payloads bleiben außerhalb des Projektionspfads.
 - Die Studio-Server-Runtime orchestriert pro Instanz, Account, Organisation und Inhaltstyp eine Hot-Phase und eine deduplizierte Reconciliation. Persistierte Pages sind sofort lesbar.
 - `iam.content_list_projection_sync_state` hält Generation, Phase, Page-Fortschritt, verfügbare Zeilen, Finalität und Fehlerzustand. Damit liegt die Konkurrenzkontrolle dauerhaft in PostgreSQL und nicht nur im Prozessspeicher.
+- Für scopeübergreifende Mainserver-Mutationen hält dieselbe Tabelle den reservierten Generationsmarker `__mainserver_global_mutation__`; er ist kein lesbarer Snapshot. Schreibtransaktionen verwenden zusätzlich einen Advisory-Lock je Mandant und Inhaltstyp ([ADR-065](../adr/ADR-065-mainserver-projektionsabgleich-ueber-scope-grenzen.md)).
 
 ### Ergänzung 2026-08: Permission-Katalog und Reconcile
 

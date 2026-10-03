@@ -8,11 +8,95 @@ import type {
 import {
   buildMainserverSyncScopeKey,
   buildProjectionTargetKey,
+  buildRefreshDeletionScopeKeys,
   loadProjectionSyncStateSchemaMode,
   loadProjectionTableSchemaMode,
   type ProjectionSyncStateSchemaMode,
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
+
+const globalMutationScopeKey = '__mainserver_global_mutation__';
+
+export const lockMainserverProjectionType = async (
+  client: ProjectionDbClient,
+  target: ContentProjectionSyncTarget
+): Promise<void> => {
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+    `mainserver-projection:${target.instanceId}`,
+    target.contentType,
+  ]);
+};
+
+export const hasNewerMainserverProjectionSuccess = async (
+  client: ProjectionDbClient,
+  target: ContentProjectionSyncTarget,
+  lastStartedAt: string | null | undefined,
+  schemaMode: ProjectionSyncStateSchemaMode,
+  credentialSource?: 'user' | 'organization'
+): Promise<boolean> => {
+  if (!lastStartedAt) return false;
+  const result = await client.query<{ superseded: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM iam.content_list_projection_sync_state
+       WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+         AND last_started_at > $3::timestamptz
+         AND last_succeeded_at >= last_started_at
+         ${schemaMode === 'scoped' ? 'AND sync_scope_key = ANY($4::text[])' : ''}
+     ) AS superseded;`,
+    schemaMode === 'scoped'
+      ? [
+          target.instanceId,
+          target.contentType,
+          lastStartedAt,
+          [...buildRefreshDeletionScopeKeys(target, credentialSource), globalMutationScopeKey],
+        ]
+      : [target.instanceId, target.contentType, lastStartedAt]
+  );
+  return result.rows[0]?.superseded === true;
+};
+
+export const markMainserverGlobalMutationSucceeded = async (
+  client: ProjectionDbClient,
+  target: ContentProjectionSyncTarget
+): Promise<void> => {
+  await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
+    if ((await loadProjectionSyncStateSchemaMode(client, target.instanceId)) !== 'scoped') return;
+    await client.query(
+      `INSERT INTO iam.content_list_projection_sync_state (
+         instance_id, source_system, content_type, sync_scope_key, sync_mode,
+         last_started_at, last_succeeded_at, snapshot_state, updated_at
+       ) VALUES ($1, 'mainserver', $2, $3, 'full_refresh', statement_timestamp(),
+         statement_timestamp(), 'complete_fresh', NOW())
+       ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
+       DO UPDATE SET last_started_at = statement_timestamp(),
+         last_succeeded_at = statement_timestamp(), updated_at = NOW();`,
+      [target.instanceId, target.contentType, globalMutationScopeKey]
+    );
+  });
+};
+
+export const loadProjectionRefreshLeader = async (
+  client: ProjectionDbClient,
+  target: ContentProjectionSyncTarget,
+  schemaMode: ProjectionSyncStateSchemaMode
+): Promise<{ refresh_run_id: string | null; last_started_at: string | null } | null> => {
+  const result = await client.query<{
+    refresh_run_id: string | null;
+    last_started_at: string | null;
+  }>(
+    schemaMode === 'scoped'
+      ? `SELECT refresh_run_id::text, last_started_at::text FROM iam.content_list_projection_sync_state
+         WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+           AND sync_scope_key = $3 LIMIT 1 FOR UPDATE;`
+      : `SELECT refresh_run_id::text, last_started_at::text FROM iam.content_list_projection_sync_state
+         WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+         LIMIT 1 FOR UPDATE;`,
+    schemaMode === 'scoped'
+      ? [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
+      : [target.instanceId, target.contentType]
+  );
+  return result.rows[0] ?? null;
+};
 
 export const loadProjectionSyncState = async (
   target: ContentProjectionSyncTarget
@@ -135,6 +219,7 @@ export const markProjectionSyncStarted = async (
   refreshPhase: 'hot' | 'reconciliation'
 ): Promise<void> => {
   await withProjectionSyncStateClient(target, async (client, schemaMode) => {
+    await lockMainserverProjectionType(client, target);
     if (schemaMode === 'scoped') {
       await client.query(
         `
@@ -152,10 +237,10 @@ INSERT INTO iam.content_list_projection_sync_state (
   last_started_at,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, $3, 'full_refresh', 'partial_running', $4::uuid, $5, 0, FALSE, NOW(), NOW())
+VALUES ($1, 'mainserver', $2, $3, 'full_refresh', 'partial_running', $4::uuid, $5, 0, FALSE, statement_timestamp(), NOW())
 ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
 DO UPDATE SET
-  last_started_at = NOW(),
+  last_started_at = statement_timestamp(),
   snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
   refresh_run_id = EXCLUDED.refresh_run_id,
   refresh_phase = EXCLUDED.refresh_phase,
@@ -190,10 +275,10 @@ INSERT INTO iam.content_list_projection_sync_state (
   last_started_at,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, 'full_refresh', 'partial_running', $3::uuid, $4, 0, FALSE, NOW(), NOW())
+VALUES ($1, 'mainserver', $2, 'full_refresh', 'partial_running', $3::uuid, $4, 0, FALSE, statement_timestamp(), NOW())
 ON CONFLICT (instance_id, source_system, content_type)
 DO UPDATE SET
-  last_started_at = NOW(),
+  last_started_at = statement_timestamp(),
   snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
   refresh_run_id = EXCLUDED.refresh_run_id,
   refresh_phase = EXCLUDED.refresh_phase,

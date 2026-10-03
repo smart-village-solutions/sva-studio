@@ -57,6 +57,44 @@ export const enqueueProjectionWork = async <TResult>(
   return queuedWork;
 };
 
+const recordProjectionTargetFailure = async (input: {
+  target: ContentProjectionSyncTarget;
+  refreshRunId: string;
+  trigger: ProjectionRefreshTrigger;
+  pageCount: number;
+  error: unknown;
+  phase: 'page' | 'final';
+  responses: Map<string, Response | null>;
+}): Promise<void> => {
+  const { target, refreshRunId, trigger, pageCount, error, phase, responses } = input;
+  const errorCode = normalizeApiErrorCode(
+    error && typeof error === 'object' && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined
+  );
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
+  contentProjectionLogger.warn(
+    phase === 'page'
+      ? 'mainserver_projection_page_failed'
+      : 'mainserver_projection_reconciliation_failed',
+    {
+      ...buildProjectionLogContext(target, trigger),
+      error_code: errorCode,
+      error_message: errorMessage,
+      page: pageCount,
+      page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+    }
+  );
+  await markProjectionSyncFailed(target, refreshRunId, errorCode, errorMessage);
+  responses.set(
+    buildProjectionTargetKey(target),
+    createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
+  );
+};
+
 export const refreshMainserverProjectionBatch = (
   targets: readonly ContentProjectionSyncTarget[],
   trigger: ProjectionRefreshTrigger
@@ -68,6 +106,7 @@ export const refreshMainserverProjectionBatch = (
   const accumulatedRows = new Map<string, MainserverProjectionRowInput[]>();
   const refreshRunIds = new Map<string, string>();
   const skippedInvalidCounts = new Map<string, number>();
+  const refreshCredentialSources = new Map<string, 'user' | 'organization'>();
   const genericItemScanOffsets = new Map<string, number>();
   let resolveHotCompletion: ((responses: Map<string, Response | null>) => void) | undefined;
   const hotCompletion = new Promise<Map<string, Response | null>>((resolve) => {
@@ -94,6 +133,15 @@ export const refreshMainserverProjectionBatch = (
           ...pageQuery,
           ...(genericItemScanOffset !== undefined ? { genericItemScanOffset } : {}),
         });
+        if (result.refreshCredentialSource) {
+          const previousSource = refreshCredentialSources.get(targetKey);
+          if (previousSource && previousSource !== result.refreshCredentialSource) {
+            throw Object.assign(new Error('Mainserver-Zugang wechselte während des Abgleichs.'), {
+              code: 'projection_credential_changed_during_refresh',
+            });
+          }
+          refreshCredentialSources.set(targetKey, result.refreshCredentialSource);
+        }
         if (result.nextGenericItemScanOffset !== undefined) {
           genericItemScanOffsets.set(targetKey, result.nextGenericItemScanOffset);
         } else {
@@ -126,6 +174,7 @@ export const refreshMainserverProjectionBatch = (
           keycloakSubject: target.keycloakSubject,
           actorAccountId: target.actorAccountId,
           rows: latestPage,
+          refreshCredentialSource: refreshCredentialSources.get(targetKey),
           finalize: false,
           page: pages.length,
           refreshRunId: refreshRunIds.get(targetKey) as string,
@@ -133,32 +182,15 @@ export const refreshMainserverProjectionBatch = (
         });
       },
       async (target, _pages, error) => {
-        const errorCode = normalizeApiErrorCode(
-          error && typeof error === 'object' && 'code' in error
-            ? (error as { code?: unknown }).code
-            : undefined
-        );
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
-        contentProjectionLogger.warn('mainserver_projection_page_failed', {
-          ...buildProjectionLogContext(target, trigger),
-          error_code: errorCode,
-          error_message: errorMessage,
-          page: _pages.length + 1,
-          page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
-        });
-        await markProjectionSyncFailed(
+        await recordProjectionTargetFailure({
           target,
-          refreshRunIds.get(buildProjectionTargetKey(target)) as string,
-          errorCode,
-          errorMessage
-        );
-        responses.set(
-          buildProjectionTargetKey(target),
-          createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
-        );
+          refreshRunId: refreshRunIds.get(buildProjectionTargetKey(target)) as string,
+          trigger,
+          pageCount: _pages.length + 1,
+          error,
+          phase: 'page',
+          responses,
+        });
       },
       async () => {
         resolveHotCompletion?.(new Map(responses));
@@ -181,22 +213,35 @@ export const refreshMainserverProjectionBatch = (
         continue;
       }
 
-      await persistMainserverProjectionRowsProgressively({
-        target,
-        keycloakSubject: target.keycloakSubject,
-        actorAccountId: target.actorAccountId,
-        rows: accumulatedRows.get(targetKey) ?? [],
-        finalize: true,
-        page: Math.max(
-          1,
-          Math.ceil(
-            (accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE
-          )
-        ),
-        refreshRunId: refreshRunIds.get(targetKey) as string,
-        skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
-      });
-      responses.set(targetKey, null);
+      try {
+        await persistMainserverProjectionRowsProgressively({
+          target,
+          keycloakSubject: target.keycloakSubject,
+          actorAccountId: target.actorAccountId,
+          rows: accumulatedRows.get(targetKey) ?? [],
+          refreshCredentialSource: refreshCredentialSources.get(targetKey),
+          finalize: true,
+          page: Math.max(
+            1,
+            Math.ceil(
+              (accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE
+            )
+          ),
+          refreshRunId: refreshRunIds.get(targetKey) as string,
+          skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
+        });
+        responses.set(targetKey, null);
+      } catch (error) {
+        await recordProjectionTargetFailure({
+          target,
+          refreshRunId: refreshRunIds.get(targetKey) as string,
+          trigger,
+          pageCount: 0,
+          error,
+          phase: 'final',
+          responses,
+        });
+      }
     }
 
     resolveHotCompletion?.(new Map(responses));

@@ -154,6 +154,77 @@ describe('content projection reconciliation paging', () => {
     expect(calls).toEqual(['news:1:100', 'events:1:100', 'news:2:100', 'events:2:100']);
   });
 
+  it.each(['page', 'final'] as const)(
+    'continues other content types when a %s write is superseded',
+    async (phase) => {
+      const supersedeNews = () => {
+        fixture.syncStates.set(
+          'news.article::de-musterhausen::account-1::org-1::user::news.article',
+          {
+            sync_scope_key: 'de-musterhausen::account-1::org-1::user::news.article',
+            last_started_at: '2999-01-01T00:00:00.000Z',
+            last_succeeded_at: '2999-01-01T00:00:00.000Z',
+            last_failed_at: null,
+            last_error_code: null,
+            last_error_message: null,
+            projected_count: 0,
+          }
+        );
+      };
+      state.listSvaMainserverNews.mockImplementation(async () => {
+        if (phase === 'page') supersedeNews();
+        return {
+          credentialSource: 'user',
+          data: [],
+          pagination: { page: 1, pageSize: 100, hasNextPage: false },
+        };
+      });
+      state.listSvaMainserverEvents.mockImplementation(async () => {
+        if (phase === 'final') supersedeNews();
+        return {
+          data: [
+            {
+              id: 'event-after-supersession',
+              title: 'Aktuelle Veranstaltung',
+              contentType: 'events.event-record',
+              status: 'published',
+              dates: [],
+              recurringWeekdays: [],
+              categories: [],
+              addresses: [],
+              contacts: [],
+              urls: [],
+              mediaContents: [],
+              priceInformations: [],
+              tags: [],
+              visible: true,
+              createdAt: '2026-06-20T10:00:00.000Z',
+              updatedAt: '2026-06-21T10:00:00.000Z',
+            },
+          ],
+          pagination: { page: 1, pageSize: 100, hasNextPage: false },
+        };
+      });
+
+      const response = await refreshProjectedContents(ctx, {
+        visibleTypes: ['news.article', 'events.event-record'],
+        force: true,
+      });
+      expect(response.status).toBe(200);
+      expect((await response.json()) as { data: { status: string } }).toEqual(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+      );
+      expect(fixture.projectionRows).toContainEqual(
+        expect.objectContaining({ source_entity_id: 'event-after-supersession' })
+      );
+      expect(
+        fixture.syncStates.get(
+          'events.event-record::de-musterhausen::account-1::org-1::events.event-record'
+        )?.snapshot_state
+      ).toBe('complete_fresh');
+    }
+  );
+
   it('loads 582 news entries with no more than six page requests', async () => {
     state.listSvaMainserverNews.mockImplementation(
       async ({ page, pageSize }: { page: number; pageSize: number }) => ({

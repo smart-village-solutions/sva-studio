@@ -1,3 +1,55 @@
+import type { MainserverProjectionRowInput } from './iam-content-list-projection-model.server.js';
+
+const toNullableProjectionValue = <T>(value: T | null | undefined): T | null => value ?? null;
+
+const toRequiredProjectionReference = (value: string | null | undefined): string => value ?? '';
+
+const mapMainserverProjectionPayloadRow = (
+  row: MainserverProjectionRowInput,
+  _actorAccountId: string | undefined,
+  projectionScopeKey: string
+) => ({
+  id: row.id,
+  instance_id: row.instanceId,
+  projection_scope_key: projectionScopeKey,
+  organization_id: toNullableProjectionValue(row.organizationId),
+  owner_user_id: toNullableProjectionValue(row.ownerUserId),
+  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId),
+  content_type: row.contentType,
+  title: row.title,
+  published_at: toNullableProjectionValue(row.publishedAt),
+  publish_from: toNullableProjectionValue(row.publishFrom),
+  publish_until: toNullableProjectionValue(row.publishUntil),
+  created_at: row.createdAt,
+  created_by: row.createdBy,
+  updated_at: row.updatedAt,
+  updated_by: row.updatedBy,
+  author_display_mode: row.authorDisplayMode,
+  author_display_name: row.author,
+  source_data_provider_id: toNullableProjectionValue(row.sourceDataProviderId),
+  source_data_provider_name: toNullableProjectionValue(row.sourceDataProviderName),
+  credential_source: toNullableProjectionValue(row.credentialSource),
+  credential_fingerprint: toNullableProjectionValue(row.credentialFingerprint),
+  authorization_mode: row.authorizationMode ?? 'credential_visible_compatibility',
+  payload_json: row.payload,
+  status: row.status,
+  validation_state: row.validationState,
+  history_ref: row.historyRef,
+  current_revision_ref: toRequiredProjectionReference(row.currentRevisionRef),
+  last_audit_event_ref: toRequiredProjectionReference(row.lastAuditEventRef),
+  source_entity_type: row.sourceEntityType,
+  source_entity_id: row.sourceEntityId,
+});
+
+export const buildMainserverProjectionPayloadJson = (
+  rows: readonly MainserverProjectionRowInput[],
+  actorAccountId: string | undefined,
+  projectionScopeKey: string
+): string =>
+  JSON.stringify(
+    rows.map((row) => mapMainserverProjectionPayloadRow(row, actorAccountId, projectionScopeKey))
+  );
+
 export const scopedMainserverProjectionUpsertSql = `
 INSERT INTO iam.content_list_projection (
   id,

@@ -30,7 +30,7 @@ const contentProjectionLogger = createSdkLogger({
 
 export const assertProjectionCredentialsReady = async (
   target: ContentProjectionSyncTarget
-): Promise<void> => {
+): Promise<'user' | 'organization'> => {
   const result = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId: target.instanceId,
     keycloakSubject: target.keycloakSubject,
@@ -46,7 +46,7 @@ export const assertProjectionCredentialsReady = async (
         code: 'mainserver_credentials_stale',
       });
     }
-    return;
+    return result.source;
   }
 
   const code =
@@ -262,9 +262,8 @@ export const loadMainserverProjectionPage = async (
       'Kein Instanzkontext für diese Inhalte vorhanden.'
     );
   }
-  if (pageQuery.page === 1) {
-    await assertProjectionCredentialsReady(target);
-  }
+  const refreshCredentialSource =
+    pageQuery.page === 1 ? await assertProjectionCredentialsReady(target) : undefined;
   if ((process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE ?? 'slim') !== 'legacy') {
     const result = await listSvaMainserverProjection({
       instanceId: target.instanceId,
@@ -276,8 +275,12 @@ export const loadMainserverProjectionPage = async (
       includeInvisible: true,
       ...pageQuery,
     });
-    const credentialSource = result.credentialSource ?? target.actingPrincipalType ?? 'user';
+    const credentialSource =
+      result.credentialSource ?? target.actingPrincipalType ?? refreshCredentialSource ?? 'user';
     return enrichProjectionRowsWithBindingState(target, {
+      ...(result.credentialSource || refreshCredentialSource
+        ? { refreshCredentialSource: result.credentialSource ?? refreshCredentialSource }
+        : {}),
       rows: result.data.map((item: SvaMainserverProjectionListItem) =>
         mapSlimProjectionRow(target, credentialSource, item)
       ),
@@ -294,11 +297,11 @@ export const loadMainserverProjectionPage = async (
       skippedInvalidCount: result.skippedInvalidCount,
     });
   }
-  return enrichProjectionRowsWithBindingState(
-    target,
-    await mainserverProjectionPageLoaders[target.contentType]({
+  return enrichProjectionRowsWithBindingState(target, {
+    ...(refreshCredentialSource ? { refreshCredentialSource } : {}),
+    ...(await mainserverProjectionPageLoaders[target.contentType]({
       target,
       pageQuery,
-    })
-  );
+    })),
+  });
 };

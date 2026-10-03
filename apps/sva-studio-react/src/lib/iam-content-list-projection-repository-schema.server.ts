@@ -123,6 +123,27 @@ export const buildMainserverReadScopeKeys = (input: {
     .filter((value, index, values) => values.indexOf(value) === index);
 };
 
+export const buildRefreshDeletionScopeKeys = (
+  target: ContentProjectionSyncTarget,
+  credentialSource: 'user' | 'organization' | undefined
+): readonly string[] => {
+  const targetKey = buildProjectionTargetKey(target);
+  if (!credentialSource) return [targetKey];
+  const { actingPrincipalType: _principalType, ...unscopedTarget } = target;
+  const unscopedKey = buildProjectionTargetKey(unscopedTarget);
+  return buildMainserverReadScopeKeys({
+    instanceId: target.instanceId,
+    contentTypes: [target.contentType],
+    actorAccountId: target.actorAccountId,
+    activeOrganizationId: target.organizationId,
+  }).filter(
+    (scopeKey) =>
+      scopeKey === targetKey ||
+      scopeKey === unscopedKey ||
+      scopeKey.includes(`::${credentialSource}::`)
+  );
+};
+
 export const buildMainserverSyncScopeKey = (target: ContentProjectionSyncTarget): string =>
   buildProjectionTargetKey(target);
 

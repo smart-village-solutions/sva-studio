@@ -94,8 +94,10 @@ const succeededSyncState = (
   firstPayloadIndex: number
 ): TestSyncState => {
   const projectedCount = Number(context.queryValue(values, firstPayloadIndex, 0));
+  const preserveRefreshStart = context.queryValue(values, firstPayloadIndex + 1) === true;
   return {
     ...current,
+    last_started_at: preserveRefreshStart ? current.last_started_at : new Date().toISOString(),
     last_succeeded_at: new Date().toISOString(),
     last_failed_at: null,
     last_error_code: null,
@@ -119,7 +121,8 @@ const buildInsertedSyncState = (
   const current =
     (context.fixture.syncScopeKeyColumnAvailable
       ? context.fixture.syncStates.get(`${contentType}::${syncScopeKey}`)
-      : storedSyncState(context.fixture, contentType, syncScopeKey)) ?? initialSyncState(syncScopeKey);
+      : storedSyncState(context.fixture, contentType, syncScopeKey)) ??
+    initialSyncState(syncScopeKey);
   const firstPayloadIndex = context.fixture.syncScopeKeyColumnAvailable ? 3 : 2;
   if (text.includes("'partial_running'")) {
     return partialRunningSyncState(context, current, values, firstPayloadIndex);
@@ -138,10 +141,29 @@ const readSyncState = (
   text: string,
   values: readonly unknown[] | undefined
 ): QueryResult | null => {
-  if (!text.includes('FROM iam.content_list_projection_sync_state')) {
+  if (
+    !text.trimStart().startsWith('SELECT') ||
+    !text.includes('FROM iam.content_list_projection_sync_state')
+  ) {
     return null;
   }
   const contentType = String(context.queryValue(values, 1));
+  if (text.includes('AS superseded')) {
+    const lastStartedAt = String(context.queryValue(values, 2));
+    const affectedScopeKeys = context.queryValue(values, 3);
+    const superseded = [...context.fixture.syncStates.entries()].some(
+      ([key, state]) =>
+        key.startsWith(`${contentType}::`) &&
+        (!Array.isArray(affectedScopeKeys) || affectedScopeKeys.includes(state.sync_scope_key)) &&
+        Boolean(
+          state.last_started_at &&
+          state.last_started_at > lastStartedAt &&
+          state.last_succeeded_at &&
+          state.last_succeeded_at >= state.last_started_at
+        )
+    );
+    return { rows: [{ superseded }], rowCount: 1 };
+  }
   const syncScopeKey = String(context.queryValue(values, 2));
   const row = storedSyncState(context.fixture, contentType, syncScopeKey);
   const selectedRow =

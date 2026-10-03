@@ -1318,24 +1318,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/integrations/instance-integrations.server.ts)"
     },
-    "packages-default:packages/data-repositories/src/media/index.ts:fileLines": {
-      "ticketId": "baseline-packages-default-data-repositories-src-media-index-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/media/index.ts)"
-    },
-    "packages-default:packages/data-repositories/src/media/index.ts:functionLines": {
-      "ticketId": "baseline-packages-default-data-repositories-src-media-index-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-repositories/src/media/index.ts)"
-    },
-    "packages-default:packages/data-repositories/src/media/index.ts:publicExports": {
-      "ticketId": "baseline-packages-default-data-repositories-src-media-index-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/data-repositories/src/media/index.ts)"
-    },
     "packages-default:packages/data/src/integrations/instance-integrations.server.ts:fileLines": {
       "ticketId": "baseline-packages-default-data-src-integrations-instance-integrations-server-ts",
       "ticketSystem": "policy-baseline",

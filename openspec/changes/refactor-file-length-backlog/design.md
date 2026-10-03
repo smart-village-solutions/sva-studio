@@ -270,6 +270,26 @@ Zeilen. Kritisch sind die getrennten atomaren und gestuften Startpfade,
 best-effort-Bereinigung bei jeder Fehlerstufe und der ursprüngliche
 Host-Fehlercode auch bei sekundären Persistenzfehlern.
 
+
+Vor PR 14 ergeben die vier benannten Repository-Dateien getrennte
+Ausführungsgrenzen. Sie folgen als 14a Medien, 14b Plugin-Operations, 14c
+IAM-Statements und 14d Instanz-Integrationen seriell auf dem jeweils
+aktuellen `main`. Jeder Abschnitt beseitigt seinen `fileLines`-Befund,
+behält seinen öffentlichen Entrypoint und erhält einen eigenen Changelog.
+
+**PR-Auftrag 14a:** `media/index.ts` (1.930 Zeilen) unter 260 Zeilen
+bringen. Nicht-Ziele sind die drei übrigen Dateien von PR 14,
+Produktverhalten, DB-Schema und neue Gates. Maximal betroffen sind das
+Media-Repository-Modul, unmittelbar zugehörige Tests/Imports, die tatsächlich
+erledigten Complexity-Registereinträge, dieser Change, Architektur-Doku und
+der eigene Studio-Changelog. Die bestehenden öffentlichen Typen,
+`createMediaRepository` und die Keys von `mediaStatements` bleiben erhalten;
+interne Statements und Row-Mappings werden nach Asset, Upload, Storage und
+Content-Save getrennt. SQL-Text und Parameterreihenfolge bleiben bytegleich,
+insbesondere Tenant-Filter, atomare Claim-/Quota-Updates und
+Content-Save-Recovery. Die bestehenden Medien-Tests und Data-, Security- und
+Server-Runtime-Gates belegen diese Grenzen.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

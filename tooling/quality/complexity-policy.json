@@ -1126,18 +1126,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/runtime-env.ts)"
     },
-    "ops-scripts:scripts/ops/runtime/goose.ts:fileLines": {
-      "ticketId": "baseline-ops-runtime-goose-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime/goose.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/goose.ts:functionLines": {
-      "ticketId": "baseline-ops-runtime-goose-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/runtime/goose.ts)"
-    },
     "ops-scripts:scripts/ops/runtime/local-dev-server-runner.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ops-runtime-local-dev-server-runner-ts",
       "ticketSystem": "policy-baseline",
@@ -1149,18 +1137,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/local-provisioning-worker-runner.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/migration-job.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ops-runtime-migration-job-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/migration-job.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/migration-job.ts:fileLines": {
-      "ticketId": "baseline-ops-runtime-migration-job-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime/migration-job.ts)"
     },
     "ops-scripts:scripts/ops/runtime/process.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ops-runtime-process-ts",

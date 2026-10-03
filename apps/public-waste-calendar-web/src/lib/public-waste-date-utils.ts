@@ -24,7 +24,7 @@ export const addYearsUtc = (value: string, years: number): string => {
   return formatDateOnlyUtc(date);
 };
 
-export const startOfYearUtc = (value: string): string => {
+const startOfYearUtc = (value: string): string => {
   const date = parseDateOnlyUtc(value);
   date.setUTCMonth(0, 1);
   return formatDateOnlyUtc(date);

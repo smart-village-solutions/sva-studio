@@ -466,18 +466,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-server-package-runtime.ts)"
     },
-    "ci-scripts:scripts/ci/complexity-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-complexity-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/complexity-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/complexity-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-complexity-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/complexity-gate.ts)"
-    },
     "ci-scripts:scripts/ci/coverage-gate.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ci-coverage-gate-ts",
       "ticketSystem": "policy-baseline",

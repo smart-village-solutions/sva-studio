@@ -484,30 +484,6 @@
       "status": "open",
       "summary": "lange Evidence-Orchestrierung in kleinere Ausfuehrungs- und Reportfunktionen aufteilen (scripts/ci/run-iam-evidence.ts)"
     },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:fileLines": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:functionLines": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:publicExports": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (scripts/ci/sonar-hotspots.ts)"
-    },
     "core-iam:packages/core/src/iam/account-management-contract.ts:publicExports": {
       "ticketId": "baseline-core-src-iam-account-management-contract-ts",
       "ticketSystem": "policy-baseline",

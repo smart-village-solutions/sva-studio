@@ -1282,11 +1282,13 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 31c — Patch-Coverage und Sonar-New-Code (2 Dateilängenbefunde)
 
-- [ ] `scripts/ci/patch-coverage-gate.ts` und
+- [x] `scripts/ci/patch-coverage-gate.ts` und
       `scripts/ci/sonar-new-code-gate.ts` an ihrer gemeinsamen Coverage-
       Auswertung aufteilen. Patch-/New-Code-Selektion, Exitcodes,
       CLI-Optionen und Berichtsformat mit gezielten Skript-Tests und
-      Skript-Typecheck erhalten.
+      Skript-Typecheck erhalten. Merge-Nachweis: PR #1720, HEAD
+      `a551226a7a3f86db56d343f8bb3cb9da9373bd05`, Merge-Commit
+      `30a36e0f7e067359765570f5f0efa70d096d8eb4`.
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1720.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1720 angelegt; Changelog-Gate grün.

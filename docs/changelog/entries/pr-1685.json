@@ -1,0 +1,4 @@
+{
+  "prNumber": 1685,
+  "body": "Die Keycloak-Provisionierung der Instanzverwaltung wurde intern übersichtlicher aufgeteilt. Anmeldung, Tenant-Administrator und Plugin-Clients werden weiterhin in derselben Reihenfolge eingerichtet und geprüft."
+}

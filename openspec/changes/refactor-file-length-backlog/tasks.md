@@ -612,9 +612,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Lease-/Attempt-Grenzen, Idempotenz, Tenant-/Plugin-Bindung und
       Terminalzustände; Auth-/Data-/Security- und Server-Runtime-Gates prüfen.
       Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1676.json` mit passender `prNumber` und
-      nutzerverständlichem `body` in PR #1676 anlegen; Changelog-Gate vor
+      nutzerverständlichem `body` in PR #1676 angelegt; Changelog-Gate vor
       Merge prüfen.
 
 ### PR 13e — Plugin-Operations Job-State-Writer (1 Befund)

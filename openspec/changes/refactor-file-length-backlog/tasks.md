@@ -778,29 +778,77 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 15e — Tenant-Provisionierungsschritte (1 Befund)
 
-- [ ] `packages/instance-registry/src/tenant-provisioning-steps.ts` nach
+- [x] `packages/instance-registry/src/tenant-provisioning-steps.ts` nach
       vorhandenen Provisionierungsphasen unter das Dateilimit bringen.
       Schrittfolge, idempotente Wiederaufnahme, Lease-/Retry-Grenzen,
       Terminalstatus und Audit-Ereignisse mit den Orchestrator-Tests sowie
       Auth-/Data-/Security-/Runtime-Gates erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` anlegen;
+      Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1689, HEAD
+      `618c3f6b249ebe2fe435381c610d1a9e96cefc88`, Merge-Commit
+      `0d311774251251b13cd8923bdf664be6c8e13621`; Changelog
+      `docs/changelog/entries/pr-1689.json`.
+
+### PR 16a — Keycloak-Ausführung (1 Befund)
+
+- [ ] `packages/instance-registry/src/service-keycloak-execution.ts` entlang
+      Queue/Handler, Worker-Snapshot, Run-Ausführung und Finalisierung unter
+      das Dateilimit bringen. Öffentliche Exporte, Run-/Tenant-/Attempt-/Lease-
+      Bindung, Plan-Fingerprint, Secret-Synchronisierung, Cleanup,
+      Fehlercodes und Terminal-/Retry-Folge mit Execution-, Failure-, Payload-,
+      Finalize- und Reconcile-Tests sowie Auth-/Data-/Security-/Runtime-Gates
+      erhalten; bestehende Complexity-Befunde der Datei gesondert messen.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` anlegen;
       Changelog-Gate vor Merge grün.
 
-### PR 16 — Instanz-Service und Keycloak-Ausführung (6 Befunde)
+### PR 16b — Keycloak-Reader (1 Befund)
 
-- [ ] In `packages/instance-registry/src/`
-      `service-keycloak-execution.ts`, `service-keycloak-readers.ts`,
-      `service-audit-keycloak.ts`, `service-module-mutations.ts`,
-      `service-draft-readiness.ts`, `service-helpers.ts` bereinigen.
-      Provisionierungszustände, Fehlerpfade und Keycloak-Grenze prüfen.
-
+- [ ] `packages/instance-registry/src/service-keycloak-readers.ts` entlang
+      Status, Preflight und Plan unter das Dateilimit bringen. Tenantbindung,
+      Read-Only-Verhalten und Plan-Fingerprint mit Reader-/Plan-Tests und
+      zuständigen Gates erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 16c — Keycloak-Audit (1 Befund)
+
+- [ ] `packages/instance-registry/src/service-audit-keycloak.ts` entlang
+      Reader, Mapping und Checks unter das Dateilimit bringen. Audit-Umfang,
+      PII-Schutz und Fehlerklassen mit gezielten Audit-Tests und zuständigen
+      Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 16d — Modul-Mutationen (1 Befund)
+
+- [ ] `packages/instance-registry/src/service-module-mutations.ts` entlang
+      Sync und Audit unter das Dateilimit bringen. Modulreihenfolge,
+      Idempotenz, Autorisierung und Audit mit Mutationstests und zuständigen
+      Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 16e — Draft-Readiness und Service-Helfer (2 Befunde)
+
+- [ ] `packages/instance-registry/src/service-draft-readiness.ts` und
+      `service-helpers.ts` nach den vorhandenen Readiness- und
+      Projektionsgrenzen unter das Dateilimit bringen. Status, Validierung,
+      Tenantbezug und Projektionen mit Readiness-/Service-Tests und zuständigen
+      Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
 ## Fachplugins
 

@@ -1366,14 +1366,15 @@ eigenständig reviewbare Abschluss-PR 35.
 
 ### PR 33 — Operations-Migrationsskripte (2 Befunde)
 
-- [ ] In `scripts/ops/runtime/` `migration-job.ts` und `goose.ts`
+- [x] In `scripts/ops/runtime/` `migration-job.ts` und `goose.ts`
       bereinigen. Ausführungsreihenfolge, Cleanup, Exitcodes und
-      Datenbank-Fehlerverhalten mit vorhandenen Ops-Tests erhalten.
+      Datenbank-Fehlerverhalten mit vorhandenen Ops-Tests erhalten. PR #1724
+      wurde als `43882d08c38f25868c22a79293fdb0d1667b9f97`
+      gemergt (`1f593bb2fc81c681d8087ee0d43e3931158ed45a`);
+      vollständiges Complexity-Gate ohne neue Findings.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1724.json` mit
+      Nutzertext eingebracht; Changelog-Gate vor Merge grün.
 
 ### PR 34 — Studio-MCP-Prozess und Tools (2 Befunde)
 

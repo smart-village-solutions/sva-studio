@@ -439,10 +439,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       `dsr-read-models.self-service-queries.ts` nach Admin-/Self-Service-
       Projektion und Query-/Detailauflösung aufteilen. Die Read-Model-Tests
       sichern Tenant-/Account-Scope, Statusabbildung, Suche, Reihenfolge,
-      Pagination und Fall-Details.
+      Pagination und Fall-Details. Umsetzung in PR #1665; Abschluss nach
+      Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11c anlegen;
+      `docs/changelog/entries/pr-1665.json` mit
+      passender `prNumber` und Nutzertext in PR #1665 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 11d — Governance-Workflow-Ausführung (1 Befund)

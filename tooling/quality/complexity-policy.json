@@ -1834,18 +1834,6 @@
       "status": "open",
       "summary": "Locations-Table-Komponente in kleinere Inhalts- und Confirm-Teile aufspalten (packages/plugin-waste-management/src/waste-management.master-data-locations-table.tsx)"
     },
-    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-013",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Locations-Table-Views in Toolbar-, Header- und Row-Module splitten (packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-013",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Grosse Locations-View-Funktionen in kleinere UI-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.master-data-locations-workspace.parts.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-014",
       "ticketSystem": "backlog",
@@ -1923,12 +1911,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Import-Section-Datei in kleinere Step-Komponenten splitten (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-024",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Custom-Date-Editor in Liste, Dialog und Hilfsbausteine splitten (packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-024",
@@ -2043,12 +2025,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Assignments-Dialog-Zweige in kleinere Listen-, Filter- und Footer-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-028",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Assignments-Dialog-Datei in kleinere Module fuer Dialog-Chrome, Tabelle und Aktionen splitten (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-028",

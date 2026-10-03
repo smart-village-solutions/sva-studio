@@ -2968,30 +2968,6 @@
       "status": "open",
       "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-registry.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Runner-Registry in fokussierte Validierungs-, Event- und Zustandsübergänge zerlegen"
-    },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-registry.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Runner-Registry in fokussierte Validierungs-, Event- und Zustandsübergänge zerlegen"
-    },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-registry.ts:functionLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Runner-Registry in fokussierte Validierungs-, Event- und Zustandsübergänge zerlegen"
-    },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/runner-worker.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Runner-Worker in kleinere Ausführungs-, Fehler- und Abschlussbausteine aufteilen"
-    },
     "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/enqueue-recovery.ts:functionLines": {
       "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
       "ticketSystem": "backlog",

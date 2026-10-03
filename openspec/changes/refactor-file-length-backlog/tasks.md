@@ -593,11 +593,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 13c — Plugin-Server-Dispatcher (1 Befund)
 
-- [ ] `packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts`
+- [x] `packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts`
       entlang Request-Validierung, Tenant-/Plugin-Autorisierung und Dispatch
       aufteilen. Dispatcher-/Handler-Tests sichern Plugin-Namespace,
       Fail-Closed, Fehlerstatus und Response-Vertrag; Auth-/Security- und
-      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
+      Server-Runtime-Gates prüfen. Abschluss: PR #1675, HEAD
+      `a1eb1c46658cd0973a1cc8b97dd540dcae6b4834`, Merge-Commit
+      `22b05ec30f3f5a737aa6cc2d6d0e30e61677881f`.
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1675.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1675 angelegt; Changelog-Gate grün.
@@ -610,10 +612,10 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Lease-/Attempt-Grenzen, Idempotenz, Tenant-/Plugin-Bindung und
       Terminalzustände; Auth-/Data-/Security- und Server-Runtime-Gates prüfen.
       Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13d anlegen;
-      Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1676.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1676 angelegt; Changelog-Gate vor
+      Merge prüfen.
 
 ### PR 13e — Plugin-Operations Job-State-Writer (1 Befund)
 

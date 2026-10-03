@@ -2308,12 +2308,6 @@
       "status": "open",
       "summary": "Lange Runtime-Factories in kleinere Resolver- und Defaulting-Schritte aufteilen (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/http-schemas.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-030",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Schema-Bausteine in kleinere Themenmodule fuer Settings, Imports und Reminder splitten (packages/waste-management-runtime/src/http-schemas.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/lib/instance-interfaces-server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-INTERFACES-COMPLEXITY-001",
       "ticketSystem": "backlog",
@@ -2481,18 +2475,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Barrel-Exports in kleinere Runtime- und Type-Segmente aufteilen (packages/plugin-generic-items/src/index.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/settings-shared.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Einstellungsprojektionen in fachliche Lese- und Statusbausteine aufteilen"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Einstellungspersistenz und Provisionierungssteuerung in getrennte Module aufteilen"
     },
     "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:functionLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
@@ -2799,12 +2781,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tours.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/types.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-types",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/types.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/repositories.ts:publicExports": {
       "ticketId": "baseline-waste-ownership-1506-repositories",

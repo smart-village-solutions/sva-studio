@@ -1,145 +1,33 @@
-import { type ExternalInterfaceRecord } from '@sva/core';
-import {
-  type WasteHolidayStateCode,
-  type WasteHolidaySyncStatus,
-  type WasteManagementEmailReminderConfig,
-  type WasteManagementSettingsRecord,
-  withFixedWasteEmailReminderPaths,
+import type {
+  WasteHolidayStateCode,
+  WasteManagementEmailReminderConfig,
 } from '@sva/waste-management-contracts';
-
-import type { AuthenticatedRequestContext } from './types.js';
-import { asApiItem, createApiError } from '@sva/server-runtime';
+import { withFixedWasteEmailReminderPaths } from '@sva/waste-management-contracts';
+import { createApiError } from '@sva/server-runtime';
+import type { AuthenticatedRequestContext, WasteManagementHandlerDeps } from './types.js';
 import { emitWasteAuditEvent } from './auth.js';
-import { loadConfiguredWasteSettings } from './settings-shared.js';
 import {
   persistWasteSettingsInterfaceSelection,
   resolveTargetInterfaceRecord,
 } from './settings-write-support.interface-selection.js';
-import {
-  enqueueWasteTypesSyncAfterMutation,
-  type WasteTypesSyncMetadata,
-} from './fractions-support.js';
+import { enqueueWasteTypesSyncAfterMutation } from './fractions-support.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
-import type { WasteManagementHandlerDeps } from './types.js';
 import { requireDeps } from './utils.js';
-
-const normalizeOptionalTrimmedText = (value: string | undefined): string | undefined => {
-  const normalized = value?.trim();
-  return normalized ? normalized : undefined;
-};
-
-export const loadWasteSettingsWriteContext = async (
-  deps: WasteManagementHandlerDeps,
-  instanceId: string,
-  requestId: string | undefined
-): Promise<
-  | Response
-  | {
-      readonly current: WasteManagementSettingsRecord;
-      readonly interfaceRecords: readonly ExternalInterfaceRecord[];
-    }
-> => {
-  const current = await loadConfiguredWasteSettings(deps, instanceId);
-  let interfaceRecords: readonly ExternalInterfaceRecord[] = [];
-  if (deps.listInterfaceRecords) {
-    interfaceRecords = await deps.listInterfaceRecords(instanceId);
-  } else if (deps.loadDefaultInterfaceRecord) {
-    const fallbackRecord = await deps.loadDefaultInterfaceRecord(instanceId, 'postgresql');
-    interfaceRecords = fallbackRecord ? [fallbackRecord] : [];
-  }
-
-  return current
-    ? { current, interfaceRecords }
-    : createApiError(
-        503,
-        'database_unavailable',
-        'Die Waste-Einstellungen konnten nicht geladen werden.',
-        requestId
-      );
-};
-
-export const hasManagedWasteSettingsConflict = (
-  interfaceRecord: ExternalInterfaceRecord,
-  input: {
-    readonly schemaName?: string;
-    readonly enabled: boolean;
-  }
-): boolean => {
-  if (interfaceRecord.typeKey !== 'postgresql') {
-    return false;
-  }
-
-  const currentSchemaName =
-    typeof interfaceRecord.publicConfig.schemaName === 'string' &&
-    interfaceRecord.publicConfig.schemaName.trim().length > 0
-      ? interfaceRecord.publicConfig.schemaName
-      : 'public';
-  const nextSchemaName = input.schemaName?.trim() || 'public';
-
-  return currentSchemaName !== nextSchemaName || interfaceRecord.enabled !== input.enabled;
-};
-
-export const syncWasteHolidayState = async (
-  deps: WasteManagementHandlerDeps,
-  instanceId: string,
-  holidayStateCode?: WasteHolidayStateCode
-): Promise<WasteHolidaySyncStatus | undefined> => {
-  if (!holidayStateCode) {
-    return undefined;
-  }
-
-  try {
-    return await requireDeps(deps.syncWasteHolidayRules, 'syncWasteHolidayRules')(
-      instanceId,
-      holidayStateCode
-    );
-  } catch {
-    return 'failed';
-  }
-};
-
-export const createWasteSettingsSuccessResponse = (
-  saved: WasteManagementSettingsRecord,
-  requestId: string | undefined,
-  holidayStateCode: WasteHolidayStateCode | undefined,
-  lastHolidaySyncStatus: WasteHolidaySyncStatus | undefined,
-  syncMetadata: WasteTypesSyncMetadata = {}
-): Response =>
-  new Response(
-    JSON.stringify({
-      ...asApiItem(
-        {
-          ...saved,
-          holidayStateCode,
-          lastHolidaySyncStatus,
-        },
-        requestId
-      ),
-      ...(syncMetadata.syncStatus ? { syncStatus: syncMetadata.syncStatus } : {}),
-      ...(syncMetadata.syncJob ? { syncJob: syncMetadata.syncJob } : {}),
-    }),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }
-  );
-
-const reloadWasteSettingsOrError = async (input: {
-  readonly deps: WasteManagementHandlerDeps;
-  readonly instanceId: string;
-  readonly requestId: string | undefined;
-}): Promise<WasteManagementSettingsRecord | Response> => {
-  const saved = await loadConfiguredWasteSettings(input.deps, input.instanceId);
-  return (
-    saved ??
-    createApiError(
-      503,
-      'database_unavailable',
-      'Die Waste-Einstellungen konnten nicht verifiziert werden.',
-      input.requestId
-    )
-  );
-};
+import {
+  createWasteSettingsSuccessResponse,
+  hasManagedWasteSettingsConflict,
+  loadWasteSettingsWriteContext,
+  normalizeOptionalTrimmedText,
+  reloadWasteSettingsOrError,
+  syncWasteHolidayState,
+} from './settings-write-support.context.js';
+export {
+  createWasteSettingsSuccessResponse,
+  hasManagedWasteSettingsConflict,
+  loadWasteSettingsWriteContext,
+  syncWasteHolidayState,
+} from './settings-write-support.context.js';
+export { runWasteManagementHolidaySyncAfterValidation } from './settings-write-support.holiday-sync.js';
 
 type UpdateWasteManagementSettingsAfterValidationInput = {
   readonly deps: WasteManagementHandlerDeps;
@@ -303,88 +191,5 @@ export const updateWasteManagementSettingsAfterValidation = async ({
     input.holidayStateCode,
     lastHolidaySyncStatus,
     syncMetadata
-  );
-};
-
-export const runWasteManagementHolidaySyncAfterValidation = async ({
-  deps,
-  ctx,
-  instanceId,
-  requestId,
-}: {
-  readonly deps: WasteManagementHandlerDeps;
-  readonly ctx: AuthenticatedRequestContext;
-  readonly instanceId: string;
-  readonly requestId: string | undefined;
-}): Promise<Response> => {
-  const writeContext = await loadWasteSettingsWriteContext(deps, instanceId, requestId);
-  if (writeContext instanceof Response) {
-    return writeContext;
-  }
-  const targetInterfaceRecord = resolveTargetInterfaceRecord(
-    writeContext.interfaceRecords,
-    writeContext.current,
-    writeContext.current.selectedInterfaceId
-  );
-  if (!targetInterfaceRecord) {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Für Waste muss zuerst eine Schnittstelle ausgewählt werden.',
-      requestId
-    );
-  }
-  if (!writeContext.current.holidayStateCode) {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Für den Feiertagssync muss zuerst ein Bundesland in den Waste-Einstellungen gespeichert werden.',
-      requestId
-    );
-  }
-
-  const lastHolidaySyncStatus =
-    (await syncWasteHolidayState(deps, instanceId, writeContext.current.holidayStateCode)) ??
-    'failed';
-  await deps.saveWastePdfStaticSettings?.(instanceId, {
-    pdfBrandingAssetUrl: normalizeOptionalTrimmedText(writeContext.current.pdfBrandingAssetUrl),
-    pdfContactBlock: normalizeOptionalTrimmedText(writeContext.current.pdfContactBlock),
-    disruptionLocationEnabled: writeContext.current.disruptionLocationEnabled,
-    disruptionAllLocationsEnabled: writeContext.current.disruptionAllLocationsEnabled,
-  });
-  await persistWasteSettingsInterfaceSelection({
-    deps,
-    interfaceRecords: writeContext.interfaceRecords,
-    targetInterfaceRecord,
-    calendarWebUrl: writeContext.current.calendarWebUrl,
-    emailReminderConfig: writeContext.current.emailReminderConfig,
-    holidayStateCode: writeContext.current.holidayStateCode,
-    lastHolidaySyncStatus,
-    lastSuccessfulHolidaySyncAt:
-      lastHolidaySyncStatus !== 'failed'
-        ? new Date().toISOString()
-        : writeContext.current.lastSuccessfulHolidaySyncAt,
-  });
-
-  const saved = await reloadWasteSettingsOrError({ deps, instanceId, requestId });
-  if (saved instanceof Response) {
-    return saved;
-  }
-
-  await emitWasteAuditEvent({
-    deps,
-    ctx,
-    instanceId,
-    actionId: 'waste-management.settings.holiday-sync.triggered',
-    result: 'success',
-    resourceType: 'waste_data_source',
-    resourceId: instanceId,
-  });
-
-  return createWasteSettingsSuccessResponse(
-    saved,
-    requestId,
-    writeContext.current.holidayStateCode,
-    lastHolidaySyncStatus
   );
 };

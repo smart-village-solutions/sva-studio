@@ -190,20 +190,23 @@ const isMutationFollowUpDue = async (target: ContentProjectionSyncTarget): Promi
   });
 };
 
-const requiresMutationHistory = (input: MutationRefreshInput): boolean =>
-  (input.operation === 'create' || input.operation === 'update') &&
-  Boolean(
-    (input.target.auditActorAccountId ?? input.target.actorAccountId) &&
-    input.target.actorDisplayName &&
-    input.target.mutationRef
-  );
-
 const deferMutationHistory = async (input: MutationRefreshInput): Promise<true | undefined> => {
-  if (!requiresMutationHistory(input) || !input.target.mutationRef) return undefined;
+  if ((input.operation !== 'create' && input.operation !== 'update') ||
+      !(input.target.auditActorAccountId ?? input.target.actorAccountId) ||
+      !input.target.actorDisplayName || !input.target.mutationRef) return undefined;
   const deferred = await deferMainserverMutationProjection({
     instanceId: input.target.instanceId,
     operationExternalId: input.target.mutationRef,
   });
+  if (!deferred && input.target.ownershipPrincipal) {
+    const journal = await loadMainserverMutationJournal({
+      instanceId: input.target.instanceId,
+      operationExternalId: input.target.mutationRef,
+    });
+    if (!journal?.completedSteps.includes('projection_history_reconciled')) {
+      throw new Error('content_transfer_projection_reconciliation_unavailable');
+    }
+  }
   return deferred ? true : undefined;
 };
 
@@ -258,18 +261,13 @@ const deleteStaleGenericItemSiblingProjection = async (
 const refreshGenericItemProjectionSnapshots = async (
   target: ContentProjectionSyncTarget
 ): Promise<void> => {
-  let hasIncompleteRefresh = false;
   for (const contentType of genericItemProjectionContentTypes) {
     const result = await triggerMainserverProjectionRefresh(
       { ...target, contentType },
       { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' }
     );
-    if (!['completed', 'already_running', 'accepted'].includes(result.status)) {
-      hasIncompleteRefresh = true;
-    }
-  }
-  if (hasIncompleteRefresh) {
-    throw new Error('content_projection_refresh_incomplete');
+    if (!['completed', 'already_running', 'accepted'].includes(result.status))
+      throw new Error('content_projection_refresh_incomplete');
   }
 };
 
@@ -375,16 +373,7 @@ export const refreshGenericItemSiblingProjections = async (
     let deferred: true | undefined;
     if (input.target.ownershipPrincipal) {
       deferred = await deferMutationHistory(input);
-      if (!deferred) {
-        const journal = input.target.mutationRef
-          ? await loadMainserverMutationJournal({
-              instanceId: input.target.instanceId,
-              operationExternalId: input.target.mutationRef,
-            })
-          : undefined;
-        if (journal?.completedSteps.includes('projection_history_reconciled')) return undefined;
-        throw new Error('content_transfer_projection_reconciliation_unavailable');
-      }
+      if (!deferred) return undefined;
     }
     await refreshGenericItemProjectionSnapshots(input.target);
     return deferred;

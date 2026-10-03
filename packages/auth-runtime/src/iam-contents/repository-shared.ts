@@ -1,7 +1,8 @@
 import type { ContentJsonValue, IamContentStatus } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
-import { CONTENT_SELECT, type ContentRow } from './repository-types.js';
+import { ContentOwnershipTransferError } from './repository-ownership.js';
+import { CONTENT_SELECT, type ContentRow, type UpdateContentInput } from './repository-types.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
@@ -40,6 +41,46 @@ export const isContentMutationFinalized = async (
     [input.instanceId, input.contentId, input.mutationRef]
   );
   return result.rows.length > 0;
+};
+
+export const resolveContentUpdateReplay = async (
+  client: InstanceScopedClient,
+  input: UpdateContentInput
+): Promise<{ readonly mutationFinalized: boolean; readonly skip: boolean }> => {
+  const mutationFinalized = input.mutationRef
+    ? await isContentMutationFinalized(client, {
+        instanceId: input.instanceId,
+        contentId: input.contentId,
+        mutationRef: input.mutationRef,
+      })
+    : false;
+  if (mutationFinalized && !input.confirmedExternalOwner) {
+    return { mutationFinalized, skip: true };
+  }
+  if (!input.confirmedExternalOwner || !input.mutationRef) {
+    return { mutationFinalized, skip: false };
+  }
+  const journal = await client.query<{ superseded: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM iam.mainserver_mutation_journal AS newer
+       WHERE newer.instance_id = operation.instance_id
+         AND newer.action_id = 'content.transferOwnership'
+         AND newer.content_type = operation.content_type
+         AND COALESCE(newer.preimage->>'id', newer.content_id) =
+             COALESCE(operation.preimage->>'id', operation.content_id)
+         AND (newer.created_at, newer.operation_external_id) >
+             (operation.created_at, operation.operation_external_id)
+         AND newer.provider_outcome <> 'failed'
+     ) AS superseded
+     FROM iam.mainserver_mutation_journal AS operation
+     WHERE operation.instance_id = $1 AND operation.operation_external_id = $2
+       AND operation.action_id = 'content.transferOwnership' LIMIT 1;`,
+    [input.instanceId, input.mutationRef]
+  );
+  if (journal.rows[0]?.superseded && !mutationFinalized) {
+    throw new ContentOwnershipTransferError('ownership_source_changed');
+  }
+  return { mutationFinalized, skip: journal.rows[0]?.superseded === true };
 };
 
 export const insertContentHistory = async (

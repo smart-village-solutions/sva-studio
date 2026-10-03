@@ -181,28 +181,58 @@ const createBoundContent = async (
     return { contentId, created: true };
   });
 
+const updateProjectTransferReferences = async (
+  input: SuccessfulExternalContentMutation
+): Promise<string | undefined> => {
+  if (input.contentType !== 'projects.project' || !input.ownershipPrincipal) return undefined;
+  const references = await Promise.all(
+    (['GenericItem', 'projects.project'] as const).map((sourceEntityType) =>
+      loadExternalContentReferenceBySourceEntity({
+        ...input,
+        sourceEntityType,
+        exactSourceEntityType: true,
+      })
+    )
+  );
+  const contentIds = [...new Set(references.flatMap((reference) =>
+    reference ? [reference.contentId] : []
+  ))];
+  for (const contentId of contentIds) await updateExistingContent(input, contentId);
+  return contentIds[0];
+};
+
+const preserveFullProjectCore = async (
+  input: SuccessfulExternalContentMutation
+): Promise<string | undefined> => {
+  if (input.contentType !== 'projects.project' || input.ownershipPrincipal) return undefined;
+  const canonicalReference = await loadExternalContentReferenceBySourceEntity({
+    ...input,
+    sourceEntityType: 'GenericItem',
+  });
+  if (!canonicalReference) return undefined;
+  if (input.operation === 'create' &&
+      canonicalReference.operationExternalId === input.mutationRef) {
+    return canonicalReference.contentId;
+  }
+  const coreUpdated = await withInstanceScopedDb(input.instanceId, async (client) => {
+    const result = await client.query<{ updated: boolean }>(
+      `SELECT completed_steps ? 'project_core_updated' AS updated
+       FROM iam.mainserver_mutation_journal
+       WHERE instance_id = $1 AND operation_external_id = $2
+         AND provider_outcome = 'succeeded' LIMIT 1;`,
+      [input.instanceId, input.mutationRef]
+    );
+    return result.rows[0]?.updated === true;
+  });
+  if (!coreUpdated) throw new Error('project_core_full_update_unverified');
+  return canonicalReference.contentId;
+};
+
 export const recordSuccessfulExternalContentMutation = async (
   input: SuccessfulExternalContentMutation
 ): Promise<string> => {
-  if (input.contentType === 'projects.project' && input.ownershipPrincipal) {
-    const references = await Promise.all(
-      (['GenericItem', 'projects.project'] as const).map((sourceEntityType) =>
-        loadExternalContentReferenceBySourceEntity({
-          ...input,
-          sourceEntityType,
-          exactSourceEntityType: true,
-        })
-      )
-    );
-    const contentIds = [...new Set(references.flatMap((reference) =>
-      reference ? [reference.contentId] : []
-    ))];
-    const primaryContentId = contentIds[0];
-    if (primaryContentId) {
-      for (const contentId of contentIds) await updateExistingContent(input, contentId);
-      return primaryContentId;
-    }
-  }
+  const transferredProjectContentId = await updateProjectTransferReferences(input);
+  if (transferredProjectContentId) return transferredProjectContentId;
   const mutation =
     input.contentType === 'projects.project' && input.ownershipPrincipal
       ? { ...input, sourceEntityType: 'GenericItem' }
@@ -214,30 +244,8 @@ export const recordSuccessfulExternalContentMutation = async (
     })) ??
     (mutation !== input ? await loadExternalContentReferenceBySourceEntity(input) : undefined);
   if (existingReference) return updateExistingContent(mutation, existingReference.contentId);
-  if (input.contentType === 'projects.project' && !input.ownershipPrincipal) {
-    const canonicalReference = await loadExternalContentReferenceBySourceEntity({
-      ...input,
-      sourceEntityType: 'GenericItem',
-    });
-    if (canonicalReference) {
-      if (input.operation === 'create' &&
-          canonicalReference.operationExternalId === input.mutationRef) {
-        return canonicalReference.contentId;
-      }
-      const coreUpdated = await withInstanceScopedDb(input.instanceId, async (client) => {
-        const result = await client.query<{ updated: boolean }>(
-          `SELECT completed_steps ? 'project_core_updated' AS updated
-           FROM iam.mainserver_mutation_journal
-           WHERE instance_id = $1 AND operation_external_id = $2
-             AND provider_outcome = 'succeeded' LIMIT 1;`,
-          [input.instanceId, input.mutationRef]
-        );
-        return result.rows[0]?.updated === true;
-      });
-      if (!coreUpdated) throw new Error('project_core_full_update_unverified');
-      return canonicalReference.contentId;
-    }
-  }
+  const preservedProjectContentId = await preserveFullProjectCore(input);
+  if (preservedProjectContentId) return preservedProjectContentId;
   if (mutation.preserveExistingContentState) {
     throw new Error('external_content_core_reference_required_for_owner_only_replay');
   }

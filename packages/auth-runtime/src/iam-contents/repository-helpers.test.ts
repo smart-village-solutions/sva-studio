@@ -32,6 +32,7 @@ const {
   insertContentHistory,
   isContentMutationFinalized,
   loadCurrentContentRow,
+  resolveContentUpdateReplay,
   resolveContentMutationMetadata,
 } = await import('./repository-shared.js');
 const {
@@ -158,6 +159,33 @@ describe('iam content repository helpers', () => {
       expect.stringContaining('AND mutation_ref = $3'),
       ['instance-1', 'content-1', 'mutation-1']
     );
+  });
+
+  it('skips a superseded transfer with existing history under the Core lock', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] })
+      .mockResolvedValueOnce({ rows: [{ superseded: true }] });
+    await expect(resolveContentUpdateReplay(client, createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+    }))).resolves.toEqual({ mutationFinalized: true, skip: true });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('AS superseded'), ['instance-1', 'transfer-t1']
+    );
+  });
+
+  it('rejects a superseded transfer whose Core history is absent', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ superseded: true }] });
+    await expect(resolveContentUpdateReplay(client, createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+    }))).rejects.toThrow('ownership_source_changed');
   });
 
   it('creates content history entries and throws when the database does not return an id', async () => {

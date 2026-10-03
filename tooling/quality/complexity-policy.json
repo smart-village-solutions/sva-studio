@@ -460,12 +460,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/check-plugin-ui-boundary.ts)"
     },
-    "ci-scripts:scripts/ci/check-server-package-runtime.ts:fileLines": {
-      "ticketId": "baseline-ci-check-server-package-runtime-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-server-package-runtime.ts)"
-    },
     "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
       "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
       "ticketSystem": "policy-baseline",

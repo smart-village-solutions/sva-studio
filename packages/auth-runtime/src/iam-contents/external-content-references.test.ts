@@ -488,6 +488,31 @@ describe('external content references', () => {
     expect(state.updateContent).not.toHaveBeenCalled();
   });
 
+  it('preserves a created project Core when journal and idempotency IDs differ', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ ...row, operation_external_id: 'create-idempotency-1',
+          source_entity_type: 'GenericItem', source_entity_id: 'project-1' }],
+      })
+      .mockResolvedValueOnce({ rows: [{ updated: true }] });
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1', actorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'journal-create-1', operation: 'create', sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project', sourceEntityId: 'project-1',
+      contentType: 'projects.project', title: 'Projekt', payload: { body: 'Slim' },
+      status: 'published', authorDisplayMode: 'organization', authorDisplayName: 'Organisation',
+    })).resolves.toBe('content-1');
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("completed_steps ? 'project_core_updated'"),
+      ['tenant-1', 'journal-create-1']
+    );
+    expect(state.updateContent).not.toHaveBeenCalled();
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+  });
+
   it('keeps a failed project route Core update unresolved', async () => {
     state.query
       .mockResolvedValueOnce({ rows: [] })

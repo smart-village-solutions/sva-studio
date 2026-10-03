@@ -343,8 +343,16 @@ const updateProject = async (
           genericItemId: freshItem.id,
           visible: project.status === 'published',
         });
-        let localFollowUpFailed = false;
+        let localFollowUpFailed = Boolean(context.reference && !context.core);
         let projectCoreUpdated = false;
+        if (localFollowUpFailed && context.reference) {
+          await Promise.resolve(updateExternalContentReconciliationStatus({
+            instanceId,
+            referenceId: context.reference.id,
+            status: 'reconciliation_required',
+            errorCode: 'local_finalize_failed',
+          })).catch(() => undefined);
+        }
         if (context.core && context.reference)
           try {
             await updateExternalContentCore({

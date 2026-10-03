@@ -578,7 +578,10 @@ describe('projects route', () => {
     const response = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        headers: {
+          'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1',
+          'X-SVA-Operation-Id': 'journal-create-1',
+        },
         body: JSON.stringify(input),
       })
     );
@@ -612,6 +615,12 @@ describe('projects route', () => {
       expect.objectContaining({ status: 'COMPLETED' })
     );
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledTimes(1);
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationExternalId: 'journal-create-1',
+        completedSteps: expect.arrayContaining(['project_core_updated']),
+      })
+    );
     expect(state.createGenericItem.mock.invocationCallOrder[0]!).toBeLessThan(
       state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0]!
     );
@@ -1123,6 +1132,12 @@ describe('projects route', () => {
       expect.objectContaining({ operation: 'mainserver_projects_local_follow_up' })
     );
     expect(state.deleteGenericItem).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reconciliationStatus: 'reconciliation_required',
+        completedSteps: expect.not.arrayContaining(['project_core_updated']),
+      })
+    );
     expect(state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]).toBeLessThan(
       state.completeIdempotency.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
@@ -1171,6 +1186,34 @@ describe('projects route', () => {
       expect.objectContaining({
         status: 'reconciliation_required',
         errorCode: 'provider_delete_failed',
+      })
+    );
+  });
+
+  it('leaves provider PATCH reconciliation open when its referenced Core cannot be read', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.loadCore.mockRejectedValue(new Error('database_lost'));
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateGenericItem).toHaveBeenCalledOnce();
+    expect(state.updateCore).not.toHaveBeenCalled();
+    expect(state.updateReconciliation).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'reconciliation_required', errorCode: 'local_finalize_failed',
+    }));
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOutcome: 'succeeded', reconciliationStatus: 'reconciliation_required',
+        completedSteps: expect.not.arrayContaining(['project_core_updated']),
       })
     );
   });

@@ -795,6 +795,24 @@ describe('projects route', () => {
     expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
   });
 
+  it('stops a provider-ID PATCH when the local reference lookup fails', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(undefined);
+    state.loadReferenceBySourceEntity.mockRejectedValue(new Error('database_lost'));
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/external-1', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(500);
+    expect(state.getGenericItem).not.toHaveBeenCalled();
+    expect(state.updateGenericItem).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
   it('updates the canonical project Core when PATCH addresses a separate legacy Core ID', async () => {
     prepareDefaults();
     const legacyContentId = '55555555-5555-4555-8555-555555555555';

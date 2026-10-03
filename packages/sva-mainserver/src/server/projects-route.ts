@@ -85,7 +85,7 @@ const loadProjectLocalContext = async (instanceId: string, contentId: string) =>
     sourceSystem: 'mainserver',
     sourceEntityType: 'projects.project',
     sourceEntityId: legacyReferenceByContentId?.sourceEntityId ?? contentId,
-  }).catch(() => undefined);
+  });
   const reference = canonicalReference ?? referenceByLocalId;
   const loadedCore = reference
     ? await loadExternalContentCore(instanceId, reference.contentId).catch(() => undefined)

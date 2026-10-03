@@ -460,24 +460,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/check-plugin-ui-boundary.ts)"
     },
-    "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
-      "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Authorize-Performance-Runner in kleinere CLI-, Konfigurations- und Auswertungsbausteine zerlegen (scripts/ci/run-iam-authorize-performance.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-evidence.ts:fileLines": {
-      "ticketId": "baseline-ci-run-iam-evidence-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Evidence-Runner in kleinere Sammel-, Export- und Berichtsschritte zerlegen (scripts/ci/run-iam-evidence.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-evidence.ts:functionLines": {
-      "ticketId": "baseline-ci-run-iam-evidence-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Evidence-Orchestrierung in kleinere Ausfuehrungs- und Reportfunktionen aufteilen (scripts/ci/run-iam-evidence.ts)"
-    },
     "core-iam:packages/core/src/iam/account-management-contract.ts:publicExports": {
       "ticketId": "baseline-core-src-iam-account-management-contract-ts",
       "ticketSystem": "policy-baseline",

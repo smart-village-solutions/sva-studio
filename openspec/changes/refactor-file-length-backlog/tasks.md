@@ -1050,7 +1050,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 25a — Waste-Vertragsfunktionen (4 Befunde)
 
-- [ ] In `packages/waste-management-contracts/src/`
+- [x] In `packages/waste-management-contracts/src/`
       `waste-management-settings-public-config.ts`,
       `waste-management-location-tour-pickup-date-planner.ts`,
       `waste-management-output.render.ts`,
@@ -1058,10 +1058,15 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       CSV-Parsing, Importplanung, PDF-Ausgabe und öffentliche Settings
       mit gezielten Vertrags-, Typ- und Runtime-Tests erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1711, HEAD
+      `a5df07359fb4f73bb9b5bcf538f7ccb189606bf6`, Merge-Commit
+      `ff7095317815ad9d5624c2677fe947e9b42f0c40`; Changelog
+      `docs/changelog/entries/pr-1711.json`.
 
 ### PR 25b — Waste-Runtime-Validierung und Settings (4 Befunde)
 

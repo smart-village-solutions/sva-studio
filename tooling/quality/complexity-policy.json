@@ -952,12 +952,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx)"
     },
-    "iam-admin:packages/iam-admin/src/group-mutation-handlers.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-group-mutation-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/group-mutation-handlers.ts)"
-    },
     "iam-admin:packages/iam-admin/src/index.ts:fileLines": {
       "ticketId": "baseline-iam-admin-src-index-ts",
       "ticketSystem": "policy-baseline",
@@ -969,24 +963,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-admin/src/index.ts)"
-    },
-    "iam-admin:packages/iam-admin/src/legacy-group-mutation-handlers.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-iam-admin-src-legacy-group-mutation-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/legacy-group-mutation-handlers.ts)"
-    },
-    "iam-admin:packages/iam-admin/src/legacy-group-mutation-handlers.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-legacy-group-mutation-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/legacy-group-mutation-handlers.ts)"
-    },
-    "iam-admin:packages/iam-admin/src/legacy-group-mutation-handlers.ts:functionLines": {
-      "ticketId": "baseline-iam-admin-src-legacy-group-mutation-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/legacy-group-mutation-handlers.ts)"
     },
     "iam-admin:packages/iam-admin/src/managed-role-sync.ts:functionLines": {
       "ticketId": "baseline-iam-admin-src-managed-role-sync-ts",

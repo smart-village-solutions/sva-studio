@@ -846,13 +846,18 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 16d — Modul-Mutationen (1 Befund)
 
-- [ ] `packages/instance-registry/src/service-module-mutations.ts` entlang
+- [x] `packages/instance-registry/src/service-module-mutations.ts` entlang
       Sync und Audit unter das Dateilimit bringen. Modulreihenfolge,
       Idempotenz, Autorisierung und Audit mit Mutationstests und zuständigen
       Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1693, HEAD
+      `d7887f00e2083964837760d7bdf0e6e5bad71b77`, Merge-Commit
+      `ad61e367bdb1e0931c9820810b643ee8214d6383`; Changelog
+      `docs/changelog/entries/pr-1693.json`.
 
 ### PR 16e — Draft-Readiness und Service-Helfer (2 Befunde)
 

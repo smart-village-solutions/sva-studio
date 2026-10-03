@@ -285,6 +285,41 @@ describe('external content references', () => {
     );
   });
 
+  it('does not attribute a newer provider payload to a deferred transfer', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],
+    });
+    state.updateContent.mockResolvedValue('content-1');
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'external-1',
+      contentType: 'generic-items.generic-item',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      preserveExistingContentState: true,
+      title: 'Später bearbeitet',
+      payload: { body: 'Neue Fassung' },
+      status: 'published',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    });
+
+    const update = state.updateContent.mock.calls[0]?.[0];
+    expect(update).toEqual(expect.objectContaining({
+      confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
+      mutationRef: 'transfer-1',
+    }));
+    expect(update).not.toHaveProperty('title');
+    expect(update).not.toHaveProperty('payload');
+    expect(update).not.toHaveProperty('status');
+  });
+
   it('records an idempotently correlated delete in host-owned studio history', async () => {
     state.query
       .mockResolvedValueOnce({

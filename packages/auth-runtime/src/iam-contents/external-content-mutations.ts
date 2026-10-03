@@ -31,6 +31,7 @@ export type SuccessfulExternalContentMutation = Readonly<{
   contentType: string;
   organizationId?: string;
   ownershipPrincipal?: IamContentOwnerPrincipal;
+  preserveExistingContentState?: boolean;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;
@@ -64,10 +65,14 @@ const updateExistingContent = async (
     mutationRef: input.mutationRef,
     contentId,
     confirmedExternalOwner: input.ownershipPrincipal,
-    title: input.title,
-    payload: input.payload,
-    status: input.status,
-    publishedAt: input.publishedAt,
+    ...(input.preserveExistingContentState
+      ? {}
+      : {
+          title: input.title,
+          payload: input.payload,
+          status: input.status,
+          publishedAt: input.publishedAt,
+        }),
     authorDisplayMode: input.authorDisplayMode,
     authorDisplayName: input.authorDisplayName,
   });

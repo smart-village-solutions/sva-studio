@@ -26,6 +26,7 @@ import {
 } from './iam-content-list-projection-repository.server.js';
 import {
   GENERIC_ITEMS_CONTENT_TYPE,
+  assertVerifiedTransferOwner,
   assertProjectionCredentialsReady,
   enrichMutationProjectionRowWithBinding,
   loadMainserverProjectionMutationRow,
@@ -129,6 +130,7 @@ const upsertProjectionMutation = async (
       const loadedRow =
         input.row ?? (await loadMainserverProjectionMutationRow(input.target, input.entityId));
       const row = await enrichMutationProjectionRowWithBinding(input.target, loadedRow);
+      assertVerifiedTransferOwner(input.target, row);
       await upsertSingleMainserverProjectionRow(
         input.target,
         input.target.actorAccountId,

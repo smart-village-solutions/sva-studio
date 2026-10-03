@@ -238,6 +238,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
             sourceEntityId: 'news-1',
             contentType: 'news.article',
             organizationId: '33333333-3333-4333-8333-333333333333',
+            ownerOrganizationId: '33333333-3333-4333-8333-333333333333',
             title: 'Übertragener Inhalt',
             payload: {},
             status: 'published',
@@ -267,6 +268,91 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         completedSteps: ['projection_history_reconciled', 'target_projection_refreshed'],
       })
     );
+  });
+
+  it.each([
+    ['unverified', undefined, undefined],
+    ['another organization', undefined, '44444444-4444-4444-8444-444444444444'],
+    ['another account', '44444444-4444-4444-8444-444444444444', undefined],
+  ])('keeps a transfer deferred for %s owner', async (_case, ownerUserId, ownerOrganizationId) => {
+    state.query.mockResolvedValue({
+      rows: [{
+        operation_external_id: 'transfer-1',
+        action_id: 'content.transferOwnership',
+        content_type: 'news.article',
+        content_id: 'news-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1',
+        display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+      }],
+    });
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'organization',
+      actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+      credentialFingerprint: 'b'.repeat(64),
+      rows: [{
+        sourceEntityType: 'news.article',
+        sourceEntityId: 'news-1',
+        contentType: 'news.article',
+        ownerUserId,
+        ownerOrganizationId,
+        title: 'Extern geändert',
+        payload: {},
+        status: 'published',
+        authorDisplayMode: 'organization',
+        author: 'Andere Redaktion',
+        updatedAt: '2026-09-13T12:01:00.000Z',
+      }],
+    })).resolves.toBe(0);
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
+  it('reconciles only the verified owner when the provider snapshot is newer', async () => {
+    state.query.mockResolvedValue({
+      rows: [{
+        operation_external_id: 'transfer-1',
+        action_id: 'content.transferOwnership',
+        content_type: 'news.article',
+        content_id: 'news-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1',
+        display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+      }],
+    });
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'organization',
+      actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+      credentialFingerprint: 'b'.repeat(64),
+      rows: [{
+        sourceEntityType: 'news.article',
+        sourceEntityId: 'news-1',
+        contentType: 'news.article',
+        organizationId: '33333333-3333-4333-8333-333333333333',
+        ownerOrganizationId: '33333333-3333-4333-8333-333333333333',
+        title: 'Später bearbeitet',
+        payload: { body: 'Neue Fassung' },
+        status: 'published',
+        authorDisplayMode: 'organization',
+        author: 'Musterhausen',
+        updatedAt: '2026-09-13T12:03:00.000Z',
+      }],
+    })).resolves.toBe(1);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownershipPrincipal: { type: 'organization', id: '33333333-3333-4333-8333-333333333333' },
+        preserveExistingContentState: true,
+      })
+    );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledOnce();
   });
 
   it('preserves an independent reconciliation error after replaying lifecycle history', async () => {

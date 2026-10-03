@@ -426,6 +426,55 @@ describe('targeted content projection mutations', () => {
     );
   });
 
+  it('does not write a transfer when the refreshed provider owner differs from the target', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'organization',
+      credentials: { apiKey: 'key', apiSecret: 'secret' },
+      credentialFingerprint: 'b'.repeat(64),
+    });
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-transfer-organization-1',
+      name: 'Erneut übertragener POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      dataProvider: { id: 'provider-other', name: 'Andere Organisation' },
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      dataProviderId: 'provider-target',
+    });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'organization',
+      authorizationMode: 'exact',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'b'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-target',
+      actorAccountId: 'account-source',
+      actorDisplayName: 'Ausführende Person',
+      mutationRef: 'transfer-organization-1',
+      organizationId: 'org-target',
+      ownershipPrincipal: { type: 'organization', id: 'org-target' },
+      operation: 'update',
+      entityId: 'poi-transfer-organization-1',
+    })).rejects.toMatchObject({ code: 'content_transfer_target_ownership_unverified' });
+    expect(fixture.projectionRows).toEqual([]);
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+  });
+
   it('ignores direct mainserver mutation refreshes without an actor account id', async () => {
     await expect(
       refreshProjectedContentsForMainserverMutation({

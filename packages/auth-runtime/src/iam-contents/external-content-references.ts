@@ -305,9 +305,9 @@ export const updateExternalContentCore = async (input: {
   readonly mutationRef?: string;
   readonly contentId: string;
   readonly confirmedExternalOwner?: UpdateContentInput['confirmedExternalOwner'];
-  readonly title: string;
-  readonly payload: ContentJsonValue;
-  readonly status: IamContentStatus;
+  readonly title?: string;
+  readonly payload?: ContentJsonValue;
+  readonly status?: IamContentStatus;
   readonly publishedAt?: string;
   readonly authorDisplayMode: IamContentAuthorDisplayMode;
   readonly authorDisplayName: string;

@@ -23,6 +23,8 @@ export type ReconciledMainserverProjectionRow = Readonly<{
   sourceEntityId: string;
   contentType: string;
   organizationId?: string;
+  ownerUserId?: string;
+  ownerOrganizationId?: string;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;
@@ -59,6 +61,26 @@ const confirmedTransferOwner = (
         },
       }
     : {};
+
+const replayModeFor = (
+  entry: DeferredMutationRow,
+  row: ReconciledMainserverProjectionRow | undefined,
+  actingPrincipalType: 'organization' | 'user',
+  actingPrincipalId: string
+): 'skip' | 'full' | 'owner-only' => {
+  const rowUpdatedAt = row?.updatedAt ? Date.parse(row.updatedAt) : Number.NaN;
+  const deferredAt = Date.parse(entry.deferred_at);
+  if (!row || !Number.isFinite(rowUpdatedAt) || !Number.isFinite(deferredAt)) return 'skip';
+  if (entry.action_id !== 'content.transferOwnership') {
+    return rowUpdatedAt > deferredAt ? 'skip' : 'full';
+  }
+  const ownerMatches =
+    actingPrincipalType === 'user'
+      ? row.ownerUserId === actingPrincipalId && !row.ownerOrganizationId
+      : row.ownerOrganizationId === actingPrincipalId && !row.ownerUserId;
+  if (!ownerMatches) return 'skip';
+  return rowUpdatedAt > deferredAt ? 'owner-only' : 'full';
+};
 
 const loadDeferredMainserverMutationRows = async (input: {
   readonly instanceId: string;
@@ -149,17 +171,13 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       entry.display_name_ciphertext,
       `iam.accounts.display_name:${entry.keycloak_subject}`
     );
-    const rowUpdatedAt = row?.updatedAt ? Date.parse(row.updatedAt) : Number.NaN;
-    const deferredAt = Date.parse(entry.deferred_at);
-    if (
-      !row ||
-      !actorDisplayName ||
-      !Number.isFinite(rowUpdatedAt) ||
-      !Number.isFinite(deferredAt) ||
-      rowUpdatedAt > deferredAt
-    ) {
-      continue;
-    }
+    const replayMode = replayModeFor(
+      entry,
+      row,
+      input.actingPrincipalType,
+      input.actingPrincipalId
+    );
+    if (!row || !actorDisplayName || replayMode === 'skip') continue;
     const contentId = await recordSuccessfulExternalContentMutation({
       instanceId: input.instanceId,
       actorAccountId: entry.actor_account_id,
@@ -171,6 +189,7 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       sourceEntityId: row.sourceEntityId,
       contentType: row.contentType,
       ...confirmedTransferOwner(entry.action_id, input.actingPrincipalType, input.actingPrincipalId),
+      ...(replayMode === 'owner-only' ? { preserveExistingContentState: true } : {}),
       ...(row.organizationId ? { organizationId: row.organizationId } : {}),
       title: row.title,
       payload: row.payload,

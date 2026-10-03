@@ -1061,6 +1061,15 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       `projects-route.ts` bereinigen. Validierung, Fehlercodes,
       Berechtigungen und Antwortformat gezielt testen.
 
+      Implementierungsstand auf Ausgangs-HEAD
+      `702af348e0bd9c0cc170589144f138eac4f6fda2`: Die fünf Routen
+      wurden nach Eingabe, Zugriff, Lesen und Mutation getrennt. Die
+      ursprünglichen Zeilenzahlen 1458/846/681/633/516 liegen nach dem
+      Schnitt bei 127/110/128/250/312 (News/Events/Generic Items/POI/Projects).
+      Die fünf `fileLines`-Registereinträge sind entfernt; der vollständige
+      Complexity-Lauf meldet keine neuen Befunde. Merge- und finaler
+      HEAD-Gate-Nachweis bleiben für das Abhaken ausstehend.
+
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in

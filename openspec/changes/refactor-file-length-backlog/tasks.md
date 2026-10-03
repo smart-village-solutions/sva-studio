@@ -407,10 +407,12 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Export-/Status-, Antrags-/Korrektur-, Legal-Hold-/Widerspruchs- und
       Admin-Lesepfaden aufteilen. `core.test.ts` sichert Auth-/Tenant-Grenze,
       CSRF, Zugriffsprüfung, Datenintegrität und Fehlerabbildung; öffentliche
-      Handler und ihre Route-Bindings bleiben unverändert.
+      Handler und ihre Route-Bindings bleiben unverändert. Umsetzung in PR #1663;
+      `core.ts` bleibt der bestehende Route-Importpfad und enthält den
+      Self-Service-Antrag mit Commit-gebundener Session-Revocation.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11a anlegen;
+      `docs/changelog/entries/pr-1663.json` mit passender `prNumber` und
+      Nutzertext in PR 11a anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 11b — DSR-Export und Queue (3 Befunde)

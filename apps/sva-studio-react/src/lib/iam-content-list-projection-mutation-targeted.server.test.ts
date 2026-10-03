@@ -476,6 +476,10 @@ describe('targeted content projection mutations', () => {
     })).rejects.toMatchObject({ code: 'content_transfer_target_ownership_unverified' });
     expect(fixture.projectionRows).toEqual([]);
     expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'transfer-organization-1',
+    });
   });
 
   it('ignores direct mainserver mutation refreshes without an actor account id', async () => {

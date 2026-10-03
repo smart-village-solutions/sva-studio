@@ -431,6 +431,36 @@ describe('iam content repository helpers', () => {
     });
   });
 
+  it('uses the confirmed target organization name for organization author mode', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          author_display_mode: 'organization',
+          author_display_name: 'Quellorganisation',
+        }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          preserveExistingContentState: true,
+          authorDisplayMode: 'organization',
+          authorDisplayName: 'Quellorganisation',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Zielorganisation',
+    });
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });

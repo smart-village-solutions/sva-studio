@@ -226,7 +226,10 @@ export const refreshMainserverProjectionForMutation = async (
         error && typeof error === 'object' && 'code' in error
           ? (error as { code?: unknown }).code
           : undefined;
-      if (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode)) {
+      if (
+        target.ownershipPrincipal ||
+        (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode))
+      ) {
         await deferMutationHistory(input);
       }
       throw error;

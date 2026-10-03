@@ -111,7 +111,10 @@ export const resolveUpdateAuthorDisplay = async (
   if (preserveCurrentAuthor) {
     return {
       authorDisplayMode: current.author_display_mode,
-      authorDisplayName: current.author_display_name,
+      authorDisplayName:
+        current.author_display_mode === 'organization' && organization
+          ? organization.display_name
+          : current.author_display_name,
     };
   }
   const authorDisplayMode = input.authorDisplayMode ?? current.author_display_mode;

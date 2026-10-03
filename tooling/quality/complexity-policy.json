@@ -2494,30 +2494,6 @@
       "status": "open",
       "summary": "Lange Email-Reminder-Repository-Funktionen in kleinere SQL- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
     },
-    "packages-default:packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-036",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Scheduling-Translations in kleinere Themenmodule und Re-Exports aufteilen (packages/plugin-waste-management/src/plugin.translations.de.scheduling.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/plugin.translations.de.tours.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-037",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tours-Translations in kleinere Themenmodule und Re-Exports aufteilen (packages/plugin-waste-management/src/plugin.translations.de.tours.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/plugin.translations.en.scheduling.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-036",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Scheduling-Translations in kleinere Themenmodule und Re-Exports aufteilen (packages/plugin-waste-management/src/plugin.translations.en.scheduling.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/plugin.translations.en.tours.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-037",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tours-Translations in kleinere Themenmodule und Re-Exports aufteilen (packages/plugin-waste-management/src/plugin.translations.en.tours.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-038",
       "ticketSystem": "backlog",
@@ -2901,12 +2877,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Waste-Plugin-Komposition nach functionLines vereinfachen (packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/plugin.tsx:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-plugin",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Waste-Plugin-Komposition nach fileLines vereinfachen (packages/plugin-waste-management/src/plugin.tsx)"
     },
     "packages-default:packages/waste-management-runtime/src/handlers/annual-tour-transfer-execution.ts:functionLines": {
       "ticketId": "baseline-waste-ownership-1506-handlers-annual-tour-transfer-execution",

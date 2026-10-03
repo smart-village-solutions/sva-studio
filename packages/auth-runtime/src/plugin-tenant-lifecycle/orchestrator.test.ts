@@ -83,6 +83,31 @@ const input = {
 };
 
 describe('plugin tenant lifecycle orchestrator', () => {
+  it('uses the atomic start after the shared plan without staged writes', async () => {
+    const staged = createDependencies();
+    const persistStart = vi.fn(async () => ({ lifecycle: lifecycleRecord, job }));
+    const orchestrator = createPluginTenantLifecycleOrchestrator({
+      logger: staged.logger,
+      lifecycleRegistry: staged.lifecycleRegistry,
+      resolveActivation: staged.resolveActivation,
+      resolveLifecycle: staged.resolveLifecycle,
+      resolveJobRegistration: staged.resolveJobRegistration,
+      persistStart,
+    });
+
+    await expect(orchestrator.start(input)).resolves.toEqual({ lifecycle: lifecycleRecord, job });
+    expect(persistStart).toHaveBeenCalledWith({
+      request: input,
+      jobTypeId: 'speech.provisionTenant',
+      queueName: 'plugin-operations',
+      executionLane: 'privileged',
+      contractRevision: 'speech-1:1',
+    });
+    expect(staged.repository.requestLifecycle).not.toHaveBeenCalled();
+    expect(staged.createJob).not.toHaveBeenCalled();
+    expect(staged.queueJob).not.toHaveBeenCalled();
+  });
+
   it('requests, creates, claims and only then queues the declared lifecycle job', async () => {
     const dependencies = createDependencies();
     const orchestrator = createPluginTenantLifecycleOrchestrator(dependencies);
@@ -116,6 +141,13 @@ describe('plugin tenant lifecycle orchestrator', () => {
       executionLane: 'privileged',
       runAt: new Date('2026-08-30T12:00:00.000Z'),
     });
+    const callOrder = [
+      dependencies.repository.requestLifecycle,
+      dependencies.createJob,
+      dependencies.repository.claimLifecycle,
+      dependencies.queueJob,
+    ].map((call) => call.mock.invocationCallOrder[0]);
+    expect(callOrder).toEqual([...callOrder].sort((left, right) => left - right));
   });
 
   it('rejects an inactive plugin before mutating lifecycle state', async () => {
@@ -151,6 +183,60 @@ describe('plugin tenant lifecycle orchestrator', () => {
     ).rejects.toThrow(
       `${pluginTenantLifecycleHostErrorCodes.invalidTransition}:speech:${operation}`
     );
+    expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
+  });
+
+  it('resumes a persisted retry for the same operation despite the normal transition guard', async () => {
+    const dependencies = createDependencies();
+    dependencies.lifecycleRegistry = new Map([
+      [
+        'speech',
+        {
+          ...lifecycleDefinition,
+          operations: [{ operation: 'suspend', jobTypeId: 'speech.suspendTenant' }],
+        },
+      ],
+    ]);
+    dependencies.resolveLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      accessState: 'suspended',
+      desiredOperation: 'suspend',
+      retryKind: 'retryable',
+    });
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start({
+        ...input,
+        operation: 'suspend',
+      })
+    ).resolves.toEqual(expect.objectContaining({ job }));
+    expect(dependencies.repository.requestLifecycle).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a terminal retry blocked by the transition guard', async () => {
+    const dependencies = createDependencies();
+    dependencies.lifecycleRegistry = new Map([
+      [
+        'speech',
+        {
+          ...lifecycleDefinition,
+          operations: [{ operation: 'suspend', jobTypeId: 'speech.suspendTenant' }],
+        },
+      ],
+    ]);
+    dependencies.resolveLifecycle.mockResolvedValue({
+      ...lifecycleRecord,
+      accessState: 'suspended',
+      desiredOperation: 'suspend',
+      retryKind: 'terminal',
+    });
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start({
+        ...input,
+        operation: 'suspend',
+      })
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.invalidTransition}:speech:suspend`);
     expect(dependencies.repository.requestLifecycle).not.toHaveBeenCalled();
   });
 
@@ -291,5 +377,59 @@ describe('plugin tenant lifecycle orchestrator', () => {
         persistence_error_type: 'TypeError',
       })
     );
+  });
+
+  it('keeps the job-creation host error when lifecycle cleanup also fails', async () => {
+    const dependencies = createDependencies();
+    dependencies.createJob.mockRejectedValueOnce(new TypeError('job unavailable'));
+    dependencies.repository.failUnclaimedLifecycle.mockRejectedValueOnce(
+      new RangeError('write unavailable')
+    );
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.jobCreationFailed}:speech:provision`);
+    expect(dependencies.logger.error).toHaveBeenCalledWith(
+      'Plugin-Tenant-Lifecycle konnte einen Job-Erstellungsfehler nicht persistieren',
+      expect.objectContaining({
+        job_creation_error_type: 'TypeError',
+        persistence_error_type: 'RangeError',
+      })
+    );
+    expect(dependencies.repository.claimLifecycle).not.toHaveBeenCalled();
+  });
+
+  it('keeps the claim host error when unclaimed-job cleanup also fails', async () => {
+    const dependencies = createDependencies();
+    dependencies.repository.claimLifecycle.mockRejectedValueOnce(new Error('claim unavailable'));
+    dependencies.markUnclaimedJobFailed.mockRejectedValueOnce(new TypeError('write unavailable'));
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.claimFailed}:speech:provision`);
+    expect(dependencies.logger.error).toHaveBeenCalledWith(
+      'Plugin-Tenant-Lifecycle konnte einen nicht beanspruchten Job nicht terminalisieren',
+      expect.objectContaining({
+        job_id: job.id,
+        persistence_error_type: 'TypeError',
+      })
+    );
+    expect(dependencies.queueJob).not.toHaveBeenCalled();
+  });
+
+  it('keeps the conflict host error when unclaimed-job cleanup also fails', async () => {
+    const dependencies = createDependencies();
+    dependencies.repository.claimLifecycle.mockResolvedValueOnce(null);
+    dependencies.markUnclaimedJobFailed.mockRejectedValueOnce(new TypeError('write unavailable'));
+
+    await expect(
+      createPluginTenantLifecycleOrchestrator(dependencies).start(input)
+    ).rejects.toThrow(`${pluginTenantLifecycleHostErrorCodes.claimConflict}:speech:provision`);
+    expect(dependencies.markUnclaimedJobFailed).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      job,
+      errorCode: pluginTenantLifecycleHostErrorCodes.claimConflict,
+    });
+    expect(dependencies.queueJob).not.toHaveBeenCalled();
   });
 });

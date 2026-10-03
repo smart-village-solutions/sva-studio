@@ -620,15 +620,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 13e — Plugin-Operations Job-State-Writer (1 Befund)
 
-- [ ] `packages/auth-runtime/src/plugin-operations/job-state-writer.ts`
+- [x] `packages/auth-runtime/src/plugin-operations/job-state-writer.ts`
       nach Zustandsvalidierung und Persistenz aufteilen. Writer-/Worker-Tests
       sichern erlaubte Übergänge, Tenant-/Job-Bindung, Attempt-/Lease-Prüfung,
       Event-Reihenfolge und Wiederholbarkeit; Auth-/Data-/Security- und
-      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
+      Server-Runtime-Gates prüfen. Abschluss: PR #1677, HEAD
+      `69bb84d2de9958de948542bac590841972f41288`, Merge-Commit
+      `9c4de06b19dbe0f1aeb72d8f315d8fa34777754d` nach grünen Gates.
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1677.json` mit passender `prNumber` und
-      nutzerverständlichem `body` in PR #1677 angelegt; Changelog-Gate lokal
-      grün, PR-Gate vor Merge prüfen.
+      nutzerverständlichem `body` in PR #1677 angelegt; Changelog-Gate vor
+      Merge grün.
 
 ### PR 13f — Plugin-Tenant-Lifecycle-Orchestrator (1 Befund)
 

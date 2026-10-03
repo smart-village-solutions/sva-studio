@@ -359,15 +359,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 10d — Rollen-Reconcile (1 Befund)
 
-- [ ] `packages/iam-admin/src/reconcile-core.ts` nach Katalogabgleich,
+- [x] `packages/iam-admin/src/reconcile-core.ts` nach Katalogabgleich,
       Identity-Provider-Abgleich und Ergebnis-/Fehlerpersistenz aufteilen.
       `reconcile-core.test.ts` und `reconcile-handler.test.ts` sichern
       Tenant-Grenze, Import-/Update-Entscheidungen, Idempotenz,
       Fehlerbericht und Audit.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1660.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR #1660
-      anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und nutzerverständlichem `body` eingebracht;
+      PR #1660 am 03.10.2026 als
+      `ca43b1a4c47bc204861a624e4ed9f0be0148df37` gemergt.
+      Changelog- und Complexity-Gate vor Merge grün.
 
 ### PR 10e — Moderne und Legacy-Gruppenmutationen (2 Befunde)
 

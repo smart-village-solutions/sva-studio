@@ -96,7 +96,8 @@ const recordReconciledMutation = async (
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === 'external_content_core_reference_required_for_owner_only_replay'
+      ['external_content_core_reference_required_for_owner_only_replay',
+        'project_core_full_update_unverified'].includes(error.message)
     ) return undefined;
     if (error instanceof ContentOwnershipTransferError && error.code === 'ownership_source_changed')
       return undefined;

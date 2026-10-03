@@ -497,6 +497,54 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     );
   });
 
+  it('leaves an unverified project update open and reconciles a later transfer', async () => {
+    state.query.mockResolvedValue({ rows: [
+      {
+        operation_external_id: 'project-update-1', action_id: 'generic-items.update',
+        content_type: 'generic-items.generic-item', content_id: 'project-1',
+        provider_content_id: 'project-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1', display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+      },
+      {
+        operation_external_id: 'transfer-1', action_id: 'content.transferOwnership',
+        content_type: 'news.article', content_id: 'news-1', provider_content_id: 'news-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1', display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+      },
+    ] });
+    state.recordSuccessfulExternalContentMutation
+      .mockRejectedValueOnce(new Error('project_core_full_update_unverified'))
+      .mockResolvedValueOnce('11111111-1111-4111-8111-111111111111');
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen', actingPrincipalType: 'organization',
+      actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+      credentialFingerprint: 'b'.repeat(64),
+      rows: [
+        {
+          sourceEntityType: 'projects.project', journalContentType: 'generic-items.generic-item',
+          sourceEntityId: 'project-1', contentType: 'projects.project', title: 'Projekt',
+          payload: {}, status: 'published', authorDisplayMode: 'organization',
+          author: 'Zielorganisation', updatedAt: '2026-09-13T12:01:00.000Z',
+        },
+        {
+          sourceEntityType: 'news.article', sourceEntityId: 'news-1', contentType: 'news.article',
+          ownerOrganizationId: '33333333-3333-4333-8333-333333333333', title: 'News',
+          payload: {}, status: 'published', authorDisplayMode: 'organization',
+          author: 'Zielorganisation',
+        },
+      ],
+    })).resolves.toBe(1);
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledOnce();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ operationExternalId: 'transfer-1' })
+    );
+  });
+
   it('uses the newer provider author when replaying ownership for a personal target', async () => {
     state.query.mockResolvedValue({
       rows: [{

@@ -278,11 +278,49 @@ describe('external content references', () => {
       authorDisplayName: 'Organisation',
     });
 
-    expect(state.updateContent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
-      })
-    );
+    const update = state.updateContent.mock.calls[0]?.[0];
+    expect(update).toEqual(expect.objectContaining({
+      confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
+      preserveExistingContentState: true,
+    }));
+    expect(update).not.toHaveProperty('title');
+    expect(update).not.toHaveProperty('payload');
+    expect(update).not.toHaveProperty('status');
+  });
+
+  it('updates the existing GenericItem Core reference for a project transfer', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_id: 'project-1', reconciliation_status: 'bound' }],
+    });
+    state.updateContent.mockResolvedValue('content-1');
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      title: 'Projekt',
+      payload: { body: 'Vollständiger Inhalt' },
+      status: 'published',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    });
+
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = $3'), [
+      'tenant-1', 'mainserver', 'GenericItem', 'project-1',
+    ]);
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({
+      contentId: 'content-1',
+      confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
+      preserveExistingContentState: true,
+    }));
   });
 
   it('does not attribute a newer provider payload to a deferred transfer', async () => {

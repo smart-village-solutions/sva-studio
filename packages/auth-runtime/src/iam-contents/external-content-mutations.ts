@@ -58,6 +58,8 @@ const updateExistingContent = async (
   input: SuccessfulExternalContentMutation,
   contentId: string
 ): Promise<string> => {
+  const preserveExistingContentState =
+    Boolean(input.ownershipPrincipal) || input.preserveExistingContentState === true;
   await updateExternalContentCore({
     instanceId: input.instanceId,
     actorAccountId: input.actorAccountId,
@@ -65,8 +67,8 @@ const updateExistingContent = async (
     mutationRef: input.mutationRef,
     contentId,
     confirmedExternalOwner: input.ownershipPrincipal,
-    preserveExistingContentState: input.preserveExistingContentState,
-    ...(input.preserveExistingContentState
+    preserveExistingContentState,
+    ...(preserveExistingContentState
       ? {}
       : {
           title: input.title,
@@ -157,14 +159,16 @@ const createBoundContent = async (
 export const recordSuccessfulExternalContentMutation = async (
   input: SuccessfulExternalContentMutation
 ): Promise<string> => {
-  const existingReference = await loadExternalContentReferenceBySourceEntity(input);
-  if (existingReference) return updateExistingContent(input, existingReference.contentId);
-  if (input.preserveExistingContentState) {
+  const mutation =
+    input.contentType === 'projects.project' ? { ...input, sourceEntityType: 'GenericItem' } : input;
+  const existingReference = await loadExternalContentReferenceBySourceEntity(mutation);
+  if (existingReference) return updateExistingContent(mutation, existingReference.contentId);
+  if (mutation.preserveExistingContentState) {
     throw new Error('external_content_core_reference_required_for_owner_only_replay');
   }
 
-  const resolved = await createBoundContent(input);
-  return resolved.created ? resolved.contentId : updateExistingContent(input, resolved.contentId);
+  const resolved = await createBoundContent(mutation);
+  return resolved.created ? resolved.contentId : updateExistingContent(mutation, resolved.contentId);
 };
 
 export const recordSuccessfulExternalContentDeletion = async (

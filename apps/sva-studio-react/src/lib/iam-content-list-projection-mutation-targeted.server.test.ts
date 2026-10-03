@@ -341,7 +341,6 @@ describe('targeted content projection mutations', () => {
       actorDisplayName: 'Ausführende Person',
       mutationRef: 'transfer-1',
       ownershipPrincipal: { type: 'account', id: 'account-target' },
-      preserveExistingContentState: true,
       operation: 'update',
       entityId: 'poi-transfer-1',
     });
@@ -361,7 +360,6 @@ describe('targeted content projection mutations', () => {
         authorDisplayName: 'mainserver',
         mutationRef: 'transfer-1',
         ownershipPrincipal: { type: 'account', id: 'account-target' },
-        preserveExistingContentState: true,
       })
     );
   });

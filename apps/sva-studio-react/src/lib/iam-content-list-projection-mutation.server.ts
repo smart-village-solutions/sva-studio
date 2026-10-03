@@ -117,7 +117,7 @@ const recordMutationAudit = async (
     ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
     authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
     authorDisplayName:
-      isPersonalAuthor && !target.preserveExistingContentState ? target.actorDisplayName : row.author,
+      isPersonalAuthor && !target.ownershipPrincipal ? target.actorDisplayName : row.author,
   });
 };
 

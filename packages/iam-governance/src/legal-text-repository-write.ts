@@ -1,16 +1,29 @@
+import type { IamLegalTextListItem } from '@sva/core';
+
 import type { QueryClient } from './query-client.js';
 import {
   collectUpdatedFields,
   type CreateLegalTextInput,
   deriveLegalTextId,
   loadExistingLegalTextId,
-  loadLegalTextByIdWithClient,
   normalizeTargetIds,
   resolveLegalTextUpdateState,
   type UpdateLegalTextInput,
 } from './legal-text-repository-shared.js';
 import { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 import type { LegalTextRepositoryDeps } from './legal-text-repository.js';
+
+type TargetRoleInput = {
+  instanceId: string;
+  legalTextVersionId: string;
+  targetRoleIds: readonly string[];
+};
+
+type TargetGroupInput = {
+  instanceId: string;
+  legalTextVersionId: string;
+  targetGroupIds: readonly string[];
+};
 
 const emitLegalTextCreatedActivityLog = (
   deps: LegalTextRepositoryDeps,
@@ -51,14 +64,7 @@ const emitLegalTextUpdatedActivityLog = (
     traceId: input.traceId,
   });
 
-const persistLegalTextTargetRoles = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    legalTextVersionId: string;
-    targetRoleIds: readonly string[];
-  }
-) => {
+const persistLegalTextTargetRoles = async (client: QueryClient, input: TargetRoleInput) => {
   if (input.targetRoleIds.length === 0) {
     return;
   }
@@ -81,14 +87,7 @@ ON CONFLICT (instance_id, legal_text_version_id, role_id) DO NOTHING;
   );
 };
 
-const persistLegalTextTargetGroups = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    legalTextVersionId: string;
-    targetGroupIds: readonly string[];
-  }
-) => {
+const persistLegalTextTargetGroups = async (client: QueryClient, input: TargetGroupInput) => {
   if (input.targetGroupIds.length === 0) {
     return;
   }
@@ -111,14 +110,7 @@ ON CONFLICT (instance_id, legal_text_version_id, group_id) DO NOTHING;
   );
 };
 
-const replaceLegalTextTargetRoles = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    legalTextVersionId: string;
-    targetRoleIds: readonly string[];
-  }
-) => {
+const replaceLegalTextTargetRoles = async (client: QueryClient, input: TargetRoleInput) => {
   await client.query(
     `
 DELETE FROM iam.legal_text_target_roles
@@ -131,14 +123,7 @@ WHERE instance_id = $1
   await persistLegalTextTargetRoles(client, input);
 };
 
-const replaceLegalTextTargetGroups = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    legalTextVersionId: string;
-    targetGroupIds: readonly string[];
-  }
-) => {
+const replaceLegalTextTargetGroups = async (client: QueryClient, input: TargetGroupInput) => {
   await client.query(
     `
 DELETE FROM iam.legal_text_target_groups
@@ -235,7 +220,12 @@ RETURNING id;
 
 export const updateLegalTextVersion = (
   deps: LegalTextRepositoryDeps,
-  input: UpdateLegalTextInput
+  input: UpdateLegalTextInput,
+  loadLegalTextByIdWithClient: (
+    client: QueryClient,
+    instanceId: string,
+    legalTextVersionId: string
+  ) => Promise<IamLegalTextListItem | undefined>
 ): Promise<string | undefined> =>
   deps.withInstanceScopedDb(input.instanceId, async (client) => {
     const current = await loadLegalTextByIdWithClient(

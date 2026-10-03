@@ -6,7 +6,6 @@ import {
   type CreateLegalTextInput,
   type LegalTextRow,
   mapLegalTextListItem,
-  loadLegalTextByIdWithClient,
   mapPendingLegalTextItem,
   type PendingLegalTextRow,
   type UpdateLegalTextInput,
@@ -71,6 +70,25 @@ const emitLegalTextDeletedActivityLog = (
     requestId: input.requestId,
     traceId: input.traceId,
   });
+
+const loadLegalTextByIdWithClient = async (
+  client: QueryClient,
+  instanceId: string,
+  legalTextVersionId: string
+): Promise<IamLegalTextListItem | undefined> => {
+  const result = await client.query<LegalTextRow>(
+    `${LEGAL_TEXT_SELECT}
+WHERE version.instance_id = $1
+  AND version.id = $2::uuid
+GROUP BY version.id, role_targets.role_ids, group_targets.group_ids
+LIMIT 1;
+`,
+    [instanceId, legalTextVersionId]
+  );
+
+  const row = result.rows[0];
+  return row ? mapLegalTextListItem(row) : undefined;
+};
 
 export const createLegalTextRepository = (deps: LegalTextRepositoryDeps) => ({
   loadLegalTextListItems: (instanceId: string): Promise<readonly IamLegalTextListItem[]> =>
@@ -179,7 +197,7 @@ ORDER BY version.published_at DESC NULLS LAST, version.created_at DESC;
     createLegalTextVersion(deps, input),
 
   updateLegalTextVersion: (input: UpdateLegalTextInput): Promise<string | undefined> =>
-    updateLegalTextVersion(deps, input),
+    updateLegalTextVersion(deps, input, loadLegalTextByIdWithClient),
 
   deleteLegalTextVersion: (input: DeleteLegalTextInput): Promise<string | undefined> =>
     deps.withInstanceScopedDb(input.instanceId, async (client) => {

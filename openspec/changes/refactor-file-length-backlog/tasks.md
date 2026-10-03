@@ -528,13 +528,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 12c — Audit-DB-Sink (1 Befund)
 
-- [ ] `packages/auth-runtime/src/audit-db-sink.ts` nach
+- [x] `packages/auth-runtime/src/audit-db-sink.ts` nach
       Event-Mapping, tenantgebundener Persistenz und Fehlerabbildung
       aufteilen. `audit-db-sink.test.ts` und direkte Audit-Consumer-Tests
       sichern Redaction/PII-Schutz, Tenant-Grenze, Event-Reihenfolge und
       Ausfallverhalten; Server-Runtime- und Auth-/Security-Gates prüfen.
-      Umsetzung in PR #1671; Abschluss nach Merge- und Gate-Nachweis markieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Umsetzung in PR #1671; am 03.10.2026 nach grünen Gates am HEAD
+      `2fb15b8ed179cef965f2da4289e9a54436837709` als
+      `6f8d1559ab1c2bcdb6406ad06b9a4003ca64afa2` gemergt.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1671.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       PR #1671 anlegen; Changelog-Gate vor Merge grün.

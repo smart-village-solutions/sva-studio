@@ -145,6 +145,20 @@ OpenSpec-Change und ein eigener Changelog-Eintrag. Ausgangs-HEAD ist
 `instance_id`-gebundene Account-Abfrage, `account_created` vor dem Login-Event,
 `BEGIN`/Rolle/Tenant-Setting/`COMMIT` und `ROLLBACK` samt `reasonCode`.
 
+**PR-Auftrag 12d:** Die Datei `iam-authorization/shared.ts` unter das
+320-Zeilen-Limit bringen, indem Scope-/DB-Zugriff und HTTP-Autorisierungsantwort
+in unmittelbar genutzte interne Module wandern; die bisherigen Exporte,
+Importzeit-Metriken, Cache- und Listener-Singletons sowie Tenant- und
+Permission-Semantik bleiben erhalten. Nicht-Ziele sind PR 13, neue Features,
+Berechtigungs-, DB- oder Keycloak-Semantik, neue Dependencies und Gates.
+Maximal betroffen sind `shared.ts`, seine direkten internen Module und Tests,
+tatsächlich betroffene Package- oder Architekturdokumentation, der erledigte
+`fileLines`-Policy-Eintrag, dieser OpenSpec-Change und ein eigener Changelog-
+Eintrag. Ausgangs-HEAD ist `6f8d1559ab1c2bcdb6406ad06b9a4003ca64afa2`;
+die benannte Datei hat 359 Zeilen. Separate Cyclomatic- und `publicExports`-
+Befunde bleiben bestehen, solange ihre Schwellen nicht tatsächlich erfüllt
+sind.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

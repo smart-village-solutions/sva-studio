@@ -3208,12 +3208,6 @@
       "status": "open",
       "summary": "Waste-Plugin-Komposition nach cyclomaticComplexity vereinfachen (packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-plugin-server-handlers-dispatcher",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Waste-Plugin-Komposition nach fileLines vereinfachen (packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/plugin-server-handlers/dispatcher.ts:functionLines": {
       "ticketId": "baseline-waste-ownership-1506-plugin-server-handlers-dispatcher",
       "ticketSystem": "policy-baseline",

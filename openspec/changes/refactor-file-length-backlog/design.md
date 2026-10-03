@@ -201,6 +201,23 @@ eigener Changelog-Eintrag. Ausgangs-HEAD ist
 `5bcf0b0d999f7cabc7bd511941906ab092194a09` als Merge-Commit
 `0126ed38d631bdf6762baeea8a93123242dbeed4` integriert.
 
+**PR-Auftrag 13c:** `plugin-server-handlers/dispatcher.ts` unter das
+320-Zeilen-Limit bringen, indem Routenabgleich und Coverage-Prüfung sowie
+Tenant-Autorisierung in unmittelbar genutzte interne Module getrennt werden;
+der bestehende `dispatcher.js`-Importvertrag, die Routenpriorität und alle
+Auth-/CSRF-/Fehler- und Response-Verträge bleiben erhalten. Nicht-Ziele sind
+13d–13f, Produktfeatures, Änderungen an API- oder Plugin-Berechtigungssemantik,
+neue Dependencies und Gates. Maximal betroffen sind die benannte Datei,
+unmittelbar benötigte interne Module und Tests/Consumer, tatsächlich betroffene
+Package-/arc42-Dokumentation, nur wirklich erledigte Complexity-Findings,
+dieser OpenSpec-Change und ein eigener Changelog-Eintrag. Ausgangs-HEAD ist
+`59c90bcac7d05ed6f2b1e3d0d9750ac01511c709`; `dispatcher.ts` hat 457
+Zeilen. Kritische Invarianten sind statische Routenpriorität, Methodenauswahl
+und `Allow`-Sortierung, ungültiges URL-Decoding ohne Match, Domain-405-Format,
+Coverage-Kollisionen, Service-Ausführung vor User-Auth, Plugin-Namespace,
+Tenant-Bindung, Permission-/CSRF-Fail-Closed und Domain-spezifische
+Autorisierungsfehler.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

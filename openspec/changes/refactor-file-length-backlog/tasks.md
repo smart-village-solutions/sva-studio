@@ -481,10 +481,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       `legal-text-mutation-handlers.ts` nach Persistenz/Zielgruppen und
       Request-/Idempotenzgrenze aufteilen. Repository-, Mutation- und
       HTTP-Tests sichern Tenant-Scope, Rollen-/Gruppenziele, Sanitizing,
-      Konflikte, Audit und Fehlerabbildung.
+      Konflikte, Audit und Fehlerabbildung. Umsetzung in PR #1668;
+      Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11f anlegen;
+      `docs/changelog/entries/pr-1668.json` mit
+      passender `prNumber` und Nutzertext in PR #1668 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 12 — Auth-Routen, Session und Audit (4 Befunde)

@@ -398,6 +398,8 @@ describe('iam content repository helpers', () => {
       publishedAt: '2026-05-03T08:00:00.000Z',
       publishFrom: '2026-05-02T08:00:00.000Z',
       publishUntil: '2026-05-04T08:00:00.000Z',
+      ownerUserId: null,
+      ownerOrganizationId: '00000000-0000-0000-0000-000000000002',
     });
     await updateContentRevisionRefs(client, 'instance-1', 'content-1', 'history-2');
 
@@ -420,8 +422,12 @@ describe('iam content repository helpers', () => {
         '00000000-0000-0000-0000-000000000001',
       ])
     );
-    expect(client.query.mock.calls[0]?.[0]).not.toContain('owner_user_id');
-    expect(client.query.mock.calls[0]?.[0]).not.toContain('owner_organization_id');
+    expect(client.query.mock.calls[0]?.[0]).toContain('owner_user_id = CASE WHEN $14::boolean');
+    expect(client.query.mock.calls[0]?.[1]?.slice(-3)).toEqual([
+      false,
+      null,
+      '00000000-0000-0000-0000-000000000002',
+    ]);
     expect(client.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('SET history_ref = $3, current_revision_ref = $3'),

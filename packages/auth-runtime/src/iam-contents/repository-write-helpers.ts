@@ -81,6 +81,8 @@ export const updateContentRow = async (
     readonly publishedAt: string | null;
     readonly publishFrom: string | null;
     readonly publishUntil: string | null;
+    readonly ownerUserId: string | null;
+    readonly ownerOrganizationId: string | null;
   }
 ): Promise<void> => {
   await client.query(
@@ -88,6 +90,8 @@ export const updateContentRow = async (
 UPDATE iam.contents
 SET
   organization_id = $3::uuid,
+  owner_user_id = CASE WHEN $14::boolean THEN $15::uuid ELSE owner_user_id END,
+  owner_organization_id = CASE WHEN $14::boolean THEN $16::uuid ELSE owner_organization_id END,
   author_display_mode = $4,
   author_display_name = $5,
   title = $6,
@@ -116,6 +120,9 @@ WHERE instance_id = $1
       next.publishFrom,
       next.publishUntil,
       input.actorAccountId,
+      Boolean(input.confirmedExternalOwner),
+      next.ownerUserId,
+      next.ownerOrganizationId,
     ]
   );
 };

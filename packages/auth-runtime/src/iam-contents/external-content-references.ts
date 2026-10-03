@@ -1,9 +1,4 @@
-import type {
-  ContentJsonValue,
-  IamContentAuthorDisplayMode,
-  IamContentOwnerPrincipal,
-  IamContentStatus,
-} from '@sva/core';
+import type { ContentJsonValue, IamContentAuthorDisplayMode, IamContentStatus } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 
@@ -15,7 +10,7 @@ import {
   updateContentRevisionRefs,
   validatePublicationWindow,
 } from './repository-write-helpers.js';
-import type { CreateContentInput } from './repository-types.js';
+import type { CreateContentInput, UpdateContentInput } from './repository-types.js';
 
 export type ExternalContentReconciliationStatus = 'pending' | 'bound' | 'reconciliation_required' | 'failed';
 
@@ -68,7 +63,6 @@ SELECT
   last_error_code
 FROM iam.external_content_references
 `;
-
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 export const insertExternalContentReference = async (
@@ -310,7 +304,7 @@ export const updateExternalContentCore = async (input: {
   readonly traceId?: string;
   readonly mutationRef?: string;
   readonly contentId: string;
-  readonly confirmedExternalOwner?: IamContentOwnerPrincipal;
+  readonly confirmedExternalOwner?: UpdateContentInput['confirmedExternalOwner'];
   readonly title: string;
   readonly payload: ContentJsonValue;
   readonly status: IamContentStatus;

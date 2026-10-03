@@ -159,15 +159,9 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       publishedAt: nextPublishedAt,
       publishFrom: nextPublishFrom,
       publishUntil: nextPublishUntil,
+      ownerUserId: nextOwnerUserId,
+      ownerOrganizationId: nextOwnerOrganizationId,
     });
-    if (input.confirmedExternalOwner) {
-      await client.query(
-        `UPDATE iam.contents
-         SET owner_user_id = $3::uuid, owner_organization_id = $4::uuid
-         WHERE instance_id = $1 AND id = $2::uuid;`,
-        [input.instanceId, input.contentId, nextOwnerUserId, nextOwnerOrganizationId]
-      );
-    }
     const { activityEventType, historyAction, historySummary } = resolveContentMutationMetadata(
       current.status,
       nextStatus

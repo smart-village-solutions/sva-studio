@@ -46,6 +46,20 @@ const reconciledAuthorDisplay = (
   };
 };
 
+const confirmedTransferOwner = (
+  actionId: string,
+  principalType: 'organization' | 'user',
+  principalId: string
+) =>
+  actionId === 'content.transferOwnership'
+    ? {
+        ownershipPrincipal: {
+          type: principalType === 'user' ? ('account' as const) : ('organization' as const),
+          id: principalId,
+        },
+      }
+    : {};
+
 const loadDeferredMainserverMutationRows = async (input: {
   readonly instanceId: string;
   readonly actingPrincipalType: 'organization' | 'user';
@@ -156,17 +170,7 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       sourceEntityType: row.sourceEntityType,
       sourceEntityId: row.sourceEntityId,
       contentType: row.contentType,
-      ...(entry.action_id === 'content.transferOwnership'
-        ? {
-            ownershipPrincipal: {
-              type:
-                input.actingPrincipalType === 'user'
-                  ? ('account' as const)
-                  : ('organization' as const),
-              id: input.actingPrincipalId,
-            },
-          }
-        : {}),
+      ...confirmedTransferOwner(entry.action_id, input.actingPrincipalType, input.actingPrincipalId),
       ...(row.organizationId ? { organizationId: row.organizationId } : {}),
       title: row.title,
       payload: row.payload,

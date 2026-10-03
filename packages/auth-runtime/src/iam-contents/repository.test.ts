@@ -837,9 +837,21 @@ describe('iam content repository', () => {
       })
     );
 
-    expect(state.queryMock).toHaveBeenCalledWith(
-      expect.stringContaining('SET owner_user_id = $3::uuid, owner_organization_id = $4::uuid'),
-      ['instance-1', 'content-1', null, '22222222-2222-4222-8222-222222222222']
+    expect(state.updateContentRowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.queryMock }),
+      expect.objectContaining({
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      }),
+      expect.objectContaining({
+        ownerUserId: null,
+        ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+    expect(state.updateContentRowMock.mock.invocationCallOrder[0]).toBeLessThan(
+      state.insertContentHistoryMock.mock.invocationCallOrder[0] ?? Infinity
     );
     expect(state.insertContentHistoryMock).toHaveBeenCalledWith(
       expect.objectContaining({ query: state.queryMock }),

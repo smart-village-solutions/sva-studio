@@ -1078,23 +1078,11 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-governance/src/legal-text-mutation-handlers.ts)"
     },
-    "iam-governance:packages/iam-governance/src/legal-text-mutation-handlers.ts:fileLines": {
-      "ticketId": "baseline-iam-governance-src-legal-text-mutation-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/legal-text-mutation-handlers.ts)"
-    },
     "iam-governance:packages/iam-governance/src/legal-text-mutation-handlers.ts:functionLines": {
       "ticketId": "baseline-iam-governance-src-legal-text-mutation-handlers-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/legal-text-mutation-handlers.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/legal-text-repository.ts:fileLines": {
-      "ticketId": "baseline-iam-governance-src-legal-text-repository-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/legal-text-repository.ts)"
     },
     "iam-governance:packages/iam-governance/src/legal-text-repository.ts:functionLines": {
       "ticketId": "baseline-iam-governance-src-legal-text-repository-ts",

@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import type { IamLegalTextListItem, IamPendingLegalTextItem } from '@sva/core';
 
+import type { QueryClient } from './query-client.js';
+
 import { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 
 const mapLegalTextTargets = (
@@ -288,3 +290,22 @@ LEFT JOIN LATERAL (
     AND target.legal_text_version_id = version.id
 ) group_targets ON true
 `;
+
+export const loadLegalTextByIdWithClient = async (
+  client: QueryClient,
+  instanceId: string,
+  legalTextVersionId: string
+): Promise<IamLegalTextListItem | undefined> => {
+  const result = await client.query<LegalTextRow>(
+    `${LEGAL_TEXT_SELECT}
+WHERE version.instance_id = $1
+  AND version.id = $2::uuid
+GROUP BY version.id, role_targets.role_ids, group_targets.group_ids
+LIMIT 1;
+`,
+    [instanceId, legalTextVersionId]
+  );
+
+  const row = result.rows[0];
+  return row ? mapLegalTextListItem(row) : undefined;
+};

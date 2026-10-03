@@ -1828,12 +1828,6 @@
       "status": "open",
       "summary": "Calendar-Panels-Zweiglogik in kleinere Status- und Panel-Bausteine zerlegen (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Calendar-Panels-Datei in kleinere Presentational-Module aufteilen (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
       "ticketSystem": "backlog",
@@ -1875,12 +1869,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Index-Route in kleinere Status-, Loader- und Page-Entscheidungen zerlegen (apps/public-waste-calendar-web/src/routes/index.tsx)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Index-Route-Datei in kleinere Screen- und Container-Module aufteilen (apps/public-waste-calendar-web/src/routes/index.tsx)"
     },
     "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",

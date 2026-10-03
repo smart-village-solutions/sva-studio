@@ -1,267 +1,34 @@
 import React from 'react';
-
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
-import { formatDateOnlyGerman } from '../lib/public-waste-date-utils.js';
 import type { FilteredPublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
-import { PublicWasteRichText } from './public-waste-rich-text.js';
+import {
+  buildMonthCells,
+  groupEntriesByDay,
+  partitionListEntries,
+} from './public-waste-calendar-panel-data.js';
+import {
+  addMonths,
+  addYears,
+  clampMonth,
+  compareMonths,
+  startOfMonth,
+  startOfYear,
+  toDate,
+  toMonthKey,
+} from './public-waste-calendar-panel-dates.js';
+import {
+  PublicWasteMonthPanel,
+  PublicWasteYearPanel,
+} from './public-waste-calendar-grid-panels.js';
+import { PublicWasteListPanel } from './public-waste-calendar-list-panel.js';
 
-const monthYearFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
-const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long' });
-const weekdayFormatter = new Intl.DateTimeFormat('de-DE', { weekday: 'short' });
-const yearFormatter = new Intl.DateTimeFormat('de-DE', { year: 'numeric' });
-const dayFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit' });
-const fullDateFormatter = new Intl.DateTimeFormat('de-DE', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
-const weekdayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
-
-const toDate = (value: string): Date => new Date(`${value}T00:00:00`);
-
-const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
-const toDateKey = (value: Date): string =>
-  `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
-
-const toMonthKey = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
-};
-
-const startOfMonth = (value: Date): Date => new Date(value.getFullYear(), value.getMonth(), 1);
-const startOfYear = (value: Date): Date => new Date(value.getFullYear(), 0, 1);
-
-const addMonths = (value: Date, amount: number): Date => new Date(value.getFullYear(), value.getMonth() + amount, 1);
-
-const addYears = (value: Date, amount: number): Date => new Date(value.getFullYear() + amount, value.getMonth(), 1);
-
-const isSameMonth = (left: Date, right: Date): boolean =>
-  left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
-
-const getWeekdayOffset = (value: Date): number => (value.getDay() + 6) % 7;
-
-const groupEntriesByMonth = (entries: readonly PublicWasteCalendarEntry[]) =>
-  Array.from(
-    entries.reduce<Map<string, PublicWasteCalendarEntry[]>>((groups, entry) => {
-      const monthKey = entry.date.slice(0, 7);
-      const bucket = groups.get(monthKey);
-      if (bucket) {
-        bucket.push(entry);
-      } else {
-        groups.set(monthKey, [entry]);
-      }
-      return groups;
-    }, new Map()).entries()
-  );
-
-const partitionListEntries = (
-  entries: readonly PublicWasteCalendarEntry[],
-  nextPickupDate: string | null
-): Readonly<{
-  upcomingEntries: readonly PublicWasteCalendarEntry[];
-  pastEntries: readonly PublicWasteCalendarEntry[];
-}> => {
-  if (!nextPickupDate) {
-    return { upcomingEntries: [], pastEntries: entries };
-  }
-
-  return entries.reduce<{
-    upcomingEntries: PublicWasteCalendarEntry[];
-    pastEntries: PublicWasteCalendarEntry[];
-  }>(
-    (result, entry) => {
-      if (entry.date >= nextPickupDate) {
-        result.upcomingEntries.push(entry);
-      } else {
-        result.pastEntries.push(entry);
-      }
-      return result;
-    },
-    { upcomingEntries: [], pastEntries: [] }
-  );
-};
-
-const groupEntriesByDay = (entries: readonly PublicWasteCalendarEntry[]) =>
-  Array.from(
-    entries.reduce<Map<string, PublicWasteCalendarEntry[]>>((groups, entry) => {
-      const bucket = groups.get(entry.date);
-      if (bucket) {
-        bucket.push(entry);
-      } else {
-        groups.set(entry.date, [entry]);
-      }
-      return groups;
-    }, new Map()).entries()
-  );
-
-const compareMonths = (left: Date, right: Date): number =>
-  left.getFullYear() - right.getFullYear() || left.getMonth() - right.getMonth();
-
-const clampMonth = (value: Date, minMonth: Date, maxMonth: Date): Date => {
-  if (compareMonths(value, minMonth) < 0) {
-    return minMonth;
-  }
-  if (compareMonths(value, maxMonth) > 0) {
-    return maxMonth;
-  }
-  return value;
-};
-
-const renderPickupDot = (entry: PublicWasteCalendarEntry) => (
-  <span
-    className="pickup-dot"
-    aria-hidden="true"
-    style={entry.fractionColor ? { backgroundColor: entry.fractionColor } : undefined}
-  />
-);
-
-const renderPickupEntryButton = (
-  entry: PublicWasteCalendarEntry,
+export function PublicWasteCalendarPanels(
   props: Readonly<{
-    className: string;
+    model: FilteredPublicWasteCalendarViewModel;
     onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
-    children: React.ReactNode;
+    onVisibleYearChange?: (year: number) => void;
   }>
-) => (
-  <button
-    key={entry.id}
-    type="button"
-    className={props.className}
-    aria-label={`Termin ${entry.fractionLabel} am ${formatDateOnlyGerman(entry.date)}`}
-    onClick={() => props.onActivateEntry(entry)}
-  >
-    {props.children}
-  </button>
-);
-
-const renderListMonthGroups = (input: Readonly<{
-  entries: readonly PublicWasteCalendarEntry[];
-  headingIdPrefix: string;
-}>) =>
-  groupEntriesByMonth(input.entries).map(([monthKey, monthEntries]) => (
-    <section
-      key={`${input.headingIdPrefix}-${monthKey}`}
-      className="pickup-month-group"
-      aria-labelledby={`${input.headingIdPrefix}-${monthKey}`}
-    >
-      <h3 id={`${input.headingIdPrefix}-${monthKey}`} className="pickup-month-title">
-        {capitalize(monthYearFormatter.format(toDate(`${monthKey}-01`)))}
-      </h3>
-      <ul className="pickup-list">
-        {groupEntriesByDay(monthEntries).map(([date, dayEntries]) => {
-          const dayDate = toDate(date);
-          return (
-            <li key={date} className="pickup-item">
-              <div className="pickup-row">
-                <div className="pickup-date">
-                  <span className="pickup-weekday">{capitalize(weekdayFormatter.format(dayDate))}</span>
-                  <span className="pickup-day">{date.slice(8, 10)}</span>
-                </div>
-                <div className="pickup-entry-group">
-                  {dayEntries.map((entry) => (
-                    <div key={entry.id} className="pickup-entry">
-                      {renderPickupDot(entry)}
-                      <div className="pickup-copy">
-                        <strong className="pickup-label">{entry.fractionLabel}</strong>
-                        {entry.tourDescription ? (
-                          <PublicWasteRichText
-                            className="pickup-description"
-                            html={entry.tourDescription}
-                          />
-                        ) : null}
-                        {entry.note ? (
-                          <PublicWasteRichText className="pickup-description" html={entry.note} />
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  ));
-
-const buildMonthCells = (
-  visibleMonth: Date,
-  entriesByDate: ReadonlyMap<string, readonly PublicWasteCalendarEntry[]>
-): readonly {
-  readonly date: Date;
-  readonly dateKey: string;
-  readonly inMonth: boolean;
-  readonly entries: readonly PublicWasteCalendarEntry[];
-}[] => {
-  const monthStart = startOfMonth(visibleMonth);
-  const calendarStart = new Date(monthStart);
-  calendarStart.setDate(monthStart.getDate() - getWeekdayOffset(monthStart));
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const cellDate = new Date(calendarStart);
-    cellDate.setDate(calendarStart.getDate() + index);
-    const dateKey = toDateKey(cellDate);
-
-    return {
-      date: cellDate,
-      dateKey,
-      inMonth: isSameMonth(cellDate, visibleMonth),
-      entries: entriesByDate.get(dateKey) ?? [],
-    };
-  });
-};
-
-const buildYearMonthCells = (
-  visibleMonth: Date,
-  entriesByDate: ReadonlyMap<string, readonly PublicWasteCalendarEntry[]>
-): readonly (
-  | {
-      readonly kind: 'day';
-      readonly date: Date;
-      readonly dateKey: string;
-      readonly entries: readonly PublicWasteCalendarEntry[];
-    }
-  | {
-      readonly kind: 'placeholder';
-      readonly id: string;
-    }
-)[] => {
-  const monthStart = startOfMonth(visibleMonth);
-  const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
-  const leadingPlaceholders = getWeekdayOffset(monthStart);
-  const dayCells = Array.from({ length: daysInMonth }, (_, index) => {
-    const cellDate = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), index + 1);
-    const dateKey = toDateKey(cellDate);
-
-    return {
-      kind: 'day' as const,
-      date: cellDate,
-      dateKey,
-      entries: entriesByDate.get(dateKey) ?? [],
-    };
-  });
-  const totalCells = leadingPlaceholders + dayCells.length;
-  const trailingPlaceholders = (7 - (totalCells % 7 || 7)) % 7;
-
-  return [
-    ...Array.from({ length: leadingPlaceholders }, (_, index) => ({
-      kind: 'placeholder' as const,
-      id: `leading-${toMonthKey(visibleMonth)}-${index}`,
-    })),
-    ...dayCells,
-    ...Array.from({ length: trailingPlaceholders }, (_, index) => ({
-      kind: 'placeholder' as const,
-      id: `trailing-${toMonthKey(visibleMonth)}-${index}`,
-    })),
-  ];
-};
-
-export function PublicWasteCalendarPanels(props: Readonly<{
-  model: FilteredPublicWasteCalendarViewModel;
-  onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
-  onVisibleYearChange?: (year: number) => void;
-}>) {
+) {
   const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
   const tabButtonRefs = React.useRef(new Map<'list' | 'month' | 'year', HTMLButtonElement>());
   const today = React.useRef(new Date()).current;
@@ -294,7 +61,10 @@ export function PublicWasteCalendarPanels(props: Readonly<{
     () => partitionListEntries(props.model.listEntries, props.model.nextPickupDate),
     [props.model.listEntries, props.model.nextPickupDate]
   );
-  const monthCells = React.useMemo(() => buildMonthCells(visibleMonth, entriesByDate), [entriesByDate, visibleMonth]);
+  const monthCells = React.useMemo(
+    () => buildMonthCells(visibleMonth, entriesByDate),
+    [entriesByDate, visibleMonth]
+  );
   const visibleYearMonths = React.useMemo(
     () => Array.from({ length: 12 }, (_, index) => new Date(visibleYear, index, 1)),
     [visibleYear]
@@ -398,145 +168,28 @@ export function PublicWasteCalendarPanels(props: Readonly<{
         </button>
       </div>
       {activeTab === 'list' ? (
-        <div
-          id="public-waste-panel-list"
-          role="tabpanel"
-          aria-labelledby="public-waste-tab-list"
-          className="pickup-months"
-        >
-          {renderListMonthGroups({
-            entries: upcomingEntries,
-            headingIdPrefix: 'upcoming-month',
-          })}
-          {pastEntries.length > 0 ? (
-            <section className="pickup-past-group" aria-labelledby="past-pickups-heading">
-              <h3 id="past-pickups-heading" className="pickup-month-title">
-                Vergangene Termine
-              </h3>
-              {renderListMonthGroups({
-                entries: pastEntries,
-                headingIdPrefix: 'past-month',
-              })}
-            </section>
-          ) : null}
-        </div>
+        <PublicWasteListPanel upcomingEntries={upcomingEntries} pastEntries={pastEntries} />
       ) : activeTab === 'month' ? (
-        <section
-          id="public-waste-panel-month"
-          role="tabpanel"
-          aria-labelledby="public-waste-tab-month"
-          className="calendar-view"
-        >
-          <div className="calendar-view-header">
-            <button
-              type="button"
-              className="calendar-nav-button"
-              onClick={() => setVisibleMonth((current) => addMonths(current, -1))}
-              disabled={!canGoToPreviousMonth}
-            >
-              Vorheriger Monat
-            </button>
-            <h3 className="pickup-month-title">{capitalize(monthYearFormatter.format(visibleMonth))}</h3>
-            <button
-              type="button"
-              className="calendar-nav-button"
-              onClick={() => setVisibleMonth((current) => addMonths(current, 1))}
-              disabled={!canGoToNextMonth}
-            >
-              Nächster Monat
-            </button>
-          </div>
-          <div className="month-calendar-grid" aria-label={capitalize(monthYearFormatter.format(visibleMonth))}>
-            {weekdayLabels.map((weekday) => (
-              <div key={weekday} className="month-calendar-weekday">
-                {weekday}
-              </div>
-            ))}
-            {monthCells.map((cell) => (
-              <div
-                key={cell.dateKey}
-                className={`month-calendar-cell${cell.inMonth ? '' : ' is-outside-month'}${cell.entries.length > 0 ? ' has-entries' : ''}`}
-              >
-                <span className="month-calendar-day">{dayFormatter.format(cell.date)}</span>
-                <div className="month-calendar-entry-list">
-                  {cell.entries.map((entry) =>
-                    renderPickupEntryButton(entry, {
-                      className: 'month-calendar-entry',
-                      onActivateEntry: props.onActivateEntry,
-                      children: renderPickupDot(entry),
-                    })
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <PublicWasteMonthPanel
+          visibleMonth={visibleMonth}
+          monthCells={monthCells}
+          canGoToPreviousMonth={canGoToPreviousMonth}
+          canGoToNextMonth={canGoToNextMonth}
+          onPreviousMonth={() => setVisibleMonth((current) => addMonths(current, -1))}
+          onNextMonth={() => setVisibleMonth((current) => addMonths(current, 1))}
+          onActivateEntry={props.onActivateEntry}
+        />
       ) : (
-        <section
-          id="public-waste-panel-year"
-          role="tabpanel"
-          aria-labelledby="public-waste-tab-year"
-          className="calendar-view"
-        >
-          <div className="calendar-view-header">
-            <button
-              type="button"
-              className="calendar-nav-button"
-              onClick={() => setVisibleYear((current) => current - 1)}
-              disabled={!canGoToPreviousYear}
-            >
-              Vorheriges Jahr
-            </button>
-            <h3 className="pickup-month-title">{yearFormatter.format(new Date(visibleYear, 0, 1))}</h3>
-            <button
-              type="button"
-              className="calendar-nav-button"
-              onClick={() => setVisibleYear((current) => current + 1)}
-              disabled={!canGoToNextYear}
-            >
-              Nächstes Jahr
-            </button>
-          </div>
-          <div className="year-calendar-grid">
-            {visibleYearMonths.map((monthDate) => {
-              const cells = buildYearMonthCells(monthDate, entriesByDate);
-
-              return (
-                <section key={toMonthKey(monthDate)} className="year-calendar-month">
-                  <h4 className="year-calendar-month-title">{capitalize(monthFormatter.format(monthDate))}</h4>
-                  <div className="year-calendar-month-grid">
-                    {weekdayLabels.map((weekday) => (
-                      <div key={`${toMonthKey(monthDate)}-${weekday}`} className="year-calendar-weekday">
-                        {weekday}
-                      </div>
-                    ))}
-                    {cells.map((cell) =>
-                      cell.kind === 'placeholder' ? (
-                        <div key={cell.id} className="year-calendar-day-cell is-placeholder" aria-hidden="true" />
-                      ) : (
-                        <div
-                          key={cell.dateKey}
-                          className={`year-calendar-day-cell${cell.entries.length > 0 ? ' has-entries' : ''}`}
-                        >
-                          <span className="year-calendar-day">{cell.date.getDate()}</span>
-                          <div className="year-calendar-entry-list">
-                            {cell.entries.map((entry) =>
-                              renderPickupEntryButton(entry, {
-                                className: 'year-calendar-entry',
-                                onActivateEntry: props.onActivateEntry,
-                                children: renderPickupDot(entry),
-                              })
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        </section>
+        <PublicWasteYearPanel
+          visibleYear={visibleYear}
+          visibleYearMonths={visibleYearMonths}
+          entriesByDate={entriesByDate}
+          canGoToPreviousYear={canGoToPreviousYear}
+          canGoToNextYear={canGoToNextYear}
+          onPreviousYear={() => setVisibleYear((current) => current - 1)}
+          onNextYear={() => setVisibleYear((current) => current + 1)}
+          onActivateEntry={props.onActivateEntry}
+        />
       )}
     </section>
   );

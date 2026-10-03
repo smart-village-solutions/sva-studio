@@ -1204,7 +1204,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 29 — Öffentliche Waste-Daten und Reminder (6 Befunde)
 
-- [ ] In `apps/public-waste-calendar-web/src/`
+- [x] In `apps/public-waste-calendar-web/src/`
       `server/public-waste-email-reminders.server.ts`,
       `server/public-waste-runtime.ts`, `lib/public-waste-endpoints.server.ts`,
       `lib/public-waste-repository.server.ts`,
@@ -1221,7 +1221,13 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       `fileLines`-Befunde bei unverändertem Datenfilter, Transaktionsablauf,
       Termin- und Antwortvertrag.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Merge-Nachweis: PR #1718, geprüfter HEAD
+      `4866df5845f5269b81b41f90cb18349293f73d30`, Merge-Commit
+      `213116c43d16816d5661d00bfd9098f6d1483041` am 03.10.2026.
+      Die sechs `fileLines`-Befunde wurden entfernt; die finalen
+      GitHub-Gates waren grün und es gab keine offenen Review-Threads.
+
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1718.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
@@ -1231,6 +1237,13 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 - [ ] In `apps/public-waste-calendar-web/src/`
       `components/public-waste-calendar-panels.tsx` und `routes/index.tsx`
       bereinigen. Anzeige, Navigation und Barrierefreiheit gezielt testen.
+
+      Ausgangs-HEAD `213116c43d16816d5661d00bfd9098f6d1483041`:
+      543/452 Zeilen (Panels/Route). Kalender-Zellen und Datumsgrenzen,
+      Listen- und Grid-Ansichten sowie Regionsbindung und Auswahlauflösung
+      in direkt benutzte private Module derselben App schneiden. Ziel sind
+      zwei beseitigte `fileLines`-Befunde bei unverändertem Tab-Fokus,
+      Termin-Dialog, Cookie-Restore/Reset und Fail-Closed-Fehlerverhalten.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit

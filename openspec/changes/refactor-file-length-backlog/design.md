@@ -646,6 +646,19 @@ und Subscription-Limit sowie die Fehlerfälle. Type-, Unit-, Lint-, Build-,
 Server-Runtime- und Complexity-Gates prüfen die sechs `fileLines`-Befunde
 und die importierbaren Serverpfade.
 
+### PR 30: Öffentliche Waste-Oberfläche
+
+Die Index-Route behält ihre öffentlichen Exporte und den React-Seitenzustand;
+private Module derselben App lösen Regionsbindung, gespeicherte Auswahl und
+Auswahlschritte auf. Die Kalender-Panels behalten Tab-Zustand,
+Tastatursteuerung und Jahresmeldung; private Presentational-Module zeichnen
+Liste, Monats- und Jahresraster aus den bisherigen Datums- und Zellregeln.
+Bestehende Route- und Panel-Tests prüfen Fail-Closed bei URL-Regionen,
+Cookie-Restore und Reset, Tab-Fokus, Monats-/Jahresnavigation,
+Terminaktivierung und HTML-Sanitization. Type-, Unit-, A11y-, Lint-,
+Build- und Complexity-Gates prüfen die beiden `fileLines`-Befunde und die
+unveränderte öffentliche Oberfläche.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

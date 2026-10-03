@@ -197,7 +197,10 @@ export const recordSuccessfulExternalContentDeletion = async (
     sourceEntityId: string;
   }>
 ): Promise<boolean> => {
-  const reference = await loadExternalContentReferenceBySourceEntity(input);
+  const reference = await loadExternalContentReferenceBySourceEntity({
+    ...input,
+    exactSourceEntityType: true,
+  });
   if (!reference) return false;
 
   return withInstanceScopedDb(input.instanceId, async (client) => {

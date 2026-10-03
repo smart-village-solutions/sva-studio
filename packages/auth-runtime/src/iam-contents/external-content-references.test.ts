@@ -548,6 +548,42 @@ describe('external content references', () => {
     );
   });
 
+  it('archives both canonical and legacy project Cores when both references exist', async () => {
+    state.query
+      .mockResolvedValueOnce({
+        rows: [{ ...row, content_id: 'canonical-core', source_entity_id: 'project-1' }],
+      })
+      .mockResolvedValueOnce({ rows: [{ payload_json: {}, status: 'published' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ ...row, content_id: 'legacy-core', source_entity_type: 'projects.project', source_entity_id: 'project-1' }],
+      })
+      .mockResolvedValueOnce({ rows: [{ payload_json: {}, status: 'published' }] })
+      .mockResolvedValue({ rows: [] });
+
+    for (const sourceEntityType of ['GenericItem', 'projects.project']) {
+      await expect(recordSuccessfulExternalContentDeletion({
+        instanceId: 'tenant-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'project-delete-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType,
+        sourceEntityId: 'project-1',
+      })).resolves.toBe(true);
+    }
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('source_entity_type = ANY($3::text[])'),
+      ['tenant-1', 'mainserver', ['projects.project'], 'project-1']
+    );
+    expect(state.insertHistory.mock.calls.map((call) => call[1].contentId)).toEqual([
+      'canonical-core', 'legacy-core',
+    ]);
+    expect(state.updateRevision).toHaveBeenCalledTimes(2);
+  });
+
   it('creates and binds a local core for the first successful provider mutation', async () => {
     state.query
       .mockResolvedValueOnce({ rows: [] })

@@ -13,6 +13,7 @@ type DeferredMutationRow = Readonly<{
   action_id: string;
   content_type: string;
   content_id: string;
+  provider_content_id: string;
   actor_account_id: string;
   keycloak_subject: string;
   display_name_ciphertext: string | null;
@@ -116,6 +117,8 @@ SELECT
   journal.action_id,
   journal.content_type,
   journal.content_id,
+  CASE WHEN journal.action_id = 'content.transferOwnership'
+    THEN journal.preimage->>'id' ELSE journal.content_id END AS provider_content_id,
   journal.actor_account_id::text,
   accounts.keycloak_subject,
   accounts.display_name_ciphertext,
@@ -148,8 +151,14 @@ WHERE journal.instance_id = $1
       AND journal.preimage->>'targetCredentialFingerprint' = $5
     )
   )
-  AND journal.content_id = ANY($6::text[])
-  AND journal.content_type = ANY($7::text[])
+  AND (
+    (journal.action_id <> 'content.transferOwnership'
+      AND journal.content_id = ANY($6::text[])
+      AND journal.content_type = ANY($7::text[]))
+    OR (journal.action_id = 'content.transferOwnership'
+      AND journal.preimage->>'id' = ANY($6::text[])
+      AND journal.content_type = ANY($8::text[]))
+  )
 ORDER BY journal.updated_at ASC;
       `,
       [
@@ -160,6 +169,7 @@ ORDER BY journal.updated_at ASC;
         input.credentialFingerprint,
         [...new Set(input.rows.map((row) => row.sourceEntityId))],
         [...new Set(input.rows.map((row) => row.journalContentType ?? row.sourceEntityType))],
+        [...new Set(input.rows.map((row) => row.contentType))],
       ]
     );
     return result.rows;
@@ -175,16 +185,16 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
 }): Promise<number> => {
   if (input.rows.length === 0) return 0;
   const rowsByKey = new Map(
-    input.rows.map(
-      (row) =>
-        [rowKey(row.journalContentType ?? row.sourceEntityType, row.sourceEntityId), row] as const
-    )
+    input.rows.flatMap((row) => [
+      [rowKey(row.journalContentType ?? row.sourceEntityType, row.sourceEntityId), row] as const,
+      [rowKey(row.contentType, row.sourceEntityId), row] as const,
+    ])
   );
   const deferred = await loadDeferredMainserverMutationRows(input);
 
   let reconciled = 0;
   for (const entry of deferred) {
-    const row = rowsByKey.get(rowKey(entry.content_type, entry.content_id));
+    const row = rowsByKey.get(rowKey(entry.content_type, entry.provider_content_id));
     const actorDisplayName = revealField(
       entry.display_name_ciphertext,
       `iam.accounts.display_name:${entry.keycloak_subject}`

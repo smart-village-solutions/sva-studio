@@ -456,6 +456,37 @@ describe('GenericItem content projection mutations', () => {
     ).rejects.toThrow('content_projection_refresh_incomplete');
   });
 
+  it('defers a confirmed project transfer when only the snapshot fallback succeeds', async () => {
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.deferMainserverMutationProjection.mockResolvedValueOnce(true);
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1',
+      ownershipPrincipal: { type: 'account', id: 'account-1' },
+      actingPrincipalType: 'user',
+      authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64),
+      operation: 'update',
+      entityId: 'provider-project-1',
+    })).resolves.toBe(true);
+
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'project-transfer-1',
+    });
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+  });
+
   it('removes only the targeted generic item projection row after delete mutations', async () => {
     fixture.projectionRows = [
       {

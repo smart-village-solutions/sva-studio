@@ -39,6 +39,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           action_id: 'generic-items.update',
           content_type: 'generic-items.generic-item',
           content_id: 'news-1',
+          provider_content_id: 'news-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',
@@ -84,6 +85,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         'a'.repeat(64),
         ['news-1'],
         ['generic-items.generic-item'],
+        ['projects.project'],
       ]
     );
     expect(state.query.mock.calls[0]?.[0]).toContain(
@@ -122,6 +124,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           action_id: 'events.create',
           content_type: 'events.event-record',
           content_id: 'event-personal-1',
+          provider_content_id: 'event-personal-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',
@@ -171,6 +174,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           action_id: 'news.create',
           content_type: 'news.article',
           content_id: 'news-1',
+          provider_content_id: 'news-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: null,
@@ -215,6 +219,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           action_id: 'content.transferOwnership',
           content_type: 'news.article',
           content_id: 'news-1',
+          provider_content_id: 'news-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',
@@ -273,6 +278,59 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     );
   });
 
+  it('matches a deferred project transfer by provider ID while retaining its project journal type', async () => {
+    state.query.mockResolvedValue({
+      rows: [{
+        operation_external_id: 'project-transfer-1',
+        action_id: 'content.transferOwnership',
+        content_type: 'projects.project',
+        content_id: 'local-core-1',
+        provider_content_id: 'provider-project-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1',
+        display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+        last_error_code: 'content_transfer_projection_refresh_failed',
+      }],
+    });
+
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'organization',
+      actingPrincipalId: '33333333-3333-4333-8333-333333333333',
+      credentialFingerprint: 'b'.repeat(64),
+      rows: [{
+        sourceEntityType: 'projects.project',
+        journalContentType: 'generic-items.generic-item',
+        sourceEntityId: 'provider-project-1',
+        contentType: 'projects.project',
+        ownerOrganizationId: '33333333-3333-4333-8333-333333333333',
+        title: 'Projekt',
+        payload: {},
+        status: 'published',
+        authorDisplayMode: 'organization',
+        author: 'Musterhausen',
+      }],
+    })).resolves.toBe(1);
+
+    expect(state.query.mock.calls[0]?.[0]).toContain("journal.preimage->>'id' = ANY($6::text[])");
+    expect(state.query.mock.calls[0]?.[1]).toEqual([
+      'de-musterhausen', 'organization', '33333333-3333-4333-8333-333333333333',
+      null, 'b'.repeat(64), ['provider-project-1'], ['generic-items.generic-item'],
+      ['projects.project'],
+    ]);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEntityId: 'provider-project-1',
+        contentType: 'projects.project',
+        ownershipPrincipal: { type: 'organization', id: '33333333-3333-4333-8333-333333333333' },
+        preserveExistingContentState: true,
+      })
+    );
+  });
+
   it.each([
     ['unverified', undefined, undefined],
     ['another organization', undefined, '44444444-4444-4444-8444-444444444444'],
@@ -284,6 +342,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         action_id: 'content.transferOwnership',
         content_type: 'news.article',
         content_id: 'news-1',
+        provider_content_id: 'news-1',
         actor_account_id: '22222222-2222-4222-8222-222222222222',
         keycloak_subject: 'subject-1',
         display_name_ciphertext: 'encrypted-name',
@@ -322,6 +381,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         action_id: 'content.transferOwnership',
         content_type: 'news.article',
         content_id: 'news-1',
+        provider_content_id: 'news-1',
         actor_account_id: '22222222-2222-4222-8222-222222222222',
         keycloak_subject: 'subject-1',
         display_name_ciphertext: 'encrypted-name',
@@ -365,6 +425,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         action_id: 'content.transferOwnership',
         content_type: 'news.article',
         content_id: id,
+        provider_content_id: id,
         actor_account_id: '22222222-2222-4222-8222-222222222222',
         keycloak_subject: 'subject-1',
         display_name_ciphertext: 'encrypted-name',
@@ -410,6 +471,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
         action_id: 'content.transferOwnership',
         content_type: 'news.article',
         content_id: 'news-1',
+        provider_content_id: 'news-1',
         actor_account_id: '22222222-2222-4222-8222-222222222222',
         keycloak_subject: 'subject-1',
         display_name_ciphertext: 'encrypted-name',
@@ -453,6 +515,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           action_id: 'content.publish',
           content_type: 'news.article',
           content_id: 'news-1',
+          provider_content_id: 'news-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',
@@ -504,6 +567,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           action_id: 'news.update',
           content_type: 'news.article',
           content_id: 'news-1',
+          provider_content_id: 'news-1',
           actor_account_id: '22222222-2222-4222-8222-222222222222',
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',

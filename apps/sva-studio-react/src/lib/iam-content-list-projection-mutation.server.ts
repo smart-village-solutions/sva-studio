@@ -372,6 +372,11 @@ export const refreshGenericItemSiblingProjections = async (
   const loadedItem = await loadGenericItemForSiblingRefresh(input);
   if (loadedItem.failed) {
     await refreshGenericItemProjectionSnapshots(input.target);
+    if (input.target.ownershipPrincipal) {
+      const deferred = await deferMutationHistory(input);
+      if (!deferred) throw new Error('content_transfer_projection_reconciliation_unavailable');
+      return true;
+    }
     return undefined;
   }
   const resolvedContentType = loadedItem.item

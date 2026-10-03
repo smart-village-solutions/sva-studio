@@ -228,6 +228,7 @@ gleichzeitig beeinflussen.
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
   - Tenant-Scope: `iam.activity_logs` + OTEL via Server-Runtime-Logger
   - Plattform-Scope: `iam.platform_activity_logs` + OTEL via Server-Runtime-Logger
+- Der DB-Sink in `audit-db-sink.ts` behält Scope-Prüfung und Transaktion; `audit-account-context.ts` löst tenantgebundene Accounts samt PII-Verschlüsselung auf, `audit-event-writes.ts` schreibt die scopegebundenen Ereignisse. Beim ersten Login steht `account_created` vor `login` innerhalb derselben Transaktion.
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` in der IAM-Datenbank abgegrenzt; Keycloak spiegelt tenantseitig nur die technische Sonderrolle `system_admin`

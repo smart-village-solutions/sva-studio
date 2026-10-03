@@ -212,6 +212,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/auth-runtime` veröffentlicht die hostgeführten Start-, Status- und Worker-Integrationspfade für generische Studio-Jobs
 - `@sva/routing` führt die öffentlichen Plugin-Operation-Endpunkte weiterhin typsicher; die interne Worker-Ausführung läuft über den generischen Task `studio_job_execute`
 - `@sva/data-repositories` hält den kanonischen Jobdatensatz mit `source`, Status, Progress, Payload-, Retry- und Fehlerfeldern
+- Die Plugin-Operations-Repository-Fassade bündelt die öffentlichen Jobmethoden; intern liegen Row-Mapping, Job-, Zustands-, Lease-/Attempt-, Event- und Listen-SQL in direkt genutzten Modulen. Die SQL- und Tenant-Grenzen bleiben in der Repository-Schicht.
 - `@sva/iam-governance` bleibt fachlicher Owner der DSR-Exportdatensätze; Self-Service-Exporte verknüpfen diese Datensätze zusätzlich mit einem Host-Job über `studio_job_id`
 - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin- oder DSR-spezifische Nebenspeicher ausgelagert
 - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil öffentlicher Plugin- oder Self-Service-Verträge

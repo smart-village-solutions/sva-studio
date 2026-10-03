@@ -290,6 +290,20 @@ insbesondere Tenant-Filter, atomare Claim-/Quota-Updates und
 Content-Save-Recovery. Die bestehenden Medien-Tests und Data-, Security- und
 Server-Runtime-Gates belegen diese Grenzen.
 
+**PR-Auftrag 14b:** `plugin-operations/index.ts` (958 Zeilen) unter das
+260-Zeilen-Limit bringen. Nicht-Ziele sind 14c/14d, Schema,
+Produktverhalten, Queue-/Worker-Semantik, Dependencies und neue Gates.
+Maximal betroffen sind das Plugin-Operations-Repository, direkt betroffene
+Tests/Exports/Dokumentation, tatsächlich erledigte Complexity-Einträge,
+dieser Change und der eigene Studio-Changelog. Die öffentliche
+`createStudioJobRepository`-Fassade und Typ-Exporte bleiben bestehen;
+Row-Mapping, Job-, Zustands-, Lease-/Attempt-, Event- und Listen-SQL
+werden nach Persistenzverantwortung getrennt. SQL-Text und
+Platzhalter-Reihenfolge bleiben gleich; Tenant-/Job-Bindung,
+CAS-/Lease-Guards, idempotente Wiederholung und atomare Terminal-Event-
+Reihenfolge werden durch Repository-/Worker-Tests sowie Data-, Security-
+und Server-Runtime-Gates nachgewiesen.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

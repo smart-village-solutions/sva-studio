@@ -304,6 +304,18 @@ CAS-/Lease-Guards, idempotente Wiederholung und atomare Terminal-Event-
 Reihenfolge werden durch Repository-/Worker-Tests sowie Data-, Security-
 und Server-Runtime-Gates nachgewiesen.
 
+**PR-Auftrag 14c:** `iam/repositories/statements.ts` (381 Zeilen) unter das
+260-Zeilen-Limit bringen. Nicht-Ziele sind 14d, Schema/Migration,
+IAM-Fachsemantik, neue Abstraktionen, Gates und Dependencies. Maximal betroffen
+sind die IAM-Statement-Module, direkt zugehörige Tests und Dokumentation,
+der erledigte `fileLines`-Policy-Eintrag, dieser Change und der eigene
+Studio-Changelog. `iamSeedStatements` und der Importpfad `./statements.js`
+bleiben bestehen; Statements werden nach Organisation, Zugriff und Account
+geordnet. SQL-Text, Platzhalter, UUID-Array-Parameter, Tenant-Filter und
+Rückgabewerte bleiben identisch. Die bestehenden IAM-Repository-Tests,
+ein Vergleich aller Statement-Methoden mit `origin/main` und Data-, Security-
+und Server-Runtime-Gates belegen die Grenze.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

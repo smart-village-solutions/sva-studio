@@ -666,14 +666,19 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 14b — Plugin-Operations-Repository (1 Befund)
 
-- [ ] `packages/data-repositories/src/plugin-operations/index.ts` nach
+- [x] `packages/data-repositories/src/plugin-operations/index.ts` nach
       Job-State-, Lease-/Attempt- und Event-Persistenz aufteilen. Öffentlichen
       Entrypoint, SQL-Parameter, Tenant-/Job-Bindung, Zustandsübergänge und
       atomare Event-Reihenfolge mit Repository-/Worker-Tests und
       Data-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Nachweis: PR #1680 mit HEAD
+      `528e5d00be1c3c42d7f1fa9657d3ce8016eae813` als
+      `607d3e372e651502889b741b7f1d275962279e79` gemergt;
+      `docs/changelog/entries/pr-1680.json` enthalten.
 
 ### PR 14c — IAM-SQL-Statements (1 Befund)
 

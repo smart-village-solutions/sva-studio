@@ -1294,12 +1294,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-client/src/index.ts)"
     },
-    "packages-default:packages/data-repositories/src/iam/repositories/statements.ts:fileLines": {
-      "ticketId": "baseline-packages-default-data-repositories-src-iam-repositories-statements-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/iam/repositories/statements.ts)"
-    },
     "packages-default:packages/data-repositories/src/iam/types.ts:publicExports": {
       "ticketId": "baseline-packages-default-data-repositories-src-iam-types-ts",
       "ticketSystem": "policy-baseline",

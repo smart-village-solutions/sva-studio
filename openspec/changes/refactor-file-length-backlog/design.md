@@ -511,6 +511,28 @@ bleiben erhalten. Die bestehenden Events-Detail-, Formular- und Plugin-Tests
 sowie Type-, Lint-, Build- und Complexity-Gates belegen den Schnitt. Nur die
 drei behobenen `fileLines`-Einträge werden aus der Policy entfernt.
 
+### PR 18: News-Editor
+
+Ausgangsstand nach PR 17: `news.detail-page.tsx` 1.347 Zeilen,
+`plugin.translations.ts` 961 Zeilen und `news.detail-form.ts` 910 Zeilen.
+`NewsDetailPage` bleibt der öffentliche Einstiegspunkt. Die Seite delegiert
+Zugriff, Optionen, Laden, Medienauswahl, Speichern/Löschen und Darstellung an
+direkt genutzte paketinterne Module. Der bestehende Formularimport bleibt für
+API und Tests erhalten; Schema, Legacy-Aliasse, Snapshot-Synchronisierung,
+Mutation und Dirty-Tab-Ableitung besitzen jeweils eine zuständige Quelle.
+Die Übersetzungen werden pro Sprache in Feld-/Navigations- und
+Editor-/Meldungsgruppen zusammengesetzt. Ersetzte Implementierungen entfallen
+aus den Ausgangsdateien.
+
+Kritische Invarianten: Der bestehende Feld- und Übersetzungsschlüsselvertrag,
+Datums- und Medienvalidierung, Legacy-Fallbacks, Berechtigungen,
+Waste-Targeting und globale Push-Bestätigung bleiben erhalten. Bei Save bleibt
+die Reihenfolge aus Content-Persistierung, Medienreferenz-Synchronisierung,
+Create-Navigation beziehungsweise Edit-Reset samt Retry-Rückmeldung erhalten.
+Die News-Detail-, Formular-, Editor-Modell- und Übersetzungstests sowie Type-,
+Lint-, Build- und Complexity-Gates prüfen diesen Schnitt. Nur die drei
+behobenen `fileLines`-Einträge werden aus der Policy entfernt.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

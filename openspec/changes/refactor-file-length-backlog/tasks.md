@@ -879,14 +879,19 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 17 — Events-Editor (3 Befunde)
 
-- [ ] In `packages/plugin-events/src/` `events.detail-page.tsx`,
+- [x] In `packages/plugin-events/src/` `events.detail-page.tsx`,
       `plugin.translations.ts`, `events.detail-form.ts` bereinigen.
       Feldpfade, Übersetzungen, Validierung und Speichersequenz testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1695, HEAD
+      `d66c8f6cd544420fe716cbad32d249ad2a72c2f0`, Merge-Commit
+      `17bf730ac58d35376bc83c52a513c20761fff159`; Changelog
+      `docs/changelog/entries/pr-1695.json`.
 
 ### PR 18 — News-Editor (3 Befunde)
 

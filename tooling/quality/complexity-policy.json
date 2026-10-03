@@ -1420,23 +1420,11 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.detail-form.ts)"
     },
-    "plugin-news:packages/plugin-news/src/news.detail-form.ts:fileLines": {
-      "ticketId": "baseline-plugin-news-src-news-detail-form-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/news.detail-form.ts)"
-    },
     "plugin-news:packages/plugin-news/src/news.detail-page.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-plugin-news-src-news-detail-page-tsx",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.detail-page.tsx)"
-    },
-    "plugin-news:packages/plugin-news/src/news.detail-page.tsx:fileLines": {
-      "ticketId": "baseline-plugin-news-src-news-detail-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/news.detail-page.tsx)"
     },
     "plugin-news:packages/plugin-news/src/news.detail-page.tsx:functionLines": {
       "ticketId": "baseline-plugin-news-src-news-detail-page-tsx",
@@ -1461,12 +1449,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.validation.ts)"
-    },
-    "plugin-news:packages/plugin-news/src/plugin.translations.ts:fileLines": {
-      "ticketId": "baseline-plugin-news-src-plugin-translations-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/plugin.translations.ts)"
     },
     "plugin-sdk:packages/plugin-sdk/src/admin-resources.ts:publicExports": {
       "ticketId": "baseline-plugin-sdk-src-admin-resources-ts",

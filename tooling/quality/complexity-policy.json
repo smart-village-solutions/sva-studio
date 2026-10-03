@@ -1558,24 +1558,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche des Plugin-Operations-Contracts ueber kuratierte Entrypoints segmentieren"
     },
-    "packages-default:packages/data-repositories/src/plugin-operations/index.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-OPS-005",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Operations-Repository in kleinere Query-, Mapping- und Mutation-Module zerlegen"
-    },
-    "packages-default:packages/data-repositories/src/plugin-operations/index.ts:functionLines": {
-      "ticketId": "QUAL-PLUGIN-OPS-005",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Laengere Plugin-Operations-Repository-Funktionen in kleinere Filter-, Query- und Paging-Helfer zerlegen"
-    },
-    "packages-default:packages/data-repositories/src/plugin-operations/index.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-PLUGIN-OPS-005",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Operations-Repository-Verzweigungen in kleinere Where-Clause- und Query-Builder zerlegen"
-    },
     "auth-runtime:packages/auth-runtime/src/plugin-operations/runner.ts:publicExports": {
       "ticketId": "QUAL-PLUGIN-OPS-007",
       "ticketSystem": "backlog",

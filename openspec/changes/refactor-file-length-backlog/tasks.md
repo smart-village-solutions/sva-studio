@@ -649,15 +649,20 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 14a — Medien-Repository (1 Befund)
 
-- [ ] `packages/data-repositories/src/media/index.ts` entlang Asset-,
+- [x] `packages/data-repositories/src/media/index.ts` entlang Asset-,
       Upload-, Storage-/Referenz- und Content-Save-Verantwortungen unter das
       Dateilimit bringen. `createMediaRepository`, `mediaStatements`, alle
       öffentlichen Typen, SQL-Text und Parameterreihenfolge bleiben erhalten;
       Tenant-Bindung, Claim-/Quota-Atomizität und Content-Save-Recovery mit
       den vorhandenen Media-Tests und Data-/Security-/Runtime-Gates prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Nachweis: PR #1679 mit HEAD
+      `f967132c26da0594a790b633dc102a09986b35a0` als
+      `5e2e6fdfae45e1f60360f4fa6d74d71cb1ff980e` gemergt;
+      `docs/changelog/entries/pr-1679.json` enthalten.
 
 ### PR 14b — Plugin-Operations-Repository (1 Befund)
 

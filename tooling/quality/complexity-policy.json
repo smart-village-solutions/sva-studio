@@ -2956,12 +2956,6 @@
       "status": "open",
       "summary": "Recovery-Enqueue in kleinere Auswahl-, Lease- und Persistenzschritte aufteilen"
     },
-    "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/orchestrator.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Tenant-Lifecycle-Orchestrierung in fokussierte Ablauf- und Fehlerpfade gliedern"
-    },
     "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/runtime.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",
       "ticketSystem": "backlog",

@@ -254,6 +254,22 @@ bisherigen parallelen Legacy-Fallback beibehalten. Fehlermeldung,
 Plugin-Details, Cancellation-Metadaten und Fortschritt bleiben je Übergang
 identisch.
 
+**PR-Auftrag 13f:** `plugin-tenant-lifecycle/orchestrator.ts` unter das
+320-Zeilen-Limit bringen, indem die gemeinsame Operation-Resolution und
+Transition-Prüfung in ein unmittelbar genutztes internes Planmodul wandern;
+die bestehenden `orchestrator.js`-Exporte und beide Ausführungspfade behalten
+ihre Reihenfolge, Generation-/Tenant-Bindung, Retry-Ausnahme und Host-Fehlercodes.
+Nicht-Ziele sind PR 14, Produktfeatures, DB-Schema- oder Queue-Semantik, neue
+Dependencies und Gates. Maximal betroffen sind die benannte Datei, das
+direkt benötigte Planmodul, eng zugehörige Tests/Consumer, tatsächlich
+betroffene Package-/arc42-Dokumentation, der erledigte `fileLines`-Eintrag,
+dieser OpenSpec-Change und ein eigener Changelog-Eintrag. Ausgangs-HEAD ist
+`9c4de06b19dbe0f1aeb72d8f315d8fa34777754d`; `orchestrator.ts` hat 371
+Zeilen. Kritisch sind die getrennten atomaren und gestuften Startpfade,
+`requestLifecycle → createJob → claimLifecycle → queueJob`, die
+best-effort-Bereinigung bei jeder Fehlerstufe und der ursprüngliche
+Host-Fehlercode auch bei sekundären Persistenzfehlern.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

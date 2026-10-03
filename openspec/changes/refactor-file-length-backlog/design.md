@@ -493,6 +493,24 @@ PII aus Exceptions in Logs oder Audit-Details übertragen; ein Snapshot ist
 nur sekundärer Befund und ersetzt keinen erfolgreichen Live-Read. Gezielte
 Audit-Tests sowie Auth-/Data-/Security-/Runtime-Gates prüfen diese Grenzen.
 
+### PR 17: Events-Editor
+
+Ausgangsstand nach PR 16e: `events.detail-page.tsx` 1.183 Zeilen,
+`plugin.translations.ts` 800 Zeilen und `events.detail-form.ts` 307 Zeilen
+bei einem Limit von 260. Die bestehende `EventsDetailPage` bleibt der
+Einstiegspunkt. Paketinterne Module übernehmen Laden und Rechte, Medienauswahl,
+Validierung und Speichern sowie die Tab-Darstellung. Der Formular-Mapper
+behält seine bisherigen Imports und trennt Typen und Defaultwerte; die
+Übersetzungen werden je Sprache in Feld-/Aktions- und Editor-/Meldungsgruppen
+zusammengesetzt. Die ersetzten Blöcke entfallen in den Ausgangsdateien.
+
+Kritische Invarianten: Die geschützten Feldpfade und Fokusziele bleiben
+identisch; Mainserver-Deviations werden nur nach Bestätigung überschrieben;
+die Medienreferenz-Speichersequenz, Create-Navigation und Delete-Rückmeldung
+bleiben erhalten. Die bestehenden Events-Detail-, Formular- und Plugin-Tests
+sowie Type-, Lint-, Build- und Complexity-Gates belegen den Schnitt. Nur die
+drei behobenen `fileLines`-Einträge werden aus der Policy entfernt.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

@@ -7,7 +7,6 @@ import {
   markContentSaveOperationContentSavedStatement,
   markContentSaveOperationSavingContentStatement,
   markContentSaveOperationOutcomeUnknownStatement,
-  commitContentSaveOperationStatement,
 } from './content-save-transition-statements.js';
 import {
   createContentSaveOperationStatement,

@@ -1,14 +1,4 @@
-import type {
-  MediaAssetLifecycleStatus,
-  MediaAssetRecord,
-  MediaContentSaveOperationStatus,
-  MediaContentSaveOperationRecord,
-  MediaReferenceRecord,
-  MediaVariantRecord,
-  MediaUploadSessionRecord,
-  MediaStorageUsageRecord,
-  MediaStorageQuotaRecord,
-} from './model-types.js';
+import type { MediaAssetLifecycleStatus, MediaContentSaveOperationStatus } from './model-types.js';
 export type MediaAssetRow = {
   readonly id: string;
   readonly instance_id: string;

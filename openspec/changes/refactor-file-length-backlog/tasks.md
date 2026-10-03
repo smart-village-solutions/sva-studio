@@ -14,9 +14,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
 
-**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26 → PR 31 → PR 32 → PR 33 → PR 34.
+**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31 → PR 32 → PR 33 → PR 34.
 **Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
-Merge von PR 26, weil der öffentliche Waste-Kalender die dann integrierten
+Merge von PR 26d, weil der öffentliche Waste-Kalender die dann integrierten
 Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
 Mainserver-Waste-Schnittstelle gegen die laufenden Änderungen aus Strang A;
 bei konkreter Kopplung wartet er auf den betroffenen Waste-PR.
@@ -1070,25 +1070,65 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 25b — Waste-Runtime-Validierung und Settings (4 Befunde)
 
-- [ ] In `packages/waste-management-runtime/src/` `http-schemas.ts`,
+- [x] In `packages/waste-management-runtime/src/` `http-schemas.ts`,
       `handlers/settings-write-support.ts`, `handlers/settings-shared.ts`,
       `handlers/types.ts` bereinigen. Request-Validierung,
       Settings-Lesen und -Schreiben sowie Handler-Verträge mit
       gezielten Runtime-, Typ- und Unit-Tests erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1712, HEAD
+      `8664dd81c6a6b75cfc7c564dc6528a5f381487b9`, Merge-Commit
+      `099f495e7ae00009e57fe9ea141dfc13dce89ec8`; Changelog
+      `docs/changelog/entries/pr-1712.json`.
+
+### PR 26a — Waste-Server-Lader (1 Befund)
+
+- [ ] In `packages/waste-management-runtime/src/server-loaders.ts`
+      die Tenant-gebundenen Lader nach Datenbereichen trennen.
+      Tenant-Scope, Repository-Bindung und Antworten mit gezielten
+      Loader- und Server-Runtime-Tests erhalten.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 26 — Waste-Lader und Runtime-Handler (7 Befunde)
+### PR 26b — Waste-Reminder-Repository (1 Befund)
 
-- [ ] In `packages/waste-management-runtime/src/` `server-loaders.ts`,
-      `repositories/email-reminders.ts`, `server-handlers.ts`,
-      `handlers/operations.ts`, `handlers/read-handlers.ts`,
-      `handlers/tours-write-support.ts`, `handlers/mutation-helpers.ts`
-      bereinigen. Tenant-Scope, Reminder-, Lese- und Mutationsverhalten
-      mit Datenintegritäts- und Server-Runtime-Tests erhalten.
+- [ ] In `packages/waste-management-runtime/src/repositories/email-reminders.ts`
+      Subscription-, Outbox- und Dispatch-Abfragen trennen.
+      Token-Bindung, Lease-Verhalten und Versandstatus mit gezielten
+      Repository- und Server-Runtime-Tests erhalten.
+
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 26c — Waste-Handler-Komposition und Lesen (2 Befunde)
+
+- [ ] In `packages/waste-management-runtime/src/` `server-handlers.ts`
+      und `handlers/read-handlers.ts` bereinigen. Handler-Registrierung,
+      Tenant-Scope, Leseantworten und Fehlerbehandlung mit gezielten
+      Handler-, Lese- und Server-Runtime-Tests erhalten.
+
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 26d — Waste-Operationen und Mutationen (3 Befunde)
+
+- [ ] In `packages/waste-management-runtime/src/`
+      `handlers/operations.ts`, `handlers/tours-write-support.ts` und
+      `handlers/mutation-helpers.ts` bereinigen. Job-Start,
+      Tour-Abhängigkeiten, Mutationsantworten, Audit und Fehlerbehandlung
+      mit gezielten Datenintegritäts- und Server-Runtime-Tests erhalten.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit

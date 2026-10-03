@@ -9,7 +9,7 @@ Serverseitiges Laufzeitpaket für Authentifizierung, Session-Auflösung und IAM-
 Die Laufzeit trennt dabei mehrere Verantwortungen:
 
 - Host- und Scope-Auflösung für Root-Domain und Tenant-Hosts über `src/config.ts`, `src/request-hosts.ts` und `src/config-request.ts`
-- OIDC-Flow mit PKCE und Session-Cookies über `src/auth-server/` und `src/auth-route-handlers.ts`
+- OIDC-Flow mit PKCE und Session-Cookies über `src/auth-server/` und die sieben HTTP-Handler aus `src/auth-route-handlers.ts`. Deren interne `auth-route-*`-Module trennen Login/Account-Action, Callback, `/auth/me`, Logout sowie gemeinsame Response-, Cookie- und State-Hilfen; der bestehende Entrypoint initialisiert OTEL beim Import.
 - Auth-Middleware mit Tenant-Validierung, Session-Hydration und Legal-Text-Compliance über `src/middleware.ts`
 - IAM-v1-HTTP-Handler für Benutzer, Rollen, Gruppen, Organisationen, Inhalte, Medien, Governance, Data Subject Rights und Instanzverwaltung über die jeweiligen `src/iam-*/`-Module
 - Betriebsnahe Readiness-/Liveness-Prüfungen für Postgres, Redis, Keycloak und den Authorization-Cache über `src/runtime-health.ts`

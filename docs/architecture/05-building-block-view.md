@@ -640,6 +640,7 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
    - Frontend-Datenzugriff auf IAM-v1-Endpunkte mit Fehler-/403-Behandlung.
 6. `packages/routing/src/account-ui.routes.ts`, `packages/auth-runtime/src/auth-route-handlers.ts`
    - Zentrale Guard- und Runtime-Konfiguration für `/account`, `/admin/users`, `/admin/users/$userId`, `/admin/roles` sowie den serverseitigen Keycloak-AIA-Einstieg `/auth/account-action`.
+   - Der Auth-Route-Entrypoint behält die sieben Handler-Exporte und die OTEL-Initialisierung beim Import. Interne `auth-route-*`-Module trennen Login/Account-Action, Callback, `/auth/me`, Logout und gemeinsame Response-/Cookie-/State-Hilfen; `auth-server/*` bleibt für OIDC- und Session-Operationen zuständig.
 
 Im Self-Service-Profilpfad hält `packages/auth-runtime/src/iam-account-management/profile-handlers.ts` die HTTP-Orchestrierung. `profile-request-context.ts` prüft Feature, Actor, CSRF und Rate Limit; `profile-update-flow.ts` synchronisiert Keycloak und kompensiert bei lokalen Fehlern; `profile-errors.ts` bildet die bestehenden Fehlerantworten ab. `packages/iam-admin/src/profile-commands.ts` besitzt weiterhin die tenantgebundene Persistenz, während `profile-session-seed.ts` die Sessiondaten für Seed und Reparatur normalisiert.
 

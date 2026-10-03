@@ -1,4 +1,4 @@
-import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
+import { withRequestContext } from '@sva/server-runtime';
 import { createDsrExportStatusHandlers } from '@sva/iam-governance/dsr-export-status';
 import { withAuthenticatedUser } from '../middleware.js';
 import { jsonResponse, textResponse } from '../db.js';

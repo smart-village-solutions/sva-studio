@@ -1,4 +1,4 @@
-import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
+import { withRequestContext } from '@sva/server-runtime';
 import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 import { appendDsrRequestEvent, emitDsrAuditEvent } from '@sva/iam-governance/dsr-persistence';
 import { withAuthenticatedUser } from '../middleware.js';

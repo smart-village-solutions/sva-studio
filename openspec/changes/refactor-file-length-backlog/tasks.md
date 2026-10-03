@@ -1274,10 +1274,9 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Auswertung aufteilen. Patch-/New-Code-Selektion, Exitcodes,
       CLI-Optionen und Berichtsformat mit gezielten Skript-Tests und
       Skript-Typecheck erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1720.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1720 angelegt; Changelog-Gate grün.
 
 ### PR 31d — Sonar-Hotspots (1 Dateilängenbefund)
 

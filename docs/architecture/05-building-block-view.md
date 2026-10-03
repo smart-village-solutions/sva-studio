@@ -860,6 +860,11 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 ### Ergänzung 2026-08: Operativer Keycloak-Instanz-Audit
 
+- `@sva/instance-registry` hält den internen Audit-Reader unter
+  `service-audit-keycloak.ts`, die Check-Ableitung unter
+  `service-audit-keycloak-checks.ts` und die Behandlung nicht live lesbarer
+  Realms unter `service-audit-keycloak-unavailable.ts`. Der bisherige
+  Service-Importpfad bleibt für den Audit-Orchestrator erhalten.
 - `scripts/ops/studio-instance-audit/keycloak.ts` besitzt die read-only
   `kcadm`-Erhebung, die kurzlebige Auth-Konfiguration und deren Cleanup.
 - `scripts/ops/studio-instance-audit/keycloak-evaluation.ts` besitzt den

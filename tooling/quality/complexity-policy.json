@@ -2158,18 +2158,6 @@
       "status": "open",
       "summary": "Lange Assignment-Submission-Funktionen in kleinere Mapper und Validatoren aufteilen (packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts)"
     },
-    "instance-registry-service:packages/instance-registry/src/service-audit-keycloak.ts:fileLines": {
-      "ticketId": "QUAL-INSTANCE-REGISTRY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Keycloak-Audit-Datei in kleinere Reader-, Mapping- und Check-Module aufteilen (packages/instance-registry/src/service-audit-keycloak.ts)"
-    },
-    "instance-registry-service:packages/instance-registry/src/service-audit-keycloak.ts:functionLines": {
-      "ticketId": "QUAL-INSTANCE-REGISTRY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Keycloak-Audit-Orchestrierung in kleinere Check- und Aggregationsschritte aufteilen (packages/instance-registry/src/service-audit-keycloak.ts)"
-    },
     "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
       "ticketSystem": "backlog",

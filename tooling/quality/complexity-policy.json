@@ -1522,12 +1522,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/events-route.ts)"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/events-route.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-events-route-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/events-route.ts)"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/interfaces-contract.ts:fileLines": {
       "ticketId": "baseline-sva-mainserver-src-server-interfaces-contract-ts",
       "ticketSystem": "policy-baseline",
@@ -1540,12 +1534,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/news-route.ts)"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/news-route.ts)"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:functionLines": {
       "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
       "ticketSystem": "policy-baseline",
@@ -1557,12 +1545,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/poi-route.ts)"
-    },
-    "sva-mainserver:packages/sva-mainserver/src/server/poi-route.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-poi-route-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/poi-route.ts)"
     },
     "sva-mainserver:packages/sva-mainserver/src/server/service.ts:cyclomaticComplexity": {
       "ticketId": "baseline-sva-mainserver-src-server-service-ts",
@@ -2614,12 +2596,6 @@
       "status": "open",
       "summary": "Cockpit-Card-Validierungsregeln in fokussierte Prüffunktionen aufteilen"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/generic-items-route.ts:fileLines": {
-      "ticketId": "QUAL-COCKPIT-CARDS-COMPLEXITY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Gemeinsame Generic-Item-Routenhelfer aus dem Dispatcher extrahieren"
-    },
     "packages-default:packages/plugin-generic-items/src/index.ts:publicExports": {
       "ticketId": "QUAL-GENERIC-ITEMS-COMPLEXITY-011",
       "ticketSystem": "backlog",
@@ -2703,12 +2679,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Projekt-Routenlogik in fokussierte Lifecycle- und Mapping-Funktionen gliedern"
-    },
-    "sva-mainserver:packages/sva-mainserver/src/server/projects-route.ts:fileLines": {
-      "ticketId": "QUAL-PROJECTS-COMPLEXITY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Projekt-Routenlogik in fokussierte Lifecycle- und Mapping-Module gliedern"
     },
     "sva-mainserver:packages/sva-mainserver/src/server/projects-route.ts:functionLines": {
       "ticketId": "QUAL-PROJECTS-COMPLEXITY-002",

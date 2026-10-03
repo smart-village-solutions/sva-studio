@@ -605,6 +605,21 @@ unverändert. Cockpit-Cards-Seitentests, Ownership-Konformitätstest und Type-,
 Lint-, Build- und Complexity-Gates prüfen den Schnitt. Ein eigener Studio-
 Changelog-Eintrag dokumentiert den Abschnitt.
 
+### PR 27: Mainserver-Content-Routen
+
+Die fünf bestehenden Routeneinstiege bleiben die einzigen Dispatcher. Ihre
+internen Eingabe-, Zugriffs-, Lese- und Mutationsschritte liegen in privaten
+Modulen desselben Mainserver-Pakets. News behält insbesondere die Reihenfolge
+von Berechtigungs- und CSRF-Prüfung, Idempotenzreservierung,
+Provider-Schreibzugriff, Audit und Idempotenzabschluss. Events behält den bestehenden
+Mutationsworkflow samt Teilerfolg bei Sichtbarkeitsfehlern. Generic Items
+behält FAQ- und Kachel-Sonderfälle sowie Autoren- und Identitätserhalt. POI
+und Projects behalten die lokalen Berechtigungen, DataProvider-Bindung und
+Antwortformate. Die Route-Tests für News, Events/POI, Generic Items,
+Cockpit-Cards und Projects prüfen diese Verträge vor und nach dem Schnitt;
+Type-, Lint-, Server-Runtime- und vollständiges Complexity-Gate prüfen die
+Paketgrenze und die fünf beseitigten `fileLines`-Befunde.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

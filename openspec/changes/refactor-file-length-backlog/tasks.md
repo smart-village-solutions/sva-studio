@@ -14,7 +14,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
 
-**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31 → PR 32 → PR 33 → PR 34.
+**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31a → PR 31b → PR 31c → PR 31d → PR 32 → PR 33 → PR 34.
 **Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
 Merge von PR 26d, weil der öffentliche Waste-Kalender die dann integrierten
 Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
@@ -1139,16 +1139,18 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 26d — Waste-Operationen und Mutationen (3 Befunde)
 
-- [ ] In `packages/waste-management-runtime/src/`
+- [x] In `packages/waste-management-runtime/src/`
       `handlers/operations.ts`, `handlers/tours-write-support.ts` und
       `handlers/mutation-helpers.ts` bereinigen. Job-Start,
       Tour-Abhängigkeiten, Mutationsantworten, Audit und Fehlerbehandlung
       mit gezielten Datenintegritäts- und Server-Runtime-Tests erhalten.
+      Merge-Nachweis: PR #1716, HEAD
+      `5ebd4d775563cb9b0177a3dda52e0957c21d0049`, Merge-Commit
+      `04676e4b2e8e48a6737330c812ac15596afb72cb`.
 
 - [x] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      `docs/changelog/entries/pr-1716.json` mit passender `prNumber` und
+      nutzerverständlichem `body` eingebracht; Changelog-Gate vor Merge grün.
 
 ## Mainserver und öffentlicher Kalender
 
@@ -1222,14 +1224,47 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ## Tooling und MCP
 
-### PR 31 — CI-Qualitäts-Gates (5 Befunde)
+### PR 31a — Complexity-Gate (1 Dateilängenbefund)
 
-- [ ] In `scripts/ci/` `complexity-gate.ts`, `coverage-gate.ts`,
-      `patch-coverage-gate.ts`, `sonar-hotspots.ts` und
-      `sonar-new-code-gate.ts` bereinigen. Exitcodes, CLI-Optionen,
-      Reportformat und Finding-Erkennung mit Skript-Tests und
+- [ ] `scripts/ci/complexity-gate.ts` nach Policy-Prüfung, Dateiauswahl,
+      TypeScript-Metriken und Berichtserstellung aufteilen. Beide registrierten
+      Befunde (`fileLines`, `cyclomaticComplexity`) beseitigen; Exitcodes,
+      CLI-Optionen, Modulpriorität, Findings und Berichtsformat mit gezielten
+      Skript-Tests und Skript-Typecheck erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1717.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1717 angelegt; Changelog-Gate grün.
+
+### PR 31b — Coverage-Gate (1 Dateilängenbefund)
+
+- [ ] `scripts/ci/coverage-gate.ts` entlang seiner bestehenden Coverage-
+      Berechnung und CLI-Ausgabe aufteilen. Exitcodes, CLI-Optionen,
+      Schwellwerte und Reportformat mit gezielten Skript-Tests und
+      Skript-Typecheck erhalten; bestehendes Complexity-Finding mit abbauen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 31c — Patch-Coverage und Sonar-New-Code (2 Dateilängenbefunde)
+
+- [ ] `scripts/ci/patch-coverage-gate.ts` und
+      `scripts/ci/sonar-new-code-gate.ts` an ihrer gemeinsamen Coverage-
+      Auswertung aufteilen. Patch-/New-Code-Selektion, Exitcodes,
+      CLI-Optionen und Berichtsformat mit gezielten Skript-Tests und
       Skript-Typecheck erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+### PR 31d — Sonar-Hotspots (1 Dateilängenbefund)
+
+- [ ] `scripts/ci/sonar-hotspots.ts` nach bestehenden CLI-, API- und
+      Berichtspfaden aufteilen. Authentisierung, Paging, Finding-Erkennung,
+      Exitcodes und Berichtsformat mit gezielten Skript-Tests und
+      Skript-Typecheck erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in

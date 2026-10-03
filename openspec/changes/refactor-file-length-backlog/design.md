@@ -647,7 +647,8 @@ prüfen die Paketgrenze und die vier `fileLines`-Befunde.
    bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f, 12a bis
    12d und 13a bis 13f wurden seriell geliefert. Ab PR 23 laufen höchstens
    zwei getrennte Worktrees parallel: Strang A bearbeitet PR 23, PR 24a,
-   PR 24b, PR 25a, PR 25b, PR 26a bis PR 26d und danach PR 31 bis PR 34;
+   PR 24b, PR 25a, PR 25b, PR 26a bis PR 26d und danach PR 31a bis PR 31d
+   sowie PR 32 bis PR 34;
    Strang B bearbeitet PR 27 bis PR 30. PR 29
    wartet auf den Merge von PR 26d. PR 24 wurde nach der ersten
    Complexity-Prüfung in zwei fachliche Abschnitte getrennt: PR 24a umfasst
@@ -663,7 +664,13 @@ prüfen die Paketgrenze und die vier `fileLines`-Befunde.
    mit zusammen 4.612 Zeilen in vier eigenständig prüfbare Grenzen geteilt:
    26a Server-Lader, 26b Reminder-Repository, 26c Handler-Komposition und
    Lesen sowie 26d Operations- und Mutationspfade. PR 29 prüft die erst
-   nach 26d vollständig integrierte Waste-Runtime. Innerhalb jedes Strangs
+   nach 26d vollständig integrierte Waste-Runtime. Die fünf CI-Gate-Dateien
+   mit zusammen 4.259 Zeilen bilden getrennte CLI-Verträge. PR 31 wird daher
+   seriell in 31a Complexity-Gate, 31b Coverage-Gate, 31c dessen zwei
+   Patch-/New-Code-Verbraucher und 31d Sonar-Hotspots geteilt. Jeder Abschnitt
+   erhält eigene Skript-Tests und behält Exitcodes und Berichtformat bei;
+   PR 31b beginnt erst nach dem Merge von 31a, die folgenden entsprechend.
+   Innerhalb jedes Strangs
    ist der vorherige Merge
    Voraussetzung für den nächsten Abschnitt. Vor jedem Merge wird der Branch
    gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter

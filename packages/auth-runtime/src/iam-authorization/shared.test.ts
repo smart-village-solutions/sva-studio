@@ -137,6 +137,8 @@ describe('iam authorization shared helpers', () => {
   it('delegates request context creation and cold-start logging', async () => {
     const { buildRequestContext, recordPermissionCacheColdStart } = await importShared();
 
+    expect(mocks.addCallback).toHaveBeenCalledTimes(1);
+
     expect(buildRequestContext('tenant-a')).toEqual({
       workspaceId: 'tenant-a',
       includeTraceId: true,

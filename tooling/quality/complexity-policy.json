@@ -370,18 +370,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-authorization/permission-store.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-authorization/shared.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-auth-runtime-src-iam-authorization-shared-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-authorization/shared.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-authorization/shared.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-authorization-shared-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-authorization/shared.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-authorization/shared.ts:publicExports": {
       "ticketId": "baseline-auth-runtime-src-iam-authorization-shared-ts",
       "ticketSystem": "policy-baseline",

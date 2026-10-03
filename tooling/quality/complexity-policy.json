@@ -1090,18 +1090,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-repositories/src/instance-registry/index.ts)"
     },
-    "instance-registry-repositories:packages/data-repositories/src/instance-registry/server.ts:fileLines": {
-      "ticketId": "baseline-data-repositories-src-instance-registry-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/instance-registry/server.ts)"
-    },
-    "instance-registry-repositories:packages/data-repositories/src/instance-registry/server.ts:functionLines": {
-      "ticketId": "baseline-data-repositories-src-instance-registry-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-repositories/src/instance-registry/server.ts)"
-    },
     "instance-registry-service:packages/instance-registry/src/http-instance-handlers.ts:functionLines": {
       "ticketId": "baseline-instance-registry-src-http-instance-handlers-ts",
       "ticketSystem": "policy-baseline",

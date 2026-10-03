@@ -1,0 +1,4 @@
+{
+  "prNumber": 1684,
+  "body": "Der Instanz-Registry-Server ist intern in Datenbankverbindung, Host-Auflösung und öffentliche Aufrufe gegliedert. Host-Cache, Fallback und Provisionierung verhalten sich weiterhin wie bisher."
+}

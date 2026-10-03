@@ -714,16 +714,21 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 15a — Instanz-Repository-Vertrag und Parent-Provisionierung (2 Befunde)
 
-- [ ] `packages/data-repositories/src/instance-registry/repository-contract.ts`
+- [x] `packages/data-repositories/src/instance-registry/repository-contract.ts`
       und `repository-provisioning.ts` unter das Dateilimit bringen. Den
       öffentlichen `InstanceRegistryRepository`-Vertrag und sämtliche
       bestehenden Exporte erhalten; SQL-Text und Parameterreihenfolge sowie
       Tenant-Bindung, Idempotenz, Claim-/Lease- und Retry-Guards,
       Planbestätigung, Remediation und Audit-Reihenfolge mit gezielten
       Repository-Tests und Data-/Security-/Runtime-Gates nachweisen.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Nachweis: PR #1683 mit HEAD
+      `b2cd22fd7ed5078fb096778658ee7c48ad2724c9` als
+      `17ed00be03cefabeb5937ede139eb72dec421c28` gemergt;
+      `docs/changelog/entries/pr-1683.json` enthalten.
 
 ### PR 15b — Instanz-Repository-Server (1 Befund)
 

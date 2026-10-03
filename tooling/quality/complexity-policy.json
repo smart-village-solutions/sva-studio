@@ -1072,24 +1072,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-governance/src/dsr-read-models-internal.ts)"
     },
-    "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-governance/src/governance-workflow-executor.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:fileLines": {
-      "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/governance-workflow-executor.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:functionLines": {
-      "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/governance-workflow-executor.ts)"
-    },
     "iam-governance:packages/iam-governance/src/index.ts:publicExports": {
       "ticketId": "baseline-iam-governance-src-index-ts",
       "ticketSystem": "policy-baseline",

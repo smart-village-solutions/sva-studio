@@ -268,6 +268,7 @@ Abhängigkeiten des aktuellen Systems.
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/iam-governance`
   - trennt bei der Delegationserstellung die frameworkfreie Payload-/Policy-Entscheidung vom explizit sequenziellen Wiring für instanzgebundene Account-Auflösung, Persistenz und Audit; Reason Codes, Zeitgrenzen und SQL-/Auditverträge bleiben Eigentum des bestehenden Governance-Workflows
+  - hält `createGovernanceWorkflowExecutor` als öffentlichen Einstieg und trennt dessen interne Ausführung in Berechtigungsanfrage und -entscheidung, Delegation, Impersonation mit Session-Prüfung, Rechtsannahme und gemeinsames Audit; die instanzgebundenen SQL-, Freigabe- und Ereignisverträge bleiben unverändert
   - besitzt in `dsr-persistence.ts` die kanonischen, mandantengebundenen Persistenzprimitiven für aktive Legal Holds, DSR-Request-Events und DSR-Audit-Events; Auth-Runtime, Export-Flows und Wartung konsumieren diese Verträge ohne eigene SQL-Kopien
   - enthält auch die kanonische Legal-Text-Sanitisierung; React-Consumer importieren keinen app-lokalen HTML-Sanitizer mehr
   - liefert für den Account-Self-Service sowohl die Overview-Projektion mit `activityItems` als auch den `caseId`-basierten Detailzugriff für Deep-Links auf einzelne Datenschutzvorgänge

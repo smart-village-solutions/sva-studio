@@ -435,13 +435,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 11c — DSR-Leseprojektionen (2 Befunde)
 
-- [ ] `packages/iam-governance/src/dsr-read-models.mappers.ts` und
+- [x] `packages/iam-governance/src/dsr-read-models.mappers.ts` und
       `dsr-read-models.self-service-queries.ts` nach Admin-/Self-Service-
       Projektion und Query-/Detailauflösung aufteilen. Die Read-Model-Tests
       sichern Tenant-/Account-Scope, Statusabbildung, Suche, Reihenfolge,
-      Pagination und Fall-Details. Umsetzung in PR #1665; Abschluss nach
-      Merge- und Gate-Nachweis markieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Pagination und Fall-Details. Umsetzung in PR #1665; finaler PR-HEAD
+      `13678bf393b156830524af7e56b539ea3292b566` mit grünen Gates
+      am 03.10.2026 als `268603dc6a55e4c5e952123af2b7b9a8132417e7`
+      gemergt.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1665.json` mit
       passender `prNumber` und Nutzertext in PR #1665 anlegen;
       Changelog-Gate vor Merge grün.

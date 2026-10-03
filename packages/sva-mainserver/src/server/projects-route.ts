@@ -128,14 +128,11 @@ const updateProject = async (
         });
         let localFollowUpFailed = Boolean(context.reference && !context.core);
         let projectCoreUpdated = false;
-        if (localFollowUpFailed && context.reference) {
+        if (localFollowUpFailed && context.reference)
           await Promise.resolve(updateExternalContentReconciliationStatus({
-            instanceId,
-            referenceId: context.reference.id,
-            status: 'reconciliation_required',
-            errorCode: 'local_finalize_failed',
+            instanceId, referenceId: context.reference.id,
+            status: 'reconciliation_required', errorCode: 'local_finalize_failed',
           })).catch(() => undefined);
-        }
         if (context.core && context.reference)
           try {
             await updateExternalContentCore({
@@ -175,10 +172,7 @@ const updateProject = async (
           actor,
           providerOutcome: 'succeeded',
           reconciliationStatus: localFollowUpFailed ? 'reconciliation_required' : 'complete',
-          completedSteps: [
-            'provider_write',
-            ...(projectCoreUpdated ? ['project_core_updated'] : []),
-          ],
+          completedSteps: ['provider_write', ...(projectCoreUpdated ? ['project_core_updated'] : [])],
           contentId: freshItem.id,
           observedDataProviderId: freshItem.dataProvider?.id,
         });

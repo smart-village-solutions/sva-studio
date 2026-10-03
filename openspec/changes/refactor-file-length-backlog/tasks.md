@@ -30,8 +30,9 @@ einzeln: Vor dem finalen Nachweis wird jeder Branch mit dem dann aktuellen
 Review-Threads nur für den neuen exakten HEAD. Gemeinsame Änderungen an
 `tasks.md`, `design.md` und der Complexity-Policy werden dabei aufgelöst,
 bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
-Falls danach verwaiste `fileLines`-Registereinträge verbleiben, folgt der
-eigenständig reviewbare Abschluss-PR 35.
+Danach entfernt der eigenständig reviewbare PR 35 die bereits nachgewiesenen
+verwaisten `fileLines`-Registereinträge. PR 36 archiviert den vollständig
+integrierten Change erst nach PR 35 in einem eigenen PR.
 
 ## Pilot und Grundlagen
 
@@ -1346,14 +1347,18 @@ eigenständig reviewbare Abschluss-PR 35.
 
 ### PR 32c — Graphile-Worker-Datenbankvertrag (1 Befund)
 
-- [ ] `scripts/ci/verify-graphile-worker-database-contract.ts` nach seinen
+- [x] `scripts/ci/verify-graphile-worker-database-contract.ts` nach seinen
       bestehenden Schema-, Job- und Worker-Prüfungen aufteilen. Prüfreihenfolge,
       Cleanup, Exitcodes und Fehlertexte mit gezielten Contract-Tests,
       Skript-Typecheck und dem vorhandenen Integrationstarget erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      PR #1727 wurde am geprüften HEAD
+      `39b6ade99212cb13581b80173ac3aebfeb0f55eb` mit grünen finalen
+      GitHub-Gates und ohne offene Review-Threads gemergt; Merge-Commit
+      `fbc0ec679886ea03a9a1534b6556f2dbd0cd24ae`.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1727.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1727 angelegt; Changelog-Gate vor Merge grün.
 
 ### PR 32d — Plugin-Lifecycle-Datenbankvertrag (1 Befund)
 
@@ -1382,38 +1387,43 @@ eigenständig reviewbare Abschluss-PR 35.
 
 ### PR 34 — Studio-MCP-Prozess und Tools (2 Befunde)
 
-- [ ] In `packages/studio-mcp/src/` `process.ts` und `tools.ts`
+- [x] In `packages/studio-mcp/src/` `process.ts` und `tools.ts`
       bereinigen. MCP-Tool-Verträge, Authentisierung und Prozess-Lifecycle
-      mit gezielten Tests und Typprüfung erhalten.
+      mit gezielten Tests und Typprüfung erhalten. PR #1726 wurde am
+      geprüften HEAD `5ebd4d775563cb9b0177a3dda52e0957c21d0049` mit
+      grünen finalen GitHub-Gates und ohne offene Review-Threads gemergt;
+      Merge-Commit `8151365d9e95689e998ae43dd704287a15d85e31`.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1726.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1726 angelegt; Changelog-Gate vor Merge grün.
 
-### PR 35 — Bedingter Registerabgleich und integrierter Null-Nachweis
+### PR 35 — Registerabgleich und integrierter Null-Nachweis
 
 - [ ] Nach den Merges von PR 23 bis PR 34 den vollständigen
       `pnpm complexity-gate`-Befund auf integriertem `main` gegen die
-      `fileLines`-Registereinträge abgleichen. Nur nachweislich verwaiste
-      `fileLines`-Einträge in einem eigenen PR entfernen, sofern solche
-      Altlasten verbleiben; null aktuelle Dateilängenverstöße und null
-      verwaiste Einträge am exakten HEAD belegen. Gibt es keine Altlasten,
-      diesen Task mit dem Main-Gate-Nachweis ohne PR 35 abschließen.
-- [ ] Falls PR 35 nötig ist, einen eigenen Studio-Changelog-Eintrag
+      `fileLines`-Registereinträge abgleichen. Die bereits nachgewiesenen
+      verwaisten `fileLines`-Einträge in diesem eigenen PR entfernen und
+      null aktuelle Dateilängenverstöße sowie null verwaiste Einträge am
+      exakten HEAD belegen. Andere Complexity-Metriken getrennt ausweisen.
+- [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Changelog-Gate vor
-      Merge grün. Andernfalls den entfallenen PR mit dem Gate-Nachweis
-      dokumentieren.
+      Merge grün.
 
-## Abschluss nach allen PRs 23 bis 34 und gegebenenfalls PR 35
+### PR 36 — OpenSpec-Abschluss und Archivierung
 
-- [ ] Auf integriertem `main` einen vollständigen `pnpm complexity-gate`-Lauf
-      mit null aktuellen `fileLines`-Verstößen und null verwaisten
-      `fileLines`-Registereinträgen belegen; andere Metriken getrennt
-      ausweisen.
-- [ ] Die tatsächlich betroffenen arc42-Abschnitte 05, 08, 10 und 11 sowie
+- [ ] Nach dem Merge von PR 35 auf integriertem `main` den vollständigen
+      `pnpm complexity-gate`-Lauf mit null aktuellen `fileLines`-Verstößen
+      und null verwaisten `fileLines`-Registereinträgen belegen; andere
+      Metriken getrennt ausweisen. Die tatsächlich betroffenen arc42-Abschnitte
+      05, 08, 10 und 11 sowie
       `docs/development/complexity-quality-governance.md` auf den Endstand
-      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen.
-- [ ] OpenSpec strikt validieren, alle PR-Nachweise und Checkboxen abgleichen
-      und den Change erst nach Integration gemäß OpenSpec-Prozess archivieren.
+      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen. Alle
+      PR-Nachweise und Checkboxen abgleichen, OpenSpec strikt validieren und
+      den Change gemäß OpenSpec-Prozess archivieren.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` in PR 36 anlegen;
+      Changelog-Gate vor Merge grün.

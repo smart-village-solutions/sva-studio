@@ -716,12 +716,14 @@ unveränderte öffentliche Oberfläche.
    gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter
    HEAD vollständig geprüft. Nur ein PR wird zur selben Zeit gemergt.
 4. **Schlusslauf:** Nach allen PRs 23 bis 34 wird der vollständige Scope erneut gemessen.
-   Verbleibende verwaiste `fileLines`-Registereinträge werden nur nach
-   Abgleich mit den tatsächlich aktuellen Verstößen in einem eigenen,
-   reviewbaren PR 35 entfernt. Gibt es keine Altlasten, entfällt PR 35 mit
-   dokumentiertem Main-Gate-Nachweis. Ein aktueller Restverstoß wird als
-   konkret benannter weiterer PR-Task ergänzt und abgearbeitet, bevor der
-   Change abgeschlossen wird.
+   Der bisherige Abgleich hat bereits verwaiste `fileLines`-Registereinträge
+   nachgewiesen. PR 35 gleicht deshalb auf integriertem `main` aktuelle
+   Verstöße und Registereinträge nochmals ab, entfernt nur die verwaisten
+   Einträge und belegt null aktuelle Dateilängenverstöße sowie null verwaiste
+   Einträge am exakten HEAD. Ein aktueller Restverstoß wird als konkret
+   benannter weiterer PR-Task ergänzt und abgearbeitet, bevor der Change
+   abgeschlossen wird. Erst nach Integration von PR 35 archiviert PR 36 den
+   vollständig nachgewiesenen Change und erhält einen eigenen Changelog.
 
 ## Regeln für jeden PR-Abschnitt
 

@@ -2344,18 +2344,6 @@
       "status": "open",
       "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
     },
-    "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Lifecycle-Datenbankverifier in kleinere Vertrags-, Fixture- und Assertionsmodule aufteilen"
-    },
-    "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:functionLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Lifecycle-Datenbankverifier in kleinere Vertrags-, Fixture- und Assertionsmodule aufteilen"
-    },
     "instance-registry-service:packages/instance-registry/src/service-module-mutations.ts:functionLines": {
       "ticketId": "QUAL-INSTANCE-REGISTRY-001",
       "ticketSystem": "backlog",

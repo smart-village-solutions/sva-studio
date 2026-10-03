@@ -382,10 +382,9 @@ describe('iam-data-subject-rights/read-models', () => {
   });
 
   it('scopes every self-service detail query to the same tenant, account and case', async () => {
+    const statements: string[] = [];
     const query = vi.fn(async (sql: string, parameters: unknown[]) => {
-      expect(sql).toContain('instance_id = $1');
-      expect(sql).toContain('= $2::uuid');
-      expect(sql).toContain('= $3::uuid');
+      statements.push(sql);
       expect(parameters).toEqual(['de-test', 'account-1', 'case-1']);
       return { rowCount: 0, rows: [] };
     });
@@ -400,6 +399,26 @@ describe('iam-data-subject-rights/read-models', () => {
     ).resolves.toBeNull();
 
     expect(query).toHaveBeenCalledTimes(4);
+    const expectedPredicates = [
+      ['request.instance_id = $1', 'request.target_account_id = $2::uuid', 'request.id = $3::uuid'],
+      [
+        'job.instance_id = $1',
+        'job.target_account_id = $2::uuid',
+        'job.requested_by_account_id = $2::uuid',
+        'job.id = $3::uuid',
+      ],
+      ['hold.instance_id = $1', 'hold.account_id = $2::uuid', 'hold.id = $3::uuid'],
+      [
+        'acceptance.instance_id = $1',
+        'acceptance.account_id = $2::uuid',
+        'acceptance.id = $3::uuid',
+      ],
+    ];
+    expectedPredicates.forEach((predicates, index) => {
+      for (const predicate of predicates) {
+        expect(statements[index]).toContain(predicate);
+      }
+    });
   });
 
   it('lists admin DSR cases with filters, search and pagination', async () => {

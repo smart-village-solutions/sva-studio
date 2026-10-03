@@ -456,6 +456,7 @@ Abhängigkeiten des aktuellen Systems.
    - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
 4. `packages/instance-registry`
    - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
+   - hält Zuweisung und Entzug im Modul-Mutationsservice; ein internes Sync-Modul bündelt Bootstrap, geschützte System-Admin-Rechte und IAM-Baseline. Die bisherigen Service-Exporte bleiben am bestehenden Importpfad.
 5. `packages/auth-runtime`
    - reichert `/auth/me` für Instanz-Sessions mit `assignedModules` an.
 6. `packages/routing` und `apps/sva-studio-react`

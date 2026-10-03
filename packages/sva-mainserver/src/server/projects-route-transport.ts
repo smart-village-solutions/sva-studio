@@ -1,7 +1,13 @@
-import { json } from './content-route-core.js';
+import { json, matchRequestRoute, type RouteMatch } from './content-route-core.js';
 
 const SOURCE_SYSTEM = 'mainserver';
 const SOURCE_ENTITY_TYPE = 'GenericItem';
+const PROJECTS_COLLECTION_PATH = '/api/v1/mainserver/projects';
+
+export type ProjectRoute = RouteMatch<'projects'>;
+
+export const matchProjectRoute = (request: Request): ProjectRoute | null =>
+  matchRequestRoute(request, PROJECTS_COLLECTION_PATH, 'projects');
 
 export const projectSourceReferenceInput = (instanceId: string) => ({
   instanceId,

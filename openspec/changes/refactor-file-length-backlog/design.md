@@ -372,18 +372,40 @@ stehen.
 
 **PR-Auftrag 15c:** `packages/instance-registry/src/provisioning-auth-state.ts`
 unter das Dateilimit bringen; Nicht-Ziele sind Evaluation, Plan und
-Tenant-Schritte. Zustand, Tenant-/Realm-Bindung und Retry-Semantik bleiben
-an den bestehenden Provisionierungs-Verbrauchern nachweisbar.
+Tenant-Schritte. Der bestehende Subpath und die Root-Exporte bleiben eine
+Fassade. Interne, direkt genutzte Module trennen Client-Vertrag und Factory,
+Tenant-Admin-Bootstrap, Realm-Readback sowie Artifact-Reconcile. Diese
+konkreten Verantwortungen sprengen das Dateilimit; die Fassade allein kann
+keine von ihnen aufnehmen, ohne erneut zu wachsen. Realm-Bindung, Ownership,
+Secret-Readback, Client-Reihenfolge, Idempotenz und Cleanup-/Fehlerpriorität
+bleiben an den bestehenden Provisionierungs-Verbrauchern nachweisbar. Plan-,
+Run- und Retry-Zustände liegen in anderen Modulen und gehören zu späteren
+Abschnitten.
 
 **PR-Auftrag 15d:** `provisioning-auth-evaluation.ts` und
 `provisioning-auth-plan.ts` unter das Dateilimit bringen; Nicht-Ziele sind
 15e und neue Auth-Verträge. Preflight, Ownership, Fingerprint und Gate-Status
 bleiben in der bisherigen Reihenfolge und Fehlerklassifikation erhalten.
+Die bestehende Evaluation-Importfläche bleibt eine Fassade. Direkt genutzte
+Module halten Preflight-Checks, die geordnete Realm-Ownership-Diagnose und den
+Live-Status getrennt; `buildPlan` und der Fingerprint bleiben im Plan-Modul,
+die einzelnen Artefakt-Schritte liegen in einem internen Modul. Die beiden
+Ausgangsdateien überschreiten mit 427 und 402 Zeilen die geltende Grenze;
+ihre vorhandenen Fassaden können die getrennten Verantwortungen nicht
+aufnehmen, ohne erneut zu wachsen.
 
 **PR-Auftrag 15e:** `tenant-provisioning-steps.ts` unter das Dateilimit
 bringen; Nicht-Ziele sind die übrigen PR-15-Dateien, Schema und Features.
 Schrittfolge, idempotente Wiederaufnahme, Lease, Retry, Terminalstatus und
 Audit-Ereignisse bleiben durch Orchestrator-Tests belegt.
+Die sichere Fehlercode-Diagnostik und der geschützte Property-Zugriff werden
+im bereits von den Tenant-Schritten genutzten `observability.ts` gebündelt;
+damit bleibt die bestehende Step-Map an einem Ort und es entsteht kein neuer
+Ausführungspfad. Ausgangs-HEAD ist `85cf9cded0b1b6334142e0beadc77eff438dff3e`;
+`tenant-provisioning-steps.ts` sinkt von 335 auf 315 Zeilen und
+`observability.ts` wächst von 264 auf 271 Zeilen. Der direkte Verbraucher ist
+`runTenantProvisioningStep`; die bestehenden Observability- und Orchestrator-
+Tests decken Fehlercode-Redaction, Step-Fortschritt und Lease-Verlust ab.
 
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
@@ -395,6 +417,209 @@ escapte ILIKE-Suche, stabile Sort-/Seitenreihenfolge sowie Zyklus- und
 Inaktivitätsfehler vor dem rekursiven Subtree-Update. Die vorhandenen
 Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
 
+**PR-Auftrag 16a:** Auf `origin/main` nach #1689 hat
+`packages/instance-registry/src/service-keycloak-execution.ts` 715 Zeilen;
+der aktuelle `fileLines`-Befund und zwei bereits registrierte Complexity-
+Befunde betreffen diese Datei. Ziel ist eine kleinere Execution-Datei mit
+unveränderten öffentlichen Exporten. Nicht-Ziele sind die fünf weiteren
+PR-16-Dateien sowie API-, Keycloak- und Datenbankverhalten. Der direkte
+Verbraucher bleibt `service-keycloak.ts` und der öffentliche Package-Index.
+Die bereits vorhandenen Shared-, Failure-, Payload-, Finalize- und Worker-
+Claim-Module werden weiterverwendet; sie können die noch in der 715-Zeilen-
+Datei zusammenliegenden Snapshot-, Post-Provisioning- und Worker-Phasen nicht
+ohne erneutes Dateiwachstum aufnehmen. Kleine interne Module besitzen jeweils
+eine dieser Phasen, während die bisherigen Handler am Importpfad bleiben.
+Der Worker bindet Run, Tenant und Fingerprint an den geladenen Snapshot;
+Secret-Sync, Parent-Abschluss und Realm-Cleanup behalten ihre Reihenfolge und
+Fehlerklassen. Execution-, Failure-, Payload-, Finalize- und Reconcile-Tests
+sowie Auth-/Data-/Security-/Runtime-Gates weisen diese Grenzen nach.
+
+PR 16 wird seriell und einzeln reviewbar in 16a Execution, 16b Readers,
+16c Audit Keycloak, 16d Module Mutations und 16e Draft Readiness plus
+Service Helpers umgesetzt. Jeder Abschnitt beseitigt seine benannten
+Dateilängenbefunde und enthält einen eigenen Studio-Changelog-Eintrag.
+
+**PR-Auftrag 16e:** Nach #1693 überschreiten `service-draft-readiness.ts`
+(482 Zeilen) und `service-helpers.ts` (347 Zeilen) das Dateilimit. Ziel ist
+die Trennung der Entwurfs-Readiness von ihren Projektionen und der
+Tenant-IAM-Evidenz von allgemeinen Service-Projektionen bei unveränderten
+Exportpfaden. Nicht-Ziele sind neue Readiness-Funktionen, Vertrags- oder
+Datenmodelländerungen und andere Services. Aktivierungsprüfungen gehören in
+das bestehende `service-active-provisioning.ts`, die Tenant-IAM-Projektion
+in `tenant-iam-evidence.ts`. Die Entwurfs-Fingerprints, Capability-Anzeigen
+und Provisioning-Eingabe benötigen ein direkt genutztes kleines
+`service-draft-readiness-projection.ts`, weil keines der bestehenden Module
+diese Entwurfsprojektionen aufnimmt, ohne wieder über das Dateilimit zu
+wachsen. Die Realm-Eignung bleibt direkt am Readiness-Handler. Status,
+Validierung, Tenantbezug, Fehlerklassen und Projektionen
+bleiben erhalten; Readiness- und Service-Tests sowie Auth-/Data-/Security-/
+Runtime-Gates prüfen die Parität.
+
+**PR-Auftrag 16d:** Nach #1692 hat `service-module-mutations.ts` 516 Zeilen
+und einen registrierten `fileLines`-Befund. Ziel ist die Trennung des
+Bootstrap-/IAM-Baseline-Syncs von Zuweisung und Entzug bei unverändertem
+öffentlichen Service-Importpfad. Das direkt genutzte interne
+`service-module-mutations-sync.ts` hält die Core-IAM-Synchronisierung,
+Reconcile-Zusammenführung, Bootstrap-Zuweisungen samt Rollback und das
+Baseline-Seeding. Zuweisung und Entzug bleiben im bisherigen Modul;
+Statuscodes, Modulreihenfolge, Idempotenz, Aktivierungsschutz, Audit-Details,
+Cache-Invalidierung und Waste-Provisioning bleiben unverändert. Nicht-Ziele
+sind neue Modul-Funktionen, Auth-Verträge und andere Services. Gezielte
+Service-Tests sowie Auth-/Data-/Security-/Runtime-Gates prüfen die Parität.
+
+**PR-Auftrag 16b:** Nach #1690 hat `service-keycloak-readers.ts` 432 Zeilen
+und einen registrierten `fileLines`-Befund. Der bestehende Service-Importpfad
+bleibt für Status, Preflight, Plan, Run-Read und Runtime-Resolver erhalten.
+Preflight und Plan erhalten je ein direkt genutztes internes Modul; die von
+Status, Preflight und Plan gemeinsam verwendete rungebundene
+Snapshot-Fingerprint-Berechnung liegt beim vorhandenen Snapshot-Reader.
+Tenant-/Instance-Bindung, Policy-/Secret-Versionen, Plugin-OIDC-Snapshot,
+lokale Fallbacks, `forceLive`, New-Realm-Anpassung und Host-Klassifikation
+bleiben unverändert. Nicht-Ziele sind 16c–16e, neue Keycloak-Semantik, Schema,
+Gates oder Dependencies. Service- und Snapshot-Tests sowie Auth-/Data-/
+Security-/Runtime-Gates weisen die Verhaltensparität nach.
+
+**PR-Auftrag 16c:** Nach #1691 hat `service-audit-keycloak.ts` 511 Zeilen
+und einen registrierten `fileLines`-Befund. Ziel ist ein kleinerer
+Keycloak-Audit-Pfad bei unveränderten öffentlichen Exporten, Check-IDs,
+Statuswerten, Reihenfolgen und Fehlercodes. Nicht-Ziele sind neue
+Auditfunktionen, Auth-Vertragsänderungen und andere Module. Der bestehende
+Reader bleibt unter `service-audit-keycloak.ts`; das bislang nur separat
+getestete `service-audit-keycloak-checks.ts` wird zur produktiven Quelle der
+Check-Ableitung. Die Checks für nicht live lesbare Realms benötigen wegen
+des Dateilimits ein eigenes internes Modul. Seine direkten Verbraucher sind
+die Check-Ableitung und damit `service-audit.ts`. Live-Fehler dürfen keine
+PII aus Exceptions in Logs oder Audit-Details übertragen; ein Snapshot ist
+nur sekundärer Befund und ersetzt keinen erfolgreichen Live-Read. Gezielte
+Audit-Tests sowie Auth-/Data-/Security-/Runtime-Gates prüfen diese Grenzen.
+
+### PR 17: Events-Editor
+
+Ausgangsstand nach PR 16e: `events.detail-page.tsx` 1.183 Zeilen,
+`plugin.translations.ts` 800 Zeilen und `events.detail-form.ts` 307 Zeilen
+bei einem Limit von 260. Die bestehende `EventsDetailPage` bleibt der
+Einstiegspunkt. Paketinterne Module übernehmen Laden und Rechte, Medienauswahl,
+Validierung und Speichern sowie die Tab-Darstellung. Der Formular-Mapper
+behält seine bisherigen Imports und trennt Typen und Defaultwerte; die
+Übersetzungen werden je Sprache in Feld-/Aktions- und Editor-/Meldungsgruppen
+zusammengesetzt. Die ersetzten Blöcke entfallen in den Ausgangsdateien.
+
+Kritische Invarianten: Die geschützten Feldpfade und Fokusziele bleiben
+identisch; Mainserver-Deviations werden nur nach Bestätigung überschrieben;
+die Medienreferenz-Speichersequenz, Create-Navigation und Delete-Rückmeldung
+bleiben erhalten. Die bestehenden Events-Detail-, Formular- und Plugin-Tests
+sowie Type-, Lint-, Build- und Complexity-Gates belegen den Schnitt. Nur die
+drei behobenen `fileLines`-Einträge werden aus der Policy entfernt.
+
+### PR 18: News-Editor
+
+Ausgangsstand nach PR 17: `news.detail-page.tsx` 1.347 Zeilen,
+`plugin.translations.ts` 961 Zeilen und `news.detail-form.ts` 910 Zeilen.
+`NewsDetailPage` bleibt der öffentliche Einstiegspunkt. Die Seite delegiert
+Zugriff, Optionen, Laden, Medienauswahl, Speichern/Löschen und Darstellung an
+direkt genutzte paketinterne Module. Der bestehende Formularimport bleibt für
+API und Tests erhalten; Schema, Legacy-Aliasse, Snapshot-Synchronisierung,
+Mutation und Dirty-Tab-Ableitung besitzen jeweils eine zuständige Quelle.
+Die Übersetzungen werden pro Sprache in Feld-/Navigations- und
+Editor-/Meldungsgruppen zusammengesetzt. Ersetzte Implementierungen entfallen
+aus den Ausgangsdateien.
+
+Kritische Invarianten: Der bestehende Feld- und Übersetzungsschlüsselvertrag,
+Datums- und Medienvalidierung, Legacy-Fallbacks, Berechtigungen,
+Waste-Targeting und globale Push-Bestätigung bleiben erhalten. Bei Save bleibt
+die Reihenfolge aus Content-Persistierung, Medienreferenz-Synchronisierung,
+Create-Navigation beziehungsweise Edit-Reset samt Retry-Rückmeldung erhalten.
+Die News-Detail-, Formular-, Editor-Modell- und Übersetzungstests sowie Type-,
+Lint-, Build- und Complexity-Gates prüfen diesen Schnitt. Nur die drei
+behobenen `fileLines`-Einträge werden aus der Policy entfernt.
+
+### PR 19: Generic-Items-Editor
+
+Ausgangsstand nach PR 18: `generic-items.detail-content-tab.tsx` 1.336 Zeilen
+und `generic-items.detail-page.tsx` 764 Zeilen. Der Content-Tab bleibt der
+öffentliche Einstieg für Text, Kontakte/Orte, Medien/Links, Zusatzangaben und
+Termine. Direkt genutzte, paketinterne Sektionen binden dieselben
+`react-hook-form`-Feldpfade und Feldarray-IDs. Die Detailseite hält Laden,
+Zugriff und Navigation zusammen; Medienauswahl, Referenzabgleich,
+Speichervorgang und Darstellung liegen in direkt verwendeten Modulen. Die
+öffentlichen Exporte der beiden Ausgangsdateien bleiben erhalten.
+
+Kritische Invarianten: Content-Ownership, Berechtigungen und
+Sichtbarkeitswechsel, Feldvalidierung, Geocoding, öffentliche persistierbare
+Medien-URLs, Reihenfolge der Medienreferenzen, Draft-Auflösung sowie
+Save-/Retry-Rückmeldung bleiben unverändert. Die Generic-Items-Content-,
+Detailseiten-, Medienadapter- und Formular-Tests sowie Type-, Lint-, Build-
+und Complexity-Gates prüfen den Schnitt. Die fünf erledigten
+`trackedFindings` der beiden Ausgangsdateien entfallen aus der Policy;
+die lange Controller-Funktion der Detailseite bleibt als gesonderter
+Bestandsbefund registriert.
+
+### PR 20: POI-Editor
+
+Ausgangsstand nach PR 19: `poi.detail-page.tsx` 1.092 Zeilen. Der öffentliche
+Einstieg bleibt `PoiDetailPage`; er hält Formularzustand, Zugriff und die
+Verbindung der direkt genutzten POI-Module. Laden und Principal-Wechsel,
+Medienauswahl, Validierung und Speichern, Löschen sowie die bestehenden
+POI-Tabs besitzen jeweils eine zuständige Implementierung. Die ersetzten
+Blöcke entfallen aus der Ausgangsdatei; weder ein öffentlicher Export noch ein
+API-, Daten- oder Berechtigungsvertrag ändert sich.
+
+Kritische Invarianten: Die Reihenfolge von Formularvalidierung, Fokus und
+Tabwechsel, der eingeschränkte Sichtbarkeitswechsel, Principal-abhängiger
+Zugriff, Medienentwürfe und Referenzabgleich samt Retry, Geocoding und
+Create-/Edit-/Delete-Navigation bleiben erhalten. Gezielte POI-Detail-,
+Formular-, Medien- und Geocoding-Tests sowie Type-, Lint-, Build- und
+Complexity-Gates prüfen den Schnitt. Das erledigte `fileLines`-Finding und
+das ebenfalls behobene Cyclomatic-Finding entfallen; das bestehende
+`functionLines`-Finding der Einstiegsfunktion bleibt separat registriert.
+
+### PR 21: Projects-Seite
+
+Ausgangsstand nach PR 20: `projects.pages.tsx` 1.109 Zeilen. Der öffentliche
+Einstieg für Liste, Anlegen und Bearbeiten bleibt erhalten. Die Liste sowie
+Editor-Tabs, Bildfeld, Medienauswahl, Laden, Speichern und Darstellung werden
+von den drei Seiten direkt genutzt. Die ersetzten Blöcke entfallen aus der
+Ausgangsdatei; API-, Daten- und Berechtigungsverträge bleiben bestehen.
+
+Kritische Invarianten: Listenstatus und Pagination, Principal-abhängiger
+Zugriff, Create-/Edit-/Delete-Navigation, Formularvalidierung und Tabwechsel,
+öffentliche Medien-URLs, Referenzreihenfolge und Retry-Rückmeldung bleiben
+unverändert. Projects-Seitentests und Ownership-Konformitätstest sowie Type-,
+Lint-, Build- und Complexity-Gates prüfen den Schnitt. Die erledigten
+`fileLines`-, `functionLines`- und Cyclomatic-Findings der Ausgangsdatei
+entfallen aus der Policy; es entstehen keine neuen Findings.
+
+### PR 22: Cockpit-Cards-Seite
+
+Ausgangsstand nach PR 21: `cockpit-cards.pages.tsx` 1.183 Zeilen.
+Die bestehenden öffentlichen Seiten-Exporte bleiben erhalten. Listenansicht,
+Editor-Felder, Medienauswahl, Laden, Speichern und die Ansicht werden von den
+Seiten direkt genutzt; die ersetzten Blöcke entfallen aus der Ausgangsdatei.
+Die zugehörigen `fileLines`-, `functionLines`- und Cyclomatic-Findings dieser
+Datei werden nach dem Schnitt aus der Complexity-Policy entfernt.
+
+Kritische Invarianten: Sichtbarkeit und Lebenszyklusberechtigung, Listen- und
+Medienreihenfolge, Laden/Speichern/Löschen, Referenz-Retry, öffentliche
+Medien-URLs, Principal und Ownership sowie Fehlerrückmeldungen bleiben
+unverändert. Cockpit-Cards-Seitentests, Ownership-Konformitätstest und Type-,
+Lint-, Build- und Complexity-Gates prüfen den Schnitt. Ein eigener Studio-
+Changelog-Eintrag dokumentiert den Abschnitt.
+
+### PR 27: Mainserver-Content-Routen
+
+Die fünf bestehenden Routeneinstiege bleiben die einzigen Dispatcher. Ihre
+internen Eingabe-, Zugriffs-, Lese- und Mutationsschritte liegen in privaten
+Modulen desselben Mainserver-Pakets. News behält insbesondere die Reihenfolge
+von Berechtigungs- und CSRF-Prüfung, Idempotenzreservierung,
+Provider-Schreibzugriff, Audit und Idempotenzabschluss. Events behält den bestehenden
+Mutationsworkflow samt Teilerfolg bei Sichtbarkeitsfehlern. Generic Items
+behält FAQ- und Kachel-Sonderfälle sowie Autoren- und Identitätserhalt. POI
+und Projects behalten die lokalen Berechtigungen, DataProvider-Bindung und
+Antwortformate. Die Route-Tests für News, Events/POI, Generic Items,
+Cockpit-Cards und Projects prüfen diese Verträge vor und nach dem Schnitt;
+Type-, Lint-, Server-Runtime- und vollständiges Complexity-Gate prüfen die
+Paketgrenze und die fünf beseitigten `fileLines`-Befunde.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und
@@ -405,12 +630,17 @@ Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
    Konsumenten/Verträge bearbeiten. Wenn ein konkreter Vertrag mit einem
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
-3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
-   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f und 12a bis
-   12d und 13a bis 13f werden genau
-   in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
-   abgeschlossen, bevor die nächste Nummer beginnt.
-4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.
+3. **Produktbereiche:** PR 05 bis PR 22 einschließlich 06a bis 06d2, 07a
+   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f, 12a bis
+   12d und 13a bis 13f wurden seriell geliefert. Ab PR 23 laufen höchstens
+   zwei getrennte Worktrees parallel: Strang A bearbeitet PR 23 bis PR 26
+   und danach PR 31 bis PR 34; Strang B bearbeitet PR 27 bis PR 30. PR 29
+   wartet auf den Merge von PR 26. Die einzelnen PR-Aufträge in `tasks.md`
+   bleiben unverändert. Innerhalb jedes Strangs ist der vorherige Merge
+   Voraussetzung für den nächsten Abschnitt. Vor jedem Merge wird der Branch
+   gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter
+   HEAD vollständig geprüft. Nur ein PR wird zur selben Zeit gemergt.
+4. **Schlusslauf:** Nach allen PRs 23 bis 34 wird der vollständige Scope erneut gemessen.
    Ein Restbefund wird als konkret benannter weiterer PR-Task ergänzt und
    abgearbeitet, bevor der Change abgeschlossen wird.
 

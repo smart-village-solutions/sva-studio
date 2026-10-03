@@ -16,6 +16,7 @@
   "targetDefaults": {
     "build": { "cache": true, "inputs": ["production", "^production"] },
     "check:runtime": {
+      "parallelism": false,
       "cache": true,
       "inputs": ["production", "^production", "serverRuntimeTooling"]
     },

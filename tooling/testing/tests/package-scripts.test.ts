@@ -731,3 +731,20 @@ describe('workspace package scripts', () => {
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
   });
 });
+
+describe('auth-runtime injected workspace dependencies', () => {
+  it.each(['build', 'test:types'])(
+    '%s synchronizes after dependency builds on every execution',
+    (targetName) => {
+      const project = JSON.parse(
+        fs.readFileSync(path.join(resolveRootDir(), 'packages/auth-runtime/project.json'), 'utf8')
+      ) as NxProjectJson;
+      const target = project.targets?.[targetName];
+      expect(target?.dependsOn).toContain('^build');
+      expect(target?.cache).toBe(false);
+      expect(target?.options?.command).toMatch(
+        /^pnpm exec tsx scripts\/ci\/sync-injected-workspace-packages\.ts packages\/auth-runtime && /
+      );
+    }
+  );
+});

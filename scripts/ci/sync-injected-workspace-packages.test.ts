@@ -1,10 +1,16 @@
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { collectWorkspacePackages, findReachableWorkspacePackageNames } from './sync-injected-workspace-packages.js';
+import {
+  collectWorkspacePackages,
+  findReachableWorkspacePackageNames,
+  syncWorkspacePackage,
+} from './sync-injected-workspace-packages.js';
 
 const tempDirs: string[] = [];
 
@@ -18,6 +24,140 @@ describe('sync-injected-workspace-packages', () => {
     for (const tempDir of tempDirs.splice(0)) {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it('keeps installed-copy writers exclusive in the Nx task runner', () => {
+    const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+    const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'sync-injected-nx-scheduling-'));
+    tempDirs.push(tempRoot);
+    symlinkSync(path.join(repoRoot, 'node_modules'), path.join(tempRoot, 'node_modules'), 'dir');
+    writePackageJson(tempRoot, 'sync-scheduling-fixture');
+    const readConfig = (relativePath: string) =>
+      JSON.parse(readFileSync(path.join(repoRoot, relativePath), 'utf8'));
+    const defaults = readConfig('nx.json').targetDefaults;
+    writeFileSync(
+      path.join(tempRoot, 'nx.json'),
+      JSON.stringify({
+        neverConnectToCloud: true,
+        targetDefaults: { 'check:runtime': { parallelism: defaults['check:runtime'].parallelism } },
+      })
+    );
+    // A shared directory models the installed dist that both sync paths replace.
+    // Overlap fails deterministically; the fixture never mutates real node_modules.
+    writeFileSync(
+      path.join(tempRoot, 'writer.cjs'),
+      `
+      const fs = require('node:fs');
+      const directory = 'shared-installed-dist';
+      fs.mkdirSync(directory);
+      setTimeout(() => fs.rmdirSync(directory), 500);
+    `
+    );
+    const writers = [
+      ['packages/auth-runtime/project.json', 'build'],
+      ['packages/auth-runtime/project.json', 'test:types'],
+      ['apps/public-waste-calendar-web/project.json', 'build'],
+      ['apps/public-waste-calendar-web/project.json', 'test:unit'],
+      ['packages/data/project.json', 'check:runtime'],
+    ] as const;
+    writers.forEach(([configPath, targetName], index) => {
+      const projectDir = path.join(tempRoot, 'packages', `writer-${index}`);
+      mkdirSync(projectDir, { recursive: true });
+      const { parallelism } = readConfig(configPath).targets[targetName];
+      writeFileSync(
+        path.join(projectDir, 'project.json'),
+        JSON.stringify({
+          name: `writer-${index}`,
+          root: `packages/writer-${index}`,
+          targets: {
+            [targetName]: {
+              executor: 'nx:run-commands',
+              ...(parallelism === undefined ? {} : { parallelism }),
+              options: { command: 'node writer.cjs' },
+            },
+          },
+        })
+      );
+    });
+    const fixtureEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([name]) => !name.startsWith('NX_'))
+    );
+    execFileSync(
+      'pnpm',
+      [
+        'exec',
+        'nx',
+        'run-many',
+        '-t',
+        'build',
+        'test:types',
+        'test:unit',
+        'check:runtime',
+        '--all',
+        '--parallel=5',
+      ],
+      {
+        cwd: tempRoot,
+        env: {
+          ...fixtureEnv,
+          NX_DAEMON: 'false',
+          NX_ISOLATE_PLUGINS: 'false',
+          NX_WORKSPACE_ROOT_PATH: tempRoot,
+        },
+        stdio: 'pipe',
+        timeout: 20000,
+      }
+    );
+  }, 25000);
+
+  it('refreshes missing and stale injected declarations after dependency builds', async () => {
+    const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'sync-injected-auth-runtime-'));
+    tempDirs.push(tempRoot);
+    const sourceDir = path.join(tempRoot, 'packages', 'instance-registry');
+    const injectedDir = path.join(
+      tempRoot,
+      'node_modules',
+      '.pnpm',
+      '@sva+instance-registry@file+packages+instance-registry',
+      'node_modules',
+      '@sva',
+      'instance-registry'
+    );
+    writePackageJson(sourceDir, '@sva/instance-registry');
+    writePackageJson(injectedDir, '@sva/instance-registry');
+    const [workspacePackage] = await collectWorkspacePackages(tempRoot);
+    expect(workspacePackage).toBeDefined();
+    if (!workspacePackage) throw new Error('Missing fixture workspace package');
+
+    // Installation happened before the dependency build (or its cache restore).
+    mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
+    const declaration = 'export declare const tenantIngress: string;\n';
+    writeFileSync(path.join(sourceDir, 'dist', 'kassel-tenant-ingress.d.ts'), declaration);
+    expect(await syncWorkspacePackage(tempRoot, workspacePackage)).toEqual({
+      skipped: false,
+      updatedCopies: 1,
+    });
+    expect(readFileSync(path.join(injectedDir, 'dist', 'kassel-tenant-ingress.d.ts'), 'utf8')).toBe(
+      declaration
+    );
+
+    // A subsequent dependency build must replace old files, not leave stale exports.
+    rmSync(path.join(sourceDir, 'dist', 'kassel-tenant-ingress.d.ts'));
+    writeFileSync(
+      path.join(sourceDir, 'dist', 'repositories.d.ts'),
+      'export declare const repository: string;\n'
+    );
+    expect(await syncWorkspacePackage(tempRoot, workspacePackage)).toEqual({
+      skipped: false,
+      updatedCopies: 1,
+    });
+    expect(readFileSync(path.join(injectedDir, 'dist', 'repositories.d.ts'), 'utf8')).toContain(
+      'repository'
+    );
+    expect(() => readFileSync(path.join(injectedDir, 'dist', 'kassel-tenant-ingress.d.ts'))).toThrow();
+    expect(readFileSync(path.join(sourceDir, 'dist', 'repositories.d.ts'), 'utf8')).toContain(
+      'repository'
+    );
   });
 
   it('limits reachable workspace packages to the consumer dependency graph', async () => {

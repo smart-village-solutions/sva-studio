@@ -1,6 +1,8 @@
-# Serielle Lieferliste
+# Lieferliste mit zwei Arbeitssträngen ab PR 23
 
-Die PRs werden in dieser Reihenfolge bearbeitet. Die erste Checkbox wird
+PR 01 bis PR 22 wurden seriell bearbeitet. Ab PR 23 gelten die beiden
+Arbeitsstränge unterhalb dieser Einleitung; jeder PR bleibt einzeln beschrieben.
+Die erste Checkbox wird
 abgehakt, wenn der PR auf dem exakt geprüften HEAD gemergt ist, seine
 benannten aktuellen `fileLines`-Befunde im vollständigen Complexity-Lauf
 verschwunden und die zugehörigen Registereinträge entfernt sind. Die zweite
@@ -11,6 +13,22 @@ Merge- und Gate-Nachweis an seinem PR-Task vermerkt; die nächste Nummer
 bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
+
+**Strang A:** PR 23 → PR 24 → PR 25 → PR 26 → PR 31 → PR 32 → PR 33 → PR 34.
+**Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
+Merge von PR 26, weil der öffentliche Waste-Kalender die dann integrierten
+Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
+Mainserver-Waste-Schnittstelle gegen die laufenden Änderungen aus Strang A;
+bei konkreter Kopplung wartet er auf den betroffenen Waste-PR.
+
+Pro Strang arbeitet höchstens ein Subagent in einem eigenen Worktree. Innerhalb
+eines Strangs beginnt der nächste PR erst nach dem Merge des Vorgängers;
+zwischen den Strängen darf die Implementierung parallel laufen. Merges bleiben
+einzeln: Vor dem finalen Nachweis wird jeder Branch mit dem dann aktuellen
+`origin/main` synchronisiert. Nach einer Synchronisierung gelten Checks und
+Review-Threads nur für den neuen exakten HEAD. Gemeinsame Änderungen an
+`tasks.md`, `design.md` und der Complexity-Policy werden dabei aufgelöst,
+bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ## Pilot und Grundlagen
 
@@ -732,132 +750,243 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 15b — Instanz-Repository-Server (1 Befund)
 
-- [ ] `packages/data-repositories/src/instance-registry/server.ts` entlang
+- [x] `packages/data-repositories/src/instance-registry/server.ts` entlang
       der vorhandenen Pool-, Host- und Server-Fassaden unter das Dateilimit
       bringen. Öffentliche Exporte, URL-Auflösung, Pool-/Client-Lifecycle,
       Host-Cache/Fallback, Repository-Aufrufe mit Instance-ID-Filter und
       Fehlerweitergabe mit
       Server-Repository-Tests sowie Data-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
+      Nachweis: PR #1684 mit HEAD
+      `da6327abda420b70fe16e880f1fb1a61e4178ab3` als
+      `c3e4c1b3d5c0134a17e82484691f55a0ca8ebff6` gemergt;
+      `docs/changelog/entries/pr-1684.json` enthalten.
+
 ### PR 15c — Keycloak-Provisionierungszustand (1 Befund)
 
-- [ ] `packages/instance-registry/src/provisioning-auth-state.ts` nach
-      Zustandsverantwortung unter das Dateilimit bringen. Tenant-/Realm-Bindung,
-      Plan-/Run-Zustände, Idempotenz und Fehlerzuordnung mit den vorhandenen
+- [x] `packages/instance-registry/src/provisioning-auth-state.ts` entlang
+      Client-Vertrag, Tenant-Admin-Bootstrap, Realm-Readback und
+      Artifact-Reconcile unter das Dateilimit bringen. Öffentlichen Subpath,
+      Tenant-/Realm-Bindung, Ownership, Secret-Readback, Idempotenz,
+      Reihenfolge und Cleanup-/Fehlerzuordnung mit den vorhandenen
       Provisionierungstests sowie Auth-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
 ### PR 15d — Keycloak-Auth-Evaluation und -Plan (2 Befunde)
 
-- [ ] `packages/instance-registry/src/provisioning-auth-evaluation.ts` und
+- [x] `packages/instance-registry/src/provisioning-auth-evaluation.ts` und
       `provisioning-auth-plan.ts` entlang der bestehenden Preflight-,
       Ownership- und Plan-Grenzen unter das Dateilimit bringen. Tenant-/Realm-
       Ownership, Plan-Fingerprint, Gate-Status, Fehlerklassen und
       Bestätigungsbedingungen mit gezielten Tests sowie Auth-/Security-/
       Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
+      Merge-Nachweis: PR #1688, HEAD
+      `01d8a6ebf5730332ee97feb081580fdf32941010`, Merge-Commit
+      `85cf9cded0b1b6334142e0beadc77eff438dff3e`; Changelog
+      `docs/changelog/entries/pr-1688.json`.
+
 ### PR 15e — Tenant-Provisionierungsschritte (1 Befund)
 
-- [ ] `packages/instance-registry/src/tenant-provisioning-steps.ts` nach
+- [x] `packages/instance-registry/src/tenant-provisioning-steps.ts` nach
       vorhandenen Provisionierungsphasen unter das Dateilimit bringen.
       Schrittfolge, idempotente Wiederaufnahme, Lease-/Retry-Grenzen,
       Terminalstatus und Audit-Ereignisse mit den Orchestrator-Tests sowie
       Auth-/Data-/Security-/Runtime-Gates erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` anlegen;
       Changelog-Gate vor Merge grün.
 
-### PR 16 — Instanz-Service und Keycloak-Ausführung (6 Befunde)
+      Merge-Nachweis: PR #1689, HEAD
+      `618c3f6b249ebe2fe435381c610d1a9e96cefc88`, Merge-Commit
+      `0d311774251251b13cd8923bdf664be6c8e13621`; Changelog
+      `docs/changelog/entries/pr-1689.json`.
 
-- [ ] In `packages/instance-registry/src/`
-      `service-keycloak-execution.ts`, `service-keycloak-readers.ts`,
-      `service-audit-keycloak.ts`, `service-module-mutations.ts`,
-      `service-draft-readiness.ts`, `service-helpers.ts` bereinigen.
-      Provisionierungszustände, Fehlerpfade und Keycloak-Grenze prüfen.
+### PR 16a — Keycloak-Ausführung (1 Befund)
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] `packages/instance-registry/src/service-keycloak-execution.ts` entlang
+      Queue/Handler, Worker-Snapshot, Run-Ausführung und Finalisierung unter
+      das Dateilimit bringen. Öffentliche Exporte, Run-/Tenant-/Attempt-/Lease-
+      Bindung, Plan-Fingerprint, Secret-Synchronisierung, Cleanup,
+      Fehlercodes und Terminal-/Retry-Folge mit Execution-, Failure-, Payload-,
+      Finalize- und Reconcile-Tests sowie Auth-/Data-/Security-/Runtime-Gates
+      erhalten; bestehende Complexity-Befunde der Datei gesondert messen.
+
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und nutzerverständlichem `body` anlegen;
+      Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1690, HEAD
+      `8c0c560138a4f25ad3e2ef380a182b10854b6c6b`, Merge-Commit
+      `13ddd101ae1fb2289b44ebe23036fa73b92bd27b`; Changelog
+      `docs/changelog/entries/pr-1690.json`.
+
+### PR 16b — Keycloak-Reader (1 Befund)
+
+- [x] `packages/instance-registry/src/service-keycloak-readers.ts` entlang
+      Status, Preflight und Plan unter das Dateilimit bringen. Tenantbindung,
+      Read-Only-Verhalten und Plan-Fingerprint mit Reader-/Plan-Tests und
+      zuständigen Gates erhalten.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1691, HEAD
+      `6203ac1a2634d1c6130ee8b2016b47f9f606c590`, Merge-Commit
+      `00f035444a07482aee24d11d912124a9df8d1911`; Changelog
+      `docs/changelog/entries/pr-1691.json`.
+
+### PR 16c — Keycloak-Audit (1 Befund)
+
+- [x] `packages/instance-registry/src/service-audit-keycloak.ts` entlang
+      Reader, Mapping und Checks unter das Dateilimit bringen. Audit-Umfang,
+      PII-Schutz und Fehlerklassen mit gezielten Audit-Tests und zuständigen
+      Gates erhalten.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1692, HEAD
+      `53857c310f5ff30630318d20b29d0b8c464b5850`, Merge-Commit
+      `ece5097cd712846092d9e39302a15d7673b221b4`; Changelog
+      `docs/changelog/entries/pr-1692.json`.
+
+### PR 16d — Modul-Mutationen (1 Befund)
+
+- [x] `packages/instance-registry/src/service-module-mutations.ts` entlang
+      Sync und Audit unter das Dateilimit bringen. Modulreihenfolge,
+      Idempotenz, Autorisierung und Audit mit Mutationstests und zuständigen
+      Gates erhalten.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1693, HEAD
+      `d7887f00e2083964837760d7bdf0e6e5bad71b77`, Merge-Commit
+      `ad61e367bdb1e0931c9820810b643ee8214d6383`; Changelog
+      `docs/changelog/entries/pr-1693.json`.
+
+### PR 16e — Draft-Readiness und Service-Helfer (2 Befunde)
+
+- [x] `packages/instance-registry/src/service-draft-readiness.ts` und
+      `service-helpers.ts` nach den vorhandenen Readiness- und
+      Projektionsgrenzen unter das Dateilimit bringen. Status, Validierung,
+      Tenantbezug und Projektionen mit Readiness-/Service-Tests und zuständigen
+      Gates erhalten.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1694, HEAD
+      `6e030441475045855535aac030b5f364610b560c`, Merge-Commit
+      `e4dbeeaec8b7468ea10d74201ebbb2ecf2bf2ff5`; Changelog
+      `docs/changelog/entries/pr-1694.json`.
 
 ## Fachplugins
 
 ### PR 17 — Events-Editor (3 Befunde)
 
-- [ ] In `packages/plugin-events/src/` `events.detail-page.tsx`,
+- [x] In `packages/plugin-events/src/` `events.detail-page.tsx`,
       `plugin.translations.ts`, `events.detail-form.ts` bereinigen.
       Feldpfade, Übersetzungen, Validierung und Speichersequenz testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1695, HEAD
+      `d66c8f6cd544420fe716cbad32d249ad2a72c2f0`, Merge-Commit
+      `17bf730ac58d35376bc83c52a513c20761fff159`; Changelog
+      `docs/changelog/entries/pr-1695.json`.
 
 ### PR 18 — News-Editor (3 Befunde)
 
-- [ ] In `packages/plugin-news/src/` `news.detail-page.tsx`,
+- [x] In `packages/plugin-news/src/` `news.detail-page.tsx`,
       `plugin.translations.ts`, `news.detail-form.ts` bereinigen.
       Editor- und Übersetzungsvertrag mit gezielten Tests erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+      Merge-Nachweis: PR #1697, HEAD
+      `136aae62271df4ffc930a1bd0fa0c058ed2479a1`, Merge-Commit
+      `0999c6f8a288ef4a6a13b221a623ca78a24965c8`; Changelog
+      `docs/changelog/entries/pr-1697.json`.
+
 ### PR 19 — Generic-Items-Editor (2 Befunde)
 
-- [ ] In `packages/plugin-generic-items/src/`
+- [x] In `packages/plugin-generic-items/src/`
       `generic-items.detail-content-tab.tsx` und
       `generic-items.detail-page.tsx` bereinigen. Content-Tab-Ownership,
       Formular- und Medienverträge gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1698, HEAD
+      `ca55010b5002efdd60b283b0161bb11723d6b243`, Merge-Commit
+      `d239bbc395d13591d7d8919212dc6246d7140cdc`; Changelog
+      `docs/changelog/entries/pr-1698.json`.
 
 ### PR 20 — POI-Editor (1 Befund)
 
-- [ ] `packages/plugin-poi/src/poi.detail-page.tsx` entlang bestehender
+- [x] `packages/plugin-poi/src/poi.detail-page.tsx` entlang bestehender
       POI-Abschnitte bereinigen. Formular-, Geocoding- und
       Berechtigungsverhalten gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1699, HEAD
+      `5e1baf8d7a2e43c11d76607672b18507d7456821`, Merge-Commit
+      `f6e840cad623162ce01628b5e30692fe0a9c6809`; Changelog
+      `docs/changelog/entries/pr-1699.json`.
 
 ### PR 21 — Projects-Seite (1 Befund)
 
-- [ ] `packages/plugin-projects/src/projects.pages.tsx` entlang der
+- [x] `packages/plugin-projects/src/projects.pages.tsx` entlang der
       bestehenden Seitenverantwortung bereinigen. Listen-, Detail- und
       Speicherverhalten gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1700.json` mit passender
+      `prNumber` und nutzerverständlichem `body` angelegt; Changelog-Gate vor
+      Merge grün. Merge-Nachweis: PR #1700, HEAD
+      `f63a6f0902f0ecad362ffddb933a547f729d3280`, Merge-Commit
+      `4f96d3ed4fd9167ebdcc14e3b436b5b0df7e51fe`.
 
 ### PR 22 — Cockpit-Cards-Seite (1 Befund)
 
-- [ ] `packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx`
+- [x] `packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx`
       bereinigen. Sichtbarkeit, Reihenfolge und Save-/Reload-Verhalten
       gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1701, HEAD
+      `d20d2dedeb12f4bef23da4536daa6a2e439fe6e6`, Merge-Commit
+      `e4b8aa62d719f7ab8b2dc8d2ac69d404e2bec8dc`; Changelog
+      `docs/changelog/entries/pr-1701.json`.
 
 ## Waste-Management
 
@@ -932,8 +1061,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       `projects-route.ts` bereinigen. Validierung, Fehlercodes,
       Berechtigungen und Antwortformat gezielt testen.
 
+      Draft-PR #1704; Implementierungsstand auf Ausgangs-HEAD
+      `702af348e0bd9c0cc170589144f138eac4f6fda2`: Die fünf Routen
+      wurden nach Eingabe, Zugriff, Lesen und Mutation getrennt. Die
+      ursprünglichen Zeilenzahlen 1458/846/681/633/516 liegen nach dem
+      Schnitt bei 127/110/128/250/312 (News/Events/Generic Items/POI/Projects).
+      Die fünf `fileLines`-Registereinträge sind entfernt; der vollständige
+      Complexity-Lauf meldet keine neuen Befunde. Merge- und finaler
+      HEAD-Gate-Nachweis bleiben für das Abhaken ausstehend.
+
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1704.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
@@ -1025,7 +1163,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-## Abschluss nach PR 34
+## Abschluss nach allen PRs 23 bis 34
 
 - [ ] Auf integriertem `main` einen vollständigen `pnpm complexity-gate`-Lauf
       mit null aktuellen `fileLines`-Verstößen und null verwaisten

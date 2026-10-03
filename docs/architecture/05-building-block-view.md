@@ -169,6 +169,7 @@ Abhängigkeiten des aktuellen Systems.
 - autorisiert generische Lese- und Schreibpfade ausschließlich mit `generic-items.*`; zusätzliche Fachrechte sind nicht erforderlich
 - lässt die eigenständigen Fachplugins, ihre festen Diskriminatoren, Validierungen und Action-Namespaces unverändert
 - bleibt als eigenständiges Modul technischer Vollzugriff auf alle GenericItems; in der gemeinsamen Inhaltsübersicht übernimmt dagegen genau ein registriertes Fachplugin den Datensatz oder der generische Content-Type greift als Fallback
+- der Content-Tab bindet Text, Kontakte und Orte, Medien und Links, Zusatzangaben sowie Termine über direkt genutzte Formularsektionen an dieselben `react-hook-form`-Feldpfade; die Detailseite hält Laden, Zugriff und Navigation zusammen und delegiert Medienauswahl, Referenzabgleich, Speichern und Darstellung an paketinterne Module
 
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
@@ -191,17 +192,20 @@ Abhängigkeiten des aktuellen Systems.
 - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
 - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
 - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
+- Der öffentliche `provisioning-auth-state`-Subpath bündelt unverändert die Keycloak-Adapter; interne Module halten Client-Vertrag, Tenant-Admin-Bootstrap, Realm-Readback und Artifact-Reconcile samt Realm-Cleanup getrennt. Der injizierte Client bleibt an den jeweiligen Realm gebunden; das allgemeine Status-Readback liefert Secrets nur für Studio-eigene Clients.
+- `provisioning-auth-evaluation` bleibt der Exportpfad für Preflight, Status und Plan. Interne Module trennen Preflight-Checks, geordnete Ownership-Konflikte und Live-Status; `provisioning-auth-plan` hält Fingerprint und Step-Reihenfolge, während ein internes Modul die einzelnen Artefakt-Schritte erzeugt.
 - Die serverseitige New-Realm-Baseline besitzt ausschließlich nicht geheime, installationsweit einheitliche Realm-, Theme-, Locale-, Event-, SMTP-, Benutzerprofil- und Mapper-Werte. Der konfigurierte Keycloak-Endpunkt liefert den Issuer; das SMTP-Passwort bleibt außerhalb von Quellcode, Registry und Browservertrag eine sichtbare manuelle Nacharbeit.
 - Root-Entry exportiert bewusst nur die stabile Capability-Fläche; interne Service-, HTTP- und Provisioning-Helfer bleiben auf Subpath- oder interne Module begrenzt
 - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
 - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
+- Die Entwurfs-Readiness bleibt über `service-draft-readiness.ts` erreichbar; interne Projektionen bilden Fingerprint, Provisioning-Eingabe und Capabilities. Die Realm-Eignung bleibt beim Handler, Aktivierungsprüfungen liegen beim bestehenden Active-Provisioning-Pfad und die Tenant-IAM-Statusprojektion bei der Tenant-IAM-Evidenz. Die bisherigen Service-Importpfade bleiben erhalten.
 - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
 - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
 - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
 - `@sva/data-repositories` setzt Create- und Update-Werte der Registry aus fachlich benannten, puren Segmenten in einer festen SQL-Parameterreihenfolge zusammen; Secret-Erhalt, explizites Löschen und Ersetzen bleiben dabei eigenständige Positionsverträge
 - Der Registry-Server in `@sva/data-repositories/server` bündelt die öffentlichen Lade- und Waste-Provisionierungsaufrufe; interne Client-/Pool- und Host-Module halten URL-Auflösung, Pool-Reset sowie Host-Cache und Fallback getrennt. Die Waste-Aufrufe verwenden weiterhin ihre tenantgebundene Transaktion, einfache Registry-Lesezugriffe nur den Client-Lifecycle.
 - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
-- HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
+- HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen. Die Keycloak-Reader trennen Status, Preflight und Plan bei stabilem öffentlichen Service-Importpfad; die gemeinsame Snapshot-Fingerprint-Prüfung liegt beim vorhandenen Snapshot-Reader.
   13a. Lokaler Studio-MCP (`packages/studio-mcp`)
 - lokaler stdio-Server und dünner, typisierter Client der bestehenden Studio-HTTP-API
 - hält Tool-Schemata, Korrelation, Idempotenz, Redaction und begrenzte Read-only-Diagnose, aber keine Registry-Fachlogik
@@ -454,6 +458,7 @@ Abhängigkeiten des aktuellen Systems.
    - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
 4. `packages/instance-registry`
    - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
+   - hält Zuweisung und Entzug im Modul-Mutationsservice; ein internes Sync-Modul bündelt Bootstrap, geschützte System-Admin-Rechte und IAM-Baseline. Die bisherigen Service-Exporte bleiben am bestehenden Importpfad.
 5. `packages/auth-runtime`
    - reichert `/auth/me` für Instanz-Sessions mit `assignedModules` an.
 6. `packages/routing` und `apps/sva-studio-react`
@@ -512,6 +517,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - `plugin-news`, `plugin-events` und `plugin-poi` registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
    - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`; Events und POI nutzen dabei dieselbe feste Tab-Struktur `Basis` / `Inhalt` / `Einstellungen` / `Historie` wie News, während Route, Guard, Shell und Persistenz host-owned bleiben
    - halten die Event-Formularserialisierung als frameworkfreie, paketinterne Fachlogik getrennt von den React-Tabs; redaktionelle, Datums-, Adress- und Medienwerte werden ohne neue Shared-API in den bestehenden Mainserver-Input assembliert
+   - der Events-Detail-Editor hält Laden und Rechte, Medienauswahl, Validierung und Speichern sowie die Tab-Darstellung in paketinternen Modulen; `EventsDetailPage` bindet diese Pfade zusammen, ohne den Host-Vertrag zu ändern
    - beziehen gemeinsame Standard-Metadaten, Mainserver-CRUD-Basis und kleine Hilfsfunktionen aus `@sva/plugin-sdk`, ohne einander zu importieren
    - schreiben ihre Fachdaten über hostgeführte Fassaden; Legacy-`payload` bleibt nur dort Lesefallback, wo die jeweilige Fassade ihn noch toleriert
 
@@ -858,6 +864,11 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 
 ### Ergänzung 2026-08: Operativer Keycloak-Instanz-Audit
 
+- `@sva/instance-registry` hält den internen Audit-Reader unter
+  `service-audit-keycloak.ts`, die Check-Ableitung unter
+  `service-audit-keycloak-checks.ts` und die Behandlung nicht live lesbarer
+  Realms unter `service-audit-keycloak-unavailable.ts`. Der bisherige
+  Service-Importpfad bleibt für den Audit-Orchestrator erhalten.
 - `scripts/ops/studio-instance-audit/keycloak.ts` besitzt die read-only
   `kcadm`-Erhebung, die kurzlebige Auth-Konfiguration und deren Cleanup.
 - `scripts/ops/studio-instance-audit/keycloak-evaluation.ts` besitzt den
@@ -995,6 +1006,10 @@ Details stehen unter [Kontextbezogene Anwenderdokumentation](./contextual-user-d
   Zeitraum ausschließlich die beiden Keycloak-Secrets über eine schmale Mutation abgleichen.
   Die Worker-Ausführung selbst hält dieselbe instanzbezogene Sperre im vollständigen
   RLS-Kontext; verwaiste Claims werden erst nach Ablauf und erfolgreicher Lock-Probe beendet.
+  Innerhalb des Registry-Service trennen Queue-Handler, Worker-Snapshotprüfung und
+  Post-Provisioning-Finalisierung die Phasen dieses Laufs. Der öffentliche
+  Execution-Import bleibt gleich; Fingerprint-Prüfung, Secret-Synchronisierung,
+  Statusabschluss und Realm-Cleanup laufen in der bisherigen Reihenfolge.
   Ein bereits verwalteter Tenant-Admin-Bootstrap kann nicht entfernt werden.
 
 Der genaue Payload- und Fehlervertrag ist im

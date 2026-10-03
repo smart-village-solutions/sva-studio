@@ -1,83 +1,7 @@
 import type { InstanceAuditCheck } from '@sva/core';
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 import { CHECK_IDS, createCheck, createSkipCheck } from './service-audit-shared.js';
-
-const createRealmUnavailableChecks = (input: {
-  evidenceSource: string;
-  keycloakError?: string;
-  fallbackStatus?: KeycloakTenantStatus | null;
-  fallbackEvidenceSource?: string;
-  fallbackError?: string;
-}): readonly InstanceAuditCheck[] => {
-  const hasFallback = input.fallbackStatus != null;
-  const accessStatus: InstanceAuditCheck['status'] = hasFallback ? 'warn' : 'fail';
-  const accessDetails: Record<string, unknown> = {
-    primaryEvidenceSource: input.evidenceSource,
-  };
-
-  if (input.keycloakError) {
-    accessDetails.primaryError = input.keycloakError;
-  }
-  if (input.fallbackEvidenceSource) {
-    accessDetails.secondaryEvidenceSource = input.fallbackEvidenceSource;
-  }
-  if (input.fallbackError) {
-    accessDetails.secondaryError = input.fallbackError;
-  }
-  if (input.fallbackStatus) {
-    accessDetails.secondaryRealmExists = input.fallbackStatus.realmExists;
-    accessDetails.secondaryLoginClientExists = input.fallbackStatus.clientExists;
-    accessDetails.secondaryTenantAdminClientExists = input.fallbackStatus.tenantAdminClientExists;
-    accessDetails.secondarySystemAdminRoleExists = input.fallbackStatus.systemAdminRoleExists;
-    accessDetails.secondaryRuntimeSecretSource = input.fallbackStatus.runtimeSecretSource;
-  }
-
-  return [
-    ...(input.keycloakError || hasFallback
-      ? [
-          createCheck({
-            checkId: CHECK_IDS.keycloakAccessRead,
-            title: 'Technischer Keycloak-Zugriff',
-            scope: 'keycloak',
-            status: accessStatus,
-            expected: 'Live-Lesung des Tenant-Realms erfolgreich',
-            actual: input.keycloakError ?? 'nicht lesbar',
-            evidenceSource: input.evidenceSource,
-            details: accessDetails,
-            message: hasFallback
-              ? 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen. Ein sekundärer Snapshot-/Vertragspfad war noch auswertbar, ersetzt aber keinen erfolgreichen Live-Zugriff.'
-              : 'Die Live-Lesung des Tenant-Realm ist fehlgeschlagen.',
-            remediationHint: hasFallback
-              ? 'Technischen Live-Keycloak-Zugriff und Credential-Verdrahtung prüfen; sekundäre Snapshot-Befunde nur als Referenz nutzen.'
-              : 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
-          }),
-        ]
-      : []),
-    createCheck({
-      checkId: CHECK_IDS.keycloakRealmExists,
-      title: 'Keycloak-Realm vorhanden',
-      scope: 'keycloak',
-      status: hasFallback ? 'warn' : 'fail',
-      expected: hasFallback ? 'Realm im Keycloak live lesbar' : 'Realm im Keycloak vorhanden',
-      actual: hasFallback ? 'live_nicht_verifiziert' : input.keycloakError ?? 'nicht lesbar',
-      evidenceSource: input.evidenceSource,
-      details: hasFallback ? accessDetails : undefined,
-      message: hasFallback
-        ? 'Der Tenant-Realm konnte live nicht gelesen werden. Ein sekundärer Snapshot-/Vertragspfad liefert nur Referenzdaten und ersetzt keinen erfolgreichen Live-Read.'
-        : 'Der Keycloak-Realm konnte nicht gelesen werden.',
-      remediationHint: hasFallback
-        ? 'Technischen Live-Keycloak-Zugriff und die verwendeten Runtime-Credentials prüfen.'
-        : 'Technischen Keycloak-Zugriff, Realm-Namen und Verbindungsdaten prüfen.',
-    }),
-    createSkipCheck(CHECK_IDS.keycloakLoginClientExists, 'Keycloak-Login-Client vorhanden', 'keycloak', 'Login-Client im Realm vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
-    createSkipCheck(CHECK_IDS.keycloakLoginSecretAligned, 'Keycloak-Login-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', input.evidenceSource, 'Wird erst geprüft, wenn Tenant-Realm und Login-Client live gelesen werden können.'),
-    createSkipCheck(CHECK_IDS.keycloakPluginOidcClientsAligned, 'Plugin-OIDC-Clients abgeglichen', 'keycloak', 'Deklarierte Plugin-OIDC-Clients entsprechen dem Sollzustand', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
-    createSkipCheck(CHECK_IDS.keycloakTenantAdminClientExists, 'Keycloak-Tenant-Admin-Client vorhanden', 'keycloak', 'Tenant-Admin-Client im Realm vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
-    createSkipCheck(CHECK_IDS.keycloakTenantAdminSecretAligned, 'Keycloak-Tenant-Admin-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', input.evidenceSource, 'Wird erst geprüft, wenn Tenant-Realm und Tenant-Admin-Client live gelesen werden können.'),
-    createSkipCheck(CHECK_IDS.keycloakSystemAdminRoleExists, 'Keycloak-Rolle system_admin vorhanden', 'keycloak', 'Realm-Rolle system_admin vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn der Tenant-Realm live gelesen werden kann.'),
-    createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', input.evidenceSource, 'Wird erst geprüft, wenn Tenant-Realm, Rolle und Tenant-Admin-Status live gelesen werden können.'),
-  ];
-};
+import { createRealmUnavailableChecks } from './service-audit-keycloak-unavailable.js';
 
 const createPresenceCheck = (input: {
   checkId: string;
@@ -123,7 +47,14 @@ const createSecretAlignmentCheck = (input: {
         message: input.aligned ? input.presentMessage : input.missingMessage,
         remediationHint: input.aligned ? undefined : input.remediationHint,
       })
-    : createSkipCheck(input.checkId, input.title, 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', input.evidenceSource, 'Wird erst geprüft, wenn der zugehörige Client vorhanden ist.');
+    : createSkipCheck(
+        input.checkId,
+        input.title,
+        'keycloak',
+        'Registry-Secret stimmt mit Keycloak überein',
+        input.evidenceSource,
+        'Wird erst geprüft, wenn der zugehörige Client vorhanden ist.'
+      );
 
 const createRealmChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => {
   const realmCheck = createPresenceCheck({
@@ -143,18 +74,67 @@ const createRealmChecks = (status: KeycloakTenantStatus, evidenceSource: string)
 
   return [
     realmCheck,
-    createSkipCheck(CHECK_IDS.keycloakLoginClientExists, 'Keycloak-Login-Client vorhanden', 'keycloak', 'Login-Client im Realm vorhanden', evidenceSource, 'Wird erst geprüft, wenn der Realm vorhanden ist.'),
-    createSkipCheck(CHECK_IDS.keycloakLoginSecretAligned, 'Keycloak-Login-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', evidenceSource, 'Wird erst geprüft, wenn der Login-Client vorhanden ist.'),
-    createSkipCheck(CHECK_IDS.keycloakPluginOidcClientsAligned, 'Plugin-OIDC-Clients abgeglichen', 'keycloak', 'Deklarierte Plugin-OIDC-Clients entsprechen dem Sollzustand', evidenceSource, 'Wird erst geprüft, wenn der Realm vorhanden ist.'),
-    createSkipCheck(CHECK_IDS.keycloakTenantAdminClientExists, 'Keycloak-Tenant-Admin-Client vorhanden', 'keycloak', 'Tenant-Admin-Client im Realm vorhanden', evidenceSource, 'Wird erst geprüft, wenn der Realm vorhanden ist.'),
-    createSkipCheck(CHECK_IDS.keycloakTenantAdminSecretAligned, 'Keycloak-Tenant-Admin-Secret abgeglichen', 'keycloak', 'Registry-Secret stimmt mit Keycloak überein', evidenceSource, 'Wird erst geprüft, wenn der Tenant-Admin-Client vorhanden ist.'),
-    createSkipCheck(CHECK_IDS.keycloakSystemAdminRoleExists, 'Keycloak-Rolle system_admin vorhanden', 'keycloak', 'Realm-Rolle system_admin vorhanden', evidenceSource, 'Wird erst geprüft, wenn der Realm vorhanden ist.'),
-    createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', evidenceSource, 'Wird erst geprüft, wenn Rolle und Benutzerstatus lesbar sind.'),
+    createSkipCheck(
+      CHECK_IDS.keycloakLoginClientExists,
+      'Keycloak-Login-Client vorhanden',
+      'keycloak',
+      'Login-Client im Realm vorhanden',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Realm vorhanden ist.'
+    ),
+    createSkipCheck(
+      CHECK_IDS.keycloakLoginSecretAligned,
+      'Keycloak-Login-Secret abgeglichen',
+      'keycloak',
+      'Registry-Secret stimmt mit Keycloak überein',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Login-Client vorhanden ist.'
+    ),
+    createSkipCheck(
+      CHECK_IDS.keycloakPluginOidcClientsAligned,
+      'Plugin-OIDC-Clients abgeglichen',
+      'keycloak',
+      'Deklarierte Plugin-OIDC-Clients entsprechen dem Sollzustand',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Realm vorhanden ist.'
+    ),
+    createSkipCheck(
+      CHECK_IDS.keycloakTenantAdminClientExists,
+      'Keycloak-Tenant-Admin-Client vorhanden',
+      'keycloak',
+      'Tenant-Admin-Client im Realm vorhanden',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Realm vorhanden ist.'
+    ),
+    createSkipCheck(
+      CHECK_IDS.keycloakTenantAdminSecretAligned,
+      'Keycloak-Tenant-Admin-Secret abgeglichen',
+      'keycloak',
+      'Registry-Secret stimmt mit Keycloak überein',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Tenant-Admin-Client vorhanden ist.'
+    ),
+    createSkipCheck(
+      CHECK_IDS.keycloakSystemAdminRoleExists,
+      'Keycloak-Rolle system_admin vorhanden',
+      'keycloak',
+      'Realm-Rolle system_admin vorhanden',
+      evidenceSource,
+      'Wird erst geprüft, wenn der Realm vorhanden ist.'
+    ),
+    createSkipCheck(
+      CHECK_IDS.keycloakSystemAdminUserExists,
+      'Keycloak-User mit system_admin vorhanden',
+      'keycloak',
+      'Mindestens ein User mit system_admin vorhanden',
+      evidenceSource,
+      'Wird erst geprüft, wenn Rolle und Benutzerstatus lesbar sind.'
+    ),
   ];
 };
 
-const createLoginClientChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => [
-  createPresenceCheck({
+const createLoginClientChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => {
+  const clientCheck = createPresenceCheck({
     checkId: CHECK_IDS.keycloakLoginClientExists,
     title: 'Keycloak-Login-Client vorhanden',
     expected: 'Login-Client im Realm vorhanden',
@@ -163,8 +143,9 @@ const createLoginClientChecks = (status: KeycloakTenantStatus, evidenceSource: s
     presentMessage: 'Der Login-Client ist im Realm vorhanden.',
     missingMessage: 'Der Login-Client fehlt im Realm.',
     remediationHint: 'Login-Client neu provisionieren oder Client-ID korrigieren.',
-  }),
-  createSecretAlignmentCheck({
+  });
+
+  const secretCheck = createSecretAlignmentCheck({
     checkId: CHECK_IDS.keycloakLoginSecretAligned,
     title: 'Keycloak-Login-Secret abgeglichen',
     clientExists: status.clientExists,
@@ -173,11 +154,16 @@ const createLoginClientChecks = (status: KeycloakTenantStatus, evidenceSource: s
     presentMessage: 'Das Login-Client-Secret ist zwischen Registry und Keycloak konsistent.',
     missingMessage: 'Das Login-Client-Secret weicht zwischen Registry und Keycloak ab.',
     remediationHint: 'Secret rotieren oder Registry-Wert gezielt mit Keycloak abgleichen.',
-  }),
-];
+  });
 
-const createTenantAdminClientChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => [
-  createPresenceCheck({
+  return [clientCheck, secretCheck];
+};
+
+const createTenantAdminClientChecks = (
+  status: KeycloakTenantStatus,
+  evidenceSource: string
+): readonly InstanceAuditCheck[] => {
+  const clientCheck = createPresenceCheck({
     checkId: CHECK_IDS.keycloakTenantAdminClientExists,
     title: 'Keycloak-Tenant-Admin-Client vorhanden',
     expected: 'Tenant-Admin-Client im Realm vorhanden',
@@ -186,8 +172,9 @@ const createTenantAdminClientChecks = (status: KeycloakTenantStatus, evidenceSou
     presentMessage: 'Der Tenant-Admin-Client ist im Realm vorhanden.',
     missingMessage: 'Der Tenant-Admin-Client fehlt im Realm.',
     remediationHint: 'Tenant-Admin-Client provisionieren oder Registry-Daten korrigieren.',
-  }),
-  createSecretAlignmentCheck({
+  });
+
+  const secretCheck = createSecretAlignmentCheck({
     checkId: CHECK_IDS.keycloakTenantAdminSecretAligned,
     title: 'Keycloak-Tenant-Admin-Secret abgeglichen',
     clientExists: status.tenantAdminClientExists,
@@ -196,8 +183,10 @@ const createTenantAdminClientChecks = (status: KeycloakTenantStatus, evidenceSou
     presentMessage: 'Das Tenant-Admin-Client-Secret ist zwischen Registry und Keycloak konsistent.',
     missingMessage: 'Das Tenant-Admin-Client-Secret weicht zwischen Registry und Keycloak ab.',
     remediationHint: 'Tenant-Admin-Client-Secret rotieren oder Registry-Wert mit Keycloak abgleichen.',
-  }),
-];
+  });
+
+  return [clientCheck, secretCheck];
+};
 
 const createPluginOidcClientCheck = (status: KeycloakTenantStatus, evidenceSource: string): InstanceAuditCheck =>
   createCheck({
@@ -212,31 +201,54 @@ const createPluginOidcClientCheck = (status: KeycloakTenantStatus, evidenceSourc
     remediationHint: status.pluginOidcClientsAligned ? undefined : 'Plugin-OIDC-Clients über die Keycloak-Reconciliation erneut abgleichen.',
   });
 
-const createSystemAdminChecks = (status: KeycloakTenantStatus, evidenceSource: string): readonly InstanceAuditCheck[] => {
-  const roleCheck = createPresenceCheck({
+const createSystemAdminChecks = (status: KeycloakTenantStatus, evidenceSource: string, requireTenantAdmin: boolean): readonly InstanceAuditCheck[] => {
+  const roleCheck = createCheck({
     checkId: CHECK_IDS.keycloakSystemAdminRoleExists,
     title: 'Keycloak-Rolle system_admin vorhanden',
+    scope: 'keycloak',
+    status: status.systemAdminRoleExists ? 'pass' : 'fail',
     expected: 'Realm-Rolle system_admin vorhanden',
-    present: status.systemAdminRoleExists,
+    actual: status.systemAdminRoleExists ? 'vorhanden' : 'fehlt',
     evidenceSource,
-    presentMessage: 'Die Realm-Rolle system_admin ist vorhanden.',
-    missingMessage: 'Die Realm-Rolle system_admin fehlt.',
-    remediationHint: 'Rollen-Baseline im Tenant-Realm provisionieren.',
+    message: status.systemAdminRoleExists ? 'Die Realm-Rolle system_admin ist vorhanden.' : 'Die Realm-Rolle system_admin fehlt.',
+    remediationHint: status.systemAdminRoleExists ? undefined : 'Rollen-Baseline im Tenant-Realm provisionieren.',
   });
 
-  const userCheck = status.systemAdminRoleExists
+  const userCheck = !requireTenantAdmin
+    ? createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', evidenceSource, 'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.')
+    : status.systemAdminRoleExists
     ? createCheck({
         checkId: CHECK_IDS.keycloakSystemAdminUserExists,
         title: 'Keycloak-User mit system_admin vorhanden',
         scope: 'keycloak',
         status: status.tenantAdminExists && status.tenantAdminHasSystemAdmin ? 'pass' : 'fail',
         expected: 'Mindestens ein User mit system_admin vorhanden',
-        actual: status.tenantAdminExists && status.tenantAdminHasSystemAdmin ? 'vorhanden' : status.tenantAdminExists ? 'benutzer_ohne_system_admin' : 'kein_benutzer_nachweis',
+        actual:
+          status.tenantAdminExists && status.tenantAdminHasSystemAdmin
+            ? 'vorhanden'
+            : status.tenantAdminExists
+              ? 'benutzer_ohne_system_admin'
+              : 'kein_benutzer_nachweis',
         evidenceSource,
-        message: status.tenantAdminExists && status.tenantAdminHasSystemAdmin ? 'Mindestens ein bekannter Tenant-Admin trägt die Rolle system_admin.' : status.tenantAdminExists ? 'Der bekannte Tenant-Admin existiert, trägt aber die Rolle system_admin nicht.' : 'Für den bekannten Tenant-Admin wurde kein system_admin-Nachweis gefunden.',
-        remediationHint: status.tenantAdminExists && status.tenantAdminHasSystemAdmin ? undefined : 'Tenant-Admin-Benutzer und seine Keycloak-Rollenzuordnung prüfen.',
+        message:
+          status.tenantAdminExists && status.tenantAdminHasSystemAdmin
+            ? 'Mindestens ein bekannter Tenant-Admin trägt die Rolle system_admin.'
+            : status.tenantAdminExists
+              ? 'Der bekannte Tenant-Admin existiert, trägt aber die Rolle system_admin nicht.'
+              : 'Für den bekannten Tenant-Admin wurde kein system_admin-Nachweis gefunden.',
+        remediationHint:
+          status.tenantAdminExists && status.tenantAdminHasSystemAdmin
+            ? undefined
+            : 'Tenant-Admin-Benutzer und seine Keycloak-Rollenzuordnung prüfen.',
       })
-    : createSkipCheck(CHECK_IDS.keycloakSystemAdminUserExists, 'Keycloak-User mit system_admin vorhanden', 'keycloak', 'Mindestens ein User mit system_admin vorhanden', evidenceSource, 'Wird erst geprüft, wenn die Realm-Rolle system_admin vorhanden ist.');
+    : createSkipCheck(
+        CHECK_IDS.keycloakSystemAdminUserExists,
+        'Keycloak-User mit system_admin vorhanden',
+        'keycloak',
+        'Mindestens ein User mit system_admin vorhanden',
+        evidenceSource,
+        'Wird erst geprüft, wenn die Realm-Rolle system_admin vorhanden ist.'
+      );
 
   return [roleCheck, userCheck];
 };
@@ -248,6 +260,7 @@ export const buildKeycloakChecks = (input: {
   fallbackStatus?: KeycloakTenantStatus | null;
   fallbackEvidenceSource?: string;
   fallbackError?: string;
+  requireTenantAdmin?: boolean;
 }): readonly InstanceAuditCheck[] => {
   if (!input.keycloakStatus) {
     return createRealmUnavailableChecks({
@@ -269,6 +282,6 @@ export const buildKeycloakChecks = (input: {
     ...createLoginClientChecks(input.keycloakStatus, input.keycloakEvidenceSource),
     createPluginOidcClientCheck(input.keycloakStatus, input.keycloakEvidenceSource),
     ...createTenantAdminClientChecks(input.keycloakStatus, input.keycloakEvidenceSource),
-    ...createSystemAdminChecks(input.keycloakStatus, input.keycloakEvidenceSource),
+    ...createSystemAdminChecks(input.keycloakStatus, input.keycloakEvidenceSource, input.requireTenantAdmin ?? true),
   ];
 };

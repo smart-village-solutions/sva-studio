@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   updateRevision: vi.fn(),
   emitCreated: vi.fn(),
   emitUpdated: vi.fn(),
+  emitOwnershipTransferred: vi.fn(),
   validatePublicationWindow: vi.fn(),
   loadContentById: vi.fn(),
   updateContent: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('./repository-shared.js', () => ({
 vi.mock('./repository-write-helpers.js', () => ({
   emitContentCreatedActivity: state.emitCreated,
   emitExternalContentUpdatedActivity: state.emitUpdated,
+  emitContentOwnershipTransferredActivity: state.emitOwnershipTransferred,
   insertContentRow: state.insertContentRow,
   updateContentRevisionRefs: state.updateRevision,
   validatePublicationWindow: state.validatePublicationWindow,
@@ -666,6 +668,7 @@ describe('external content references', () => {
       expect.objectContaining({ query: state.query }),
       expect.objectContaining({
         mutationRef: 'transfer-1',
+        summary: 'Inhaber übertragen',
         changedFields: expect.arrayContaining([
           'organizationId',
           'ownerUserId',
@@ -673,6 +676,14 @@ describe('external content references', () => {
         ]),
       })
     );
+    expect(state.emitOwnershipTransferred).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({
+        contentId: 'content-1',
+        targetPrincipal: { type: 'account', id: 'account-target' },
+      })
+    );
+    expect(state.emitUpdated).not.toHaveBeenCalled();
   });
 
   it('keeps the locked provider lookup on the transaction client', async () => {
@@ -703,9 +714,87 @@ describe('external content references', () => {
     expect(state.query).toHaveBeenNthCalledWith(
       3,
       expect.stringContaining('source_entity_id = $4'),
-      ['tenant-1', 'mainserver', 'GenericItem', 'external-locked']
+      ['tenant-1', 'mainserver', ['GenericItem'], 'external-locked']
     );
     expect(state.withInstanceScopedDb).toHaveBeenCalledTimes(2);
+  });
+
+  it('rechecks both project reference types under the shared lock before creating a Core', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ content_id: 'canonical-core', source_entity_type: 'GenericItem' }] });
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-archive-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      title: 'Projekt',
+      payload: {},
+      status: 'draft',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    })).resolves.toBe('canonical-core');
+
+    expect(state.query).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
+      ['mainserver:projects.project', 'project-1']
+    );
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('ORDER BY array_position($3::text[], source_entity_type)'),
+      ['tenant-1', 'mainserver', ['projects.project', 'GenericItem'], 'project-1']
+    );
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).not.toHaveBeenCalled();
+  });
+
+  it('reuses a concurrent legacy project Core for the transfer under the same lock', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ content_id: 'legacy-core', source_entity_type: 'projects.project' }] })
+      .mockResolvedValue({ rows: [] });
+    state.updateContent.mockResolvedValue('legacy-core');
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      title: 'Projekt',
+      payload: {},
+      status: 'draft',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    })).resolves.toBe('legacy-core');
+
+    expect(state.query).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
+      ['mainserver:projects.project', 'project-1']
+    );
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('ORDER BY array_position($3::text[], source_entity_type)'),
+      ['tenant-1', 'mainserver', ['GenericItem', 'projects.project'], 'project-1']
+    );
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({
+      contentId: 'legacy-core',
+      confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
+    }));
   });
 
   it('emits update audit semantics when the first bound provider operation is an update', async () => {

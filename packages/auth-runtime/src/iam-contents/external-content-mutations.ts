@@ -14,6 +14,7 @@ import {
 import { insertContentHistory } from './repository-shared.js';
 import {
   emitContentCreatedActivity,
+  emitContentOwnershipTransferredActivity,
   emitExternalContentUpdatedActivity,
   insertContentRow,
   updateContentRevisionRefs,
@@ -87,22 +88,36 @@ const updateExistingContent = async (
 
 const createBoundContent = async (
   input: SuccessfulExternalContentMutation
-): Promise<{ readonly contentId: string; readonly created: boolean }> =>
+): Promise<{ readonly contentId: string; readonly created: boolean; readonly skipUpdate?: boolean }> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const project = input.contentType === 'projects.project';
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
-      `${input.sourceSystem}:${input.sourceEntityType}`,
+      `${input.sourceSystem}:${project ? 'projects.project' : input.sourceEntityType}`,
       input.sourceEntityId,
     ]);
-    const concurrentReference = await client.query<{ readonly content_id: string }>(
-      `SELECT content_id::text
+    const sourceEntityTypes = project
+      ? input.ownershipPrincipal
+        ? ['GenericItem', 'projects.project']
+        : ['projects.project', 'GenericItem']
+      : [input.sourceEntityType];
+    const concurrentReference = await client.query<{
+      readonly content_id: string;
+      readonly source_entity_type: string;
+    }>(
+      `SELECT content_id::text, source_entity_type
        FROM iam.external_content_references
        WHERE instance_id = $1 AND source_system = $2
-         AND source_entity_type = $3 AND source_entity_id = $4
+         AND source_entity_type = ANY($3::text[]) AND source_entity_id = $4
+       ORDER BY array_position($3::text[], source_entity_type)
        LIMIT 1;`,
-      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
+      [input.instanceId, input.sourceSystem, sourceEntityTypes, input.sourceEntityId]
     );
-    const concurrentContentId = concurrentReference.rows[0]?.content_id;
-    if (concurrentContentId) return { contentId: concurrentContentId, created: false };
+    const concurrent = concurrentReference.rows[0];
+    if (concurrent) return {
+      contentId: concurrent.content_id,
+      created: false,
+      skipUpdate: project && !input.ownershipPrincipal && concurrent.source_entity_type === 'GenericItem',
+    };
 
     const contentId = await insertContentRow(
       client,
@@ -130,11 +145,21 @@ const createBoundContent = async (
       action: input.operation === 'create' ? 'created' : 'updated',
       changedFields,
       nextStatus: input.status,
-      summary: input.operation === 'create' ? 'Inhalt erstellt' : 'Inhalt aktualisiert',
+      summary: input.ownershipPrincipal
+        ? 'Inhaber übertragen'
+        : input.operation === 'create' ? 'Inhalt erstellt' : 'Inhalt aktualisiert',
       snapshot: input.payload,
     });
     await updateContentRevisionRefs(client, input.instanceId, contentId, historyId);
-    if (input.operation === 'create') {
+    if (input.ownershipPrincipal) {
+      await emitContentOwnershipTransferredActivity(client, {
+        instanceId: input.instanceId,
+        actorAccountId: input.actorAccountId,
+        contentId,
+        contentType: input.contentType,
+        targetPrincipal: input.ownershipPrincipal,
+      });
+    } else if (input.operation === 'create') {
       await emitContentCreatedActivity(client, input, contentId);
     } else {
       await emitExternalContentUpdatedActivity(client, input, contentId, changedFields);
@@ -183,7 +208,9 @@ export const recordSuccessfulExternalContentMutation = async (
   }
 
   const resolved = await createBoundContent(mutation);
-  return resolved.created ? resolved.contentId : updateExistingContent(mutation, resolved.contentId);
+  return resolved.created || resolved.skipUpdate
+    ? resolved.contentId
+    : updateExistingContent(mutation, resolved.contentId);
 };
 
 export const recordSuccessfulExternalContentDeletion = async (

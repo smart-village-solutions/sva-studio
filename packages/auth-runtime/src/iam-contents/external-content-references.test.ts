@@ -253,6 +253,38 @@ describe('external content references', () => {
     ]);
   });
 
+  it('forwards a confirmed transfer target to the existing content core', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],
+    });
+    state.updateContent.mockResolvedValue('content-1');
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'external-1',
+      contentType: 'generic-items.generic-item',
+      organizationId: 'organization-1',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      title: 'Eintrag',
+      payload: {},
+      status: 'draft',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    });
+
+    expect(state.updateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
+      })
+    );
+  });
+
   it('records an idempotently correlated delete in host-owned studio history', async () => {
     state.query
       .mockResolvedValueOnce({
@@ -340,6 +372,52 @@ describe('external content references', () => {
       'tenant-1',
       'content-1',
     ]);
+  });
+
+  it('uses the confirmed personal target when a transfer first binds a local core', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [row] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-source',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'external-1',
+      contentType: 'generic-items.generic-item',
+      ownershipPrincipal: { type: 'account', id: 'account-target' },
+      title: 'Eintrag',
+      payload: {},
+      status: 'draft',
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Redaktion',
+    });
+
+    expect(state.insertContentRow).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({
+        actorAccountId: 'account-source',
+        confirmedExternalOwner: { type: 'account', id: 'account-target' },
+      })
+    );
+    expect(state.insertHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({
+        mutationRef: 'transfer-1',
+        changedFields: expect.arrayContaining([
+          'organizationId',
+          'ownerUserId',
+          'ownerOrganizationId',
+        ]),
+      })
+    );
   });
 
   it('keeps the locked provider lookup on the transaction client', async () => {

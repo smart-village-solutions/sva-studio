@@ -107,6 +107,7 @@ const recordMutationAudit = async (
     sourceEntityType: target.contentType,
     sourceEntityId: input.entityId,
     contentType: target.contentType,
+    ...(target.ownershipPrincipal ? { ownershipPrincipal: target.ownershipPrincipal } : {}),
     ...(row.organizationId ? { organizationId: row.organizationId } : {}),
     title: row.title,
     payload: row.payload,

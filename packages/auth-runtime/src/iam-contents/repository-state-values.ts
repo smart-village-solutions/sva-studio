@@ -21,7 +21,9 @@ export const resolveNextContentStateValues = (
   current: ContentRow,
   input: UpdateContentInput
 ): NextContentStateValues => {
-  const nextOwnerOrganizationId = input.ownerOrganizationId ?? current.owner_organization_id ?? null;
+  const confirmedOwner = input.confirmedExternalOwner;
+  const nextOwnerOrganizationId =
+    input.ownerOrganizationId ?? current.owner_organization_id ?? null;
   const clearOwnerUserOnOrganizationOwnerTransfer =
     input.ownerUserId === undefined &&
     input.ownerOrganizationId !== undefined &&
@@ -35,11 +37,23 @@ export const resolveNextContentStateValues = (
     nextPublishedAt: input.publishedAt ?? current.published_at ?? null,
     nextPublishFrom: input.publishFrom ?? current.publish_from ?? null,
     nextPublishUntil: input.publishUntil ?? current.publish_until ?? null,
-    nextOrganizationId: input.organizationId ?? current.organization_id ?? null,
-    nextOwnerUserId: clearOwnerUserOnOrganizationOwnerTransfer
-      ? null
-      : input.ownerUserId ?? current.owner_user_id ?? null,
-    nextOwnerOrganizationId,
+    nextOrganizationId: confirmedOwner
+      ? confirmedOwner.type === 'organization'
+        ? confirmedOwner.id
+        : null
+      : (input.organizationId ?? current.organization_id ?? null),
+    nextOwnerUserId: confirmedOwner
+      ? confirmedOwner.type === 'account'
+        ? confirmedOwner.id
+        : null
+      : clearOwnerUserOnOrganizationOwnerTransfer
+        ? null
+        : (input.ownerUserId ?? current.owner_user_id ?? null),
+    nextOwnerOrganizationId: confirmedOwner
+      ? confirmedOwner.type === 'organization'
+        ? confirmedOwner.id
+        : null
+      : nextOwnerOrganizationId,
     nextAuthorDisplayMode: input.authorDisplayMode ?? current.author_display_mode,
     nextAuthorDisplayName: input.authorDisplayName ?? current.author_display_name,
   };

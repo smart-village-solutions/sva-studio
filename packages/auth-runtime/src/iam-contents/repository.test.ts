@@ -810,6 +810,46 @@ describe('iam content repository', () => {
     }
   );
 
+  it('writes a confirmed external owner before finalizing the same mutation history', async () => {
+    state.resolveNextContentStateMock.mockReturnValueOnce({
+      changedFields: ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+      nextOrganizationId: '22222222-2222-4222-8222-222222222222',
+      nextOwnerUserId: null,
+      nextOwnerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      nextAuthorDisplayMode: 'organization',
+      nextAuthorDisplayName: 'Organisation',
+      nextPayload: {},
+      nextPublishedAt: null,
+      nextPublishFrom: null,
+      nextPublishUntil: null,
+      nextStatus: 'draft',
+      nextTitle: 'Titel',
+      nextValidationState: 'valid',
+    });
+
+    await updateContent(
+      createUpdateInput({
+        mutationRef: 'transfer-1',
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      })
+    );
+
+    expect(state.queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('SET owner_user_id = $3::uuid, owner_organization_id = $4::uuid'),
+      ['instance-1', 'content-1', null, '22222222-2222-4222-8222-222222222222']
+    );
+    expect(state.insertContentHistoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.queryMock }),
+      expect.objectContaining({
+        mutationRef: 'transfer-1',
+        changedFields: ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+      })
+    );
+  });
+
   it('returns undefined on delete when the current content row cannot be resolved', async () => {
     state.loadCurrentContentRowMock.mockResolvedValueOnce(undefined);
 

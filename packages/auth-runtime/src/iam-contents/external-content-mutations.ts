@@ -1,4 +1,9 @@
-import type { ContentJsonValue, IamContentAuthorDisplayMode, IamContentStatus } from '@sva/core';
+import type {
+  ContentJsonValue,
+  IamContentAuthorDisplayMode,
+  IamContentOwnerPrincipal,
+  IamContentStatus,
+} from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import {
@@ -25,6 +30,7 @@ export type SuccessfulExternalContentMutation = Readonly<{
   sourceEntityId: string;
   contentType: string;
   organizationId?: string;
+  ownershipPrincipal?: IamContentOwnerPrincipal;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;
@@ -57,6 +63,7 @@ const updateExistingContent = async (
     actorDisplayName: input.actorDisplayName,
     mutationRef: input.mutationRef,
     contentId,
+    confirmedExternalOwner: input.ownershipPrincipal,
     title: input.title,
     payload: input.payload,
     status: input.status,
@@ -89,11 +96,24 @@ const createBoundContent = async (
     const concurrentContentId = concurrentReference.rows[0]?.content_id;
     if (concurrentContentId) return { contentId: concurrentContentId, created: false };
 
-    const contentId = await insertContentRow(client, input);
+    const contentId = await insertContentRow(
+      client,
+      input.ownershipPrincipal
+        ? {
+            ...input,
+            organizationId:
+              input.ownershipPrincipal.type === 'organization'
+                ? input.ownershipPrincipal.id
+                : undefined,
+            confirmedExternalOwner: input.ownershipPrincipal,
+          }
+        : input
+    );
     const changedFields = [
       'title',
       'payload',
       'status',
+      ...(input.ownershipPrincipal ? ['organizationId', 'ownerUserId', 'ownerOrganizationId'] : []),
       ...(input.publishedAt ? ['publishedAt'] : []),
     ];
     const historyId = await insertContentHistory(client, {

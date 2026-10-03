@@ -156,6 +156,17 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       sourceEntityType: row.sourceEntityType,
       sourceEntityId: row.sourceEntityId,
       contentType: row.contentType,
+      ...(entry.action_id === 'content.transferOwnership'
+        ? {
+            ownershipPrincipal: {
+              type:
+                input.actingPrincipalType === 'user'
+                  ? ('account' as const)
+                  : ('organization' as const),
+              id: input.actingPrincipalId,
+            },
+          }
+        : {}),
       ...(row.organizationId ? { organizationId: row.organizationId } : {}),
       title: row.title,
       payload: row.payload,

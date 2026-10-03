@@ -92,7 +92,11 @@ export const resolveUpdateAuthorDisplay = async (
   readonly authorDisplayMode: IamContentAuthorDisplayMode;
   readonly authorDisplayName: string;
 }> => {
-  const nextOrganizationId = input.organizationId ?? current.organization_id ?? null;
+  const nextOrganizationId = input.confirmedExternalOwner
+    ? input.confirmedExternalOwner.type === 'organization'
+      ? input.confirmedExternalOwner.id
+      : null
+    : (input.organizationId ?? current.organization_id ?? null);
   const organization = nextOrganizationId
     ? await loadOrganizationAuthorPolicy(client, {
         instanceId: input.instanceId,

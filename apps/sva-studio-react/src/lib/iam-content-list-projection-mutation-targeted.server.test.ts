@@ -358,6 +358,70 @@ describe('targeted content projection mutations', () => {
         actorAccountId: 'account-source',
         authorDisplayMode: 'user',
         mutationRef: 'transfer-1',
+        ownershipPrincipal: { type: 'account', id: 'account-target' },
+      })
+    );
+  });
+
+  it('passes an organization transfer target to the content core audit', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'organization',
+      credentials: { apiKey: 'key', apiSecret: 'secret' },
+      credentialFingerprint: 'b'.repeat(64),
+    });
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-transfer-organization-1',
+      name: 'Übertragener POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      dataProvider: { id: 'provider-target', name: 'Zielorganisation' },
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      dataProviderId: 'provider-target',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'organization',
+      authorizationMode: 'exact',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'b'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-target',
+      actorAccountId: 'account-source',
+      actorDisplayName: 'Ausführende Person',
+      mutationRef: 'transfer-organization-1',
+      organizationId: 'org-target',
+      ownershipPrincipal: { type: 'organization', id: 'org-target' },
+      operation: 'update',
+      entityId: 'poi-transfer-organization-1',
+    });
+
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-target',
+        owner_organization_id: 'org-target',
+        source_entity_id: 'poi-transfer-organization-1',
+      }),
+    ]);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: 'account-source',
+        ownershipPrincipal: { type: 'organization', id: 'org-target' },
+        organizationId: 'org-target',
+        authorDisplayMode: 'organization',
       })
     );
   });

@@ -66,6 +66,7 @@ const resolveAuditAction = (input: {
 };
 
 const hasAuthorDisplayAffectingChange = (current: ContentRow, input: UpdateContentInput): boolean =>
+  input.confirmedExternalOwner !== undefined ||
   input.authorDisplayMode !== undefined ||
   input.authorDisplayName !== undefined ||
   (input.organizationId !== undefined && input.organizationId !== current.organization_id);
@@ -159,6 +160,14 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       publishFrom: nextPublishFrom,
       publishUntil: nextPublishUntil,
     });
+    if (input.confirmedExternalOwner) {
+      await client.query(
+        `UPDATE iam.contents
+         SET owner_user_id = $3::uuid, owner_organization_id = $4::uuid
+         WHERE instance_id = $1 AND id = $2::uuid;`,
+        [input.instanceId, input.contentId, nextOwnerUserId, nextOwnerOrganizationId]
+      );
+    }
     const { activityEventType, historyAction, historySummary } = resolveContentMutationMetadata(
       current.status,
       nextStatus

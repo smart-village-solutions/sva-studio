@@ -253,6 +253,14 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
       "journal.action_id = 'content.transferOwnership'"
     );
     expect(state.query.mock.calls[0]?.[0]).toContain('targetCredentialFingerprint');
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownershipPrincipal: {
+          type: 'organization',
+          id: '33333333-3333-4333-8333-333333333333',
+        },
+      })
+    );
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
       expect.objectContaining({
         operationExternalId: 'transfer-1',

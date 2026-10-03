@@ -355,6 +355,34 @@ describe('iam content repository helpers', () => {
     });
   });
 
+  it('validates an organization author against the confirmed transfer target', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({ organization_id: null, author_display_mode: 'user' }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          authorDisplayMode: 'organization',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Zielorganisation',
+    });
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM iam.organizations'), [
+      'instance-1',
+      '00000000-0000-0000-0000-000000000002',
+    ]);
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });
@@ -399,6 +427,32 @@ describe('iam content repository helpers', () => {
       expect.stringContaining('SET history_ref = $3, current_revision_ref = $3'),
       ['instance-1', 'content-1', 'history-2']
     );
+  });
+
+  it('inserts a newly bound transfer with the confirmed personal owner', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({ rows: [{ id: 'content-1' }] });
+
+    await insertContentRow(
+      client,
+      createCreateInput({
+        actorAccountId: '00000000-0000-0000-0000-000000000001',
+        confirmedExternalOwner: {
+          type: 'account',
+          id: '00000000-0000-0000-0000-000000000002',
+        },
+        authorDisplayMode: 'user',
+      })
+    );
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.contents'),
+      expect.arrayContaining([
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+      ])
+    );
+    expect(client.query.mock.calls[0]?.[1]?.[3]).toBe('00000000-0000-0000-0000-000000000002');
   });
 
   it('emits created and deleted audit activities with content action metadata', async () => {

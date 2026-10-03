@@ -304,12 +304,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/project-report/src/lib/project-status.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/audit-db-sink.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-audit-db-sink-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/audit-db-sink.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/core.ts:publicExports": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-core-ts",
       "ticketSystem": "policy-baseline",

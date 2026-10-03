@@ -130,6 +130,21 @@ dieser OpenSpec-Change und ein eigener Changelog-Eintrag. Ausgangs-HEAD ist
 In-Memory-Callbacks sind unerreichbar, weil der Wrapper ausschließlich
 Redis ausführt; ihre Entfernung erhält das produktive Fail-Closed-Verhalten.
 
+**PR-Auftrag 12c:** Die Datei `audit-db-sink.ts` unter das 320-Zeilen-Limit
+bringen, indem Account-Kontext samt PII-Verschlüsselung und tenantgebundener
+Event-Write in direkt genutzte interne Module wandern; die beiden bestehenden
+Audit-Exporte, Scope-Prüfung, SQL-Reihenfolge, Transaktion und Fehlerabbildung
+bleiben erhalten. Nicht-Ziele sind 12d, neue Funktionen, DB-Schema und
+Migrationen, weitere Audit-Semantik, Dependencies und Gates. Maximal betroffen
+sind `packages/auth-runtime/src/audit-db-sink.ts`, direkt benötigte interne
+Module und Audit-Tests, tatsächlich betroffene Package- oder
+Architekturdokumentation, der erledigte `fileLines`-Policy-Eintrag, dieser
+OpenSpec-Change und ein eigener Changelog-Eintrag. Ausgangs-HEAD ist
+`5badc734e20e572c92cd010fce51a42ae18193ec`; die benannte Datei hat
+541 Zeilen. Kritisch bleiben verschlüsselte Account-Felder, die
+`instance_id`-gebundene Account-Abfrage, `account_created` vor dem Login-Event,
+`BEGIN`/Rolle/Tenant-Setting/`COMMIT` und `ROLLBACK` samt `reasonCode`.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

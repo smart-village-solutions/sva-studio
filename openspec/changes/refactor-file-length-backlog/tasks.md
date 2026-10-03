@@ -512,14 +512,16 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 12b — Redis-Session (1 Befund)
 
-- [ ] `packages/auth-runtime/src/redis-session.ts` nach
+- [x] `packages/auth-runtime/src/redis-session.ts` nach
       Session-Speicherung, Login-State und Session-Kontrolle aufteilen.
       `redis-session.test.ts`, `auth-server/session.test.ts` und
       `auth-route-handlers.test.ts` sichern TTL, Rotation, atomaren
       State-Verbrauch, Tenant-Bindung, Ausfall/Retry und Fail-Closed.
       Auth-/Security- und Server-Runtime-Gates aus Abschnitt 5.2 ausführen.
-      Umsetzung in PR #1670; Abschluss nach Merge- und Gate-Nachweis markieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Umsetzung in PR #1670; am 03.10.2026 nach grünen Gates am HEAD
+      `bf553d475cd3f0e5224a3d511f6a53194dc0e50a` als
+      `5badc734e20e572c92cd010fce51a42ae18193ec` gemergt.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1670.json` mit passender `prNumber`
       und nutzerverständlichem `body` in PR #1670 anlegen;
       Changelog-Gate vor Merge grün.
@@ -531,10 +533,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       aufteilen. `audit-db-sink.test.ts` und direkte Audit-Consumer-Tests
       sichern Redaction/PII-Schutz, Tenant-Grenze, Event-Reihenfolge und
       Ausfallverhalten; Server-Runtime- und Auth-/Security-Gates prüfen.
+      Umsetzung in PR #1671; Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1671.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1671 anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 12d — IAM-Authorization shared (1 Dateilängenbefund)
 

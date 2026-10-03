@@ -74,7 +74,10 @@
     "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],
     "frontendEnvE2E": [{ "env": "CI" }],
     "lintTooling": ["{workspaceRoot}/eslint.config.mjs"],
-    "serverRuntimeTooling": ["{workspaceRoot}/scripts/ci/check-server-package-runtime.ts"],
+    "serverRuntimeTooling": [
+      "{workspaceRoot}/scripts/ci/check-server-package-runtime.ts",
+      "{workspaceRoot}/scripts/ci/server-runtime-guard-*.ts"
+    ],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
   "analytics": false,

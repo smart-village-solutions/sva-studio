@@ -1237,7 +1237,7 @@ eigenständig reviewbare Abschluss-PR 35.
 
 ### PR 30 — Öffentliche Waste-Oberfläche (2 Befunde)
 
-- [ ] In `apps/public-waste-calendar-web/src/`
+- [x] In `apps/public-waste-calendar-web/src/`
       `components/public-waste-calendar-panels.tsx` und `routes/index.tsx`
       bereinigen. Anzeige, Navigation und Barrierefreiheit gezielt testen.
 
@@ -1247,11 +1247,15 @@ eigenständig reviewbare Abschluss-PR 35.
       in direkt benutzte private Module derselben App schneiden. Ziel sind
       zwei beseitigte `fileLines`-Befunde bei unverändertem Tab-Fokus,
       Termin-Dialog, Cookie-Restore/Reset und Fail-Closed-Fehlerverhalten.
+      Merge-Nachweis: PR #1721, geprüfter HEAD
+      `4bd4e894f836fd19f7aa00c860347c582eee1478`, Merge-Commit
+      `603a7af668fc6fc31b6b316e56fa456d0c499776`; finaler Intake grün
+      mit null offenen Review-Threads.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1721.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1721 angelegt; Changelog-Gate vor Merge grün.
 
 ## Tooling und MCP
 

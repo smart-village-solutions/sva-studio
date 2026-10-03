@@ -203,7 +203,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/data-repositories` setzt Create- und Update-Werte der Registry aus fachlich benannten, puren Segmenten in einer festen SQL-Parameterreihenfolge zusammen; Secret-Erhalt, explizites Löschen und Ersetzen bleiben dabei eigenständige Positionsverträge
 - Der Registry-Server in `@sva/data-repositories/server` bündelt die öffentlichen Lade- und Waste-Provisionierungsaufrufe; interne Client-/Pool- und Host-Module halten URL-Auflösung, Pool-Reset sowie Host-Cache und Fallback getrennt. Die Waste-Aufrufe verwenden weiterhin ihre tenantgebundene Transaktion, einfache Registry-Lesezugriffe nur den Client-Lifecycle.
 - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
-- HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
+- HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen. Die Keycloak-Reader trennen Status, Preflight und Plan bei stabilem öffentlichen Service-Importpfad; die gemeinsame Snapshot-Fingerprint-Prüfung liegt beim vorhandenen Snapshot-Reader.
   13a. Lokaler Studio-MCP (`packages/studio-mcp`)
 - lokaler stdio-Server und dünner, typisierter Client der bestehenden Studio-HTTP-API
 - hält Tool-Schemata, Korrelation, Idempotenz, Redaction und begrenzte Read-only-Diagnose, aber keine Registry-Fachlogik

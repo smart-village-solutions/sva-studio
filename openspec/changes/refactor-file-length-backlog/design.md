@@ -439,6 +439,18 @@ PR 16 wird seriell und einzeln reviewbar in 16a Execution, 16b Readers,
 Service Helpers umgesetzt. Jeder Abschnitt beseitigt seine benannten
 Dateilängenbefunde und enthält einen eigenen Studio-Changelog-Eintrag.
 
+**PR-Auftrag 16b:** Nach #1690 hat `service-keycloak-readers.ts` 432 Zeilen
+und einen registrierten `fileLines`-Befund. Der bestehende Service-Importpfad
+bleibt für Status, Preflight, Plan, Run-Read und Runtime-Resolver erhalten.
+Preflight und Plan erhalten je ein direkt genutztes internes Modul; die von
+Status, Preflight und Plan gemeinsam verwendete rungebundene
+Snapshot-Fingerprint-Berechnung liegt beim vorhandenen Snapshot-Reader.
+Tenant-/Instance-Bindung, Policy-/Secret-Versionen, Plugin-OIDC-Snapshot,
+lokale Fallbacks, `forceLive`, New-Realm-Anpassung und Host-Klassifikation
+bleiben unverändert. Nicht-Ziele sind 16c–16e, neue Keycloak-Semantik, Schema,
+Gates oder Dependencies. Service- und Snapshot-Tests sowie Auth-/Data-/
+Security-/Runtime-Gates weisen die Verhaltensparität nach.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

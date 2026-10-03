@@ -68,6 +68,10 @@ describe('PublicWasteCalendarPanels', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Monat' }));
 
     expect(screen.getByRole('heading', { name: 'Mai 2026' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Monat' }).getAttribute('aria-controls')).toBe(
+      'public-waste-panel-month'
+    );
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('public-waste-tab-month');
     fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 19.05.2026' }));
     expect(onActivateEntry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -80,6 +84,7 @@ describe('PublicWasteCalendarPanels', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Jahr' }));
     expect(screen.getByRole('heading', { name: '2026' })).toBeTruthy();
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('public-waste-tab-year');
     fireEvent.click(screen.getByRole('button', { name: 'Nächstes Jahr' }));
     expect(screen.getByRole('heading', { name: '2027' })).toBeTruthy();
   });

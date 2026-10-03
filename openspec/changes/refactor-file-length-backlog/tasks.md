@@ -749,13 +749,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 15c — Keycloak-Provisionierungszustand (1 Befund)
 
-- [ ] `packages/instance-registry/src/provisioning-auth-state.ts` entlang
+- [x] `packages/instance-registry/src/provisioning-auth-state.ts` entlang
       Client-Vertrag, Tenant-Admin-Bootstrap, Realm-Readback und
       Artifact-Reconcile unter das Dateilimit bringen. Öffentlichen Subpath,
       Tenant-/Realm-Bindung, Ownership, Secret-Readback, Idempotenz,
       Reihenfolge und Cleanup-/Fehlerzuordnung mit den vorhandenen
       Provisionierungstests sowie Auth-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 

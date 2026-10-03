@@ -111,6 +111,39 @@ describe('provisioning-auth-evaluation', () => {
     expect(toOverallPreflightStatus(checks)).toBe('blocked');
   });
 
+  it('reports all foreign realm artifacts in the existing ownership order', () => {
+    const checks = buildPreflightChecks({
+      instanceId: 'demo',
+      realmMode: 'existing',
+      authClientSecretConfigured: true,
+      authClientSecret: 'secret',
+      state: {
+        realm: { realm: 'demo' },
+        clientRepresentation: {},
+        tenantAdminClientRepresentation: {},
+        pluginOidcClients: [
+          { requirement: { pluginId: 'ssf' }, clientRepresentation: {} },
+        ],
+        systemAdminRole: {},
+        tenantAdminRepresentation: {},
+      } as never,
+    });
+
+    expect(checks.find((check) => check.checkKey === 'realm_ownership')).toMatchObject({
+      status: 'blocked',
+      details: {
+        reasonCode: 'artifact_ownership_conflict',
+        conflictingArtifactKeys: [
+          'login_client',
+          'tenant_admin_client',
+          'plugin_client:ssf',
+          'system_admin_role',
+          'tenant_admin',
+        ],
+      },
+    });
+  });
+
   it('skips bootstrap-admin creation in plans for imported realms without a profile', () => {
     const plan = buildPlan({
       instanceId: 'imported',

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { WasteTourRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
-  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -11,16 +10,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Select,
-  StudioField,
 } from '@sva/studio-ui-react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
-import { TourAssignmentsTable } from './waste-management.tours-assignments-table.js';
 import type { LocationTourLinkFormState } from './waste-management.tours.types.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
+import { TourAssignmentsDialogFilters } from './waste-management.tours-assignments-dialog.filters.js';
+import { TourAssignmentsDialogSelection } from './waste-management.tours-assignments-dialog.selection.js';
+import { useTourAssignmentFilterOptions } from './waste-management.tours-assignments-dialog.options.js';
 import {
   createTourAssignmentSelectionSummary,
   orderTourAssignmentLocations,
@@ -94,42 +92,10 @@ export const TourAssignmentsDialog = ({
     );
   }, [locations]);
 
-  const regionOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          locations
-            .filter((location) => location.regionId && location.regionName)
-            .map((location) => [location.regionId, location.regionName] as const)
-        )
-      ),
-    [locations]
-  );
-  const cityOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          locations
-            .filter((location) => !regionFilter || location.regionId === regionFilter)
-            .map((location) => [location.cityId, location.cityName] as const)
-        )
-      ),
-    [locations, regionFilter]
-  );
-  const streetOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          locations
-            .filter(
-              (location) =>
-                (!regionFilter || location.regionId === regionFilter) &&
-                (!cityFilter || location.cityId === cityFilter)
-            )
-            .map((location) => [location.streetId, location.streetName] as const)
-        )
-      ),
-    [cityFilter, locations, regionFilter]
+  const { regionOptions, cityOptions, streetOptions } = useTourAssignmentFilterOptions(
+    locations,
+    regionFilter,
+    cityFilter
   );
 
   const filteredLocations = useMemo(
@@ -225,156 +191,47 @@ export const TourAssignmentsDialog = ({
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5 rounded-2xl border border-border/70 bg-card/60">
             <StatusNotice message={message} />
 
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
-              <div className="min-w-0 flex-1">
-                <StudioField id="waste-tour-assignment-search" label={pt('filters.searchLabel')}>
-                  <Input
-                    id="waste-tour-assignment-search"
-                    value={searchQuery}
-                    placeholder={pt('filters.searchPlaceholder')}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                  />
-                </StudioField>
-              </div>
-              <div className="min-w-[180px]">
-                <StudioField
-                  id="waste-tour-assignment-region-filter"
-                  label={pt('masterData.collectionLocations.fields.regionId')}
-                >
-                  <Select
-                    id="waste-tour-assignment-region-filter"
-                    value={regionFilter}
-                    onChange={(event) => {
-                      setRegionFilter(event.target.value);
-                      setCityFilter('');
-                      setStreetFilter('');
-                    }}
-                  >
-                    <option value="">
-                      {pt('masterData.collectionLocations.fields.regionUnset')}
-                    </option>
-                    {regionOptions.map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    ))}
-                  </Select>
-                </StudioField>
-              </div>
-              <div className="min-w-[180px]">
-                <StudioField
-                  id="waste-tour-assignment-city-filter"
-                  label={pt('masterData.collectionLocations.fields.cityId')}
-                >
-                  <Select
-                    id="waste-tour-assignment-city-filter"
-                    value={cityFilter}
-                    onChange={(event) => {
-                      setCityFilter(event.target.value);
-                      setStreetFilter('');
-                    }}
-                  >
-                    <option value="">
-                      {pt('masterData.collectionLocations.fields.cityUnset')}
-                    </option>
-                    {cityOptions.map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    ))}
-                  </Select>
-                </StudioField>
-              </div>
-              <div className="min-w-[180px]">
-                <StudioField
-                  id="waste-tour-assignment-street-filter"
-                  label={pt('masterData.collectionLocations.fields.streetId')}
-                >
-                  <Select
-                    id="waste-tour-assignment-street-filter"
-                    value={streetFilter}
-                    onChange={(event) => setStreetFilter(event.target.value)}
-                  >
-                    <option value="">
-                      {pt('masterData.collectionLocations.fields.streetUnset')}
-                    </option>
-                    {streetOptions.map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    ))}
-                  </Select>
-                </StudioField>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/70 p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">
-                    {pt('tours.assignments.workspace.availableTitle')}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">
-                      {pt('tours.assignments.workspace.selectedCount', {
-                        value: selectedLocationIds.length,
-                      })}
-                    </Badge>
-                    <Badge variant="outline">
-                      {pt('tours.assignments.workspace.visibleCount', {
-                        value: filteredLocations.length,
-                      })}
-                    </Badge>
-                    {hiddenSelectedCount > 0 ? (
-                      <Badge variant="outline">
-                        {pt('tours.assignments.workspace.hiddenSelectedCount', {
-                          value: hiddenSelectedCount,
-                        })}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setRegionFilter('');
-                      setCityFilter('');
-                      setStreetFilter('');
-                    }}
-                  >
-                    {pt('tours.assignments.actions.resetFilters')}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="max-h-[420px] overflow-y-auto rounded-xl border border-border/60">
-                {loading ? (
-                  <div className="p-4 text-sm text-muted-foreground">
-                    {pt('tours.table.loadingAssignments')}
-                  </div>
-                ) : orderedFilteredLocations.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground">
-                    {pt('tours.assignments.workspace.noLocations')}
-                  </div>
-                ) : (
-                  <TourAssignmentsTable
-                    locations={orderedFilteredLocations}
-                    selectedLocationIds={selectedLocationIds}
-                    allVisibleSelected={allVisibleSelected}
-                    someVisibleSelected={someVisibleSelected}
-                    includeRegionInSorting={includeRegionInSorting}
-                    sortDirection={sortDirection}
-                    onIncludeRegionInSortingChange={setIncludeRegionInSorting}
-                    onSortDirectionChange={setSortDirection}
-                    onToggleSelectAll={toggleSelectAllVisible}
-                    onToggleLocation={toggleSelectedLocation}
-                  />
-                )}
-              </div>
-            </div>
+            <TourAssignmentsDialogFilters
+              searchQuery={searchQuery}
+              regionFilter={regionFilter}
+              cityFilter={cityFilter}
+              streetFilter={streetFilter}
+              regionOptions={regionOptions}
+              cityOptions={cityOptions}
+              streetOptions={streetOptions}
+              onSearchQueryChange={setSearchQuery}
+              onRegionFilterChange={(value) => {
+                setRegionFilter(value);
+                setCityFilter('');
+                setStreetFilter('');
+              }}
+              onCityFilterChange={(value) => {
+                setCityFilter(value);
+                setStreetFilter('');
+              }}
+              onStreetFilterChange={setStreetFilter}
+            />
+            <TourAssignmentsDialogSelection
+              loading={loading}
+              selectedLocationIds={selectedLocationIds}
+              filteredLocationsCount={filteredLocations.length}
+              hiddenSelectedCount={hiddenSelectedCount}
+              orderedFilteredLocations={orderedFilteredLocations}
+              allVisibleSelected={allVisibleSelected}
+              someVisibleSelected={someVisibleSelected}
+              includeRegionInSorting={includeRegionInSorting}
+              sortDirection={sortDirection}
+              onResetFilters={() => {
+                setSearchQuery('');
+                setRegionFilter('');
+                setCityFilter('');
+                setStreetFilter('');
+              }}
+              onIncludeRegionInSortingChange={setIncludeRegionInSorting}
+              onSortDirectionChange={setSortDirection}
+              onToggleSelectAll={toggleSelectAllVisible}
+              onToggleLocation={toggleSelectedLocation}
+            />
           </div>
 
           <DialogFooter className="border-t border-border/60 px-6 py-4">

@@ -406,18 +406,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-contents/server-authorization.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts:fileLines": {
-      "ticketId": "QUAL-DSR-EXPORT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "DSR-Export-Worker in kleinere Queue-, Persistenz- und Abschlussbausteine aufteilen (packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts:functionLines": {
-      "ticketId": "QUAL-DSR-EXPORT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange DSR-Export-Worker-Handler in kleinere Lade-, Persistenz- und Fehlerpfade zerlegen (packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:cyclomaticComplexity": {
       "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
       "ticketSystem": "policy-baseline",
@@ -1065,30 +1053,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM-Datentypen in fachlich kleinere Export-Surfaces für Gruppen-, Geo- und Membership-Modelle aufteilen"
-    },
-    "iam-governance:packages/iam-governance/src/dsr-export-flows.ts:fileLines": {
-      "ticketId": "baseline-iam-governance-src-dsr-export-flows-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-export-flows.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/dsr-export-flows.ts:functionLines": {
-      "ticketId": "baseline-iam-governance-src-dsr-export-flows-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-export-flows.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:fileLines": {
-      "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-export-payload.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:functionLines": {
-      "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-export-payload.ts)"
     },
     "iam-governance:packages/iam-governance/src/dsr-maintenance.ts:fileLines": {
       "ticketId": "baseline-iam-governance-src-dsr-maintenance-ts",

@@ -403,17 +403,18 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 11a — Betroffenenrechte-HTTP-Handler (1 Befund)
 
-- [ ] `packages/auth-runtime/src/iam-data-subject-rights/core.ts` nach
+- [x] `packages/auth-runtime/src/iam-data-subject-rights/core.ts` nach
       Export-/Status-, Antrags-/Korrektur-, Legal-Hold-/Widerspruchs- und
       Admin-Lesepfaden aufteilen. `core.test.ts` sichert Auth-/Tenant-Grenze,
       CSRF, Zugriffsprüfung, Datenintegrität und Fehlerabbildung; öffentliche
       Handler und ihre Route-Bindings bleiben unverändert. Umsetzung in PR #1663;
       `core.ts` bleibt der bestehende Route-Importpfad und enthält den
       Self-Service-Antrag mit Commit-gebundener Session-Revocation.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1663.json` mit passender `prNumber` und
-      Nutzertext in PR 11a anlegen;
-      Changelog-Gate vor Merge grün.
+      Nutzertext in PR 11a angelegt; PR #1663 am 03.10.2026 als
+      `3b5b8247c328e92d73bf74457d073b17dd22dbee` gemergt.
+      Changelog- und Complexity-Gate vor Merge grün.
 
 ### PR 11b — DSR-Export und Queue (3 Befunde)
 
@@ -424,8 +425,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Die jeweiligen Tests sichern Tenant-Scope, Export-Vollständigkeit,
       Verschlüsselung, JSON/CSV/XML, Retry-/Fehlerstatus und Audit.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11b anlegen;
+      `docs/changelog/entries/pr-1664.json` mit
+      passender `prNumber` und Nutzertext in PR #1664 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 11c — DSR-Leseprojektionen (2 Befunde)

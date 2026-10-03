@@ -65,10 +65,12 @@ await test('Create SDK with minimal config', () => {
     metricReader: new PeriodicExportingMetricReader({
       exporter: new OTLPMetricExporter({ url: 'http://localhost:4318/v1/metrics' })
     }),
-    logRecordProcessor: new BatchLogRecordProcessor(
-      new OTLPLogExporter({ url: 'http://localhost:4318/v1/logs' }),
-      { maxQueueSize: 4096, maxExportBatchSize: 10, scheduledDelayMillis: 500 }
-    ),
+    logRecordProcessor: new BatchLogRecordProcessor({
+      exporter: new OTLPLogExporter({ url: 'http://localhost:4318/v1/logs' }),
+      maxQueueSize: 4096,
+      maxExportBatchSize: 10,
+      scheduledDelayMillis: 500,
+    }),
     instrumentations: [
       getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-http': { enabled: true }

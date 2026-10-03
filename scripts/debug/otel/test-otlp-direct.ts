@@ -7,7 +7,7 @@
 
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 
@@ -20,12 +20,10 @@ console.log('=== OTLP Direct Test ===');
 console.log(`Endpoint: ${endpoint}`);
 
 // Resource mit Service-Name
-const resource = Resource.default().merge(
-  new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'test-direct-otlp',
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: 'development'
-  })
-);
+const resource = resourceFromAttributes({
+  [SemanticResourceAttributes.SERVICE_NAME]: 'test-direct-otlp',
+  [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: 'development',
+});
 
 // OTLP Log Exporter
 const logExporter = new OTLPLogExporter({
@@ -33,19 +31,19 @@ const logExporter = new OTLPLogExporter({
   headers: {},
 });
 
-// Logger Provider mit Batch Processor
-const loggerProvider = new LoggerProvider({
-  resource,
-});
-
-const processor = new BatchLogRecordProcessor(logExporter, {
+const processor = new BatchLogRecordProcessor({
+  exporter: logExporter,
   maxQueueSize: 100,
   maxExportBatchSize: 10,
   scheduledDelayMillis: 500, // 500ms für schnelles Testen
   exportTimeoutMillis: 10000,
 });
 
-loggerProvider.addLogRecordProcessor(processor);
+// Logger Provider mit Batch Processor
+const loggerProvider = new LoggerProvider({
+  resource,
+  processors: [processor],
+});
 
 // Hole einen Logger
 const logger = loggerProvider.getLogger('test-logger', '1.0.0');

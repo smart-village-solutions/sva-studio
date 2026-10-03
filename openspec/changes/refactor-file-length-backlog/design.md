@@ -398,6 +398,14 @@ aufnehmen, ohne erneut zu wachsen.
 bringen; Nicht-Ziele sind die übrigen PR-15-Dateien, Schema und Features.
 Schrittfolge, idempotente Wiederaufnahme, Lease, Retry, Terminalstatus und
 Audit-Ereignisse bleiben durch Orchestrator-Tests belegt.
+Die sichere Fehlercode-Diagnostik und der geschützte Property-Zugriff werden
+im bereits von den Tenant-Schritten genutzten `observability.ts` gebündelt;
+damit bleibt die bestehende Step-Map an einem Ort und es entsteht kein neuer
+Ausführungspfad. Ausgangs-HEAD ist `85cf9cded0b1b6334142e0beadc77eff438dff3e`;
+`tenant-provisioning-steps.ts` sinkt von 335 auf 315 Zeilen und
+`observability.ts` wächst von 264 auf 271 Zeilen. Der direkte Verbraucher ist
+`runTenantProvisioningStep`; die bestehenden Observability- und Orchestrator-
+Tests decken Fehlercode-Redaction, Step-Fortschritt und Lease-Verlust ab.
 
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen

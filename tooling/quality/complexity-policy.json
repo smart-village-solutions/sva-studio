@@ -3010,12 +3010,6 @@
       "status": "open",
       "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
     },
-    "instance-registry-service:packages/instance-registry/src/tenant-provisioning-steps.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Tenant-Provisioning-Schritte nach Registry-, Keycloak- und Readiness-Phasen aufteilen"
-    },
     "packages-default:packages/studio-mcp/src/process.ts:cyclomaticComplexity": {
       "ticketId": "#1448",
       "ticketSystem": "github",

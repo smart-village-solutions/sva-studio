@@ -337,8 +337,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       sichert Tenant- und Parent-Scope, Idempotenz, Rate-Limit,
       Credential- und Membership-Schreibfolgen, Fehler und Kompensation.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 10b
+      `docs/changelog/entries/pr-1658.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1658
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10c — Rollenpersistenz (1 Befund)

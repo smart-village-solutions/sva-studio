@@ -406,12 +406,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-media/processing.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-media/processing.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-media-processing-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-media/processing.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-media/processing.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-media-processing-ts",
       "ticketSystem": "policy-baseline",
@@ -2235,12 +2229,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Lange Assignment-Submission-Funktionen in kleinere Mapper und Validatoren aufteilen (packages/plugin-waste-management/src/waste-management.tours.assignments-submissions.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-media/storage-s3.ts:fileLines": {
-      "ticketId": "QUAL-AUTH-RUNTIME-MEDIA-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Storage-S3-Datei in kleinere Listing-, Konfigurations- und Delivery-Bausteine aufteilen (packages/auth-runtime/src/iam-media/storage-s3.ts)"
     },
     "instance-registry-service:packages/instance-registry/src/service-audit-keycloak.ts:fileLines": {
       "ticketId": "QUAL-INSTANCE-REGISTRY-002",

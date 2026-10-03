@@ -321,6 +321,33 @@ describe('external content references', () => {
     expect(update).not.toHaveProperty('status');
   });
 
+  it('leaves an owner-only replay unresolved without an existing Core reference', async () => {
+    state.query.mockResolvedValueOnce({ rows: [] });
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'external-1',
+      contentType: 'generic-items.generic-item',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      preserveExistingContentState: true,
+      title: 'Später bearbeitet',
+      payload: { body: 'Neue Fassung' },
+      status: 'published',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    })).rejects.toThrow('external_content_core_reference_required_for_owner_only_replay');
+
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.insertHistory).not.toHaveBeenCalled();
+    expect(state.updateContent).not.toHaveBeenCalled();
+  });
+
   it('records an idempotently correlated delete in host-owned studio history', async () => {
     state.query
       .mockResolvedValueOnce({

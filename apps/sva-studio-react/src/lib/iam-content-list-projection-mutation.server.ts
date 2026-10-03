@@ -109,13 +109,15 @@ const recordMutationAudit = async (
     sourceEntityId: input.entityId,
     contentType: target.contentType,
     ...(target.ownershipPrincipal ? { ownershipPrincipal: target.ownershipPrincipal } : {}),
+    ...(target.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
     ...(row.organizationId ? { organizationId: row.organizationId } : {}),
     title: row.title,
     payload: row.payload,
     status: row.status,
     ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
     authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
-    authorDisplayName: isPersonalAuthor ? target.actorDisplayName : row.author,
+    authorDisplayName:
+      isPersonalAuthor && !target.preserveExistingContentState ? target.actorDisplayName : row.author,
   });
 };
 

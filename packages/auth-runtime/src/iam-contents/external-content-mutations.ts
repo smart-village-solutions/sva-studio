@@ -159,6 +159,9 @@ export const recordSuccessfulExternalContentMutation = async (
 ): Promise<string> => {
   const existingReference = await loadExternalContentReferenceBySourceEntity(input);
   if (existingReference) return updateExistingContent(input, existingReference.contentId);
+  if (input.preserveExistingContentState) {
+    throw new Error('external_content_core_reference_required_for_owner_only_replay');
+  }
 
   const resolved = await createBoundContent(input);
   return resolved.created ? resolved.contentId : updateExistingContent(input, resolved.contentId);

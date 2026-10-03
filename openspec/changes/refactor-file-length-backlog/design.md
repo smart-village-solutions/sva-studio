@@ -554,6 +554,25 @@ und Complexity-Gates prüfen den Schnitt. Die fünf erledigten
 die lange Controller-Funktion der Detailseite bleibt als gesonderter
 Bestandsbefund registriert.
 
+### PR 20: POI-Editor
+
+Ausgangsstand nach PR 19: `poi.detail-page.tsx` 1.092 Zeilen. Der öffentliche
+Einstieg bleibt `PoiDetailPage`; er hält Formularzustand, Zugriff und die
+Verbindung der direkt genutzten POI-Module. Laden und Principal-Wechsel,
+Medienauswahl, Validierung und Speichern, Löschen sowie die bestehenden
+POI-Tabs besitzen jeweils eine zuständige Implementierung. Die ersetzten
+Blöcke entfallen aus der Ausgangsdatei; weder ein öffentlicher Export noch ein
+API-, Daten- oder Berechtigungsvertrag ändert sich.
+
+Kritische Invarianten: Die Reihenfolge von Formularvalidierung, Fokus und
+Tabwechsel, der eingeschränkte Sichtbarkeitswechsel, Principal-abhängiger
+Zugriff, Medienentwürfe und Referenzabgleich samt Retry, Geocoding und
+Create-/Edit-/Delete-Navigation bleiben erhalten. Gezielte POI-Detail-,
+Formular-, Medien- und Geocoding-Tests sowie Type-, Lint-, Build- und
+Complexity-Gates prüfen den Schnitt. Das erledigte `fileLines`-Finding und
+das ebenfalls behobene Cyclomatic-Finding entfallen; das bestehende
+`functionLines`-Finding der Einstiegsfunktion bleibt separat registriert.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

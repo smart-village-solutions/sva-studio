@@ -1,8 +1,6 @@
-export type PoiDetailTabId =
-  | 'basis'
-  | 'content'
-  | 'settings'
-  | 'history';
+import React from 'react';
+
+export type PoiDetailTabId = 'basis' | 'content' | 'settings' | 'history';
 
 export type PoiDetailTabDefinition = Readonly<{
   id: PoiDetailTabId;
@@ -39,3 +37,18 @@ export const createPoiDetailTabDefinitions = (
     description: pt('detailTabs.history.description'),
   },
 ];
+
+export const usePoiDetailTabState = () => {
+  const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
+  const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
+  const handleTabChange = React.useCallback((tabId: PoiDetailTabId) => {
+    setActiveTab((current) => (current === tabId ? current : tabId));
+  }, []);
+  const warmTab = React.useCallback((tabId: PoiDetailTabId) => {
+    setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
+  }, []);
+  React.useEffect(() => {
+    setVisitedTabs((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
+  }, [activeTab]);
+  return { activeTab, setActiveTab, visitedTabs, handleTabChange, warmTab };
+};

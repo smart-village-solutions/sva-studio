@@ -2260,18 +2260,6 @@
       "status": "open",
       "summary": "POI-Detail-Form-Mapping in kleinere Parser-, Mapper- und Normalisierungshelfer zerlegen (packages/plugin-poi/src/poi.detail-form.ts)"
     },
-    "packages-default:packages/plugin-poi/src/poi.detail-page.tsx:cyclomaticComplexity": {
-      "ticketId": "QUAL-PLUGIN-POI-DETAIL-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "POI-Detail-Page-Verzweigungen in kleinere Workspace-, Tab- und Action-Bausteine zerlegen (packages/plugin-poi/src/poi.detail-page.tsx)"
-    },
-    "packages-default:packages/plugin-poi/src/poi.detail-page.tsx:fileLines": {
-      "ticketId": "QUAL-PLUGIN-POI-DETAIL-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "POI-Detail-Page-Datei in kleinere Screen-, Toolbar- und Section-Module splitten (packages/plugin-poi/src/poi.detail-page.tsx)"
-    },
     "packages-default:packages/plugin-poi/src/poi.detail-page.tsx:functionLines": {
       "ticketId": "QUAL-PLUGIN-POI-DETAIL-003",
       "ticketSystem": "backlog",

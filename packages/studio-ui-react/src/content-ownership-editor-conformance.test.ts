@@ -15,8 +15,8 @@ const editors = [
   },
   {
     name: 'Events',
-    panel: 'packages/plugin-events/src/events.detail-page.tsx',
-    actions: 'packages/plugin-events/src/events.detail-page.tsx',
+    panel: 'packages/plugin-events/src/events.detail-editor-tabs.tsx',
+    actions: 'packages/plugin-events/src/events.detail-page-view.tsx',
   },
   {
     name: 'POI',

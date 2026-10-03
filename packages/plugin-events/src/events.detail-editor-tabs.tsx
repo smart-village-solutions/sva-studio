@@ -1,4 +1,3 @@
-import React from 'react';
 import { loadEventsContentAssetSnapshot } from './events.detail-media-actions.js';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {

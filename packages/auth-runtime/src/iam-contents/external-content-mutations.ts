@@ -170,6 +170,14 @@ export const recordSuccessfulExternalContentMutation = async (
     })) ??
     (mutation !== input ? await loadExternalContentReferenceBySourceEntity(input) : undefined);
   if (existingReference) return updateExistingContent(mutation, existingReference.contentId);
+  if (input.contentType === 'projects.project' && !input.ownershipPrincipal) {
+    const canonicalReference = await loadExternalContentReferenceBySourceEntity({
+      ...input,
+      sourceEntityType: 'GenericItem',
+    });
+    // The project route has already updated this Core using the full project payload.
+    if (canonicalReference) return canonicalReference.contentId;
+  }
   if (mutation.preserveExistingContentState) {
     throw new Error('external_content_core_reference_required_for_owner_only_replay');
   }

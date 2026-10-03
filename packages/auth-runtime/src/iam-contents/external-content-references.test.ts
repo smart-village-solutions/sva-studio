@@ -409,6 +409,38 @@ describe('external content references', () => {
     }));
   });
 
+  it('does not create or overwrite a transfer-bound project Core after a normal archive', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ ...row, source_entity_type: 'GenericItem', source_entity_id: 'project-1' }],
+      });
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-archive-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      title: 'Projekt',
+      payload: { body: 'Slim-Projektion' },
+      status: 'draft',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    })).resolves.toBe('content-1');
+
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining('source_entity_type = ANY($3::text[])'),
+      ['tenant-1', 'mainserver', ['GenericItem'], 'project-1']
+    );
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).not.toHaveBeenCalled();
+  });
+
   it('does not attribute a newer provider payload to a deferred transfer', async () => {
     state.query.mockResolvedValueOnce({
       rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],

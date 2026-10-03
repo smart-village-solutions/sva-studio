@@ -9,19 +9,19 @@ sind kein aktueller Verstoß. Die PR-Planung zählt die **aktuellen Messwerte**,
 nicht alle Registereinträge. Die Zahlen werden vor jeder Tranche erneut
 ermittelt; parallele Arbeit kann sie verändern.
 
-| Bereich | Aktuelle Dateien über Limit | PR-Startbudget | Startzuschnitt für Liefer-PRs |
-| --- | ---: | ---: | --- |
-| Core, Routing, Server-Runtime | 10 | 2 | Verträge/Exports; Routing und Runtime nach eigener Risiko- und Testgrenze |
-| Studio-Frontend | 24 | 8 | Shell/Navigation; IAM-API; IAM-Cockpit; Rollen/Gruppen; Benutzerseiten; Organisationen/Auswahl; Instanzen/Schnittstellen; Content/Medien |
-| Auth-Runtime, IAM-Admin, IAM-Governance | 37 | 5 | Account/Rollen; DSR/Governance; Auth/Session; Plugin-/Content-/Media-Pfade |
-| Data-Repositories, Instance-Registry | 17 | 3 | Media/Operations; Instanz-Repository; Provisionierung/Keycloak |
-| Plugin-SDK, Studio-UI | 7 | 2 | SDK-Vertragsfläche; bestehende UI-Primitives/Editoren |
-| Fachplugins ohne Waste | 11 | 6 | Events; News; Generic Items; POI; Projects; Cockpit Cards |
-| Waste-Plugin, -Runtime, -Contracts | 27 | 4 | Touren/Orte; Settings/Loader/Handler; öffentliche Verträge/Übersetzungen |
-| SVA-Mainserver | 9 | 2 | Content-Routen; Service/Wiring; Typen und interne Mapper |
-| Öffentlicher Waste-Kalender | 8 | 2 | öffentliche Daten-/Reminder-Pfade; Panels/Route |
-| CI-/Ops-Skripte, Studio-MCP | 14 | 4 | Complexity/Coverage/Sonar; DB-/Runtime-Prüfer; Ops; MCP |
-| **Gesamt** | **164** | **38** | |
+| Bereich                                 | Aktuelle Dateien über Limit | PR-Startbudget | Startzuschnitt für Liefer-PRs                                                                                                            |
+| --------------------------------------- | --------------------------: | -------------: | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Core, Routing, Server-Runtime           |                          10 |              2 | Verträge/Exports; Routing und Runtime nach eigener Risiko- und Testgrenze                                                                |
+| Studio-Frontend                         |                          24 |              8 | Shell/Navigation; IAM-API; IAM-Cockpit; Rollen/Gruppen; Benutzerseiten; Organisationen/Auswahl; Instanzen/Schnittstellen; Content/Medien |
+| Auth-Runtime, IAM-Admin, IAM-Governance |                          37 |              5 | Account/Rollen; DSR/Governance; Auth/Session; Plugin-/Content-/Media-Pfade                                                               |
+| Data-Repositories, Instance-Registry    |                          17 |              3 | Media/Operations; Instanz-Repository; Provisionierung/Keycloak                                                                           |
+| Plugin-SDK, Studio-UI                   |                           7 |              2 | SDK-Vertragsfläche; bestehende UI-Primitives/Editoren                                                                                    |
+| Fachplugins ohne Waste                  |                          11 |              6 | Events; News; Generic Items; POI; Projects; Cockpit Cards                                                                                |
+| Waste-Plugin, -Runtime, -Contracts      |                          27 |              4 | Touren/Orte; Settings/Loader/Handler; öffentliche Verträge/Übersetzungen                                                                 |
+| SVA-Mainserver                          |                           9 |              2 | Content-Routen; Service/Wiring; Typen und interne Mapper                                                                                 |
+| Öffentlicher Waste-Kalender             |                           8 |              2 | öffentliche Daten-/Reminder-Pfade; Panels/Route                                                                                          |
+| CI-/Ops-Skripte, Studio-MCP             |                          14 |              4 | Complexity/Coverage/Sonar; DB-/Runtime-Prüfer; Ops; MCP                                                                                  |
+| **Gesamt**                              |                     **164** |         **38** |                                                                                                                                          |
 
 Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
@@ -159,6 +159,32 @@ die benannte Datei hat 359 Zeilen. Separate Cyclomatic- und `publicExports`-
 Befunde bleiben bestehen, solange ihre Schwellen nicht tatsächlich erfüllt
 sind.
 
+Vor PR 13 liegen neun `fileLines`-Befunde in sechs unterschiedlichen
+Ausführungspfaden vor. Die Content-Persistenz (13a), Media-Verarbeitung/S3
+(13b), Plugin-HTTP-Dispatch (13c), Operations-Runner (13d), Job-State-Write
+(13e) und Tenant-Lifecycle-Orchestrierung (13f) können jeweils direkt auf
+`main` und mit eigenen fachlichen Tests geliefert werden. Runner und
+Job-State-Writer bleiben getrennt, weil Ausführungssteuerung und persistente
+Zustandsübergänge verschiedene Invarianten tragen. Sechs serielle PRs
+erlauben je einen eigenen Changelog- und exakten Gate-/Merge-Nachweis;
+`tasks.md` benennt jeden Abschnitt einzeln.
+
+**PR-Auftrag 13a:** `iam-contents/repository.ts` und
+`iam-contents/repository-write-helpers.ts` unter das 320-Zeilen-Limit
+bringen, indem die vorhandenen Lese-, Ownership-, Mutations-,
+Author-Display-, SQL-Write- und Activity-Verantwortungen in unmittelbar
+genutzte interne Module getrennt werden und beide Importverträge sowie
+Tenant-, Transaktions-, History-, Validierungs- und Fehlersemantik erhalten
+bleiben. Nicht-Ziele sind 13b–13f, Features, Schema/Migrationen, neue
+Dependencies und Gates. Maximal betroffen sind die zwei benannten Dateien,
+unmittelbar benötigte interne Module und Tests, tatsächlich betroffene
+fachliche/arc42-Dokumentation, die beiden erledigten `fileLines`-Einträge
+in `tooling/quality/complexity-policy.json`, dieser OpenSpec-Change und der
+eigene Changelog-Eintrag. Ausgangs-HEAD ist
+`09a3dfd636d9c33a9ad7681742ff6449311fb492`; die Dateien haben 674
+und 458 Zeilen. Vor der Extraktion sind das vorhandene DB-Sollschema und die
+direkten Verbraucher `external-content-*` und `core.ts` zu prüfen.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;
@@ -181,7 +207,7 @@ Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
    behandelt oder die Grundlage zuerst abgeschlossen.
 3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
    bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f und 12a bis
-   12d werden genau
+   12d und 13a bis 13f werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

@@ -119,6 +119,12 @@ export const resolveUpdateAuthorDisplay = async (
   }
   const authorDisplayMode = input.authorDisplayMode ?? current.author_display_mode;
   assertAuthorDisplayPolicy(authorDisplayMode, organization);
+  if (input.confirmedExternalOwner?.type === 'organization' && authorDisplayMode === 'organization') {
+    return {
+      authorDisplayMode,
+      authorDisplayName: organization?.display_name ?? input.actorDisplayName,
+    };
+  }
   const hasExplicitAuthorDisplayChange =
     input.authorDisplayMode !== undefined || input.authorDisplayName !== undefined;
 

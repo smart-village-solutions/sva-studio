@@ -161,7 +161,9 @@ export const recordSuccessfulExternalContentMutation = async (
 ): Promise<string> => {
   const mutation =
     input.contentType === 'projects.project' ? { ...input, sourceEntityType: 'GenericItem' } : input;
-  const existingReference = await loadExternalContentReferenceBySourceEntity(mutation);
+  const existingReference =
+    (await loadExternalContentReferenceBySourceEntity(mutation)) ??
+    (mutation !== input ? await loadExternalContentReferenceBySourceEntity(input) : undefined);
   if (existingReference) return updateExistingContent(mutation, existingReference.contentId);
   if (mutation.preserveExistingContentState) {
     throw new Error('external_content_core_reference_required_for_owner_only_replay');

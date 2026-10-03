@@ -222,7 +222,7 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
     });
     if (!contentId) continue;
     const independentReconciliationError =
-      [null, 'mainserver_projection_credential_cooldown'].includes(entry.last_error_code)
+      [null, 'mainserver_projection_credential_cooldown', 'content_transfer_projection_refresh_failed'].includes(entry.last_error_code)
         ? undefined
         : entry.last_error_code;
     await finalizeMainserverMutationJournal({

@@ -323,6 +323,42 @@ describe('external content references', () => {
     }));
   });
 
+  it('falls back to an existing projects.project Core reference', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ ...row, source_entity_type: 'projects.project', source_entity_id: 'project-1' }],
+      });
+    state.updateContent.mockResolvedValue('content-1');
+
+    await recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1',
+      operation: 'update',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      title: 'Projekt',
+      payload: { body: 'Vollständiger Inhalt' },
+      status: 'published',
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Organisation',
+    });
+
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = $3'), [
+      'tenant-1', 'mainserver', 'projects.project', 'project-1',
+    ]);
+    expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({
+      contentId: 'content-1',
+      preserveExistingContentState: true,
+    }));
+  });
+
   it('does not attribute a newer provider payload to a deferred transfer', async () => {
     state.query.mockResolvedValueOnce({
       rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],

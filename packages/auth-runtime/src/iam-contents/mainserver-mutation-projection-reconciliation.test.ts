@@ -219,6 +219,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           keycloak_subject: 'subject-1',
           display_name_ciphertext: 'encrypted-name',
           deferred_at: '2026-09-13T12:02:00.000Z',
+          last_error_code: 'content_transfer_projection_refresh_failed',
         },
       ],
     });
@@ -266,6 +267,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
       expect.objectContaining({
         operationExternalId: 'transfer-1',
+        reconciliationStatus: 'complete',
         completedSteps: ['projection_history_reconciled', 'target_projection_refreshed'],
       })
     );

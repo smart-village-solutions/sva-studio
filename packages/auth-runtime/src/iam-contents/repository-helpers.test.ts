@@ -461,6 +461,32 @@ describe('iam content repository helpers', () => {
     });
   });
 
+  it.each([false, true])('uses the confirmed organization name despite provider fallback author (replay: %s)', async (preserveExistingContentState) => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_only' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({ author_display_mode: 'user', author_display_name: 'Autorin' }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          authorDisplayMode: 'organization',
+          authorDisplayName: 'mainserver',
+          preserveExistingContentState,
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Zielorganisation',
+    });
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });

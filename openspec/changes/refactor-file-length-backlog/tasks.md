@@ -1178,7 +1178,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 28 — Mainserver-Service und interne Typen (4 Befunde)
 
-- [ ] In `packages/sva-mainserver/src/` `server/service.ts`, `types.ts`,
+- [x] In `packages/sva-mainserver/src/` `server/service.ts`, `types.ts`,
       `server/interfaces-contract.ts`,
       `server/service-internals/mappers-shared.ts` bereinigen.
       Service-Komposition, Interface-Vertrag und Runtime-Imports prüfen.
@@ -1191,7 +1191,13 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       beseitigte `fileLines`-Befunde, unveränderte Antworten und Fehler sowie
       grüne Service-, Interface-, Mapping- und Runtime-Gates.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+      PR #1708 wurde am 03.10.2026 mit geprüftem HEAD
+      `b474c947918f1c300164a646d4f3189c574f1139` gemergt
+      (Merge-Commit `93c55b6c86e8c4ac2994f2ac9fa2f18cac9ad1c6`).
+      Die vier `fileLines`-Befunde wurden beseitigt; die finalen
+      GitHub-Gates waren grün und es gab keine offenen Review-Threads.
+
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1708.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
@@ -1206,8 +1212,17 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       `lib/public-waste-demo-runtime.ts` bereinigen. Datenfilter,
       Terminberechnung, Reminder und Fehlerfälle gezielt testen.
 
+      Ausgangs-HEAD `04676e4b2e8e48a6737330c812ac15596afb72cb`:
+      613/545/540/524/351/287 Zeilen in der obigen Reihenfolge. Der
+      Schnitt erhält die sechs öffentlichen Importpfade und trennt
+      Reminder-Anmeldung und Seitenantworten, Runtime-Wiring, HTTP-Formate,
+      Repository-Abfragen, Feiertagsregeln und Demo-Daten in direkt
+      genutzte private Module derselben App. Ziel sind sechs beseitigte
+      `fileLines`-Befunde bei unverändertem Datenfilter, Transaktionsablauf,
+      Termin- und Antwortvertrag.
+
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1718.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

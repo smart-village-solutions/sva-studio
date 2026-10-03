@@ -707,20 +707,70 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
-### PR 15 — Instanz-Repository und Provisionierungsplan (7 Befunde)
+      Nachweis: PR #1682 mit HEAD
+      `656c1d46c12a93528466103496b21eb72ffe622c` als
+      `68277cd4343c456f8d2ec0fba2b470254775d17b` gemergt;
+      `docs/changelog/entries/pr-1682.json` enthalten.
 
-- [ ] In `packages/data-repositories/src/instance-registry/`
-      `repository-contract.ts`, `server.ts`, `repository-provisioning.ts`
-      sowie in `packages/instance-registry/src/`
-      `provisioning-auth-state.ts`, `provisioning-auth-evaluation.ts`,
-      `provisioning-auth-plan.ts`, `tenant-provisioning-steps.ts`
-      bereinigen. Persistenz-, Autorisierungs- und Retry-Invarianten
-      zusammenhängend charakterisieren.
+### PR 15a — Instanz-Repository-Vertrag und Parent-Provisionierung (2 Befunde)
+
+- [ ] `packages/data-repositories/src/instance-registry/repository-contract.ts`
+      und `repository-provisioning.ts` unter das Dateilimit bringen. Den
+      öffentlichen `InstanceRegistryRepository`-Vertrag und sämtliche
+      bestehenden Exporte erhalten; SQL-Text und Parameterreihenfolge sowie
+      Tenant-Bindung, Idempotenz, Claim-/Lease- und Retry-Guards,
+      Planbestätigung, Remediation und Audit-Reihenfolge mit gezielten
+      Repository-Tests und Data-/Security-/Runtime-Gates nachweisen.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 15b — Instanz-Repository-Server (1 Befund)
+
+- [ ] `packages/data-repositories/src/instance-registry/server.ts` entlang
+      der vorhandenen Pool-, Host- und Server-Fassaden unter das Dateilimit
+      bringen. Öffentliche Exporte, URL-Auflösung, Pool-/Client-Lifecycle,
+      Host-Cache/Fallback, Repository-Aufrufe mit Instance-ID-Filter und
+      Fehlerweitergabe mit
+      Server-Repository-Tests sowie Data-/Security-/Runtime-Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 15c — Keycloak-Provisionierungszustand (1 Befund)
+
+- [ ] `packages/instance-registry/src/provisioning-auth-state.ts` nach
+      Zustandsverantwortung unter das Dateilimit bringen. Tenant-/Realm-Bindung,
+      Plan-/Run-Zustände, Idempotenz und Fehlerzuordnung mit den vorhandenen
+      Provisionierungstests sowie Auth-/Security-/Runtime-Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 15d — Keycloak-Auth-Evaluation und -Plan (2 Befunde)
+
+- [ ] `packages/instance-registry/src/provisioning-auth-evaluation.ts` und
+      `provisioning-auth-plan.ts` entlang der bestehenden Preflight-,
+      Ownership- und Plan-Grenzen unter das Dateilimit bringen. Tenant-/Realm-
+      Ownership, Plan-Fingerprint, Gate-Status, Fehlerklassen und
+      Bestätigungsbedingungen mit gezielten Tests sowie Auth-/Security-/
+      Runtime-Gates erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
+      `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+### PR 15e — Tenant-Provisionierungsschritte (1 Befund)
+
+- [ ] `packages/instance-registry/src/tenant-provisioning-steps.ts` nach
+      vorhandenen Provisionierungsphasen unter das Dateilimit bringen.
+      Schrittfolge, idempotente Wiederaufnahme, Lease-/Retry-Grenzen,
+      Terminalstatus und Audit-Ereignisse mit den Orchestrator-Tests sowie
+      Auth-/Data-/Security-/Runtime-Gates erhalten.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und nutzerverständlichem `body` anlegen;
+      Changelog-Gate vor Merge grün.
 
 ### PR 16 — Instanz-Service und Keycloak-Ausführung (6 Befunde)
 

@@ -106,6 +106,7 @@ Abhängigkeiten des aktuellen Systems.
    - der öffentliche Medien-Repository-Entrypoint `media/index.ts` hält `createMediaRepository`, `mediaStatements` und die Typverträge; interne Module trennen Asset-, Upload-, Storage-/Referenz- und Content-Save-Statements, Row-Mapping und Repository-Methoden ohne Änderung der SQL- oder Tenant-Verträge
    - enthält den führenden zentralen Job-Store für generische Studio-Jobs im Studio-Postgres
    - hält zusätzlich den kanonischen Registry-Store für `external_interface_types` und `instance_external_interfaces`
+   - hält den öffentlichen `InstanceRegistryRepository`-Vertrag im bestehenden Registry-Importpfad; das interne Instanz-/Lese-Segment und die Parent-Provisionierungsadapter trennen Vertrag, Claim/Lease sowie Plan-/Remediation-Übergänge ohne Änderung der SQL- und Tenant-Bindung
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
 10. SVA Mainserver (`packages/sva-mainserver`)
 

@@ -928,14 +928,19 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 20 — POI-Editor (1 Befund)
 
-- [ ] `packages/plugin-poi/src/poi.detail-page.tsx` entlang bestehender
+- [x] `packages/plugin-poi/src/poi.detail-page.tsx` entlang bestehender
       POI-Abschnitte bereinigen. Formular-, Geocoding- und
       Berechtigungsverhalten gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1699, HEAD
+      `5e1baf8d7a2e43c11d76607672b18507d7456821`, Merge-Commit
+      `f6e840cad623162ce01628b5e30692fe0a9c6809`; Changelog
+      `docs/changelog/entries/pr-1699.json`.
 
 ### PR 21 — Projects-Seite (1 Befund)
 

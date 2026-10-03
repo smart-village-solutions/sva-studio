@@ -573,6 +573,22 @@ Complexity-Gates prüfen den Schnitt. Das erledigte `fileLines`-Finding und
 das ebenfalls behobene Cyclomatic-Finding entfallen; das bestehende
 `functionLines`-Finding der Einstiegsfunktion bleibt separat registriert.
 
+### PR 21: Projects-Seite
+
+Ausgangsstand nach PR 20: `projects.pages.tsx` 1.109 Zeilen. Der öffentliche
+Einstieg für Liste, Anlegen und Bearbeiten bleibt erhalten. Die Liste sowie
+Editor-Tabs, Bildfeld, Medienauswahl, Laden, Speichern und Darstellung werden
+von den drei Seiten direkt genutzt. Die ersetzten Blöcke entfallen aus der
+Ausgangsdatei; API-, Daten- und Berechtigungsverträge bleiben bestehen.
+
+Kritische Invarianten: Listenstatus und Pagination, Principal-abhängiger
+Zugriff, Create-/Edit-/Delete-Navigation, Formularvalidierung und Tabwechsel,
+öffentliche Medien-URLs, Referenzreihenfolge und Retry-Rückmeldung bleiben
+unverändert. Projects-Seitentests und Ownership-Konformitätstest sowie Type-,
+Lint-, Build- und Complexity-Gates prüfen den Schnitt. Die erledigten
+`fileLines`-, `functionLines`- und Cyclomatic-Findings der Ausgangsdatei
+entfallen aus der Policy; es entstehen keine neuen Findings.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

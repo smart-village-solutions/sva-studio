@@ -40,8 +40,8 @@ const editors = [
   },
   {
     name: 'Featured Projects',
-    panel: 'packages/plugin-projects/src/projects.pages.tsx',
-    actions: 'packages/plugin-projects/src/projects.pages.tsx',
+    panel: 'packages/plugin-projects/src/projects.editor-tabs.tsx',
+    actions: 'packages/plugin-projects/src/projects.editor-view.tsx',
   },
   {
     name: 'Surveys',

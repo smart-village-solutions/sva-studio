@@ -257,6 +257,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/iam-core` für zentrale Autorisierungsverträge und Entscheidungen; Runtime-Adapter liegen in `packages/auth-runtime`.
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
   - `packages/iam-admin`, `packages/instance-registry` und `packages/data-repositories` über klar getrennte Fach- und Repository-Verträge
+  - Das IAM-Seed-Repository in `packages/data-repositories` hält `statements.ts` als bestehenden Importvertrag. Die SQL-Statements liegen nach Organisation, Zugriff und Account getrennt; Tenant-Filter und Parameterbindung bleiben an den bisherigen Repository-Methoden.
 - Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
   - `packages/auth-runtime` liefert die serverseitig gebundene Fresh-Reauth-Evidenz für kritische Root-Host-Mutationen; `packages/instance-registry` verwendet nur diesen Kontext und keine klientseitigen Marker als Sicherheitsnachweis

@@ -218,6 +218,24 @@ Coverage-Kollisionen, Service-Ausführung vor User-Auth, Plugin-Namespace,
 Tenant-Bindung, Permission-/CSRF-Fail-Closed und Domain-spezifische
 Autorisierungsfehler.
 
+**PR-Auftrag 13d:** `plugin-operations/runner-registry.ts` und
+`plugin-operations/runner-worker.ts` unter das 320-Zeilen-Limit bringen,
+indem Registrierung/Task-Komposition und tenantgebundene Ausführung sowie
+Worker-Start, Health, Fehler und Stop in unmittelbar genutzte interne Module
+getrennt werden; Importverträge, Singleton-Zustand, Lease-/Attempt-Prüfungen,
+Lifecycle-Transaktionsreihenfolge, Retry und Terminal-Callbacks bleiben
+erhalten. Nicht-Ziele sind 13e–13f, Job-State-Writer, Features, DB-/Queue-
+Semantik, neue Dependencies und Gates. Maximal betroffen sind die zwei
+benannten Dateien, unmittelbar benötigte interne Module und Tests/Consumer,
+betroffene Package-/arc42-Dokumentation, nur tatsächlich erledigte
+Complexity-Findings, dieser OpenSpec-Change und ein eigener Changelog-Eintrag.
+Ausgangs-HEAD ist `22b05ec30f3f5a737aa6cc2d6d0e30e61677881f`; die
+Dateien haben 384 und 356 Zeilen. `loadedJob` bleibt pro Task-Aufruf
+geschlossen; Lifecycle complete/fail geht innerhalb derselben Transaktion
+dem terminalen Jobübergang voraus. Worker-Pools, Health und WeakSets bleiben
+Singletons, alte Pool-Events werden durch Identitätsprüfung ignoriert und der
+Terminal-Callback folgt dem Shutdown.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

@@ -533,10 +533,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       aufteilen. `audit-db-sink.test.ts` und direkte Audit-Consumer-Tests
       sichern Redaction/PII-Schutz, Tenant-Grenze, Event-Reihenfolge und
       Ausfallverhalten; Server-Runtime- und Auth-/Security-Gates prüfen.
+      Umsetzung in PR #1671; Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1671.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1671 anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 12d — IAM-Authorization shared (1 Dateilängenbefund)
 

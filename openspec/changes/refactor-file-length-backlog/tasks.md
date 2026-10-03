@@ -761,15 +761,20 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 15d — Keycloak-Auth-Evaluation und -Plan (2 Befunde)
 
-- [ ] `packages/instance-registry/src/provisioning-auth-evaluation.ts` und
+- [x] `packages/instance-registry/src/provisioning-auth-evaluation.ts` und
       `provisioning-auth-plan.ts` entlang der bestehenden Preflight-,
       Ownership- und Plan-Grenzen unter das Dateilimit bringen. Tenant-/Realm-
       Ownership, Plan-Fingerprint, Gate-Status, Fehlerklassen und
       Bestätigungsbedingungen mit gezielten Tests sowie Auth-/Security-/
       Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1688, HEAD
+      `01d8a6ebf5730332ee97feb081580fdf32941010`, Merge-Commit
+      `85cf9cded0b1b6334142e0beadc77eff438dff3e`; Changelog
+      `docs/changelog/entries/pr-1688.json`.
 
 ### PR 15e — Tenant-Provisionierungsschritte (1 Befund)
 

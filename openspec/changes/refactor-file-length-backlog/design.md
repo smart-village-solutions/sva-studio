@@ -451,6 +451,20 @@ bleiben unverändert. Nicht-Ziele sind 16c–16e, neue Keycloak-Semantik, Schema
 Gates oder Dependencies. Service- und Snapshot-Tests sowie Auth-/Data-/
 Security-/Runtime-Gates weisen die Verhaltensparität nach.
 
+**PR-Auftrag 16c:** Nach #1691 hat `service-audit-keycloak.ts` 511 Zeilen
+und einen registrierten `fileLines`-Befund. Ziel ist ein kleinerer
+Keycloak-Audit-Pfad bei unveränderten öffentlichen Exporten, Check-IDs,
+Statuswerten, Reihenfolgen und Fehlercodes. Nicht-Ziele sind neue
+Auditfunktionen, Auth-Vertragsänderungen und andere Module. Der bestehende
+Reader bleibt unter `service-audit-keycloak.ts`; das bislang nur separat
+getestete `service-audit-keycloak-checks.ts` wird zur produktiven Quelle der
+Check-Ableitung. Die Checks für nicht live lesbare Realms benötigen wegen
+des Dateilimits ein eigenes internes Modul. Seine direkten Verbraucher sind
+die Check-Ableitung und damit `service-audit.ts`. Live-Fehler dürfen keine
+PII aus Exceptions in Logs oder Audit-Details übertragen; ein Snapshot ist
+nur sekundärer Befund und ersetzt keinen erfolgreichen Live-Read. Gezielte
+Audit-Tests sowie Auth-/Data-/Security-/Runtime-Gates prüfen diese Grenzen.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

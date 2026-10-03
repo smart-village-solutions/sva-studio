@@ -816,13 +816,18 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 16b — Keycloak-Reader (1 Befund)
 
-- [ ] `packages/instance-registry/src/service-keycloak-readers.ts` entlang
+- [x] `packages/instance-registry/src/service-keycloak-readers.ts` entlang
       Status, Preflight und Plan unter das Dateilimit bringen. Tenantbindung,
       Read-Only-Verhalten und Plan-Fingerprint mit Reader-/Plan-Tests und
       zuständigen Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1691, HEAD
+      `6203ac1a2634d1c6130ee8b2016b47f9f606c590`, Merge-Commit
+      `00f035444a07482aee24d11d912124a9df8d1911`; Changelog
+      `docs/changelog/entries/pr-1691.json`.
 
 ### PR 16c — Keycloak-Audit (1 Befund)
 

@@ -1226,11 +1226,14 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 31a — Complexity-Gate (1 Dateilängenbefund)
 
-- [ ] `scripts/ci/complexity-gate.ts` nach Policy-Prüfung, Dateiauswahl,
+- [x] `scripts/ci/complexity-gate.ts` nach Policy-Prüfung, Dateiauswahl,
       TypeScript-Metriken und Berichtserstellung aufteilen. Beide registrierten
       Befunde (`fileLines`, `cyclomaticComplexity`) beseitigen; Exitcodes,
       CLI-Optionen, Modulpriorität, Findings und Berichtsformat mit gezielten
       Skript-Tests und Skript-Typecheck erhalten.
+      Merge-Nachweis: PR #1717, HEAD
+      `2614081e37ecc30577fd51422bf90559b2ba4091`, Merge-Commit
+      `cef590b02ec06cc6b056a764fd88370f661336f1`.
 
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1717.json` mit passender `prNumber` und
@@ -1242,10 +1245,9 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Berechnung und CLI-Ausgabe aufteilen. Exitcodes, CLI-Optionen,
       Schwellwerte und Reportformat mit gezielten Skript-Tests und
       Skript-Typecheck erhalten; bestehendes Complexity-Finding mit abbauen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1719.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1719 angelegt; Changelog-Gate grün.
 
 ### PR 31c — Patch-Coverage und Sonar-New-Code (2 Dateilängenbefunde)
 

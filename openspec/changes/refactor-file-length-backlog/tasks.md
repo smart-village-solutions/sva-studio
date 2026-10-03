@@ -578,13 +578,15 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 13b — Media-Verarbeitung und S3-Speicher (2 Befunde)
 
-- [ ] `packages/auth-runtime/src/iam-media/processing.ts` und
+- [x] `packages/auth-runtime/src/iam-media/processing.ts` und
       `iam-media/storage-s3.ts` nach Bildverarbeitung und S3-Operationen
       aufteilen. Media-/Storage-Tests sichern Größen-, MIME- und
       Berechtigungsvalidierung, Tenant-/Objektschlüsselbindung, Upload-/Delete-
       Reihenfolge sowie Fehlerabbildung; Auth-/Security- und
-      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Server-Runtime-Gates prüfen. Abschluss: PR #1674, HEAD
+      `dcb18fb7528fd8971b077d15733c8df30616649a`, Merge-Commit
+      `59c90bcac7d05ed6f2b1e3d0d9750ac01511c709`.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1674.json` mit passender `prNumber` und
       nutzerverständlichem `body` in PR #1674 anlegen;
       Changelog-Gate vor Merge grün.
@@ -596,10 +598,9 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       aufteilen. Dispatcher-/Handler-Tests sichern Plugin-Namespace,
       Fail-Closed, Fehlerstatus und Response-Vertrag; Auth-/Security- und
       Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13c anlegen;
-      Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1675.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1675 angelegt; Changelog-Gate grün.
 
 ### PR 13d — Plugin-Operations Runner (2 Befunde)
 

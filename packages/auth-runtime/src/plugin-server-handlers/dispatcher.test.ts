@@ -189,6 +189,7 @@ describe('plugin server handler dispatcher', () => {
     expect(dynamicHandler).toHaveBeenCalledWith(
       expect.objectContaining({ pathParams: { itemId: 'article-1' } })
     );
+    expect(await dispatch(new Request('https://tenant.test/api/v1/news/items/%ZZ'))).toBeNull();
     expect(
       (await dispatch(new Request('https://tenant.test/api/v1/news/items/special')))?.status
     ).toBe(200);
@@ -212,6 +213,32 @@ describe('plugin server handler dispatcher', () => {
         handlers: { [dynamic.id]: dynamicHandler, 'news.other': fixedHandler },
       })
     ).toThrow('ambiguous_plugin_server_endpoint');
+  });
+
+  it('keeps a static path selected when only a dynamic route has the requested method', async () => {
+    const fixed = { ...tenantDescriptor(), id: 'news.fixed', path: '/api/v1/news/items/special' };
+    const dynamic = {
+      ...fixed,
+      id: 'news.dynamic',
+      path: '/api/v1/news/items/$itemId',
+      method: 'POST' as const,
+    };
+    const authenticate = authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' });
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([
+        [dynamic.id, dynamic],
+        [fixed.id, fixed],
+      ]),
+      handlers: { [dynamic.id]: vi.fn(), [fixed.id]: vi.fn() },
+      dependencies: { authenticate },
+    });
+
+    const response = await dispatch(
+      new Request('https://tenant.test/api/v1/news/items/special', { method: 'POST' })
+    );
+    expect(response?.status).toBe(405);
+    expect(response?.headers.get('Allow')).toBe('GET');
+    expect(authenticate).not.toHaveBeenCalled();
   });
 
   it('rejects a plugin endpoint that overlaps a fixed host path', () => {
@@ -304,6 +331,38 @@ describe('plugin server handler dispatcher', () => {
       (await dispatch(new Request('https://tenant.test/api/v1/waste-management/history')))?.status
     ).toBe(200);
     expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it('preserves domain errors for missing tenant context and permission lookup failure', async () => {
+    const descriptor = wasteDescriptor();
+    const handler = vi.fn<PluginServerExecutionHandler>(() => new Response('ok'));
+    const readTenantAccess = vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' });
+    const resolvePermissions = vi.fn().mockRejectedValue(new Error('database unavailable'));
+    const createDispatch = (instanceId?: string) =>
+      createPluginServerHandlerDispatcher({
+        descriptors: new Map([[descriptor.id, descriptor]]),
+        handlers: { [descriptor.id]: handler },
+        dependencies: {
+          authenticate: authenticateAs({
+            id: 'user-1',
+            roles: [],
+            ...(instanceId ? { instanceId } : {}),
+          }),
+          readTenantAccess,
+          resolvePermissions,
+        },
+      });
+    const request = new Request('https://tenant.test/api/v1/waste-management/history');
+
+    const missing = await createDispatch()(request);
+    expect(missing?.status).toBe(400);
+    expect(await missing?.json()).toMatchObject({ error: { code: 'invalid_instance_id' } });
+    expect(readTenantAccess).not.toHaveBeenCalled();
+
+    const unavailable = await createDispatch('tenant-a')(request);
+    expect(unavailable?.status).toBe(503);
+    expect(await unavailable?.json()).toMatchObject({ error: { code: 'database_unavailable' } });
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('authenticates a technical service before binding tenant context and invoking the handler', async () => {

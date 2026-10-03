@@ -1,3 +1,7 @@
+/**
+ * Tenantgebundene Datenbanktransaktion und Pool für Instanz-Integrationen.
+ * Der Server-Einstieg verwaltet getrennt davon die gecachten Loader.
+ */
 import { Pool } from 'pg';
 import { createSdkLogger } from '@sva/server-runtime';
 

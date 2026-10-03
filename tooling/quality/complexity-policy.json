@@ -1072,18 +1072,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-governance/src/dsr-read-models-internal.ts)"
     },
-    "iam-governance:packages/iam-governance/src/dsr-read-models.mappers.ts:fileLines": {
-      "ticketId": "QUAL-IAM-DSR-READ-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "DSR-Mapper in kleinere Self-Service-, Admin- und Aktivitaetsprojektionen aufteilen (packages/iam-governance/src/dsr-read-models.mappers.ts)"
-    },
-    "iam-governance:packages/iam-governance/src/dsr-read-models.self-service-queries.ts:fileLines": {
-      "ticketId": "QUAL-IAM-DSR-READ-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Self-Service-DSR-Queries in kleinere Query-Builder und Detail-Resolver zerlegen (packages/iam-governance/src/dsr-read-models.self-service-queries.ts)"
-    },
     "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:cyclomaticComplexity": {
       "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
       "ticketSystem": "policy-baseline",

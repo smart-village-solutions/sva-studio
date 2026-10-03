@@ -381,6 +381,27 @@ describe('iam-data-subject-rights/read-models', () => {
     });
   });
 
+  it('scopes every self-service detail query to the same tenant, account and case', async () => {
+    const query = vi.fn(async (sql: string, parameters: unknown[]) => {
+      expect(sql).toContain('instance_id = $1');
+      expect(sql).toContain('= $2::uuid');
+      expect(sql).toContain('= $3::uuid');
+      expect(parameters).toEqual(['de-test', 'account-1', 'case-1']);
+      return { rowCount: 0, rows: [] };
+    });
+    const client = { query };
+
+    await expect(
+      getSelfServiceActivityItem(client as never, {
+        instanceId: 'de-test',
+        accountId: 'account-1',
+        caseId: 'case-1',
+      })
+    ).resolves.toBeNull();
+
+    expect(query).toHaveBeenCalledTimes(4);
+  });
+
   it('lists admin DSR cases with filters, search and pagination', async () => {
     const relatedAccountId = '22222222-2222-4222-8222-222222222222';
     const client = buildClient(
@@ -513,8 +534,16 @@ describe('iam-data-subject-rights/read-models', () => {
       canonicalStatus: 'failed',
       format: 'csv',
     });
-    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
-    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+      'de-musterhausen',
+      relatedAccountId,
+      null,
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), [
+      'de-musterhausen',
+      relatedAccountId,
+      null,
+    ]);
   });
 
   it('returns an admin DSR case by id and short-circuits missing ids', async () => {
@@ -549,7 +578,9 @@ describe('iam-data-subject-rights/read-models', () => {
       { rowCount: 0, rows: [] }
     );
 
-    await expect(getAdminDsrCase(client as never, { instanceId: 'de-musterhausen', caseId: '' })).resolves.toBeNull();
+    await expect(
+      getAdminDsrCase(client as never, { instanceId: 'de-musterhausen', caseId: '' })
+    ).resolves.toBeNull();
 
     const result = await getAdminDsrCase(client as never, {
       instanceId: 'de-musterhausen',

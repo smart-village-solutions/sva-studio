@@ -450,12 +450,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 11d — Governance-Workflow-Ausführung (1 Befund)
 
-- [ ] `packages/iam-governance/src/governance-workflow-executor.ts` nach
+- [x] `packages/iam-governance/src/governance-workflow-executor.ts` nach
       Berechtigungsänderung, Delegation/Impersonation und Rechtsannahme
       aufteilen. `governance-workflow-executor.test.ts` und Policy-Tests
       sichern Freigabegrenzen, Zustandswechsel, Audit, Ablauf und Fehlerpfade.
-      Umsetzung in PR #1666; Abschluss nach Merge- und Gate-Nachweis markieren.
-- [ ] Eigenen Studio-Changelog-Eintrag
+      Umsetzung in PR #1666; Merge `73dcb090eb934eb74e1671e32f92b8ec0ffc0aee`
+      nach 25 erfolgreichen GitHub-Checks am HEAD `a5b6325ee90029ffd6304f11097f55fe0a13da1b`.
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1666.json` mit
       passender `prNumber` und Nutzertext in PR #1666 anlegen;
       Changelog-Gate vor Merge grün.
@@ -467,9 +468,10 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       aufteilen. `core.test.ts` sichert Auth-/Tenant-Grenze, CSRF,
       Berechtigungen, CSV-Ausgabe und Fehlerabbildung; die bestehenden
       Routen und der Governance-Workflow-Vertrag bleiben erhalten.
+      Umsetzung in PR #1667; Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und Nutzertext in PR 11e anlegen;
+      `docs/changelog/entries/pr-1667.json` mit
+      passender `prNumber` und Nutzertext in PR #1667 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 11f — Rechtstexte-Mutationen (2 Befunde)

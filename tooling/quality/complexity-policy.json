@@ -460,12 +460,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/storage-s3.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-governance/core.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-governance-core-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Governance-Kernlogik in kleinere fachliche Flows und Hilfsbausteine zerlegen (packages/auth-runtime/src/iam-governance/core.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/index.ts:publicExports": {
       "ticketId": "baseline-auth-runtime-src-index-ts",
       "ticketSystem": "policy-baseline",

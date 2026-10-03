@@ -266,3 +266,19 @@ export const enrichMutationProjectionRowWithBinding = async (
     return rowWithoutSyntheticOwner;
   }
 };
+
+export const assertVerifiedTransferOwner = (
+  target: ContentProjectionSyncTarget,
+  row: MainserverProjectionRowInput
+): void => {
+  const principal = target.ownershipPrincipal;
+  if (!principal) return;
+  const matches =
+    principal.type === 'account'
+      ? row.ownerUserId === principal.id && !row.ownerOrganizationId
+      : row.ownerOrganizationId === principal.id && !row.ownerUserId;
+  if (matches) return;
+  throw Object.assign(new Error('Transferziel ist nicht als aktueller Inhaber bestätigt.'), {
+    code: 'content_transfer_target_ownership_unverified',
+  });
+};

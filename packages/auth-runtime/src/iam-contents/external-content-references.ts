@@ -1,7 +1,6 @@
 import type { ContentJsonValue, IamContentAuthorDisplayMode, IamContentStatus } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
-
 import { loadContentById, updateContent } from './repository.js';
 import { insertContentHistory } from './repository-shared.js';
 import {
@@ -10,10 +9,9 @@ import {
   updateContentRevisionRefs,
   validatePublicationWindow,
 } from './repository-write-helpers.js';
-import type { CreateContentInput } from './repository-types.js';
+import type { CreateContentInput, UpdateContentInput } from './repository-types.js';
 
 export type ExternalContentReconciliationStatus = 'pending' | 'bound' | 'reconciliation_required' | 'failed';
-
 export type ExternalContentReference = Readonly<{
   id: string;
   instanceId: string;
@@ -25,7 +23,6 @@ export type ExternalContentReference = Readonly<{
   reconciliationStatus: ExternalContentReconciliationStatus;
   lastErrorCode?: string;
 }>;
-
 type ExternalContentReferenceRow = {
   readonly id: string;
   readonly instance_id: string;
@@ -37,7 +34,6 @@ type ExternalContentReferenceRow = {
   readonly reconciliation_status: ExternalContentReconciliationStatus;
   readonly last_error_code: string | null;
 };
-
 const mapReference = (row: ExternalContentReferenceRow): ExternalContentReference => ({
   id: row.id,
   instanceId: row.instance_id,
@@ -63,7 +59,6 @@ SELECT
   last_error_code
 FROM iam.external_content_references
 `;
-
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 export const insertExternalContentReference = async (
@@ -119,7 +114,6 @@ export const createExternalContentReference = async (input: {
   readonly operationExternalId: string;
 }): Promise<ExternalContentReference> =>
   withInstanceScopedDb(input.instanceId, (client) => insertExternalContentReference(client, input));
-
 export const loadExternalContentReferenceByContentId = async (input: {
   readonly instanceId: string;
   readonly contentId: string;
@@ -163,16 +157,20 @@ export const loadExternalContentReferenceBySourceEntity = async (input: {
   readonly sourceSystem: string;
   readonly sourceEntityType: string;
   readonly sourceEntityId: string;
+  readonly exactSourceEntityType?: boolean;
 }): Promise<ExternalContentReference | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const sourceEntityTypes = input.sourceEntityType === 'projects.project' && !input.exactSourceEntityType
+      ? ['GenericItem', 'projects.project'] : [input.sourceEntityType];
     const result = await client.query<ExternalContentReferenceRow>(
       `${referenceSelect}
 WHERE instance_id = $1
   AND source_system = $2
-  AND source_entity_type = $3
+  AND source_entity_type = ANY($3::text[])
   AND source_entity_id = $4
+ORDER BY array_position($3::text[], source_entity_type)
 LIMIT 1;`,
-      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
+      [input.instanceId, input.sourceSystem, sourceEntityTypes, input.sourceEntityId]
     );
     return result.rows[0] ? mapReference(result.rows[0]) : undefined;
   });
@@ -305,9 +303,11 @@ export const updateExternalContentCore = async (input: {
   readonly traceId?: string;
   readonly mutationRef?: string;
   readonly contentId: string;
-  readonly title: string;
-  readonly payload: ContentJsonValue;
-  readonly status: IamContentStatus;
+  readonly confirmedExternalOwner?: UpdateContentInput['confirmedExternalOwner'];
+  readonly preserveExistingContentState?: boolean;
+  readonly title?: string;
+  readonly payload?: ContentJsonValue;
+  readonly status?: IamContentStatus;
   readonly publishedAt?: string;
   readonly authorDisplayMode: IamContentAuthorDisplayMode;
   readonly authorDisplayName: string;

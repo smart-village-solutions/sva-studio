@@ -32,6 +32,7 @@ const {
   insertContentHistory,
   isContentMutationFinalized,
   loadCurrentContentRow,
+  resolveContentUpdateReplay,
   resolveContentMutationMetadata,
 } = await import('./repository-shared.js');
 const {
@@ -40,6 +41,7 @@ const {
   emitContentUpdatedActivity,
   emitExternalContentUpdatedActivity,
   insertContentRow,
+  persistContentUpdateHistory,
   resolveCreateAuthorDisplay,
   resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
@@ -159,6 +161,57 @@ describe('iam content repository helpers', () => {
     );
   });
 
+  it('skips a superseded transfer with existing history under the Core lock', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] })
+      .mockResolvedValueOnce({ rows: [{ succeeded: true, unresolved: false }] });
+    await expect(resolveContentUpdateReplay(client, createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+    }))).resolves.toEqual({ mutationFinalized: true, skip: true });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("newer.provider_outcome = 'succeeded'"), ['instance-1', 'transfer-t1']
+    );
+  });
+
+  it('rejects a superseded transfer whose Core history is absent', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ succeeded: true, unresolved: false }] });
+    await expect(resolveContentUpdateReplay(client, createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+    }))).rejects.toThrow('ownership_source_changed');
+  });
+
+  it('keeps a historized transfer open while a newer transfer is unconfirmed', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] })
+      .mockResolvedValueOnce({ rows: [{ succeeded: false, unresolved: true }] });
+    await expect(resolveContentUpdateReplay(client, createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+    }))).rejects.toThrow('ownership_source_changed');
+  });
+
+  it('retries a historized transfer after the newer transfer failed', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] })
+      .mockResolvedValueOnce({ rows: [{ succeeded: false, unresolved: false }] });
+    await expect(resolveContentUpdateReplay(client, createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+    }))).resolves.toEqual({ mutationFinalized: true, skip: false });
+  });
+
   it('creates content history entries and throws when the database does not return an id', async () => {
     const client = createClient();
     client.query.mockResolvedValueOnce({ rows: [{ id: 'history-2' }] });
@@ -262,11 +315,7 @@ describe('iam content repository helpers', () => {
       expect.arrayContaining(['Stadt Musterhausen'])
     );
     expect(client.query.mock.calls[1]?.[1]).toEqual(
-      expect.arrayContaining([
-        '00000000-0000-0000-0000-000000000002',
-        null,
-        'Stadt Musterhausen',
-      ])
+      expect.arrayContaining(['00000000-0000-0000-0000-000000000002', null, 'Stadt Musterhausen'])
     );
   });
 
@@ -300,6 +349,40 @@ describe('iam content repository helpers', () => {
     ).resolves.toEqual({
       authorDisplayMode: 'user',
       authorDisplayName: 'Autor',
+    });
+  });
+
+  it('uses the provider author when first binding a confirmed personal transfer', async () => {
+    const client = createClient();
+    await expect(resolveCreateAuthorDisplay(client, createCreateInput({
+      confirmedExternalOwner: {
+        type: 'account',
+        id: '00000000-0000-0000-0000-000000000002',
+      },
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Provider-Autorin',
+      actorDisplayName: 'Ausführende Person',
+    }))).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Provider-Autorin',
+    });
+  });
+
+  it('keeps a personal provider author on first binding to an organization that permits it', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_or_personal' }],
+    });
+    await expect(resolveCreateAuthorDisplay(client, createCreateInput({
+      organizationId: '00000000-0000-0000-0000-000000000002',
+      confirmedExternalOwner: {
+        type: 'organization', id: '00000000-0000-0000-0000-000000000002',
+      },
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Provider-Autorin',
+      actorDisplayName: 'Ausführende Person',
+    }))).resolves.toEqual({
+      authorDisplayMode: 'user', authorDisplayName: 'Provider-Autorin',
     });
   });
 
@@ -355,6 +438,142 @@ describe('iam content repository helpers', () => {
     });
   });
 
+  it('validates an organization author against the confirmed transfer target', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({ organization_id: null, author_display_mode: 'user' }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          authorDisplayMode: 'organization',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Zielorganisation',
+    });
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM iam.organizations'), [
+      'instance-1',
+      '00000000-0000-0000-0000-000000000002',
+    ]);
+  });
+
+  it('preserves a newer author snapshot when only transfer ownership is replayed', async () => {
+    const client = createClient();
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          author_display_mode: 'user',
+          author_display_name: 'Spätere Autorin',
+        }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'account',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          preserveExistingContentState: true,
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Transferredaktion',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Spätere Autorin',
+    });
+  });
+
+  it('uses the current provider author when the new owner invalidates the old mode', async () => {
+    const client = createClient();
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          author_display_mode: 'organization',
+          author_display_name: 'Alte Organisation',
+        }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'account',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          preserveExistingContentState: true,
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Aktuelle Autorin',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Aktuelle Autorin',
+    });
+  });
+
+  it('uses the confirmed target organization name for organization author mode', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_or_personal' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          author_display_mode: 'organization',
+          author_display_name: 'Quellorganisation',
+        }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          preserveExistingContentState: true,
+          authorDisplayMode: 'organization',
+          authorDisplayName: 'Quellorganisation',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Zielorganisation',
+    });
+  });
+
+  it.each([false, true])('uses the confirmed organization name despite provider fallback author (replay: %s)', async (preserveExistingContentState) => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_only' }],
+    });
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({ author_display_mode: 'user', author_display_name: 'Autorin' }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          authorDisplayMode: 'organization',
+          authorDisplayName: 'mainserver',
+          preserveExistingContentState,
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'organization',
+      authorDisplayName: 'Zielorganisation',
+    });
+  });
+
   it('updates content rows and revision references with normalized values', async () => {
     const client = createClient();
     client.query.mockResolvedValue({ rows: [] });
@@ -370,6 +589,8 @@ describe('iam content repository helpers', () => {
       publishedAt: '2026-05-03T08:00:00.000Z',
       publishFrom: '2026-05-02T08:00:00.000Z',
       publishUntil: '2026-05-04T08:00:00.000Z',
+      ownerUserId: null,
+      ownerOrganizationId: '00000000-0000-0000-0000-000000000002',
     });
     await updateContentRevisionRefs(client, 'instance-1', 'content-1', 'history-2');
 
@@ -392,13 +613,99 @@ describe('iam content repository helpers', () => {
         '00000000-0000-0000-0000-000000000001',
       ])
     );
-    expect(client.query.mock.calls[0]?.[0]).not.toContain('owner_user_id');
-    expect(client.query.mock.calls[0]?.[0]).not.toContain('owner_organization_id');
+    expect(client.query.mock.calls[0]?.[0]).toContain('owner_user_id = CASE WHEN $14::boolean');
+    expect(client.query.mock.calls[0]?.[1]?.slice(-3)).toEqual([
+      false,
+      null,
+      '00000000-0000-0000-0000-000000000002',
+    ]);
     expect(client.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('SET history_ref = $3, current_revision_ref = $3'),
       ['instance-1', 'content-1', 'history-2']
     );
+  });
+
+  it('amends an existing transfer history without creating a second revision', async () => {
+    const client = createClient();
+    client.query.mockResolvedValue({ rows: [] });
+
+    await persistContentUpdateHistory(
+      client,
+      createUpdateInput({ mutationRef: 'transfer-1' }),
+      createContentRow(),
+      {
+        changedFields: ['ownerUserId', 'ownerOrganizationId'],
+        status: 'draft',
+        payload: { body: 'Text' },
+        historyAction: 'updated',
+        historySummary: 'Inhalt aktualisiert',
+        mutationFinalized: true,
+      }
+    );
+
+    expect(client.query).toHaveBeenCalledOnce();
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.content_history'),
+      ['instance-1', 'content-1', 'transfer-1', ['ownerUserId', 'ownerOrganizationId']]
+    );
+  });
+
+  it('labels new confirmed transfer history as an ownership transfer', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({ rows: [{ id: 'history-1' }] });
+    client.query.mockResolvedValueOnce({ rows: [] });
+
+    await persistContentUpdateHistory(
+      client,
+      createUpdateInput({
+        mutationRef: 'transfer-1',
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '00000000-0000-0000-0000-000000000002',
+        },
+      }),
+      createContentRow(),
+      {
+        changedFields: ['ownerOrganizationId'],
+        status: 'draft',
+        payload: { body: 'Text' },
+        historyAction: 'updated',
+        historySummary: 'Inhalt aktualisiert',
+        mutationFinalized: false,
+      }
+    );
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.content_history'),
+      expect.arrayContaining(['Inhaber übertragen'])
+    );
+  });
+
+  it('inserts a newly bound transfer with the confirmed personal owner', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({ rows: [{ id: 'content-1' }] });
+
+    await insertContentRow(
+      client,
+      createCreateInput({
+        actorAccountId: '00000000-0000-0000-0000-000000000001',
+        confirmedExternalOwner: {
+          type: 'account',
+          id: '00000000-0000-0000-0000-000000000002',
+        },
+        authorDisplayMode: 'user',
+      })
+    );
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.contents'),
+      expect.arrayContaining([
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+      ])
+    );
+    expect(client.query.mock.calls[0]?.[1]?.[3]).toBe('00000000-0000-0000-0000-000000000002');
   });
 
   it('emits created and deleted audit activities with content action metadata', async () => {
@@ -438,6 +745,69 @@ describe('iam content repository helpers', () => {
         }),
       })
     );
+  });
+
+  it('emits confirmed external ownership as transfer audit', async () => {
+    const client = createClient();
+    await emitContentUpdatedActivity(
+      client,
+      createUpdateInput({
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '00000000-0000-0000-0000-000000000002',
+        },
+      }),
+      createContentRow({ owner_user_id: '00000000-0000-0000-0000-000000000001' }),
+      {
+        eventType: 'iam.content.updated',
+        action: 'content.updateMetadata',
+        changedFields: ['ownerUserId', 'ownerOrganizationId'],
+        nextStatus: 'draft',
+        nextTitle: 'Titel',
+        nextOwnerUserId: null,
+        nextOwnerOrganizationId: '00000000-0000-0000-0000-000000000002',
+        nextAuthorDisplayMode: 'organization',
+        nextAuthorDisplayName: 'Zielorganisation',
+      }
+    );
+
+    expect(state.emitActivityLogMock).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        eventType: 'iam.content.ownership_transferred',
+        payload: expect.objectContaining({
+          action: 'content.transferOwnership',
+          source_principal: {
+            type: 'account',
+            id: '00000000-0000-0000-0000-000000000001',
+          },
+          target_principal: {
+            type: 'organization',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+        }),
+      })
+    );
+  });
+
+  it.each([
+    { owner_user_id: 'stale-user', owner_organization_id: 'target-org' },
+    { owner_user_id: null, owner_organization_id: 'target-org' },
+  ])('omits an unverified source from transfer repair audit for %j', async (owner) => {
+    const client = createClient();
+    await emitContentUpdatedActivity(
+      client,
+      createUpdateInput({ confirmedExternalOwner: { type: 'organization', id: 'target-org' } }),
+      createContentRow(owner),
+      {
+        eventType: 'iam.content.updated', action: 'content.updateMetadata',
+        changedFields: ['ownerUserId', 'ownerOrganizationId'],
+        nextStatus: 'draft', nextTitle: 'Titel', nextOwnerUserId: null,
+        nextOwnerOrganizationId: 'target-org', nextAuthorDisplayMode: 'organization',
+        nextAuthorDisplayName: 'Zielorganisation',
+      }
+    );
+    expect(state.emitActivityLogMock.mock.calls.at(-1)?.[1].payload).not.toHaveProperty('source_principal');
   });
 
   it('emits update audit semantics for a newly bound external content core', async () => {

@@ -2,6 +2,7 @@ import {
   authorizeContentPrimitiveForUser,
   loadExternalContentCore,
   loadExternalContentReferenceByContentId,
+  loadExternalContentReferenceBySourceEntity,
   resolveActorInfo,
   validateCsrf,
   type AuthenticatedRequestContext,
@@ -73,10 +74,24 @@ export const projectActorInfoOrResponse = async (
 };
 
 export const loadProjectLocalContext = async (instanceId: string, contentId: string) => {
-  const reference = await loadExternalContentReferenceByContentId({
+  const referenceByContentId = await loadExternalContentReferenceByContentId({
     ...projectSourceReferenceInput(instanceId),
     contentId,
   }).catch(() => undefined);
+  const legacyReferenceByContentId = referenceByContentId ? undefined
+    : await loadExternalContentReferenceByContentId({
+        ...projectSourceReferenceInput(instanceId),
+        sourceEntityType: 'projects.project',
+        contentId,
+      }).catch(() => undefined);
+  const referenceByLocalId = referenceByContentId ?? legacyReferenceByContentId;
+  const canonicalReference = referenceByContentId ?? await loadExternalContentReferenceBySourceEntity({
+    instanceId,
+    sourceSystem: 'mainserver',
+    sourceEntityType: 'projects.project',
+    sourceEntityId: legacyReferenceByContentId?.sourceEntityId ?? contentId,
+  });
+  const reference = canonicalReference ?? referenceByLocalId;
   const loadedCore = reference
     ? await loadExternalContentCore(instanceId, reference.contentId).catch(() => undefined)
     : undefined;

@@ -55,7 +55,9 @@ export type CreateContentInput = {
   traceId?: string;
   contentType: string;
   organizationId?: string;
+  confirmedExternalOwner?: IamContentOwnerPrincipal;
   authorDisplayMode?: IamContentAuthorDisplayMode;
+  authorDisplayName?: string;
   title: string;
   payload: ContentJsonValue;
   status: IamContentStatus;
@@ -73,6 +75,8 @@ export type UpdateContentInput = {
   traceId?: string;
   mutationRef?: string;
   contentId: string;
+  confirmedExternalOwner?: IamContentOwnerPrincipal;
+  preserveExistingContentState?: boolean;
   expectedSourcePrincipal?: IamContentOwnerPrincipal | null;
   organizationId?: string;
   ownerUserId?: string;

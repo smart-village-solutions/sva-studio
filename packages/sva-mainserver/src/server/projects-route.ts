@@ -126,13 +126,19 @@ const updateProject = async (
           genericItemId: freshItem.id,
           visible: project.status === 'published',
         });
-        let localFollowUpFailed = false;
+        let localFollowUpFailed = Boolean(context.reference && !context.core);
+        let projectCoreUpdated = false;
+        if (localFollowUpFailed && context.reference)
+          await Promise.resolve(updateExternalContentReconciliationStatus({
+            instanceId, referenceId: context.reference.id,
+            status: 'reconciliation_required', errorCode: 'local_finalize_failed',
+          })).catch(() => undefined);
         if (context.core && context.reference)
           try {
             await updateExternalContentCore({
               ...actorInfo,
               actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-              contentId,
+              contentId: context.reference.contentId,
               title: project.title,
               payload: projectPayload(project),
               status: project.status,
@@ -140,6 +146,7 @@ const updateProject = async (
               authorDisplayMode: actor.mutationPrincipalContext.actingPrincipalType,
               authorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
             });
+            projectCoreUpdated = true;
             await updateExternalContentReconciliationStatus({
               instanceId,
               referenceId: context.reference.id,
@@ -165,7 +172,7 @@ const updateProject = async (
           actor,
           providerOutcome: 'succeeded',
           reconciliationStatus: localFollowUpFailed ? 'reconciliation_required' : 'complete',
-          completedSteps: ['provider_write'],
+          completedSteps: ['provider_write', ...(projectCoreUpdated ? ['project_core_updated'] : [])],
           contentId: freshItem.id,
           observedDataProviderId: freshItem.dataProvider?.id,
         });

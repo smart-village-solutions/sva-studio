@@ -371,13 +371,13 @@ export const refreshGenericItemSiblingProjections = async (
   }
   const loadedItem = await loadGenericItemForSiblingRefresh(input);
   if (loadedItem.failed) {
-    await refreshGenericItemProjectionSnapshots(input.target);
+    let deferred: true | undefined;
     if (input.target.ownershipPrincipal) {
-      const deferred = await deferMutationHistory(input);
+      deferred = await deferMutationHistory(input);
       if (!deferred) throw new Error('content_transfer_projection_reconciliation_unavailable');
-      return true;
     }
-    return undefined;
+    await refreshGenericItemProjectionSnapshots(input.target);
+    return deferred;
   }
   const resolvedContentType = loadedItem.item
     ? resolveGenericItemProjectionContentType(loadedItem.item.genericType)

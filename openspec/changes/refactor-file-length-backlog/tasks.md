@@ -1088,12 +1088,12 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 26a — Waste-Server-Lader (1 Befund)
 
-- [ ] In `packages/waste-management-runtime/src/server-loaders.ts`
+- [x] In `packages/waste-management-runtime/src/server-loaders.ts`
       die Tenant-gebundenen Lader nach Datenbereichen trennen.
       Tenant-Scope, Repository-Bindung und Antworten mit gezielten
       Loader- und Server-Runtime-Tests erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.

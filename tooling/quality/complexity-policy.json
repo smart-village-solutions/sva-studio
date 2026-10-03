@@ -1882,23 +1882,11 @@
       "status": "open",
       "summary": "Public-Waste-Contract in kleinere Teilvertraege oder Re-Export-Module aufteilen (apps/public-waste-calendar-web/src/lib/public-waste-contract.ts)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-005",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Demo-Runtime in Konfiguration, Seed-Daten und Bootstrap aufteilen (apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Repository-Verzweigungen in kleinere Query- und Mapping-Helfer auslagern (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Repository-Datei in kleinere Datenzugriffs- und Projektionsmodule splitten (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
     },
     "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
@@ -2188,12 +2176,6 @@
       "status": "open",
       "summary": "Lange Public-Waste-App-Komponente in kleinere State- und Render-Bausteine aufteilen (apps/public-waste-calendar-web/src/components/public-waste-app.tsx)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Occurrence-Berechnung in kleinere Mapping-, Filter- und Materialisierungsschritte zerlegen (apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-003",
       "ticketSystem": "backlog",
@@ -2206,23 +2188,11 @@
       "status": "open",
       "summary": "Public-Waste-Endpoint-Verzweigungen in kleinere Request-, Validation- und Response-Helfer zerlegen (apps/public-waste-calendar-web/src/lib/public-waste-endpoints.server.ts)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-endpoints.server.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-009",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Endpoints in kleinere Handler- und Shared-Response-Module splitten (apps/public-waste-calendar-web/src/lib/public-waste-endpoints.server.ts)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-010",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Email-Reminder-Flow in kleinere Signup-, Token- und Response-Zweige zerlegen (apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-010",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Email-Reminder-Serverdatei in kleinere Signup-, Activation- und Unsubscribe-Module splitten (apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts)"
     },
     "apps-default:apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-010",
@@ -2235,12 +2205,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Public-Waste-Runtime-Verzweigungen in kleinere Config-, Repository- und Reminder-Bausteine zerlegen (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/server/public-waste-runtime.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-011",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Runtime-Datei in kleinere Wiring- und Factory-Module splitten (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
     },
     "apps-default:apps/public-waste-calendar-web/src/server/public-waste-runtime.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-011",

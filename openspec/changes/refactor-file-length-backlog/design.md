@@ -633,6 +633,19 @@ Service-, Interface- und Mapping-Tests prüfen die bestehenden Rückgaben,
 Fehler und Reihenfolgen; Type-, Lint-, Server-Runtime- und Complexity-Gates
 prüfen die Paketgrenze und die vier `fileLines`-Befunde.
 
+### PR 29: Öffentliche Waste-Daten und Reminder
+
+Die sechs bestehenden Importpfade bleiben Einstiegspunkte. Private Module
+derselben App enthalten Demo-Daten und Feiertagsregeln, Repository-Mapping
+und Reminder-Abfragen, PDF-/iCal-/Reminder-Antworten sowie Signup-,
+Seiten- und Runtime-Schritte. Der Schnitt folgt den bestehenden
+Verantwortungen; er ändert weder öffentliche Typen noch API- oder
+Datenbankverträge. Repository- und Runtime-Tests prüfen Mandantenfilter,
+Terminberechnung, Antwortformate, Transaktionsreihenfolge mit Advisory Lock
+und Subscription-Limit sowie die Fehlerfälle. Type-, Unit-, Lint-, Build-,
+Server-Runtime- und Complexity-Gates prüfen die sechs `fileLines`-Befunde
+und die importierbaren Serverpfade.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

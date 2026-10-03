@@ -606,16 +606,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 13d — Plugin-Operations Runner (2 Befunde)
 
-- [ ] `packages/auth-runtime/src/plugin-operations/runner-registry.ts`
+- [x] `packages/auth-runtime/src/plugin-operations/runner-registry.ts`
       und `plugin-operations/runner-worker.ts` entlang Registrierung,
       Claim/Ausführung und Retry aufteilen. Registry-/Worker-Tests sichern
       Lease-/Attempt-Grenzen, Idempotenz, Tenant-/Plugin-Bindung und
       Terminalzustände; Auth-/Data-/Security- und Server-Runtime-Gates prüfen.
-      Abschluss nach Merge- und Gate-Nachweis.
+      Abschluss: PR #1676, HEAD
+      `00626994874e3ca2dde0d44c40a095ed6bec1edc`, Merge-Commit
+      `d63abc92556e4539ba795b18bbb08fd95bcf0c1b` nach grünen Gates.
 - [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1676.json` mit passender `prNumber` und
-      nutzerverständlichem `body` in PR #1676 angelegt; Changelog-Gate vor
-      Merge prüfen.
+      nutzerverständlichem `body` in PR #1676 angelegt; Changelog-Gate grün.
 
 ### PR 13e — Plugin-Operations Job-State-Writer (1 Befund)
 
@@ -624,10 +625,10 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       sichern erlaubte Übergänge, Tenant-/Job-Bindung, Attempt-/Lease-Prüfung,
       Event-Reihenfolge und Wiederholbarkeit; Auth-/Data-/Security- und
       Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13e anlegen;
-      Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1677.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1677 angelegt; Changelog-Gate lokal
+      grün, PR-Gate vor Merge prüfen.
 
 ### PR 13f — Plugin-Tenant-Lifecycle-Orchestrator (1 Befund)
 

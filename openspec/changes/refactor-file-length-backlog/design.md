@@ -236,6 +236,24 @@ dem terminalen Jobübergang voraus. Worker-Pools, Health und WeakSets bleiben
 Singletons, alte Pool-Events werden durch Identitätsprüfung ignoriert und der
 Terminal-Callback folgt dem Shutdown.
 
+**PR-Auftrag 13e:** `plugin-operations/job-state-writer.ts` unter das
+320-Zeilen-Limit bringen, indem der bestehende Writer-Vertrag die laufenden
+Status-/Event-Schritte behält und terminale Zustände samt Persistenz in direkt
+genutzte interne Module getrennt werden; Zustandswerte und Aufrufreihenfolge
+bleiben erhalten. Nicht-Ziele sind 13f, Produktfeatures, DB-Schema- oder
+Queue-Semantik, zusätzliche Validierung, Dependencies und Gates. Maximal
+betroffen sind die benannte Datei, unmittelbar benötigte interne Module und
+Tests/Consumer, tatsächlich betroffene Package-/arc42-Dokumentation, nur
+tatsächlich erledigte Complexity-Findings, dieser OpenSpec-Change und ein
+eigener Changelog-Eintrag. Ausgangs-HEAD ist
+`d63abc92556e4539ba795b18bbb08fd95bcf0c1b`; die Datei hat 339 Zeilen.
+Die Repository-Ports prüfen Tenant-, Job-, Attempt-, Worker- und Lease-Bindung;
+der Writer reicht die bisherigen Werte durch. Running und Retry schreiben
+State vor Event, während terminale Zustände den atomaren Port nutzen oder den
+bisherigen parallelen Legacy-Fallback beibehalten. Fehlermeldung,
+Plugin-Details, Cancellation-Metadaten und Fortschritt bleiben je Übergang
+identisch.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

@@ -231,4 +231,120 @@ describe('job state writer', () => {
       })
     );
   });
+
+  it('writes running and retrying states before their events with the same job, tenant, and attempt', async () => {
+    const calls: string[] = [];
+    const writer = createJobStateWriter({
+      updateJobState: vi.fn(async (state) => {
+        calls.push(`state:${state.status}:${state.instanceId}:${state.jobId}:${state.attempts}`);
+      }),
+      appendStartedEvent: vi.fn(async (event) => {
+        calls.push(`event:started:${event.instanceId}:${event.jobId}:${event.attempts}`);
+      }),
+      appendSucceededEvent: vi.fn(async () => null),
+      appendRetriedEvent: vi.fn(async (event) => {
+        calls.push(`event:retried:${event.instanceId}:${event.jobId}:${event.attempts}`);
+      }),
+      appendFailedEvent: vi.fn(async () => null),
+      now: () => '2026-05-09T12:05:00.000Z',
+    });
+
+    const input = {
+      job: baseJob,
+      attempts: 2,
+      startedAt: '2026-05-09T12:01:00.000Z',
+      workerId: 'worker-a',
+    };
+    await writer.markRunning(input);
+    await writer.markRetriedOrFailed({
+      ...input,
+      errorPayload: { code: 'retry', category: 'retryable' },
+      finalFailure: false,
+    });
+
+    expect(calls).toEqual([
+      'state:running:tenant-a:job-1:2',
+      'event:started:tenant-a:job-1:2',
+      'state:retrying:tenant-a:job-1:2',
+      'event:retried:tenant-a:job-1:2',
+    ]);
+  });
+
+  it('keeps terminal writes concurrent in the legacy fallback', async () => {
+    let finishUpdate: (() => void) | undefined;
+    const updateJobState = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishUpdate = resolve;
+        })
+    );
+    const appendSucceededEvent = vi.fn(async () => undefined);
+    const writer = createJobStateWriter({
+      updateJobState,
+      appendStartedEvent: vi.fn(async () => undefined),
+      appendSucceededEvent,
+      appendRetriedEvent: vi.fn(async () => undefined),
+      appendFailedEvent: vi.fn(async () => undefined),
+      now: () => '2026-05-09T12:05:00.000Z',
+    });
+
+    const write = writer.markSucceeded({
+      job: baseJob,
+      attempts: 2,
+      startedAt: '2026-05-09T12:01:00.000Z',
+      workerId: 'worker-a',
+      result: undefined,
+    });
+    expect(updateJobState).toHaveBeenCalledOnce();
+    expect(appendSucceededEvent).toHaveBeenCalledOnce();
+    finishUpdate?.();
+    await write;
+  });
+
+  it('preserves the distinct failed event payloads for execution and missing handler', async () => {
+    const persistTerminalState = vi.fn(async () => undefined);
+    const writer = createJobStateWriter({
+      updateJobState: vi.fn(async () => undefined),
+      appendStartedEvent: vi.fn(async () => undefined),
+      appendSucceededEvent: vi.fn(async () => undefined),
+      appendRetriedEvent: vi.fn(async () => undefined),
+      appendFailedEvent: vi.fn(async () => undefined),
+      persistTerminalState,
+      now: () => '2026-05-09T12:05:00.000Z',
+    });
+    const input = {
+      job: baseJob,
+      attempts: 5,
+      startedAt: '2026-05-09T12:01:00.000Z',
+      workerId: 'worker-a',
+      errorPayload: {
+        code: 'failed',
+        category: 'permanent' as const,
+        message: 'Failure',
+        details: { host: { requestId: 'request-1' }, plugin: { operation: 'import' } },
+      },
+    };
+
+    await writer.markRetriedOrFailed({ ...input, finalFailure: true });
+    await writer.markMissingHandler(input);
+
+    expect(persistTerminalState).toHaveBeenCalledTimes(2);
+    expect(persistTerminalState.mock.calls[0]?.[0].event.details).toEqual({
+      host: {
+        requestId: 'request-1',
+        workerId: 'worker-a',
+        errorCode: 'failed',
+        errorCategory: 'permanent',
+      },
+      plugin: { operation: 'import' },
+    });
+    expect(persistTerminalState.mock.calls[1]?.[0].event.details).toEqual({
+      host: {
+        requestId: 'request-1',
+        workerId: 'worker-a',
+        errorCode: 'failed',
+        errorCategory: 'permanent',
+      },
+    });
+  });
 });

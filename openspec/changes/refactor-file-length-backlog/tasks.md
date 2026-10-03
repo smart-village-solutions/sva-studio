@@ -345,15 +345,17 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 10c — Rollenpersistenz (1 Befund)
 
-- [ ] `packages/iam-admin/src/role-mutation-persistence.ts` nach
+- [x] `packages/iam-admin/src/role-mutation-persistence.ts` nach
       Permission-Normalisierung und Rollen-/Zuordnungs-Persistenz trennen.
       `role-mutation-persistence.test.ts` sowie Create-/Update-/Delete-Tests
       sichern Tenant-Scope, Verfügbarkeit von Berechtigungen, Audit,
       Rollback und Sync-Vertrag.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1659.json` mit
       passender `prNumber` und nutzerverständlichem `body` in PR #1659
-      anlegen; Changelog-Gate vor Merge grün.
+      angelegt; PR #1659 am 03.10.2026 als
+      `7fde5f1cdb0801b604e1d2d5b26a4b02b4079116` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
 
 ### PR 10d — Rollen-Reconcile (1 Befund)
 
@@ -363,8 +365,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Tenant-Grenze, Import-/Update-Entscheidungen, Idempotenz,
       Fehlerbericht und Audit.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 10d
+      `docs/changelog/entries/pr-1660.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1660
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 10e — Moderne und Legacy-Gruppenmutationen (2 Befunde)

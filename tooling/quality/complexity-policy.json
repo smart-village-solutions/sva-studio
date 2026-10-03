@@ -1522,12 +1522,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/events-route.ts)"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/interfaces-contract.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-interfaces-contract-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/interfaces-contract.ts)"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:cyclomaticComplexity": {
       "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
       "ticketSystem": "policy-baseline",
@@ -1552,12 +1546,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/service.ts)"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/service.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-service-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/service.ts)"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/service.ts:functionLines": {
       "ticketId": "baseline-sva-mainserver-src-server-service-ts",
       "ticketSystem": "policy-baseline",
@@ -1569,12 +1557,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/sva-mainserver/src/server/service.ts)"
-    },
-    "sva-mainserver:packages/sva-mainserver/src/types.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-types-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/types.ts)"
     },
     "sva-mainserver:packages/sva-mainserver/src/types.ts:publicExports": {
       "ticketId": "baseline-sva-mainserver-src-types-ts",
@@ -1701,12 +1683,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Event-Operationen in kleinere Variablenbuilder und Mutationshilfen aufteilen (packages/sva-mainserver/src/server/service-internals/event-operations.ts)"
-    },
-    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/mappers-shared.ts:fileLines": {
-      "ticketId": "QUAL-SVA-MAINSERVER-INT-004",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Gemeinsame Mainserver-Mapping-Schemas in kleinere thematische Module splitten (packages/sva-mainserver/src/server/service-internals/mappers-shared.ts)"
     },
     "sva-mainserver:packages/sva-mainserver/src/server/service-internals/mappers-shared.ts:publicExports": {
       "ticketId": "QUAL-SVA-MAINSERVER-INT-004",

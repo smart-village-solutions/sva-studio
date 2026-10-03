@@ -620,6 +620,19 @@ Cockpit-Cards und Projects prüfen diese Verträge vor und nach dem Schnitt;
 Type-, Lint-, Server-Runtime- und vollständiges Complexity-Gate prüfen die
 Paketgrenze und die fünf beseitigten `fileLines`-Befunde.
 
+### PR 28: Mainserver-Service und interne Typen
+
+`service.ts` behält die öffentliche API und delegiert die bestehende
+Komposition an private Module für Verbindung, Diagnostik, Kategorien,
+Content-Operationen sowie Surveys und Waste. `types.ts` erhält die bisherigen
+öffentlichen Namen und trennt die Typen nach Domäne. Der Interface-Vertrag
+trennt Lese- und Speicherpfad samt gemeinsamer Validierung;
+`mappers-shared.ts` behält seine bisherigen Exporte und verteilt Schemas und
+Mapper auf interne Module. Relative Runtime-Imports verwenden `.js`.
+Service-, Interface- und Mapping-Tests prüfen die bestehenden Rückgaben,
+Fehler und Reihenfolgen; Type-, Lint-, Server-Runtime- und Complexity-Gates
+prüfen die Paketgrenze und die vier `fileLines`-Befunde.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

@@ -1546,12 +1546,6 @@
       "status": "open",
       "summary": "Event-Erzeugung in kleinere Host-Factories und Formatter zerlegen (packages/auth-runtime/src/plugin-operations/job-event-writer.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-state-writer.ts:functionLines": {
-      "ticketId": "QUAL-PLUGIN-OPS-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/admin/modules/-modules-page.tsx:functionLines": {
       "ticketId": "QUAL-FRONTEND-021",
       "ticketSystem": "backlog",
@@ -2955,18 +2949,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Job-Lifecycle-Orchestrierung in kleinere Übergangs- und Persistenzschritte aufteilen"
-    },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-state-writer.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-PLUGIN-OPS-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-state-writer.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-OPS-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
     },
     "auth-runtime:packages/auth-runtime/src/plugin-tenant-lifecycle/enqueue-recovery.ts:functionLines": {
       "ticketId": "QUAL-PLUGIN-LIFECYCLE-001",

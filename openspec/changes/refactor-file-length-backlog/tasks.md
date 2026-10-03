@@ -14,7 +14,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
 
-**Strang A:** PR 23 → PR 24a → PR 24b → PR 25 → PR 26 → PR 31 → PR 32 → PR 33 → PR 34.
+**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26 → PR 31 → PR 32 → PR 33 → PR 34.
 **Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
 Merge von PR 26, weil der öffentliche Waste-Kalender die dann integrierten
 Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
@@ -1031,29 +1031,45 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 24b — Waste-Plugin-Ortsauswahl und individuelle Tourtermine (3 Befunde)
 
-- [ ] In `packages/plugin-waste-management/src/`
+- [x] In `packages/plugin-waste-management/src/`
       `waste-management.tours-custom-dates.tsx`,
       `waste-management.master-data-locations-table.views.tsx` und
       `waste-management.tours-assignments-dialog.tsx` bereinigen.
       Individuelle Abholtermine, Ortsauswahl, Zuordnungsdialoge und
       Tabellenaktionen mit gezielten UI- und Typprüfungen erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 25 — Waste-Verträge und Settings (8 Befunde)
+      Merge-Nachweis: PR #1707, HEAD
+      `300749117b0414a04cc096cb0ee668d0a7c69be0`, Merge-Commit
+      `2ffce9bca5267c909f7d89ffd1fd72a86a4e7567`; Changelog
+      `docs/changelog/entries/pr-1707.json`.
+
+### PR 25a — Waste-Vertragsfunktionen (4 Befunde)
 
 - [ ] In `packages/waste-management-contracts/src/`
       `waste-management-settings-public-config.ts`,
       `waste-management-location-tour-pickup-date-planner.ts`,
       `waste-management-output.render.ts`,
-      `waste-management-location-tour-pickup-date-parser.ts` sowie in
-      `packages/waste-management-runtime/src/` `http-schemas.ts`,
+      `waste-management-location-tour-pickup-date-parser.ts` bereinigen.
+      CSV-Parsing, Importplanung, PDF-Ausgabe und öffentliche Settings
+      mit gezielten Vertrags-, Typ- und Runtime-Tests erhalten.
+
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+### PR 25b — Waste-Runtime-Validierung und Settings (4 Befunde)
+
+- [ ] In `packages/waste-management-runtime/src/` `http-schemas.ts`,
       `handlers/settings-write-support.ts`, `handlers/settings-shared.ts`,
-      `handlers/types.ts` bereinigen. Parsing, Ausgabe, öffentliche
-      Settings und Validierung mit Vertrags- und Runtime-Tests prüfen.
+      `handlers/types.ts` bereinigen. Request-Validierung,
+      Settings-Lesen und -Schreiben sowie Handler-Verträge mit
+      gezielten Runtime-, Typ- und Unit-Tests erhalten.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit

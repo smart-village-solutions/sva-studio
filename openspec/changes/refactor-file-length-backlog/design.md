@@ -533,6 +533,27 @@ Die News-Detail-, Formular-, Editor-Modell- und Übersetzungstests sowie Type-,
 Lint-, Build- und Complexity-Gates prüfen diesen Schnitt. Nur die drei
 behobenen `fileLines`-Einträge werden aus der Policy entfernt.
 
+### PR 19: Generic-Items-Editor
+
+Ausgangsstand nach PR 18: `generic-items.detail-content-tab.tsx` 1.336 Zeilen
+und `generic-items.detail-page.tsx` 764 Zeilen. Der Content-Tab bleibt der
+öffentliche Einstieg für Text, Kontakte/Orte, Medien/Links, Zusatzangaben und
+Termine. Direkt genutzte, paketinterne Sektionen binden dieselben
+`react-hook-form`-Feldpfade und Feldarray-IDs. Die Detailseite hält Laden,
+Zugriff und Navigation zusammen; Medienauswahl, Referenzabgleich,
+Speichervorgang und Darstellung liegen in direkt verwendeten Modulen. Die
+öffentlichen Exporte der beiden Ausgangsdateien bleiben erhalten.
+
+Kritische Invarianten: Content-Ownership, Berechtigungen und
+Sichtbarkeitswechsel, Feldvalidierung, Geocoding, öffentliche persistierbare
+Medien-URLs, Reihenfolge der Medienreferenzen, Draft-Auflösung sowie
+Save-/Retry-Rückmeldung bleiben unverändert. Die Generic-Items-Content-,
+Detailseiten-, Medienadapter- und Formular-Tests sowie Type-, Lint-, Build-
+und Complexity-Gates prüfen den Schnitt. Die fünf erledigten
+`trackedFindings` der beiden Ausgangsdateien entfallen aus der Policy;
+die lange Controller-Funktion der Detailseite bleibt als gesonderter
+Bestandsbefund registriert.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und

@@ -895,14 +895,19 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 18 — News-Editor (3 Befunde)
 
-- [ ] In `packages/plugin-news/src/` `news.detail-page.tsx`,
+- [x] In `packages/plugin-news/src/` `news.detail-page.tsx`,
       `plugin.translations.ts`, `news.detail-form.ts` bereinigen.
       Editor- und Übersetzungsvertrag mit gezielten Tests erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1697, HEAD
+      `136aae62271df4ffc930a1bd0fa0c058ed2479a1`, Merge-Commit
+      `0999c6f8a288ef4a6a13b221a623ca78a24965c8`; Changelog
+      `docs/changelog/entries/pr-1697.json`.
 
 ### PR 19 — Generic-Items-Editor (2 Befunde)
 

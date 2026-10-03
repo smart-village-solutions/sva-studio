@@ -169,6 +169,7 @@ Abhängigkeiten des aktuellen Systems.
 - autorisiert generische Lese- und Schreibpfade ausschließlich mit `generic-items.*`; zusätzliche Fachrechte sind nicht erforderlich
 - lässt die eigenständigen Fachplugins, ihre festen Diskriminatoren, Validierungen und Action-Namespaces unverändert
 - bleibt als eigenständiges Modul technischer Vollzugriff auf alle GenericItems; in der gemeinsamen Inhaltsübersicht übernimmt dagegen genau ein registriertes Fachplugin den Datensatz oder der generische Content-Type greift als Fallback
+- der Content-Tab bindet Text, Kontakte und Orte, Medien und Links, Zusatzangaben sowie Termine über direkt genutzte Formularsektionen an dieselben `react-hook-form`-Feldpfade; die Detailseite hält Laden, Zugriff und Navigation zusammen und delegiert Medienauswahl, Referenzabgleich, Speichern und Darstellung an paketinterne Module
 
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 

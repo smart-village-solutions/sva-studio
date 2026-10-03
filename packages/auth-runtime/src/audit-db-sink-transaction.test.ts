@@ -30,7 +30,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  process.env.IAM_DATABASE_URL = originalDatabaseUrl;
+  if (originalDatabaseUrl === undefined) {
+    delete process.env.IAM_DATABASE_URL;
+  } else {
+    process.env.IAM_DATABASE_URL = originalDatabaseUrl;
+  }
 });
 
 describe('audit database transaction', () => {

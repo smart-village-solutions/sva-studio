@@ -1369,7 +1369,7 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
       erhalten; keine neue generische Testinfrastruktur einführen.
 
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1728.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

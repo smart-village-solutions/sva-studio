@@ -185,6 +185,22 @@ eigene Changelog-Eintrag. Ausgangs-HEAD ist
 und 458 Zeilen. Vor der Extraktion sind das vorhandene DB-Sollschema und die
 direkten Verbraucher `external-content-*` und `core.ts` zu prüfen.
 
+**PR-Auftrag 13b:** `iam-media/processing.ts` und `iam-media/storage-s3.ts`
+unter das 320-Zeilen-Limit bringen, indem Bild-/Variant-Verarbeitung sowie
+S3-Konfiguration, Listing, Delivery und Objektoperationen in unmittelbar
+genutzte Module getrennt werden; die Importverträge `processing.js` und
+`storage-s3.js` sowie alle Upload-, Claim-, Quota-, Cleanup-, Tenant- und
+S3-Fehlersemantiken bleiben erhalten. Nicht-Ziele sind 13c–13f, Features,
+API-/Storage-Semantikänderungen, neue Dependencies und Gates. Maximal betroffen
+sind die zwei benannten Dateien, unmittelbar benötigte interne Module und
+Tests/Consumer, tatsächlich betroffene Package-/arc42-Dokumentation, nur
+tatsächlich erledigte Complexity-Findings, dieser OpenSpec-Change und ein
+eigener Changelog-Eintrag. Ausgangs-HEAD ist
+`0126ed38d631bdf6762baeea8a93123242dbeed4`; die Dateien haben 488 und
+480 Zeilen. PR #1673 wurde mit HEAD
+`5bcf0b0d999f7cabc7bd511941906ab092194a09` als Merge-Commit
+`0126ed38d631bdf6762baeea8a93123242dbeed4` integriert.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

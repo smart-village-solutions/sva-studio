@@ -791,6 +791,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - hostseitige Media-HTTP-Endpunkte
    - interner Storage-Port und S3-/MinIO-Adapter
    - Audit, Autorisierung und Upload-Processing für Medien
+   - `iam-media/processing.ts` koordiniert Claim, Finalisierung und Fehlerpfade; `processing-variants.ts` erzeugt Bildvarianten und bereinigt Varianten abgelöster Claims. `storage-s3.ts` hält den Storage-Port, während `storage-s3-config.ts` die Instanz-/Umgebungskonfiguration und `storage-s3-listing.ts` die tenantgebundene Objektauflistung tragen.
    - hält `iam-media/core.ts` als schmale öffentliche Fassade; Bibliotheks-/Asset-, Upload-, Content-Save- und Referenz-Handler sowie Request-, Schema- und HTTP-Helfer liegen in fachlich getrennten Modulen
    - verbindet registrierte Assets und Bucket-Objekte über einen versionierten Storage-Key-Cursor, ohne Gesamtzählung oder vollständigen Bucket-Scan
 10. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)

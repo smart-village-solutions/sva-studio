@@ -559,7 +559,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 13a — Content-Repository und Write-Helfer (2 Befunde)
 
-- [ ] `packages/auth-runtime/src/iam-contents/repository.ts` und
+- [x] `packages/auth-runtime/src/iam-contents/repository.ts` und
       `iam-contents/repository-write-helpers.ts` entlang Listen-/Detail-Lesezugriff,
       Ownership-Zielauflösung, Mutationen, Author-Display-Regeln, SQL-Writes
       und Activity-Emission aufteilen. Bestehende `repository.js`- und
@@ -568,11 +568,13 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       State-Validation-Verträge erhalten. `repository.test.ts`,
       `repository-helpers.test.ts` und direkt betroffene
       `external-content-*.test.ts` ausführen; Auth-/Data-/Security- und
-      Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13a anlegen;
-      Changelog-Gate vor Merge grün.
+      Server-Runtime-Gates prüfen. Abschluss: PR #1673, HEAD
+      `5bcf0b0d999f7cabc7bd511941906ab092194a09`, Merge-Commit
+      `0126ed38d631bdf6762baeea8a93123242dbeed4`.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1673.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1673 angelegt; Changelog-Gate vor
+      Merge grün.
 
 ### PR 13b — Media-Verarbeitung und S3-Speicher (2 Befunde)
 
@@ -583,8 +585,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Reihenfolge sowie Fehlerabbildung; Auth-/Security- und
       Server-Runtime-Gates prüfen. Abschluss nach Merge- und Gate-Nachweis.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 13b anlegen;
+      `docs/changelog/entries/pr-1674.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1674 anlegen;
       Changelog-Gate vor Merge grün.
 
 ### PR 13c — Plugin-Server-Dispatcher (1 Befund)

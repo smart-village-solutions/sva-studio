@@ -540,7 +540,7 @@ describe('media storage s3 adapter', () => {
   });
 
   it('avoids the slash-trimming regex patterns flagged by Sonar in the public base url builder', () => {
-    const source = fs.readFileSync(new URL('./storage-s3.ts', import.meta.url), 'utf8');
+    const source = fs.readFileSync(new URL('./storage-s3-config.ts', import.meta.url), 'utf8');
 
     expect(source).not.toContain("replace(/\\/+$/, '')");
     expect(source).not.toContain("replace(/^\\/+|\\/+$/g, '')");

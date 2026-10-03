@@ -1245,10 +1245,9 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Berechnung und CLI-Ausgabe aufteilen. Exitcodes, CLI-Optionen,
       Schwellwerte und Reportformat mit gezielten Skript-Tests und
       Skript-Typecheck erhalten; bestehendes Complexity-Finding mit abbauen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1719.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1719 angelegt; Changelog-Gate grün.
 
 ### PR 31c — Patch-Coverage und Sonar-New-Code (2 Dateilängenbefunde)
 

@@ -100,6 +100,10 @@ export const createContent = async (input: CreateContentInput): Promise<string> 
 
 export const updateContent = async (input: UpdateContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+      input.instanceId,
+      input.contentId,
+    ]);
     const mutationFinalized = input.mutationRef
       ? await isContentMutationFinalized(client, {
         instanceId: input.instanceId,
@@ -107,23 +111,44 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
         mutationRef: input.mutationRef,
       })
       : false;
-    if (mutationFinalized && !input.confirmedExternalOwner) {
-      return input.contentId;
+    if (mutationFinalized && !input.confirmedExternalOwner) return input.contentId;
+    if (input.confirmedExternalOwner && input.mutationRef) {
+      const journal = await client.query<{ superseded: boolean }>(
+        `SELECT EXISTS (
+             SELECT 1 FROM iam.mainserver_mutation_journal AS newer
+             WHERE newer.instance_id = operation.instance_id
+               AND newer.action_id = 'content.transferOwnership'
+               AND newer.content_type = operation.content_type
+               AND COALESCE(newer.preimage->>'id', newer.content_id) =
+                   COALESCE(operation.preimage->>'id', operation.content_id)
+               AND (newer.created_at, newer.operation_external_id) >
+                   (operation.created_at, operation.operation_external_id)
+               AND newer.provider_outcome <> 'failed'
+           ) AS superseded
+         FROM iam.mainserver_mutation_journal AS operation
+         WHERE operation.instance_id = $1 AND operation.operation_external_id = $2
+           AND operation.action_id = 'content.transferOwnership' LIMIT 1;`,
+        [input.instanceId, input.mutationRef]
+      );
+      // Never replay an older confirmed owner over a later confirmed transfer.
+      if (journal.rows[0]?.superseded) {
+        if (mutationFinalized) return input.contentId;
+        throw new ContentOwnershipTransferError('ownership_source_changed');
+      }
     }
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
-      input.instanceId,
-      input.contentId,
-    ]);
     const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
     if (!current) {
       return undefined;
     }
-    const owner = resolveCurrentOwnerPrincipal(current);
-    if (
-      mutationFinalized && input.confirmedExternalOwner &&
-      owner?.type === input.confirmedExternalOwner.type &&
-      owner.id === input.confirmedExternalOwner.id
-    ) return input.contentId;
+    if (mutationFinalized && input.confirmedExternalOwner) {
+      const target = input.confirmedExternalOwner;
+      const ownerMatches = target.type === 'organization'
+        ? current.owner_organization_id === target.id &&
+          current.owner_user_id === null && current.organization_id === target.id
+        : current.owner_user_id === target.id &&
+          current.owner_organization_id === null && current.organization_id === null;
+      if (ownerMatches) return input.contentId;
+    }
     if ('expectedSourcePrincipal' in input) {
       const sourcePrincipal = resolveCurrentOwnerPrincipal(current);
       const expectedSourcePrincipal = input.expectedSourcePrincipal ?? undefined;

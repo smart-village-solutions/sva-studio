@@ -308,9 +308,11 @@ describe('external content references', () => {
   });
 
   it('updates the existing GenericItem Core reference for a project transfer', async () => {
-    state.query.mockResolvedValueOnce({
-      rows: [{ ...row, source_entity_id: 'project-1', reconciliation_status: 'bound' }],
-    });
+    state.query
+      .mockResolvedValueOnce({
+        rows: [{ ...row, source_entity_id: 'project-1', reconciliation_status: 'bound' }],
+      })
+      .mockResolvedValue({ rows: [] });
     state.updateContent.mockResolvedValue('content-1');
 
     await recordSuccessfulExternalContentMutation({
@@ -369,13 +371,55 @@ describe('external content references', () => {
     });
 
     expect(state.query).toHaveBeenCalledWith(expect.stringContaining('source_entity_type = ANY($3::text[])'), [
-      'tenant-1', 'mainserver', ['GenericItem', 'projects.project'], 'project-1',
+      'tenant-1', 'mainserver', ['projects.project'], 'project-1',
     ]);
     expect(state.insertContentRow).not.toHaveBeenCalled();
     expect(state.updateContent).toHaveBeenCalledWith(expect.objectContaining({
       contentId: 'content-1',
       preserveExistingContentState: true,
     }));
+  });
+
+  it('updates both distinct project Cores before completing a confirmed transfer', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [{ ...row, content_id: 'canonical-core', source_entity_id: 'project-1' }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, content_id: 'legacy-core', source_entity_type: 'projects.project', source_entity_id: 'project-1' }] })
+      .mockResolvedValue({ rows: [] });
+    state.updateContent.mockResolvedValue('updated');
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1', actorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1', operation: 'update', sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project', sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      title: 'Projekt', payload: {}, status: 'draft',
+      authorDisplayMode: 'organization', authorDisplayName: 'Organisation',
+    })).resolves.toBe('canonical-core');
+
+    expect(state.updateContent.mock.calls.map(([input]) => input.contentId)).toEqual([
+      'canonical-core', 'legacy-core',
+    ]);
+  });
+
+  it('keeps a dual-reference transfer unresolved if the second Core update fails', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [{ ...row, content_id: 'canonical-core', source_entity_id: 'project-1' }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, content_id: 'legacy-core', source_entity_type: 'projects.project', source_entity_id: 'project-1' }] })
+      .mockResolvedValue({ rows: [] });
+    state.updateContent
+      .mockResolvedValueOnce('canonical-core')
+      .mockRejectedValueOnce(new Error('legacy_core_unavailable'));
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1', actorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1', operation: 'update', sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project', sourceEntityId: 'project-1',
+      contentType: 'projects.project',
+      ownershipPrincipal: { type: 'organization', id: 'organization-1' },
+      title: 'Projekt', payload: {}, status: 'draft',
+      authorDisplayMode: 'organization', authorDisplayName: 'Organisation',
+    })).rejects.toThrow('legacy_core_unavailable');
   });
 
   it('keeps normal project archive updates on their existing project reference', async () => {
@@ -416,7 +460,8 @@ describe('external content references', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [{ ...row, source_entity_type: 'GenericItem', source_entity_id: 'project-1' }],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [{ updated: true }] });
 
     await expect(recordSuccessfulExternalContentMutation({
       instanceId: 'tenant-1',
@@ -440,6 +485,21 @@ describe('external content references', () => {
       ['tenant-1', 'mainserver', ['GenericItem'], 'project-1']
     );
     expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).not.toHaveBeenCalled();
+  });
+
+  it('keeps a failed project route Core update unresolved', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ ...row, source_entity_id: 'project-1' }] })
+      .mockResolvedValueOnce({ rows: [{ updated: false }] });
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1', actorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-archive-1', operation: 'update', sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project', sourceEntityId: 'project-1',
+      contentType: 'projects.project', title: 'Projekt', payload: { body: 'Slim' },
+      status: 'archived', authorDisplayMode: 'organization', authorDisplayName: 'Organisation',
+    })).rejects.toThrow('project_core_full_update_unverified');
     expect(state.updateContent).not.toHaveBeenCalled();
   });
 
@@ -757,6 +817,8 @@ describe('external content references', () => {
 
   it('reuses a concurrent legacy project Core for the transfer under the same lock', async () => {
     state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })

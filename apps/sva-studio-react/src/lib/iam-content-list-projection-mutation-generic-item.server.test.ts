@@ -457,6 +457,7 @@ describe('GenericItem content projection mutations', () => {
   });
 
   it('defers a confirmed project transfer when only the snapshot fallback succeeds', async () => {
+    process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED = 'true';
     state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
     state.listSvaMainserverGenericItems.mockResolvedValue({
       data: [],
@@ -485,6 +486,29 @@ describe('GenericItem content projection mutations', () => {
       operationExternalId: 'project-transfer-1',
     });
     expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+  });
+
+  it('accepts a concurrently reconciled transfer after the snapshot fallback', async () => {
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
+    state.deferMainserverMutationProjection.mockResolvedValueOnce(false);
+    state.loadMainserverMutationJournal.mockResolvedValueOnce({
+      completedSteps: ['projection_history_reconciled'],
+    });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project', instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1', actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-complete-1',
+      ownershipPrincipal: { type: 'account', id: 'account-1' },
+      actingPrincipalType: 'user', authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64), operation: 'update',
+      entityId: 'provider-project-1',
+    })).resolves.toBeUndefined();
+    expect(state.loadMainserverMutationJournal).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'project-transfer-complete-1',
+    });
   });
 
   it('keeps a confirmed project transfer deferred when targeted and snapshot reads both fail', async () => {

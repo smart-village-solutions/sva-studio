@@ -1,5 +1,6 @@
 import {
   deferMainserverMutationProjection,
+  loadMainserverMutationJournal,
   recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation,
   withInstanceScopedDb,
@@ -263,7 +264,7 @@ const refreshGenericItemProjectionSnapshots = async (
       { ...target, contentType },
       { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' }
     );
-    if (result.status !== 'completed' && result.status !== 'already_running') {
+    if (!['completed', 'already_running', 'accepted'].includes(result.status)) {
       hasIncompleteRefresh = true;
     }
   }
@@ -374,7 +375,16 @@ export const refreshGenericItemSiblingProjections = async (
     let deferred: true | undefined;
     if (input.target.ownershipPrincipal) {
       deferred = await deferMutationHistory(input);
-      if (!deferred) throw new Error('content_transfer_projection_reconciliation_unavailable');
+      if (!deferred) {
+        const journal = input.target.mutationRef
+          ? await loadMainserverMutationJournal({
+              instanceId: input.target.instanceId,
+              operationExternalId: input.target.mutationRef,
+            })
+          : undefined;
+        if (journal?.completedSteps.includes('projection_history_reconciled')) return undefined;
+        throw new Error('content_transfer_projection_reconciliation_unavailable');
+      }
     }
     await refreshGenericItemProjectionSnapshots(input.target);
     return deferred;

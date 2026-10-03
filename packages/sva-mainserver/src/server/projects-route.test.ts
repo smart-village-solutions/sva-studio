@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   listReferences: vi.fn(),
   loadCore: vi.fn(),
   loadReferenceByContentId: vi.fn(),
+  loadReferenceBySourceEntity: vi.fn(),
   loadReferenceByOperation: vi.fn(),
   prepareExternalContent: vi.fn(),
   reserveIdempotency: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   listExternalContentReferences: state.listReferences,
   loadExternalContentCore: state.loadCore,
   loadExternalContentReferenceByContentId: state.loadReferenceByContentId,
+  loadExternalContentReferenceBySourceEntity: state.loadReferenceBySourceEntity,
   loadExternalContentReferenceByOperation: state.loadReferenceByOperation,
   prepareExternalContent: state.prepareExternalContent,
   reserveIdempotency: state.reserveIdempotency,
@@ -234,6 +236,7 @@ const prepareDefaults = () => {
     pagination: { page: 1, pageSize: 100, hasNextPage: false },
   });
   state.loadReferenceByContentId.mockResolvedValue(undefined);
+  state.loadReferenceBySourceEntity.mockResolvedValue(undefined);
   state.withLock.mockImplementation(({ execute }) => execute());
 };
 
@@ -402,7 +405,7 @@ describe('projects route', () => {
       message: 'Nicht erlaubt',
     });
     expect(response?.status).toBe(403);
-    expect(state.loadReferenceByContentId).toHaveBeenCalledTimes(1);
+    expect(state.loadReferenceByContentId).toHaveBeenCalledTimes(2);
     expect(state.getGenericItem).not.toHaveBeenCalled();
   });
 
@@ -746,6 +749,9 @@ describe('projects route', () => {
     expect(state.updateCore).toHaveBeenCalledWith(
       expect.objectContaining({ contentId, status: 'published' })
     );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ completedSteps: expect.arrayContaining(['project_core_updated']) })
+    );
     const visibilityCallsAfterUpdate = state.changeVisibility.mock.calls.length;
 
     const deleteResponse = await dispatchSvaMainserverProjectsRequest(
@@ -756,6 +762,28 @@ describe('projects route', () => {
       expect.objectContaining({ genericItemId: 'external-1' })
     );
     expect(state.changeVisibility).toHaveBeenCalledTimes(visibilityCallsAfterUpdate);
+  });
+
+  it('updates the canonical project Core when PATCH addresses the provider ID', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(undefined);
+    state.loadReferenceBySourceEntity.mockResolvedValue(reference);
+    state.loadCore.mockResolvedValue(core);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/external-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(response?.status).toBe(200);
+    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(expect.objectContaining({
+      sourceEntityId: 'external-1',
+    }));
+    expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
   });
 
   it('updates and physically deletes externally created Mainserver projects without a local core', async () => {

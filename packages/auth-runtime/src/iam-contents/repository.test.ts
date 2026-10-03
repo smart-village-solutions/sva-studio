@@ -715,6 +715,53 @@ describe('iam content repository', () => {
     expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
   });
 
+  it('repairs a finalized transfer when a stale user owner column remains', async () => {
+    state.isContentMutationFinalizedMock.mockResolvedValueOnce(true);
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(createContentRow({
+      organization_id: '22222222-2222-4222-8222-222222222222',
+      owner_user_id: 'stale-user',
+      owner_organization_id: '22222222-2222-4222-8222-222222222222',
+    }));
+    await updateContent(createUpdateInput({
+      mutationRef: 'transfer-1',
+      confirmedExternalOwner: {
+        type: 'organization', id: '22222222-2222-4222-8222-222222222222',
+      },
+      preserveExistingContentState: true,
+    }));
+    expect(state.updateContentRowMock).toHaveBeenCalledOnce();
+  });
+
+  it('does not replay T1 over T2 after the later provider transfer succeeded', async () => {
+    state.isContentMutationFinalizedMock.mockResolvedValueOnce(true);
+    state.queryMock.mockImplementation(async (sql: string) =>
+      sql.includes('AS superseded')
+        ? { rows: [{ reconciled: false, superseded: true }] }
+        : { rows: [] }
+    );
+    await expect(updateContent(createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+      preserveExistingContentState: true,
+    }))).resolves.toBe('content-1');
+    expect(state.loadCurrentContentRowMock).not.toHaveBeenCalled();
+    expect(state.updateContentRowMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a superseded transfer unresolved if its Core history was never written', async () => {
+    state.queryMock.mockImplementation(async (sql: string) =>
+      sql.includes('AS superseded')
+        ? { rows: [{ superseded: true }] }
+        : { rows: [] }
+    );
+    await expect(updateContent(createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+      preserveExistingContentState: true,
+    }))).rejects.toThrow('ownership_source_changed');
+    expect(state.updateContentRowMock).not.toHaveBeenCalled();
+  });
+
   it('stops update operations when next-state validation fails', async () => {
     const error = new ContentStateValidationError('content_publication_window_invalid');
     state.resolveNextContentStateMock.mockImplementationOnce(() => {

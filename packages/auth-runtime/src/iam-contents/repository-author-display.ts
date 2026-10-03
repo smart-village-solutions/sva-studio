@@ -81,7 +81,9 @@ export const resolveCreateAuthorDisplay = async (
       mode: authorDisplayMode,
       organization,
       requestedDisplayName:
-        input.confirmedExternalOwner?.type === 'account' ? input.authorDisplayName : undefined,
+        input.confirmedExternalOwner && authorDisplayMode === 'user'
+          ? input.authorDisplayName
+          : undefined,
     }),
   };
 };

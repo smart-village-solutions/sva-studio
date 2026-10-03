@@ -2,6 +2,7 @@ import {
   listExternalContentReferences,
   loadExternalContentCore,
   loadExternalContentReferenceByContentId,
+  loadExternalContentReferenceBySourceEntity,
   updateExternalContentCore,
   updateExternalContentReconciliationStatus,
   withAuthenticatedUser,
@@ -68,9 +69,21 @@ const matchRoute = (request: Request): ProjectRoute | null =>
   matchRequestRoute(request, PROJECTS_COLLECTION_PATH, 'projects');
 
 const loadProjectLocalContext = async (instanceId: string, contentId: string) => {
-  const reference = await loadExternalContentReferenceByContentId({
+  const referenceByContentId = await loadExternalContentReferenceByContentId({
     ...projectSourceReferenceInput(instanceId),
     contentId,
+  }).catch(() => undefined);
+  const legacyReferenceByContentId = referenceByContentId ? undefined
+    : await loadExternalContentReferenceByContentId({
+        ...projectSourceReferenceInput(instanceId),
+        sourceEntityType: 'projects.project',
+        contentId,
+      }).catch(() => undefined);
+  const reference = referenceByContentId ?? legacyReferenceByContentId ?? await loadExternalContentReferenceBySourceEntity({
+    instanceId,
+    sourceSystem: 'mainserver',
+    sourceEntityType: 'projects.project',
+    sourceEntityId: contentId,
   }).catch(() => undefined);
   const loadedCore = reference
     ? await loadExternalContentCore(instanceId, reference.contentId).catch(() => undefined)
@@ -331,12 +344,13 @@ const updateProject = async (
           visible: project.status === 'published',
         });
         let localFollowUpFailed = false;
+        let projectCoreUpdated = false;
         if (context.core && context.reference)
           try {
             await updateExternalContentCore({
               ...actorInfo,
               actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-              contentId,
+              contentId: context.reference.contentId,
               title: project.title,
               payload: projectPayload(project),
               status: project.status,
@@ -344,6 +358,7 @@ const updateProject = async (
               authorDisplayMode: actor.mutationPrincipalContext.actingPrincipalType,
               authorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
             });
+            projectCoreUpdated = true;
             await updateExternalContentReconciliationStatus({
               instanceId,
               referenceId: context.reference.id,
@@ -369,7 +384,10 @@ const updateProject = async (
           actor,
           providerOutcome: 'succeeded',
           reconciliationStatus: localFollowUpFailed ? 'reconciliation_required' : 'complete',
-          completedSteps: ['provider_write'],
+          completedSteps: [
+            'provider_write',
+            ...(projectCoreUpdated ? ['project_core_updated'] : []),
+          ],
           contentId: freshItem.id,
           observedDataProviderId: freshItem.dataProvider?.id,
         });

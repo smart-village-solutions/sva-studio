@@ -316,6 +316,24 @@ describe('iam content repository helpers', () => {
     });
   });
 
+  it('keeps a personal provider author on first binding to an organization that permits it', async () => {
+    const client = createClient();
+    client.query.mockResolvedValueOnce({
+      rows: [{ display_name: 'Zielorganisation', content_author_policy: 'org_or_personal' }],
+    });
+    await expect(resolveCreateAuthorDisplay(client, createCreateInput({
+      organizationId: '00000000-0000-0000-0000-000000000002',
+      confirmedExternalOwner: {
+        type: 'organization', id: '00000000-0000-0000-0000-000000000002',
+      },
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Provider-Autorin',
+      actorDisplayName: 'Ausführende Person',
+    }))).resolves.toEqual({
+      authorDisplayMode: 'user', authorDisplayName: 'Provider-Autorin',
+    });
+  });
+
   it('derives update author display snapshots from the selected mode', async () => {
     const client = createClient();
     client.query.mockResolvedValueOnce({

@@ -217,7 +217,7 @@ export const refreshMainserverProjectionForMutation = async (
   const refreshRunId = randomUUID();
   return enqueueProjectionWork(target, async () => {
     if (input.operation !== 'delete' && !(await isMutationFollowUpDue(target))) {
-      return deferMutationHistory(input);
+      return deferMutationHistory(input, true);
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
     try {
@@ -366,7 +366,7 @@ export const refreshGenericItemSiblingProjections = async (
 ): Promise<true | undefined> => {
   await recordGenericItemDeletionAudit(input);
   if (input.operation !== 'delete' && !(await isMutationFollowUpDue(input.target))) {
-    return deferMutationHistory(input);
+    return deferMutationHistory(input, true);
   }
   const loadedItem = await loadGenericItemForSiblingRefresh(input);
   if (loadedItem.failed) {

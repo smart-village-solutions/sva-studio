@@ -7,6 +7,7 @@ import {
   type SuccessfulExternalContentMutation,
 } from './external-content-mutations.js';
 import { finalizeMainserverMutationJournal } from './mainserver-mutation-journal.js';
+import { ContentOwnershipTransferError } from './repository-ownership.js';
 
 type DeferredMutationRow = Readonly<{
   operation_external_id: string;
@@ -97,6 +98,8 @@ const recordReconciledMutation = async (
       error instanceof Error &&
       error.message === 'external_content_core_reference_required_for_owner_only_replay'
     ) return undefined;
+    if (error instanceof ContentOwnershipTransferError && error.code === 'ownership_source_changed')
+      return undefined;
     throw error;
   }
 };

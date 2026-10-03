@@ -60,10 +60,13 @@ export const resolveContentUpdateReplay = async (
   if (!input.confirmedExternalOwner || !input.mutationRef) {
     return { mutationFinalized, skip: false };
   }
-  const journal = await client.query<{ superseded: boolean }>(
-    `SELECT EXISTS (
-       SELECT 1 FROM iam.mainserver_mutation_journal AS newer
-       WHERE newer.instance_id = operation.instance_id
+  const journal = await client.query<{ succeeded: boolean; unresolved: boolean }>(
+    `SELECT
+       COALESCE(bool_or(newer.provider_outcome = 'succeeded'), false) AS succeeded,
+       COALESCE(bool_or(newer.provider_outcome IN ('pending', 'unknown')), false) AS unresolved
+     FROM iam.mainserver_mutation_journal AS operation
+     LEFT JOIN iam.mainserver_mutation_journal AS newer
+       ON newer.instance_id = operation.instance_id
          AND newer.action_id = 'content.transferOwnership'
          AND newer.content_type = operation.content_type
          AND COALESCE(newer.preimage->>'id', newer.content_id) =
@@ -71,16 +74,14 @@ export const resolveContentUpdateReplay = async (
          AND (newer.created_at, newer.operation_external_id) >
              (operation.created_at, operation.operation_external_id)
          AND newer.provider_outcome <> 'failed'
-     ) AS superseded
-     FROM iam.mainserver_mutation_journal AS operation
      WHERE operation.instance_id = $1 AND operation.operation_external_id = $2
        AND operation.action_id = 'content.transferOwnership' LIMIT 1;`,
     [input.instanceId, input.mutationRef]
   );
-  if (journal.rows[0]?.superseded && !mutationFinalized) {
+  if (journal.rows[0]?.unresolved || (journal.rows[0]?.succeeded && !mutationFinalized)) {
     throw new ContentOwnershipTransferError('ownership_source_changed');
   }
-  return { mutationFinalized, skip: journal.rows[0]?.superseded === true };
+  return { mutationFinalized, skip: journal.rows[0]?.succeeded === true };
 };
 
 export const insertContentHistory = async (

@@ -105,6 +105,31 @@ describe('GenericItem content projection mutations', () => {
     });
   });
 
+  it('does not close a confirmed transfer when a generic item follow-up cannot be deferred', async () => {
+    const syncScopeKey =
+      'de-musterhausen::account-1::org-1::organization::projects.project';
+    fixture.syncStates.set(`projects.project::${syncScopeKey}`, {
+      sync_scope_key: syncScopeKey, last_started_at: '2026-09-13T12:00:00.000Z',
+      last_succeeded_at: null, last_failed_at: new Date().toISOString(),
+      last_error_code: 'mainserver_credentials_stale',
+      last_error_message: 'credentials not ready', projected_count: 0,
+    });
+    state.deferMainserverMutationProjection.mockResolvedValue(false);
+    state.loadMainserverMutationJournal.mockResolvedValue({ completedSteps: [] });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project', instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1', actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-not-deferred', organizationId: 'org-1',
+      ownershipPrincipal: { type: 'organization', id: 'org-1' },
+      actingPrincipalType: 'organization', authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64), operation: 'update',
+      entityId: 'provider-project-1',
+    })).rejects.toThrow('content_transfer_projection_reconciliation_unavailable');
+    expect(state.getSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
   it('refreshes only the registered FAQ projection after FAQ mutations', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'faq-mutation-1',

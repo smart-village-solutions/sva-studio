@@ -151,6 +151,13 @@ export const emitContentUpdatedActivity = (
   }
 ): Promise<void> => {
   if (input.confirmedExternalOwner) {
+    const currentOwner = current.owner_user_id && current.owner_organization_id
+      ? undefined
+      : resolveCurrentOwnerPrincipal(current);
+    const sourcePrincipal = currentOwner?.type === input.confirmedExternalOwner.type &&
+      currentOwner.id === input.confirmedExternalOwner.id
+      ? undefined
+      : currentOwner;
     return emitContentOwnershipTransferredActivity(client, {
       instanceId: input.instanceId,
       actorAccountId: input.actorAccountId,
@@ -158,7 +165,7 @@ export const emitContentUpdatedActivity = (
       traceId: input.traceId,
       contentId: input.contentId,
       contentType: current.content_type,
-      sourcePrincipal: resolveCurrentOwnerPrincipal(current),
+      sourcePrincipal,
       targetPrincipal: input.confirmedExternalOwner,
     });
   }

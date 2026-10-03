@@ -207,7 +207,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
   });
 
-  it('reconciles an ownership transfer against its recorded target credentials', async () => {
+  it('reconciles only ownership from an older slim snapshot with verified target credentials', async () => {
     state.query.mockResolvedValue({
       rows: [
         {
@@ -240,7 +240,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
             organizationId: '33333333-3333-4333-8333-333333333333',
             ownerOrganizationId: '33333333-3333-4333-8333-333333333333',
             title: 'Übertragener Inhalt',
-            payload: {},
+            payload: { languageCode: 'de' },
             status: 'published',
             authorDisplayMode: 'organization',
             author: 'Musterhausen',
@@ -260,6 +260,7 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
           type: 'organization',
           id: '33333333-3333-4333-8333-333333333333',
         },
+        preserveExistingContentState: true,
       })
     );
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(

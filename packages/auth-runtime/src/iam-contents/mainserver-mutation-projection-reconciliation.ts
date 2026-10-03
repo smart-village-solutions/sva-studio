@@ -68,10 +68,11 @@ const replayModeFor = (
   actingPrincipalType: 'organization' | 'user',
   actingPrincipalId: string
 ): 'skip' | 'full' | 'owner-only' => {
-  const rowUpdatedAt = row?.updatedAt ? Date.parse(row.updatedAt) : Number.NaN;
-  const deferredAt = Date.parse(entry.deferred_at);
-  if (!row || !Number.isFinite(rowUpdatedAt) || !Number.isFinite(deferredAt)) return 'skip';
+  if (!row) return 'skip';
   if (entry.action_id !== 'content.transferOwnership') {
+    const rowUpdatedAt = row.updatedAt ? Date.parse(row.updatedAt) : Number.NaN;
+    const deferredAt = Date.parse(entry.deferred_at);
+    if (!Number.isFinite(rowUpdatedAt) || !Number.isFinite(deferredAt)) return 'skip';
     return rowUpdatedAt > deferredAt ? 'skip' : 'full';
   }
   const ownerMatches =
@@ -79,7 +80,7 @@ const replayModeFor = (
       ? row.ownerUserId === actingPrincipalId && !row.ownerOrganizationId
       : row.ownerOrganizationId === actingPrincipalId && !row.ownerUserId;
   if (!ownerMatches) return 'skip';
-  return rowUpdatedAt > deferredAt ? 'owner-only' : 'full';
+  return 'owner-only';
 };
 
 const loadDeferredMainserverMutationRows = async (input: {

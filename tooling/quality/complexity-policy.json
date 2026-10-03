@@ -2440,36 +2440,6 @@
       "status": "open",
       "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
     },
-    "packages-default:packages/studio-mcp/src/process.ts:cyclomaticComplexity": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
-    },
-    "packages-default:packages/studio-mcp/src/process.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
-    },
-    "packages-default:packages/studio-mcp/src/process.ts:functionLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
-    },
-    "packages-default:packages/studio-mcp/src/tools.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
-    },
-    "packages-default:packages/studio-mcp/src/tools.ts:functionLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
-    },
     "plugin-sdk:packages/plugin-sdk/src/plugins.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-SDK-001",
       "ticketSystem": "backlog",

@@ -1336,7 +1336,7 @@ eigenständig reviewbare Abschluss-PR 35.
       vorhandenen Umgebung ausführen, andernfalls den fehlenden Live-Nachweis
       ausdrücklich dokumentieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1725.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

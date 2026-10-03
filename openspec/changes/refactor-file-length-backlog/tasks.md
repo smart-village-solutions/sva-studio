@@ -1351,7 +1351,7 @@ eigenständig reviewbare Abschluss-PR 35.
       Cleanup, Exitcodes und Fehlertexte mit gezielten Contract-Tests,
       Skript-Typecheck und dem vorhandenen Integrationstarget erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1727.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

@@ -2176,12 +2176,6 @@
       "status": "open",
       "summary": "Events-Detail-Form-Mapping in kleinere Parser-, Mapper- und Normalisierungshelfer zerlegen (packages/plugin-events/src/events.detail-form.ts)"
     },
-    "packages-default:packages/plugin-events/src/events.detail-form.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Events-Detail-Form-Datei in kleinere Mapping-, Default- und Serialisierungsbausteine splitten (packages/plugin-events/src/events.detail-form.ts)"
-    },
     "packages-default:packages/plugin-events/src/events.detail-form.ts:functionLines": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
       "ticketSystem": "backlog",
@@ -2199,12 +2193,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Events-Detail-Page-Verzweigungen in kleinere Workspace-, Tab- und Action-Bausteine zerlegen (packages/plugin-events/src/events.detail-page.tsx)"
-    },
-    "packages-default:packages/plugin-events/src/events.detail-page.tsx:fileLines": {
-      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Events-Detail-Page-Datei in kleinere Screen-, Toolbar- und Section-Module splitten (packages/plugin-events/src/events.detail-page.tsx)"
     },
     "packages-default:packages/plugin-events/src/events.detail-page.tsx:functionLines": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-003",
@@ -2271,12 +2259,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Events-Validierung in kleinere Schema-, Normalisierungs- und Cross-Field-Checks zerlegen (packages/plugin-events/src/events.validation.ts)"
-    },
-    "packages-default:packages/plugin-events/src/plugin.translations.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-012",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Events-Translations in kleinere Themenmodule und Re-Exports aufteilen (packages/plugin-events/src/plugin.translations.ts)"
     },
     "packages-default:packages/plugin-poi/src/poi.detail-content-tab.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-POI-DETAIL-001",

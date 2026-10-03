@@ -861,14 +861,19 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 16e — Draft-Readiness und Service-Helfer (2 Befunde)
 
-- [ ] `packages/instance-registry/src/service-draft-readiness.ts` und
+- [x] `packages/instance-registry/src/service-draft-readiness.ts` und
       `service-helpers.ts` nach den vorhandenen Readiness- und
       Projektionsgrenzen unter das Dateilimit bringen. Status, Validierung,
       Tenantbezug und Projektionen mit Readiness-/Service-Tests und zuständigen
       Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1694, HEAD
+      `6e030441475045855535aac030b5f364610b560c`, Merge-Commit
+      `e4dbeeaec8b7468ea10d74201ebbb2ecf2bf2ff5`; Changelog
+      `docs/changelog/entries/pr-1694.json`.
 
 ## Fachplugins
 

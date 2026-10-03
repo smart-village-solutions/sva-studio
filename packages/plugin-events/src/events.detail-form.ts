@@ -1,14 +1,4 @@
-import type {
-  EventAccessibilityInformation,
-  EventAddress,
-  EventContact,
-  EventContentItem,
-  EventFormInput,
-  EventMediaContent,
-  EventOrganizer,
-  EventPriceInformation,
-  EventWebUrl,
-} from './events.types.js';
+import type { EventAddress, EventContentItem, EventFormInput } from './events.types.js';
 import { toDateOnlyInputValue } from './events.date-only.js';
 import {
   serializeEventAccessibility,
@@ -27,148 +17,47 @@ import {
   compactEventString,
   serializeEventWebUrls,
 } from './events.detail-form-serialization-common.js';
+import {
+  createDefaultDate,
+  createDefaultAddress,
+  createDefaultContact,
+  createDefaultUrl,
+  createDefaultOrganizer,
+  createDefaultPriceInformation,
+  createDefaultAccessibilityInformation,
+} from './events.detail-form-defaults.js';
+import type {
+  EventsFormGeoLocationValue,
+  EventAddressFormValue,
+  EventMediaContentFormValue,
+  EventsDetailFormValues,
+} from './events.detail-form-types.js';
 
-export type EventsFormGeoLocationValue = Readonly<{
-  latitude: string;
-  longitude: string;
-}>;
+export type {
+  EventsFormGeoLocationValue,
+  EventAddressFormValue,
+  EventOrganizerFormValue,
+  EventMediaContentFormValue,
+  EventsDetailFormValues,
+} from './events.detail-form-types.js';
+export {
+  createDefaultDate,
+  createDefaultGeoLocation,
+  createDefaultAddress,
+  createDefaultContact,
+  createDefaultUrl,
+  createDefaultMediaContent,
+  createDefaultOrganizer,
+  createDefaultPriceInformation,
+  createDefaultAccessibilityInformation,
+  createDefaultEventsDetailFormValues,
+} from './events.detail-form-defaults.js';
 
-export type EventAddressFormValue = Omit<EventAddress, 'geoLocation'> &
-  Readonly<{
-    geoLocation?: EventsFormGeoLocationValue;
-  }>;
-
-export type EventOrganizerFormValue = Omit<EventOrganizer, 'address'> &
-  Readonly<{
-    address?: EventAddressFormValue;
-  }>;
-
-export type EventMediaContentFormValue = Omit<EventMediaContent, 'height' | 'sourceUrl' | 'width'> &
-  Readonly<{
-    height: string;
-    width: string;
-    sourceUrl: { url: string; description: string };
-  }>;
-
-export type EventsDetailFormValues = Readonly<{
-  title: string;
-  basis: {
-    categories: string[];
-    pointOfInterestId: string;
-    repeat: boolean;
-    recurring: string;
-    recurringType: string;
-    recurringInterval: string;
-    recurringWeekdays: readonly string[];
-  };
-  content: {
-    description: string;
-    dates: EventFormInput['dates'];
-    addresses: readonly EventAddressFormValue[];
-    urls: EventFormInput['urls'];
-    mediaContents: readonly EventMediaContentFormValue[];
-    contacts: readonly EventContact[];
-    organizer: EventOrganizerFormValue;
-    priceInformations: readonly EventPriceInformation[];
-    accessibilityInformation: EventAccessibilityInformation;
-  };
-  settings: {
-    visible: boolean;
-    externalId: string;
-    keywords: string;
-    tags: string;
-  };
-}>;
-
-export const createDefaultDate = () => ({
-  weekday: '',
-  dateStart: '',
-  dateEnd: '',
-  timeStart: '',
-  timeEnd: '',
-  timeDescription: '',
-  useOnlyTimeDescription: false,
-});
-export const createDefaultGeoLocation = (): EventsFormGeoLocationValue => ({
-  latitude: '',
-  longitude: '',
-});
-
-export const createDefaultAddress = (): EventAddressFormValue => ({
-  addition: '',
-  street: '',
-  zip: '',
-  city: '',
-  kind: '',
-  geoLocation: createDefaultGeoLocation(),
-});
-export const createDefaultContact = (): EventContact => ({
-  firstName: '',
-  lastName: '',
-  phone: '',
-  fax: '',
-  email: '',
-  webUrls: [{ url: '', description: '' }],
-});
-export const createDefaultUrl = (): EventWebUrl => ({ url: '', description: '' });
-export const createDefaultMediaContent = (): EventMediaContentFormValue => ({
-  captionText: '',
-  copyright: '',
-  contentType: '',
-  sourceUrl: { url: '', description: '' },
-  height: '',
-  width: '',
-});
-export const createDefaultOrganizer = (): EventOrganizerFormValue => ({
-  name: '',
-  address: createDefaultAddress(),
-  contact: createDefaultContact(),
-});
-export const createDefaultPriceInformation = (): EventPriceInformation => ({
-  category: '',
-  description: '',
-  amount: undefined,
-});
-export const createDefaultAccessibilityInformation = (): EventAccessibilityInformation => ({
-  description: '',
-  types: '',
-  urls: [{ url: '', description: '' }],
-});
-
-export const createDefaultEventsDetailFormValues = (): EventsDetailFormValues => ({
-  title: '',
-  basis: {
-    categories: [],
-    pointOfInterestId: '',
-    repeat: false,
-    recurring: '',
-    recurringType: '',
-    recurringInterval: '',
-    recurringWeekdays: [],
-  },
-  content: {
-    description: '',
-    dates: [createDefaultDate()],
-    addresses: [createDefaultAddress()],
-    urls: [createDefaultUrl()],
-    mediaContents: [],
-    contacts: [createDefaultContact()],
-    organizer: createDefaultOrganizer(),
-    priceInformations: [createDefaultPriceInformation()],
-    accessibilityInformation: createDefaultAccessibilityInformation(),
-  },
-  settings: {
-    visible: true,
-    externalId: '',
-    keywords: '',
-    tags: '',
-  },
-});
-
-const mapNumberToString = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? String(value) : '');
+const mapNumberToString = (value?: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
 const mapGeoLocationToFormValue = (
-  value?: { readonly latitude?: number; readonly longitude?: number } | null,
+  value?: { readonly latitude?: number; readonly longitude?: number } | null
 ): EventsFormGeoLocationValue => ({
   latitude: mapNumberToString(value?.latitude),
   longitude: mapNumberToString(value?.longitude),

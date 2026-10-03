@@ -316,6 +316,18 @@ Rückgabewerte bleiben identisch. Die bestehenden IAM-Repository-Tests,
 ein Vergleich aller Statement-Methoden mit `origin/main` und Data-, Security-
 und Server-Runtime-Gates belegen die Grenze.
 
+**PR-Auftrag 14d:** `integrations/instance-integrations.server.ts` (273
+Zeilen) unter das 260-Zeilen-Limit bringen. Nicht-Ziele sind PR 15,
+Schema, Features, externe Schnittstellen, Gates und Dependencies. Maximal
+betroffen sind der Instanz-Integrations-Serverpfad, direkte Tests/Imports,
+der erledigte `fileLines`-Eintrag, dieser Change, Architektur-Doku und der
+eigene Studio-Changelog. DB-Transaktion, Pool und SQL-Executor werden vom
+Cache-Loader getrennt. Der bestehende `external-interfaces.db.ts`-Pfad
+besitzt andere Logger-Ereignisse und einen eigenen Pool; seine Übernahme
+würde den aktuellen Laufzeitvertrag ändern. Die öffentlichen Server-Exporte,
+Tenant-`set_config`, Transaktionsreihenfolge, Fehlerpriorität bei Rollback,
+Pool-Reset sowie Cache-Schlüssel/Invalidierung bleiben erhalten.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;

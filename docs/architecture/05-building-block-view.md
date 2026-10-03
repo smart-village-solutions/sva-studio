@@ -617,6 +617,10 @@ Referenzen:
 - `packages/server-runtime/src/index.ts`
 - `packages/data/migrations/0001_iam_core.sql` (historischer Migrationsort)
 - `packages/data/migrations/0013_iam_instance_integrations.sql` (historischer Migrationsort)
+- `packages/data-repositories/src/integrations/instance-integrations.server.ts`
+  - hält den öffentlichen Server-Einstieg für Instanz-Integrationen und die gecachten Loader; nach dem Speichern werden alle Loader invalidiert
+- `packages/data-repositories/src/integrations/instance-integrations.db.ts`
+  - kapselt Pool, tenantgebundene Transaktion und SQL-Executor für diese Integrationen; der Server-Reset schließt die Pools
 - `packages/sva-mainserver/src/server/service.ts`
 - `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`

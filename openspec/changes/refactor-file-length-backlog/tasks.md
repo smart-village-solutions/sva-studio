@@ -682,22 +682,28 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 14c — IAM-SQL-Statements (1 Befund)
 
-- [ ] `packages/data-repositories/src/iam/repositories/statements.ts` nach
+- [x] `packages/data-repositories/src/iam/repositories/statements.ts` nach
       bestehenden IAM-Ressourcen gruppieren. Statement-Exports, SQL-Text,
       Platzhalterreihenfolge, Tenant-Filter und Rückgabemapping mit den
       IAM-Repository-Tests und Data-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 
+      Nachweis: PR #1681 mit HEAD
+      `f636c7d488a20e9f6776060efb8b6f2c0a7a46a2` als
+      `d144df9dab3e05d1d0082bbede391975ddb8fe30` gemergt;
+      `docs/changelog/entries/pr-1681.json` enthalten.
+
 ### PR 14d — Instanz-Integrationen (1 Befund)
 
-- [ ] `packages/data-repositories/src/integrations/instance-integrations.server.ts`
-      entlang Konfiguration, Secrets und Status-/Health-Zugriff aufteilen.
-      Serverseitige Exportform, Mandantengrenzen, Verschlüsselung, SQL-Parameter
-      und Fehlerrückgaben mit den Integrationstests und
+- [x] `packages/data-repositories/src/integrations/instance-integrations.server.ts`
+      entlang DB-Transaktion/Pool/Executor und Cache-Loader aufteilen.
+      Serverseitige Exportform, Mandantengrenzen via `set_config`,
+      BEGIN/COMMIT/ROLLBACK/Re-throw, Pool-Reset, Logger-Ereignisse,
+      Cache-Schlüssel und Invalidierung mit den Integrationstests und
       Data-/Security-/Runtime-Gates erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Gate vor Merge grün.
 

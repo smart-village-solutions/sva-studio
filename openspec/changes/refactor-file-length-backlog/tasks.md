@@ -1315,7 +1315,7 @@ eigenständig reviewbare Abschluss-PR 35.
       Prüfreihenfolge, pnpm-Dist-Abgleich, Exitcodes und Fehlertexte mit
       gezielten Tests, Skript-Typecheck und `pnpm check:server-runtime` erhalten.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      `docs/changelog/entries/pr-1723.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 

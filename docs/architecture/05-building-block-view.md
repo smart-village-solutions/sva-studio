@@ -51,6 +51,7 @@ Abhängigkeiten des aktuellen Systems.
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
+   - die Governance-HTTP-Handler liegen getrennt nach Workflow, Fallliste, Compliance-/Consent-Export und Self-Service unter `iam-governance/`; `core.ts` bleibt der bestehende Route-Importvertrag, und gemeinsame DB-/Berechtigungshelfer bleiben auf diesen Handlerbereich begrenzt
    - der bestehende Plugin-Runtime-Snapshot trägt einen optionalen Account-Create-Beitrag; die gemeinsame Benutzeranlage ruft ihn auf oder erzeugt nur Core-Attribute und importiert keine SSF-Runtime
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails

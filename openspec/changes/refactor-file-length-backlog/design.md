@@ -722,8 +722,10 @@ unveränderte öffentliche Oberfläche.
    Einträge und belegt null aktuelle Dateilängenverstöße sowie null verwaiste
    Einträge am exakten HEAD. Ein aktueller Restverstoß wird als konkret
    benannter weiterer PR-Task ergänzt und abgearbeitet, bevor der Change
-   abgeschlossen wird. Erst nach Integration von PR 35 archiviert PR 36 den
-   vollständig nachgewiesenen Change und erhält einen eigenen Changelog.
+   abgeschlossen wird. PR 35 bringt auch die betroffenen arc42-Abschnitte
+   und die Complexity-Governance-Dokumentation auf den Endstand. Erst nach
+   Integration von PR 35 archiviert PR 36 den vollständig nachgewiesenen
+   Change und erhält einen eigenen Changelog.
 
 ## Regeln für jeden PR-Abschnitt
 

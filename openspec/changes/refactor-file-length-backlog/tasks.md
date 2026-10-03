@@ -1407,6 +1407,9 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
       verwaisten `fileLines`-Einträge in diesem eigenen PR entfernen und
       null aktuelle Dateilängenverstöße sowie null verwaiste Einträge am
       exakten HEAD belegen. Andere Complexity-Metriken getrennt ausweisen.
+      Die tatsächlich betroffenen arc42-Abschnitte 05, 08, 10 und 11 sowie
+      `docs/development/complexity-quality-governance.md` auf den Endstand
+      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` anlegen; Changelog-Gate vor
@@ -1417,12 +1420,9 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
 - [ ] Nach dem Merge von PR 35 auf integriertem `main` den vollständigen
       `pnpm complexity-gate`-Lauf mit null aktuellen `fileLines`-Verstößen
       und null verwaisten `fileLines`-Registereinträgen belegen; andere
-      Metriken getrennt ausweisen. Die tatsächlich betroffenen arc42-Abschnitte
-      05, 08, 10 und 11 sowie
-      `docs/development/complexity-quality-governance.md` auf den Endstand
-      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen. Alle
-      PR-Nachweise und Checkboxen abgleichen, OpenSpec strikt validieren und
-      den Change gemäß OpenSpec-Prozess archivieren.
+      Metriken getrennt ausweisen. Alle PR-Nachweise und Checkboxen
+      abgleichen, OpenSpec strikt validieren und den Change gemäß
+      OpenSpec-Prozess archivieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` in PR 36 anlegen;

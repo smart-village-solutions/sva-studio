@@ -809,7 +809,9 @@ describe('external content references', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ content_id: 'canonical-core', source_entity_type: 'GenericItem' }] });
+      .mockResolvedValueOnce({ rows: [{ content_id: 'canonical-core', source_entity_type: 'GenericItem' }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, content_id: 'canonical-core', source_entity_id: 'project-1' }] })
+      .mockResolvedValueOnce({ rows: [{ updated: false }] });
 
     await expect(recordSuccessfulExternalContentMutation({
       instanceId: 'tenant-1',
@@ -826,7 +828,7 @@ describe('external content references', () => {
       status: 'draft',
       authorDisplayMode: 'organization',
       authorDisplayName: 'Organisation',
-    })).resolves.toBe('canonical-core');
+    })).rejects.toThrow('project_core_full_update_unverified');
 
     expect(state.query).toHaveBeenCalledWith(
       'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
@@ -837,6 +839,25 @@ describe('external content references', () => {
       ['tenant-1', 'mainserver', ['projects.project', 'GenericItem'], 'project-1']
     );
     expect(state.insertContentRow).not.toHaveBeenCalled();
+    expect(state.updateContent).not.toHaveBeenCalled();
+  });
+
+  it('accepts a concurrent canonical project Core only with a journal full-update marker', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ content_id: 'canonical-core', source_entity_type: 'GenericItem' }] })
+      .mockResolvedValueOnce({ rows: [{ ...row, content_id: 'canonical-core', source_entity_id: 'project-1' }] })
+      .mockResolvedValueOnce({ rows: [{ updated: true }] });
+
+    await expect(recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1', actorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-archive-1', operation: 'update', sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project', sourceEntityId: 'project-1',
+      contentType: 'projects.project', title: 'Projekt', payload: {}, status: 'draft',
+      authorDisplayMode: 'organization', authorDisplayName: 'Organisation',
+    })).resolves.toBe('canonical-core');
     expect(state.updateContent).not.toHaveBeenCalled();
   });
 

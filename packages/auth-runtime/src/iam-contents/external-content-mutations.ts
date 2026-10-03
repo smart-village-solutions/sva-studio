@@ -251,9 +251,12 @@ export const recordSuccessfulExternalContentMutation = async (
   }
 
   const resolved = await createBoundContent(mutation);
-  return resolved.created || resolved.skipUpdate
-    ? resolved.contentId
-    : updateExistingContent(mutation, resolved.contentId);
+  if (resolved.skipUpdate) {
+    const verified = await preserveFullProjectCore(input);
+    if (!verified) throw new Error('project_core_full_update_unverified');
+    return verified;
+  }
+  return resolved.created ? resolved.contentId : updateExistingContent(mutation, resolved.contentId);
 };
 
 export const recordSuccessfulExternalContentDeletion = async (

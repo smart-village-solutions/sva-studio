@@ -388,32 +388,92 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 10f — Öffentliche IAM-Admin-Exporte (1 Befund)
 
-- [ ] `packages/iam-admin/src/index.ts` unter 320 Zeilen bringen, ohne
+- [x] `packages/iam-admin/src/index.ts` unter 320 Zeilen bringen, ohne
       Namen oder Laufzeitpfade der veröffentlichten Package-API zu ändern.
       `index.test.ts`, Package-Build und Server-Runtime-Check sichern
       Exportparität; der separate `publicExports`-Befund wird nur bei
       tatsächlich erfüllter Schwelle entfernt.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1662.json` mit
       passender `prNumber` und nutzerverständlichem `body` in PR #1662
-      anlegen; Changelog-Gate vor Merge grün.
+      eingebracht; PR #1662 am 03.10.2026 als
+      `89f79be9cd52a77c4d1665df7c53643a7618a4d2` gemergt.
+      Alle GitHub-Gates für den finalen HEAD grün, keine offenen Threads.
+      Der separate `publicExports`-Befund bleibt registriert.
 
-### PR 11 — Betroffenenrechte und Governance (10 Befunde)
+### PR 11a — Betroffenenrechte-HTTP-Handler (1 Befund)
 
-- [ ] In `packages/auth-runtime/src/`
-      `iam-data-subject-rights/core.ts`,
-      `iam-data-subject-rights/export-worker.ts`, `iam-governance/core.ts`
-      sowie in `packages/iam-governance/src/`
-      `governance-workflow-executor.ts`, `dsr-export-flows.ts`,
-      `legal-text-repository.ts`, `dsr-read-models.mappers.ts`,
-      `dsr-export-payload.ts`, `dsr-read-models.self-service-queries.ts`,
-      `legal-text-mutation-handlers.ts` bereinigen. Export-Vollständigkeit,
-      Zugriff, Audit und Datenintegrität mit Pflicht-Gates nachweisen.
+- [ ] `packages/auth-runtime/src/iam-data-subject-rights/core.ts` nach
+      Export-/Status-, Antrags-/Korrektur-, Legal-Hold-/Widerspruchs- und
+      Admin-Lesepfaden aufteilen. `core.test.ts` sichert Auth-/Tenant-Grenze,
+      CSRF, Zugriffsprüfung, Datenintegrität und Fehlerabbildung; öffentliche
+      Handler und ihre Route-Bindings bleiben unverändert. Umsetzung in PR #1663;
+      `core.ts` bleibt der bestehende Route-Importpfad und enthält den
+      Self-Service-Antrag mit Commit-gebundener Session-Revocation.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1663.json` mit passender `prNumber` und
+      Nutzertext in PR 11a anlegen;
+      Changelog-Gate vor Merge grün.
 
+### PR 11b — DSR-Export und Queue (3 Befunde)
+
+- [ ] `packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts`
+      sowie `packages/iam-governance/src/dsr-export-flows.ts` und
+      `dsr-export-payload.ts` entlang Queue-/Job-Abschluss,
+      Idempotenz-/Exportantrag und Payload-/Formatprojektion aufteilen.
+      Die jeweiligen Tests sichern Tenant-Scope, Export-Vollständigkeit,
+      Verschlüsselung, JSON/CSV/XML, Retry-/Fehlerstatus und Audit.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      passender `prNumber` und Nutzertext in PR 11b anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 11c — DSR-Leseprojektionen (2 Befunde)
+
+- [ ] `packages/iam-governance/src/dsr-read-models.mappers.ts` und
+      `dsr-read-models.self-service-queries.ts` nach Admin-/Self-Service-
+      Projektion und Query-/Detailauflösung aufteilen. Die Read-Model-Tests
+      sichern Tenant-/Account-Scope, Statusabbildung, Suche, Reihenfolge,
+      Pagination und Fall-Details.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und Nutzertext in PR 11c anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 11d — Governance-Workflow-Ausführung (1 Befund)
+
+- [ ] `packages/iam-governance/src/governance-workflow-executor.ts` nach
+      Berechtigungsänderung, Delegation/Impersonation und Rechtsannahme
+      aufteilen. `governance-workflow-executor.test.ts` und Policy-Tests
+      sichern Freigabegrenzen, Zustandswechsel, Audit, Ablauf und Fehlerpfade.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und Nutzertext in PR 11d anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 11e — Governance-HTTP-Handler (1 Befund)
+
+- [ ] `packages/auth-runtime/src/iam-governance/core.ts` nach Workflow-,
+      Falllisten-, Compliance-/Consent-Export- und Self-Service-Handlern
+      aufteilen. `core.test.ts` sichert Auth-/Tenant-Grenze, CSRF,
+      Berechtigungen, CSV-Ausgabe und Fehlerabbildung; die bestehenden
+      Routen und der Governance-Workflow-Vertrag bleiben erhalten.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und Nutzertext in PR 11e anlegen;
+      Changelog-Gate vor Merge grün.
+
+### PR 11f — Rechtstexte-Mutationen (2 Befunde)
+
+- [ ] `packages/iam-governance/src/legal-text-repository.ts` und
+      `legal-text-mutation-handlers.ts` nach Persistenz/Zielgruppen und
+      Request-/Idempotenzgrenze aufteilen. Repository-, Mutation- und
+      HTTP-Tests sichern Tenant-Scope, Rollen-/Gruppenziele, Sanitizing,
+      Konflikte, Audit und Fehlerabbildung.
+- [ ] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und Nutzertext in PR 11f anlegen;
+      Changelog-Gate vor Merge grün.
 
 ### PR 12 — Auth-Routen, Session und Audit (4 Befunde)
 

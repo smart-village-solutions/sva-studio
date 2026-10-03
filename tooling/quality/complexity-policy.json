@@ -406,24 +406,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-contents/server-authorization.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/core.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-auth-runtime-src-iam-data-subject-rights-core-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/core.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-data-subject-rights-core-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/core.ts:functionLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-data-subject-rights-core-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/export-worker.ts:fileLines": {
       "ticketId": "QUAL-DSR-EXPORT-001",
       "ticketSystem": "backlog",

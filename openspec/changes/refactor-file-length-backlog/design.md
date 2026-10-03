@@ -26,8 +26,8 @@ ermittelt; parallele Arbeit kann sie verändern.
 Diese Tabelle ist eine vollständige Partition der aktuell gemessenen Befunde
 nach bestehenden Ownership-Bereichen. Ein Bereich ist **kein** automatischer
 PR: Die letzte Spalte benennt die fachlichen Schnittkandidaten. Das
-Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06, PR 07 und PR 08
-auf derzeit 49 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
+Startbudget von 38 PRs wurde durch die konkrete Teilung von PR 06 bis PR 11
+auf derzeit 59 einzeln beschriebene Aufgaben in `tasks.md` angepasst.
 PR 06 wurde nach der Messung von 8.984 Zeilen über acht Dateien
 in vier seriell bearbeitbare Teile 06a bis 06d aufgeteilt. Nach dem Merge
 von 06c zeigte die erneute Messung für 06d 3.066 Zeilen über vier Dateien.
@@ -73,6 +73,18 @@ Die öffentliche Package-Oberfläche (10f) benötigt einen eigenen Export- und
 Runtime-Nachweis. Jeder Abschnitt startet nach dem Merge des vorigen auf
 aktuellem `main` und enthält einen eigenen Studio-Changelog.
 
+Vor PR 11 ergab die erneute Messung zehn Dateien mit zusammen 6.216 Zeilen.
+Der einzelne bisherige PR würde HTTP-Autorisierung, DSR-Export und Queue,
+Leseprojektionen, Governance-Workflow und Rechtstextmutationen zugleich
+berühren. Diese Ausführungs- und Datengrenzen werden als 11a bis 11f
+seriell geliefert: DSR-HTTP-Handler (11a), Exportkette über Runtime und
+Governance-Package (11b), DSR-Leseprojektionen (11c), Workflow-Ausführung
+(11d), Governance-HTTP-Handler (11e) und Rechtstextmutationen (11f).
+Jeder Teil beseitigt alle eigenen aktuellen `fileLines`-Befunde, erhält
+öffentliche Verträge und besitzt einen eigenen Changelog. Auth-/Tenant-
+Grenzen, PII-Schutz, Audit, Idempotenz, Export-Vollständigkeit und
+Transaktionen werden am jeweils betroffenen Pfad gezielt nachgewiesen.
+
 Für 10a bleibt `organization-query.ts` der bestehende Importvertrag für
 `iam-admin`-Index, Read-Handler und Tests. Interne Module trennen
 Projektion/Filter von tenantgebundenen Lesequeries und Hierarchieoperationen;
@@ -94,7 +106,7 @@ Query-/Read-Handler-Tests und Package-/Runtime-Gates belegen diese Grenzen.
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
 3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
-   bis 07f, 08a bis 08d, 09a bis 09d und 10a bis 10f werden genau
+   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f und 11a bis 11f werden genau
    in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
    abgeschlossen, bevor die nächste Nummer beginnt.
 4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.

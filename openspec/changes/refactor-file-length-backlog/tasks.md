@@ -373,16 +373,18 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 10e — Moderne und Legacy-Gruppenmutationen (2 Befunde)
 
-- [ ] `packages/iam-admin/src/group-mutation-handlers.ts` und
+- [x] `packages/iam-admin/src/group-mutation-handlers.ts` und
       `legacy-group-mutation-handlers.ts` an ihren jeweiligen
       Gruppenoperationen und gemeinsamen Vertragsgrenzen aufteilen.
       Beide vorhandenen Mutationstestdateien sichern Auth-/Tenant-Scope,
       Rollen- und Mitgliedschaftsänderungen, Fehlerabbildung und Audit;
       moderne und Legacy-Endpunkte bleiben kompatibel.
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1661.json` mit
       passender `prNumber` und nutzerverständlichem `body` in PR #1661
-      anlegen; Changelog-Gate vor Merge grün.
+      angelegt; PR #1661 am 03.10.2026 als
+      `c7871c1752b19ed36390ffab6dc1796d09730e95` gemergt.
+      Changelog- und Complexity-Gate vor Merge grün.
 
 ### PR 10f — Öffentliche IAM-Admin-Exporte (1 Befund)
 
@@ -392,8 +394,8 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Exportparität; der separate `publicExports`-Befund wird nur bei
       tatsächlich erfüllter Schwelle entfernt.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in PR 10f
+      `docs/changelog/entries/pr-1662.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in PR #1662
       anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 11 — Betroffenenrechte und Governance (10 Befunde)

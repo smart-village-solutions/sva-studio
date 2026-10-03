@@ -313,6 +313,7 @@ describe('external content references', () => {
     const update = state.updateContent.mock.calls[0]?.[0];
     expect(update).toEqual(expect.objectContaining({
       confirmedExternalOwner: { type: 'organization', id: 'organization-1' },
+      preserveExistingContentState: true,
       mutationRef: 'transfer-1',
     }));
     expect(update).not.toHaveProperty('title');

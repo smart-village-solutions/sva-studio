@@ -75,6 +75,7 @@ export type UpdateContentInput = {
   mutationRef?: string;
   contentId: string;
   confirmedExternalOwner?: IamContentOwnerPrincipal;
+  preserveExistingContentState?: boolean;
   expectedSourcePrincipal?: IamContentOwnerPrincipal | null;
   organizationId?: string;
   ownerUserId?: string;

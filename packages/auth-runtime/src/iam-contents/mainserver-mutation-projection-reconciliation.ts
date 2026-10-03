@@ -195,7 +195,12 @@ export const reconcileDeferredMainserverMutationProjections = async (input: {
       payload: row.payload,
       status: row.status,
       ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-      ...reconciledAuthorDisplay(row, actorDisplayName, input.actingPrincipalType),
+      ...(replayMode === 'owner-only'
+        ? {
+            authorDisplayMode: input.actingPrincipalType === 'user' ? 'user' : row.authorDisplayMode,
+            authorDisplayName: row.author,
+          }
+        : reconciledAuthorDisplay(row, actorDisplayName, input.actingPrincipalType)),
     });
     const independentReconciliationError =
       typeof entry.last_error_code === 'string' &&

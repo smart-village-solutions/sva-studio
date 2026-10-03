@@ -1,7 +1,6 @@
 import type { ContentJsonValue, IamContentAuthorDisplayMode, IamContentStatus } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
-
 import { loadContentById, updateContent } from './repository.js';
 import { insertContentHistory } from './repository-shared.js';
 import {
@@ -305,6 +304,7 @@ export const updateExternalContentCore = async (input: {
   readonly mutationRef?: string;
   readonly contentId: string;
   readonly confirmedExternalOwner?: UpdateContentInput['confirmedExternalOwner'];
+  readonly preserveExistingContentState?: boolean;
   readonly title?: string;
   readonly payload?: ContentJsonValue;
   readonly status?: IamContentStatus;

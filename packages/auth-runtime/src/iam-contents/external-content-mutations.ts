@@ -65,6 +65,7 @@ const updateExistingContent = async (
     mutationRef: input.mutationRef,
     contentId,
     confirmedExternalOwner: input.ownershipPrincipal,
+    preserveExistingContentState: input.preserveExistingContentState,
     ...(input.preserveExistingContentState
       ? {}
       : {

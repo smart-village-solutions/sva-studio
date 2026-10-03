@@ -262,11 +262,7 @@ describe('iam content repository helpers', () => {
       expect.arrayContaining(['Stadt Musterhausen'])
     );
     expect(client.query.mock.calls[1]?.[1]).toEqual(
-      expect.arrayContaining([
-        '00000000-0000-0000-0000-000000000002',
-        null,
-        'Stadt Musterhausen',
-      ])
+      expect.arrayContaining(['00000000-0000-0000-0000-000000000002', null, 'Stadt Musterhausen'])
     );
   });
 
@@ -381,6 +377,58 @@ describe('iam content repository helpers', () => {
       'instance-1',
       '00000000-0000-0000-0000-000000000002',
     ]);
+  });
+
+  it('preserves a newer author snapshot when only transfer ownership is replayed', async () => {
+    const client = createClient();
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          author_display_mode: 'user',
+          author_display_name: 'Spätere Autorin',
+        }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'account',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          preserveExistingContentState: true,
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Transferredaktion',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Spätere Autorin',
+    });
+  });
+
+  it('uses the current provider author when the new owner invalidates the old mode', async () => {
+    const client = createClient();
+
+    await expect(
+      resolveUpdateAuthorDisplay(
+        client,
+        createContentRow({
+          author_display_mode: 'organization',
+          author_display_name: 'Alte Organisation',
+        }),
+        createUpdateInput({
+          confirmedExternalOwner: {
+            type: 'account',
+            id: '00000000-0000-0000-0000-000000000002',
+          },
+          preserveExistingContentState: true,
+          authorDisplayMode: 'user',
+          authorDisplayName: 'Aktuelle Autorin',
+        })
+      )
+    ).resolves.toEqual({
+      authorDisplayMode: 'user',
+      authorDisplayName: 'Aktuelle Autorin',
+    });
   });
 
   it('updates content rows and revision references with normalized values', async () => {

@@ -355,6 +355,48 @@ describe('deferred Mainserver mutation projection reconciliation', () => {
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledOnce();
   });
 
+  it('uses the newer provider author when replaying ownership for a personal target', async () => {
+    state.query.mockResolvedValue({
+      rows: [{
+        operation_external_id: 'transfer-personal-1',
+        action_id: 'content.transferOwnership',
+        content_type: 'news.article',
+        content_id: 'news-1',
+        actor_account_id: '22222222-2222-4222-8222-222222222222',
+        keycloak_subject: 'subject-1',
+        display_name_ciphertext: 'encrypted-name',
+        deferred_at: '2026-09-13T12:02:00.000Z',
+      }],
+    });
+    const { reconcileDeferredMainserverMutationProjections } =
+      await import('./mainserver-mutation-projection-reconciliation.js');
+    await expect(reconcileDeferredMainserverMutationProjections({
+      instanceId: 'de-musterhausen',
+      actingPrincipalType: 'user',
+      actingPrincipalId: '44444444-4444-4444-8444-444444444444',
+      credentialFingerprint: 'b'.repeat(64),
+      rows: [{
+        sourceEntityType: 'news.article',
+        sourceEntityId: 'news-1',
+        contentType: 'news.article',
+        ownerUserId: '44444444-4444-4444-8444-444444444444',
+        title: 'Später bearbeitet',
+        payload: { body: 'Neue Fassung' },
+        status: 'published',
+        authorDisplayMode: 'user',
+        author: 'Spätere Autorin',
+        updatedAt: '2026-09-13T12:03:00.000Z',
+      }],
+    })).resolves.toBe(1);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preserveExistingContentState: true,
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Spätere Autorin',
+      })
+    );
+  });
+
   it('preserves an independent reconciliation error after replaying lifecycle history', async () => {
     state.query.mockResolvedValue({
       rows: [

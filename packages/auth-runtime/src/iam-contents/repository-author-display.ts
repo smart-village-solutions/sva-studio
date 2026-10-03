@@ -103,6 +103,17 @@ export const resolveUpdateAuthorDisplay = async (
         organizationId: nextOrganizationId,
       })
     : null;
+  const preserveCurrentAuthor =
+    input.preserveExistingContentState &&
+    (current.author_display_mode === 'organization'
+      ? organization !== null
+      : organization?.content_author_policy !== 'org_only');
+  if (preserveCurrentAuthor) {
+    return {
+      authorDisplayMode: current.author_display_mode,
+      authorDisplayName: current.author_display_name,
+    };
+  }
   const authorDisplayMode = input.authorDisplayMode ?? current.author_display_mode;
   assertAuthorDisplayPolicy(authorDisplayMode, organization);
   const hasExplicitAuthorDisplayChange =

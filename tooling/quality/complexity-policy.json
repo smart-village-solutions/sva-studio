@@ -2944,30 +2944,6 @@
       "status": "open",
       "summary": "Mutationsfehler nach stabilen Fehlerklassen in fokussierte Klassifizierer zerlegen"
     },
-    "instance-registry-service:packages/instance-registry/src/provisioning-auth-evaluation.ts:cyclomaticComplexity": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Keycloak-Evaluation in getrennte Preflight-, Ownership- und Statusbausteine zerlegen"
-    },
-    "instance-registry-service:packages/instance-registry/src/provisioning-auth-evaluation.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Keycloak-Evaluation in getrennte Preflight-, Ownership- und Statusbausteine zerlegen"
-    },
-    "instance-registry-service:packages/instance-registry/src/provisioning-auth-evaluation.ts:functionLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Keycloak-Evaluation in getrennte Preflight-, Ownership- und Statusbausteine zerlegen"
-    },
-    "instance-registry-service:packages/instance-registry/src/provisioning-auth-plan.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "Keycloak-Plan nach Artefakt- und Ausführungsphasen zerlegen"
-    },
     "instance-registry-service:packages/instance-registry/src/service-detail.ts:cyclomaticComplexity": {
       "ticketId": "#1448",
       "ticketSystem": "github",

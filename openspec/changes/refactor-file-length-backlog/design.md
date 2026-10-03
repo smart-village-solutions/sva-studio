@@ -386,6 +386,13 @@ Abschnitten.
 `provisioning-auth-plan.ts` unter das Dateilimit bringen; Nicht-Ziele sind
 15e und neue Auth-Verträge. Preflight, Ownership, Fingerprint und Gate-Status
 bleiben in der bisherigen Reihenfolge und Fehlerklassifikation erhalten.
+Die bestehende Evaluation-Importfläche bleibt eine Fassade. Direkt genutzte
+Module halten Preflight-Checks, die geordnete Realm-Ownership-Diagnose und den
+Live-Status getrennt; `buildPlan` und der Fingerprint bleiben im Plan-Modul,
+die einzelnen Artefakt-Schritte liegen in einem internen Modul. Die beiden
+Ausgangsdateien überschreiten mit 427 und 402 Zeilen die geltende Grenze;
+ihre vorhandenen Fassaden können die getrennten Verantwortungen nicht
+aufnehmen, ohne erneut zu wachsen.
 
 **PR-Auftrag 15e:** `tenant-provisioning-steps.ts` unter das Dateilimit
 bringen; Nicht-Ziele sind die übrigen PR-15-Dateien, Schema und Features.

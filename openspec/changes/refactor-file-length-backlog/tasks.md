@@ -1299,10 +1299,9 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Berichtspfaden aufteilen. Authentisierung, Paging, Finding-Erkennung,
       Exitcodes und Berichtsformat mit gezielten Skript-Tests und
       Skript-Typecheck erhalten.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1722.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1722 angelegt; Changelog-Gate grün.
 
 ### PR 32 — CI-Vertrags- und IAM-Prüfer (5 Befunde)
 

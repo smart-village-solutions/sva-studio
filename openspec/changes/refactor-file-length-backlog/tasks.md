@@ -1390,7 +1390,7 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
 - [x] In `packages/studio-mcp/src/` `process.ts` und `tools.ts`
       bereinigen. MCP-Tool-Verträge, Authentisierung und Prozess-Lifecycle
       mit gezielten Tests und Typprüfung erhalten. PR #1726 wurde am
-      geprüften HEAD `5ebd4d775563cb9b0177a3dda52e0957c21d0049` mit
+      geprüften HEAD `e1bc06bca695d04df6d59bea413f9a883b72c951` mit
       grünen finalen GitHub-Gates und ohne offene Review-Threads gemergt;
       Merge-Commit `8151365d9e95689e998ae43dd704287a15d85e31`.
 

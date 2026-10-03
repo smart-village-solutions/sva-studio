@@ -52,7 +52,7 @@ Typische Integrationspunkte im Monorepo sind:
 Vorausgesetzte Laufzeitabhängigkeiten sind insbesondere:
 
 - Postgres für IAM-Daten (`src/db.ts`)
-- Redis für Session-Store und Cache-nahe Hilfspfade (`src/redis.ts`, `src/redis-session.ts`)
+- Redis für Session-Store und Cache-nahe Hilfspfade (`src/redis.ts`, `src/redis-session.ts`); der öffentliche Session-Import bündelt intern Speicherung, Login-State und Session-Kontrolle
 - ein OIDC-/Keycloak-Setup für Login, Logout, User-Attribute und Admin-Zugriffe (`src/oidc.ts`, `src/keycloak-admin-client/`)
 - `@sva/server-runtime` fuer Request-Kontext, Logger und OTEL-Initialisierung
 

@@ -492,7 +492,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 12a — Auth-Routen (1 Befund)
 
-- [ ] `packages/auth-runtime/src/auth-route-handlers.ts` entlang
+- [x] `packages/auth-runtime/src/auth-route-handlers.ts` entlang
       Login/Account-Action, Callback, `/auth/me`, Logout und gemeinsamen
       Cookie-/Fehlerhilfen aufteilen. Die sieben Exporte von
       `runtime-routes.ts` und die OTEL-Initialisierung beim Modulimport
@@ -501,9 +501,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       Fail-Closed, CSRF, Cookie-Rotation, Silent SSO, Audit-Redaction und
       Response-/Header-Verträge. Auth-/Security- und Server-Runtime-Gates
       aus `DEVELOPMENT_RULES.md` Abschnitt 5.2 ausführen. Umsetzung in
-      PR #1669; Abschluss nach Merge- und Gate-Nachweis markieren.
+      PR #1669; am 03.10.2026 nach grünen Gates am HEAD
+      `bed1d8ab635954638834cc12b402ac344afec063` als
+      `43e504339cab1a85442cbc54ce89502fe0df2f95` gemergt.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1669.json` mit passender `prNumber`
       und nutzerverständlichem `body` in PR #1669 anlegen;
       Changelog-Gate vor Merge grün.
@@ -516,10 +518,11 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       `auth-route-handlers.test.ts` sichern TTL, Rotation, atomaren
       State-Verbrauch, Tenant-Bindung, Ausfall/Retry und Fail-Closed.
       Auth-/Security- und Server-Runtime-Gates aus Abschnitt 5.2 ausführen.
+      Umsetzung in PR #1670; Abschluss nach Merge- und Gate-Nachweis markieren.
 - [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      `docs/changelog/entries/pr-1670.json` mit passender `prNumber`
+      und nutzerverständlichem `body` in PR #1670 anlegen;
+      Changelog-Gate vor Merge grün.
 
 ### PR 12c — Audit-DB-Sink (1 Befund)
 

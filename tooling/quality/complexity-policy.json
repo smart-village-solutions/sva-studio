@@ -466,12 +466,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/keycloak-admin-client/core.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/redis-session.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-redis-session-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/redis-session.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/middleware.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-middleware-ts",
       "ticketSystem": "policy-baseline",

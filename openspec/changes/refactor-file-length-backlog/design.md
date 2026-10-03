@@ -615,12 +615,17 @@ Changelog-Eintrag dokumentiert den Abschnitt.
    Konsumenten/Verträge bearbeiten. Wenn ein konkreter Vertrag mit einem
    späteren Bereich gekoppelt ist, werden beide im selben fachlichen PR
    behandelt oder die Grundlage zuerst abgeschlossen.
-3. **Produktbereiche:** PR 05 bis PR 34 einschließlich 06a bis 06d2, 07a
-   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f und 12a bis
-   12d und 13a bis 13f werden genau
-   in der Reihenfolge von `tasks.md` bearbeitet. Ein Task wird erst nach Merge- und Gate-Nachweis
-   abgeschlossen, bevor die nächste Nummer beginnt.
-4. **Schlusslauf:** Nach PR 34 wird der vollständige Scope erneut gemessen.
+3. **Produktbereiche:** PR 05 bis PR 22 einschließlich 06a bis 06d2, 07a
+   bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f, 12a bis
+   12d und 13a bis 13f wurden seriell geliefert. Ab PR 23 laufen höchstens
+   zwei getrennte Worktrees parallel: Strang A bearbeitet PR 23 bis PR 26
+   und danach PR 31 bis PR 34; Strang B bearbeitet PR 27 bis PR 30. PR 29
+   wartet auf den Merge von PR 26. Die einzelnen PR-Aufträge in `tasks.md`
+   bleiben unverändert. Innerhalb jedes Strangs ist der vorherige Merge
+   Voraussetzung für den nächsten Abschnitt. Vor jedem Merge wird der Branch
+   gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter
+   HEAD vollständig geprüft. Nur ein PR wird zur selben Zeit gemergt.
+4. **Schlusslauf:** Nach allen PRs 23 bis 34 wird der vollständige Scope erneut gemessen.
    Ein Restbefund wird als konkret benannter weiterer PR-Task ergänzt und
    abgearbeitet, bevor der Change abgeschlossen wird.
 

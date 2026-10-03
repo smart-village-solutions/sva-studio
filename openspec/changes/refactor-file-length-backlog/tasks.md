@@ -1,6 +1,8 @@
-# Serielle Lieferliste
+# Lieferliste mit zwei Arbeitssträngen ab PR 23
 
-Die PRs werden in dieser Reihenfolge bearbeitet. Die erste Checkbox wird
+PR 01 bis PR 22 wurden seriell bearbeitet. Ab PR 23 gelten die beiden
+Arbeitsstränge unterhalb dieser Einleitung; jeder PR bleibt einzeln beschrieben.
+Die erste Checkbox wird
 abgehakt, wenn der PR auf dem exakt geprüften HEAD gemergt ist, seine
 benannten aktuellen `fileLines`-Befunde im vollständigen Complexity-Lauf
 verschwunden und die zugehörigen Registereinträge entfernt sind. Die zweite
@@ -11,6 +13,22 @@ Merge- und Gate-Nachweis an seinem PR-Task vermerkt; die nächste Nummer
 bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
+
+**Strang A:** PR 23 → PR 24 → PR 25 → PR 26 → PR 31 → PR 32 → PR 33 → PR 34.
+**Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
+Merge von PR 26, weil der öffentliche Waste-Kalender die dann integrierten
+Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
+Mainserver-Waste-Schnittstelle gegen die laufenden Änderungen aus Strang A;
+bei konkreter Kopplung wartet er auf den betroffenen Waste-PR.
+
+Pro Strang arbeitet höchstens ein Subagent in einem eigenen Worktree. Innerhalb
+eines Strangs beginnt der nächste PR erst nach dem Merge des Vorgängers;
+zwischen den Strängen darf die Implementierung parallel laufen. Merges bleiben
+einzeln: Vor dem finalen Nachweis wird jeder Branch mit dem dann aktuellen
+`origin/main` synchronisiert. Nach einer Synchronisierung gelten Checks und
+Review-Threads nur für den neuen exakten HEAD. Gemeinsame Änderungen an
+`tasks.md`, `design.md` und der Complexity-Policy werden dabei aufgelöst,
+bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ## Pilot und Grundlagen
 
@@ -956,14 +974,19 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 
 ### PR 22 — Cockpit-Cards-Seite (1 Befund)
 
-- [ ] `packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx`
+- [x] `packages/plugin-cockpit-cards/src/cockpit-cards.pages.tsx`
       bereinigen. Sichtbarkeit, Reihenfolge und Save-/Reload-Verhalten
       gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1701, HEAD
+      `d20d2dedeb12f4bef23da4536daa6a2e439fe6e6`, Merge-Commit
+      `e4b8aa62d719f7ab8b2dc8d2ac69d404e2bec8dc`; Changelog
+      `docs/changelog/entries/pr-1701.json`.
 
 ## Waste-Management
 
@@ -1131,7 +1154,7 @@ bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-## Abschluss nach PR 34
+## Abschluss nach allen PRs 23 bis 34
 
 - [ ] Auf integriertem `main` einen vollständigen `pnpm complexity-gate`-Lauf
       mit null aktuellen `fileLines`-Verstößen und null verwaisten

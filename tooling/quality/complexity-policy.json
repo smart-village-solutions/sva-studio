@@ -466,18 +466,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-server-package-runtime.ts)"
     },
-    "ci-scripts:scripts/ci/patch-coverage-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-patch-coverage-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/patch-coverage-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/patch-coverage-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-patch-coverage-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/patch-coverage-gate.ts)"
-    },
     "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
       "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
       "ticketSystem": "policy-baseline",
@@ -519,18 +507,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-new-code-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-sonar-new-code-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/sonar-new-code-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-new-code-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-sonar-new-code-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-new-code-gate.ts)"
     },
     "core-iam:packages/core/src/iam/account-management-contract.ts:publicExports": {
       "ticketId": "baseline-core-src-iam-account-management-contract-ts",

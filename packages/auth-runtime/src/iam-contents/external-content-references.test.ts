@@ -423,9 +423,11 @@ describe('external content references', () => {
   });
 
   it('keeps normal project archive updates on their existing project reference', async () => {
-    state.query.mockResolvedValueOnce({
-      rows: [{ ...row, source_entity_type: 'projects.project', source_entity_id: 'project-1' }],
-    });
+    state.query
+      .mockResolvedValueOnce({
+        rows: [{ ...row, source_entity_type: 'projects.project', source_entity_id: 'project-1' }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
     state.updateContent.mockResolvedValue('content-1');
 
     await recordSuccessfulExternalContentMutation({
@@ -453,6 +455,32 @@ describe('external content references', () => {
       status: 'archived',
       payload: { body: 'Bestehender Inhalt' },
     }));
+  });
+
+  it.each([
+    ['unverified', false],
+    ['verified', true],
+  ])('uses the canonical Core instead of a legacy project reference when its update is %s', async (_case, updated) => {
+    state.query
+      .mockResolvedValueOnce({
+        rows: [{ ...row, content_id: 'legacy-core', source_entity_type: 'projects.project',
+          source_entity_id: 'project-1' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ ...row, content_id: 'canonical-core', source_entity_type: 'GenericItem',
+          source_entity_id: 'project-1' }],
+      })
+      .mockResolvedValueOnce({ rows: [{ updated }] });
+    const result = recordSuccessfulExternalContentMutation({
+      instanceId: 'tenant-1', actorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-archive-1', operation: 'update', sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project', sourceEntityId: 'project-1',
+      contentType: 'projects.project', title: 'Projekt', payload: { body: 'Slim' },
+      status: 'archived', authorDisplayMode: 'organization', authorDisplayName: 'Organisation',
+    });
+    if (updated) await expect(result).resolves.toBe('canonical-core');
+    else await expect(result).rejects.toThrow('project_core_full_update_unverified');
+    expect(state.updateContent).not.toHaveBeenCalled();
   });
 
   it('does not create or overwrite a transfer-bound project Core after a normal archive', async () => {

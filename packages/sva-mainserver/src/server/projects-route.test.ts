@@ -795,6 +795,41 @@ describe('projects route', () => {
     expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
   });
 
+  it('updates the canonical project Core when PATCH addresses a separate legacy Core ID', async () => {
+    prepareDefaults();
+    const legacyContentId = '55555555-5555-4555-8555-555555555555';
+    const legacyReference = {
+      ...reference, id: '66666666-6666-4666-8666-666666666666',
+      contentId: legacyContentId, sourceEntityType: 'projects.project',
+    };
+    state.loadReferenceByContentId
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(legacyReference);
+    state.loadReferenceBySourceEntity.mockResolvedValue(reference);
+    state.loadCore.mockResolvedValue(core);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${legacyContentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(expect.objectContaining({
+      sourceEntityId: genericItem.id,
+    }));
+    expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
+    expect(state.updateCore).not.toHaveBeenCalledWith(expect.objectContaining({
+      contentId: legacyContentId,
+    }));
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ completedSteps: expect.arrayContaining(['project_core_updated']) })
+    );
+  });
+
   it('updates and physically deletes externally created Mainserver projects without a local core', async () => {
     prepareDefaults();
     state.loadReferenceByContentId.mockResolvedValue(undefined);

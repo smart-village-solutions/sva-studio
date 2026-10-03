@@ -233,8 +233,7 @@ export const recordSuccessfulExternalContentMutation = async (
 ): Promise<string> => {
   const transferredProjectContentId = await updateProjectTransferReferences(input);
   if (transferredProjectContentId) return transferredProjectContentId;
-  const mutation =
-    input.contentType === 'projects.project' && input.ownershipPrincipal
+  const mutation = input.contentType === 'projects.project' && input.ownershipPrincipal
       ? { ...input, sourceEntityType: 'GenericItem' }
       : input;
   const existingReference =
@@ -243,13 +242,17 @@ export const recordSuccessfulExternalContentMutation = async (
       exactSourceEntityType: input.contentType === 'projects.project' && !input.ownershipPrincipal,
     })) ??
     (mutation !== input ? await loadExternalContentReferenceBySourceEntity(input) : undefined);
+  if (existingReference?.sourceEntityType === 'projects.project' &&
+      input.contentType === 'projects.project' && !input.ownershipPrincipal) {
+    const canonicalContentId = await preserveFullProjectCore(input);
+    if (canonicalContentId) return canonicalContentId;
+  }
   if (existingReference) return updateExistingContent(mutation, existingReference.contentId);
   const preservedProjectContentId = await preserveFullProjectCore(input);
   if (preservedProjectContentId) return preservedProjectContentId;
   if (mutation.preserveExistingContentState) {
     throw new Error('external_content_core_reference_required_for_owner_only_replay');
   }
-
   const resolved = await createBoundContent(mutation);
   if (resolved.skipUpdate) {
     const verified = await preserveFullProjectCore(input);

@@ -15,6 +15,10 @@ Abhängigkeiten des aktuellen Systems.
 
 ### Hauptbausteine
 
+Die Dateilängen-Refactorings halten öffentliche Einstiege und Package-Ownership
+stabil; die ausgelagerten Teilaufgaben liegen in direkt genutzten privaten
+Modulen der jeweiligen Bausteine.
+
 1. App (`apps/sva-studio-react`)
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
    - profilgebundene Auth-Composition: Das Standard-Studio bindet keinen SSF-Beitrag; das SSF-Profil bindet Account-Create-Beitrag und OIDC-Anforderungen vor Veröffentlichung des Runtime-Snapshots und verlangt dafür ein installiertes SSF-Plugin

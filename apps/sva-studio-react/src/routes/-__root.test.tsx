@@ -162,6 +162,44 @@ describe('root route document', () => {
     }
   });
 
+  it('exposes the ingest-only browser key exclusively on staging', async () => {
+    const { resolveServerFallowBrowserBeaconKey, getRootHead } = await import('./__root');
+    try {
+      vi.stubEnv('FALLOW_BROWSER_INGEST_KEY', 'fallow_pub_k1_test_only');
+      vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'production');
+      expect(resolveServerFallowBrowserBeaconKey()).toBe('');
+      expect(
+        getRootHead({
+          loaderData: {
+            pluginRouteScope: 'platform',
+            studioBranding: 'sva-studio',
+            studioParentDomain: '',
+            fallowBrowserBeaconKey: '',
+          },
+        }).meta.some((entry) => 'name' in entry && entry.name === 'sva-fallow-browser-beacon-key')
+      ).toBe(false);
+
+      vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'staging');
+      const key = resolveServerFallowBrowserBeaconKey();
+      expect(key).toBe('fallow_pub_k1_test_only');
+      expect(
+        getRootHead({
+          loaderData: {
+            pluginRouteScope: 'platform',
+            studioBranding: 'sva-studio',
+            studioParentDomain: '',
+            fallowBrowserBeaconKey: key,
+          },
+        }).meta
+      ).toContainEqual({
+        name: 'sva-fallow-browser-beacon-key',
+        content: key,
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('restores public root configuration during client navigation', async () => {
     const pluginScopeMeta = document.createElement('meta');
     pluginScopeMeta.name = 'sva-plugin-route-scope';
@@ -182,6 +220,7 @@ describe('root route document', () => {
         pluginRouteScope: 'tenant',
         studioBranding: 'kassel-dialog',
         studioParentDomain: 'dialog.kassel.de',
+        fallowBrowserBeaconKey: '',
       });
     } finally {
       pluginScopeMeta.remove();

@@ -260,6 +260,8 @@ jobs:
         id: remote_config
         env:
           PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}
+          FALLOW_BROWSER_INGEST_KEY: ${{ secrets.FALLOW_BROWSER_INGEST_KEY }}
+          BEACON_API_KEY: ${{ secrets.BEACON_API_KEY }}
         run: |
           set -euo pipefail
           umask 077

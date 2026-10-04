@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createStartHandlerMock = vi.fn();
+const createNodeBeaconMock = vi.fn();
+const startBeaconMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
 const dispatchAuthRouteRequestMock = vi.fn();
 const dispatchSsfAdminLoginDirectoryRequestMock = vi.fn();
@@ -36,6 +38,10 @@ vi.mock('@tanstack/react-start/server', () => ({
 
 vi.mock('@tanstack/react-start/server-entry', () => ({
   createServerEntry: vi.fn((entry) => entry),
+}));
+
+vi.mock('@fallow-cli/beacon', () => ({
+  createNodeBeacon: createNodeBeaconMock,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -139,6 +145,8 @@ describe('server transport', () => {
     vi.unstubAllEnvs();
     vi.resetModules();
     createStartHandlerMock.mockReset();
+    createNodeBeaconMock.mockReset();
+    startBeaconMock.mockReset();
     createSdkLoggerMock.mockReset();
     dispatchAuthRouteRequestMock.mockReset();
     dispatchSsfAdminLoginDirectoryRequestMock.mockReset();
@@ -167,6 +175,39 @@ describe('server transport', () => {
     registerStudioPluginOperationHandlersMock.mockReset();
     ensurePluginActivationPoliciesConfiguredMock.mockReset();
     startPluginActivationPolicyFleetReconcileInBackgroundMock.mockReset();
+  });
+
+  it('starts the server beacon only with a full server key', async () => {
+    vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
+    vi.stubEnv('BEACON_API_KEY', 'fallow_pub_k1_browser_only');
+    createStartHandlerMock.mockReturnValue(vi.fn());
+    await import('./server');
+    expect(createNodeBeaconMock).not.toHaveBeenCalled();
+
+    vi.resetModules();
+    vi.stubEnv('BEACON_API_KEY', 'fallow_live_k1_test_only');
+    vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'production');
+    await import('./server');
+    expect(createNodeBeaconMock).not.toHaveBeenCalled();
+
+    vi.resetModules();
+    vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'staging');
+    vi.stubEnv('GIT_SHA', '0123456789abcdef0123456789abcdef01234567');
+    createNodeBeaconMock.mockReturnValue({ start: startBeaconMock });
+    await import('./server');
+
+    expect(createNodeBeaconMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: 'fallow_live_k1_test_only',
+        endpoint: 'https://api.fallow.cloud',
+        projectId: 'smart-village-solutions/sva-studio',
+        commitSha: '0123456789abcdef0123456789abcdef01234567',
+        coverageOrigin: 'unknown',
+        environment: 'staging',
+        runtimeSurface: 'server',
+      })
+    );
+    expect(startBeaconMock).toHaveBeenCalledOnce();
   });
 
   it('bypasses auth requests before TanStack Start', async () => {

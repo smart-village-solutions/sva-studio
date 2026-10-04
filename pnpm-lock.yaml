@@ -255,6 +255,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.922.0
         version: 3.1053.0
+      '@fallow-cli/beacon':
+        specifier: ^0.6.6
+        version: 0.6.6
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.80.0(react@19.3.0))
@@ -432,7 +435,7 @@ importers:
         version: 4.3.3(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
       '@tanstack/devtools-vite':
         specifier: ^0.8.3
-        version: 0.8.3(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
+        version: 0.8.3(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
       '@tanstack/router-plugin':
         specifier: 1.168.28
         version: 1.168.28(@tanstack/react-router@1.170.24(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -466,6 +469,9 @@ importers:
       jsdom:
         specifier: ^29.1.0
         version: 29.1.1
+      oxc-coverage-instrument:
+        specifier: ^0.13.0
+        version: 0.13.0
       tooling-testing:
         specifier: workspace:*
         version: file:tooling/testing(@types/node@25.9.1)(typescript@6.0.3)
@@ -2532,8 +2538,8 @@ packages:
   '@emnapi/core@1.4.5':
     resolution: {integrity: sha512-XsLw1dEOpkSX/WucdqUhPWP7hDxSvZiY+fsUC14h+FtQ2Ifni4znbBt8punRX+Uj2JG/uDb8nEHVKvrVlvdZ5Q==}
 
-  '@emnapi/core@2.0.0-alpha.3':
-    resolution: {integrity: sha512-AZypUeJ/yByuxyS7BlSNRDOMLMlROYtjYdIAuBmJssVz1UJDSeYxLrdizhXCFYhedC5bqd/ASy8EuNXbVVXp9g==}
+  '@emnapi/core@2.0.0-alpha.5':
+    resolution: {integrity: sha512-DbeLFquQJyYGwM3LzPdjvb4IRmAAQuTzEmqUGtIAYxlAO4ArfUZ7WMytLWDSsCAYm6MZJNeojaawQQiFrFVehg==}
 
   '@emnapi/runtime@1.10.0':
     resolution: {integrity: sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==}
@@ -2547,8 +2553,8 @@ packages:
   '@emnapi/runtime@1.4.5':
     resolution: {integrity: sha512-++LApOtY0pEEz1zrd9vy1/zXVaVJJ/EbAF3u0fXIzPJEDtnITsBGbbK0EkM72amhl/R5b+5xx0Y/QhcVOpuulg==}
 
-  '@emnapi/runtime@2.0.0-alpha.3':
-    resolution: {integrity: sha512-hFPAhMUjJD9BSyCANEISPOogeXC9Zo9ZQl7L6vKnaVsMkCtzznaW/naYypeyl0Gv5rYfWYsZbpixTMpjDJzQeA==}
+  '@emnapi/runtime@2.0.0-alpha.5':
+    resolution: {integrity: sha512-SS4jUXRklsrPKTEtW92WHdneh9QBrZGmRyeYEac2ktLN3ie1wd/BrkBbk4DqPWKhjSFfrR8NClXwMlfZ73m60A==}
 
   '@emnapi/wasi-threads@1.0.4':
     resolution: {integrity: sha512-PJR+bOmMOPH8AtcTGAyYNiuJ3/Fcoj2XN/gBEWzDIKh254XO+mM9XoXHk5GNEhodxeMznbg7BlRojVbKN+gC6g==}
@@ -2559,8 +2565,8 @@ packages:
   '@emnapi/wasi-threads@1.2.2':
     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
 
-  '@emnapi/wasi-threads@2.0.1':
-    resolution: {integrity: sha512-9DsSk+o5NBX0CCJT8s0EROGSGxjR/tKu6aBTaVyq+SjAEQH4XcdcRxPBRzsBLizTTJ49MJjF+jgu3qnO9GLQcQ==}
+  '@emnapi/wasi-threads@2.1.0':
+    resolution: {integrity: sha512-DM18NXgQ5coifswrwhFgrqeW/UiFRaLj0aLKU0cp0FoYjEfP/hj/yUeF+Hz754ViG+jQmG2HIeDCUeQsPnRwOA==}
 
   '@esbuild/aix-ppc64@0.28.1':
     resolution: {integrity: sha512-Svl7tq8k/08+p6CXPpRjQ1fKX+1odH/BQbb48fV6fj3CWHhsoIOoY87w1oHXm0qEpkIK3ZfVgp0hed3XBXzXMQ==}
@@ -2765,6 +2771,9 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fallow-cli/beacon@0.6.6':
+    resolution: {integrity: sha512-SiD+IT+iHuH3nV2BeLz1ThF9Tb9ZentbPlpLg4GUxY1RucizwQ/sMPGQgG06RCLxrafMQ4HtBQGhY8T9TgCcuA==}
 
   '@fallow-cli/darwin-arm64@3.30.0':
     resolution: {integrity: sha512-u3MkZKaHH/dX3qm5ks44QRSsTIspDbaJhoNG5y0j7nl2LPo1ZcM5Feyt6lxta007KKH8YgS6TgwCFaYZjzdOvQ==}
@@ -3192,6 +3201,13 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.3
       '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.3
+
+  '@napi-rs/wasm-runtime@1.2.4':
+    resolution: {integrity: sha512-AJxoUD2/15ESHbvpcyjU274nsAPLuOtPHCk0vKJM5pj//Fg/B1FXNWjPnXTT9PymCYYiHo4zPj0ZomXBKhoy7g==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
+    peerDependencies:
+      '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
+      '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
   '@nodable/entities@2.1.0':
     resolution: {integrity: sha512-nyT7T3nbMyBI/lvr6L5TyWbFJAI9FTgVRakNoBqCD+PmID8DzFrrNdLLtHMwMszOtqZa8PAOV24ZqDnQrhQINA==}
@@ -3877,6 +3893,52 @@ packages:
     engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
+
+  '@oxc-coverage-instrument/binding-darwin-arm64@0.13.0':
+    resolution: {integrity: sha512-cMwBnU6ZE8GZzv3HbfDB+tbovfdxcsttCIoJ3Oi/25bktrJjeOJ1yUqNvAs44kslO/XMMYwKm04cBsHtffTTKA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxc-coverage-instrument/binding-darwin-x64@0.13.0':
+    resolution: {integrity: sha512-KpoojgKTGxkRiK2xItyprxsmMP2KrijIzMMXyPZ7jzsQJiQCL8MjND/ozlds2xEgayn/EIMwPT0eh/F+NOygkw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxc-coverage-instrument/binding-linux-arm64-gnu@0.13.0':
+    resolution: {integrity: sha512-sP9/Is+9F9rHWCpmV2IBHDXXTaeLl/PipChRhjb1e9BTaXNcLZE1QoqQtCX2vlUCMlwaxX528bLS9aMPX3uSYw==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-coverage-instrument/binding-linux-x64-gnu@0.13.0':
+    resolution: {integrity: sha512-qzHPClb9fMBPEqQeG4cql326tpe7XSsgR5e/iooP1/rNYCo/cs4UzmJO//b1bdUQerXjzMMbbImcVUuVxIeBSQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-coverage-instrument/binding-linux-x64-musl@0.13.0':
+    resolution: {integrity: sha512-/NoBEr2OkR2oVWRBUoa18EjHc5u22y2nHfaDjUaFvSki5rEbRQcQ1S8sGME40V6UnOmjp0Q9D16RR9hLnb4zHw==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@oxc-coverage-instrument/binding-wasm32-wasi-singlethreaded@0.13.0':
+    resolution: {integrity: sha512-F07V6v+6O9h4yKLduln1VfQeluxLyKZTMvFGcCCDrXUd+MSJ/+a99t0Hpz23+3y7T+BlR0WyvmbFu9hMaOlfGw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
+
+  '@oxc-coverage-instrument/binding-wasm32-wasi@0.13.0':
+    resolution: {integrity: sha512-X+PIFb1r9Ao93xlOKXfm5/GKFNRE4Dwg51hY9ybz1d+7+xpoQGzfd1u5lKblGCVTE3n0/6kyXb3Wt9m1XryjFg==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
+
+  '@oxc-coverage-instrument/binding-win32-arm64-msvc@0.13.0':
+    resolution: {integrity: sha512-rEUZjzBaW0jqw16O7h1YbZftl6pXOiKs85WKe+UWZ6m4buic/1OFNyGYhhhpOqGAGICOhUQYvsUFGgfaPUk8YA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxc-coverage-instrument/binding-win32-x64-msvc@0.13.0':
+    resolution: {integrity: sha512-RRXekm7wyTUgnZuXAAiSiGQi1j//eMZ6M7naWZVAxWib9MPmZYo34R/RJc9mTfP4V7rr2POVFepqjgBNbT9lhQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@oxc-parser/binding-android-arm-eabi@0.120.0':
     resolution: {integrity: sha512-WU3qtINx802wOl8RxAF1v0VvmC2O4D9M8Sv486nLeQ7iPHVmncYZrtBhB4SYyX+XZxj2PNnCcN+PW21jHgiOxg==}
@@ -8541,6 +8603,9 @@ packages:
   outvariant@1.4.3:
     resolution: {integrity: sha512-+Sl2UErvtsoajRDKCE5/dBz4DIvHXQQnAxtQTF04OJxY0+DyZXSo5P5Bb7XYWOh81syohlYL24hbDwxedPUJCA==}
 
+  oxc-coverage-instrument@0.13.0:
+    resolution: {integrity: sha512-956VlI0hcSMT6g6cRCofe2XU5awHHPoZ3uraXZYwOxBrT0mRKKo2jjP2oJcTCklGFesDVqjFmdF2suLyLzvcUg==}
+
   oxc-parser@0.120.0:
     resolution: {integrity: sha512-WyPWZlcIm+Fkte63FGfgFB8mAAk33aH9h5N9lphXVOHSXEBFFsmYdOBedVKly363aWABjZdaj/m9lBfEY4wt+w==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -11275,11 +11340,10 @@ snapshots:
       '@emnapi/wasi-threads': 1.0.4
       tslib: 2.8.1
 
-  '@emnapi/core@2.0.0-alpha.3':
+  '@emnapi/core@2.0.0-alpha.5':
     dependencies:
-      '@emnapi/wasi-threads': 2.0.1
+      '@emnapi/wasi-threads': 2.1.0
       tslib: 2.8.1
-    optional: true
 
   '@emnapi/runtime@1.10.0':
     dependencies:
@@ -11299,10 +11363,9 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@emnapi/runtime@2.0.0-alpha.3':
+  '@emnapi/runtime@2.0.0-alpha.5':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@emnapi/wasi-threads@1.0.4':
     dependencies:
@@ -11317,10 +11380,9 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@emnapi/wasi-threads@2.0.1':
+  '@emnapi/wasi-threads@2.1.0':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@esbuild/aix-ppc64@0.28.1':
     optional: true
@@ -11435,6 +11497,8 @@ snapshots:
       levn: 0.4.1
 
   '@exodus/bytes@1.15.1': {}
+
+  '@fallow-cli/beacon@0.6.6': {}
 
   '@fallow-cli/darwin-arm64@3.30.0':
     optional: true
@@ -11817,12 +11881,18 @@ snapshots:
       '@tybys/wasm-util': 0.10.3
     optional: true
 
-  '@napi-rs/wasm-runtime@1.2.2(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)':
+  '@napi-rs/wasm-runtime@1.2.2(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)':
     dependencies:
-      '@emnapi/core': 2.0.0-alpha.3
-      '@emnapi/runtime': 2.0.0-alpha.3
+      '@emnapi/core': 2.0.0-alpha.5
+      '@emnapi/runtime': 2.0.0-alpha.5
       '@tybys/wasm-util': 0.10.3
     optional: true
+
+  '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)':
+    dependencies:
+      '@emnapi/core': 2.0.0-alpha.5
+      '@emnapi/runtime': 2.0.0-alpha.5
+      '@tybys/wasm-util': 0.10.3
 
   '@nodable/entities@2.1.0': {}
 
@@ -12823,6 +12893,41 @@ snapshots:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/core': 2.8.0(@opentelemetry/api@1.9.1)
 
+  '@oxc-coverage-instrument/binding-darwin-arm64@0.13.0':
+    optional: true
+
+  '@oxc-coverage-instrument/binding-darwin-x64@0.13.0':
+    optional: true
+
+  '@oxc-coverage-instrument/binding-linux-arm64-gnu@0.13.0':
+    optional: true
+
+  '@oxc-coverage-instrument/binding-linux-x64-gnu@0.13.0':
+    optional: true
+
+  '@oxc-coverage-instrument/binding-linux-x64-musl@0.13.0':
+    optional: true
+
+  '@oxc-coverage-instrument/binding-wasm32-wasi-singlethreaded@0.13.0':
+    dependencies:
+      '@emnapi/core': 2.0.0-alpha.5
+      '@emnapi/runtime': 2.0.0-alpha.5
+      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
+    optional: true
+
+  '@oxc-coverage-instrument/binding-wasm32-wasi@0.13.0':
+    dependencies:
+      '@emnapi/core': 2.0.0-alpha.5
+      '@emnapi/runtime': 2.0.0-alpha.5
+      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
+    optional: true
+
+  '@oxc-coverage-instrument/binding-win32-arm64-msvc@0.13.0':
+    optional: true
+
+  '@oxc-coverage-instrument/binding-win32-x64-msvc@0.13.0':
+    optional: true
+
   '@oxc-parser/binding-android-arm-eabi@0.120.0':
     optional: true
 
@@ -12919,9 +13024,9 @@ snapshots:
   '@oxc-parser/binding-openharmony-arm64@0.140.0':
     optional: true
 
-  '@oxc-parser/binding-wasm32-wasi@0.120.0(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)':
+  '@oxc-parser/binding-wasm32-wasi@0.120.0(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.2.2(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)
+      '@napi-rs/wasm-runtime': 1.2.2(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -14335,14 +14440,14 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)
 
-  '@tanstack/devtools-bundler-core@0.1.1(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)':
+  '@tanstack/devtools-bundler-core@0.1.1(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)':
     dependencies:
       '@tanstack/devtools-client': 0.0.8
       '@tanstack/devtools-event-bus': 0.4.2
       chalk: 5.6.2
       launch-editor: 2.14.1
       magic-string: 0.30.21
-      oxc-parser: 0.120.0(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)
+      oxc-parser: 0.120.0(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
       picomatch: 4.0.5
     transitivePeerDependencies:
       - '@emnapi/core'
@@ -14372,9 +14477,9 @@ snapshots:
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/devtools-vite@0.8.3(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
+  '@tanstack/devtools-vite@0.8.3(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
     dependencies:
-      '@tanstack/devtools-bundler-core': 0.1.1(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)
+      '@tanstack/devtools-bundler-core': 0.1.1(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
       '@tanstack/devtools-client': 0.0.8
       '@tanstack/devtools-event-bus': 0.4.2
       chalk: 5.6.2
@@ -14849,7 +14954,6 @@ snapshots:
   '@tybys/wasm-util@0.10.3':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@tybys/wasm-util@0.9.0':
     dependencies:
@@ -17813,7 +17917,23 @@ snapshots:
 
   outvariant@1.4.3: {}
 
-  oxc-parser@0.120.0(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3):
+  oxc-coverage-instrument@0.13.0:
+    dependencies:
+      '@emnapi/core': 2.0.0-alpha.5
+      '@emnapi/runtime': 2.0.0-alpha.5
+      '@napi-rs/wasm-runtime': 1.2.4(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
+    optionalDependencies:
+      '@oxc-coverage-instrument/binding-darwin-arm64': 0.13.0
+      '@oxc-coverage-instrument/binding-darwin-x64': 0.13.0
+      '@oxc-coverage-instrument/binding-linux-arm64-gnu': 0.13.0
+      '@oxc-coverage-instrument/binding-linux-x64-gnu': 0.13.0
+      '@oxc-coverage-instrument/binding-linux-x64-musl': 0.13.0
+      '@oxc-coverage-instrument/binding-wasm32-wasi': 0.13.0
+      '@oxc-coverage-instrument/binding-wasm32-wasi-singlethreaded': 0.13.0
+      '@oxc-coverage-instrument/binding-win32-arm64-msvc': 0.13.0
+      '@oxc-coverage-instrument/binding-win32-x64-msvc': 0.13.0
+
+  oxc-parser@0.120.0(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5):
     dependencies:
       '@oxc-project/types': 0.120.0
     optionalDependencies:
@@ -17833,7 +17953,7 @@ snapshots:
       '@oxc-parser/binding-linux-x64-gnu': 0.120.0
       '@oxc-parser/binding-linux-x64-musl': 0.120.0
       '@oxc-parser/binding-openharmony-arm64': 0.120.0
-      '@oxc-parser/binding-wasm32-wasi': 0.120.0(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)
+      '@oxc-parser/binding-wasm32-wasi': 0.120.0(@emnapi/core@2.0.0-alpha.5)(@emnapi/runtime@2.0.0-alpha.5)
       '@oxc-parser/binding-win32-arm64-msvc': 0.120.0
       '@oxc-parser/binding-win32-ia32-msvc': 0.120.0
       '@oxc-parser/binding-win32-x64-msvc': 0.120.0

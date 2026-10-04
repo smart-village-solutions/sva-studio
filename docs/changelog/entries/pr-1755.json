@@ -1,0 +1,4 @@
+{
+  "prNumber": 1755,
+  "body": "Fallow prüft externe Export-Referenzen nun symbolgenau und ignoriert unabhängige gleichnamige Deklarationen."
+}

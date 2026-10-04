@@ -1,6 +1,6 @@
 /**
  * Direkter OTLP HTTP Log Export Test
- * 
+ *
  * Sendet einen Test-Log direkt an den OTEL Collector ohne Winston.
  * So können wir testen, ob der Collector überhaupt erreichbar ist.
  */
@@ -10,6 +10,7 @@ import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+import { ExportResultCode } from '@opentelemetry/core';
 
 // Aktiviere Debug-Logging
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
@@ -30,9 +31,23 @@ const logExporter = new OTLPLogExporter({
   url: `${endpoint}/v1/logs`,
   headers: {},
 });
+let exportError: Error | undefined;
+let exported = false;
 
 const processor = new BatchLogRecordProcessor({
-  exporter: logExporter,
+  exporter: {
+    export: (records, callback) =>
+      logExporter.export(records, (result) => {
+        if (result.code === ExportResultCode.SUCCESS) {
+          exported = true;
+        } else {
+          exportError = result.error ?? new Error('OTLP log export failed');
+        }
+        callback(result);
+      }),
+    shutdown: () => logExporter.shutdown(),
+    forceFlush: () => logExporter.forceFlush(),
+  },
   maxQueueSize: 100,
   maxExportBatchSize: 10,
   scheduledDelayMillis: 500, // 500ms für schnelles Testen
@@ -66,17 +81,25 @@ logger.emit({
 console.log('✓ Test-Log gesendet');
 console.log('→ Warte auf Batch Export (2 Sekunden)...');
 
-// Warte auf Batch und dann flush
-setTimeout(async () => {
-  console.log('→ Force Flush...');
-  await loggerProvider.forceFlush();
-  console.log('✓ Flush complete');
-  
-  console.log('→ Shutdown...');
-  await loggerProvider.shutdown();
-  console.log('✓ Shutdown complete');
-  
-  console.log('\n=== Test abgeschlossen ===');
-  console.log('Prüfe Loki mit: curl -s "http://localhost:3100/loki/api/v1/label/component/values" | jq .data');
-  process.exit(0);
-}, 2000);
+void (async () => {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log('→ Force Flush...');
+    await loggerProvider.forceFlush();
+    if (exportError) throw exportError;
+    if (!exported) throw new Error('No OTLP log record was exported');
+    console.log('✓ Flush complete');
+
+    console.log('\n=== Test abgeschlossen ===');
+    console.log(
+      'Prüfe Loki mit: curl -s "http://localhost:3100/loki/api/v1/label/component/values" | jq .data'
+    );
+  } catch (error) {
+    console.error('✗ OTLP log export failed:', error);
+    process.exitCode = 1;
+  } finally {
+    console.log('→ Shutdown...');
+    await loggerProvider.shutdown();
+    console.log('✓ Shutdown complete');
+  }
+})();

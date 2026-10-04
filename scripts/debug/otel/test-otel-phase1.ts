@@ -46,6 +46,7 @@ console.log('║  Question: Can OTEL SDK create a usable Logger Provider?       
 console.log('╚════════════════════════════════════════════════════════════════════╝');
 console.log('');
 
+void (async () => {
 let sdk: NodeSDK | undefined;
 let provider: any;
 let logger: any;
@@ -244,3 +245,4 @@ if (failed === 0) {
   console.log('  3. Is the SDK configuration correct?');
   process.exit(1);
 }
+})();

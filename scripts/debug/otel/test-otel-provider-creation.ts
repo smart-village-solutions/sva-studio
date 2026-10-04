@@ -1,9 +1,9 @@
-import { logs } from '@opentelemetry/api-logs';
+import { logs, type Logger } from '@opentelemetry/api-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { BatchLogRecordProcessor, type Logger } from '@opentelemetry/sdk-logs';
+import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
@@ -25,11 +25,11 @@ const test = (name: string, fn: TestFn): void => {
   tests.push({ name, fn });
 };
 
-const assert = (condition: unknown, message: string): asserts condition => {
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(`Assertion failed: ${message}`);
   }
-};
+}
 
 test('SDK Creation - minimal config', () => {
   const resource = resourceFromAttributes({

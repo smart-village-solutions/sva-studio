@@ -8,6 +8,7 @@
   },
   "include": [
     "scripts/ci/**/*.ts",
-    "scripts/ops/**/*.ts"
+    "scripts/ops/**/*.ts",
+    "scripts/debug/otel/**/*.ts"
   ]
 }

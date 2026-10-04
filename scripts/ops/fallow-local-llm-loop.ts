@@ -106,7 +106,7 @@ function scan(cwd: string): { kind: string; unused_exports: Finding[] } {
 export function externalSymbolReferences(cwd: string, group: Group): string[] {
   const names = new Set(group.findings.map((finding) => finding.export_name));
   const matches = new Set(group.findings.flatMap((finding) =>
-    command(cwd, 'rg', ['-l', '-w', '-F', finding.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean)
+    command(cwd, 'git', ['grep', '--no-index', '-l', '-w', '-F', '--', finding.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean)
   ));
   matches.delete(group.path);
   if (!matches.size) return [];

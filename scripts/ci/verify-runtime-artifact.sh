@@ -220,8 +220,8 @@ assert_artifact_contract() {
     return 1
   fi
 
-  if ! grep -Fq 'server-function-transport' "${PATCHED_SERVER_ENTRY_PATH}"; then
-    echo "Finaler gepatchter Server-Entry enthaelt keinen Server-Function-Transportvertrag." >&2
+  if ! grep -Fq 'startFetch(request, requestOptions)' "${PATCHED_SERVER_ENTRY_PATH}"; then
+    echo "Finaler gepatchter Server-Entry delegiert nicht an den Start-Handler." >&2
     return 1
   fi
 

@@ -147,40 +147,37 @@ export const useContentListDeletion = ({
     [registeredContents]
   );
 
-  const confirmRowDeletion = React.useCallback(
-    async (detachLinkedContent = false) => {
-      const item = pendingRowDeletion;
-      if (!item || rowDeletePending) return;
-      setRowDeletePending(true);
-      setRowDeleteError(null);
-      try {
-        const principal = resolveListMutationPrincipal(item, principalControl);
-        if (!principal) {
-          throw new Error('mainserver_mutation_principal_unavailable');
-        }
-        await deleteMainserverItem(item.contentType, item.id, principal, detachLinkedContent);
-      } catch {
-        setRowDeleteError(t('content.messages.deleteError'));
-        setRowDeletePending(false);
-        return;
+  const confirmRowDeletion = React.useCallback(async () => {
+    const item = pendingRowDeletion;
+    if (!item || rowDeletePending) return;
+    setRowDeletePending(true);
+    setRowDeleteError(null);
+    try {
+      const principal = resolveListMutationPrincipal(item, principalControl);
+      if (!principal) {
+        throw new Error('mainserver_mutation_principal_unavailable');
       }
+      await deleteMainserverItem(item.contentType, item.id, principal);
+    } catch {
+      setRowDeleteError(t('content.messages.deleteError'));
+      setRowDeletePending(false);
+      return;
+    }
 
-      setPendingRowDeletion(null);
+    setPendingRowDeletion(null);
+    setDestructiveResult({
+      kind: 'success',
+      description: t('content.messages.deleteSuccess', { id: item.id }),
+    });
+    const refreshSucceeded = await contentsApi.refetchWithOutcome();
+    if (!refreshSucceeded) {
       setDestructiveResult({
         kind: 'success',
-        description: t('content.messages.deleteSuccess', { id: item.id }),
+        description: t('content.messages.deleteRefreshError'),
       });
-      const refreshSucceeded = await contentsApi.refetchWithOutcome();
-      if (!refreshSucceeded) {
-        setDestructiveResult({
-          kind: 'success',
-          description: t('content.messages.deleteRefreshError'),
-        });
-      }
-      setRowDeletePending(false);
-    },
-    [contentsApi, pendingRowDeletion, principalControl, rowDeletePending]
-  );
+    }
+    setRowDeletePending(false);
+  }, [contentsApi, pendingRowDeletion, principalControl, rowDeletePending]);
 
   const confirmBulkDeletion = React.useCallback(async () => {
     const pending = pendingBulkDeletion;
@@ -243,9 +240,6 @@ export const useContentListDeletion = ({
     destructiveResult,
     setDestructiveResult,
     pendingRowDeletion,
-    rowDeletePrincipal: pendingRowDeletion
-      ? resolveListMutationPrincipal(pendingRowDeletion, principalControl)
-      : undefined,
     setPendingRowDeletion,
     rowDeletePending,
     rowDeleteError,

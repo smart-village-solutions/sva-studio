@@ -114,11 +114,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
     if (!response.eventRecord) {
       return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
     }
-    const detail = mapEventItemDetail(response.eventRecord);
-    return {
-      ...detail,
-      data: { ...detail.data, deletionImpact: response.contentDeletionImpact ?? undefined },
-    };
+    return mapEventItemDetail(response.eventRecord);
   },
 
   writeEventWithConfig: async (
@@ -144,10 +140,7 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
   },
 
   destroyEventWithConfig: async (
-    input: SvaMainserverConnectionInput & {
-      readonly eventId: string;
-      readonly detachLinkedContent?: boolean;
-    },
+    input: SvaMainserverConnectionInput & { readonly eventId: string },
     config: SvaMainserverInstanceConfig
   ): Promise<{ readonly id: string }> => {
     const response = await executeGraphqlWithConfig<SvaMainserverDestroyRecordMutation>(
@@ -155,23 +148,16 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
         ...input,
         document: svaMainserverDestroyRecordDocument,
         operationName: 'SvaMainserverDestroyRecord',
-        variables: {
-          id: input.eventId,
-          recordType: 'EventRecord',
-          ...(input.detachLinkedContent ? { detachLinkedContent: true } : {}),
-        },
+        variables: { id: input.eventId, recordType: 'EventRecord' },
       },
       config
     );
 
     if (!response.destroyRecord || (response.destroyRecord.statusCode ?? 200) >= 400) {
       throw toSvaMainserverError({
-        code:
-          response.destroyRecord?.statusCode === 409
-            ? 'linked_content_confirmation_required'
-            : 'invalid_response',
+        code: 'invalid_response',
         message: 'SVA-Mainserver konnte das Event nicht löschen.',
-        statusCode: response.destroyRecord?.statusCode === 409 ? 409 : 502,
+        statusCode: 502,
       });
     }
 

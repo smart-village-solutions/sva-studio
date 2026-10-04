@@ -531,7 +531,7 @@ Events und POI verwenden dasselbe Muster als getrennte Fachplugins:
 - Events sprechen `/api/v1/mainserver/events`; POI sprechen `/api/v1/mainserver/poi`.
 - Wiederholte Standard-Metadaten und HTTP-Basislogik sollen auch hier über `@sva/plugin-sdk` zentralisiert werden, nicht über Plugin-Querimporte.
 - Eine Event-zu-POI-Auswahl läuft über die POI-Fassade des Hosts. Das Events-Plugin importiert das POI-Plugin nicht.
-- Delete nutzt `destroyRecord` mit den Mainserver-Record-Types `EventRecord` und `PointOfInterest`. Bei verknüpften eigenständigen Inhalten zeigt der gemeinsame Löschdialog vorher deren Anzahl und fordert die ausdrückliche Freigabe zum Entfernen der Verknüpfung an. Dasselbe gilt für `NewsItem` und `GenericItem`; FAQ, Kacheln und Projekte sind `GenericItem`-Varianten.
+- Delete nutzt in Phase 1 `destroyRecord` mit den Mainserver-Record-Types `EventRecord` und `PointOfInterest`.
 
 ## Verbindlicher History-Vertrag
 

@@ -57,18 +57,6 @@ export const contentDEResources = {
     deleteConfirmTitle: 'Inhalt endgültig löschen?',
     deleteConfirmDescription:
       'Der Inhalt „{{title}}“ wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
-    linkedContentLoading: 'Verknüpfungen werden geprüft …',
-    linkedContentError:
-      'Verknüpfungen konnten nicht geprüft werden. Bitte versuchen Sie es erneut.',
-    linkedContentIntro: 'Dieser Inhalt ist verknüpft mit:',
-    linkedEvent: '{{count}} Veranstaltung',
-    linkedEvents: '{{count}} Veranstaltungen',
-    linkedNewsItem: '{{count}} Nachricht',
-    linkedNewsItems: '{{count}} Nachrichten',
-    linkedGenericItem: '{{count}} weiterem Inhalt',
-    linkedGenericItems: '{{count}} weiteren Inhalten',
-    linkedContentOutro:
-      'Wenn Sie diesen Inhalt löschen, bleiben die verknüpften Inhalte erhalten. Nur ihre Verknüpfung wird entfernt. Möchten Sie den Inhalt trotzdem löschen?',
     deleteBulkConfirmTitle: 'Ausgewählte Inhalte endgültig löschen?',
     deleteBulkConfirmDescription:
       '{{count}} ausgewählte Inhalte werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
@@ -175,7 +163,8 @@ export const contentDEResources = {
     currentOwner: 'Aktueller Inhaber',
     noOwner: 'Kein eindeutiger Inhaber zugeordnet',
     ownerUnresolved: 'Keinem Account oder keiner Organisation eindeutig zugeordnet.',
-    ownerResolutionFailed: 'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
+    ownerResolutionFailed:
+      'Die Account- oder Organisationszuordnung konnte nicht geprüft werden.',
     account: 'Persönlicher Account',
     organization: 'Organisation',
     verificationRequired:

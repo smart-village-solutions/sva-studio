@@ -112,11 +112,6 @@ export type SvaMainserverNewsListQuery = {
 
 export type SvaMainserverNewsDetailQuery = {
   readonly newsItem?: SvaMainserverNewsItemFragment | null;
-  readonly contentDeletionImpact?: {
-    readonly eventRecordsCount: number;
-    readonly newsItemsCount: number;
-    readonly genericItemsCount: number;
-  } | null;
 };
 
 export type SvaMainserverCreateNewsMutation = {
@@ -267,11 +262,6 @@ export const svaMainserverNewsListDocument = `
 
 export const svaMainserverNewsDetailDocument = `
   query SvaMainserverNewsDetail($id: ID!) {
-    contentDeletionImpact(id: $id, recordType: "NewsItem") {
-      eventRecordsCount
-      newsItemsCount
-      genericItemsCount
-    }
     newsItem(id: $id) {
       ${newsItemFields}
     }
@@ -331,8 +321,8 @@ export const svaMainserverCreateNewsDocument = `
 `;
 
 export const svaMainserverDestroyNewsDocument = `
-  mutation SvaMainserverDestroyNews($id: ID!, $recordType: String!, $detachLinkedContent: Boolean) {
-    destroyRecord(id: $id, recordType: $recordType, detachLinkedContent: $detachLinkedContent) {
+  mutation SvaMainserverDestroyNews($id: ID!, $recordType: String!) {
+    destroyRecord(id: $id, recordType: $recordType) {
       id
       status
       statusCode

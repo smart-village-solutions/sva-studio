@@ -812,10 +812,6 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 - Die Ableitung arbeitet fail-closed: Nur identische Revision und identisches Jahresfenster gelten als synchronisiert. Legacy-Ergebnisse, Erreichbarkeitsfehler und rückläufige Revisionen werden nicht als `clean` ausgegeben.
 - Exakte Create-/Delete-Zahlen gehören zum echten Sync-Lauf. Der reine Seitenstatus führt keinen Dry-Run und keinen Mainserver-Aufruf aus.
 
-### Verknüpfte redaktionelle Inhalte beim Löschen
-
-Redaktionelle Einzel-Löschungen fragen den Mainserver vor der Bestätigung nach verknüpften eigenständigen Inhalten. Bei Orten, Veranstaltungen, Nachrichten und generischen Inhalten bleibt der Provider ohne ausdrückliche Bestätigung bei vorhandenen Verknüpfungen geschlossen. Mit Bestätigung entfernt er die Verknüpfungen und löscht den gewählten Datensatz transaktional; die verknüpften Inhalte bleiben bestehen. Die Studio-Fassade finalisiert den lokalen Tombstone erst nach erfolgreicher Provider-Löschung. Untergeordnete Survey-Daten folgen dem gesonderten Umfragevertrag.
-
 ### Partielle Mainserver-Snapshots
 
 - `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. Bei partiellen Snapshots erlaubt dieser Wert die Navigation zwischen bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl oder weitere, noch nicht materialisierte Seiten zu behaupten. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.

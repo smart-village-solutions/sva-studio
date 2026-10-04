@@ -78,12 +78,7 @@ export const createNewsService = ({
     );
   };
 
-  const deleteNews = async (
-    input: SvaMainserverConnectionInput & {
-      readonly newsId: string;
-      readonly detachLinkedContent?: boolean;
-    }
-  ) => {
+  const deleteNews = async (input: SvaMainserverConnectionInput & { readonly newsId: string }) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return newsOperations.destroyNewsWithConfig(input, config);
   };

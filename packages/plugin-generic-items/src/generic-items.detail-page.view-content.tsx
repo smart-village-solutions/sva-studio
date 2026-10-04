@@ -2,8 +2,7 @@ import React from 'react';
 import { Link, type NavigateFn } from '@tanstack/react-router';
 import {
   type HostMediaAssetListItem,
-  loadMainserverDeletionImpact,
-  usePluginTranslation,
+  type usePluginTranslation,
   type resolveStandardContentAccessCapabilities,
 } from '@sva/plugin-sdk';
 import {
@@ -72,7 +71,7 @@ export type GenericItemsDetailPageViewModel = Readonly<{
   navigate: NavigateFn;
   deleteNavigationFailed: boolean;
   deleting: boolean;
-  handleDelete: (detachLinkedContent?: boolean) => Promise<void>;
+  handleDelete: () => Promise<void>;
   activeTab: GenericItemsDetailTabId;
   setActiveTab: (tab: GenericItemsDetailTabId) => void;
   categoryOptions: readonly GenericItemCategoryOption[];
@@ -208,7 +207,6 @@ export const GenericItemsStatusView = ({
 export const GenericItemsDeleteDialogView = ({
   view,
 }: Readonly<{ view: GenericItemsDetailPageViewModel }>) => {
-  const ct = usePluginTranslation('content');
   const {
     accessCapabilities,
     deleteDialogOpen,
@@ -219,25 +217,12 @@ export const GenericItemsDeleteDialogView = ({
     handleDelete,
     setStatus,
     setDeleteDialogOpen,
-    contentId,
-    actingPrincipalType,
   } = view;
   return (
     <>
       {accessCapabilities.canDelete ? (
         <StudioDestructiveActionDialog
           open={deleteDialogOpen}
-          linkedContent={
-            contentId
-              ? {
-                  basePath: '/api/v1/mainserver/generic-items',
-                  contentId,
-                  actingPrincipalType,
-                  load: loadMainserverDeletionImpact,
-                  translate: ct,
-                }
-              : undefined
-          }
           title={pt('actions.deleteConfirmTitle')}
           description={pt('actions.deleteConfirm', {
             title: methods.getValues('title'),
@@ -247,7 +232,7 @@ export const GenericItemsDeleteDialogView = ({
           cancelLabel={pt('actions.back')}
           pending={deleting}
           errorMessage={status?.kind === 'error' ? status.text : undefined}
-          onConfirm={(detachLinkedContent) => void handleDelete(detachLinkedContent)}
+          onConfirm={() => void handleDelete()}
           onCancel={() => {
             setStatus(null);
             setDeleteDialogOpen(false);

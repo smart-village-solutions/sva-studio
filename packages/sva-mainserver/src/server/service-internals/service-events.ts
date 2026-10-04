@@ -66,10 +66,7 @@ export const createEventService = ({
   };
 
   const deleteEvent = async (
-    input: SvaMainserverConnectionInput & {
-      readonly eventId: string;
-      readonly detachLinkedContent?: boolean;
-    }
+    input: SvaMainserverConnectionInput & { readonly eventId: string }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return eventOperations.destroyEventWithConfig(input, config);

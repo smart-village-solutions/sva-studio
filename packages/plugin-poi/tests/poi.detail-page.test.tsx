@@ -153,16 +153,6 @@ const resolveMockMediaAsset = (assetId: string) => {
 };
 
 describe('PoiDetailPage', () => {
-  const mockDeletionImpact = (eventRecordsCount = 0) => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation(async () =>
-        Response.json({
-          data: { deletionImpact: { eventRecordsCount, newsItemsCount: 0, genericItemsCount: 0 } },
-        })
-      )
-    );
-  };
   const switchSection = (value: string) => {
     fireEvent.change(screen.getByLabelText('Bereich'), { target: { value } });
   };
@@ -346,7 +336,6 @@ describe('PoiDetailPage', () => {
   afterEach(() => {
     cleanup();
     resetSessionAccessSnapshot();
-    vi.unstubAllGlobals();
   });
 
   it('renders the fixed tab order for poi', async () => {
@@ -1351,7 +1340,6 @@ describe('PoiDetailPage', () => {
   });
 
   it('shows the delete fallback error when deleting fails unexpectedly', async () => {
-    mockDeletionImpact();
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -1365,11 +1353,6 @@ describe('PoiDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
-      ).toHaveProperty('disabled', false)
-    );
     fireEvent.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
     );
@@ -1428,7 +1411,6 @@ describe('PoiDetailPage', () => {
   });
 
   it('deletes poi items after confirmation and returns to the content overview', async () => {
-    mockDeletionImpact(1);
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
       name: 'Rathaus',
@@ -1444,13 +1426,12 @@ describe('PoiDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
-    await within(screen.getByRole('alertdialog')).findByText('content.actions.linkedContentIntro');
     fireEvent.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
     );
 
     await waitFor(() => {
-      expect(vi.mocked(deletePoi)).toHaveBeenCalledWith('poi-1', 'user', true);
+      expect(vi.mocked(deletePoi)).toHaveBeenCalledWith('poi-1', 'user');
       expect(navigateMock).toHaveBeenCalledWith({
         to: '/admin/content',
         state: expect.any(Function),

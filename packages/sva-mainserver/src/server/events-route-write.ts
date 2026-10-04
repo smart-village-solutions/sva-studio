@@ -1,6 +1,6 @@
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 
-import { isResponse, json, parseDetachLinkedContent } from './content-route-core.js';
+import { isResponse, json } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 import { EVENTS_CONTENT_TYPE, pluginActionFor, type RouteMatch } from './events-route-access.js';
 import { parseEventInput } from './events-route-input.js';
@@ -198,8 +198,6 @@ export const handleItemDelete = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const detachLinkedContent = parseDetachLinkedContent(request);
-  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   return createContentMutationHandler({
     route,
     action: 'delete',
@@ -215,11 +213,7 @@ export const handleItemDelete = async (
         item: existing.data,
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
-      const data = await deleteSvaMainserverEvent({
-        ...actor,
-        eventId: route.itemId,
-        detachLinkedContent,
-      });
+      const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',

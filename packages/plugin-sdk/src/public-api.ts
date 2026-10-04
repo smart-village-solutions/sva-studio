@@ -82,7 +82,6 @@ export {
   createMainserverJsonRequestHeaders,
   createMainserverMutationHeaders,
   createMainserverReadHeaders,
-  loadMainserverDeletionImpact,
   CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER,
   MainserverApiError,
   requestMainserverJson,

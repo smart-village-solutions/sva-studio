@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishSessionAccessSnapshot, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
@@ -100,17 +100,6 @@ vi.mock('@sva/plugin-sdk', async () => {
     })),
   };
 });
-
-const mockDeletionImpact = () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockImplementation(async () =>
-      Response.json({
-        data: { deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 } },
-      })
-    )
-  );
-};
 
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
@@ -520,7 +509,6 @@ describe('GenericItemsDetailPage', () => {
   });
 
   it('disables delete while a delete request is in flight', async () => {
-    mockDeletionImpact();
     let resolveDelete: (() => void) | null = null;
     vi.mocked(deleteGenericItem).mockImplementationOnce(
       () =>
@@ -533,10 +521,7 @@ describe('GenericItemsDetailPage', () => {
 
     const deleteButton = await screen.findByRole('button', { name: 'Löschen' });
     fireEvent.click(deleteButton);
-    const confirmButton = within(screen.getByRole('alertdialog')).getByRole('button', {
-      name: 'Löschen',
-    });
-    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    const confirmButton = screen.getAllByRole('button', { name: 'Löschen' }).at(-1)!;
     fireEvent.click(confirmButton);
 
     await waitFor(() => {

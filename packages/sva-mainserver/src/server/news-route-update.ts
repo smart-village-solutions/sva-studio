@@ -1,5 +1,5 @@
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
-import { isResponse, json, parseDetachLinkedContent } from './content-route-core.js';
+import { isResponse, json } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
 import { authorizeOrResponse, NEWS_CONTENT_TYPE, type RouteMatch } from './news-route-access.js';
 import { parseAuthorizedNewsInput, parseVisibilityInput } from './news-route-input.js';
@@ -125,8 +125,6 @@ export const handleItemDelete = async (
   requestId: string | undefined,
   logSuccess: (operation: string, newsId?: string) => void
 ) => {
-  const detachLinkedContent = parseDetachLinkedContent(request);
-  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   return createNewsItemMutationHandler({
     route,
     action: 'news.delete',
@@ -144,11 +142,7 @@ export const handleItemDelete = async (
           item: existing,
         });
         if (isResponse(providerAuthorization)) return providerAuthorization;
-        response = await deleteNewsForRoute(
-          { kind: 'item', newsId: route.newsId },
-          actor,
-          detachLinkedContent
-        );
+        response = await deleteNewsForRoute({ kind: 'item', newsId: route.newsId }, actor);
         await finalizeMainserverMutation({
           actor,
           providerOutcome: 'succeeded',
@@ -287,13 +281,8 @@ const deleteNewsForRoute = async (
     readonly instanceId: string;
     readonly keycloakSubject: string;
     readonly activeOrganizationId?: string;
-  },
-  detachLinkedContent: boolean
+  }
 ) => {
-  const data = await deleteSvaMainserverNews({
-    ...actor,
-    newsId: route.newsId,
-    detachLinkedContent,
-  });
+  const data = await deleteSvaMainserverNews({ ...actor, newsId: route.newsId });
   return json({ data });
 };

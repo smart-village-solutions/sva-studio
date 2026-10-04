@@ -113,11 +113,7 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
     if (!response.pointOfInterest) {
       return { data: mapOptionalPoiItem(response.pointOfInterest), deviations: [] };
     }
-    const detail = mapPoiItemDetail(response.pointOfInterest);
-    return {
-      ...detail,
-      data: { ...detail.data, deletionImpact: response.contentDeletionImpact ?? undefined },
-    };
+    return mapPoiItemDetail(response.pointOfInterest);
   },
 
   writePoiWithConfig: async (
@@ -143,10 +139,7 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
   },
 
   destroyPoiWithConfig: async (
-    input: SvaMainserverConnectionInput & {
-      readonly poiId: string;
-      readonly detachLinkedContent?: boolean;
-    },
+    input: SvaMainserverConnectionInput & { readonly poiId: string },
     config: SvaMainserverInstanceConfig
   ): Promise<{ readonly id: string }> => {
     const response = await executeGraphqlWithConfig<SvaMainserverDestroyRecordMutation>(
@@ -154,23 +147,16 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
         ...input,
         document: svaMainserverDestroyRecordDocument,
         operationName: 'SvaMainserverDestroyRecord',
-        variables: {
-          id: input.poiId,
-          recordType: 'PointOfInterest',
-          ...(input.detachLinkedContent ? { detachLinkedContent: true } : {}),
-        },
+        variables: { id: input.poiId, recordType: 'PointOfInterest' },
       },
       config
     );
 
     if (!response.destroyRecord || (response.destroyRecord.statusCode ?? 200) >= 400) {
       throw toSvaMainserverError({
-        code:
-          response.destroyRecord?.statusCode === 409
-            ? 'linked_content_confirmation_required'
-            : 'invalid_response',
+        code: 'invalid_response',
         message: 'SVA-Mainserver konnte den POI nicht löschen.',
-        statusCode: response.destroyRecord?.statusCode === 409 ? 409 : 502,
+        statusCode: 502,
       });
     }
 

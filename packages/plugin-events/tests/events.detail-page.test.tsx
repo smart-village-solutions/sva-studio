@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   getHostMediaAsset,
   listHostMediaAssets,
@@ -92,17 +92,6 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
   useLocation: () => ({ state: {} }),
 }));
-
-const mockDeletionImpact = () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockImplementation(async () =>
-      Response.json({
-        data: { deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 } },
-      })
-    )
-  );
-};
 
 describe('EventsDetailPage', () => {
   beforeEach(() => {
@@ -278,7 +267,6 @@ describe('EventsDetailPage', () => {
   afterEach(() => {
     cleanup();
     resetSessionAccessSnapshot();
-    vi.unstubAllGlobals();
   });
 
   it('renders the fixed tab order for events', async () => {
@@ -814,7 +802,6 @@ describe('EventsDetailPage', () => {
   });
 
   it('shows the delete fallback error when deleting fails unexpectedly', async () => {
-    mockDeletionImpact();
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
@@ -828,11 +815,6 @@ describe('EventsDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
-      ).toHaveProperty('disabled', false)
-    );
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
@@ -842,7 +824,6 @@ describe('EventsDetailPage', () => {
   });
 
   it('preserves deletion feedback and a route back when navigation fails', async () => {
-    mockDeletionImpact();
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
@@ -853,11 +834,6 @@ describe('EventsDetailPage', () => {
 
     await screen.findByDisplayValue('Stadtfest');
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
-      ).toHaveProperty('disabled', false)
-    );
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
@@ -954,7 +930,6 @@ describe('EventsDetailPage', () => {
   });
 
   it('deletes events after confirmation and returns to the content overview', async () => {
-    mockDeletionImpact();
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
       title: 'Stadtfest',
@@ -968,11 +943,6 @@ describe('EventsDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
     expect(screen.getByText(/Die Veranstaltung/)).toBeTruthy();
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
-      ).toHaveProperty('disabled', false)
-    );
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {

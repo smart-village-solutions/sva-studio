@@ -174,7 +174,7 @@ Fehlerpfad:
 23. Filter-, Sortier- und Seitengrößenwechsel setzen die URL atomar auf Seite eins zurück. Reine Seitenwechsel erhalten Filter und Sortierung; verspätete Antworten älterer Requests überschreiben keinen neueren Zustand.
 24. Beim Seitenaufruf liest die autorisierte Statusroute die monotone Revision aus der externen Waste-Tenant-Datenbank sowie aktiven Lauf, letzten Versuch und letzten kompatiblen Erfolg aus dem zentralen Studio-Jobstore. Der externe Mainserver wird dabei nicht aufgerufen.
 25. Nur gleiche Quellrevision und gleiches Jahresfenster ergeben `clean`. Ohne belastbaren Vergleich bleibt der Zustand `unknown`; eine neuere Revision oder ein abweichendes Jahresfenster ergibt `pending`.
-26. Der echte Sync-Job liest Revision und Materialisierungsdaten in einem wiederholbaren Read-Snapshot. Erst nach dem Mainserver-Snapshot veröffentlicht er geplante Create-/Delete-Zahlen und persistiert bei Erfolg Revision und Jahresfenster im vorhandenen Jobergebnis.
+26. Der echte Sync-Job liest Revision und Materialisierungsdaten in einem wiederholbaren Read-Snapshot. Für `wasteType` exportiert er denselben normalisierten PDF-Kürzel-Key wie das `wasteTypes`-JSON, damit die App Abholtermine ihrer Darstellungskonfiguration zuordnen kann. Der Mainserver-Snapshot liest alle Adressen paginiert einschließlich Abholzeiten ohne Tourzuordnung; unvollständige Antworten stoppen den Lauf vor Schreiboperationen. Erst nach diesem Snapshot veröffentlicht der Job geplante Create-/Delete-Zahlen und persistiert bei Erfolg Revision und Jahresfenster im vorhandenen Jobergebnis.
 
 Fehlerpfad:
 

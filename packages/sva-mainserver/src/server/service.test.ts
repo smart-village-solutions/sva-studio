@@ -4177,8 +4177,8 @@ describe('createSvaMainserverService', () => {
             return {
               pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true },
             };
-          case 'SvaMainserverWasteTours':
-            return { wasteTours: [] };
+          case 'SvaMainserverWasteAddresses':
+            return { wasteAddresses: [] };
           case 'SvaMainserverCreateWastePickUpTimes':
             return { createWastePickUpTimes: { success: true, errors: [] } };
           case 'SvaMainserverDestroyWastePickUpTimeByIds':
@@ -4246,7 +4246,6 @@ describe('createSvaMainserverService', () => {
       getSvaMainserverPoiDetail({ ...connection, poiId: 'poi-1' })
     ).resolves.toMatchObject({ data: { id: 'poi-1' } });
     await expect(listSvaMainserverWasteSyncSnapshot(connection)).resolves.toEqual({
-      tours: [],
       pickupTimes: [],
     });
     await expect(
@@ -4263,7 +4262,7 @@ describe('createSvaMainserverService', () => {
         'SvaMainserverChangeNewsVisibility',
         'SvaMainserverEventDetail',
         'SvaMainserverPoiDetail',
-        'SvaMainserverWasteTours',
+        'SvaMainserverWasteAddresses',
         'SvaMainserverCreateWastePickUpTimes',
         'SvaMainserverDestroyWastePickUpTimeByIds',
       ])

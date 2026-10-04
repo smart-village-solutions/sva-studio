@@ -17,34 +17,23 @@ const config: SvaMainserverInstanceConfig = {
 };
 
 describe('waste-operations', () => {
-  it('maps waste tours, location types and pickup times into a stable sync snapshot', async () => {
+  it('reads pickup times without tour assignments', async () => {
     const executeGraphqlWithConfig = vi
       .fn()
       .mockResolvedValueOnce({
-        wasteTours: [
+        wasteAddresses: [
           {
-            id: 'tour-1',
-            title: 'Restmüll Tour',
-            wasteType: 'Restmüll',
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        wasteLocationTypes: [
-          {
-            id: 'location-type-1',
-            wasteType: 'Restmüll',
-            address: {
-              street: 'Hauptstraße',
-              zip: '16928',
-              city: 'Musterhausen',
-            },
-            pickUpTimes: [
+            id: 'address-1',
+            street: 'Hauptstraße',
+            zip: '16928',
+            city: 'Musterhausen',
+            wasteLocationTypes: [
               {
-                id: 'pickup-1',
-                pickupDate: '2026-01-10',
-                note: 'Vorverlegt',
-                wasteLocationTypeId: 'location-type-1',
+                id: 'location-type-1',
+                wasteType: 'RM-60-1100',
+                pickUpTimes: [
+                  { id: 'pickup-1', pickupDate: '2026-01-10', note: 'Vorverlegt' },
+                ],
               },
             ],
           },
@@ -54,24 +43,67 @@ describe('waste-operations', () => {
     const operations = createWasteOperations(executeGraphqlWithConfig);
     const result = await operations.listWasteSyncSnapshotWithConfig(connection, config);
 
-    expect(result.tours).toEqual([
-      {
-        id: 'tour-1',
-        title: 'Restmüll Tour',
-        wasteType: 'Restmüll',
-      },
-    ]);
     expect(result.pickupTimes).toEqual([
       expect.objectContaining({
         id: 'pickup-1',
         pickupDate: '2026-01-10',
-        wasteType: 'Restmüll',
+        wasteType: 'RM-60-1100',
         street: 'Hauptstraße',
         zip: '16928',
         city: 'Musterhausen',
         note: 'Vorverlegt',
       }),
     ]);
+    expect(executeGraphqlWithConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationName: 'SvaMainserverWasteAddresses',
+        variables: { limit: 25, skip: 0 },
+      }),
+      config
+    );
+  });
+
+  it('reads pickup times from later address pages', async () => {
+    const executeGraphqlWithConfig = vi
+      .fn()
+      .mockResolvedValueOnce({
+        wasteAddresses: Array.from({ length: 25 }, (_, index) => ({
+          id: String(index + 1),
+          street: `Straße ${index + 1}`,
+          wasteLocationTypes: [],
+        })),
+      })
+      .mockResolvedValueOnce({
+        wasteAddresses: [{
+          id: '26',
+          street: 'Straße 26',
+          wasteLocationTypes: [{
+            wasteType: 'RM-60-1100',
+            pickUpTimes: [{ id: 'pickup-101', pickupDate: '2026-01-10' }],
+          }],
+        }],
+      });
+
+    const result = await createWasteOperations(executeGraphqlWithConfig)
+      .listWasteSyncSnapshotWithConfig(connection, config);
+
+    expect(result.pickupTimes).toHaveLength(1);
+    expect(executeGraphqlWithConfig).toHaveBeenCalledTimes(2);
+    expect(executeGraphqlWithConfig).toHaveBeenLastCalledWith(
+      expect.objectContaining({ variables: { limit: 25, skip: 25 } }),
+      config
+    );
+  });
+
+  it('rejects an incomplete snapshot before it can drive a sync', async () => {
+    const executeGraphqlWithConfig = vi.fn().mockResolvedValue({
+      wasteAddresses: [{ id: 'address-1', street: 'Hauptstraße', wasteLocationTypes: null }],
+    });
+
+    await expect(
+      createWasteOperations(executeGraphqlWithConfig)
+        .listWasteSyncSnapshotWithConfig(connection, config)
+    ).rejects.toMatchObject({ code: 'invalid_response' });
   });
 
   it('creates waste pickup times in a single simplified batch payload', async () => {

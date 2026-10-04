@@ -18,6 +18,7 @@ type WasteSyncClientState = {
   readonly fractions: readonly {
     id: string;
     name: string;
+    pdfShortLabel?: string;
     color: string;
     active: true | false;
     reminderCount: string;
@@ -341,6 +342,33 @@ describe('waste-management-mainserver-sync.server', () => {
     ]);
   });
 
+  it('plans replacement of a legacy display-name waste type with its app key', async () => {
+    const result = await runWasteManagementMainserverSync({
+      studioRows: [{
+        key: '2026-01-10::rm-60-1100::hauptstraße::::musterhausen::',
+        pickupDate: '2026-01-10',
+        wasteType: 'RM-60-1100',
+        street: 'Hauptstraße',
+        city: 'Musterhausen',
+      }],
+      mainserverRows: [{
+        id: 'legacy-pickup-1',
+        key: '2026-01-10::restmüll (60–1.100 l)::hauptstraße::::musterhausen::',
+        pickupDate: '2026-01-10',
+        wasteType: 'Restmüll (60–1.100 L)',
+        street: 'Hauptstraße',
+        city: 'Musterhausen',
+      }],
+      dryRun: true,
+    });
+
+    expect(result.createItems).toEqual([expect.objectContaining({ wasteType: 'RM-60-1100' })]);
+    expect(result.deleteItems).toEqual([
+      expect.objectContaining({ id: 'legacy-pickup-1', wasteType: 'Restmüll (60–1.100 L)' }),
+    ]);
+    expect(result.deleteByIdCount).toBe(1);
+  });
+
   it('executes create and delete callbacks only for the computed diff', async () => {
     const createItems = vi.fn(async () => undefined);
     const deleteItems = vi.fn(async () => undefined);
@@ -636,6 +664,7 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#f00',
           active: true,
           reminderCount: 'none',
@@ -713,7 +742,7 @@ describe('waste-management-mainserver-sync.server', () => {
         expect.objectContaining({
           pickupDate: '2026-02-03',
           note: '<div><p>Behälter am Vorabend <strong>bereitstellen</strong>.</p></div><div>Schnee-Ersatztermin</div>',
-          wasteType: 'Restmüll',
+          wasteType: 'RESTMÜLL',
           street: 'Hauptstraße',
           city: 'Musterhausen',
         }),
@@ -749,6 +778,7 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#f00',
           active: true,
           reminderCount: 'none',
@@ -843,14 +873,14 @@ describe('waste-management-mainserver-sync.server', () => {
         items: expect.arrayContaining([
           expect.objectContaining({
             pickupDate: '2026-01-05',
-            wasteType: 'Restmüll',
+            wasteType: 'RESTMÜLL',
             street: 'Hauptstraße 5',
             zip: '12345',
             city: 'Musterhausen',
           }),
           expect.objectContaining({
             pickupDate: '2026-01-13',
-            wasteType: 'Restmüll',
+            wasteType: 'RESTMÜLL',
             street: 'Hauptstraße 5',
             zip: '12345',
             city: 'Musterhausen',
@@ -880,6 +910,7 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#f00',
           active: true,
           reminderCount: 'none',
@@ -949,7 +980,7 @@ describe('waste-management-mainserver-sync.server', () => {
     if (!createdPickup) throw new Error('published_tour_pickup_missing');
     expect(createdPickup).toMatchObject({
       pickupDate: '2026-02-03',
-      wasteType: 'Restmüll',
+      wasteType: 'RESTMÜLL',
       street: 'Hauptstraße',
       city: 'Musterhausen',
     });
@@ -1016,6 +1047,7 @@ describe('waste-management-mainserver-sync.server', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#f00',
           active: true,
           reminderCount: 'none',

@@ -114,7 +114,13 @@ export const routeEvents = async (route: Route, events: EventRecord[]) => {
       headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
       body: JSON.stringify(
         item
-          ? { data: { ...item, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+          ? {
+              data: {
+                ...item,
+                deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 },
+                dataProvider: { id: 'provider-user', name: 'Editor One' },
+              },
+            }
           : { error: 'not_found' }
       ),
     });
@@ -193,7 +199,13 @@ export const routePoi = async (route: Route, pois: PoiRecord[]) => {
       headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
       body: JSON.stringify(
         item
-          ? { data: { ...item, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
+          ? {
+              data: {
+                ...item,
+                deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 },
+                dataProvider: { id: 'provider-user', name: 'Editor One' },
+              },
+            }
           : { error: 'not_found' }
       ),
     });

@@ -16,7 +16,7 @@ Die erste Aufgabenart entfernt ungenutzte Exports in App-Code. Kandidaten werden
 
 ## Persistenz und Wiederanlauf
 
-Der Worktree und ein lokaler Ergebnisbericht pro Bündel halten Basis-SHA, Status und gegebenenfalls PR-Nummer fest. Ein abgelehnter Vorschlag, rote CI oder ein bereits geschlossener PR sind für denselben Basis-SHA terminal. Bei vorübergehenden Fehlern wird ein noch nicht veröffentlichter Worktree beim nächsten Lauf vom Basis-SHA neu geprüft. Nach einem Branch-Push verwendet der Controller den vorhandenen Branch und Draft-PR, ergänzt fehlenden Changelog oder Label und prüft den finalen HEAD erneut. Dateien fremder offener PRs bleiben ausgeschlossen; der eigene Draft-PR darf für diese Fortsetzung berücksichtigt werden. Logs enthalten keine GitHub-Tokens.
+Der Worktree und ein lokaler Ergebnisbericht pro Bündel halten Basis-SHA, Status und gegebenenfalls PR-Nummer fest. Ein abgelehnter Vorschlag, rote CI oder ein bereits geschlossener PR sind für denselben Basis-SHA terminal. Bei vorübergehenden Fehlern wird ein noch nicht veröffentlichter, sauberer Worktree beim nächsten Lauf vom Basis-SHA neu geprüft; ein schmutziger Worktree bleibt erhalten und der Versuch erhält einen eigenen. Nach einem Branch-Push verwendet der Controller den vorhandenen Branch und Draft-PR, ergänzt fehlenden Changelog oder Label und prüft den finalen HEAD erneut. Dateien fremder offener PRs bleiben ausgeschlossen; der eigene Draft-PR darf für diese Fortsetzung berücksichtigt werden. Logs enthalten keine GitHub-Tokens.
 
 ## Grenzen und Failure Modes
 

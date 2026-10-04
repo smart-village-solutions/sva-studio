@@ -166,27 +166,7 @@ function existingPr(branch: string): ExistingPr | undefined {
   return prs[0];
 }
 
-export function publish(cwd: string, group: Group, branch: string, base: string): number {
-  command(cwd, 'git', ['add', '--', group.path]);
-  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `fix(${group.project}): remove unused local exports`]);
-  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
-  const title = `fix(${group.project}): remove unused local exports`;
-  const body = `## Scope\n\nRemove ${group.findings.length} Fallow reported exports in \`${group.path}\`. The declarations and values remain available inside the file.\n\n## Checks\n\n- Exact declaration edits and cross-repository references checked\n- Fallow findings disappeared\n- Project unit/type gates and file placement passed\n\nDraft for manual semantic review. No automatic merge.`;
-  const pr = existingPr(branch);
-  const prUrl = pr ? '' : command(cwd, 'gh', ['pr', 'create', '--draft', '--base', 'main', '--head', branch, '--title', title, '--body', body], 120_000);
-  const number = pr?.number ?? Number(prUrl.match(/\/(\d+)\s*$/)?.[1]);
-  if (!Number.isInteger(number)) throw new Error(`Could not parse PR URL: ${prUrl}`);
-  record(group.id, { base, status: 'pr-opened', pr: number, branch, at: new Date().toISOString() });
-  const entry = `docs/changelog/entries/pr-${number}.json`;
-  mkdirSync(join(cwd, 'docs/changelog/entries'), { recursive: true });
-  if (!existsSync(join(cwd, entry))) writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: 'Allgemeine Verbesserungen' }, null, 2)}\n`);
-  command(cwd, 'git', ['add', '--', entry]);
-  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `docs: add changelog entry for PR #${number}`]);
-  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
-  command(cwd, 'gh', ['pr', 'edit', String(number), '--add-label', 'local-llm']);
-  const finalHead = command(cwd, 'git', ['rev-parse', 'HEAD']);
-  const prHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };
-  if (prHead.headRefOid !== finalHead) throw new Error('PR head differs from published commit');
+function waitForPublishedChecks(cwd: string, number: number, finalHead: string): void {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const checks = spawnSync('gh', ['pr', 'checks', String(number), '--json', 'name'], { cwd, encoding: 'utf8', timeout: 30_000 });
     if ((checks.status === 0 || checks.status === 8) && JSON.parse(checks.stdout || '[]').length > 0) break;
@@ -214,11 +194,49 @@ export function publish(cwd: string, group: Group, branch: string, base: string)
   if (!finalChecks.length || finalChecks.some((check) => !['SUCCESS', 'NEUTRAL', 'SKIPPED'].includes(check.state))) throw new Error(`GitHub checks not terminal for PR #${number}`);
   const verifiedHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };
   if (verifiedHead.headRefOid !== finalHead) throw new Error('PR head changed during checks');
+}
+
+export function publish(cwd: string, group: Group, branch: string, base: string): number {
+  command(cwd, 'git', ['add', '--', group.path]);
+  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `fix(${group.project}): remove unused local exports`]);
+  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
+  const title = `fix(${group.project}): remove unused local exports`;
+  const body = `## Scope\n\nRemove ${group.findings.length} Fallow reported exports in \`${group.path}\`. The declarations and values remain available inside the file.\n\n## Checks\n\n- Exact declaration edits and cross-repository references checked\n- Fallow findings disappeared\n- Project unit/type gates and file placement passed\n\nDraft for manual semantic review. No automatic merge.`;
+  const pr = existingPr(branch);
+  const prUrl = pr ? '' : command(cwd, 'gh', ['pr', 'create', '--draft', '--base', 'main', '--head', branch, '--title', title, '--body', body], 120_000);
+  const number = pr?.number ?? Number(prUrl.match(/\/(\d+)\s*$/)?.[1]);
+  if (!Number.isInteger(number)) throw new Error(`Could not parse PR URL: ${prUrl}`);
+  record(group.id, { base, status: 'pr-opened', pr: number, branch, at: new Date().toISOString() });
+  const entry = `docs/changelog/entries/pr-${number}.json`;
+  mkdirSync(join(cwd, 'docs/changelog/entries'), { recursive: true });
+  if (!existsSync(join(cwd, entry))) writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: 'Allgemeine Verbesserungen' }, null, 2)}\n`);
+  command(cwd, 'git', ['add', '--', entry]);
+  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `docs: add changelog entry for PR #${number}`]);
+  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
+  command(cwd, 'gh', ['pr', 'edit', String(number), '--add-label', 'local-llm']);
+  const finalHead = command(cwd, 'git', ['rev-parse', 'HEAD']);
+  const prHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };
+  if (prHead.headRefOid !== finalHead) throw new Error('PR head differs from published commit');
+  waitForPublishedChecks(cwd, number, finalHead);
   record(group.id, { base, status: 'ci-green', pr: number, branch, at: new Date().toISOString() });
   return number;
 }
 
-async function runGroup(group: Group, base: string): Promise<boolean> {
+function prepareGroupWorktree(branch: string, base: string, remote: string): string {
+  const worktree = join(stateRoot, 'worktrees', branch.replaceAll('/', '-'));
+  mkdirSync(dirname(worktree), { recursive: true });
+  const dirty = existsSync(worktree) && Boolean(command(worktree, 'git', ['status', '--porcelain']));
+  const executionWorktree = dirty ? `${worktree}-retry-${Date.now()}` : worktree;
+  if (remote) {
+    command(root, 'git', ['fetch', 'origin', branch], 120_000);
+    if (existsSync(executionWorktree)) command(executionWorktree, 'git', ['reset', '--hard', remote.split('\t')[0]!]);
+    else command(root, 'git', ['worktree', 'add', '--detach', executionWorktree, remote.split('\t')[0]!]);
+  } else if (existsSync(executionWorktree)) command(executionWorktree, 'git', ['reset', '--hard', base]);
+  else command(root, 'git', ['worktree', 'add', '--detach', executionWorktree, base]);
+  return executionWorktree;
+}
+
+export async function runGroup(group: Group, base: string): Promise<boolean> {
   const branch = `automation/fallow-${group.id}-${base.slice(0, 8)}`;
   const remote = command(root, 'git', ['ls-remote', '--heads', 'origin', branch]);
   const pr = existingPr(branch);
@@ -226,21 +244,12 @@ async function runGroup(group: Group, base: string): Promise<boolean> {
     record(group.id, { base, status: 'pr-closed', pr: pr.number, branch, at: new Date().toISOString() });
     return false;
   }
-  const worktree = join(stateRoot, 'worktrees', branch.replaceAll('/', '-'));
-  mkdirSync(dirname(worktree), { recursive: true });
-  if (remote) {
-    command(root, 'git', ['fetch', 'origin', branch], 120_000);
-    if (existsSync(worktree)) command(worktree, 'git', ['reset', '--hard', remote.split('\t')[0]!]);
-    else command(root, 'git', ['worktree', 'add', '--detach', worktree, remote.split('\t')[0]!]);
-  } else if (existsSync(worktree)) {
-    command(worktree, 'git', ['reset', '--hard', base]);
-    command(worktree, 'git', ['clean', '-fd']);
-  } else command(root, 'git', ['worktree', 'add', '-b', branch, worktree, base]);
+  const executionWorktree = prepareGroupWorktree(branch, base, remote);
   let publishing = Boolean(remote);
   try {
     if (!remote) {
-      command(worktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
-      const content = readFileSync(join(worktree, group.path), 'utf8');
+      command(executionWorktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
+      const content = readFileSync(join(executionWorktree, group.path), 'utf8');
       const files = new Map([[group.path, content]]);
       const decision = await askModel(group, files);
       let changed: Map<string, string>;
@@ -248,20 +257,20 @@ async function runGroup(group: Group, base: string): Promise<boolean> {
       catch (error) { throw new RejectedGroup(String(error)); }
       // An unused export must not be referenced from any other file, including tests.
       for (const f of group.findings) {
-        const refs = command(worktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
+        const refs = command(executionWorktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
         if (refs.some((path) => path !== f.path)) throw new RejectedGroup(`${f.export_name} has external references`);
       }
-      writeFileSync(join(worktree, group.path), changed.get(group.path)!);
-      command(worktree, 'git', ['diff', '--check']);
-      const delta = command(worktree, 'git', ['diff', '--numstat']);
+      writeFileSync(join(executionWorktree, group.path), changed.get(group.path)!);
+      command(executionWorktree, 'git', ['diff', '--check']);
+      const delta = command(executionWorktree, 'git', ['diff', '--numstat']);
       if (!delta || delta.split('\n').some((line) => !line.endsWith(`\t${group.path}`))) throw new RejectedGroup('Diff escaped selected file');
-      const after = scan(worktree);
+      const after = scan(executionWorktree);
       if (group.findings.some((f) => after.unused_exports.some((a) => a.path === f.path && a.export_name === f.export_name))) throw new RejectedGroup('Fallow finding remains');
-      for (const target of ['test:unit', 'test:types']) if (projectTarget(worktree, group.project, target)) command(worktree, 'pnpm', ['nx', 'run', `${group.project}:${target}`], 1_800_000);
-      command(worktree, 'pnpm', ['check:file-placement'], 120_000);
+      for (const target of ['test:unit', 'test:types']) if (projectTarget(executionWorktree, group.project, target)) command(executionWorktree, 'pnpm', ['nx', 'run', `${group.project}:${target}`], 1_800_000);
+      command(executionWorktree, 'pnpm', ['check:file-placement'], 120_000);
     }
     publishing = true;
-    const pr = publish(worktree, group, branch, base);
+    const pr = publish(executionWorktree, group, branch, base);
     console.log(`Draft PR #${pr}: ${group.path}`);
     return true;
   } catch (error) {

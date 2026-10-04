@@ -69,8 +69,12 @@ export const updateEvent = async (
 
 export const deleteEvent = async (
   contentId: string,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<void> => eventsClient.remove(contentId, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  detachLinkedContent = false
+): Promise<void> =>
+  detachLinkedContent
+    ? eventsClient.remove(contentId, actingPrincipalType, true)
+    : eventsClient.remove(contentId, actingPrincipalType);
 
 export const listEventCategories = async (): Promise<readonly EventCategoryOption[]> => {
   const response = await requestMainserverJson<

@@ -1336,7 +1336,9 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     });
 
     const response = await dispatchSvaMainserverNewsRequest(
-      createRequest('https://studio.test/api/v1/mainserver/news/news-1', { method: 'DELETE' })
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1?detachLinkedContent=true', {
+        method: 'DELETE',
+      })
     );
 
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
@@ -1350,6 +1352,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         actingPrincipalType: 'organization',
         credentialFingerprint: 'a'.repeat(64),
         newsId: 'news-1',
+        detachLinkedContent: true,
       })
     );
     expect(state.beginMainserverMutationJournal).toHaveBeenCalledWith(

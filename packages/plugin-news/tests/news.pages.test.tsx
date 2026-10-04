@@ -269,9 +269,21 @@ const clickPrimaryAction = (label: string) => {
   fireEvent.click(actions.at(-1)!);
 };
 
+const mockDeletionImpact = () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async () =>
+      Response.json({
+        data: { deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 } },
+      })
+    )
+  );
+};
+
 describe('News editor pages', () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   beforeEach(() => {
@@ -1623,6 +1635,7 @@ describe('News editor pages', () => {
   });
 
   it('loads an existing news entry and deletes it after confirmation', async () => {
+    mockDeletionImpact();
     render(<NewsEditPage />);
 
     await waitFor(() => {
@@ -1632,6 +1645,12 @@ describe('News editor pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     const deleteDialog = await screen.findByRole('alertdialog', { name: 'Nachricht löschen?' });
+    await waitFor(() =>
+      expect(within(deleteDialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(within(deleteDialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
@@ -1660,6 +1679,7 @@ describe('News editor pages', () => {
   });
 
   it('shows a delete error when deleting an existing news entry fails', async () => {
+    mockDeletionImpact();
     vi.mocked(deleteNews).mockRejectedValueOnce(new NewsApiError('network_error'));
 
     render(<NewsEditPage />);
@@ -1671,6 +1691,12 @@ describe('News editor pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     const deleteDialog = await screen.findByRole('alertdialog', { name: 'Nachricht löschen?' });
+    await waitFor(() =>
+      expect(within(deleteDialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(within(deleteDialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {

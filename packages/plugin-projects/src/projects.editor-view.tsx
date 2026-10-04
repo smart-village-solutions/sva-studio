@@ -60,7 +60,8 @@ type ViewInput = Readonly<{
   deleteError?: string;
   setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setDeleteError: React.Dispatch<React.SetStateAction<string | undefined>>;
-  removeProject: () => Promise<void>;
+  removeProject: (detachLinkedContent?: boolean) => Promise<void>;
+  contentId?: string;
   navigate: ReturnType<typeof useNavigate>;
 }>;
 
@@ -212,6 +213,8 @@ export function ProjectEditorView({ state, deletion, media, ...base }: Controlle
       <ProjectEditorForm {...props} />
       <ProjectDeleteDialog
         pt={props.pt}
+        contentId={props.contentId}
+        actingPrincipalType={props.actingPrincipalType}
         title={props.form.getValues('title')}
         deleteDialogOpen={props.deleteDialogOpen}
         deletePending={props.deletePending}

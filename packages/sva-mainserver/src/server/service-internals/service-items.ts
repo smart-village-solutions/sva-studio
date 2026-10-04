@@ -65,7 +65,10 @@ export const createItemService = ({
   };
 
   const deleteGenericItem = async (
-    input: SvaMainserverConnectionInput & { readonly genericItemId: string }
+    input: SvaMainserverConnectionInput & {
+      readonly genericItemId: string;
+      readonly detachLinkedContent?: boolean;
+    }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return genericItemOperations.destroyGenericItemWithConfig(input, config);

@@ -245,6 +245,7 @@ export const mapGenericItemToProject = (item: SvaMainserverGenericItem): SvaMain
   const status = projectStatus(item, payload);
   return {
     id: item.id,
+    ...(item.deletionImpact ? { deletionImpact: item.deletionImpact } : {}),
     language: typeof payload.language === 'string' ? payload.language.trim() : '',
     title: item.title,
     description: item.contentBlocks[0]?.intro?.trim() ?? '',

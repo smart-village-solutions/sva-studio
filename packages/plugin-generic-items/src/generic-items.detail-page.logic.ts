@@ -190,33 +190,38 @@ export const useGenericItemsDetailActions = ({
   const [deleting, setDeleting] = React.useState(false);
   const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
 
-  const handleDelete = React.useCallback(async () => {
-    if (!contentId || deleting || mode !== 'edit') {
-      return;
-    }
-    setDeleting(true);
+  const handleDelete = React.useCallback(
+    async (detachLinkedContent = false) => {
+      if (!contentId || deleting || mode !== 'edit') {
+        return;
+      }
+      setDeleting(true);
 
-    try {
-      await deleteGenericItem(contentId, actingPrincipalType);
-    } catch (error) {
-      setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
-      setDeleting(false);
-      return;
-    }
+      try {
+        await (detachLinkedContent
+          ? deleteGenericItem(contentId, actingPrincipalType, true)
+          : deleteGenericItem(contentId, actingPrincipalType));
+      } catch (error) {
+        setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
+        setDeleting(false);
+        return;
+      }
 
-    onDeleted();
-    try {
-      await navigate({
-        ...genericItemsListNavigationTarget,
-        state: (previous) =>
-          addStudioDestructiveNavigationFeedback(previous, 'generic-items', contentId),
-      });
-    } catch {
-      setDeleteNavigationFailed(true);
-    } finally {
-      setDeleting(false);
-    }
-  }, [actingPrincipalType, contentId, deleting, mode, navigate, onDeleted, pt, setStatus]);
+      onDeleted();
+      try {
+        await navigate({
+          ...genericItemsListNavigationTarget,
+          state: (previous) =>
+            addStudioDestructiveNavigationFeedback(previous, 'generic-items', contentId),
+        });
+      } catch {
+        setDeleteNavigationFailed(true);
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [actingPrincipalType, contentId, deleting, mode, navigate, onDeleted, pt, setStatus]
+  );
 
   const [activeTab, setActiveTab] = React.useState<GenericItemsDetailTabId>('basis');
 

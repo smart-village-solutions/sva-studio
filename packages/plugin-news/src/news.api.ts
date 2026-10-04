@@ -122,8 +122,12 @@ export const updateNews = async (
 
 export const deleteNews = async (
   contentId: string,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<void> => newsClient.remove(contentId, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  detachLinkedContent = false
+): Promise<void> =>
+  detachLinkedContent
+    ? newsClient.remove(contentId, actingPrincipalType, true)
+    : newsClient.remove(contentId, actingPrincipalType);
 
 export const setNewsVisibility = async (
   contentId: string,

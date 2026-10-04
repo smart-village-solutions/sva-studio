@@ -130,12 +130,14 @@ export const useFaqEditorActions = ({
     }
   };
 
-  const onDelete = async () => {
+  const onDelete = async (detachLinkedContent = false) => {
     if (!contentId) return false;
     setDeleteErrorMessage(null);
     setDeletePending(true);
     try {
-      await deleteFaq(contentId, actingPrincipalType);
+      await (detachLinkedContent
+        ? deleteFaq(contentId, actingPrincipalType, true)
+        : deleteFaq(contentId, actingPrincipalType));
     } catch (error) {
       setDeleteErrorMessage(resolveDeleteErrorMessage(error, pt));
       setDeletePending(false);

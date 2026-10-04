@@ -152,6 +152,11 @@ export type SvaMainserverGenericItemListQuery = {
 
 export type SvaMainserverGenericItemDetailQuery = {
   readonly genericItem?: SvaMainserverGenericItemFragment | null;
+  readonly contentDeletionImpact?: {
+    readonly eventRecordsCount: number;
+    readonly newsItemsCount: number;
+    readonly genericItemsCount: number;
+  } | null;
 };
 
 export type SvaMainserverCreateGenericItemMutation = {
@@ -352,6 +357,11 @@ export const svaMainserverGenericItemListDocument = /* GraphQL */ `
 
 export const svaMainserverGenericItemDetailDocument = /* GraphQL */ `
   query SvaMainserverGenericItemDetail($id: ID!) {
+    contentDeletionImpact(id: $id, recordType: "GenericItem") {
+      eventRecordsCount
+      newsItemsCount
+      genericItemsCount
+    }
     genericItem(id: $id) {
       ${genericItemFields}
     }

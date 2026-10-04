@@ -21,7 +21,7 @@ export const useNewsDetailDelete = ({
   const [deletePending, setDeletePending] = React.useState(false);
   const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
-  const onDelete = async () => {
+  const onDelete = async (detachLinkedContent = false) => {
     if (!contentId || deletePending) {
       return;
     }
@@ -30,7 +30,9 @@ export const useNewsDetailDelete = ({
     setDeletePending(true);
 
     try {
-      await deleteNews(contentId, actingPrincipalType);
+      await (detachLinkedContent
+        ? deleteNews(contentId, actingPrincipalType, true)
+        : deleteNews(contentId, actingPrincipalType));
     } catch (error) {
       setDeleteErrorMessage(resolveNewsErrorMessage(pt, error, 'messages.deleteError'));
       setDeletePending(false);

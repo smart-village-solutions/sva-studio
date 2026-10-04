@@ -1,4 +1,4 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { loadMainserverDeletionImpact, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   addStudioDestructiveNavigationFeedback,
   StudioDestructiveActionDialog,
@@ -22,12 +22,14 @@ export function useProjectEditorDelete({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string>();
-  const removeProject = async () => {
+  const removeProject = async (detachLinkedContent = false) => {
     if (!contentId || deletePending) return;
     setDeleteError(undefined);
     setDeletePending(true);
     try {
-      await deleteProject(contentId, actingPrincipalType);
+      await (detachLinkedContent
+        ? deleteProject(contentId, actingPrincipalType, true)
+        : deleteProject(contentId, actingPrincipalType));
     } catch {
       setDeleteError(pt('messages.deleteError'));
       setDeletePending(false);
@@ -47,6 +49,8 @@ export function useProjectEditorDelete({
     }
   };
   return {
+    contentId,
+    actingPrincipalType,
     deleteDialogOpen,
     setDeleteDialogOpen,
     deletePending,
@@ -65,19 +69,35 @@ export function ProjectDeleteDialog({
   removeProject,
   setDeleteError,
   setDeleteDialogOpen,
+  contentId,
+  actingPrincipalType,
 }: Readonly<{
   pt: ReturnType<typeof usePluginTranslation>;
   title: string;
   deleteDialogOpen: boolean;
   deletePending: boolean;
   deleteError?: string;
-  removeProject: () => Promise<void>;
+  removeProject: (detachLinkedContent?: boolean) => Promise<void>;
+  contentId?: string;
+  actingPrincipalType: MainserverPrincipalType;
   setDeleteError: React.Dispatch<React.SetStateAction<string | undefined>>;
   setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }>) {
+  const ct = usePluginTranslation('content');
   return (
     <StudioDestructiveActionDialog
       open={deleteDialogOpen}
+      linkedContent={
+        contentId
+          ? {
+              basePath: '/api/v1/mainserver/projects',
+              contentId,
+              actingPrincipalType,
+              load: loadMainserverDeletionImpact,
+              translate: ct,
+            }
+          : undefined
+      }
       title={pt('messages.deleteTitle')}
       description={pt('messages.deleteDescription', { title })}
       confirmLabel={pt('actions.delete')}
@@ -85,7 +105,7 @@ export function ProjectDeleteDialog({
       cancelLabel={pt('actions.back')}
       pending={deletePending}
       errorMessage={deleteError}
-      onConfirm={() => void removeProject()}
+      onConfirm={(detachLinkedContent) => void removeProject(detachLinkedContent)}
       onCancel={() => {
         setDeleteError(undefined);
         setDeleteDialogOpen(false);

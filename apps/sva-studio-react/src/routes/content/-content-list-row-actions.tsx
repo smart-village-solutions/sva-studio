@@ -92,18 +92,25 @@ export const canUpdateMainserverItem = (
 export const deleteMainserverItem = async (
   contentType: string,
   contentId: string,
-  actingPrincipalType: MainserverPrincipalType
+  actingPrincipalType: MainserverPrincipalType,
+  detachLinkedContent = false
 ): Promise<void> => {
   if (contentType === 'news.article') {
-    await deleteNews(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deleteNews(contentId, actingPrincipalType, true)
+      : deleteNews(contentId, actingPrincipalType));
     return;
   }
   if (contentType === 'events.event-record') {
-    await deleteEvent(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deleteEvent(contentId, actingPrincipalType, true)
+      : deleteEvent(contentId, actingPrincipalType));
     return;
   }
   if (contentType === 'poi.point-of-interest') {
-    await deletePoi(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deletePoi(contentId, actingPrincipalType, true)
+      : deletePoi(contentId, actingPrincipalType));
     return;
   }
   if (contentType === 'surveys.survey') {
@@ -111,21 +118,40 @@ export const deleteMainserverItem = async (
     return;
   }
   if (contentType === 'faq.faq') {
-    await deleteFaq(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deleteFaq(contentId, actingPrincipalType, true)
+      : deleteFaq(contentId, actingPrincipalType));
     return;
   }
   if (contentType === 'cockpit-cards.cockpit-card') {
-    await deleteCockpitCard(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deleteCockpitCard(contentId, actingPrincipalType, true)
+      : deleteCockpitCard(contentId, actingPrincipalType));
     return;
   }
   if (contentType === 'projects.project') {
-    await deleteProject(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deleteProject(contentId, actingPrincipalType, true)
+      : deleteProject(contentId, actingPrincipalType));
     return;
   }
   if (contentType === 'generic-items.generic-item') {
-    await deleteGenericItem(contentId, actingPrincipalType);
+    await (detachLinkedContent
+      ? deleteGenericItem(contentId, actingPrincipalType, true)
+      : deleteGenericItem(contentId, actingPrincipalType));
   }
 };
+
+export const deletionImpactBasePath = (contentType: string): string | undefined =>
+  ({
+    'poi.point-of-interest': '/api/v1/mainserver/poi',
+    'events.event-record': '/api/v1/mainserver/events',
+    'news.article': '/api/v1/mainserver/news',
+    'generic-items.generic-item': '/api/v1/mainserver/generic-items',
+    'faq.faq': '/api/v1/mainserver/faqs',
+    'cockpit-cards.cockpit-card': '/api/v1/mainserver/cockpit-cards',
+    'projects.project': '/api/v1/mainserver/projects',
+  })[contentType];
 
 const isMainserverContentType = (contentType: string): boolean =>
   MAIN_SERVER_CONTENT_TYPES.has(contentType);

@@ -55,7 +55,7 @@ type FaqEditorViewProps = Readonly<{
   formId: string;
   loadedItem: ReturnType<typeof useFaqEditorLoader>['loadedItem'];
   mode: 'create' | 'edit';
-  onDelete: () => Promise<void>;
+  onDelete: (detachLinkedContent?: boolean) => Promise<void>;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
   principalControl?: MainserverPrincipalControlModel;
   pt: FaqTranslator;
@@ -146,10 +146,12 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
     {props.canDelete ? (
       <FaqDeleteDialog
         open={props.deleteDialogOpen}
+        contentId={props.contentId}
+        actingPrincipalType={props.actingPrincipalType}
         pending={props.deletePending}
         errorMessage={props.deleteErrorMessage}
         target={props.form.getValues('question')}
-        onConfirm={() => void props.onDelete()}
+        onConfirm={(detachLinkedContent) => void props.onDelete(detachLinkedContent)}
         onCancel={() => {
           props.setDeleteDialogOpen(false);
           props.setDeleteErrorMessage(null);

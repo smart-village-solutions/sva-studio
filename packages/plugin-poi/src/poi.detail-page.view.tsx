@@ -1,7 +1,11 @@
 import React from 'react';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link, type NavigateFn } from '@tanstack/react-router';
-import { usePluginTranslation, resolveStandardContentAccessCapabilities } from '@sva/plugin-sdk';
+import {
+  loadMainserverDeletionImpact,
+  usePluginTranslation,
+  resolveStandardContentAccessCapabilities,
+} from '@sva/plugin-sdk';
 import {
   Button,
   ContentOwnershipSaveHint,
@@ -68,7 +72,7 @@ export type PoiDetailPageViewModel = Readonly<{
   handleTabChange: (tab: PoiDetailTabId) => void;
   warmTab: (tab: PoiDetailTabId) => void;
   submit: ReturnType<typeof usePoiDetailSave>;
-  remove: () => Promise<void>;
+  remove: (detachLinkedContent?: boolean) => Promise<void>;
 }>;
 
 export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
@@ -150,6 +154,7 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
 }
 
 function PoiDeleteDialog({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
+  const ct = usePluginTranslation('content');
   const {
     deleteDialogOpen,
     pt,
@@ -159,10 +164,23 @@ function PoiDeleteDialog({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
     remove,
     setDeleteErrorMessage,
     setDeleteDialogOpen,
+    contentId,
+    actingPrincipalType,
   } = view;
   return (
     <StudioDestructiveActionDialog
       open={deleteDialogOpen}
+      linkedContent={
+        contentId
+          ? {
+              basePath: '/api/v1/mainserver/poi',
+              contentId,
+              actingPrincipalType,
+              load: loadMainserverDeletionImpact,
+              translate: ct,
+            }
+          : undefined
+      }
       title={pt('actions.deleteConfirmTitle')}
       description={pt('actions.deleteConfirm', {
         title: methods.getValues('name') || pt('detail.editTitle'),
@@ -172,7 +190,7 @@ function PoiDeleteDialog({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
       cancelLabel={pt('actions.back')}
       pending={deletePending}
       errorMessage={deleteErrorMessage}
-      onConfirm={() => void remove()}
+      onConfirm={(detachLinkedContent) => void remove(detachLinkedContent)}
       onCancel={() => {
         setDeleteErrorMessage(null);
         setDeleteDialogOpen(false);

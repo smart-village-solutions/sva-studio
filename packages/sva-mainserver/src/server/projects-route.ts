@@ -7,7 +7,7 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { errorJson, isResponse } from './content-route-core.js';
+import { errorJson, isResponse, parseDetachLinkedContent } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
@@ -129,10 +129,14 @@ const updateProject = async (
         let localFollowUpFailed = Boolean(context.reference && !context.core);
         let projectCoreUpdated = false;
         if (localFollowUpFailed && context.reference)
-          await Promise.resolve(updateExternalContentReconciliationStatus({
-            instanceId, referenceId: context.reference.id,
-            status: 'reconciliation_required', errorCode: 'local_finalize_failed',
-          })).catch(() => undefined);
+          await Promise.resolve(
+            updateExternalContentReconciliationStatus({
+              instanceId,
+              referenceId: context.reference.id,
+              status: 'reconciliation_required',
+              errorCode: 'local_finalize_failed',
+            })
+          ).catch(() => undefined);
         if (context.core && context.reference)
           try {
             await updateExternalContentCore({
@@ -172,7 +176,10 @@ const updateProject = async (
           actor,
           providerOutcome: 'succeeded',
           reconciliationStatus: localFollowUpFailed ? 'reconciliation_required' : 'complete',
-          completedSteps: ['provider_write', ...(projectCoreUpdated ? ['project_core_updated'] : [])],
+          completedSteps: [
+            'provider_write',
+            ...(projectCoreUpdated ? ['project_core_updated'] : []),
+          ],
           contentId: freshItem.id,
           observedDataProviderId: freshItem.dataProvider?.id,
         });
@@ -197,6 +204,8 @@ const deleteProject = async (
   ctx: AuthenticatedRequestContext,
   contentId: string
 ): Promise<Response> => {
+  const detachLinkedContent = parseDetachLinkedContent(request);
+  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   const csrf = requireProjectCsrf(request);
   if (csrf) return csrf;
   const instanceId = ctx.user.instanceId;
@@ -246,6 +255,7 @@ const deleteProject = async (
         await deleteSvaMainserverGenericItem({
           ...actor,
           genericItemId: freshItem.id,
+          detachLinkedContent,
         });
         await finalizeMainserverMutation({
           actor,

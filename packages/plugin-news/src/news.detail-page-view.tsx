@@ -3,7 +3,9 @@ import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link } from '@tanstack/react-router';
 import {
   type HostMediaAssetListItem,
+  loadMainserverDeletionImpact,
   resolveStandardContentAccessCapabilities,
+  usePluginTranslation,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -30,6 +32,8 @@ import type { NewsDetailFormValues, NewsDetailTabId } from './news.types.js';
 
 type NewsDetailPageViewProps = Readonly<{
   mode: 'create' | 'edit';
+  contentId?: string;
+  actingPrincipalType: 'organization' | 'user';
   pt: PluginTranslator;
   canSave: boolean;
   formId: string;
@@ -64,7 +68,7 @@ type NewsDetailPageViewProps = Readonly<{
   visitedTabs: readonly NewsDetailTabId[];
   deleteDialogOpen: boolean;
   deleteErrorMessage: string | null;
-  onDelete: () => Promise<void>;
+  onDelete: (detachLinkedContent?: boolean) => Promise<void>;
 }>;
 
 const createNewsDetailPageActions = ({
@@ -170,7 +174,10 @@ export const NewsDetailPageView = ({
   deleteDialogOpen,
   deleteErrorMessage,
   onDelete,
+  contentId,
+  actingPrincipalType,
 }: NewsDetailPageViewProps) => {
+  const ct = usePluginTranslation('content');
   return (
     <StudioDetailPageTemplate
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
@@ -231,6 +238,17 @@ export const NewsDetailPageView = ({
       </FormProvider>
       <StudioDestructiveActionDialog
         open={deleteDialogOpen}
+        linkedContent={
+          contentId
+            ? {
+                basePath: '/api/v1/mainserver/news',
+                contentId,
+                actingPrincipalType,
+                load: loadMainserverDeletionImpact,
+                translate: ct,
+              }
+            : undefined
+        }
         title={pt('actions.deleteConfirmTitle')}
         description={pt('actions.deleteConfirm', {
           title: methods.getValues('title') || pt('editor.editTitle'),
@@ -240,7 +258,7 @@ export const NewsDetailPageView = ({
         cancelLabel={pt('actions.back')}
         pending={deletePending}
         errorMessage={deleteErrorMessage}
-        onConfirm={() => void onDelete()}
+        onConfirm={(detachLinkedContent) => void onDelete(detachLinkedContent)}
         onCancel={() => {
           setDeleteErrorMessage(null);
           setDeleteDialogOpen(false);

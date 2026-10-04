@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { loadMainserverDeletionImpact, usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioDestructiveActionDialog } from '@sva/studio-ui-react';
 
 export type FaqTranslator = ReturnType<typeof usePluginTranslation>;
@@ -37,25 +37,43 @@ export const FaqDeleteDialog = ({
   pending,
   pt,
   target,
+  contentId,
+  actingPrincipalType,
 }: Readonly<{
   errorMessage: string | null;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (detachLinkedContent?: boolean) => void;
+  contentId?: string;
+  actingPrincipalType: 'organization' | 'user';
   open: boolean;
   pending: boolean;
   pt: FaqTranslator;
   target: string;
-}>) => (
-  <StudioDestructiveActionDialog
-    open={open}
-    title={pt('deleteDialog.title')}
-    description={pt('deleteDialog.description', { target })}
-    confirmLabel={pt('deleteDialog.confirm')}
-    pendingLabel={pt('deleteDialog.pending')}
-    cancelLabel={pt('deleteDialog.cancel')}
-    pending={pending}
-    errorMessage={errorMessage}
-    onConfirm={onConfirm}
-    onCancel={onCancel}
-  />
-);
+}>) => {
+  const ct = usePluginTranslation('content');
+  return (
+    <StudioDestructiveActionDialog
+      open={open}
+      linkedContent={
+        contentId
+          ? {
+              basePath: '/api/v1/mainserver/faqs',
+              contentId,
+              actingPrincipalType,
+              load: loadMainserverDeletionImpact,
+              translate: ct,
+            }
+          : undefined
+      }
+      title={pt('deleteDialog.title')}
+      description={pt('deleteDialog.description', { target })}
+      confirmLabel={pt('deleteDialog.confirm')}
+      pendingLabel={pt('deleteDialog.pending')}
+      cancelLabel={pt('deleteDialog.cancel')}
+      pending={pending}
+      errorMessage={errorMessage}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
+  );
+};

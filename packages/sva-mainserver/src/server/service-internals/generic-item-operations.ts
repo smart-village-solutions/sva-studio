@@ -96,7 +96,10 @@ export const createGenericItemOperations = (executeGraphqlWithConfig: GraphqlExe
       config
     );
 
-    return mapOptionalGenericItem(response.genericItem);
+    return {
+      ...mapOptionalGenericItem(response.genericItem),
+      deletionImpact: response.contentDeletionImpact ?? undefined,
+    };
   },
 
   writeGenericItemWithConfig: async (
@@ -122,7 +125,10 @@ export const createGenericItemOperations = (executeGraphqlWithConfig: GraphqlExe
   },
 
   destroyGenericItemWithConfig: async (
-    input: SvaMainserverConnectionInput & { readonly genericItemId: string },
+    input: SvaMainserverConnectionInput & {
+      readonly genericItemId: string;
+      readonly detachLinkedContent?: boolean;
+    },
     config: SvaMainserverInstanceConfig
   ): Promise<{ readonly id: string }> => {
     const response = await executeGraphqlWithConfig<SvaMainserverDestroyRecordMutation>(
@@ -130,16 +136,23 @@ export const createGenericItemOperations = (executeGraphqlWithConfig: GraphqlExe
         ...input,
         document: svaMainserverDestroyRecordDocument,
         operationName: 'SvaMainserverDestroyRecord',
-        variables: { id: input.genericItemId, recordType: 'GenericItem' },
+        variables: {
+          id: input.genericItemId,
+          recordType: 'GenericItem',
+          ...(input.detachLinkedContent ? { detachLinkedContent: true } : {}),
+        },
       },
       config
     );
 
     if (!response.destroyRecord || (response.destroyRecord.statusCode ?? 200) >= 400) {
       throw toSvaMainserverError({
-        code: 'invalid_response',
+        code:
+          response.destroyRecord?.statusCode === 409
+            ? 'linked_content_confirmation_required'
+            : 'invalid_response',
         message: 'SVA-Mainserver konnte das Generic Item nicht löschen.',
-        statusCode: 502,
+        statusCode: response.destroyRecord?.statusCode === 409 ? 409 : 502,
       });
     }
 

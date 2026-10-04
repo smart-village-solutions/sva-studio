@@ -88,7 +88,10 @@ export const changeSvaMainserverNewsVisibility = (
 ) => getDefaultService().changeNewsVisibility(input);
 
 export const deleteSvaMainserverNews = (
-  input: SvaMainserverConnectionInput & { readonly newsId: string }
+  input: SvaMainserverConnectionInput & {
+    readonly newsId: string;
+    readonly detachLinkedContent?: boolean;
+  }
 ) => getDefaultService().deleteNews(input);
 
 export const listSvaMainserverEvents = (
@@ -119,7 +122,10 @@ export const changeSvaMainserverEventVisibility = (
 ) => getDefaultService().changeEventVisibility(input);
 
 export const deleteSvaMainserverEvent = (
-  input: SvaMainserverConnectionInput & { readonly eventId: string }
+  input: SvaMainserverConnectionInput & {
+    readonly eventId: string;
+    readonly detachLinkedContent?: boolean;
+  }
 ) => getDefaultService().deleteEvent(input);
 
 export const listSvaMainserverPoi = (
@@ -153,7 +159,10 @@ export const updateSvaMainserverGenericItem = (
 ) => getDefaultService().updateGenericItem(input);
 
 export const deleteSvaMainserverGenericItem = (
-  input: SvaMainserverConnectionInput & { readonly genericItemId: string }
+  input: SvaMainserverConnectionInput & {
+    readonly genericItemId: string;
+    readonly detachLinkedContent?: boolean;
+  }
 ) => getDefaultService().deleteGenericItem(input);
 
 export const getSvaMainserverPoi = (
@@ -176,7 +185,10 @@ export const updateSvaMainserverPoi = (
 ) => getDefaultService().updatePoi(input);
 
 export const deleteSvaMainserverPoi = (
-  input: SvaMainserverConnectionInput & { readonly poiId: string }
+  input: SvaMainserverConnectionInput & {
+    readonly poiId: string;
+    readonly detachLinkedContent?: boolean;
+  }
 ) => getDefaultService().deletePoi(input);
 
 export const transferSvaMainserverContentOwnership = (input: SvaMainserverOwnershipTransferInput) =>

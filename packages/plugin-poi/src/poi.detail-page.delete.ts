@@ -24,12 +24,14 @@ export const usePoiDetailDelete = ({
   const [deletePending, setDeletePending] = React.useState(false);
   const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
-  const remove = async () => {
+  const remove = async (detachLinkedContent = false) => {
     if (!contentId || deletePending) return;
     setDeleteErrorMessage(null);
     setDeletePending(true);
     try {
-      await deletePoi(contentId, actingPrincipalType);
+      await (detachLinkedContent
+        ? deletePoi(contentId, actingPrincipalType, true)
+        : deletePoi(contentId, actingPrincipalType));
     } catch (deleteError) {
       setDeleteErrorMessage(
         deleteError instanceof PoiApiError ? deleteError.message : pt('messages.deleteError')

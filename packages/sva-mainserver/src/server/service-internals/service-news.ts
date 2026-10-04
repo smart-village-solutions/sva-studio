@@ -66,7 +66,12 @@ export const createNewsService = ({
     return newsOperations.writeNewsWithConfig({ ...input, forceCreate: false }, config);
   };
 
-  const deleteNews = async (input: SvaMainserverConnectionInput & { readonly newsId: string }) => {
+  const deleteNews = async (
+    input: SvaMainserverConnectionInput & {
+      readonly newsId: string;
+      readonly detachLinkedContent?: boolean;
+    }
+  ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return newsOperations.destroyNewsWithConfig(input, config);
   };

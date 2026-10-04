@@ -31,7 +31,8 @@
     "concepts/konzeption-cms-v2/**",
     "deploy/keycloak/themes/**",
     "packages/plugin-example/**",
-    "tooling/quality/**"
+    "tooling/quality/**",
+    ".agents/**"
   ],
   "boundaries": {
     "zones": [

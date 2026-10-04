@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUsers } from './use-users';
 
@@ -92,6 +92,8 @@ describe('useUsers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  afterEach(cleanup);
 
   it('loads users and supports create/deactivate operations', async () => {
     listUsersMock.mockResolvedValue({

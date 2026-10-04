@@ -25,7 +25,7 @@ Beispiel:
 Verbindliche Regeln:
 
 - ein Eintrag für die aktuelle PR ist bei erkennbarer Nutzerwirkung erforderlich
-- ältere Changelog-Dateien dürfen im selben PR zusätzlich ergänzt oder überarbeitet werden
+- ältere Changelog-Dateien dürfen im selben PR ergänzt, überarbeitet oder bei fehlendem Nutzerbezug entfernt werden
 - `prNumber` muss zur PR-Nummer passen
 - `body` darf nicht leer sein
 - `body` ist ein Nutzertext, kein interner Technikvermerk
@@ -55,7 +55,7 @@ Minimaltext angelegt.
 
 Ein dediziertes GitHub-Action-Gate prüft:
 
-- im PR: alle geänderten Einträge; ein PR ohne Eintrag besteht dieses Gate
+- im PR: alle noch vorhandenen geänderten Einträge; ein PR ohne Eintrag besteht dieses Gate
 - der aktuelle Eintrag muss zur PR-Nummer passen; zusätzliche Änderungen an
   älteren Einträgen sind erlaubt
 - auf `main`: den gesamten Eintragskatalog

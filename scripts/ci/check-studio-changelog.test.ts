@@ -91,6 +91,26 @@ describe('check-studio-changelog', () => {
     })).toBeNull();
   });
 
+  it('allows removal of an older technical entry while validating the current entry', () => {
+    expect(validateStudioChangelogPullRequest({
+      changedFiles: [
+        'docs/changelog/entries/pr-410.json',
+        'docs/changelog/entries/pr-412.json',
+      ],
+      expectedPrNumber: 412,
+      fileExists: (filePath) => filePath !== 'docs/changelog/entries/pr-410.json',
+      readFile: (filePath) => {
+        if (filePath !== 'docs/changelog/entries/pr-412.json') {
+          throw new Error(`unexpected file read: ${filePath}`);
+        }
+        return JSON.stringify({ prNumber: 412, body: 'Neuer Nutzertext' });
+      },
+    })).toEqual({
+      entryPath: 'docs/changelog/entries/pr-412.json',
+      entry: { prNumber: 412, body: 'Neuer Nutzertext' },
+    });
+  });
+
   it('validates an older entry even when the current PR has no entry', () => {
     expect(() => validateStudioChangelogPullRequest({
       changedFiles: ['docs/changelog/entries/pr-410.json'],

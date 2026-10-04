@@ -10,6 +10,6 @@
 
 ## 3. Draft-PR und Betrieb
 
-- [x] 3.1 Branch/Commit/Push, Draft-PR, Changelog-Datei, `local-llm`-Label und finale SHA-gebundene GitHub-Gates hinzufügen; Fehlpfade testen.
+- [ ] 3.1 Branch/Commit/Push, Draft-PR, Changelog-Datei, `local-llm`-Label und finale SHA-gebundene GitHub-Gates hinzufügen; Fehlpfade testen.
 - [x] 3.2 Z640 mit eigenem GitHub-Zugang einrichten, alten Home-Verzeichnis-Befehl entfernen und einen begrenzten End-to-End-Lauf nachweisen.
 - [x] 3.3 Die aktuelle Fallow-Agent-Dokumentation um Start, Ergebnisort, Stopbedingungen und manuelle Review-Grenze ergänzen.

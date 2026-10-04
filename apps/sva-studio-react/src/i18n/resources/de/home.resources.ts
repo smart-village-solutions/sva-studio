@@ -46,7 +46,7 @@ export const homeDEResources = {
   changelog: {
     title: 'Letzte Änderungen',
     description:
-      'Hier sehen Sie die zuletzt in das Studio übernommenen Verbesserungen und Korrekturen direkt nach dem Merge nach main.',
+      'Hier sehen Sie Verbesserungen und Korrekturen, die mit dieser Studio-Version ausgeliefert wurden.',
     loading: 'Letzte Änderungen werden geladen ...',
     empty: 'Noch keine Änderungen verfügbar.',
     error: 'Die letzten Änderungen konnten gerade nicht geladen werden.',

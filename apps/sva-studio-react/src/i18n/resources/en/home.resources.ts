@@ -45,7 +45,7 @@ export const homeENResources = {
   changelog: {
     title: 'Latest changes',
     description:
-      'See the most recent Studio improvements and fixes here immediately after they are merged into main.',
+      'See improvements and fixes delivered with this Studio release.',
     loading: 'Latest changes are loading ...',
     empty: 'No changes are available yet.',
     error: 'The latest changes could not be loaded right now.',

@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { loadMainserverDeletionImpact, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   addStudioDestructiveNavigationFeedback,
+  StudioDestructiveActionDialog,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
 import { deleteNews } from './news.api.js';
@@ -61,4 +63,60 @@ export const useNewsDetailDelete = ({
     deleteErrorMessage,
     setDeleteErrorMessage,
   };
+};
+
+export const NewsDetailDeleteDialog = ({
+  contentId,
+  actingPrincipalType,
+  pt,
+  title,
+  deleteLabel,
+  deleteDialogOpen,
+  deletePending,
+  deleteErrorMessage,
+  onDelete,
+  setDeleteErrorMessage,
+  setDeleteDialogOpen,
+}: Readonly<{
+  contentId?: string;
+  actingPrincipalType: MainserverPrincipalType;
+  pt: PluginTranslator;
+  title: string;
+  deleteLabel: string;
+  deleteDialogOpen: boolean;
+  deletePending: boolean;
+  deleteErrorMessage: string | null;
+  onDelete: (detachLinkedContent?: boolean) => Promise<void>;
+  setDeleteErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}>) => {
+  const ct = usePluginTranslation('content');
+  return (
+    <StudioDestructiveActionDialog
+      open={deleteDialogOpen}
+      linkedContent={
+        contentId
+          ? {
+              basePath: '/api/v1/mainserver/news',
+              contentId,
+              actingPrincipalType,
+              load: loadMainserverDeletionImpact,
+              translate: ct,
+            }
+          : undefined
+      }
+      title={pt('actions.deleteConfirmTitle')}
+      description={pt('actions.deleteConfirm', { title })}
+      confirmLabel={deleteLabel}
+      pendingLabel={pt('actions.deleting')}
+      cancelLabel={pt('actions.back')}
+      pending={deletePending}
+      errorMessage={deleteErrorMessage}
+      onConfirm={(detachLinkedContent) => void onDelete(detachLinkedContent)}
+      onCancel={() => {
+        setDeleteErrorMessage(null);
+        setDeleteDialogOpen(false);
+      }}
+    />
+  );
 };

@@ -1,17 +1,12 @@
 import React from 'react';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link, type NavigateFn } from '@tanstack/react-router';
-import {
-  loadMainserverDeletionImpact,
-  usePluginTranslation,
-  resolveStandardContentAccessCapabilities,
-} from '@sva/plugin-sdk';
+import { usePluginTranslation, resolveStandardContentAccessCapabilities } from '@sva/plugin-sdk';
 import {
   Button,
   ContentOwnershipSaveHint,
   createStudioMediaPickerLabels,
   StudioDetailPageTemplate,
-  StudioDestructiveActionDialog,
   StudioFormSummary,
   StudioPersistentActionResult,
   MainserverDeviationSummary,
@@ -24,6 +19,7 @@ import {
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import type { PoiDetailFormValues } from './poi.detail-form.js';
+import { PoiDeleteDialog } from './poi.detail-page.delete.js';
 import type { PoiDetailTabDefinition, PoiDetailTabId } from './poi.detail-tabs.js';
 import { usePoiDetailMedia } from './poi.detail-page.media.js';
 import type { PoiStatusMessage } from './poi.detail-page.save.js';
@@ -150,52 +146,6 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
       </StudioDetailPageTemplate>
       <PoiDeleteDialog view={view} />
     </FormProvider>
-  );
-}
-
-function PoiDeleteDialog({ view }: Readonly<{ view: PoiDetailPageViewModel }>) {
-  const ct = usePluginTranslation('content');
-  const {
-    deleteDialogOpen,
-    pt,
-    methods,
-    deletePending,
-    deleteErrorMessage,
-    remove,
-    setDeleteErrorMessage,
-    setDeleteDialogOpen,
-    contentId,
-    actingPrincipalType,
-  } = view;
-  return (
-    <StudioDestructiveActionDialog
-      open={deleteDialogOpen}
-      linkedContent={
-        contentId
-          ? {
-              basePath: '/api/v1/mainserver/poi',
-              contentId,
-              actingPrincipalType,
-              load: loadMainserverDeletionImpact,
-              translate: ct,
-            }
-          : undefined
-      }
-      title={pt('actions.deleteConfirmTitle')}
-      description={pt('actions.deleteConfirm', {
-        title: methods.getValues('name') || pt('detail.editTitle'),
-      })}
-      confirmLabel={pt('actions.delete')}
-      pendingLabel={pt('actions.deleting')}
-      cancelLabel={pt('actions.back')}
-      pending={deletePending}
-      errorMessage={deleteErrorMessage}
-      onConfirm={(detachLinkedContent) => void remove(detachLinkedContent)}
-      onCancel={() => {
-        setDeleteErrorMessage(null);
-        setDeleteDialogOpen(false);
-      }}
-    />
   );
 }
 

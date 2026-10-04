@@ -3,15 +3,12 @@ import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { Link } from '@tanstack/react-router';
 import {
   type HostMediaAssetListItem,
-  loadMainserverDeletionImpact,
   resolveStandardContentAccessCapabilities,
-  usePluginTranslation,
 } from '@sva/plugin-sdk';
 import {
   Button,
   ContentOwnershipSaveHint,
   StudioDetailPageTemplate,
-  StudioDestructiveActionDialog,
   StudioSaveButton,
   createStudioMediaPickerLabels,
   resolveStudioMediaPickerFeedback,
@@ -19,6 +16,7 @@ import {
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import { NewsDetailMediaPicker } from './news.detail-page-media-picker.js';
+import { NewsDetailDeleteDialog } from './news.detail-page-delete.js';
 import { NewsDetailSaveStatus } from './news.detail-page-save-status.js';
 import { NewsDetailTabs } from './news.detail-page-tabs.js';
 import { useNewsDetailMedia } from './news.detail-page-media.js';
@@ -177,7 +175,6 @@ export const NewsDetailPageView = ({
   contentId,
   actingPrincipalType,
 }: NewsDetailPageViewProps) => {
-  const ct = usePluginTranslation('content');
   return (
     <StudioDetailPageTemplate
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
@@ -236,33 +233,18 @@ export const NewsDetailPageView = ({
           <NewsDetailTabs {...{ tabs, activeTab, handleTabChange, warmTab, visitedTabs, pt }} />
         </form>
       </FormProvider>
-      <StudioDestructiveActionDialog
-        open={deleteDialogOpen}
-        linkedContent={
-          contentId
-            ? {
-                basePath: '/api/v1/mainserver/news',
-                contentId,
-                actingPrincipalType,
-                load: loadMainserverDeletionImpact,
-                translate: ct,
-              }
-            : undefined
-        }
-        title={pt('actions.deleteConfirmTitle')}
-        description={pt('actions.deleteConfirm', {
-          title: methods.getValues('title') || pt('editor.editTitle'),
-        })}
-        confirmLabel={deleteLabel}
-        pendingLabel={pt('actions.deleting')}
-        cancelLabel={pt('actions.back')}
-        pending={deletePending}
-        errorMessage={deleteErrorMessage}
-        onConfirm={(detachLinkedContent) => void onDelete(detachLinkedContent)}
-        onCancel={() => {
-          setDeleteErrorMessage(null);
-          setDeleteDialogOpen(false);
-        }}
+      <NewsDetailDeleteDialog
+        contentId={contentId}
+        actingPrincipalType={actingPrincipalType}
+        pt={pt}
+        title={methods.getValues('title') || pt('editor.editTitle')}
+        deleteLabel={deleteLabel}
+        deleteDialogOpen={deleteDialogOpen}
+        deletePending={deletePending}
+        deleteErrorMessage={deleteErrorMessage}
+        onDelete={onDelete}
+        setDeleteErrorMessage={setDeleteErrorMessage}
+        setDeleteDialogOpen={setDeleteDialogOpen}
       />
     </StudioDetailPageTemplate>
   );

@@ -1443,7 +1443,8 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
       unter `archive/2026-10-04-refactor-file-length-backlog`. Die strikte
       Gesamtvalidierung bestand für 79 Einträge. Ein Merge von PR 36 wird
       damit nicht vorweggenommen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
-      `prNumber` und nutzerverständlichem `body` in PR 36 anlegen;
-      Changelog-Gate vor Merge grün.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1730.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1730 angelegt;
+      `pnpm check:studio-changelog` am PR-Stand grün. Der Haken belegt
+      keinen Merge von PR #1730.

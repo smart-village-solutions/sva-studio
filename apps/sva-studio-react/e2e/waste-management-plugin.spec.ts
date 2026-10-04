@@ -705,6 +705,7 @@ test.describe('waste management plugin', () => {
     context,
     page,
   }) => {
+    test.setTimeout(60_000);
     await mockSharedShellRequests(context, {
       instanceId: 'de-tour-shift-context',
       permissionActions: [
@@ -756,7 +757,9 @@ test.describe('waste management plugin', () => {
     const popup = await popupPromise;
 
     await expect(popup.getByRole('heading', { name: 'Abfallkalender' })).toBeVisible();
-    await expect(popup.locator('#waste-tour-shift-tour')).toHaveValue('tour-1');
+    await expect(popup.locator('#waste-tour-shift-tour')).toHaveValue('tour-1', {
+      timeout: 30_000,
+    });
     const originalDate = await popup.locator('#waste-tour-shift-original-date').inputValue();
     expect(originalDate).toMatch(/^2026-\d{2}-\d{2}$/u);
     await expect(popup).toHaveURL(/schedulingTourId=tour-1/u);

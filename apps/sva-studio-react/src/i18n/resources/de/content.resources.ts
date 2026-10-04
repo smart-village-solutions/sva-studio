@@ -180,7 +180,6 @@ export const contentDEResources = {
     organization: 'Organisation',
     verificationRequired:
       'Die DataProvider-Zuordnung wird beim bestätigten Transfer sicher geprüft.',
-    saveKeepsOwner: 'Normales Speichern ändert den Inhaber nicht.',
     transferUnavailable: 'Die Übertragung ist für diesen Inhaltstyp noch nicht verfügbar.',
     transferForbidden: 'Du kannst diesen Inhalt bearbeiten, aber nicht übertragen.',
     transferAction: 'Inhalt übertragen',

@@ -1,5 +1,4 @@
 import {
-  ContentOwnershipSaveHint,
   MainserverPrincipalControl,
   StudioDetailPageTemplate,
   StudioFormSummary,
@@ -80,7 +79,6 @@ const FaqEditorPrimaryAction = ({
 >) =>
   canSave ? (
     <div className="flex flex-col items-end gap-1">
-      <ContentOwnershipSaveHint />
       <StudioSaveButton
         type="submit"
         form={formId}

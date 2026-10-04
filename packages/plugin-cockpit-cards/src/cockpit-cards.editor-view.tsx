@@ -1,7 +1,6 @@
 import { loadMainserverDeletionImpact, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
-  ContentOwnershipSaveHint,
   MainserverPrincipalControl,
   StudioDestructiveActionDialog,
   StudioDetailPageTemplate,
@@ -93,7 +92,6 @@ function EditorPrimaryAction({ view }: { view: EditorViewProps }) {
   const { canSave, pt, mode, deletePending, saveFeedback, mediaSavePhaseKey } = view;
   return canSave ? (
     <div className="flex flex-col items-end gap-1">
-      <ContentOwnershipSaveHint />
       <StudioSaveButton
         type="submit"
         form={`cockpit-card-${mode}-form`}

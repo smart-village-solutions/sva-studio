@@ -67,7 +67,6 @@ export function ContentOwnershipPanel({
           ) : null}
         </p>
         <OwnerResolutionHint owner={currentOwner} labels={labels} />
-        <p className="text-sm text-muted-foreground">{labels.saveKeepsOwner}</p>
       </div>
       {success ? (
         <p className="text-sm text-primary" role="status">

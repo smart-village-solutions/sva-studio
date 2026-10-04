@@ -314,9 +314,7 @@ describe('ContentEditorPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Bisheriger Account')).toBeTruthy();
     });
-    expect(
-      screen.getAllByText('Normales Speichern ändert den Inhaber nicht.').length
-    ).toBeGreaterThan(1);
+    expect(screen.queryByText('Normales Speichern ändert den Inhaber nicht.')).toBeNull();
     fireEvent.click(await screen.findByRole('button', { name: 'Inhalt übertragen' }));
     fireEvent.click(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
     await waitFor(() => expect(screen.getByText('Neuer Account')).toBeTruthy());

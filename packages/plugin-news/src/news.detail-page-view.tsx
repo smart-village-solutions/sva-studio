@@ -7,7 +7,6 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
-  ContentOwnershipSaveHint,
   StudioDetailPageTemplate,
   StudioSaveButton,
   createStudioMediaPickerLabels,
@@ -99,7 +98,6 @@ const createNewsDetailPageActions = ({
 >) => ({
   primaryAction: canSave ? (
     <div className="flex flex-col items-end gap-1">
-      <ContentOwnershipSaveHint />
       <StudioSaveButton
         type="submit"
         form={formId}

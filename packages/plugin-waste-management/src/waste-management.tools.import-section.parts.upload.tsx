@@ -44,8 +44,8 @@ const WasteToolsDelimiterField = ({
         }
       >
         <option value="">{pt('tools.imports.delimiterAuto')}</option>
-        <option value=";">Semikolon (;)</option>
-        <option value=",">Komma (,)</option>
+        <option value=";">{pt('tools.imports.delimiterSemicolon')}</option>
+        <option value=",">{pt('tools.imports.delimiterComma')}</option>
         <option value={'\t'}>Tab</option>
         <option value="|">Pipe (|)</option>
       </Select>

@@ -29,6 +29,9 @@ describe('waste-management translation builders', () => {
     expect(paths(wasteManagementPluginTranslationsDEScheduling)).toEqual(
       paths(wasteManagementPluginTranslationsENScheduling)
     );
+    expect(paths(wasteManagementPluginTranslationsDETools)).toEqual(
+      paths(wasteManagementPluginTranslationsENTools)
+    );
   });
 
   it('builds tab translations with the canonical section structure', () => {

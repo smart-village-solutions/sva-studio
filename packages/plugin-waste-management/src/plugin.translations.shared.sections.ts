@@ -71,6 +71,8 @@ type WasteManagementToolsCopy = Readonly<{
     sourceFormatLabel: string;
     delimiterLabel: string;
     delimiterAuto: string;
+    delimiterSemicolon: string;
+    delimiterComma: string;
     sourceFormats: Readonly<Record<string, string>>;
     dryRunLabel: string;
     templateColumns: string;

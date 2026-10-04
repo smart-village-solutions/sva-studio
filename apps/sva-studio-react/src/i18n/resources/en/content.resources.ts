@@ -175,7 +175,6 @@ export const contentENResources = {
     organization: 'Organization',
     verificationRequired:
       'The DataProvider assignment will be verified securely when the transfer is confirmed.',
-    saveKeepsOwner: 'Normal saving does not change the owner.',
     transferUnavailable: 'Ownership transfer is not yet available for this content type.',
     transferForbidden: 'You can edit this content, but you cannot transfer it.',
     transferAction: 'Transfer content',

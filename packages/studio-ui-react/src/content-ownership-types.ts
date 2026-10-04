@@ -15,7 +15,6 @@ export type ContentOwnershipPanelLabels = Readonly<{
   account: string;
   organization: string;
   verificationRequired: string;
-  saveKeepsOwner: string;
   transferUnavailable: string;
   transferForbidden: string;
   transferAction: string;

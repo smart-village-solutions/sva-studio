@@ -4,7 +4,6 @@ import { Link, type NavigateFn } from '@tanstack/react-router';
 import { usePluginTranslation, resolveStandardContentAccessCapabilities } from '@sva/plugin-sdk';
 import {
   Button,
-  ContentOwnershipSaveHint,
   createStudioMediaPickerLabels,
   StudioDetailPageTemplate,
   StudioFormSummary,
@@ -100,7 +99,6 @@ export function PoiDetailPageView({ view }: Readonly<{ view: PoiDetailPageViewMo
         primaryAction={
           canSave ? (
             <div className="flex flex-col items-end gap-1">
-              <ContentOwnershipSaveHint />
               <StudioSaveButton
                 type="submit"
                 form={formId}

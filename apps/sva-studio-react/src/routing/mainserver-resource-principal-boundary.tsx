@@ -165,11 +165,8 @@ export const MainserverResourcePrincipalBoundary = ({
       }}
     />
   );
-  const saveHint = (
-    <p className="text-sm text-muted-foreground">{t('content.ownership.saveKeepsOwner')}</p>
-  );
   return (
-    <ContentOwnershipSlotsProvider value={{ panel, saveHint }}>
+    <ContentOwnershipSlotsProvider value={{ panel }}>
       {children(resolution.control)}
     </ContentOwnershipSlotsProvider>
   );

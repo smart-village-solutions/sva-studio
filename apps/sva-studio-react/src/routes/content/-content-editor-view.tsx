@@ -201,24 +201,17 @@ export const ContentEditorView = ({
           mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')
         }
         primaryAction={
-          <div className="space-y-1 text-right">
-            <StudioSaveButton
-              type="submit"
-              form={formId}
-              status={saveFeedback.status}
-              disabled={submitDisabled}
-              labels={{
-                idle: primaryActionLabel,
-                saving: t('account.actions.saving'),
-                saved: t('account.actions.saved'),
-              }}
-            />
-            {mode === 'edit' ? (
-              <p className="max-w-xs text-xs text-muted-foreground">
-                {t('content.ownership.saveKeepsOwner')}
-              </p>
-            ) : null}
-          </div>
+          <StudioSaveButton
+            type="submit"
+            form={formId}
+            status={saveFeedback.status}
+            disabled={submitDisabled}
+            labels={{
+              idle: primaryActionLabel,
+              saving: t('account.actions.saving'),
+              saved: t('account.actions.saved'),
+            }}
+          />
         }
       >
         <ContentEditorFeedback

@@ -1,10 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import {
-  Button,
-  ContentOwnershipSaveHint,
-  StudioDetailPageTemplate,
-  StudioSaveButton,
-} from '@sva/studio-ui-react';
+import { Button, StudioDetailPageTemplate, StudioSaveButton } from '@sva/studio-ui-react';
 import {
   GenericItemsMediaPickerView,
   GenericItemsStatusView,
@@ -81,7 +76,6 @@ export const GenericItemsDetailPageView = ({
       primaryAction={
         canSave ? (
           <div className="flex flex-col items-end gap-1">
-            <ContentOwnershipSaveHint />
             <StudioSaveButton
               type="button"
               status={saveFeedback.status}

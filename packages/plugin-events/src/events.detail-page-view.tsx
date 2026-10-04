@@ -3,7 +3,6 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { resolveStandardContentAccessCapabilities, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
-  ContentOwnershipSaveHint,
   StudioDetailPageTemplate,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -62,7 +61,6 @@ const EventsDetailSaveAction = ({
   pt,
 }: EventsDetailPageViewProps) => (
   <div className="flex flex-col items-end gap-1">
-    <ContentOwnershipSaveHint />
     <StudioSaveButton
       type="submit"
       form={formId}

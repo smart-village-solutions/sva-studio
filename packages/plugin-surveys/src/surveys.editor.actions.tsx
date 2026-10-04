@@ -1,10 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import {
-  Button,
-  ContentOwnershipSaveHint,
-  StudioSaveButton,
-  type StudioSaveStatus,
-} from '@sva/studio-ui-react';
+import { Button, StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
 
 import { type SurveyEditorMode } from './surveys.editor.shared.js';
 
@@ -37,7 +32,6 @@ export function SurveyEditorPrimaryAction({
 }>) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <ContentOwnershipSaveHint />
       <StudioSaveButton
         type="submit"
         form={formId}

@@ -7,7 +7,6 @@ export {
 } from './content-ownership-panel.js';
 export {
   ContentOwnershipPanelSlot,
-  ContentOwnershipSaveHint,
   ContentOwnershipSlotsProvider,
   type ContentOwnershipSlots,
 } from './content-ownership-slots.js';

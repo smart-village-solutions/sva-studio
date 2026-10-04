@@ -333,7 +333,6 @@ export const ContentEditorPage = ({
             account: t('content.ownership.account'),
             organization: t('content.ownership.organization'),
             verificationRequired: t('content.ownership.verificationRequired'),
-            saveKeepsOwner: t('content.ownership.saveKeepsOwner'),
             transferUnavailable: t('content.ownership.transferUnavailable'),
             transferForbidden: t('content.ownership.transferForbidden'),
             transferAction: t('content.ownership.transferAction'),

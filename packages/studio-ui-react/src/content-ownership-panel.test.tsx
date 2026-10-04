@@ -14,7 +14,6 @@ const labels: ContentOwnershipPanelLabels = {
   account: 'Persönlicher Account',
   organization: 'Organisation',
   verificationRequired: 'DataProvider-Zuordnung wird beim Transfer geprüft.',
-  saveKeepsOwner: 'Normales Speichern ändert den Inhaber nicht.',
   transferUnavailable: 'Nicht verfügbar',
   transferForbidden: 'Nicht berechtigt',
   transferAction: 'Inhalt übertragen',
@@ -294,9 +293,7 @@ describe('ContentOwnershipPanel', () => {
     searchInput.focus();
     fireEvent.keyDown(searchInput, { key: 'Escape' });
     expect(screen.queryByRole('listbox')).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('combobox', { name: /^Neuer Inhaber/u })
-    );
+    expect(document.activeElement).toBe(screen.getByRole('combobox', { name: /^Neuer Inhaber/u }));
   });
 
   it('continues past an empty filtered page to find available targets', async () => {

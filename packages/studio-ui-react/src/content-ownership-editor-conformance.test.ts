@@ -52,12 +52,12 @@ const editors = [
 
 describe('content ownership editor conformance', () => {
   for (const editor of editors) {
-    it(`${editor.name} registers exactly one first-tab panel and one save hint`, () => {
+    it(`${editor.name} registers exactly one first-tab panel without a save hint`, () => {
       const panelSource = workspaceFile(editor.panel);
       const actionSource = workspaceFile(editor.actions);
 
       expect(count(panelSource, '<ContentOwnershipPanelSlot />')).toBe(1);
-      expect(count(actionSource, '<ContentOwnershipSaveHint />')).toBe(1);
+      expect(actionSource).not.toContain('ContentOwnershipSaveHint');
     });
   }
 
@@ -66,9 +66,7 @@ describe('content ownership editor conformance', () => {
       'apps/sva-studio-react/src/routing/mainserver-resource-principal-boundary.tsx'
     );
 
-    expect(boundary).toMatch(
-      /enabledActions\.includes\(\s*'content\.transferOwnership'\s*\)/u
-    );
+    expect(boundary).toMatch(/enabledActions\.includes\(\s*'content\.transferOwnership'\s*\)/u);
     expect(boundary).toContain('supported={transferSupported && transferCapabilityConfirmed}');
     expect(boundary).toContain('canTransfer={transferAuthorized}');
   });

@@ -1,7 +1,6 @@
 import { usePluginTranslation, type HostMediaAssetListItem } from '@sva/plugin-sdk';
 import {
   Button,
-  ContentOwnershipSaveHint,
   MainserverPrincipalControl,
   resolveMainserverPrincipalOptions,
   StudioDetailPageTemplate,
@@ -193,7 +192,6 @@ export function ProjectEditorView({ state, deletion, media, ...base }: Controlle
       primaryAction={
         canSave ? (
           <div className="flex flex-col items-end gap-1">
-            <ContentOwnershipSaveHint />
             <StudioSaveButton
               type="submit"
               form={formId}

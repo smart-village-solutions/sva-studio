@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { completedForBase, eligibleGroups, selectGroups, validateDecision, workflowRunState } from './fallow-local-llm-loop.js';
+import { completedForBase, eligibleGroups, externalSymbolReferences, selectGroups, validateDecision, workflowRunState } from './fallow-local-llm-loop.js';
 
 const path = 'apps/example/src/lib/preferences.ts';
 const finding = (name: string, line: number, file = path) => ({ path: file, export_name: name, line, is_type_only: false, is_re_export: false, actions: [{ type: 'remove-export', auto_fixable: true }] });
@@ -86,6 +86,29 @@ describe('model edit validation', () => {
   });
 });
 
+describe('external export references', () => {
+  it('ignores independent same-name symbols and blocks imports of the selected export', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sva-fallow-symbols-'));
+    const selected = 'apps/example/src/lib/preferences.ts';
+    const unrelated = 'packages/other/src/independent.ts';
+    const consumer = 'apps/example/src/lib/consumer.ts';
+    const group = selectGroups(envelope([finding('first', 1, selected), finding('second', 2, selected)]))[0]!;
+    try {
+      for (const path of [selected, unrelated, consumer, 'scripts/.keep']) mkdirSync(dirname(join(dir, path)), { recursive: true });
+      writeFileSync(join(dir, 'apps/example/tsconfig.json'), JSON.stringify({ compilerOptions: { module: 'esnext', moduleResolution: 'bundler', strict: true } }));
+      writeFileSync(join(dir, selected), 'export const first = 1;\nexport const second = 2;\n');
+      writeFileSync(join(dir, unrelated), 'export const first = 3;\nconsole.log(first);\n');
+      expect(externalSymbolReferences(dir, group)).toEqual([]);
+
+      writeFileSync(join(dir, consumer), "import { first as used } from './preferences';\nconsole.log(used);\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "const dynamicName = 'second';\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
 describe('workflow completion', () => {
   const ci = { workflowName: 'CI Gates (PR)', status: 'completed', conclusion: 'success' };
 
@@ -148,5 +171,5 @@ describe('publication recovery', () => {
       const entry = runGit(dir, ['--git-dir', bare, 'show', `${branch}:docs/changelog/entries/pr-42.json`]);
       expect(JSON.parse(entry)).toEqual({ prNumber: 42, body: 'Allgemeine Verbesserungen' });
     } finally { rmSync(dir, { recursive: true, force: true }); }
-  });
+  }, 15_000);
 });

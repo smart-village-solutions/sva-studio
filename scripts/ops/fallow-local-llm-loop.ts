@@ -6,6 +6,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 type Finding = { path: string; export_name: string; line: number; is_type_only: boolean; is_re_export: boolean; actions: { type: string; auto_fixable: boolean }[] };
 type Group = { id: string; project: string; path: string; findings: Finding[] };
@@ -100,6 +101,46 @@ function scan(cwd: string): { kind: string; unused_exports: Finding[] } {
   const value = JSON.parse(raw);
   if (value.error || value.kind !== 'dead-code') throw new Error('Fallow scan failed');
   return value;
+}
+
+export function externalSymbolReferences(cwd: string, group: Group): string[] {
+  const names = new Set(group.findings.map((finding) => finding.export_name));
+  const matches = new Set(group.findings.flatMap((finding) =>
+    command(cwd, 'rg', ['-l', '-w', '-F', finding.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean)
+  ));
+  matches.delete(group.path);
+  if (!matches.size) return [];
+
+  const configPath = join(cwd, 'apps', group.project, 'tsconfig.json');
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (config.error) throw new Error(`Cannot read TypeScript config for ${group.project}`);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(configPath));
+  if (parsed.errors.length) throw new Error(`Cannot parse TypeScript config for ${group.project}`);
+  const program = ts.createProgram([group.path, ...matches].map((path) => join(cwd, path)), parsed.options);
+  const checker = program.getTypeChecker();
+  const target = program.getSourceFile(join(cwd, group.path));
+  const module = target && checker.getSymbolAtLocation(target);
+  if (!module) throw new Error(`Cannot resolve export module ${group.path}`);
+  const unalias = (symbol: ts.Symbol): ts.Symbol => symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+  const exports = new Map(checker.getExportsOfModule(module).map((symbol) => [symbol.name, unalias(symbol)]));
+  if ([...names].some((name) => !exports.has(name))) throw new Error(`Cannot resolve selected exports in ${group.path}`);
+
+  return [...matches].filter((path) => {
+    const source = program.getSourceFile(join(cwd, path));
+    if (!source) return true;
+    let referenced = false;
+    const visit = (node: ts.Node): void => {
+      if (ts.isIdentifier(node) && names.has(node.text)) {
+        const symbol = checker.getSymbolAtLocation(node);
+        if (!symbol || unalias(symbol) === exports.get(node.text)) referenced = true;
+      } else if (ts.isStringLiteralLike(node) && names.has(node.text)) {
+        referenced = true;
+      }
+      if (!referenced) ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return referenced;
+  });
 }
 
 async function askModel(group: Group, files: Map<string, string>): Promise<Decision> {
@@ -260,11 +301,8 @@ export async function runGroup(group: Group, base: string): Promise<boolean> {
       let changed: Map<string, string>;
       try { changed = validateDecision(group, decision, files); }
       catch (error) { throw new RejectedGroup(String(error)); }
-      // An unused export must not be referenced from any other file, including tests.
-      for (const f of group.findings) {
-        const refs = command(executionWorktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
-        if (refs.some((path) => path !== f.path)) throw new RejectedGroup(`${f.export_name} has external references`);
-      }
+      const refs = externalSymbolReferences(executionWorktree, group);
+      if (refs.length) throw new RejectedGroup(`Selected exports have external references: ${refs.join(', ')}`);
       writeFileSync(join(executionWorktree, group.path), changed.get(group.path)!);
       command(executionWorktree, 'git', ['diff', '--check']);
       const delta = command(executionWorktree, 'git', ['diff', '--numstat']);

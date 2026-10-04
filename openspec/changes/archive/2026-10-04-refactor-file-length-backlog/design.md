@@ -620,6 +620,45 @@ Cockpit-Cards und Projects prüfen diese Verträge vor und nach dem Schnitt;
 Type-, Lint-, Server-Runtime- und vollständiges Complexity-Gate prüfen die
 Paketgrenze und die fünf beseitigten `fileLines`-Befunde.
 
+### PR 28: Mainserver-Service und interne Typen
+
+`service.ts` behält die öffentliche API und delegiert die bestehende
+Komposition an private Module für Verbindung, Diagnostik, Kategorien,
+Content-Operationen sowie Surveys und Waste. `types.ts` erhält die bisherigen
+öffentlichen Namen und trennt die Typen nach Domäne. Der Interface-Vertrag
+trennt Lese- und Speicherpfad samt gemeinsamer Validierung;
+`mappers-shared.ts` behält seine bisherigen Exporte und verteilt Schemas und
+Mapper auf interne Module. Relative Runtime-Imports verwenden `.js`.
+Service-, Interface- und Mapping-Tests prüfen die bestehenden Rückgaben,
+Fehler und Reihenfolgen; Type-, Lint-, Server-Runtime- und Complexity-Gates
+prüfen die Paketgrenze und die vier `fileLines`-Befunde.
+
+### PR 29: Öffentliche Waste-Daten und Reminder
+
+Die sechs bestehenden Importpfade bleiben Einstiegspunkte. Private Module
+derselben App enthalten Demo-Daten und Feiertagsregeln, Repository-Mapping
+und Reminder-Abfragen, PDF-/iCal-/Reminder-Antworten sowie Signup-,
+Seiten- und Runtime-Schritte. Der Schnitt folgt den bestehenden
+Verantwortungen; er ändert weder öffentliche Typen noch API- oder
+Datenbankverträge. Repository- und Runtime-Tests prüfen Mandantenfilter,
+Terminberechnung, Antwortformate, Transaktionsreihenfolge mit Advisory Lock
+und Subscription-Limit sowie die Fehlerfälle. Type-, Unit-, Lint-, Build-,
+Server-Runtime- und Complexity-Gates prüfen die sechs `fileLines`-Befunde
+und die importierbaren Serverpfade.
+
+### PR 30: Öffentliche Waste-Oberfläche
+
+Die Index-Route behält ihre öffentlichen Exporte und den React-Seitenzustand;
+private Module derselben App lösen Regionsbindung, gespeicherte Auswahl und
+Auswahlschritte auf. Die Kalender-Panels behalten Tab-Zustand,
+Tastatursteuerung und Jahresmeldung; private Presentational-Module zeichnen
+Liste, Monats- und Jahresraster aus den bisherigen Datums- und Zellregeln.
+Bestehende Route- und Panel-Tests prüfen Fail-Closed bei URL-Regionen,
+Cookie-Restore und Reset, Tab-Fokus, Monats-/Jahresnavigation,
+Terminaktivierung und HTML-Sanitization. Type-, Unit-, A11y-, Lint-,
+Build- und Complexity-Gates prüfen die beiden `fileLines`-Befunde und die
+unveränderte öffentliche Oberfläche.
+
 ## Lieferreihenfolge
 
 1. **Pilot:** Je ein begrenzter Schnitt in `packages/server-runtime` und
@@ -634,21 +673,59 @@ Paketgrenze und die fünf beseitigten `fileLines`-Befunde.
    bis 07f, 08a bis 08d, 09a bis 09d, 10a bis 10f, 11a bis 11f, 12a bis
    12d und 13a bis 13f wurden seriell geliefert. Ab PR 23 laufen höchstens
    zwei getrennte Worktrees parallel: Strang A bearbeitet PR 23, PR 24a,
-   PR 24b, PR 25 und PR 26 und danach PR 31 bis PR 34; Strang B
-   bearbeitet PR 27 bis PR 30. PR 29
-   wartet auf den Merge von PR 26. PR 24 wurde nach der ersten
+   PR 24b, PR 25a, PR 25b, PR 26a bis PR 26d und danach PR 31a bis PR 31d
+   sowie PR 32a bis PR 32d;
+   Strang B bearbeitet PR 27 bis PR 30 und nach dem Merge von PR 32a die
+   unabhängigen PR 33 und PR 34. PR 29
+   wartet auf den Merge von PR 26d. PR 24 wurde nach der ersten
    Complexity-Prüfung in zwei fachliche Abschnitte getrennt: PR 24a umfasst
    Import-Wizard, Job-Aktionen und Tourenlogik; PR 24b umfasst die drei
    großen UI-Ansichten für Orte, Zuordnungen und individuelle Termine.
    Die zunächst gemeinsame Extraktion hätte 21 private Module und zwölf
-   neue Complexity-Findings in einem PR erzeugt. Innerhalb jedes Strangs
+   neue Complexity-Findings in einem PR erzeugt. PR 25 ist an der
+   Package-Grenze geteilt: PR 25a bearbeitet vier Vertragsfunktionen für
+   öffentliche Settings, CSV-Import und PDF-Ausgabe; PR 25b bearbeitet
+   vier Runtime-Dateien für HTTP-Validierung und Settings-Handler.
+   Die acht ursprünglichen Ziele umfassen 3.737 Zeilen und haben getrennte
+   Typ-, Unit- und Runtime-Targets. PR 26 ist nach sieben Ziel-Dateien
+   mit zusammen 4.612 Zeilen in vier eigenständig prüfbare Grenzen geteilt:
+   26a Server-Lader, 26b Reminder-Repository, 26c Handler-Komposition und
+   Lesen sowie 26d Operations- und Mutationspfade. PR 29 prüft die erst
+   nach 26d vollständig integrierte Waste-Runtime. Die fünf CI-Gate-Dateien
+   mit zusammen 4.259 Zeilen bilden getrennte CLI-Verträge. PR 31 wird daher
+   seriell in 31a Complexity-Gate, 31b Coverage-Gate, 31c dessen zwei
+   Patch-/New-Code-Verbraucher und 31d Sonar-Hotspots geteilt. Jeder Abschnitt
+   erhält eigene Skript-Tests und behält Exitcodes und Berichtformat bei;
+   PR 31b beginnt erst nach dem Merge von 31a, die folgenden entsprechend.
+   Die fünf Skripte des ursprünglich gemeinsamen PR 32 bilden vier
+   unterschiedliche Prüfgrenzen und zusammen 4.378 Zeilen: PR 32a trennt
+   statische Importprüfung und Dist-Smoke-Check des Server-Runtime-Guards;
+   PR 32b behandelt die beiden gemeinsam genutzten IAM-Nachweis- und
+   Performance-Pfade; PR 32c isoliert den Graphile-Worker-Datenbankvertrag;
+   PR 32d isoliert die große Plugin-Lifecycle-Fallmatrix. Jeder dieser vier
+   PRs erhält seinen eigenen Changelog und zielgerichtete Vertragsprüfungen.
+   Die vorhandenen Live-Credential-Tests für PR 32b werden nur in einer
+   nachweislich sicheren vorhandenen Acceptance-Umgebung ausgeführt; sonst
+   wird die verbleibende Evidenzgrenze ausdrücklich benannt. PR 33 und PR 34
+   ändern weder diese Prüfer noch deren Tests und können nach PR 32a im
+   zweiten Strang seriell bearbeitet werden. Alle Merges und Main-Syncs bleiben
+   einzeln.
+   Innerhalb jedes Strangs
    ist der vorherige Merge
    Voraussetzung für den nächsten Abschnitt. Vor jedem Merge wird der Branch
    gegen das aktuelle `origin/main` synchronisiert und sein neuer exakter
    HEAD vollständig geprüft. Nur ein PR wird zur selben Zeit gemergt.
 4. **Schlusslauf:** Nach allen PRs 23 bis 34 wird der vollständige Scope erneut gemessen.
-   Ein Restbefund wird als konkret benannter weiterer PR-Task ergänzt und
-   abgearbeitet, bevor der Change abgeschlossen wird.
+   Der bisherige Abgleich hat bereits verwaiste `fileLines`-Registereinträge
+   nachgewiesen. PR 35 gleicht deshalb auf integriertem `main` aktuelle
+   Verstöße und Registereinträge nochmals ab, entfernt nur die verwaisten
+   Einträge und belegt null aktuelle Dateilängenverstöße sowie null verwaiste
+   Einträge am exakten HEAD. Ein aktueller Restverstoß wird als konkret
+   benannter weiterer PR-Task ergänzt und abgearbeitet, bevor der Change
+   abgeschlossen wird. PR 35 bringt auch die betroffenen arc42-Abschnitte
+   und die Complexity-Governance-Dokumentation auf den Endstand. Erst nach
+   Integration von PR 35 archiviert PR 36 den vollständig nachgewiesenen
+   Change und erhält einen eigenen Changelog.
 
 ## Regeln für jeden PR-Abschnitt
 

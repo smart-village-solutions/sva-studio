@@ -434,6 +434,61 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('preserves parent provisioning progress when a confirmed plan becomes stale', async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'requested' },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          latestProvisioningRun: { id: 'parent-run-1', status: 'validated' },
+          keycloakPlan: { fingerprint: 'b'.repeat(64), steps: [] },
+          provisioningReadiness: { nextAction: { action: 'instance.keycloak.execute' } },
+        },
+      });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_instance_process',
+      arguments: {
+        mode: 'create',
+        instanceId: 'demo',
+        planFingerprint: confirmedPlanFingerprint,
+        create: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          parentDomain: 'dialog.kassel.de',
+          realmMode: 'new',
+          authRealm: 'demo',
+          authClientId: 'sva-studio-login',
+          ...completeTenantCreateFields,
+        },
+      },
+    });
+
+    expect(response.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'keycloak_plan_fingerprint_stale' },
+      progress: {
+        currentStep: 'parent_provisioning',
+        completedSteps: ['registry_created_or_idempotently_reused'],
+        idempotencyKey: expect.any(String),
+      },
+    });
+    expect(request.mock.calls.map(([value]) => value.path)).not.toContain(
+      '/api/v1/iam/instances/demo/keycloak/execute'
+    );
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('binds a confirmed automated parent plan and resumes the same run', async () => {
     const request = vi
       .fn()

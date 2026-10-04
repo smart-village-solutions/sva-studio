@@ -1,17 +1,28 @@
-import {
-  authorizeInstancePermissionForUser,
-  type AuthenticatedRequestContext,
-  withAuthenticatedUser,
-} from '@sva/auth-runtime/server';
+import { withAuthenticatedUser, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
-
 import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '../types.js';
-import { getSvaMainserverConnectionStatus } from './service.js';
-import { loadSvaMainserverSettings, saveSvaMainserverSettings } from './settings.js';
+import { extractErrorDiagnostics, isRecord } from './interfaces-contract-errors.js';
+import {
+  createClientError,
+  createErrorStatus,
+  getErrorCause,
+  getOverviewFallbackStatus,
+  isErrorPayload,
+  isInterfacesOverviewModel,
+  isSvaMainserverErrorCode,
+  isSvaMainserverInstanceConfig,
+  jsonResponse,
+  parseJson,
+  type ErrorPayload,
+} from './interfaces-contract-helpers.js';
+import {
+  authorizeInterfacesOverviewRequest,
+  evaluateOverviewStatus,
+  loadOverviewConfig,
+} from './interfaces-contract-overview.js';
+import { handleSaveInterfacesSettingsRequest } from './interfaces-contract-save.js';
 
 const COMPONENT = 'interfaces-api';
-const INTERFACES_PERMISSION_ACTION = 'integration.manage';
-
 export type SvaMainserverInterfacesOverview = {
   readonly instanceId: string;
   readonly config: SvaMainserverInstanceConfig | null;
@@ -26,570 +37,42 @@ export type SaveSvaMainserverInterfaceSettingsInput = {
   };
 };
 
-type InterfacesErrorField = 'graphql_base_url' | 'oauth_token_url';
-
-type ErrorPayload = {
-  readonly message?: string;
-  readonly error?: string;
-  readonly field?: InterfacesErrorField;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const extractMessageFromUnknown = (value: unknown): string | null => {
-  if (typeof value === 'string' && value.trim()) {
-    return value;
-  }
-
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const directKeys = ['message', 'error', 'detail', 'title', 'statusText'] as const;
-  for (const key of directKeys) {
-    const candidate = value[key];
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return candidate;
-    }
-  }
-
-  const nestedKeys = ['data', 'cause', 'response', 'body'] as const;
-  for (const key of nestedKeys) {
-    const nested = extractMessageFromUnknown(value[key]);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-};
-
-const readErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  const extracted = extractMessageFromUnknown(error);
-  if (extracted) {
-    return extracted;
-  }
-
-  return fallback;
-};
-
-const extractErrorDiagnostics = (error: unknown): Record<string, unknown> => {
-  if (error instanceof Error) {
-    const causeMessage = extractMessageFromUnknown((error as Error & { cause?: unknown }).cause);
-
-    return {
-      error_type: error.constructor.name,
-      error_message: error.message,
-      ...(causeMessage ? { error_cause_message: causeMessage } : {}),
-    };
-  }
-
-  const extracted = extractMessageFromUnknown(error);
-
-  return {
-    error_type: typeof error,
-    error_message: extracted ?? String(error),
-  };
-};
-
-const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverInstanceConfig => {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  return (
-    typeof value.instanceId === 'string' &&
-    typeof value.providerKey === 'string' &&
-    typeof value.graphqlBaseUrl === 'string' &&
-    typeof value.oauthTokenUrl === 'string' &&
-    typeof value.enabled === 'boolean'
-  );
-};
-
-const isSvaMainserverConnectionStatus = (value: unknown): value is SvaMainserverConnectionStatus => {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  if (value.status !== 'connected' && value.status !== 'error') {
-    return false;
-  }
-
-  if (typeof value.checkedAt !== 'string') {
-    return false;
-  }
-
-  if (value.config !== undefined && value.config !== null && !isSvaMainserverInstanceConfig(value.config)) {
-    return false;
-  }
-
-  if (value.queryRootTypename !== undefined && typeof value.queryRootTypename !== 'string') {
-    return false;
-  }
-
-  if (value.mutationRootTypename !== undefined && typeof value.mutationRootTypename !== 'string') {
-    return false;
-  }
-
-  if (value.errorCode !== undefined && typeof value.errorCode !== 'string') {
-    return false;
-  }
-
-  if (value.errorMessage !== undefined && typeof value.errorMessage !== 'string') {
-    return false;
-  }
-
-  return true;
-};
-
-const isInterfacesOverviewModel = (payload: unknown): payload is SvaMainserverInterfacesOverview => {
-  if (!isRecord(payload)) {
-    return false;
-  }
-
-  return (
-    typeof payload.instanceId === 'string' &&
-    (payload.config === null || payload.config === undefined || isSvaMainserverInstanceConfig(payload.config)) &&
-    isSvaMainserverConnectionStatus(payload.status)
-  );
-};
-
-const isErrorPayload = (value: unknown): value is ErrorPayload => {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  return (
-    typeof value.message === 'string' ||
-    typeof value.error === 'string' ||
-    value.field === 'graphql_base_url' ||
-    value.field === 'oauth_token_url'
-  );
-};
-
-const ERROR_CODES = new Set<SvaMainserverConnectionStatus['errorCode']>([
-  'config_not_found',
-  'integration_disabled',
-  'invalid_config',
-  'database_unavailable',
-  'identity_provider_unavailable',
-  'missing_credentials',
-  'organization_mainserver_credentials_missing',
-  'token_request_failed',
-  'unauthorized',
-  'forbidden',
-  'network_error',
-  'graphql_error',
-  'invalid_response',
-]);
-
-const isSvaMainserverErrorCode = (
-  value: string | undefined
-): value is NonNullable<SvaMainserverConnectionStatus['errorCode']> => ERROR_CODES.has(value as SvaMainserverConnectionStatus['errorCode']);
-
-const createErrorStatus = (
-  errorCode: SvaMainserverConnectionStatus['errorCode'],
-  message?: string
-): SvaMainserverConnectionStatus => ({
-  status: 'error',
-  checkedAt: new Date().toISOString(),
-  errorCode,
-  ...(message ? { errorMessage: message } : {}),
-});
-
-const jsonResponse = (status: number, payload: unknown): Response =>
-  new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store',
-    },
-  });
-
-const parseJson = async <T>(response: Response): Promise<T | null> => {
-  try {
-    return (await response.json()) as T;
-  } catch {
-    return null;
-  }
-};
-
-const parseInterfacesErrorField = (message: string | null): InterfacesErrorField | undefined => {
-  if (!message) {
-    return undefined;
-  }
-
-  if (message.includes('graphql_base_url')) {
-    return 'graphql_base_url';
-  }
-
-  if (message.includes('oauth_token_url')) {
-    return 'oauth_token_url';
-  }
-
-  return undefined;
-};
-
-const isNumericStatusCode = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isInteger(value) && value >= 100 && value <= 599;
-
-const getErrorStatusCode = (error: unknown, fallback: number): number => {
-  if (isRecord(error) && isNumericStatusCode(error.statusCode)) {
-    return error.statusCode;
-  }
-
-  if (error instanceof Error) {
-    const candidate = (error as Error & { statusCode?: unknown }).statusCode;
-    if (isNumericStatusCode(candidate)) {
-      return candidate;
-    }
-  }
-
-  return fallback;
-};
-
-const getErrorPayload = (
-  error: unknown,
-  fallbackCode: NonNullable<SvaMainserverConnectionStatus['errorCode']>
-): ErrorPayload => {
-  const recordErrorCode =
-    isRecord(error) && typeof error.code === 'string' && isSvaMainserverErrorCode(error.code)
-      ? error.code
-      : undefined;
-  const instanceErrorCode =
-    error instanceof Error &&
-    typeof (error as Error & { code?: unknown }).code === 'string' &&
-    isSvaMainserverErrorCode((error as Error & { code?: string }).code)
-      ? (error as Error & { code?: string }).code
-      : undefined;
-  const errorCode = recordErrorCode ?? instanceErrorCode;
-
-  const message = error instanceof Error ? error.message : readErrorMessage(error, '');
-  const field = parseInterfacesErrorField(message || null);
-
-  return {
-    error: errorCode ?? fallbackCode,
-    ...(field ? { field } : {}),
-  };
-};
-
-const createClientError = (payload: ErrorPayload | null, fallbackMessage: string): Error => {
-  const message = payload?.error && isSvaMainserverErrorCode(payload.error) ? payload.error : fallbackMessage;
-  const error = new Error(message) as Error & { cause?: unknown };
-  error.cause = payload ?? undefined;
-  return error;
-};
-
-const getErrorCause = (error: unknown): unknown =>
-  error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
-
-const getOverviewFallbackStatus = (
-  response: Response,
-  payload: ErrorPayload | null
-): SvaMainserverConnectionStatus => {
-  if (response.status === 401 || payload?.error === 'unauthorized') {
-    return createErrorStatus('unauthorized');
-  }
-
-  if (response.status === 403 || payload?.error === 'forbidden') {
-    return createErrorStatus('forbidden');
-  }
-
-  if (payload && isSvaMainserverErrorCode(payload.error)) {
-    return createErrorStatus(payload.error);
-  }
-
-  return createErrorStatus('network_error');
-};
-
-const buildOverviewPermissionErrorStatus = (
-  authorization: Extract<
-    Awaited<ReturnType<typeof authorizeInstancePermissionForUser>>,
-    { ok: false }
-  >
-): SvaMainserverConnectionStatus =>
-  createErrorStatus(
-    authorization.error === 'database_unavailable' ? 'database_unavailable' : 'forbidden',
-    authorization.error === 'forbidden'
-      ? 'Keine Berechtigung zur Schnittstellenverwaltung.'
-      : authorization.message
-  );
-
-const authorizeInterfacesMutation = async (input: {
-  readonly ctx: AuthenticatedRequestContext;
-  readonly logger: ReturnType<typeof createSdkLogger>;
-  readonly operation: 'save_interfaces_settings';
-}): Promise<
-  | Readonly<{ ok: true; instanceId: string }>
-  | Readonly<{ ok: false; response: Response }>
-> => {
-  const { user } = input.ctx;
-  const instanceId = user.instanceId;
-  if (!instanceId) {
-    input.logger.warn('Save interfaces settings rejected: missing instance context', {
-      operation: input.operation,
-      user_id: user.id,
-    });
-    return {
-      ok: false,
-      response: jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload),
-    };
-  }
-
-  const authorization = await authorizeInstancePermissionForUser({
-    ctx: input.ctx,
-    action: INTERFACES_PERMISSION_ACTION,
-  });
-  if (!authorization.ok) {
-    input.logger.warn('Save interfaces settings rejected: insufficient permissions', {
-      operation: input.operation,
-      workspace_id: instanceId,
-      user_id: user.id,
-      user_roles: user.roles,
-      reason_code: authorization.error,
-    });
-    return {
-      ok: false,
-      response: jsonResponse(authorization.status, {
-        error: authorization.error === 'database_unavailable' ? 'database_unavailable' : 'forbidden',
-      } satisfies ErrorPayload),
-    };
-  }
-
-  return { ok: true, instanceId };
-};
-
-const validateInterfacesSettingsPayload = (
-  payloadData: SaveSvaMainserverInterfaceSettingsInput['data']
-): payloadData is SaveSvaMainserverInterfaceSettingsInput['data'] & Readonly<{ enabled: boolean }> =>
-  typeof payloadData.enabled === 'boolean';
-
-const saveInterfacesSettingsConfig = async (input: {
-  readonly instanceId: string;
-  readonly payloadData: SaveSvaMainserverInterfaceSettingsInput['data'] & Readonly<{ enabled: boolean }>;
-  readonly logger: ReturnType<typeof createSdkLogger>;
-}): Promise<
-  | Readonly<{ ok: true; config: SvaMainserverInstanceConfig }>
-  | Readonly<{ ok: false; response: Response }>
-> => {
-  try {
-    const config = await saveSvaMainserverSettings({
-      instanceId: input.instanceId,
-      graphqlBaseUrl: input.payloadData.graphqlBaseUrl?.trim() ?? '',
-      oauthTokenUrl: input.payloadData.oauthTokenUrl?.trim() ?? '',
-      enabled: input.payloadData.enabled,
-    });
-    return { ok: true, config };
-  } catch (error) {
-    const errorPayload = getErrorPayload(error, 'network_error');
-    input.logger.error('Failed to persist interfaces settings', {
-      operation: 'save_interfaces_settings',
-      workspace_id: input.instanceId,
-      error_code: errorPayload.error,
-      error_field: errorPayload.field,
-      ...extractErrorDiagnostics(error),
-    });
-    return {
-      ok: false,
-      response: jsonResponse(getErrorStatusCode(error, 500), errorPayload),
-    };
-  }
-};
-
-const handleSaveInterfacesSettingsRequest = async (input: {
-  readonly ctx: AuthenticatedRequestContext;
-  readonly logger: ReturnType<typeof createSdkLogger>;
-  readonly payloadData: SaveSvaMainserverInterfaceSettingsInput['data'];
-}): Promise<Response> => {
-  const authorized = await authorizeInterfacesMutation({
-    ctx: input.ctx,
-    logger: input.logger,
-    operation: 'save_interfaces_settings',
-  });
-  if (!authorized.ok) {
-    return authorized.response;
-  }
-
-  if (!validateInterfacesSettingsPayload(input.payloadData)) {
-    input.logger.warn('Save interfaces settings rejected: missing enabled flag', {
-      operation: 'save_interfaces_settings',
-      workspace_id: authorized.instanceId,
-      user_id: input.ctx.user.id,
-    });
-    return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
-  }
-
-  input.logger.info('Saving interfaces settings', {
-    operation: 'save_interfaces_settings',
-    workspace_id: authorized.instanceId,
-    enabled: input.payloadData.enabled,
-  });
-
-  const saveResult = await saveInterfacesSettingsConfig({
-    instanceId: authorized.instanceId,
-    payloadData: input.payloadData,
-    logger: input.logger,
-  });
-  if (!saveResult.ok) {
-    return saveResult.response;
-  }
-
-  input.logger.info('Interfaces settings saved successfully', {
-    operation: 'save_interfaces_settings',
-    workspace_id: authorized.instanceId,
-    enabled: saveResult.config.enabled,
-  });
-
-  return jsonResponse(200, saveResult.config);
-};
-
-const authorizeInterfacesOverviewRequest = async (input: {
-  readonly ctx: AuthenticatedRequestContext;
-  readonly logger: ReturnType<typeof createSdkLogger>;
-}): Promise<
-  | Readonly<{ ok: true; instanceId: string }>
-  | Readonly<{ ok: false; response: Response }>
-> => {
-  const { user } = input.ctx;
-  if (!user.instanceId) {
-    input.logger.warn('Load interfaces overview rejected: missing instance context', {
-      operation: 'load_interfaces_overview',
-      user_id: user.id,
-    });
-    return {
-      ok: false,
-      response: jsonResponse(400, {
-        instanceId: '',
-        config: null,
-        status: createErrorStatus('invalid_config'),
-      } satisfies SvaMainserverInterfacesOverview),
-    };
-  }
-
-  const authorization = await authorizeInstancePermissionForUser({
-    ctx: input.ctx,
-    action: INTERFACES_PERMISSION_ACTION,
-  });
-  if (!authorization.ok) {
-    input.logger.warn('Load interfaces overview rejected: insufficient permissions', {
-      operation: 'load_interfaces_overview',
-      workspace_id: user.instanceId,
-      user_id: user.id,
-      user_roles: user.roles,
-      reason_code: authorization.error,
-    });
-    return {
-      ok: false,
-      response: jsonResponse(authorization.status, {
-        instanceId: user.instanceId,
-        config: null,
-        status: buildOverviewPermissionErrorStatus(authorization),
-      } satisfies SvaMainserverInterfacesOverview),
-    };
-  }
-
-  return { ok: true, instanceId: user.instanceId };
-};
-
-const loadOverviewConfig = async (input: {
-  readonly instanceId: string;
-  readonly logger: ReturnType<typeof createSdkLogger>;
-}): Promise<
-  | Readonly<{ ok: true; config: Awaited<ReturnType<typeof loadSvaMainserverSettings>> }>
-  | Readonly<{ ok: false; response: Response }>
-> => {
-  try {
-    const config = await loadSvaMainserverSettings(input.instanceId);
-    input.logger.debug('Interfaces settings loaded', {
-      operation: 'load_interfaces_overview',
-      workspace_id: input.instanceId,
-      has_config: config !== null,
-    });
-    return { ok: true, config };
-  } catch (error) {
-    input.logger.error('Failed to load interfaces settings from data layer', {
-      operation: 'load_interfaces_overview',
-      workspace_id: input.instanceId,
-      error_message: error instanceof Error ? error.message : String(error),
-    });
-    return {
-      ok: false,
-      response: jsonResponse(200, {
-        instanceId: input.instanceId,
-        config: null,
-        status: createErrorStatus('invalid_config'),
-      } satisfies SvaMainserverInterfacesOverview),
-    };
-  }
-};
-
-const evaluateOverviewStatus = async (input: {
-  readonly instanceId: string;
-  readonly userId: string;
-  readonly activeOrganizationId?: string;
-  readonly logger: ReturnType<typeof createSdkLogger>;
-}): Promise<SvaMainserverConnectionStatus> => {
-  try {
-    const status = await getSvaMainserverConnectionStatus({
-      instanceId: input.instanceId,
-      keycloakSubject: input.userId,
-      activeOrganizationId: input.activeOrganizationId,
-    });
-    input.logger.debug('Interfaces connection status evaluated', {
-      operation: 'load_interfaces_overview',
-      workspace_id: input.instanceId,
-      connection_status: status.status,
-      error_code: status.errorCode,
-    });
-    return status;
-  } catch (error) {
-    input.logger.warn('Failed to evaluate interfaces connection status', {
-      operation: 'load_interfaces_overview',
-      workspace_id: input.instanceId,
-      ...extractErrorDiagnostics(error),
-    });
-    return createErrorStatus('network_error');
-  }
-};
-
 export const loadSvaMainserverInterfacesOverview = async (
   request: Request
 ): Promise<SvaMainserverInterfacesOverview> => {
   try {
     const logger = createSdkLogger({ component: COMPONENT });
 
-    const response = await withAuthenticatedUser(request, async (ctx: AuthenticatedRequestContext) => {
-      const authorized = await authorizeInterfacesOverviewRequest({ ctx, logger });
-      if (!authorized.ok) {
-        return authorized.response;
+    const response = await withAuthenticatedUser(
+      request,
+      async (ctx: AuthenticatedRequestContext) => {
+        const authorized = await authorizeInterfacesOverviewRequest({ ctx, logger });
+        if (!authorized.ok) {
+          return authorized.response;
+        }
+
+        const configResult = await loadOverviewConfig({
+          instanceId: authorized.instanceId,
+          logger,
+        });
+        if (!configResult.ok) {
+          return configResult.response;
+        }
+
+        const status = await evaluateOverviewStatus({
+          instanceId: authorized.instanceId,
+          userId: ctx.user.id,
+          activeOrganizationId: ctx.activeOrganizationId,
+          logger,
+        });
+
+        return jsonResponse(200, {
+          instanceId: authorized.instanceId,
+          config: configResult.config,
+          status,
+        } satisfies SvaMainserverInterfacesOverview);
       }
-
-      const configResult = await loadOverviewConfig({
-        instanceId: authorized.instanceId,
-        logger,
-      });
-      if (!configResult.ok) {
-        return configResult.response;
-      }
-
-      const status = await evaluateOverviewStatus({
-        instanceId: authorized.instanceId,
-        userId: ctx.user.id,
-        activeOrganizationId: ctx.activeOrganizationId,
-        logger,
-      });
-
-      return jsonResponse(200, {
-        instanceId: authorized.instanceId,
-        config: configResult.config,
-        status,
-      } satisfies SvaMainserverInterfacesOverview);
-    });
+    );
 
     const payload = await parseJson<SvaMainserverInterfacesOverview | ErrorPayload>(response);
     if (payload && isInterfacesOverviewModel(payload)) {

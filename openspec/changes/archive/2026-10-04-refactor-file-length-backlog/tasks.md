@@ -13,10 +13,15 @@ Merge- und Gate-Nachweis an seinem PR-Task vermerkt; die nächste Nummer
 bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
+Für den abschließenden Archivierungs-PR 36 belegen die Haken ausnahmsweise
+die im PR bereits ausgeführte Archivierung samt Spec-Merge und das grüne
+Changelog-Gate am geprüften HEAD. Sie behaupten keinen eigenen Merge;
+dessen Nachweis bleibt nach dem Merge im GitHub-PR nachvollziehbar.
 
-**Strang A:** PR 23 → PR 24a → PR 24b → PR 25 → PR 26 → PR 31 → PR 32 → PR 33 → PR 34.
-**Strang B:** PR 27 → PR 28 → PR 29 → PR 30. PR 29 beginnt erst nach dem
-Merge von PR 26, weil der öffentliche Waste-Kalender die dann integrierten
+**Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31a → PR 31b → PR 31c → PR 31d → PR 32a → PR 32b → PR 32c → PR 32d.
+**Strang B:** PR 27 → PR 28 → PR 29 → PR 30; nach dem Merge von PR 32a
+folgen unabhängig von PR 32b bis PR 32d die PRs 33 → 34. PR 29 beginnt erst nach dem
+Merge von PR 26d, weil der öffentliche Waste-Kalender die dann integrierten
 Waste-Verträge und Runtime-Pfade prüfen muss. PR 28 prüft vor Beginn seine
 Mainserver-Waste-Schnittstelle gegen die laufenden Änderungen aus Strang A;
 bei konkreter Kopplung wartet er auf den betroffenen Waste-PR.
@@ -29,6 +34,9 @@ einzeln: Vor dem finalen Nachweis wird jeder Branch mit dem dann aktuellen
 Review-Threads nur für den neuen exakten HEAD. Gemeinsame Änderungen an
 `tasks.md`, `design.md` und der Complexity-Policy werden dabei aufgelöst,
 bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
+Danach entfernt der eigenständig reviewbare PR 35 die bereits nachgewiesenen
+verwaisten `fileLines`-Registereinträge. PR 36 archiviert den vollständig
+integrierten Change erst nach PR 35 in einem eigenen PR.
 
 ## Pilot und Grundlagen
 
@@ -1011,7 +1019,7 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
 
 ### PR 24a — Waste-Plugin-Import und Tourenlogik (4 Befunde)
 
-- [ ] In `packages/plugin-waste-management/src/`
+- [x] In `packages/plugin-waste-management/src/`
       `waste-management.tools.import-section.parts.tsx`,
       `waste-management.tours.presentation.ts`,
       `waste-management.tools.actions.ts`,
@@ -1019,94 +1027,192 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       Job-Aktionen, Tourenfilter und Kalendervorschau mit gezielten UI-,
       Unit- und Typprüfungen erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
+      Merge-Nachweis: PR #1705, HEAD
+      `4271d847d1045620bc29c2ee4bb7938dcf7aabd3`, Merge-Commit
+      `fa264443ccebeb454c6ee7dbf9ab319f322ae06e`; Changelog
+      `docs/changelog/entries/pr-1705.json`.
+
 ### PR 24b — Waste-Plugin-Ortsauswahl und individuelle Tourtermine (3 Befunde)
 
-- [ ] In `packages/plugin-waste-management/src/`
+- [x] In `packages/plugin-waste-management/src/`
       `waste-management.tours-custom-dates.tsx`,
       `waste-management.master-data-locations-table.views.tsx` und
       `waste-management.tours-assignments-dialog.tsx` bereinigen.
       Individuelle Abholtermine, Ortsauswahl, Zuordnungsdialoge und
       Tabellenaktionen mit gezielten UI- und Typprüfungen erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 25 — Waste-Verträge und Settings (8 Befunde)
+      Merge-Nachweis: PR #1707, HEAD
+      `300749117b0414a04cc096cb0ee668d0a7c69be0`, Merge-Commit
+      `2ffce9bca5267c909f7d89ffd1fd72a86a4e7567`; Changelog
+      `docs/changelog/entries/pr-1707.json`.
 
-- [ ] In `packages/waste-management-contracts/src/`
+### PR 25a — Waste-Vertragsfunktionen (4 Befunde)
+
+- [x] In `packages/waste-management-contracts/src/`
       `waste-management-settings-public-config.ts`,
       `waste-management-location-tour-pickup-date-planner.ts`,
       `waste-management-output.render.ts`,
-      `waste-management-location-tour-pickup-date-parser.ts` sowie in
-      `packages/waste-management-runtime/src/` `http-schemas.ts`,
+      `waste-management-location-tour-pickup-date-parser.ts` bereinigen.
+      CSV-Parsing, Importplanung, PDF-Ausgabe und öffentliche Settings
+      mit gezielten Vertrags-, Typ- und Runtime-Tests erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1711, HEAD
+      `a5df07359fb4f73bb9b5bcf538f7ccb189606bf6`, Merge-Commit
+      `ff7095317815ad9d5624c2677fe947e9b42f0c40`; Changelog
+      `docs/changelog/entries/pr-1711.json`.
+
+### PR 25b — Waste-Runtime-Validierung und Settings (4 Befunde)
+
+- [x] In `packages/waste-management-runtime/src/` `http-schemas.ts`,
       `handlers/settings-write-support.ts`, `handlers/settings-shared.ts`,
-      `handlers/types.ts` bereinigen. Parsing, Ausgabe, öffentliche
-      Settings und Validierung mit Vertrags- und Runtime-Tests prüfen.
+      `handlers/types.ts` bereinigen. Request-Validierung,
+      Settings-Lesen und -Schreiben sowie Handler-Verträge mit
+      gezielten Runtime-, Typ- und Unit-Tests erhalten.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
-### PR 26 — Waste-Lader und Runtime-Handler (7 Befunde)
+      Merge-Nachweis: PR #1712, HEAD
+      `8664dd81c6a6b75cfc7c564dc6528a5f381487b9`, Merge-Commit
+      `099f495e7ae00009e57fe9ea141dfc13dce89ec8`; Changelog
+      `docs/changelog/entries/pr-1712.json`.
 
-- [ ] In `packages/waste-management-runtime/src/` `server-loaders.ts`,
-      `repositories/email-reminders.ts`, `server-handlers.ts`,
-      `handlers/operations.ts`, `handlers/read-handlers.ts`,
-      `handlers/tours-write-support.ts`, `handlers/mutation-helpers.ts`
-      bereinigen. Tenant-Scope, Reminder-, Lese- und Mutationsverhalten
-      mit Datenintegritäts- und Server-Runtime-Tests erhalten.
+### PR 26a — Waste-Server-Lader (1 Befund)
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] In `packages/waste-management-runtime/src/server-loaders.ts`
+      die Tenant-gebundenen Lader nach Datenbereichen trennen.
+      Tenant-Scope, Repository-Bindung und Antworten mit gezielten
+      Loader- und Server-Runtime-Tests erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1713, HEAD
+      `9638df0ad89d1f7e73df1153c103807d1f32dc0d`, Merge-Commit
+      `b7600a090e303c673ac356b4dce60ebc57cf8aaa`; Changelog
+      `docs/changelog/entries/pr-1713.json`.
+
+### PR 26b — Waste-Reminder-Repository (1 Befund)
+
+- [x] In `packages/waste-management-runtime/src/repositories/email-reminders.ts`
+      Subscription-, Outbox- und Dispatch-Abfragen trennen.
+      Token-Bindung, Lease-Verhalten und Versandstatus mit gezielten
+      Repository- und Server-Runtime-Tests erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1714, HEAD
+      `a61d7a75440ae5523244ce9771821337ce2c0826`, Merge-Commit
+      `a0391f6f50099fa51a92bda64eaaa232d1f6ee3b`; Changelog
+      `docs/changelog/entries/pr-1714.json`.
+
+### PR 26c — Waste-Handler-Komposition und Lesen (2 Befunde)
+
+- [x] In `packages/waste-management-runtime/src/` `server-handlers.ts`
+      und `handlers/read-handlers.ts` bereinigen. Handler-Registrierung,
+      Tenant-Scope, Leseantworten und Fehlerbehandlung mit gezielten
+      Handler-, Lese- und Server-Runtime-Tests erhalten.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      diesem PR anlegen; Changelog-Gate vor Merge grün.
+
+      Merge-Nachweis: PR #1715, HEAD
+      `ee7e082247affd8553feaef425df62e2197e39b1`, Merge-Commit
+      `7b585cab1952aed5b417e5075a221de38bc496bf`; Changelog
+      `docs/changelog/entries/pr-1715.json`.
+
+### PR 26d — Waste-Operationen und Mutationen (3 Befunde)
+
+- [x] In `packages/waste-management-runtime/src/`
+      `handlers/operations.ts`, `handlers/tours-write-support.ts` und
+      `handlers/mutation-helpers.ts` bereinigen. Job-Start,
+      Tour-Abhängigkeiten, Mutationsantworten, Audit und Fehlerbehandlung
+      mit gezielten Datenintegritäts- und Server-Runtime-Tests erhalten.
+      Merge-Nachweis: PR #1716, HEAD
+      `5ebd4d775563cb9b0177a3dda52e0957c21d0049`, Merge-Commit
+      `04676e4b2e8e48a6737330c812ac15596afb72cb`.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1716.json` mit passender `prNumber` und
+      nutzerverständlichem `body` eingebracht; Changelog-Gate vor Merge grün.
 
 ## Mainserver und öffentlicher Kalender
 
 ### PR 27 — Mainserver-Content-Routen (5 Befunde)
 
-- [ ] In `packages/sva-mainserver/src/server/` `news-route.ts`,
+- [x] In `packages/sva-mainserver/src/server/` `news-route.ts`,
       `events-route.ts`, `generic-items-route.ts`, `poi-route.ts`,
       `projects-route.ts` bereinigen. Validierung, Fehlercodes,
       Berechtigungen und Antwortformat gezielt testen.
 
-      Draft-PR #1704; Implementierungsstand auf Ausgangs-HEAD
-      `702af348e0bd9c0cc170589144f138eac4f6fda2`: Die fünf Routen
+      PR #1704 wurde am 03.10.2026 mit geprüftem HEAD
+      `93c0200a9a113cdb8ec13bc14d98bef926b2b2e3` gemergt
+      (Merge-Commit `a1f1ce19749fca6740a7641f0c19170c0a68278b`). Die fünf Routen
       wurden nach Eingabe, Zugriff, Lesen und Mutation getrennt. Die
       ursprünglichen Zeilenzahlen 1458/846/681/633/516 liegen nach dem
       Schnitt bei 127/110/128/250/312 (News/Events/Generic Items/POI/Projects).
       Die fünf `fileLines`-Registereinträge sind entfernt; der vollständige
-      Complexity-Lauf meldet keine neuen Befunde. Merge- und finaler
-      HEAD-Gate-Nachweis bleiben für das Abhaken ausstehend.
+      Complexity-Lauf meldete keine neuen Befunde; die finalen GitHub-Gates
+      waren grün und es gab keine offenen Review-Threads.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1704.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 28 — Mainserver-Service und interne Typen (4 Befunde)
 
-- [ ] In `packages/sva-mainserver/src/` `server/service.ts`, `types.ts`,
+- [x] In `packages/sva-mainserver/src/` `server/service.ts`, `types.ts`,
       `server/interfaces-contract.ts`,
       `server/service-internals/mappers-shared.ts` bereinigen.
       Service-Komposition, Interface-Vertrag und Runtime-Imports prüfen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      Ausgangs-HEAD `a1f1ce19749fca6740a7641f0c19170c0a68278b`:
+      1216/906/669/459 Zeilen (Service/Typen/Interface-Vertrag/Mapper).
+      Der Schnitt behält die öffentlichen Importpfade und teilt die interne
+      Ausführung nach Verbindung, Fachoperationen und Diagnostik sowie die
+      Typen und Interface-Verträge nach Verantwortung. Ziel sind vier
+      beseitigte `fileLines`-Befunde, unveränderte Antworten und Fehler sowie
+      grüne Service-, Interface-, Mapping- und Runtime-Gates.
+
+      PR #1708 wurde am 03.10.2026 mit geprüftem HEAD
+      `b474c947918f1c300164a646d4f3189c574f1139` gemergt
+      (Merge-Commit `93c55b6c86e8c4ac2994f2ac9fa2f18cac9ad1c6`).
+      Die vier `fileLines`-Befunde wurden beseitigt; die finalen
+      GitHub-Gates waren grün und es gab keine offenen Review-Threads.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1708.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 29 — Öffentliche Waste-Daten und Reminder (6 Befunde)
 
-- [ ] In `apps/public-waste-calendar-web/src/`
+- [x] In `apps/public-waste-calendar-web/src/`
       `server/public-waste-email-reminders.server.ts`,
       `server/public-waste-runtime.ts`, `lib/public-waste-endpoints.server.ts`,
       `lib/public-waste-repository.server.ts`,
@@ -1114,80 +1220,231 @@ bevor der PR gemergt wird. Der Schlusslauf wartet auf alle PRs 23 bis 34.
       `lib/public-waste-demo-runtime.ts` bereinigen. Datenfilter,
       Terminberechnung, Reminder und Fehlerfälle gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      Ausgangs-HEAD `04676e4b2e8e48a6737330c812ac15596afb72cb`:
+      613/545/540/524/351/287 Zeilen in der obigen Reihenfolge. Der
+      Schnitt erhält die sechs öffentlichen Importpfade und trennt
+      Reminder-Anmeldung und Seitenantworten, Runtime-Wiring, HTTP-Formate,
+      Repository-Abfragen, Feiertagsregeln und Demo-Daten in direkt
+      genutzte private Module derselben App. Ziel sind sechs beseitigte
+      `fileLines`-Befunde bei unverändertem Datenfilter, Transaktionsablauf,
+      Termin- und Antwortvertrag.
+
+      Merge-Nachweis: PR #1718, geprüfter HEAD
+      `4866df5845f5269b81b41f90cb18349293f73d30`, Merge-Commit
+      `213116c43d16816d5661d00bfd9098f6d1483041` am 03.10.2026.
+      Die sechs `fileLines`-Befunde wurden entfernt; die finalen
+      GitHub-Gates waren grün und es gab keine offenen Review-Threads.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1718.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
       diesem PR anlegen; Changelog-Gate vor Merge grün.
 
 ### PR 30 — Öffentliche Waste-Oberfläche (2 Befunde)
 
-- [ ] In `apps/public-waste-calendar-web/src/`
+- [x] In `apps/public-waste-calendar-web/src/`
       `components/public-waste-calendar-panels.tsx` und `routes/index.tsx`
       bereinigen. Anzeige, Navigation und Barrierefreiheit gezielt testen.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+      Ausgangs-HEAD `213116c43d16816d5661d00bfd9098f6d1483041`:
+      543/452 Zeilen (Panels/Route). Kalender-Zellen und Datumsgrenzen,
+      Listen- und Grid-Ansichten sowie Regionsbindung und Auswahlauflösung
+      in direkt benutzte private Module derselben App schneiden. Ziel sind
+      zwei beseitigte `fileLines`-Befunde bei unverändertem Tab-Fokus,
+      Termin-Dialog, Cookie-Restore/Reset und Fail-Closed-Fehlerverhalten.
+      Merge-Nachweis: PR #1721, geprüfter HEAD
+      `4bd4e894f836fd19f7aa00c860347c582eee1478`, Merge-Commit
+      `603a7af668fc6fc31b6b316e56fa456d0c499776`; finaler Intake grün
+      mit null offenen Review-Threads.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1721.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1721 angelegt; Changelog-Gate vor Merge grün.
 
 ## Tooling und MCP
 
-### PR 31 — CI-Qualitäts-Gates (5 Befunde)
+### PR 31a — Complexity-Gate (1 Dateilängenbefund)
 
-- [ ] In `scripts/ci/` `complexity-gate.ts`, `coverage-gate.ts`,
-      `patch-coverage-gate.ts`, `sonar-hotspots.ts` und
-      `sonar-new-code-gate.ts` bereinigen. Exitcodes, CLI-Optionen,
-      Reportformat und Finding-Erkennung mit Skript-Tests und
-      Skript-Typecheck erhalten.
+- [x] `scripts/ci/complexity-gate.ts` nach Policy-Prüfung, Dateiauswahl,
+      TypeScript-Metriken und Berichtserstellung aufteilen. Beide registrierten
+      Befunde (`fileLines`, `cyclomaticComplexity`) beseitigen; Exitcodes,
+      CLI-Optionen, Modulpriorität, Findings und Berichtsformat mit gezielten
+      Skript-Tests und Skript-Typecheck erhalten.
+      Merge-Nachweis: PR #1717, HEAD
+      `2614081e37ecc30577fd51422bf90559b2ba4091`, Merge-Commit
+      `cef590b02ec06cc6b056a764fd88370f661336f1`.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1717.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1717 angelegt; Changelog-Gate grün.
+
+### PR 31b — Coverage-Gate (1 Dateilängenbefund)
+
+- [x] `scripts/ci/coverage-gate.ts` entlang seiner bestehenden Coverage-
+      Berechnung und CLI-Ausgabe aufteilen. Exitcodes, CLI-Optionen,
+      Schwellwerte und Reportformat mit gezielten Skript-Tests und
+      Skript-Typecheck erhalten; bestehendes Complexity-Finding mit abbauen.
+      Merge-Nachweis: PR #1719, HEAD
+      `d6f61806ecbe13a5aafff01524bfc7cc9af87783`, Merge-Commit
+      `2275fe96f25081fdc49fb58bf016ffef2e079941`.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1719.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1719 angelegt; Changelog-Gate grün.
+
+### PR 31c — Patch-Coverage und Sonar-New-Code (2 Dateilängenbefunde)
+
+- [x] `scripts/ci/patch-coverage-gate.ts` und
+      `scripts/ci/sonar-new-code-gate.ts` an ihrer gemeinsamen Coverage-
+      Auswertung aufteilen. Patch-/New-Code-Selektion, Exitcodes,
+      CLI-Optionen und Berichtsformat mit gezielten Skript-Tests und
+      Skript-Typecheck erhalten. Merge-Nachweis: PR #1720, HEAD
+      `a551226a7a3f86db56d343f8bb3cb9da9373bd05`, Merge-Commit
+      `30a36e0f7e067359765570f5f0efa70d096d8eb4`.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1720.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1720 angelegt; Changelog-Gate grün.
+
+### PR 31d — Sonar-Hotspots (1 Dateilängenbefund)
+
+- [x] `scripts/ci/sonar-hotspots.ts` nach bestehenden CLI-, API- und
+      Berichtspfaden aufteilen. Authentisierung, Paging, Finding-Erkennung,
+      Exitcodes und Berichtsformat mit gezielten Skript-Tests und
+      Skript-Typecheck erhalten. Merge-Nachweis: PR #1722, HEAD
+      `629998dcfb49350c117e210fd3363a1c30e055d2`, Merge-Commit
+      `75366a9115174f53472b0a7680e1d53ba4e91c50`.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1722.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1722 angelegt; Changelog-Gate grün.
+
+### PR 32a — Server-Package-Runtime-Guard (1 Befund)
+
+- [x] `scripts/ci/check-server-package-runtime.ts` entlang statischer
+      Importprüfung und Dist-Smoke-Check aufteilen. Öffentliche Exporte,
+      Prüfreihenfolge, pnpm-Dist-Abgleich, Exitcodes und Fehlertexte mit
+      gezielten Tests, Skript-Typecheck und `pnpm check:server-runtime` erhalten.
+      Merge-Nachweis: PR #1723, HEAD
+      `f48d3a0de2743b0589dbca60f97c02486b299462`, Merge-Commit
+      `9c318d9a211f0bc7e7ec758add494804f562e465`.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1723.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1723 angelegt; Changelog-Gate grün.
 
-### PR 32 — CI-Vertrags- und IAM-Prüfer (5 Befunde)
+### PR 32b — IAM-Evidence und Authorize-Performance (2 Befunde)
 
-- [ ] In `scripts/ci/` `verify-plugin-lifecycle-database-contract.ts`,
-      `run-iam-evidence.ts`, `run-iam-authorize-performance.ts`,
-      `check-server-package-runtime.ts`,
-      `verify-graphile-worker-database-contract.ts` bereinigen.
-      Prüfreihenfolge, Exitcodes, Fehlertexte und Redaction testen.
-
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+- [x] `scripts/ci/run-iam-evidence.ts` und
+      `scripts/ci/run-iam-authorize-performance.ts` entlang ihrer bestehenden
+      Nachweis- und Messpfade aufteilen. Redaction, Prüfreihenfolge,
+      Fehlertexte und Exitcodes mit vorhandenen Skript-Tests und Skript-Typecheck
+      erhalten; Live-Credential-Acceptance nur in einer nachweislich sicheren
+      vorhandenen Umgebung ausführen, andernfalls den fehlenden Live-Nachweis
+      ausdrücklich dokumentieren. PR #1725 wurde am geprüften HEAD
+      `7635744a309bc29d52e7fa353f63f26a222150c0` mit grünen finalen
+      GitHub-Gates und ohne offene Review-Threads gemergt; Merge-Commit
+      `c553238a14aa787a4b02ea5a067916cb4a3d33cd`. Der nicht ausgeführte
+      Live-Credential-Nachweis ist im PR dokumentiert.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1725.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1725 angelegt; Changelog-Gate vor Merge grün.
+
+### PR 32c — Graphile-Worker-Datenbankvertrag (1 Befund)
+
+- [x] `scripts/ci/verify-graphile-worker-database-contract.ts` nach seinen
+      bestehenden Schema-, Job- und Worker-Prüfungen aufteilen. Prüfreihenfolge,
+      Cleanup, Exitcodes und Fehlertexte mit gezielten Contract-Tests,
+      Skript-Typecheck und dem vorhandenen Integrationstarget erhalten.
+      PR #1727 wurde am geprüften HEAD
+      `39b6ade99212cb13581b80173ac3aebfeb0f55eb` mit grünen finalen
+      GitHub-Gates und ohne offene Review-Threads gemergt; Merge-Commit
+      `fbc0ec679886ea03a9a1534b6556f2dbd0cd24ae`.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1727.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      PR #1727 angelegt; Changelog-Gate vor Merge grün.
+
+### PR 32d — Plugin-Lifecycle-Datenbankvertrag (1 Befund)
+
+- [x] `scripts/ci/verify-plugin-lifecycle-database-contract.ts` entlang der
+      vorhandenen Lifecycle-Fallgruppen aufteilen. Fallreihenfolge,
+      Transaktionen, Cleanup, Exitcodes und Fehlertexte mit gezielten
+      Contract-Tests, Skript-Typecheck und dem vorhandenen Integrationstarget
+      erhalten; keine neue generische Testinfrastruktur einführen. PR #1728
+      wurde am geprüften HEAD `d0ed24e9ba1a926b642de2a9e01126e69cdfa5a7`
+      mit grünen finalen GitHub-Gates und ohne offene Review-Threads
+      gemergt; Merge-Commit `192e80a6c6a75dc3f408ccd08fd4556c070875f0`.
+
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1728.json` mit
+      passender `prNumber` und nutzerverständlichem `body` in
+      PR #1728 angelegt; Changelog-Gate vor Merge grün.
 
 ### PR 33 — Operations-Migrationsskripte (2 Befunde)
 
-- [ ] In `scripts/ops/runtime/` `migration-job.ts` und `goose.ts`
+- [x] In `scripts/ops/runtime/` `migration-job.ts` und `goose.ts`
       bereinigen. Ausführungsreihenfolge, Cleanup, Exitcodes und
-      Datenbank-Fehlerverhalten mit vorhandenen Ops-Tests erhalten.
+      Datenbank-Fehlerverhalten mit vorhandenen Ops-Tests erhalten. PR #1724
+      wurde als `43882d08c38f25868c22a79293fdb0d1667b9f97`
+      gemergt (`1f593bb2fc81c681d8087ee0d43e3931158ed45a`);
+      vollständiges Complexity-Gate ohne neue Findings.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
-      passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+- [x] Studio-Changelog `docs/changelog/entries/pr-1724.json` mit
+      Nutzertext eingebracht; Changelog-Gate vor Merge grün.
 
 ### PR 34 — Studio-MCP-Prozess und Tools (2 Befunde)
 
-- [ ] In `packages/studio-mcp/src/` `process.ts` und `tools.ts`
+- [x] In `packages/studio-mcp/src/` `process.ts` und `tools.ts`
       bereinigen. MCP-Tool-Verträge, Authentisierung und Prozess-Lifecycle
-      mit gezielten Tests und Typprüfung erhalten.
+      mit gezielten Tests und Typprüfung erhalten. PR #1726 wurde am
+      geprüften HEAD `e1bc06bca695d04df6d59bea413f9a883b72c951` mit
+      grünen finalen GitHub-Gates und ohne offene Review-Threads gemergt;
+      Merge-Commit `8151365d9e95689e998ae43dd704287a15d85e31`.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1726.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1726 angelegt; Changelog-Gate vor Merge grün.
 
-## Abschluss nach allen PRs 23 bis 34
+### PR 35 — Registerabgleich und integrierter Null-Nachweis
 
-- [ ] Auf integriertem `main` einen vollständigen `pnpm complexity-gate`-Lauf
-      mit null aktuellen `fileLines`-Verstößen und null verwaisten
-      `fileLines`-Registereinträgen belegen; andere Metriken getrennt
-      ausweisen.
-- [ ] Die tatsächlich betroffenen arc42-Abschnitte 05, 08, 10 und 11 sowie
+- [x] Nach den Merges von PR 23 bis PR 34 den vollständigen
+      `pnpm complexity-gate`-Befund auf integriertem `main` gegen die
+      `fileLines`-Registereinträge abgleichen. Die bereits nachgewiesenen
+      verwaisten `fileLines`-Einträge in diesem eigenen PR entfernen und
+      null aktuelle Dateilängenverstöße sowie null verwaiste Einträge am
+      exakten HEAD belegen. Andere Complexity-Metriken getrennt ausweisen.
+      Die tatsächlich betroffenen arc42-Abschnitte 05, 08, 10 und 11 sowie
       `docs/development/complexity-quality-governance.md` auf den Endstand
-      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen.
-- [ ] OpenSpec strikt validieren, alle PR-Nachweise und Checkboxen abgleichen
-      und den Change erst nach Integration gemäß OpenSpec-Prozess archivieren.
+      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen. PR #1729
+      wurde am geprüften HEAD `51736a712fbac0b3b348a2ffc25441f45f8dab28`
+      mit grünen finalen GitHub-Gates und ohne offene Review-Threads
+      gemergt; Merge-Commit `eb05f3cee48124909ef4c27f8ced0c933b5f1212`.
+      Der integrierte Main-Lauf wertet 3.308 Dateien aus: null aktuelle
+      `fileLines`-Verstöße, null verwaiste Registereinträge, null neue
+      Findings und 199 getrennt getrackte andere Befunde.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1729.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1729 angelegt; Changelog-Gate vor
+      Merge grün.
+
+### PR 36 — OpenSpec-Abschluss und Archivierung
+
+- [x] Nach dem Merge von PR 35 auf integriertem `main` den vollständigen
+      `pnpm complexity-gate`-Lauf mit null aktuellen `fileLines`-Verstößen
+      und null verwaisten `fileLines`-Registereinträgen belegen; andere
+      Metriken getrennt ausweisen. Alle PR-Nachweise und Checkboxen
+      abgleichen, OpenSpec strikt validieren und den Change gemäß
+      OpenSpec-Prozess archivieren. Auf `main`
+      `eb05f3cee48124909ef4c27f8ced0c933b5f1212` wurden 3.308 Dateien
+      geprüft: null aktuelle und null verwaiste `fileLines`-Einträge,
+      null neue Findings und 199 andere getrackte Befunde. Das Spec-Delta
+      wurde in `complexity-quality-governance` übernommen; der Change liegt
+      unter `archive/2026-10-04-refactor-file-length-backlog`. Die strikte
+      Gesamtvalidierung bestand für 79 Einträge. Ein Merge von PR 36 wird
+      damit nicht vorweggenommen.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1730.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1730 angelegt;
+      `pnpm check:studio-changelog` am PR-Stand grün. Der Haken belegt
+      keinen Merge von PR #1730.

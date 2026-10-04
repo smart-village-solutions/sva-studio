@@ -3,12 +3,13 @@ import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import {
   assertActiveOwnershipTarget,
   ContentOwnershipTransferError,
+  hasExactConfirmedOwner,
   resolveCurrentOwnerPrincipal,
 } from './repository-ownership.js';
 import {
   insertContentHistory,
-  isContentMutationFinalized,
   loadCurrentContentRow,
+  resolveContentUpdateReplay,
   resolveContentMutationMetadata,
 } from './repository-shared.js';
 import { resolveNextContentState } from './repository-state.js';
@@ -25,6 +26,7 @@ import {
   emitContentUpdatedActivity,
   emitContentOwnershipTransferredActivity,
   insertContentRow,
+  persistContentUpdateHistory,
   resolveUpdateAuthorDisplay,
   updateContentRevisionRefs,
   updateContentRow,
@@ -66,6 +68,7 @@ const resolveAuditAction = (input: {
 };
 
 const hasAuthorDisplayAffectingChange = (current: ContentRow, input: UpdateContentInput): boolean =>
+  input.confirmedExternalOwner !== undefined ||
   input.authorDisplayMode !== undefined ||
   input.authorDisplayName !== undefined ||
   (input.organizationId !== undefined && input.organizationId !== current.organization_id);
@@ -98,24 +101,18 @@ export const createContent = async (input: CreateContentInput): Promise<string> 
 
 export const updateContent = async (input: UpdateContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    if (
-      input.mutationRef &&
-      (await isContentMutationFinalized(client, {
-        instanceId: input.instanceId,
-        contentId: input.contentId,
-        mutationRef: input.mutationRef,
-      }))
-    ) {
-      return input.contentId;
-    }
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
       input.instanceId,
       input.contentId,
     ]);
+    const { mutationFinalized, skip } = await resolveContentUpdateReplay(client, input);
+    if (skip) return input.contentId;
     const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
     if (!current) {
       return undefined;
     }
+    if (mutationFinalized && input.confirmedExternalOwner &&
+        hasExactConfirmedOwner(current, input.confirmedExternalOwner)) return input.contentId;
     if ('expectedSourcePrincipal' in input) {
       const sourcePrincipal = resolveCurrentOwnerPrincipal(current);
       const expectedSourcePrincipal = input.expectedSourcePrincipal ?? undefined;
@@ -158,25 +155,21 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       publishedAt: nextPublishedAt,
       publishFrom: nextPublishFrom,
       publishUntil: nextPublishUntil,
+      ownerUserId: nextOwnerUserId,
+      ownerOrganizationId: nextOwnerOrganizationId,
     });
     const { activityEventType, historyAction, historySummary } = resolveContentMutationMetadata(
       current.status,
       nextStatus
     );
-    const historyId = await insertContentHistory(client, {
-      instanceId: input.instanceId,
-      contentId: input.contentId,
-      actorAccountId: input.actorAccountId,
-      actorDisplayName: input.actorDisplayName,
-      action: historyAction,
+    await persistContentUpdateHistory(client, input, current, {
       changedFields,
-      previousStatus: current.status,
-      nextStatus,
-      summary: historySummary,
-      snapshot: nextPayload,
-      mutationRef: input.mutationRef,
+      status: nextStatus,
+      payload: nextPayload,
+      historyAction,
+      historySummary,
+      mutationFinalized,
     });
-    await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
     await emitContentUpdatedActivity(client, stateInput, current, {
       eventType: activityEventType,
       action: resolveAuditAction({ changedFields, previousStatus: current.status, nextStatus }),

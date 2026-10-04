@@ -1,5 +1,6 @@
 import type { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import { resolveCreateAuthorDisplay } from './repository-author-display.js';
+import { insertContentHistory } from './repository-shared.js';
 import type { ContentRow, CreateContentInput, UpdateContentInput } from './repository-types.js';
 
 export {
@@ -16,6 +17,46 @@ export {
 } from './repository-activity.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+
+export const persistContentUpdateHistory = async (
+  client: InstanceScopedClient,
+  input: UpdateContentInput,
+  current: ContentRow,
+  next: {
+    readonly changedFields: readonly string[];
+    readonly status: ContentRow['status'];
+    readonly payload: ContentRow['payload_json'];
+    readonly historyAction: 'created' | 'updated' | 'status_changed';
+    readonly historySummary: string;
+    readonly mutationFinalized: boolean;
+  }
+): Promise<void> => {
+  if (next.mutationFinalized) {
+    await client.query(
+      `UPDATE iam.content_history
+       SET changed_fields = ARRAY(
+         SELECT DISTINCT field FROM unnest(changed_fields || $4::text[]) AS field ORDER BY field
+       ), summary = 'Inhaber übertragen'
+       WHERE instance_id = $1 AND content_id = $2::uuid AND mutation_ref = $3;`,
+      [input.instanceId, input.contentId, input.mutationRef, next.changedFields]
+    );
+    return;
+  }
+  const historyId = await insertContentHistory(client, {
+    instanceId: input.instanceId,
+    contentId: input.contentId,
+    actorAccountId: input.actorAccountId,
+    actorDisplayName: input.actorDisplayName,
+    action: next.historyAction,
+    changedFields: next.changedFields,
+    previousStatus: current.status,
+    nextStatus: next.status,
+    summary: input.confirmedExternalOwner ? 'Inhaber übertragen' : next.historySummary,
+    snapshot: next.payload,
+    mutationRef: input.mutationRef,
+  });
+  await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
+};
 
 export const insertContentRow = async (
   client: InstanceScopedClient,
@@ -42,7 +83,11 @@ RETURNING id;
       input.instanceId,
       input.contentType,
       input.organizationId ?? null,
-      input.organizationId ? null : input.actorAccountId,
+      input.confirmedExternalOwner?.type === 'account'
+        ? input.confirmedExternalOwner.id
+        : input.organizationId
+          ? null
+          : input.actorAccountId,
       input.organizationId ?? null,
       input.title,
       input.publishedAt ?? null,
@@ -77,6 +122,8 @@ export const updateContentRow = async (
     readonly publishedAt: string | null;
     readonly publishFrom: string | null;
     readonly publishUntil: string | null;
+    readonly ownerUserId: string | null;
+    readonly ownerOrganizationId: string | null;
   }
 ): Promise<void> => {
   await client.query(
@@ -84,6 +131,8 @@ export const updateContentRow = async (
 UPDATE iam.contents
 SET
   organization_id = $3::uuid,
+  owner_user_id = CASE WHEN $14::boolean THEN $15::uuid ELSE owner_user_id END,
+  owner_organization_id = CASE WHEN $14::boolean THEN $16::uuid ELSE owner_organization_id END,
   author_display_mode = $4,
   author_display_name = $5,
   title = $6,
@@ -112,6 +161,9 @@ WHERE instance_id = $1
       next.publishFrom,
       next.publishUntil,
       input.actorAccountId,
+      Boolean(input.confirmedExternalOwner),
+      next.ownerUserId,
+      next.ownerOrganizationId,
     ]
   );
 };

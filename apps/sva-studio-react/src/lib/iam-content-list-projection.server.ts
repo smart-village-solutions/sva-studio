@@ -87,6 +87,7 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     type: 'account' | 'organization';
     id: string;
   }>;
+  readonly preserveExistingContentState?: boolean;
   readonly mutationRef?: string;
   readonly contentType: MainserverContentType;
   readonly organizationId?: string;
@@ -105,6 +106,7 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     ...(input.auditActorAccountId ? { auditActorAccountId: input.auditActorAccountId } : {}),
     ...(input.actorDisplayName ? { actorDisplayName: input.actorDisplayName } : {}),
     ...(input.ownershipPrincipal ? { ownershipPrincipal: input.ownershipPrincipal } : {}),
+    ...(input.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
     ...(input.mutationRef ? { mutationRef: input.mutationRef } : {}),
     contentType: input.contentType,
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),

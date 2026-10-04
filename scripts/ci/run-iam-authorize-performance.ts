@@ -1,112 +1,28 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { AcceptanceConfig } from './iam-acceptance.ts';
 import { parseAcceptanceConfig } from './iam-acceptance.ts';
 import {
-  buildAuthorizeBenchmarkPayload,
-  authorizeBenchmarkP95ThresholdMs,
   renderAuthorizePerformanceMarkdownReport,
-  summarizeDurations,
-  withBenchmarkInstanceDb,
   type AuthorizeBenchmarkPayload,
-  type AuthorizeBenchmarkScenario,
   type AuthorizePerformanceReport,
   type ScenarioMeasurement,
 } from './iam-authorize-performance.ts';
+import type { Pool } from './iam-authorize-performance-request.js';
+import { runScenario } from './iam-authorize-performance-scenario.js';
+import { loginAndReadSession } from './iam-authorize-performance-session.js';
+import type { Browser } from './iam-authorize-performance-session.js';
 
 type BrowserModule = {
   chromium: {
     launch: (options?: { headless?: boolean }) => Promise<Browser>;
   };
 };
-
-type Browser = {
-  close: () => Promise<void>;
-  newContext: () => Promise<BrowserContext>;
-};
-
-type BrowserContext = {
-  close: () => Promise<void>;
-  newPage: () => Promise<Page>;
-  request: {
-    get: (url: string, options?: { failOnStatusCode?: boolean }) => Promise<ApiResponse>;
-    post: (
-      url: string,
-      options: {
-        data: unknown;
-        failOnStatusCode?: boolean;
-        headers?: Record<string, string>;
-      }
-    ) => Promise<ApiResponse>;
-  };
-};
-
-type ApiResponse = {
-  json: () => Promise<unknown>;
-  status: () => number;
-};
-
-type Locator = {
-  click: () => Promise<void>;
-  count: () => Promise<number>;
-  fill: (value: string) => Promise<void>;
-  first: () => Locator;
-  isVisible: () => Promise<boolean>;
-};
-
-type Page = {
-  close: () => Promise<void>;
-  getByRole: (role: string, options?: { exact?: boolean; name?: string | RegExp }) => Locator;
-  goto: (
-    url: string,
-    options?: { waitUntil?: 'domcontentloaded' | 'load'; timeout?: number }
-  ) => Promise<unknown>;
-  locator: (selector: string) => Locator;
-  waitForLoadState: (state?: 'domcontentloaded' | 'load' | 'networkidle') => Promise<void>;
-  waitForURL: (url: string | RegExp, options?: { timeout?: number }) => Promise<void>;
-};
-
 type PgModule = {
   Pool: new (options: { connectionString: string }) => Pool;
-};
-
-type Pool = {
-  connect: () => Promise<PoolClient>;
-  end: () => Promise<void>;
-};
-
-type PoolClient = {
-  query: <T>(
-    text: string,
-    values?: readonly unknown[]
-  ) => Promise<{ rowCount: number | null; rows: T[] }>;
-  release: () => void;
-};
-
-type AuthMePayload = {
-  user?: {
-    email?: string;
-    id?: string;
-    instanceId?: string;
-    name?: string;
-    roles?: string[];
-  };
-};
-
-type AuthorizeApiPayload = AuthorizeBenchmarkPayload;
-
-type AuthorizeApiResponse = {
-  allowed?: boolean;
-  cacheStatus?: string;
-  error?: string;
-  reason?: string;
-  requestId?: string;
-  snapshotVersion?: string | null;
-  traceId?: string;
 };
 
 type BenchmarkConfig = {
@@ -130,13 +46,6 @@ const authRuntimeRequire = createRequire(resolve(rootDir, 'packages/auth-runtime
 
 const { chromium } = appRequire('@playwright/test') as BrowserModule;
 const { Pool } = authRuntimeRequire('pg') as PgModule;
-
-const JSON_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest',
-} as const;
-
-const LOGIN_TIMEOUT_MS = 45_000;
 
 const parsePositiveInteger = (raw: string | undefined, fallback: number): number => {
   const trimmed = raw?.trim();
@@ -169,107 +78,6 @@ const parseBenchmarkConfig = (env: NodeJS.ProcessEnv): BenchmarkConfig => {
   };
 };
 
-const fillIfVisible = async (locator: Locator, value: string): Promise<boolean> => {
-  const count = await locator.count().catch(() => 0);
-  if (count === 0) {
-    return false;
-  }
-  const first = locator.first();
-  if (!(await first.isVisible().catch(() => false))) {
-    return false;
-  }
-  await first.fill(value);
-  return true;
-};
-
-const clickIfVisible = async (locator: Locator): Promise<boolean> => {
-  const count = await locator.count().catch(() => 0);
-  if (count === 0) {
-    return false;
-  }
-  const first = locator.first();
-  if (!(await first.isVisible().catch(() => false))) {
-    return false;
-  }
-  await first.click();
-  return true;
-};
-
-const performKeycloakLogin = async (
-  page: Page,
-  input: { password: string; username: string }
-): Promise<void> => {
-  const usernameFilled =
-    (await fillIfVisible(page.locator('input[name="username"]'), input.username)) ||
-    (await fillIfVisible(page.locator('#username'), input.username));
-  const passwordFilled =
-    (await fillIfVisible(page.locator('input[name="password"]'), input.password)) ||
-    (await fillIfVisible(page.locator('#password'), input.password));
-
-  if (!usernameFilled || !passwordFilled) {
-    throw new Error('Die Keycloak-Loginmaske konnte nicht automatisiert bedient werden.');
-  }
-
-  const clicked =
-    (await clickIfVisible(page.locator('#kc-login'))) ||
-    (await clickIfVisible(page.getByRole('button', { name: /anmelden|sign in|login/i })));
-
-  if (!clicked) {
-    throw new Error('Der Keycloak-Login-Button wurde nicht gefunden.');
-  }
-};
-
-const loginAndReadSession = async (input: {
-  readonly baseUrl: string;
-  readonly browser: Browser;
-  readonly password: string;
-  readonly username: string;
-}): Promise<{
-  readonly context: BrowserContext;
-  readonly user: NonNullable<AuthMePayload['user']>;
-}> => {
-  const context = await input.browser.newContext();
-  const page = await context.newPage();
-
-  try {
-    await page.goto(new URL('/auth/login', input.baseUrl).toString(), {
-      timeout: LOGIN_TIMEOUT_MS,
-      waitUntil: 'domcontentloaded',
-    });
-    await performKeycloakLogin(page, { username: input.username, password: input.password });
-    await page.waitForURL(
-      new RegExp(`${input.baseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/.*`),
-      {
-        timeout: LOGIN_TIMEOUT_MS,
-      }
-    );
-    await page.waitForLoadState('networkidle');
-
-    const meResponse = await context.request.get(new URL('/auth/me', input.baseUrl).toString(), {
-      failOnStatusCode: false,
-    });
-    if (meResponse.status() !== 200) {
-      throw new Error(`/auth/me antwortete mit HTTP ${meResponse.status()}.`);
-    }
-
-    const mePayload = (await meResponse.json()) as AuthMePayload;
-    const user = mePayload.user;
-    if (!user?.id || !user.instanceId || !Array.isArray(user.roles)) {
-      throw new Error('Der User-Kontext aus /auth/me ist unvollständig.');
-    }
-
-    await page.close().catch(() => undefined);
-    return {
-      context,
-      user: user as NonNullable<AuthMePayload['user']>,
-    };
-  } catch (error) {
-    await page.close().catch(() => undefined);
-    await context.close().catch(() => undefined);
-    throw error;
-  }
-};
-
 const createReportFileBase = (basename: string, generatedAt: Date): string => {
   const isoDate = generatedAt
     .toISOString()
@@ -294,233 +102,6 @@ const writeBenchmarkReports = async (input: {
   return { jsonPath, markdownPath };
 };
 
-const sleep = async (durationMs: number): Promise<void> =>
-  new Promise((resolvePromise) => setTimeout(resolvePromise, durationMs));
-
-const invokeAuthorize = async (input: {
-  readonly baseUrl: string;
-  readonly context: BrowserContext;
-  readonly payload: AuthorizeApiPayload;
-}): Promise<{
-  readonly cacheStatus?: string;
-  readonly durationMs: number;
-  readonly response: AuthorizeApiResponse;
-}> => {
-  const startedAt = performance.now();
-  const apiResponse = await input.context.request.post(
-    new URL('/iam/authorize', input.baseUrl).toString(),
-    {
-      data: input.payload,
-      failOnStatusCode: false,
-      headers: JSON_HEADERS,
-    }
-  );
-  const durationMs = performance.now() - startedAt;
-
-  const response = (await apiResponse.json()) as AuthorizeApiResponse;
-  if (apiResponse.status() !== 200) {
-    throw new Error(
-      `/iam/authorize antwortete mit HTTP ${apiResponse.status()} (${response.error ?? 'unknown_error'}).`
-    );
-  }
-  if (typeof response.allowed !== 'boolean') {
-    throw new Error('/iam/authorize lieferte keine fachliche Allow-/Deny-Entscheidung.');
-  }
-
-  return { cacheStatus: response.cacheStatus, durationMs, response };
-};
-
-const emitUserScopeInvalidation = async (input: {
-  readonly keycloakSubject: string;
-  readonly instanceId: string;
-  readonly pool: Pool;
-  readonly scenarioRunId: string;
-  readonly sampleIndex: number;
-}): Promise<void> => {
-  await withBenchmarkInstanceDb(input.pool, input.instanceId, async (client) => {
-    await client.query(
-      `
-WITH bumped AS (
-  INSERT INTO iam.permission_cache_user_revisions (
-    instance_id,
-    keycloak_subject,
-    revision,
-    updated_at
-  )
-  VALUES ($1, $2, 2, NOW())
-  ON CONFLICT (instance_id, keycloak_subject) DO UPDATE
-    SET revision = iam.permission_cache_user_revisions.revision + 1,
-        updated_at = NOW()
-  RETURNING revision
-), notified AS (
-  SELECT pg_notify(
-    'iam_permission_snapshot_invalidation',
-    json_build_object(
-      'eventId', $3,
-      'event', 'PermissionRevisionChanged',
-      'instanceId', $1,
-      'keycloakSubject', $2,
-      'revisionScope', 'user',
-      'newRevision', revision,
-      'trigger', 'pg_notify'
-    )::text
-  )
-  FROM bumped
-)
-SELECT revision
-FROM bumped
-CROSS JOIN notified
-`,
-      [
-        input.instanceId,
-        input.keycloakSubject,
-        `bench-${input.scenarioRunId}-invalidate-${input.sampleIndex}`,
-      ]
-    );
-  });
-};
-
-const scenarioThresholdMs = (scenario: AuthorizeBenchmarkScenario): number =>
-  authorizeBenchmarkP95ThresholdMs[scenario];
-
-const assertScenarioStatuses = (input: {
-  readonly observedStatuses: readonly string[];
-  readonly scenario: AuthorizeBenchmarkScenario;
-}): void => {
-  if (input.observedStatuses.length === 0) {
-    throw new Error(`Szenario ${input.scenario} lieferte keine cacheStatus-Werte.`);
-  }
-
-  if (input.scenario === 'cache-hit' && input.observedStatuses.some((status) => status !== 'hit')) {
-    throw new Error(
-      `Szenario cache-hit lieferte unerwartete cacheStatus-Werte: ${input.observedStatuses.join(', ')}.`
-    );
-  }
-
-  if (
-    input.scenario === 'cache-miss' &&
-    input.observedStatuses.some((status) => status !== 'miss')
-  ) {
-    throw new Error(
-      `Szenario cache-miss lieferte unerwartete cacheStatus-Werte: ${input.observedStatuses.join(', ')}.`
-    );
-  }
-
-  if (input.scenario === 'recompute' && input.observedStatuses.some((status) => status === 'hit')) {
-    throw new Error(
-      `Szenario recompute blieb im Cache-Hit hängen: ${input.observedStatuses.join(', ')}.`
-    );
-  }
-};
-
-const runScenario = async (input: {
-  readonly basePayload: AuthorizeBenchmarkPayload;
-  readonly baseUrl: string;
-  readonly context: BrowserContext;
-  readonly invalidationDelayMs: number;
-  readonly keycloakSubject: string;
-  readonly measuredRequests: number;
-  readonly pool: Pool;
-  readonly runId: string;
-  readonly scenario: AuthorizeBenchmarkScenario;
-  readonly scenarioConcurrency: number;
-  readonly warmupRequests: number;
-}): Promise<ScenarioMeasurement> => {
-  const stableWarmupPayload = buildAuthorizeBenchmarkPayload({
-    basePayload: input.basePayload,
-    runId: input.runId,
-    sampleIndex: 0,
-    scenario: input.scenario === 'cache-miss' ? 'cache-hit' : input.scenario,
-  });
-
-  for (let index = 0; index < input.warmupRequests; index += 1) {
-    if (input.scenario === 'recompute') {
-      await emitUserScopeInvalidation({
-        pool: input.pool,
-        instanceId: input.basePayload.instanceId,
-        keycloakSubject: input.keycloakSubject,
-        scenarioRunId: input.runId,
-        sampleIndex: index,
-      });
-      await sleep(input.invalidationDelayMs);
-    }
-
-    const warmupPayload =
-      input.scenario === 'cache-miss'
-        ? buildAuthorizeBenchmarkPayload({
-            basePayload: input.basePayload,
-            runId: `${input.runId}-warmup`,
-            sampleIndex: index,
-            scenario: 'cache-miss',
-          })
-        : stableWarmupPayload;
-    await invokeAuthorize({
-      baseUrl: input.baseUrl,
-      context: input.context,
-      payload: warmupPayload,
-    });
-  }
-
-  const samplesMs = new Array<number>(input.measuredRequests);
-  const observedStatuses = new Array<string>(input.measuredRequests);
-  let cursor = 0;
-
-  const worker = async (): Promise<void> => {
-    while (true) {
-      const sampleIndex = cursor;
-      cursor += 1;
-
-      if (sampleIndex >= input.measuredRequests) {
-        return;
-      }
-
-      if (input.scenario === 'recompute') {
-        await emitUserScopeInvalidation({
-          pool: input.pool,
-          instanceId: input.basePayload.instanceId,
-          keycloakSubject: input.keycloakSubject,
-          scenarioRunId: input.runId,
-          sampleIndex,
-        });
-        await sleep(input.invalidationDelayMs);
-      }
-
-      const payload = buildAuthorizeBenchmarkPayload({
-        basePayload: input.basePayload,
-        runId: input.runId,
-        sampleIndex,
-        scenario: input.scenario,
-      });
-
-      const result = await invokeAuthorize({
-        baseUrl: input.baseUrl,
-        context: input.context,
-        payload,
-      });
-
-      samplesMs[sampleIndex] = result.durationMs;
-      observedStatuses[sampleIndex] = result.cacheStatus ?? 'unknown';
-    }
-  };
-
-  await Promise.all(
-    Array.from({ length: Math.max(1, input.scenarioConcurrency) }, async () => worker())
-  );
-
-  assertScenarioStatuses({
-    observedStatuses,
-    scenario: input.scenario,
-  });
-
-  const summary = summarizeDurations(samplesMs);
-  return {
-    scenario: input.scenario,
-    samplesMs,
-    summary,
-    accepted: summary.p95Ms < scenarioThresholdMs(input.scenario),
-  };
-};
-
 const main = async (): Promise<void> => {
   const generatedAt = new Date();
   const config = parseBenchmarkConfig(process.env);
@@ -541,7 +122,7 @@ const main = async (): Promise<void> => {
       throw new Error('Der angemeldete Benutzer liefert kein Keycloak-Subject.');
     }
 
-    const basePayload: AuthorizeApiPayload = {
+    const basePayload: AuthorizeBenchmarkPayload = {
       instanceId: config.acceptance.instanceId,
       action: config.action,
       resource: {

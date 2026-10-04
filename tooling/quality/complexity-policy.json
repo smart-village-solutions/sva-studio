@@ -286,12 +286,6 @@
     }
   ],
   "trackedFindings": {
-    "apps-default:apps/project-report/src/app.tsx:fileLines": {
-      "ticketId": "baseline-apps-default-project-report-src-app-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/project-report/src/app.tsx)"
-    },
     "apps-default:apps/project-report/src/app.tsx:functionLines": {
       "ticketId": "baseline-apps-default-project-report-src-app-tsx",
       "ticketSystem": "policy-baseline",
@@ -321,12 +315,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
-    },
-    "auth-runtime:packages/auth-runtime/src/iam-account-management/platform-handlers.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-account-management-platform-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
     },
     "auth-runtime:packages/auth-runtime/src/iam-account-management/platform-handlers.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-account-management-platform-handlers-ts",
@@ -388,12 +376,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-media/core.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-media/core.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
       "ticketSystem": "policy-baseline",
@@ -430,12 +412,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/index.ts)"
     },
-    "auth-runtime:packages/auth-runtime/src/keycloak-admin-client/core.ts:fileLines": {
-      "ticketId": "baseline-auth-runtime-src-keycloak-admin-client-core-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/keycloak-admin-client/core.ts)"
-    },
     "auth-runtime:packages/auth-runtime/src/middleware.ts:functionLines": {
       "ticketId": "baseline-auth-runtime-src-middleware-ts",
       "ticketSystem": "policy-baseline",
@@ -460,102 +436,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/check-plugin-ui-boundary.ts)"
     },
-    "ci-scripts:scripts/ci/check-server-package-runtime.ts:fileLines": {
-      "ticketId": "baseline-ci-check-server-package-runtime-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-server-package-runtime.ts)"
-    },
-    "ci-scripts:scripts/ci/complexity-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-complexity-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/complexity-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/complexity-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-complexity-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/complexity-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/coverage-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-coverage-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/coverage-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/coverage-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-coverage-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/coverage-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/patch-coverage-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-patch-coverage-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/patch-coverage-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/patch-coverage-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-patch-coverage-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/patch-coverage-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
-      "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Authorize-Performance-Runner in kleinere CLI-, Konfigurations- und Auswertungsbausteine zerlegen (scripts/ci/run-iam-authorize-performance.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-evidence.ts:fileLines": {
-      "ticketId": "baseline-ci-run-iam-evidence-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Evidence-Runner in kleinere Sammel-, Export- und Berichtsschritte zerlegen (scripts/ci/run-iam-evidence.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-evidence.ts:functionLines": {
-      "ticketId": "baseline-ci-run-iam-evidence-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Evidence-Orchestrierung in kleinere Ausfuehrungs- und Reportfunktionen aufteilen (scripts/ci/run-iam-evidence.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:fileLines": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:functionLines": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-hotspots.ts:publicExports": {
-      "ticketId": "baseline-ci-sonar-hotspots-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (scripts/ci/sonar-hotspots.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-new-code-gate.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-sonar-new-code-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/sonar-new-code-gate.ts)"
-    },
-    "ci-scripts:scripts/ci/sonar-new-code-gate.ts:fileLines": {
-      "ticketId": "baseline-ci-sonar-new-code-gate-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-new-code-gate.ts)"
-    },
     "core-iam:packages/core/src/iam/account-management-contract.ts:publicExports": {
       "ticketId": "baseline-core-src-iam-account-management-contract-ts",
       "ticketSystem": "policy-baseline",
@@ -574,12 +454,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/core/src/iam/authorization-engine.ts)"
     },
-    "core-iam:packages/core/src/iam/authorization-engine.ts:fileLines": {
-      "ticketId": "baseline-core-src-iam-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/iam/authorization-engine.ts)"
-    },
     "core-iam:packages/core/src/iam/authorization-engine.ts:functionLines": {
       "ticketId": "baseline-core-src-iam-authorization-engine-ts",
       "ticketSystem": "policy-baseline",
@@ -597,12 +471,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Content-State-Wertelogik in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-contents/repository-state-values.ts)"
-    },
-    "iam-core:packages/iam-core/src/authorization-contract.ts:fileLines": {
-      "ticketId": "baseline-iam-core-authorization-contract-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Authorization-Vertragsmodell in kleinere fachliche API-Segmente aufteilen (packages/iam-core/src/authorization-contract.ts)"
     },
     "iam-core:packages/iam-core/src/authorization-contract.ts:publicExports": {
       "ticketId": "baseline-iam-core-authorization-contract-ts",
@@ -663,12 +531,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/hooks/use-users.ts)"
-    },
-    "frontend-app:apps/sva-studio-react/src/i18n/resources.ts:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-i18n-resources-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/i18n/resources.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/lib/iam-api.ts:publicExports": {
       "ticketId": "baseline-sva-studio-react-src-lib-iam-api-ts",
@@ -765,12 +627,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/media/-media-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/admin/media/-media-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-admin-media-media-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/media/-media-page.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/media/-media-page.tsx:functionLines": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-media-media-page-tsx",
@@ -916,12 +772,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/profile-commands.ts)"
     },
-    "iam-admin:packages/iam-admin/src/role-create-handler.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-role-create-handler-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/role-create-handler.ts)"
-    },
     "iam-admin:packages/iam-admin/src/role-create-handler.ts:functionLines": {
       "ticketId": "baseline-iam-admin-src-role-create-handler-ts",
       "ticketSystem": "policy-baseline",
@@ -958,12 +808,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/user-create-persistence.ts)"
     },
-    "iam-admin:packages/iam-admin/src/user-detail-permission-sql.ts:fileLines": {
-      "ticketId": "baseline-iam-admin-src-user-detail-permission-sql-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "SQL-Bausteine fuer User-Detail-Berechtigungen in kleinere Query-Segmente zerlegen (packages/iam-admin/src/user-detail-permission-sql.ts)"
-    },
     "iam-admin:packages/iam-admin/src/user-detail-query.mapping.ts:cyclomaticComplexity": {
       "ticketId": "baseline-iam-admin-src-user-detail-query-mapping-ts",
       "ticketSystem": "policy-baseline",
@@ -988,23 +832,11 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/user-read-handlers.ts)"
     },
-    "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
-      "ticketId": "QUAL-116",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "IAM-Repository-Statements in kleinere Statement-Builder für Accounts, Gruppen, Geo und Memberships zerlegen"
-    },
     "iam-data:packages/data/src/iam/types.ts:publicExports": {
       "ticketId": "QUAL-116",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM-Datentypen in fachlich kleinere Export-Surfaces für Gruppen-, Geo- und Membership-Modelle aufteilen"
-    },
-    "iam-governance:packages/iam-governance/src/dsr-maintenance.ts:fileLines": {
-      "ticketId": "baseline-iam-governance-src-dsr-maintenance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-maintenance.ts)"
     },
     "iam-governance:packages/iam-governance/src/dsr-maintenance.ts:functionLines": {
       "ticketId": "baseline-iam-governance-src-dsr-maintenance-ts",
@@ -1048,23 +880,11 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/data/src/instance-registry/index.ts)"
     },
-    "instance-registry-data:packages/data/src/instance-registry/index.ts:fileLines": {
-      "ticketId": "baseline-data-src-instance-registry-index-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data/src/instance-registry/index.ts)"
-    },
     "instance-registry-data:packages/data/src/instance-registry/index.ts:functionLines": {
       "ticketId": "baseline-data-src-instance-registry-index-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data/src/instance-registry/index.ts)"
-    },
-    "instance-registry-data:packages/data/src/instance-registry/server.ts:fileLines": {
-      "ticketId": "baseline-data-src-instance-registry-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data/src/instance-registry/server.ts)"
     },
     "instance-registry-data:packages/data/src/instance-registry/server.ts:functionLines": {
       "ticketId": "baseline-data-src-instance-registry-server-ts",
@@ -1077,12 +897,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/data-repositories/src/instance-registry/index.ts)"
-    },
-    "instance-registry-repositories:packages/data-repositories/src/instance-registry/index.ts:fileLines": {
-      "ticketId": "baseline-data-repositories-src-instance-registry-index-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/instance-registry/index.ts)"
     },
     "instance-registry-repositories:packages/data-repositories/src/instance-registry/index.ts:functionLines": {
       "ticketId": "baseline-data-repositories-src-instance-registry-index-ts",
@@ -1102,12 +916,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/instance-registry/src/http-mutation-handlers.ts)"
     },
-    "instance-registry-service:packages/instance-registry/src/http-mutation-handlers.ts:fileLines": {
-      "ticketId": "baseline-instance-registry-src-http-mutation-handlers-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/http-mutation-handlers.ts)"
-    },
     "instance-registry-service:packages/instance-registry/src/http-mutation-handlers.ts:functionLines": {
       "ticketId": "baseline-instance-registry-src-http-mutation-handlers-ts",
       "ticketSystem": "policy-baseline",
@@ -1126,41 +934,11 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/instance-registry/src/mutation-input-builders.ts)"
     },
-    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution-shared.ts:fileLines": {
-      "ticketId": "baseline-instance-registry-src-service-keycloak-execution-shared-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/service-keycloak-execution-shared.ts)"
-    },
-    "instance-registry-service:packages/instance-registry/src/service-keycloak.ts:fileLines": {
-      "ticketId": "baseline-instance-registry-src-service-keycloak-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/service-keycloak.ts)"
-    },
-    "instance-registry-service:packages/instance-registry/src/service.ts:fileLines": {
-      "ticketId": "baseline-instance-registry-src-service-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/service.ts)"
-    },
-    "ops-scripts:scripts/ops/bootstrap-local-instance-db.ts:fileLines": {
-      "ticketId": "baseline-ops-bootstrap-local-instance-db-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/bootstrap-local-instance-db.ts)"
-    },
     "ops-scripts:scripts/ops/instance-registry.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ops-instance-registry-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/instance-registry.ts)"
-    },
-    "ops-scripts:scripts/ops/instance-registry.ts:fileLines": {
-      "ticketId": "baseline-ops-instance-registry-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/instance-registry.ts)"
     },
     "ops-scripts:scripts/ops/instance-registry.ts:functionLines": {
       "ticketId": "baseline-ops-instance-registry-ts",
@@ -1174,12 +952,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime-env.shared.ts)"
     },
-    "ops-scripts:scripts/ops/runtime-env.shared.ts:fileLines": {
-      "ticketId": "baseline-ops-runtime-env-shared-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime-env.shared.ts)"
-    },
     "ops-scripts:scripts/ops/runtime-env.shared.ts:publicExports": {
       "ticketId": "baseline-ops-runtime-env-shared-ts",
       "ticketSystem": "policy-baseline",
@@ -1192,29 +964,11 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime-env.ts)"
     },
-    "ops-scripts:scripts/ops/runtime-env.ts:fileLines": {
-      "ticketId": "baseline-ops-runtime-env-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime-env.ts)"
-    },
     "ops-scripts:scripts/ops/runtime-env.ts:functionLines": {
       "ticketId": "baseline-ops-runtime-env-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/runtime-env.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/goose.ts:fileLines": {
-      "ticketId": "baseline-ops-runtime-goose-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime/goose.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/goose.ts:functionLines": {
-      "ticketId": "baseline-ops-runtime-goose-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/runtime/goose.ts)"
     },
     "ops-scripts:scripts/ops/runtime/local-dev-server-runner.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ops-runtime-local-dev-server-runner-ts",
@@ -1227,18 +981,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/local-provisioning-worker-runner.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/migration-job.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ops-runtime-migration-job-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/migration-job.ts)"
-    },
-    "ops-scripts:scripts/ops/runtime/migration-job.ts:fileLines": {
-      "ticketId": "baseline-ops-runtime-migration-job-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime/migration-job.ts)"
     },
     "ops-scripts:scripts/ops/runtime/process.ts:cyclomaticComplexity": {
       "ticketId": "baseline-ops-runtime-process-ts",
@@ -1288,12 +1030,6 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/data-repositories/src/index.ts)"
     },
-    "packages-default:packages/data/src/integrations/instance-integrations.server.ts:fileLines": {
-      "ticketId": "baseline-packages-default-data-src-integrations-instance-integrations-server-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data/src/integrations/instance-integrations.server.ts)"
-    },
     "packages-default:packages/iam-core/src/index.ts:publicExports": {
       "ticketId": "baseline-packages-default-iam-core-src-index-ts",
       "ticketSystem": "policy-baseline",
@@ -1312,12 +1048,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-events/src/events.pages.tsx)"
     },
-    "packages-default:packages/plugin-events/src/events.pages.tsx:fileLines": {
-      "ticketId": "baseline-packages-default-plugin-events-src-events-pages-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-events/src/events.pages.tsx)"
-    },
     "packages-default:packages/plugin-events/src/events.pages.tsx:functionLines": {
       "ticketId": "baseline-packages-default-plugin-events-src-events-pages-tsx",
       "ticketSystem": "policy-baseline",
@@ -1329,12 +1059,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-poi/src/poi.pages.tsx)"
-    },
-    "packages-default:packages/plugin-poi/src/poi.pages.tsx:fileLines": {
-      "ticketId": "baseline-packages-default-plugin-poi-src-poi-pages-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-poi/src/poi.pages.tsx)"
     },
     "packages-default:packages/plugin-poi/src/poi.pages.tsx:functionLines": {
       "ticketId": "baseline-packages-default-plugin-poi-src-poi-pages-tsx",
@@ -1432,12 +1156,6 @@
       "status": "open",
       "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/plugin-news/src/news.detail-page.tsx)"
     },
-    "plugin-news:packages/plugin-news/src/news.pages.tsx:fileLines": {
-      "ticketId": "baseline-plugin-news-src-news-pages-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/news.pages.tsx)"
-    },
     "plugin-news:packages/plugin-news/src/news.pages.tsx:functionLines": {
       "ticketId": "baseline-plugin-news-src-news-pages-tsx",
       "ticketSystem": "policy-baseline",
@@ -1492,12 +1210,6 @@
       "status": "open",
       "summary": "Monitoring-Jobliste in kleinere Filter-, Tabellen- und View-Model-Bausteine aufteilen"
     },
-    "iam-data:packages/data/src/iam/seed-plan.ts:fileLines": {
-      "ticketId": "QUAL-IAM-DATA-004",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Seed-Plan-Definition in kleinere fachliche Module und Builder zerlegen (packages/data/src/iam/seed-plan.ts)"
-    },
     "packages-default:packages/core/src/plugin-operations-contract.ts:publicExports": {
       "ticketId": "QUAL-PLUGIN-OPS-004",
       "ticketSystem": "backlog",
@@ -1510,23 +1222,11 @@
       "status": "open",
       "summary": "Runner-API in kuratierte Host- und Plugin-Entrypoints segmentieren (packages/auth-runtime/src/plugin-operations/runner.ts)"
     },
-    "routing:packages/routing/src/auth.routes.server.ts:fileLines": {
-      "ticketId": "QUAL-109",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Serverseitige Auth-Route-Komposition weiter in kleinere Routing-Bausteine zerlegen"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/events-route.ts:cyclomaticComplexity": {
       "ticketId": "baseline-sva-mainserver-src-server-events-route-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/events-route.ts)"
-    },
-    "sva-mainserver:packages/sva-mainserver/src/server/interfaces-contract.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-interfaces-contract-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/interfaces-contract.ts)"
     },
     "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:cyclomaticComplexity": {
       "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
@@ -1552,12 +1252,6 @@
       "status": "open",
       "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/service.ts)"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/service.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-server-service-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/service.ts)"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/service.ts:functionLines": {
       "ticketId": "baseline-sva-mainserver-src-server-service-ts",
       "ticketSystem": "policy-baseline",
@@ -1569,12 +1263,6 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/sva-mainserver/src/server/service.ts)"
-    },
-    "sva-mainserver:packages/sva-mainserver/src/types.ts:fileLines": {
-      "ticketId": "baseline-sva-mainserver-src-types-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/types.ts)"
     },
     "sva-mainserver:packages/sva-mainserver/src/types.ts:publicExports": {
       "ticketId": "baseline-sva-mainserver-src-types-ts",
@@ -1594,35 +1282,11 @@
       "status": "open",
       "summary": "Import-Sektion in kleinere Formular- und Statusbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
     },
-    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:functionLines": {
-      "ticketId": "baseline-auth-runtime-src-waste-management-core-operations-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Waste-Management-Operationsfunktionen in kleinere Ausfuehrungs- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/handlers/operations.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts:cyclomaticComplexity": {
       "ticketId": "baseline-frontend-app-src-lib-instance-interface-healthcheck-server-ts",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Kontrollfluss der Schnittstellen-Healthchecks in kleinere Probe- und Fehlerpfade zerlegen (apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx:fileLines": {
-      "ticketId": "baseline-frontend-app-src-routes-interfaces-interfaces-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Schnittstellen-Seite in kleinere View- und Aktionssektionen aufteilen (apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/plugin.translations.de.masterData.ts:fileLines": {
-      "ticketId": "baseline-plugin-waste-management-translations-masterdata",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "deutsche Master-Data-Uebersetzungen in kleinere thematische Dateien aufteilen (packages/plugin-waste-management/src/plugin.translations.de.masterData.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/plugin.translations.en.masterData.ts:fileLines": {
-      "ticketId": "baseline-plugin-waste-management-translations-masterdata",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "englische Master-Data-Uebersetzungen in kleinere thematische Dateien aufteilen (packages/plugin-waste-management/src/plugin.translations.en.masterData.ts)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.api.master-data-addresses.ts:publicExports": {
       "ticketId": "baseline-plugin-waste-management-api-master-data-addresses-ts",
@@ -1702,12 +1366,6 @@
       "status": "open",
       "summary": "Event-Operationen in kleinere Variablenbuilder und Mutationshilfen aufteilen (packages/sva-mainserver/src/server/service-internals/event-operations.ts)"
     },
-    "sva-mainserver:packages/sva-mainserver/src/server/service-internals/mappers-shared.ts:fileLines": {
-      "ticketId": "QUAL-SVA-MAINSERVER-INT-004",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Gemeinsame Mainserver-Mapping-Schemas in kleinere thematische Module splitten (packages/sva-mainserver/src/server/service-internals/mappers-shared.ts)"
-    },
     "sva-mainserver:packages/sva-mainserver/src/server/service-internals/mappers-shared.ts:publicExports": {
       "ticketId": "QUAL-SVA-MAINSERVER-INT-004",
       "ticketSystem": "backlog",
@@ -1737,36 +1395,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Gemeinsame Mainserver-Service-Utilities in kleinere Exportsegmente aufteilen (packages/sva-mainserver/src/server/service-internals/shared.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Operations-Handler in kleinere StartJob- und Preview-Bausteine splitten (packages/waste-management-runtime/src/handlers/operations.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/server-handlers.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/server-handlers.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-002",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Handler-Komposition in thematische Gruppen aufteilen (packages/waste-management-runtime/src/server-handlers.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-LOADERS-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Bestehende Waste-Loader-Komplexitaet im neuen Owner schrittweise zerlegen (packages/waste-management-runtime/src/server-loaders.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/server-loaders.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-LOADERS-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Management-Loaderdatei in kleinere serverseitige Ladebausteine zerlegen (packages/waste-management-runtime/src/server-loaders.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/server-loaders.ts:functionLines": {
       "ticketId": "QUAL-WASTE-LOADERS-001",
@@ -1810,30 +1438,6 @@
       "status": "open",
       "summary": "Waste-Import-API in kleinere Typ- und Funktionsoberflaechen aufteilen (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-import.ts)"
     },
-    "packages-default:packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "CSV-Parser in kleinere Header-, Fraktions- und Zeilenparser zerlegen (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "CSV-Parser-Datei in kleinere Parsing-Module splitten (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-parser.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-planner.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-008",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Import-Planer in Entity-Resolver und Assignment-Schritte aufteilen (packages/waste-management-contracts/src/waste-management-location-tour-pickup-date-planner.ts)"
-    },
-    "packages-default:packages/plugin-waste-management/src/server.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-009",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Server-Einstieg in kleinere Routing- und Handler-Register splitten (packages/plugin-waste-management/src/server.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.api.types.operations-inputs.ts:publicExports": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-010",
       "ticketSystem": "backlog",
@@ -1857,18 +1461,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Locations-Table-Komponente in kleinere Inhalts- und Confirm-Teile aufspalten (packages/plugin-waste-management/src/waste-management.master-data-locations-table.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-013",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Locations-Table-Views in Toolbar-, Header- und Row-Module splitten (packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-013",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Grosse Locations-View-Funktionen in kleinere UI-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.master-data-locations-table.views.tsx)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.master-data-locations-workspace.parts.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-014",
@@ -1942,18 +1534,6 @@
       "status": "open",
       "summary": "Import-Section-Steuerlogik in kleinere Step- und Handler-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
     },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tools.import-section.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-023",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Import-Section-Datei in kleinere Step-Komponenten splitten (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-024",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Custom-Date-Editor in Liste, Dialog und Hilfsbausteine splitten (packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.tours-custom-dates.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-024",
       "ticketSystem": "backlog",
@@ -1971,12 +1551,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Calendar-Panels-Zweiglogik in kleinere Status- und Panel-Bausteine zerlegen (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Calendar-Panels-Datei in kleinere Presentational-Module aufteilen (apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx)"
     },
     "apps-default:apps/public-waste-calendar-web/src/components/public-waste-calendar-panels.tsx:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-001",
@@ -2002,23 +1576,11 @@
       "status": "open",
       "summary": "Public-Waste-Contract in kleinere Teilvertraege oder Re-Export-Module aufteilen (apps/public-waste-calendar-web/src/lib/public-waste-contract.ts)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-005",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Demo-Runtime in Konfiguration, Seed-Daten und Bootstrap aufteilen (apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Repository-Verzweigungen in kleinere Query- und Mapping-Helfer auslagern (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Repository-Datei in kleinere Datenzugriffs- und Projektionsmodule splitten (apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts)"
     },
     "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-repository.server.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-006",
@@ -2031,12 +1593,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Index-Route in kleinere Status-, Loader- und Page-Entscheidungen zerlegen (apps/public-waste-calendar-web/src/routes/index.tsx)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Index-Route-Datei in kleinere Screen- und Container-Module aufteilen (apps/public-waste-calendar-web/src/routes/index.tsx)"
     },
     "apps-default:apps/public-waste-calendar-web/src/routes/index.tsx:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-007",
@@ -2068,12 +1624,6 @@
       "status": "open",
       "summary": "Assignments-Dialog-Zweige in kleinere Listen-, Filter- und Footer-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
     },
-    "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-028",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Assignments-Dialog-Datei in kleinere Module fuer Dialog-Chrome, Tabelle und Aktionen splitten (packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.tours-assignments-dialog.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-028",
       "ticketSystem": "backlog",
@@ -2103,12 +1653,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Langen Events-Content-Tab in kleinere Untersektionen und Form-Bausteine aufteilen (packages/plugin-events/src/events.detail-content-tab.tsx)"
-    },
-    "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:fileLines": {
-      "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Events-Content-Tab-Datei in kleinere Untersektionen, Karten- und Formularmodule splitten (packages/plugin-events/src/events.detail-content-tab.tsx)"
     },
     "packages-default:packages/plugin-events/src/events.detail-form.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-002",
@@ -2266,12 +1810,6 @@
       "status": "open",
       "summary": "POI-Operator-Tab-Verzweigungen in kleinere Kontakt-, Standort- und Kartenbausteine zerlegen (packages/plugin-poi/src/poi.detail-operator-tab.tsx)"
     },
-    "packages-default:packages/plugin-poi/src/poi.detail-operator-tab.tsx:fileLines": {
-      "ticketId": "QUAL-PLUGIN-POI-DETAIL-007",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "POI-Operator-Tab-Datei in kleinere Kontakt-, Standort- und Medienmodule splitten (packages/plugin-poi/src/poi.detail-operator-tab.tsx)"
-    },
     "packages-default:packages/plugin-poi/src/poi.detail-operator-tab.tsx:functionLines": {
       "ticketId": "QUAL-PLUGIN-POI-DETAIL-007",
       "ticketSystem": "backlog",
@@ -2302,23 +1840,11 @@
       "status": "open",
       "summary": "Public-Waste-App-Zweiglogik in kleinere Panel-, Formular- und Ergebnisbausteine zerlegen (apps/public-waste-calendar-web/src/components/public-waste-app.tsx)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/components/public-waste-app.tsx:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-008",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-App-Datei in kleinere Screen-, Form- und Result-Module splitten (apps/public-waste-calendar-web/src/components/public-waste-app.tsx)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/components/public-waste-app.tsx:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-008",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Lange Public-Waste-App-Komponente in kleinere State- und Render-Bausteine aufteilen (apps/public-waste-calendar-web/src/components/public-waste-app.tsx)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Occurrence-Berechnung in kleinere Mapping-, Filter- und Materialisierungsschritte zerlegen (apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts)"
     },
     "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-calendar-occurrences.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-003",
@@ -2332,23 +1858,11 @@
       "status": "open",
       "summary": "Public-Waste-Endpoint-Verzweigungen in kleinere Request-, Validation- und Response-Helfer zerlegen (apps/public-waste-calendar-web/src/lib/public-waste-endpoints.server.ts)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/lib/public-waste-endpoints.server.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-009",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Endpoints in kleinere Handler- und Shared-Response-Module splitten (apps/public-waste-calendar-web/src/lib/public-waste-endpoints.server.ts)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-010",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Email-Reminder-Flow in kleinere Signup-, Token- und Response-Zweige zerlegen (apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts)"
-    },
-    "apps-default:apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-010",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Email-Reminder-Serverdatei in kleinere Signup-, Activation- und Unsubscribe-Module splitten (apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts)"
     },
     "apps-default:apps/public-waste-calendar-web/src/server/public-waste-email-reminders.server.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-010",
@@ -2362,23 +1876,11 @@
       "status": "open",
       "summary": "Public-Waste-Runtime-Verzweigungen in kleinere Config-, Repository- und Reminder-Bausteine zerlegen (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
     },
-    "apps-default:apps/public-waste-calendar-web/src/server/public-waste-runtime.ts:fileLines": {
-      "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-011",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Runtime-Datei in kleinere Wiring- und Factory-Module splitten (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
-    },
     "apps-default:apps/public-waste-calendar-web/src/server/public-waste-runtime.ts:functionLines": {
       "ticketId": "QUAL-PUBLIC-WASTE-COMPLEXITY-011",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Lange Runtime-Factories in kleinere Resolver- und Defaulting-Schritte aufteilen (apps/public-waste-calendar-web/src/server/public-waste-runtime.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/http-schemas.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-030",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Schema-Bausteine in kleinere Themenmodule fuer Settings, Imports und Reminder splitten (packages/waste-management-runtime/src/http-schemas.ts)"
     },
     "frontend-app:apps/sva-studio-react/src/lib/instance-interfaces-server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-INTERFACES-COMPLEXITY-001",
@@ -2398,12 +1900,6 @@
       "status": "open",
       "summary": "Waste-Operations-Runtime in kleinere Job-, Import- und Materialisierungszweige zerlegen (apps/sva-studio-react/src/lib/waste-management-operations.server.ts)"
     },
-    "frontend-app:apps/sva-studio-react/src/lib/waste-management-operations.server.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-031",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Operations-Runtime-Datei in kleinere Operation- und Helper-Module splitten (apps/sva-studio-react/src/lib/waste-management-operations.server.ts)"
-    },
     "frontend-app:apps/sva-studio-react/src/routes/interfaces/-interfaces-page.dialogs.tsx:functionLines": {
       "ticketId": "QUAL-INTERFACES-COMPLEXITY-002",
       "ticketSystem": "backlog",
@@ -2422,47 +1918,11 @@
       "status": "open",
       "summary": "Waste-Operations-Contract in kleinere Vertrags- und Re-Export-Segmente aufteilen (packages/waste-management-contracts/src/waste-management-operations-contract.ts)"
     },
-    "packages-default:packages/waste-management-contracts/src/waste-management-output.render.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-033",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Output-Renderer in kleinere Layout-, Table- und Footer-Helfer splitten (packages/waste-management-contracts/src/waste-management-output.render.ts)"
-    },
-    "packages-default:packages/waste-management-contracts/src/waste-management-settings-public-config.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-034",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Settings-Datei in kleinere Parsing- und Konstantenmodule splitten (packages/waste-management-contracts/src/waste-management-settings-public-config.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-035",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Email-Reminder-Repository-Verzweigungen in kleinere Query-, Upsert- und Token-Pfade zerlegen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-035",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Email-Reminder-Repository-Datei in kleinere Persistence- und Projection-Module splitten (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/repositories/email-reminders.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-035",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Email-Reminder-Repository-Funktionen in kleinere SQL- und Mapping-Schritte aufteilen (packages/waste-management-runtime/src/repositories/email-reminders.ts)"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-038",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Output-Email-Reminder-Card in kleinere Status-, Channel- und Detailzweige zerlegen (packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-038",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Output-Email-Reminder-Card-Datei in kleinere Presentational- und Helper-Module splitten (packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.output-email-reminder-card.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-038",
@@ -2475,12 +1935,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Output-Panel-Zweiglogik in kleinere Reminder-, PDF- und Empty-State-Bausteine zerlegen (packages/plugin-waste-management/src/waste-management.output-panel.tsx)"
-    },
-    "packages-default:packages/plugin-waste-management/src/waste-management.output-panel.tsx:fileLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-039",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Output-Panel-Datei in kleinere Section- und Card-Module splitten (packages/plugin-waste-management/src/waste-management.output-panel.tsx)"
     },
     "packages-default:packages/plugin-waste-management/src/waste-management.output-panel.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-039",
@@ -2560,18 +2014,6 @@
       "status": "open",
       "summary": "Barrel-Exports in kleinere Runtime- und Type-Segmente aufteilen (packages/plugin-generic-items/src/index.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/handlers/settings-shared.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Einstellungsprojektionen in fachliche Lese- und Statusbausteine aufteilen"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Einstellungspersistenz und Provisionierungssteuerung in getrennte Module aufteilen"
-    },
     "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:functionLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
@@ -2614,12 +2056,6 @@
       "status": "open",
       "summary": "Waste-Provisionierungsfacade als separaten Server-Einstiegspunkt exportieren"
     },
-    "packages-default:packages/plugin-waste-management/src/waste-management.job-definitions.ts:fileLines": {
-      "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Waste-Jobdefinitionen nach Provisionierung und Datenoperationen gliedern"
-    },
     "packages-default:packages/plugin-waste-management/src/waste-management.settings-panel.tsx:functionLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
@@ -2661,24 +2097,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Tenant-Lifecycle-Runtime in kleinere Zustands-, Recovery- und Scheduling-Bausteine zerlegen"
-    },
-    "ci-scripts:scripts/ci/verify-graphile-worker-database-contract.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Graphile-Worker-Datenbankverifier in wiederverwendbare Setup-, Prüf- und Cleanup-Bausteine gliedern"
-    },
-    "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:fileLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Lifecycle-Datenbankverifier in kleinere Vertrags-, Fixture- und Assertionsmodule aufteilen"
-    },
-    "ci-scripts:scripts/ci/verify-plugin-lifecycle-database-contract.ts:functionLines": {
-      "ticketId": "QUAL-PLUGIN-LIFECYCLE-003",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Plugin-Lifecycle-Datenbankverifier in kleinere Vertrags-, Fixture- und Assertionsmodule aufteilen"
     },
     "instance-registry-service:packages/instance-registry/src/service-module-mutations.ts:functionLines": {
       "ticketId": "QUAL-INSTANCE-REGISTRY-001",
@@ -2758,36 +2176,6 @@
       "status": "open",
       "summary": "Keycloak-Provisioning-Ausführung in kleinere fachliche Phasen aufteilen"
     },
-    "packages-default:packages/studio-mcp/src/process.ts:cyclomaticComplexity": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
-    },
-    "packages-default:packages/studio-mcp/src/process.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
-    },
-    "packages-default:packages/studio-mcp/src/process.ts:functionLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Prozess in Create-, Repair-, Adapt- und Bestätigungsphasen zerlegen"
-    },
-    "packages-default:packages/studio-mcp/src/tools.ts:fileLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
-    },
-    "packages-default:packages/studio-mcp/src/tools.ts:functionLines": {
-      "ticketId": "#1448",
-      "ticketSystem": "github",
-      "status": "open",
-      "summary": "MCP-Tools nach Read-, Write- und Aktivierungsverträgen aufteilen"
-    },
     "plugin-sdk:packages/plugin-sdk/src/plugins.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-SDK-001",
       "ticketSystem": "backlog",
@@ -2818,24 +2206,6 @@
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/location-tour-links-bulk.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/handlers/mutation-helpers.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-mutation-helpers",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/mutation-helpers.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/operations.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-operations",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/operations.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/read-handlers.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-read-handlers",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/read-handlers.ts)"
-    },
     "packages-default:packages/waste-management-runtime/src/handlers/settings-write-support.ts:cyclomaticComplexity": {
       "ticketId": "baseline-waste-ownership-1506-handlers-settings-write-support",
       "ticketSystem": "policy-baseline",
@@ -2860,29 +2230,11 @@
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach cyclomaticComplexity vereinfachen (packages/waste-management-runtime/src/handlers/tours-delete-support.ts)"
     },
-    "packages-default:packages/waste-management-runtime/src/handlers/tours-write-support.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-tours-write-support",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/tours-write-support.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/tours-write-support.ts:functionLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-tours-write-support",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tours-write-support.ts)"
-    },
     "packages-default:packages/waste-management-runtime/src/handlers/tours.ts:functionLines": {
       "ticketId": "baseline-waste-ownership-1506-handlers-tours",
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach functionLines vereinfachen (packages/waste-management-runtime/src/handlers/tours.ts)"
-    },
-    "packages-default:packages/waste-management-runtime/src/handlers/types.ts:fileLines": {
-      "ticketId": "baseline-waste-ownership-1506-handlers-types",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Bestehenden Waste-Baustein bei spaeterer fachlicher Aenderung nach fileLines vereinfachen (packages/waste-management-runtime/src/handlers/types.ts)"
     },
     "packages-default:packages/waste-management-runtime/src/repositories.ts:publicExports": {
       "ticketId": "baseline-waste-ownership-1506-repositories",

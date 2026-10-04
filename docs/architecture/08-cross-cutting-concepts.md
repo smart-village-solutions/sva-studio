@@ -562,6 +562,7 @@ gleichzeitig beeinflussen.
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
+- Das Register enthält nur aktuell gemessene Überschreitungen; nach einem Refactoring entfallen verwaiste `fileLines`-Einträge, während andere aktuelle Metriken getrennt getrackt bleiben
 - Bei modularem IAM-Refactoring wird Restschuld am tatsächlichen Kernmodul (`core.ts` oder feingranulare Teilbausteine) und nicht am historischen Fassadenpfad dokumentiert
 - Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
 - Workflow- und CI-Dateiänderungen werden im PR-Pfad gezielt über `tooling-testing` abgesichert und nicht automatisch durch volle Produkt-Suiten eskaliert

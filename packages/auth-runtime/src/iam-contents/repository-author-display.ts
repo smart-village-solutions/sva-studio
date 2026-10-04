@@ -80,6 +80,10 @@ export const resolveCreateAuthorDisplay = async (
       actorDisplayName: input.actorDisplayName,
       mode: authorDisplayMode,
       organization,
+      requestedDisplayName:
+        input.confirmedExternalOwner && authorDisplayMode === 'user'
+          ? input.authorDisplayName
+          : undefined,
     }),
   };
 };
@@ -92,15 +96,39 @@ export const resolveUpdateAuthorDisplay = async (
   readonly authorDisplayMode: IamContentAuthorDisplayMode;
   readonly authorDisplayName: string;
 }> => {
-  const nextOrganizationId = input.organizationId ?? current.organization_id ?? null;
+  const nextOrganizationId = input.confirmedExternalOwner
+    ? input.confirmedExternalOwner.type === 'organization'
+      ? input.confirmedExternalOwner.id
+      : null
+    : (input.organizationId ?? current.organization_id ?? null);
   const organization = nextOrganizationId
     ? await loadOrganizationAuthorPolicy(client, {
         instanceId: input.instanceId,
         organizationId: nextOrganizationId,
       })
     : null;
+  const preserveCurrentAuthor =
+    input.preserveExistingContentState &&
+    (current.author_display_mode === 'organization'
+      ? organization !== null
+      : organization?.content_author_policy !== 'org_only');
+  if (preserveCurrentAuthor) {
+    return {
+      authorDisplayMode: current.author_display_mode,
+      authorDisplayName:
+        current.author_display_mode === 'organization' && organization
+          ? organization.display_name
+          : current.author_display_name,
+    };
+  }
   const authorDisplayMode = input.authorDisplayMode ?? current.author_display_mode;
   assertAuthorDisplayPolicy(authorDisplayMode, organization);
+  if (input.confirmedExternalOwner?.type === 'organization' && authorDisplayMode === 'organization') {
+    return {
+      authorDisplayMode,
+      authorDisplayName: organization?.display_name ?? input.actorDisplayName,
+    };
+  }
   const hasExplicitAuthorDisplayChange =
     input.authorDisplayMode !== undefined || input.authorDisplayName !== undefined;
 

@@ -1,6 +1,6 @@
 import type { SvaMainserverConnectionInput, SvaMainserverEventInput } from '../../types.js';
 import { mergeEventUpdateWithCurrent } from './editor-field-matrices.js';
-import { type SvaMainserverListInput } from './shared.js';
+import { withUpdatedPayload, type SvaMainserverListInput } from './shared.js';
 import type { ServiceContext } from './service-context.js';
 
 export const createEventService = ({
@@ -48,8 +48,14 @@ export const createEventService = ({
     return eventOperations.writeEventWithConfig(
       {
         ...input,
-        event: mergeEventUpdateWithCurrent(current.data, input.event, current.deviations),
-        forceCreate: false,
+        event: {
+          ...mergeEventUpdateWithCurrent(current.data, input.event, current.deviations),
+          payload: withUpdatedPayload(
+            input.event.payload === undefined ? current.data.payload : input.event.payload,
+            current.data.payload
+          ),
+        },
+        forceCreate: true,
       },
       config
     );

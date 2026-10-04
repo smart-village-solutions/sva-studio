@@ -49,6 +49,12 @@ Client- und Shared-Code sollen nur Typen aus `@sva/sva-mainserver` importieren. 
 
 Die Laufzeitintegration setzt gültige Instanzdaten aus dem Integrations-Repository sowie auflösbare Zugangsdaten aus der Auth-Runtime voraus. Relative Runtime-Imports bleiben Node-ESM-strikt mit expliziten `.js`-Endungen.
 
+## Persistenz von Updates
+
+`updateGenericItem`, `updateNews`, `updateEvent` und `updatePoi` senden die vorhandene ID mit `forceCreate: true` und einem serverseitigen `payload.studioUpdatedAt`. Der technische Zeitstempel dient als vorläufige Absicherung gegen den unvollständigen Mainserver-Vergleich für reine Änderungen an Relationen; die Ursache ist in [Mainserver #442](https://github.com/smart-village-solutions/smart-village-app-mainserver/issues/442) dokumentiert. Vorhandene Metadaten eines Objekt-Payloads bleiben bei ausgelassenem Payload erhalten. Explizite Payload-Ersetzungen werden beibehalten; direkt übergebene skalare oder Array-Payloads werden ohne Schreiboperation abgewiesen. Die bestehende Normalisierung ungültiger News-Bestandspayloads bleibt unverändert. Bei Events wird das Payload dafür auch über den bestehenden Detail- und Mutationsadapter geführt. Die Unit-Tests belegen den Studio-Vertrag mit simulierter Mainserver-Semantik; die Live-Persistenz benötigt noch eine unabhängige Browser-Abnahme.
+
+Der vollständige Vertrag und die Grenzen des vorläufigen Workarounds stehen im [Mainserver-Runbook](../../docs/development/runbook-sva-mainserver.md).
+
 ## Projektstruktur
 
 ```text

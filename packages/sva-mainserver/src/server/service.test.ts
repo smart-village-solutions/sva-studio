@@ -115,6 +115,7 @@ import {
   updateSvaMainserverSurvey,
 } from './service';
 import { SvaMainserverError } from './errors';
+import { withUpdatedPayload } from './service-internals/shared.js';
 
 const baseConfig = {
   instanceId: 'de-musterhausen',
@@ -147,6 +148,7 @@ const createDeferred = <TValue>() => {
 describe('createSvaMainserverService', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     state.loadSvaMainserverInstanceConfig.mockReset();
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockReset();
     state.logger.debug.mockReset();
@@ -760,6 +762,151 @@ describe('createSvaMainserverService', () => {
     }
   );
 
+  it('preserves payload values and explicit clears while replacing client timestamps', () => {
+    const now = Date.parse('2026-10-04T18:00:00.000Z');
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const previous = { studioUpdatedAt: new Date(now + 10).toISOString(), retained: true };
+    expect(
+      withUpdatedPayload({ nested: { value: false }, studioUpdatedAt: 'client-value' }, previous)
+    ).toEqual({
+      nested: { value: false },
+      studioUpdatedAt: new Date(now + 11).toISOString(),
+    });
+    expect(withUpdatedPayload(null, previous)).toEqual({
+      studioUpdatedAt: new Date(now + 11).toISOString(),
+    });
+    expect(withUpdatedPayload(undefined, undefined)).toEqual({
+      studioUpdatedAt: new Date(now).toISOString(),
+    });
+    expect(withUpdatedPayload({}, { studioUpdatedAt: 'invalid' })).toEqual({
+      studioUpdatedAt: new Date(now).toISOString(),
+    });
+  });
+
+  it.each([
+    { payload: ['array'] },
+    { payload: 'unstructured string' },
+    { payload: 42 },
+    { payload: false },
+  ])('rejects unsupported payload $payload instead of discarding its contents', ({ payload }) => {
+    expect(() => withUpdatedPayload(payload, payload)).toThrow(SvaMainserverError);
+  });
+
+  it.each(['generic', 'news', 'event', 'poi'] as const)(
+    'persists relation-only %s updates despite the upstream unchanged shortcut',
+    async (kind) => {
+      const now = Date.parse('2026-10-04T18:00:00.000Z');
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+      const id = `${kind}-1`;
+      const detailField = {
+        generic: 'genericItem',
+        news: 'newsItem',
+        event: 'eventRecord',
+        poi: 'pointOfInterest',
+      }[kind];
+      const mutationField = {
+        generic: 'createGenericItem',
+        news: 'createNewsItem',
+        event: 'createEventRecord',
+        poi: 'createPointOfInterest',
+      }[kind];
+      const originalPayload = {
+        source: 'import',
+        nested: { preserve: ['a', 'b'] },
+        studioUpdatedAt: new Date(now).toISOString(),
+      };
+      let stored: Record<string, unknown> = {
+        id,
+        title: 'Unchanged',
+        name: 'Unchanged',
+        genericType: 'COCKPIT_CARD',
+        publishedAt: '2026-10-01T10:00:00.000Z',
+        visible: true,
+        payload: originalPayload,
+        dataProvider: { id: '533', name: 'Provider' },
+      };
+      const writes: Record<string, unknown>[] = [];
+      const fetchImpl = vi.fn(async (url: unknown, init?: RequestInit) => {
+        if (String(url).endsWith('/oauth/token'))
+          return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+        const body = JSON.parse(String(init?.body)) as {
+          query?: string;
+          operationName?: string;
+          variables?: Record<string, unknown>;
+        };
+        if (!body.operationName)
+          return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+        if (body.operationName.endsWith('Detail'))
+          return createJsonResponse(200, { data: { [detailField]: stored } });
+        const variables = body.variables ?? {};
+        writes.push(variables);
+        // Reproduce the deployed server: forceCreate is ignored here and relations are
+        // excluded from comparison. Only a changed payload gets past status=unchanged.
+        if (
+          variables.id &&
+          variables.payload !== undefined &&
+          JSON.stringify(variables.payload) !== JSON.stringify(stored.payload)
+        ) {
+          expect(body.query).toContain('$payload: JSON');
+          expect(body.query).toContain('payload: $payload');
+          stored = { ...stored, ...variables };
+        }
+        return createJsonResponse(200, { data: { [mutationField]: stored } });
+      });
+      const service = createSvaMainserverService({
+        loadInstanceConfig: async () => baseConfig,
+        readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+        fetchImpl,
+      });
+      const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+      const update = (url: string) => {
+        switch (kind) {
+          case 'generic':
+            return service.updateGenericItem({
+              ...connection,
+              genericItemId: id,
+              genericItem: { title: 'Unchanged', genericType: 'COCKPIT_CARD', webUrls: [{ url }] },
+            });
+          case 'news':
+            return service.updateNews({
+              ...connection,
+              newsId: id,
+              news: {
+                title: 'Unchanged',
+                publishedAt: '2026-10-01T10:00:00.000Z',
+                sourceUrl: { url },
+              },
+            });
+          case 'event':
+            return service.updateEvent({
+              ...connection,
+              eventId: id,
+              event: { title: 'Unchanged', urls: [{ url }] },
+            });
+          case 'poi':
+            return service.updatePoi({
+              ...connection,
+              poiId: id,
+              poi: { name: 'Unchanged', mediaContents: [{ sourceUrl: { url } }] },
+            });
+        }
+      };
+      await expect(update('https://example.test/first')).resolves.toMatchObject({ id });
+      await expect(update('https://example.test/second')).resolves.toMatchObject({ id });
+      expect(writes).toHaveLength(2);
+      writes.forEach((variables, index) => {
+        expect(variables).toMatchObject({
+          id,
+          forceCreate: true,
+          payload: { ...originalPayload, studioUpdatedAt: new Date(now + index + 1).toISOString() },
+        });
+        expect(variables).not.toHaveProperty('dataProviderId');
+      });
+      expect(JSON.stringify(stored)).toContain('https://example.test/second');
+      expect(originalPayload.studioUpdatedAt).toBe(new Date(now).toISOString());
+    }
+  );
+
   it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
     const item = {
       id: 'news-1',
@@ -776,6 +923,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: item } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
@@ -826,11 +974,13 @@ describe('createSvaMainserverService', () => {
       operationName: 'SvaMainserverNewsList',
       variables: { limit: 26, skip: 0, order: 'publishedAt_DESC' },
     });
-    expect(requestBodies[2]).toMatchObject({
+    expect(requestBodies[1]?.variables).not.toHaveProperty('forceCreate');
+    expect(requestBodies[1]?.variables).not.toHaveProperty('payload');
+    expect(requestBodies[3]).toMatchObject({
       operationName: 'SvaMainserverCreateNews',
       variables: {
         id: 'news-1',
-        forceCreate: false,
+        forceCreate: true,
         title: 'News',
         publishedAt: '2026-04-14T09:30:00.000Z',
         categoryName: 'Allgemein',
@@ -838,7 +988,7 @@ describe('createSvaMainserverService', () => {
         pushNotification: true,
       },
     });
-    expect(requestBodies[3]).toMatchObject({
+    expect(requestBodies[4]).toMatchObject({
       operationName: 'SvaMainserverDestroyNews',
       variables: { id: 'news-1', recordType: 'NewsItem', detachLinkedContent: true },
     });
@@ -905,6 +1055,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: item } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: item } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } })
@@ -2188,9 +2339,13 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverCreatePoi',
       'SvaMainserverDestroyRecord',
     ]);
+    expect(requestBodies[2]?.variables).not.toHaveProperty('forceCreate');
+    expect(requestBodies[2]?.variables).not.toHaveProperty('payload');
+    expect(requestBodies[8]?.variables).not.toHaveProperty('forceCreate');
+    expect(requestBodies[8]?.variables?.payload).toEqual({ source: 'mainserver' });
     expect(requestBodies[4]?.variables).toMatchObject({
       id: 'event-1',
-      forceCreate: false,
+      forceCreate: true,
       repeat: true,
     });
     expect(requestBodies[5]?.variables).toEqual({
@@ -2200,7 +2355,7 @@ describe('createSvaMainserverService', () => {
     });
     expect(requestBodies[10]?.variables).toMatchObject({
       id: 'poi-1',
-      forceCreate: false,
+      forceCreate: true,
       active: false,
     });
     expect(requestBodies[11]?.variables).toEqual({
@@ -2337,6 +2492,7 @@ describe('createSvaMainserverService', () => {
       )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 3, statusCode: 200 } } })
@@ -2431,25 +2587,28 @@ describe('createSvaMainserverService', () => {
       'SvaMainserverGenericItemList',
       'SvaMainserverGenericItemDetail',
       'SvaMainserverCreateGenericItem',
+      'SvaMainserverGenericItemDetail',
       'SvaMainserverCreateGenericItem',
       'SvaMainserverDestroyRecord',
     ]);
-    expect(requestBodies[3]?.variables).toMatchObject({
+    expect(requestBodies[2]?.variables).not.toHaveProperty('forceCreate');
+    expect(requestBodies[2]?.variables?.payload).toEqual(genericItem.payload);
+    expect(requestBodies[4]?.variables).toMatchObject({
       id: 'generic-1',
-      forceCreate: false,
+      forceCreate: true,
       genericType: 'faq',
       payload: { answer: '43' },
     });
     expect(requestBodies[2]?.variables).not.toHaveProperty('teaser');
-    expect(requestBodies[3]?.variables).not.toHaveProperty('teaser');
-    expect(requestBodies[3]?.variables).not.toHaveProperty('visible');
-    const genericItemMutation = String(fetchImpl.mock.calls[3]?.[1]?.body);
+    expect(requestBodies[4]?.variables).not.toHaveProperty('teaser');
+    expect(requestBodies[4]?.variables).not.toHaveProperty('visible');
+    const genericItemMutation = String(fetchImpl.mock.calls[5]?.[1]?.body);
     expect(genericItemMutation).not.toContain('$teaser: String');
     expect(genericItemMutation).not.toContain('teaser: $teaser');
     expect(genericItemMutation).not.toContain('\n  teaser\n');
     expect(genericItemMutation).not.toContain('$visible: Boolean');
     expect(genericItemMutation).not.toContain('visible: $visible');
-    expect(requestBodies[4]?.variables).toEqual({
+    expect(requestBodies[5]?.variables).toEqual({
       id: 'generic-1',
       recordType: 'GenericItem',
       detachLinkedContent: true,
@@ -2478,6 +2637,7 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItems: [genericItem] } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
       .mockResolvedValueOnce(
         createJsonResponse(200, { data: { destroyRecord: { id: 4, statusCode: 200 } } })
@@ -2558,7 +2718,7 @@ describe('createSvaMainserverService', () => {
       id: 'poi-1',
       name: 'POI',
       mobileDescription: '',
-      forceCreate: false,
+      forceCreate: true,
     });
   });
 
@@ -2605,7 +2765,7 @@ describe('createSvaMainserverService', () => {
       name: 'POI',
       operatingCompany: {},
       accessibilityInformation: {},
-      forceCreate: false,
+      forceCreate: true,
     });
   });
 

@@ -1,5 +1,5 @@
 import type { SvaMainserverConnectionInput, SvaMainserverGenericItemInput } from '../../types.js';
-import { type SvaMainserverListInput } from './shared.js';
+import { withUpdatedPayload, type SvaMainserverListInput } from './shared.js';
 import type { ServiceContext } from './service-context.js';
 
 export const createItemService = ({
@@ -58,8 +58,19 @@ export const createItemService = ({
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    const current = await genericItemOperations.getGenericItemWithConfig(input, config);
     return genericItemOperations.writeGenericItemWithConfig(
-      { ...input, forceCreate: false },
+      {
+        ...input,
+        genericItem: {
+          ...input.genericItem,
+          payload: withUpdatedPayload(
+            input.genericItem.payload === undefined ? current.payload : input.genericItem.payload,
+            current.payload
+          ),
+        },
+        forceCreate: true,
+      },
       config
     );
   };

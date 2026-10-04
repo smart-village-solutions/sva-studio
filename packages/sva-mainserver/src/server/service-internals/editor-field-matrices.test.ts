@@ -15,6 +15,7 @@ describe('Mainserver editor field matrices', () => {
       id: 'hard',
       title: 'controlled',
       externalId: 'passthrough',
+      payload: 'passthrough',
       updatedAt: 'readonly',
     });
     expect(poiEditorFieldMatrix).toMatchObject({
@@ -43,6 +44,7 @@ describe('Mainserver editor field matrices', () => {
         contentType: 'events.event-record',
         status: 'published',
         externalId: 'external-1',
+        payload: { source: 'import', nested: { retained: true } },
         keywords: 'alt',
         tags: ['bestand'],
         dates: [],
@@ -63,6 +65,7 @@ describe('Mainserver editor field matrices', () => {
     expect(merged).toMatchObject({
       title: 'Neu',
       externalId: 'external-1',
+      payload: { source: 'import', nested: { retained: true } },
       keywords: '',
       tags: ['bestand'],
     });

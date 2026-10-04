@@ -210,6 +210,31 @@ export const assertPublishedAt = (publishedAt: string): void => {
   }
 };
 
+// The deployed Mainserver omits some relations from its unchanged comparison.
+// Keep its payload comparable changing until upstream forceCreate is fixed (#442).
+export const withUpdatedPayload = (
+  payload: unknown,
+  previousPayload: unknown
+): Record<string, unknown> => {
+  const parsed = z.record(z.string(), z.unknown()).safeParse(payload ?? {});
+  if (!parsed.success) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Mainserver-Payload muss für Updates ein JSON-Objekt sein.',
+      statusCode: 400,
+    });
+  }
+  const previous = z.record(z.string(), z.unknown()).safeParse(previousPayload);
+  const previousTimestamp =
+    previous.success && typeof previous.data.studioUpdatedAt === 'string'
+      ? Date.parse(previous.data.studioUpdatedAt)
+      : Number.NaN;
+  const updatedAt = Number.isFinite(previousTimestamp)
+    ? Math.max(Date.now(), previousTimestamp + 1)
+    : Date.now();
+  return { ...parsed.data, studioUpdatedAt: new Date(updatedAt).toISOString() };
+};
+
 export const defined = <TValue>(value: TValue | null | undefined): value is TValue =>
   value !== null && value !== undefined;
 

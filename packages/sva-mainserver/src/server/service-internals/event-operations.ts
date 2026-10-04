@@ -35,6 +35,7 @@ const buildEventMutationVariables = (input: {
   ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
   ...(input.dataProviderId ? { dataProviderId: input.dataProviderId } : {}),
   title: input.event.title,
+  ...(input.event.payload === undefined ? {} : { payload: input.event.payload }),
   ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
   ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
   ...(input.event.description ? { description: input.event.description } : {}),

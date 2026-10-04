@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Bounded, local-model cleanup of Fallow unused exports. Never merges a PR. */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -17,6 +17,7 @@ type ExistingPr = { number: number; state: string; isDraft: boolean };
 
 class RejectedGroup extends Error {}
 class FailedCi extends Error {}
+class NeedsOperator extends Error {}
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const stateRoot = process.env.SVA_FALLOW_STATE_DIR || join(homedir(), '.local/state/sva-fallow-loop');
@@ -40,7 +41,7 @@ export function selectGroups(input: unknown): Group[] {
   for (const f of envelope.unused_exports) {
     if (!/^apps\/[a-z0-9-]+\/src\/(?:lib|components\/ui)\/[a-z0-9./-]+\.tsx?$/.test(f.path)) continue;
     if (f.path.split('/').includes('..')) continue;
-    if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|permission|authorization|interfaces-api-context|map-geocoding-api|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) continue;
+    if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|permission|authorization|interfaces-api|map-geocoding-api|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) continue;
     if (f.is_type_only || f.is_re_export || !/^[A-Za-z_$][\w$]*$/.test(f.export_name)) continue;
     if (!f.actions?.some((a) => a.type === 'remove-export' && a.auto_fixable)) continue;
     byFile.set(f.path, [...(byFile.get(f.path) || []), f]);
@@ -56,7 +57,7 @@ export function eligibleGroups(groups: Group[], blockedPaths: Set<string>, compl
 }
 
 export function completedForBase(record: RunRecord | undefined, base: string): boolean {
-  return record?.base === base && ['ci-green', 'rejected', 'ci-failed', 'pr-closed'].includes(record.status);
+  return record?.base === base && ['ci-green', 'rejected', 'ci-failed', 'pr-closed', 'needs-operator'].includes(record.status);
 }
 
 export function workflowRunState(runs: WorkflowRun[]): 'pending' | 'failed' | 'passed' {
@@ -226,7 +227,11 @@ function prepareGroupWorktree(branch: string, base: string, remote: string): str
   const worktree = join(stateRoot, 'worktrees', branch.replaceAll('/', '-'));
   mkdirSync(dirname(worktree), { recursive: true });
   const dirty = existsSync(worktree) && Boolean(command(worktree, 'git', ['status', '--porcelain']));
-  const executionWorktree = dirty ? `${worktree}-retry-${Date.now()}` : worktree;
+  const retries = readdirSync(dirname(worktree)).filter((name) => name.startsWith(`${branch.replaceAll('/', '-')}-retry`)).sort();
+  const executionWorktree = dirty ? join(dirname(worktree), retries.at(-1) || `${branch.replaceAll('/', '-')}-retry`) : worktree;
+  if (dirty && existsSync(executionWorktree) && command(executionWorktree, 'git', ['status', '--porcelain'])) {
+    throw new NeedsOperator(`Both preserved worktrees require operator review: ${worktree}, ${executionWorktree}`);
+  }
   if (remote) {
     command(root, 'git', ['fetch', 'origin', branch], 120_000);
     if (existsSync(executionWorktree)) command(executionWorktree, 'git', ['reset', '--hard', remote.split('\t')[0]!]);
@@ -244,9 +249,9 @@ export async function runGroup(group: Group, base: string): Promise<boolean> {
     record(group.id, { base, status: 'pr-closed', pr: pr.number, branch, at: new Date().toISOString() });
     return false;
   }
-  const executionWorktree = prepareGroupWorktree(branch, base, remote);
   let publishing = Boolean(remote);
   try {
+    const executionWorktree = prepareGroupWorktree(branch, base, remote);
     if (!remote) {
       command(executionWorktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
       const content = readFileSync(join(executionWorktree, group.path), 'utf8');
@@ -275,7 +280,7 @@ export async function runGroup(group: Group, base: string): Promise<boolean> {
     return true;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    const status = error instanceof RejectedGroup ? 'rejected' : error instanceof FailedCi ? 'ci-failed' : 'failed';
+    const status = error instanceof RejectedGroup ? 'rejected' : error instanceof FailedCi ? 'ci-failed' : error instanceof NeedsOperator ? 'needs-operator' : 'failed';
     record(group.id, { base, status, reason, branch, pr: previous(group.id)?.pr, at: new Date().toISOString() });
     console.error(`${group.path}: ${reason}`);
     if (publishing) throw error;

@@ -23,7 +23,7 @@ describe('Fallow local loop selection', () => {
   });
 
   it('excludes authorization handlers even when their file names lack auth or iam', () => {
-    const names = ['interfaces-api-context.ts', 'map-geocoding-api.operations.ts', 'permission-actions.ts'];
+    const names = ['interfaces-api-context.ts', 'interfaces-api-list.ts', 'map-geocoding-api.operations.ts', 'permission-actions.ts'];
     for (const name of names) {
       const file = `apps/example/src/lib/${name}`;
       expect(selectGroups(envelope([finding('first', 1, file), finding('second', 2, file)]))).toEqual([]);
@@ -47,7 +47,7 @@ describe('Fallow local loop selection', () => {
     for (const status of ['failed', 'pr-opened', 'worktree-exists', 'remote-branch-exists']) {
       expect(completedForBase({ base, status, at: '' }, base)).toBe(false);
     }
-    for (const status of ['ci-green', 'rejected', 'ci-failed', 'pr-closed']) {
+    for (const status of ['ci-green', 'rejected', 'ci-failed', 'pr-closed', 'needs-operator']) {
       expect(completedForBase({ base, status, at: '' }, base)).toBe(true);
     }
   });
@@ -139,8 +139,8 @@ describe('publication recovery', () => {
       ].join('\n') + '\n');
       chmodSync(fakeGh, 0o755);
       const modulePath = fileURLToPath(new URL('./fallow-local-llm-loop.ts', import.meta.url));
-      const code = `import { publish, selectGroups } from ${JSON.stringify(modulePath)}; const group = selectGroups({ kind: 'dead-code', unused_exports: [1, 2].map((line) => ({ path: ${JSON.stringify(source)}, export_name: line === 1 ? 'first' : 'second', line, is_type_only: false, is_re_export: false, actions: [{ type: 'remove-export', auto_fixable: true }] })) })[0]; publish(${JSON.stringify(repo)}, group, ${JSON.stringify(branch)}, ${JSON.stringify(base)});`;
-      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, SVA_FALLOW_STATE_DIR: join(dir, 'state'), FAKE_PR_MARKER: prMarker, FAKE_FAIL_ONCE: failOnce, FAKE_CREATE_COUNT: createCount };
+      const code = "import { publish, selectGroups } from './scripts/ops/fallow-local-llm-loop.ts'; const group = selectGroups({ kind: 'dead-code', unused_exports: [1, 2].map((line) => ({ path: process.env.FAKE_SOURCE!, export_name: line === 1 ? 'first' : 'second', line, is_type_only: false, is_re_export: false, actions: [{ type: 'remove-export', auto_fixable: true }] })) })[0]!; publish(process.env.FAKE_REPO!, group, process.env.FAKE_BRANCH!, process.env.FAKE_BASE!);";
+      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, SVA_FALLOW_STATE_DIR: join(dir, 'state'), FAKE_PR_MARKER: prMarker, FAKE_FAIL_ONCE: failOnce, FAKE_CREATE_COUNT: createCount, FAKE_SOURCE: source, FAKE_REPO: repo, FAKE_BRANCH: branch, FAKE_BASE: base };
       const runPublish = () => execFileSync('pnpm', ['exec', 'tsx', '-e', code], { cwd: dirname(dirname(dirname(modulePath))), env, encoding: 'utf8', stdio: 'pipe' });
       expect(runPublish).toThrow();
       expect(runPublish).not.toThrow();

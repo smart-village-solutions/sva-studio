@@ -1,0 +1,4 @@
+{
+  "prNumber": 1571,
+  "body": "Interne Verbesserung\n\n- Ein ungenutzter Export in der URL-Filterlogik des Projektberichts wurde entfernt. Das Verhalten bleibt unverändert."
+}

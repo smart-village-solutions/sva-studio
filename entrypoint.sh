@@ -278,4 +278,10 @@ if [ "${SVA_START_DIAGNOSTICS:-0}" = "1" ]; then
   write_start_diagnostics
 fi
 
+if [ "${SVA_DEPLOYMENT_ENVIRONMENT:-}" = 'staging' ]; then
+  case "${BEACON_API_KEY:-}" in
+    fallow_live_k1_*) export NODE_V8_COVERAGE=/tmp/sva-studio-v8-coverage ;;
+  esac
+fi
+
 exec "$@"

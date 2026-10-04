@@ -62,10 +62,12 @@ export default eventHandler(async (event) => {
       metricReader: new PeriodicExportingMetricReader({
         exporter: new OTLPMetricExporter({ url: createDebugOtlpSignalUrl('/v1/metrics') })
       }),
-      logRecordProcessor: new BatchLogRecordProcessor(
-        new OTLPLogExporter({ url: createDebugOtlpSignalUrl('/v1/logs') }),
-        { maxQueueSize: 4096, maxExportBatchSize: 10, scheduledDelayMillis: 500 }
-      ),
+      logRecordProcessor: new BatchLogRecordProcessor({
+        exporter: new OTLPLogExporter({ url: createDebugOtlpSignalUrl('/v1/logs') }),
+        maxQueueSize: 4096,
+        maxExportBatchSize: 10,
+        scheduledDelayMillis: 500,
+      }),
       instrumentations: [
         getNodeAutoInstrumentations({
           '@opentelemetry/instrumentation-http': { enabled: true }

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1734,
+  "body": "Auf Staging kann Studio künftig die tatsächlich genutzten Browser- und Server-Pfade für die Testabdeckung erfassen. Dev und Production senden dabei keine Laufzeitabdeckung an Fallow."
+}

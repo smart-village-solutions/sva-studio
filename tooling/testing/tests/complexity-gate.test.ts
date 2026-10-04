@@ -161,6 +161,26 @@ describe('complexity gate', () => {
     }
   });
 
+  it('includes standalone .mts scripts and skips declaration files', () => {
+    const rootDir = createTempWorkspace();
+    const scriptDir = path.join(rootDir, 'scripts/debug/otel');
+    fs.mkdirSync(scriptDir, { recursive: true });
+    fs.writeFileSync(path.join(scriptDir, 'diagnostic.mts'), 'export const diagnostic = true;\n');
+    fs.writeFileSync(path.join(scriptDir, 'diagnostic.d.mts'), 'export declare const diagnostic: boolean;\n');
+
+    const policy = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'tooling/quality/complexity-policy.json'), 'utf8')
+    ) as { modules: Array<{ id: string }> };
+    const scriptsModule = policy.modules.find((module) => module.id === 'scripts-default');
+    expect(scriptsModule).toBeDefined();
+
+    writePolicy(rootDir, { modules: scriptsModule ? [scriptsModule] : [] });
+    const result = runComplexityGate({ rootDir, stepSummaryPath: null });
+    expect(result.analyzedFiles.map((file) => file.metrics.filePath)).toEqual([
+      'scripts/debug/otel/diagnostic.mts',
+    ]);
+  });
+
   it('analyzes file metrics from TypeScript source', () => {
     const rootDir = createTempWorkspace();
     const filePath = writeSourceFile(

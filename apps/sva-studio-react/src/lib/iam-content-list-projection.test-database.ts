@@ -3,7 +3,7 @@ import {
   type TestSyncState,
 } from './iam-content-list-projection.test-database-sync-state.js';
 import type { TestProjectionRow } from './iam-content-list-projection.test-database-types.js';
-import { removeTransferredProjectionRows } from './iam-content-list-projection.test-database-transfer.js';
+import { deleteProjectionQueryResult } from './iam-content-list-projection.test-database-delete.js';
 type TestQueryResult = { rows: unknown[]; rowCount: number };
 const readNullableString = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
@@ -55,6 +55,7 @@ export const fixture = {
   syncStates: new Map<string, TestSyncState>(),
   projectionInsertArgs: null as readonly unknown[] | null,
   projectionInsertSql: null as string | null,
+  projectionDeleteSql: null as string | null,
   projectionInsertPayloadSizes: [] as number[],
   simulateConcurrentProjectionConflict: false,
   simulateLegacyProjectionSchemaMismatchOnce: false,
@@ -272,40 +273,6 @@ const scopedCountQueryResult = (
   return { rows: [{ total }], rowCount: 1 };
 };
 
-const deleteProjectionQueryResult = (
-  text: string,
-  values: readonly unknown[] | undefined
-): TestQueryResult | null => {
-  if (!text.includes('DELETE FROM iam.content_list_projection')) {
-    return null;
-  }
-  if (text.includes('projection_scope_key <> $5')) {
-    fixture.projectionRows = removeTransferredProjectionRows(fixture.projectionRows, values);
-    return { rows: [], rowCount: 0 };
-  }
-  const contentType = String(queryValue(values, 1));
-  const projectionScopeKey = fixture.projectionScopeKeyColumnAvailable
-    ? String(queryValue(values, 2))
-    : null;
-  const entityValue = queryValue(values, fixture.projectionScopeKeyColumnAvailable ? 4 : 3, null);
-  const sourceEntityId = typeof entityValue === 'string' ? entityValue : null;
-  const retainedEntityIds = Array.isArray(entityValue)
-    ? entityValue.filter((value): value is string => typeof value === 'string')
-    : null;
-  fixture.projectionRows = fixture.projectionRows.filter((row) => {
-    const matchingScope =
-      row.source_system === 'mainserver' &&
-      row.content_type === contentType &&
-      (!fixture.projectionScopeKeyColumnAvailable ||
-        row.projection_scope_key === projectionScopeKey);
-    const matchingEntity = retainedEntityIds
-      ? !retainedEntityIds.includes(row.source_entity_id)
-      : sourceEntityId === null || row.source_entity_id === sourceEntityId;
-    return !(matchingScope && matchingEntity);
-  });
-  return { rows: [], rowCount: 0 };
-};
-
 const throwLegacyProjectionConflict = (): never => {
   fixture.simulateLegacyProjectionSchemaMismatchOnce = false;
   const error = new Error(
@@ -384,7 +351,8 @@ export const createProjectionDatabaseQuery =
       syncStateHandlers.insert,
       syncStateHandlers.update,
       scopedCountQueryResult,
-      deleteProjectionQueryResult,
+      (text: string, values: readonly unknown[] | undefined) =>
+        deleteProjectionQueryResult(fixture, text, values, queryValue),
       insertProjectionQueryResult,
       listQueryResult,
     ];

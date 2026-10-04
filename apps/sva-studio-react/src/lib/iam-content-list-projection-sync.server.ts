@@ -70,6 +70,7 @@ const normalizeProjectionSyncStateRow = (
     available_count: valueOrDefault(source.available_count, 0),
     is_total_final: valueOrDefault(source.is_total_final, false),
     skipped_invalid_count: valueOrDefault(source.skipped_invalid_count, 0),
+    snapshot_invalidated: valueOrDefault(source.snapshot_invalidated, false),
   };
 };
 
@@ -101,6 +102,7 @@ const deriveProjectionSyncState = (input: {
     contentType: input.target.contentType,
     ...optionalTimestamps,
     isStale:
+      input.row.snapshot_invalidated ||
       !input.hasSnapshot ||
       !Number.isFinite(input.lastSucceededAtMs) ||
       Date.now() - input.lastSucceededAtMs >= MAIN_SERVER_SYNC_STALE_MS,

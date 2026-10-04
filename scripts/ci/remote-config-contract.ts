@@ -89,6 +89,8 @@ const configKeys = [
 
 const secretValueKeys = [
   'APP_DB_PASSWORD',
+  'BEACON_API_KEY',
+  'FALLOW_BROWSER_INGEST_KEY',
   'STUDIO_JOB_WORKER_DB_PASSWORD',
   'ENCRYPTION_KEY',
   'IAM_PII_KEYRING_JSON',

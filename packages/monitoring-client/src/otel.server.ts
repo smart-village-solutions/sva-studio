@@ -187,7 +187,8 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
   const expoTimeoutMs = isDevMode ? 10000 : 30000;
 
   const logProcessor = new RedactingLogProcessor(
-    new BatchLogRecordProcessor(logExporter, {
+    new BatchLogRecordProcessor({
+      exporter: logExporter,
       maxQueueSize: 4096,
       maxExportBatchSize: batchSize,
       scheduledDelayMillis: scheduleDelayMs,

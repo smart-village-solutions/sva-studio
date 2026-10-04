@@ -114,8 +114,20 @@ describe('external export references', () => {
 
       writeFileSync(join(dir, consumer), "const { first } = await import('./preferences');\nconsole.log(first);\n");
       expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "import('./preferences').then(({ first }) => console.log(first));\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "const mod = await import('./preferences');\nconst { first } = mod;\nconsole.log(first);\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "function use({ first }: typeof import('./preferences')) { return first; }\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "const { first } = { first: 3 };\nconsole.log(first);\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([]);
     } finally { rmSync(dir, { recursive: true, force: true }); }
-  });
+  }, 30_000);
 });
 
 describe('workflow completion', () => {

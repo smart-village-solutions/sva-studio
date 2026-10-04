@@ -103,15 +103,13 @@ function scan(cwd: string): { kind: string; unused_exports: Finding[] } {
   return value;
 }
 
-function unresolvedBinding(node: ts.Node, names: Set<string>, checker: ts.TypeChecker): boolean {
-  if (!ts.isVariableDeclaration(node) || !ts.isObjectBindingPattern(node.name) || !node.initializer) return false;
-  const initializer = node.initializer;
-  const dynamicImport = ts.isAwaitExpression(initializer) && ts.isCallExpression(initializer.expression) && initializer.expression.expression.kind === ts.SyntaxKind.ImportKeyword;
-  if (!(checker.getTypeAtLocation(initializer).flags & ts.TypeFlags.Any) && !dynamicImport) return false;
-  return node.name.elements.some((element) => {
-    const property = element.propertyName ?? element.name;
-    return ts.isIdentifier(property) && names.has(property.text);
-  });
+function bindingReference(node: ts.Node, names: Set<string>, checker: ts.TypeChecker, exports: Map<string, ts.Symbol>, unalias: (symbol: ts.Symbol) => ts.Symbol): boolean {
+  if (!ts.isBindingElement(node) || !ts.isObjectBindingPattern(node.parent)) return false;
+  const property = node.propertyName ?? node.name;
+  if (!ts.isIdentifier(property) || !names.has(property.text)) return false;
+  const type = checker.getTypeAtLocation(node.parent);
+  const symbol = type.flags & ts.TypeFlags.Any ? undefined : checker.getPropertyOfType(type, property.text);
+  return !symbol || unalias(symbol) === exports.get(property.text);
 }
 
 export function externalSymbolReferences(cwd: string, group: Group): string[] {
@@ -141,7 +139,7 @@ export function externalSymbolReferences(cwd: string, group: Group): string[] {
     if (!source) return true;
     let referenced = false;
     const visit = (node: ts.Node): void => {
-      if (unresolvedBinding(node, names, checker)) {
+      if (bindingReference(node, names, checker, exports, unalias)) {
         referenced = true;
       } else if (ts.isIdentifier(node) && names.has(node.text)) {
         const symbol = checker.getSymbolAtLocation(node);

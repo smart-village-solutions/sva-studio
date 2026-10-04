@@ -91,8 +91,11 @@ export const buildStudioRowsFromMaterialization = (
     if (!city || !street) return [];
 
     return tour.wasteFractionIds.flatMap((fractionId) => {
-      const wasteType = fractionById.get(fractionId)?.name?.trim();
-      if (!wasteType) return [];
+      const fraction = fractionById.get(fractionId);
+      if (!fraction) return [];
+      if (!fraction.name?.trim()) return [];
+      const wasteType = fraction.pdfShortLabel?.trim().toUpperCase();
+      if (!wasteType) throw new Error(`missing_waste_type_short_label:${fractionId}`);
       const note = buildPickupNoteHtml(tour.description, pickupDate.note);
 
       return [

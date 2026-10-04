@@ -4,12 +4,11 @@ import {
   assertCreateMutationSucceeded,
   mapCreateVariables,
   mapPickupTime,
-  requireNonEmpty,
   toDeleteIds,
   toDeleteVariables,
   trimToUndefined,
 } from './waste-operations.payloads.js';
-import { type GraphqlExecutor } from './shared.js';
+import { toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
 export type SvaMainserverWasteSyncItem = Readonly<{
   id?: string;
@@ -26,34 +25,20 @@ export type SvaMainserverWasteSyncItem = Readonly<{
 }>;
 
 export type SvaMainserverWasteSyncSnapshot = Readonly<{
-  tours: readonly Readonly<{
-    id: string;
-    title?: string;
-    wasteType: string;
-  }>[];
   pickupTimes: readonly SvaMainserverWasteSyncItem[];
 }>;
-type WasteToursQuery = {
-  readonly wasteTours?: ReadonlyArray<{
-    readonly id?: string | number | null;
-    readonly title?: string | null;
-    readonly wasteType?: string | null;
-  } | null> | null;
-};
-type WasteLocationTypesQuery = {
-  readonly wasteLocationTypes?: ReadonlyArray<{
-    readonly id?: string | number | null;
-    readonly wasteType?: string | null;
-    readonly address?: {
-      readonly street?: string | null;
-      readonly zip?: string | null;
-      readonly city?: string | null;
-    } | null;
-    readonly pickUpTimes?: ReadonlyArray<{
-      readonly id?: string | number | null;
-      readonly pickupDate?: string | null;
-      readonly note?: string | null;
-      readonly wasteLocationTypeId?: string | number | null;
+type WasteAddressesQuery = {
+  readonly wasteAddresses?: ReadonlyArray<{
+    readonly street?: string | null;
+    readonly zip?: string | null;
+    readonly city?: string | null;
+    readonly wasteLocationTypes?: ReadonlyArray<{
+      readonly wasteType?: string | null;
+      readonly pickUpTimes?: ReadonlyArray<{
+        readonly id?: string | number | null;
+        readonly pickupDate?: string | null;
+        readonly note?: string | null;
+      } | null> | null;
     } | null> | null;
   } | null> | null;
 };
@@ -69,34 +54,20 @@ type DestroyWastePickUpTimeMutation = {
   } | null;
 };
 export const CREATE_WASTE_PICKUP_TIMES_BATCH_SIZE = 100;
-const svaMainserverWasteToursDocument = `
-query SvaMainserverWasteTours {
-  wasteTours {
-    id
-    title
-    wasteType
-  }
-}
-`;
-const svaMainserverWasteLocationTypesDocument = `
-query SvaMainserverWasteLocationTypes(
-  $tourId: ID!
-) {
-  wasteLocationTypes(
-    tourId: $tourId
-  ) {
-    id
-    wasteType
-    address {
-      street
-      zip
-      city
-    }
-    pickUpTimes {
-      id
-      pickupDate
-      note
-      wasteLocationTypeId
+const WASTE_SNAPSHOT_PAGE_SIZE = 25;
+const svaMainserverWasteAddressesDocument = `
+query SvaMainserverWasteAddresses($limit: Int!, $skip: Int!) {
+  wasteAddresses(limit: $limit, skip: $skip, order: id_ASC) {
+    street
+    zip
+    city
+    wasteLocationTypes {
+      wasteType
+      pickUpTimes {
+        id
+        pickupDate
+        note
+      }
     }
   }
 }
@@ -142,50 +113,56 @@ export const listWasteSyncSnapshotWithConfig = async (
   input: SvaMainserverConnectionInput,
   config: SvaMainserverInstanceConfig
 ): Promise<SvaMainserverWasteSyncSnapshot> => {
-  const toursResponse = await executeGraphqlWithConfig<WasteToursQuery>(
-    {
-      ...input,
-      document: svaMainserverWasteToursDocument,
-      operationName: 'SvaMainserverWasteTours',
-    },
-    config
-  );
-  const tours =
-    toursResponse.wasteTours
-      ?.filter((tour): tour is NonNullable<(typeof toursResponse.wasteTours)[number]> => Boolean(tour))
-      .map((tour) => ({
-        id: requireNonEmpty(tour.id === null || tour.id === undefined ? undefined : String(tour.id), 'tour.id'),
-        title: trimToUndefined(tour.title),
-        wasteType: requireNonEmpty(tour.wasteType, 'tour.wasteType'),
-      })) ?? [];
-
-  const pickupTimeBatches = await Promise.all(
-    tours.map(async (tour) => {
-      const response = await executeGraphqlWithConfig<WasteLocationTypesQuery>(
-        {
-          ...input,
-          document: svaMainserverWasteLocationTypesDocument,
-          operationName: 'SvaMainserverWasteLocationTypes',
-          variables: {
-            tourId: tour.id,
-          },
-        },
-        config
-      );
-      return (
-        response.wasteLocationTypes
-          ?.filter(
-            (locationType): locationType is NonNullable<(typeof response.wasteLocationTypes)[number]> => Boolean(locationType)
-          )
-          .flatMap((locationType) => (locationType.pickUpTimes ?? []).flatMap((pickupTime) => (pickupTime ? [mapPickupTime(locationType, pickupTime)] : []))) ?? []
-      );
-    })
-  );
-
-  return {
-    tours,
-    pickupTimes: pickupTimeBatches.flat(),
-  };
+  const pickupTimes: SvaMainserverWasteSyncItem[] = [];
+  for (let skip = 0; ; skip += WASTE_SNAPSHOT_PAGE_SIZE) {
+    const response = await executeGraphqlWithConfig<WasteAddressesQuery>(
+      {
+        ...input,
+        document: svaMainserverWasteAddressesDocument,
+        operationName: 'SvaMainserverWasteAddresses',
+        variables: { limit: WASTE_SNAPSHOT_PAGE_SIZE, skip },
+      },
+      config
+    );
+    const addresses = response.wasteAddresses;
+    if (!addresses) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'SVA-Mainserver lieferte keinen vollständigen Waste-Adress-Snapshot.',
+        statusCode: 502,
+      });
+    }
+    for (const address of addresses) {
+      if (!address?.wasteLocationTypes) {
+        throw toSvaMainserverError({
+          code: 'invalid_response',
+          message: 'SVA-Mainserver lieferte unvollständige Waste-Ortsdaten.',
+          statusCode: 502,
+        });
+      }
+      for (const locationType of address.wasteLocationTypes) {
+        if (!locationType?.pickUpTimes) {
+          throw toSvaMainserverError({
+            code: 'invalid_response',
+            message: 'SVA-Mainserver lieferte unvollständige Waste-Abholzeiten.',
+            statusCode: 502,
+          });
+        }
+        for (const pickupTime of locationType.pickUpTimes) {
+          if (!pickupTime) {
+            throw toSvaMainserverError({
+              code: 'invalid_response',
+              message: 'SVA-Mainserver lieferte eine unvollständige Waste-Abholzeit.',
+              statusCode: 502,
+            });
+          }
+          pickupTimes.push(mapPickupTime({ ...locationType, address }, pickupTime));
+        }
+      }
+    }
+    if (addresses.length < WASTE_SNAPSHOT_PAGE_SIZE) break;
+  }
+  return { pickupTimes };
 };
 export const createWastePickupTimesWithConfig = async (
   executeGraphqlWithConfig: GraphqlExecutor,

@@ -305,6 +305,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'rm-60-1100',
           color: '#111',
           active: true,
           reminderConfig: {
@@ -379,7 +380,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
     expect(rows[0]).toEqual(
       expect.objectContaining({
         pickupDate: '2026-01-05',
-        wasteType: 'Restmüll',
+        wasteType: 'RM-60-1100',
         street: 'Hauptstraße 5',
         zip: '12345',
         city: 'Musterhausen',
@@ -420,6 +421,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#111',
           active: true,
           reminderConfig: {
@@ -1051,6 +1053,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#111',
           active: true,
           reminderConfig: {
@@ -1121,7 +1124,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
     expect(rows).toEqual([
       expect.objectContaining({
         pickupDate: '2026-01-05',
-        wasteType: 'Restmüll',
+        wasteType: 'RESTMÜLL',
         note: 'Schnee-Ersatztermin',
         key: '2026-01-05::restmüll::hauptstraße::::musterhausen::schnee-ersatztermin',
       }),
@@ -1150,6 +1153,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#111',
           active: true,
           reminderConfig: {
@@ -1217,6 +1221,7 @@ describe('waste-management-mainserver-sync.materialization', () => {
         {
           id: 'fraction-1',
           name: 'Restmüll',
+          pdfShortLabel: 'Restmüll',
           color: '#111',
           active: true,
           reminderConfig: {

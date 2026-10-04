@@ -35,6 +35,7 @@ export default defineConfig({
       '../../scripts/ci/wiki-publication.test.ts',
       '../../scripts/ci/database-restore-workflow-contract.test.ts',
       '../../scripts/ci/pr-review-intake.test.ts',
+      '../../scripts/ci/patch-runtime-artifact.test.ts',
       '../../scripts/ci/promote-deploy-gates.test.ts',
       '../../scripts/ci/promote-image-contract.test.ts',
       '../../scripts/ci/verify-studio-image-contract.test.ts',

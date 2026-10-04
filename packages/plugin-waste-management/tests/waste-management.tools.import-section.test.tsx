@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToolsImportSection } from '../src/waste-management.tools.import-section.js';
 import { uploadWasteManagementImportSource } from '../src/waste-management.api.js';
+import { wasteManagementPluginTranslationsDETools } from '../src/plugin.translations.de.tools.js';
+import { wasteManagementPluginTranslationsENTools } from '../src/plugin.translations.en.tools.js';
 import {
   createImportFileChangeHandler,
   isPreviewRequiredImportProfile,
@@ -29,14 +31,19 @@ vi.mock('@tanstack/react-router', () => ({
   }) => <a href={params?.jobId ? to.replace('$jobId', params.jobId) : to}>{children}</a>,
 }));
 
-const { downloadImportTemplateMock, downloadImportPreviewErrorsMock, uploadImportSourceMock } =
-  vi.hoisted(() => ({
-    downloadImportTemplateMock: vi.fn(),
-    downloadImportPreviewErrorsMock: vi.fn(),
-    uploadImportSourceMock: vi.fn(
-      async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'
-    ),
-  }));
+const {
+  downloadImportTemplateMock,
+  downloadImportPreviewErrorsMock,
+  uploadImportSourceMock,
+  localeState,
+} = vi.hoisted(() => ({
+  downloadImportTemplateMock: vi.fn(),
+  downloadImportPreviewErrorsMock: vi.fn(),
+  uploadImportSourceMock: vi.fn(
+    async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+  ),
+  localeState: { current: 'en' },
+}));
 
 vi.mock('../src/waste-management.api.js', async () => ({
   ...(await vi.importActual<typeof import('../src/waste-management.api.js')>(
@@ -46,8 +53,19 @@ vi.mock('../src/waste-management.api.js', async () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
-  usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
-    values ? `${key}:${JSON.stringify(values)}` : key,
+  usePluginTranslation: () => (key: string, values?: Record<string, unknown>) => {
+    if (key === 'tools.imports.delimiterSemicolon' || key === 'tools.imports.delimiterComma') {
+      const imports = (
+        localeState.current === 'en'
+          ? wasteManagementPluginTranslationsENTools
+          : wasteManagementPluginTranslationsDETools
+      ).tools.imports;
+      return key === 'tools.imports.delimiterSemicolon'
+        ? imports.delimiterSemicolon
+        : imports.delimiterComma;
+    }
+    return values ? `${key}:${JSON.stringify(values)}` : key;
+  },
 }));
 
 vi.mock('../src/waste-management.page.support.js', async () => {
@@ -162,10 +180,34 @@ const renderImportSection = () => {
 
 describe('WasteToolsImportSection', () => {
   afterEach(() => {
+    localeState.current = 'en';
     cleanup();
     vi.restoreAllMocks();
     downloadImportTemplateMock.mockReset();
     downloadImportPreviewErrorsMock.mockReset();
+  });
+
+  it('shows localized delimiter options while keeping their CSV values', () => {
+    for (const [locale, semicolon, comma] of [
+      ['en', 'Semicolon (;)', 'Comma (,)'],
+      ['de', 'Semikolon (;)', 'Komma (,)'],
+    ] as const) {
+      localeState.current = locale;
+      const view = renderImportSection();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' })
+      );
+
+      expect((screen.getByRole('option', { name: semicolon }) as HTMLOptionElement).value).toBe(
+        ';'
+      );
+      expect((screen.getByRole('option', { name: comma }) as HTMLOptionElement).value).toBe(',');
+      expect(
+        (screen.getByRole('option', { name: 'tools.imports.delimiterAuto' }) as HTMLOptionElement)
+          .value
+      ).toBe('');
+      view.unmount();
+    }
   });
 
   it('guides the tour-date import through a wizard and blocks the final import before preview', async () => {

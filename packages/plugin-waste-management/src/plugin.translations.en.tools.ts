@@ -30,6 +30,8 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     sourceFormatLabel: 'Source format',
     delimiterLabel: 'Delimiter',
     delimiterAuto: 'Detect automatically',
+    delimiterSemicolon: 'Semicolon (;)',
+    delimiterComma: 'Comma (,)',
     sourceFormats: {
       csv: 'CSV',
       xlsx: 'Excel (.xlsx)',

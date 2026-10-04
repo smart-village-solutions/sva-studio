@@ -237,6 +237,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Workflow- und CI-Dateien werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf volle Produkt-Suiten
 - Complexity Governance:
   - `pnpm complexity-gate` muss für definierte zentrale/kritische Module grün sein
+  - der vollständige Portfoliolauf weist nach dem Dateilängenabbau null aktuelle `fileLines`-Verstöße und null verwaiste `fileLines`-Registereinträge nach; verbleibende Funktions-, Cyclomatic- und Export-Befunde werden separat ausgewiesen
   - neue Schwellwertüberschreitungen ohne Ticket-Referenz blockieren den Qualitätslauf
   - kritische Module können strengere Coverage-Mindestwerte und Datei-Hotspots erhalten
   - bei modularen Refactorings muss Restschuld auf den tatsächlich verbleibenden Kernmodulen getrackt werden

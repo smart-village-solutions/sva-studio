@@ -1,3 +1,118 @@
+import type { MainserverProjectionRowInput } from './iam-content-list-projection-model.server.js';
+
+export const scopedSyncStateSelectSql = `
+SELECT
+  sync_scope_key,
+  last_started_at::text,
+  last_succeeded_at::text,
+  last_failed_at::text,
+  last_error_code,
+  last_error_message,
+  projected_count,
+  snapshot_state,
+  refresh_run_id::text,
+  refresh_phase,
+  completed_page,
+  available_count,
+  is_total_final,
+  skipped_invalid_count,
+  snapshot_invalidated
+FROM iam.content_list_projection_sync_state
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+  AND sync_scope_key = $3
+LIMIT 1;`;
+
+export const legacySyncStateSelectSql = `
+SELECT
+  content_type AS sync_scope_key,
+  last_started_at::text,
+  last_succeeded_at::text,
+  last_failed_at::text,
+  last_error_code,
+  last_error_message,
+  projected_count,
+  snapshot_state,
+  refresh_run_id::text,
+  refresh_phase,
+  completed_page,
+  available_count,
+  is_total_final,
+  skipped_invalid_count,
+  snapshot_invalidated
+FROM iam.content_list_projection_sync_state
+WHERE instance_id = $1
+  AND source_system = 'mainserver'
+  AND content_type = $2
+LIMIT 1;`;
+
+export const reserveProjectionGenerationSql = `INSERT INTO iam.content_list_projection_sync_state (
+  instance_id, source_system, content_type, sync_scope_key, generation
+) VALUES ($1, 'mainserver', $2, $3, 1)
+ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
+DO UPDATE SET generation = iam.content_list_projection_sync_state.generation + 1
+RETURNING generation::text;`;
+
+export const scopedSnapshotInvalidationSql = `UPDATE iam.content_list_projection_sync_state
+SET snapshot_invalidated = TRUE, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
+  AND sync_scope_key <> $3 AND sync_scope_key <> $4;`;
+
+export const legacySnapshotInvalidationSql = `UPDATE iam.content_list_projection_sync_state
+SET snapshot_invalidated = TRUE, updated_at = NOW()
+WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2;`;
+
+const toNullableProjectionValue = <T>(value: T | null | undefined): T | null => value ?? null;
+
+const toRequiredProjectionReference = (value: string | null | undefined): string => value ?? '';
+
+const mapMainserverProjectionPayloadRow = (
+  row: MainserverProjectionRowInput,
+  _actorAccountId: string | undefined,
+  projectionScopeKey: string
+) => ({
+  id: row.id,
+  instance_id: row.instanceId,
+  projection_scope_key: projectionScopeKey,
+  organization_id: toNullableProjectionValue(row.organizationId),
+  owner_user_id: toNullableProjectionValue(row.ownerUserId),
+  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId),
+  content_type: row.contentType,
+  title: row.title,
+  published_at: toNullableProjectionValue(row.publishedAt),
+  publish_from: toNullableProjectionValue(row.publishFrom),
+  publish_until: toNullableProjectionValue(row.publishUntil),
+  created_at: row.createdAt,
+  created_by: row.createdBy,
+  updated_at: row.updatedAt,
+  updated_by: row.updatedBy,
+  author_display_mode: row.authorDisplayMode,
+  author_display_name: row.author,
+  source_data_provider_id: toNullableProjectionValue(row.sourceDataProviderId),
+  source_data_provider_name: toNullableProjectionValue(row.sourceDataProviderName),
+  credential_source: toNullableProjectionValue(row.credentialSource),
+  credential_fingerprint: toNullableProjectionValue(row.credentialFingerprint),
+  authorization_mode: row.authorizationMode ?? 'credential_visible_compatibility',
+  payload_json: row.payload,
+  status: row.status,
+  validation_state: row.validationState,
+  history_ref: row.historyRef,
+  current_revision_ref: toRequiredProjectionReference(row.currentRevisionRef),
+  last_audit_event_ref: toRequiredProjectionReference(row.lastAuditEventRef),
+  source_entity_type: row.sourceEntityType,
+  source_entity_id: row.sourceEntityId,
+});
+
+export const buildMainserverProjectionPayloadJson = (
+  rows: readonly MainserverProjectionRowInput[],
+  actorAccountId: string | undefined,
+  projectionScopeKey: string
+): string =>
+  JSON.stringify(
+    rows.map((row) => mapMainserverProjectionPayloadRow(row, actorAccountId, projectionScopeKey))
+  );
+
 export const scopedMainserverProjectionUpsertSql = `
 INSERT INTO iam.content_list_projection (
   id,

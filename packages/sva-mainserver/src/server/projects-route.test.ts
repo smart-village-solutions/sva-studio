@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   listReferences: vi.fn(),
   loadCore: vi.fn(),
   loadReferenceByContentId: vi.fn(),
+  loadReferenceBySourceEntity: vi.fn(),
   loadReferenceByOperation: vi.fn(),
   prepareExternalContent: vi.fn(),
   reserveIdempotency: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   listExternalContentReferences: state.listReferences,
   loadExternalContentCore: state.loadCore,
   loadExternalContentReferenceByContentId: state.loadReferenceByContentId,
+  loadExternalContentReferenceBySourceEntity: state.loadReferenceBySourceEntity,
   loadExternalContentReferenceByOperation: state.loadReferenceByOperation,
   prepareExternalContent: state.prepareExternalContent,
   reserveIdempotency: state.reserveIdempotency,
@@ -234,6 +236,7 @@ const prepareDefaults = () => {
     pagination: { page: 1, pageSize: 100, hasNextPage: false },
   });
   state.loadReferenceByContentId.mockResolvedValue(undefined);
+  state.loadReferenceBySourceEntity.mockResolvedValue(undefined);
   state.withLock.mockImplementation(({ execute }) => execute());
 };
 
@@ -402,7 +405,7 @@ describe('projects route', () => {
       message: 'Nicht erlaubt',
     });
     expect(response?.status).toBe(403);
-    expect(state.loadReferenceByContentId).toHaveBeenCalledTimes(1);
+    expect(state.loadReferenceByContentId).toHaveBeenCalledTimes(2);
     expect(state.getGenericItem).not.toHaveBeenCalled();
   });
 
@@ -575,7 +578,11 @@ describe('projects route', () => {
     const response = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'operation-1',
+          'X-SVA-Operation-Id': 'journal-create-1',
+        },
         body: JSON.stringify(input),
       })
     );
@@ -609,6 +616,12 @@ describe('projects route', () => {
       expect.objectContaining({ status: 'COMPLETED' })
     );
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledTimes(1);
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationExternalId: 'journal-create-1',
+        completedSteps: expect.arrayContaining(['project_core_updated']),
+      })
+    );
     expect(state.createGenericItem.mock.invocationCallOrder[0]!).toBeLessThan(
       state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0]!
     );
@@ -746,6 +759,9 @@ describe('projects route', () => {
     expect(state.updateCore).toHaveBeenCalledWith(
       expect.objectContaining({ contentId, status: 'published' })
     );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ completedSteps: expect.arrayContaining(['project_core_updated']) })
+    );
     const visibilityCallsAfterUpdate = state.changeVisibility.mock.calls.length;
 
     const deleteResponse = await dispatchSvaMainserverProjectsRequest(
@@ -756,6 +772,91 @@ describe('projects route', () => {
       expect.objectContaining({ genericItemId: 'external-1' })
     );
     expect(state.changeVisibility).toHaveBeenCalledTimes(visibilityCallsAfterUpdate);
+  });
+
+  it('updates the canonical project Core when PATCH addresses the provider ID', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(undefined);
+    state.loadReferenceBySourceEntity.mockResolvedValue(reference);
+    state.loadCore.mockResolvedValue(core);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/external-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(response?.status).toBe(200);
+    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEntityId: 'external-1',
+      })
+    );
+    expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
+  });
+
+  it('stops a provider-ID PATCH when the local reference lookup fails', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(undefined);
+    state.loadReferenceBySourceEntity.mockRejectedValue(new Error('database_lost'));
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/external-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(500);
+    expect(state.getGenericItem).not.toHaveBeenCalled();
+    expect(state.updateGenericItem).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
+  it('updates the canonical project Core when PATCH addresses a separate legacy Core ID', async () => {
+    prepareDefaults();
+    const legacyContentId = '55555555-5555-4555-8555-555555555555';
+    const legacyReference = {
+      ...reference,
+      id: '66666666-6666-4666-8666-666666666666',
+      contentId: legacyContentId,
+      sourceEntityType: 'projects.project',
+    };
+    state.loadReferenceByContentId
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(legacyReference);
+    state.loadReferenceBySourceEntity.mockResolvedValue(reference);
+    state.loadCore.mockResolvedValue(core);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${legacyContentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEntityId: genericItem.id,
+      })
+    );
+    expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
+    expect(state.updateCore).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentId: legacyContentId,
+      })
+    );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({ completedSteps: expect.arrayContaining(['project_core_updated']) })
+    );
   });
 
   it('updates and physically deletes externally created Mainserver projects without a local core', async () => {
@@ -783,13 +884,15 @@ describe('projects route', () => {
     );
 
     const deleteResponse = await dispatchSvaMainserverProjectsRequest(
-      request('/api/v1/mainserver/projects/external-1', { method: 'DELETE' })
+      request('/api/v1/mainserver/projects/external-1?detachLinkedContent=true', {
+        method: 'DELETE',
+      })
     );
 
     expect(deleteResponse?.status).toBe(200);
     await expect(deleteResponse?.json()).resolves.toEqual({ data: { id: 'external-1' } });
     expect(state.deleteGenericItem).toHaveBeenCalledWith(
-      expect.objectContaining({ genericItemId: 'external-1' })
+      expect.objectContaining({ genericItemId: 'external-1', detachLinkedContent: true })
     );
   });
 
@@ -1095,6 +1198,12 @@ describe('projects route', () => {
       expect.objectContaining({ operation: 'mainserver_projects_local_follow_up' })
     );
     expect(state.deleteGenericItem).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reconciliationStatus: 'reconciliation_required',
+        completedSteps: expect.not.arrayContaining(['project_core_updated']),
+      })
+    );
     expect(state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]).toBeLessThan(
       state.completeIdempotency.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
@@ -1143,6 +1252,39 @@ describe('projects route', () => {
       expect.objectContaining({
         status: 'reconciliation_required',
         errorCode: 'provider_delete_failed',
+      })
+    );
+  });
+
+  it('leaves provider PATCH reconciliation open when its referenced Core cannot be read', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.loadCore.mockRejectedValue(new Error('database_lost'));
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateGenericItem).toHaveBeenCalledOnce();
+    expect(state.updateCore).not.toHaveBeenCalled();
+    expect(state.updateReconciliation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'reconciliation_required',
+        errorCode: 'local_finalize_failed',
+      })
+    );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'reconciliation_required',
+        completedSteps: expect.not.arrayContaining(['project_core_updated']),
       })
     );
   });

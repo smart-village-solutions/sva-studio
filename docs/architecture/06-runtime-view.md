@@ -609,7 +609,10 @@ Fehlerpfad:
    Dedizierte Plugin-Serverrouten werden aus dem Manifest-`server`-Entry geladen.
    Der Dispatcher verlangt vollständige Handler-Abdeckung, gleicht Pfad und
    Methode exakt ab und übergibt erst nach der hostseitigen Scope- und
-   Rechteprüfung einen hosterzeugten Execution-Context.
+   Rechteprüfung einen hosterzeugten Execution-Context. Interne Module prüfen
+   Routenabdeckung und Pfadparameter sowie die allgemeine und domainspezifische
+   Tenant-Autorisierung; der bestehende Dispatcher-Importvertrag bleibt der
+   Eintrittspunkt für die Service- und Benutzerpfade.
 5. Der Readiness-Aggregatstatus wird aus den aktuell deklarierten Checks und der aktuellen `required`-Kennzeichnung neu berechnet; gespeicherte Evidenz kann eine nachträglich verschärfte Check-Deklaration nicht freigeben.
 6. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
 7. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.
@@ -1103,9 +1106,11 @@ Fehlerpfad:
 2. Paginierbare Inhaltstypen laden Page 1 mit 100 Einträgen; Surveys laden mangels Upstream-Pagination einmal vollständig. Jede valide Page wird in derselben Transaktion nur bei weiterhin führender Run-ID geschrieben.
 3. Nach der Hot-Phase kann die API antworten. Weitere Pages werden typübergreifend im Round-Robin-Verfahren geladen; der Sync-State wechselt auf `reconciliation`.
 4. Erst die erfolgreiche letzte Page erlaubt Löschabgleich, finale Gesamtzahl und `complete_fresh`. Ein später Fehler erhält alle vorhandenen Zeilen und setzt `partial_failed` oder `complete_failed`.
-5. Ein gezieltes Mutation-Upsert oder -Delete setzt vor der lokalen Änderung eine neue Generation. Ältere Page-Upserts, Finalisierungen und Löschabgleiche werden dadurch wirkungslos.
-6. Full-Refresh und gezielte Mutation teilen sich pro Projektions-Scope dieselbe In-Process-Queue. Die Persistenz prüft zusätzlich die führende `refresh_run_id`; Mutationserfolg wird bei einem späteren Projektionsfehler nicht zurückgerollt.
-7. Das List-Modul verbindet Actor-Auflösung und Autorisierung mit Snapshot-Vorbereitung, Blocking-Entscheidung, scope-isoliertem Read und Response-Aufbau. Authorization, Read, Mainserver-Source, Repository und Sync-State bleiben getrennte interne Laufzeitschritte; die öffentliche Fassade delegiert nur die drei kompatiblen Einstiegspunkte.
+5. Ein gezieltes Mutation-Upsert oder -Delete setzt vor der lokalen Änderung eine neue Generation. Bestätigte Entity-Löschungen entfernen die ID mandantenweit auch dann, wenn ein anderer Lauf inzwischen die Leader-ID des eigenen Scopes besitzt. Nur der Abschluss dieses Sync-States bleibt an die Leader-ID gebunden.
+6. Full-Refresh und gezielte Mutation teilen sich pro Projektions-Scope dieselbe In-Process-Queue. Zusätzlich serialisiert ein transaktionaler PostgreSQL-Advisory-Lock alle Projektionsschreibvorgänge je Mandant und Inhaltstyp über Replikas hinweg. Nach der Sperre prüft der Writer die führende `refresh_run_id` und neuere Erfolge in den von der tatsächlichen Credential-Quelle betroffenen Scopes.
+7. Mandantenweite Löschungen und scopeübergreifende Transfers setzen den reservierten Sync-State-Schlüssel `__mainserver_global_mutation__`. Er zählt persistierte Generationen über Replikas und Prozessneustarts; nur `completed_generation` bestätigt einen neueren Erfolg. Ältere Pages werden unabhängig von der DB-Uhr verworfen und durch einen neuen Abgleich ersetzt. Eine andere Konto-Sicht überholt den Lauf allein nicht. Die bloße Bereinigung eines GenericItem-Geschwisters bestätigt keinen vollständigen Snapshot.
+8. Nach einem GenericItem-Typwechsel invalidiert Studio bestehende Nachfolger-Snapshots anderer Konten. Deren nächster Listenaufruf startet den eigenen Mainserver-Abgleich mit den eigenen Credentials; erst dessen vollständiger Erfolg entfernt die Invalidierung. Ein expliziter Principal-Refresh bereinigt im gemeinsam lesbaren unscoped Altbereich nur Zeilen seiner `credential_source`; bestätigte Entity-Löschungen bleiben mandantenweit.
+9. Das List-Modul verbindet Actor-Auflösung und Autorisierung mit Snapshot-Vorbereitung, Blocking-Entscheidung, scope-isoliertem Read und Response-Aufbau. Authorization, Read, Mainserver-Source, Repository und Sync-State bleiben getrennte interne Laufzeitschritte; die öffentliche Fassade delegiert nur die drei kompatiblen Einstiegspunkte. Die Entscheidung ist in [ADR-065](../adr/ADR-065-mainserver-projektionsabgleich-ueber-scope-grenzen.md) festgehalten.
 
 ### Ergänzung 2026-06: POI-Ort- und Medienfluss
 

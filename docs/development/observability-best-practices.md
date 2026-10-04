@@ -4,6 +4,12 @@ Dieses Dokument beschreibt Best Practices für Logging, Metriken und Tracing im 
 
 Architektur-Referenz: [Logging Architecture](../architecture/logging-architecture.md)
 
+## Fallow Runtime-Coverage (Studio)
+
+Der Studio-Client wird im gemeinsamen Image mit `oxc-coverage-instrument` instrumentiert. Nur wenn `SVA_DEPLOYMENT_ENVIRONMENT=staging` gesetzt ist, gibt der Server den Ingest-only-Key `fallow_pub_k1_…` aus der Laufzeitvariablen `FALLOW_BROWSER_INGEST_KEY` als HTML-Metadatum an den Browser weiter. Nur dann startet der Browser-Beacon. Der vollständige Key `fallow_live_k1_…` bleibt als `BEACON_API_KEY` ausschließlich im App-Server; dessen Beacon startet ebenfalls nur auf Staging. Beide Keys liegen als separate Secrets `FALLOW_BROWSER_INGEST_KEY` und `BEACON_API_KEY` im geschützten GitHub-Environment `staging`; der reguläre Promote-Workflow nimmt sie nur für Staging in das autoritative Deploy-Bundle auf. Dev und Production erhalten keine Keys. Beide Beacons melden sich mit `smart-village-solutions/sva-studio` bei `https://api.fallow.cloud` an.
+
+Das Image trägt die Git-Revision als `VITE_GIT_SHA` im Client und `GIT_SHA` im Server. Die Beacons melden `environment=staging` und klassifizieren die Daten nicht als Production-Coverage. Der Entrypoint aktiviert `NODE_V8_COVERAGE` vor dem Node-Start ausschließlich auf Staging mit gültigem Server-Key; `/tmp/sva-studio-v8-coverage` muss für den App-Prozess beschreibbar sein. Nach einem realen Staging-Browser-Ablauf beziehungsweise Server-Request im Netzwerk-Panel oder Proxy-Log den ersten `POST https://api.fallow.cloud/v1/ingest` auf HTTP `202 Accepted` prüfen. Bis zum ersten erfolgreichen POST ist nur die lokale Integration, nicht der Cloud-Ingest, nachgewiesen.
+
 ## Logging Best Practices
 
 ### Grundprinzipien

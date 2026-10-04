@@ -20,6 +20,7 @@ const movedDebugScripts = new Set([
   'test_session_loading.py',
   'test_session_loading.ts',
   'test-otel-phase1.ts',
+  'test-otel-phase1.mts',
   'test-otel-provider-creation.mjs',
   'test-otel-provider-creation.ts',
   'test-otlp-direct.ts',

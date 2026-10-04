@@ -381,6 +381,46 @@ describe('iam-data-subject-rights/read-models', () => {
     });
   });
 
+  it('scopes every self-service detail query to the same tenant, account and case', async () => {
+    const statements: string[] = [];
+    const query = vi.fn(async (sql: string, parameters: unknown[]) => {
+      statements.push(sql);
+      expect(parameters).toEqual(['de-test', 'account-1', 'case-1']);
+      return { rowCount: 0, rows: [] };
+    });
+    const client = { query };
+
+    await expect(
+      getSelfServiceActivityItem(client as never, {
+        instanceId: 'de-test',
+        accountId: 'account-1',
+        caseId: 'case-1',
+      })
+    ).resolves.toBeNull();
+
+    expect(query).toHaveBeenCalledTimes(4);
+    const expectedPredicates = [
+      ['request.instance_id = $1', 'request.target_account_id = $2::uuid', 'request.id = $3::uuid'],
+      [
+        'job.instance_id = $1',
+        'job.target_account_id = $2::uuid',
+        'job.requested_by_account_id = $2::uuid',
+        'job.id = $3::uuid',
+      ],
+      ['hold.instance_id = $1', 'hold.account_id = $2::uuid', 'hold.id = $3::uuid'],
+      [
+        'acceptance.instance_id = $1',
+        'acceptance.account_id = $2::uuid',
+        'acceptance.id = $3::uuid',
+      ],
+    ];
+    expectedPredicates.forEach((predicates, index) => {
+      for (const predicate of predicates) {
+        expect(statements[index]).toContain(predicate);
+      }
+    });
+  });
+
   it('lists admin DSR cases with filters, search and pagination', async () => {
     const relatedAccountId = '22222222-2222-4222-8222-222222222222';
     const client = buildClient(
@@ -513,8 +553,16 @@ describe('iam-data-subject-rights/read-models', () => {
       canonicalStatus: 'failed',
       format: 'csv',
     });
-    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
-    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), ['de-musterhausen', relatedAccountId, null]);
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+      'de-musterhausen',
+      relatedAccountId,
+      null,
+    ]);
+    expect(client.query).toHaveBeenNthCalledWith(5, expect.any(String), [
+      'de-musterhausen',
+      relatedAccountId,
+      null,
+    ]);
   });
 
   it('returns an admin DSR case by id and short-circuits missing ids', async () => {
@@ -549,7 +597,9 @@ describe('iam-data-subject-rights/read-models', () => {
       { rowCount: 0, rows: [] }
     );
 
-    await expect(getAdminDsrCase(client as never, { instanceId: 'de-musterhausen', caseId: '' })).resolves.toBeNull();
+    await expect(
+      getAdminDsrCase(client as never, { instanceId: 'de-musterhausen', caseId: '' })
+    ).resolves.toBeNull();
 
     const result = await getAdminDsrCase(client as never, {
       instanceId: 'de-musterhausen',

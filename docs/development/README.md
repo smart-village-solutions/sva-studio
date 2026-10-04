@@ -64,7 +64,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 - [Review-Agent-Governance](./review-agent-governance.md)
 - [System-Assurance für risikoreiche Großvorhaben](./system-assurance.md)
 - [SonarCloud Security Hotspots](./sonarcloud-security-hotspots.md)
-- [Stagehand Admin Exploration](./stagehand-admin-exploration.md)
+- [IAM-Admin-Exploration](./admin-exploration.md)
 
 ## Migrierte Anleitungen und lokale Setups
 

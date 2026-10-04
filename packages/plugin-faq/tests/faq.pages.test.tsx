@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   createFaqMock: vi.fn(),
@@ -40,6 +40,11 @@ vi.mock('../src/faq.api.js', () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
+  loadMainserverDeletionImpact: async () => ({
+    eventRecordsCount: 0,
+    newsItemsCount: 0,
+    genericItemsCount: 0,
+  }),
   hasContentLifecycleAccess: (
     action: string | undefined,
     resourceAccess: Readonly<Record<string, boolean>>
@@ -90,6 +95,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 describe('faq editor pages', () => {
+  afterEach(() => vi.unstubAllGlobals());
   const visitTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name }));
   const primaryAction = (name: string) => screen.getAllByRole('button', { name }).at(-1)!;
 
@@ -304,6 +310,12 @@ describe('faq editor pages', () => {
     render(<FaqEditPage />);
     await screen.findByDisplayValue('Frage');
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'deleteDialog.confirm' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     await waitFor(() => expect(state.deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user'));
     expect(state.navigateMock).toHaveBeenCalledWith(
@@ -320,7 +332,7 @@ describe('faq editor pages', () => {
         resourceId: 'faq-1',
       },
     });
-  });
+  }, 15_000);
 
   it('shows a validation error when sort weight is not an integer', async () => {
     const { FaqCreatePage } = await import('../src/faq.pages.js');

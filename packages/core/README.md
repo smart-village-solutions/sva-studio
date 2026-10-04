@@ -71,20 +71,26 @@ packages/core/
 ├── project.json
 ├── src/
 │   ├── index.ts
-│   ├── content-management.ts
-│   ├── runtime-profile.ts
+│   ├── content-management.ts        # Validierung und öffentlicher Einstieg
+│   ├── content-management-*.ts      # Content-Verträge, Zugriff und Statuswerte
+│   ├── runtime-profile.ts           # Profilprüfung und öffentlicher Einstieg
+│   ├── runtime-profile-definitions.ts
 │   ├── routing/
 │   │   └── registry.ts
 │   ├── iam/
 │   │   ├── index.ts
 │   │   ├── claims.ts
 │   │   ├── token.ts
-│   │   ├── account-management-contract.ts
+│   │   ├── account-management-contract.ts  # Öffentlicher Vertrags-Einstieg
+│   │   ├── account-*-contract.ts            # Fachlich getrennte IAM-Verträge
 │   │   ├── account-management.ts
 │   │   ├── runtime-diagnostics.ts
+│   │   ├── runtime-diagnostics-classification.ts
+│   │   ├── runtime-diagnostics-safe-details.ts
 │   │   └── transparency-contract.ts
 │   ├── instances/
 │   │   ├── registry.ts
+│   │   ├── host.ts
 │   │   └── keycloak-checklist.ts
 │   └── security/
 │       ├── index.ts

@@ -34,7 +34,7 @@ const pathExists = async (filePath: string) => {
 };
 
 const assertServerEntryContract = (source: string, filePath: string) => {
-  const missingMarkers = ['dispatchAuthRouteRequest', 'server-entry-transport', 'server-function-transport'].filter(
+  const missingMarkers = ['dispatchAuthRouteRequest', 'server-entry-transport', 'startFetch(request, requestOptions)'].filter(
     (marker) => !source.includes(marker)
   );
 

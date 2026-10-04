@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { StudioEmptyState, StudioLoadingState } from './studio-primitives.js';
+import { StudioEmptyState, StudioLoadingState } from './studio-state-blocks.js';
 
 export type StudioContentHistoryEntry = Readonly<{
   id: string;

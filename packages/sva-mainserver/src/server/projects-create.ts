@@ -184,7 +184,10 @@ const createNewProviderProject = async (
     actor: context.actor,
     providerOutcome: 'succeeded',
     reconciliationStatus: reconciliationRequired ? 'reconciliation_required' : 'complete',
-    completedSteps: ['provider_write', 'binding_observation'],
+    completedSteps: [
+      'provider_write', 'binding_observation',
+      ...(!localFollowUpFailed ? ['project_core_updated'] : []),
+    ],
     contentId: created.id,
     observedDataProviderId: created.dataProvider?.id ?? bindingResult.observedDataProviderId,
   });

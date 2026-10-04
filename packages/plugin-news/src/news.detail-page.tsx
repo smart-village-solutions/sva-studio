@@ -1,310 +1,30 @@
 import * as React from 'react';
-import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-form';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useForm } from 'react-hook-form';
+import { translatePluginKey, type HostMediaAssetListItem } from '@sva/plugin-sdk';
 import {
-  contentMediaSavePhaseMessageKey,
-  fromDatetimeLocalValue,
-  getHostMediaAsset,
-  getHostMediaDelivery,
-  getHostMediaAssetFileName,
-  listHostMediaAssets,
-  listHostMediaReferencesByTarget,
-  alignHostMediaReferencesByOrder,
-  readSessionAccessSnapshot,
-  readHostMediaAssetFileName as readAssetFileName,
-  readHostMediaAssetTitle as readAssetTitle,
-  hasContentLifecycleAccess,
-  isSupportedContentMediaUploadFile as isSupportedUploadFile,
-  resolveContentMediaCapabilities,
-  resolveContentVisibilityAction,
-  resolveStandardContentAccessCapabilities,
-  saveContentWithHostMediaReferences,
-  subscribeSessionAccessSnapshot,
-  toDatetimeLocalValue,
-  translatePluginKey,
-  updateHostMediaAsset,
-  type HostMediaAssetDetail,
-  type HostMediaAssetListItem,
-} from '@sva/plugin-sdk';
-import { type NewsWasteMasterDataOverview } from './news.waste-targeting.js';
-import {
-  addStudioDestructiveNavigationFeedback,
-  Button,
-  contentMediaUsageToReference,
-  contentMediaUsagesToLocalDrafts,
-  contentMediaUsagesToMainserver,
-  createLocalStudioMediaPickerAsset,
-  createManualContentMediaUsage,
-  createStudioMediaPickerLabels,
-  isPersistableContentMediaUrl,
-  mainserverContentMediaToUsages,
-  resolveContentMediaUsageDrafts,
-  resolveStudioMediaPickerFeedback,
-  toContentMediaAssetSnapshot,
-  type ContentMediaUsage,
-  Select,
-  StudioDetailPageTemplate,
-  StudioDestructiveActionDialog,
   StudioLoadingState,
-  StudioMediaPickerOverlay,
-  StudioPersistentFormError,
-  StudioPersistentActionResult,
-  ContentOwnershipSaveHint,
-  StudioSaveButton,
-  type MainserverPrincipalType,
-  type StudioMediaPickerAssetDetail,
-  type StudioMediaPickerAssetSummary,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  useStudioMediaPickerOverlay,
   useStudioMediaReferenceSync,
   useStudioSaveFeedback,
+  type ContentMediaUsage,
+  type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-
+import { createDefaultNewsDetailFormValues, newsDetailFormResolver } from './news.detail-form.js';
 import {
-  createNews,
-  deleteNews,
-  getNewsDetail,
-  listNewsCategories,
-  NewsApiError,
-  saveNewsEditorItem,
-  updateNews,
-} from './news.api.js';
-import { NEWS_CONTENT_TYPE } from './news.constants.js';
-import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
-import { NewsDetailContentTab } from './news.detail-content-tab.js';
-import { NewsDetailHistoryTab } from './news.detail-history-tab.js';
-import { NewsDetailSettingsTab } from './news.detail-settings-tab.js';
-import { loadNewsWasteMasterData } from './news.waste-targeting.js';
-import {
-  createDefaultNewsDetailFormValues,
-  deriveDirtyNewsDetailTabs,
-  mapNewsItemToDetailFormValues,
-  newsDetailFormResolver,
-} from './news.detail-form.js';
-import {
-  requiresGlobalPushConfirmation,
-  resolveGlobalPushConfirmationKey,
-  type WasteTargetingAvailability,
-} from './news.waste-payload.js';
-import { mediaContentFromAsset, mediaContentSourceKey } from './news.detail-media.helpers.js';
-import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
-import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
-import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
-import type {
-  NewsPrincipalControl,
-  NewsCategoryOption,
-  NewsContentItem,
-  NewsDetailFormValues,
-  NewsDetailTabId,
-} from './news.types.js';
-
-type StatusMessage = Readonly<{
-  source: 'load' | 'save' | 'delete' | 'reference' | 'navigation';
-  text: string;
-}>;
-
-type PluginTranslator = (
-  key: string,
-  variables?: Readonly<Record<string, string | number>>
-) => string;
-
-const errorMessageTranslationKeys: Record<string, string> = {
-  config_not_found: 'messages.errors.configNotFound',
-  integration_disabled: 'messages.errors.integrationDisabled',
-  invalid_config: 'messages.errors.invalidConfig',
-  missing_credentials: 'messages.errors.missingCredentials',
-  organization_mainserver_credentials_missing:
-    'messages.errors.organizationMainserverCredentialsMissing',
-  token_request_failed: 'messages.errors.tokenRequestFailed',
-  unauthorized: 'messages.errors.unauthorized',
-  forbidden: 'messages.errors.forbidden',
-  graphql_error: 'messages.errors.graphqlError',
-  invalid_response: 'messages.errors.invalidResponse',
-  invalid_request: 'messages.errors.invalidRequest',
-  csrf_validation_failed: 'messages.errors.csrfValidationFailed',
-  idempotency_key_required: 'messages.errors.idempotencyKeyRequired',
-  idempotency_key_reuse: 'messages.errors.idempotencyKeyReuse',
-  missing_instance: 'messages.errors.missingInstance',
-  network_error: 'messages.errors.networkError',
-  not_found: 'messages.missingContent',
-};
-
-const detailFriendlyErrorCodes = new Set([
-  'config_not_found',
-  'integration_disabled',
-  'invalid_config',
-  'invalid_request',
-  'missing_credentials',
-  'missing_instance',
-  'organization_mainserver_credentials_missing',
-  'forbidden',
-]);
-
-const resolvePluginActionLabel = (
-  pt: PluginTranslator,
-  actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
-) => {
-  const definition = getPluginNewsActionDefinition(actionId);
-  const titleKey = definition?.titleKey;
-  if (!titleKey) {
-    return actionId;
-  }
-
-  const localTitleKey = titleKey.startsWith('news.') ? titleKey.slice('news.'.length) : undefined;
-  return localTitleKey ? pt(localTitleKey) : translatePluginKey('news', titleKey);
-};
-
-const resolveNewsErrorMessage = (pt: PluginTranslator, error: unknown, fallbackKey: string) => {
-  if (error instanceof NewsApiError) {
-    const key = errorMessageTranslationKeys[error.code];
-    if (key) {
-      const genericMessage = pt(key);
-      const detail = error.message.trim();
-      const hasMeaningfulDetail =
-        detailFriendlyErrorCodes.has(error.code) &&
-        detail.length > 0 &&
-        detail !== error.code &&
-        detail.startsWith('http_') === false &&
-        detail !== genericMessage;
-
-      if (hasMeaningfulDetail) {
-        return `${genericMessage} ${pt('messages.errors.details', { message: detail })}`;
-      }
-
-      return genericMessage;
-    }
-  }
-  return pt(fallbackKey);
-};
-
-const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
-  if (value.trim().length === 0) {
-    return { isInvalid: false, normalizedValue: '' };
-  }
-
-  const normalizedValue = fromDatetimeLocalValue(value, referenceValue);
-  return {
-    isInvalid: normalizedValue.length === 0,
-    normalizedValue,
-  };
-};
-
-type NewsMediaPickerAsset = StudioMediaPickerAssetDetail;
-
-const toNewsMediaPickerSummary = (
-  asset: HostMediaAssetListItem
-): StudioMediaPickerAssetSummary => ({
-  id: asset.id,
-  title: readAssetTitle(asset),
-  fileName: readAssetFileName(asset),
-  previewUrl: asset.previewUrl,
-  mimeType: asset.mimeType,
-  visibility: asset.visibility,
-});
-
-const toNewsMediaPickerDetail = (
-  asset: HostMediaAssetDetail,
-  summary?: HostMediaAssetListItem,
-  persistentUrl?: string | null
-): NewsMediaPickerAsset => {
-  const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
-  const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
-
-  return {
-    id: asset.id,
-    title,
-    fileName,
-    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
-    mimeType: asset.mimeType,
-    visibility: asset.visibility,
-    persistentUrl,
-    metadata: {
-      title,
-      altText: asset.metadata.altText?.trim() ?? '',
-      description: asset.metadata.description?.trim() ?? '',
-      copyright: asset.metadata.copyright?.trim() ?? '',
-      license: asset.metadata.license?.trim() ?? '',
-    },
-  };
-};
-
-const isDirtyFieldTree = (
-  value: FieldNamesMarkedBoolean<NewsDetailFormValues> | undefined
-): value is FieldNamesMarkedBoolean<NewsDetailFormValues> => Boolean(value);
-
-type NewsTabIconProps = Readonly<{ className?: string }>;
-
-const NewsTabBasisIcon = ({ className }: NewsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <path d="M7 4.75h7.5L19 9.25v9A1.75 1.75 0 0 1 17.25 20h-10.5A1.75 1.75 0 0 1 5 18.25v-11.5A1.75 1.75 0 0 1 6.75 5Z" />
-    <path d="M14 4.75v4.5h4.5" />
-    <path d="M8.5 12h7" />
-    <path d="M8.5 15.5h7" />
-  </svg>
-);
-
-const NewsTabContentIcon = ({ className }: NewsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <rect x="4.5" y="5" width="15" height="14" rx="2" />
-    <path d="m8 14 2.5-2.5 2 2 2.5-3 3 4.5" />
-    <circle cx="9" cy="9.5" r="1.2" />
-  </svg>
-);
-
-const NewsTabSettingsIcon = ({ className }: NewsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <path d="M4 7h10" />
-    <path d="M4 17h16" />
-    <circle cx="17" cy="7" r="2.5" />
-    <circle cx="9" cy="17" r="2.5" />
-  </svg>
-);
-
-const NewsTabHistoryIcon = ({ className }: NewsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
-    <path d="M4.5 5.5v3.7h3.7" />
-    <path d="M12 8.5v4l2.5 1.5" />
-  </svg>
-);
-
-const newsTabIconMap = {
-  basis: NewsTabBasisIcon,
-  content: NewsTabContentIcon,
-  settings: NewsTabSettingsIcon,
-  history: NewsTabHistoryIcon,
-} as const satisfies Record<NewsDetailTabId, (props: NewsTabIconProps) => React.JSX.Element>;
+  resolvePluginActionLabel,
+  type PluginTranslator,
+  type StatusMessage,
+} from './news.detail-page.helpers.js';
+import { useNewsDetailMedia } from './news.detail-page-media.js';
+import { useNewsDetailOptions } from './news.detail-page-options.js';
+import { useNewsDetailLoad } from './news.detail-page-load.js';
+import { useNewsDetailSave } from './news.detail-page-save.js';
+import { useNewsDetailDelete } from './news.detail-page-delete.js';
+import { createNewsDetailPanels } from './news.detail-page-panels.js';
+import { useNewsDirtyTabs, useNewsDetailTabsState } from './news.detail-page-tabs.js';
+import { NewsDetailPageView } from './news.detail-page-view.js';
+import { useNewsDetailAccess } from './news.detail-page-access.js';
+import { pluginNewsActionIds } from './plugin.js';
+import type { NewsPrincipalControl, NewsContentItem, NewsDetailFormValues } from './news.types.js';
 
 export const NewsDetailPage = ({
   mode,
@@ -319,7 +39,6 @@ export const NewsDetailPage = ({
   initiallySaved?: boolean;
   onInitialSavedConsumed?: () => void;
 }>) => {
-  const navigate = useNavigate();
   const pt = React.useCallback<PluginTranslator>(
     (key, variables) => translatePluginKey('news', key, variables),
     []
@@ -328,26 +47,13 @@ export const NewsDetailPage = ({
   const saveFeedback = useStudioSaveFeedback();
   const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   const initialSaveFeedbackShownRef = React.useRef(false);
-  const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [deletePending, setDeletePending] = React.useState(false);
-  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
-  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
   const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const [scheduledPublicationInput, setScheduledPublicationInput] = React.useState('');
   const [invalidScheduledPublicationInput, setInvalidScheduledPublicationInput] =
     React.useState(false);
-  const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
-  const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
-  const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
-  const [wasteOverview, setWasteOverview] = React.useState<NewsWasteMasterDataOverview | null>(
-    null
-  );
-  const [wasteTargetingAvailability, setWasteTargetingAvailability] =
-    React.useState<WasteTargetingAvailability>('idle');
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
@@ -358,50 +64,27 @@ export const NewsDetailPage = ({
     resolver: newsDetailFormResolver,
   });
   const publicationMode = methods.watch('publicationMode');
-  const sessionAccess = React.useSyncExternalStore(
-    subscribeSessionAccessSnapshot,
-    readSessionAccessSnapshot,
-    readSessionAccessSnapshot
-  );
-  const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('news', sessionAccess, resourceAccess),
-    [resourceAccess, sessionAccess]
-  );
-  const canSave =
-    mode === 'create'
-      ? accessCapabilities.canCreate
-      : accessCapabilities.canUpdate &&
-        loadedItem !== null &&
-        hasContentLifecycleAccess(
-          resolveContentVisibilityAction(loadedItem.visible ?? true, publicationMode !== 'draft'),
-          resourceAccess
-        );
-  const canSendPushNotification =
-    sessionAccess.isResolved &&
-    sessionAccess.assignedModules.includes('news') &&
-    sessionAccess.permissionActions.includes('news.pushNotification') &&
-    (mode === 'create' ||
-      (sessionAccess.unscopedPermissionActions?.includes('news.pushNotification') ?? false) ||
-      resourceAccess['news.pushNotification'] === true);
-  const mediaCapabilities = React.useMemo(
-    () =>
-      resolveContentMediaCapabilities({
-        canEditContent: canSave,
-        permissionActions: sessionAccess.permissionActions,
-      }),
-    [canSave, sessionAccess.permissionActions]
-  );
-  const canSelectMedia = mediaCapabilities.canSelect;
-  const canUploadMedia = mediaCapabilities.canUpload;
-  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
-  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
-  const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
-  const editLoadRequestIdRef = React.useRef(0);
+  const {
+    hasWasteTargetingAccess,
+    accessCapabilities,
+    canSave,
+    canSendPushNotification,
+    canSelectMedia,
+    canUploadMedia,
+    canUpdateMedia,
+  } = useNewsDetailAccess(mode, loadedItem, resourceAccess, publicationMode);
+  const {
+    categoryOptions,
+    categoryOptionsLoading,
+    categoryOptionsError,
+    wasteOverview,
+    wasteTargetingAvailability,
+    loadWasteTargetingOverview,
+  } = useNewsDetailOptions(pt, hasWasteTargetingAccess);
   const formId = React.useId();
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
-  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | null>(null);
 
   const { formState, reset } = methods;
 
@@ -419,929 +102,156 @@ export const NewsDetailPage = ({
     }
   }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
 
-  const refreshMediaAssets = React.useCallback(async () => {
-    try {
-      const assets = await listHostMediaAssets({
-        fetch: globalThis.fetch.bind(globalThis),
-        visibility: 'public',
-      });
-      mediaAssetsRef.current = assets;
-      setMediaAssets(assets);
-      return assets;
-    } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
-    }
-  }, []);
-  const mediaPickerLabels = React.useMemo(() => createStudioMediaPickerLabels(pt), [pt]);
-
-  const isAssetSelectable = React.useCallback(
-    (asset: NewsMediaPickerAsset) => {
-      if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
-      if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
-      if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
-      const nextMedia = mediaContentFromAsset({
-        id: asset.id,
-        fileName: asset.fileName,
-        metadata: asset.metadata,
-        visibility: asset.visibility,
-        mimeType: asset.mimeType,
-        previewUrl: asset.previewUrl,
-      });
-      if (!nextMedia) {
-        return false;
-      }
-
-      const existingSources = new Set(
-        (methods.getValues('contentMedia') ?? []).map(mediaContentSourceKey).filter(Boolean)
-      );
-      return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
-    },
-    [mediaUsages, methods]
-  );
-
-  const mediaPicker = useStudioMediaPickerOverlay<NewsMediaPickerAsset>({
-    onAccept: (asset) => {
-      if (
-        !asset.localDraft &&
-        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
-      )
-        return;
-      const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
-      const nextMedia = mediaContentFromAsset({
-        id: asset.id,
-        fileName: asset.fileName,
-        metadata: asset.metadata,
-        visibility: asset.visibility,
-        mimeType: asset.mimeType,
-        previewUrl: asset.previewUrl,
-      });
-      if (!nextMedia) {
-        return;
-      }
-      const persistedMedia = {
-        ...nextMedia,
-        sourceUrl: { ...nextMedia.sourceUrl, url: persistentUrl },
-      };
-
-      const currentMedia = methods.getValues('contentMedia') ?? [];
-      methods.setValue(
-        'contentMedia',
-        asset.localDraft ? currentMedia : [...currentMedia, persistedMedia],
-        { shouldDirty: true }
-      );
-      setMediaUsages((current) => [
-        ...current,
-        {
-          uiId: `news-asset-${asset.id}-${current.length}`,
-          assetId: asset.localDraft ? undefined : asset.id,
-          localDraft: asset.localDraft,
-          persistentUrl,
-          previewUrl: asset.previewUrl ?? undefined,
-          altText: asset.metadata.altText || asset.fileName,
-          caption: asset.metadata.description || asset.title,
-          credit: asset.metadata.copyright,
-          license: asset.metadata.license,
-          role: 'gallery_item',
-          sortOrder: current.length,
-          assetSnapshot: toContentMediaAssetSnapshot({
-            persistentUrl,
-            altText: asset.metadata.altText || asset.fileName,
-            caption: asset.metadata.description || asset.title,
-            credit: asset.metadata.copyright,
-            license: asset.metadata.license,
-          }),
-          referenceStatus: 'pending',
-          additionalData: {
-            contentType: persistedMedia.contentType,
-            width: persistedMedia.width,
-            height: persistedMedia.height,
-          },
-        },
-      ]);
-      setRequiresReferenceSync(true);
-      void refreshMediaAssets();
-    },
-    canAcceptAsset: isAssetSelectable,
-    isSupportedUploadFile,
-    createLocalAsset: createLocalStudioMediaPickerAsset,
-    loadAsset: async (assetId) => {
-      const [detail, delivery] = await Promise.all([
-        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
-        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
-      ]);
-      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toNewsMediaPickerDetail(
-        detail,
-        summary,
-        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
-          ? delivery.deliveryUrl
-          : null
-      );
-    },
-    saveAssetMetadata: async (assetId, metadata) => {
-      const detail = await updateHostMediaAsset({
-        fetch: globalThis.fetch.bind(globalThis),
-        assetId,
-        visibility: 'public',
-        metadata,
-      });
-      const assets = await refreshMediaAssets();
-      mediaAssetsRef.current = assets;
-      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      const delivery = await getHostMediaDelivery({
-        fetch: globalThis.fetch.bind(globalThis),
-        assetId,
-      });
-      return toNewsMediaPickerDetail(
-        detail,
-        summary,
-        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
-          ? delivery.deliveryUrl
-          : null
-      );
-    },
+  const {
+    mediaPicker,
+    mediaPickerLabels,
+    isAssetSelectable,
+    addManualMedia,
+    mediaPickerFeedback,
+    refreshMediaAssets,
+  } = useNewsDetailMedia({
+    methods,
+    mediaUsages,
+    setMediaUsages,
+    setRequiresReferenceSync,
+    setMediaAssets,
+    pt,
   });
-  const addManualMedia = React.useCallback(() => {
-    const usage = {
-      ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
-      additionalData: { contentType: 'image', width: '', height: '' },
-    };
-    const nextUsages = [...mediaUsages, usage];
-    methods.setValue(
-      'contentMedia',
-      contentMediaUsagesToMainserver(nextUsages) as NewsDetailFormValues['contentMedia'],
-      { shouldDirty: true }
-    );
-    setMediaUsages(nextUsages);
-    setRequiresReferenceSync(
-      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
-    );
-    return usage.uiId;
-  }, [mediaUsages, methods]);
-  const mediaPickerFeedback = React.useMemo(
-    () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
-    [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
-  );
-
-  const dirtyTabs = React.useMemo(
-    () =>
-      formState.isDirty
-        ? deriveDirtyNewsDetailTabs(
-            (isDirtyFieldTree(formState.dirtyFields) ? formState.dirtyFields : {}) as Parameters<
-              typeof deriveDirtyNewsDetailTabs
-            >[0]
-          )
-        : {
-            basis: false,
-            content: false,
-            settings: false,
-            history: false,
-          },
-    [formState.dirtyFields, formState.isDirty]
-  );
-
-  React.useEffect(() => {
-    if (principalControl) {
-      setActingPrincipalType(principalControl.value);
-    }
-  }, [principalControl]);
-
-  React.useEffect(() => {
-    let active = true;
-
-    void listNewsCategories()
-      .then((categories) => {
-        if (!active) {
-          return;
-        }
-        setCategoryOptions(categories);
-        setCategoryOptionsError(null);
-      })
-      .catch((error: unknown) => {
-        if (!active) {
-          return;
-        }
-        setCategoryOptions([]);
-        setCategoryOptionsError(
-          resolveNewsErrorMessage(pt, error, 'messages.categoryOptionsLoadError')
-        );
-      })
-      .finally(() => {
-        if (active) {
-          setCategoryOptionsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [pt]);
+  const dirtyTabs = useNewsDirtyTabs(formState);
 
   React.useEffect(() => {
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
 
-  const hasWasteTargetingAccess =
-    sessionAccess.assignedModules.includes('waste-management') &&
-    sessionAccess.permissionActions.includes('waste-management.read');
+  useNewsDetailLoad({
+    mode,
+    contentId,
+    principalControl,
+    pt,
+    reset,
+    setIsLoading,
+    setStatusMessage,
+    setMediaUsages,
+    setRequiresReferenceSync,
+    setScheduledPublicationInput,
+    setInvalidScheduledPublicationInput,
+    setLoadedItem,
+    setResourceAccess,
+    loadedItem,
+    actingPrincipalType,
+    setActingPrincipalType,
+  });
+  const { navigateToCreatedDetail, saveCurrentItem } = useNewsDetailSave({
+    methods,
+    canSave,
+    mediaReferenceSync,
+    mode,
+    contentId,
+    saveFeedback,
+    pt,
+    mediaUsages,
+    requiresReferenceSync,
+    loadedItem,
+    actingPrincipalType,
+    hasWasteTargetingAccess,
+    wasteTargetingAvailability,
+    setStatusMessage,
+    setMediaSavePhaseKey,
+    setRetryCreatedContentId,
+    setLoadedItem,
+    setScheduledPublicationInput,
+    setInvalidScheduledPublicationInput,
+  });
 
-  React.useEffect(() => {
-    if (!hasWasteTargetingAccess) {
-      setWasteOverview(null);
-      setWasteTargetingAvailability('forbidden');
-      return;
-    }
-    setWasteTargetingAvailability((current) => (current === 'forbidden' ? 'idle' : current));
-  }, [hasWasteTargetingAccess]);
+  const {
+    onDelete,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    deletePending,
+    deleteNavigationFailed,
+    deleteErrorMessage,
+    setDeleteErrorMessage,
+  } = useNewsDetailDelete({ contentId, actingPrincipalType, pt });
 
-  const loadWasteTargetingOverview = React.useCallback(async (): Promise<boolean> => {
-    if (!hasWasteTargetingAccess) {
-      setWasteTargetingAvailability('forbidden');
-      return false;
-    }
-    if (wasteOverview) {
-      return true;
-    }
-    setWasteTargetingAvailability('loading');
-    try {
-      const overview = await loadNewsWasteMasterData();
-      setWasteOverview(overview);
-      setWasteTargetingAvailability('available');
-      return true;
-    } catch {
-      setWasteOverview(null);
-      setWasteTargetingAvailability('load-error');
-      return false;
-    }
-  }, [hasWasteTargetingAccess, wasteOverview]);
-
-  React.useEffect(() => {
-    if (mode !== 'edit') {
-      return;
-    }
-
-    if (!contentId) {
-      setIsLoading(false);
-      setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
-      return;
-    }
-
-    const requestId = ++editLoadRequestIdRef.current;
-    let active = true;
-
-    const loadPrincipalType = principalControl?.value ?? 'user';
-    void getNewsDetail(contentId, loadPrincipalType)
-      .then(async (detail) => {
-        if (!active || requestId !== editLoadRequestIdRef.current) {
-          return;
-        }
-        const item = detail.data;
-
-        const references = await listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: NEWS_CONTENT_TYPE,
-          targetId: contentId,
-        }).catch(() => []);
-        if (!active || requestId !== editLoadRequestIdRef.current) {
-          return;
-        }
-        const nextValues = mapNewsItemToDetailFormValues(item);
-        reset(nextValues);
-        setMediaUsages(
-          mainserverContentMediaToUsages(
-            nextValues.contentMedia,
-            alignHostMediaReferencesByOrder({
-              itemCount: nextValues.contentMedia.length,
-              role: 'gallery_item',
-              references,
-            })
-          )
-        );
-        setRequiresReferenceSync(references.length > 0);
-        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
-        setInvalidScheduledPublicationInput(false);
-        setLoadedItem(item);
-        setResourceAccess(detail.access);
-        loadedPrincipalTypeRef.current = loadPrincipalType;
-      })
-      .catch((error: unknown) => {
-        if (active && requestId === editLoadRequestIdRef.current) {
-          setStatusMessage({
-            source: 'load',
-            text: resolveNewsErrorMessage(pt, error, 'messages.loadError'),
-          });
-        }
-      })
-      .finally(() => {
-        if (active && requestId === editLoadRequestIdRef.current) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [contentId, mode, pt, reset]);
-
-  React.useEffect(() => {
-    if (
-      mode !== 'edit' ||
-      !contentId ||
-      !loadedItem ||
-      loadedPrincipalTypeRef.current === actingPrincipalType
-    ) {
-      return;
-    }
-    let active = true;
-    void getNewsDetail(contentId, actingPrincipalType)
-      .then((detail) => {
-        if (!active) return;
-        setResourceAccess(detail.access);
-        loadedPrincipalTypeRef.current = actingPrincipalType;
-      })
-      .catch(() => {
-        if (active) setResourceAccess({});
-      });
-    return () => {
-      active = false;
-    };
-  }, [actingPrincipalType, contentId, loadedItem, mode]);
-
-  const navigateToCreatedDetail = React.useCallback(
-    (createdContentId: string) =>
-      navigate({
-        to: '/admin/news/$id',
-        params: { id: createdContentId },
-        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
-      }),
-    [navigate]
-  );
-
-  const saveCurrentItem = methods.handleSubmit(
-    async (values) => {
-      if (!canSave) return;
-      if (
-        requiresGlobalPushConfirmation({
-          pushNotificationEnabled: values.pushNotificationEnabled,
-          targetCount: values.wasteLocationKeys.length,
-          pushNotificationsSentAt: loadedItem?.pushNotificationsSentAt,
-        }) &&
-        typeof globalThis.window.confirm === 'function' &&
-        globalThis.window.confirm(
-          pt(resolveGlobalPushConfirmationKey(wasteTargetingAvailability))
-        ) === false
-      ) {
-        return;
-      }
-      if (mediaReferenceSync.hasPendingRetry) {
-        setStatusMessage({
-          source: 'reference',
-          text: pt('messages.mediaReferencePartialFailure'),
-        });
-        return;
-      }
-
-      if (mode === 'edit' && !contentId) {
-        setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
-        return;
-      }
-
-      const operationId = saveFeedback.beginSaving();
-      setMediaSavePhaseKey(null);
-      try {
-        const saveContent = (
-          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
-          mediaSaveContext?: Readonly<{ operationId: string }>
-        ) =>
-          saveNewsEditorItem(
-            {
-              contentId,
-              values: {
-                ...values,
-                contentMedia: contentMediaUsagesToMainserver(
-                  resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
-                ) as NewsDetailFormValues['contentMedia'],
-              },
-              existingItem: loadedItem ?? null,
-              actingPrincipalType,
-              canWriteWasteTargets: hasWasteTargetingAccess,
-              mutationOptions: mediaSaveContext
-                ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
-                : undefined,
-            },
-            { createNews, updateNews }
-          );
-        const result = requiresReferenceSync
-          ? await saveContentWithHostMediaReferences({
-              fetch: globalThis.fetch.bind(globalThis),
-              saveContent,
-              getTargetId: (saved) => saved.id,
-              targetType: NEWS_CONTENT_TYPE,
-              references: mediaUsages.flatMap((usage) => {
-                const reference = contentMediaUsageToReference(usage);
-                return reference ? [reference] : [];
-              }),
-              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
-              onPhaseChange: (phase) =>
-                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
-            })
-          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-        const handledResult = mediaReferenceSync.consumeSaveResult(result);
-        const saved = handledResult.saved;
-        if (handledResult.referenceFailed) {
-          setRetryCreatedContentId(mode === 'create' ? saved.id : null);
-          setStatusMessage({
-            source: 'reference',
-            text: pt('messages.mediaReferencePartialFailure'),
-          });
-          saveFeedback.markFailed(operationId);
-          return;
-        }
-
-        if (mode === 'create') {
-          saveFeedback.markSaved(operationId);
-          try {
-            await navigateToCreatedDetail(saved.id);
-          } catch {
-            setRetryCreatedContentId(saved.id);
-            setStatusMessage({
-              source: 'navigation',
-              text: pt('messages.detailNavigationError'),
-            });
-            saveFeedback.markFailed(operationId);
-          }
-          return;
-        }
-
-        const nextValues = mapNewsItemToDetailFormValues(saved);
-        reset(nextValues);
-        setRetryCreatedContentId(null);
-        setLoadedItem(saved);
-        setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
-        setInvalidScheduledPublicationInput(false);
-        setStatusMessage(null);
-        saveFeedback.markSaved(operationId);
-      } catch (error) {
-        setStatusMessage({
-          source: 'save',
-          text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
-        });
-        saveFeedback.markFailed(operationId);
-      }
-    },
-    () => {
-      setStatusMessage(null);
-      saveFeedback.reset();
-    }
-  );
-
-  const onDelete = async () => {
-    if (!contentId || deletePending) {
-      return;
-    }
-
-    setDeleteErrorMessage(null);
-    setDeletePending(true);
-
-    try {
-      await deleteNews(contentId, actingPrincipalType);
-    } catch (error) {
-      setDeleteErrorMessage(resolveNewsErrorMessage(pt, error, 'messages.deleteError'));
-      setDeletePending(false);
-      return;
-    }
-
-    setDeleteDialogOpen(false);
-    try {
-      await navigate({
-        to: '/admin/content',
-        state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'news', contentId),
-      });
-    } catch {
-      setDeleteNavigationFailed(true);
-    } finally {
-      setDeletePending(false);
-    }
-  };
-
-  React.useEffect(() => {
-    setVisitedTabs((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
-  }, [activeTab]);
-
-  const warmTab = React.useCallback((tabId: NewsDetailTabId) => {
-    setVisitedTabs((current) => (current.includes(tabId) ? current : [...current, tabId]));
-  }, []);
-
-  const handleTabChange = React.useCallback(
-    (nextTab: NewsDetailTabId) => {
-      if (nextTab === activeTab) {
-        return;
-      }
-      setActiveTab(nextTab);
-    },
-    [activeTab]
-  );
+  const { activeTab, handleTabChange, warmTab, visitedTabs } = useNewsDetailTabsState();
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
 
-  const tabs = createNewsDetailTabDefinitions([
-    {
-      id: 'basis',
-      label: pt('tabs.basis.label'),
-      title: pt('tabs.basis.title'),
-      description: pt('tabs.basis.description'),
-      hasChanges: dirtyTabs.basis,
-      changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailBasisTab
-          availableCategories={categoryOptions}
-          principalControl={principalControl}
-          actingPrincipalType={actingPrincipalType}
-          onActingPrincipalTypeChange={setActingPrincipalType}
-          categoryOptionsError={categoryOptionsError}
-          categoryOptionsLoading={categoryOptionsLoading}
-          mode={mode}
-          loadedItem={loadedItem}
-          pt={pt}
-        />
-      ),
-    },
-    {
-      id: 'content',
-      label: pt('tabs.content.label'),
-      title: pt('tabs.content.title'),
-      description: pt('tabs.content.description'),
-      hasChanges: dirtyTabs.content,
-      changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailContentTab
-          mediaUsages={mediaUsages}
-          onAddManualMedia={addManualMedia}
-          onChangeMediaUsages={(usages) => {
-            setMediaUsages(usages);
-            setRequiresReferenceSync(
-              (current) => current || usages.some((usage) => Boolean(usage.assetId))
-            );
-          }}
-          canSelectMedia={canSelectMedia}
-          canUploadMedia={canUploadMedia}
-          mediaEditingDisabled={saveFeedback.status === 'saving'}
-          onLoadAssetSnapshot={async (usage) => {
-            if (!usage.assetId) throw new Error('asset_unavailable');
-            const [detail, delivery] = await Promise.all([
-              getHostMediaAsset({
-                fetch: globalThis.fetch.bind(globalThis),
-                assetId: usage.assetId,
-              }),
-              getHostMediaDelivery({
-                fetch: globalThis.fetch.bind(globalThis),
-                assetId: usage.assetId,
-              }),
-            ]);
-            if (
-              delivery.isPublicUrl !== true ||
-              !isPersistableContentMediaUrl(delivery.deliveryUrl)
-            )
-              throw new Error('asset_unavailable');
-            return toContentMediaAssetSnapshot({
-              persistentUrl: delivery.deliveryUrl,
-              altText: detail.metadata.altText ?? '',
-              caption: detail.metadata.description ?? '',
-              credit: detail.metadata.copyright ?? '',
-              license: detail.metadata.license ?? '',
-            });
-          }}
-          onOpenMediaPicker={(pickerMode) =>
-            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-          }
-          pt={pt}
-        />
-      ),
-    },
-    {
-      id: 'settings',
-      label: pt('tabs.settings.label'),
-      title: pt('tabs.settings.title'),
-      description: pt('tabs.settings.description'),
-      hasChanges: dirtyTabs.settings,
-      changeLabel: pt('tabs.changeLabel'),
-      panel: (
-        <NewsDetailSettingsTab
-          loadedItem={loadedItem}
-          canSendPushNotification={canSendPushNotification}
-          mode={mode}
-          pt={pt}
-          wasteOverview={wasteOverview}
-          wasteTargetingAvailability={wasteTargetingAvailability}
-          onLoadWasteOverview={loadWasteTargetingOverview}
-          scheduledPublicationField={{
-            value: scheduledPublicationInput,
-            isInvalid: invalidScheduledPublicationInput,
-            onChange: (nextValue) => {
-              const { isInvalid, normalizedValue } = parseDatetimeLocalInput(
-                nextValue,
-                methods.getValues('scheduledPublicationAt')
-              );
-              setScheduledPublicationInput(nextValue);
-              setInvalidScheduledPublicationInput(isInvalid);
-              return normalizedValue;
-            },
-          }}
-        />
-      ),
-    },
-    {
-      id: 'history',
-      label: pt('tabs.history.label'),
-      title: pt('tabs.history.title'),
-      description: pt('tabs.history.description'),
-      panel: <NewsDetailHistoryTab contentId={contentId} pt={pt} />,
-    },
-  ]);
+  const tabs = createNewsDetailPanels({
+    pt,
+    dirtyTabs,
+    categoryOptions,
+    principalControl,
+    actingPrincipalType,
+    setActingPrincipalType,
+    categoryOptionsError,
+    categoryOptionsLoading,
+    mode,
+    loadedItem,
+    mediaUsages,
+    addManualMedia,
+    setMediaUsages,
+    setRequiresReferenceSync,
+    canSelectMedia,
+    canUploadMedia,
+    saveFeedback,
+    mediaPicker,
+    canSendPushNotification,
+    wasteOverview,
+    wasteTargetingAvailability,
+    loadWasteTargetingOverview,
+    scheduledPublicationInput,
+    invalidScheduledPublicationInput,
+    methods,
+    setScheduledPublicationInput,
+    setInvalidScheduledPublicationInput,
+    contentId,
+  });
 
   return (
-    <StudioDetailPageTemplate
-      title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
-      description={
-        mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
-      }
-      primaryAction={
-        canSave ? (
-          <div className="flex flex-col items-end gap-1">
-            <ContentOwnershipSaveHint />
-            <StudioSaveButton
-              type="submit"
-              form={formId}
-              disabled={mediaReferenceSync.hasPendingRetry}
-              status={saveFeedback.status}
-              labels={{
-                idle: pt('actions.save'),
-                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-                saved: pt('actions.saved'),
-              }}
-            />
-          </div>
-        ) : undefined
-      }
-      actions={
-        <div className="flex flex-wrap gap-3">
-          <Button asChild variant="secondary">
-            <Link to="/admin/content">{pt('actions.back')}</Link>
-          </Button>
-          {mode === 'edit' && accessCapabilities.canDelete ? (
-            <Button
-              variant="destructive"
-              type="button"
-              onClick={() => {
-                setDeleteErrorMessage(null);
-                setDeleteDialogOpen(true);
-              }}
-              disabled={deletePending}
-            >
-              {deleteLabel}
-            </Button>
-          ) : null}
-        </div>
-      }
-    >
-      <FormProvider {...methods}>
-        <StudioMediaPickerOverlay
-          assets={mediaAssets.map(toNewsMediaPickerSummary)}
-          canUpload={canUploadMedia}
-          feedbackMessage={mediaPickerFeedback.message}
-          feedbackTone={mediaPickerFeedback.tone}
-          isAssetSelectable={(asset) =>
-            isAssetSelectable({
-              ...asset,
-              metadata: {
-                title: asset.title,
-                altText: '',
-                description: '',
-                copyright: '',
-                license: '',
-              },
-            })
-          }
-          isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
-          isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-          labels={mediaPickerLabels}
-          metadataDraft={mediaPicker.metadataDraft}
-          mode={mediaPicker.mode}
-          onAddManual={addManualMedia}
-          onBackFromReview={mediaPicker.goBackFromReview}
-          onChangeMode={(pickerMode) =>
-            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-          }
-          onClose={mediaPicker.close}
-          onConfirmSelection={() => void mediaPicker.confirmSelection()}
-          onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-          onOpenMediaManagement={(assetId) =>
-            void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
-          }
-          onSearchValueChange={mediaPicker.setSearchValue}
-          onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
-          onUploadFile={(file) => void mediaPicker.uploadFile(file)}
-          open={mediaPicker.open}
-          reviewAsset={mediaPicker.reviewAsset}
-          reviewSource={mediaPicker.reviewSource}
-          isMetadataEditable={canUpdateMedia}
-          searchValue={mediaPicker.searchValue}
-          uploadPhase={mediaPicker.uploadPhase}
-        />
-        <form
-          id={formId}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void saveCurrentItem();
-          }}
-        >
-          {deleteNavigationFailed ? (
-            <StudioPersistentActionResult
-              kind="success"
-              title={pt('messages.deleteSuccess')}
-              description={pt('messages.deleteNavigationError')}
-              actions={
-                <Button asChild size="sm" variant="secondary">
-                  <Link to="/admin/content">{pt('actions.back')}</Link>
-                </Button>
-              }
-            />
-          ) : null}
-          {statusMessage ? (
-            <StudioPersistentFormError
-              message={statusMessage.text}
-              retryLabel={
-                statusMessage.source === 'save'
-                  ? pt('actions.retry')
-                  : statusMessage.source === 'navigation'
-                    ? pt('actions.openCreatedDetail')
-                    : statusMessage.source === 'reference'
-                      ? pt('actions.retryMediaReferences')
-                      : undefined
-              }
-              retryDisabled={saveFeedback.status === 'saving'}
-              onRetry={
-                statusMessage.source === 'save'
-                  ? () => void saveCurrentItem()
-                  : statusMessage.source === 'navigation' && retryCreatedContentId
-                    ? () => {
-                        const operationId = saveFeedback.beginSaving();
-                        void navigateToCreatedDetail(retryCreatedContentId).then(
-                          () => {
-                            setStatusMessage(null);
-                            setRetryCreatedContentId(null);
-                            saveFeedback.markSaved(operationId);
-                          },
-                          () => saveFeedback.markFailed(operationId)
-                        );
-                      }
-                    : mediaReferenceSync.hasPendingRetry
-                      ? () => {
-                          const operationId = saveFeedback.beginSaving();
-                          void mediaReferenceSync.retryReferenceSync().then(
-                            () => {
-                              setStatusMessage(null);
-                              saveFeedback.markSaved(operationId);
-                              if (retryCreatedContentId) {
-                                const createdContentId = retryCreatedContentId;
-                                void navigateToCreatedDetail(createdContentId).then(
-                                  () => setRetryCreatedContentId(null),
-                                  () => {
-                                    setRetryCreatedContentId(createdContentId);
-                                    setStatusMessage({
-                                      source: 'navigation',
-                                      text: pt('messages.detailNavigationError'),
-                                    });
-                                    saveFeedback.markFailed(operationId);
-                                  }
-                                );
-                              } else {
-                                setRetryCreatedContentId(null);
-                              }
-                            },
-                            () => {
-                              setStatusMessage({
-                                source: 'reference',
-                                text: pt('messages.mediaReferencePartialFailure'),
-                              });
-                              saveFeedback.markFailed(operationId);
-                            }
-                          );
-                        }
-                      : undefined
-              }
-            />
-          ) : null}
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => handleTabChange(value as NewsDetailTabId)}
-            className="space-y-0"
-          >
-            <label className="block md:hidden">
-              <span className="sr-only">{pt('tabs.mobileLabel')}</span>
-              <Select
-                aria-label={pt('tabs.mobileLabel')}
-                className="h-11 rounded-xl border-border/70 bg-card"
-                value={activeTab}
-                onChange={(event) => handleTabChange(event.target.value as NewsDetailTabId)}
-              >
-                {tabs.map((tab) => (
-                  <option key={tab.id} value={tab.id}>
-                    {tab.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
-              {tabs.map((tab) => {
-                const TabIcon = newsTabIconMap[tab.id];
-                const isActive = tab.id === activeTab;
-
-                return (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    onMouseEnter={() => warmTab(tab.id)}
-                    onFocus={() => warmTab(tab.id)}
-                    className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                      isActive
-                        ? 'mb-[-1px] border-primary text-primary'
-                        : 'border-transparent text-muted-foreground'
-                    }`}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
-                      <span>{tab.label}</span>
-                      {tab.hasChanges && tab.changeLabel ? (
-                        <span className="text-xs font-medium text-foreground">
-                          {tab.changeLabel}
-                        </span>
-                      ) : null}
-                    </span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-            {tabs.map((tab) => {
-              const shouldKeepMounted = visitedTabs.includes(tab.id) && tab.id !== activeTab;
-
-              return (
-                <TabsContent
-                  key={tab.id}
-                  value={tab.id}
-                  forceMount={shouldKeepMounted || undefined}
-                  className="mt-0 data-[state=inactive]:hidden"
-                >
-                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
-                    <section
-                      aria-label={tab.title ? String(tab.title) : tab.label}
-                      className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-foreground">
-                          {tab.title ?? tab.label}
-                        </h2>
-                        {tab.description ? (
-                          <p className="text-sm leading-relaxed text-muted-foreground">
-                            {tab.description}
-                          </p>
-                        ) : null}
-                      </div>
-                      {tab.actions ? (
-                        <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
-                          {tab.actions}
-                        </div>
-                      ) : null}
-                    </section>
-                    {tab.panel}
-                  </div>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-        </form>
-      </FormProvider>
-      <StudioDestructiveActionDialog
-        open={deleteDialogOpen}
-        title={pt('actions.deleteConfirmTitle')}
-        description={pt('actions.deleteConfirm', {
-          title: methods.getValues('title') || pt('editor.editTitle'),
-        })}
-        confirmLabel={deleteLabel}
-        pendingLabel={pt('actions.deleting')}
-        cancelLabel={pt('actions.back')}
-        pending={deletePending}
-        errorMessage={deleteErrorMessage}
-        onConfirm={() => void onDelete()}
-        onCancel={() => {
-          setDeleteErrorMessage(null);
-          setDeleteDialogOpen(false);
-        }}
-      />
-    </StudioDetailPageTemplate>
+    <NewsDetailPageView
+      {...{
+        mode,
+        contentId,
+        actingPrincipalType,
+        pt,
+        canSave,
+        formId,
+        mediaReferenceSync,
+        saveFeedback,
+        mediaSavePhaseKey,
+        accessCapabilities,
+        setDeleteErrorMessage,
+        setDeleteDialogOpen,
+        deletePending,
+        deleteLabel,
+        methods,
+        mediaAssets,
+        canUploadMedia,
+        mediaPickerFeedback,
+        isAssetSelectable,
+        mediaPicker,
+        mediaPickerLabels,
+        addManualMedia,
+        canUpdateMedia,
+        saveCurrentItem,
+        deleteNavigationFailed,
+        statusMessage,
+        retryCreatedContentId,
+        navigateToCreatedDetail,
+        setStatusMessage,
+        setRetryCreatedContentId,
+        tabs,
+        activeTab,
+        handleTabChange,
+        warmTab,
+        visitedTabs,
+        deleteDialogOpen,
+        deleteErrorMessage,
+        onDelete,
+      }}
+    />
   );
 };

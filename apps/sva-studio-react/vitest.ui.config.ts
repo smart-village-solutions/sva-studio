@@ -10,6 +10,7 @@ export default mergeConfig(
         'src/components/**/*.{test,spec}.{ts,tsx}',
         'src/providers/**/*.{test,spec}.{ts,tsx}',
         'src/i18n/**/*.{test,spec}.{ts,tsx}',
+        'admin-exploration/**/*.{test,spec}.{ts,tsx}',
       ],
       exclude: ['src/**/*.a11y.test.{ts,tsx}', 'src/**/*.a11y.spec.{ts,tsx}'],
     },

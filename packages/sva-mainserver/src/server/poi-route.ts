@@ -1,420 +1,43 @@
-import {
-  authorizeContentPrimitiveForUser,
-  validateCsrf,
-  withAuthenticatedUser,
-  type AuthenticatedRequestContext,
-} from '@sva/auth-runtime/server';
-import { sanitizeRichTextHtml } from '@sva/core/rich-text-html';
+import { withAuthenticatedUser, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import type { SvaMainserverPoiInput } from '../types.js';
 import {
   errorJson,
   isResponse,
   json,
   matchRequestRoute,
-  parseJsonObjectBody,
-  readBoolean,
-  readString,
-  type RouteMatch as SharedRouteMatch,
+  parseDetachLinkedContent,
 } from './content-route-core.js';
-import {
-  MAINSERVER_ACTING_PRINCIPAL_HEADER,
-  withMainserverContextBinding,
-} from './content-route-context.js';
-import {
-  parseAccessibilityInformation,
-  parseAddressList,
-  parseCertificates,
-  parseCategories,
-  parseContact,
-  parseLocation,
-  parseMediaContents,
-  parseOpeningHours,
-  parseOperatingCompany,
-  parsePrices,
-  parseTags,
-  parseWebUrls,
-} from './content-route-parsers.js';
+import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
-import { parseMainserverListQuery } from './list-pagination.js';
 import {
-  createSvaMainserverPoi,
   deleteSvaMainserverPoi,
   getSvaMainserverPoiDetail,
-  listSvaMainserverPoi,
   updateSvaMainserverPoi,
 } from './service.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
 import {
-  authorizeMainserverCreateForPrincipal,
+  authorizeMutation,
+  contentTypeFor,
+  handleCollectionRead,
+  handleItemRead,
+  POI_CONTENT_TYPE,
+  type RouteMatch,
+} from './poi-route-access.js';
+import { createPoiContent, parsePoiInput } from './poi-route-input.js';
+import {
   authorizeMainserverExistingContent,
   finalizeMainserverMutation,
-  recordCreatedMainserverDataProvider,
   runMainserverMutationWithFailureFinalization,
   resolveMainserverVisibilityAction,
-  resolveMainserverMutationActor,
-  resolveMainserverResourceAccess,
-  resolveMainserverResourceActor,
   toMainserverAdditionalActions,
-  type MainserverMutationActor,
 } from './mutation-principal.js';
 
-const POI_CONTENT_TYPE = 'poi.point-of-interest';
 const POI_COLLECTION_PATH = '/api/v1/mainserver/poi';
 const logger = createSdkLogger({ component: 'sva-mainserver-poi-route', level: 'info' });
 
-type ContentKind = 'poi';
-
-type ContentActor = {
-  readonly instanceId: string;
-  readonly keycloakSubject: string;
-  readonly activeOrganizationId?: string;
-};
-
-type RouteMatch = SharedRouteMatch<ContentKind>;
-
 const matchRoute = (request: Request): RouteMatch | null =>
   matchRequestRoute(request, POI_COLLECTION_PATH, 'poi');
-
-const buildPoiInput = (input: {
-  body: Record<string, unknown>;
-  name: string;
-  categories: SvaMainserverPoiInput['categories'] | undefined;
-  addresses: SvaMainserverPoiInput['addresses'] | undefined;
-  contact: ReturnType<typeof parseContact> extends Response | infer T | undefined
-    ? T | undefined
-    : never;
-  priceInformations: SvaMainserverPoiInput['priceInformations'] | undefined;
-  openingHours: SvaMainserverPoiInput['openingHours'] | undefined;
-  operatingCompany: SvaMainserverPoiInput['operatingCompany'] | undefined;
-  webUrls: SvaMainserverPoiInput['webUrls'] | undefined;
-  mediaContents: SvaMainserverPoiInput['mediaContents'] | undefined;
-  location: SvaMainserverPoiInput['location'] | undefined;
-  certificates: SvaMainserverPoiInput['certificates'] | undefined;
-  accessibilityInformation: SvaMainserverPoiInput['accessibilityInformation'] | undefined;
-  tags: readonly string[] | undefined;
-}): SvaMainserverPoiInput => {
-  const description = readString(input.body.description);
-  const sanitizedDescription = description ? sanitizeRichTextHtml(description) : undefined;
-
-  return {
-    name: input.name,
-    ...(sanitizedDescription ? { description: sanitizedDescription } : {}),
-    ...(typeof input.body.mobileDescription === 'string'
-      ? { mobileDescription: input.body.mobileDescription.trim() }
-      : {}),
-    ...(typeof input.body.externalId === 'string'
-      ? { externalId: input.body.externalId.trim() }
-      : {}),
-    ...(typeof input.body.keywords === 'string' ? { keywords: input.body.keywords.trim() } : {}),
-    ...(readBoolean(input.body.active) !== undefined
-      ? { active: readBoolean(input.body.active) }
-      : {}),
-    ...(readString(input.body.categoryName)
-      ? { categoryName: readString(input.body.categoryName) }
-      : {}),
-    ...(input.body.payload !== undefined ? { payload: input.body.payload } : {}),
-    ...(input.categories ? { categories: input.categories } : {}),
-    ...(input.addresses ? { addresses: input.addresses } : {}),
-    ...(input.contact ? { contact: input.contact } : {}),
-    ...(input.priceInformations ? { priceInformations: input.priceInformations } : {}),
-    ...(input.openingHours ? { openingHours: input.openingHours } : {}),
-    ...(input.operatingCompany ? { operatingCompany: input.operatingCompany } : {}),
-    ...(input.webUrls ? { webUrls: input.webUrls } : {}),
-    ...(input.mediaContents ? { mediaContents: input.mediaContents } : {}),
-    ...(input.location ? { location: input.location } : {}),
-    ...(input.certificates ? { certificates: input.certificates } : {}),
-    ...(input.accessibilityInformation
-      ? { accessibilityInformation: input.accessibilityInformation }
-      : {}),
-    ...(input.tags ? { tags: input.tags } : {}),
-  };
-};
-
-const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | Response> => {
-  const body = await parseJsonObjectBody(request, 'POI-Daten müssen als Objekt gesendet werden.');
-  if (isResponse(body)) {
-    return body;
-  }
-
-  const name = readString(body.name);
-  if (!name) {
-    return errorJson(400, 'invalid_request', 'Der POI-Name ist erforderlich.');
-  }
-  const categories = parseCategories(body.categories);
-  const addresses = parseAddressList(body.addresses);
-  const contact = parseContact(body.contact);
-  const priceInformations = parsePrices(body.priceInformations);
-  const openingHours = parseOpeningHours(body.openingHours);
-  const operatingCompany = parseOperatingCompany(body.operatingCompany);
-  const webUrls = parseWebUrls(body.webUrls);
-  const mediaContents = parseMediaContents(body.mediaContents);
-  const location = parseLocation(body.location);
-  const certificates = parseCertificates(body.certificates);
-  const accessibilityInformation = parseAccessibilityInformation(body.accessibilityInformation);
-  const tags = parseTags(body.tags);
-  if (categories instanceof Response) {
-    return categories;
-  }
-  if (addresses instanceof Response) {
-    return addresses;
-  }
-  if (contact instanceof Response) {
-    return contact;
-  }
-  if (priceInformations instanceof Response) {
-    return priceInformations;
-  }
-  if (openingHours instanceof Response) {
-    return openingHours;
-  }
-  if (operatingCompany instanceof Response) {
-    return operatingCompany;
-  }
-  if (webUrls instanceof Response) {
-    return webUrls;
-  }
-  if (mediaContents instanceof Response) {
-    return mediaContents;
-  }
-  if (location instanceof Response) {
-    return location;
-  }
-  if (certificates instanceof Response) {
-    return certificates;
-  }
-  if (accessibilityInformation instanceof Response) {
-    return accessibilityInformation;
-  }
-  if (tags instanceof Response) {
-    return tags;
-  }
-  return buildPoiInput({
-    body,
-    name,
-    categories,
-    addresses,
-    contact,
-    priceInformations,
-    openingHours,
-    operatingCompany,
-    webUrls,
-    mediaContents,
-    location,
-    certificates,
-    accessibilityInformation,
-    tags,
-  });
-};
-
-const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
-  const csrfError = validateCsrf(request, requestId);
-  return csrfError
-    ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.')
-    : null;
-};
-
-const contentTypeFor = (_contentKind: ContentKind) => POI_CONTENT_TYPE;
-const pluginActionFor = (
-  contentKind: ContentKind,
-  actionName: 'read' | 'create' | 'update' | 'delete'
-) => `${contentKind}.${actionName}`;
-
-const authorizeOrResponse = async (
-  ctx: AuthenticatedRequestContext,
-  contentKind: ContentKind,
-  action: string,
-  contentId?: string,
-  credentialVisibleRead = true
-): Promise<ContentActor | Response> => {
-  const result = await authorizeContentPrimitiveForUser({
-    ctx,
-    action,
-    resource: {
-      contentType: contentTypeFor(contentKind),
-      ...(contentId ? { contentId } : {}),
-    },
-    credentialVisibleCompatibility:
-      action !== 'poi.read' || (Boolean(contentId) && credentialVisibleRead),
-  });
-  if (!result.ok) {
-    const workspaceContext = getWorkspaceContext();
-    logger.warn('Mainserver content local authorization denied', {
-      operation: 'mainserver_content_authorize',
-      request_id: workspaceContext.requestId,
-      trace_id: workspaceContext.traceId,
-      actor_id: ctx.user.id,
-      instance_id: ctx.user.instanceId,
-      content_type: contentTypeFor(contentKind),
-      content_id: contentId,
-      action,
-      error_code: result.error,
-    });
-    return errorJson(result.status, result.error, result.message, result.permissionDenial);
-  }
-  return {
-    instanceId: result.actor.instanceId,
-    keycloakSubject: result.actor.keycloakSubject,
-    activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
-  };
-};
-
-const handleCollectionRead = async (
-  request: Request,
-  route: Extract<RouteMatch, { readonly kind: 'collection' }>,
-  ctx: AuthenticatedRequestContext,
-  logSuccess: (operation: string, contentId?: string) => void
-) => {
-  const actor = await authorizeOrResponse(
-    ctx,
-    route.contentKind,
-    pluginActionFor(route.contentKind, 'read')
-  );
-  if (isResponse(actor)) {
-    return actor;
-  }
-
-  const data = await listSvaMainserverPoi({ ...actor, ...parseMainserverListQuery(request) });
-  logSuccess(`mainserver_${route.contentKind}_list`);
-  return json(data);
-};
-
-const handleItemRead = async (
-  request: Request,
-  route: Extract<RouteMatch, { readonly kind: 'item' }>,
-  ctx: AuthenticatedRequestContext,
-  logSuccess: (operation: string, contentId?: string) => void
-) => {
-  const actor = await authorizeOrResponse(
-    ctx,
-    route.contentKind,
-    pluginActionFor(route.contentKind, 'read'),
-    route.itemId,
-    request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)
-  );
-  if (isResponse(actor)) {
-    return actor;
-  }
-
-  const resourceActor = await resolveMainserverResourceActor({
-    request,
-    ctx,
-    authorizedActor: actor,
-  });
-  const detail = await getSvaMainserverPoiDetail({
-    ...(resourceActor ?? actor),
-    poiId: route.itemId,
-  });
-  const access = resourceActor
-    ? await resolveMainserverResourceAccess({
-        actor: resourceActor,
-        actions: [
-          `${route.contentKind}.read`,
-          `${route.contentKind}.update`,
-          `${route.contentKind}.delete`,
-          'content.publish',
-          'content.changeStatus',
-        ],
-        contentType: POI_CONTENT_TYPE,
-        item: detail.data,
-        forceExactScopeActions: [`${route.contentKind}.read`],
-      })
-    : {};
-  if (
-    (resourceActor && !access[`${route.contentKind}.read`]) ||
-    (!resourceActor && request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER))
-  ) {
-    const exactRead = await authorizeOrResponse(
-      ctx,
-      route.contentKind,
-      `${route.contentKind}.read`,
-      route.itemId,
-      false
-    );
-    if (isResponse(exactRead)) return exactRead;
-  }
-  for (const deviation of detail.deviations) {
-    logger.warn('Mainserver detail response degraded', {
-      operation: 'mainserver_poi_detail',
-      instance_id: actor.instanceId,
-      content_type: POI_CONTENT_TYPE,
-      content_id: route.itemId,
-      phase: deviation.phase,
-      field_path: deviation.fieldPath,
-      deviation_code: deviation.code,
-      handling: deviation.handling,
-    });
-  }
-  logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
-  return json({
-    data: detail.data,
-    meta: { deviations: detail.deviations, ...(resourceActor ? { access } : {}) },
-  });
-};
-
-const authorizeMutation = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext,
-  contentKind: ContentKind,
-  actionName: 'create' | 'update' | 'delete',
-  requestId?: string,
-  contentId?: string
-): Promise<Response | MainserverMutationActor> => {
-  const csrfError = validateMutationRequest(request, requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const authorizedActor = await authorizeOrResponse(
-    ctx,
-    contentKind,
-    pluginActionFor(contentKind, actionName),
-    contentId
-  );
-  if (isResponse(authorizedActor)) {
-    return authorizedActor;
-  }
-  return resolveMainserverMutationActor({ request, ctx, authorizedActor });
-};
-
-const createPoiContent = async (request: Request, actor: MainserverMutationActor) => {
-  const parsed = await parsePoiInput(request);
-  if (isResponse(parsed)) {
-    return parsed;
-  }
-
-  const principalAuthorization = await authorizeMainserverCreateForPrincipal({
-    actor,
-    action: 'poi.create',
-    contentType: POI_CONTENT_TYPE,
-  });
-  if (isResponse(principalAuthorization)) return principalAuthorization;
-  const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
-  const bindingResult = await recordCreatedMainserverDataProvider({
-    actor,
-    created: data,
-    reread: async () => (await getSvaMainserverPoiDetail({ ...actor, poiId: data.id })).data,
-    contentType: POI_CONTENT_TYPE,
-  });
-  await finalizeMainserverMutation({
-    actor,
-    providerOutcome: 'succeeded',
-    reconciliationStatus:
-      bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
-        ? 'reconciliation_required'
-        : 'complete',
-    completedSteps: ['provider_write', 'binding_observation'],
-    contentId: data.id,
-    observedDataProviderId: data.dataProvider?.id ?? bindingResult.observedDataProviderId,
-  });
-  return {
-    data,
-    ...(bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
-      ? { meta: { reconciliationStatus: 'reconciliation_required' as const } }
-      : {}),
-  };
-};
 
 const handleCollectionCreate = async (
   request: Request,
@@ -509,6 +132,8 @@ const handleItemDelete = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
+  const detachLinkedContent = parseDetachLinkedContent(request);
+  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   const actor = await authorizeMutation(
     request,
     ctx,
@@ -534,7 +159,11 @@ const handleItemDelete = async (
         item: existing?.data,
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
-      const data = await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
+      const data = await deleteSvaMainserverPoi({
+        ...actor,
+        poiId: route.itemId,
+        detachLinkedContent,
+      });
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',

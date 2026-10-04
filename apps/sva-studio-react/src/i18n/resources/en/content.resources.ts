@@ -33,6 +33,15 @@ export const contentENResources = {
   },
   actions: {
     create: 'New content',
+    createForType: 'Create {{type}}',
+    createNews: 'New news entry',
+    createEvent: 'New event',
+    createPoi: 'New place',
+    createSurvey: 'New survey',
+    createFaq: 'New FAQ entry',
+    createGenericItem: 'New generic item',
+    createCockpitCard: 'New cockpit card',
+    createProject: 'New project',
     createNow: 'Create content',
     edit: 'Edit',
     editTitle: 'Edit {{title}}',
@@ -47,6 +56,17 @@ export const contentENResources = {
     deleteConfirmTitle: 'Delete content permanently?',
     deleteConfirmDescription:
       'The content item “{{title}}” will be permanently deleted. This action cannot be undone.',
+    linkedContentLoading: 'Checking linked content …',
+    linkedContentError: 'Linked content could not be checked. Please try again.',
+    linkedContentIntro: 'This content is linked to:',
+    linkedEvent: '{{count}} event',
+    linkedEvents: '{{count}} events',
+    linkedNewsItem: '{{count}} news item',
+    linkedNewsItems: '{{count}} news items',
+    linkedGenericItem: '{{count}} other content item',
+    linkedGenericItems: '{{count}} other content items',
+    linkedContentOutro:
+      'If you delete this content, the linked items will remain. Only their links will be removed. Do you still want to delete this content?',
     deleteBulkConfirmTitle: 'Delete selected content permanently?',
     deleteBulkConfirmDescription:
       '{{count}} selected content items will be permanently deleted. This action cannot be undone.',

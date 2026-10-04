@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   ),
   loadCurrentMainserverDataProviderBinding: vi.fn(),
   deferMainserverMutationProjection: vi.fn(),
+  loadMainserverMutationJournal: vi.fn(),
   reconcileDeferredMainserverMutationProjections: vi.fn(),
   recordSuccessfulExternalContentDeletion: vi.fn(),
   recordSuccessfulExternalContentMutation: vi.fn(),
@@ -44,6 +45,7 @@ export const getProjectionTestState = () => state;
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   deferMainserverMutationProjection: state.deferMainserverMutationProjection,
+  loadMainserverMutationJournal: state.loadMainserverMutationJournal,
   reconcileDeferredMainserverMutationProjections:
     state.reconcileDeferredMainserverMutationProjections,
   loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
@@ -87,6 +89,11 @@ import {
   refreshProjectedContentsForMainserverMutation as refreshProjectedContentsForMainserverMutationBase,
   resetContentProjectionRuntimeStateForTests,
 } from './iam-content-list-projection.server';
+import { computeProjectionSyncStates } from './iam-content-list-projection-sync.server.js';
+
+export const computeProjectionSyncStatesForTest = (
+  ...args: Parameters<typeof computeProjectionSyncStates>
+): ReturnType<typeof computeProjectionSyncStates> => computeProjectionSyncStates(...args);
 
 export const listProjectedContentsForTest = (
   ...args: Parameters<typeof listProjectedContentsBase>
@@ -139,6 +146,7 @@ export const registerProjectionFixture = (): void => {
     fixture.projectionRows = [];
     fixture.syncStates = new Map();
     fixture.projectionInsertArgs = null;
+    fixture.projectionDeleteSql = null;
     fixture.projectionInsertSql = null;
     fixture.projectionInsertPayloadSizes = [];
     fixture.simulateConcurrentProjectionConflict = false;
@@ -152,6 +160,7 @@ export const registerProjectionFixture = (): void => {
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockReset();
     state.loadCurrentMainserverDataProviderBinding.mockReset();
     state.deferMainserverMutationProjection.mockReset();
+    state.loadMainserverMutationJournal.mockReset();
     state.reconcileDeferredMainserverMutationProjections.mockReset();
     state.recordSuccessfulExternalContentDeletion.mockReset();
     state.recordSuccessfulExternalContentMutation.mockReset();
@@ -204,9 +213,9 @@ export const registerProjectionFixture = (): void => {
     });
     state.resolveActorAccountId.mockResolvedValue('account-1');
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
-      async (input: { actingPrincipalType: 'organization' | 'user' }) => ({
+      async (input: { actingPrincipalType?: 'organization' | 'user' }) => ({
         status: 'ok',
-        source: input.actingPrincipalType,
+        source: input.actingPrincipalType ?? 'user',
         credentials: { apiKey: 'key', apiSecret: 'secret' },
         credentialFingerprint:
           input.actingPrincipalType === 'organization' ? 'b'.repeat(64) : 'a'.repeat(64),

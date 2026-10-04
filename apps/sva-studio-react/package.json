@@ -14,7 +14,8 @@
     "test:e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.922.0",
+    "@aws-sdk/client-s3": "^3.1144.0",
+    "@fallow-cli/beacon": "^0.6.6",
     "@hookform/resolvers": "^3.10.0",
     "@kern-ux/native": "^2.6.4",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -62,8 +63,8 @@
     "pg": "^8.22.0",
     "postcss": "^8.5.23",
     "qrcode": "^1.5.4",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-hook-form": "^7.80.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
@@ -72,7 +73,6 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "@browserbasehq/stagehand": "3.6.0",
     "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "4.3.3",
@@ -81,16 +81,17 @@
     "@testing-library/react": "^16.2.0",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.11",
     "axe-core": "^4.11.4",
     "dotenv": "^17.4.2",
     "jsdom": "^29.1.0",
+    "oxc-coverage-instrument": "^0.13.0",
     "tooling-testing": "workspace:*",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.3.2",
     "vitest": "^4.1.11"
   }
 }

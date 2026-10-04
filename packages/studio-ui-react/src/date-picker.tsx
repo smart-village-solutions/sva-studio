@@ -10,7 +10,7 @@ import {
   type DatePickerLocale,
 } from './date-picker-value.js';
 import { Input } from './input.js';
-import { StudioField } from './studio-primitives.js';
+import { StudioField } from './studio-form-fields.js';
 import { useDatePickerDraft } from './use-date-picker-draft.js';
 
 export type DatePickerLabels = Readonly<{

@@ -15,7 +15,11 @@ vi.mock('./settings-shared.js', () => ({
   updateWasteVisibleStatus: updateWasteVisibleStatusMock,
 }));
 
-import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
+import {
+  runWasteCreateMutation,
+  runWasteDeleteMutation,
+  runWasteUpdateMutation,
+} from './mutation-helpers.js';
 
 describe('waste-management mutation helpers', () => {
   const ctx: AuthenticatedRequestContext = {
@@ -187,6 +191,50 @@ describe('waste-management mutation helpers', () => {
         resourceType: 'waste_fraction',
         resourceId: 'fraction-1',
       })
+    );
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'revalidate');
+  });
+
+  it('deletes an existing item and audits the successful mutation', async () => {
+    const remove = vi.fn(async () => undefined);
+    const response = await runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId: 'tenant-a',
+      requestId: 'req-test',
+      resourceId: 'fraction-1',
+      audit: { actionId: 'waste-management.fraction.deleted', resourceType: 'waste_fraction' },
+      messages: { notFound: 'Nicht gefunden.', deleteFailed: 'Löschen fehlgeschlagen.' },
+      loadExisting: vi.fn(async () => ({ id: 'fraction-1' })),
+      remove,
+    });
+
+    expect(response.status).toBe(200);
+    expect(remove).toHaveBeenCalledOnce();
+    expect(emitWasteAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ result: 'success', resourceId: 'fraction-1' })
+    );
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'success');
+  });
+
+  it('keeps a failed deletion visible for revalidation and audits the failure', async () => {
+    const response = await runWasteDeleteMutation({
+      deps,
+      ctx,
+      instanceId: 'tenant-a',
+      requestId: 'req-test',
+      resourceId: 'fraction-1',
+      audit: { actionId: 'waste-management.fraction.deleted', resourceType: 'waste_fraction' },
+      messages: { notFound: 'Nicht gefunden.', deleteFailed: 'Löschen fehlgeschlagen.' },
+      loadExisting: vi.fn(async () => ({ id: 'fraction-1' })),
+      remove: vi.fn(async () => {
+        throw new Error('db down');
+      }),
+    });
+
+    expect(response.status).toBe(503);
+    expect(emitWasteAuditEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ result: 'failure', reasonCode: 'database_unavailable' })
     );
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'revalidate');
   });

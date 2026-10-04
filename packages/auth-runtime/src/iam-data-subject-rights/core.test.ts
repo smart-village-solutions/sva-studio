@@ -719,6 +719,30 @@ describe('iam data subject rights handlers', () => {
     expect(events).toEqual(['tx:start', 'tx:end', 'revoke']);
   });
 
+  it('does not revoke sessions when the deletion transaction fails after its writes', async () => {
+    const { dataSubjectRequestHandler } = await import('./core.js');
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) => {
+      await work(
+        buildDbClient({
+          account: buildAccount({ id: 'account-77', keycloak_subject: 'kc-user-1' }),
+          requestIds: ['deletion-request-1'],
+        })
+      );
+      throw new Error('commit_failed');
+    });
+
+    const response = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'deletion', payload: {} }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(mocks.revokeUserSessions).not.toHaveBeenCalled();
+  });
+
   it('blocks optional processing when restriction or objection flags are active', async () => {
     const { optionalProcessingExecuteHandler } = await import('./core.js');
 

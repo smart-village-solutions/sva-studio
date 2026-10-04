@@ -1,0 +1,4 @@
+{
+  "prNumber": 1728,
+  "body": "Die Datenbankprüfung für den Plugin-Lebenszyklus ist übersichtlicher aufgebaut. Start, Wiederherstellung, Fehlerfälle und Berechtigungen werden weiterhin vor der Auslieferung geprüft."
+}

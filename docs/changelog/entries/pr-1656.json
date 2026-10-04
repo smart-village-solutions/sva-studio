@@ -1,0 +1,4 @@
+{
+  "prNumber": 1656,
+  "body": "Die Benutzerverwaltung funktioniert wie bisher. Das Lesen und Aktualisieren von Benutzern ist intern übersichtlicher aufgeteilt, damit sich diese Abläufe langfristig leichter warten lassen."
+}

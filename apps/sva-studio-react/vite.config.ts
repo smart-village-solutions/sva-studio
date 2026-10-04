@@ -6,6 +6,7 @@ import { codecovRollupPlugin } from '@codecov/rollup-plugin';
 import { nitro } from 'nitro/vite';
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
+import { instrument } from 'oxc-coverage-instrument';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -23,9 +24,10 @@ const chunkProvenancePlugin = (): Plugin => ({
     const environment = this.environment.name;
     if (!chunkProvenanceEnvironments.some((name) => name === environment)) return;
     mkdirSync(chunkProvenanceRoot, { recursive: true });
-    const chunks = Object.values(bundle)
+    const outputs = Object.values(bundle);
+    const chunks = outputs
       .filter(
-        (output): output is { type: 'chunk'; fileName: string; modules: Record<string, unknown> } =>
+        (output): output is { type: 'chunk'; fileName: string; name: string; modules: Record<string, unknown>; facadeModuleId: string | null } =>
           typeof output === 'object' &&
           output !== null &&
           'type' in output &&
@@ -44,7 +46,52 @@ const chunkProvenancePlugin = (): Plugin => ({
           )
           .map(([id]) => id),
       }));
+    const workerChunks = outputs.filter(
+      (output): output is { type: 'chunk'; name: string; modules: Record<string, unknown>; facadeModuleId: string } =>
+        typeof output === 'object' &&
+        output !== null &&
+        'type' in output &&
+        output.type === 'chunk' &&
+        'facadeModuleId' in output &&
+        typeof output.facadeModuleId === 'string' &&
+        output.facadeModuleId.endsWith('?worker&url')
+    );
+    for (const output of outputs) {
+      if (
+        typeof output !== 'object' || output === null || !('type' in output) ||
+        output.type !== 'asset' || !('fileName' in output) ||
+        typeof output.fileName !== 'string' || !output.fileName.endsWith('.js')
+      ) continue;
+      const fileName = output.fileName;
+      const owners = workerChunks.filter((chunk) =>
+        fileName.startsWith(`assets/${chunk.name}-`)
+      );
+      if (owners.length !== 1) throw new Error(`chunk_provenance_worker_owner_missing:${fileName}`);
+      chunks.push({ fileName, modules: [owners[0].facadeModuleId] });
+    }
     writeFileSync(join(chunkProvenanceRoot, `${environment}.json`), JSON.stringify(chunks));
+  },
+});
+const fallowBrowserCoveragePlugin = (): Plugin => ({
+  name: 'fallow-browser-coverage',
+  apply: 'build',
+  enforce: 'post',
+  transform(code, id) {
+    if (this.environment.name !== 'client') return;
+    const file = id.split('?')[0];
+    if (
+      !/\.[cm]?[jt]sx?$/.test(file) ||
+      !(
+        file.startsWith(join(appRoot, 'src') + '/') ||
+        file.startsWith(join(workspaceRoot, 'packages') + '/')
+      ) ||
+      /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file)
+    ) return;
+    const result = instrument(code, file, { sourceMap: true });
+    return {
+      code: result.code,
+      map: result.sourceMap ? JSON.parse(result.sourceMap) : undefined,
+    };
   },
 });
 for (const environment of chunkProvenanceEnvironments) {
@@ -460,6 +507,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    fallowBrowserCoveragePlugin(),
     chunkProvenancePlugin(),
     tanstackStartClientEnvCompatPlugin(),
     ...(tanstackDevtoolsEnabled ? [devtools()] : []),

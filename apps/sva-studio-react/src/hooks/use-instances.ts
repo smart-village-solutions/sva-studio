@@ -1,37 +1,12 @@
-import type { IamInstanceDetail, IamInstanceListItem, InstanceAuditRun } from '@sva/core';
+import type { IamInstanceDetail, IamInstanceListItem } from '@sva/core';
 import React from 'react';
 
 import {
-  activateInstance,
-  assignInstanceModule,
-  archiveInstance,
   asIamError,
-  bootstrapInstanceAdminStructure,
-  createInstance,
-  executeInstanceKeycloakProvisioning,
   getInstanceKeycloakStatus,
-  getInstanceKeycloakPreflight,
-  getInstanceKeycloakProvisioningRun,
-  getInstanceAuditRun,
-  getSingleInstanceAuditRun,
   getInstance,
   type IamHttpError,
   listInstances,
-  planInstanceKeycloakProvisioning,
-  probeTenantIamAccess,
-  reconcileInstanceKeycloak,
-  reconcileTenantIamRoles,
-  retryInstanceProvisioning,
-  rotateInstanceSecret,
-  revokeInstanceModule,
-  seedInstanceIamBaseline,
-  suspendInstance,
-  updateInstance,
-  type CreateInstancePayload,
-  type ExecuteInstanceKeycloakProvisioningPayload,
-  type ReconcileInstanceKeycloakPayload,
-  type ReconcileTenantIamRolesPayload,
-  type UpdateInstancePayload,
 } from '../lib/iam-api';
 import {
   createOperationLogger,
@@ -41,6 +16,10 @@ import {
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
+
+import { createInstanceWriteActions } from './instance-actions.write';
+import { createInstanceStatusActions } from './instance-actions.status';
+import { useInstanceAudit } from './use-instance-audit';
 
 type InstanceStatusFilter = IamInstanceListItem['status'] | 'all';
 
@@ -56,32 +35,16 @@ export const useInstances = () => {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [instances, setInstances] = React.useState<readonly IamInstanceListItem[]>([]);
   const [selectedInstance, setSelectedInstance] = React.useState<IamInstanceDetail | null>(null);
-  const [instancesAuditRun, setInstancesAuditRun] = React.useState<InstanceAuditRun | null>(null);
-  const [instanceAuditRun, setInstanceAuditRun] = React.useState<InstanceAuditRun | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [statusLoading, setStatusLoading] = React.useState(false);
-  const [auditLoading, setAuditLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
-  const pendingAuditRequestsRef = React.useRef(0);
-  const currentDetailInstanceIdRef = React.useRef<string | null>(null);
-  const latestInstanceAuditRequestRef = React.useRef(0);
 
   React.useEffect(() => {
     const timer = globalThis.setTimeout(() => setDebouncedSearch(filters.search.trim()), 250);
     return () => globalThis.clearTimeout(timer);
   }, [filters.search]);
-
-  const beginAuditRequest = React.useCallback(() => {
-    pendingAuditRequestsRef.current += 1;
-    setAuditLoading(true);
-  }, []);
-
-  const endAuditRequest = React.useCallback(() => {
-    pendingAuditRequestsRef.current = Math.max(0, pendingAuditRequestsRef.current - 1);
-    setAuditLoading(pendingAuditRequestsRef.current > 0);
-  }, []);
 
   const updateSelectedForInstance = React.useCallback(
     (instanceId: string, updater: (current: IamInstanceDetail) => IamInstanceDetail) => {
@@ -180,6 +143,16 @@ export const useInstances = () => {
     void refetch();
   }, [refetch]);
 
+  const {
+    instancesAuditRun,
+    instanceAuditRun,
+    auditLoading,
+    currentDetailInstanceIdRef,
+    setInstanceAuditRun,
+    refreshInstanceAudit,
+    refreshInstancesAudit,
+  } = useInstanceAudit(refreshSession, setMutationError);
+
   const loadInstance = React.useCallback(
     async (instanceId: string) => {
       if (currentDetailInstanceIdRef.current !== instanceId) {
@@ -260,65 +233,6 @@ export const useInstances = () => {
       }
     },
     [refreshSessionAfter401]
-  );
-
-  const refreshInstanceAudit = React.useCallback(
-    async (instanceId: string) => {
-      beginAuditRequest();
-      if (currentDetailInstanceIdRef.current === null) {
-        currentDetailInstanceIdRef.current = instanceId;
-      }
-      const requestToken = latestInstanceAuditRequestRef.current + 1;
-      latestInstanceAuditRequestRef.current = requestToken;
-      try {
-        const response = await getSingleInstanceAuditRun(instanceId);
-        const targetInstanceIds = response.data.targetInstanceIds ?? [instanceId];
-        const isLatestRequest = latestInstanceAuditRequestRef.current === requestToken;
-        const targetsRequestedInstance =
-          targetInstanceIds.length === 0 || targetInstanceIds.includes(instanceId);
-        const matchesCurrentDetail =
-          currentDetailInstanceIdRef.current === null ||
-          currentDetailInstanceIdRef.current === instanceId;
-        if (isLatestRequest && matchesCurrentDetail && targetsRequestedInstance) {
-          setInstanceAuditRun(response.data);
-        }
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401) {
-          await refreshSession();
-        }
-        setMutationError((current) => current ?? resolvedError);
-        return null;
-      } finally {
-        endAuditRequest();
-      }
-    },
-    [beginAuditRequest, endAuditRequest, refreshSession]
-  );
-
-  const refreshInstancesAudit = React.useCallback(
-    async (input?: { includeOnlyActive?: boolean; instanceIds?: readonly string[] }) => {
-      beginAuditRequest();
-      try {
-        const response = await getInstanceAuditRun({
-          includeOnlyActive: input?.includeOnlyActive ?? true,
-          instanceIds: input?.instanceIds,
-        });
-        setInstancesAuditRun(response.data);
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401) {
-          await refreshSession();
-        }
-        setMutationError((current) => current ?? resolvedError);
-        return null;
-      } finally {
-        endAuditRequest();
-      }
-    },
-    [beginAuditRequest, endAuditRequest, refreshSession]
   );
 
   const mutate = React.useCallback(
@@ -408,241 +322,14 @@ export const useInstances = () => {
       setInstanceAuditRun(null);
     },
     clearMutationError: () => setMutationError(null),
-    createInstance: async (payload: CreateInstancePayload) =>
-      mutate(() => createInstance(payload), payload.instanceId, 'create_instance'),
-    retryTenantProvisioning: async (instanceId: string) =>
-      mutate(
-        () => retryInstanceProvisioning(instanceId),
-        instanceId,
-        'retry_instance_provisioning'
-      ),
-    updateInstance: async (
-      instanceId: string,
-      payload: UpdateInstancePayload,
-      onError?: (error: IamHttpError) => void
-    ) =>
-      mutate(() => updateInstance(instanceId, payload), instanceId, 'update_instance', { onError }),
-    refreshKeycloakStatus: async (instanceId: string) => {
-      logBrowserOperationStart(instancesLogger, 'instance_keycloak_status_refresh_started', {
-        operation: 'get_instance_keycloak_status',
-        instance_id: instanceId,
-      });
-      setStatusLoading(true);
-      setMutationError(null);
-      try {
-        const response = await getInstanceKeycloakStatus(instanceId);
-        updateSelectedForInstance(instanceId, (current) => ({
-          ...current,
-          keycloakStatus: response.data,
-        }));
-        logBrowserOperationSuccess(instancesLogger, 'instance_keycloak_status_refresh_succeeded', {
-          operation: 'get_instance_keycloak_status',
-          instance_id: instanceId,
-        });
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401) {
-          await refreshSession();
-          instancesLogger.info('session_refreshed_after_401', {
-            operation: 'get_instance_keycloak_status',
-            status: resolvedError.status,
-            error_code: resolvedError.code,
-            instance_id: instanceId,
-          });
-        }
-        setMutationError(resolvedError);
-        logBrowserOperationFailure(
-          instancesLogger,
-          'instance_keycloak_status_refresh_failed',
-          resolvedError,
-          {
-            operation: 'get_instance_keycloak_status',
-            instance_id: instanceId,
-          }
-        );
-        return null;
-      } finally {
-        setStatusLoading(false);
-      }
-    },
-    refreshKeycloakPreflight: async (instanceId: string) => {
-      setStatusLoading(true);
-      setMutationError(null);
-      try {
-        const response = await getInstanceKeycloakPreflight(instanceId);
-        updateSelectedForInstance(instanceId, (current) => ({
-          ...current,
-          keycloakPreflight: response.data,
-        }));
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        setMutationError(resolvedError);
-        return null;
-      } finally {
-        setStatusLoading(false);
-      }
-    },
-    planKeycloakProvisioning: async (instanceId: string) => {
-      setStatusLoading(true);
-      setMutationError(null);
-      try {
-        const response = await planInstanceKeycloakProvisioning(instanceId);
-        updateSelectedForInstance(instanceId, (current) => ({
-          ...current,
-          keycloakPlan: response.data,
-        }));
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        setMutationError(resolvedError);
-        return null;
-      } finally {
-        setStatusLoading(false);
-      }
-    },
-    executeKeycloakProvisioning: async (
-      instanceId: string,
-      payload: ExecuteInstanceKeycloakProvisioningPayload
-    ) =>
-      mutate(
-        async () => {
-          const response =
-            payload.intent === 'rotate_client_secret'
-              ? await rotateInstanceSecret(instanceId, payload.planFingerprint)
-              : await executeInstanceKeycloakProvisioning(instanceId, payload);
-          updateSelectedForInstance(instanceId, (current) => {
-            const keycloakProvisioningRuns = mergeProvisioningRuns(
-              current.keycloakProvisioningRuns,
-              response.data ?? undefined
-            );
-
-            return {
-              ...current,
-              latestKeycloakProvisioningRun: response.data ?? undefined,
-              keycloakProvisioningRuns,
-            };
-          });
-          return response;
-        },
-        instanceId,
-        'execute_instance_keycloak_provisioning'
-      ),
-    probeTenantIamAccess: async (instanceId: string) => {
-      setStatusLoading(true);
-      setMutationError(null);
-      logBrowserOperationStart(instancesLogger, 'tenant_iam_access_probe_started', {
-        operation: 'probe_tenant_iam_access',
-        instance_id: instanceId,
-      });
-      try {
-        const response = await probeTenantIamAccess(instanceId);
-        updateSelectedForInstance(instanceId, (current) => ({
-          ...current,
-          tenantIamStatus: response.data,
-        }));
-        logBrowserOperationSuccess(instancesLogger, 'tenant_iam_access_probe_succeeded', {
-          operation: 'probe_tenant_iam_access',
-          instance_id: instanceId,
-        });
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401) {
-          await refreshSession();
-        }
-        setMutationError(resolvedError);
-        logBrowserOperationFailure(
-          instancesLogger,
-          'tenant_iam_access_probe_failed',
-          resolvedError,
-          {
-            operation: 'probe_tenant_iam_access',
-            instance_id: instanceId,
-          }
-        );
-        return null;
-      } finally {
-        setStatusLoading(false);
-      }
-    },
-    loadKeycloakProvisioningRun: async (instanceId: string, runId: string) => {
-      setStatusLoading(true);
-      setMutationError(null);
-      try {
-        const response = await getInstanceKeycloakProvisioningRun(instanceId, runId);
-        if (response.data) {
-          updateSelectedForInstance(instanceId, (current) => ({
-            ...current,
-            latestKeycloakProvisioningRun: response.data,
-            keycloakProvisioningRuns: mergeProvisioningRuns(
-              current.keycloakProvisioningRuns,
-              response.data
-            ),
-          }));
-        }
-        return response.data;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        setMutationError(resolvedError);
-        return null;
-      } finally {
-        setStatusLoading(false);
-      }
-    },
-    reconcileKeycloak: async (instanceId: string, payload: ReconcileInstanceKeycloakPayload) =>
-      mutate(
-        async () => {
-          const response = await reconcileInstanceKeycloak(instanceId, payload);
-          updateSelectedForInstance(instanceId, (current) => ({
-            ...current,
-            keycloakStatus: response.data,
-          }));
-          return response;
-        },
-        instanceId,
-        'reconcile_instance_keycloak'
-      ),
-    reconcileTenantIamRoles: async (instanceId: string, payload: ReconcileTenantIamRolesPayload) =>
-      mutate(
-        async () => reconcileTenantIamRoles(instanceId, payload),
-        instanceId,
-        'reconcile_tenant_iam_roles'
-      ),
-    assignModule: async (instanceId: string, moduleId: string) =>
-      mutate(
-        async () => assignInstanceModule(instanceId, moduleId),
-        instanceId,
-        'assign_instance_module',
-        { refreshSessionAfterSuccess: true }
-      ),
-    bootstrapAdminStructure: async (instanceId: string, moduleIds: readonly string[]) =>
-      mutate(
-        async () => bootstrapInstanceAdminStructure(instanceId, moduleIds),
-        instanceId,
-        'bootstrap_instance_admin_structure',
-        { refreshSessionAfterSuccess: true }
-      ),
-    revokeModule: async (instanceId: string, moduleId: string) =>
-      mutate(
-        async () => revokeInstanceModule(instanceId, moduleId),
-        instanceId,
-        'revoke_instance_module',
-        { refreshSessionAfterSuccess: true }
-      ),
-    seedIamBaseline: async (instanceId: string) =>
-      mutate(
-        async () => seedInstanceIamBaseline(instanceId),
-        instanceId,
-        'seed_instance_iam_baseline',
-        { refreshSessionAfterSuccess: true }
-      ),
-    activateInstance: async (instanceId: string) =>
-      mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
-    suspendInstance: async (instanceId: string) =>
-      mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),
-    archiveInstance: async (instanceId: string) =>
-      mutate(() => archiveInstance(instanceId), instanceId, 'archive_instance'),
+    ...createInstanceWriteActions({ mutate, updateSelectedForInstance, mergeProvisioningRuns }),
+    ...createInstanceStatusActions({
+      instancesLogger,
+      updateSelectedForInstance,
+      mergeProvisioningRuns,
+      setStatusLoading,
+      setMutationError,
+      refreshSession,
+    }),
   };
 };

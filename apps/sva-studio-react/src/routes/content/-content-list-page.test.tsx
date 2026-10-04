@@ -99,6 +99,30 @@ const { mockedStudioContentTypes } = vi.hoisted(() => ({
       createPath: '/admin/surveys/new',
       detailPath: '/admin/surveys/$contentId',
     },
+    {
+      contentType: 'generic-items.generic-item',
+      displayName: 'Generische Inhalte',
+      requiredReadAction: 'generic-items.read',
+      requiredCreateAction: 'generic-items.create',
+      createPath: '/admin/generic-items/new',
+      detailPath: '/admin/generic-items/$contentId',
+    },
+    {
+      contentType: 'cockpit-cards.cockpit-card',
+      displayName: 'Kacheln',
+      requiredReadAction: 'cockpit-cards.read',
+      requiredCreateAction: 'cockpit-cards.create',
+      createPath: '/admin/cockpit-cards/new',
+      detailPath: '/admin/cockpit-cards/$contentId',
+    },
+    {
+      contentType: 'projects.project',
+      displayName: 'Projekte',
+      requiredReadAction: 'projects.read',
+      requiredCreateAction: 'projects.create',
+      createPath: '/admin/projects/new',
+      detailPath: '/admin/projects/$contentId',
+    },
   ] as const,
 }));
 
@@ -272,6 +296,7 @@ describe('ContentListPage', () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     resetMergedI18nResources();
     resetTranslatorCache();
   });
@@ -292,6 +317,19 @@ describe('ContentListPage', () => {
     deleteContents: vi.fn(),
     ...overrides,
   });
+
+  const mockDeletionImpact = (genericItemsCount = 0) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          data: {
+            deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount },
+          },
+        })
+      )
+    );
+  };
 
   const createPendingAccessResult = (isLoading = true) => ({
     access: null,
@@ -469,6 +507,65 @@ describe('ContentListPage', () => {
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
   });
 
+  it.each([
+    ['news.article', 'Neue Nachricht', '/admin/news/new', 'news.read', 'news.create'],
+    [
+      'events.event-record',
+      'Neue Veranstaltung',
+      '/admin/events/new',
+      'events.read',
+      'events.create',
+    ],
+    ['poi.point-of-interest', 'Neuer Ort', '/admin/poi/new', 'poi.read', 'poi.create'],
+    ['surveys.survey', 'Neue Umfrage', '/admin/surveys/new', 'surveys.read', 'surveys.create'],
+    ['faq.faq', 'Neuer FAQ-Eintrag', '/admin/faq/new', 'faq.read', 'faq.create'],
+    [
+      'generic-items.generic-item',
+      'Neuer generischer Inhalt',
+      '/admin/generic-items/new',
+      'generic-items.read',
+      'generic-items.create',
+    ],
+    [
+      'cockpit-cards.cockpit-card',
+      'Neue Kachel',
+      '/admin/cockpit-cards/new',
+      'cockpit-cards.read',
+      'cockpit-cards.create',
+    ],
+    [
+      'projects.project',
+      'Neues Projekt',
+      '/admin/projects/new',
+      'projects.read',
+      'projects.create',
+    ],
+  ])('links directly to the filtered %s editor', (type, label, path, readAction, createAction) => {
+    searchState = { type };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+    const access = useContentAccessMock();
+    useContentAccessMock.mockReturnValue({
+      ...access,
+      permissionActions: [...access.permissionActions, readAction, createAction],
+    });
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('link', { name: label }).getAttribute('href')).toBe(path);
+    expect(screen.queryByRole('link', { name: 'Neuer Inhalt' })).toBeNull();
+  });
+
+  it('keeps the general creation flow when the filtered type cannot be created', () => {
+    searchState = { type: 'faq.faq' };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe(
+      '/admin/content/new'
+    );
+  });
+
   it('places the collapsed author diagnostics after the content table', () => {
     useContentAccessMock.mockReturnValue({
       access: {
@@ -630,6 +727,7 @@ describe('ContentListPage', () => {
   });
 
   it('routes faq deletion through the faq client', async () => {
+    mockDeletionImpact(1);
     const refetch = vi.fn(async () => undefined);
 
     useContentsMock.mockReturnValue(
@@ -677,10 +775,11 @@ describe('ContentListPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    await within(dialog).findByText('Dieser Inhalt ist verknüpft mit:');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
-      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user');
+      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user', true);
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
@@ -688,6 +787,7 @@ describe('ContentListPage', () => {
   });
 
   it('reports a refresh warning after a successful row deletion', async () => {
+    mockDeletionImpact();
     useContentsMock.mockReturnValue(
       createContentsApiResult({
         contents: [
@@ -719,6 +819,12 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
@@ -732,6 +838,7 @@ describe('ContentListPage', () => {
   });
 
   it('keeps the row dialog open with a persistent error when deletion fails', async () => {
+    mockDeletionImpact();
     useContentsMock.mockReturnValue(
       createContentsApiResult({
         contents: [
@@ -762,6 +869,12 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
@@ -1572,7 +1685,7 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
-    let dialog = screen.getByRole('alertdialog', {
+    const dialog = screen.getByRole('alertdialog', {
       name: 'Ausgewählte Inhalte endgültig löschen?',
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));

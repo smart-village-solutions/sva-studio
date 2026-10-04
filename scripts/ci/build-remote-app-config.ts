@@ -60,6 +60,16 @@ export const buildRemoteAppConfig = (input: {
     'geschuetztes Override-Bundle',
     input.overrides
   );
+  if (
+    input.environment !== 'staging' &&
+    (overrides.values.has('FALLOW_BROWSER_INGEST_KEY') || overrides.values.has('BEACON_API_KEY'))
+  )
+    fail(
+      input.environment,
+      'PROMOTE_CONFIG_SOURCE_FORBIDDEN',
+      'Fallow-Beacon-Schluessel sind nur in Staging erlaubt.',
+      'Die Fallow-Beacon-Schluessel aus dem Dev- oder Production-Override entfernen.'
+    );
   for (const key of profile.values.keys()) {
     if (remoteConfigContract[key]?.kind === 'secret-value')
       fail(
@@ -146,10 +156,26 @@ export const runBuildRemoteAppConfig = (
           'Das geschuetzte Override-Bundle fehlt.',
           'PROMOTE_CONFIG_OVERRIDES im geschuetzten GitHub Environment konfigurieren.'
         );
+    const stagingBeaconOverrides =
+      environment === 'staging'
+        ? ([
+            ['FALLOW_BROWSER_INGEST_KEY', env.FALLOW_BROWSER_INGEST_KEY, /^fallow_pub_k1_[A-Za-z0-9_-]{16,}$/u],
+            ['BEACON_API_KEY', env.BEACON_API_KEY, /^fallow_live_k1_[A-Za-z0-9_-]{16,}$/u],
+          ] as const).map(([key, value, pattern]) => {
+            if (!value || !pattern.test(value))
+              fail(
+                environment,
+                'PROMOTE_CONFIG_REQUIRED_KEY_MISSING',
+                `Geschuetztes Staging-Secret ${key} fehlt oder ist ungueltig.`,
+                `${key} im GitHub-Environment staging setzen.`
+              );
+            return `${key}=${value}`;
+          })
+        : [];
     const candidate = buildRemoteAppConfig({
       environment,
       profile: readFileSync(resolve(profilePath), 'utf8'),
-      overrides: protectedOverrides,
+      overrides: [protectedOverrides, ...stagingBeaconOverrides].join('\n'),
     });
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     writeFileSync(resolve(outputPath), candidate.source, { mode: 0o600 });

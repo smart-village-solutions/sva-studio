@@ -1,0 +1,4 @@
+{
+  "prNumber": 1615,
+  "body": "Änderungen an der Sichtbarkeit von Cockpit-Kacheln werden zuverlässig gespeichert und vor der Erfolgsmeldung geprüft. Gelöschte Inhalte bleiben nach einem erfolgreichen Abgleich nicht mehr fälschlich in der Studio-Liste stehen."
+}

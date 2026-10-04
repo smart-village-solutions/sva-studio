@@ -200,6 +200,29 @@ describe('legacy group mutation handlers', () => {
     expect(completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 }));
   });
 
+  it('checks feature, role, actor, rate limit and csrf before idempotency and persistence', async () => {
+    const deps = buildDeps();
+    const handlers = createLegacyGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/groups', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    const order = [
+      deps.ensureFeature,
+      deps.requireRoles,
+      deps.resolveActorInfo,
+      deps.consumeRateLimit,
+      deps.validateCsrf,
+      deps.requireIdempotencyKey,
+      deps.reserveIdempotency,
+      deps.withInstanceScopedDb,
+    ].map((mock) => vi.mocked(mock).mock.invocationCallOrder[0]);
+    expect(order).toEqual([...order].sort((left, right) => left - right));
+  });
+
   it('persists failed idempotency when create references unknown roles', async () => {
     state.rolesValid = false;
     const handlers = createLegacyGroupMutationHandlers(buildDeps());

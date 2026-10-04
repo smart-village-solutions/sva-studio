@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   create: vi.fn(),
@@ -53,6 +53,11 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   updateCockpitCard: state.update,
 }));
 vi.mock('@sva/plugin-sdk', () => ({
+  loadMainserverDeletionImpact: async () => ({
+    eventRecordsCount: 0,
+    newsItemsCount: 0,
+    genericItemsCount: 0,
+  }),
   alignHostMediaReferencesByOrder: ({
     itemCount,
     references,
@@ -166,6 +171,7 @@ const fillRequiredFields = () => {
 };
 
 describe('cockpit cards pages', () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
     vi.clearAllMocks();
     state.params = {};
@@ -210,28 +216,24 @@ describe('cockpit cards pages', () => {
     );
   });
 
-  it(
-    'places text and image controls together and loads category and media options',
-    async () => {
-      const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
-      render(<CockpitCardsCreatePage />);
-      const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
-      const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
-      fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-      const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
-      const addImage = screen.getByRole('button', { name: 'media.add' });
-      expect(tablist.className).toContain('ml-[10px]');
-      expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
-      expect(contentPanel?.className).toContain('mt-0');
-      expect(contentPanel?.contains(addImage)).toBe(true);
-      expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
-      fireEvent.click(addImage);
-      fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
-      await screen.findAllByRole('button', { name: 'actions.selectImage' });
-      expect(screen.queryByText('info.pdf')).toBeNull();
-    },
-    10_000
-  );
+  it('places text and image controls together and loads category and media options', async () => {
+    const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsCreatePage />);
+    const tablist = screen.getByRole('tablist', { name: 'tabs.ariaLabel' });
+    const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+    const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
+    const addImage = screen.getByRole('button', { name: 'media.add' });
+    expect(tablist.className).toContain('ml-[10px]');
+    expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(contentPanel?.className).toContain('mt-0');
+    expect(contentPanel?.contains(addImage)).toBe(true);
+    expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
+    fireEvent.click(addImage);
+    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
+    await screen.findAllByRole('button', { name: 'actions.selectImage' });
+    expect(screen.queryByText('info.pdf')).toBeNull();
+  }, 10_000);
 
   it('reviews and accepts a linked image from the media library', async () => {
     state.getAsset.mockResolvedValue({
@@ -392,6 +394,12 @@ describe('cockpit cards pages', () => {
       )
     );
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'deleteDialog.confirm' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1', 'user'));
     expect(state.navigate).toHaveBeenCalledWith(
@@ -542,6 +550,12 @@ describe('cockpit cards pages', () => {
     render(<CockpitCardsEditPage />);
     await screen.findByDisplayValue('Bestehende Karte');
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'deleteDialog.confirm' })).toHaveProperty(
+        'disabled',
+        false
+      )
+    );
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
     expect(await screen.findByText('messages.deleteError')).toBeTruthy();
   });
@@ -554,6 +568,46 @@ describe('cockpit cards pages', () => {
     fillRequiredFields();
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     expect(await screen.findByText('messages.saveError')).toBeTruthy();
+  });
+
+  it('explains a partial save when the visibility update fails', async () => {
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.update.mockRejectedValue(
+      Object.assign(new Error('visibility_update_failed'), { code: 'visibility_update_failed' })
+    );
+    const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsEditPage />);
+    await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1)!);
+    expect(await screen.findByText('messages.visibilitySavePartialFailure')).toBeTruthy();
+  });
+
+  it('lets media reference saving finish after a partial visibility update', async () => {
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.listReferences.mockResolvedValue([
+      { assetId: 'image-1', role: 'gallery_item', sortOrder: 0 },
+    ]);
+    state.update.mockRejectedValue(
+      Object.assign(new Error('visibility_update_failed'), { code: 'visibility_update_failed' })
+    );
+    state.saveWithReferences.mockImplementation(async ({ saveContent, getTargetId }) => {
+      const saved = await saveContent([], { operationId: 'media-operation-1' });
+      expect(getTargetId(saved)).toBe('card-1');
+      return { status: 'complete', saved };
+    });
+
+    const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsEditPage />);
+    await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1)!);
+
+    expect(await screen.findByText('messages.visibilitySavePartialFailure')).toBeTruthy();
+    expect(state.saveWithReferences).toHaveBeenCalledOnce();
+    expect(state.update).toHaveBeenCalledWith('card-1', expect.any(Object), expect.any(String), {
+      contentMediaSaveOperationId: 'media-operation-1',
+    });
   });
 
   it('adds, reorders and removes manual images through the shared block', async () => {

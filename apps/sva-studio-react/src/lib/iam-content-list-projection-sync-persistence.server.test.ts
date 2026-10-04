@@ -82,6 +82,56 @@ describe('content list projection sync and persistence', () => {
     });
   });
 
+  it('passes verified project owner and provider ID into deferred transfer reconciliation', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'projects.read', resourceType: 'projects' }],
+    });
+    state.loadCurrentMainserverDataProviderBinding.mockImplementation(
+      async ({ principalType }: { principalType: string }) => ({
+        dataProviderId: principalType === 'organization' ? 'provider-target' : 'provider-user',
+      })
+    );
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [{
+        id: 'provider-project-1',
+        title: 'Projekt',
+        contentType: 'generic-items.generic-item',
+        genericType: 'FeaturedProject',
+        payload: {},
+        categories: [], contacts: [], webUrls: [], addresses: [], contentBlocks: [],
+        openingHours: [], mediaContents: [], locations: [], dates: [],
+        accessibilityInformations: [], priceInformations: [],
+        visible: true,
+        dataProvider: { id: 'provider-target', name: 'Zielorganisation' },
+        createdAt: '2026-06-20T10:00:00.000Z',
+        updatedAt: '2026-06-21T10:00:00.000Z',
+      }],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['projects.project'], force: true,
+    });
+    expect((await response.json()) as unknown).toEqual(expect.objectContaining({
+      data: expect.objectContaining({ status: 'completed' }),
+    }));
+
+    expect(state.reconcileDeferredMainserverMutationProjections).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actingPrincipalType: 'organization',
+        actingPrincipalId: 'org-1',
+        rows: [expect.objectContaining({
+          sourceEntityId: 'provider-project-1',
+          contentType: 'projects.project',
+          journalContentType: 'generic-items.generic-item',
+          ownerOrganizationId: 'org-1',
+        })],
+      })
+    );
+  });
+
   it('requests invisible mainserver records during projection refresh', async () => {
     state.listSvaMainserverEvents.mockResolvedValue({
       data: [],

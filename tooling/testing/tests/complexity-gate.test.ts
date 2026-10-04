@@ -4,7 +4,11 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { analyzeFile, readCliOptionValue, runComplexityGate } from '../../../scripts/ci/complexity-gate.ts';
+import {
+  analyzeFile,
+  readCliOptionValue,
+  runComplexityGate,
+} from '../../../scripts/ci/complexity-gate.ts';
 
 const createdDirs: string[] = [];
 
@@ -157,6 +161,26 @@ describe('complexity gate', () => {
     }
   });
 
+  it('includes standalone .mts scripts and skips declaration files', () => {
+    const rootDir = createTempWorkspace();
+    const scriptDir = path.join(rootDir, 'scripts/debug/otel');
+    fs.mkdirSync(scriptDir, { recursive: true });
+    fs.writeFileSync(path.join(scriptDir, 'diagnostic.mts'), 'export const diagnostic = true;\n');
+    fs.writeFileSync(path.join(scriptDir, 'diagnostic.d.mts'), 'export declare const diagnostic: boolean;\n');
+
+    const policy = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'tooling/quality/complexity-policy.json'), 'utf8')
+    ) as { modules: Array<{ id: string }> };
+    const scriptsModule = policy.modules.find((module) => module.id === 'scripts-default');
+    expect(scriptsModule).toBeDefined();
+
+    writePolicy(rootDir, { modules: scriptsModule ? [scriptsModule] : [] });
+    const result = runComplexityGate({ rootDir, stepSummaryPath: null });
+    expect(result.analyzedFiles.map((file) => file.metrics.filePath)).toEqual([
+      'scripts/debug/otel/diagnostic.mts',
+    ]);
+  });
+
   it('analyzes file metrics from TypeScript source', () => {
     const rootDir = createTempWorkspace();
     const filePath = writeSourceFile(
@@ -183,8 +207,12 @@ describe('complexity gate', () => {
   });
 
   it('reads CLI option values from spaced and inline argument forms', () => {
-    expect(readCliOptionValue(['node', 'complexity-gate', '--base', 'origin/main'], '--base')).toBe('origin/main');
-    expect(readCliOptionValue(['node', 'complexity-gate', '--base=origin/main'], '--base')).toBe('origin/main');
+    expect(readCliOptionValue(['node', 'complexity-gate', '--base', 'origin/main'], '--base')).toBe(
+      'origin/main'
+    );
+    expect(readCliOptionValue(['node', 'complexity-gate', '--base=origin/main'], '--base')).toBe(
+      'origin/main'
+    );
     expect(readCliOptionValue(['node', 'complexity-gate'], '--base')).toBeUndefined();
   });
 
@@ -198,7 +226,7 @@ describe('complexity gate', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
       trackedFindings: {
-        'iam-server:packages/iam-target/src/large.ts:fileLines': {
+        'iam-server:packages/iam-target/src/large.ts:functionLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
           status: 'todo',
@@ -208,7 +236,9 @@ describe('complexity gate', () => {
     });
     writeSourceFile(rootDir, 'large.ts', 'export const value = 1;\n');
 
-    expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(/Invalid complexity policy/);
+    expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(
+      /Invalid complexity policy/
+    );
   });
 
   it('prefers the higher priority module when include patterns overlap', () => {
@@ -295,21 +325,40 @@ describe('complexity gate', () => {
     const result = runComplexityGate({ rootDir, stepSummaryPath: null });
 
     expect(result.passed).toBe(false);
-    expect(result.untrackedViolations.length).toBeGreaterThan(0);
-    expect(result.untrackedViolations.some((violation) => violation.metric === 'fileLines')).toBe(true);
-    expect(result.summaryBody).toContain('Neue Findings ohne Ticket');
+    expect(
+      result.untrackedViolations.map(({ metric, current, threshold }) => ({
+        metric,
+        current,
+        threshold,
+      }))
+    ).toEqual([
+      { metric: 'fileLines', current: 7, threshold: 5 },
+      { metric: 'functionLines', current: 7, threshold: 4 },
+    ]);
+    expect(result.summaryBody).toContain(
+      '| IAM Server | packages/iam-target/src/large.ts | fileLines | 7 | 5 | n/a |'
+    );
+    expect(result.summaryBody).toContain('Neue Findings: 2\nGetrackte Findings: 0\n');
   });
 
   it('passes when findings are linked to refactoring tickets', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
-      trackedFindings: {
-        'iam-server:packages/iam-target/src/large.ts:fileLines': {
-          ticketId: 'QUAL-1',
-          ticketSystem: 'backlog',
-          status: 'open',
-          summary: 'Datei splitten',
+      classThresholds: {
+        zentral: {
+          fileLines: 999,
+          functionLines: 999,
+          cyclomaticComplexity: 999,
+          publicExports: 999,
         },
+        kritisch: {
+          fileLines: 999,
+          functionLines: 4,
+          cyclomaticComplexity: 3,
+          publicExports: 1,
+        },
+      },
+      trackedFindings: {
         'iam-server:packages/iam-target/src/large.ts:functionLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
@@ -341,9 +390,28 @@ describe('complexity gate', () => {
     const result = runComplexityGate({ rootDir, stepSummaryPath: null });
 
     expect(result.passed).toBe(true);
-    expect(result.trackedViolations).toHaveLength(2);
+    expect(result.trackedViolations).toHaveLength(1);
     expect(result.summaryBody).toContain('Getrackte Findings');
     expect(result.summaryBody).toContain('backlog:QUAL-1');
+  });
+
+  it('rejects tracked fileLines findings', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      trackedFindings: {
+        'iam-server:packages/iam-target/src/large.ts:fileLines': {
+          ticketId: 'QUAL-1',
+          ticketSystem: 'backlog',
+          status: 'open',
+          summary: 'Datei splitten',
+        },
+      },
+    });
+    writeSourceFile(rootDir, 'large.ts', 'export const value = 1;\n');
+
+    expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(
+      /fileLines findings cannot be tracked/
+    );
   });
 
   it('updates the baseline with current file metrics', () => {
@@ -376,7 +444,10 @@ describe('complexity gate', () => {
     const baseline = JSON.parse(
       fs.readFileSync(path.join(rootDir, 'tooling/quality/complexity-baseline.json'), 'utf8')
     ) as {
-      files: Record<string, { fileLines: number; functionLines: number; cyclomaticComplexity: number }>;
+      files: Record<
+        string,
+        { fileLines: number; functionLines: number; cyclomaticComplexity: number }
+      >;
     };
 
     expect(baseline.files['packages/iam-target/src/baseline.ts'].fileLines).toBe(3);

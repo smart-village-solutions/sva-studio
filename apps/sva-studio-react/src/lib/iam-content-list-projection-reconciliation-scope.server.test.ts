@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildRefreshDeletionScopeKeys } from './iam-content-list-projection-repository-schema.server.js';
 import {
   registerProjectionFixture,
   ctx,
   fixture,
+  mapInsertedProjectionRow,
   listProjectedContentsForTest as listProjectedContents,
   refreshProjectedContentsForTest as refreshProjectedContents,
   getProjectionTestState,
@@ -13,6 +15,292 @@ const state = getProjectionTestState();
 
 describe('content projection reconciliation scopes', () => {
   registerProjectionFixture();
+
+  it('includes the readable unscoped key for an explicit principal refresh', () => {
+    expect(
+      buildRefreshDeletionScopeKeys(
+        {
+          instanceId: 'de-musterhausen',
+          actorAccountId: 'account-1',
+          keycloakSubject: 'kc-user-1',
+          organizationId: 'org-1',
+          actingPrincipalType: 'organization',
+          contentType: 'cockpit-cards.cockpit-card',
+        },
+        'organization'
+      )
+    ).toEqual([
+      'de-musterhausen::account-1::org-1::organization::cockpit-cards.cockpit-card',
+      'de-musterhausen::account-1::org-1::cockpit-cards.cockpit-card',
+    ]);
+  });
+
+  it('keeps rows from the other credential and unattributed legacy rows in a shared scope', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'cockpit-cards.read', resourceType: 'cockpit-cards' }],
+    });
+    const unscopedKey = 'de-musterhausen::account-1::org-1::cockpit-cards.cockpit-card';
+    const baseRow = mapInsertedProjectionRow({
+      id: 'card-user',
+      instance_id: 'de-musterhausen',
+      projection_scope_key: unscopedKey,
+      organization_id: 'org-1',
+      content_type: 'cockpit-cards.cockpit-card',
+      title: 'Card',
+      created_at: '2026-06-20T10:00:00.000Z',
+      created_by: 'mainserver',
+      updated_at: '2026-06-21T10:00:00.000Z',
+      updated_by: 'mainserver',
+      author_display_name: 'Editor',
+      status: 'published',
+      validation_state: 'valid',
+      history_ref: 'card-user',
+      source_entity_type: 'cockpit-cards.cockpit-card',
+      source_entity_id: 'card-user',
+      credential_source: 'user',
+    });
+    fixture.projectionRows = [
+      baseRow,
+      {
+        ...baseRow,
+        id: 'card-organization',
+        source_entity_id: 'card-organization',
+        credential_source: 'organization',
+      },
+      { ...baseRow, id: 'card-legacy', source_entity_id: 'card-legacy', credential_source: null },
+    ];
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect(fixture.projectionDeleteSql).toContain('projection.credential_source = $5');
+    expect(fixture.projectionRows.map((row) => row.id)).toEqual(['card-user', 'card-legacy']);
+
+    const organizationList = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      type: 'cockpit-cards.cockpit-card',
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    expect(
+      ((await organizationList.json()) as { data: Array<{ id: string }> }).data
+        .map((row) => row.id)
+        .sort()
+    ).toEqual(['card-legacy', 'card-user']);
+
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'user',
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect(fixture.projectionDeleteSql).toContain('projection.credential_source = $5');
+    expect(fixture.projectionRows.map((row) => row.id)).toEqual(['card-legacy']);
+  });
+
+  it('removes stale principal-scope rows after a complete mainserver refresh', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'cockpit-cards.read', resourceType: 'cockpit-cards' }],
+    });
+    const stale = mapInsertedProjectionRow({
+      id: 'card-deleted-1',
+      instance_id: 'de-musterhausen',
+      projection_scope_key: 'de-musterhausen::account-1::org-1::user::cockpit-cards.cockpit-card',
+      organization_id: 'org-1',
+      owner_subject_id: null,
+      owner_user_id: null,
+      owner_organization_id: null,
+      content_type: 'cockpit-cards.cockpit-card',
+      title: 'Deleted card',
+      published_at: null,
+      publish_from: null,
+      publish_until: null,
+      created_at: '2026-06-20T10:00:00.000Z',
+      created_by: 'mainserver',
+      updated_at: '2026-06-21T10:00:00.000Z',
+      updated_by: 'mainserver',
+      author_display_mode: 'user',
+      author_display_name: 'Editor',
+      payload_json: {},
+      status: 'published',
+      validation_state: 'valid',
+      history_ref: 'mainserver:cockpit-cards.cockpit-card:card-deleted-1',
+      current_revision_ref: null,
+      last_audit_event_ref: null,
+      source_data_provider_id: null,
+      source_data_provider_name: null,
+      credential_source: 'user',
+      credential_fingerprint: null,
+      authorization_mode: 'credential_visible_compatibility',
+      source_system: 'mainserver',
+      source_entity_type: 'cockpit-cards.cockpit-card',
+      source_entity_id: 'card-deleted-1',
+    });
+    fixture.projectionRows = [
+      stale,
+      {
+        ...stale,
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      },
+      {
+        ...stale,
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::cockpit-cards.cockpit-card',
+        credential_source: 'organization',
+      },
+    ];
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
+    );
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      }),
+      expect.objectContaining({
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::cockpit-cards.cockpit-card',
+      }),
+    ]);
+
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        projection_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      }),
+    ]);
+
+    fixture.projectionRows.push(stale);
+    state.listSvaMainserverGenericItems.mockImplementationOnce(async () => {
+      const started = fixture.syncStates.get(
+        'cockpit-cards.cockpit-card::de-musterhausen::account-1::org-1::cockpit-cards.cockpit-card'
+      );
+      const generation = (started?.generation ?? 0) + 1;
+      fixture.syncStates.set(
+        'cockpit-cards.cockpit-card::de-musterhausen::account-1::org-1::user::cockpit-cards.cockpit-card',
+        {
+          sync_scope_key: stale.projection_scope_key,
+          last_started_at: '2000-01-01T00:00:00.000Z',
+          last_succeeded_at: '2000-01-01T00:00:00.000Z',
+          generation,
+          completed_generation: generation,
+          last_failed_at: null,
+          last_error_code: null,
+          last_error_message: null,
+          projected_count: 1,
+        }
+      );
+      return {
+        credentialSource: 'user',
+        data: [],
+        pagination: { page: 1, pageSize: 100, hasNextPage: false },
+      };
+    });
+    const superseded = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await superseded.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    );
+    expect(fixture.projectionRows).toContainEqual(stale);
+
+    fixture.syncStates.delete(
+      'cockpit-cards.cockpit-card::de-musterhausen::account-1::org-1::user::cockpit-cards.cockpit-card'
+    );
+    fixture.syncStates.set(
+      'cockpit-cards.cockpit-card::de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+      {
+        sync_scope_key: 'de-musterhausen::account-2::org-1::user::cockpit-cards.cockpit-card',
+        last_started_at: '2000-01-01T00:00:00.000Z',
+        last_succeeded_at: '2000-01-01T00:00:00.000Z',
+        generation: 1000,
+        completed_generation: 1000,
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 1,
+      }
+    );
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'user',
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    const unrelatedAccount = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await unrelatedAccount.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
+    );
+    expect(fixture.projectionRows).not.toContainEqual(stale);
+
+    fixture.projectionRows.push(stale);
+    state.listSvaMainserverGenericItems.mockImplementationOnce(async () => {
+      const key = 'cockpit-cards.cockpit-card::__mainserver_global_mutation__';
+      const counter = fixture.syncStates.get(key);
+      const generation = (counter?.generation ?? 0) + 1;
+      fixture.syncStates.set(key, {
+        ...(counter ?? {
+          sync_scope_key: '__mainserver_global_mutation__',
+          last_started_at: null,
+          last_succeeded_at: null,
+          last_failed_at: null,
+          last_error_code: null,
+          last_error_message: null,
+          projected_count: 0,
+        }),
+        last_succeeded_at: '2000-01-01T00:00:00.000Z',
+        generation,
+        completed_generation: generation,
+      });
+      return {
+        credentialSource: 'user',
+        data: [],
+        pagination: { page: 1, pageSize: 100, hasNextPage: false },
+      };
+    });
+    const globalMutation = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await globalMutation.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    );
+    expect(fixture.projectionRows).toContainEqual(stale);
+  });
 
   it('stores the same mainserver entity separately for different projection scopes', async () => {
     state.listSvaMainserverEvents.mockResolvedValue({

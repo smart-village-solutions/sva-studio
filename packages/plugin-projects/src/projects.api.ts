@@ -65,5 +65,9 @@ export const updateProject = (
 
 export const deleteProject = (
   contentId: string,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<void> => projectsClient.remove(contentId, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  detachLinkedContent = false
+): Promise<void> =>
+  detachLinkedContent
+    ? projectsClient.remove(contentId, actingPrincipalType, true)
+    : projectsClient.remove(contentId, actingPrincipalType);

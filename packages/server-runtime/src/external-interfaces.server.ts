@@ -117,7 +117,7 @@ const parseSecretConfig = (
   }
 };
 
-const resolveRecord = async (input: {
+type ExternalInterfaceLookup = {
   readonly instanceId: string;
   readonly typeKey: string;
   readonly interfaceId?: string;
@@ -135,7 +135,11 @@ const resolveRecord = async (input: {
     instanceId: string,
     typeKey: string
   ) => Promise<ExternalInterfaceRecord | null>;
-}): Promise<ExternalInterfaceRecord | null> => {
+};
+
+const resolveRecord = async (
+  input: ExternalInterfaceLookup
+): Promise<ExternalInterfaceRecord | null> => {
   if (input.interfaceId) {
     return (await input.loadById?.(input.instanceId, input.interfaceId)) ?? null;
   }
@@ -147,26 +151,14 @@ const resolveRecord = async (input: {
   return (await input.loadDefault?.(input.instanceId, input.typeKey)) ?? null;
 };
 
-export const resolveExternalInterface = async (input: {
-  readonly instanceId: string;
-  readonly typeKey: string;
-  readonly interfaceId?: string;
-  readonly alias?: string;
-  readonly loadById?: (
-    instanceId: string,
-    interfaceId: string
-  ) => Promise<ExternalInterfaceRecord | null>;
-  readonly loadByAlias?: (
-    instanceId: string,
-    typeKey: string,
-    alias: string
-  ) => Promise<ExternalInterfaceRecord | null>;
-  readonly loadDefault?: (
-    instanceId: string,
-    typeKey: string
-  ) => Promise<ExternalInterfaceRecord | null>;
-  readonly revealSecret: (ciphertext: string | null | undefined, aad: string) => string | undefined;
-}): Promise<ResolvedExternalInterface> => {
+export const resolveExternalInterface = async (
+  input: ExternalInterfaceLookup & {
+    readonly revealSecret: (
+      ciphertext: string | null | undefined,
+      aad: string
+    ) => string | undefined;
+  }
+): Promise<ResolvedExternalInterface> => {
   const record = await resolveRecord(input);
 
   if (!record) {

@@ -110,7 +110,7 @@ const readSafeString = (value: unknown, key: string): string | undefined => {
   return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
 };
 
-const readProperty = (value: unknown, key: PropertyKey): unknown => {
+export const readProperty = (value: unknown, key: PropertyKey): unknown => {
   if ((typeof value !== 'object' && typeof value !== 'function') || value === null) {
     return undefined;
   }
@@ -136,6 +136,13 @@ const SAFE_DIAGNOSTIC_ERROR_TYPES = new Set([
 const readDiagnosticString = (value: unknown, key: string): string | undefined => {
   const candidate = readProperty(value, key);
   return typeof candidate === 'string' ? candidate : undefined;
+};
+
+export const readDiagnosticErrorCode = (error: unknown, fallback: string): string => {
+  const code = readDiagnosticString(error, 'code');
+  if (code && /^[A-Za-z0-9_:-]{2,100}$/u.test(code)) return code;
+  const message = readDiagnosticString(error, 'message');
+  return message && /^[a-z][a-z0-9_:-]{2,100}$/u.test(message) ? message : fallback;
 };
 
 export const readDiagnosticErrorType = (error: unknown): string => {

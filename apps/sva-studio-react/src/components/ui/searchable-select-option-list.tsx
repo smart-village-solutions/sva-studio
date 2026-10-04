@@ -8,6 +8,36 @@ export type SearchableSelectOption = {
   readonly description?: string;
 };
 
+const normalizeSearch = (value: string) => value.trim().toLocaleLowerCase();
+export const matchesSearchableSelectOption = (option: SearchableSelectOption, search: string) => {
+  const normalizedSearch = normalizeSearch(search);
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return [option.label, ...(option.keywords ?? [])].some((value) =>
+    value.toLocaleLowerCase().includes(normalizedSearch)
+  );
+};
+
+export const findEnabledOptionIndex = (
+  options: readonly SearchableSelectOption[],
+  start: number,
+  direction: 1 | -1
+): number => {
+  if (options.length === 0) return -1;
+  for (let offset = 0; offset < options.length; offset += 1) {
+    const index = (start + offset * direction + options.length) % options.length;
+    if (!options[index]?.disabled) return index;
+  }
+  return -1;
+};
+
+export const filterSearchableSelectOptions = (
+  options: readonly SearchableSelectOption[],
+  searchValue: string
+) => options.filter((option) => matchesSearchableSelectOption(option, searchValue));
+
 const toOptionId = (id: string, index: number) => `${id}-option-${index}`;
 
 export const getSearchableSelectOptionId = toOptionId;

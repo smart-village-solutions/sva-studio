@@ -78,6 +78,7 @@ const clientSorting = { mode: 'client', labels: sortingLabels } as const;
 describe('studio-ui-react primitives', () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it('renders overview pages with header, action and content regions', () => {
@@ -890,6 +891,65 @@ describe('studio-ui-react primitives', () => {
     expect(onChange).toHaveBeenCalledWith([{ id: 'title', desc: true }]);
   });
 
+  it('keeps the toolbar focused and reobserves its container across empty table states', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const observedNodes: Element[] = [];
+    const disconnect = vi.fn();
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(node: Element) {
+        observedNodes.push(node);
+        this.callback(
+          [
+            { contentRect: { width: observedNodes.length === 1 ? 900 : 320 } as DOMRectReadOnly },
+          ] as ResizeObserverEntry[],
+          this as ResizeObserver
+        );
+      }
+
+      unobserve = vi.fn();
+      disconnect = disconnect;
+    } as typeof ResizeObserver;
+
+    const columns = [
+      { id: 'title', header: 'Titel', cell: (row: { id: string; title: string }) => row.title },
+    ];
+    const renderTable = (data: readonly { id: string; title: string }[]) => (
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={data}
+        getRowId={(row) => row.id}
+        columns={columns}
+        emptyState={<p>Keine Daten</p>}
+        toolbarStart={<input aria-label="Suchen" />}
+      />
+    );
+
+    try {
+      const { container, rerender } = render(renderTable([{ id: 'a', title: 'Alpha' }]));
+      const search = screen.getByRole('textbox', { name: 'Suchen' });
+      search.focus();
+
+      rerender(renderTable([]));
+      expect(screen.getByRole('textbox', { name: 'Suchen' })).toBe(search);
+      expect(document.activeElement).toBe(search);
+      expect(disconnect).toHaveBeenCalledTimes(1);
+
+      rerender(renderTable([{ id: 'b', title: 'Beta' }]));
+      expect(screen.getByRole('textbox', { name: 'Suchen' })).toBe(search);
+      expect(document.activeElement).toBe(search);
+      expect(observedNodes).toHaveLength(2);
+      expect(observedNodes[1]).toBe(observedNodes[0]);
+      expect(container.querySelector('[data-layout]')?.getAttribute('data-layout')).toBe('compact');
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   it('renders external sorting controls in compact mode and forwards their changes', () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     const onChange = vi.fn();
@@ -1366,6 +1426,71 @@ describe('studio-ui-react primitives', () => {
     fireEvent.click(pendingAction);
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveProperty('disabled', true);
+  });
+
+  it('requires the linked-content preview and passes explicit confirmation to deletion', async () => {
+    const onConfirm = vi.fn();
+    const load = vi.fn().mockResolvedValue({
+      eventRecordsCount: 2,
+      newsItemsCount: 1,
+      genericItemsCount: 0,
+    });
+    render(
+      <StudioDestructiveActionDialog
+        open
+        title="Ort löschen?"
+        description="Der Ort wird gelöscht."
+        confirmLabel="Löschen"
+        pendingLabel="Wird gelöscht"
+        cancelLabel="Abbrechen"
+        linkedContent={{
+          basePath: '/api/v1/mainserver/poi',
+          contentId: 'poi-1',
+          actingPrincipalType: 'organization',
+          load,
+          translate: (key) => `content.${key}`,
+        }}
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Löschen' })).toHaveProperty('disabled', true);
+    await screen.findByText('content.actions.linkedContentIntro');
+    expect(load).toHaveBeenCalledWith({
+      basePath: '/api/v1/mainserver/poi',
+      contentId: 'poi-1',
+      actingPrincipalType: 'organization',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(onConfirm).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps linked-content deletion blocked when the preview is missing', async () => {
+    const load = vi.fn().mockResolvedValue(undefined);
+    const onConfirm = vi.fn();
+    render(
+      <StudioDestructiveActionDialog
+        open
+        title="Ort löschen?"
+        description="Der Ort wird gelöscht."
+        confirmLabel="Löschen"
+        pendingLabel="Wird gelöscht"
+        cancelLabel="Abbrechen"
+        linkedContent={{
+          basePath: '/api/v1/mainserver/poi',
+          contentId: 'poi-1',
+          actingPrincipalType: 'organization',
+          load,
+          translate: (key) => `content.${key}`,
+        }}
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />
+    );
+    await screen.findByText('content.actions.linkedContentError');
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it('returns focus to the destructive action trigger after cancellation', async () => {

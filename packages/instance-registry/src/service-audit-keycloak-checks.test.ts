@@ -229,4 +229,33 @@ describe('service-audit-keycloak-checks', () => {
       ])
     );
   });
+
+  it('skips the system admin user check for imported realms without bootstrap admin', () => {
+    const checks = buildKeycloakChecks({
+      keycloakStatus: baseStatus,
+      keycloakEvidenceSource: 'keycloak_live',
+      requireTenantAdmin: false,
+    });
+
+    expect(checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ checkId: 'keycloak.role.systemAdmin.exists', status: 'pass' }),
+      expect.objectContaining({
+        checkId: 'keycloak.user.systemAdmin.exists',
+        status: 'skip',
+        message: 'Für diesen importierten Realm ist kein Bootstrap-Admin konfiguriert.',
+      }),
+    ]));
+  });
+
+  it('does not treat a fallback status without evidence source as a live-read substitute', () => {
+    const checks = buildKeycloakChecks({
+      keycloakStatus: null,
+      keycloakEvidenceSource: 'keycloak_live',
+      keycloakError: 'KEYCLOAK_STATUS_UNAVAILABLE',
+      fallbackStatus: baseStatus,
+    });
+
+    expect(checks[0]).toEqual(expect.objectContaining({ checkId: 'keycloak.access.read', status: 'fail' }));
+    expect(checks[1]).toEqual(expect.objectContaining({ checkId: 'keycloak.realm.exists', status: 'fail' }));
+  });
 });

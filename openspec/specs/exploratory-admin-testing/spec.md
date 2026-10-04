@@ -1,16 +1,16 @@
 # exploratory-admin-testing Specification
 
 ## Purpose
-Diese Spezifikation definiert die lokale, nicht blockierende Stagehand-Exploration realer Admin-Flows samt reproduzierbaren Missions- und Review-Artefakten.
+Diese Spezifikation definiert die lokale, nicht blockierende Admin-Exploration realer Admin-Flows samt reproduzierbaren Missions- und Review-Artefakten.
 
 ## Requirements
-### Requirement: Separate lokale Stagehand-Explorationsschicht für Admin-Flows
+### Requirement: Separate lokale Admin-Explorationsschicht für Admin-Flows
 
-Das System SHALL eine separate, lokal ausführbare Stagehand-Explorationsschicht für reale Admin-Flows rund um Benutzer-, Rollen- und Rechteverwaltung bereitstellen.
+Das System SHALL eine separate, lokal ausführbare Admin-Explorationsschicht für reale Admin-Flows rund um Benutzer-, Rollen- und Rechteverwaltung bereitstellen.
 
 #### Scenario: Lokaler Explorationslauf startet getrennt von bestehenden Gates
 
-- **WHEN** ein Entwickler das definierte Stagehand-Target ausführt
+- **WHEN** ein Entwickler das definierte Explorations-Target ausführt
 - **THEN** startet ein separater Explorationslauf außerhalb von `test:e2e` und `test:acceptance`
 - **AND** der Lauf verwendet die laufende lokale Studio-App gegen den echten IAM-/Backend-Stack
 - **AND** der Lauf endet mit einem eindeutigen Missionsstatus
@@ -21,7 +21,7 @@ Das System SHALL den vollständigen IAM-User-Story-Katalog aus `concepts/konzept
 
 #### Scenario: Voll-Lauf klassifiziert Stories über Overlay
 
-- **WHEN** der lokale Stagehand-Story-Loop ausgeführt wird
+- **WHEN** der lokale IAM-Story-Loop ausgeführt wird
 - **THEN** liest der Lauf alle IAM-Stories aus `user-stories.json`
 - **AND** gruppiert sie in technische Cluster statt zwingend in Einzellauf-Missionen
 - **AND** schreibt die resultierenden `studioCheck`-Entscheidungen deterministisch in ein separates Overlay
@@ -29,11 +29,11 @@ Das System SHALL den vollständigen IAM-User-Story-Katalog aus `concepts/konzept
 
 ### Requirement: Lokaler Env-Vertrag für echte Admin-Laufzeitpfade
 
-Das System SHALL einen klaren lokalen Env-Vertrag für Base-URL, Readiness, dedizierte Admin-Credentials und externe LLM-Zugangsdaten definieren.
+Das System SHALL einen klaren lokalen Env-Vertrag für Base-URL, Readiness, dedizierte Admin-Credentials und lokale Browseroptionen definieren.
 
 #### Scenario: Pflichtkonfiguration fehlt
 
-- **WHEN** ein Stagehand-Explorationslauf ohne erforderliche Umgebungsvariablen gestartet wird
+- **WHEN** ein Admin-Explorationslauf ohne erforderliche Umgebungsvariablen gestartet wird
 - **THEN** bricht der Lauf früh und deterministisch ab
 - **AND** die Fehlermeldung nennt die fehlenden Konfigurationsschlüssel
 
@@ -67,23 +67,23 @@ Das System SHALL pro Explorationsmission nachvollziehbare Artefakte für Diagnos
 
 #### Scenario: Missionsartefakte werden geschrieben
 
-- **WHEN** eine Stagehand-Mission endet
+- **WHEN** eine Admin-Mission endet
 - **THEN** erzeugt der Lauf mindestens einen strukturierten Status, einen deutschsprachigen Bericht, Screenshots und ein Transcript oder Schrittprotokoll
 - **AND** die Artefakte sind einem klaren Missionsnamen zugeordnet
 
 #### Scenario: Story-Loop-Artefakte werden geschrieben
 
-- **WHEN** ein Stagehand-Story-Loop endet
+- **WHEN** ein IAM-Story-Loop endet
 - **THEN** erzeugt der Lauf mindestens einen strukturierten Status, einen deutschsprachigen Bericht, Screenshots und ein Transcript oder Schrittprotokoll
 - **AND** der Lauf erzeugt zusätzlich einen Aggregatbericht und einen Aggregatstatus für den gesamten Story-Katalog
 - **AND** die Artefakte bleiben für jede Story-Entscheidung referenzierbar
 
 ### Requirement: Nicht-blockende Pilot-Nutzung
 
-Das System SHALL die Stagehand-Explorationsschicht im Pilot nicht als verpflichtendes CI- oder PR-Gate behandeln.
+Das System SHALL die Admin-Explorationsschicht im Pilot nicht als verpflichtendes CI- oder PR-Gate behandeln.
 
 #### Scenario: Explorationsschicht bleibt ergänzend
 
 - **WHEN** reguläre PR- oder App-Smoke-Gates ausgeführt werden
 - **THEN** bleiben `test:e2e` und `test:acceptance` funktional getrennt
-- **AND** die Stagehand-Exploration wird nicht automatisch als blockierender Pflichtlauf erzwungen
+- **AND** die Admin-Exploration wird nicht automatisch als blockierender Pflichtlauf erzwungen

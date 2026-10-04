@@ -11,6 +11,11 @@ import {
   AlertDialogTitle,
 } from './alert-dialog.js';
 import { Button } from './button.js';
+import {
+  renderLinkedContentDeletionWarning,
+  useLinkedContentDeletionPreview,
+  type LinkedContentDeletionPreview,
+} from './studio-confirm-dialog.js';
 import { cn } from './utils.js';
 
 export type StudioDestructiveActionDialogProps = Readonly<{
@@ -20,14 +25,28 @@ export type StudioDestructiveActionDialogProps = Readonly<{
   confirmLabel: React.ReactNode;
   pendingLabel: React.ReactNode;
   cancelLabel: React.ReactNode;
-  onConfirm: () => void;
+  onConfirm: (detachLinkedContent?: boolean) => void;
   onCancel: () => void;
   pending?: boolean;
   confirmDisabled?: boolean;
   errorMessage?: React.ReactNode;
   children?: React.ReactNode;
   fallbackFocusRef?: React.RefObject<HTMLElement | null>;
+  linkedContent?: LinkedContentDeletionPreview;
 }>;
+
+const linkedContentConfirmationDisabled = (
+  linkedContent: LinkedContentDeletionPreview | undefined,
+  preview: ReturnType<typeof useLinkedContentDeletionPreview>
+): boolean => Boolean(linkedContent) && (preview.loading || preview.error || !preview.ready);
+
+const handleDestructiveOpenChange = (
+  nextOpen: boolean,
+  pending: boolean,
+  onCancel: () => void
+): void => {
+  if (!nextOpen && !pending) onCancel();
+};
 
 export function StudioDestructiveActionDialog({
   open,
@@ -43,7 +62,9 @@ export function StudioDestructiveActionDialog({
   errorMessage,
   children,
   fallbackFocusRef,
+  linkedContent,
 }: StudioDestructiveActionDialogProps) {
+  const preview = useLinkedContentDeletionPreview(open, linkedContent);
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
   const wasOpenRef = React.useRef(false);
   if (open && !wasOpenRef.current && typeof document !== 'undefined') {
@@ -52,14 +73,11 @@ export function StudioDestructiveActionDialog({
   }
   wasOpenRef.current = open;
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && !pending) {
-      onCancel();
-    }
-  };
-
   return (
-    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => handleDestructiveOpenChange(nextOpen, pending, onCancel)}
+    >
       <AlertDialogContent
         aria-busy={pending}
         onCloseAutoFocus={(event) => {
@@ -80,6 +98,7 @@ export function StudioDestructiveActionDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {children ? <div className="mt-4">{children}</div> : null}
+        {renderLinkedContentDeletionWarning(linkedContent, preview)}
         {errorMessage ? (
           <p
             role="alert"
@@ -91,10 +110,14 @@ export function StudioDestructiveActionDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
-            disabled={pending || confirmDisabled}
+            disabled={
+              pending ||
+              confirmDisabled ||
+              linkedContentConfirmationDisabled(linkedContent, preview)
+            }
             onClick={(event) => {
               event.preventDefault();
-              if (!pending) onConfirm();
+              if (!pending) onConfirm(preview.hasLinks);
             }}
           >
             {pending ? pendingLabel : confirmLabel}

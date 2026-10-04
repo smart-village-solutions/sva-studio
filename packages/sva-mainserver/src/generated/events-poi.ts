@@ -195,6 +195,13 @@ export type SvaMainserverEventListQuery = {
 
 export type SvaMainserverEventDetailQuery = {
   readonly eventRecord?: SvaMainserverEventFragment | null;
+  readonly contentDeletionImpact?: SvaMainserverDeletionImpact | null;
+};
+
+export type SvaMainserverDeletionImpact = {
+  readonly eventRecordsCount: number;
+  readonly newsItemsCount: number;
+  readonly genericItemsCount: number;
 };
 
 export type SvaMainserverCreateEventMutation = {
@@ -207,6 +214,7 @@ export type SvaMainserverPoiListQuery = {
 
 export type SvaMainserverPoiDetailQuery = {
   readonly pointOfInterest?: SvaMainserverPoiFragment | null;
+  readonly contentDeletionImpact?: SvaMainserverDeletionImpact | null;
 };
 
 export type SvaMainserverCreatePoiMutation = {
@@ -469,6 +477,11 @@ export const svaMainserverEventListDocument = `
 
 export const svaMainserverEventDetailDocument = `
   query SvaMainserverEventDetail($id: ID!) {
+    contentDeletionImpact(id: $id, recordType: "EventRecord") {
+      eventRecordsCount
+      newsItemsCount
+      genericItemsCount
+    }
     eventRecord(id: $id) {
       ${eventFields}
     }
@@ -551,6 +564,11 @@ export const svaMainserverPoiListDocument = `
 
 export const svaMainserverPoiDetailDocument = `
   query SvaMainserverPoiDetail($id: ID!) {
+    contentDeletionImpact(id: $id, recordType: "PointOfInterest") {
+      eventRecordsCount
+      newsItemsCount
+      genericItemsCount
+    }
     pointOfInterest(id: $id) {
       ${poiFields}
     }
@@ -614,8 +632,8 @@ export const svaMainserverCreatePoiDocument = `
 `;
 
 export const svaMainserverDestroyRecordDocument = `
-  mutation SvaMainserverDestroyRecord($id: ID!, $recordType: String!) {
-    destroyRecord(id: $id, recordType: $recordType) {
+  mutation SvaMainserverDestroyRecord($id: ID!, $recordType: String!, $detachLinkedContent: Boolean) {
+    destroyRecord(id: $id, recordType: $recordType, detachLinkedContent: $detachLinkedContent) {
       id
       status
       statusCode

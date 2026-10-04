@@ -55,6 +55,7 @@ export type ProjectionSyncStateRow = {
   available_count?: number;
   is_total_final?: boolean;
   skipped_invalid_count?: number;
+  snapshot_invalidated?: boolean;
 };
 
 export type ContentProjectionSnapshotState =
@@ -89,6 +90,7 @@ export type ContentProjectionSyncTarget = Readonly<{
   auditActorAccountId?: string;
   actorDisplayName?: string;
   ownershipPrincipal?: Readonly<{ type: 'account' | 'organization'; id: string }>;
+  preserveExistingContentState?: boolean;
   mutationRef?: string;
   contentType: MainserverContentType;
   organizationId?: string;

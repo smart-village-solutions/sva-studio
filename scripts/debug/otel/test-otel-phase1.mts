@@ -1,6 +1,6 @@
 /**
  * Phase 1.1: OTEL SDK & Logger Provider Creation Test
- * Run: cd "$(git rev-parse --show-toplevel)" && pnpm exec tsx scripts/debug/otel/test-otel-phase1.ts
+ * Run: cd "$(git rev-parse --show-toplevel)" && pnpm exec tsx scripts/debug/otel/test-otel-phase1.mts
  *
  * This test is deliberately kept simple:
  * - No Vitest (too complex to setup)
@@ -46,7 +46,6 @@ console.log('║  Question: Can OTEL SDK create a usable Logger Provider?       
 console.log('╚════════════════════════════════════════════════════════════════════╝');
 console.log('');
 
-void (async () => {
 let sdk: NodeSDK | undefined;
 let provider: any;
 let logger: any;
@@ -245,4 +244,3 @@ if (failed === 0) {
   console.log('  3. Is the SDK configuration correct?');
   process.exit(1);
 }
-})();

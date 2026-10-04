@@ -363,7 +363,7 @@ function walkFiles(dirPath: string, results: string[] = []): string[] {
       continue;
     }
 
-    if (!/\.(ts|tsx)$/.test(entry.name) || entry.name.endsWith('.d.ts')) {
+    if (!/\.(mts|ts|tsx)$/.test(entry.name) || entry.name.endsWith('.d.ts')) {
       continue;
     }
 

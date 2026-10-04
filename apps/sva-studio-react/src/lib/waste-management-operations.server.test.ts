@@ -523,10 +523,16 @@ describe('waste management operations runtime', () => {
               },
               disruption_all_locations: {
                 label: 'Alle Straßen',
+                color: '#999999',
+                selected_color: '#666666',
+                icon: '',
                 notification_kind: 'disruption',
               },
               disruption_location: {
                 label: 'Meine Straße',
+                color: '#999999',
+                selected_color: '#666666',
+                icon: '',
                 notification_kind: 'disruption',
               },
             },

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1763,
+  "body": "Der Abgleich der Abholtermine mit dem Mainserver verwendet jetzt die Abfallart-Schlüssel der Smart Village App und erkennt auch Termine ohne Mainserver-Tour."
+}

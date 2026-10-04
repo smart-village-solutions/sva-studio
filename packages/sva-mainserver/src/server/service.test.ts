@@ -767,19 +767,26 @@ describe('createSvaMainserverService', () => {
     vi.spyOn(Date, 'now').mockReturnValue(now);
     const previous = { studioUpdatedAt: new Date(now + 10).toISOString(), retained: true };
     expect(
-      withUpdatedPayload({ nested: { value: false }, studioUpdatedAt: 'client-value' }, previous)
+      withUpdatedPayload(
+        { nested: { value: false }, studioUpdatedAt: 'client-value', studioUpdateId: 'client-id' },
+        previous
+      )
     ).toEqual({
       nested: { value: false },
       studioUpdatedAt: new Date(now + 11).toISOString(),
+      studioUpdateId: expect.any(String),
     });
     expect(withUpdatedPayload(null, previous)).toEqual({
       studioUpdatedAt: new Date(now + 11).toISOString(),
+      studioUpdateId: expect.any(String),
     });
     expect(withUpdatedPayload(undefined, undefined)).toEqual({
       studioUpdatedAt: new Date(now).toISOString(),
+      studioUpdateId: expect.any(String),
     });
     expect(withUpdatedPayload({}, { studioUpdatedAt: 'invalid' })).toEqual({
       studioUpdatedAt: new Date(now).toISOString(),
+      studioUpdateId: expect.any(String),
     });
   });
 
@@ -792,9 +799,18 @@ describe('createSvaMainserverService', () => {
     expect(() => withUpdatedPayload(payload, payload)).toThrow(SvaMainserverError);
   });
 
-  it.each(['generic', 'news', 'event', 'poi'] as const)(
-    'persists relation-only %s updates despite the upstream unchanged shortcut',
-    async (kind) => {
+  it.each(
+    (['generic', 'news', 'event', 'poi'] as const).flatMap((kind) =>
+      (['object', 'json-object', 'array', 'scalar', 'invalid-string'] as const).map(
+        (payloadFormat) => ({
+          kind,
+          payloadFormat,
+        })
+      )
+    )
+  )(
+    'updates $kind with stale $payloadFormat detail payload without blocking legacy records',
+    async ({ kind, payloadFormat }) => {
       const now = Date.parse('2026-10-04T18:00:00.000Z');
       vi.spyOn(Date, 'now').mockReturnValue(now);
       const id = `${kind}-1`;
@@ -815,6 +831,15 @@ describe('createSvaMainserverService', () => {
         nested: { preserve: ['a', 'b'] },
         studioUpdatedAt: new Date(now).toISOString(),
       };
+      const storedPayload = {
+        object: originalPayload,
+        'json-object': JSON.stringify(originalPayload),
+        array: ['legacy'],
+        scalar: 42,
+        'invalid-string': 'legacy-string',
+      }[payloadFormat];
+      const supportsWorkaround =
+        kind === 'news' || ['object', 'json-object'].includes(payloadFormat);
       let stored: Record<string, unknown> = {
         id,
         title: 'Unchanged',
@@ -822,9 +847,10 @@ describe('createSvaMainserverService', () => {
         genericType: 'COCKPIT_CARD',
         publishedAt: '2026-10-01T10:00:00.000Z',
         visible: true,
-        payload: originalPayload,
+        payload: storedPayload,
         dataProvider: { id: '533', name: 'Provider' },
       };
+      const staleDetail = { ...stored };
       const writes: Record<string, unknown>[] = [];
       const fetchImpl = vi.fn(async (url: unknown, init?: RequestInit) => {
         if (String(url).endsWith('/oauth/token'))
@@ -837,7 +863,7 @@ describe('createSvaMainserverService', () => {
         if (!body.operationName)
           return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
         if (body.operationName.endsWith('Detail'))
-          return createJsonResponse(200, { data: { [detailField]: stored } });
+          return createJsonResponse(200, { data: { [detailField]: staleDetail } });
         const variables = body.variables ?? {};
         writes.push(variables);
         // Reproduce the deployed server: forceCreate is ignored here and relations are
@@ -894,15 +920,32 @@ describe('createSvaMainserverService', () => {
       await expect(update('https://example.test/first')).resolves.toMatchObject({ id });
       await expect(update('https://example.test/second')).resolves.toMatchObject({ id });
       expect(writes).toHaveLength(2);
-      writes.forEach((variables, index) => {
+      writes.forEach((variables) => {
         expect(variables).toMatchObject({
           id,
           forceCreate: true,
-          payload: { ...originalPayload, studioUpdatedAt: new Date(now + index + 1).toISOString() },
         });
         expect(variables).not.toHaveProperty('dataProviderId');
+        if (supportsWorkaround) {
+          expect(variables.payload).toMatchObject({
+            ...(['object', 'json-object'].includes(payloadFormat) ? originalPayload : {}),
+            studioUpdatedAt: new Date(
+              now + (['object', 'json-object'].includes(payloadFormat) ? 1 : 0)
+            ).toISOString(),
+            studioUpdateId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+          });
+        } else {
+          expect(variables).not.toHaveProperty('payload');
+        }
       });
-      expect(JSON.stringify(stored)).toContain('https://example.test/second');
+      if (supportsWorkaround) {
+        expect((writes[0].payload as Record<string, unknown>).studioUpdateId).not.toBe(
+          (writes[1].payload as Record<string, unknown>).studioUpdateId
+        );
+        expect(JSON.stringify(stored)).toContain('https://example.test/second');
+      } else {
+        expect(stored.payload).toEqual(storedPayload);
+      }
       expect(originalPayload.studioUpdatedAt).toBe(new Date(now).toISOString());
     }
   );

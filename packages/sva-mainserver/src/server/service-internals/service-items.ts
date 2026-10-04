@@ -64,10 +64,7 @@ export const createItemService = ({
         ...input,
         genericItem: {
           ...input.genericItem,
-          payload: withUpdatedPayload(
-            input.genericItem.payload === undefined ? current.payload : input.genericItem.payload,
-            current.payload
-          ),
+          payload: withUpdatedPayload(input.genericItem.payload, current.payload),
         },
         forceCreate: true,
       },

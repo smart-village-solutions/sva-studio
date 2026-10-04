@@ -70,10 +70,7 @@ export const createNewsService = ({
         ...input,
         news: {
           ...input.news,
-          payload: withUpdatedPayload(
-            input.news.payload === undefined ? current.payload : input.news.payload,
-            current.payload
-          ),
+          payload: withUpdatedPayload(input.news.payload, current.payload),
         },
         forceCreate: true,
       },

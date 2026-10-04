@@ -50,10 +50,7 @@ export const createEventService = ({
         ...input,
         event: {
           ...mergeEventUpdateWithCurrent(current.data, input.event, current.deviations),
-          payload: withUpdatedPayload(
-            input.event.payload === undefined ? current.data.payload : input.event.payload,
-            current.data.payload
-          ),
+          payload: withUpdatedPayload(input.event.payload, current.data.payload),
         },
         forceCreate: true,
       },

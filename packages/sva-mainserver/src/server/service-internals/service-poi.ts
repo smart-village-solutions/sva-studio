@@ -44,10 +44,7 @@ export const createPoiService = ({
         ...input,
         poi: {
           ...mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations),
-          payload: withUpdatedPayload(
-            input.poi.payload === undefined ? current.data.payload : input.poi.payload,
-            current.data.payload
-          ),
+          payload: withUpdatedPayload(input.poi.payload, current.data.payload),
         },
         forceCreate: true,
       },

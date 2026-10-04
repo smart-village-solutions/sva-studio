@@ -1,0 +1,4 @@
+{
+  "prNumber": 1753,
+  "body": "Die generierte Typdeklaration für die Account-Verwaltung wird nicht mehr als Quelldatei im Repository mitgeführt. Sie entsteht weiterhin beim Build."
+}

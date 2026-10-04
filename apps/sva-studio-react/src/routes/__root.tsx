@@ -26,7 +26,9 @@ import {
 } from '../lib/plugin-route-scope';
 import { createThemeBootstrapScript } from '../lib/theme';
 import {
+  FALLOW_BROWSER_BEACON_META_NAME,
   normalizeStudioParentDomain,
+  readDocumentFallowBrowserBeaconKey,
   readDocumentStudioParentDomain,
   STUDIO_PARENT_DOMAIN_META_NAME,
 } from '../lib/studio-runtime-config';
@@ -73,6 +75,14 @@ export const resolveServerStudioParentDomain = createServerOnlyFn(() =>
   normalizeStudioParentDomain(process.env.SVA_PARENT_DOMAIN)
 );
 
+export const resolveServerFallowBrowserBeaconKey = createServerOnlyFn(() => {
+  const key = process.env.FALLOW_BROWSER_INGEST_KEY;
+  return process.env.SVA_DEPLOYMENT_ENVIRONMENT === 'staging' &&
+    key?.startsWith('fallow_pub_k1_')
+    ? key
+    : '';
+});
+
 /** Initialisiert SDK und öffentliche Laufzeitkonfiguration für die Root-Route. */
 export const loadRootData = async () => {
   if (import.meta.env.SSR) {
@@ -81,12 +91,14 @@ export const loadRootData = async () => {
       pluginRouteScope: await resolveRootPluginRouteScope(),
       studioBranding: resolveServerStudioBranding(),
       studioParentDomain: resolveServerStudioParentDomain(),
+      fallowBrowserBeaconKey: resolveServerFallowBrowserBeaconKey(),
     };
   }
   return {
     pluginRouteScope: readDocumentPluginRouteScope() ?? 'platform',
     studioBranding: readDocumentStudioBranding(),
     studioParentDomain: readDocumentStudioParentDomain(),
+    fallowBrowserBeaconKey: readDocumentFallowBrowserBeaconKey(),
   };
 };
 
@@ -94,6 +106,7 @@ type RootLoaderData = {
   readonly pluginRouteScope: PluginRouteScope;
   readonly studioBranding: StudioBranding;
   readonly studioParentDomain: string;
+  readonly fallowBrowserBeaconKey?: string;
 };
 
 /**
@@ -127,6 +140,9 @@ export const getRootHead = ({ loaderData }: { loaderData?: RootLoaderData } = {}
             name: STUDIO_PARENT_DOMAIN_META_NAME,
             content: loaderData.studioParentDomain,
           },
+          ...(loaderData.fallowBrowserBeaconKey
+            ? [{ name: FALLOW_BROWSER_BEACON_META_NAME, content: loaderData.fallowBrowserBeaconKey }]
+            : []),
         ]
       : []),
   ],

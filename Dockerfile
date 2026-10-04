@@ -3,6 +3,7 @@ FROM node:24.15.0-alpine AS build
 WORKDIR /workspace
 
 ARG SVA_STUDIO_DISTRIBUTION=studio
+ARG SVA_IMAGE_REVISION
 
 ENV PNPM_HOME=/pnpm
 ENV PATH="${PNPM_HOME}:${PATH}"
@@ -10,6 +11,7 @@ ENV CI=true
 ENV NX_DAEMON=false
 ENV NX_ADD_PLUGINS=false
 ENV SVA_STUDIO_DISTRIBUTION=${SVA_STUDIO_DISTRIBUTION}
+ENV VITE_GIT_SHA=${SVA_IMAGE_REVISION}
 
 RUN apk add --no-cache bash
 RUN npm install -g pnpm@11.3.0
@@ -117,6 +119,7 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV SVA_STUDIO_DISTRIBUTION=${SVA_STUDIO_DISTRIBUTION}
+ENV GIT_SHA=${SVA_IMAGE_REVISION}
 
 RUN apk add --no-cache aws-cli bash curl ca-certificates postgresql-client \
   && aws --version \

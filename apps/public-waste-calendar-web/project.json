@@ -74,6 +74,7 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "cache": true,
       "inputs": ["default", "^production", "frontendTooling"],
       "outputs": [],

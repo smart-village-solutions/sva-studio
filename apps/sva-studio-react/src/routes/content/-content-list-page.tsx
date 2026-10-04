@@ -1,4 +1,5 @@
 import type { IamContentListQuery } from '@sva/core';
+import { loadMainserverDeletionImpact } from '@sva/plugin-sdk';
 import {
   type MainserverPrincipalControlModel,
   StudioDestructiveActionDialog,
@@ -34,6 +35,7 @@ import {
 import { useContentListDeletion } from './-content-list-deletion';
 import { ContentListTable } from './-content-list-table';
 import { MainserverAuthoringDiagnosticsPanel } from './-mainserver-authoring-diagnostics';
+import { deletionImpactBasePath } from './-content-list-row-actions';
 
 const EMPTY_PERMISSION_ACTIONS: readonly string[] = [];
 
@@ -248,6 +250,7 @@ export const ContentListPage = ({
     destructiveResult,
     setDestructiveResult,
     pendingRowDeletion,
+    rowDeletePrincipal,
     setPendingRowDeletion,
     rowDeletePending,
     rowDeleteError,
@@ -339,6 +342,20 @@ export const ContentListPage = ({
 
       <StudioDestructiveActionDialog
         open={pendingRowDeletion !== null}
+        linkedContent={
+          pendingRowDeletion &&
+          rowDeletePrincipal &&
+          deletionImpactBasePath(pendingRowDeletion.contentType)
+            ? {
+                basePath: deletionImpactBasePath(pendingRowDeletion.contentType)!,
+                contentId: pendingRowDeletion.id,
+                actingPrincipalType: rowDeletePrincipal,
+                load: loadMainserverDeletionImpact,
+                translate: (key: string, values?: Readonly<Record<string, string | number>>) =>
+                  t(`content.${key}`, values),
+              }
+            : undefined
+        }
         title={t('content.actions.deleteConfirmTitle')}
         description={t('content.actions.deleteConfirmDescription', {
           title: pendingRowDeletion?.title ?? '',
@@ -353,7 +370,7 @@ export const ContentListPage = ({
           setRowDeleteError(null);
           setPendingRowDeletion(null);
         }}
-        onConfirm={() => void confirmRowDeletion()}
+        onConfirm={(detachLinkedContent) => void confirmRowDeletion(detachLinkedContent)}
       />
 
       <StudioDestructiveActionDialog

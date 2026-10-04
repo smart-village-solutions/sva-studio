@@ -170,6 +170,11 @@ export type SvaMainserverGenericItemInput = {
 };
 
 export type SvaMainserverGenericItem = {
+  readonly deletionImpact?: {
+    readonly eventRecordsCount: number;
+    readonly newsItemsCount: number;
+    readonly genericItemsCount: number;
+  };
   readonly id: string;
   readonly title: string;
   readonly contentType: 'generic-items.generic-item';
@@ -224,6 +229,7 @@ export type SvaMainserverProjectInput = Readonly<{
 
 export type SvaMainserverProject = SvaMainserverProjectInput &
   Readonly<{
+    deletionImpact?: SvaMainserverGenericItem['deletionImpact'];
     id: string;
     published: boolean;
     publishedAt?: string;

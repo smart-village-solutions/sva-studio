@@ -19,6 +19,22 @@ export type MainserverMutationOptions = Readonly<{
   contentMediaSaveOperationId?: string;
 }>;
 
+export const loadMainserverDeletionImpact = async ({
+  basePath,
+  contentId,
+  actingPrincipalType,
+}: Readonly<{
+  basePath: string;
+  contentId: string;
+  actingPrincipalType: MainserverActingPrincipalType;
+}>): Promise<unknown> => {
+  const response = await requestMainserverJson<{ data: { deletionImpact?: unknown } }>({
+    url: `${basePath}/${encodeURIComponent(contentId)}`,
+    init: { headers: createMainserverReadHeaders(actingPrincipalType) },
+  });
+  return response.data.deletionImpact;
+};
+
 const addContentMediaSaveOperationHeader = (
   headers: Headers,
   mutationOptions?: MainserverMutationOptions
@@ -159,13 +175,28 @@ const createEnsureMainserverContextBinding =
     }
   };
 
-const createMainserverCrudMutations = <TItem, TMutationInput, TListResponse extends {
-  readonly data: readonly TItem[];
-}, TListResult, TError extends Error>(input: {
-  readonly options: MainserverCrudClientOptions<TItem, TMutationInput, TListResponse, TListResult, TError>;
+const createMainserverCrudMutations = <
+  TItem,
+  TMutationInput,
+  TListResponse extends {
+    readonly data: readonly TItem[];
+  },
+  TListResult,
+  TError extends Error,
+>(input: {
+  readonly options: MainserverCrudClientOptions<
+    TItem,
+    TMutationInput,
+    TListResponse,
+    TListResult,
+    TError
+  >;
   readonly mapItem: (item: TItem) => TItem;
   readonly contextBindingStore: ReturnType<typeof createMainserverContextBindingStore>;
-  readonly ensureContextBinding: (contentId: string, actingPrincipalType: MainserverActingPrincipalType) => Promise<void>;
+  readonly ensureContextBinding: (
+    contentId: string,
+    actingPrincipalType: MainserverActingPrincipalType
+  ) => Promise<void>;
 }) => ({
   create: async (
     mutationInput: TMutationInput,
@@ -186,7 +217,9 @@ const createMainserverCrudMutations = <TItem, TMutationInput, TListResponse exte
           ),
           mutationOptions
         ),
-        body: JSON.stringify(input.options.createBody ? input.options.createBody(mutationInput) : mutationInput),
+        body: JSON.stringify(
+          input.options.createBody ? input.options.createBody(mutationInput) : mutationInput
+        ),
       },
     });
     return input.mapItem(response.data);
@@ -213,15 +246,21 @@ const createMainserverCrudMutations = <TItem, TMutationInput, TListResponse exte
           ),
           mutationOptions
         ),
-        body: JSON.stringify(input.options.updateBody ? input.options.updateBody(mutationInput) : mutationInput),
+        body: JSON.stringify(
+          input.options.updateBody ? input.options.updateBody(mutationInput) : mutationInput
+        ),
       },
     });
     return input.mapItem(response.data);
   },
-  remove: async (contentId: string, actingPrincipalType: MainserverActingPrincipalType): Promise<void> => {
+  remove: async (
+    contentId: string,
+    actingPrincipalType: MainserverActingPrincipalType,
+    detachLinkedContent = false
+  ): Promise<void> => {
     await input.ensureContextBinding(contentId, actingPrincipalType);
     await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
-      url: `${input.options.basePath}/${encodeURIComponent(contentId)}`,
+      url: `${input.options.basePath}/${encodeURIComponent(contentId)}${detachLinkedContent ? '?detachLinkedContent=true' : ''}`,
       fetch: input.options.fetch,
       errorFactory: input.options.errorFactory,
       init: {
@@ -267,7 +306,12 @@ export const createMainserverCrudClient = <
     },
     get: loadItem,
     getDetail: loadDetail,
-    ...createMainserverCrudMutations({ options, mapItem, contextBindingStore, ensureContextBinding }),
+    ...createMainserverCrudMutations({
+      options,
+      mapItem,
+      contextBindingStore,
+      ensureContextBinding,
+    }),
     ensureMutationContext: ensureContextBinding,
     mutationHeaders: contextBindingStore.mutationHeaders,
   };

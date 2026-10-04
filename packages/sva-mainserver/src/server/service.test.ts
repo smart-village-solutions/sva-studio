@@ -809,7 +809,9 @@ describe('createSvaMainserverService', () => {
     await expect(service.updateNews({ ...connection, newsId: 'news-1', news })).resolves.toEqual(
       expect.objectContaining({ id: 'news-1' })
     );
-    await expect(service.deleteNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({
+    await expect(
+      service.deleteNews({ ...connection, newsId: 'news-1', detachLinkedContent: true })
+    ).resolves.toEqual({
       id: 'news-1',
     });
 
@@ -838,7 +840,7 @@ describe('createSvaMainserverService', () => {
     });
     expect(requestBodies[3]).toMatchObject({
       operationName: 'SvaMainserverDestroyNews',
-      variables: { id: 'news-1', recordType: 'NewsItem' },
+      variables: { id: 'news-1', recordType: 'NewsItem', detachLinkedContent: true },
     });
   });
 
@@ -2104,7 +2106,9 @@ describe('createSvaMainserverService', () => {
         },
       })
     ).resolves.toMatchObject({ id: 'event-1' });
-    await expect(service.deleteEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({
+    await expect(
+      service.deleteEvent({ ...connection, eventId: 'event-1', detachLinkedContent: true })
+    ).resolves.toEqual({
       id: 'event-1',
     });
 
@@ -2157,7 +2161,9 @@ describe('createSvaMainserverService', () => {
         poi: { name: 'Stadtpark', active: false, openingHours: poiItem.openingHours },
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
-    await expect(service.deletePoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({
+    await expect(
+      service.deletePoi({ ...connection, poiId: 'poi-1', detachLinkedContent: true })
+    ).resolves.toEqual({
       id: 'poi-1',
     });
 
@@ -2187,13 +2193,21 @@ describe('createSvaMainserverService', () => {
       forceCreate: false,
       repeat: true,
     });
-    expect(requestBodies[5]?.variables).toEqual({ id: 'event-1', recordType: 'EventRecord' });
+    expect(requestBodies[5]?.variables).toEqual({
+      id: 'event-1',
+      recordType: 'EventRecord',
+      detachLinkedContent: true,
+    });
     expect(requestBodies[10]?.variables).toMatchObject({
       id: 'poi-1',
       forceCreate: false,
       active: false,
     });
-    expect(requestBodies[11]?.variables).toEqual({ id: 'poi-1', recordType: 'PointOfInterest' });
+    expect(requestBodies[11]?.variables).toEqual({
+      id: 'poi-1',
+      recordType: 'PointOfInterest',
+      detachLinkedContent: true,
+    });
   });
 
   it('routes default event and POI helpers through the default service', async () => {
@@ -2397,7 +2411,11 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({ id: 'generic-1' });
 
     await expect(
-      service.deleteGenericItem({ ...connection, genericItemId: 'generic-1' })
+      service.deleteGenericItem({
+        ...connection,
+        genericItemId: 'generic-1',
+        detachLinkedContent: true,
+      })
     ).resolves.toEqual({
       id: 'generic-1',
     });
@@ -2431,7 +2449,11 @@ describe('createSvaMainserverService', () => {
     expect(genericItemMutation).not.toContain('\n  teaser\n');
     expect(genericItemMutation).not.toContain('$visible: Boolean');
     expect(genericItemMutation).not.toContain('visible: $visible');
-    expect(requestBodies[4]?.variables).toEqual({ id: 'generic-1', recordType: 'GenericItem' });
+    expect(requestBodies[4]?.variables).toEqual({
+      id: 'generic-1',
+      recordType: 'GenericItem',
+      detachLinkedContent: true,
+    });
   });
 
   it('routes default generic item helpers through the default service', async () => {

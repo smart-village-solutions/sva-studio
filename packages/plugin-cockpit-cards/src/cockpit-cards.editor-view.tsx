@@ -1,4 +1,4 @@
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { loadMainserverDeletionImpact, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   ContentOwnershipSaveHint,
@@ -42,7 +42,7 @@ export type EditorViewProps = Readonly<{
   deleteError: string | null;
   setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setDeleteError: React.Dispatch<React.SetStateAction<string | null>>;
-  onDelete: () => void;
+  onDelete: (detachLinkedContent?: boolean) => void;
   saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
   mediaSavePhaseKey: string | null;
   mutationError: string | null;
@@ -171,6 +171,7 @@ function EditorForm({ view }: { view: EditorViewProps }) {
 }
 
 export function CockpitCardEditorView(view: EditorViewProps) {
+  const ct = usePluginTranslation('content');
   const {
     pt,
     mode,
@@ -201,6 +202,17 @@ export function CockpitCardEditorView(view: EditorViewProps) {
       <EditorForm view={view} />
       <StudioDestructiveActionDialog
         open={deleteDialogOpen}
+        linkedContent={
+          view.contentId
+            ? {
+                basePath: '/api/v1/mainserver/cockpit-cards',
+                contentId: view.contentId,
+                actingPrincipalType: view.actingPrincipalType,
+                load: loadMainserverDeletionImpact,
+                translate: ct,
+              }
+            : undefined
+        }
         title={pt('deleteDialog.title')}
         description={pt('deleteDialog.description', { target: form.getValues('heading') })}
         confirmLabel={pt('deleteDialog.confirm')}

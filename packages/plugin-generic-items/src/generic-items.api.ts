@@ -63,8 +63,12 @@ export const updateGenericItem = async (
 
 export const deleteGenericItem = async (
   contentId: string,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<void> => genericItemsClient.remove(contentId, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  detachLinkedContent = false
+): Promise<void> =>
+  detachLinkedContent
+    ? genericItemsClient.remove(contentId, actingPrincipalType, true)
+    : genericItemsClient.remove(contentId, actingPrincipalType);
 
 export const listGenericItemCategories = async (): Promise<
   readonly GenericItemCategoryOption[]

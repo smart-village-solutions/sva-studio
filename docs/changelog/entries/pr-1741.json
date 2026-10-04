@@ -1,0 +1,4 @@
+{
+  "prNumber": 1741,
+  "body": "Beim Löschen verknüpfter Inhalte zeigt Studio jetzt an, welche anderen Inhalte betroffen sind. Nach ausdrücklicher Bestätigung wird nur der gewählte Inhalt gelöscht; die verknüpften Veranstaltungen, Nachrichten und weiteren Inhalte bleiben erhalten. Die Warnung gilt für Orte, Veranstaltungen, Nachrichten, FAQ, Kacheln, Projekte und weitere generische Inhalte."
+}

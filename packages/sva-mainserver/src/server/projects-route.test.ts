@@ -579,7 +579,8 @@ describe('projects route', () => {
       request('/api/v1/mainserver/projects', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1',
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'operation-1',
           'X-SVA-Operation-Id': 'journal-create-1',
         },
         body: JSON.stringify(input),
@@ -789,9 +790,11 @@ describe('projects route', () => {
       })
     );
     expect(response?.status).toBe(200);
-    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(expect.objectContaining({
-      sourceEntityId: 'external-1',
-    }));
+    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEntityId: 'external-1',
+      })
+    );
     expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
   });
 
@@ -802,7 +805,8 @@ describe('projects route', () => {
 
     const response = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects/external-1', {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       })
     );
@@ -817,8 +821,10 @@ describe('projects route', () => {
     prepareDefaults();
     const legacyContentId = '55555555-5555-4555-8555-555555555555';
     const legacyReference = {
-      ...reference, id: '66666666-6666-4666-8666-666666666666',
-      contentId: legacyContentId, sourceEntityType: 'projects.project',
+      ...reference,
+      id: '66666666-6666-4666-8666-666666666666',
+      contentId: legacyContentId,
+      sourceEntityType: 'projects.project',
     };
     state.loadReferenceByContentId
       .mockResolvedValueOnce(undefined)
@@ -830,19 +836,24 @@ describe('projects route', () => {
 
     const response = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${legacyContentId}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       })
     );
 
     expect(response?.status).toBe(200);
-    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(expect.objectContaining({
-      sourceEntityId: genericItem.id,
-    }));
+    expect(state.loadReferenceBySourceEntity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEntityId: genericItem.id,
+      })
+    );
     expect(state.updateCore).toHaveBeenCalledWith(expect.objectContaining({ contentId }));
-    expect(state.updateCore).not.toHaveBeenCalledWith(expect.objectContaining({
-      contentId: legacyContentId,
-    }));
+    expect(state.updateCore).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentId: legacyContentId,
+      })
+    );
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
       expect.objectContaining({ completedSteps: expect.arrayContaining(['project_core_updated']) })
     );
@@ -873,13 +884,15 @@ describe('projects route', () => {
     );
 
     const deleteResponse = await dispatchSvaMainserverProjectsRequest(
-      request('/api/v1/mainserver/projects/external-1', { method: 'DELETE' })
+      request('/api/v1/mainserver/projects/external-1?detachLinkedContent=true', {
+        method: 'DELETE',
+      })
     );
 
     expect(deleteResponse?.status).toBe(200);
     await expect(deleteResponse?.json()).resolves.toEqual({ data: { id: 'external-1' } });
     expect(state.deleteGenericItem).toHaveBeenCalledWith(
-      expect.objectContaining({ genericItemId: 'external-1' })
+      expect.objectContaining({ genericItemId: 'external-1', detachLinkedContent: true })
     );
   });
 
@@ -1252,7 +1265,8 @@ describe('projects route', () => {
 
     const response = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       })
     );
@@ -1260,12 +1274,16 @@ describe('projects route', () => {
     expect(response?.status).toBe(200);
     expect(state.updateGenericItem).toHaveBeenCalledOnce();
     expect(state.updateCore).not.toHaveBeenCalled();
-    expect(state.updateReconciliation).toHaveBeenCalledWith(expect.objectContaining({
-      status: 'reconciliation_required', errorCode: 'local_finalize_failed',
-    }));
+    expect(state.updateReconciliation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'reconciliation_required',
+        errorCode: 'local_finalize_failed',
+      })
+    );
     expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
       expect.objectContaining({
-        providerOutcome: 'succeeded', reconciliationStatus: 'reconciliation_required',
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'reconciliation_required',
         completedSteps: expect.not.arrayContaining(['project_core_updated']),
       })
     );

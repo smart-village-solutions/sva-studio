@@ -48,7 +48,12 @@ export const createPoiService = ({
     );
   };
 
-  const deletePoi = async (input: SvaMainserverConnectionInput & { readonly poiId: string }) => {
+  const deletePoi = async (
+    input: SvaMainserverConnectionInput & {
+      readonly poiId: string;
+      readonly detachLinkedContent?: boolean;
+    }
+  ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return poiOperations.destroyPoiWithConfig(input, config);
   };

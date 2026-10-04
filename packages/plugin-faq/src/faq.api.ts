@@ -54,6 +54,12 @@ export const updateFaq = (
   input: GenericItemFaqInput,
   actingPrincipalType: MainserverActingPrincipalType
 ) => client.update(id, input, actingPrincipalType);
-export const deleteFaq = (id: string, actingPrincipalType: MainserverActingPrincipalType) =>
-  client.remove(id, actingPrincipalType);
+export const deleteFaq = (
+  id: string,
+  actingPrincipalType: MainserverActingPrincipalType,
+  detachLinkedContent = false
+) =>
+  detachLinkedContent
+    ? client.remove(id, actingPrincipalType, true)
+    : client.remove(id, actingPrincipalType);
 export { FaqApiError };

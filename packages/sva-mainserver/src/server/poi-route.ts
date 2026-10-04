@@ -1,7 +1,13 @@
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { errorJson, isResponse, json, matchRequestRoute } from './content-route-core.js';
+import {
+  errorJson,
+  isResponse,
+  json,
+  matchRequestRoute,
+  parseDetachLinkedContent,
+} from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import {
@@ -126,6 +132,8 @@ const handleItemDelete = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
+  const detachLinkedContent = parseDetachLinkedContent(request);
+  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   const actor = await authorizeMutation(
     request,
     ctx,
@@ -151,7 +159,11 @@ const handleItemDelete = async (
         item: existing?.data,
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
-      const data = await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
+      const data = await deleteSvaMainserverPoi({
+        ...actor,
+        poiId: route.itemId,
+        detachLinkedContent,
+      });
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',

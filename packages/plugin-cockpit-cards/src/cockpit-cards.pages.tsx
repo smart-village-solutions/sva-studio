@@ -161,7 +161,7 @@ function EditorContent({
       saveFeedback: editor.saveFeedback,
     }),
     canDelete: access.accessCapabilities.canDelete,
-    onDelete: () => void deletion.deleteCard(),
+    onDelete: (detachLinkedContent) => void deletion.deleteCard(detachLinkedContent),
     onSubmit: (event) => void save(event),
   };
   return <CockpitCardEditorView {...view} />;

@@ -1,5 +1,5 @@
 import type { AuthenticatedRequestContext } from '@sva/auth-runtime/server';
-import { errorJson, isResponse, json } from './content-route-core.js';
+import { errorJson, isResponse, json, parseDetachLinkedContent } from './content-route-core.js';
 import {
   authorizeMutation,
   contentTypeFor,
@@ -106,6 +106,8 @@ export const handleDeleteRequest = async (
   itemId: string,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
+  const detachLinkedContent = parseDetachLinkedContent(request);
+  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   const actor = await authorizeMutation(request, ctx, contentKind, 'delete', requestId, itemId);
   if (isResponse(actor)) {
     return actor;
@@ -129,7 +131,11 @@ export const handleDeleteRequest = async (
         item: existingItem,
       });
       if (isResponse(providerAuthorization)) return providerAuthorization;
-      const data = await deleteSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
+      const data = await deleteSvaMainserverGenericItem({
+        ...actor,
+        genericItemId: itemId,
+        detachLinkedContent,
+      });
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',

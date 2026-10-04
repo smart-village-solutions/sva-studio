@@ -55,6 +55,7 @@ export const fixture = {
   syncStates: new Map<string, TestSyncState>(),
   projectionInsertArgs: null as readonly unknown[] | null,
   projectionInsertSql: null as string | null,
+  projectionDeleteSql: null as string | null,
   projectionInsertPayloadSizes: [] as number[],
   simulateConcurrentProjectionConflict: false,
   simulateLegacyProjectionSchemaMismatchOnce: false,

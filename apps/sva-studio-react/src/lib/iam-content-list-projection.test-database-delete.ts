@@ -39,12 +39,14 @@ export const deleteProjectionQueryResult = (
     projectionRows: TestProjectionRow[];
     projectionScopeKeyColumnAvailable: boolean;
     syncStates: Map<string, TestSyncState>;
+    projectionDeleteSql: string | null;
   },
   text: string,
   values: readonly unknown[] | undefined,
   queryValue: (values: readonly unknown[] | undefined, index: number, fallback?: unknown) => unknown
 ): { rows: unknown[]; rowCount: number } | null => {
   if (!text.includes('DELETE FROM iam.content_list_projection')) return null;
+  fixture.projectionDeleteSql = text;
   if (text.includes('projection_scope_key <> $5')) {
     fixture.projectionRows = removeTransferredProjectionRows(fixture.projectionRows, values);
     return { rows: [], rowCount: 0 };
@@ -62,6 +64,15 @@ export const deleteProjectionQueryResult = (
   const retainedEntityIds = Array.isArray(entityValue)
     ? entityValue.filter((value): value is string => typeof value === 'string')
     : null;
+  const unscopedPredicate = text.match(
+    /projection\.projection_scope_key <> \$(\d+) OR projection\.credential_source = \$(\d+)/
+  );
+  const unscopedKey = unscopedPredicate
+    ? queryValue(values, Number(unscopedPredicate[1]) - 1)
+    : null;
+  const refreshCredentialSource = unscopedPredicate
+    ? queryValue(values, Number(unscopedPredicate[2]) - 1)
+    : null;
   fixture.projectionRows = fixture.projectionRows.filter((row) => {
     const matchingScope = matchesMainserverDeleteScope(
       row,
@@ -73,7 +84,9 @@ export const deleteProjectionQueryResult = (
     const matchingEntity = retainedEntityIds
       ? !retainedEntityIds.includes(row.source_entity_id)
       : sourceEntityId === null || row.source_entity_id === sourceEntityId;
-    return !(matchingScope && matchingEntity);
+    const matchingCredential =
+      row.projection_scope_key !== unscopedKey || row.credential_source === refreshCredentialSource;
+    return !(matchingScope && matchingEntity && matchingCredential);
   });
   return { rows: [], rowCount: 0 };
 };

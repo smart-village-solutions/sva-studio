@@ -56,6 +56,14 @@ const deleteMainserverProjectionRows = async (
     if (schemaMode === 'scoped' && selector.kind !== 'entity') {
       values.push(buildRefreshDeletionScopeKeys(target, refreshCredentialSource));
       predicates.push(`projection.projection_scope_key = ANY($${values.length}::text[])`);
+      if (refreshCredentialSource) {
+        values.push(buildProjectionTargetKey({ ...target, actingPrincipalType: undefined }));
+        const unscopedKeyParameter = values.length;
+        values.push(refreshCredentialSource);
+        predicates.push(
+          `(projection.projection_scope_key <> $${unscopedKeyParameter} OR projection.credential_source = $${values.length})`
+        );
+      }
     }
     if (selector.kind !== 'all') {
       values.push(target.contentType);
@@ -123,7 +131,7 @@ export const upsertSingleMainserverProjectionRow = async (
       await hasNewerMainserverProjectionSuccess(
         client,
         target,
-        leader.last_started_at,
+        leader.generation,
         schemaMode,
         row.credentialSource
       )
@@ -159,6 +167,7 @@ INSERT INTO iam.content_list_projection_sync_state (
   sync_mode,
   last_started_at,
   last_succeeded_at,
+  completed_generation,
   last_error_code,
   last_error_message,
   projected_count,
@@ -167,11 +176,13 @@ INSERT INTO iam.content_list_projection_sync_state (
   is_total_final,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, $3, 'full_refresh', statement_timestamp(), statement_timestamp(), NULL, NULL, $4, 'complete_fresh', $4, TRUE, NOW())
+VALUES ($1, 'mainserver', $2, $3, 'full_refresh', statement_timestamp(), statement_timestamp(), 0, NULL, NULL, $4, 'complete_fresh', $4, TRUE, NOW())
 ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
 DO UPDATE SET
   last_started_at = CASE WHEN $5::boolean THEN iam.content_list_projection_sync_state.last_started_at ELSE statement_timestamp() END,
   last_succeeded_at = statement_timestamp(),
+  completed_generation = iam.content_list_projection_sync_state.generation,
+  snapshot_invalidated = CASE WHEN $5::boolean THEN FALSE ELSE iam.content_list_projection_sync_state.snapshot_invalidated END,
   last_error_code = NULL,
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
@@ -202,6 +213,7 @@ INSERT INTO iam.content_list_projection_sync_state (
   sync_mode,
   last_started_at,
   last_succeeded_at,
+  completed_generation,
   last_error_code,
   last_error_message,
   projected_count,
@@ -210,11 +222,13 @@ INSERT INTO iam.content_list_projection_sync_state (
   is_total_final,
   updated_at
 )
-VALUES ($1, 'mainserver', $2, 'full_refresh', statement_timestamp(), statement_timestamp(), NULL, NULL, $3, 'complete_fresh', $3, TRUE, NOW())
+VALUES ($1, 'mainserver', $2, 'full_refresh', statement_timestamp(), statement_timestamp(), 0, NULL, NULL, $3, 'complete_fresh', $3, TRUE, NOW())
 ON CONFLICT (instance_id, source_system, content_type)
 DO UPDATE SET
   last_started_at = CASE WHEN $4::boolean THEN iam.content_list_projection_sync_state.last_started_at ELSE statement_timestamp() END,
   last_succeeded_at = statement_timestamp(),
+  completed_generation = iam.content_list_projection_sync_state.generation,
+  snapshot_invalidated = CASE WHEN $4::boolean THEN FALSE ELSE iam.content_list_projection_sync_state.snapshot_invalidated END,
   last_error_code = NULL,
   last_error_message = NULL,
   projected_count = EXCLUDED.projected_count,
@@ -326,7 +340,7 @@ export const persistMainserverProjectionRowsProgressively = async (
         await hasNewerMainserverProjectionSuccess(
           client,
           input.target,
-          leader.last_started_at,
+          leader.generation,
           schemaMode,
           input.refreshCredentialSource
         )

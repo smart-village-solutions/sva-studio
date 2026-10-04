@@ -4,6 +4,7 @@ import {
   registerProjectionFixture,
   ctx,
   fixture,
+  computeProjectionSyncStatesForTest,
   listProjectedContentsForTest as listProjectedContents,
   refreshProjectedContentsForTest as refreshProjectedContents,
   refreshProjectedContentsForMainserverMutationForTest as refreshProjectedContentsForMainserverMutation,
@@ -298,6 +299,26 @@ describe('GenericItem content projection mutations', () => {
   });
 
   it('removes stale specialized sibling projections when the generic type changes', async () => {
+    const successorScope = 'de-musterhausen::account-2::org-1::cockpit-cards.cockpit-card';
+    fixture.syncStates.set(`cockpit-cards.cockpit-card::${successorScope}`, {
+      sync_scope_key: successorScope,
+      last_started_at: new Date().toISOString(),
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 0,
+    });
+    const otherAccountTarget = {
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-2',
+      actorAccountId: 'account-2',
+      organizationId: 'org-1',
+      contentType: 'cockpit-cards.cockpit-card' as const,
+    };
+    expect((await computeProjectionSyncStatesForTest([otherAccountTarget]))[0]?.isStale).toBe(
+      false
+    );
     fixture.projectionRows = [
       {
         id: 'generic-type-change-1',
@@ -328,7 +349,11 @@ describe('GenericItem content projection mutations', () => {
         source_entity_id: 'generic-type-change-1',
       },
     ];
-    state.getSvaMainserverGenericItem.mockResolvedValue({
+    fixture.projectionRows.push({
+      ...fixture.projectionRows[0]!,
+      projection_scope_key: 'de-musterhausen::account-2::org-1::organization::faq.faq',
+    });
+    const genericItem = {
       id: 'generic-type-change-1',
       title: 'Jetzt eine Kachel',
       contentType: 'generic-items.generic-item',
@@ -348,7 +373,8 @@ describe('GenericItem content projection mutations', () => {
       visible: true,
       createdAt: '2026-06-20T10:00:00.000Z',
       updatedAt: '2026-06-21T10:00:00.000Z',
-    });
+    };
+    state.getSvaMainserverGenericItem.mockResolvedValue(genericItem);
 
     await refreshProjectedContentsForMainserverMutation({
       contentType: 'generic-items.generic-item',
@@ -365,6 +391,73 @@ describe('GenericItem content projection mutations', () => {
     ]);
     expect(fixture.projectionRows.some((row) => row.content_type === 'faq.faq')).toBe(false);
     expect(fixture.projectionRows).toHaveLength(1);
+    expect(
+      fixture.syncStates.get(`cockpit-cards.cockpit-card::${successorScope}`)?.snapshot_invalidated
+    ).toBe(true);
+    expect((await computeProjectionSyncStatesForTest([otherAccountTarget]))[0]?.isStale).toBe(true);
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        { action: 'faq.read', resourceType: 'faq' },
+        { action: 'cockpit-cards.read', resourceType: 'cockpit-cards' },
+      ],
+    });
+    const listOptions = {
+      page: 1,
+      pageSize: 25,
+      type: 'cockpit-cards.cockpit-card' as const,
+      visibleTypes: ['cockpit-cards.cockpit-card' as const],
+      sortBy: 'updatedAt' as const,
+      sortDirection: 'desc' as const,
+    };
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [genericItem],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    const firstList = await listProjectedContents(ctx, listOptions);
+    expect(firstList.status).toBe(200);
+    expect(
+      ((await firstList.json()) as { data: Array<{ id: string }> }).data.map((row) => row.id)
+    ).toEqual(['generic-type-change-1']);
+
+    state.resolveActorAccountId.mockResolvedValue('account-2');
+    state.listSvaMainserverGenericItems.mockRejectedValueOnce(new Error('temporary failure'));
+    const failedRefresh = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await failedRefresh.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+    );
+    expect(
+      fixture.syncStates.get(`cockpit-cards.cockpit-card::${successorScope}`)?.snapshot_invalidated
+    ).toBe(true);
+    const secondRefresh = await refreshProjectedContents(ctx, {
+      visibleTypes: ['cockpit-cards.cockpit-card'],
+      force: true,
+    });
+    expect((await secondRefresh.json()) as { data: { status: string } }).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) })
+    );
+    const secondList = await listProjectedContents(ctx, listOptions);
+    expect(secondList.status).toBe(200);
+    expect(
+      ((await secondList.json()) as { data: Array<{ id: string }> }).data.map((row) => row.id)
+    ).toEqual(['generic-type-change-1']);
+    expect(
+      fixture.syncStates.get(`cockpit-cards.cockpit-card::${successorScope}`)?.snapshot_invalidated
+    ).toBe(false);
+    expect((await computeProjectionSyncStatesForTest([otherAccountTarget]))[0]?.isStale).toBe(
+      false
+    );
+    expect(
+      fixture.projectionRows.filter((row) => row.content_type === 'cockpit-cards.cockpit-card')
+    ).toHaveLength(3);
     expect(
       [...fixture.syncStates.keys()].some(
         (key) => key.startsWith('faq.faq::') && key !== 'faq.faq::__mainserver_global_mutation__'

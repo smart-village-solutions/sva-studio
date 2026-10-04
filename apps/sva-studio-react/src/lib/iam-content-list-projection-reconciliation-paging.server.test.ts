@@ -158,12 +158,18 @@ describe('content projection reconciliation paging', () => {
     'continues other content types when a %s write is superseded',
     async (phase) => {
       const supersedeNews = () => {
+        const started = fixture.syncStates.get(
+          'news.article::de-musterhausen::account-1::org-1::news.article'
+        );
+        const generation = (started?.generation ?? 0) + 1;
         fixture.syncStates.set(
           'news.article::de-musterhausen::account-1::org-1::user::news.article',
           {
             sync_scope_key: 'de-musterhausen::account-1::org-1::user::news.article',
-            last_started_at: '2999-01-01T00:00:00.000Z',
-            last_succeeded_at: '2999-01-01T00:00:00.000Z',
+            last_started_at: '2000-01-01T00:00:00.000Z',
+            last_succeeded_at: '2000-01-01T00:00:00.000Z',
+            generation,
+            completed_generation: generation,
             last_failed_at: null,
             last_error_code: null,
             last_error_message: null,

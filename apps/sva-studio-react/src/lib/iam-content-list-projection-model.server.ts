@@ -55,6 +55,7 @@ export type ProjectionSyncStateRow = {
   available_count?: number;
   is_total_final?: boolean;
   skipped_invalid_count?: number;
+  snapshot_invalidated?: boolean;
 };
 
 export type ContentProjectionSnapshotState =

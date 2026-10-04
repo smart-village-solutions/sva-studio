@@ -18,6 +18,7 @@ import {
   buildProjectionLogContext,
   countProjectedRowsForScopeWithClient,
   deleteMainserverProjectionRowByEntity,
+  invalidateOtherMainserverProjectionSnapshots,
   lockMainserverProjectionType,
   loadProjectionRefreshLeader,
   loadProjectionSyncStateSchemaMode,
@@ -375,6 +376,21 @@ export const refreshGenericItemSiblingProjections = async (
   const resolvedContentType = loadedItem.item
     ? resolveGenericItemProjectionContentType(loadedItem.item.genericType)
     : undefined;
+  const successorContentType = genericItemProjectionContentTypes.find(
+    (contentType) => contentType === resolvedContentType
+  );
+
+  if (input.operation === 'update' && successorContentType) {
+    const successorTarget: ContentProjectionSyncTarget = {
+      ...input.target,
+      contentType: successorContentType,
+    };
+    await withInstanceScopedDb(successorTarget.instanceId, async (client) => {
+      await lockMainserverProjectionType(client, successorTarget);
+      await invalidateOtherMainserverProjectionSnapshots(client, successorTarget);
+      await markMainserverGlobalMutationSucceeded(client, successorTarget);
+    });
+  }
 
   let deferred: true | undefined;
   for (const contentType of genericItemProjectionContentTypes) {

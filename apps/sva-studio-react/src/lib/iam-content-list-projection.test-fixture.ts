@@ -87,6 +87,11 @@ import {
   refreshProjectedContentsForMainserverMutation as refreshProjectedContentsForMainserverMutationBase,
   resetContentProjectionRuntimeStateForTests,
 } from './iam-content-list-projection.server';
+import { computeProjectionSyncStates } from './iam-content-list-projection-sync.server.js';
+
+export const computeProjectionSyncStatesForTest = (
+  ...args: Parameters<typeof computeProjectionSyncStates>
+): ReturnType<typeof computeProjectionSyncStates> => computeProjectionSyncStates(...args);
 
 export const listProjectedContentsForTest = (
   ...args: Parameters<typeof listProjectedContentsBase>
@@ -139,6 +144,7 @@ export const registerProjectionFixture = (): void => {
     fixture.projectionRows = [];
     fixture.syncStates = new Map();
     fixture.projectionInsertArgs = null;
+    fixture.projectionDeleteSql = null;
     fixture.projectionInsertSql = null;
     fixture.projectionInsertPayloadSizes = [];
     fixture.simulateConcurrentProjectionConflict = false;

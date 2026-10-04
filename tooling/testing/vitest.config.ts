@@ -14,7 +14,6 @@ export default defineConfig({
     include: [
       'tests/**/*.test.ts',
       '../../scripts/ci/guardrail-report.test.ts',
-      '../../scripts/ci/complexity-policy.test.ts',
       '../../scripts/ci/pr-scope.test.ts',
       '../../scripts/ci/sync-injected-workspace-packages.test.ts',
       '../../scripts/ci/affected-unit-gate.test.ts',

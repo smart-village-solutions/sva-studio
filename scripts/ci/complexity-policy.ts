@@ -223,6 +223,11 @@ export function assertComplexityPolicy(policy: unknown): asserts policy is Compl
   }
 
   for (const [findingId, trackedFinding] of Object.entries(policy.trackedFindings)) {
+    if (findingId.endsWith(':fileLines')) {
+      throw new TypeError(
+        `Invalid complexity policy: fileLines findings cannot be tracked (${findingId})`
+      );
+    }
     if (!isTrackedFinding(trackedFinding)) {
       throw new TypeError(`Invalid complexity policy: trackedFindings.${findingId} is invalid`);
     }

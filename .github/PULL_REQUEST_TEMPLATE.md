@@ -35,8 +35,8 @@ Keine Commit-Chronologie, sondern fachliche Zusammenfassung.
 -->
 
 - 
-- Studio-Changelog:
-  `docs/changelog/entries/pr-<nummer>.json` angelegt und Nutzertext geprüft
+- Studio-Changelog: Nutzerwirkung kurz benennen; falls vorhanden,
+  `docs/changelog/entries/pr-<nummer>.json` anlegen und Nutzertext prüfen
 
 ## Betroffene Projekte / Packages
 
@@ -124,7 +124,7 @@ Details:
 ## Checkliste
 
 - [ ] Ziel, Kontext und betroffene Projekte/Packages sind im PR klar beschrieben
-- [ ] Studio-Changelog-Datei unter `docs/changelog/entries/pr-<nummer>.json` ist vorhanden und für Nutzer verständlich formuliert
+- [ ] Studio-Changelog: Nutzerwirkung geprüft; bei erkennbarer Wirkung Eintrag unter `docs/changelog/entries/pr-<nummer>.json` angelegt und für Nutzer verständlich formuliert
 - [ ] Keine hardcodierten UI-Texte eingeführt; user-facing Texte laufen über das Übersetzungssystem
 - [ ] Logging im Server-Code nutzt keine `console.*`-Statements
 - [ ] Input-Validierung und PII-Schutz berücksichtigt

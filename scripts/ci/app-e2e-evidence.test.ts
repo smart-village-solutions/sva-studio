@@ -64,6 +64,16 @@ describe('App E2E evidence', () => {
     expect(evidence.evidenceClass).toBe('diagnostic');
   });
 
+  it('keeps an unverified hotfix-like dispatch diagnostic', () => {
+    const evidence = buildAppE2EEvidence({
+      ...canonicalInput,
+      event: 'workflow_dispatch',
+      ref: 'refs/heads/hotfix/studio-v0.10.5-fix',
+      branch: 'hotfix/studio-v0.10.5-fix',
+    });
+    expect(evidence.evidenceClass).toBe('diagnostic');
+  });
+
   it('keeps a deterministic test failure red after finalization', () => {
     const evidence = buildAppE2EEvidence({
       ...canonicalInput,

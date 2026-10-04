@@ -97,14 +97,12 @@ export const validateStudioChangelogPullRequest = ({
   changedFiles,
   expectedPrNumber,
   readFile,
-}: PullRequestValidationInput): PullRequestValidationResult => {
+}: PullRequestValidationInput): PullRequestValidationResult | null => {
   const entryFiles = [...new Set(changedFiles.filter((filePath) => STUDIO_CHANGELOG_ENTRY_PATTERN.test(filePath)))];
   const expectedEntryPath = `docs/changelog/entries/pr-${expectedPrNumber}.json`;
 
   if (entryFiles.length === 0) {
-    throw new Error(
-      `Der Pull Request muss eine Changelog-Datei unter ${expectedEntryPath} ändern oder anlegen.`
-    );
+    return null;
   }
 
   for (const entryPath of entryFiles) {
@@ -120,11 +118,7 @@ export const validateStudioChangelogPullRequest = ({
     }
   }
 
-  if (!entryFiles.includes(expectedEntryPath)) {
-    throw new Error(
-      `Der Pull Request muss die Changelog-Datei ${expectedEntryPath} enthalten. Ältere Einträge dürfen zusätzlich angepasst werden.`
-    );
-  }
+  if (!entryFiles.includes(expectedEntryPath)) return null;
 
   const entry = parseStudioChangelogEntryDocument(expectedEntryPath, readFile(expectedEntryPath));
   if (entry.prNumber !== expectedPrNumber) {
@@ -197,8 +191,8 @@ export const runStudioChangelogCheck = (args: readonly string[]): number => {
       JSON.stringify(
         {
           mode: 'pr',
-          validatedEntry: result.entryPath,
-          prNumber: result.entry.prNumber,
+          validatedEntry: result?.entryPath ?? null,
+          prNumber: result?.entry.prNumber ?? null,
         },
         null,
         2

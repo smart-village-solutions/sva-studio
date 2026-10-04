@@ -63,8 +63,11 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-063 Fleet-Reconcile-Ownership und begrenzte Retry-Semantik](../adr/ADR-063-fleet-reconcile-ownership-und-begrenzte-retry-semantik.md)
 - [ADR-064 Serverseitige Keycloak-Realm-Baseline](../adr/ADR-064-serverseitige-keycloak-realm-baseline.md)
 - [ADR-065 Mainserver-Projektionsabgleich über Scope-Grenzen](../adr/ADR-065-mainserver-projektionsabgleich-ueber-scope-grenzen.md)
+- [ADR-066 Versionierte Studio-Releases und Prod-basierte Hotfix-Linie (vorgeschlagen)](../adr/ADR-066-versionierte-studio-releases-und-hotfix-linie.md)
 
 ### Zuordnung zu arc42-Abschnitten
+
+- Abschnitt 04/07/09/10/11 (Release-Linien, Staging-Wechsel, Qualität und Risiko): ADR-066 (vorgeschlagen)
 
 - Abschnitt 03/05/08 (Kontext/Bausteine/Querschnitt): ADR-009, ADR-011
 - Abschnitt 08/10/11 (Querschnitt/Qualität/Risiken): ADR-010

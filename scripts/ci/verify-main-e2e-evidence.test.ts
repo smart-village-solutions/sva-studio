@@ -118,6 +118,7 @@ describe('canonical Main App E2E preflight', () => {
     ['red', [{ ...run, conclusion: 'failure' }], 'PROMOTE_MAIN_E2E_REJECTED'],
     ['cancelled', [{ ...run, conclusion: 'cancelled' }], 'PROMOTE_MAIN_E2E_REJECTED'],
     ['manual', [{ ...run, event: 'workflow_dispatch' }], 'PROMOTE_MAIN_E2E_REJECTED'],
+    ['unverified hotfix dispatch', [{ ...run, event: 'workflow_dispatch', head_branch: 'hotfix/studio-v0.10.5-fix' }], 'PROMOTE_MAIN_E2E_REJECTED'],
     ['nightly', [{ ...run, event: 'schedule' }], 'PROMOTE_MAIN_E2E_REJECTED'],
     ['PR', [{ ...run, event: 'pull_request' }], 'PROMOTE_MAIN_E2E_REJECTED'],
     ['foreign branch', [{ ...run, head_branch: 'feature/example' }], 'PROMOTE_MAIN_E2E_REJECTED'],

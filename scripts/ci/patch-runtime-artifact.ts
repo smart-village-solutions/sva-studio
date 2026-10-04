@@ -1,5 +1,6 @@
 import { cp, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const appDirArg = process.argv[2] ?? 'apps/sva-studio-react';
 const appDir = path.resolve(appDirArg);
@@ -23,6 +24,34 @@ const nitroSsrDirectImportPath = './_ssr/ssr.mjs';
 const nitroSsrServiceImportPath = './_libs/_.mjs';
 const nitroSsrRendererImportPath = './_chunks/ssr-renderer.mjs';
 const nitroLazyServiceImportPattern = /\["ssr"\]: lazyService\(\(\) => import\("(\.\/_libs\/[^"]+\.mjs)"\)\)/;
+const reactShimMarker = 'use-sync-external-store-shim/with-selector.production.js';
+const externalReactRequire = '__require("react")';
+
+export const rewriteReactShimRequires = (source: string): string => {
+  if (!source.includes(reactShimMarker)) return source;
+
+  const count = source.split(externalReactRequire).length - 1;
+  if (count !== 2 || !/^import \{[^}]*\bas require_react\b[^}]*\} from /m.test(source)) {
+    throw new Error('SSR-React-Shim-Vertrag geaendert: gebuendelte React-Referenz oder zwei externe Requires fehlen.');
+  }
+
+  return source.replaceAll(externalReactRequire, 'require_react()');
+};
+
+const patchReactShimRequires = async () => {
+  const files = (await readdir(outputSsrDir)).filter((fileName) => fileName.endsWith('.mjs'));
+  let patchedChunks = 0;
+  for (const fileName of files) {
+    const filePath = path.join(outputSsrDir, fileName);
+    const source = await readFile(filePath, 'utf8');
+    if (!source.includes(reactShimMarker)) continue;
+    await writeFile(filePath, rewriteReactShimRequires(source), 'utf8');
+    patchedChunks += 1;
+  }
+  if (patchedChunks !== 1) {
+    throw new Error(`SSR-React-Shim-Vertrag geaendert: ${patchedChunks} Chunks statt einem gefunden.`);
+  }
+};
 
 const pathExists = async (filePath: string) => {
   try {
@@ -140,6 +169,7 @@ const main = async () => {
   if (nitroSsrEntryExists && (usesDirectNitroSsrEntry || usesNitroSsrServiceBridge || usesNitroLazyServiceEntry)) {
     const generatedNitroSsrEntrySource = await readFile(generatedNitroSsrEntryPath, 'utf8');
     assertServerEntryContract(generatedNitroSsrEntrySource, generatedNitroSsrEntryPath);
+    await patchReactShimRequires();
 
     process.stdout.write(
       `${JSON.stringify(
@@ -205,8 +235,10 @@ const main = async () => {
   );
 };
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error);
-  process.stderr.write(`${message}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  });
+}

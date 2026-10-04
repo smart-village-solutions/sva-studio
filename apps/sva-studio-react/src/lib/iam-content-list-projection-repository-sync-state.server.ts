@@ -14,6 +14,13 @@ import {
   type ProjectionSyncStateSchemaMode,
   withProjectionSchemaModeRetry,
 } from './iam-content-list-projection-repository-schema.server.js';
+import {
+  legacySnapshotInvalidationSql,
+  legacySyncStateSelectSql,
+  reserveProjectionGenerationSql,
+  scopedSnapshotInvalidationSql,
+  scopedSyncStateSelectSql,
+} from './iam-content-list-projection-repository-sql.server.js';
 
 const globalMutationScopeKey = '__mainserver_global_mutation__';
 
@@ -21,15 +28,11 @@ const reserveProjectionGeneration = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget
 ): Promise<string> => {
-  const result = await client.query<{ generation: string }>(
-    `INSERT INTO iam.content_list_projection_sync_state (
-       instance_id, source_system, content_type, sync_scope_key, generation
-     ) VALUES ($1, 'mainserver', $2, $3, 1)
-     ON CONFLICT (instance_id, source_system, content_type, sync_scope_key)
-     DO UPDATE SET generation = iam.content_list_projection_sync_state.generation + 1
-     RETURNING generation::text;`,
-    [target.instanceId, target.contentType, globalMutationScopeKey]
-  );
+  const result = await client.query<{ generation: string }>(reserveProjectionGenerationSql, [
+    target.instanceId,
+    target.contentType,
+    globalMutationScopeKey,
+  ]);
   const generation = result.rows[0]?.generation;
   if (!generation) throw new Error('mainserver_projection_generation_unavailable');
   return generation;
@@ -107,14 +110,7 @@ export const invalidateOtherMainserverProjectionSnapshots = async (
   await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
     const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
     await client.query(
-      schemaMode === 'scoped'
-        ? `UPDATE iam.content_list_projection_sync_state
-           SET snapshot_invalidated = TRUE, updated_at = NOW()
-           WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
-             AND sync_scope_key <> $3 AND sync_scope_key <> $4;`
-        : `UPDATE iam.content_list_projection_sync_state
-           SET snapshot_invalidated = TRUE, updated_at = NOW()
-           WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2;`,
+      schemaMode === 'scoped' ? scopedSnapshotInvalidationSql : legacySnapshotInvalidationSql,
       schemaMode === 'scoped'
         ? [
             target.instanceId,
@@ -157,59 +153,15 @@ export const loadProjectionSyncState = async (
     const result = await withProjectionSchemaModeRetry(target, 'sync-state', async () => {
       const schemaMode = await loadProjectionSyncStateSchemaMode(client, target.instanceId);
       return schemaMode === 'scoped'
-        ? client.query<ProjectionSyncStateRow>(
-            `
-SELECT
-  sync_scope_key,
-  last_started_at::text,
-  last_succeeded_at::text,
-  last_failed_at::text,
-  last_error_code,
-  last_error_message,
-  projected_count,
-  snapshot_state,
-  refresh_run_id::text,
-  refresh_phase,
-  completed_page,
-  available_count,
-  is_total_final,
-  skipped_invalid_count,
-  snapshot_invalidated
-FROM iam.content_list_projection_sync_state
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
-  AND content_type = $2
-  AND sync_scope_key = $3
-LIMIT 1;
-            `,
-            [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
-          )
-        : client.query<ProjectionSyncStateRow>(
-            `
-SELECT
-  content_type AS sync_scope_key,
-  last_started_at::text,
-  last_succeeded_at::text,
-  last_failed_at::text,
-  last_error_code,
-  last_error_message,
-  projected_count,
-  snapshot_state,
-  refresh_run_id::text,
-  refresh_phase,
-  completed_page,
-  available_count,
-  is_total_final,
-  skipped_invalid_count,
-  snapshot_invalidated
-FROM iam.content_list_projection_sync_state
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
-  AND content_type = $2
-LIMIT 1;
-            `,
-            [target.instanceId, target.contentType]
-          );
+        ? client.query<ProjectionSyncStateRow>(scopedSyncStateSelectSql, [
+            target.instanceId,
+            target.contentType,
+            buildMainserverSyncScopeKey(target),
+          ])
+        : client.query<ProjectionSyncStateRow>(legacySyncStateSelectSql, [
+            target.instanceId,
+            target.contentType,
+          ]);
     });
 
     return result.rows[0] ?? null;
@@ -233,8 +185,7 @@ export const countProjectedRowsForScopeWithClient = async (
           `
 SELECT COUNT(*)::int AS total
 FROM iam.content_list_projection
-WHERE instance_id = $1
-  AND source_system = 'mainserver'
+WHERE instance_id = $1 AND source_system = 'mainserver'
   AND content_type = $2
   AND projection_scope_key = $3;
           `,
@@ -301,8 +252,7 @@ DO UPDATE SET
   snapshot_state = CASE WHEN iam.content_list_projection_sync_state.last_succeeded_at IS NULL THEN 'partial_running' ELSE 'complete_refreshing' END,
   refresh_run_id = EXCLUDED.refresh_run_id,
   refresh_phase = EXCLUDED.refresh_phase,
-  completed_page = 0,
-  skipped_invalid_count = 0,
+  completed_page = 0, skipped_invalid_count = 0,
   is_total_final = FALSE,
   updated_at = NOW();
         `,

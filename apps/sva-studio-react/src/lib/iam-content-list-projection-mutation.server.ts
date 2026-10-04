@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   deferMainserverMutationProjection,
   recordSuccessfulExternalContentDeletion,
@@ -266,9 +268,7 @@ const refreshGenericItemProjectionSnapshots = async (
       hasIncompleteRefresh = true;
     }
   }
-  if (hasIncompleteRefresh) {
-    throw new Error('content_projection_refresh_incomplete');
-  }
+  if (hasIncompleteRefresh) throw new Error('content_projection_refresh_incomplete');
 };
 
 type GenericItemSiblingRefreshInput = Readonly<{
@@ -373,18 +373,11 @@ export const refreshGenericItemSiblingProjections = async (
     await refreshGenericItemProjectionSnapshots(input.target);
     return undefined;
   }
-  const resolvedContentType = loadedItem.item
-    ? resolveGenericItemProjectionContentType(loadedItem.item.genericType)
-    : undefined;
-  const successorContentType = genericItemProjectionContentTypes.find(
-    (contentType) => contentType === resolvedContentType
-  );
-
-  if (input.operation === 'update' && successorContentType) {
-    const successorTarget: ContentProjectionSyncTarget = {
-      ...input.target,
-      contentType: successorContentType,
-    };
+  const resolvedContentType =
+    loadedItem.item && resolveGenericItemProjectionContentType(loadedItem.item.genericType);
+  const successor = genericItemProjectionContentTypes.find((type) => type === resolvedContentType);
+  if (input.operation === 'update' && successor) {
+    const successorTarget = { ...input.target, contentType: successor };
     await withInstanceScopedDb(successorTarget.instanceId, async (client) => {
       await lockMainserverProjectionType(client, successorTarget);
       await invalidateOtherMainserverProjectionSnapshots(client, successorTarget);
@@ -404,5 +397,3 @@ export const refreshGenericItemSiblingProjections = async (
   }
   return deferred;
 };
-
-import { randomUUID } from 'node:crypto';

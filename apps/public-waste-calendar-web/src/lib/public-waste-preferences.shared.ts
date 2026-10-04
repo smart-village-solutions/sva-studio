@@ -1,6 +1,6 @@
 export const PUBLIC_WASTE_PREFERENCE_COOKIE = 'sva_public_waste_location';
-export const PUBLIC_WASTE_PREFERENCE_MAX_AGE_SECONDS = 31_536_000;
-export const PUBLIC_WASTE_PREFERENCE_SAME_SITE = 'Lax';
+const PUBLIC_WASTE_PREFERENCE_MAX_AGE_SECONDS = 31_536_000;
+const PUBLIC_WASTE_PREFERENCE_SAME_SITE = 'Lax';
 
 export const readPublicWasteCookieValue = (cookieHeader: string, name: string): string | null => {
   const cookieName = `${name}=`;

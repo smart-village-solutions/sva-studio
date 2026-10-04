@@ -157,6 +157,7 @@ test('opens, creates, updates and deletes an FAQ across its editor tabs', async 
             ? {
                 data: {
                   ...faq,
+                  deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 },
                   dataProvider: { id: 'provider-user', name: 'Editor One' },
                 },
                 meta: { access: { 'content.publish': true } },

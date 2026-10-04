@@ -111,6 +111,7 @@ export const fulfillContentRoute = async (route: Route, newsItems: NewsRecord[])
           ? {
               data: {
                 ...item,
+                deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 },
                 dataProvider: item.dataProvider ?? {
                   id: 'provider-source',
                   name: 'Redaktion Musterhausen',

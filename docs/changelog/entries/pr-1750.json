@@ -1,0 +1,4 @@
+{
+  "prNumber": 1750,
+  "body": "Der automatisierte Browser-Test für das Verschieben eines Abfalltour-Termins in einem neuen Tab wartet jetzt auf das vollständig geladene Formular. Dadurch wird eine langsame Initialisierung nicht mehr fälschlich als Funktionsfehler gewertet."
+}

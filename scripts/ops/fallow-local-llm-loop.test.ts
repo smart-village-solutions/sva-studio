@@ -105,6 +105,9 @@ describe('external export references', () => {
 
       writeFileSync(join(dir, consumer), "const dynamicName = 'second';\n");
       expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "import { first } from '@app/preferences';\nconsole.log(first);\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

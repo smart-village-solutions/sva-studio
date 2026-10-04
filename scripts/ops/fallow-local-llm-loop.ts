@@ -132,7 +132,8 @@ export function externalSymbolReferences(cwd: string, group: Group): string[] {
     const visit = (node: ts.Node): void => {
       if (ts.isIdentifier(node) && names.has(node.text)) {
         const symbol = checker.getSymbolAtLocation(node);
-        if (!symbol || unalias(symbol) === exports.get(node.text)) referenced = true;
+        const resolved = symbol && unalias(symbol);
+        if (!resolved?.declarations?.length || resolved === exports.get(node.text)) referenced = true;
       } else if (ts.isStringLiteralLike(node) && names.has(node.text)) {
         referenced = true;
       }

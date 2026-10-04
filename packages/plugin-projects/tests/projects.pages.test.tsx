@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '../src/projects.pages.js';
 
@@ -145,19 +145,7 @@ const fillRequiredFields = () => {
   });
 };
 
-const mockDeletionImpact = () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockImplementation(async () =>
-      Response.json({
-        data: { deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 } },
-      })
-    )
-  );
-};
-
 describe('projects pages', () => {
-  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
     vi.clearAllMocks();
     state.params = {};
@@ -258,7 +246,6 @@ describe('projects pages', () => {
   });
 
   it('loads, reorders, updates and soft-deletes an existing project', async () => {
-    mockDeletionImpact();
     state.params = { id: 'project-1' };
     state.get.mockResolvedValue(project);
     state.update.mockResolvedValue(project);
@@ -281,11 +268,6 @@ describe('projects pages', () => {
     ).toEqual(['Baustelle', 'Brücke']);
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'actions.delete' })
-      ).toHaveProperty('disabled', false)
-    );
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     await waitFor(() => expect(state.delete).toHaveBeenCalledWith('project-1', 'user'));
     expect(state.navigate).toHaveBeenCalledWith(
@@ -596,7 +578,6 @@ describe('projects pages', () => {
   });
 
   it('shows load, save, media and delete failures without navigating', async () => {
-    mockDeletionImpact();
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     state.params = { id: 'project-1' };
     state.get.mockRejectedValueOnce(new Error('offline'));
@@ -621,11 +602,6 @@ describe('projects pages', () => {
     render(<ProjectsEditPage />);
     await screen.findByDisplayValue('Brückenbau');
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('alertdialog')).getByRole('button', { name: 'actions.delete' })
-      ).toHaveProperty('disabled', false)
-    );
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     await screen.findByText('messages.deleteError');
     expect(state.navigate).not.toHaveBeenCalled();

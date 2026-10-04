@@ -59,14 +59,8 @@ export const updateCockpitCard = (
   mutationOptions
     ? client.update(id, input, actingPrincipalType, mutationOptions)
     : client.update(id, input, actingPrincipalType);
-export const deleteCockpitCard = (
-  id: string,
-  actingPrincipalType: MainserverActingPrincipalType,
-  detachLinkedContent = false
-) =>
-  detachLinkedContent
-    ? client.remove(id, actingPrincipalType, true)
-    : client.remove(id, actingPrincipalType);
+export const deleteCockpitCard = (id: string, actingPrincipalType: MainserverActingPrincipalType) =>
+  client.remove(id, actingPrincipalType);
 
 export const listCockpitCardCategories = async (): Promise<
   readonly CockpitCardCategoryOption[]

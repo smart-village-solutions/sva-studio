@@ -4,7 +4,6 @@ import {
   buildMainserverListUrl,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
-  loadMainserverDeletionImpact,
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-client.js';
@@ -43,31 +42,6 @@ describe('mainserver-client', () => {
       'content-type': 'application/json',
       'x-requested-with': 'XMLHttpRequest',
     });
-  });
-
-  it('loads deletion impact with the acting principal', async () => {
-    const originalFetch = globalThis.fetch;
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({
-        data: { deletionImpact: { eventRecordsCount: 1, newsItemsCount: 0, genericItemsCount: 2 } },
-      })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    try {
-      await expect(
-        loadMainserverDeletionImpact({
-          basePath: '/api/v1/mainserver/poi',
-          contentId: 'poi/1',
-          actingPrincipalType: 'organization',
-        })
-      ).resolves.toEqual({ eventRecordsCount: 1, newsItemsCount: 0, genericItemsCount: 2 });
-      expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/mainserver/poi/poi%2F1');
-      expect(readHeaders(fetchMock.mock.calls[0]?.[1]?.headers)).toMatchObject({
-        'x-sva-acting-principal-type': 'organization',
-      });
-    } finally {
-      vi.stubGlobal('fetch', originalFetch);
-    }
   });
 
   it('uses deterministic fallback errors when fetch is unavailable or error envelopes are missing', async () => {
@@ -272,9 +246,7 @@ describe('mainserver-client', () => {
 
     await client.get('news-1');
     await client.update('news-1', { title: 'Neu' }, 'organization');
-    await client.remove('news-1', 'organization', true);
-
-    expect(fetchMock.mock.calls[2]?.[0]).toBe('/items/news-1?detachLinkedContent=true');
+    await client.remove('news-1', 'organization');
 
     expect(readHeaders(fetchMock.mock.calls[1]?.[1]?.headers)).toMatchObject({
       'x-sva-context-binding': 'v1.loaded-context',

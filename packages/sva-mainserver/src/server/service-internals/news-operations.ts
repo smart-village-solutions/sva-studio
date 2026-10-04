@@ -132,10 +132,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
       config
     );
 
-    return {
-      ...mapOptionalNewsItem(response.newsItem),
-      deletionImpact: response.contentDeletionImpact ?? undefined,
-    };
+    return mapOptionalNewsItem(response.newsItem);
   },
 
   writeNewsWithConfig: async (
@@ -162,10 +159,7 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
   },
 
   destroyNewsWithConfig: async (
-    input: SvaMainserverConnectionInput & {
-      readonly newsId: string;
-      readonly detachLinkedContent?: boolean;
-    },
+    input: SvaMainserverConnectionInput & { readonly newsId: string },
     config: SvaMainserverInstanceConfig
   ): Promise<{ readonly id: string }> => {
     const response = await executeGraphqlWithConfig<SvaMainserverDestroyNewsMutation>(
@@ -173,23 +167,16 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
         ...input,
         document: svaMainserverDestroyNewsDocument,
         operationName: 'SvaMainserverDestroyNews',
-        variables: {
-          id: input.newsId,
-          recordType: 'NewsItem',
-          ...(input.detachLinkedContent ? { detachLinkedContent: true } : {}),
-        },
+        variables: { id: input.newsId, recordType: 'NewsItem' },
       },
       config
     );
 
     if (!response.destroyRecord || (response.destroyRecord.statusCode ?? 200) >= 400) {
       throw toSvaMainserverError({
-        code:
-          response.destroyRecord?.statusCode === 409
-            ? 'linked_content_confirmation_required'
-            : 'invalid_response',
+        code: 'invalid_response',
         message: 'SVA-Mainserver konnte den News-Eintrag nicht löschen.',
-        statusCode: response.destroyRecord?.statusCode === 409 ? 409 : 502,
+        statusCode: 502,
       });
     }
 

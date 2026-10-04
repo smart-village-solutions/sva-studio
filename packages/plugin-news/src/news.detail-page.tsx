@@ -214,8 +214,6 @@ export const NewsDetailPage = ({
     <NewsDetailPageView
       {...{
         mode,
-        contentId,
-        actingPrincipalType,
         pt,
         canSave,
         formId,

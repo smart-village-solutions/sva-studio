@@ -1116,32 +1116,19 @@ describe('mainserver content route contracts', () => {
     state.deleteSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', deleted: true });
 
     const eventResponse = await dispatchSvaMainserverEventsRequest(
-      createRequest(
-        'https://studio.test/api/v1/mainserver/events/event-1?detachLinkedContent=true',
-        { method: 'DELETE' }
-      )
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', { method: 'DELETE' })
     );
     const poiResponse = await dispatchSvaMainserverPoiRequest(
-      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1?detachLinkedContent=true', {
-        method: 'DELETE',
-      })
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', { method: 'DELETE' })
     );
 
     expect(eventResponse?.status).toBe(200);
     expect(poiResponse?.status).toBe(200);
     expect(state.deleteSvaMainserverEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventId: 'event-1',
-        instanceId: 'de-musterhausen',
-        detachLinkedContent: true,
-      })
+      expect.objectContaining({ eventId: 'event-1', instanceId: 'de-musterhausen' })
     );
     expect(state.deleteSvaMainserverPoi).toHaveBeenCalledWith(
-      expect.objectContaining({
-        poiId: 'poi-1',
-        instanceId: 'de-musterhausen',
-        detachLinkedContent: true,
-      })
+      expect.objectContaining({ poiId: 'poi-1', instanceId: 'de-musterhausen' })
     );
   });
 

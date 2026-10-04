@@ -61,12 +61,8 @@ export const updatePoi = async (
 
 export const deletePoi = async (
   contentId: string,
-  actingPrincipalType: MainserverActingPrincipalType,
-  detachLinkedContent = false
-): Promise<void> =>
-  detachLinkedContent
-    ? poiClient.remove(contentId, actingPrincipalType, true)
-    : poiClient.remove(contentId, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<void> => poiClient.remove(contentId, actingPrincipalType);
 
 export const listPoiCategories = async (): Promise<readonly PoiCategoryOption[]> => {
   const response = await requestMainserverJson<

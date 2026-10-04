@@ -296,7 +296,6 @@ describe('ContentListPage', () => {
 
   afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
     resetMergedI18nResources();
     resetTranslatorCache();
   });
@@ -317,19 +316,6 @@ describe('ContentListPage', () => {
     deleteContents: vi.fn(),
     ...overrides,
   });
-
-  const mockDeletionImpact = (genericItemsCount = 0) => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        Response.json({
-          data: {
-            deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount },
-          },
-        })
-      )
-    );
-  };
 
   const createPendingAccessResult = (isLoading = true) => ({
     access: null,
@@ -727,7 +713,6 @@ describe('ContentListPage', () => {
   });
 
   it('routes faq deletion through the faq client', async () => {
-    mockDeletionImpact(1);
     const refetch = vi.fn(async () => undefined);
 
     useContentsMock.mockReturnValue(
@@ -775,11 +760,10 @@ describe('ContentListPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
-    await within(dialog).findByText('Dieser Inhalt ist verknüpft mit:');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
-      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user', true);
+      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
@@ -787,7 +771,6 @@ describe('ContentListPage', () => {
   });
 
   it('reports a refresh warning after a successful row deletion', async () => {
-    mockDeletionImpact();
     useContentsMock.mockReturnValue(
       createContentsApiResult({
         contents: [
@@ -819,12 +802,6 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
-    await waitFor(() =>
-      expect(within(dialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
-        'disabled',
-        false
-      )
-    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
@@ -838,7 +815,6 @@ describe('ContentListPage', () => {
   });
 
   it('keeps the row dialog open with a persistent error when deletion fails', async () => {
-    mockDeletionImpact();
     useContentsMock.mockReturnValue(
       createContentsApiResult({
         contents: [
@@ -869,12 +845,6 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
     const dialog = screen.getByRole('alertdialog', { name: 'Inhalt endgültig löschen?' });
-    await waitFor(() =>
-      expect(within(dialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
-        'disabled',
-        false
-      )
-    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     expect((await within(dialog).findByRole('alert')).textContent).toContain(
@@ -1685,7 +1655,7 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Inhalte: Alle Zeilen auswählen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
-    const dialog = screen.getByRole('alertdialog', {
+    let dialog = screen.getByRole('alertdialog', {
       name: 'Ausgewählte Inhalte endgültig löschen?',
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));

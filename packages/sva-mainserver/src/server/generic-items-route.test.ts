@@ -455,9 +455,9 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     expect(state.changeSvaMainserverGenericItemVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ genericItemId: 'card-1', visible: false })
     );
-    expect(
-      state.changeSvaMainserverGenericItemVisibility.mock.invocationCallOrder[0]
-    ).toBeGreaterThan(state.updateSvaMainserverGenericItem.mock.invocationCallOrder[0]!);
+    expect(state.changeSvaMainserverGenericItemVisibility.mock.invocationCallOrder[0]).toBeGreaterThan(
+      state.updateSvaMainserverGenericItem.mock.invocationCallOrder[0]!
+    );
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({ data: { visible: false } });
   });
@@ -924,17 +924,14 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     state.deleteSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1', deleted: true });
 
     const response = await dispatchSvaMainserverGenericItemsRequest(
-      createRequest(
-        'https://studio.test/api/v1/mainserver/generic-items/generic-1?detachLinkedContent=true',
-        {
-          method: 'DELETE',
-        }
-      )
+      createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', {
+        method: 'DELETE',
+      })
     );
 
     expect(response?.status).toBe(200);
     expect(state.deleteSvaMainserverGenericItem).toHaveBeenCalledWith(
-      expect.objectContaining({ genericItemId: 'generic-1', detachLinkedContent: true })
+      expect.objectContaining({ genericItemId: 'generic-1' })
     );
   });
 

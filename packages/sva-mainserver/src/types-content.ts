@@ -146,11 +146,6 @@ export type SvaMainserverAnnouncementSummary = {
 };
 
 export type SvaMainserverNewsItem = {
-  readonly deletionImpact?: {
-    readonly eventRecordsCount: number;
-    readonly newsItemsCount: number;
-    readonly genericItemsCount: number;
-  };
   readonly id: string;
   readonly title: string;
   readonly contentType: 'news.article';

@@ -85,13 +85,7 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
         headers: project && !deleted ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
         body: JSON.stringify(
           project && !deleted
-            ? {
-                data: {
-                  ...project,
-                  deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 },
-                  dataProvider: { id: 'provider-user', name: 'Editor One' },
-                },
-              }
+            ? { data: { ...project, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
             : { error: 'not_found' }
         ),
       });

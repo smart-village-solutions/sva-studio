@@ -91,17 +91,6 @@ vi.mock('../src/news.api.js', async () => {
   };
 });
 
-const mockDeletionImpact = () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockImplementation(async () =>
-      Response.json({
-        data: { deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 } },
-      })
-    )
-  );
-};
-
 describe('NewsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -272,7 +261,6 @@ describe('NewsDetailPage', () => {
   afterEach(() => {
     cleanup();
     resetSessionAccessSnapshot();
-    vi.unstubAllGlobals();
   });
 
   it('renders the same save action in the page header and after the editor', async () => {
@@ -409,7 +397,6 @@ describe('NewsDetailPage', () => {
   });
 
   it('deletes a news item through the shared dialog and returns contextual feedback', async () => {
-    mockDeletionImpact();
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
       data: {
         id: '9082',
@@ -437,12 +424,6 @@ describe('NewsDetailPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Löschen' }));
     const dialog = screen.getByRole('alertdialog');
     expect(within(dialog).getByText(/Sommerfest/)).toBeTruthy();
-    await waitFor(() =>
-      expect(within(dialog).getByRole('button', { name: 'Löschen' })).toHaveProperty(
-        'disabled',
-        false
-      )
-    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {

@@ -1,4 +1,0 @@
-{
-  "prNumber": 1748,
-  "body": "Die automatisierten Browser-Tests für das Löschen von Orten, Veranstaltungen, Nachrichten, FAQ, Kacheln und Projekten berücksichtigen jetzt die Vorschau verknüpfter Inhalte. Damit prüfen sie den seit PR #1741 geltenden Bestätigungsablauf wieder vollständig."
-}

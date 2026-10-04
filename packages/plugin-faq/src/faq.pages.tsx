@@ -198,9 +198,9 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
       formId={formId}
       loadedItem={loadedItem}
       mode={mode}
-      onDelete={async (detachLinkedContent) => {
+      onDelete={async () => {
         if (!canDelete) return;
-        if (await onDelete(detachLinkedContent)) setDeleteDialogOpen(false);
+        if (await onDelete()) setDeleteDialogOpen(false);
       }}
       onSubmit={(event) => {
         if (!canSave) {

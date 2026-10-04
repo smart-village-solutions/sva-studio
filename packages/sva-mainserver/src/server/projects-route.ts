@@ -7,7 +7,7 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { errorJson, isResponse, parseDetachLinkedContent } from './content-route-core.js';
+import { errorJson, isResponse } from './content-route-core.js';
 import { withMainserverContextBinding } from './content-route-context.js';
 import { isUnexpectedMainserverError, SvaMainserverError } from './errors.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
@@ -197,8 +197,6 @@ const deleteProject = async (
   ctx: AuthenticatedRequestContext,
   contentId: string
 ): Promise<Response> => {
-  const detachLinkedContent = parseDetachLinkedContent(request);
-  if (isResponse(detachLinkedContent)) return detachLinkedContent;
   const csrf = requireProjectCsrf(request);
   if (csrf) return csrf;
   const instanceId = ctx.user.instanceId;
@@ -218,8 +216,11 @@ const deleteProject = async (
   const actor = await resolveMainserverMutationActor({ request, ctx, authorizedActor });
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
-    instanceId, actor.keycloakSubject, contentId,
-    actor.activeOrganizationId, localContext
+    instanceId,
+    actor.keycloakSubject,
+    contentId,
+    actor.activeOrganizationId,
+    localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
   try {
@@ -245,7 +246,6 @@ const deleteProject = async (
         await deleteSvaMainserverGenericItem({
           ...actor,
           genericItemId: freshItem.id,
-          detachLinkedContent,
         });
         await finalizeMainserverMutation({
           actor,

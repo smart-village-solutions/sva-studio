@@ -164,14 +164,12 @@ export function useCockpitCardDelete(
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
-  const deleteCard = async (detachLinkedContent = false) => {
+  const deleteCard = async () => {
     if (!contentId || deletePending) return;
     setDeleteError(null);
     setDeletePending(true);
     try {
-      await (detachLinkedContent
-        ? deleteCockpitCard(contentId, actingPrincipalType, true)
-        : deleteCockpitCard(contentId, actingPrincipalType));
+      await deleteCockpitCard(contentId, actingPrincipalType);
     } catch {
       setDeleteError(pt('messages.deleteError'));
       setDeletePending(false);

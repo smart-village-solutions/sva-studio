@@ -19,13 +19,6 @@ export const errorJson = (
   details?: unknown
 ): Response => json({ error, message, ...(details === undefined ? {} : { details }) }, status);
 
-export const parseDetachLinkedContent = (request: Request): boolean | Response => {
-  const values = new URL(request.url).searchParams.getAll('detachLinkedContent');
-  if (values.length === 0) return false;
-  if (values.length === 1 && values[0] === 'true') return true;
-  return errorJson(400, 'invalid_request', 'Ungültige Löschbestätigung.');
-};
-
 const decodePathSegment = (value: string): string | null => {
   try {
     return decodeURIComponent(value);

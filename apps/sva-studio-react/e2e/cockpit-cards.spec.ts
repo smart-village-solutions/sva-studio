@@ -114,13 +114,7 @@ test('persists Kachel text and media across create, update and reload before del
         headers: card && !deleted ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
         body: JSON.stringify(
           card && !deleted
-            ? {
-                data: {
-                  ...card,
-                  deletionImpact: { eventRecordsCount: 0, newsItemsCount: 0, genericItemsCount: 0 },
-                  dataProvider: { id: 'provider-user', name: 'Editor One' },
-                },
-              }
+            ? { data: { ...card, dataProvider: { id: 'provider-user', name: 'Editor One' } } }
             : { error: 'not_found' }
         ),
       });

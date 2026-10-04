@@ -290,6 +290,7 @@ describe('mainserver content ownership API projection follow-up', () => {
     expect(state.refreshProjection).toHaveBeenCalledWith(
       expect.objectContaining({
         mutationRef: 'operation-previous',
+        preserveExistingContentState: true,
         ownershipPrincipal: {
           type: 'organization',
           id: '22222222-2222-4222-8222-222222222222',

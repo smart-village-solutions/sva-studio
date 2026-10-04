@@ -357,9 +357,127 @@ describe('targeted content projection mutations', () => {
       expect.objectContaining({
         actorAccountId: 'account-source',
         authorDisplayMode: 'user',
+        authorDisplayName: 'mainserver',
         mutationRef: 'transfer-1',
+        ownershipPrincipal: { type: 'account', id: 'account-target' },
       })
     );
+  });
+
+  it('passes an organization transfer target to the content core audit', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'organization',
+      credentials: { apiKey: 'key', apiSecret: 'secret' },
+      credentialFingerprint: 'b'.repeat(64),
+    });
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-transfer-organization-1',
+      name: 'Übertragener POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      dataProvider: { id: 'provider-target', name: 'Zielorganisation' },
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      dataProviderId: 'provider-target',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'organization',
+      authorizationMode: 'exact',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'b'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-target',
+      actorAccountId: 'account-source',
+      actorDisplayName: 'Ausführende Person',
+      mutationRef: 'transfer-organization-1',
+      organizationId: 'org-target',
+      ownershipPrincipal: { type: 'organization', id: 'org-target' },
+      operation: 'update',
+      entityId: 'poi-transfer-organization-1',
+    });
+
+    expect(fixture.projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-target',
+        owner_organization_id: 'org-target',
+        source_entity_id: 'poi-transfer-organization-1',
+      }),
+    ]);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: 'account-source',
+        ownershipPrincipal: { type: 'organization', id: 'org-target' },
+        organizationId: 'org-target',
+        authorDisplayMode: 'organization',
+      })
+    );
+  });
+
+  it('does not write a transfer when the refreshed provider owner differs from the target', async () => {
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'organization',
+      credentials: { apiKey: 'key', apiSecret: 'secret' },
+      credentialFingerprint: 'b'.repeat(64),
+    });
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-transfer-organization-1',
+      name: 'Erneut übertragener POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      dataProvider: { id: 'provider-other', name: 'Andere Organisation' },
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      dataProviderId: 'provider-target',
+    });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'organization',
+      authorizationMode: 'exact',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'b'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-target',
+      actorAccountId: 'account-source',
+      actorDisplayName: 'Ausführende Person',
+      mutationRef: 'transfer-organization-1',
+      organizationId: 'org-target',
+      ownershipPrincipal: { type: 'organization', id: 'org-target' },
+      operation: 'update',
+      entityId: 'poi-transfer-organization-1',
+    })).rejects.toMatchObject({ code: 'content_transfer_target_ownership_unverified' });
+    expect(fixture.projectionRows).toEqual([]);
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'transfer-organization-1',
+    });
   });
 
   it('ignores direct mainserver mutation refreshes without an actor account id', async () => {
@@ -436,6 +554,29 @@ describe('targeted content projection mutations', () => {
     ).resolves.toBeUndefined();
 
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+  });
+
+  it('does not close a confirmed transfer when a targeted follow-up cannot be deferred', async () => {
+    const syncScopeKey = 'de-musterhausen::account-1::org-1::organization::news.article';
+    fixture.syncStates.set(`news.article::${syncScopeKey}`, {
+      sync_scope_key: syncScopeKey, last_started_at: '2026-09-13T12:00:00.000Z',
+      last_succeeded_at: null, last_failed_at: new Date().toISOString(),
+      last_error_code: 'mainserver_credentials_stale',
+      last_error_message: 'credentials not ready', projected_count: 0,
+    });
+    state.deferMainserverMutationProjection.mockResolvedValue(false);
+    state.loadMainserverMutationJournal.mockResolvedValue({ completedSteps: [] });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'news.article', instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1', actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'news-transfer-not-deferred', organizationId: 'org-1',
+      ownershipPrincipal: { type: 'organization', id: 'org-1' },
+      actingPrincipalType: 'organization', authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64), operation: 'update', entityId: 'news-1',
+    })).rejects.toThrow('content_transfer_projection_reconciliation_unavailable');
     expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
   });
 

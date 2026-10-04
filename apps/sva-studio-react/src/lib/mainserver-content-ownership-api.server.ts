@@ -71,6 +71,7 @@ const refreshTransferredOwnershipProjection = async (input: {
   readonly operationExternalId: string;
   readonly expectedDataProviderId: string;
   readonly principal: RecoverableMainserverOwnershipTransfer['targetPrincipal'];
+  readonly preserveExistingContentState?: boolean;
 }): Promise<void> => {
   const target = await resolveMainserverOwnershipTarget({
     instanceId: input.followUp.instanceId,
@@ -89,6 +90,7 @@ const refreshTransferredOwnershipProjection = async (input: {
     auditActorAccountId: input.followUp.actorAccountId,
     actorDisplayName: input.followUp.actorDisplayName,
     ownershipPrincipal: input.principal,
+    ...(input.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
     mutationRef: input.operationExternalId,
     contentType: input.contentType,
     ...(input.principal.type === 'organization' ? { organizationId: input.principal.id } : {}),
@@ -144,6 +146,7 @@ export const dispatchMainserverContentOwnershipRequest = async (
                 operationExternalId: entry.operationExternalId,
                 expectedDataProviderId: entry.expectedDataProviderId,
                 principal: entry.targetPrincipal,
+                preserveExistingContentState: true,
               });
             }
           },

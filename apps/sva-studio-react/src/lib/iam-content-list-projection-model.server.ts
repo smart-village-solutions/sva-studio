@@ -89,6 +89,7 @@ export type ContentProjectionSyncTarget = Readonly<{
   auditActorAccountId?: string;
   actorDisplayName?: string;
   ownershipPrincipal?: Readonly<{ type: 'account' | 'organization'; id: string }>;
+  preserveExistingContentState?: boolean;
   mutationRef?: string;
   contentType: MainserverContentType;
   organizationId?: string;

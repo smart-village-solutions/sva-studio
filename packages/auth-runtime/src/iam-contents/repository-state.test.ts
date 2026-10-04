@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ContentRow } from './repository-types.js';
-import { ContentStateValidationError, validateNextContentState } from './repository-state-validation.js';
+import {
+  ContentStateValidationError,
+  validateNextContentState,
+} from './repository-state-validation.js';
 import { resolveContentChangedFields } from './repository-state-changes.js';
 import { resolveNextContentStateValues } from './repository-state-values.js';
 
@@ -32,6 +35,60 @@ const row = (payload: ContentRow['payload_json']): ContentRow => ({
 });
 
 describe('iam content repository state helpers', () => {
+  it.each([
+    [
+      'personal to organization',
+      null,
+      '33333333-3333-4333-8333-333333333333',
+      { type: 'organization', id: '22222222-2222-4222-8222-222222222222' },
+      null,
+      '22222222-2222-4222-8222-222222222222',
+      ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+    ],
+    [
+      'organization to personal',
+      '11111111-1111-4111-8111-111111111111',
+      null,
+      { type: 'account', id: '44444444-4444-4444-8444-444444444444' },
+      '44444444-4444-4444-8444-444444444444',
+      null,
+      ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+    ],
+    [
+      'organization to organization',
+      '11111111-1111-4111-8111-111111111111',
+      null,
+      { type: 'organization', id: '22222222-2222-4222-8222-222222222222' },
+      null,
+      '22222222-2222-4222-8222-222222222222',
+      ['organizationId', 'ownerOrganizationId'],
+    ],
+  ] as const)(
+    'sets a confirmed external owner for %s',
+    (
+      _name,
+      currentOrganizationId,
+      currentUserId,
+      confirmedExternalOwner,
+      nextUserId,
+      nextOrganizationId,
+      changedFields
+    ) => {
+      const current = {
+        ...row({}),
+        organization_id: currentOrganizationId,
+        owner_user_id: currentUserId,
+        owner_organization_id: currentOrganizationId,
+      };
+      const state = resolveNextContentStateValues(current, { confirmedExternalOwner });
+
+      expect(state.nextOrganizationId).toBe(nextOrganizationId);
+      expect(state.nextOwnerUserId).toBe(nextUserId);
+      expect(state.nextOwnerOrganizationId).toBe(nextOrganizationId);
+      expect(resolveContentChangedFields(current, state)).toEqual(changedFields);
+    }
+  );
+
   it('clears the current user owner when only the owner organization changes', () => {
     const state = resolveNextContentStateValues(
       {

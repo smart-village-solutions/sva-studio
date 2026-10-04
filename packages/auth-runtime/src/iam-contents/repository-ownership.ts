@@ -26,6 +26,15 @@ export const resolveCurrentOwnerPrincipal = (
   });
 };
 
+export const hasExactConfirmedOwner = (
+  row: ContentRow,
+  target: IamContentOwnerPrincipal
+): boolean => target.type === 'organization'
+  ? row.owner_organization_id === target.id &&
+    row.owner_user_id === null && row.organization_id === target.id
+  : row.owner_user_id === target.id &&
+    row.owner_organization_id === null && row.organization_id === null;
+
 export const resolveContentItemOwnerPrincipal = (item: {
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;

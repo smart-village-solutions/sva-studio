@@ -1,6 +1,9 @@
 import { IconInfoCircle, IconPencil } from '@tabler/icons-react';
 
 import type { PublicWasteFractionOption } from '../lib/public-waste-contract.js';
+import { createPublicWasteTranslator } from '../lib/public-waste-translations.js';
+
+const t = createPublicWasteTranslator('de');
 
 type PublicWasteSelectionHeaderProps = {
   readonly cityLine: string;
@@ -8,6 +11,7 @@ type PublicWasteSelectionHeaderProps = {
   readonly houseNumberLine?: string;
   readonly fractionOptions: readonly PublicWasteFractionOption[];
   readonly activeFractionIds: readonly string[];
+  readonly emailReminderAvailable: boolean;
   readonly onChangeLocation: () => void;
   readonly onToggleFraction: (fractionId: string) => void;
 };
@@ -18,6 +22,7 @@ export const PublicWasteSelectionHeader = ({
   houseNumberLine,
   fractionOptions,
   activeFractionIds,
+  emailReminderAvailable,
   onChangeLocation,
   onToggleFraction,
 }: Readonly<PublicWasteSelectionHeaderProps>) => (
@@ -53,8 +58,11 @@ export const PublicWasteSelectionHeader = ({
         </div>
         <div id="public-waste-fraction-info" className="selection-info-popover" popover="auto">
           <p>
-            Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung
-            gemeinsam.
+            {t(
+              emailReminderAvailable
+                ? 'selection.fractionsWithEmailReminder'
+                : 'selection.fractionsWithoutEmailReminder'
+            )}
           </p>
         </div>
       </div>

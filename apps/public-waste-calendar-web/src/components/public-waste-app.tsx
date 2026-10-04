@@ -113,6 +113,7 @@ function CompletePublicWasteApp(props: Readonly<CompletePublicWasteAppProps>) {
         houseNumberLine={houseNumberLine}
         fractionOptions={props.calendarModel.fractionOptions}
         activeFractionIds={pdf.selectedFractions}
+        emailReminderAvailable={props.reminderSignup?.enabled === true}
         onChangeLocation={props.onChangeLocation}
         onToggleFraction={pdf.toggleFraction}
       />

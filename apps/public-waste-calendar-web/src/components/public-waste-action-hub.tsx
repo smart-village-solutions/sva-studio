@@ -27,7 +27,8 @@ const panelId = (panel: ActionPanel): string => `public-waste-action-panel-${pan
 const ActionToolbar = ({
   activePanel,
   togglePanel,
-}: Pick<State, 'activePanel' | 'togglePanel'>) => (
+  emailAvailable,
+}: Pick<State, 'activePanel' | 'togglePanel'> & { emailAvailable: boolean }) => (
   <div className="action-hub-toolbar" role="group" aria-label="Export- und Erinnerungsaktionen">
     {(
       [
@@ -35,20 +36,22 @@ const ActionToolbar = ({
         ['pdf', IconFileTypePdf, 'PDF / Druckversion'],
         ['email', IconMail, 'E-Mail-Erinnerung'],
       ] as const
-    ).map(([panel, Icon, label]) => (
-      <button
-        key={panel}
-        type="button"
-        id={triggerId(panel)}
-        aria-controls={panelId(panel)}
-        aria-expanded={activePanel === panel}
-        className={`action-hub-trigger${activePanel === panel ? ' is-active' : ''}`}
-        onClick={() => togglePanel(panel)}
-      >
-        <Icon size={20} stroke={1.8} aria-hidden="true" />
-        <span>{label}</span>
-      </button>
-    ))}
+    )
+      .filter(([panel]) => panel !== 'email' || emailAvailable)
+      .map(([panel, Icon, label]) => (
+        <button
+          key={panel}
+          type="button"
+          id={triggerId(panel)}
+          aria-controls={panelId(panel)}
+          aria-expanded={activePanel === panel}
+          className={`action-hub-trigger${activePanel === panel ? ' is-active' : ''}`}
+          onClick={() => togglePanel(panel)}
+        >
+          <Icon size={20} stroke={1.8} aria-hidden="true" />
+          <span>{label}</span>
+        </button>
+      ))}
   </div>
 );
 
@@ -188,19 +191,25 @@ const ActiveAction = ({ props, state }: { props: Props; state: State }) => {
 
 export function PublicWasteActionHub(props: Props) {
   const state = usePublicWasteActionState(props);
+  const emailAvailable = props.reminderSignup?.enabled === true;
+  const activePanel = state.activePanel === 'email' && !emailAvailable ? null : state.activePanel;
   const description =
     props.selectedFractions.length === 0
       ? 'Wählen Sie rechts mindestens eine Fraktion aus, um diese Aktion zu nutzen.'
       : `Aktiv ausgewählt: ${props.selectedFractions.length} Fraktion${props.selectedFractions.length === 1 ? '' : 'en'}.`;
   return (
     <section className="action-hub" aria-label="Kalenderaktionen">
-      <ActionToolbar activePanel={state.activePanel} togglePanel={state.togglePanel} />
-      {state.activePanel ? (
+      <ActionToolbar
+        activePanel={activePanel}
+        togglePanel={state.togglePanel}
+        emailAvailable={emailAvailable}
+      />
+      {activePanel ? (
         <div
-          id={panelId(state.activePanel)}
+          id={panelId(activePanel)}
           className="action-panel"
           role="region"
-          aria-labelledby={triggerId(state.activePanel)}
+          aria-labelledby={triggerId(activePanel)}
         >
           <p className="action-panel-intro">{description}</p>
           <ActiveAction props={props} state={state} />

@@ -139,13 +139,13 @@ describe('PublicWasteApp', () => {
     const fractionInfoPopover = document.getElementById('public-waste-fraction-info');
     expect(fractionInfoPopover?.getAttribute('popover')).toBe('auto');
     expect(fractionInfoPopover?.textContent).toContain(
-      'Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung gemeinsam.'
+      'Diese Auswahl steuert Liste, Kalenderexport und PDF/Druckversion gemeinsam.'
     );
     expect(screen.getByRole('checkbox', { name: 'Papier' })).toBeTruthy();
     const calendarAction = screen.getByRole('button', { name: 'Kalender exportieren' });
     expect(calendarAction.getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: 'PDF / Druckversion' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'E-Mail-Erinnerung' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'E-Mail-Erinnerung' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Kalender exportieren' })).toBeNull();
   });
 
@@ -195,6 +195,9 @@ describe('PublicWasteApp', () => {
 
   it('resets action and reminder form state when the resolved location changes', () => {
     const { rerender } = renderCompletePublicWasteApp({ reminderSignup: reminderSignupFixture });
+    expect(document.getElementById('public-waste-fraction-info')?.textContent).toContain(
+      'Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung gemeinsam.'
+    );
     const emailPanel = openEmailPanel();
     fireEvent.change(within(emailPanel).getByLabelText('E-Mail-Adresse'), {
       target: { value: 'person@example.invalid' },
@@ -575,17 +578,12 @@ describe('PublicWasteApp', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('keeps the reminder service fail-closed when no signup configuration exists', () => {
+  it('hides the reminder service when no signup configuration exists', () => {
     renderCompletePublicWasteApp();
-    const emailPanel = openEmailPanel();
-
-    expect(within(emailPanel).getByText(/Passen Sie die Fraktionsauswahl an/u)).toBeTruthy();
-    expect(
-      within(emailPanel)
-        .getByRole('button', { name: 'E-Mail-Erinnerung anfordern' })
-        .hasAttribute('disabled')
-    ).toBe(true);
-    expect(within(emailPanel).queryByLabelText('E-Mail-Adresse')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'E-Mail-Erinnerung' })).toBeNull();
+    expect(document.getElementById('public-waste-action-panel-email')).toBeNull();
+    expect(screen.queryByLabelText('E-Mail-Adresse')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('shows reminder request errors as an assertive live-region message', async () => {

@@ -44,8 +44,8 @@ const deleteMainserverProjectionRows = async (
   target: ContentProjectionSyncTarget,
   selector: ProjectionDeleteSelector,
   refreshCredentialSource?: 'user' | 'organization'
-): Promise<void> => {
-  await withProjectionSchemaModeRetry(target, 'table', async () => {
+): Promise<number> => {
+  return withProjectionSchemaModeRetry(target, 'table', async () => {
     const schemaMode = await loadProjectionTableSchemaMode(client, target.instanceId);
     const values: unknown[] = [target.instanceId, target.contentType];
     const predicates = [
@@ -76,13 +76,14 @@ const deleteMainserverProjectionRows = async (
         predicates.push(`NOT (projection.source_entity_id = ANY($${values.length}::text[]))`);
       }
     }
-    await client.query(
+    const result = await client.query(
       `
 DELETE FROM iam.content_list_projection AS projection
 WHERE ${predicates.join('\n  AND ')};
     `,
       values
     );
+    return result.rowCount ?? 0;
   });
 };
 
@@ -90,8 +91,8 @@ export const deleteMainserverProjectionRowByEntity = async (
   client: ProjectionDbClient,
   target: ContentProjectionSyncTarget,
   sourceEntityId: string
-): Promise<void> => {
-  await deleteMainserverProjectionRows(client, target, { kind: 'entity', sourceEntityId });
+): Promise<number> => {
+  return deleteMainserverProjectionRows(client, target, { kind: 'entity', sourceEntityId });
 };
 
 const upsertMainserverProjectionRows = async (

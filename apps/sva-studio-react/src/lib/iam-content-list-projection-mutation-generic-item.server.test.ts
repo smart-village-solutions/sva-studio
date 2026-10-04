@@ -69,6 +69,29 @@ describe('GenericItem content projection mutations', () => {
         source_entity_id: 'generic-mutation-1',
       }),
     ]);
+
+    const otherScope = 'de-musterhausen::account-2::org-1::generic-items.generic-item';
+    fixture.syncStates.set(`generic-items.generic-item::${otherScope}`, {
+      sync_scope_key: otherScope,
+      last_started_at: new Date().toISOString(),
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 0,
+    });
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'generic-items.generic-item',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'generic-mutation-1',
+    });
+    expect(
+      fixture.syncStates.get(`generic-items.generic-item::${otherScope}`)?.snapshot_invalidated
+    ).not.toBe(true);
   });
 
   it('applies the credential cooldown before loading generic item details', async () => {

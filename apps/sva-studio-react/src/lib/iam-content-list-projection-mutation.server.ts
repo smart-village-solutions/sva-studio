@@ -8,7 +8,6 @@ import {
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
 import { createSdkLogger } from '@sva/server-runtime';
-import { getSvaMainserverGenericItem } from '@sva/sva-mainserver/server';
 
 import { isMainserverContentType, normalizeApiErrorCode } from './iam-content-list-api.shared.js';
 import type {
@@ -262,13 +261,16 @@ const genericItemProjectionContentTypes = [
 
 const deleteStaleGenericItemSiblingProjection = async (
   target: ContentProjectionSyncTarget,
-  entityId: string
-): Promise<void> => {
-  await enqueueProjectionWork(target, () =>
+  entityId: string,
+  operation: MainserverProjectionMutationOperation
+): Promise<boolean> => {
+  return enqueueProjectionWork(target, () =>
     withInstanceScopedDb(target.instanceId, async (client) => {
       await lockMainserverProjectionType(client, target);
-      await deleteMainserverProjectionRowByEntity(client, target, entityId);
-      await markMainserverGlobalMutationSucceeded(client, target);
+      const removed = (await deleteMainserverProjectionRowByEntity(client, target, entityId)) > 0;
+      if (removed || operation === 'delete')
+        await markMainserverGlobalMutationSucceeded(client, target);
+      return removed;
     })
   );
 };
@@ -322,25 +324,6 @@ const recordGenericItemDeletionAudit = async (
   }
 };
 
-const refreshGenericItemSibling = async (input: {
-  readonly mutation: GenericItemSiblingRefreshInput;
-  readonly contentType: ContentProjectionSyncTarget['contentType'];
-  readonly resolvedContentType: string | undefined;
-  readonly item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
-}): Promise<true | undefined> => {
-  const target = { ...input.mutation.target, contentType: input.contentType };
-  if (input.contentType !== input.resolvedContentType || !input.item) {
-    await deleteStaleGenericItemSiblingProjection(target, input.mutation.entityId);
-    return undefined;
-  }
-  return refreshMainserverProjectionForMutation({
-    target,
-    operation: input.mutation.operation,
-    entityId: input.mutation.entityId,
-    row: buildGenericItemSiblingRow(target, input.item),
-  });
-};
-
 export const refreshGenericItemSiblingProjections = async (
   input: GenericItemSiblingRefreshInput
 ): Promise<true | undefined> => {
@@ -365,7 +348,17 @@ export const refreshGenericItemSiblingProjections = async (
   const resolvedContentType =
     loadedItem.item && resolveGenericItemProjectionContentType(loadedItem.item.genericType);
   const successor = genericItemProjectionContentTypes.find((type) => type === resolvedContentType);
-  if (input.operation === 'update' && successor) {
+  let removedStaleSibling = false;
+  for (const contentType of genericItemProjectionContentTypes) {
+    if (contentType === successor && loadedItem.item) continue;
+    const removed = await deleteStaleGenericItemSiblingProjection(
+      { ...input.target, contentType },
+      input.entityId,
+      input.operation
+    );
+    removedStaleSibling ||= removed;
+  }
+  if (input.operation === 'update' && successor && removedStaleSibling) {
     const successorTarget = { ...input.target, contentType: successor };
     await withInstanceScopedDb(successorTarget.instanceId, async (client) => {
       await lockMainserverProjectionType(client, successorTarget);
@@ -374,15 +367,12 @@ export const refreshGenericItemSiblingProjections = async (
     });
   }
 
-  let deferred: true | undefined;
-  for (const contentType of genericItemProjectionContentTypes) {
-    deferred =
-      (await refreshGenericItemSibling({
-        mutation: input,
-        contentType,
-        resolvedContentType,
-        item: loadedItem.item,
-      })) ?? deferred;
-  }
-  return deferred;
+  if (!successor || !loadedItem.item) return undefined;
+  const successorTarget = { ...input.target, contentType: successor };
+  return refreshMainserverProjectionForMutation({
+    target: successorTarget,
+    operation: input.operation,
+    entityId: input.entityId,
+    row: buildGenericItemSiblingRow(successorTarget, loadedItem.item),
+  });
 };

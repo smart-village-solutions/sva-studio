@@ -48,9 +48,11 @@ export const deleteProjectionQueryResult = (
   if (!text.includes('DELETE FROM iam.content_list_projection')) return null;
   fixture.projectionDeleteSql = text;
   if (text.includes('projection_scope_key <> $5')) {
+    const previousCount = fixture.projectionRows.length;
     fixture.projectionRows = removeTransferredProjectionRows(fixture.projectionRows, values);
-    return { rows: [], rowCount: 0 };
+    return { rows: [], rowCount: previousCount - fixture.projectionRows.length };
   }
+  const previousCount = fixture.projectionRows.length;
   const instanceId = String(queryValue(values, 0));
   const contentType = String(queryValue(values, 1));
   const hasScopePredicate =
@@ -88,5 +90,5 @@ export const deleteProjectionQueryResult = (
       row.projection_scope_key !== unscopedKey || row.credential_source === refreshCredentialSource;
     return !(matchingScope && matchingEntity && matchingCredential);
   });
-  return { rows: [], rowCount: 0 };
+  return { rows: [], rowCount: previousCount - fixture.projectionRows.length };
 };

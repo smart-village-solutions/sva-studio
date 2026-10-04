@@ -82,6 +82,11 @@ describe('persistAuthAuditEventWithClient', () => {
 
     const inserts = queries.filter((entry) => entry.text.includes('INSERT INTO iam.activity_logs'));
     expect(inserts.length).toBe(2);
+    expect(inserts.map((entry) => entry.values?.[2])).toEqual(['account_created', 'login']);
+    expect(inserts.map((entry) => entry.values?.[0])).toEqual([
+      'de-musterhausen',
+      'de-musterhausen',
+    ]);
   });
 
   it('persists logout without auto account creation', async () => {
@@ -101,6 +106,36 @@ describe('persistAuthAuditEventWithClient', () => {
       entry.text.includes('INSERT INTO iam.accounts')
     );
     expect(accountInserts.length).toBe(0);
+  });
+
+  it('resolves an account after a concurrent insert conflict without duplicating account_created', async () => {
+    const queries: LoggedQuery[] = [];
+    let accountLookups = 0;
+    const client: AuditSqlClient = {
+      async query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) {
+        queries.push({ text, values });
+        if (text.includes('FROM iam.accounts') && text.includes('WHERE keycloak_subject = $1')) {
+          accountLookups += 1;
+          return accountLookups === 1
+            ? { rowCount: 0, rows: [] as TRow[] }
+            : { rowCount: 1, rows: [{ id: 'concurrent-account' }] as TRow[] };
+        }
+        return { rowCount: text.includes('INSERT INTO iam.accounts') ? 0 : 1, rows: [] as TRow[] };
+      },
+    };
+
+    const result = await persistAuthAuditEventWithClient(client, {
+      eventType: 'login',
+      actorUserId: 'keycloak-concurrent',
+      workspaceId: 'de-musterhausen',
+      outcome: 'success',
+    });
+
+    expect(accountLookups).toBe(2);
+    expect(result.writtenEventTypes).toEqual(['login']);
+    const eventWrite = queries.find((entry) => entry.text.includes('INSERT INTO iam.activity_logs'));
+    expect(eventWrite?.values?.[1]).toBe('concurrent-account');
+    expect(eventWrite?.values?.[2]).toBe('login');
   });
 
   it('persists platform audit events without tenant activity log writes', async () => {

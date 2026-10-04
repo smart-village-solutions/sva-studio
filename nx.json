@@ -16,6 +16,7 @@
   "targetDefaults": {
     "build": { "cache": true, "inputs": ["production", "^production"] },
     "check:runtime": {
+      "parallelism": false,
       "cache": true,
       "inputs": ["production", "^production", "serverRuntimeTooling"]
     },
@@ -69,11 +70,18 @@
       "{projectRoot}/tsconfig.json",
       "{projectRoot}/package.json"
     ],
-    "frontendEnvBuild": [{ "env": "CODECOV_TOKEN" }, { "env": "SVA_STUDIO_DISTRIBUTION" }],
+    "frontendEnvBuild": [
+      { "env": "CODECOV_TOKEN" },
+      { "env": "SVA_STUDIO_DISTRIBUTION" },
+      { "env": "VITE_GIT_SHA" }
+    ],
     "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],
     "frontendEnvE2E": [{ "env": "CI" }],
     "lintTooling": ["{workspaceRoot}/eslint.config.mjs"],
-    "serverRuntimeTooling": ["{workspaceRoot}/scripts/ci/check-server-package-runtime.ts"],
+    "serverRuntimeTooling": [
+      "{workspaceRoot}/scripts/ci/check-server-package-runtime.ts",
+      "{workspaceRoot}/scripts/ci/server-runtime-guard-*.ts"
+    ],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
   "analytics": false,

@@ -1,6 +1,6 @@
 import type { FieldError } from 'react-hook-form';
 
-import type { StudioFieldControlProps } from './studio-primitives.js';
+import type { StudioFieldControlProps } from './studio-form-fields.js';
 import { cn } from './utils.js';
 
 export type StudioFormFieldError = Readonly<{

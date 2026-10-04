@@ -167,45 +167,12 @@ export {
   type StudioTableActionTone,
   type StudioTableValueActionProps,
 } from './studio-table-interactions.js';
-export {
-  StudioListPageTemplate,
-  StudioDetailPageTemplate,
-  StudioEmptyState,
-  StudioConfirmDialog,
-  StudioErrorState,
-  StudioField,
-  StudioFieldGroup,
-  StudioFormActionBar,
-  StudioFormSummary,
-  StudioJobSummaryCard,
-  StudioLoadingState,
-  StudioOverviewPageTemplate,
-  StudioPageHeader,
-  StudioPageTitle,
-  StudioPageTitleAccessoryProvider,
-  StudioStateBlock,
-  StudioTechnicalStatusPanel,
-  type StudioBasicStateProps,
-  type StudioConfirmDialogProps,
-  type StudioDetailPageTemplateProps,
-  type StudioFieldGroupProps,
-  type StudioFieldControlProps,
-  type StudioFieldProps,
-  type StudioFormActionBarProps,
-  type StudioFormSummaryProps,
-  type StudioJobSummaryCardProps,
-  type StudioListPageAction,
-  type StudioListPageTemplateProps,
-  type StudioListPageTab,
-  type StudioOverviewPageTemplateProps,
-  type StudioPageHeaderProps,
-  type StudioPageTitleAccessoryProviderProps,
-  type StudioPageTitleProps,
-  type StudioStateBlockProps,
-  type StudioTechnicalStatusMetaItem,
-  type StudioTechnicalStatusPanelProps,
-  type StudioTechnicalStatusTone,
-} from './studio-primitives.js';
+export * from './studio-page-header.js';
+export * from './studio-page-templates.js';
+export * from './studio-form-fields.js';
+export * from './studio-confirm-dialog.js';
+export * from './studio-status-cards.js';
+export * from './studio-state-blocks.js';
 export {
   StudioActionMenu,
   StudioEditSurface,

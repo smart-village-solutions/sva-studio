@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   ),
   loadCurrentMainserverDataProviderBinding: vi.fn(),
   deferMainserverMutationProjection: vi.fn(),
+  loadMainserverMutationJournal: vi.fn(),
   reconcileDeferredMainserverMutationProjections: vi.fn(),
   recordSuccessfulExternalContentDeletion: vi.fn(),
   recordSuccessfulExternalContentMutation: vi.fn(),
@@ -44,6 +45,7 @@ export const getProjectionTestState = () => state;
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   deferMainserverMutationProjection: state.deferMainserverMutationProjection,
+  loadMainserverMutationJournal: state.loadMainserverMutationJournal,
   reconcileDeferredMainserverMutationProjections:
     state.reconcileDeferredMainserverMutationProjections,
   loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
@@ -158,6 +160,7 @@ export const registerProjectionFixture = (): void => {
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockReset();
     state.loadCurrentMainserverDataProviderBinding.mockReset();
     state.deferMainserverMutationProjection.mockReset();
+    state.loadMainserverMutationJournal.mockReset();
     state.reconcileDeferredMainserverMutationProjections.mockReset();
     state.recordSuccessfulExternalContentDeletion.mockReset();
     state.recordSuccessfulExternalContentMutation.mockReset();

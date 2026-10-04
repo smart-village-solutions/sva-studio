@@ -2,7 +2,7 @@ import type { ChangeEvent } from 'react';
 
 import { Input } from './input.js';
 import { Select } from './select.js';
-import { StudioField } from './studio-primitives.js';
+import { StudioField } from './studio-form-fields.js';
 
 export type MainserverPrincipalType = 'organization' | 'user';
 

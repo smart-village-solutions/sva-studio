@@ -133,8 +133,12 @@ describe('iam governance runtime handlers', () => {
     state.validateCsrf.mockReset();
     state.asApiItem.mockReset();
 
-    state.withAuthenticatedUser.mockImplementation(async (_request, handler) => handler({ user: defaultUser }));
-    state.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) => work({ query: vi.fn() }));
+    state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
+      handler({ user: defaultUser })
+    );
+    state.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) =>
+      work({ query: vi.fn() })
+    );
     state.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
     state.readGovernanceCaseType.mockImplementation((value) => value ?? undefined);
     state.requiresPrivilegedGovernanceWorkflowRole.mockReturnValue(false);
@@ -155,11 +159,12 @@ describe('iam governance runtime handlers', () => {
     });
     state.asApiList.mockImplementation((items, meta, requestId) => ({ items, meta, requestId }));
     state.asApiItem.mockImplementation((item, requestId) => ({ data: item, requestId }));
-    state.createApiError.mockImplementation((status, code, message, requestId) =>
-      new Response(JSON.stringify({ error: { code, message }, requestId }), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      })
+    state.createApiError.mockImplementation(
+      (status, code, message, requestId) =>
+        new Response(JSON.stringify({ error: { code, message }, requestId }), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
     );
     state.buildGovernanceComplianceExport.mockResolvedValue({
       format: 'json',
@@ -296,7 +301,10 @@ describe('iam governance runtime handlers', () => {
   it('returns workflow error results as 400, successful results as 200 and database failures as 503', async () => {
     const { governanceWorkflowHandler } = await import('./core.js');
 
-    state.executeWorkflow.mockResolvedValueOnce({ status: 'error', reasonCode: 'workflow_invalid' });
+    state.executeWorkflow.mockResolvedValueOnce({
+      status: 'error',
+      reasonCode: 'workflow_invalid',
+    });
     const rejected = await governanceWorkflowHandler(
       new Request('https://example.test/api/v1/iam/governance/workflow', {
         method: 'POST',
@@ -416,7 +424,9 @@ describe('iam governance runtime handlers', () => {
       message: 'Keine Berechtigung für Governance-Transparenz.',
     });
     const forbidden = await getGovernanceCaseHandler(
-      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+      new Request(
+        'https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1'
+      )
     );
     expect(forbidden.status).toBe(403);
 
@@ -425,12 +435,16 @@ describe('iam governance runtime handlers', () => {
       handler({ user: { ...defaultUser, instanceId: undefined } })
     );
     const missingInstance = await getGovernanceCaseHandler(
-      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000')
+      new Request(
+        'https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000'
+      )
     );
     expect(missingInstance.status).toBe(400);
 
     const mismatched = await getGovernanceCaseHandler(
-      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=other-instance')
+      new Request(
+        'https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=other-instance'
+      )
     );
     expect(mismatched.status).toBe(403);
 
@@ -440,7 +454,9 @@ describe('iam governance runtime handlers', () => {
     expect(invalidCaseId.status).toBe(400);
 
     const success = await getGovernanceCaseHandler(
-      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+      new Request(
+        'https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1'
+      )
     );
     expect(success.status).toBe(200);
     await expect(success.json()).resolves.toEqual({
@@ -450,7 +466,9 @@ describe('iam governance runtime handlers', () => {
 
     state.getGovernanceCase.mockResolvedValueOnce(null);
     const notFound = await getGovernanceCaseHandler(
-      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+      new Request(
+        'https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1'
+      )
     );
     expect(notFound.status).toBe(404);
 
@@ -458,7 +476,9 @@ describe('iam governance runtime handlers', () => {
       throw new Error('db down');
     });
     const dbFailure = await getGovernanceCaseHandler(
-      new Request('https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1')
+      new Request(
+        'https://example.test/iam/governance/workflows/123e4567-e89b-42d3-a456-426614174000?instanceId=instance-1'
+      )
     );
     expect(dbFailure.status).toBe(503);
   });
@@ -513,7 +533,9 @@ describe('iam governance runtime handlers', () => {
     );
 
     const json = await governanceComplianceExportHandler(
-      new Request('https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1&format=json')
+      new Request(
+        'https://example.test/api/v1/iam/governance/compliance?instanceId=instance-1&format=json'
+      )
     );
     expect(json.status).toBe(200);
     await expect(json.json()).resolves.toEqual({ ok: true });
@@ -551,12 +573,16 @@ describe('iam governance runtime handlers', () => {
     expect(invalidInstance.status).toBe(400);
 
     const mismatched = await legalConsentExportHandler(
-      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=other-instance')
+      new Request(
+        'https://example.test/api/v1/iam/governance/legal-consents?instanceId=other-instance'
+      )
     );
     expect(mismatched.status).toBe(403);
 
     const invalidAccountId = await legalConsentExportHandler(
-      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1&accountId=not-a-uuid')
+      new Request(
+        'https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1&accountId=not-a-uuid'
+      )
     );
     expect(invalidAccountId.status).toBe(400);
     await expect(invalidAccountId.json()).resolves.toEqual({ error: 'invalid_request' });
@@ -623,7 +649,9 @@ describe('iam governance runtime handlers', () => {
       },
     ]);
     const csv = await legalConsentExportHandler(
-      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1&format=csv')
+      new Request(
+        'https://example.test/api/v1/iam/governance/legal-consents?instanceId=instance-1&format=csv'
+      )
     );
     expect(csv.status).toBe(200);
     expect(csv.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
@@ -745,5 +773,97 @@ describe('iam governance runtime handlers', () => {
       })
     );
     expect(dbFailure.status).toBe(503);
+  });
+
+  it('stops every moved handler before permission checks and database work without a session', async () => {
+    const {
+      governanceWorkflowHandler,
+      listGovernanceCasesHandler,
+      governanceComplianceExportHandler,
+      legalConsentExportHandler,
+      permissionChangeSelfServiceRequestHandler,
+    } = await import('./core.js');
+    state.withAuthenticatedUser.mockResolvedValue(new Response(null, { status: 401 }));
+
+    const responses = await Promise.all([
+      governanceWorkflowHandler(
+        new Request('https://example.test/api/v1/iam/governance/workflow', {
+          method: 'POST',
+          body: JSON.stringify({ instanceId: 'instance-1', operation: 'case.close' }),
+        })
+      ),
+      listGovernanceCasesHandler(new Request('https://example.test/api/v1/iam/governance/cases')),
+      governanceComplianceExportHandler(
+        new Request('https://example.test/api/v1/iam/governance/compliance')
+      ),
+      legalConsentExportHandler(
+        new Request('https://example.test/api/v1/iam/governance/legal-consents')
+      ),
+      permissionChangeSelfServiceRequestHandler(
+        new Request('https://example.test/iam/me/permission-change-requests', {
+          method: 'POST',
+          body: JSON.stringify({ requestNote: 'Need access' }),
+        })
+      ),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([401, 401, 401, 401, 401]);
+    expect(state.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
+    expect(state.withResolvedInstanceDb).not.toHaveBeenCalled();
+    expect(state.executeWorkflow).not.toHaveBeenCalled();
+    expect(state.validateCsrf).not.toHaveBeenCalled();
+  });
+
+  it('rejects consent export guards and self-service CSRF before rate limit or database work', async () => {
+    const { legalConsentExportHandler, permissionChangeSelfServiceRequestHandler } =
+      await import('./core.js');
+    state.authorizeInstancePermissionForUser.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+    });
+
+    const denied = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents')
+    );
+    const mismatched = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?instanceId=other-instance')
+    );
+    state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
+    const invalidCsrf = await permissionChangeSelfServiceRequestHandler(
+      new Request('https://example.test/iam/me/permission-change-requests', {
+        method: 'POST',
+        body: JSON.stringify({ requestNote: 'Need access' }),
+      })
+    );
+
+    expect([denied.status, mismatched.status, invalidCsrf.status]).toEqual([403, 403, 403]);
+    expect(state.consumeLegalConsentExportRateLimit).not.toHaveBeenCalled();
+    expect(state.loadConsentExportRecords).not.toHaveBeenCalled();
+    expect(state.createSelfServicePermissionChangeRequest).not.toHaveBeenCalled();
+    expect(state.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
+  it('keeps consent CSV quoting for commas, quotes and newlines', async () => {
+    const { legalConsentExportHandler } = await import('./core.js');
+    state.loadConsentExportRecords.mockResolvedValueOnce([
+      {
+        id: 'consent-1',
+        subjectId: 'subject-1',
+        legalTextId: 'terms',
+        legalTextVersion: '1.0',
+        actionType: 'accepted',
+        acceptedAt: '2026-05-01T10:00:00.000Z',
+        targets: { roleIds: ['editor,lead'], groupIds: ['line\n"quoted"'] },
+      },
+    ]);
+
+    const response = await legalConsentExportHandler(
+      new Request('https://example.test/api/v1/iam/governance/legal-consents?format=csv')
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/csv; charset=utf-8');
+    await expect(response.text()).resolves.toContain('"editor,lead","line\n""quoted"""');
   });
 });

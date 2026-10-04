@@ -106,6 +106,31 @@ describe('GenericItem content projection mutations', () => {
     });
   });
 
+  it('does not close a confirmed transfer when a generic item follow-up cannot be deferred', async () => {
+    const syncScopeKey =
+      'de-musterhausen::account-1::org-1::organization::projects.project';
+    fixture.syncStates.set(`projects.project::${syncScopeKey}`, {
+      sync_scope_key: syncScopeKey, last_started_at: '2026-09-13T12:00:00.000Z',
+      last_succeeded_at: null, last_failed_at: new Date().toISOString(),
+      last_error_code: 'mainserver_credentials_stale',
+      last_error_message: 'credentials not ready', projected_count: 0,
+    });
+    state.deferMainserverMutationProjection.mockResolvedValue(false);
+    state.loadMainserverMutationJournal.mockResolvedValue({ completedSteps: [] });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project', instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1', actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-not-deferred', organizationId: 'org-1',
+      ownershipPrincipal: { type: 'organization', id: 'org-1' },
+      actingPrincipalType: 'organization', authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64), operation: 'update',
+      entityId: 'provider-project-1',
+    })).rejects.toThrow('content_transfer_projection_reconciliation_unavailable');
+    expect(state.getSvaMainserverGenericItem).not.toHaveBeenCalled();
+  });
+
   it('refreshes only the registered FAQ projection after FAQ mutations', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'faq-mutation-1',
@@ -551,6 +576,89 @@ describe('GenericItem content projection mutations', () => {
         entityId: 'generic-fallback-failure-1',
       })
     ).rejects.toThrow('content_projection_refresh_incomplete');
+  });
+
+  it('defers a confirmed project transfer when only the snapshot fallback succeeds', async () => {
+    process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED = 'true';
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.deferMainserverMutationProjection.mockResolvedValueOnce(true);
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-1',
+      ownershipPrincipal: { type: 'account', id: 'account-1' },
+      actingPrincipalType: 'user',
+      authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64),
+      operation: 'update',
+      entityId: 'provider-project-1',
+    })).resolves.toBe(true);
+
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'project-transfer-1',
+    });
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
+  });
+
+  it('accepts a concurrently reconciled transfer after the snapshot fallback', async () => {
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
+    state.deferMainserverMutationProjection.mockResolvedValueOnce(false);
+    state.loadMainserverMutationJournal.mockResolvedValueOnce({
+      completedSteps: ['projection_history_reconciled'],
+    });
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project', instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1', actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1', actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-complete-1',
+      ownershipPrincipal: { type: 'account', id: 'account-1' },
+      actingPrincipalType: 'user', authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64), operation: 'update',
+      entityId: 'provider-project-1',
+    })).resolves.toBeUndefined();
+    expect(state.loadMainserverMutationJournal).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'project-transfer-complete-1',
+    });
+  });
+
+  it('keeps a confirmed project transfer deferred when targeted and snapshot reads both fail', async () => {
+    state.getSvaMainserverGenericItem.mockRejectedValueOnce(new Error('target read failed'));
+    state.listSvaMainserverGenericItems.mockRejectedValue(new Error('snapshot read failed'));
+    state.deferMainserverMutationProjection.mockResolvedValueOnce(true);
+
+    await expect(refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      auditActorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-transfer-failed-1',
+      ownershipPrincipal: { type: 'account', id: 'account-1' },
+      actingPrincipalType: 'user',
+      authorizationMode: 'exact',
+      credentialFingerprint: 'a'.repeat(64),
+      operation: 'update',
+      entityId: 'provider-project-1',
+    })).rejects.toThrow('content_projection_refresh_incomplete');
+
+    expect(state.deferMainserverMutationProjection).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      operationExternalId: 'project-transfer-failed-1',
+    });
+    expect(state.recordSuccessfulExternalContentMutation).not.toHaveBeenCalled();
   });
 
   it('removes only the targeted generic item projection row after delete mutations', async () => {

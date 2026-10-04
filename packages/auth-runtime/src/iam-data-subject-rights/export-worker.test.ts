@@ -78,7 +78,9 @@ describe('dsr export worker', () => {
       }
       throw new Error(`unexpected query: ${text}`);
     });
-    mocks.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) => work({ query }));
+    mocks.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) =>
+      work({ query })
+    );
     mocks.collectDsrExportPayload.mockResolvedValue({
       meta: { generatedAt: '2026-06-03T10:05:00.000Z', instanceId: 'tenant-a', format: 'csv' },
       account: {
@@ -136,5 +138,71 @@ describe('dsr export worker', () => {
         }),
       })
     );
+  });
+
+  it('marks the tenant-scoped export row failed and rethrows the original processing error', async () => {
+    const processingError = new Error('payload_collection_failed');
+    const query = vi.fn(async (statement: string) => {
+      if (statement.includes('FROM iam.data_subject_export_jobs')) {
+        throw processingError;
+      }
+      if (statement.includes("status = 'failed'")) {
+        return { rowCount: 1, rows: [] };
+      }
+      throw new Error('unexpected query');
+    });
+    mocks.withResolvedInstanceDb.mockImplementation(async (_resolver, _instanceId, work) =>
+      work({ query })
+    );
+
+    const { dsrExportStudioJobRegistration } = await import('./export-worker.js');
+    await expect(
+      dsrExportStudioJobRegistration.handler({
+        job: {
+          id: 'studio-job-1',
+          instanceId: 'tenant-a',
+          inputPayload: { exportJobId: 'export-1' },
+        },
+        progressReporter: { reportProgress: vi.fn() },
+      } as never)
+    ).rejects.toBe(processingError);
+
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("status = 'failed'"), [
+      'tenant-a',
+      'export-1',
+      'payload_collection_failed',
+    ]);
+    expect(mocks.withResolvedInstanceDb).toHaveBeenCalledWith(
+      expect.anything(),
+      'tenant-a',
+      expect.any(Function)
+    );
+  });
+
+  it('marks enqueue failure and preserves the queue error for the caller', async () => {
+    const queueError = new Error('queue_unavailable');
+    mocks.createStudioJob.mockResolvedValue({
+      id: 'studio-job-1',
+      queueName: 'host-operations',
+      maxAttempts: 3,
+    });
+    mocks.queueStudioJob.mockRejectedValue(queueError);
+    const { createAndQueueDsrExportStudioJob } = await import('./export-worker.js');
+
+    await expect(
+      createAndQueueDsrExportStudioJob({
+        instanceId: 'tenant-a',
+        exportJobId: 'export-1',
+        requestedByAccountId: 'account-1',
+        targetAccountId: 'account-1',
+        format: 'csv',
+      })
+    ).rejects.toBe(queueError);
+
+    expect(mocks.markStudioJobEnqueueFailed).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      job: expect.objectContaining({ id: 'studio-job-1' }),
+      errorCode: 'studio_job_enqueue_failed',
+    });
   });
 });

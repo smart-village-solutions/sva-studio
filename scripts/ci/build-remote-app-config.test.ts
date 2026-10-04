@@ -24,7 +24,12 @@ const profile = Object.entries(remoteConfigContract)
   .join('\n');
 
 const overrides = Object.entries(remoteConfigContract)
-  .filter(([, contract]) => contract.kind !== 'config')
+  .filter(
+    ([key, contract]) =>
+      contract.kind !== 'config' &&
+      key !== 'FALLOW_BROWSER_INGEST_KEY' &&
+      key !== 'BEACON_API_KEY'
+  )
   .map(
     ([key, contract]) =>
       `${key}=${contract.kind === 'secret-reference' ? 'external_secret_v1' : `sensitive-${key}`}`
@@ -127,16 +132,68 @@ describe('remote app config builder', () => {
             '--output',
             join(directory, 'config.vars'),
           ],
-          { PROMOTE_CONFIG_OVERRIDES: overrides, GITHUB_OUTPUT: githubOutput }
+          {
+            PROMOTE_CONFIG_OVERRIDES: overrides,
+            FALLOW_BROWSER_INGEST_KEY: 'fallow_pub_k1_test_browser_key_1234567890',
+            BEACON_API_KEY: 'fallow_live_k1_test_server_key_1234567890',
+            GITHUB_OUTPUT: githubOutput,
+          }
         )
       ).toBe(0);
+      const config = readFileSync(join(directory, 'config.vars'), 'utf8');
+      expect(config).toContain('FALLOW_BROWSER_INGEST_KEY=fallow_pub_k1_test_browser_key_1234567890');
+      expect(config).toContain('BEACON_API_KEY=fallow_live_k1_test_server_key_1234567890');
       const output = readFileSync(githubOutput, 'utf8');
       expect(output).toMatch(/^config_revision=[0-9a-f]{64}$/mu);
       expect(output).toContain('secret_references=["external_secret_v1"]');
       expect(output).not.toContain('sensitive-');
       expect(output).not.toContain('APP_DB_PASSWORD');
+      expect(output).not.toContain('test_browser_key');
+      expect(output).not.toContain('test_server_key');
     } finally {
       rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects missing or wrong-scope staging Beacon keys before writing config', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-config-beacon-'));
+    const profilePath = join(directory, 'staging.vars');
+    const outputPath = join(directory, 'config.vars');
+    const original = process.stderr.write;
+    process.stderr.write = (() => true) as typeof process.stderr.write;
+    try {
+      writeFileSync(profilePath, profile, 'utf8');
+      for (const keys of [
+        {},
+        { FALLOW_BROWSER_INGEST_KEY: 'fallow_live_k1_wrong_scope_1234567890' },
+        {
+          FALLOW_BROWSER_INGEST_KEY: 'fallow_pub_k1_test_browser_key_1234567890',
+          BEACON_API_KEY: 'fallow_pub_k1_wrong_scope_1234567890',
+        },
+      ]) {
+        expect(
+          runBuildRemoteAppConfig(
+            ['--environment', 'staging', '--profile', profilePath, '--output', outputPath],
+            { PROMOTE_CONFIG_OVERRIDES: overrides, ...keys }
+          )
+        ).toBe(2);
+        expect(() => readFileSync(outputPath, 'utf8')).toThrow();
+      }
+    } finally {
+      process.stderr.write = original;
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects Beacon keys in Dev and Production override bundles', () => {
+    for (const environment of ['dev', 'prod'] as const) {
+      expect(() =>
+        buildRemoteAppConfig({
+          environment,
+          profile,
+          overrides: `${overrides}\nBEACON_API_KEY=fallow_live_k1_test_server_key_1234567890`,
+        })
+      ).toThrow(/PROMOTE_CONFIG_SOURCE_FORBIDDEN/u);
     }
   });
 

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   deferMainserverMutationProjection,
+  loadMainserverMutationJournal,
   recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation,
   withInstanceScopedDb,
@@ -10,7 +11,6 @@ import { createSdkLogger } from '@sva/server-runtime';
 import { getSvaMainserverGenericItem } from '@sva/sva-mainserver/server';
 
 import { isMainserverContentType, normalizeApiErrorCode } from './iam-content-list-api.shared.js';
-import { mapGenericItem } from './iam-content-list-mainserver.js';
 import type {
   ContentProjectionSyncTarget,
   MainserverProjectionMutationOperation,
@@ -32,12 +32,13 @@ import {
 } from './iam-content-list-projection-repository.server.js';
 import {
   GENERIC_ITEMS_CONTENT_TYPE,
+  assertVerifiedTransferOwner,
   assertProjectionCredentialsReady,
+  buildGenericItemSiblingRow,
   enrichMutationProjectionRowWithBinding,
+  loadGenericItemForSiblingRefresh,
   loadMainserverProjectionMutationRow,
-  requireMutationProjectionPrincipalContext,
   resolveGenericItemProjectionContentType,
-  toMutationProjectionConnectionContext,
 } from './iam-content-list-projection-source.server.js';
 import {
   computeProjectionSyncStates,
@@ -114,13 +115,16 @@ const recordMutationAudit = async (
     sourceEntityType: target.contentType,
     sourceEntityId: input.entityId,
     contentType: target.contentType,
+    ...(target.ownershipPrincipal ? { ownershipPrincipal: target.ownershipPrincipal } : {}),
+    ...(target.preserveExistingContentState ? { preserveExistingContentState: true } : {}),
     ...(row.organizationId ? { organizationId: row.organizationId } : {}),
     title: row.title,
     payload: row.payload,
     status: row.status,
     ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
     authorDisplayMode: isPersonalAuthor ? 'user' : row.authorDisplayMode,
-    authorDisplayName: isPersonalAuthor ? target.actorDisplayName : row.author,
+    authorDisplayName:
+      isPersonalAuthor && !target.ownershipPrincipal ? target.actorDisplayName : row.author,
   });
 };
 
@@ -135,6 +139,7 @@ const upsertProjectionMutation = async (
       const loadedRow =
         input.row ?? (await loadMainserverProjectionMutationRow(input.target, input.entityId));
       const row = await enrichMutationProjectionRowWithBinding(input.target, loadedRow);
+      assertVerifiedTransferOwner(input.target, row);
       await upsertSingleMainserverProjectionRow(
         input.target,
         input.target.actorAccountId,
@@ -191,20 +196,30 @@ const isMutationFollowUpDue = async (target: ContentProjectionSyncTarget): Promi
   });
 };
 
-const requiresMutationHistory = (input: MutationRefreshInput): boolean =>
-  (input.operation === 'create' || input.operation === 'update') &&
-  Boolean(
-    (input.target.auditActorAccountId ?? input.target.actorAccountId) &&
-    input.target.actorDisplayName &&
-    input.target.mutationRef
-  );
-
-const deferMutationHistory = async (input: MutationRefreshInput): Promise<true | undefined> => {
-  if (!requiresMutationHistory(input) || !input.target.mutationRef) return undefined;
+const deferMutationHistory = async (
+  input: MutationRefreshInput,
+  strict = false
+): Promise<true | undefined> => {
+  if (
+    (input.operation !== 'create' && input.operation !== 'update') ||
+    !(input.target.auditActorAccountId ?? input.target.actorAccountId) ||
+    !input.target.actorDisplayName ||
+    !input.target.mutationRef
+  )
+    return undefined;
   const deferred = await deferMainserverMutationProjection({
     instanceId: input.target.instanceId,
     operationExternalId: input.target.mutationRef,
   });
+  if (!deferred && strict && input.target.ownershipPrincipal) {
+    const journal = await loadMainserverMutationJournal({
+      instanceId: input.target.instanceId,
+      operationExternalId: input.target.mutationRef,
+    });
+    if (!journal?.completedSteps.includes('projection_history_reconciled')) {
+      throw new Error('content_transfer_projection_reconciliation_unavailable');
+    }
+  }
   return deferred ? true : undefined;
 };
 
@@ -215,7 +230,7 @@ export const refreshMainserverProjectionForMutation = async (
   const refreshRunId = randomUUID();
   return enqueueProjectionWork(target, async () => {
     if (input.operation !== 'delete' && !(await isMutationFollowUpDue(target))) {
-      return deferMutationHistory(input);
+      return deferMutationHistory(input, true);
     }
     await markProjectionSyncStarted(target, refreshRunId, 'hot');
     try {
@@ -228,7 +243,10 @@ export const refreshMainserverProjectionForMutation = async (
         error && typeof error === 'object' && 'code' in error
           ? (error as { code?: unknown }).code
           : undefined;
-      if (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode)) {
+      if (
+        target.ownershipPrincipal ||
+        (typeof errorCode === 'string' && isDurableCredentialErrorCode(errorCode))
+      ) {
         await deferMutationHistory(input);
       }
       throw error;
@@ -258,17 +276,14 @@ const deleteStaleGenericItemSiblingProjection = async (
 const refreshGenericItemProjectionSnapshots = async (
   target: ContentProjectionSyncTarget
 ): Promise<void> => {
-  let hasIncompleteRefresh = false;
   for (const contentType of genericItemProjectionContentTypes) {
     const result = await triggerMainserverProjectionRefresh(
       { ...target, contentType },
       { force: true, awaitCompletion: true, trigger: 'mutation_follow_up' }
     );
-    if (result.status !== 'completed' && result.status !== 'already_running') {
-      hasIncompleteRefresh = true;
-    }
+    if (!['completed', 'already_running', 'accepted'].includes(result.status))
+      throw new Error('content_projection_refresh_incomplete');
   }
-  if (hasIncompleteRefresh) throw new Error('content_projection_refresh_incomplete');
 };
 
 type GenericItemSiblingRefreshInput = Readonly<{
@@ -307,41 +322,6 @@ const recordGenericItemDeletionAudit = async (
   }
 };
 
-const loadGenericItemForSiblingRefresh = async (input: GenericItemSiblingRefreshInput) => {
-  if (input.operation === 'delete') return { failed: false, item: undefined } as const;
-  try {
-    return {
-      failed: false,
-      item: await getSvaMainserverGenericItem({
-        activeOrganizationId: input.target.organizationId,
-        ...toMutationProjectionConnectionContext(input.target),
-        genericItemId: input.entityId,
-        instanceId: input.target.instanceId,
-        keycloakSubject: input.target.keycloakSubject,
-      }),
-    } as const;
-  } catch {
-    return { failed: true, item: undefined } as const;
-  }
-};
-
-const buildGenericItemSiblingRow = (
-  target: ContentProjectionSyncTarget,
-  item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>>
-): MainserverProjectionRowInput => {
-  const principal = requireMutationProjectionPrincipalContext(target);
-  return {
-    ...mapGenericItem(item, target.instanceId, []),
-    contentType: target.contentType,
-    ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-    credentialSource: principal.actingPrincipalType,
-    credentialFingerprint: principal.credentialFingerprint,
-    authorizationMode: principal.authorizationMode,
-    sourceEntityType: target.contentType,
-    sourceEntityId: item.id,
-  };
-};
-
 const refreshGenericItemSibling = async (input: {
   readonly mutation: GenericItemSiblingRefreshInput;
   readonly contentType: ContentProjectionSyncTarget['contentType'];
@@ -366,12 +346,21 @@ export const refreshGenericItemSiblingProjections = async (
 ): Promise<true | undefined> => {
   await recordGenericItemDeletionAudit(input);
   if (input.operation !== 'delete' && !(await isMutationFollowUpDue(input.target))) {
-    return deferMutationHistory(input);
+    return deferMutationHistory(input, true);
   }
-  const loadedItem = await loadGenericItemForSiblingRefresh(input);
+  const loadedItem = await loadGenericItemForSiblingRefresh(
+    input.target,
+    input.operation,
+    input.entityId
+  );
   if (loadedItem.failed) {
+    let deferred: true | undefined;
+    if (input.target.ownershipPrincipal) {
+      deferred = await deferMutationHistory(input, true);
+      if (!deferred) return undefined;
+    }
     await refreshGenericItemProjectionSnapshots(input.target);
-    return undefined;
+    return deferred;
   }
   const resolvedContentType =
     loadedItem.item && resolveGenericItemProjectionContentType(loadedItem.item.genericType);

@@ -1,6 +1,5 @@
 import {
   buildPublicWasteLocationKey,
-  type PublicWasteCalendarEntry,
   type PublicWasteSelectionState,
   type PublicWasteSelectionStep,
 } from './public-waste-contract.js';
@@ -15,68 +14,13 @@ import { resolvePublicWasteSelection } from './public-waste-resolver.js';
 const DEMO_REFERENCE_DATE = '2026-05-18';
 const DEMO_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
-const demoRegions = [{ id: 'r-1', label: 'Musterregion' }] as const;
-const demoCities = [
-  { id: 'c-1', label: 'Musterstadt', regionId: 'r-1' },
-  { id: 'c-2', label: 'Nebenort', regionId: 'r-1' },
-] as const;
-const demoStreets = [
-  { id: 's-1', label: 'Hauptstraße', cityId: 'c-1' },
-  { id: 's-2', label: 'Bahnhofstraße', cityId: 'c-1' },
-  { id: 's-3', label: 'Dorfplatz', cityId: 'c-2' },
-] as const;
-const demoHouseNumbers = [
-  { id: 'h-12', label: '12', streetId: 's-1' },
-  { id: 'h-14', label: '14', streetId: 's-1' },
-  { id: 'h-1', label: '1', streetId: 's-2' },
-  { id: 'h-3', label: '3', streetId: 's-3' },
-] as const;
-
-const demoCalendarEntriesByLocationKey: Record<string, readonly PublicWasteCalendarEntry[]> = {
-  'r-1:c-1:s-1:h-12': [
-    {
-      id: 'pickup-1',
-      date: '2026-05-19',
-      fractionId: 'bio',
-      fractionLabel: 'Bioabfall',
-      note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
-    },
-    {
-      id: 'pickup-2',
-      date: '2026-05-26',
-      fractionId: 'paper',
-      fractionLabel: 'Papier',
-      note: null,
-    },
-  ],
-  'r-1:c-1:s-1:h-14': [
-    {
-      id: 'pickup-3',
-      date: '2026-05-20',
-      fractionId: 'bio',
-      fractionLabel: 'Bioabfall',
-      note: null,
-    },
-  ],
-  'r-1:c-1:s-2:h-1': [
-    {
-      id: 'pickup-4',
-      date: '2026-05-21',
-      fractionId: 'residual',
-      fractionLabel: 'Restabfall',
-      note: null,
-    },
-  ],
-  'r-1:c-2:s-3:h-3': [
-    {
-      id: 'pickup-5',
-      date: '2026-05-22',
-      fractionId: 'glass',
-      fractionLabel: 'Glas',
-      note: null,
-    },
-  ],
-};
+import {
+  demoRegions,
+  demoCities,
+  demoStreets,
+  demoHouseNumbers,
+  demoCalendarEntriesByLocationKey,
+} from './public-waste-demo-data.js';
 
 type DemoPageState =
   | {
@@ -91,7 +35,9 @@ type DemoPageState =
       readonly selectionState: 'complete';
       readonly selection: Required<PublicWasteSelectionState>;
       readonly selectionSummary: string;
-      readonly calendarModel: ReturnType<typeof projectPublicWasteCalendar> & { readonly locationKey: string };
+      readonly calendarModel: ReturnType<typeof projectPublicWasteCalendar> & {
+        readonly locationKey: string;
+      };
       readonly icalUrl: string;
       readonly restoredLocationNotice?: string;
     };
@@ -103,7 +49,8 @@ const selectionStepLabels = {
   houseNumber: 'Hausnummer',
 } as const;
 
-const readCookieValue = (cookieHeader: string, name: string): string | null => readPublicWasteCookieValue(cookieHeader, name);
+const readCookieValue = (cookieHeader: string, name: string): string | null =>
+  readPublicWasteCookieValue(cookieHeader, name);
 
 const parseLocationKey = (locationKey: string): Required<PublicWasteSelectionState> | null => {
   const [regionId, cityId, streetId, houseNumberId] = locationKey.split(':');
@@ -120,7 +67,8 @@ const parseLocationKey = (locationKey: string): Required<PublicWasteSelectionSta
 };
 
 const normalizeSelection = (selection: PublicWasteSelectionState): PublicWasteSelectionState => {
-  const regionId = selection.regionId ?? (demoRegions.length === 1 ? demoRegions[0]?.id : undefined);
+  const regionId =
+    selection.regionId ?? (demoRegions.length === 1 ? demoRegions[0]?.id : undefined);
   return {
     ...(regionId ? { regionId } : {}),
     ...(selection.cityId ? { cityId: selection.cityId } : {}),
@@ -150,10 +98,13 @@ const getScopedOptions = (selection: PublicWasteSelectionState) => {
 };
 
 const buildSelectionSummary = (selection: Required<PublicWasteSelectionState>): string => {
-  const cityLabel = demoCities.find((entry) => entry.id === selection.cityId)?.label ?? selection.cityId;
-  const streetLabel = demoStreets.find((entry) => entry.id === selection.streetId)?.label ?? selection.streetId;
+  const cityLabel =
+    demoCities.find((entry) => entry.id === selection.cityId)?.label ?? selection.cityId;
+  const streetLabel =
+    demoStreets.find((entry) => entry.id === selection.streetId)?.label ?? selection.streetId;
   const houseNumberLabel =
-    demoHouseNumbers.find((entry) => entry.id === selection.houseNumberId)?.label ?? selection.houseNumberId;
+    demoHouseNumbers.find((entry) => entry.id === selection.houseNumberId)?.label ??
+    selection.houseNumberId;
 
   return `${cityLabel}, ${streetLabel} ${houseNumberLabel}`;
 };
@@ -174,9 +125,8 @@ export const resolveDemoPublicWastePageState = (input: {
   readonly selection: PublicWasteSelectionState;
   readonly restoredLocationNotice?: string;
 }): DemoPageState => {
-  const { normalizedSelection, availableCities, availableStreets, availableHouseNumbers } = getScopedOptions(
-    input.selection
-  );
+  const { normalizedSelection, availableCities, availableStreets, availableHouseNumbers } =
+    getScopedOptions(input.selection);
 
   const resolution = resolvePublicWasteSelection({
     availableRegions: demoRegions,
@@ -227,22 +177,25 @@ export const resolveDemoPublicWastePageState = (input: {
   };
 };
 
-export const readDemoPublicWasteSelectionFromCookie = (): Required<PublicWasteSelectionState> | null => {
-  const locationKey = readCookieValue(document.cookie, PUBLIC_WASTE_PREFERENCE_COOKIE);
-  if (!locationKey) {
-    return null;
-  }
+export const readDemoPublicWasteSelectionFromCookie =
+  (): Required<PublicWasteSelectionState> | null => {
+    const locationKey = readCookieValue(document.cookie, PUBLIC_WASTE_PREFERENCE_COOKIE);
+    if (!locationKey) {
+      return null;
+    }
 
-  const parsedSelection = parseLocationKey(locationKey);
-  if (!parsedSelection) {
-    return null;
-  }
+    const parsedSelection = parseLocationKey(locationKey);
+    if (!parsedSelection) {
+      return null;
+    }
 
-  const resolvedState = resolveDemoPublicWastePageState({ selection: parsedSelection });
-  return resolvedState.selectionState === 'complete' ? resolvedState.selection : null;
-};
+    const resolvedState = resolveDemoPublicWastePageState({ selection: parsedSelection });
+    return resolvedState.selectionState === 'complete' ? resolvedState.selection : null;
+  };
 
-export const writeDemoPublicWasteSelectionCookie = (selection: Required<PublicWasteSelectionState>): void => {
+export const writeDemoPublicWasteSelectionCookie = (
+  selection: Required<PublicWasteSelectionState>
+): void => {
   document.cookie = serializePublicWastePreferenceCookie({
     locationKey: buildPublicWasteLocationKey(selection),
     maxAgeSeconds: DEMO_COOKIE_MAX_AGE_SECONDS,

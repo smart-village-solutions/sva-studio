@@ -5,6 +5,25 @@ import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '../../..');
 const read = (path: string): string => readFileSync(resolve(root, path), 'utf8');
+const lifecycleModules = [
+  'verify-plugin-lifecycle-database-contract',
+  'plugin-lifecycle-contract-base',
+  'plugin-lifecycle-contract-database',
+  'plugin-lifecycle-contract-fixture',
+  'plugin-lifecycle-contract-recovery',
+  'plugin-lifecycle-contract-runtime',
+  'plugin-lifecycle-contract-worker',
+  'plugin-lifecycle-contract-lc-start',
+  'plugin-lifecycle-contract-activation',
+  'plugin-lifecycle-contract-topology',
+  'plugin-lifecycle-contract-terminal-retry',
+  'plugin-lifecycle-contract-redelivery',
+  'plugin-lifecycle-contract-generation',
+  'plugin-lifecycle-contract-observability',
+  'plugin-lifecycle-contract-observability-migration',
+] as const;
+const lifecycleHarness = (): string =>
+  lifecycleModules.map((module) => read(`scripts/ci/${module}.ts`)).join('\n');
 
 describe('plugin lifecycle database contract gate', () => {
   it('runs the real lifecycle harness from auth-runtime integration', () => {
@@ -18,8 +37,28 @@ describe('plugin lifecycle database contract gate', () => {
   });
 
   it('keeps every lifecycle invariant positive and negative in the real harness', () => {
-    const harness = read('scripts/ci/verify-plugin-lifecycle-database-contract.ts');
+    const harness = lifecycleHarness();
+    const entry = read('scripts/ci/verify-plugin-lifecycle-database-contract.ts');
     const workerFixture = read('tooling/testing/fixtures/plugin-lifecycle-worker-process.ts');
+    expect(
+      [...entry.matchAll(/await (run\w+)\(\{ adminPool, workerPool, runtime, port \}\);/g)].map(
+        ([, name]) => name
+      )
+    ).toEqual([
+      'runLcStart',
+      'runActivation',
+      'runTopology',
+      'runTerminalRetry',
+      'runRedelivery',
+      'runGeneration',
+      'runObservability',
+      'runObservabilityMigration',
+    ]);
+    expect(harness.match(/await reportCase\(/g)).toHaveLength(29);
+    expect(harness).toContain("['after_request', 'after_job', 'after_claim', 'after_enqueue']");
+    expect(harness).toContain("'after_lifecycle_terminal',");
+    expect(harness).toContain("'after_terminal_job_status',");
+    expect(harness).toContain("'after_terminal_event',");
     for (const invariant of [
       'LC-01',
       'LC-02',
@@ -93,7 +132,7 @@ describe('plugin lifecycle database contract gate', () => {
   });
 
   it('owns and cleans only its unique disposable container', () => {
-    const harness = read('scripts/ci/verify-plugin-lifecycle-database-contract.ts');
+    const harness = lifecycleHarness();
     expect(harness).toContain('sva-lifecycle-contract-${process.pid}-${randomUUID()');
     expect(harness).toContain("spawnSync('docker', ['rm', '--force', containerName]");
     expect(harness).not.toContain('docker compose down');

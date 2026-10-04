@@ -1,6 +1,6 @@
 import { Button } from './button.js';
 import { Select } from './select.js';
-import { StudioField } from './studio-primitives.js';
+import { StudioField } from './studio-form-fields.js';
 
 export type MediaReferenceFieldOption = Readonly<{
   assetId: string;

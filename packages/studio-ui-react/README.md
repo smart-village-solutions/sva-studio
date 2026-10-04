@@ -68,7 +68,15 @@ packages/studio-ui-react/
     ├── content-media-usage-block.tsx
     ├── studio-media-picker-overlay.tsx
     ├── studio-data-table.tsx
-    ├── studio-primitives.tsx
+    ├── studio-data-table-*
+    ├── studio-page-header.tsx
+    ├── studio-page-templates.tsx
+    ├── studio-form-fields.tsx
+    ├── studio-confirm-dialog.tsx
+    ├── studio-status-cards.tsx
+    ├── studio-state-blocks.tsx
+    ├── rich-text-html-editor.tsx
+    ├── rich-text-editor-*
     ├── studio-surfaces.tsx
     ├── utils.ts
     └── *.test.tsx
@@ -77,9 +85,10 @@ packages/studio-ui-react/
 Wichtige interne Schwerpunkte:
 
 - `src/index.ts` definiert die vollständige öffentliche API
-- `src/studio-primitives.tsx` enthält grundlegende Studio-Seiten-, Feld- und Statusbausteine
+- `src/studio-page-*.tsx`, `src/studio-form-fields.tsx`, `src/studio-confirm-dialog.tsx`, `src/studio-status-cards.tsx` und `src/studio-state-blocks.tsx` enthalten die Seiten-, Feld-, Dialog- und Statusbausteine
 - `src/studio-surfaces.tsx` bündelt größere Oberflächenstrukturen wie Header, Sections, Tabs und Aktionsleisten
-- `src/studio-data-table.tsx` implementiert die generische Studio-Tabelle mit Sortierung, Selektion und Bulk Actions
+- `src/studio-data-table.tsx` koordiniert die generische Studio-Tabelle; `src/studio-data-table-*` enthält Spalten, Sortierbedienung sowie Desktop- und Kompaktansicht
+- `src/rich-text-html-editor.tsx` koordiniert den Rich-Text-Editor; `src/rich-text-editor-*` enthält Toolbar, HTML-Ansicht, Typen und Hilfsfunktionen
 - `src/content-media-usage-block.tsx` und `src/studio-media-picker-overlay.tsx` bilden den gemeinsamen Content-Medienfluss ab
 - `src/*.test.tsx` deckt Rendering, Accessibility-Semantik und Interaktionsverhalten zentraler Komponenten ab
 

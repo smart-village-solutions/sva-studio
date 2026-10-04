@@ -228,6 +228,7 @@ gleichzeitig beeinflussen.
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
   - Tenant-Scope: `iam.activity_logs` + OTEL via Server-Runtime-Logger
   - Plattform-Scope: `iam.platform_activity_logs` + OTEL via Server-Runtime-Logger
+- Der DB-Sink in `audit-db-sink.ts` behält Scope-Prüfung und Transaktion; `audit-account-context.ts` löst tenantgebundene Accounts samt PII-Verschlüsselung auf, `audit-event-writes.ts` schreibt die scopegebundenen Ereignisse. Beim ersten Login steht `account_created` vor `login` innerhalb derselben Transaktion.
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` in der IAM-Datenbank abgegrenzt; Keycloak spiegelt tenantseitig nur die technische Sonderrolle `system_admin`
@@ -561,6 +562,7 @@ gleichzeitig beeinflussen.
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
+- Das Register enthält nur aktuell gemessene Überschreitungen; nach einem Refactoring entfallen verwaiste `fileLines`-Einträge, während andere aktuelle Metriken getrennt getrackt bleiben
 - Bei modularem IAM-Refactoring wird Restschuld am tatsächlichen Kernmodul (`core.ts` oder feingranulare Teilbausteine) und nicht am historischen Fassadenpfad dokumentiert
 - Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
 - Workflow- und CI-Dateiänderungen werden im PR-Pfad gezielt über `tooling-testing` abgesichert und nicht automatisch durch volle Produkt-Suiten eskaliert
@@ -775,7 +777,7 @@ Referenzen:
 
 ## Backup-Sicherheitsvertrag
 
-Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Nicht-sensitive Werte stammen ausschließlich aus dem getrackten Profil; sämtliche `secret-value`- und `secret-reference`-Werte müssen im geschützten `PROMOTE_CONFIG_OVERRIDES` vollständig vorhanden sein. Fehlende, unbekannte oder falsch klassifizierte Schlüssel stoppen vor jeder Remote-Mutation. `Promote` liest `APP_CONFIG` nicht mehr. Das umgebungsspezifische `REDIS_SNAPSHOT_HMAC_SECRET` wird als eigenständiges geschütztes GitHub-Environment-Secret geführt, vor jeder Mutation validiert und nur beim Stack-Render an die App gebunden. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
+Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Nicht-sensitive Werte stammen ausschließlich aus dem getrackten Profil; `secret-value`- und `secret-reference`-Werte stehen im geschützten `PROMOTE_CONFIG_OVERRIDES`. Für Staging werden die separaten GitHub-Environment-Secrets `FALLOW_BROWSER_INGEST_KEY` und `BEACON_API_KEY` vor der Validierung in das autoritative Bundle aufgenommen; in Dev und Production sind Beacon-Schlüssel verboten. Fehlende, unbekannte oder falsch klassifizierte Schlüssel stoppen vor jeder Remote-Mutation. `Promote` liest `APP_CONFIG` nicht mehr. Das umgebungsspezifische `REDIS_SNAPSHOT_HMAC_SECRET` wird als eigenständiges geschütztes GitHub-Environment-Secret geführt, vor jeder Mutation validiert und nur beim Stack-Render an die App gebunden. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
 
 Für einen App-Rollback wird die versionierte nicht-sensitive Config-Revision beim erfolgreichen Promote als Service-Label `sva.config.revision` an das laufende Image gebunden. Zulässig ist ausschließlich das zuvor live erfasste Paar aus unveränderlichem Digest und exakt dieser Revision. Eine fehlende, ungültige oder nicht eindeutig zum Digest gehörende Bindung stoppt fail-closed; weder aktueller Git-Stand noch lokale oder rekonstruierte Konfiguration dürfen sie ersetzen. Geschützte Overrides und Secret-Werte werden nicht historisiert oder automatisch zurückgesetzt. Bei einer inkompatiblen Secret-Rotation gilt **STOP** bis zu einem separat geprüften Recovery-Plan innerhalb des bestehenden geschützten `Promote`-Pfads.
 

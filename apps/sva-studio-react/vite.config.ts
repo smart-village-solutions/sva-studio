@@ -6,6 +6,7 @@ import { codecovRollupPlugin } from '@codecov/rollup-plugin';
 import { nitro } from 'nitro/vite';
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
+import { instrument } from 'oxc-coverage-instrument';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -69,6 +70,28 @@ const chunkProvenancePlugin = (): Plugin => ({
       chunks.push({ fileName, modules: [owners[0].facadeModuleId] });
     }
     writeFileSync(join(chunkProvenanceRoot, `${environment}.json`), JSON.stringify(chunks));
+  },
+});
+const fallowBrowserCoveragePlugin = (): Plugin => ({
+  name: 'fallow-browser-coverage',
+  apply: 'build',
+  enforce: 'post',
+  transform(code, id) {
+    if (this.environment.name !== 'client') return;
+    const file = id.split('?')[0];
+    if (
+      !/\.[cm]?[jt]sx?$/.test(file) ||
+      !(
+        file.startsWith(join(appRoot, 'src') + '/') ||
+        file.startsWith(join(workspaceRoot, 'packages') + '/')
+      ) ||
+      /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file)
+    ) return;
+    const result = instrument(code, file, { sourceMap: true });
+    return {
+      code: result.code,
+      map: result.sourceMap ? JSON.parse(result.sourceMap) : undefined,
+    };
   },
 });
 for (const environment of chunkProvenanceEnvironments) {
@@ -484,6 +507,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    fallowBrowserCoveragePlugin(),
     chunkProvenancePlugin(),
     tanstackStartClientEnvCompatPlugin(),
     ...(tanstackDevtoolsEnabled ? [devtools()] : []),

@@ -6,6 +6,9 @@ import { wasteManagementPluginTranslationsDEMasterData } from '../src/plugin.tra
 import { wasteManagementPluginTranslationsDETools } from '../src/plugin.translations.de.tools.js';
 import { wasteManagementPluginTranslationsENTools } from '../src/plugin.translations.en.tools.js';
 import { wasteManagementPluginTranslationsDETours } from '../src/plugin.translations.de.tours.js';
+import { wasteManagementPluginTranslationsENTours } from '../src/plugin.translations.en.tours.js';
+import { wasteManagementPluginTranslationsDEScheduling } from '../src/plugin.translations.de.scheduling.js';
+import { wasteManagementPluginTranslationsENScheduling } from '../src/plugin.translations.en.scheduling.js';
 import { createMasterDataEntityTranslations } from '../src/plugin.translations.shared.master-data.js';
 import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
 import {
@@ -14,6 +17,20 @@ import {
 } from '../src/plugin.translations.shared.sections.js';
 
 describe('waste-management translation builders', () => {
+  it('keeps German and English tour and scheduling translation keys aligned', () => {
+    const paths = (value: unknown, prefix = ''): string[] =>
+      value && typeof value === 'object'
+        ? Object.entries(value).flatMap(([key, child]) => paths(child, `${prefix}.${key}`))
+        : [prefix];
+
+    expect(paths(wasteManagementPluginTranslationsDETours)).toEqual(
+      paths(wasteManagementPluginTranslationsENTours)
+    );
+    expect(paths(wasteManagementPluginTranslationsDEScheduling)).toEqual(
+      paths(wasteManagementPluginTranslationsENScheduling)
+    );
+  });
+
   it('builds tab translations with the canonical section structure', () => {
     expect(
       createWasteManagementTabsTranslations({

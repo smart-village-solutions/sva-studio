@@ -8,7 +8,7 @@ import {
 } from './content-media-url.js';
 import type { ContentMediaUsagePatch } from './content-media-usage.js';
 import { Input } from './input.js';
-import { StudioField } from './studio-primitives.js';
+import { StudioField } from './studio-form-fields.js';
 
 type UrlFeedback = 'checking' | 'upgraded' | 'http' | 'https-unavailable' | 'invalid' | null;
 

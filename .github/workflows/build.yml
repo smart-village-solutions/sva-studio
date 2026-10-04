@@ -33,6 +33,8 @@ jobs:
         uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Verify final runtime artifact
+        env:
+          VITE_GIT_SHA: ${{ github.sha }}
         run: pnpm nx run sva-studio-react:verify:runtime-artifact
 
       - name: Login to GHCR

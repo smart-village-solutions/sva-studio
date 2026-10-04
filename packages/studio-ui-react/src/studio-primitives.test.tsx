@@ -890,6 +890,65 @@ describe('studio-ui-react primitives', () => {
     expect(onChange).toHaveBeenCalledWith([{ id: 'title', desc: true }]);
   });
 
+  it('keeps the toolbar focused and reobserves its container across empty table states', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const observedNodes: Element[] = [];
+    const disconnect = vi.fn();
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(node: Element) {
+        observedNodes.push(node);
+        this.callback(
+          [
+            { contentRect: { width: observedNodes.length === 1 ? 900 : 320 } as DOMRectReadOnly },
+          ] as ResizeObserverEntry[],
+          this as ResizeObserver
+        );
+      }
+
+      unobserve = vi.fn();
+      disconnect = disconnect;
+    } as typeof ResizeObserver;
+
+    const columns = [
+      { id: 'title', header: 'Titel', cell: (row: { id: string; title: string }) => row.title },
+    ];
+    const renderTable = (data: readonly { id: string; title: string }[]) => (
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={disabledSorting}
+        labels={tableLabels}
+        data={data}
+        getRowId={(row) => row.id}
+        columns={columns}
+        emptyState={<p>Keine Daten</p>}
+        toolbarStart={<input aria-label="Suchen" />}
+      />
+    );
+
+    try {
+      const { container, rerender } = render(renderTable([{ id: 'a', title: 'Alpha' }]));
+      const search = screen.getByRole('textbox', { name: 'Suchen' });
+      search.focus();
+
+      rerender(renderTable([]));
+      expect(screen.getByRole('textbox', { name: 'Suchen' })).toBe(search);
+      expect(document.activeElement).toBe(search);
+      expect(disconnect).toHaveBeenCalledTimes(1);
+
+      rerender(renderTable([{ id: 'b', title: 'Beta' }]));
+      expect(screen.getByRole('textbox', { name: 'Suchen' })).toBe(search);
+      expect(document.activeElement).toBe(search);
+      expect(observedNodes).toHaveLength(2);
+      expect(observedNodes[1]).toBe(observedNodes[0]);
+      expect(container.querySelector('[data-layout]')?.getAttribute('data-layout')).toBe('compact');
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   it('renders external sorting controls in compact mode and forwards their changes', () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     const onChange = vi.fn();

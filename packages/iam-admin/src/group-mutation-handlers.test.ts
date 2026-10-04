@@ -604,6 +604,12 @@ describe('createGroupMutationHandlers', () => {
         trigger: 'user_group_changed',
       })
     );
+    const eventOrder = [
+      deps.publishGroupEvent,
+      deps.emitActivityLog,
+      deps.notifyPermissionInvalidation,
+    ].map((mock) => mock.mock.invocationCallOrder[0]);
+    expect(eventOrder).toEqual([...eventOrder].sort((left, right) => left - right));
   });
 
   it('logs and maps unexpected membership assignment failures', async () => {

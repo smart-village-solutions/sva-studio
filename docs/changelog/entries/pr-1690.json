@@ -1,0 +1,4 @@
+{
+  "prNumber": 1690,
+  "body": "Die Keycloak-Einrichtung in der Instanzverwaltung wurde intern in klarere Ausführungsphasen aufgeteilt. Vorprüfung, Ergebnis und Fehlerbehandlung bleiben unverändert."
+}

@@ -405,6 +405,59 @@ describe('organization mutation handlers', () => {
     expect(deps.resolveActorInfo).not.toHaveBeenCalled();
   });
 
+  it('keeps the create checks in feature, access, actor, CSRF, rate, idempotency and write order', async () => {
+    const deps = buildDeps();
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    const authorize = deps.authorizeOrganizationMutationAccess;
+    if (!authorize) {
+      throw new Error('organization mutation authorizer missing in test');
+    }
+    const order = [
+      deps.ensureFeature,
+      authorize,
+      deps.resolveActorInfo,
+      deps.validateCsrf,
+      deps.consumeRateLimit,
+      deps.requireIdempotencyKey,
+      deps.parseRequestBody,
+      deps.reserveIdempotency,
+      deps.withInstanceScopedDb,
+    ].map((check) => vi.mocked(check).mock.invocationCallOrder[0]);
+    expect(order).toEqual([...order].sort((left, right) => left - right));
+  });
+
+  it('fails idempotency without persisting an organization when the parent hierarchy is rejected', async () => {
+    const deps = buildDeps();
+    const query = vi.fn();
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    deps.resolveHierarchyFields = vi.fn(async () => ({
+      ok: false as const,
+      status: 409,
+      code: 'conflict' as const,
+      message: 'Ungültige Organisationshierarchie.',
+    }));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    expect(query).not.toHaveBeenCalled();
+    expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
+    expect(completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'FAILED', responseStatus: 409 })
+    );
+  });
+
   it('replays an existing idempotent organization create result', async () => {
     const deps = buildDeps();
     deps.reserveIdempotency = vi.fn(async () => ({

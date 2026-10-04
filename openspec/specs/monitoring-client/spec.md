@@ -316,8 +316,8 @@ Das System SHALL explizite API-Versionen verwenden und offene Standards einhalte
 #### Scenario: OpenTelemetry Semantic Conventions
 
 - **WHEN** Auto-Instrumentation HTTP-Metriken erfasst
-- **THEN** folgen Attribut-Namen den OTel Semantic Conventions v1.21+
-- **AND** sind Standard-Attribute dokumentiert (`http.method`, `http.status_code`)
+- **THEN** folgen Attribut-Namen den stabilen OTel HTTP Semantic Conventions v1.23+
+- **AND** sind Standard-Attribute dokumentiert (`http.request.method`, `http.response.status_code`)
 
 ### Requirement: Backup & Restore Capability
 

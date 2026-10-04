@@ -206,6 +206,47 @@ describe('instance registry server', () => {
     expect(poolDouble.connect).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps hostname cache entries isolated by database URL', async () => {
+    const server = await import('./server.js');
+    const firstRecord = createInstanceRecord({ instanceId: 'tenant-first' });
+    const secondRecord = createInstanceRecord({ instanceId: 'tenant-second' });
+    const firstPool = createPoolDouble();
+    const secondPool = createPoolDouble();
+    mocks.poolFactory.mockReturnValueOnce(firstPool.pool).mockReturnValueOnce(secondPool.pool);
+    mocks.createInstanceRegistryRepository
+      .mockReturnValueOnce({ resolveHostname: vi.fn(async () => firstRecord) })
+      .mockReturnValueOnce({ resolveHostname: vi.fn(async () => secondRecord) });
+
+    const options = { cacheTtlMs: 10_000, now: () => 1_000 };
+    await expect(server.loadInstanceByHostname('Tenant.Example.Test', {
+      ...options,
+      getDatabaseUrl: () => 'postgres://first.example.test/sva',
+    })).resolves.toBe(firstRecord);
+    await expect(server.loadInstanceByHostname('tenant.example.test', {
+      ...options,
+      getDatabaseUrl: () => 'postgres://second.example.test/sva',
+    })).resolves.toBe(secondRecord);
+
+    expect(firstPool.connect).toHaveBeenCalledOnce();
+    expect(secondPool.connect).toHaveBeenCalledOnce();
+  });
+
+  it('passes the instance ID to the repository without opening a transaction', async () => {
+    const server = await import('./server.js');
+    const poolDouble = createPoolDouble();
+    const getInstanceById = vi.fn(async () => createInstanceRecord());
+    mocks.poolFactory.mockReturnValue(poolDouble.pool);
+    mocks.createInstanceRegistryRepository.mockReturnValue({ getInstanceById });
+
+    await server.loadInstanceById('tenant-a', {
+      getDatabaseUrl: () => 'postgres://db.example.test/sva',
+    });
+
+    expect(getInstanceById).toHaveBeenCalledExactlyOnceWith('tenant-a');
+    expect(poolDouble.query).not.toHaveBeenCalled();
+    expect(poolDouble.release).toHaveBeenCalledOnce();
+  });
+
   it('falls back to the primary hostname query when direct hostname resolution returns null', async () => {
     const server = await import('./server.js');
     const record = createInstanceRecord({ primaryHostname: 'fallback.example.test' });

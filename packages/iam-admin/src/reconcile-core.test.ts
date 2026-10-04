@@ -134,6 +134,9 @@ describe('runRoleCatalogReconciliation', () => {
       })
     ).rejects.toThrow('role_catalog_fingerprint_stale');
     expect(deps.resolveIdentityProviderForInstance).toHaveBeenCalledOnce();
+    expect(deps.trackKeycloakCall).not.toHaveBeenCalled();
+    expect(deps.setRoleSyncState).not.toHaveBeenCalled();
+    expect(deps.emitRoleAuditEvent).not.toHaveBeenCalled();
   });
 
   it('resolves the tenant-local identity provider for the target instance', async () => {
@@ -342,6 +345,147 @@ describe('runRoleCatalogReconciliation', () => {
     expect(createRole).not.toHaveBeenCalled();
     expect(updateRole).not.toHaveBeenCalled();
     expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 0);
+  });
+
+  it('imports a tenant-owned technical role and audits the new database role', async () => {
+    const insertedParams: unknown[][] = [];
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: vi.fn(async () => ({
+        provider: {
+          listRoles: vi.fn(async () => [
+            createRealmRole({
+              externalName: 'system_admin',
+              description: 'System administrator',
+              roleKey: 'system_admin',
+              displayName: 'System Admin',
+              roleLevel: 100,
+            }),
+          ]),
+          getRoleByName: vi.fn(async () => null),
+        } as never,
+      })),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
+        work({
+          query: vi.fn(async (sql: string, params: unknown[]) => {
+            if (sql.includes('SELECT\n  id,')) return { rows: [] };
+            if (sql.includes('INSERT INTO iam.roles')) {
+              insertedParams.push(params);
+              return { rows: [{ id: 'imported-role' }] };
+            }
+            return { rows: [] };
+          }),
+        } as never)
+      ),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      actorAccountId: 'actor-1',
+      requestId: 'req-1',
+    });
+
+    expect(insertedParams).toEqual([
+      [
+        'tenant-a',
+        'system_admin',
+        'system_admin',
+        'System Admin',
+        'system_admin',
+        'System administrator',
+        100,
+      ],
+    ]);
+    expect(deps.emitRoleAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        accountId: 'actor-1',
+        roleId: 'imported-role',
+        operation: 'reconcile_import',
+        result: 'success',
+        requestId: 'req-1',
+      })
+    );
+    expect(report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      roles: [{ roleId: 'imported-role', action: 'create', status: 'corrected' }],
+    });
+  });
+
+  it('keeps sanitized import failures and database diagnostics in the report', async () => {
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: vi.fn(async () => ({
+        provider: {
+          listRoles: vi.fn(async () => [
+            createRealmRole({
+              externalName: 'system_admin',
+              description: 'System administrator',
+              roleKey: 'system_admin',
+              displayName: 'System Admin',
+              roleLevel: 100,
+            }),
+          ]),
+          getRoleByName: vi.fn(async () => null),
+        } as never,
+      })),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
+        work({
+          query: vi.fn(async (sql: string) => {
+            if (sql.includes('SELECT\n  id,')) return { rows: [] };
+            if (sql.includes("current_setting('app.instance_id'")) {
+              return {
+                rows: [
+                  {
+                    current_user: 'iam_user',
+                    session_user: 'iam_user',
+                    current_role: 'iam_role',
+                    app_instance_id: 'tenant-a',
+                  },
+                ],
+              };
+            }
+            throw new Error('role_import_failed');
+          }),
+        } as never)
+      ),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      includeDiagnostics: true,
+    });
+
+    expect(report).toMatchObject({
+      outcome: 'failed',
+      failedCount: 1,
+      debug: {
+        instanceId: 'tenant-a',
+        dbRoleCount: 0,
+        listedIdpRoleCount: 1,
+        hydratedIdpRoleCount: 1,
+        managedIdpRoleCount: 1,
+        importFailures: [
+          {
+            roleKey: 'system_admin',
+            externalRoleName: 'system_admin',
+            errorName: 'Error',
+            errorMessage: 'role_import_failed',
+            dbContext: {
+              currentUser: 'iam_user',
+              sessionUser: 'iam_user',
+              currentRole: 'iam_role',
+              appInstanceId: 'tenant-a',
+            },
+          },
+        ],
+        dbRoleMatches: [],
+      },
+    });
+    expect(deps.emitRoleAuditEvent).not.toHaveBeenCalled();
+    expect(deps.setRoleDriftBacklog).toHaveBeenCalledWith('tenant-a', 1);
   });
 
   it('reports non-technical managed Keycloak roles as manual drift instead of importing them', async () => {

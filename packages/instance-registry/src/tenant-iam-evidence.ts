@@ -3,6 +3,7 @@ import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
 import type {
   IamInstanceDetail,
   IamTenantIamAxis,
+  IamTenantIamStatus,
   IamTenantIamEvidenceClassification,
 } from '@sva/core';
 
@@ -53,4 +54,121 @@ export const getTenantIamServiceIdentity = (
     case 'registry':
       return undefined;
   }
+};
+
+type TenantIamEvidence = Omit<IamTenantIamAxis, 'source'> & {
+  readonly source: IamTenantIamAxis['source'];
+};
+
+const isConfigurationReady = (
+  keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined,
+  requireTenantAdmin: boolean
+): boolean =>
+  Boolean(
+    keycloakStatus &&
+    areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus, { requireTenantAdmin })
+  );
+
+const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => {
+  const serviceIdentity = input.serviceIdentity ?? getTenantIamServiceIdentity(input.source);
+  const classification = input.classification ?? classifyTenantIamAxis(input);
+  return {
+    status: input.status,
+    summary: input.summary,
+    source: input.source,
+    ...(serviceIdentity ? { serviceIdentity } : {}),
+    classification,
+    ...(input.checkedAt ? { checkedAt: input.checkedAt } : {}),
+    ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+    ...(input.requestId ? { requestId: input.requestId } : {}),
+  };
+};
+
+const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = [
+  'blocked',
+  'degraded',
+  'unknown',
+  'ready',
+];
+
+export const buildTenantIamStatus = (input: {
+  keycloakStatus?: IamInstanceDetail['keycloakStatus'];
+  requireTenantAdmin?: boolean;
+  accessEvidence?: TenantIamEvidence;
+  reconcileEvidence?: TenantIamEvidence;
+}): IamTenantIamStatus => {
+  const requireTenantAdmin = input.requireTenantAdmin !== false;
+  const configuration = input.keycloakStatus
+    ? createTenantIamAxis({
+        status: isConfigurationReady(input.keycloakStatus, requireTenantAdmin)
+          ? 'ready'
+          : 'degraded',
+        summary: isConfigurationReady(input.keycloakStatus, requireTenantAdmin)
+          ? 'Tenant-IAM-Struktur ist vollständig vorhanden.'
+          : 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+        source: 'keycloak_status_snapshot',
+        classification: classifyTenantIamConfiguration(input.keycloakStatus, {
+          requireTenantAdmin,
+        }),
+      })
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch kein Strukturstatus für Tenant-IAM vorhanden.',
+        source: 'registry',
+      });
+
+  const access = input.accessEvidence
+    ? createTenantIamAxis(input.accessEvidence)
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch keine tenantlokale Rechteprobe vorhanden.',
+        source: 'access_probe',
+      });
+
+  const reconcile = input.reconcileEvidence
+    ? createTenantIamAxis(input.reconcileEvidence)
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch kein Rollenabgleich ausgeführt.',
+        source: 'role_reconcile',
+      });
+
+  const overallStatus =
+    tenantIamPrecedence.find((candidate) =>
+      [configuration.status, access.status, reconcile.status].includes(candidate)
+    ) ?? 'unknown';
+
+  const dominantAxis =
+    overallStatus === configuration.status
+      ? configuration
+      : overallStatus === access.status
+        ? access
+        : overallStatus === reconcile.status
+          ? reconcile
+          : configuration;
+
+  const overallSummary =
+    overallStatus === 'ready'
+      ? 'Tenant-IAM ist betriebsbereit.'
+      : overallStatus === 'blocked'
+        ? 'Tenant-IAM ist blockiert.'
+        : overallStatus === 'degraded'
+          ? 'Tenant-IAM ist eingeschränkt.'
+          : 'Tenant-IAM-Befund ist unvollständig.';
+
+  return {
+    configuration,
+    access,
+    reconcile,
+    overall: createTenantIamAxis({
+      status: overallStatus,
+      summary: overallSummary,
+      source: overallStatus === 'unknown' ? 'registry' : dominantAxis.source,
+      classification: dominantAxis.classification,
+      checkedAt: dominantAxis.checkedAt,
+      errorCode: dominantAxis.errorCode,
+      requestId: dominantAxis.requestId,
+      serviceIdentity: dominantAxis.serviceIdentity,
+    }),
+  };
 };

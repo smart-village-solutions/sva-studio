@@ -1,0 +1,4 @@
+{
+  "prNumber": 1658,
+  "body": "Die Organisationsverwaltung funktioniert wie bisher. Schreibvorgänge für Organisationen und Mitgliedschaften sind intern klarer getrennt, damit Berechtigungen, Transaktionen und Fehlerbehandlung leichter nachvollziehbar bleiben."
+}

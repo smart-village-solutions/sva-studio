@@ -1,49 +1,18 @@
+import type { IamContentListQuery } from '@sva/core';
 import {
-  withServerDeniedContentAccess,
-  type IamContentAccessSummary,
-  type IamContentListItem,
-  type IamContentListQuery,
-} from '@sva/core';
-import { deleteEvent } from '@sva/plugin-events';
-import { deleteFaq } from '@sva/plugin-faq';
-import { deleteCockpitCard } from '@sva/plugin-cockpit-cards';
-import { deleteGenericItem } from '@sva/plugin-generic-items';
-import { deleteNews } from '@sva/plugin-news';
-import { deletePoi } from '@sva/plugin-poi';
-import { deleteProject } from '@sva/plugin-projects';
-import { deleteSurvey } from '@sva/plugin-surveys';
-import { IconTrash } from '@tabler/icons-react';
-import {
-  Button,
-  readStudioDestructiveNavigationFeedback,
-  removeStudioActionNavigationFeedback,
   type MainserverPrincipalControlModel,
-  type MainserverPrincipalType,
-  type StudioBulkAction,
-  type StudioColumnDef,
-  StudioDataTable,
   StudioDestructiveActionDialog,
   StudioListPageTemplate,
   StudioPersistentActionResult,
-  StudioTableActionButton,
-  StudioTableValueAction,
 } from '@sva/studio-ui-react';
-import { Link, useLocation, useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
-import {
-  createStudioDataTableLabels,
-  createStudioDataTableSortingLabels,
-} from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Select } from '../../components/ui/select';
 import { useContents } from '../../hooks/use-contents';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
-import { resolveStandaloneMainserverPrincipal } from '../../lib/content-status-mutation';
 import type { IamHttpError } from '../../lib/iam-api';
 import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import type { IamContentListMetadata } from '../../lib/iam-api';
@@ -55,71 +24,19 @@ import {
   filterRegisteredStudioContentItems,
   resolveStudioContentTypeLabel,
 } from '../../lib/studio-content-types';
-import { appAdminResources } from '../../routing/admin-resources';
-import { ContentStatusDialog } from './-content-status-dialog';
-import { ContentTypeFilters } from './-content-type-filters';
+import {
+  readNormalizedRouteState,
+  resolveContentSortField,
+  updateRouteState,
+  type ContentListRouteState,
+  type RouteSearchState,
+} from './-content-list-route-state';
+import { useContentListDeletion } from './-content-list-deletion';
+import { ContentListTable } from './-content-list-table';
 import { MainserverAuthoringDiagnosticsPanel } from './-mainserver-authoring-diagnostics';
-
-type StatusFilter = 'all' | 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
-type SortDirection = 'asc' | 'desc';
-type ContentListSortState = Readonly<{
-  field: string;
-  direction: SortDirection;
-}>;
-type RouteSearchState = Readonly<Record<string, unknown>>;
-type ContentListRouteState = Readonly<{
-  type: string;
-  status: StatusFilter;
-  page: number;
-  pageSize: number;
-  languageCode?: string;
-  sort?: ContentListSortState;
-}>;
-type SortStateLike = Readonly<{
-  field?: unknown;
-  direction?: unknown;
-}>;
-type RegisteredContentRow = IamContentListItem &
-  Readonly<{
-    typeLabel: string;
-    editPath: string;
-  }>;
-type ContentDeletionResult = Readonly<{
-  kind: 'success';
-  description: string;
-}>;
-type PendingBulkDeletion = Readonly<{
-  clearSelection: () => void;
-  selectedRows: readonly RegisteredContentRow[];
-}>;
 
 const EMPTY_PERMISSION_ACTIONS: readonly string[] = [];
 
-const MAIN_SERVER_CONTENT_TYPES = new Set([
-  'news.article',
-  'events.event-record',
-  'poi.point-of-interest',
-  'surveys.survey',
-  'generic-items.generic-item',
-  'cockpit-cards.cockpit-card',
-  'projects.project',
-]);
-
-const contentAdminResource = appAdminResources.find(
-  (resource) => resource.resourceId === 'content'
-);
-const contentListCapabilities = contentAdminResource?.capabilities?.list;
-const contentPagination = contentListCapabilities?.pagination;
-const contentSorting = contentListCapabilities?.sorting;
-const contentStatusOptions = [
-  'all',
-  'draft',
-  'in_review',
-  'approved',
-  'published',
-  'archived',
-] as const satisfies readonly StatusFilter[];
-const contentSortFields = ['title', 'createdAt', 'updatedAt', 'publishedAt'] as const;
 const contentErrorMessage = (error: IamHttpError | null): string => {
   const permissionMessage = getStudioPermissionDenialMessage(error);
   if (permissionMessage) return permissionMessage;
@@ -178,354 +95,6 @@ const renderProjectionSyncMessage = (metadata: IamContentListMetadata): string |
   return null;
 };
 
-const resolveRowAccess = (
-  access: IamContentAccessSummary | undefined,
-  listError: IamHttpError | null
-): IamContentAccessSummary => {
-  if (access) {
-    return access;
-  }
-  if (listError?.code === 'forbidden') {
-    return withServerDeniedContentAccess(undefined);
-  }
-  return {
-    state: 'read_only',
-    canRead: true,
-    canCreate: false,
-    canUpdate: false,
-    reasonCode: 'content_update_missing',
-    organizationIds: [],
-    sourceKinds: [],
-  };
-};
-
-const isStatusFilter = (value: unknown): value is StatusFilter =>
-  typeof value === 'string' && contentStatusOptions.some((option) => option === value);
-
-const normalizeTypeFilter = (value: unknown): string => {
-  if (typeof value !== 'string') {
-    return 'all';
-  }
-
-  const normalizedValue = value.trim();
-  if (normalizedValue.length === 0) {
-    return 'all';
-  }
-
-  return normalizedValue === 'all' ||
-    studioContentTypes.some((definition) => definition.contentType === normalizedValue)
-    ? normalizedValue
-    : 'all';
-};
-
-const asRouteSearchState = (value: unknown): RouteSearchState | undefined =>
-  value && typeof value === 'object' ? (value as RouteSearchState) : undefined;
-
-const normalizeStatusFilter = (value: unknown): StatusFilter =>
-  isStatusFilter(value) ? value : 'all';
-
-const normalizeLanguageFilter = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value.trim().toLowerCase() || undefined : undefined;
-
-const normalizePositiveInteger = (value: unknown, fallback: number): number => {
-  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isInteger(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
-  return fallback;
-};
-
-const normalizeSortState = (value: unknown): ContentListSortState | undefined => {
-  const objectValue = asRouteSearchState(value) as SortStateLike | undefined;
-  if (objectValue) {
-    const field = typeof objectValue.field === 'string' ? objectValue.field : undefined;
-    const direction = objectValue.direction;
-    if (
-      field &&
-      contentSortFields.some((sortField) => sortField === field) &&
-      (direction === 'asc' || direction === 'desc')
-    ) {
-      return { field, direction };
-    }
-  }
-
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const normalized = value.startsWith('-')
-      ? ({ field: value.slice(1), direction: 'desc' } as const)
-      : ({ field: value, direction: 'asc' } as const);
-    return contentSortFields.some((sortField) => sortField === normalized.field)
-      ? normalized
-      : undefined;
-  }
-
-  return undefined;
-};
-
-const resolveFallbackSortState = (): ContentListSortState | undefined =>
-  contentSorting
-    ? {
-        field: contentSorting.defaultField,
-        direction: contentSorting.defaultDirection,
-      }
-    : undefined;
-
-const resolveRouteSortState = (search: RouteSearchState): ContentListSortState | undefined => {
-  const sortFromExplicitParams =
-    typeof search.sortBy === 'string'
-      ? normalizeSortState({
-          field: search.sortBy,
-          direction: search.sortDirection,
-        })
-      : undefined;
-
-  return (
-    sortFromExplicitParams ?? normalizeSortState(search.sort) ?? normalizeSortState(search.sorting)
-  );
-};
-
-const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
-  const normalizedFilters = asRouteSearchState(search.filters);
-  const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
-  const type = normalizeTypeFilter(normalizedFilters?.type ?? search.type);
-  const languageCode =
-    type === 'faq.faq' ? normalizeLanguageFilter(search.languageCode) : undefined;
-
-  return {
-    type,
-    status: normalizeStatusFilter(normalizedFilters?.status ?? search.status),
-    page: normalizePositiveInteger(search.page, 1),
-    pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
-    ...(languageCode ? { languageCode } : {}),
-    sort: resolveRouteSortState(search) ?? resolveFallbackSortState(),
-  };
-};
-
-const serializeRouteState = (state: ContentListRouteState): RouteSearchState => ({
-  ...(state.type !== 'all' ? { type: state.type } : {}),
-  ...(state.type === 'faq.faq' && state.languageCode ? { languageCode: state.languageCode } : {}),
-  ...(state.status !== 'all' ? { status: state.status } : {}),
-  ...(state.sort ? { sortBy: state.sort.field, sortDirection: state.sort.direction } : {}),
-  page: state.page,
-  pageSize: state.pageSize,
-});
-
-const updateRouteState = (
-  current: RouteSearchState,
-  next: Partial<ContentListRouteState>
-): RouteSearchState => {
-  const normalized = readNormalizedRouteState(current);
-  return serializeRouteState({
-    ...normalized,
-    ...next,
-  });
-};
-
-const deriveDeleteAction = (contentType: string): string | null => {
-  const namespace = contentType.split('.')[0]?.trim();
-  return namespace ? `${namespace}.delete` : null;
-};
-
-const canDeleteMainserverItem = (
-  contentType: string,
-  permissionActions: readonly string[] = [],
-  enabledMainserverMutationActions: readonly string[] = []
-): boolean => {
-  const deleteAction = deriveDeleteAction(contentType);
-  if (!deleteAction || !permissionActions.includes(deleteAction)) {
-    return false;
-  }
-  return (
-    contentType !== 'surveys.survey' || enabledMainserverMutationActions.includes(deleteAction)
-  );
-};
-
-const canUpdateMainserverItem = (
-  contentType: string,
-  enabledMainserverMutationActions: readonly string[]
-): boolean =>
-  contentType !== 'surveys.survey' || enabledMainserverMutationActions.includes('surveys.update');
-
-const deleteMainserverItem = async (
-  contentType: string,
-  contentId: string,
-  actingPrincipalType: MainserverPrincipalType
-): Promise<void> => {
-  if (contentType === 'news.article') {
-    await deleteNews(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'events.event-record') {
-    await deleteEvent(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'poi.point-of-interest') {
-    await deletePoi(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'surveys.survey') {
-    await deleteSurvey(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'faq.faq') {
-    await deleteFaq(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'cockpit-cards.cockpit-card') {
-    await deleteCockpitCard(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'projects.project') {
-    await deleteProject(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'generic-items.generic-item') {
-    await deleteGenericItem(contentId, actingPrincipalType);
-  }
-};
-
-const resolveContentSortField = (
-  routeSortField: string | undefined
-): IamContentListQuery['sortBy'] => {
-  switch (routeSortField) {
-    case 'title':
-    case 'createdAt':
-    case 'updatedAt':
-    case 'publishedAt':
-      return routeSortField;
-    default:
-      return 'updatedAt';
-  }
-};
-
-const isMainserverContentType = (contentType: string): boolean =>
-  MAIN_SERVER_CONTENT_TYPES.has(contentType);
-
-const resolveListMutationPrincipal = (
-  item: RegisteredContentRow,
-  principalControl: MainserverPrincipalControlModel | undefined
-): MainserverPrincipalType | undefined =>
-  principalControl ? resolveStandaloneMainserverPrincipal(item, principalControl) : undefined;
-
-const isBulkActionableContent = (item: RegisteredContentRow): boolean =>
-  !isMainserverContentType(item.contentType);
-
-const buildBulkActionLabel = (
-  actionLabelKey: 'content.actions.archive' | 'content.actions.delete'
-): string => `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
-
-const resolveEffectiveRowAccess = (
-  item: RegisteredContentRow,
-  listError: IamHttpError | null,
-  enabledMainserverMutationActions: readonly string[]
-): IamContentAccessSummary => {
-  const access = resolveRowAccess(item.access, listError);
-  return canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
-    ? access
-    : { ...access, canUpdate: false };
-};
-
-const ContentRowActions = ({
-  item,
-  permissionActions,
-  enabledMainserverMutationActions,
-  mutationPrincipalAvailable,
-  onRequestDelete,
-}: Readonly<{
-  item: RegisteredContentRow;
-  permissionActions: readonly string[] | undefined;
-  enabledMainserverMutationActions: readonly string[];
-  mutationPrincipalAvailable: boolean;
-  onRequestDelete: (item: RegisteredContentRow) => void;
-}>) => {
-  const canDelete =
-    canDeleteMainserverItem(
-      item.contentType,
-      permissionActions,
-      enabledMainserverMutationActions
-    ) && mutationPrincipalAvailable;
-
-  return (
-    <StudioTableActionButton
-      label={t('content.actions.delete')}
-      icon={<IconTrash aria-hidden="true" className="h-4 w-4" />}
-      tone="destructive"
-      disabled={!canDelete}
-      onClick={() => {
-        if (canDelete) onRequestDelete(item);
-      }}
-    />
-  );
-};
-
-const ContentPaginationNav = ({
-  page,
-  pageCount,
-  pageSize,
-  total,
-  currentCount,
-  isTotalFinal,
-  onPageChange,
-}: Readonly<{
-  page: number;
-  pageCount: number;
-  pageSize: number;
-  total: number;
-  currentCount: number;
-  isTotalFinal: boolean;
-  onPageChange: (page: number) => void;
-}>) => {
-  const resultStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const resultEnd = total === 0 ? 0 : resultStart + Math.max(0, currentCount - 1);
-
-  return (
-    <nav
-      aria-label={t('content.pagination.ariaLabel')}
-      className="flex flex-col gap-3 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between"
-    >
-      <div className="space-y-1">
-        <p aria-live="polite">
-          {t(
-            isTotalFinal
-              ? 'content.pagination.resultsLabel'
-              : 'content.pagination.partialResultsLabel',
-            { start: resultStart, end: resultEnd, total }
-          )}
-        </p>
-        <p aria-live="polite">
-          {isTotalFinal
-            ? t('content.pagination.pageLabel', { page, total: pageCount })
-            : t('content.pagination.partialPageLabel', { page })}
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={page <= 1}
-          onClick={() => onPageChange(Math.max(1, page - 1))}
-        >
-          {t('content.pagination.previous')}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={page >= pageCount}
-          onClick={() => onPageChange(Math.min(pageCount, page + 1))}
-        >
-          {t('content.pagination.next')}
-        </Button>
-      </div>
-    </nav>
-  );
-};
-
 export type ContentListPageProps = Readonly<{
   enabledMainserverMutationActions?: readonly string[];
   principalControl?: MainserverPrincipalControlModel;
@@ -535,47 +104,8 @@ export const ContentListPage = ({
   enabledMainserverMutationActions = [],
   principalControl,
 }: ContentListPageProps) => {
-  const studioDataTableLabels = createStudioDataTableLabels();
-  const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const navigate = useNavigate();
-  const location = useLocation();
   const search = useSearch({ strict: false }) as RouteSearchState;
-  const [destructiveResult, setDestructiveResult] = React.useState<ContentDeletionResult | null>(
-    () => {
-      const feedback = readStudioDestructiveNavigationFeedback(location.state);
-      return feedback
-        ? {
-            kind: 'success',
-            description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
-          }
-        : null;
-    }
-  );
-  const [pendingRowDeletion, setPendingRowDeletion] = React.useState<RegisteredContentRow | null>(
-    null
-  );
-  const [rowDeletePending, setRowDeletePending] = React.useState(false);
-  const [rowDeleteError, setRowDeleteError] = React.useState<string | null>(null);
-  const [pendingBulkDeletion, setPendingBulkDeletion] = React.useState<PendingBulkDeletion | null>(
-    null
-  );
-  const [bulkDeletePending, setBulkDeletePending] = React.useState(false);
-  const [bulkDeleteError, setBulkDeleteError] = React.useState<string | null>(null);
-  const deleteFocusFallbackRef = React.useRef<HTMLElement | null>(null);
-  React.useEffect(() => {
-    const feedback = readStudioDestructiveNavigationFeedback(location.state);
-    if (!feedback) return;
-    setDestructiveResult({
-      kind: 'success',
-      description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
-    });
-    void navigate({
-      to: '/admin/content',
-      replace: true,
-      search: (current: RouteSearchState) => current,
-      state: (previous) => removeStudioActionNavigationFeedback(previous),
-    });
-  }, [location.state, navigate]);
   const auth = useAuth();
   const contentAccessApi = useContentAccess();
   const routeState = readNormalizedRouteState(search);
@@ -683,7 +213,7 @@ export const ContentListPage = ({
     'projects.project': t('content.actions.createProject'),
   };
   const tableCreateLabel = selectedCreatableType
-    ? specificCreateLabels[selectedCreatableType.contentType] ?? createLabel
+    ? (specificCreateLabels[selectedCreatableType.contentType] ?? createLabel)
     : createLabel;
   const tableCreatePath = selectedCreatableType?.createPath ?? '/admin/content/new';
 
@@ -702,16 +232,6 @@ export const ContentListPage = ({
       })),
     [contentsApi.contents, effectivePermissionActions]
   );
-  const safePage = Math.max(1, contentsApi.pagination.page);
-  const pageCount = Math.max(
-    1,
-    Math.ceil(contentsApi.pagination.total / Math.max(1, contentsApi.pagination.pageSize))
-  );
-  const hasBulkActionableContents = React.useMemo(
-    () => registeredContents.some(isBulkActionableContent),
-    [registeredContents]
-  );
-
   const navigateSearch = React.useCallback(
     (next: Partial<ContentListRouteState>) => {
       Promise.resolve(
@@ -724,233 +244,30 @@ export const ContentListPage = ({
     [navigate]
   );
 
-  const confirmRowDeletion = React.useCallback(async () => {
-    const item = pendingRowDeletion;
-    if (!item || rowDeletePending) return;
-    setRowDeletePending(true);
-    setRowDeleteError(null);
-    try {
-      const principal = resolveListMutationPrincipal(item, principalControl);
-      if (!principal) {
-        throw new Error('mainserver_mutation_principal_unavailable');
-      }
-      await deleteMainserverItem(item.contentType, item.id, principal);
-    } catch {
-      setRowDeleteError(t('content.messages.deleteError'));
-      setRowDeletePending(false);
-      return;
-    }
-
-    setPendingRowDeletion(null);
-    setDestructiveResult({
-      kind: 'success',
-      description: t('content.messages.deleteSuccess', { id: item.id }),
-    });
-    const refreshSucceeded = await contentsApi.refetchWithOutcome();
-    if (!refreshSucceeded) {
-      setDestructiveResult({
-        kind: 'success',
-        description: t('content.messages.deleteRefreshError'),
-      });
-    }
-    setRowDeletePending(false);
-  }, [contentsApi, pendingRowDeletion, principalControl, rowDeletePending]);
-
-  const confirmBulkDeletion = React.useCallback(async () => {
-    const pending = pendingBulkDeletion;
-    if (!pending || bulkDeletePending) return;
-    setBulkDeletePending(true);
-    setBulkDeleteError(null);
-    let result: Awaited<ReturnType<typeof contentsApi.deleteContents>>;
-    try {
-      result = await contentsApi.deleteContents({
-        actionId: 'content.delete',
-        contentIds: pending.selectedRows.map((item) => item.id),
-        matchingCount: pending.selectedRows.length,
-        page: routeState.page,
-        pageSize: routeState.pageSize,
-        selectionMode: 'explicitIds',
-        sort: routeState.sort,
-        statusFilter: routeState.status,
-      });
-    } catch {
-      setBulkDeleteError(
-        t('content.messages.deleteBulkError', { failedCount: pending.selectedRows.length })
-      );
-      setBulkDeletePending(false);
-      return;
-    }
-    setBulkDeletePending(false);
-
-    if (result.failedCount > 0) {
-      const failedIds = new Set(result.failedContentIds);
-      setPendingBulkDeletion({
-        ...pending,
-        selectedRows: pending.selectedRows.filter((item) => failedIds.has(item.id)),
-      });
-      setBulkDeleteError(
-        t('content.messages.deleteBulkError', { failedCount: result.failedCount })
-      );
-      return;
-    }
-
-    pending.clearSelection();
-    setPendingBulkDeletion(null);
-    setDestructiveResult({
-      kind: 'success',
-      description: result.refreshFailed
-        ? t('content.messages.deleteRefreshError')
-        : t('content.messages.deleteBulkSuccess', { count: result.acceptedCount }),
-    });
-  }, [bulkDeletePending, contentsApi, pendingBulkDeletion, routeState]);
-
-  const bulkActionButtons = React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
-    () =>
-      hasBulkActionableContents
-        ? [
-            {
-              id: 'archive-selection',
-              label: buildBulkActionLabel('content.actions.archive'),
-              disabled: !unscopedPermissionActions.includes('content.archive'),
-              onClick: async ({ selectedRows, clearSelection }) => {
-                if (selectedRows.length === 0) {
-                  return;
-                }
-                await contentsApi.archiveContents({
-                  actionId: 'content.archive',
-                  contentIds: selectedRows.map((item) => item.id),
-                  matchingCount: selectedRows.length,
-                  page: routeState.page,
-                  pageSize: routeState.pageSize,
-                  selectionMode: 'explicitIds',
-                  sort: routeState.sort,
-                  statusFilter: routeState.status,
-                });
-                clearSelection();
-              },
-            },
-            {
-              id: 'delete-selection',
-              label: buildBulkActionLabel('content.actions.delete'),
-              disabled: !unscopedPermissionActions.includes('content.delete'),
-              variant: 'destructive',
-              onClick: ({ selectedRows, clearSelection }) => {
-                if (selectedRows.length === 0) return;
-                setBulkDeleteError(null);
-                setPendingBulkDeletion({ selectedRows, clearSelection });
-              },
-            },
-          ]
-        : [],
-    [
-      contentsApi,
-      hasBulkActionableContents,
-      routeState.page,
-      routeState.pageSize,
-      routeState.sort,
-      routeState.status,
-      unscopedPermissionActions,
-    ]
-  );
-
-  const contentColumns = React.useMemo<readonly StudioColumnDef<RegisteredContentRow>[]>(
-    () => [
-      {
-        id: 'title',
-        header: t('content.table.headerTitle'),
-        cell: (item) => {
-          const access = resolveEffectiveRowAccess(
-            item,
-            contentsApi.error,
-            enabledMainserverMutationActions
-          );
-          const title = access.canRead ? (
-            <StudioTableValueAction asChild emphasis="primary">
-              <Link
-                to={item.editPath}
-                aria-label={t(
-                  access.canUpdate
-                    ? 'content.actions.editTitle'
-                    : 'content.actions.openReadOnlyTitle',
-                  { title: item.title }
-                )}
-              >
-                {item.title}
-              </Link>
-            </StudioTableValueAction>
-          ) : (
-            <span className="font-medium text-foreground">{item.title}</span>
-          );
-
-          return (
-            <span className="flex min-w-0 flex-col">
-              {title}
-              <span
-                className="max-w-64 truncate font-mono text-xs text-muted-foreground"
-                title={item.id}
-              >
-                {item.id}
-              </span>
-            </span>
-          );
-        },
-        sortable: true,
-        sortLabel: t('content.table.headerTitle'),
-        sortValue: (item) => item.title.toLowerCase(),
-      },
-      {
-        id: 'contentType',
-        header: t('content.table.headerType'),
-        cell: (item) => item.typeLabel,
-      },
-      {
-        id: 'createdAt',
-        header: t('content.table.headerCreated'),
-        cell: (item) => formatDateTime(item.createdAt),
-        sortable: true,
-        sortLabel: t('content.table.headerCreated'),
-        sortValue: (item) => item.createdAt,
-      },
-      {
-        id: 'updatedAt',
-        header: t('content.table.headerUpdated'),
-        cell: (item) =>
-          item.updatedAt ? formatDateTime(item.updatedAt) : t('content.table.notAvailable'),
-        sortable: true,
-        sortLabel: t('content.table.headerUpdated'),
-        sortValue: (item) => item.updatedAt ?? '',
-      },
-      {
-        id: 'publishedAt',
-        header: t('content.table.headerPublished'),
-        cell: (item) =>
-          item.publishedAt ? formatDateTime(item.publishedAt) : t('content.table.notPublished'),
-        sortable: true,
-        sortLabel: t('content.table.headerPublished'),
-        sortValue: (item) => item.publishedAt ?? '',
-      },
-      {
-        id: 'status',
-        header: t('content.table.headerStatus'),
-        cell: (item) => {
-          const mutationPrincipal = resolveListMutationPrincipal(item, principalControl);
-          return (
-            <ContentStatusDialog
-              item={item}
-              canUpdate={
-                mutationPrincipal !== undefined &&
-                resolveRowAccess(item.access, contentsApi.error).canUpdate &&
-                canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
-              }
-              actingPrincipalType={mutationPrincipal ?? 'user'}
-              onUpdated={contentsApi.refetch}
-            />
-          );
-        },
-      },
-    ],
-    [contentsApi.error, contentsApi.refetch, enabledMainserverMutationActions, principalControl]
-  );
+  const {
+    destructiveResult,
+    setDestructiveResult,
+    pendingRowDeletion,
+    setPendingRowDeletion,
+    rowDeletePending,
+    rowDeleteError,
+    setRowDeleteError,
+    pendingBulkDeletion,
+    setPendingBulkDeletion,
+    bulkDeletePending,
+    bulkDeleteError,
+    setBulkDeleteError,
+    deleteFocusFallbackRef,
+    confirmRowDeletion,
+    confirmBulkDeletion,
+    bulkActionButtons,
+  } = useContentListDeletion({
+    contentsApi,
+    routeState,
+    registeredContents,
+    principalControl,
+    unscopedPermissionActions,
+  });
 
   return (
     <section
@@ -993,169 +310,28 @@ export const ContentListPage = ({
         </Alert>
       ) : null}
 
-      <section>
-        <StudioDataTable
-          ariaLabel={t('content.table.ariaLabel')}
-          sorting={{
-            mode: 'external',
-            labels: studioDataTableSortingLabels,
-            state: [
-              {
-                id: resolveContentSortField(routeSortField),
-                desc: (routeSortDirection ?? 'desc') === 'desc',
-              },
-            ],
-            onChange: ([nextSort]) => {
-              if (nextSort) {
-                navigateSearch({
-                  sort: { field: nextSort.id, direction: nextSort.desc ? 'desc' : 'asc' },
-                  page: 1,
-                });
-              }
-            },
-          }}
-          labels={studioDataTableLabels}
-          caption={t('content.table.caption')}
-          data={registeredContents}
-          columns={contentColumns}
-          getRowId={(item) => item.id}
-          selectionMode="multiple"
-          canSelectRow={isBulkActionableContent}
-          bulkActions={bulkActionButtons}
-          isLoading={
-            contentsApi.isLoading ||
-            contentAccessApi.isLoading ||
-            authSessionPending ||
-            contentAccessPending
-          }
-          loadingState={t('content.messages.loading')}
-          emptyState={
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">{t('content.empty.title')}</h3>
-              <p className="text-sm text-muted-foreground">{t('content.empty.body')}</p>
-            </div>
-          }
-          toolbarCenter={
-            <>
-              <ContentTypeFilters
-                contentTypes={readableContentTypes}
-                selectedType={routeState.type}
-                onTypeChange={(type) =>
-                  navigateSearch({ type: normalizeTypeFilter(type), page: 1 })
-                }
-              />
-              {routeState.type === 'faq.faq' ? (
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="content-faq-language-filter">
-                    {t('content.filters.languageCodeLabel')}
-                  </Label>
-                  <Input
-                    id="content-faq-language-filter"
-                    className="w-full sm:w-64"
-                    value={routeState.languageCode ?? ''}
-                    onChange={(event) =>
-                      navigateSearch({
-                        languageCode: normalizeLanguageFilter(event.currentTarget.value),
-                        page: 1,
-                      })
-                    }
-                  />
-                </div>
-              ) : null}
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
-                <Select
-                  id="content-status-filter"
-                  value={routeState.status}
-                  onChange={(event) =>
-                    navigateSearch({ status: normalizeStatusFilter(event.target.value), page: 1 })
-                  }
-                >
-                  <option value="all">{t('content.filters.statusAll')}</option>
-                  <option value="draft">{t('content.status.draft')}</option>
-                  <option value="in_review">{t('content.status.inReview')}</option>
-                  <option value="approved">{t('content.status.approved')}</option>
-                  <option value="published">{t('content.status.published')}</option>
-                  <option value="archived">{t('content.status.archived')}</option>
-                </Select>
-              </div>
-            </>
-          }
-          toolbarEnd={
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={contentsApi.refreshProjectionPending}
-                onClick={() => void contentsApi.refreshProjection({ force: true })}
-              >
-                {contentsApi.refreshProjectionPending
-                  ? t('content.sync.refreshing')
-                  : t('content.sync.refresh')}
-              </Button>
-              {createDisabled ? (
-                <Button type="button" disabled>
-                  {tableCreateLabel}
-                </Button>
-              ) : (
-                <Button asChild>
-                  <Link to={tableCreatePath}>{tableCreateLabel}</Link>
-                </Button>
-              )}
-            </div>
-          }
-          footer={
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
-                <Select
-                  id="content-page-size"
-                  value={String(contentsApi.pagination.pageSize)}
-                  onChange={(event) =>
-                    navigateSearch({ page: 1, pageSize: Number(event.target.value) })
-                  }
-                >
-                  {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
-                    <option key={option} value={option}>
-                      {String(option)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                {contentsApi.metadata?.isTotalFinal === false ? (
-                  <p className="text-sm text-muted-foreground" role="status">
-                    {projectionSyncMessage ?? t('content.sync.running')} {t('content.sync.partial')}
-                  </p>
-                ) : null}
-                <ContentPaginationNav
-                  page={safePage}
-                  pageCount={pageCount}
-                  pageSize={contentsApi.pagination.pageSize}
-                  total={contentsApi.pagination.total}
-                  currentCount={registeredContents.length}
-                  isTotalFinal={contentsApi.metadata?.isTotalFinal !== false}
-                  onPageChange={(page) => navigateSearch({ page })}
-                />
-              </div>
-            </div>
-          }
-          rowActions={(item) => (
-            <ContentRowActions
-              item={item}
-              permissionActions={effectivePermissionActions}
-              enabledMainserverMutationActions={enabledMainserverMutationActions}
-              mutationPrincipalAvailable={
-                resolveListMutationPrincipal(item, principalControl) !== undefined
-              }
-              onRequestDelete={(itemToDelete) => {
-                setRowDeleteError(null);
-                setPendingRowDeletion(itemToDelete);
-              }}
-            />
-          )}
-        />
-      </section>
+      <ContentListTable
+        contentsApi={contentsApi}
+        contentAccessApi={contentAccessApi}
+        authSessionPending={authSessionPending}
+        contentAccessPending={contentAccessPending}
+        routeState={routeState}
+        registeredContents={registeredContents}
+        bulkActionButtons={bulkActionButtons}
+        readableContentTypes={readableContentTypes}
+        effectivePermissionActions={effectivePermissionActions}
+        enabledMainserverMutationActions={enabledMainserverMutationActions}
+        principalControl={principalControl}
+        projectionSyncMessage={projectionSyncMessage}
+        createDisabled={createDisabled}
+        tableCreateLabel={tableCreateLabel}
+        tableCreatePath={tableCreatePath}
+        navigateSearch={navigateSearch}
+        onRequestDelete={(item) => {
+          setRowDeleteError(null);
+          setPendingRowDeletion(item);
+        }}
+      />
 
       <MainserverAuthoringDiagnosticsPanel
         enabled={effectivePermissionActions.includes('iam.monitoring.read')}

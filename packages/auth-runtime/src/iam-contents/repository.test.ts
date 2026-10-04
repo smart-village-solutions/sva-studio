@@ -15,8 +15,9 @@ const state = vi.hoisted(() => ({
   emitContentUpdatedActivityMock: vi.fn(),
   emitContentOwnershipTransferredActivityMock: vi.fn(),
   insertContentHistoryMock: vi.fn(),
-  isContentMutationFinalizedMock: vi.fn(),
+  resolveContentUpdateReplayMock: vi.fn(),
   insertContentRowMock: vi.fn(),
+  persistContentUpdateHistoryMock: vi.fn(),
   loadCurrentContentRowMock: vi.fn(),
   mapContentHistoryItemMock: vi.fn(),
   mapContentListItemMock: vi.fn(),
@@ -55,7 +56,7 @@ vi.mock('./ownership-account-targets.js', () => ({
 
 vi.mock('./repository-shared.js', () => ({
   insertContentHistory: (...args: unknown[]) => state.insertContentHistoryMock(...args),
-  isContentMutationFinalized: (...args: unknown[]) => state.isContentMutationFinalizedMock(...args),
+  resolveContentUpdateReplay: (...args: unknown[]) => state.resolveContentUpdateReplayMock(...args),
   loadCurrentContentRow: (...args: unknown[]) => state.loadCurrentContentRowMock(...args),
   resolveContentMutationMetadata: (...args: unknown[]) =>
     state.resolveContentMutationMetadataMock(...args),
@@ -77,6 +78,7 @@ vi.mock('./repository-write-helpers.js', () => ({
   emitContentOwnershipTransferredActivity: (...args: unknown[]) =>
     state.emitContentOwnershipTransferredActivityMock(...args),
   insertContentRow: (...args: unknown[]) => state.insertContentRowMock(...args),
+  persistContentUpdateHistory: (...args: unknown[]) => state.persistContentUpdateHistoryMock(...args),
   resolveUpdateAuthorDisplay: (...args: unknown[]) => state.resolveUpdateAuthorDisplayMock(...args),
   updateContentRevisionRefs: (...args: unknown[]) => state.updateContentRevisionRefsMock(...args),
   updateContentRow: (...args: unknown[]) => state.updateContentRowMock(...args),
@@ -209,7 +211,7 @@ describe('iam content repository', () => {
     state.validatePublicationWindowMock.mockReturnValue(undefined);
     state.insertContentRowMock.mockResolvedValue('content-1');
     state.insertContentHistoryMock.mockResolvedValue('history-1');
-    state.isContentMutationFinalizedMock.mockResolvedValue(false);
+    state.resolveContentUpdateReplayMock.mockResolvedValue({ mutationFinalized: false, skip: false });
     state.updateContentRevisionRefsMock.mockResolvedValue(undefined);
     state.emitContentCreatedActivityMock.mockResolvedValue(undefined);
     state.emitContentDeletedActivityMock.mockResolvedValue(undefined);
@@ -632,7 +634,7 @@ describe('iam content repository', () => {
   });
 
   it('skips the complete update pipeline when a mutation reference was already finalized', async () => {
-    state.isContentMutationFinalizedMock.mockResolvedValueOnce(true);
+    state.resolveContentUpdateReplayMock.mockResolvedValueOnce({ mutationFinalized: true, skip: true });
 
     await expect(
       updateContent(
@@ -640,14 +642,115 @@ describe('iam content repository', () => {
       )
     ).resolves.toBe('content-1');
 
-    expect(state.isContentMutationFinalizedMock).toHaveBeenCalledWith(
+    expect(state.resolveContentUpdateReplayMock).toHaveBeenCalledWith(
       { query: state.queryMock },
-      { instanceId: 'instance-1', contentId: 'content-1', mutationRef: 'mutation-1' }
+      expect.objectContaining({ instanceId: 'instance-1', contentId: 'content-1', mutationRef: 'mutation-1' })
     );
     expect(state.loadCurrentContentRowMock).not.toHaveBeenCalled();
     expect(state.updateContentRowMock).not.toHaveBeenCalled();
     expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
     expect(state.emitContentUpdatedActivityMock).not.toHaveBeenCalled();
+  });
+
+  it('repairs a confirmed owner even when the transfer history already exists', async () => {
+    state.resolveContentUpdateReplayMock.mockResolvedValueOnce({ mutationFinalized: true, skip: false });
+    state.resolveNextContentStateMock.mockReturnValueOnce({
+      changedFields: ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+      nextOrganizationId: '22222222-2222-4222-8222-222222222222',
+      nextOwnerUserId: null,
+      nextOwnerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      nextAuthorDisplayMode: 'organization',
+      nextAuthorDisplayName: 'Zielorganisation',
+      nextPayload: { body: 'Text' },
+      nextPublishedAt: null,
+      nextPublishFrom: null,
+      nextPublishUntil: null,
+      nextStatus: 'draft',
+      nextTitle: 'Titel',
+      nextValidationState: 'valid',
+    });
+
+    await expect(updateContent(createUpdateInput({
+      mutationRef: 'transfer-1',
+      confirmedExternalOwner: {
+        type: 'organization',
+        id: '22222222-2222-4222-8222-222222222222',
+      },
+      preserveExistingContentState: true,
+    }))).resolves.toBe('content-1');
+
+    expect(state.updateContentRowMock).toHaveBeenCalledOnce();
+    expect(state.persistContentUpdateHistoryMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      expect.objectContaining({ mutationRef: 'transfer-1' }),
+      expect.any(Object),
+      expect.objectContaining({
+        changedFields: ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+        mutationFinalized: true,
+      })
+    );
+    expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
+    expect(state.updateContentRevisionRefsMock).not.toHaveBeenCalled();
+    expect(state.emitContentUpdatedActivityMock).toHaveBeenCalledOnce();
+  });
+
+  it('skips an already finalized transfer when the confirmed owner is present', async () => {
+    state.resolveContentUpdateReplayMock.mockResolvedValueOnce({ mutationFinalized: true, skip: false });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(createContentRow({
+      organization_id: '22222222-2222-4222-8222-222222222222',
+      owner_user_id: null,
+      owner_organization_id: '22222222-2222-4222-8222-222222222222',
+    }));
+
+    await expect(updateContent(createUpdateInput({
+      mutationRef: 'transfer-1',
+      confirmedExternalOwner: {
+        type: 'organization',
+        id: '22222222-2222-4222-8222-222222222222',
+      },
+      preserveExistingContentState: true,
+    }))).resolves.toBe('content-1');
+
+    expect(state.updateContentRowMock).not.toHaveBeenCalled();
+    expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
+  });
+
+  it('repairs a finalized transfer when a stale user owner column remains', async () => {
+    state.resolveContentUpdateReplayMock.mockResolvedValueOnce({ mutationFinalized: true, skip: false });
+    state.loadCurrentContentRowMock.mockResolvedValueOnce(createContentRow({
+      organization_id: '22222222-2222-4222-8222-222222222222',
+      owner_user_id: 'stale-user',
+      owner_organization_id: '22222222-2222-4222-8222-222222222222',
+    }));
+    await updateContent(createUpdateInput({
+      mutationRef: 'transfer-1',
+      confirmedExternalOwner: {
+        type: 'organization', id: '22222222-2222-4222-8222-222222222222',
+      },
+      preserveExistingContentState: true,
+    }));
+    expect(state.updateContentRowMock).toHaveBeenCalledOnce();
+  });
+
+  it('does not replay T1 over T2 after the later provider transfer succeeded', async () => {
+    state.resolveContentUpdateReplayMock.mockResolvedValueOnce({ mutationFinalized: true, skip: true });
+    await expect(updateContent(createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+      preserveExistingContentState: true,
+    }))).resolves.toBe('content-1');
+    expect(state.loadCurrentContentRowMock).not.toHaveBeenCalled();
+    expect(state.updateContentRowMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a superseded transfer unresolved if its Core history was never written', async () => {
+    state.resolveContentUpdateReplayMock.mockRejectedValueOnce(new Error('ownership_source_changed'));
+    await expect(updateContent(createUpdateInput({
+      mutationRef: 'transfer-t1',
+      confirmedExternalOwner: { type: 'organization', id: 'owner-b' },
+      preserveExistingContentState: true,
+    }))).rejects.toThrow('ownership_source_changed');
+    expect(state.updateContentRowMock).not.toHaveBeenCalled();
   });
 
   it('stops update operations when next-state validation fails', async () => {
@@ -788,11 +891,12 @@ describe('iam content repository', () => {
           validationState: 'valid',
         })
       );
-      expect(state.insertContentHistoryMock).toHaveBeenCalledWith(
+      expect(state.persistContentUpdateHistoryMock).toHaveBeenCalledWith(
         { query: state.queryMock },
+        expect.any(Object),
+        expect.any(Object),
         expect.objectContaining({
-          previousStatus,
-          nextStatus,
+          status: nextStatus,
           changedFields,
         })
       );
@@ -809,6 +913,59 @@ describe('iam content repository', () => {
       );
     }
   );
+
+  it('writes a confirmed external owner before finalizing the same mutation history', async () => {
+    state.resolveNextContentStateMock.mockReturnValueOnce({
+      changedFields: ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+      nextOrganizationId: '22222222-2222-4222-8222-222222222222',
+      nextOwnerUserId: null,
+      nextOwnerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      nextAuthorDisplayMode: 'organization',
+      nextAuthorDisplayName: 'Organisation',
+      nextPayload: {},
+      nextPublishedAt: null,
+      nextPublishFrom: null,
+      nextPublishUntil: null,
+      nextStatus: 'draft',
+      nextTitle: 'Titel',
+      nextValidationState: 'valid',
+    });
+
+    await updateContent(
+      createUpdateInput({
+        mutationRef: 'transfer-1',
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      })
+    );
+
+    expect(state.updateContentRowMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.queryMock }),
+      expect.objectContaining({
+        confirmedExternalOwner: {
+          type: 'organization',
+          id: '22222222-2222-4222-8222-222222222222',
+        },
+      }),
+      expect.objectContaining({
+        ownerUserId: null,
+        ownerOrganizationId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+    expect(state.updateContentRowMock.mock.invocationCallOrder[0]).toBeLessThan(
+      state.persistContentUpdateHistoryMock.mock.invocationCallOrder[0] ?? Infinity
+    );
+    expect(state.persistContentUpdateHistoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.queryMock }),
+      expect.objectContaining({ mutationRef: 'transfer-1' }),
+      expect.any(Object),
+      expect.objectContaining({
+        changedFields: ['organizationId', 'ownerUserId', 'ownerOrganizationId'],
+      })
+    );
+  });
 
   it('returns undefined on delete when the current content row cannot be resolved', async () => {
     state.loadCurrentContentRowMock.mockResolvedValueOnce(undefined);

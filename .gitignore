@@ -116,3 +116,4 @@ apps/sva-studio-react/.generated/studio-changelog.json
 apps/sva-studio-react/.generated/chunk-provenance/
 
 .claude/worktrees
+concepts/internes/*

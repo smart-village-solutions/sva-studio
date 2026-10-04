@@ -76,10 +76,38 @@ Kurzübersicht:
 - Router-Komposition: `src/router.tsx` konsumiert ausschließlich `@sva/routing`
 - Produktives Plugin: `@sva/plugin-news`
 
+Die Route-Bindings komponieren Seitenadapter aus `app-route-pages.tsx` und den
+Mainserver-Principal-Modulen im selben Ordner. In der Shell liegen Menü- und
+Navigationsbausteine neben `Header.tsx` und `Sidebar.tsx`; der `AuthProvider`
+stellt weiterhin den Context bereit und bezieht Session-Laden, Recovery und
+Timer aus den benachbarten `auth-session-*`-Modulen.
+
 Weitere Details:
 
 - Routing-Kurzinfo: [docs/reference/routing.md](../../docs/reference/routing.md)
 - Architektur: [docs/architecture/routing-architecture.md](../../docs/architecture/routing-architecture.md)
+
+## IAM-API
+
+`src/lib/iam-api.ts` bleibt der Importpfad für bestehende Verbraucher und
+enthält weiterhin die Benutzer-API. Die übrigen Anfragen und Payload-Typen
+liegen nach Ressourcen in benachbarten `iam-api-*`-Modulen: Rollen/Gruppen,
+Organisationen, Content, Medien, Instanzen, Runtime und Governance.
+
+## IAM-Cockpit
+
+`src/routes/admin/-iam-page.tsx` bleibt der Importpunkt und hält die
+URL-gesteuerte Tab-Navigation. Rechte, Governance, DSR und Löschregeln liegen
+in benachbarten `-iam-page-*`-Modulen. Die vorhandenen Berechtigungs- und
+Anfrageverträge bleiben maßgeblich.
+
+## IAM-Rollen und Gruppen
+
+Die Detailrouten `src/routes/admin/roles/-role-detail-page.tsx` und
+`src/routes/admin/groups/-group-detail-page.tsx` bleiben die Importpunkte.
+Benachbarte Module halten Rollen-Stammdaten, Permissions, Zuweisungen und Sync
+sowie Gruppenformular und Mitgliedschaften. Die bestehenden IAM-Hooks führen
+die Datenänderungen und Berechtigungsprüfungen aus.
 
 ## Data Fetching
 

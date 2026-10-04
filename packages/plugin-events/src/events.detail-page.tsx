@@ -1,221 +1,34 @@
 import React from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
-import { Link, useLocation, useNavigate } from '@tanstack/react-router';
+import { useForm } from 'react-hook-form';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import {
-  contentMediaSavePhaseMessageKey,
-  getHostMediaAsset,
-  getHostMediaDelivery,
-  alignHostMediaReferencesByOrder,
-  getHostMediaAssetFileName,
-  listHostMediaAssets,
-  listHostMediaReferencesByTarget,
   hasContentLifecycleAccess,
-  isSupportedContentMediaUploadFile as isSupportedUploadFile,
-  omitDeviatedMainserverFields,
-  saveContentWithHostMediaReferences,
   readSessionAccessSnapshot,
-  readHostMediaAssetFileName as readAssetFileName,
-  readHostMediaAssetTitle as readAssetTitle,
   resolveContentMediaCapabilities,
   resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   subscribeSessionAccessSnapshot,
-  updateHostMediaAsset,
   usePluginTranslation,
-  type HostMediaAssetDetail,
-  type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
-  Button,
-  ContentOwnershipPanelSlot,
-  ContentOwnershipSaveHint,
-  addStudioDestructiveNavigationFeedback,
-  addStudioCreatedSaveFeedback,
-  contentMediaUsageToReference,
-  contentMediaUsagesToLocalDrafts,
-  contentMediaUsagesToMainserver,
-  createStudioMediaPickerLabels,
-  createLocalStudioMediaPickerAsset,
-  createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
-  isPersistableContentMediaUrl,
-  mainserverContentMediaToUsages,
-  MainserverDeviationSummary,
-  MainserverPrincipalControl,
   removeStudioSaveFeedback,
-  resolveContentMediaUsageDrafts,
-  resolveStudioMediaPickerFeedback,
-  resolveMainserverPrincipalOptions,
-  toContentMediaAssetSnapshot,
-  type ContentMediaUsage,
+  StudioLoadingState,
+  useStudioSaveFeedback,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
-  Select,
-  StudioDetailPageTemplate,
-  StudioDestructiveActionDialog,
-  StudioFormSummary,
-  StudioLoadingState,
-  StudioPersistentActionResult,
-  StudioMediaPickerOverlay,
-  StudioMediaReferenceRetryAction,
-  StudioSaveButton,
-  useStudioMediaReferenceSync,
-  type StudioMediaPickerAssetDetail,
-  type StudioMediaPickerAssetSummary,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  useStudioMediaPickerOverlay,
-  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
-
 import {
-  createEvent,
-  deleteEvent,
-  EventsApiError,
-  getEventDetail,
-  listEventCategories,
-  updateEvent,
-} from './events.api.js';
-import { EVENTS_CONTENT_TYPE } from './events.constants.js';
-import {
-  createDefaultMediaContent,
   createDefaultEventsDetailFormValues,
-  mapEventItemToDetailFormValues,
-  mapEventsDetailFormValuesToInput,
   type EventsDetailFormValues,
 } from './events.detail-form.js';
-import { EventsDetailBasisTab } from './events.detail-basis-tab.js';
-import { EventsDetailContentTab } from './events.detail-content-tab.js';
-import { EventsDetailHistoryTab } from './events.detail-history-tab.js';
-import { mediaContentFromAsset } from './events.detail-media.helpers.js';
-import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
-import type { EventCategoryOption, EventContentItem } from './events.types.js';
-import { hasEventOrganizerContent } from './events.detail-form-structured-serializers.js';
-import { hasInvalidFormGeoLocation, validateEventForm } from './events.validation.js';
-
-type StatusMessage = Readonly<{
-  kind: 'success' | 'error';
-  text: string;
-}>;
-
-type EventsMediaPickerAsset = StudioMediaPickerAssetDetail;
-
-type EventsTabIconProps = Readonly<{ className?: string }>;
-
-const EventsTabBasisIcon = ({ className }: EventsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <path d="M7 4.75h7.5L19 9.25v9A1.75 1.75 0 0 1 17.25 20h-10.5A1.75 1.75 0 0 1 5 18.25v-11.5A1.75 1.75 0 0 1 6.75 5Z" />
-    <path d="M14 4.75v4.5h4.5" />
-    <path d="M8.5 12h7" />
-    <path d="M8.5 15.5h7" />
-  </svg>
-);
-
-const EventsTabContentIcon = ({ className }: EventsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <rect x="4.5" y="5" width="15" height="14" rx="2" />
-    <path d="m8 14 2.5-2.5 2 2 2.5-3 3 4.5" />
-    <circle cx="9" cy="9.5" r="1.2" />
-  </svg>
-);
-
-const EventsTabSettingsIcon = ({ className }: EventsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <path d="M4 7h10" />
-    <path d="M4 17h16" />
-    <circle cx="17" cy="7" r="2.5" />
-    <circle cx="9" cy="17" r="2.5" />
-  </svg>
-);
-
-const EventsTabHistoryIcon = ({ className }: EventsTabIconProps) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    className={className}
-  >
-    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
-    <path d="M4.5 5.5v3.7h3.7" />
-    <path d="M12 8.5v4l2.5 1.5" />
-  </svg>
-);
-
-const eventsTabIconMap = {
-  basis: EventsTabBasisIcon,
-  content: EventsTabContentIcon,
-  settings: EventsTabSettingsIcon,
-  history: EventsTabHistoryIcon,
-} as const satisfies Record<EventsDetailTabId, (props: EventsTabIconProps) => React.JSX.Element>;
-
-const errorMessage = (
-  pt: ReturnType<typeof usePluginTranslation>,
-  error: unknown,
-  fallbackKey: string
-) => (error instanceof EventsApiError ? error.message : pt(fallbackKey));
-
-const toEventsMediaPickerSummary = (
-  asset: HostMediaAssetListItem
-): StudioMediaPickerAssetSummary => ({
-  id: asset.id,
-  title: readAssetTitle(asset),
-  fileName: readAssetFileName(asset),
-  previewUrl: asset.previewUrl,
-  mimeType: asset.mimeType,
-  visibility: asset.visibility,
-});
-
-const toEventsMediaPickerDetail = (
-  asset: HostMediaAssetDetail,
-  summary?: HostMediaAssetListItem,
-  persistentUrl?: string | null
-): EventsMediaPickerAsset => {
-  const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
-  const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
-
-  return {
-    id: asset.id,
-    title,
-    fileName,
-    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
-    mimeType: asset.mimeType,
-    visibility: asset.visibility,
-    persistentUrl,
-    metadata: {
-      title,
-      altText: asset.metadata.altText?.trim() ?? '',
-      description: asset.metadata.description?.trim() ?? '',
-      copyright: asset.metadata.copyright?.trim() ?? '',
-      license: asset.metadata.license?.trim() ?? '',
-    },
-  };
-};
+import { createEventsDetailSubmit, type EventsStatusMessage } from './events.detail-save.js';
+import { useEventsDetailMedia } from './events.detail-media.js';
+import { EventsDetailPageView } from './events.detail-page-view.js';
+import { useEventsDetailLoad } from './events.detail-load.js';
+import { useEventsDetailDelete } from './events.detail-delete.js';
+import { createEventsDeviationFieldLabels } from './events.detail-save-validation.js';
 
 export function EventsDetailPage({
   mode,
@@ -233,31 +46,48 @@ export function EventsDetailPage({
   const methods = useForm<EventsDetailFormValues>({
     defaultValues: createDefaultEventsDetailFormValues(),
   });
-  const { reset } = methods;
   const saveFeedback = useStudioSaveFeedback();
   const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(mode === 'edit');
   const initialSaveFeedbackShownRef = React.useRef(false);
-  const [status, setStatus] = React.useState<StatusMessage | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [deletePending, setDeletePending] = React.useState(false);
-  const [deleteNavigationFailed, setDeleteNavigationFailed] = React.useState(false);
-  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
-  const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
-  const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
-  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
-  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | undefined>(undefined);
+  const [status, setStatus] = React.useState<EventsStatusMessage | null>(null);
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
   React.useEffect(() => {
     if (principalControl) setActingPrincipalType(principalControl.value);
   }, [principalControl]);
-  const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
-  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
-  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
-  const mediaReferenceSync = useStudioMediaReferenceSync({ mediaUsages, setMediaUsages });
+  const media = useEventsDetailMedia(methods, pt, mode);
+  const {
+    mediaUsages,
+    setMediaUsages,
+    requiresReferenceSync,
+    setRequiresReferenceSync,
+    mediaReferencesReady,
+    setMediaReferencesReady,
+    mediaReferenceSync,
+    refreshMediaAssets,
+  } = media;
+  const {
+    loading,
+    deviations,
+    loadedItem,
+    resourceAccess,
+    categoryOptions,
+    categoryOptionsLoading,
+    categoryOptionsError,
+  } = useEventsDetailLoad({
+    mode,
+    contentId,
+    principalControl,
+    actingPrincipalType,
+    methods,
+    pt,
+    setStatus,
+    setMediaUsages,
+    setRequiresReferenceSync,
+    setMediaReferencesReady,
+    refreshMediaAssets,
+  });
   React.useEffect(() => {
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
@@ -314,326 +144,7 @@ export function EventsDetailPage({
   const [activeTab, setActiveTab] = React.useState<EventsDetailTabId>('basis');
   const [pendingFocusId, setPendingFocusId] = React.useState<string | null>(null);
   const [visitedTabs, setVisitedTabs] = React.useState<readonly EventsDetailTabId[]>(['basis']);
-  const [categoryOptions, setCategoryOptions] = React.useState<readonly EventCategoryOption[]>([]);
-  const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
-  const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
-  const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
-  const mediaPickerLabels = React.useMemo(() => createStudioMediaPickerLabels(pt), [pt]);
-  const deviationFieldLabels: Readonly<Record<string, string>> = {
-    title: pt('fields.title'),
-    description: pt('fields.description'),
-    categories: pt('fields.categories'),
-    category: pt('fields.categoryName'),
-    dates: pt('fields.dateStart'),
-    listDate: pt('fields.dateStart'),
-    sortDate: pt('fields.dateStart'),
-    repeat: pt('fields.repeat'),
-    repeatDuration: pt('fields.repeat'),
-    recurring: pt('fields.repeat'),
-    recurringType: pt('fields.recurringType'),
-    recurringInterval: pt('fields.recurringInterval'),
-    recurringWeekdays: pt('fields.recurringWeekdays'),
-    addresses: pt('fields.street'),
-    location: pt('fields.addressAddition'),
-    contacts: pt('fields.contact'),
-    urls: pt('fields.url'),
-    mediaContents: pt('fields.mediaContents'),
-    organizer: pt('fields.organizerName'),
-    priceInformations: pt('fields.priceAmount'),
-    accessibilityInformation: pt('fields.accessibilityDescription'),
-    externalId: pt('fields.externalId'),
-    keywords: pt('fields.keywords'),
-    tags: pt('fields.tags'),
-    visible: pt('fields.visible'),
-    createdAt: pt('fields.createdAt'),
-    updatedAt: pt('fields.updatedAt'),
-  };
-
-  const refreshMediaAssets = React.useCallback(async () => {
-    try {
-      const assets = await listHostMediaAssets({
-        fetch: globalThis.fetch.bind(globalThis),
-        visibility: 'public',
-      });
-      mediaAssetsRef.current = assets;
-      setMediaAssets(assets);
-      return assets;
-    } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
-    }
-  }, []);
-
-  const isAssetSelectable = React.useCallback(
-    (asset: EventsMediaPickerAsset) => {
-      if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
-      if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
-      if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
-      const nextMedia = mediaContentFromAsset({
-        id: asset.id,
-        fileName: asset.fileName,
-        metadata: asset.metadata,
-        visibility: asset.visibility,
-        mimeType: asset.mimeType,
-        previewUrl: asset.previewUrl,
-      });
-      if (!nextMedia) {
-        return false;
-      }
-
-      const existingUrls = new Set(
-        (methods.getValues('content.mediaContents') ?? [])
-          .map((entry) => entry.sourceUrl?.url?.trim() ?? '')
-          .filter((value) => value.length > 0)
-      );
-      const nextUrl = nextMedia.sourceUrl?.url?.trim() ?? '';
-      return existingUrls.has(nextUrl) === false;
-    },
-    [mediaUsages, methods]
-  );
-
-  const mediaPicker = useStudioMediaPickerOverlay<EventsMediaPickerAsset>({
-    onAccept: (asset) => {
-      if (
-        !asset.localDraft &&
-        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
-      )
-        return;
-      const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
-      const nextMedia = mediaContentFromAsset({
-        id: asset.id,
-        fileName: asset.fileName,
-        metadata: asset.metadata,
-        visibility: asset.visibility,
-        mimeType: asset.mimeType,
-        previewUrl: asset.previewUrl,
-      });
-      if (!nextMedia) {
-        return;
-      }
-
-      const currentMedia = methods.getValues('content.mediaContents') ?? [];
-      methods.setValue(
-        'content.mediaContents',
-        asset.localDraft
-          ? currentMedia
-          : [
-              ...currentMedia,
-              {
-                ...createDefaultMediaContent(),
-                captionText: nextMedia.captionText ?? '',
-                copyright: nextMedia.copyright ?? '',
-                contentType: nextMedia.contentType ?? '',
-                sourceUrl: {
-                  url: persistentUrl,
-                  description: nextMedia.sourceUrl?.description ?? '',
-                },
-              },
-            ],
-        { shouldDirty: true }
-      );
-      setMediaUsages((current) => [
-        ...current,
-        {
-          uiId: `event-asset-${asset.id}-${current.length}`,
-          assetId: asset.localDraft ? undefined : asset.id,
-          localDraft: asset.localDraft,
-          persistentUrl,
-          previewUrl: asset.previewUrl ?? undefined,
-          altText: asset.metadata.altText || asset.fileName,
-          caption: asset.metadata.description || asset.title,
-          credit: asset.metadata.copyright,
-          license: asset.metadata.license,
-          role: 'gallery_item',
-          sortOrder: current.length,
-          assetSnapshot: toContentMediaAssetSnapshot({
-            persistentUrl,
-            altText: asset.metadata.altText || asset.fileName,
-            caption: asset.metadata.description || asset.title,
-            credit: asset.metadata.copyright,
-            license: asset.metadata.license,
-          }),
-          referenceStatus: 'pending',
-          additionalData: { contentType: nextMedia.contentType ?? 'image', width: '', height: '' },
-        },
-      ]);
-      setRequiresReferenceSync(true);
-      void refreshMediaAssets();
-    },
-    canAcceptAsset: isAssetSelectable,
-    isSupportedUploadFile,
-    createLocalAsset: createLocalStudioMediaPickerAsset,
-    loadAsset: async (assetId) => {
-      const [detail, delivery] = await Promise.all([
-        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
-        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
-      ]);
-      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toEventsMediaPickerDetail(
-        detail,
-        summary,
-        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
-          ? delivery.deliveryUrl
-          : null
-      );
-    },
-    saveAssetMetadata: async (assetId, metadata) => {
-      const detail = await updateHostMediaAsset({
-        fetch: globalThis.fetch.bind(globalThis),
-        assetId,
-        visibility: 'public',
-        metadata,
-      });
-      const assets = await refreshMediaAssets();
-      mediaAssetsRef.current = assets;
-      const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      const delivery = await getHostMediaDelivery({
-        fetch: globalThis.fetch.bind(globalThis),
-        assetId,
-      });
-      return toEventsMediaPickerDetail(
-        detail,
-        summary,
-        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
-          ? delivery.deliveryUrl
-          : null
-      );
-    },
-  });
-  const addManualMedia = React.useCallback(() => {
-    const usage = {
-      ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
-      additionalData: { contentType: 'image', width: '', height: '' },
-    };
-    const nextUsages = [...mediaUsages, usage];
-    methods.setValue(
-      'content.mediaContents',
-      contentMediaUsagesToMainserver(
-        nextUsages
-      ) as EventsDetailFormValues['content']['mediaContents'],
-      { shouldDirty: true }
-    );
-    setMediaUsages(nextUsages);
-    setRequiresReferenceSync(
-      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
-    );
-    return usage.uiId;
-  }, [mediaUsages, methods]);
-  const mediaPickerFeedback = React.useMemo(
-    () => resolveStudioMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
-    [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
-  );
-
-  React.useEffect(() => {
-    void listEventCategories()
-      .then((categories) => {
-        setCategoryOptions(categories);
-        setCategoryOptionsError(null);
-      })
-      .catch((loadError: unknown) => {
-        setCategoryOptions([]);
-        setCategoryOptionsError(errorMessage(pt, loadError, 'messages.categoryOptionsLoadError'));
-      })
-      .finally(() => {
-        setCategoryOptionsLoading(false);
-      });
-    void refreshMediaAssets();
-  }, [pt, refreshMediaAssets]);
-
-  React.useEffect(() => {
-    if (mode !== 'edit' || !contentId) {
-      return;
-    }
-
-    let active = true;
-    const initialPrincipalType = principalControl?.value ?? 'user';
-    void getEventDetail(contentId, initialPrincipalType)
-      .then((detail) => {
-        if (!active) {
-          return;
-        }
-        const item = detail.data;
-        setDeviations(detail.deviations);
-        setResourceAccess(detail.access);
-        loadedPrincipalTypeRef.current = initialPrincipalType;
-        const nextValues = mapEventItemToDetailFormValues(item);
-        reset(nextValues);
-        setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents));
-        setRequiresReferenceSync(false);
-        setLoadedItem(item);
-        setLoading(false);
-
-        void listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis),
-          targetType: EVENTS_CONTENT_TYPE,
-          targetId: contentId,
-        })
-          .then((references) => {
-            if (!active) return;
-            if (!methods.getFieldState('content.mediaContents').isDirty) {
-              setMediaUsages(
-                mainserverContentMediaToUsages(
-                  nextValues.content.mediaContents,
-                  alignHostMediaReferencesByOrder({
-                    itemCount: nextValues.content.mediaContents.length,
-                    role: 'gallery_item',
-                    references,
-                  })
-                )
-              );
-            }
-            setRequiresReferenceSync(
-              (current) =>
-                current ||
-                references.length > 0 ||
-                methods.getFieldState('content.mediaContents').isDirty
-            );
-            setMediaReferencesReady(true);
-          })
-          .catch(() => {
-            if (!active) return;
-            setStatus({ kind: 'error', text: pt('messages.mediaReferenceLoadError') });
-          });
-      })
-      .catch((loadError) => {
-        if (active) {
-          setStatus({
-            kind: 'error',
-            text: errorMessage(pt, loadError, 'messages.missingContent'),
-          });
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [contentId, mode, reset]);
-
-  React.useEffect(() => {
-    if (
-      mode !== 'edit' ||
-      !contentId ||
-      !loadedItem ||
-      loadedPrincipalTypeRef.current === actingPrincipalType
-    ) {
-      return;
-    }
-    let active = true;
-    void getEventDetail(contentId, actingPrincipalType)
-      .then((detail) => {
-        if (!active) return;
-        setResourceAccess(detail.access);
-        loadedPrincipalTypeRef.current = actingPrincipalType;
-      })
-      .catch(() => {
-        if (active) setResourceAccess({});
-      });
-    return () => {
-      active = false;
-    };
-  }, [actingPrincipalType, contentId, loadedItem, mode]);
+  const deviationFieldLabels = createEventsDeviationFieldLabels(pt);
 
   const tabs = createEventsDetailTabDefinitions(pt);
 
@@ -657,527 +168,67 @@ export function EventsDetailPage({
     [warmTab]
   );
 
-  const submit = methods.handleSubmit(
-    async (values, event) => {
-      if (!canSave) return;
-      const form = event?.target;
-      if (form instanceof HTMLFormElement && !form.reportValidity()) return;
-      setStatus(null);
-      methods.clearErrors();
-      const valuesWithMedia = {
-        ...values,
-        content: {
-          ...values.content,
-          mediaContents: contentMediaUsagesToMainserver(
-            mediaUsages.filter((usage) => !usage.localDraft)
-          ) as EventsDetailFormValues['content']['mediaContents'],
-        },
-      };
-      const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
-      const invalidAddressIndex = valuesWithMedia.content.addresses.findIndex((address) =>
-        hasInvalidFormGeoLocation(address.geoLocation)
-      );
-      const invalidOrganizerGeoLocation = hasInvalidFormGeoLocation(
-        valuesWithMedia.content.organizer.address?.geoLocation
-      );
-      const organizerNameMissing =
-        hasEventOrganizerContent(valuesWithMedia.content.organizer) &&
-        (valuesWithMedia.content.organizer.name ?? '').trim().length === 0;
-      const validationErrors = [
-        ...new Set([
-          ...validateEventForm(payload),
-          ...(invalidAddressIndex >= 0 || invalidOrganizerGeoLocation ? ['geoLocation'] : []),
-          ...(organizerNameMissing ? ['organizerName'] : []),
-        ]),
-      ];
+  const submit = createEventsDetailSubmit({
+    methods,
+    canSave,
+    mediaUsages,
+    setStatus,
+    pt,
+    setActiveTab,
+    setPendingFocusId,
+    saveFeedback,
+    setMediaSavePhaseKey,
+    deviations,
+    deviationFieldLabels,
+    mode,
+    actingPrincipalType,
+    contentId,
+    requiresReferenceSync,
+    mediaReferenceSync,
+    navigate,
+  });
 
-      if (validationErrors.length > 0) {
-        setStatus({ kind: 'error', text: pt('messages.validationError') });
-        if (validationErrors.includes('dates')) {
-          methods.setFocus('content.dates.0.dateStart');
-          setActiveTab('content');
-        } else if (validationErrors.includes('geoLocation')) {
-          if (invalidAddressIndex >= 0) {
-            methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.latitude`, {
-              type: 'manual',
-              message: 'geoLocation',
-            });
-            methods.setError(`content.addresses.${invalidAddressIndex}.geoLocation.longitude`, {
-              type: 'manual',
-              message: 'geoLocation',
-            });
-            setPendingFocusId(
-              invalidAddressIndex === 0
-                ? 'event-address-latitude'
-                : `event-address-latitude-${invalidAddressIndex}`
-            );
-          }
-          if (invalidOrganizerGeoLocation) {
-            methods.setError('content.organizer.address.geoLocation.latitude', {
-              type: 'manual',
-              message: 'geoLocation',
-            });
-            methods.setError('content.organizer.address.geoLocation.longitude', {
-              type: 'manual',
-              message: 'geoLocation',
-            });
-            setPendingFocusId('event-organizer-latitude');
-          }
-          setActiveTab('content');
-        } else if (validationErrors.includes('categories')) {
-          setActiveTab('basis');
-        } else if (validationErrors.includes('title')) {
-          methods.setFocus('title');
-          setActiveTab('basis');
-        } else if (validationErrors.includes('organizerName')) {
-          methods.setError('content.organizer.name', {
-            type: 'manual',
-            message: 'organizerName',
-          });
-          setActiveTab('content');
-          setPendingFocusId('event-organizer-name');
-        } else if (validationErrors.includes('urls')) {
-          methods.setFocus('content.urls.0.url');
-          setActiveTab('content');
-        }
-        return;
-      }
-
-      const operationId = saveFeedback.beginSaving();
-      setMediaSavePhaseKey(null);
-      try {
-        const deviationFormPaths: Readonly<
-          Record<string, Parameters<typeof methods.getFieldState>[0]>
-        > = {
-          title: 'title',
-          categories: 'basis.categories',
-          description: 'content.description',
-          dates: 'content.dates',
-          addresses: 'content.addresses',
-          contacts: 'content.contacts',
-          urls: 'content.urls',
-          mediaContents: 'content.mediaContents',
-          organizer: 'content.organizer',
-          priceInformations: 'content.priceInformations',
-          accessibilityInformation: 'content.accessibilityInformation',
-          externalId: 'settings.externalId',
-          keywords: 'settings.keywords',
-          tags: 'settings.tags',
-          visible: 'settings.visible',
-        };
-        const correctedDegradedFields = deviations
-          .map(({ fieldGroup }) => fieldGroup)
-          .filter((fieldGroup) => {
-            const fieldPath = deviationFormPaths[fieldGroup];
-            return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
-          });
-        if (
-          correctedDegradedFields.length > 0 &&
-          !globalThis.confirm(
-            pt('messages.degradedCorrectionConfirm', {
-              fields: correctedDegradedFields
-                .map((field) => deviationFieldLabels[field] ?? field)
-                .join(', '),
-            })
-          )
-        ) {
-          saveFeedback.reset();
-          return;
-        }
-        const saveContent = (
-          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
-          mediaSaveContext?: Readonly<{ operationId: string }>
-        ) => {
-          const resolvedPayload = mapEventsDetailFormValuesToInput({
-            ...values,
-            content: {
-              ...values.content,
-              mediaContents: contentMediaUsagesToMainserver(
-                resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
-              ) as EventsDetailFormValues['content']['mediaContents'],
-            },
-          });
-          const mutationOptions = mediaSaveContext
-            ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
-            : undefined;
-          if (mode === 'create') {
-            return mutationOptions
-              ? createEvent(resolvedPayload, actingPrincipalType, mutationOptions)
-              : createEvent(resolvedPayload, actingPrincipalType);
-          }
-          const mutation = omitDeviatedMainserverFields(resolvedPayload, deviations, {
-            retainedFieldGroups: correctedDegradedFields,
-          });
-          return mutationOptions
-            ? updateEvent(contentId as string, mutation, actingPrincipalType, mutationOptions)
-            : updateEvent(contentId as string, mutation, actingPrincipalType);
-        };
-        const result = requiresReferenceSync
-          ? await saveContentWithHostMediaReferences({
-              fetch: globalThis.fetch.bind(globalThis),
-              saveContent,
-              getTargetId: (saved) => saved.id,
-              targetType: EVENTS_CONTENT_TYPE,
-              references: mediaUsages.flatMap((usage) => {
-                const reference = contentMediaUsageToReference(usage);
-                return reference ? [reference] : [];
-              }),
-              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
-              onPhaseChange: (phase) =>
-                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
-            })
-          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
-        const handledResult = mediaReferenceSync.consumeSaveResult(result);
-        const saved = handledResult.saved;
-        if (handledResult.referenceFailed) {
-          setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
-          saveFeedback.markFailed(operationId);
-          return;
-        }
-        setStatus(null);
-        saveFeedback.markSaved(operationId);
-        if (mode === 'create') {
-          await navigate({
-            to: '/admin/events/$id',
-            params: { id: saved.id },
-            state: (previous) => addStudioCreatedSaveFeedback(previous, 'events', saved.id),
-          });
-        }
-      } catch (saveError) {
-        setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
-        saveFeedback.markFailed(operationId);
-      }
-    },
-    (errors) => {
-      const dates = errors.content?.dates;
-      if (!dates) return;
-      const index = (methods.getValues('content.dates') ?? []).findIndex((_, position) =>
-        Boolean(dates[position]?.dateStart || dates[position]?.dateEnd)
-      );
-      if (index < 0) return;
-      const field = dates[index]?.dateStart ? 'start' : 'end';
-      setActiveTab('content');
-      setPendingFocusId(index === 0 ? `event-date-${field}` : `event-date-${field}-${index}`);
-      setStatus({ kind: 'error', text: pt('messages.validationError') });
-    }
-  );
-
-  const remove = async () => {
-    if (!contentId || deletePending) {
-      return;
-    }
-
-    setDeletePending(true);
-    setDeleteErrorMessage(null);
-    try {
-      await deleteEvent(contentId, actingPrincipalType);
-    } catch (deleteError) {
-      setDeleteErrorMessage(errorMessage(pt, deleteError, 'messages.deleteError'));
-      setDeletePending(false);
-      return;
-    }
-
-    setDeleteDialogOpen(false);
-    try {
-      await navigate({
-        to: '/admin/content',
-        state: (previous) => addStudioDestructiveNavigationFeedback(previous, 'events', contentId),
-      });
-    } catch {
-      setDeleteNavigationFailed(true);
-    } finally {
-      setDeletePending(false);
-    }
-  };
+  const deletion = useEventsDetailDelete({ contentId, actingPrincipalType, navigate, pt });
 
   if (loading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
 
   return (
-    <FormProvider {...methods}>
-      <StudioDetailPageTemplate
-        title={mode === 'create' ? pt('detail.createTitle') : pt('detail.editTitle')}
-        description={
-          mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
-        }
-        primaryAction={
-          canSave ? (
-            <div className="flex flex-col items-end gap-1">
-              <ContentOwnershipSaveHint />
-              <StudioSaveButton
-                type="submit"
-                form={formId}
-                status={saveFeedback.status}
-                labels={{
-                  idle: pt('actions.save'),
-                  saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
-                  saved: pt('actions.saved'),
-                }}
-              />
-            </div>
-          ) : undefined
-        }
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="secondary">
-              <Link to="/admin/content">{pt('actions.back')}</Link>
-            </Button>
-            {mode === 'edit' && accessCapabilities.canDelete ? (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => {
-                  setDeleteErrorMessage(null);
-                  setDeleteDialogOpen(true);
-                }}
-              >
-                {pt('actions.delete')}
-              </Button>
-            ) : null}
-          </div>
-        }
-      >
-        <StudioDestructiveActionDialog
-          open={deleteDialogOpen}
-          title={pt('actions.deleteConfirmTitle')}
-          description={pt('actions.deleteConfirm', {
-            title: methods.getValues('title') || pt('detail.editTitle'),
-          })}
-          confirmLabel={pt('actions.delete')}
-          pendingLabel={pt('actions.deleting')}
-          cancelLabel={pt('actions.cancel')}
-          pending={deletePending}
-          errorMessage={deleteErrorMessage}
-          onCancel={() => {
-            setDeleteErrorMessage(null);
-            setDeleteDialogOpen(false);
-          }}
-          onConfirm={() => void remove()}
-        />
-        <StudioMediaPickerOverlay
-          assets={mediaAssets.map(toEventsMediaPickerSummary)}
-          canUpload={canUploadMedia}
-          feedbackMessage={mediaPickerFeedback.message}
-          feedbackTone={mediaPickerFeedback.tone}
-          isAssetSelectable={(asset) =>
-            isAssetSelectable({
-              ...asset,
-              metadata: {
-                title: asset.title,
-                altText: '',
-                description: '',
-                copyright: '',
-                license: '',
-              },
-            })
-          }
-          isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
-          isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-          labels={mediaPickerLabels}
-          metadataDraft={mediaPicker.metadataDraft}
-          mode={mediaPicker.mode}
-          onAddManual={addManualMedia}
-          onBackFromReview={mediaPicker.goBackFromReview}
-          onChangeMode={(pickerMode) =>
-            pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-          }
-          onClose={mediaPicker.close}
-          onConfirmSelection={() => void mediaPicker.confirmSelection()}
-          onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
-          onOpenMediaManagement={(assetId) =>
-            void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
-          }
-          onSearchValueChange={mediaPicker.setSearchValue}
-          onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
-          onUploadFile={(file) => void mediaPicker.uploadFile(file)}
-          open={mediaPicker.open}
-          reviewAsset={mediaPicker.reviewAsset}
-          reviewSource={mediaPicker.reviewSource}
-          isMetadataEditable={canUpdateMedia}
-          searchValue={mediaPicker.searchValue}
-          uploadPhase={mediaPicker.uploadPhase}
-        />
-        <form id={formId} noValidate onSubmit={(event) => void submit(event)} className="space-y-5">
-          {deleteNavigationFailed ? (
-            <StudioPersistentActionResult
-              kind="success"
-              title={pt('messages.deleteSuccess')}
-              description={pt('messages.deleteNavigationError')}
-              actions={
-                <Button asChild size="sm" variant="secondary">
-                  <Link to="/admin/content">{pt('actions.back')}</Link>
-                </Button>
-              }
-            />
-          ) : null}
-          {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-          <MainserverPrincipalControl
-            id="events-acting-principal"
-            label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
-            description={pt('principal.description')}
-            value={actingPrincipalType}
-            options={resolveMainserverPrincipalOptions(principalControl, {
-              value: actingPrincipalType,
-              label: pt(`principal.${actingPrincipalType}`),
-            })}
-            onChange={setActingPrincipalType}
-          />
-          <MainserverDeviationSummary
-            deviations={deviations}
-            title={pt('messages.degradedDataWarning')}
-            fieldLabel={(field) =>
-              pt('messages.degradedField', { field: deviationFieldLabels[field] ?? field })
-            }
-          />
-          <StudioMediaReferenceRetryAction
-            controller={mediaReferenceSync}
-            label={pt('actions.retryMediaReferences')}
-            onSuccess={() =>
-              setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') })
-            }
-            onFailure={() =>
-              setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
-            }
-          />
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => handleTabChange(value as EventsDetailTabId)}
-            className="space-y-0"
-          >
-            <label className="block md:hidden">
-              <span className="sr-only">{pt('tabs.mobileLabel')}</span>
-              <Select
-                aria-label={pt('tabs.mobileLabel')}
-                className="h-11 rounded-xl border-border/70 bg-card"
-                value={activeTab}
-                onChange={(event) => handleTabChange(event.target.value as EventsDetailTabId)}
-              >
-                {tabs.map((tab) => (
-                  <option key={tab.id} value={tab.id}>
-                    {tab.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] hidden gap-10 md:flex">
-              {tabs.map((tab) => {
-                const TabIcon = eventsTabIconMap[tab.id];
-                const isActive = tab.id === activeTab;
-
-                return (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    onMouseEnter={() => warmTab(tab.id)}
-                    onFocus={() => warmTab(tab.id)}
-                    className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
-                      isActive
-                        ? 'mb-[-1px] border-primary text-primary'
-                        : 'border-transparent text-muted-foreground'
-                    }`}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <TabIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
-                      <span>{tab.label}</span>
-                    </span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-            {tabs.map((tab) => {
-              const shouldKeepMounted = visitedTabs.includes(tab.id) && tab.id !== activeTab;
-
-              return (
-                <TabsContent
-                  key={tab.id}
-                  value={tab.id}
-                  forceMount={shouldKeepMounted || undefined}
-                  className="mt-0 data-[state=inactive]:hidden"
-                >
-                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[rgb(var(--waste-panel-surface))] p-5">
-                    {tab.id === 'basis' && mode === 'edit' ? <ContentOwnershipPanelSlot /> : null}
-                    <section
-                      aria-label={tab.title}
-                      className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-foreground">{tab.title}</h2>
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {tab.description}
-                        </p>
-                      </div>
-                    </section>
-                    {tab.id === 'basis' ? (
-                      <EventsDetailBasisTab
-                        availableCategories={categoryOptions}
-                        categoryOptionsError={categoryOptionsError}
-                        categoryOptionsLoading={categoryOptionsLoading}
-                        loadedItem={loadedItem}
-                        mode={mode}
-                        pt={pt}
-                      />
-                    ) : null}
-                    {tab.id === 'content' ? (
-                      <EventsDetailContentTab
-                        mediaUsages={mediaUsages}
-                        onAddManualMedia={addManualMedia}
-                        onChangeMediaUsages={(usages) => {
-                          setMediaUsages(usages);
-                          setRequiresReferenceSync(
-                            (current) => current || usages.some((usage) => Boolean(usage.assetId))
-                          );
-                        }}
-                        canSelectMedia={canSelectMedia}
-                        canUploadMedia={canUploadMedia}
-                        mediaEditingDisabled={
-                          !mediaReferencesReady || saveFeedback.status === 'saving'
-                        }
-                        onLoadAssetSnapshot={async (usage) => {
-                          if (!usage.assetId) throw new Error('asset_unavailable');
-                          const [detail, delivery] = await Promise.all([
-                            getHostMediaAsset({
-                              fetch: globalThis.fetch.bind(globalThis),
-                              assetId: usage.assetId,
-                            }),
-                            getHostMediaDelivery({
-                              fetch: globalThis.fetch.bind(globalThis),
-                              assetId: usage.assetId,
-                            }),
-                          ]);
-                          if (
-                            delivery.isPublicUrl !== true ||
-                            !isPersistableContentMediaUrl(delivery.deliveryUrl)
-                          )
-                            throw new Error('asset_unavailable');
-                          return toContentMediaAssetSnapshot({
-                            persistentUrl: delivery.deliveryUrl,
-                            altText: detail.metadata.altText ?? '',
-                            caption: detail.metadata.description ?? '',
-                            credit: detail.metadata.copyright ?? '',
-                            license: detail.metadata.license ?? '',
-                          });
-                        }}
-                        onOpenMediaPicker={(pickerMode) =>
-                          pickerMode === 'upload'
-                            ? mediaPicker.openUpload()
-                            : mediaPicker.openLibrary()
-                        }
-                        pt={pt}
-                      />
-                    ) : null}
-                    {tab.id === 'settings' ? <EventsDetailSettingsTab pt={pt} /> : null}
-                    {tab.id === 'history' ? (
-                      <EventsDetailHistoryTab contentId={contentId} pt={pt} />
-                    ) : null}
-                  </div>
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-        </form>
-      </StudioDetailPageTemplate>
-    </FormProvider>
+    <EventsDetailPageView
+      methods={methods}
+      pt={pt}
+      mode={mode}
+      contentId={contentId}
+      formId={formId}
+      canSave={canSave}
+      saveFeedback={saveFeedback}
+      mediaSavePhaseKey={mediaSavePhaseKey}
+      accessCapabilities={accessCapabilities}
+      deletion={deletion}
+      media={media}
+      canUploadMedia={canUploadMedia}
+      canUpdateMedia={canUpdateMedia}
+      canSelectMedia={canSelectMedia}
+      navigate={navigate}
+      submit={submit}
+      status={status}
+      actingPrincipalType={actingPrincipalType}
+      setActingPrincipalType={setActingPrincipalType}
+      principalControl={principalControl}
+      deviations={deviations}
+      deviationFieldLabels={deviationFieldLabels}
+      tabs={tabs}
+      activeTab={activeTab}
+      handleTabChange={handleTabChange}
+      warmTab={warmTab}
+      visitedTabs={visitedTabs}
+      categoryOptions={categoryOptions}
+      categoryOptionsError={categoryOptionsError}
+      categoryOptionsLoading={categoryOptionsLoading}
+      loadedItem={loadedItem}
+      mediaReferencesReady={mediaReferencesReady}
+      setStatus={setStatus}
+    />
   );
 }

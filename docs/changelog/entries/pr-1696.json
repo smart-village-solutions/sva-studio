@@ -1,0 +1,4 @@
+{
+  "prNumber": 1696,
+  "body": "Die Build- und Laufzeitprüfungen wurden stabilisiert. Gleichzeitig laufende Prüfungen verändern gemeinsame installierte Pakete nun nacheinander."
+}

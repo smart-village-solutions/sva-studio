@@ -1,0 +1,4 @@
+{
+  "prNumber": 1745,
+  "body": "Die Laufzeitabdeckung auf Staging sendet nur tatsächlich ausgeführte Funktionen an Fallow. Beim Herunterfahren des Studio-Servers wird auch die letzte Erfassungsperiode übertragen."
+}

@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const createStartHandlerMock = vi.fn();
 const createNodeBeaconMock = vi.fn();
 const startBeaconMock = vi.fn();
+const stopBeaconMock = vi.fn();
+const beaconSignalHandlers = new Map<string, () => void>();
+const processOnce = process.once.bind(process);
 const createSdkLoggerMock = vi.fn();
 const dispatchAuthRouteRequestMock = vi.fn();
 const dispatchSsfAdminLoginDirectoryRequestMock = vi.fn();
@@ -129,6 +132,13 @@ vi.mock('./lib/plugin-activation-policy-bootstrap.server', () => ({
 
 describe('server transport', () => {
   beforeEach(() => {
+    vi.spyOn(process, 'once').mockImplementation((event, listener) => {
+      if (event === 'SIGTERM' || event === 'SIGINT') {
+        beaconSignalHandlers.set(event, listener as () => void);
+        return process;
+      }
+      return processOnce(event, listener);
+    });
     ensurePluginActivationPoliciesConfiguredMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReturnValue({ requestId: 'req-default' });
     runWithoutWorkspaceContextMock.mockImplementation((callback) => callback());
@@ -142,11 +152,14 @@ describe('server transport', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
+    beaconSignalHandlers.clear();
     vi.unstubAllEnvs();
     vi.resetModules();
     createStartHandlerMock.mockReset();
     createNodeBeaconMock.mockReset();
     startBeaconMock.mockReset();
+    stopBeaconMock.mockReset();
     createSdkLoggerMock.mockReset();
     dispatchAuthRouteRequestMock.mockReset();
     dispatchSsfAdminLoginDirectoryRequestMock.mockReset();
@@ -193,7 +206,7 @@ describe('server transport', () => {
     vi.resetModules();
     vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'staging');
     vi.stubEnv('GIT_SHA', '0123456789abcdef0123456789abcdef01234567');
-    createNodeBeaconMock.mockReturnValue({ start: startBeaconMock });
+    createNodeBeaconMock.mockReturnValue({ start: startBeaconMock, stop: stopBeaconMock });
     await import('./server');
 
     expect(createNodeBeaconMock).toHaveBeenCalledWith(
@@ -208,6 +221,26 @@ describe('server transport', () => {
       })
     );
     expect(startBeaconMock).toHaveBeenCalledOnce();
+    const beforeSend = createNodeBeaconMock.mock.calls.at(-1)?.[0].beforeSend;
+    expect(beforeSend({ functions: [{ hitCount: 0 }, { hitCount: 2 }] })).toEqual({
+      functions: [{ hitCount: 2 }],
+    });
+    expect(beforeSend({ functions: [{ hitCount: 0 }] })).toBeNull();
+    expect(beaconSignalHandlers.has('SIGTERM')).toBe(true);
+    expect(beaconSignalHandlers.has('SIGINT')).toBe(true);
+  });
+
+  it.each(['SIGTERM', 'SIGINT'])('drains the final Node period on %s', async (signal) => {
+    vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
+    vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'staging');
+    vi.stubEnv('BEACON_API_KEY', 'fallow_live_k1_test_only');
+    createNodeBeaconMock.mockReturnValue({ start: startBeaconMock, stop: stopBeaconMock });
+    stopBeaconMock.mockResolvedValue(undefined);
+    createStartHandlerMock.mockReturnValue(vi.fn());
+    await import('./server');
+
+    beaconSignalHandlers.get(signal)?.();
+    expect(stopBeaconMock).toHaveBeenCalledOnce();
   });
 
   it('bypasses auth requests before TanStack Start', async () => {

@@ -164,7 +164,7 @@ function publish(cwd: string, group: Group, branch: string, base: string): numbe
   record(group.id, { base, status: 'pr-opened', pr: number, branch, at: new Date().toISOString() });
   const entry = `docs/changelog/entries/pr-${number}.json`;
   mkdirSync(join(cwd, 'docs/changelog/entries'), { recursive: true });
-  writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: `Interne Verbesserung\n\n- Ungenutzte Exports in ${group.project} wurden entfernt.` }, null, 2)}\n`);
+  writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: 'Allgemeine Verbesserungen' }, null, 2)}\n`);
   command(cwd, 'git', ['add', '--', entry]);
   command(cwd, 'git', ['commit', '-m', `docs: add changelog entry for PR #${number}`]);
   command(cwd, 'git', ['push', 'origin', branch], 120_000);

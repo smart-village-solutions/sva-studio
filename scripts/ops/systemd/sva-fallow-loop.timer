@@ -1,0 +1,10 @@
+[Unit]
+Description=Run local Fallow review loop nightly
+
+[Timer]
+OnCalendar=*-*-* 22:00:00
+Persistent=true
+Unit=sva-fallow-loop.service
+
+[Install]
+WantedBy=timers.target

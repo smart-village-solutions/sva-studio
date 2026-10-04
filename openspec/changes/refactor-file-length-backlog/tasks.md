@@ -1362,16 +1362,19 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
 
 ### PR 32d — Plugin-Lifecycle-Datenbankvertrag (1 Befund)
 
-- [ ] `scripts/ci/verify-plugin-lifecycle-database-contract.ts` entlang der
+- [x] `scripts/ci/verify-plugin-lifecycle-database-contract.ts` entlang der
       vorhandenen Lifecycle-Fallgruppen aufteilen. Fallreihenfolge,
       Transaktionen, Cleanup, Exitcodes und Fehlertexte mit gezielten
       Contract-Tests, Skript-Typecheck und dem vorhandenen Integrationstarget
-      erhalten; keine neue generische Testinfrastruktur einführen.
+      erhalten; keine neue generische Testinfrastruktur einführen. PR #1728
+      wurde am geprüften HEAD `d0ed24e9ba1a926b642de2a9e01126e69cdfa5a7`
+      mit grünen finalen GitHub-Gates und ohne offene Review-Threads
+      gemergt; Merge-Commit `192e80a6c6a75dc3f408ccd08fd4556c070875f0`.
 
-- [ ] Eigenen Studio-Changelog-Eintrag
+- [x] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-1728.json` mit
       passender `prNumber` und nutzerverständlichem `body` in
-      diesem PR anlegen; Changelog-Gate vor Merge grün.
+      PR #1728 angelegt; Changelog-Gate vor Merge grün.
 
 ### PR 33 — Operations-Migrationsskripte (2 Befunde)
 

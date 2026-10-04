@@ -31,6 +31,7 @@ import type {
 } from './types.js';
 
 export type SvaMainserverEventInput = {
+  readonly payload?: unknown;
   readonly title: string;
   readonly description?: string;
   readonly externalId?: string;
@@ -58,6 +59,7 @@ export type SvaMainserverEventInput = {
 };
 
 export type SvaMainserverEventItem = {
+  readonly payload?: unknown;
   readonly id: string;
   readonly title: string;
   readonly contentType: 'events.event-record';

@@ -32,6 +32,7 @@ import { defined, optionalNumber, optionalString, toSvaMainserverError } from '.
 import { parseResilientDetail } from './resilient-detail-mapper.js';
 
 const eventItemSchema = z.object({
+  payload: z.unknown(),
   id: z.string().min(1),
   title: z.string().nullish(),
   description: z.string().nullish(),
@@ -111,6 +112,7 @@ export const mapEventItemDetail = (
 
   return {
     data: {
+      ...(parsed.data.payload !== undefined ? { payload: parsed.data.payload } : {}),
       id: parsed.data.id,
       title: parsed.data.title ?? '',
       contentType: 'events.event-record',

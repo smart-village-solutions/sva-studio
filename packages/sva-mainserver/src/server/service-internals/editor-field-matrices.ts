@@ -14,6 +14,7 @@ export type MainserverEditorFieldMatrix = Readonly<
 >;
 
 export const eventEditorFieldMatrix = {
+  payload: 'passthrough',
   id: 'hard',
   title: 'controlled',
   description: 'controlled',
@@ -119,6 +120,12 @@ export const mergeEventUpdateWithCurrent = (
   const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
   return {
     ...submitted,
+    payload: preserveDefinedUnlessDegraded(
+      'payload',
+      current.payload,
+      submitted.payload,
+      degradedFields
+    ),
     externalId: preserveDefinedUnlessDegraded(
       'externalId',
       current.externalId,

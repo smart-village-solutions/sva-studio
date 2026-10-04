@@ -6,6 +6,7 @@ import type {
 } from '../../types.js';
 import { mergePoiUpdateWithCurrent } from './editor-field-matrices.js';
 import type { ServiceContext } from './service-context.js';
+import { withUpdatedPayload } from './shared.js';
 
 export const createPoiService = ({
   loadValidatedInstanceConfig,
@@ -41,8 +42,11 @@ export const createPoiService = ({
     return poiOperations.writePoiWithConfig(
       {
         ...input,
-        poi: mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations),
-        forceCreate: false,
+        poi: {
+          ...mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations),
+          payload: withUpdatedPayload(input.poi.payload, current.data.payload),
+        },
+        forceCreate: true,
       },
       config
     );

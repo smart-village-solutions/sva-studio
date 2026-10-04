@@ -7,6 +7,7 @@ import type {
   SvaMainserverProjectionContentType,
 } from '../../types.js';
 import type { ServiceContext } from './service-context.js';
+import { withUpdatedPayload } from './shared.js';
 
 export const createNewsService = ({
   loadValidatedInstanceConfig,
@@ -63,7 +64,18 @@ export const createNewsService = ({
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    return newsOperations.writeNewsWithConfig({ ...input, forceCreate: false }, config);
+    const current = await newsOperations.getNewsWithConfig(input, config);
+    return newsOperations.writeNewsWithConfig(
+      {
+        ...input,
+        news: {
+          ...input.news,
+          payload: withUpdatedPayload(input.news.payload, current.payload),
+        },
+        forceCreate: true,
+      },
+      config
+    );
   };
 
   const deleteNews = async (

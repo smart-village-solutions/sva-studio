@@ -129,6 +129,7 @@ export type SvaMainserverDataProviderFragment = {
 };
 
 export type SvaMainserverEventFragment = {
+  readonly payload?: unknown;
   readonly id?: string | null;
   readonly title?: string | null;
   readonly description?: string | null;
@@ -339,6 +340,7 @@ const mediaContentFields = `
 `;
 
 const eventFields = `
+  payload
   id
   title
   description
@@ -490,6 +492,7 @@ export const svaMainserverEventDetailDocument = `
 
 export const svaMainserverCreateEventDocument = `
   mutation SvaMainserverCreateEvent(
+    $payload: JSON
     $id: ID
     $forceCreate: Boolean
     $dataProviderId: ID
@@ -520,6 +523,7 @@ export const svaMainserverCreateEventDocument = `
     $pointOfInterestId: ID
   ) {
     createEventRecord(
+      payload: $payload
       id: $id
       forceCreate: $forceCreate
       dataProviderId: $dataProviderId

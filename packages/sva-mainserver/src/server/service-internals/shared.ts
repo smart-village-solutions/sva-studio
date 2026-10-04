@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverErrorCode,
@@ -208,6 +209,47 @@ export const assertPublishedAt = (publishedAt: string): void => {
       statusCode: 400,
     });
   }
+};
+
+// The deployed Mainserver omits some relations from its unchanged comparison.
+// Keep its payload comparable changing until upstream forceCreate is fixed (#442).
+export const withUpdatedPayload = (
+  payload: unknown,
+  previousPayload: unknown
+): Record<string, unknown> | undefined => {
+  let storedPayload = previousPayload;
+  if (typeof storedPayload === 'string') {
+    try {
+      storedPayload = JSON.parse(storedPayload) as unknown;
+    } catch {
+      // Preserve the old omit behavior for unparseable stored payloads.
+    }
+  }
+  const parsed = z
+    .record(z.string(), z.unknown())
+    .safeParse((payload === undefined ? storedPayload : payload) ?? {});
+  if (!parsed.success) {
+    if (payload === undefined) return undefined;
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Mainserver-Payload muss für Updates ein JSON-Objekt sein.',
+      statusCode: 400,
+    });
+  }
+  const previous = z.record(z.string(), z.unknown()).safeParse(storedPayload);
+  const previousTimestamp =
+    previous.success && typeof previous.data.studioUpdatedAt === 'string'
+      ? Date.parse(previous.data.studioUpdatedAt)
+      : Number.NaN;
+  const updatedAt = Number.isFinite(previousTimestamp)
+    ? Math.max(Date.now(), previousTimestamp + 1)
+    : Date.now();
+  return {
+    ...parsed.data,
+    studioUpdatedAt: new Date(updatedAt).toISOString(),
+    // Stale detail reads can repeat the timestamp, including across Studio processes.
+    studioUpdateId: randomUUID(),
+  };
 };
 
 export const defined = <TValue>(value: TValue | null | undefined): value is TValue =>

@@ -50,7 +50,7 @@ jobs:
             if [ "${{ github.event.pull_request.user.login }}" = 'dependabot[bot]' ]; then
               echo 'Validierung: Dependabot-PR – Changelog-Eintrag ist nicht erforderlich.' >> "$GITHUB_STEP_SUMMARY"
             else
-              echo 'Validierung: die Datei `docs/changelog/entries/pr-<nummer>.json` für den aktuellen PR ist Pflicht; zusätzliche Anpassungen an älteren Einträgen sind erlaubt.' >> "$GITHUB_STEP_SUMMARY"
+              echo 'Validierung: Nutzerrelevante Änderungen erhalten einen Eintrag; vorhandene Einträge werden geprüft. Rein technische PRs benötigen keinen Eintrag.' >> "$GITHUB_STEP_SUMMARY"
             fi
           else
             echo 'Validierung: vollständiger Katalog unter `docs/changelog/entries/*.json` inklusive JSON- und Git-Metadaten-Prüfung.' >> "$GITHUB_STEP_SUMMARY"

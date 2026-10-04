@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
@@ -36,6 +38,9 @@ jobs:
         env:
           VITE_GIT_SHA: ${{ github.sha }}
         run: pnpm nx run sva-studio-react:verify:runtime-artifact
+
+      - name: Prepare source-bound Studio changelog for image build
+        run: pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts --output apps/sva-studio-react/.generated/studio-changelog.json
 
       - name: Login to GHCR
         uses: docker/login-action@v4

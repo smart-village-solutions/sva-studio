@@ -1,0 +1,4 @@
+{
+  "prNumber": 1730,
+  "body": "Alle bislang erfassten Überschreitungen der Dateilänge im Studio-Quellcode sind behoben. Der abgeschlossene Refactoring-Plan ist archiviert; andere Qualitätsbefunde bleiben weiterhin sichtbar."
+}

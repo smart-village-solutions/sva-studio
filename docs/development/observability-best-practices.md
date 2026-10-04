@@ -10,6 +10,8 @@ Der Studio-Client wird im gemeinsamen Image mit `oxc-coverage-instrument` instru
 
 Das Image trägt die Git-Revision als `VITE_GIT_SHA` im Client und `GIT_SHA` im Server. Die Beacons melden `environment=staging` und klassifizieren die Daten nicht als Production-Coverage. Der Entrypoint aktiviert `NODE_V8_COVERAGE` vor dem Node-Start ausschließlich auf Staging mit gültigem Server-Key; `/tmp/sva-studio-v8-coverage` muss für den App-Prozess beschreibbar sein. Nach einem realen Staging-Browser-Ablauf beziehungsweise Server-Request im Netzwerk-Panel oder Proxy-Log den ersten `POST https://api.fallow.cloud/v1/ingest` auf HTTP `202 Accepted` prüfen. Bis zum ersten erfolgreichen POST ist nur die lokale Integration, nicht der Cloud-Ingest, nachgewiesen.
 
+Die Beacons übertragen nur Funktionen mit positivem Laufzeit-Zähler; nie aufgerufene Funktionen gehören in das separate, SHA-gebundene statische Inventar. Beim SIGTERM/SIGINT des Node-Prozesses ruft der Server `beacon.stop()` auf, damit die letzte Erfassungsperiode vor dem Prozessende gesendet wird. Ein erfolgreicher lokaler Test ersetzt weder den HTTP-202-Nachweis auf Staging noch die Prüfung der Quellzuordnung.
+
 ## Logging Best Practices
 
 ### Grundprinzipien

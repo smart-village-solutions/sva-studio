@@ -230,6 +230,10 @@ if (
     coverageOrigin: 'unknown',
     environment: 'staging',
     runtimeSurface: 'server',
+    beforeSend: (payload) => {
+      const functions = payload.functions.filter((entry) => entry.hitCount > 0);
+      return functions.length > 0 ? { ...payload, functions } : null;
+    },
     onRuntimeMismatch: ({ reason }) => {
       void getLogger('server-entry-transport').then((logger) =>
         logger.error('Fallow beacon cannot capture coverage', {
@@ -240,6 +244,17 @@ if (
     },
   });
   beacon.start();
+  const stopBeacon = () => {
+    void beacon.stop().catch(() => {
+      void getLogger('server-entry-transport').then((logger) =>
+        logger.error('Fallow beacon shutdown failed', {
+          operation: 'fallow_beacon_shutdown',
+        })
+      );
+    });
+  };
+  process.once('SIGTERM', stopBeacon);
+  process.once('SIGINT', stopBeacon);
 }
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {

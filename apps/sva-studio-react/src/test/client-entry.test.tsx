@@ -68,6 +68,10 @@ describe('Studio browser entry', () => {
       })
     );
     expect(startBeaconMock).toHaveBeenCalledOnce();
+    const beforeSend = createBrowserBeaconMock.mock.calls[0]?.[0].beforeSend;
+    const payload = { functions: [{ hitCount: 0 }, { hitCount: 3 }] };
+    expect(beforeSend(payload)).toEqual({ functions: [{ hitCount: 3 }] });
+    expect(beforeSend({ functions: [{ hitCount: 0 }] })).toBeNull();
     expect(hydrateRootMock).toHaveBeenCalledWith(document, expect.any(Object));
   });
 });

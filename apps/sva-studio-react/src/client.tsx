@@ -14,6 +14,10 @@ if (apiKey.startsWith('fallow_pub_k1_')) {
     coverageOrigin: 'unknown',
     environment: 'staging',
     runtimeSurface: 'browser',
+    beforeSend: (payload) => {
+      const functions = payload.functions.filter((entry) => entry.hitCount > 0);
+      return functions.length > 0 ? { ...payload, functions } : null;
+    },
   }).start();
 }
 

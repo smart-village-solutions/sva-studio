@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HttpResponse, http, studioMswServer } from 'tooling-testing/msw';
 
@@ -133,6 +133,10 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 }));
 
 describe('useInstances', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     useRealInstanceApi.current = false;
     vi.clearAllMocks();

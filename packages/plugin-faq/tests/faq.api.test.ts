@@ -65,6 +65,7 @@ describe('faq api wrapper', () => {
   });
 
   it('creates stable faq api errors through the configured error factory', async () => {
+    vi.resetModules();
     await import('../src/faq.api.js');
 
     const factory = vi.mocked(createMainserverCrudClient).mock.calls[0]?.[0].errorFactory;

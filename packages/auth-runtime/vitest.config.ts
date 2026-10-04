@@ -206,6 +206,7 @@ export default defineConfig({
     ],
   },
   test: {
+    clearMocks: false,
     include: ['src/**/*.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',

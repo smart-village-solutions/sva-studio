@@ -51,9 +51,9 @@ export function eligibleGroups(groups: Group[], blockedPaths: Set<string>, compl
 }
 
 export function workflowRunState(runs: WorkflowRun[]): 'pending' | 'failed' | 'passed' {
-  if (runs.some((run) => run.status === 'completed' && !['success', 'skipped', 'neutral'].includes(run.conclusion))) return 'failed';
-  if (!runs.some((run) => run.workflowName === 'CI Gates (PR)') || runs.some((run) => run.status !== 'completed')) return 'pending';
-  return 'passed';
+  const ci = runs.find((run) => run.workflowName === 'CI Gates (PR)');
+  if (!ci || ci.status !== 'completed') return 'pending';
+  return ci.conclusion === 'success' ? 'passed' : 'failed';
 }
 
 export function validateDecision(group: Group, response: unknown, files: Map<string, string>): Map<string, string> {

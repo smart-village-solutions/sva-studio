@@ -69,8 +69,8 @@ describe('workflow completion', () => {
   it('waits for the CI workflow and all runs on the published commit', () => {
     expect(workflowRunState([])).toBe('pending');
     expect(workflowRunState([{ workflowName: 'Studio Changelog', status: 'completed', conclusion: 'success' }])).toBe('pending');
-    expect(workflowRunState([ci, { workflowName: 'CodeQL Security', status: 'in_progress', conclusion: '' }])).toBe('pending');
-    expect(workflowRunState([ci, { workflowName: 'CodeQL Security', status: 'completed', conclusion: 'success' }])).toBe('passed');
-    expect(workflowRunState([ci, { workflowName: 'CodeQL Security', status: 'completed', conclusion: 'failure' }])).toBe('failed');
+    expect(workflowRunState([{ ...ci, status: 'in_progress', conclusion: '' }])).toBe('pending');
+    expect(workflowRunState([ci, { workflowName: 'Copilot', status: 'completed', conclusion: 'failure' }])).toBe('passed');
+    expect(workflowRunState([{ ...ci, conclusion: 'failure' }])).toBe('failed');
   });
 });

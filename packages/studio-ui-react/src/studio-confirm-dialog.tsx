@@ -89,6 +89,15 @@ const validDeletionImpact = (value: unknown): value is DeletionImpact => {
   );
 };
 
+const deletionPreviewKey = (linkedContent?: LinkedContentDeletionPreview): string | null =>
+  linkedContent?.basePath && linkedContent.contentId && linkedContent.actingPrincipalType
+    ? JSON.stringify([
+        linkedContent.basePath,
+        linkedContent.contentId,
+        linkedContent.actingPrincipalType,
+      ])
+    : null;
+
 export const useLinkedContentDeletionPreview = (
   open: boolean,
   linkedContent?: LinkedContentDeletionPreview
@@ -101,10 +110,7 @@ export const useLinkedContentDeletionPreview = (
   const contentId = linkedContent?.contentId;
   const actingPrincipalType = linkedContent?.actingPrincipalType;
   const load = linkedContent?.load;
-  const key =
-    basePath && contentId && actingPrincipalType && load
-      ? JSON.stringify([basePath, contentId, actingPrincipalType])
-      : null;
+  const key = deletionPreviewKey(linkedContent);
 
   React.useEffect(() => {
     if (!open || !key || !basePath || !contentId || !actingPrincipalType || !load) {

@@ -13,12 +13,17 @@ type Edit = { path: string; line: number; name: string; old: string; replacement
 type Decision = { decision: 'apply' | 'skip'; reason: string; edits: Edit[] };
 type RunRecord = { base: string; status: string; reason?: string; pr?: number; branch?: string; at: string };
 type WorkflowRun = { workflowName: string; status: string; conclusion: string };
+type ExistingPr = { number: number; state: string; isDraft: boolean };
+
+class RejectedGroup extends Error {}
+class FailedCi extends Error {}
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const stateRoot = process.env.SVA_FALLOW_STATE_DIR || join(homedir(), '.local/state/sva-fallow-loop');
 const apiUrl = process.env.SVA_LLAMA_URL || 'http://127.0.0.1:8080/v1/chat/completions';
 const maxPrs = 2;
 const maxHours = 8;
+const groupBudgetHours = 6;
 
 function command(cwd: string, file: string, args: string[], timeout = 300_000, allowed = [0]): string {
   const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
@@ -35,7 +40,7 @@ export function selectGroups(input: unknown): Group[] {
   for (const f of envelope.unused_exports) {
     if (!/^apps\/[a-z0-9-]+\/src\/(?:lib|components\/ui)\/[a-z0-9./-]+\.tsx?$/.test(f.path)) continue;
     if (f.path.split('/').includes('..')) continue;
-    if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) continue;
+    if (/\/(auth|iam|plugins?|routes?|server|security|contracts?)\b/i.test(f.path) || /(?:auth|iam|plugin|security|permission|authorization|interfaces-api-context|map-geocoding-api|\.server\.|(?:^|\/)i18n\.|react-dom-server-compat)/i.test(f.path) || /(?:^|\/)index\./.test(f.path)) continue;
     if (f.is_type_only || f.is_re_export || !/^[A-Za-z_$][\w$]*$/.test(f.export_name)) continue;
     if (!f.actions?.some((a) => a.type === 'remove-export' && a.auto_fixable)) continue;
     byFile.set(f.path, [...(byFile.get(f.path) || []), f]);
@@ -48,6 +53,10 @@ export function selectGroups(input: unknown): Group[] {
 
 export function eligibleGroups(groups: Group[], blockedPaths: Set<string>, completedForBase: Set<string>): Group[] {
   return groups.filter((group) => !blockedPaths.has(group.path) && !completedForBase.has(group.id));
+}
+
+export function completedForBase(record: RunRecord | undefined, base: string): boolean {
+  return record?.base === base && ['ci-green', 'rejected', 'ci-failed', 'pr-closed'].includes(record.status);
 }
 
 export function workflowRunState(runs: WorkflowRun[]): 'pending' | 'failed' | 'passed' {
@@ -137,12 +146,12 @@ function previous(id: string): RunRecord | undefined {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : undefined;
 }
 
-function openPrFiles(): Set<string> {
-  const prs = JSON.parse(command(root, 'gh', ['pr', 'list', '--state', 'open', '--limit', '100', '--json', 'number'])) as { number: number }[];
-  const files = new Set<string>();
+function openPrFiles(): Map<string, Set<string>> {
+  const prs = JSON.parse(command(root, 'gh', ['pr', 'list', '--state', 'open', '--limit', '100', '--json', 'number,headRefName'])) as { number: number; headRefName: string }[];
+  const files = new Map<string, Set<string>>();
   for (const pr of prs) {
     const names = command(root, 'gh', ['api', `repos/{owner}/{repo}/pulls/${pr.number}/files`, '--paginate', '--jq', '.[].filename']);
-    for (const name of names.split('\n').filter(Boolean)) files.add(name);
+    for (const name of names.split('\n').filter(Boolean)) files.set(name, new Set([...(files.get(name) || []), pr.headRefName]));
   }
   return files;
 }
@@ -152,22 +161,28 @@ function projectTarget(cwd: string, project: string, target: string): boolean {
   return Boolean(info.targets?.[target]);
 }
 
-function publish(cwd: string, group: Group, branch: string, base: string): number {
+function existingPr(branch: string): ExistingPr | undefined {
+  const prs = JSON.parse(command(root, 'gh', ['pr', 'list', '--state', 'all', '--head', branch, '--limit', '10', '--json', 'number,state,isDraft'])) as ExistingPr[];
+  return prs[0];
+}
+
+export function publish(cwd: string, group: Group, branch: string, base: string): number {
   command(cwd, 'git', ['add', '--', group.path]);
-  command(cwd, 'git', ['commit', '-m', `fix(${group.project}): remove unused local exports`]);
-  command(cwd, 'git', ['push', '-u', 'origin', branch], 120_000);
+  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `fix(${group.project}): remove unused local exports`]);
+  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
   const title = `fix(${group.project}): remove unused local exports`;
   const body = `## Scope\n\nRemove ${group.findings.length} Fallow reported exports in \`${group.path}\`. The declarations and values remain available inside the file.\n\n## Checks\n\n- Exact declaration edits and cross-repository references checked\n- Fallow findings disappeared\n- Project unit/type gates and file placement passed\n\nDraft for manual semantic review. No automatic merge.`;
-  const prUrl = command(cwd, 'gh', ['pr', 'create', '--draft', '--base', 'main', '--head', branch, '--title', title, '--body', body], 120_000);
-  const number = Number(prUrl.match(/\/(\d+)\s*$/)?.[1]);
+  const pr = existingPr(branch);
+  const prUrl = pr ? '' : command(cwd, 'gh', ['pr', 'create', '--draft', '--base', 'main', '--head', branch, '--title', title, '--body', body], 120_000);
+  const number = pr?.number ?? Number(prUrl.match(/\/(\d+)\s*$/)?.[1]);
   if (!Number.isInteger(number)) throw new Error(`Could not parse PR URL: ${prUrl}`);
   record(group.id, { base, status: 'pr-opened', pr: number, branch, at: new Date().toISOString() });
   const entry = `docs/changelog/entries/pr-${number}.json`;
   mkdirSync(join(cwd, 'docs/changelog/entries'), { recursive: true });
-  writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: 'Allgemeine Verbesserungen' }, null, 2)}\n`);
+  if (!existsSync(join(cwd, entry))) writeFileSync(join(cwd, entry), `${JSON.stringify({ prNumber: number, body: 'Allgemeine Verbesserungen' }, null, 2)}\n`);
   command(cwd, 'git', ['add', '--', entry]);
-  command(cwd, 'git', ['commit', '-m', `docs: add changelog entry for PR #${number}`]);
-  command(cwd, 'git', ['push', 'origin', branch], 120_000);
+  if (command(cwd, 'git', ['diff', '--cached', '--name-only'])) command(cwd, 'git', ['commit', '-m', `docs: add changelog entry for PR #${number}`]);
+  command(cwd, 'git', ['push', 'origin', `HEAD:${branch}`], 120_000);
   command(cwd, 'gh', ['pr', 'edit', String(number), '--add-label', 'local-llm']);
   const finalHead = command(cwd, 'git', ['rev-parse', 'HEAD']);
   const prHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };
@@ -182,12 +197,21 @@ function publish(cwd: string, group: Group, branch: string, base: string): numbe
   while (Date.now() < checksDeadline) {
     const runs = JSON.parse(command(cwd, 'gh', ['run', 'list', '--commit', finalHead, '--json', 'workflowName,status,conclusion', '--limit', '100'])) as WorkflowRun[];
     const state = workflowRunState(runs);
-    if (state === 'failed') throw new Error(`GitHub Actions failed for PR #${number}`);
+    if (state === 'failed') throw new FailedCi(`GitHub Actions failed for PR #${number}`);
     if (state === 'passed') break;
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10_000);
   }
   if (Date.now() >= checksDeadline) throw new Error(`GitHub Actions did not finish for PR #${number}`);
-  command(cwd, 'gh', ['pr', 'checks', String(number), '--watch', '--fail-fast'], 3_600_000);
+  const checks = spawnSync('gh', ['pr', 'checks', String(number), '--watch', '--fail-fast'], { cwd, encoding: 'utf8', timeout: 3_600_000 });
+  if (checks.error || checks.status !== 0) {
+    const raw = command(cwd, 'gh', ['pr', 'checks', String(number), '--json', 'name,state'], 30_000, [0, 1, 8]);
+    const current = JSON.parse(raw) as { state: string }[];
+    if (current.some((check) => ['FAILURE', 'ERROR', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'].includes(check.state))) throw new FailedCi(`GitHub checks failed for PR #${number}`);
+    throw new Error(`gh pr checks ${number}: ${(checks.error?.message || checks.stderr || checks.stdout).slice(0, 600)}`);
+  }
+  const finalChecks = JSON.parse(command(cwd, 'gh', ['pr', 'checks', String(number), '--json', 'name,state'], 30_000, [0, 1, 8])) as { state: string }[];
+  if (finalChecks.some((check) => ['FAILURE', 'ERROR', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'].includes(check.state))) throw new FailedCi(`GitHub checks failed for PR #${number}`);
+  if (!finalChecks.length || finalChecks.some((check) => !['SUCCESS', 'NEUTRAL', 'SKIPPED'].includes(check.state))) throw new Error(`GitHub checks not terminal for PR #${number}`);
   const verifiedHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };
   if (verifiedHead.headRefOid !== finalHead) throw new Error('PR head changed during checks');
   record(group.id, { base, status: 'ci-green', pr: number, branch, at: new Date().toISOString() });
@@ -196,39 +220,56 @@ function publish(cwd: string, group: Group, branch: string, base: string): numbe
 
 async function runGroup(group: Group, base: string): Promise<boolean> {
   const branch = `automation/fallow-${group.id}-${base.slice(0, 8)}`;
-  const existing = command(root, 'git', ['ls-remote', '--heads', 'origin', branch]);
-  if (existing) { record(group.id, { base, status: 'remote-branch-exists', branch, at: new Date().toISOString() }); return false; }
+  const remote = command(root, 'git', ['ls-remote', '--heads', 'origin', branch]);
+  const pr = existingPr(branch);
+  if (pr && (pr.state !== 'OPEN' || !pr.isDraft)) {
+    record(group.id, { base, status: 'pr-closed', pr: pr.number, branch, at: new Date().toISOString() });
+    return false;
+  }
   const worktree = join(stateRoot, 'worktrees', branch.replaceAll('/', '-'));
-  if (existsSync(worktree)) { record(group.id, { base, status: 'worktree-exists', branch, at: new Date().toISOString() }); return false; }
   mkdirSync(dirname(worktree), { recursive: true });
-  command(root, 'git', ['worktree', 'add', '-b', branch, worktree, base]);
+  if (remote) {
+    command(root, 'git', ['fetch', 'origin', branch], 120_000);
+    if (existsSync(worktree)) command(worktree, 'git', ['reset', '--hard', remote.split('\t')[0]!]);
+    else command(root, 'git', ['worktree', 'add', '--detach', worktree, remote.split('\t')[0]!]);
+  } else if (existsSync(worktree)) {
+    command(worktree, 'git', ['reset', '--hard', base]);
+    command(worktree, 'git', ['clean', '-fd']);
+  } else command(root, 'git', ['worktree', 'add', '-b', branch, worktree, base]);
+  let publishing = Boolean(remote);
   try {
-    command(worktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
-    const content = readFileSync(join(worktree, group.path), 'utf8');
-    const files = new Map([[group.path, content]]);
-    const decision = await askModel(group, files);
-    const changed = validateDecision(group, decision, files);
-    // An unused export must not be referenced from any other file, including tests.
-    for (const f of group.findings) {
-      const refs = command(worktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
-      if (refs.some((path) => path !== f.path)) throw new Error(`${f.export_name} has external references`);
+    if (!remote) {
+      command(worktree, 'pnpm', ['install', '--frozen-lockfile'], 600_000);
+      const content = readFileSync(join(worktree, group.path), 'utf8');
+      const files = new Map([[group.path, content]]);
+      const decision = await askModel(group, files);
+      let changed: Map<string, string>;
+      try { changed = validateDecision(group, decision, files); }
+      catch (error) { throw new RejectedGroup(String(error)); }
+      // An unused export must not be referenced from any other file, including tests.
+      for (const f of group.findings) {
+        const refs = command(worktree, 'rg', ['-l', '-w', '-F', f.export_name, 'apps', 'packages', 'scripts'], 30_000, [0, 1]).split('\n').filter(Boolean);
+        if (refs.some((path) => path !== f.path)) throw new RejectedGroup(`${f.export_name} has external references`);
+      }
+      writeFileSync(join(worktree, group.path), changed.get(group.path)!);
+      command(worktree, 'git', ['diff', '--check']);
+      const delta = command(worktree, 'git', ['diff', '--numstat']);
+      if (!delta || delta.split('\n').some((line) => !line.endsWith(`\t${group.path}`))) throw new RejectedGroup('Diff escaped selected file');
+      const after = scan(worktree);
+      if (group.findings.some((f) => after.unused_exports.some((a) => a.path === f.path && a.export_name === f.export_name))) throw new RejectedGroup('Fallow finding remains');
+      for (const target of ['test:unit', 'test:types']) if (projectTarget(worktree, group.project, target)) command(worktree, 'pnpm', ['nx', 'run', `${group.project}:${target}`], 1_800_000);
+      command(worktree, 'pnpm', ['check:file-placement'], 120_000);
     }
-    writeFileSync(join(worktree, group.path), changed.get(group.path)!);
-    command(worktree, 'git', ['diff', '--check']);
-    const delta = command(worktree, 'git', ['diff', '--numstat']);
-    if (!delta || delta.split('\n').some((line) => !line.endsWith(`\t${group.path}`))) throw new Error('Diff escaped selected file');
-    const after = scan(worktree);
-    if (group.findings.some((f) => after.unused_exports.some((a) => a.path === f.path && a.export_name === f.export_name))) throw new Error('Fallow finding remains');
-    for (const target of ['test:unit', 'test:types']) if (projectTarget(worktree, group.project, target)) command(worktree, 'pnpm', ['nx', 'run', `${group.project}:${target}`], 1_800_000);
-    command(worktree, 'pnpm', ['check:file-placement'], 120_000);
+    publishing = true;
     const pr = publish(worktree, group, branch, base);
     console.log(`Draft PR #${pr}: ${group.path}`);
     return true;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    record(group.id, { base, status: 'failed', reason, branch, pr: previous(group.id)?.pr, at: new Date().toISOString() });
+    const status = error instanceof RejectedGroup ? 'rejected' : error instanceof FailedCi ? 'ci-failed' : 'failed';
+    record(group.id, { base, status, reason, branch, pr: previous(group.id)?.pr, at: new Date().toISOString() });
     console.error(`${group.path}: ${reason}`);
-    if (/gh |git push|PR head|checks/.test(reason)) throw error;
+    if (publishing) throw error;
     return false;
   }
 }
@@ -249,7 +290,9 @@ async function main(): Promise<void> {
     }
   }
   writeFileSync(join(lock, 'pid'), String(process.pid));
-  const deadline = Date.now() + maxHours * 3_600_000;
+  const onTerm = () => { rmSync(lock, { recursive: true, force: true }); process.exit(143); };
+  process.once('SIGTERM', onTerm);
+  const latestGroupStart = Date.now() + (maxHours - groupBudgetHours) * 3_600_000;
   try {
     command(root, 'git', ['fetch', 'origin', 'main'], 120_000);
     const base = command(root, 'git', ['rev-parse', 'origin/main']);
@@ -262,18 +305,22 @@ async function main(): Promise<void> {
       groups = selectGroups(scan(scanDir));
     } finally { command(root, 'git', ['worktree', 'remove', '--force', scanDir]); }
     if (!dry) command(root, 'gh', ['auth', 'status']);
-    const blocked = dry ? new Set<string>() : openPrFiles();
-    const completed = new Set(groups.filter((g) => previous(g.id)?.base === base).map((g) => g.id));
+    const openFiles = dry ? new Map<string, Set<string>>() : openPrFiles();
+    const blocked = new Set(groups.filter((g) => {
+      const heads = openFiles.get(g.path);
+      return heads && (heads.size > 1 || !heads.has(`automation/fallow-${g.id}-${base.slice(0, 8)}`));
+    }).map((g) => g.path));
+    const completed = new Set(groups.filter((g) => completedForBase(previous(g.id), base)).map((g) => g.id));
     const eligible = eligibleGroups(groups, blocked, completed);
     if (dry) { console.log(JSON.stringify({ base, groups: eligible.map((g) => ({ id: g.id, project: g.project, path: g.path, names: g.findings.map((f) => f.export_name) })) }, null, 2)); return; }
     if (eligible.length > 0) await waitForModelReady();
     let published = 0;
     for (const group of eligible) {
-      if (published >= maxPrs || Date.now() >= deadline) break;
+      if (published >= maxPrs || Date.now() >= latestGroupStart) break;
       if (await runGroup(group, base)) published += 1;
     }
     console.log(`Run complete: ${published} Draft PR(s)`);
-  } finally { rmSync(lock, { recursive: true, force: true }); }
+  } finally { process.off('SIGTERM', onTerm); rmSync(lock, { recursive: true, force: true }); }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch((error) => { console.error(error); process.exitCode = 1; });

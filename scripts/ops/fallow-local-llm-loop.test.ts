@@ -1,5 +1,10 @@
+import { execFileSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { eligibleGroups, selectGroups, validateDecision, workflowRunState } from './fallow-local-llm-loop.js';
+import { completedForBase, eligibleGroups, selectGroups, validateDecision, workflowRunState } from './fallow-local-llm-loop.js';
 
 const path = 'apps/example/src/lib/preferences.ts';
 const finding = (name: string, line: number, file = path) => ({ path: file, export_name: name, line, is_type_only: false, is_re_export: false, actions: [{ type: 'remove-export', auto_fixable: true }] });
@@ -17,6 +22,14 @@ describe('Fallow local loop selection', () => {
     expect(selectGroups(envelope([finding('first', 1), finding('second', 1)]))).toEqual([]);
   });
 
+  it('excludes authorization handlers even when their file names lack auth or iam', () => {
+    const names = ['interfaces-api-context.ts', 'map-geocoding-api.operations.ts', 'permission-actions.ts'];
+    for (const name of names) {
+      const file = `apps/example/src/lib/${name}`;
+      expect(selectGroups(envelope([finding('first', 1, file), finding('second', 2, file)]))).toEqual([]);
+    }
+  });
+
   it('groups a small set of UI export specifiers', () => {
     const ui = 'apps/example/src/components/ui/dialog.tsx';
     expect(selectGroups(envelope([finding('DialogOverlay', 3, ui), finding('DialogPortal', 4, ui)]))).toHaveLength(1);
@@ -27,6 +40,16 @@ describe('Fallow local loop selection', () => {
     const groups = selectGroups(envelope([finding('first', 1), finding('second', 2), finding('DialogOverlay', 3, ui), finding('DialogPortal', 4, ui)]));
     expect(eligibleGroups(groups, new Set([path]), new Set())).toEqual(groups.filter((g) => g.path === ui));
     expect(eligibleGroups(groups, new Set(), new Set(groups.map((g) => g.id)))).toEqual([]);
+  });
+
+  it('retries incomplete work for the same base but keeps final outcomes terminal', () => {
+    const base = 'abc';
+    for (const status of ['failed', 'pr-opened', 'worktree-exists', 'remote-branch-exists']) {
+      expect(completedForBase({ base, status, at: '' }, base)).toBe(false);
+    }
+    for (const status of ['ci-green', 'rejected', 'ci-failed', 'pr-closed']) {
+      expect(completedForBase({ base, status, at: '' }, base)).toBe(true);
+    }
   });
 });
 
@@ -72,5 +95,58 @@ describe('workflow completion', () => {
     expect(workflowRunState([{ ...ci, status: 'in_progress', conclusion: '' }])).toBe('pending');
     expect(workflowRunState([ci, { workflowName: 'Copilot', status: 'completed', conclusion: 'failure' }])).toBe('passed');
     expect(workflowRunState([{ ...ci, conclusion: 'failure' }])).toBe('failed');
+  });
+});
+
+describe('publication recovery', () => {
+  it('finishes the same Draft PR after interruption between PR creation and changelog', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sva-fallow-recovery-'));
+    const repo = join(dir, 'repo');
+    const bare = join(dir, 'remote.git');
+    const bin = join(dir, 'bin');
+    const prMarker = join(dir, 'pr-created');
+    const failOnce = join(dir, 'fail-once');
+    const createCount = join(dir, 'create-count');
+    const source = 'apps/example/src/lib/preferences.ts';
+    const branch = 'automation/fallow-recovery-test';
+    const runGit = (cwd: string, args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: 'pipe' }).trim();
+    try {
+      mkdirSync(repo);
+      mkdirSync(bin);
+      runGit(dir, ['init', '--bare', bare]);
+      runGit(repo, ['init']);
+      runGit(repo, ['config', 'user.email', 'fallow-test@example.invalid']);
+      runGit(repo, ['config', 'user.name', 'Fallow Test']);
+      runGit(repo, ['remote', 'add', 'origin', bare]);
+      mkdirSync(dirname(join(repo, source)), { recursive: true });
+      writeFileSync(join(repo, source), 'const first = 1;\nconst second = 2;\n');
+      runGit(repo, ['add', source]);
+      runGit(repo, ['commit', '-m', 'initial']);
+      const base = runGit(repo, ['rev-parse', 'HEAD']);
+      writeFileSync(failOnce, '1');
+      const fakeGh = join(bin, 'gh');
+      writeFileSync(fakeGh, [
+        '#!/bin/sh',
+        'case "$1 $2" in',
+        '  "pr list") if test -e "$FAKE_PR_MARKER"; then echo \'[{"number":42,"state":"OPEN","isDraft":true}]\'; else echo \'[]\'; fi ;;',
+        '  "pr create") echo create >> "$FAKE_CREATE_COUNT"; touch "$FAKE_PR_MARKER"; if test -e "$FAKE_FAIL_ONCE"; then rm "$FAKE_FAIL_ONCE"; exit 1; fi; echo https://example.invalid/pull/42 ;;',
+        '  "pr edit") exit 0 ;;',
+        '  "pr view") printf \'{"headRefOid":"%s"}\\n\' "$(git rev-parse HEAD)" ;;',
+        '  "pr checks") case "$*" in *--json*) echo \'[{"name":"CI Scope","state":"SUCCESS"}]\' ;; esac ;;',
+        '  "run list") echo \'[{"workflowName":"CI Gates (PR)","status":"completed","conclusion":"success"}]\' ;;',
+        '  *) exit 1 ;;',
+        'esac',
+      ].join('\n') + '\n');
+      chmodSync(fakeGh, 0o755);
+      const modulePath = fileURLToPath(new URL('./fallow-local-llm-loop.ts', import.meta.url));
+      const code = `import { publish, selectGroups } from ${JSON.stringify(modulePath)}; const group = selectGroups({ kind: 'dead-code', unused_exports: [1, 2].map((line) => ({ path: ${JSON.stringify(source)}, export_name: line === 1 ? 'first' : 'second', line, is_type_only: false, is_re_export: false, actions: [{ type: 'remove-export', auto_fixable: true }] })) })[0]; publish(${JSON.stringify(repo)}, group, ${JSON.stringify(branch)}, ${JSON.stringify(base)});`;
+      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, SVA_FALLOW_STATE_DIR: join(dir, 'state'), FAKE_PR_MARKER: prMarker, FAKE_FAIL_ONCE: failOnce, FAKE_CREATE_COUNT: createCount };
+      const runPublish = () => execFileSync('pnpm', ['exec', 'tsx', '-e', code], { cwd: dirname(dirname(dirname(modulePath))), env, encoding: 'utf8', stdio: 'pipe' });
+      expect(runPublish).toThrow();
+      expect(runPublish).not.toThrow();
+      expect(readFileSync(createCount, 'utf8').trim().split('\n')).toHaveLength(1);
+      const entry = runGit(dir, ['--git-dir', bare, 'show', `${branch}:docs/changelog/entries/pr-42.json`]);
+      expect(JSON.parse(entry)).toEqual({ prNumber: 42, body: 'Allgemeine Verbesserungen' });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

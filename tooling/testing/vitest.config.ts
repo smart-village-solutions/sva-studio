@@ -65,6 +65,7 @@ export default defineConfig({
       '../../scripts/ci/test-runner-standardization.test.ts',
       '../../scripts/ops/instance-registry.test.ts',
       '../../scripts/ops/runtime-env-guardrails.test.ts',
+      '../../scripts/ops/fallow-local-llm-loop.test.ts',
       '../../scripts/ops/ssf-runtime-service-client.test.ts',
       '../../scripts/ops/runtime-env.test.ts',
       '../../scripts/ops/runtime-env.remote.test.ts',

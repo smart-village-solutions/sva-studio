@@ -8,7 +8,7 @@ Die erste Aufgabenart entfernt ungenutzte Exports in App-Code. Kandidaten werden
 
 ## Ablauf
 
-1. **Start:** Ein Z640-Benutzerdienst führt genau einen Lauf aus. Der Lauf hält eine lokale Sperre, aktualisiert `origin/main` und beendet sich nach höchstens acht Stunden oder zwei Draft-PRs. Er darf nach einem Reboot erneut gestartet werden, ohne eine zweite Instanz oder doppelte PRs zu erzeugen.
+1. **Start:** Ein Z640-Benutzerdienst führt genau einen Lauf aus. Der Lauf hält eine lokale Sperre, aktualisiert `origin/main` und beginnt neue Bündel nur in den ersten zwei Stunden beziehungsweise bis zwei Draft-PRs entstanden sind. Für laufende Bündel sind sechs Stunden reserviert; der Dienst hat einen harten Abbruchpuffer von zwölf Stunden. Er darf nach einem Reboot erneut gestartet werden, ohne eine zweite Instanz oder doppelte PRs zu erzeugen.
 2. **Auswahl:** Fallow liefert aktuelle, maschinenlesbare Befunde. Der Controller prüft Dateityp, Projektzuordnung, Änderungsart und bestehende Branches/PRs. Er bildet kleine Kandidatenbündel; das Modell bewertet deren fachlichen Zusammenhang anhand kurzer Dateiausschnitte. Es darf ein Bündel ablehnen.
 3. **Bearbeitung:** Für genau ein Bündel entsteht ein Worktree vom aktuellen `origin/main`. Das Modell liefert JSON mit Entscheidung, Begründung und konkreten alten/neuen Zeilen. Nur der Controller darf die Dateien ändern; er akzeptiert ausschließlich eindeutige, in den erlaubten Dateien liegende `export`-Entfernungen. Shell-Befehle des Modells werden nicht ausgeführt.
 4. **Lokale Prüfung:** Der Controller prüft den exakten Diff, sämtliche relevanten Verbraucher, den verschwundenen Fallow-Befund, `git diff --check`, das Nx-Projekt-Unit-/Type-Gate und `check:file-placement`. Fehler oder No-ops bleiben lokal mit einem knappen Grund; sie lösen keinen Push aus. Die ersten Läufe nutzen gezielte Projekt-Gates statt einer vollständigen Monorepo-Suite.
@@ -16,7 +16,7 @@ Die erste Aufgabenart entfernt ungenutzte Exports in App-Code. Kandidaten werden
 
 ## Persistenz und Wiederanlauf
 
-Der Worktree und ein lokaler Ergebnisbericht pro Bündel halten Basis-SHA, Befundkennungen, erlaubten Scope, Modellentscheidung, Diff, Gate-Ergebnisse und gegebenenfalls PR-Nummer fest. Vor einem Neustart prüft der Controller vorhandene Worktrees, Remote-Branches und PRs, statt dieselben Befunde neu zu veröffentlichen. Abgelehnte Befunde werden für denselben Basis-SHA nicht erneut versucht; ein neuer `main`-Stand darf sie neu bewerten. Logs enthalten keine GitHub-Tokens.
+Der Worktree und ein lokaler Ergebnisbericht pro Bündel halten Basis-SHA, Status und gegebenenfalls PR-Nummer fest. Ein abgelehnter Vorschlag, rote CI oder ein bereits geschlossener PR sind für denselben Basis-SHA terminal. Bei vorübergehenden Fehlern wird ein noch nicht veröffentlichter Worktree beim nächsten Lauf vom Basis-SHA neu geprüft. Nach einem Branch-Push verwendet der Controller den vorhandenen Branch und Draft-PR, ergänzt fehlenden Changelog oder Label und prüft den finalen HEAD erneut. Dateien fremder offener PRs bleiben ausgeschlossen; der eigene Draft-PR darf für diese Fortsetzung berücksichtigt werden. Logs enthalten keine GitHub-Tokens.
 
 ## Grenzen und Failure Modes
 

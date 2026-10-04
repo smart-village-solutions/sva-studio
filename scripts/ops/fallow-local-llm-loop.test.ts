@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eligibleGroups, selectGroups, validateDecision } from './fallow-local-llm-loop.js';
+import { eligibleGroups, selectGroups, validateDecision, workflowRunState } from './fallow-local-llm-loop.js';
 
 const path = 'apps/example/src/lib/preferences.ts';
 const finding = (name: string, line: number, file = path) => ({ path: file, export_name: name, line, is_type_only: false, is_re_export: false, actions: [{ type: 'remove-export', auto_fixable: true }] });
@@ -60,5 +60,17 @@ describe('model edit validation', () => {
     ] };
     expect(validateDecision(uiGroup, edits, new Map([[ui, source]])).get(ui)).toContain('export {\n\n\n};');
     expect(() => validateDecision(uiGroup, edits, new Map([[ui, 'const DialogOverlay = 1;\nconst x = 0;\n  DialogOverlay,\n  DialogPortal,\n};\n']]))).toThrow();
+  });
+});
+
+describe('workflow completion', () => {
+  const ci = { workflowName: 'CI Gates (PR)', status: 'completed', conclusion: 'success' };
+
+  it('waits for the CI workflow and all runs on the published commit', () => {
+    expect(workflowRunState([])).toBe('pending');
+    expect(workflowRunState([{ workflowName: 'Studio Changelog', status: 'completed', conclusion: 'success' }])).toBe('pending');
+    expect(workflowRunState([ci, { workflowName: 'CodeQL Security', status: 'in_progress', conclusion: '' }])).toBe('pending');
+    expect(workflowRunState([ci, { workflowName: 'CodeQL Security', status: 'completed', conclusion: 'success' }])).toBe('passed');
+    expect(workflowRunState([ci, { workflowName: 'CodeQL Security', status: 'completed', conclusion: 'failure' }])).toBe('failed');
   });
 });

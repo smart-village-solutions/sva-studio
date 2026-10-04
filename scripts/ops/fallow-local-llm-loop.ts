@@ -12,6 +12,7 @@ type Group = { id: string; project: string; path: string; findings: Finding[] };
 type Edit = { path: string; line: number; name: string; old: string; replacement: string };
 type Decision = { decision: 'apply' | 'skip'; reason: string; edits: Edit[] };
 type RunRecord = { base: string; status: string; reason?: string; pr?: number; branch?: string; at: string };
+type WorkflowRun = { workflowName: string; status: string; conclusion: string };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const stateRoot = process.env.SVA_FALLOW_STATE_DIR || join(homedir(), '.local/state/sva-fallow-loop');
@@ -47,6 +48,12 @@ export function selectGroups(input: unknown): Group[] {
 
 export function eligibleGroups(groups: Group[], blockedPaths: Set<string>, completedForBase: Set<string>): Group[] {
   return groups.filter((group) => !blockedPaths.has(group.path) && !completedForBase.has(group.id));
+}
+
+export function workflowRunState(runs: WorkflowRun[]): 'pending' | 'failed' | 'passed' {
+  if (runs.some((run) => run.status === 'completed' && !['success', 'skipped', 'neutral'].includes(run.conclusion))) return 'failed';
+  if (!runs.some((run) => run.workflowName === 'CI Gates (PR)') || runs.some((run) => run.status !== 'completed')) return 'pending';
+  return 'passed';
 }
 
 export function validateDecision(group: Group, response: unknown, files: Map<string, string>): Map<string, string> {
@@ -171,7 +178,18 @@ function publish(cwd: string, group: Group, branch: string, base: string): numbe
     if (attempt === 5) throw new Error(`No GitHub checks appeared for PR #${number}`);
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10_000);
   }
+  const checksDeadline = Date.now() + 3_600_000;
+  while (Date.now() < checksDeadline) {
+    const runs = JSON.parse(command(cwd, 'gh', ['run', 'list', '--commit', finalHead, '--json', 'workflowName,status,conclusion', '--limit', '100'])) as WorkflowRun[];
+    const state = workflowRunState(runs);
+    if (state === 'failed') throw new Error(`GitHub Actions failed for PR #${number}`);
+    if (state === 'passed') break;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10_000);
+  }
+  if (Date.now() >= checksDeadline) throw new Error(`GitHub Actions did not finish for PR #${number}`);
   command(cwd, 'gh', ['pr', 'checks', String(number), '--watch', '--fail-fast'], 3_600_000);
+  const verifiedHead = JSON.parse(command(cwd, 'gh', ['pr', 'view', String(number), '--json', 'headRefOid'])) as { headRefOid: string };
+  if (verifiedHead.headRefOid !== finalHead) throw new Error('PR head changed during checks');
   record(group.id, { base, status: 'ci-green', pr: number, branch, at: new Date().toISOString() });
   return number;
 }

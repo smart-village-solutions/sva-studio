@@ -12,6 +12,9 @@ export type TestSyncState = {
   completed_page?: number;
   available_count?: number;
   is_total_final?: boolean;
+  generation?: number;
+  completed_generation?: number;
+  snapshot_invalidated?: boolean;
 };
 
 type SyncStateFixture = {
@@ -57,6 +60,9 @@ const initialSyncState = (syncScopeKey: string): TestSyncState => ({
   last_error_code: null,
   last_error_message: null,
   projected_count: 0,
+  generation: 0,
+  completed_generation: 0,
+  snapshot_invalidated: false,
 });
 
 const partialRunningSyncState = (
@@ -67,6 +73,9 @@ const partialRunningSyncState = (
 ): TestSyncState => ({
   ...current,
   last_started_at: new Date().toISOString(),
+  generation: context.fixture.syncScopeKeyColumnAvailable
+    ? Number(context.queryValue(values, firstPayloadIndex + 2))
+    : (current.generation ?? 0) + 1,
   refresh_run_id: String(context.queryValue(values, firstPayloadIndex)),
   refresh_phase: String(context.queryValue(values, firstPayloadIndex + 1, 'hot')) as
     'hot' | 'reconciliation',
@@ -94,9 +103,12 @@ const succeededSyncState = (
   firstPayloadIndex: number
 ): TestSyncState => {
   const projectedCount = Number(context.queryValue(values, firstPayloadIndex, 0));
+  const preserveRefreshStart = context.queryValue(values, firstPayloadIndex + 1) === true;
   return {
     ...current,
+    last_started_at: preserveRefreshStart ? current.last_started_at : new Date().toISOString(),
     last_succeeded_at: new Date().toISOString(),
+    completed_generation: current.generation ?? 0,
     last_failed_at: null,
     last_error_code: null,
     last_error_message: null,
@@ -106,6 +118,7 @@ const succeededSyncState = (
     is_total_final: true,
     refresh_run_id: null,
     refresh_phase: null,
+    snapshot_invalidated: preserveRefreshStart ? false : current.snapshot_invalidated,
   };
 };
 
@@ -119,7 +132,8 @@ const buildInsertedSyncState = (
   const current =
     (context.fixture.syncScopeKeyColumnAvailable
       ? context.fixture.syncStates.get(`${contentType}::${syncScopeKey}`)
-      : storedSyncState(context.fixture, contentType, syncScopeKey)) ?? initialSyncState(syncScopeKey);
+      : storedSyncState(context.fixture, contentType, syncScopeKey)) ??
+    initialSyncState(syncScopeKey);
   const firstPayloadIndex = context.fixture.syncScopeKeyColumnAvailable ? 3 : 2;
   if (text.includes("'partial_running'")) {
     return partialRunningSyncState(context, current, values, firstPayloadIndex);
@@ -138,10 +152,24 @@ const readSyncState = (
   text: string,
   values: readonly unknown[] | undefined
 ): QueryResult | null => {
-  if (!text.includes('FROM iam.content_list_projection_sync_state')) {
+  if (
+    !text.trimStart().startsWith('SELECT') ||
+    !text.includes('FROM iam.content_list_projection_sync_state')
+  ) {
     return null;
   }
   const contentType = String(context.queryValue(values, 1));
+  if (text.includes('AS superseded')) {
+    const generation = Number(context.queryValue(values, 2));
+    const affectedScopeKeys = context.queryValue(values, 3);
+    const superseded = [...context.fixture.syncStates.entries()].some(
+      ([key, state]) =>
+        key.startsWith(`${contentType}::`) &&
+        (!Array.isArray(affectedScopeKeys) || affectedScopeKeys.includes(state.sync_scope_key)) &&
+        Boolean((state.completed_generation ?? 0) > generation)
+    );
+    return { rows: [{ superseded }], rowCount: 1 };
+  }
   const syncScopeKey = String(context.queryValue(values, 2));
   const row = storedSyncState(context.fixture, contentType, syncScopeKey);
   const selectedRow =
@@ -160,6 +188,17 @@ const insertSyncState = (
     return null;
   }
   const { fixture, queryValue } = context;
+  if (text.includes('RETURNING generation::text')) {
+    const contentType = String(queryValue(values, 1));
+    const scopeKey = String(queryValue(values, 2));
+    const current = fixture.syncStates.get(`${contentType}::${scopeKey}`);
+    const generation = (current?.generation ?? 0) + 1;
+    setSyncState(fixture, contentType, scopeKey, {
+      ...(current ?? initialSyncState(scopeKey)),
+      generation,
+    });
+    return { rows: [{ generation: String(generation) }], rowCount: 1 };
+  }
   if (
     fixture.simulateLegacySyncStateSchemaMismatchOnce &&
     !text.includes('sync_scope_key') &&
@@ -178,11 +217,14 @@ const insertSyncState = (
     typeof queryValue(values, 2) === 'string' && fixture.syncScopeKeyColumnAvailable
       ? String(queryValue(values, 2))
       : contentType;
+  const next = buildInsertedSyncState(context, text, values, contentType, syncScopeKey);
   setSyncState(
     fixture,
     contentType,
     syncScopeKey,
-    buildInsertedSyncState(context, text, values, contentType, syncScopeKey)
+    text.includes('completed_generation = $4::bigint')
+      ? { ...next, completed_generation: Number(queryValue(values, 3)) }
+      : next
   );
   return { rows: [], rowCount: 1 };
 };
@@ -228,6 +270,21 @@ const updateSyncState = (
   }
   const { fixture, queryValue } = context;
   const contentType = String(queryValue(values, 1));
+  if (text.includes('snapshot_invalidated = TRUE')) {
+    const excludedScopeKey = String(queryValue(values, 2));
+    let count = 0;
+    for (const [key, state] of fixture.syncStates) {
+      if (
+        !key.startsWith(`${contentType}::`) ||
+        key === `${contentType}::${excludedScopeKey}` ||
+        state.sync_scope_key === '__mainserver_global_mutation__'
+      )
+        continue;
+      fixture.syncStates.set(key, { ...state, snapshot_invalidated: true });
+      count += 1;
+    }
+    return { rows: [], rowCount: count };
+  }
   const syncScopeKey = fixture.syncScopeKeyColumnAvailable
     ? String(queryValue(values, 2, contentType))
     : contentType;

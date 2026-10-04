@@ -18,6 +18,7 @@ import {
 } from './iam-content-list-mainserver.js';
 import type {
   ContentProjectionSyncTarget,
+  MainserverProjectionMutationOperation,
   MainserverProjectionRowInput,
   TargetedMutationContentType,
 } from './iam-content-list-projection-model.server.js';
@@ -60,6 +61,45 @@ export const toMutationProjectionConnectionContext = (target: ContentProjectionS
     actingPrincipalType: context.actingPrincipalType,
     credentialFingerprint: context.credentialFingerprint,
   } as const;
+};
+
+export const loadGenericItemForSiblingRefresh = async (
+  target: ContentProjectionSyncTarget,
+  operation: MainserverProjectionMutationOperation,
+  entityId: string
+) => {
+  if (operation === 'delete') return { failed: false, item: undefined } as const;
+  try {
+    return {
+      failed: false,
+      item: await getSvaMainserverGenericItem({
+        activeOrganizationId: target.organizationId,
+        ...toMutationProjectionConnectionContext(target),
+        genericItemId: entityId,
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+      }),
+    } as const;
+  } catch {
+    return { failed: true, item: undefined } as const;
+  }
+};
+
+export const buildGenericItemSiblingRow = (
+  target: ContentProjectionSyncTarget,
+  item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>>
+): MainserverProjectionRowInput => {
+  const principal = requireMutationProjectionPrincipalContext(target);
+  return {
+    ...mapGenericItem(item, target.instanceId, []),
+    contentType: target.contentType,
+    ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+    credentialSource: principal.actingPrincipalType,
+    credentialFingerprint: principal.credentialFingerprint,
+    authorizationMode: principal.authorizationMode,
+    sourceEntityType: target.contentType,
+    sourceEntityId: item.id,
+  };
 };
 
 const createGenericItemMutationLoader =
@@ -217,9 +257,7 @@ export const enrichMutationProjectionRowWithBinding = async (
     : undefined;
   const rowWithoutSyntheticOwner = {
     ...row,
-    ...(transferredAuthorDisplayMode
-      ? { authorDisplayMode: transferredAuthorDisplayMode }
-      : {}),
+    ...(transferredAuthorDisplayMode ? { authorDisplayMode: transferredAuthorDisplayMode } : {}),
     ownerUserId: undefined,
     ownerOrganizationId: undefined,
     credentialSource: principalContext.actingPrincipalType,

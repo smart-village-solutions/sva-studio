@@ -130,7 +130,15 @@ export function externalSymbolReferences(cwd: string, group: Group): string[] {
     if (!source) return true;
     let referenced = false;
     const visit = (node: ts.Node): void => {
-      if (ts.isIdentifier(node) && names.has(node.text)) {
+      if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer &&
+        (checker.getTypeAtLocation(node.initializer).flags & ts.TypeFlags.Any ||
+          ts.isAwaitExpression(node.initializer) && ts.isCallExpression(node.initializer.expression) && node.initializer.expression.expression.kind === ts.SyntaxKind.ImportKeyword) &&
+        node.name.elements.some((element) => {
+          const property = element.propertyName ?? element.name;
+          return ts.isIdentifier(property) && names.has(property.text);
+        })) {
+        referenced = true;
+      } else if (ts.isIdentifier(node) && names.has(node.text)) {
         const symbol = checker.getSymbolAtLocation(node);
         const resolved = symbol && unalias(symbol);
         if (!resolved?.declarations?.length || resolved === exports.get(node.text)) referenced = true;

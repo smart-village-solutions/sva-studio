@@ -108,6 +108,12 @@ describe('external export references', () => {
 
       writeFileSync(join(dir, consumer), "import { first } from '@app/preferences';\nconsole.log(first);\n");
       expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "const modulePath = './preferences';\nconst { first } = await import(modulePath);\nconsole.log(first);\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
+
+      writeFileSync(join(dir, consumer), "const { first } = await import('./preferences');\nconsole.log(first);\n");
+      expect(externalSymbolReferences(dir, group)).toEqual([consumer]);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

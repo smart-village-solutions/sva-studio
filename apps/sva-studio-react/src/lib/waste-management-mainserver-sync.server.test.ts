@@ -861,6 +861,128 @@ describe('waste-management-mainserver-sync.server', () => {
     expect(deleteSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
   });
 
+  it('deletes a previously synchronized pickup after its tour is archived at a newer source revision', async () => {
+    const timestamp = '2026-01-01T00:00:00.000Z';
+    const tour = {
+      id: 'tour-1',
+      name: 'Rundtour',
+      wasteFractionIds: ['fraction-1'],
+      recurrence: 'on-demand',
+      customDates: [{ date: '2026-02-03' }],
+      status: 'published' as const,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const state: WasteSyncClientState = {
+      ...emptyWasteClientState(),
+      tours: [tour],
+      fractions: [
+        {
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#f00',
+          active: true,
+          reminderCount: 'none',
+          reminderChannelPushEnabled: false,
+          reminderChannelEmailEnabled: false,
+          reminderChannelCalendarEnabled: false,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: tour.id,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+      locations: [
+        {
+          id: 'location-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          active: true,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+      cities: [{ id: 'city-1', name: 'Musterhausen', createdAt: timestamp, updatedAt: timestamp }],
+      streets: [
+        {
+          id: 'street-1',
+          cityId: 'city-1',
+          name: 'Hauptstraße',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+    };
+    let sourceRevision = '7';
+    let currentState = state;
+    withWasteClientMock.mockImplementation(
+      async (
+        _deps: unknown,
+        _instanceId: string,
+        work: (context: ReturnType<typeof createWasteClientContext>) => Promise<unknown>
+      ) => {
+        const context = createWasteClientContext(currentState);
+        context.repository.getWasteMainserverSourceRevision.mockResolvedValue({
+          sourceRevision,
+          changedAt: timestamp,
+        });
+        return work(context);
+      }
+    );
+    const syncInput = { operation: 'sync-mainserver' as const };
+    const runtimeDeps = { now: () => new Date('2026-01-15T00:00:00.000Z') };
+
+    const published = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps,
+      syncInput,
+    });
+    expect(published).toMatchObject({ sourceRevision: '7', createCount: 1, deleteCount: 0 });
+    const createdPickup = published.createItems[0];
+    if (!createdPickup) throw new Error('published_tour_pickup_missing');
+    expect(createdPickup).toMatchObject({
+      pickupDate: '2026-02-03',
+      wasteType: 'Restmüll',
+      street: 'Hauptstraße',
+      city: 'Musterhausen',
+    });
+
+    currentState = { ...state, tours: [{ ...tour, status: 'archived' }] };
+    sourceRevision = '8';
+    listSvaMainserverWasteSyncSnapshotMock.mockResolvedValueOnce({
+      pickupTimes: [{ ...createdPickup, id: 'mainserver-pickup-1' }],
+    });
+    createSvaMainserverWastePickupTimesMock.mockClear();
+
+    const archived = await runWasteManagementMainserverSyncForInstance({
+      instanceId: 'instance-1',
+      runtimeDeps,
+      syncInput,
+    });
+    expect(archived).toMatchObject({
+      sourceRevision: '8',
+      studioItemCount: 0,
+      mainserverItemCount: 1,
+      createCount: 0,
+      deleteCount: 1,
+      deleteByIdCount: 1,
+    });
+    expect(createSvaMainserverWastePickupTimesMock).not.toHaveBeenCalled();
+    expect(deleteSvaMainserverWastePickupTimesMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        instanceId: 'instance-1',
+        items: [expect.objectContaining({ id: 'mainserver-pickup-1' })],
+      })
+    );
+  });
+
   it('splits larger sync writes into batches and returns aggregated runtime statistics', async () => {
     const nowMock = vi
       .fn<() => Date>()

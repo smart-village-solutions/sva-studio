@@ -40,6 +40,7 @@ const ids = {
   legacyActiveTour: '60000000-0000-4000-8000-000000000002',
   legacyInactiveTour: '60000000-0000-4000-8000-000000000003',
   statusOnlyTour: '60000000-0000-4000-8000-000000000004',
+  omittedStatusTour: '60000000-0000-4000-8000-000000000005',
   link: '70000000-0000-4000-8000-000000000001',
 } as const;
 
@@ -160,6 +161,16 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
   });
 
   it('keeps legacy active and the temporary tour status projection synchronized', async () => {
+    await client.query(`INSERT INTO waste_tours (id, name) VALUES ($1, 'New draft');`, [
+      ids.omittedStatusTour,
+    ]);
+    await expect(
+      client.query<{ status: string; active: boolean }>(
+        'SELECT status, active FROM waste_tours WHERE id = $1;',
+        [ids.omittedStatusTour]
+      )
+    ).resolves.toMatchObject({ rows: [{ status: 'draft', active: false }] });
+
     await client.query(`INSERT INTO waste_tours (id, name, active) VALUES ($1, 'Tour', TRUE);`, [
       ids.tour,
     ]);
@@ -186,6 +197,10 @@ describe('Waste Mainserver source revision against PostgreSQL', () => {
         `INSERT INTO waste_tours (name, status, active) VALUES ('Contradictory tour', 'draft', TRUE);`
       )
     ).rejects.toThrow('waste_tour_status_active_conflict');
+
+    await expect(
+      client.query(`INSERT INTO waste_tours (name, status) VALUES ('Invalid tour', 'unknown');`)
+    ).rejects.toThrow('waste_tours_status_check');
 
     await client.query(`UPDATE waste_tours SET status = 'archived' WHERE id = $1;`, [ids.tour]);
     await expect(

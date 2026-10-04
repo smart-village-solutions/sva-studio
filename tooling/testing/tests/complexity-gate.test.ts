@@ -9,8 +9,6 @@ import {
   readCliOptionValue,
   runComplexityGate,
 } from '../../../scripts/ci/complexity-gate.ts';
-import { resolveModuleFiles } from '../../../scripts/ci/complexity-files.ts';
-import type { ComplexityModule } from '../../../scripts/ci/complexity-policy.ts';
 
 const createdDirs: string[] = [];
 
@@ -172,12 +170,13 @@ describe('complexity gate', () => {
 
     const policy = JSON.parse(
       fs.readFileSync(path.join(process.cwd(), 'tooling/quality/complexity-policy.json'), 'utf8')
-    ) as { modules: ComplexityModule[] };
+    ) as { modules: Array<{ id: string }> };
     const scriptsModule = policy.modules.find((module) => module.id === 'scripts-default');
     expect(scriptsModule).toBeDefined();
 
-    const analyzedFiles = resolveModuleFiles(rootDir, scriptsModule ? [scriptsModule] : []);
-    expect(analyzedFiles.map((file) => file.metrics.filePath)).toEqual([
+    writePolicy(rootDir, { modules: scriptsModule ? [scriptsModule] : [] });
+    const result = runComplexityGate({ rootDir, stepSummaryPath: null });
+    expect(result.analyzedFiles.map((file) => file.metrics.filePath)).toEqual([
       'scripts/debug/otel/diagnostic.mts',
     ]);
   });

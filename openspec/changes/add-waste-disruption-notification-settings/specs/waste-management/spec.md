@@ -54,7 +54,8 @@ Das System SHALL das vollständige Mainserver-Static-Content-Dokument `wasteType
 - **WHEN** beide Störungsoptionen aktiviert sind
 - **THEN** enthält `wasteTypes` beide exakt kleingeschriebenen Störungsschlüssel mit ihrem jeweiligen Label
 - **AND** durchlaufen die reservierten Schlüssel nicht die Großschreibungsnormalisierung regulärer Fraktionskürzel
-- **AND** besitzen die Störungseinträge keine regulären Fraktionseigenschaften wie `id`, `short_label`, `color`, `selected_color`, `reminders` oder `container_size`
+- **AND** besitzen die Störungseinträge die App-Darstellungswerte `color: "#999999"`, `selected_color: "#666666"` und `icon: ""`
+- **AND** besitzen sie keine fraktionsspezifischen Eigenschaften wie `id`, `short_label`, `reminders` oder `container_size`
 
 #### Scenario: Ausgabe und Hash werden wiederholt erzeugt
 

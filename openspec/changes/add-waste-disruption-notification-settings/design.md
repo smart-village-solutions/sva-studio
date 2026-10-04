@@ -32,7 +32,7 @@ Reader und Writer liefern beide Werte als explizite Booleans. Fehlt die Tabelle 
 
 ### Decision: Reguläre und besondere `wasteTypes`-Einträge sind getrennte Varianten
 
-Der Core-Vertrag unterscheidet einen regulären Fraktionseintrag mit dessen bestehenden Pflichtfeldern von einem Störungseintrag mit genau `label` und `notification_kind: 'disruption'`. Das resultierende Payload ist ein Record über die Union beider Varianten.
+Der Core-Vertrag unterscheidet einen regulären Fraktionseintrag mit dessen bestehenden Pflichtfeldern von einem Störungseintrag mit `label`, `notification_kind: 'disruption'` und den von der App erwarteten Darstellungsfeldern `color`, `selected_color` und `icon`. Das resultierende Payload ist ein Record über die Union beider Varianten.
 
 Nur reguläre Fraktionen durchlaufen PDF-Kürzel-Validierung und Großschreibungsnormalisierung. Die beiden reservierten Störungsschlüssel werden aus festen Konstanten erzeugt. Vor der Serialisierung werden alle Schlüssel gemeinsam lexikografisch sortiert; dadurch bleiben Inhalt und SHA-256-Hash bei identischen Eingaben stabil. `fractionCount` wird vor dem Hinzufügen der Sondertypen aus den aktiven regulären Fraktionen ermittelt.
 

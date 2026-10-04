@@ -39,6 +39,9 @@ export type WasteDisruptionNotificationSettings = Readonly<{
 
 export type WasteDisruptionStaticContentEntry = Readonly<{
   label: 'Meine Straße' | 'Alle Straßen';
+  color: '#999999';
+  selected_color: '#666666';
+  icon: '';
   notification_kind: 'disruption';
 }>;
 
@@ -178,7 +181,13 @@ export const buildWasteTypesStaticContent = async (
       ? [
           [
             'disruption_location',
-            { label: 'Meine Straße', notification_kind: 'disruption' },
+            {
+              label: 'Meine Straße',
+              color: '#999999',
+              selected_color: '#666666',
+              icon: '',
+              notification_kind: 'disruption',
+            },
           ] as const,
         ]
       : []),
@@ -186,7 +195,13 @@ export const buildWasteTypesStaticContent = async (
       ? [
           [
             'disruption_all_locations',
-            { label: 'Alle Straßen', notification_kind: 'disruption' },
+            {
+              label: 'Alle Straßen',
+              color: '#999999',
+              selected_color: '#666666',
+              icon: '',
+              notification_kind: 'disruption',
+            },
           ] as const,
         ]
       : []),

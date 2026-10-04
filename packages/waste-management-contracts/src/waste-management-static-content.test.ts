@@ -194,22 +194,46 @@ describe('buildWasteTypesStaticContent', () => {
       label: 'only the location disruption type',
       settings: { disruptionLocationEnabled: true, disruptionAllLocationsEnabled: false },
       expected: {
-        disruption_location: { label: 'Meine Straße', notification_kind: 'disruption' },
+        disruption_location: {
+          label: 'Meine Straße',
+          color: '#999999',
+          selected_color: '#666666',
+          icon: '',
+          notification_kind: 'disruption',
+        },
       },
     },
     {
       label: 'only the all-locations disruption type',
       settings: { disruptionLocationEnabled: false, disruptionAllLocationsEnabled: true },
       expected: {
-        disruption_all_locations: { label: 'Alle Straßen', notification_kind: 'disruption' },
+        disruption_all_locations: {
+          label: 'Alle Straßen',
+          color: '#999999',
+          selected_color: '#666666',
+          icon: '',
+          notification_kind: 'disruption',
+        },
       },
     },
     {
       label: 'both disruption types',
       settings: { disruptionLocationEnabled: true, disruptionAllLocationsEnabled: true },
       expected: {
-        disruption_all_locations: { label: 'Alle Straßen', notification_kind: 'disruption' },
-        disruption_location: { label: 'Meine Straße', notification_kind: 'disruption' },
+        disruption_all_locations: {
+          label: 'Alle Straßen',
+          color: '#999999',
+          selected_color: '#666666',
+          icon: '',
+          notification_kind: 'disruption',
+        },
+        disruption_location: {
+          label: 'Meine Straße',
+          color: '#999999',
+          selected_color: '#666666',
+          icon: '',
+          notification_kind: 'disruption',
+        },
       },
     },
   ])('adds $label without counting it as a fraction', async ({ settings, expected }) => {
@@ -233,6 +257,9 @@ describe('buildWasteTypesStaticContent', () => {
     expect(payload.BIO).toMatchObject({ id: 'fraction-bio', short_label: 'BIO' });
     expect(payload.disruption_location).toEqual({
       label: 'Meine Straße',
+      color: '#999999',
+      selected_color: '#666666',
+      icon: '',
       notification_kind: 'disruption',
     });
     expect(payload.disruption_location).not.toHaveProperty('id');

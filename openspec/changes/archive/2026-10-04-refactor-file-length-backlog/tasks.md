@@ -13,6 +13,10 @@ Merge- und Gate-Nachweis an seinem PR-Task vermerkt; die nächste Nummer
 bleibt erhalten. Eine nötige Scope-Änderung wird zuerst hier und in
 `design.md` dokumentiert. Die allgemeinen Qualitätsregeln stehen in
 `design.md`. Beide Haken sind für den Abschluss eines PR-Tasks nötig.
+Für den abschließenden Archivierungs-PR 36 belegen die Haken ausnahmsweise
+die im PR bereits ausgeführte Archivierung samt Spec-Merge und das grüne
+Changelog-Gate am geprüften HEAD. Sie behaupten keinen eigenen Merge;
+dessen Nachweis bleibt nach dem Merge im GitHub-PR nachvollziehbar.
 
 **Strang A:** PR 23 → PR 24a → PR 24b → PR 25a → PR 25b → PR 26a → PR 26b → PR 26c → PR 26d → PR 31a → PR 31b → PR 31c → PR 31d → PR 32a → PR 32b → PR 32c → PR 32d.
 **Strang B:** PR 27 → PR 28 → PR 29 → PR 30; nach dem Merge von PR 32a
@@ -1404,7 +1408,7 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
 
 ### PR 35 — Registerabgleich und integrierter Null-Nachweis
 
-- [ ] Nach den Merges von PR 23 bis PR 34 den vollständigen
+- [x] Nach den Merges von PR 23 bis PR 34 den vollständigen
       `pnpm complexity-gate`-Befund auf integriertem `main` gegen die
       `fileLines`-Registereinträge abgleichen. Die bereits nachgewiesenen
       verwaisten `fileLines`-Einträge in diesem eigenen PR entfernen und
@@ -1412,20 +1416,33 @@ integrierten Change erst nach PR 35 in einem eigenen PR.
       exakten HEAD belegen. Andere Complexity-Metriken getrennt ausweisen.
       Die tatsächlich betroffenen arc42-Abschnitte 05, 08, 10 und 11 sowie
       `docs/development/complexity-quality-governance.md` auf den Endstand
-      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen.
-- [ ] Eigenen Studio-Changelog-Eintrag
-      `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
-      `prNumber` und nutzerverständlichem `body` anlegen; Changelog-Gate vor
+      bringen; für IAM-/Security-Schnitte auch 04 und 06 prüfen. PR #1729
+      wurde am geprüften HEAD `51736a712fbac0b3b348a2ffc25441f45f8dab28`
+      mit grünen finalen GitHub-Gates und ohne offene Review-Threads
+      gemergt; Merge-Commit `eb05f3cee48124909ef4c27f8ced0c933b5f1212`.
+      Der integrierte Main-Lauf wertet 3.308 Dateien aus: null aktuelle
+      `fileLines`-Verstöße, null verwaiste Registereinträge, null neue
+      Findings und 199 getrennt getrackte andere Befunde.
+- [x] Eigenen Studio-Changelog-Eintrag
+      `docs/changelog/entries/pr-1729.json` mit passender `prNumber` und
+      nutzerverständlichem `body` in PR #1729 angelegt; Changelog-Gate vor
       Merge grün.
 
 ### PR 36 — OpenSpec-Abschluss und Archivierung
 
-- [ ] Nach dem Merge von PR 35 auf integriertem `main` den vollständigen
+- [x] Nach dem Merge von PR 35 auf integriertem `main` den vollständigen
       `pnpm complexity-gate`-Lauf mit null aktuellen `fileLines`-Verstößen
       und null verwaisten `fileLines`-Registereinträgen belegen; andere
       Metriken getrennt ausweisen. Alle PR-Nachweise und Checkboxen
       abgleichen, OpenSpec strikt validieren und den Change gemäß
-      OpenSpec-Prozess archivieren.
+      OpenSpec-Prozess archivieren. Auf `main`
+      `eb05f3cee48124909ef4c27f8ced0c933b5f1212` wurden 3.308 Dateien
+      geprüft: null aktuelle und null verwaiste `fileLines`-Einträge,
+      null neue Findings und 199 andere getrackte Befunde. Das Spec-Delta
+      wurde in `complexity-quality-governance` übernommen; der Change liegt
+      unter `archive/2026-10-04-refactor-file-length-backlog`. Die strikte
+      Gesamtvalidierung bestand für 79 Einträge. Ein Merge von PR 36 wird
+      damit nicht vorweggenommen.
 - [ ] Eigenen Studio-Changelog-Eintrag
       `docs/changelog/entries/pr-<tatsächliche-PR-Nummer>.json` mit passender
       `prNumber` und nutzerverständlichem `body` in PR 36 anlegen;

@@ -2,7 +2,6 @@ import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
 import { createServerEntry } from '@tanstack/react-start/server-entry';
 import type { RequestHandler } from '@tanstack/react-start/server';
-import { createNodeBeacon } from '@fallow-cli/beacon';
 
 import {
   createServerFunctionRequestDiagnostics,
@@ -24,6 +23,7 @@ import type {
   ServerTransportComponent,
 } from './lib/server-entry-types';
 import { serverEntryRouteDispatchers } from './lib/server-entry-routes.server';
+import { startStagingFallowBeacon } from './lib/fallow-staging-beacon.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const ssfAdminLoginDirectoryPath = '/internal/plugins/ssf/v1/admin-login-tenants';
@@ -217,45 +217,9 @@ if (studioJobWorkerEnabled) {
   startPluginOperationWorkerInBackground();
 }
 
-const beaconApiKey = process.env.BEACON_API_KEY;
-if (
-  process.env.SVA_DEPLOYMENT_ENVIRONMENT === 'staging' &&
-  beaconApiKey?.startsWith('fallow_live_k1_')
-) {
-  const beacon = createNodeBeacon({
-    apiKey: beaconApiKey,
-    endpoint: 'https://api.fallow.cloud',
-    projectId: 'smart-village-solutions/sva-studio',
-    commitSha: process.env.GIT_SHA,
-    coverageOrigin: 'unknown',
-    environment: 'staging',
-    runtimeSurface: 'server',
-    beforeSend: (payload) => {
-      const functions = payload.functions.filter((entry) => entry.hitCount > 0);
-      return functions.length > 0 ? { ...payload, functions } : null;
-    },
-    onRuntimeMismatch: ({ reason }) => {
-      void getLogger('server-entry-transport').then((logger) =>
-        logger.error('Fallow beacon cannot capture coverage', {
-          operation: 'fallow_beacon',
-          reason,
-        })
-      );
-    },
-  });
-  beacon.start();
-  const stopBeacon = () => {
-    void beacon.stop().catch(() => {
-      void getLogger('server-entry-transport').then((logger) =>
-        logger.error('Fallow beacon shutdown failed', {
-          operation: 'fallow_beacon_shutdown',
-        })
-      );
-    });
-  };
-  process.once('SIGTERM', stopBeacon);
-  process.once('SIGINT', stopBeacon);
-}
+startStagingFallowBeacon((message, meta) => {
+  void getLogger('server-entry-transport').then((logger) => logger.error(message, meta));
+});
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;

@@ -39,7 +39,7 @@
       "class": "zentral",
       "owner": "team-platform",
       "reviewCadence": "pro-pr",
-      "include": ["scripts/**/*.ts"],
+      "include": ["scripts/**/*.ts", "scripts/**/*.mts"],
       "exclude": ["**/*.test.ts"]
     },
     {

@@ -289,6 +289,63 @@ describe('waste management operations runtime', () => {
     });
   });
 
+  it('cancels an already materialized reminder after its tour is archived before dispatch', async () => {
+    let pending = true;
+    const dispatchMail = vi.fn();
+    const listWasteTours = vi.fn(async () => []);
+    const cancelInvalidReminderOutboxEntries = vi.fn(async () => {
+      pending = false;
+      return 1;
+    });
+    const leaseDueOutboxEntries = vi.fn(async () => pending ? [{
+      id: 'outbox-from-published-tour',
+      transportId: 'transport-smtp',
+      attemptCount: 0,
+      payload: {},
+    }] : []);
+    const repository = createRepositoryMock({ listWasteTours });
+
+    vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      return {
+        ...actual,
+        createWasteMasterDataRepository: vi.fn(() => repository),
+        createWasteEmailReminderRepository: vi.fn(() =>
+          withReminderReconciliation({ cancelInvalidReminderOutboxEntries, leaseDueOutboxEntries })
+        ),
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      listInterfaceRecords: vi.fn(async () => [
+        createInterfaceRecordWithEmailReminderConfig(),
+        createMailTransportInterfaceRecord(),
+      ]),
+      revealSecret: vi.fn(revealPostgresqlSecretConfig),
+      createPool: vi.fn(() =>
+        createPoolMock(createSqlClientMock(async () => ({ rowCount: 0, rows: [] })))
+      ),
+      dispatchMail,
+      now: () => new Date('2026-06-15T06:00:00.000Z'),
+    });
+
+    const result = await runtime.processEmailReminderOutbox('instance-1', {
+      operation: 'process-email-reminder-outbox',
+      referenceTime: '2026-06-15T06:00:00.000Z',
+    });
+
+    expect(listWasteTours).toHaveBeenCalledWith({ status: 'published' });
+    expect(cancelInvalidReminderOutboxEntries).toHaveBeenCalledWith({
+      validDedupeKeys: [],
+      now: '2026-06-15T06:00:00.000Z',
+    });
+    expect(leaseDueOutboxEntries).toHaveBeenCalledOnce();
+    expect(dispatchMail).not.toHaveBeenCalled();
+    expect(result.details).toMatchObject({ leasedCount: 0, sentCount: 0 });
+  });
+
   it('skips outbox processing when email reminders are disabled for the selected interface', async () => {
     const { createWasteManagementOperationRuntime: createRuntime } =
       await import('./waste-management-operations.server.js');

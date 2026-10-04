@@ -70,6 +70,11 @@ Pflichtfelder:
 
 Solange noch keine direkte Tracker-Integration existiert, ist dieses Register die verbindliche Nachweisspur für Refactoring-Folgearbeit. Neue Grenzwertüberschreitungen ohne Eintrag gelten als untracked Findings und blockieren das Gate.
 
+Nach dem Abbau der Dateilängen-Bestandslast dürfen `fileLines`-Findings nicht mehr
+registriert werden. Jede Dateilängen-Überschreitung im überwachten Scope blockiert
+damit das bestehende Complexity-Gate; für die übrigen Metriken bleibt das
+Ticket-Register nutzbar.
+
 Nach einem Refactoring werden Registereinträge gegen den vollständigen
 `pnpm complexity-gate`-Befund abgeglichen. Nur tatsächlich behobene Einträge
 entfallen; andere Metriken derselben Datei bleiben bei aktueller Überschreitung

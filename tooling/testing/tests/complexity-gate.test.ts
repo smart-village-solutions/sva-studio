@@ -206,7 +206,7 @@ describe('complexity gate', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
       trackedFindings: {
-        'iam-server:packages/iam-target/src/large.ts:fileLines': {
+        'iam-server:packages/iam-target/src/large.ts:functionLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
           status: 'todo',
@@ -324,13 +324,21 @@ describe('complexity gate', () => {
   it('passes when findings are linked to refactoring tickets', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
-      trackedFindings: {
-        'iam-server:packages/iam-target/src/large.ts:fileLines': {
-          ticketId: 'QUAL-1',
-          ticketSystem: 'backlog',
-          status: 'open',
-          summary: 'Datei splitten',
+      classThresholds: {
+        zentral: {
+          fileLines: 999,
+          functionLines: 999,
+          cyclomaticComplexity: 999,
+          publicExports: 999,
         },
+        kritisch: {
+          fileLines: 999,
+          functionLines: 4,
+          cyclomaticComplexity: 3,
+          publicExports: 1,
+        },
+      },
+      trackedFindings: {
         'iam-server:packages/iam-target/src/large.ts:functionLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
@@ -362,9 +370,28 @@ describe('complexity gate', () => {
     const result = runComplexityGate({ rootDir, stepSummaryPath: null });
 
     expect(result.passed).toBe(true);
-    expect(result.trackedViolations).toHaveLength(2);
+    expect(result.trackedViolations).toHaveLength(1);
     expect(result.summaryBody).toContain('Getrackte Findings');
     expect(result.summaryBody).toContain('backlog:QUAL-1');
+  });
+
+  it('rejects tracked fileLines findings', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      trackedFindings: {
+        'iam-server:packages/iam-target/src/large.ts:fileLines': {
+          ticketId: 'QUAL-1',
+          ticketSystem: 'backlog',
+          status: 'open',
+          summary: 'Datei splitten',
+        },
+      },
+    });
+    writeSourceFile(rootDir, 'large.ts', 'export const value = 1;\n');
+
+    expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(
+      /fileLines findings cannot be tracked/
+    );
   });
 
   it('updates the baseline with current file metrics', () => {

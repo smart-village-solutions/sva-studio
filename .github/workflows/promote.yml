@@ -592,7 +592,6 @@ jobs:
           EXPECTED_SOURCE_KIND: ${{ inputs.source_kind }}
           HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
           HOTFIX_REF: ${{ inputs.hotfix_ref }}
-          EXPECTED_CONTROLLER_SHA: ${{ github.workflow_sha }}
         run: |
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"; then
             exit 1

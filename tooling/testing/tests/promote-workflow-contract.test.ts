@@ -187,6 +187,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('packages: read');
     expect(workflow).toContain('actions: read');
     expect(workflow).toContain('require successful staging parity for production mutation');
+    expect(workflowStep('require successful staging parity for production mutation')).not.toContain(
+      'EXPECTED_CONTROLLER_SHA:'
+    );
     expect(workflow).toContain('create database backup before deployment');
     expect(workflow).toContain('verify database backup object');
     expect(workflow).toContain('S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object }}');

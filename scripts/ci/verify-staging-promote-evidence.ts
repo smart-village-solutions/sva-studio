@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -292,8 +292,14 @@ const main = () => {
         })
       );
       const archiveEntries = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
-      if (archiveMatches(evidenceKind, archiveEntries, zipPath, targetDigest, expectedSourceSha, expectedSourceKind, expectedHotfix))
+      if (archiveMatches(evidenceKind, archiveEntries, zipPath, targetDigest, expectedSourceSha, expectedSourceKind, expectedHotfix)) {
+        if (evidenceKind === 'promote' && process.env.GITHUB_OUTPUT) {
+          const identity = artifact.name?.match(/^promote-staging-parity-(\d+)-([1-9]\d*)$/u);
+          if (!identity || Number(identity[1]) !== workflowRunId) continue;
+          appendFileSync(process.env.GITHUB_OUTPUT, `matched_run_id=${workflowRunId}\nmatched_attempt=${identity[2]}\n`, 'utf8');
+        }
         return;
+      }
     }
     throw new StagingParityNotFoundError();
   } finally {

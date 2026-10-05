@@ -504,6 +504,17 @@ jobs:
           export DEPLOY_IMAGE_DIGEST="${PREVIOUS_LIVE_IMAGE##*@}"
           pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"
 
+      - name: require previous Staging config and secret-reference provenance
+        if: ${{ inputs.line_switch != 'none' }}
+        env:
+          PREVIOUS_PARITY_RUN_ID: ${{ steps.previous_line_parity.outputs.matched_run_id }}
+          PREVIOUS_PARITY_ATTEMPT: ${{ steps.previous_line_parity.outputs.matched_attempt }}
+          PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
+          PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
+          TARGET_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-line-config.ts"
+
       - name: evaluate migration and bootstrap gates
         id: gate_eval
         env:

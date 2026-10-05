@@ -38,7 +38,7 @@ describe('App E2E workflow contract', () => {
   it('keeps canonical main deterministic and diagnostics explicitly retryable', () => {
     expect(workflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
     expect(workflow).toContain(
-      "APP_E2E_ALLOW_RETRY: ${{ github.event_name != 'push' && 'true' || 'false' }}"
+      "APP_E2E_ALLOW_RETRY: ${{ github.event_name != 'push' && inputs.mode != 'hotfix' && 'true' || 'false' }}"
     );
     expect(playwrightConfig).toContain(
       "process.env.CI && process.env.APP_E2E_ALLOW_RETRY === 'true' ? 1 : 0"

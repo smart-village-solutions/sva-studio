@@ -1,15 +1,15 @@
 ## 1. Freigabe und Baseline
 
 - [ ] Proposal, Design, Invarianten und ADR-066 prüfen und freigeben; offene Workflow-PRs sowie aktuellen `main`-Stand erneut abgleichen.
-- [ ] Production read-only auf Live-Digest, OCI-Revision, Commit und gebundene Config-Revision prüfen; bei Unklarheit keine Baseline setzen.
-- [ ] Tag-Konvention und geschützte GitHub-Release-Berechtigungen prüfen; `studio-v0.10.4` erst auf den belegten Production-Commit setzen und das erste GitHub-Release als Ausgangsstand veröffentlichen.
+- [x] Production read-only auf Live-Digest, OCI-Revision, Commit und gebundene Config-Revision prüfen; bei Unklarheit keine Baseline setzen.
+- [x] Tag-Konvention und geschützte GitHub-Release-Berechtigungen prüfen; `studio-v0.10.4` erst auf den belegten Production-Commit setzen und das erste GitHub-Release als Ausgangsstand veröffentlichen.
 
 ## 2. Nutzer-Changelog und reguläres Release
 
-- [ ] Bestehendes PR-Changelog-Gate so ändern, dass rein technische PRs ohne Eintrag bestehen, vorhandene Einträge aber weiter validiert werden; passende Vitest-Vertragstests ergänzen.
-- [ ] Bestehenden Changelog-Generator und die Studio-Anzeige auf nutzerrelevante, tatsächlich ausgelieferte Änderungen begrenzen; keine Auswahl allein nach höchster PR-Nummer. Release-/Hotfix-Bereiche, technische Updates und das nächste reguläre Release nach einem übernommenen Hotfix ohne doppelte Ankündigung gezielt testen.
-- [ ] GitHub-Release-Notes aus demselben ausgelieferten Bereich erstellen und vor Veröffentlichung redaktionell prüfen; Beta als Pre-release kennzeichnen, stabiles Release erst nach Live-Prod-Nachweis veröffentlichen.
-- [ ] Regulären Kandidaten von einem festen `main`-SHA mit existierendem Digest über Staging und Production prüfen; `main`→Dev und alle bisherigen Promote-Gates erhalten.
+- [x] Bestehendes PR-Changelog-Gate so ändern, dass rein technische PRs ohne Eintrag bestehen, vorhandene Einträge aber weiter validiert werden; passende Vitest-Vertragstests ergänzen.
+- [x] Bestehenden Changelog-Generator und die Studio-Anzeige auf nutzerrelevante, tatsächlich ausgelieferte Änderungen begrenzen; keine Auswahl allein nach höchster PR-Nummer. Release-/Hotfix-Bereiche, technische Updates und das nächste reguläre Release nach einem übernommenen Hotfix ohne doppelte Ankündigung gezielt testen.
+- [x] GitHub-Release-Notes aus demselben ausgelieferten Bereich erstellen und vor Veröffentlichung redaktionell prüfen; Beta als Pre-release kennzeichnen, stabiles Release erst nach Live-Prod-Nachweis veröffentlichen.
+- [x] Regulären Kandidaten von einem festen `main`-SHA mit existierendem Digest über Staging und Production prüfen; `main`→Dev und alle bisherigen Promote-Gates erhalten.
 
 ## 3. Prod-Hotfix im bestehenden Pfad
 
@@ -22,6 +22,6 @@
 
 ## 4. Dokumentation und Abschluss
 
-- [ ] `docs/guides/studio-rollout-process.md` als einzigen normativen Bedienablauf für reguläres Release, Beta, Hotfix und Staging-Wechsel fortschreiben.
-- [ ] Betroffene arc42-Abschnitte 04, 07, 09, 10 und 11 gezielt aktualisieren; ADR-066 nach Review von Proposed auf Accepted setzen und Indizes konsistent halten.
+- [x] `docs/guides/studio-rollout-process.md` als einzigen normativen Bedienablauf für reguläres Release, Beta, Hotfix und Staging-Wechsel fortschreiben.
+- [x] Betroffene arc42-Abschnitte 04, 07, 09, 10 und 11 gezielt aktualisieren; ADR-066 nach Review von Proposed auf Accepted setzen und Indizes konsistent halten.
 - [ ] Pflicht-Gates für Workflow-/Skriptänderungen einschließlich Skript-Typecheck, gezielter Vitest-Tests, File-Placement und geschützter Rollout-Contract-Tests ausführen; exakten HEAD und Live-Ergebnis getrennt dokumentieren.

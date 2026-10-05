@@ -51,6 +51,8 @@ Der spätere Hotfix-HEAD `c8d6ce51a3df0fb769615bc037b393b8d053992f` fügte gegen
 
 Damit ist `studio-v0.10.4` nur noch ein historischer Production-Tag. Der exemplarische Zweig `hotfix/studio-v0-10-5-changelog` ist **kein zulässiger neuer Prod-basierter Hotfix**; sein Build und jeder mutierende Promote bleiben gesperrt. Die Beta→Hotfix-Wechselprobe ist für den aktuellen Live-Zustand nicht mehr anwendbar. Vor einem neuen exemplarischen Hotfix muss zunächst die aktuelle Production-Revision mit einem neuen stabilen Tag belegt und ein tatsächlich benötigter Patch von genau diesem Tag abgeleitet werden. Der Controller-Vertrag bleibt fail-closed und verlangt bei jedem Hotfix erneut die Gleichheit von Basistag und Live-Production-Revision.
 
+Die aktuelle Production-Revision `82462464448ab3ebd3b7e8d5a38b5e5cbb71ab01` wurde nach dem Live-Readback als [stabiles Studio-Release `studio-v0.11.0`](https://github.com/smart-village-solutions/sva-studio/releases/tag/studio-v0.11.0) veröffentlicht. Für eine mutierende Hotfix-Probe fehlt weiterhin ein tatsächlich benötigter Patch von genau diesem Basistag; der alte Zweig und [PR #1766](https://github.com/smart-village-solutions/sva-studio/pull/1766) bleiben geschlossen beziehungsweise ungenutzt.
+
 ## Review-Stop
 
 Zeigen mehrere Befunde dieselbe Provenienz-, Staging-Wechsel- oder Release-Bereichs-Invariante als verletzt, wird die lokale Fixrunde gestoppt und der vollständige Zustandsraum samt aller Verbraucher vor dem nächsten Push neu geprüft.

@@ -12,9 +12,11 @@ describe('promote deployment base', () => {
     environment: 'staging' as const,
     head,
     liveImage: 'ghcr.io/smart-village-solutions/sva-studio@sha256:' + 'a'.repeat(64),
-    inspection: { image: { config: { Labels: { 'org.opencontainers.image.revision': liveRevision } } } },
-    isAncestor: (base: string, target: string) => base === declaredBase &&
-      (target === liveRevision || target === head),
+    inspection: {
+      image: { config: { Labels: { 'org.opencontainers.image.revision': liveRevision } } },
+    },
+    isAncestor: (base: string, target: string) =>
+      base === declaredBase && (target === liveRevision || target === head),
     liveConfigRevision: 'e'.repeat(64),
     targetConfigRevision: 'e'.repeat(64),
     changedFiles: ['apps/sva-studio-react/src/lib/studio-changelog.shared.ts'],
@@ -22,9 +24,13 @@ describe('promote deployment base', () => {
   };
 
   it('permits only an explicit, schema/config-clean Beta-to-Hotfix switch in Staging', () => {
-    expect(resolveEffectiveDeploymentBase({
-      ...switchInput, lineSwitch: 'beta-to-hotfix', sourceKind: 'hotfix',
-    })).toMatchObject({ effectiveBase: liveRevision });
+    expect(
+      resolveEffectiveDeploymentBase({
+        ...switchInput,
+        lineSwitch: 'beta-to-hotfix',
+        sourceKind: 'hotfix',
+      })
+    ).toMatchObject({ effectiveBase: liveRevision });
     for (const invalid of [
       { sourceKind: 'main' as const },
       { environment: 'prod' as const },
@@ -32,24 +38,46 @@ describe('promote deployment base', () => {
       { changedFiles: ['packages/data/migrations/0104_unsafe.sql'] },
       { changedFiles: ['deploy/compose.staging.yaml'] },
       { changedFiles: [] },
-    ]) expect(() => resolveEffectiveDeploymentBase({
-      ...switchInput, lineSwitch: 'beta-to-hotfix', sourceKind: 'hotfix', ...invalid,
-    })).toThrow(/Linienwechsel/u);
-    expect(() => resolveEffectiveDeploymentBase({
-      ...switchInput, lineSwitch: 'beta-to-hotfix', sourceKind: 'hotfix', prodRevision: head,
-    })).toThrow(/Production-Basistag/u);
+    ])
+      expect(() =>
+        resolveEffectiveDeploymentBase({
+          ...switchInput,
+          lineSwitch: 'beta-to-hotfix',
+          sourceKind: 'hotfix',
+          ...invalid,
+        })
+      ).toThrow(/Linienwechsel/u);
+    expect(() =>
+      resolveEffectiveDeploymentBase({
+        ...switchInput,
+        lineSwitch: 'beta-to-hotfix',
+        sourceKind: 'hotfix',
+        prodRevision: head,
+      })
+    ).toThrow(/Production-Basistag/u);
   });
 
   it('requires a separate explicit Hotfix-to-Beta source class for the return', () => {
-    expect(resolveEffectiveDeploymentBase({
-      ...switchInput, lineSwitch: 'hotfix-to-beta', sourceKind: 'main',
-    })).toMatchObject({ effectiveBase: liveRevision });
-    expect(() => resolveEffectiveDeploymentBase({
-      ...switchInput, lineSwitch: 'hotfix-to-beta', sourceKind: 'hotfix',
-    })).toThrow(/Linienwechsel/u);
-    expect(() => resolveEffectiveDeploymentBase({
-      ...switchInput, sourceKind: 'main',
-    })).toThrow(/Ancestor/u);
+    expect(
+      resolveEffectiveDeploymentBase({
+        ...switchInput,
+        lineSwitch: 'hotfix-to-beta',
+        sourceKind: 'main',
+      })
+    ).toMatchObject({ effectiveBase: liveRevision });
+    expect(() =>
+      resolveEffectiveDeploymentBase({
+        ...switchInput,
+        lineSwitch: 'hotfix-to-beta',
+        sourceKind: 'hotfix',
+      })
+    ).toThrow(/Linienwechsel/u);
+    expect(() =>
+      resolveEffectiveDeploymentBase({
+        ...switchInput,
+        sourceKind: 'main',
+      })
+    ).toThrow(/Ancestor/u);
   });
 
   it('uses the OCI revision of the actually deployed image instead of a newer push predecessor', () => {

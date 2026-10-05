@@ -18,21 +18,29 @@ export type HotfixSourceGit = Readonly<{
   fetch: (branchRef: string, tagRef: string) => void;
   commit: (ref: string) => string;
   isAncestor: (baseSha: string, sourceSha: string) => boolean;
+  mergeBase: (sourceSha: string, controllerSha: string) => string;
 }>;
 
-export const validateHotfixDispatch = (input: Readonly<{
-  event: string;
-  ref: string;
-  controllerSha: string;
-  workflowSha: string;
-  baseTag: string;
-  branchRef: string;
-  sourceSha: string;
-}>): HotfixSource => {
-  if (input.event !== 'workflow_dispatch' || input.ref !== 'refs/heads/main' ||
-      !shaPattern.test(input.controllerSha) || input.workflowSha !== input.controllerSha ||
-      !tagPattern.test(input.baseTag) || !branchPattern.test(input.branchRef) ||
-      !shaPattern.test(input.sourceSha)) {
+export const validateHotfixDispatch = (
+  input: Readonly<{
+    event: string;
+    ref: string;
+    controllerSha: string;
+    workflowSha: string;
+    baseTag: string;
+    branchRef: string;
+    sourceSha: string;
+  }>
+): HotfixSource => {
+  if (
+    input.event !== 'workflow_dispatch' ||
+    input.ref !== 'refs/heads/main' ||
+    !shaPattern.test(input.controllerSha) ||
+    input.workflowSha !== input.controllerSha ||
+    !tagPattern.test(input.baseTag) ||
+    !branchPattern.test(input.branchRef) ||
+    !shaPattern.test(input.sourceSha)
+  ) {
     throw new Error('Ungültiger Hotfix-Dispatch des Main-Controllers.');
   }
   return {
@@ -48,16 +56,24 @@ export const verifyHotfixSource = (source: HotfixSource, git: HotfixSourceGit): 
   const peeledTagRef = `${tagRef}^{}`;
   const branchBefore = git.remoteRef(source.branchRef);
   const tagBefore = git.remoteRef(peeledTagRef);
-  if (branchBefore !== source.sourceSha || !shaPattern.test(tagBefore) ||
-      tagBefore === source.sourceSha) {
-    throw new Error('Hotfix-Ref oder annotierter Production-Basistag stimmt nicht mit dem Quell-SHA überein.');
+  if (
+    branchBefore !== source.sourceSha ||
+    !shaPattern.test(tagBefore) ||
+    tagBefore === source.sourceSha
+  ) {
+    throw new Error(
+      'Hotfix-Ref oder annotierter Production-Basistag stimmt nicht mit dem Quell-SHA überein.'
+    );
   }
   git.fetch(source.branchRef, tagRef);
-  if (git.commit(source.sourceSha) !== source.sourceSha ||
-      git.commit(tagRef) !== tagBefore ||
-      !git.isAncestor(tagBefore, source.sourceSha) ||
-      git.remoteRef(source.branchRef) !== branchBefore ||
-      git.remoteRef(peeledTagRef) !== tagBefore) {
+  if (
+    git.commit(source.sourceSha) !== source.sourceSha ||
+    git.commit(tagRef) !== tagBefore ||
+    !git.isAncestor(tagBefore, source.sourceSha) ||
+    git.mergeBase(source.sourceSha, source.controllerSha) !== tagBefore ||
+    git.remoteRef(source.branchRef) !== branchBefore ||
+    git.remoteRef(peeledTagRef) !== tagBefore
+  ) {
     throw new Error('Hotfix-Quellstand ist nicht unverändert vom Production-Basistag abgeleitet.');
   }
 };
@@ -69,7 +85,8 @@ const remoteRef = (ref: string): string => {
   const lines = gitCommand(['ls-remote', '--exit-code', 'origin', ref]).split('\n');
   if (lines.length !== 1) throw new Error('Git-Ref ist nicht eindeutig.');
   const [sha, actualRef] = lines[0]!.split('\t');
-  if (actualRef !== ref || !shaPattern.test(sha ?? '')) throw new Error('Git-Ref stimmt nicht überein.');
+  if (actualRef !== ref || !shaPattern.test(sha ?? ''))
+    throw new Error('Git-Ref stimmt nicht überein.');
   return sha!;
 };
 
@@ -80,7 +97,10 @@ const cliGit: HotfixSourceGit = {
   },
   commit: (ref) => gitCommand(['rev-parse', '--verify', `${ref}^{commit}`]),
   isAncestor: (baseSha, sourceSha) =>
-    spawnSync('git', ['merge-base', '--is-ancestor', baseSha, sourceSha], { stdio: 'ignore' }).status === 0,
+    spawnSync('git', ['merge-base', '--is-ancestor', baseSha, sourceSha], { stdio: 'ignore' })
+      .status === 0,
+  mergeBase: (sourceSha, controllerSha) =>
+    gitCommand(['merge-base', '--all', sourceSha, controllerSha]),
 };
 
 export const runHotfixSourceContract = (env: NodeJS.ProcessEnv = process.env): HotfixSource => {
@@ -94,7 +114,8 @@ export const runHotfixSourceContract = (env: NodeJS.ProcessEnv = process.env): H
     sourceSha: env.HOTFIX_SHA ?? '',
   });
   verifyHotfixSource(source, cliGit);
-  if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `source_sha=${source.sourceSha}\n`, 'utf8');
+  if (env.GITHUB_OUTPUT)
+    appendFileSync(env.GITHUB_OUTPUT, `source_sha=${source.sourceSha}\n`, 'utf8');
   return source;
 };
 

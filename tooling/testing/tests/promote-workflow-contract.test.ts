@@ -129,12 +129,12 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}');
   });
 
-  it('requires canonical Main App E2E evidence for every staging promote before remote mutation', () => {
-    const gate = workflow.match(
-      /- name: require canonical Main App E2E evidence[\s\S]*?run: pnpm exec tsx "\$\{PROMOTE_CONTROLLER_DIR\}\/scripts\/ci\/verify-main-e2e-evidence\.ts"/u
-    )?.[0];
+  it('requires source-bound App E2E evidence for every staging promote before remote mutation', () => {
+    const gate = workflowStep('require source-bound App E2E evidence');
     expect(gate).toContain("if: ${{ inputs.environment == 'staging' }}");
     expect(gate).not.toContain('continue-on-error:');
+    expect(gate).toContain('verify-main-e2e-evidence.ts');
+    expect(gate).toContain('verify-hotfix-e2e-evidence.ts');
     expect(gate).toContain(
       'PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json'
     );
@@ -145,7 +145,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain(
       'run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-staging-promote-evidence.ts"'
     );
-    const gateOffset = workflow.indexOf('require canonical Main App E2E evidence');
+    const gateOffset = workflow.indexOf('require source-bound App E2E evidence');
     expect(gateOffset).toBeGreaterThan(workflow.indexOf('validate image contract'));
     for (const mutationBoundary of [
       'run read-only candidate preflight',
@@ -275,10 +275,10 @@ describe('Promote workflow contract', () => {
     expect(buildWorkflow).toContain('image_ref: ${{ needs.build.outputs.image_digest }}');
     expect(buildWorkflow).toContain('actions: read');
     expect(buildWorkflow).toContain('id-token: write');
-    expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ github.sha }}');
+    expect(buildWorkflow).toContain('SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}');
     expect(buildWorkflow).toContain('file: ./deploy/backup-agent/Dockerfile');
     expect(buildWorkflow).toContain(
-      'ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}'
+      'ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ steps.source.outputs.sha }}'
     );
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
@@ -331,7 +331,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).not.toContain('preserve promote evidence controller');
     expect(workflow).not.toMatch(/^\s*cp .*PROMOTE_CONTROLLER_DIR/mu);
     expect(workflow).not.toContain('promote-evidence-controller');
-    expect(workflow).not.toContain('working-directory: .promote-controller');
+    expect(workflowStep('validate controlled hotfix source ref')).toContain(
+      'working-directory: .promote-controller'
+    );
     expect(
       workflow.match(/uses: \.\/\.promote-controller\/\.github\/actions\/setup-pnpm-workspace/gu)
     ).toHaveLength(1);
@@ -368,7 +370,6 @@ describe('Promote workflow contract', () => {
 
     for (const releaseCommand of [
       'scripts/ci/promote-image-contract.ts',
-      'scripts/ci/promote-deploy-gates.ts',
       'scripts/ci/render-compose-env.ts',
       'scripts/ci/promote-one-shot-job.ts',
       'scripts/ci/submit-backup-agent-request.ts',
@@ -379,6 +380,12 @@ describe('Promote workflow contract', () => {
       expect(workflow).toContain(releaseCommand);
       expect(workflow).not.toContain(`\${PROMOTE_CONTROLLER_DIR}/${releaseCommand}`);
     }
+    const deployGate = workflowStep('evaluate migration and bootstrap gates');
+    expect(deployGate).toContain('gate_script=scripts/ci/promote-deploy-gates.ts');
+    expect(deployGate).toContain(
+      'gate_script="${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-deploy-gates.ts"'
+    );
+    expect(deployGate).toContain('diff_mode_args=(--diff-mode direct)');
     expect(workflow).toContain(
       'profile_path="config/runtime/remote/${{ inputs.environment }}.vars"'
     );

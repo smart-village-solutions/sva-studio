@@ -93,7 +93,15 @@ jobs:
         run: pnpm nx run sva-studio-react:verify:runtime-artifact
 
       - name: Prepare source-bound Studio changelog for image build
-        run: pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts --output apps/sva-studio-react/.generated/studio-changelog.json
+        env:
+          BUILD_MODE: ${{ inputs.mode }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+        run: |
+          args=(--output apps/sva-studio-react/.generated/studio-changelog.json)
+          if [ "${BUILD_MODE}" = hotfix ]; then
+            args+=(--base-ref "${HOTFIX_BASE_TAG}")
+          fi
+          pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts "${args[@]}"
 
       - name: Login to GHCR
         uses: docker/login-action@v4

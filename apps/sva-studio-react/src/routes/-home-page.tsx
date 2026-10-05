@@ -9,13 +9,11 @@ import {
   readPermissionDenialFromSearch,
 } from '../lib/permission-denial-presentation';
 import { resolvePermissionTitle } from '../lib/permission-labels';
-import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { useStudioBranding } from '../providers/studio-branding-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button, StudioLoadingState, StudioPageTitle } from '@sva/studio-ui-react';
 import { HomeActionCards } from './-home-action-cards';
-import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
 type HomeRouteState = {
   readonly authStateError: string | null;
@@ -168,22 +166,6 @@ const HomeAuthErrorBanner = ({
   </Alert>
 );
 
-const AuthenticatedHomeOverview = ({
-  changelogState,
-  user,
-}: {
-  readonly changelogState: StudioChangelogState;
-  readonly user: ReturnType<typeof useAuth>['user'];
-}) => {
-  return (
-    <section className="mx-auto w-full max-w-6xl px-6 py-12">
-      <HomeActionCards user={user} />
-
-      <StudioChangelogSection changelogState={changelogState} />
-    </section>
-  );
-};
-
 export const HomePage = () => {
   const { appName, profile: brandingProfile } = useStudioBranding();
   const {
@@ -235,29 +217,6 @@ export const HomePage = () => {
     !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
   const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
   const isAnonymousHome = !isAuthenticated;
-  const [changelogState, setChangelogState] = React.useState<StudioChangelogState>({
-    status: 'loading',
-    entries: [],
-  });
-
-  React.useEffect(() => {
-    if (!isAuthenticated) {
-      setChangelogState({ status: 'loading', entries: [] });
-      return;
-    }
-
-    let cancelled = false;
-    void loadStudioChangelogState().then((nextState) => {
-      if (!cancelled) {
-        setChangelogState(nextState);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
-
   return (
     <div className="flex min-h-full flex-col bg-background text-foreground">
       <section className="bg-[radial-gradient(circle_at_top,_rgba(0,90,158,0.18),_transparent_34%),linear-gradient(to_bottom,_rgba(241,246,252,0.98),_rgba(255,255,255,0.99)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(74,132,188,0.22),_transparent_30%),linear-gradient(to_bottom,_rgba(10,16,24,1),_rgba(13,20,30,0.98)_38%,_rgb(var(--background))_100%)]">
@@ -322,7 +281,9 @@ export const HomePage = () => {
           <StudioLoadingState>{t('home.session.loading')}</StudioLoadingState>
         </section>
       ) : isAuthenticated ? (
-        <AuthenticatedHomeOverview changelogState={changelogState} user={user} />
+        <section className="mx-auto max-w-6xl px-6 py-12">
+          <HomeActionCards user={user} />
+        </section>
       ) : null}
 
       <footer className="mt-auto flex justify-center px-6 py-8">

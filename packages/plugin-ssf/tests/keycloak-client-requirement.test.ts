@@ -27,7 +27,7 @@ it('derives the public login baseline only from an explicit HTTPS installation o
     clientId: 'ssf-frontend',
     audience: 'ssf-frontend',
     enabled: false,
-    redirectUris: ['https://dialog.kassel.de/login/*'],
+    redirectUris: ['https://dialog.kassel.de/login', 'https://dialog.kassel.de/login/*'],
     webOrigins: ['https://dialog.kassel.de'],
   });
   for (const origin of [

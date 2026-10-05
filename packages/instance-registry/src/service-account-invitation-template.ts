@@ -15,16 +15,23 @@ export const getServerAccountInvitationTemplate = async (
 export const updateServerAccountInvitationTemplate = async (input: {
   readonly repository: Pick<InstanceRegistryRepository, 'updateServerAccountInvitationTemplate'>;
   readonly expectedRevision: number;
-  readonly template: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
+  readonly template?: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
+  readonly defaultPurpose?: import('@sva/core').AccountInvitationPurpose;
   readonly actorId?: string;
   readonly requestId?: string;
 }) => {
   if (input.template) validateAccountInvitationTemplate(input.template);
+  if (input.template === undefined && input.defaultPurpose === undefined) {
+    throw new Error('invalid_account_invitation_template');
+  }
   const nextRevision = input.expectedRevision + 1;
   try {
     const state = await input.repository.updateServerAccountInvitationTemplate({
       expectedRevision: input.expectedRevision,
-      template: input.template ? { ...input.template, revision: nextRevision } : null,
+      ...(input.template !== undefined
+        ? { template: input.template ? { ...input.template, revision: nextRevision } : null }
+        : {}),
+      ...(input.defaultPurpose !== undefined ? { defaultPurpose: input.defaultPurpose } : {}),
       actorId: input.actorId,
     });
     instanceRegistryServiceLogger.info('Server account invitation template updated', {

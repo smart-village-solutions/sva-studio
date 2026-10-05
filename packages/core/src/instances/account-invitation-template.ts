@@ -8,6 +8,8 @@ export type AccountInvitationTemplate = Readonly<{
 
 export const ACCOUNT_INVITATION_TEMPLATE_KEY = 'account_invitation' as const;
 
+export type AccountInvitationPurpose = 'studio' | 'ssf';
+
 export type AccountInvitationTemplateSource = 'instance' | 'server' | 'sva_default';
 
 type EffectiveAccountInvitationTemplate = Readonly<{
@@ -18,12 +20,14 @@ type EffectiveAccountInvitationTemplate = Readonly<{
 export type ServerAccountInvitationTemplateState = Readonly<{
   revision: number;
   template?: AccountInvitationTemplate;
+  defaultPurpose?: AccountInvitationPurpose;
 }>;
 
 export type ServerAccountInvitationTemplateView = Readonly<{
   revision: number;
   effectiveTemplate: AccountInvitationTemplate;
   source: Extract<AccountInvitationTemplateSource, 'server' | 'sva_default'>;
+  defaultPurpose: AccountInvitationPurpose;
 }>;
 
 export const toServerAccountInvitationTemplateView = (
@@ -35,6 +39,7 @@ export const toServerAccountInvitationTemplateView = (
     revision: state.revision,
   },
   source: state.template ? 'server' : 'sva_default',
+  defaultPurpose: state.defaultPurpose ?? 'studio',
 });
 
 export type CompiledAccountInvitationTemplate = Readonly<{

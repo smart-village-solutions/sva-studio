@@ -100,6 +100,7 @@ export type IamUserListItem = {
 };
 
 export type IamUserDetail = IamUserListItem & {
+  readonly invitationPurpose?: import('../instances/account-invitation-template.js').AccountInvitationPurpose;
   readonly username?: string;
   readonly firstName?: string;
   readonly lastName?: string;
@@ -122,6 +123,7 @@ export type IamUserInvitationErrorCode =
   | 'keycloak_user_not_ready'
   | 'keycloak_unavailable'
   | 'execute_actions_email_not_supported'
+  | 'ssf_invitation_unavailable'
   | 'internal_error';
 
 export type IamUserInvitationError = {

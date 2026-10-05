@@ -22,7 +22,7 @@ Die belegte Lücke ist die serverseitige Auswahl eines engen Client-/Redirect-Pa
 
 ## Impact
 
-- Betroffene Specs: `iam-core`, `account-ui`, `instance-provisioning`.
+- Betroffene Spec: `iam-core` (einschließlich UI-Auswahl und SSF-Clientvertrag).
 - Betroffene Grenzen: systemweite Vorlageneinstellung, Accountanlage und Persistenz, Resend, SSF-OIDC-Provisionierung, Keycloak-Aktionsmail.
 - Betroffene Architektur: `docs/architecture/05-building-block-view.md`, `06-runtime-view.md` und `08-cross-cutting-concepts.md`.
 - Datenbank: zwei additive, eng geprüfte Spalten in vorhandenen Tabellen; kein neuer Dienst oder neue Tabelle.

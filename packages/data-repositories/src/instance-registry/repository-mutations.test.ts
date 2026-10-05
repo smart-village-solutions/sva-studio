@@ -524,9 +524,25 @@ describe('instance registry mutation result and error contracts', () => {
     expect(statements[1]?.values).toEqual([
       'account_invitation',
       4,
+      true,
       JSON.stringify(template),
+      null,
       'admin-1',
     ]);
+  });
+
+  it('changes the system purpose while preserving the template text', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ revision: 6, template: null, default_purpose: 'ssf' }],
+    ]);
+    await expect(
+      createInstanceRegistryRepository(executor).updateServerAccountInvitationTemplate({
+        expectedRevision: 5,
+        defaultPurpose: 'ssf',
+      })
+    ).resolves.toEqual({ revision: 6, defaultPurpose: 'ssf' });
+    expect(statements[0]?.text).toContain("jsonb_set(template, '{revision}'");
+    expect(statements[0]?.values).toEqual(['account_invitation', 5, false, null, 'ssf', 'system']);
   });
 
   it('reports a server template revision conflict', async () => {

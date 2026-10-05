@@ -105,6 +105,11 @@ export const usersAdminDEResources = {
       'Direkte Rollen sind additive Sonderfälle und sollten nur zusätzlich zu Gruppen verwendet werden.',
     rolePlaceholder: 'Es sind keine direkten Rollen verfügbar.',
     sendPasswordSetupEmail: 'Einladungs-E-Mail zum Passwort setzen senden',
+    invitationPurpose: 'Ziel nach dem Passwortsetzen',
+    invitationPurposeDefault: 'Systemstandard verwenden',
+    invitationPurposeStudio: 'Studio',
+    invitationPurposeSsf: 'KasselDIALOG',
+    invitationPurposeHint: 'Die Auswahl wird für spätere Einladungen dieses Kontos gespeichert.',
     isTechnicalAccount: 'Ist ein technischer Account',
     isTechnicalAccountHint:
       'Technische Accounts werden von den konfigurierten Kontolöschungsregeln ausgenommen. Andere Accountfunktionen bleiben unverändert.',

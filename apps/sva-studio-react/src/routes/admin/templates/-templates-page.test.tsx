@@ -22,6 +22,7 @@ const defaultView = {
   revision: 0,
   effectiveTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 0 },
   source: 'sva_default' as const,
+  defaultPurpose: 'studio' as const,
 };
 
 describe('TemplatesPage', () => {
@@ -61,6 +62,22 @@ describe('TemplatesPage', () => {
       })
     );
     expect((await screen.findByRole('status')).textContent).toContain('gespeichert');
+  });
+
+  it('saves the destination without replacing the invitation text', async () => {
+    api.updateServerAccountInvitationTemplate.mockResolvedValueOnce({
+      data: { ...defaultView, revision: 1, defaultPurpose: 'ssf' },
+    });
+    render(<TemplatesPage />);
+    const select = await screen.findByLabelText('Standardziel für neue Einladungen');
+    fireEvent.change(select, { target: { value: 'ssf' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Standardziel speichern' }));
+    await vi.waitFor(() =>
+      expect(api.updateServerAccountInvitationTemplate).toHaveBeenCalledWith({
+        expectedRevision: 0,
+        defaultPurpose: 'ssf',
+      })
+    );
   });
 
   it('resets the server override through the same revision-bound endpoint', async () => {

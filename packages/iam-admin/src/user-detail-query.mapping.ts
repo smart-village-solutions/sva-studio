@@ -124,6 +124,7 @@ export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
 
   return {
     ...base,
+    invitationPurpose: row.invitation_purpose ?? 'studio',
     username: revealField(row.username_ciphertext, `iam.accounts.username:${row.keycloak_subject}`),
     firstName: revealField(
       row.first_name_ciphertext,

@@ -144,12 +144,21 @@ export const emitPasswordSetupEmailFailureAudit = async (input: {
 export const buildPasswordSetupEmailFailureResponse = (error: unknown, requestId?: string) =>
   error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError
     ? buildKeycloakUnavailableResponse(requestId)
-    : createApiError(
-        500,
-        'internal_error',
-        'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
-        requestId
-      );
+    : error instanceof Error &&
+        (error.message === 'ssf_invitation_destination_unavailable' ||
+          error.message === 'ssf_invitation_client_not_ready')
+      ? createApiError(
+          409,
+          'ssf_invitation_unavailable',
+          'Die KasselDIALOG-Einladung konnte nicht versendet werden, weil das SSF-Anmeldeziel für diese Instanz nicht bereit ist.',
+          requestId
+        )
+      : createApiError(
+          500,
+          'internal_error',
+          'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
+          requestId
+        );
 
 export const logSendPasswordSetupEmailFailure = (input: {
   actor: PasswordSetupEmailActor;

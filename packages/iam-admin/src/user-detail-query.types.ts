@@ -87,6 +87,7 @@ export type UserDetailRow = {
   notes: string | null;
   status: UserStatus;
   is_technical_account: boolean;
+  invitation_purpose: import('@sva/core').AccountInvitationPurpose;
   last_login_at: string | null;
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;

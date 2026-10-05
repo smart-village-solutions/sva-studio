@@ -20,6 +20,7 @@ type CreateUserPersistencePayload = {
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly isTechnicalAccount?: boolean;
+  readonly invitationPurpose?: import('@sva/core').AccountInvitationPurpose;
   readonly roleIds: readonly string[];
   readonly groupIds?: readonly string[];
 };
@@ -82,6 +83,7 @@ export const buildCreateAccountParams = (
   payload.status ?? 'active',
   payload.notes ?? null,
   payload.isTechnicalAccount ?? false,
+  payload.invitationPurpose ?? 'studio',
 ];
 
 export const validateRequestedGroups = async (
@@ -171,6 +173,7 @@ export const buildCreatedUserResult = (
     notes: payload.notes,
     status: payload.status ?? 'active',
     isTechnicalAccount: payload.isTechnicalAccount ?? false,
+    invitationPurpose: payload.invitationPurpose ?? 'studio',
     roles: mapRoles(assignedRoleRows),
     mainserverUserApplicationSecretSet: false,
   },

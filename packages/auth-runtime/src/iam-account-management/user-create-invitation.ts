@@ -1,4 +1,8 @@
-import type { IamCreateUserResult, IamUserInvitationError } from '@sva/core';
+import type {
+  AccountInvitationPurpose,
+  IamCreateUserResult,
+  IamUserInvitationError,
+} from '@sva/core';
 import { resolveAuthConfigForInstance } from '../config.js';
 import {
   KeycloakAdminRequestError,
@@ -7,6 +11,7 @@ import {
 import type { IdentityProviderResolution } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared.js';
 import { ensureAccountInvitationRealmValues } from './account-invitation-guard.js';
+import { resolveInvitationDestination } from './invitation-destination.js';
 
 export type CreateUserActorInfo = {
   instanceId: string;
@@ -81,8 +86,7 @@ const waitForKeycloakUserReadiness = async (input: {
 };
 
 const executeActionsEmailWithRetry = async (input: {
-  actor: CreateUserActorInfo;
-  authConfig: Awaited<ReturnType<typeof resolveAuthConfigForInstance>>;
+  destination: { clientId: string; redirectUri: string };
   executeActionsEmail: NonNullable<IdentityProviderResolution['provider']['executeActionsEmail']>;
   keycloakSubject: string;
 }) => {
@@ -91,8 +95,8 @@ const executeActionsEmailWithRetry = async (input: {
       await trackKeycloakCall('execute_actions_email', async () => {
         await input.executeActionsEmail(input.keycloakSubject, {
           actions: ['UPDATE_PASSWORD'],
-          clientId: input.authConfig.clientId,
-          redirectUri: input.authConfig.redirectUri,
+          clientId: input.destination.clientId,
+          redirectUri: input.destination.redirectUri,
         });
       });
       return;
@@ -113,6 +117,7 @@ export const sendPasswordSetupInvitation = async (input: {
   identityProvider: IdentityProviderResolution;
   email: string;
   keycloakSubject: string;
+  invitationPurpose?: AccountInvitationPurpose;
 }): Promise<InvitationResult> => {
   const executeActionsEmail = input.identityProvider.provider.executeActionsEmail?.bind(
     input.identityProvider.provider
@@ -122,6 +127,11 @@ export const sendPasswordSetupInvitation = async (input: {
   }
 
   const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
+  const destination = await resolveInvitationDestination({
+    instanceId: input.actor.instanceId,
+    purpose: input.invitationPurpose ?? 'studio',
+    authConfig,
+  });
   await ensureAccountInvitationRealmValues({
     instanceId: input.actor.instanceId,
     template: authConfig.accountInvitationTemplate,
@@ -143,8 +153,7 @@ export const sendPasswordSetupInvitation = async (input: {
   });
   await waitForKeycloakUserReadiness(input);
   await executeActionsEmailWithRetry({
-    actor: input.actor,
-    authConfig,
+    destination,
     executeActionsEmail,
     keycloakSubject: input.keycloakSubject,
   });
@@ -188,11 +197,20 @@ export const buildInvitationFailure = (error: unknown): InvitationResult => {
                     'Der konfigurierte Identity-Provider unterstützt keine Einladungs-E-Mails.',
                   retryable: false,
                 }
-              : {
-                  code: 'internal_error',
-                  message: INVITATION_DELIVERY_FAILED_MESSAGE,
-                  retryable: false,
-                };
+              : error instanceof Error &&
+                  (error.message === 'ssf_invitation_destination_unavailable' ||
+                    error.message === 'ssf_invitation_client_not_ready')
+                ? {
+                    code: 'ssf_invitation_unavailable',
+                    message:
+                      'Die KasselDIALOG-Einladung konnte nicht versendet werden, weil das SSF-Anmeldeziel für diese Instanz nicht bereit ist.',
+                    retryable: false,
+                  }
+                : {
+                    code: 'internal_error',
+                    message: INVITATION_DELIVERY_FAILED_MESSAGE,
+                    retryable: false,
+                  };
 
   return {
     status: 'failed',

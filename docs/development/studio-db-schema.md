@@ -128,7 +128,11 @@ zuordnen und die Migration erneut starten; eine automatische Umbenennung oder
 Löschung wäre fachlich nicht sicher.
 
 `iam.server_account_invitation_templates` hält ausschließlich den
-plattformweiten Account-Einladungs-Override. Der Check-Constraint begrenzt den
+plattformweiten Account-Einladungs-Override. Die optionale Spalte
+`default_purpose` wählt für neue Accounts `studio` oder `ssf`; `NULL` bedeutet
+den bisherigen Studio-Standard. `iam.accounts.invitation_purpose` speichert
+den Zweck je Account für den erneuten Versand unabhängig von späteren
+Standardänderungen. Der Check-Constraint begrenzt den
 Schlüssel auf `account_invitation` und bindet die JSON-Revision an die separate,
 auch nach einem Reset fortlaufende Revision. Erzwungene RLS stellt die globale
 Vorlage auch in tenant-bezogenen Lesevorgängen für die Vererbung bereit;

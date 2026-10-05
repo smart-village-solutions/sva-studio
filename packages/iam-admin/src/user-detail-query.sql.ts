@@ -34,6 +34,7 @@ SELECT
   a.notes,
   a.status,
   a.is_technical_account,
+  a.invitation_purpose,
   MAX(al.created_at)::text AS last_login_at,
   COALESCE(
     json_agg(

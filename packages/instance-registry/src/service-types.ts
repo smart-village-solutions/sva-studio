@@ -8,7 +8,10 @@ import type {
   TenantModuleActivationPolicySnapshot,
   ServerAccountInvitationTemplateView,
 } from '@sva/core';
-import type { WasteIamInstanceDetail, WasteManagementDataSourceRecord } from '@sva/waste-management-contracts';
+import type {
+  WasteIamInstanceDetail,
+  WasteManagementDataSourceRecord,
+} from '@sva/waste-management-contracts';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
   AssignInstanceModuleInput,
@@ -122,7 +125,8 @@ export type InstanceRegistryService = {
   getServerAccountInvitationTemplate(): Promise<ServerAccountInvitationTemplateView>;
   updateServerAccountInvitationTemplate(input: {
     expectedRevision: number;
-    template: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
+    template?: Omit<import('@sva/core').AccountInvitationTemplate, 'revision'> | null;
+    defaultPurpose?: import('@sva/core').AccountInvitationPurpose;
     actorId?: string;
     requestId?: string;
   }): Promise<ServerAccountInvitationTemplateView>;

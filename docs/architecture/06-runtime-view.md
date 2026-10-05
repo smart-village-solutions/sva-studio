@@ -112,8 +112,8 @@ Fehlerpfad:
 7. Retryable Plugin-Lifecycle-Fehler ohne eigene Deadline erhalten beim Persistieren einen hostdefinierten Backoff von 60 Sekunden. Dieser persistente Lifecycle-Retry ist vom prozesslokalen Fleet-Reconcile-Backoff aus Schritt 2 getrennt. Aktivierungsänderungen im geöffneten Instanzdetail stoßen nach erfolgreicher Mutation zusätzlich einen unmittelbaren Readiness-Refresh an.
 8. Die permanente Fehlerklassifikation des Workers hat Vorrang vor einem retrybaren Plugin-Fehler. Nach ausgeschöpftem Job-Budget bleibt der Lifecycle mit seinem konkreten Plugin-Fehlercode terminal gesperrt; bei unverändertem aktuellem Lifecycle-Vertrag darf ein automatischer Folgelauf kein frisches Budget durch eine neue Generation eröffnen. Eine autorisierte Reparatur oder ein geänderter Vertrag bleibt ein expliziter neuer Anlass.
 9. Jede Lifecycle-Anforderung speichert ihre Vertragsrevision atomar mit der neuen Sollgeneration. Der Driftvergleich bezieht sich damit auf den bereits angeforderten Vertrag; ein fehlgeschlagener neuer Vertrag kann nicht wiederholt als unversucht eingeplant werden. Erfolgreiche Readiness bleibt separat an `readiness_revision` und `completed_generation` gebunden.
-9. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
-10. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
+10. Terminale Worker-Fehler sowie Fehler beim Enqueue eines bereits geclaimten Lifecycle-Jobs schreiben Jobstatus und Lifecycle-Endzustand atomar in derselben Tenant-DB-Transaktion.
+11. Ein degradierter Fleet-Lauf wird nicht als abgeschlossene Revision gecacht und kann bei einem späteren Bootstrap erneut ausgeführt werden.
 
 ### Self-Service-Datenexport über Host-Worker
 
@@ -1424,9 +1424,14 @@ Ein angegebener Fremd-Instanzparameter wird abgewiesen.
 4. Unmittelbar vor Create-Einladung und Resend liest der Tenant-Admin-Client
    E-Mail-Theme und Realmtexte. Bei Abweichung setzt er `emailTheme = sva-kern2`
    und schreibt ausschließlich die drei verwalteten deutschen Werte.
-5. Erst ein exakter Readback erlaubt `execute-actions-email` mit
-   `UPDATE_PASSWORD`. Keycloak erzeugt und versendet den signierten,
-   zeitlich begrenzten Link.
+5. Die Auth-Runtime wählt aus dem am Account gespeicherten
+   Einladungszweck das Client-/Redirect-Paar. Für `studio` bleibt der
+   Instanz-Callback erhalten. Für `ssf` muss der `ssf-frontend`-Client im
+   zugeordneten Realm bereit sein; dann gilt exakt die installationsseitige
+   HTTPS-URI `/login`. Beim Resend wird derselbe gespeicherte Zweck gelesen.
+6. Erst ein exakter Readback der E-Mail-Werte und ein gültiges Ziel erlauben
+   `execute-actions-email` mit `UPDATE_PASSWORD`. Keycloak erzeugt und
+   versendet den signierten, zeitlich begrenzten Link.
 
 Fehlerpfad:
 
@@ -1434,6 +1439,8 @@ Fehlerpfad:
   lädt den aktuellen Stand neu.
 - Ein Keycloak-Write-, Readback- oder Verbindungsfehler stoppt ausschließlich
   die konkrete E-Mail. Ein bereits angelegter Account bleibt bestehen.
+- Fehlende oder ungültige SSF-Client-Konfiguration stoppt den Versand vor
+  `execute-actions-email` und liefert einen sichtbaren Einladungsfehler.
 - Es gibt keinen globalen Projektionsstatus, keinen Fan-out beim Speichern und
   keinen separaten Retry-Workflow; der nächste Versand stellt erneut
   idempotent sicher.

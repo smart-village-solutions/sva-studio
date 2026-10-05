@@ -22,6 +22,7 @@ import {
   type SendPasswordSetupEmailDependencies,
 } from './user-password-setup-email-shared.js';
 import { ensureAccountInvitationRealmValues } from './account-invitation-guard.js';
+import { resolveInvitationDestination } from './invitation-destination.js';
 
 type SendPasswordSetupEmailResult = {
   readonly status: 'sent';
@@ -165,6 +166,11 @@ const sendPasswordSetupEmail = async (input: {
   ) => Promise<void>;
 }) => {
   const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
+  const destination = await resolveInvitationDestination({
+    instanceId: input.actor.instanceId,
+    purpose: input.user.invitationPurpose ?? 'studio',
+    authConfig,
+  });
   await ensureAccountInvitationRealmValues({
     instanceId: input.actor.instanceId,
     template: authConfig.accountInvitationTemplate,
@@ -178,8 +184,8 @@ const sendPasswordSetupEmail = async (input: {
   await trackKeycloakCall('send_password_setup_email', () =>
     input.executeActionsEmail(input.user.keycloakSubject, {
       actions: ['UPDATE_PASSWORD'],
-      clientId: authConfig.clientId,
-      redirectUri: authConfig.redirectUri,
+      clientId: destination.clientId,
+      redirectUri: destination.redirectUri,
     })
   );
   return authConfig.accountInvitationTemplate?.revision ?? 0;

@@ -1139,6 +1139,13 @@ Tokens, Secrets oder E-Mail-Adressen.
 - Ein fehlgeschlagener Abgleich erzeugt keinen globalen Teilstatus: Nur die
   konkrete Einladung scheitert, und der nächste Versandversuch wiederholt die
   idempotente Sicherstellung.
+- Die systemweite Zielvorgabe ist vom Vorlagentext getrennt; `NULL` und
+  Bestandskonten ohne gespeicherten Zweck bedeuten `studio`. Ein berechtigter
+  Ersteller kann für ein neues Konto `studio` oder `ssf` auswählen. Rollen,
+  Empfängeradresse und frei eingegebene URLs bestimmen das Ziel nicht.
+- Für `ssf` stammt die exakte HTTPS-URI `/login` allein aus dem installierten
+  OIDC-Plugin-Vertrag. Der Client im zugeordneten Tenant-Realm muss vor dem
+  Versand bereit sein; sonst wird keine Einladung versendet.
 
 ### Build-Zeit-Plugin-Grenze
 

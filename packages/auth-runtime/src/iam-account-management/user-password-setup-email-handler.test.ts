@@ -11,12 +11,17 @@ const state = vi.hoisted(() => ({
   toPayloadHash: vi.fn(() => 'payload-hash'),
   reserveIdempotency: vi.fn(),
   completeIdempotency: vi.fn(async () => undefined),
-  withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})),
+  withInstanceScopedDb: vi.fn(
+    async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})
+  ),
   resolveUserDetail: vi.fn(),
   resolveActorMaxRoleLevel: vi.fn(async () => 100),
   ensureActorCanManageTarget: vi.fn(() => ({ ok: true })),
   resolveAuthConfigForInstance: vi.fn(),
-  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
+  resolveInvitationDestination: vi.fn(),
+  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) =>
+    execute()
+  ),
   emitActivityLog: vi.fn(async () => undefined),
   iamUserOperationsCounter: {
     add: vi.fn(),
@@ -46,6 +51,10 @@ vi.mock('../db.js', () => ({
 
 vi.mock('../config.js', () => ({
   resolveAuthConfigForInstance: state.resolveAuthConfigForInstance,
+}));
+
+vi.mock('./invitation-destination.js', () => ({
+  resolveInvitationDestination: state.resolveInvitationDestination,
 }));
 
 vi.mock('./api-helpers.js', () => ({
@@ -93,6 +102,10 @@ vi.mock('./user-detail-query.js', () => ({
 describe('sendPasswordSetupEmailInternal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.resolveInvitationDestination.mockResolvedValue({
+      clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
+    });
     state.ensureActorCanManageTarget.mockReturnValue({ ok: true });
     state.resolveUserMutationActor.mockResolvedValue({
       actor: {
@@ -138,7 +151,8 @@ describe('sendPasswordSetupEmailInternal', () => {
   });
 
   it('sends the password setup email and returns sent', async () => {
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -189,6 +203,45 @@ describe('sendPasswordSetupEmailInternal', () => {
     );
   });
 
+  it('uses the saved SSF purpose on resend', async () => {
+    state.resolveUserDetail.mockResolvedValue({
+      id: 'user-1',
+      keycloakSubject: 'kc-user-1',
+      displayName: 'Alice Example',
+      roles: [],
+      invitationPurpose: 'ssf',
+    });
+    state.resolveInvitationDestination.mockResolvedValue({
+      clientId: 'ssf-frontend',
+      redirectUri: 'https://dialog.kassel.de/login',
+    });
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: { id: 'kc-actor-1', instanceId: 'instance-1', roles: ['system_admin'] },
+      }
+    );
+    expect(response.status).toBe(200);
+    expect(state.resolveInvitationDestination).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: 'ssf' })
+    );
+    const targetContext = await state.resolveUserMutationTargetContext.mock.results[0]?.value;
+    expect(targetContext.identityProvider.provider.executeActionsEmail).toHaveBeenCalledWith(
+      'kc-user-1',
+      {
+        actions: ['UPDATE_PASSWORD'],
+        clientId: 'ssf-frontend',
+        redirectUri: 'https://dialog.kassel.de/login',
+      }
+    );
+  });
+
   it('blocks resend when the custom invitation projection has drifted', async () => {
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
@@ -215,7 +268,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       },
       userId: 'user-1',
     });
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -232,9 +286,58 @@ describe('sendPasswordSetupEmailInternal', () => {
     expect(executeActionsEmail).not.toHaveBeenCalled();
   });
 
+  it('reports a missing SSF destination and does not send on resend', async () => {
+    state.resolveUserDetail.mockResolvedValue({
+      id: 'user-1',
+      keycloakSubject: 'kc-user-1',
+      displayName: 'Alice Example',
+      roles: [],
+      invitationPurpose: 'ssf',
+    });
+    state.resolveInvitationDestination.mockRejectedValue(
+      new Error('ssf_invitation_client_not_ready')
+    );
+    const executeActionsEmail = vi.fn(async () => undefined);
+    state.resolveUserMutationTargetContext.mockResolvedValue({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      identityProvider: { provider: { executeActionsEmail } },
+      userId: 'user-1',
+    });
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: { id: 'kc-actor-1', instanceId: 'instance-1', roles: ['system_admin'] },
+      }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'ssf_invitation_unavailable',
+        message:
+          'Die KasselDIALOG-Einladung konnte nicht versendet werden, weil das SSF-Anmeldeziel für diese Instanz nicht bereit ist.',
+      },
+      requestId: 'req-1',
+    });
+    expect(executeActionsEmail).not.toHaveBeenCalled();
+  });
+
   it('returns not_found when the target user does not exist', async () => {
     state.resolveUserDetail.mockResolvedValue(null);
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -267,7 +370,8 @@ describe('sendPasswordSetupEmailInternal', () => {
         requestId: 'req-1',
       },
     });
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -297,7 +401,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       status: 'conflict',
       message: 'idempotency mismatch',
     });
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -327,7 +432,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       code: 'forbidden',
       message: 'Forbidden target',
     });
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -370,7 +476,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       },
       userId: 'user-1',
     });
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -414,7 +521,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       },
       userId: 'user-1',
     });
-    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+    const { sendPasswordSetupEmailInternal } =
+      await import('./user-password-setup-email-handler.js');
 
     const response = await sendPasswordSetupEmailInternal(
       new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
@@ -447,7 +555,8 @@ describe('sendPasswordSetupEmailInternal', () => {
         result: 'failure',
         payload: expect.objectContaining({
           title: 'Versand der Einladungs-E-Mail zum Passwort setzen fehlgeschlagen',
-          description: 'Die E-Mail zum Setzen des Passworts konnte für dieses Konto nicht versendet werden.',
+          description:
+            'Die E-Mail zum Setzen des Passworts konnte für dieses Konto nicht versendet werden.',
           operation: 'send_password_setup_email',
         }),
       })

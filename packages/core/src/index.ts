@@ -191,6 +191,7 @@ export {
 } from './instances/account-invitation-template.js';
 export type {
   AccountInvitationTemplate,
+  AccountInvitationPurpose,
   AccountInvitationTemplateSource,
   CompiledAccountInvitationTemplate,
   ServerAccountInvitationTemplateState,

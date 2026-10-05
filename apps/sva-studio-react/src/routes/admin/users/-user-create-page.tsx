@@ -39,6 +39,7 @@ type UserCreateFormValues = {
   roleIds: string[];
   groupIds: string[];
   sendPasswordSetupEmail: boolean;
+  invitationPurpose: 'default' | 'studio' | 'ssf';
   isTechnicalAccount: boolean;
 };
 
@@ -59,6 +60,7 @@ const createUserCreateSchema = () =>
     roleIds: z.array(z.string()),
     groupIds: z.array(z.string()),
     sendPasswordSetupEmail: z.boolean(),
+    invitationPurpose: z.enum(['default', 'studio', 'ssf']),
     isTechnicalAccount: z.boolean(),
   });
 
@@ -165,6 +167,8 @@ const useCreateUserSave = (
         roleIds: values.roleIds,
         groupIds: values.groupIds,
         sendPasswordSetupEmail: values.sendPasswordSetupEmail,
+        invitationPurpose:
+          values.invitationPurpose === 'default' ? undefined : values.invitationPurpose,
         isTechnicalAccount: values.isTechnicalAccount,
       });
 
@@ -221,6 +225,7 @@ export const UserCreatePage = () => {
       roleIds: [],
       groupIds: [],
       sendPasswordSetupEmail: true,
+      invitationPurpose: 'default',
       isTechnicalAccount: false,
     },
     reValidateMode: 'onChange',
@@ -323,9 +328,13 @@ export const UserCreatePage = () => {
           />
           <UserCreateAccountOptions
             sendPasswordSetupEmail={sendPasswordSetupEmail}
+            invitationPurpose={watch('invitationPurpose')}
             isTechnicalAccount={isTechnicalAccount}
             onSendPasswordSetupEmailChange={(checked) =>
               setValue('sendPasswordSetupEmail', checked, { shouldDirty: true })
+            }
+            onInvitationPurposeChange={(purpose) =>
+              setValue('invitationPurpose', purpose, { shouldDirty: true })
             }
             onTechnicalAccountChange={(checked) =>
               setValue('isTechnicalAccount', checked, { shouldDirty: true })

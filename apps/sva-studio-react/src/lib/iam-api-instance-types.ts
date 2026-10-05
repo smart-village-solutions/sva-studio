@@ -61,7 +61,8 @@ export type UpdateInstancePayload = {
 
 export type UpdateServerAccountInvitationTemplatePayload = {
   readonly expectedRevision: number;
-  readonly template: UpdateInstancePayload['accountInvitationTemplate'];
+  readonly template?: UpdateInstancePayload['accountInvitationTemplate'];
+  readonly defaultPurpose?: 'studio' | 'ssf';
 };
 
 export type UpdateTenantAccountInvitationTemplatePayload = {

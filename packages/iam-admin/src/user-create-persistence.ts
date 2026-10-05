@@ -23,6 +23,7 @@ export type CreateUserPersistencePayload = {
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly isTechnicalAccount?: boolean;
+  readonly invitationPurpose?: import('@sva/core').AccountInvitationPurpose;
   readonly roleIds: readonly string[];
   readonly groupIds?: readonly string[];
 };
@@ -123,7 +124,8 @@ INSERT INTO iam.accounts (
   timezone,
   status,
   notes,
-  is_technical_account
+  is_technical_account,
+  invitation_purpose
 )
 VALUES (
   $1,
@@ -140,7 +142,8 @@ VALUES (
   $12,
   $13,
   $14,
-  $15
+  $15,
+  $16
 )
 RETURNING id;
 `;

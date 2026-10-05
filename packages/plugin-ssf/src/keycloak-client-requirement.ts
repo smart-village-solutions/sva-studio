@@ -29,7 +29,7 @@ export const readSsfLoginClientRequirement = (environment: NodeJS.ProcessEnv = p
     clientId: SSF_LOGIN_CLIENT_ID,
     audience: SSF_LOGIN_CLIENT_ID,
     enabled: false as const,
-    redirectUris: [`${origin}/login/*`],
+    redirectUris: [`${origin}/login`, `${origin}/login/*`],
     webOrigins: [origin],
   };
 };

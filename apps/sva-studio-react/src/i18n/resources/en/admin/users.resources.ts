@@ -103,6 +103,11 @@ export const usersAdminENResources = {
     advancedRolesHint: 'Direct roles are additive exceptions and should only complement groups.',
     rolePlaceholder: 'No direct roles are available.',
     sendPasswordSetupEmail: 'Send invitation email to set password',
+    invitationPurpose: 'Destination after password setup',
+    invitationPurposeDefault: 'Use system default',
+    invitationPurposeStudio: 'Studio',
+    invitationPurposeSsf: 'KasselDIALOG',
+    invitationPurposeHint: 'The selection is saved for future invitations to this account.',
     isTechnicalAccount: 'Is a technical account',
     isTechnicalAccountHint:
       'Technical accounts are excluded from configured account deletion rules. Other account behavior remains unchanged.',

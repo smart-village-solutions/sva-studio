@@ -68,10 +68,13 @@ export type CreateUserPayload = {
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
   readonly sendPasswordSetupEmail?: boolean;
+  readonly invitationPurpose?: 'studio' | 'ssf';
   readonly isTechnicalAccount?: boolean;
 };
 
-export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
+export type UpdateUserPayload = Partial<
+  Omit<CreateUserPayload, 'roleIds' | 'invitationPurpose'>
+> & {
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
   readonly status?: 'active' | 'inactive' | 'pending';

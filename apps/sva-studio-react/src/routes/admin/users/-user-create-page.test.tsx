@@ -130,6 +130,26 @@ describe('UserCreatePage', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
+  it('sends an explicit SSF invitation purpose when selected', async () => {
+    const createUser = vi.fn(async () => null);
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+    render(<UserCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'alice@example.org' } });
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Alice' } });
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Example' } });
+    fireEvent.change(screen.getByLabelText('Ziel nach dem Passwortsetzen'), {
+      target: { value: 'ssf' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({ invitationPurpose: 'ssf', sendPasswordSetupEmail: true })
+      )
+    );
+  });
+
   it('validates changed values before retrying a failed creation', async () => {
     const createUser = vi.fn(async () => null);
     useUsersMock.mockReturnValue(

@@ -40,6 +40,7 @@ export const createUserSchema = z.object({
   roleIds: uniqueUuidArray(20).default([]),
   groupIds: uniqueUuidArray(50).default([]),
   sendPasswordSetupEmail: z.boolean().optional(),
+  invitationPurpose: z.enum(['studio', 'ssf']).optional(),
   isTechnicalAccount: z.boolean().optional(),
 });
 

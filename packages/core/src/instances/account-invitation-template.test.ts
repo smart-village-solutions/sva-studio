@@ -5,6 +5,7 @@ import {
   compileAccountInvitationTemplate,
   DEFAULT_ACCOUNT_INVITATION_TEMPLATE,
   resolveEffectiveAccountInvitationTemplate,
+  toServerAccountInvitationTemplateView,
   validateAccountInvitationTemplate,
 } from './account-invitation-template.js';
 
@@ -34,6 +35,15 @@ describe('resolveEffectiveAccountInvitationTemplate', () => {
       template: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 0 },
       source: 'sva_default',
     });
+  });
+});
+
+describe('server invitation default purpose', () => {
+  it('preserves the Studio default for existing settings and exposes SSF explicitly', () => {
+    expect(toServerAccountInvitationTemplateView({ revision: 0 }).defaultPurpose).toBe('studio');
+    expect(
+      toServerAccountInvitationTemplateView({ revision: 1, defaultPurpose: 'ssf' }).defaultPurpose
+    ).toBe('ssf');
   });
 });
 

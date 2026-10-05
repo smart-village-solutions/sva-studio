@@ -1,5 +1,9 @@
 import { ACCOUNT_INVITATION_TEMPLATE_KEY } from '@sva/core';
-import type { AccountInvitationTemplate, ServerAccountInvitationTemplateState } from '@sva/core';
+import type {
+  AccountInvitationPurpose,
+  AccountInvitationTemplate,
+  ServerAccountInvitationTemplateState,
+} from '@sva/core';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
@@ -52,6 +56,7 @@ ${buildInstanceSelectColumns()};
 type ServerAccountInvitationTemplateRow = {
   revision: number;
   template: AccountInvitationTemplate | null;
+  default_purpose: AccountInvitationPurpose | null;
 };
 
 const mapServerTemplateState = (
@@ -59,6 +64,7 @@ const mapServerTemplateState = (
 ): ServerAccountInvitationTemplateState => ({
   revision: row.revision,
   ...(row.template ? { template: row.template } : {}),
+  ...(row.default_purpose ? { defaultPurpose: row.default_purpose } : {}),
 });
 
 export const getServerAccountInvitationTemplate = async (
@@ -68,7 +74,7 @@ export const getServerAccountInvitationTemplate = async (
     executor,
     statement(
       `
-SELECT revision, template
+SELECT revision, template, default_purpose
 FROM iam.server_account_invitation_templates
 WHERE template_key = $1;
 `,
@@ -91,17 +97,24 @@ export const updateServerAccountInvitationTemplate = async (
 UPDATE iam.server_account_invitation_templates
 SET
   revision = revision + 1,
-  template = $3::jsonb,
-  updated_by = $4,
+  template = CASE
+    WHEN $3::boolean THEN $4::jsonb
+    WHEN template IS NOT NULL THEN jsonb_set(template, '{revision}', to_jsonb(revision + 1))
+    ELSE NULL
+  END,
+  default_purpose = COALESCE($5::text, default_purpose),
+  updated_by = $6,
   updated_at = NOW()
 WHERE template_key = $1
   AND revision = $2
-RETURNING revision, template;
+RETURNING revision, template, default_purpose;
 `,
       [
         ACCOUNT_INVITATION_TEMPLATE_KEY,
         input.expectedRevision,
+        input.template !== undefined,
         input.template ? JSON.stringify(input.template) : null,
+        input.defaultPurpose ?? null,
         resolveInstanceMutationActorId(input.actorId),
       ]
     )

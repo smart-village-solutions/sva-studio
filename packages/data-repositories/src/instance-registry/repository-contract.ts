@@ -93,7 +93,8 @@ export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & {
   readonly getServerAccountInvitationTemplate: () => Promise<ServerAccountInvitationTemplateState>;
   readonly updateServerAccountInvitationTemplate: (input: {
     expectedRevision: number;
-    template: AccountInvitationTemplate | null;
+    template?: AccountInvitationTemplate | null;
+    defaultPurpose?: import('@sva/core').AccountInvitationPurpose;
     actorId?: string;
   }) => Promise<ServerAccountInvitationTemplateState>;
   readonly updateInstanceKeycloakSecrets: (input: {

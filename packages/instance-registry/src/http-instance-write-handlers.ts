@@ -23,9 +23,11 @@ import type { InstanceRegistryService } from './service-types.js';
 const serverAccountInvitationTemplateMutationSchema = z
   .object({
     expectedRevision: z.number().int().nonnegative(),
-    template: updateInstanceSchema.shape.accountInvitationTemplate.unwrap(),
+    template: updateInstanceSchema.shape.accountInvitationTemplate.unwrap().optional(),
+    defaultPurpose: z.enum(['studio', 'ssf']).optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) => value.template !== undefined || value.defaultPurpose !== undefined);
 
 const findReservedOidcClientId = (
   input: Pick<CreateInstancePayload, 'authClientId' | 'tenantAdminClient'>,

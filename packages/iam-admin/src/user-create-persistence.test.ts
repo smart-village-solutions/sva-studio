@@ -163,6 +163,7 @@ describe('user-create-persistence', () => {
       'active',
       null,
       false,
+      'studio',
     ]);
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO iam.instance_memberships'),
@@ -222,6 +223,20 @@ describe('user-create-persistence', () => {
       );
     }
   );
+
+  it('persists the explicitly selected SSF invitation purpose', async () => {
+    const client = createInsertClient('account-1');
+    const persistence = createUserCreatePersistence(createDeps());
+    const result = await persistCreatedTestUser(persistence, client, {
+      payload: { invitationPurpose: 'ssf' },
+    });
+
+    expect(result.responseData.invitationPurpose).toBe('ssf');
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.accounts'),
+      expect.arrayContaining(['ssf'])
+    );
+  });
 
   it('reuses assignments prepared before the external account write', async () => {
     const deps = createDeps();

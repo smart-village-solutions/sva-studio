@@ -1,4 +1,5 @@
 import type { IamCreateUserResult } from '@sva/core';
+import { loadServerAccountInvitationTemplate } from '@sva/data-repositories/server';
 import {
   filterTenantTechnicalKeycloakRoleNames,
   resolveTenantTechnicalKeycloakRoleNames,
@@ -174,6 +175,7 @@ const finalizeCreateUserResult = async (input: {
       identityProvider: input.identityProvider,
       email: input.payload.email,
       keycloakSubject: input.responseData.keycloakSubject,
+      invitationPurpose: input.payload.invitationPurpose ?? 'studio',
     });
     return buildCreateUserResult(input.responseData, invitation);
   } catch (error) {
@@ -204,7 +206,14 @@ export const executeCreateUser = async (input: {
   identityProvider: IdentityProviderResolution;
   payload: CreateUserPayload;
 }): Promise<IamCreateUserResult> => {
-  const { actor, actorSubject, identityProvider, payload } = input;
+  const { actor, actorSubject, identityProvider } = input;
+  const payload = {
+    ...input.payload,
+    invitationPurpose:
+      input.payload.invitationPurpose ??
+      (await loadServerAccountInvitationTemplate()).defaultPurpose ??
+      'studio',
+  } as const;
   let createdExternalId: string | undefined;
 
   try {

@@ -16,6 +16,7 @@ describe('server account invitation template service', () => {
       revision: 3,
       effectiveTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 3 },
       source: 'sva_default',
+      defaultPurpose: 'studio',
     });
   });
 
@@ -39,6 +40,7 @@ describe('server account invitation template service', () => {
       revision: 5,
       effectiveTemplate: { ...template, revision: 5 },
       source: 'server',
+      defaultPurpose: 'studio',
     });
     expect(repository.updateServerAccountInvitationTemplate).toHaveBeenCalledWith({
       expectedRevision: 4,
@@ -62,6 +64,29 @@ describe('server account invitation template service', () => {
       revision: 6,
       effectiveTemplate: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 6 },
       source: 'sva_default',
+      defaultPurpose: 'studio',
+    });
+  });
+
+  it('updates the default purpose without replacing the text override', async () => {
+    const repository = {
+      updateServerAccountInvitationTemplate: vi.fn(async () => ({
+        revision: 7,
+        template: { ...DEFAULT_ACCOUNT_INVITATION_TEMPLATE, revision: 7 },
+        defaultPurpose: 'ssf' as const,
+      })),
+    };
+    await expect(
+      updateServerAccountInvitationTemplate({
+        repository,
+        expectedRevision: 6,
+        defaultPurpose: 'ssf',
+      })
+    ).resolves.toMatchObject({ defaultPurpose: 'ssf', source: 'server' });
+    expect(repository.updateServerAccountInvitationTemplate).toHaveBeenCalledWith({
+      expectedRevision: 6,
+      defaultPurpose: 'ssf',
+      actorId: undefined,
     });
   });
 });

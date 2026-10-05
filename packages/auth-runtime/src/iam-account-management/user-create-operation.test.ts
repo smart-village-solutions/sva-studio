@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   ensureManagedRealmRolesExist: vi.fn(),
   resolveIdentityProviderForInstance: vi.fn(),
   resolveAuthConfigForInstance: vi.fn(),
+  loadServerAccountInvitationTemplate: vi.fn(),
   readInstanceRegistryPluginTenantLifecycleRegistry: vi.fn(() => new Map()),
   persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => []),
   provisionMainserverUserCredentials: vi.fn(),
@@ -47,6 +48,11 @@ vi.mock('./shared.js', () => ({
 
 vi.mock('../config.js', () => ({
   resolveAuthConfigForInstance: state.resolveAuthConfigForInstance,
+}));
+
+vi.mock('@sva/data-repositories/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/data-repositories/server')>()),
+  loadServerAccountInvitationTemplate: state.loadServerAccountInvitationTemplate,
 }));
 
 vi.mock('../iam-instance-registry/plugin-activation-policy-snapshot.js', () => ({
@@ -91,6 +97,7 @@ describe('executeCreateUser', () => {
       redirectUri: 'https://tenant.example.test/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example.test/',
     });
+    state.loadServerAccountInvitationTemplate.mockResolvedValue({ revision: 0 });
     state.readInstanceRegistryPluginTenantLifecycleRegistry.mockReturnValue(new Map());
     state.persistPluginTenantLifecycleReconcileIntents.mockResolvedValue([]);
     state.provisionMainserverUserCredentials.mockResolvedValue(null);
@@ -125,6 +132,54 @@ describe('executeCreateUser', () => {
     );
     expect(state.accountCreateContribution).not.toHaveBeenCalled();
   }, 15_000);
+
+  it('stores the server default unless an authorized create choice overrides it', async () => {
+    state.loadServerAccountInvitationTemplate.mockResolvedValue({
+      revision: 2,
+      defaultPurpose: 'ssf',
+    });
+    const identityProvider = {
+      provider: {
+        createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
+        syncRoles: vi.fn(async () => undefined),
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+    const { executeCreateUser } = await import('./user-create-operation.js');
+    const base = {
+      actor: { instanceId: 'instance-1', actorAccountId: 'actor-1' },
+      actorSubject: 'kc-actor-1',
+      identityProvider,
+    };
+
+    await executeCreateUser({
+      ...base,
+      payload: { email: 'alice@example.com', roleIds: [], sendPasswordSetupEmail: false },
+    });
+    expect(state.persistCreatedUser).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ payload: expect.objectContaining({ invitationPurpose: 'ssf' }) })
+    );
+
+    await executeCreateUser({
+      ...base,
+      payload: {
+        email: 'bob@example.com',
+        roleIds: [],
+        invitationPurpose: 'studio',
+        sendPasswordSetupEmail: false,
+      },
+    });
+    expect(state.persistCreatedUser).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ payload: expect.objectContaining({ invitationPurpose: 'studio' }) })
+    );
+    expect(state.loadServerAccountInvitationTemplate).toHaveBeenCalledTimes(1);
+  });
 
   it('fails closed before the Keycloak write when the installed contribution is not ready', async () => {
     state.accountCreateContribution.mockRejectedValueOnce(
@@ -539,6 +594,7 @@ describe('executeCreateUser', () => {
         email: 'alice@example.com',
         firstName: 'Alice',
         lastName: 'Example',
+        invitationPurpose: 'studio',
         isTechnicalAccount: true,
         roleIds: [],
         sendPasswordSetupEmail: false,

@@ -1081,6 +1081,9 @@ Details offen.
   `System -> Templates` und die optionale Abweichung weiterhin an der
   Instanz an. Beide Ansichten verwenden denselben Editor und zeigen die
   wirksame Quelle.
+- Die systemweite Zielvorgabe für neue Einladungen liegt getrennt vom Mailtext
+  im bestehenden Serverdatensatz. Der bei der Nutzeranlage ausgewählte Zweck
+  `studio` oder `ssf` liegt am Account und bleibt beim Resend erhalten.
 - Auf dem Tenant-Host zeigt `Benutzer -> Einladungsvorlage` denselben Editor
   mit einer auf die Session-Instanz begrenzten API. `@sva/auth-runtime` prüft
   `iam.invitationTemplate.manage`; die Registry-Persistenz bleibt gemeinsam.
@@ -1088,6 +1091,10 @@ Details offen.
   den vorhandenen Tenant-Admin-Client das E-Mail-Theme und genau drei deutsche
   Realmwerte idempotent sicher. Erst ein exakter Readback erlaubt den Versand;
   es gibt dafür keinen globalen Projektionsstatus und keinen Hintergrundlauf.
+- Dieselbe Auth-Runtime wählt anhand dieses Zwecks den Studio-Client mit
+  Instanz-Callback oder den bereitgestellten `ssf-frontend`-Client mit der
+  installationsseitigen HTTPS-URI `/login`. Ein fehlender SSF-Client stoppt
+  nur die konkrete Einladung.
 - `sva-kern2` besitzt zusätzlich einen E-Mail-Typ. Keycloak bleibt Eigentümer
   von Action-Token, Ablaufprüfung, Rendering und SMTP-Versand; Studio erhält
   den Passwortlink nie.

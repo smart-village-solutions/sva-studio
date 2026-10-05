@@ -150,6 +150,8 @@ export function NewsDetailBasisTab({
                 ]
           }
           onChange={onActingPrincipalTypeChange}
+          contextOptions={mode === 'create' ? principalControl?.contextOptions : undefined}
+          onContextChange={mode === 'create' ? principalControl?.onContextChange : undefined}
         />
 
         {mode === 'edit' ? (

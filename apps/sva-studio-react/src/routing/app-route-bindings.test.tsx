@@ -3,6 +3,10 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  MainserverPrincipalControl,
+  type MainserverPrincipalControlModel,
+} from '@sva/studio-ui-react';
 
 const routeState = vi.hoisted(() => ({
   params: {} as Record<string, unknown>,
@@ -10,7 +14,13 @@ const routeState = vi.hoisted(() => ({
   normalizeIamTab: vi.fn((tab: unknown) => `iam:${String(tab ?? '')}`),
   normalizeOrganizationDetailTab: vi.fn((tab: unknown) => `organization:${String(tab ?? '')}`),
   normalizeRoleDetailTab: vi.fn((tab: unknown) => `role:${String(tab ?? '')}`),
-  authUser: null as null | { id: string; displayName?: string; name?: string; instanceId?: string },
+  authUser: null as null | {
+    id: string;
+    displayName?: string;
+    name?: string;
+    instanceId?: string;
+    roles?: string[];
+  },
   organizationContext: {
     activeOrganizationId: undefined as string | undefined,
     organizations: [] as Array<{
@@ -26,6 +36,8 @@ const routeState = vi.hoisted(() => ({
   organizationContextIsLoading: false,
   organizationContextIsUpdating: false,
   organizationContextError: null as null | Error,
+  switchOrganization: vi.fn(),
+  refetchOrganizationContext: vi.fn(),
   enabledMainserverMutationActions: [] as string[],
   mutationCapabilitiesError: null as null | { code: string },
   mutationCapabilitiesIsLoading: false,
@@ -149,6 +161,8 @@ vi.mock('../hooks/use-organization-context', () => ({
     isLoading: routeState.organizationContextIsLoading,
     isUpdating: routeState.organizationContextIsUpdating,
     error: routeState.organizationContextError,
+    switchOrganization: routeState.switchOrganization,
+    refetch: routeState.refetchOrganizationContext,
   }),
 }));
 
@@ -380,16 +394,29 @@ vi.mock('@sva/plugin-news', () => ({
     principalControl,
   }: {
     mode: 'create' | 'edit';
-    principalControl?:
-      | { kind: 'fixed'; value: 'organization' | 'user'; label: string }
-      | {
-          kind: 'selectable';
-          value: 'organization' | 'user';
-          options: ReadonlyArray<{ value: 'organization' | 'user'; label: string }>;
-        };
+    principalControl?: MainserverPrincipalControlModel;
   }) =>
     mode === 'create' ? (
       <div data-testid="news-create-page" data-principal-value={principalControl?.value}>
+        <input aria-label="News draft" />
+        <MainserverPrincipalControl
+          id="news-acting-principal"
+          label="Erstellen als"
+          value={principalControl?.value ?? 'user'}
+          options={
+            principalControl?.kind === 'selectable'
+              ? principalControl.options
+              : [
+                  {
+                    value: principalControl?.value ?? 'user',
+                    label: principalControl?.kind === 'fixed' ? principalControl.label : 'User',
+                  },
+                ]
+          }
+          onChange={vi.fn()}
+          contextOptions={principalControl?.contextOptions}
+          onContextChange={principalControl?.onContextChange}
+        />
         <span data-testid="news-create-principal-kind">{principalControl?.kind ?? 'none'}</span>
         <span data-testid="news-create-principal-value">{principalControl?.value ?? ''}</span>
         <span data-testid="news-create-principal-label">
@@ -547,6 +574,8 @@ describe('appRouteBindings', () => {
     routeState.organizationContextIsLoading = false;
     routeState.organizationContextIsUpdating = false;
     routeState.organizationContextError = null;
+    routeState.switchOrganization.mockReset();
+    routeState.refetchOrganizationContext.mockReset();
     routeState.enabledMainserverMutationActions = [];
     routeState.mutationCapabilitiesError = null;
     routeState.mutationCapabilitiesIsLoading = false;
@@ -768,6 +797,62 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('news-create-principal-options').textContent).toBe(
       'Redaktion Musterhausen|Philipp Wilimzig'
     );
+  });
+
+  it('switches a system admin to a member organization on News create without losing the draft', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Svs Admin',
+      roles: ['system_admin'],
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: undefined,
+      organizations: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'guben',
+          displayName: 'Stadt Guben',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const view = render(<appRouteBindings.newsEditor />);
+    const draft = screen.getByRole('textbox', { name: 'News draft' }) as HTMLInputElement;
+    fireEvent.change(draft, { target: { value: 'Unveröffentlichter Entwurf' } });
+    expect(screen.getAllByLabelText('Erstellen als')).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('Erstellen als'), {
+      target: { value: 'organization:org-1' },
+    });
+    expect(routeState.switchOrganization).toHaveBeenCalledWith('org-1');
+
+    routeState.organizationContextIsUpdating = true;
+    view.rerender(<appRouteBindings.newsEditor />);
+    expect(screen.getByRole('textbox', { name: 'News draft' })).toBe(draft);
+    expect(draft.value).toBe('Unveröffentlichter Entwurf');
+    expect(draft.closest('fieldset')?.disabled).toBe(true);
+
+    routeState.organizationContextIsUpdating = false;
+    routeState.organizationContextError = new Error('failed');
+    view.rerender(<appRouteBindings.newsEditor />);
+    expect(screen.getByRole('textbox', { name: 'News draft' })).toBe(draft);
+    expect(draft.closest('fieldset')?.disabled).toBe(true);
+    expect(screen.getByLabelText('Erstellen als').matches(':disabled')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'shared.errorFallback.retry' }));
+    expect(routeState.refetchOrganizationContext).toHaveBeenCalledTimes(1);
+
+    routeState.organizationContextError = null;
+    routeState.organizationContext.activeOrganizationId = 'org-1';
+    view.rerender(<appRouteBindings.newsEditor />);
+    expect(screen.getByRole('textbox', { name: 'News draft' })).toBe(draft);
+    expect(draft.value).toBe('Unveröffentlichter Entwurf');
+    expect(draft.closest('fieldset')?.disabled).toBe(false);
+    expect(screen.getByTestId('news-create-principal-value').textContent).toBe('organization');
+    expect(screen.getByTestId('news-create-principal-label').textContent).toBe('Stadt Guben');
   });
 
   it('stays stable with an authenticated user while the org context is still empty', async () => {

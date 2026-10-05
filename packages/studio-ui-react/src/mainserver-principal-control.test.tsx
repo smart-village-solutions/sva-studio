@@ -51,6 +51,29 @@ describe('MainserverPrincipalControl', () => {
     expect(screen.queryByRole('textbox', { name: 'Datenanbieter' })).toBeNull();
   });
 
+  it('uses the same author selector to choose a member organization', () => {
+    const onChange = vi.fn();
+    const onContextChange = vi.fn();
+    render(
+      <MainserverPrincipalControl
+        id="principal"
+        label="Erstellen als"
+        value="user"
+        options={[{ value: 'user', label: 'Svs Admin' }]}
+        contextOptions={[{ value: 'organization:org-1', label: 'Stadt Guben' }]}
+        onChange={onChange}
+        onContextChange={onContextChange}
+      />
+    );
+
+    expect(screen.getAllByLabelText('Erstellen als')).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('Erstellen als'), {
+      target: { value: 'organization:org-1' },
+    });
+    expect(onContextChange).toHaveBeenCalledWith('organization:org-1');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('shows an explicit fallback when the provider has no stable identity yet', () => {
     render(
       <MainserverPrincipalControl

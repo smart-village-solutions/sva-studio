@@ -20,6 +20,12 @@ Schulden auf IST-Basis.
 
 ## Aktueller Stand
 
+### Hotfix auf gemeinsamem Staging
+
+- Risiko: Staging enthält bereits Beta-Daten oder einen neueren Schema-/Config-Stand, den ein Prod-basierter Hotfix nicht lesen kann. Ein Image-Rollback setzt Daten nicht zurück.
+- Maßnahme: Vollständigen Live→Hotfix-Diff und angewendete Ledgerstände vor dem Wechsel lesen, Config-Revision und Secret-Referenzen prüfen, anschließend Candidate, Backup, One-shots und neue Parität nur über den geschützten Promote-Pfad ausführen. Bei fehlendem Kompatibilitätsnachweis STOP vor Mutation; der Rückwechsel benötigt dieselben Prüfungen und eine neue Parität.
+- Restrisiko: Fachliche Datenkompatibilität kann nicht allein aus unveränderten Migrationsdateien abgeleitet werden. Jeder neue Hotfix-HEAD benötigt eine erneute read-only Probe und mutierende Staging-Verifikation vor Production.
+
 ### Priorisierte Risiken
 
 1. Drift zwischen Intermediate-SSR-Output und finaler Runtime

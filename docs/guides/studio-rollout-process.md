@@ -65,6 +65,18 @@ Ein Push nach `main` startet [Build](../../.github/workflows/build.yml):
 
 Dev ist die schnelle Integrationsstufe. Der fehlende Datenbank-Backup-Schritt ist bewusst auf Dev begrenzt und darf nicht auf Staging oder Production übertragen werden.
 
+### Versioniertes Release und Prod-basierter Hotfix
+
+Ein stabiles `studio-vX.Y.Z`-Tag bezeichnet den zuvor anhand von Live-Digest, OCI-Revision und Config-Revision belegten Production-Commit. Ein Beta-Tag ist ein Pre-release und belegt nur den tatsächlich in Staging geprüften Digest. GitHub-Release-Notes und der sichtbare Studio-Changelog werden aus den im jeweiligen Image enthaltenen nutzerrelevanten Einträgen erstellt und vor Veröffentlichung redaktionell geprüft. Ein Release-Text allein ist kein Deploy-Nachweis.
+
+Ein Hotfix-Zweig `hotfix/...` beginnt beim belegten stabilen Production-Tag. Vor dem Build wird der vollständige Diff zum Production-Tag geprüft; noch nicht ausgelieferte `main`-Features dürfen nicht in den Hotfix gelangen. Der vorhandene `Build` wird auf dem aktuellen `main`-Controller manuell mit `mode=hotfix`, `hotfix_base_tag`, vollständigem `hotfix_ref` und exaktem `hotfix_sha` gestartet. Der Controller prüft den unveränderten Remote-Ref und die Abstammung vom annotierten Tag. Alle drei Images werden mit dem Hotfix-Quell-SHA gebaut; ihre unveränderlichen Digests und der erfolgreiche Verifikationslauf werden als Build-Evidenz gebunden. Der Hotfix-Build verschiebt keinen `latest`-Alias und startet keinen Dev-Promote. Vor dem Build muss auch der alte Quellstand die releasegebundene Changelog-Auswahl im gebauten Artefakt beherrschen; nötigenfalls gehört die kleinste Korrektur auf den Hotfix-Zweig.
+
+Der vollständige [App-E2E-Lauf](../../.github/workflows/app-e2e.yml) wird vom aktuellen `main`-Controller mit `mode=hotfix` und denselben Tag-, Ref- und SHA-Eingaben gestartet. Für Staging benötigt `Promote` den exakten `hotfix_build_run_id` und `hotfix_e2e_run_id`. Beide Runs müssen terminal erfolgreich sein und Controller-SHA, Quell-SHA, Ref, Tag und Run-Versuch belegen. Ein gewöhnlicher manueller, Nightly- oder PR-Lauf ist kein Ersatz.
+
+Für den Wechsel eines gemeinsam genutzten Staging von einer neueren Beta auf den Prod-basierten Hotfix gilt `source_kind=hotfix`, `line_switch=beta-to-hotfix`, `change_base=<Production-Basistag>`, `change_head=<Hotfix-SHA>` und beide One-shot-Modi `run`. Vor jeder Mutation müssen die tatsächliche Staging-Live-Revision und Production-Baseline, die bisherige Beta-Parität, der vollständige direkte Live→Ziel-Diff, die gebundene Config-Revision, die benötigten Secret-Referenzen und die Vorwärtskompatibilität des vorhandenen Schemas nachgewiesen sein. Ein neuerer Migrationsledger allein reicht nicht. Bei unklarer Kompatibilität gilt **STOP**. Der normale Candidate-Preflight, Backup, One-shots, Postconditions, Konvergenz, Smokes und neue Staging-Parität bleiben verpflichtend.
+
+Production erhält ausschließlich denselben in Staging mutierend geprüften Hotfix-Digest durch den geschützten `Promote` mit `source_kind=hotfix` und Production-Freigabe. Vorher werden Live-Baseline und Staging-Parität erneut geprüft. Ein späterer Rückwechsel auf den bisherigen Beta-Digest verwendet `source_kind=main`, `line_switch=hotfix-to-beta`, den vollständigen direkten Diff, erneute Schema-/Config-Prüfung und einen neuen mutierenden Staging-Lauf; die alte Beta-Parität wird nicht wiederverwendet. Der Hotfix und sein ursprünglicher Changelog-Eintrag werden anschließend auf `main` übernommen, damit das nächste reguläre Release die Änderung nicht erneut ankündigt.
+
 ### Cutover des Tenant-Provisioning-Vertrags auf Snapshot 3.0
 
 Der Provisioner läuft in allen drei Umgebungen mit genau einer Replik und wird

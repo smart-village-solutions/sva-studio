@@ -47,6 +47,8 @@ export type MainE2EVerifierDependencies = Readonly<{
 
 const expectedWorkflowPath = '.github/workflows/app-e2e.yml';
 const shaPattern = /^[0-9a-f]{40}$/u;
+const hotfixRefPattern = /^refs\/heads\/hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const stableTagPattern = /^studio-v\d+\.\d+\.\d+$/u;
 
 const contractError = (code: PromoteErrorCode): PromoteContractError =>
   new PromoteContractError(
@@ -129,6 +131,36 @@ const matchesCanonicalEvidence = (
   evidence.result === 'success' &&
   evidence.testOutcome === 'success' &&
   evidence.evidenceClass === 'canonical-main' &&
+  evidence.subject.kind === 'local-app-service-stack' &&
+  evidence.subject.containerArtifactVerified === false;
+
+export type HotfixE2EExpectation = Readonly<{
+  sourceSha: string;
+  controllerSha: string;
+  baseTag: string;
+  branchRef: string;
+  runId: number;
+}>;
+
+const matchesControlledHotfixEvidence = (
+  evidence: AppE2EEvidence,
+  run: Required<MainE2EWorkflowRun>,
+  expected: HotfixE2EExpectation
+): boolean =>
+  evidence.workflow === 'App E2E' &&
+  evidence.event === 'workflow_dispatch' &&
+  evidence.ref === 'refs/heads/main' &&
+  evidence.branch === 'main' &&
+  evidence.headSha === expected.sourceSha &&
+  evidence.run.id === String(run.id) &&
+  evidence.run.attempt === run.run_attempt &&
+  evidence.result === 'success' &&
+  evidence.testOutcome === 'success' &&
+  evidence.evidenceClass === 'controlled-hotfix' &&
+  evidence.hotfix?.controllerSha === expected.controllerSha &&
+  evidence.hotfix.baseTag === expected.baseTag &&
+  evidence.hotfix.ref === expected.branchRef &&
+  evidence.hotfix.sourceSha === expected.sourceSha &&
   evidence.subject.kind === 'local-app-service-stack' &&
   evidence.subject.containerArtifactVerified === false;
 
@@ -217,6 +249,44 @@ export const verifyMainE2EEvidence = (
   return evidence;
 };
 
+export const verifyHotfixE2EEvidence = (
+  expected: HotfixE2EExpectation,
+  dependencies: MainE2EVerifierDependencies
+): AppE2EEvidence => {
+  if (!shaPattern.test(expected.sourceSha) || !shaPattern.test(expected.controllerSha) ||
+      !stableTagPattern.test(expected.baseTag) || !hotfixRefPattern.test(expected.branchRef) ||
+      !Number.isSafeInteger(expected.runId) || expected.runId < 1) {
+    throw contractError('PROMOTE_MAIN_E2E_REJECTED');
+  }
+  const run = readLookup(() => dependencies.readWorkflowRun(expected.runId));
+  if (!hasValidRunIdentity(run) || run.path !== expectedWorkflowPath ||
+      run.event !== 'workflow_dispatch' || run.head_branch !== 'main' ||
+      run.head_sha !== expected.controllerSha || !isTerminalSuccessfulRun(run)) {
+    throw contractError('PROMOTE_MAIN_E2E_REJECTED');
+  }
+  const selected = run as Required<MainE2EWorkflowRun>;
+  const artifacts = listPages((page) => {
+    const response = readLookup(() => dependencies.readRunArtifacts(expected.runId, page));
+    return { items: response.artifacts ?? [], total: response.total_count };
+  });
+  const artifact = selectEvidenceArtifact(artifacts, selected);
+  const archive = readLookup(() => dependencies.readArtifactArchive(artifact.id));
+  const evidenceFile = selectEvidenceJsonFile(archive.entries, selected);
+  let evidence: AppE2EEvidence | null;
+  try {
+    evidence = parseAppE2EEvidence(JSON.parse(readLookup(() => archive.readText(evidenceFile))));
+  } catch {
+    throw contractError('PROMOTE_MAIN_E2E_REJECTED');
+  }
+  if (!evidence || !matchesControlledHotfixEvidence(evidence, selected, expected))
+    throw contractError('PROMOTE_MAIN_E2E_REJECTED');
+  const current = readLookup(() => dependencies.readWorkflowRun(expected.runId));
+  if (!isCurrentSuccessfulSelection(current, selected, expected.controllerSha) ||
+      current.path !== expectedWorkflowPath || current.event !== 'workflow_dispatch' ||
+      current.head_branch !== 'main') throw contractError('PROMOTE_MAIN_E2E_NOT_READY');
+  return evidence;
+};
+
 const required = (value: string | undefined): string => {
   if (!value?.trim()) throw contractError('PROMOTE_MAIN_E2E_LOOKUP_FAILED');
   return value;
@@ -292,14 +362,18 @@ export const runMainE2EPreflight = (
 ): AppE2EEvidence | null => {
   try {
     const expectedHeadSha = required(env.EXPECTED_CHANGE_HEAD);
-    const evidence = verifyMainE2EEvidence(
-      expectedHeadSha,
-      dependenciesFactory(
-        required(env.GITHUB_REPOSITORY),
-        required(env.GITHUB_TOKEN),
-        expectedHeadSha
-      )
+    const dependencies = dependenciesFactory(
+      required(env.GITHUB_REPOSITORY), required(env.GITHUB_TOKEN), expectedHeadSha
     );
+    const evidence = env.SOURCE_KIND === 'hotfix'
+      ? verifyHotfixE2EEvidence({
+          sourceSha: expectedHeadSha,
+          controllerSha: required(env.EXPECTED_CONTROLLER_SHA),
+          baseTag: required(env.HOTFIX_BASE_TAG),
+          branchRef: required(env.HOTFIX_REF),
+          runId: Number(required(env.HOTFIX_E2E_RUN_ID)),
+        }, dependencies)
+      : verifyMainE2EEvidence(expectedHeadSha, dependencies);
     if (env.GITHUB_OUTPUT)
       appendFileSync(env.GITHUB_OUTPUT, `e2e_attestation=${JSON.stringify(evidence)}\n`, 'utf8');
     return evidence;

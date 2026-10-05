@@ -11,7 +11,13 @@ export type AppE2EEvidence = Readonly<{
   run: Readonly<{ id: string; attempt: number }>;
   result: 'success' | 'failure' | 'cancelled';
   testOutcome: 'success' | 'failure' | 'cancelled' | 'not-run';
-  evidenceClass: 'canonical-main' | 'diagnostic';
+  evidenceClass: 'canonical-main' | 'controlled-hotfix' | 'diagnostic';
+  hotfix?: Readonly<{
+    controllerSha: string;
+    baseTag: string;
+    ref: string;
+    sourceSha: string;
+  }>;
   subject: Readonly<{
     kind: 'local-app-service-stack';
     app: 'sva-studio-react';
@@ -23,6 +29,8 @@ export type AppE2EEvidence = Readonly<{
 const shaPattern = /^[0-9a-f]{40}$/u;
 const refPattern = /^refs\/(?:heads|tags)\/[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
 const branchPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
+const hotfixBranchPattern = /^refs\/heads\/hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const stableTagPattern = /^studio-v\d+\.\d+\.\d+$/u;
 
 const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
   const actual = Object.keys(value).sort();
@@ -123,10 +131,19 @@ export const buildAppE2EEvidence = (input: {
   runAttempt: number;
   result: string;
   testOutcome: string;
+  hotfix?: AppE2EEvidence['hotfix'];
 }): AppE2EEvidence => {
   validateSourceIdentity(input);
   validateRunIdentity(input.runId, input.runAttempt);
   const outcome = normalizeOutcome(input.result, input.testOutcome);
+  if (input.hotfix && (
+    input.event !== 'workflow_dispatch' || input.ref !== 'refs/heads/main' ||
+    input.branch !== 'main' || input.headSha !== input.hotfix.sourceSha ||
+    input.hotfix.controllerSha === input.hotfix.sourceSha ||
+    !shaPattern.test(input.hotfix.controllerSha) ||
+    !stableTagPattern.test(input.hotfix.baseTag) ||
+    !hotfixBranchPattern.test(input.hotfix.ref)
+  )) throw new Error('Ungültige kontrollierte Hotfix-E2E-Quelle.');
   const canonicalMain =
     input.event === 'push' && input.ref === 'refs/heads/main' && input.branch === 'main';
   return {
@@ -139,7 +156,8 @@ export const buildAppE2EEvidence = (input: {
     run: { id: input.runId, attempt: input.runAttempt },
     result: outcome.result,
     testOutcome: outcome.testOutcome,
-    evidenceClass: canonicalMain ? 'canonical-main' : 'diagnostic',
+    evidenceClass: input.hotfix ? 'controlled-hotfix' : canonicalMain ? 'canonical-main' : 'diagnostic',
+    ...(input.hotfix ? { hotfix: input.hotfix } : {}),
     subject: {
       kind: 'local-app-service-stack',
       app: 'sva-studio-react',
@@ -164,6 +182,7 @@ export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
       'subject',
       'testOutcome',
       'workflow',
+      ...(Object.hasOwn(value, 'hotfix') ? ['hotfix'] : []),
     ])
   )
     return null;
@@ -172,10 +191,16 @@ export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
     candidate.schemaVersion !== 1 ||
     !hasValidRun(candidate.run) ||
     !hasValidSubject(candidate.subject) ||
-    !['canonical-main', 'diagnostic'].includes(candidate.evidenceClass ?? '')
+    !['canonical-main', 'controlled-hotfix', 'diagnostic'].includes(candidate.evidenceClass ?? '')
   )
     return null;
   if (!hasValidPrimitiveFields(candidate)) return null;
+  const hotfix = candidate.hotfix;
+  if (hotfix !== undefined && (
+    !isRecord(hotfix) || !hasExactKeys(hotfix, ['baseTag', 'controllerSha', 'ref', 'sourceSha']) ||
+    typeof hotfix.baseTag !== 'string' || typeof hotfix.controllerSha !== 'string' ||
+    typeof hotfix.ref !== 'string' || typeof hotfix.sourceSha !== 'string'
+  )) return null;
   try {
     const evidence = buildAppE2EEvidence({
       workflow: candidate.workflow,
@@ -187,6 +212,7 @@ export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
       runAttempt: candidate.run.attempt,
       result: candidate.result,
       testOutcome: candidate.testOutcome === 'not-run' ? '' : candidate.testOutcome,
+      ...(hotfix ? { hotfix: hotfix as AppE2EEvidence['hotfix'] } : {}),
     });
     return evidence.evidenceClass === candidate.evidenceClass &&
       evidence.testOutcome === candidate.testOutcome
@@ -200,16 +226,26 @@ export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
 export const writeAppE2EEvidenceFromEnvironment = (
   env: NodeJS.ProcessEnv = process.env
 ): string => {
+  const controlledHotfix = env.HOTFIX_MODE === 'hotfix';
+  if (controlledHotfix && env.GITHUB_WORKFLOW_SHA !== env.GITHUB_SHA) {
+    throw new Error('Hotfix-E2E-Controller stimmt nicht mit dem Main-HEAD überein.');
+  }
   const evidence = buildAppE2EEvidence({
     workflow: env.GITHUB_WORKFLOW ?? '',
     event: env.GITHUB_EVENT_NAME ?? '',
     ref: env.GITHUB_REF ?? '',
     branch: env.GITHUB_REF_NAME ?? '',
-    headSha: env.GITHUB_SHA ?? '',
+    headSha: controlledHotfix ? env.HOTFIX_SOURCE_SHA ?? '' : env.GITHUB_SHA ?? '',
     runId: env.GITHUB_RUN_ID ?? '',
     runAttempt: Number(env.GITHUB_RUN_ATTEMPT),
     result: env.APP_E2E_RESULT ?? '',
     testOutcome: env.APP_E2E_TEST_OUTCOME ?? '',
+    ...(controlledHotfix ? { hotfix: {
+      controllerSha: env.GITHUB_SHA ?? '',
+      baseTag: env.HOTFIX_BASE_TAG ?? '',
+      ref: env.HOTFIX_REF ?? '',
+      sourceSha: env.HOTFIX_SOURCE_SHA ?? '',
+    } } : {}),
   });
   const runnerTemp = env.RUNNER_TEMP;
   if (!runnerTemp) throw new Error('RUNNER_TEMP fehlt.');

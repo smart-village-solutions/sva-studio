@@ -52,6 +52,7 @@ Architekturprinzipien auf IST-Basis.
 - IAM-Server-Module folgen der Package-Zielarchitektur: Auth-Runtime, IAM-Core, IAM-Admin, IAM-Governance und Instance-Registry haben getrennte Ownership.
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
+- Versionierte Studio-Releases bleiben im bestehenden Build-/Promote-Pfad: `main` integriert über Dev, während ein Prod-basierter Hotfix einen exakt validierten alten Quell-SHA mit aktuellem Main-Controller baut und testet. Git-Tag und GitHub-Release sind menschliche Metadaten; Digest und Live-Readback sind die Deploy-Identität (ADR-066).
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API. Die framework-agnostische Rich-Text-Allowlist wird über den browser-sicheren Subpfad `@sva/core/rich-text-html-policy` geteilt; Browser und Server wenden sie mit laufzeitgeeigneten Sanitizern an.
 - Medienmanagement ist eine hostseitige Querschnitts-Capability: Domänenvertrag in `@sva/media`, Persistenz in `@sva/data-repositories`, Runtime in `@sva/auth-runtime`, Host-UI unter `/admin/media`, Plugin-Bindings nur über `@sva/plugin-sdk` und `@sva/studio-ui-react`

@@ -31,6 +31,30 @@ on:
       change_head:
         description: 'Git head ref represented by the promoted image'
         required: true
+      source_kind:
+        description: 'Validated image source class'
+        required: true
+        default: main
+        type: choice
+        options: [main, hotfix]
+      hotfix_base_tag:
+        description: 'Verified Production base tag for a hotfix or Beta return'
+        type: string
+      hotfix_ref:
+        description: 'refs/heads/hotfix/... for a hotfix or Beta return'
+        type: string
+      hotfix_e2e_run_id:
+        description: 'Controlled App E2E run ID for a hotfix'
+        type: string
+      hotfix_build_run_id:
+        description: 'Controlled Build run ID for a hotfix'
+        type: string
+      line_switch:
+        description: 'Explicit Staging line switch'
+        required: true
+        default: none
+        type: choice
+        options: [none, beta-to-hotfix, hotfix-to-beta]
       promote_mode:
         description: 'Promote mode'
         required: true
@@ -63,6 +87,30 @@ on:
       change_head:
         required: true
         type: string
+      source_kind:
+        required: false
+        type: string
+        default: main
+      hotfix_base_tag:
+        required: false
+        type: string
+        default: ''
+      hotfix_ref:
+        required: false
+        type: string
+        default: ''
+      hotfix_e2e_run_id:
+        required: false
+        type: string
+        default: ''
+      hotfix_build_run_id:
+        required: false
+        type: string
+        default: ''
+      line_switch:
+        required: false
+        type: string
+        default: none
       promote_mode:
         required: false
         type: string
@@ -123,8 +171,14 @@ jobs:
           IMAGE_INPUT: ${{ inputs.image_ref }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          LINE_SWITCH: ${{ inputs.line_switch }}
           CHANGE_BASE: ${{ inputs.change_base }}
           CHANGE_HEAD: ${{ inputs.change_head }}
+          SOURCE_KIND: ${{ inputs.source_kind }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_E2E_RUN_ID: ${{ inputs.hotfix_e2e_run_id }}
+          HOTFIX_BUILD_RUN_ID: ${{ inputs.hotfix_build_run_id }}
           PROMOTE_MODE: ${{ inputs.promote_mode }}
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
         run: |
@@ -166,6 +220,42 @@ jobs:
               exit 1
               ;;
           esac
+
+          case "${SOURCE_KIND}:${LINE_SWITCH}" in
+            main:none|main:hotfix-to-beta|hotfix:none|hotfix:beta-to-hotfix) ;;
+            *)
+              record_input_failure
+              exit 1
+              ;;
+          esac
+          if [ "${SOURCE_KIND}" = hotfix ] || [ "${LINE_SWITCH}" = hotfix-to-beta ]; then
+            if [[ ! "${HOTFIX_BASE_TAG}" =~ ^studio-v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+               [[ ! "${HOTFIX_REF}" =~ ^refs/heads/hotfix/[a-z0-9]+(-[a-z0-9]+)*$ ]] ||
+               [ "${CHANGE_BASE}" != "${HOTFIX_BASE_TAG}" ]; then
+              record_input_failure
+              exit 1
+            fi
+          fi
+          if [ "${SOURCE_KIND}" = hotfix ]; then
+            if [ "${ENVIRONMENT}" = dev ] ||
+               { [ "${ENVIRONMENT}" = staging ] &&
+                 { [[ ! "${HOTFIX_E2E_RUN_ID}" =~ ^[1-9][0-9]*$ ]] ||
+                   [[ ! "${HOTFIX_BUILD_RUN_ID}" =~ ^[1-9][0-9]*$ ]]; }; }; then
+              record_input_failure
+              exit 1
+            fi
+          elif [ "${LINE_SWITCH}" = none ] &&
+               { [ -n "${HOTFIX_BASE_TAG}" ] || [ -n "${HOTFIX_REF}" ] ||
+                 [ -n "${HOTFIX_E2E_RUN_ID}" ] || [ -n "${HOTFIX_BUILD_RUN_ID}" ]; }; then
+            record_input_failure
+            exit 1
+          fi
+          if [ "${LINE_SWITCH}" != none ] &&
+             { [ "${ENVIRONMENT}" != staging ] ||
+               [ "${MIGRATION_MODE}" != run ] || [ "${BOOTSTRAP_MODE}" != run ]; }; then
+            record_input_failure
+            exit 1
+          fi
 
           node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-mode.ts" "${ENVIRONMENT}" --mode-only
 
@@ -216,6 +306,17 @@ jobs:
             echo "head_sha=${head}"
           } >> "${GITHUB_OUTPUT}"
 
+      - name: validate controlled hotfix source ref
+        if: ${{ inputs.source_kind == 'hotfix' }}
+        id: hotfix_source
+        working-directory: .promote-controller
+        env:
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_SHA: ${{ steps.source_contract.outputs.head_sha }}
+        run: node --experimental-strip-types scripts/ci/hotfix-source-contract.ts
+
       - name: setup pnpm workspace for promoted source
         id: workspace_setup
         uses: ./.promote-controller/.github/actions/setup-pnpm-workspace
@@ -247,14 +348,31 @@ jobs:
             exit 1
           fi
 
-      - name: require canonical Main App E2E evidence
+      - name: require source-bound App E2E evidence
         id: main_e2e_evidence
         if: ${{ inputs.environment == 'staging' }}
         env:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
+          EXPECTED_CONTROLLER_SHA: ${{ github.workflow_sha }}
+          SOURCE_KIND: ${{ inputs.source_kind }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_E2E_RUN_ID: ${{ inputs.hotfix_e2e_run_id }}
           GITHUB_TOKEN: ${{ github.token }}
           PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
         run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-main-e2e-evidence.ts"
+
+      - name: require source-bound controlled Build evidence
+        if: ${{ inputs.environment == 'staging' && inputs.source_kind == 'hotfix' }}
+        env:
+          EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
+          EXPECTED_CONTROLLER_SHA: ${{ github.workflow_sha }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_BUILD_RUN_ID: ${{ inputs.hotfix_build_run_id }}
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/hotfix-build-evidence.ts" verify
 
       - name: build authoritative remote config
         id: remote_config
@@ -326,6 +444,18 @@ jobs:
             exit 1
           fi
 
+      - name: capture live Production baseline for controlled hotfix
+        id: prod_live_base
+        if: ${{ inputs.source_kind == 'hotfix' && inputs.environment == 'staging' }}
+        env:
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
+          GITHUB_RUN_ID: ${{ github.run_id }}-prod-base
+        run: |
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts" prod; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID staging source-contract
+            exit 1
+          fi
+
       - name: validate promote mode and live revision
         id: promote_mode
         env:
@@ -342,10 +472,32 @@ jobs:
             --declared-base "${{ steps.source_contract.outputs.base_sha }}" \
             --head "${{ steps.source_contract.outputs.head_sha }}" \
             --live-image "${{ steps.previous_live_image.outputs.previous_live_image }}" \
-            --environment "${{ inputs.environment }}"; then
+            --environment "${{ inputs.environment }}" \
+            --source-kind "${{ inputs.source_kind }}" \
+            --line-switch "${{ inputs.line_switch }}" \
+            --live-config-revision "${{ steps.previous_live_image.outputs.previous_config_revision }}" \
+            --target-config-revision "${{ steps.remote_config.outputs.config_revision }}" \
+            --prod-live-image "${{ steps.prod_live_base.outputs.previous_live_image }}"; then
             node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
             exit 1
           fi
+
+      - name: invalidate and recheck previous Staging parity before a line switch
+        if: ${{ inputs.line_switch != 'none' }}
+        id: previous_line_parity
+        env:
+          PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
+          EXPECTED_CHANGE_HEAD: ${{ steps.deployment_base.outputs.base_sha }}
+          EXPECTED_SOURCE_KIND: ${{ inputs.line_switch == 'beta-to-hotfix' && 'main' || 'hotfix' }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+          FORCE_STAGING_PARITY: 'true'
+        run: |
+          set -euo pipefail
+          export DEPLOY_IMAGE_REF="${PREVIOUS_LIVE_IMAGE}"
+          export DEPLOY_IMAGE_DIGEST="${PREVIOUS_LIVE_IMAGE##*@}"
+          pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval
@@ -355,6 +507,7 @@ jobs:
           CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
+          LINE_SWITCH: ${{ inputs.line_switch }}
         run: |
           set -euo pipefail
 
@@ -363,11 +516,18 @@ jobs:
 
           migration_executor_configured=true
           bootstrap_executor_configured=true
+          gate_script=scripts/ci/promote-deploy-gates.ts
+          diff_mode_args=()
+          if [ "${LINE_SWITCH}" != none ]; then
+            gate_script="${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-deploy-gates.ts"
+            diff_mode_args=(--diff-mode direct)
+          fi
 
           echo "Evaluating deploy gates against ${BASE_REF}..${HEAD_REF}"
-          if ! pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
+          if ! pnpm exec tsx "${gate_script}" \
             --base "${BASE_REF}" \
             --head "${HEAD_REF}" \
+            "${diff_mode_args[@]}" \
             --environment "${ENVIRONMENT}" \
             --migration-mode "${MIGRATION_MODE}" \
             --bootstrap-mode "${BOOTSTRAP_MODE}" \
@@ -413,6 +573,10 @@ jobs:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           FORCE_STAGING_PARITY: ${{ inputs.promote_mode == 'recovery' }}
+          EXPECTED_SOURCE_KIND: ${{ inputs.source_kind }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          EXPECTED_CONTROLLER_SHA: ${{ github.workflow_sha }}
         run: |
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"; then
             exit 1
@@ -644,6 +808,10 @@ jobs:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           CHANGE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
           MAIN_E2E_ATTESTATION: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
+          SOURCE_KIND: ${{ inputs.source_kind }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          EXPECTED_CONTROLLER_SHA: ${{ github.workflow_sha }}
           STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
         run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-staging-promote-evidence.ts"
 

@@ -247,6 +247,53 @@ describe('staging parity evidence', () => {
     expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha)).toBe(true);
   });
 
+  it('keeps Hotfix parity separate from Main parity and binds the source class', () => {
+    const controllerSha = 'b'.repeat(40);
+    const expectedHotfix = {
+      baseTag: 'studio-v0.10.4',
+      ref: 'refs/heads/hotfix/studio-v0-10-5-changelog',
+      controllerSha,
+    };
+    const hotfixE2E = buildAppE2EEvidence({
+      workflow: 'App E2E',
+      event: 'workflow_dispatch',
+      ref: 'refs/heads/main',
+      branch: 'main',
+      headSha: sourceSha,
+      runId: '123',
+      runAttempt: 2,
+      result: 'success',
+      testOutcome: 'success',
+      hotfix: { ...expectedHotfix, sourceSha, ref: expectedHotfix.ref },
+    });
+    const evidence = buildStagingPromoteEvidence({
+      CHANGE_HEAD_SHA: sourceSha,
+      DEPLOY_IMAGE_DIGEST: targetDigest,
+      GITHUB_RUN_ID: '456',
+      STAGING_MUTATION: 'true',
+      SOURCE_KIND: 'hotfix',
+      HOTFIX_BASE_TAG: expectedHotfix.baseTag,
+      HOTFIX_REF: expectedHotfix.ref,
+      EXPECTED_CONTROLLER_SHA: controllerSha,
+      MAIN_E2E_ATTESTATION: JSON.stringify(hotfixE2E),
+    }, '2026-08-18T12:00:00.000Z');
+    expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha, 'hotfix', expectedHotfix)).toBe(true);
+    expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha)).toBe(false);
+    expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha, 'hotfix', { ...expectedHotfix, baseTag: 'studio-v0.10.3' })).toBe(false);
+    expect(matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha, 'hotfix', expectedHotfix)).toBe(false);
+    expect(() => buildStagingPromoteEvidence({
+      CHANGE_HEAD_SHA: sourceSha,
+      DEPLOY_IMAGE_DIGEST: targetDigest,
+      GITHUB_RUN_ID: '456',
+      STAGING_MUTATION: 'true',
+      SOURCE_KIND: 'hotfix',
+      HOTFIX_BASE_TAG: expectedHotfix.baseTag,
+      HOTFIX_REF: expectedHotfix.ref,
+      EXPECTED_CONTROLLER_SHA: controllerSha,
+      MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
+    })).toThrow(/Hotfix-Quelle/u);
+  });
+
   it('rejects missing, malformed, or foreign staging attestations', () => {
     const baseEnv = {
       CHANGE_HEAD_SHA: sourceSha,

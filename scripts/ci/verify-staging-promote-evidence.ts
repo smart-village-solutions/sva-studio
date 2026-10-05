@@ -68,7 +68,9 @@ const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
 export const matchesSuccessfulStagingEvidence = (
   evidence: unknown,
   targetDigest: string,
-  expectedSourceSha: string
+  expectedSourceSha: string,
+  expectedSourceKind: 'main' | 'hotfix' = 'main',
+  expectedHotfix?: Readonly<{ baseTag: string; ref: string; controllerSha?: string }>
 ) => {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
   const attestedKeys = [
@@ -86,7 +88,7 @@ export const matchesSuccessfulStagingEvidence = (
   const candidate = evidence as StagingEvidence;
   const commonValid = isSuccessfulStagingEvidenceBase(candidate, targetDigest);
   if (!commonValid) return false;
-  return matchesAttestedMainE2E(candidate, expectedSourceSha);
+  return matchesAttestedMainE2E(candidate, expectedSourceSha, expectedSourceKind, expectedHotfix);
 };
 
 const isSuccessfulStagingEvidenceBase = (
@@ -102,13 +104,25 @@ const isSuccessfulStagingEvidenceBase = (
   candidate.postflight === 'passed' &&
   candidate.digest === targetDigest;
 
-const matchesAttestedMainE2E = (candidate: StagingEvidence, expectedSourceSha: string): boolean => {
+const matchesAttestedMainE2E = (
+  candidate: StagingEvidence,
+  expectedSourceSha: string,
+  expectedSourceKind: 'main' | 'hotfix',
+  expectedHotfix?: Readonly<{ baseTag: string; ref: string; controllerSha?: string }>
+): boolean => {
   const mainE2E = parseAppE2EEvidence(candidate.mainE2E);
+  const sourceMatches = expectedSourceKind === 'main'
+    ? mainE2E?.evidenceClass === 'canonical-main'
+    : mainE2E?.evidenceClass === 'controlled-hotfix' &&
+      Boolean(expectedHotfix) &&
+      mainE2E.hotfix?.baseTag === expectedHotfix?.baseTag &&
+      mainE2E.hotfix?.ref === expectedHotfix?.ref &&
+      (!expectedHotfix?.controllerSha || mainE2E.hotfix?.controllerSha === expectedHotfix.controllerSha);
   return (
     candidate.schemaVersion === 2 &&
     candidate.sourceSha === expectedSourceSha &&
-    mainE2E?.evidenceClass === 'canonical-main' &&
-    mainE2E.result === 'success' &&
+    sourceMatches &&
+    mainE2E?.result === 'success' &&
     mainE2E.testOutcome === 'success' &&
     mainE2E.headSha === expectedSourceSha
   );
@@ -207,7 +221,9 @@ const archiveMatches = (
   archiveEntries: string,
   zipPath: string,
   targetDigest: string,
-  expectedSourceSha: string | undefined
+  expectedSourceSha: string | undefined,
+  expectedSourceKind: 'main' | 'hotfix',
+  expectedHotfix?: Readonly<{ baseTag: string; ref: string; controllerSha?: string }>
 ): boolean => {
   if (kind === 'promote') {
     const evidenceFile = selectEvidenceJsonFile(archiveEntries);
@@ -215,7 +231,9 @@ const archiveMatches = (
     return matchesSuccessfulStagingEvidence(
       readArchiveEvidence(zipPath, evidenceFile),
       targetDigest,
-      expectedSourceSha
+      expectedSourceSha,
+      expectedSourceKind,
+      expectedHotfix
     );
   }
   const evidenceFiles = selectStagingBackupEvidenceJsonFiles(archiveEntries);
@@ -237,6 +255,12 @@ const main = () => {
     evidenceKind === 'promote'
       ? required(process.env.EXPECTED_CHANGE_HEAD, 'EXPECTED_CHANGE_HEAD')
       : undefined;
+  const expectedSourceKind = process.env.EXPECTED_SOURCE_KIND === 'hotfix' ? 'hotfix' : 'main';
+  const expectedHotfix = expectedSourceKind === 'hotfix' ? {
+    baseTag: required(process.env.HOTFIX_BASE_TAG, 'HOTFIX_BASE_TAG'),
+    ref: required(process.env.HOTFIX_REF, 'HOTFIX_REF'),
+    controllerSha: process.env.EXPECTED_CONTROLLER_SHA,
+  } : undefined;
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
   const api = (path: string) =>
     execFileSync('gh', ['api', path], {
@@ -268,7 +292,7 @@ const main = () => {
         })
       );
       const archiveEntries = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
-      if (archiveMatches(evidenceKind, archiveEntries, zipPath, targetDigest, expectedSourceSha))
+      if (archiveMatches(evidenceKind, archiveEntries, zipPath, targetDigest, expectedSourceSha, expectedSourceKind, expectedHotfix))
         return;
     }
     throw new StagingParityNotFoundError();

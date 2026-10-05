@@ -184,14 +184,15 @@ const normalizeMainE2EReference = (
     evidence?.headSha === expectedHeadSha &&
     evidence.result === 'success' &&
     evidence.testOutcome === 'success' &&
-    evidence.evidenceClass === 'canonical-main';
+    (evidence.evidenceClass === 'canonical-main' || evidence.evidenceClass === 'controlled-hotfix');
   if (!evidence || !valid) return null;
   return {
     run: { id: evidence.run.id, attempt: evidence.run.attempt },
     headSha: evidence.headSha,
     result: 'success',
     testOutcome: 'success',
-    evidenceClass: 'canonical-main',
+    evidenceClass: evidence.evidenceClass as 'canonical-main' | 'controlled-hotfix',
+    ...(evidence.hotfix ? { hotfix: evidence.hotfix } : {}),
   };
 };
 

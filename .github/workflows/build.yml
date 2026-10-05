@@ -5,10 +5,26 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Build source'
+        required: true
+        default: main
+        type: choice
+        options: [main, hotfix]
+      hotfix_base_tag:
+        description: 'Verified Production base tag (hotfix only)'
+        type: string
+      hotfix_ref:
+        description: 'refs/heads/hotfix/... (hotfix only)'
+        type: string
+      hotfix_sha:
+        description: 'Exact hotfix source commit (hotfix only)'
+        type: string
 
 concurrency:
-  group: build-main
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix' && format('build-hotfix-{0}', inputs.hotfix_sha) || 'build-main' }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'hotfix' }}
 
 permissions:
   actions: read
@@ -25,18 +41,55 @@ jobs:
       backup_agent_image_digest: ${{ steps.build_backup_agent_image.outputs.digest }}
       image_digest: ${{ steps.build_image.outputs.digest }}
       ssf_image_digest: ${{ steps.build_ssf_image.outputs.digest }}
+      source_sha: ${{ steps.source.outputs.sha }}
     steps:
+      - name: Checkout hotfix workflow controller
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .build-controller
+          fetch-depth: 0
+
+      - name: Setup hotfix controller Node.js runtime
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .build-controller/.nvmrc
+
+      - name: Validate hotfix source before checkout
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        id: hotfix
+        env:
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_SHA: ${{ inputs.hotfix_sha }}
+        working-directory: .build-controller
+        run: node --experimental-strip-types scripts/ci/hotfix-source-contract.ts
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ steps.hotfix.outputs.source_sha || github.sha }}
           fetch-depth: 0
+
+      - name: Bind built source revision
+        id: source
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.hotfix.outputs.source_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse --verify HEAD)"
+          test "${source_sha}" = "${EXPECTED_SOURCE_SHA}"
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Verify final runtime artifact
         env:
-          VITE_GIT_SHA: ${{ github.sha }}
+          VITE_GIT_SHA: ${{ steps.source.outputs.sha }}
         run: pnpm nx run sva-studio-react:verify:runtime-artifact
 
       - name: Prepare source-bound Studio changelog for image build
@@ -57,44 +110,44 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           build-args: |
-            SVA_IMAGE_REVISION=${{ github.sha }}
+            SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}
             SVA_STUDIO_DISTRIBUTION=studio
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/smart-village-solutions/sva-studio:${{ github.sha }}
-            ghcr.io/smart-village-solutions/sva-studio:latest
+            ghcr.io/smart-village-solutions/sva-studio:${{ steps.source.outputs.sha }}
+            ${{ inputs.mode != 'hotfix' && 'ghcr.io/smart-village-solutions/sva-studio:latest' || '' }}
 
       - name: Build and push SSF Docker image
         id: build_ssf_image
         uses: docker/build-push-action@v5
         with:
           build-args: |
-            SVA_IMAGE_REVISION=${{ github.sha }}
+            SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}
             SVA_STUDIO_DISTRIBUTION=ssf
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/smart-village-solutions/sva-studio-ssf:${{ github.sha }}
-            ghcr.io/smart-village-solutions/sva-studio-ssf:latest
+            ghcr.io/smart-village-solutions/sva-studio-ssf:${{ steps.source.outputs.sha }}
+            ${{ inputs.mode != 'hotfix' && 'ghcr.io/smart-village-solutions/sva-studio-ssf:latest' || '' }}
 
       - name: Build and push backup agent image
         id: build_backup_agent_image
         uses: docker/build-push-action@v5
         with:
           build-args: |
-            SVA_IMAGE_REVISION=${{ github.sha }}
+            SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}
           context: .
           file: ./deploy/backup-agent/Dockerfile
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ github.sha }}
-            ghcr.io/smart-village-solutions/sva-studio-backup-agent:latest
+            ghcr.io/smart-village-solutions/sva-studio-backup-agent:${{ steps.source.outputs.sha }}
+            ${{ inputs.mode != 'hotfix' && 'ghcr.io/smart-village-solutions/sva-studio-backup-agent:latest' || '' }}
 
   promote-dev:
     name: Promote dev
@@ -133,7 +186,7 @@ jobs:
           docker pull "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}"
           bash scripts/ci/verify-studio-image.sh \
             "ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.image_digest }}" \
-            artifacts/runtime/studio-image-verify studio "${{ github.sha }}"
+            artifacts/runtime/studio-image-verify studio "${{ needs.build.outputs.source_sha }}"
 
       - name: Verify SSF image
         run: |
@@ -141,7 +194,17 @@ jobs:
           SVA_IMAGE_VERIFY_PORT=39081 SVA_IMAGE_VERIFY_POSTGRES_PORT=35434 \
             bash scripts/ci/verify-studio-image.sh \
               "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}" \
-              artifacts/runtime/ssf-image-verify ssf "${{ github.sha }}"
+              artifacts/runtime/ssf-image-verify ssf "${{ needs.build.outputs.source_sha }}"
+
+      - name: Verify backup agent image
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        run: |
+          set -euo pipefail
+          image="ghcr.io/smart-village-solutions/sva-studio-backup-agent@${{ needs.build.outputs.backup_agent_image_digest }}"
+          docker pull "${image}"
+          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${image}")"
+          test "${revision}" = "${{ needs.build.outputs.source_sha }}"
+          docker run --rm --entrypoint sh "${image}" -lc 'aws --version && pg_dump --version && pg_restore --version'
 
       - name: Upload image verification reports
         if: always()
@@ -151,3 +214,24 @@ jobs:
           path: artifacts/runtime
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Write controlled hotfix build evidence
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        env:
+          HOTFIX_SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
+          HOTFIX_CONTROLLER_SHA: ${{ github.workflow_sha }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_STUDIO_DIGEST: ${{ needs.build.outputs.image_digest }}
+          HOTFIX_SSF_DIGEST: ${{ needs.build.outputs.ssf_image_digest }}
+          HOTFIX_BACKUP_AGENT_DIGEST: ${{ needs.build.outputs.backup_agent_image_digest }}
+        run: node --experimental-strip-types scripts/ci/hotfix-build-evidence.ts write
+
+      - name: Upload controlled hotfix build evidence
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        uses: actions/upload-artifact@v7
+        with:
+          name: hotfix-build-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/runtime/hotfix-build-evidence-${{ github.run_id }}-${{ github.run_attempt }}.json
+          if-no-files-found: error
+          retention-days: 30

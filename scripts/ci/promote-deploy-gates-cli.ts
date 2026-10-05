@@ -7,6 +7,7 @@ export interface PromoteDeployGateCliOptions {
   changedFiles: string[] | null;
   environment: PromoteEnvironment | undefined;
   head: string;
+  diffMode: 'merge-base' | 'direct';
   migrationExecutorConfigured: boolean;
   migrationMode: DeployGateMode;
 }
@@ -25,6 +26,7 @@ export const parseMode = (value: string, flag: string): DeployGateMode => {
 export const parsePromoteDeployGateCliOptions = (args: readonly string[]): PromoteDeployGateCliOptions => {
   let base = 'origin/main';
   let head = 'HEAD';
+  let diffMode: 'merge-base' | 'direct' = 'merge-base';
   let migrationMode: DeployGateMode = 'assert-none';
   let bootstrapMode: DeployGateMode = 'assert-none';
   let migrationExecutorConfigured = false;
@@ -41,6 +43,11 @@ export const parsePromoteDeployGateCliOptions = (args: readonly string[]): Promo
     };
     if (argument === '--base') base = nextValue();
     else if (argument === '--head') head = nextValue();
+    else if (argument === '--diff-mode') {
+      const value = nextValue();
+      if (value !== 'merge-base' && value !== 'direct') throw new Error(`Ungültiger Diff-Modus: ${value}`);
+      diffMode = value;
+    }
     else if (argument === '--migration-mode') migrationMode = parseMode(nextValue(), '--migration-mode');
     else if (argument === '--bootstrap-mode') bootstrapMode = parseMode(nextValue(), '--bootstrap-mode');
     else if (argument === '--migration-executor-configured') migrationExecutorConfigured = parseBoolean(nextValue());
@@ -52,5 +59,5 @@ export const parsePromoteDeployGateCliOptions = (args: readonly string[]): Promo
       environment = value;
     } else throw new Error(`Unbekannte Option: ${argument}`);
   }
-  return { base, bootstrapExecutorConfigured, bootstrapMode, changedFiles, environment, head, migrationExecutorConfigured, migrationMode };
+  return { base, bootstrapExecutorConfigured, bootstrapMode, changedFiles, diffMode, environment, head, migrationExecutorConfigured, migrationMode };
 };

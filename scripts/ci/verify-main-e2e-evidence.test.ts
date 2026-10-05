@@ -13,6 +13,7 @@ import {
   selectEvidenceArtifact,
   selectEvidenceJsonFile,
   verifyMainE2EEvidence,
+  verifyHotfixE2EEvidence,
   type MainE2EVerifierDependencies,
   type MainE2EWorkflowRun,
 } from './verify-main-e2e-evidence.ts';
@@ -38,6 +39,91 @@ const evidence = buildAppE2EEvidence({
   runAttempt: 2,
   result: 'success',
   testOutcome: 'success',
+});
+
+describe('controlled hotfix App E2E preflight', () => {
+  const controllerSha = 'b'.repeat(40);
+  const expectation = {
+    sourceSha: headSha,
+    controllerSha,
+    baseTag: 'studio-v0.10.4',
+    branchRef: 'refs/heads/hotfix/studio-v0-10-5-changelog',
+    runId: 123,
+  };
+  const hotfixRun = { ...run, event: 'workflow_dispatch', head_sha: controllerSha };
+  const hotfixEvidence = buildAppE2EEvidence({
+    workflow: 'App E2E',
+    event: 'workflow_dispatch',
+    ref: 'refs/heads/main',
+    branch: 'main',
+    headSha,
+    runId: '123',
+    runAttempt: 2,
+    result: 'success',
+    testOutcome: 'success',
+    hotfix: {
+      controllerSha,
+      baseTag: expectation.baseTag,
+      ref: expectation.branchRef,
+      sourceSha: headSha,
+    },
+  });
+  const hotfixDependencies = (
+    overrides: Partial<MainE2EVerifierDependencies> = {}
+  ): MainE2EVerifierDependencies => dependencies({
+    readWorkflowRun: () => hotfixRun,
+    readRunArtifacts: () => ({ artifacts: [{
+      id: 987,
+      name: 'app-e2e-evidence-123-2',
+      expired: false,
+      workflow_run: { id: 123, head_sha: controllerSha },
+    }] }),
+    readArtifactArchive: () => ({
+      entries: ['app-e2e-evidence-123-2.json'],
+      readText: () => JSON.stringify(hotfixEvidence),
+    }),
+    ...overrides,
+  });
+
+  it('accepts only the terminal Main-controller dispatch with exact source and attempt', () => {
+    expect(verifyHotfixE2EEvidence(expectation, hotfixDependencies())).toEqual(hotfixEvidence);
+  });
+
+  it.each([
+    ['ordinary manual run', { event: 'schedule' }],
+    ['foreign controller', { head_sha: 'c'.repeat(40) }],
+    ['foreign branch', { head_branch: 'feature/unrelated' }],
+    ['red run', { conclusion: 'failure' }],
+    ['ongoing run', { status: 'in_progress', conclusion: null }],
+  ])('rejects %s', (_, override) => {
+    expect(failureCode(() => verifyHotfixE2EEvidence(expectation, hotfixDependencies({
+      readWorkflowRun: () => ({ ...hotfixRun, ...override }),
+    })))).toBe('PROMOTE_MAIN_E2E_REJECTED');
+  });
+
+  it.each([
+    ['diagnostic dispatch', evidence],
+    ['wrong base tag', { ...hotfixEvidence, hotfix: { ...hotfixEvidence.hotfix, baseTag: 'studio-v0.10.3' } }],
+    ['wrong source', { ...hotfixEvidence, headSha: 'c'.repeat(40) }],
+    ['wrong attempt', { ...hotfixEvidence, run: { id: '123', attempt: 1 } }],
+  ])('rejects %s evidence', (_, candidate) => {
+    expect(failureCode(() => verifyHotfixE2EEvidence(expectation, hotfixDependencies({
+      readArtifactArchive: () => ({
+        entries: ['app-e2e-evidence-123-2.json'],
+        readText: () => JSON.stringify(candidate),
+      }),
+    })))).toBe('PROMOTE_MAIN_E2E_REJECTED');
+  });
+
+  it('rejects a rerun race after reading the artifact', () => {
+    let reads = 0;
+    expect(failureCode(() => verifyHotfixE2EEvidence(expectation, hotfixDependencies({
+      readWorkflowRun: () => {
+        reads += 1;
+        return reads === 1 ? hotfixRun : { ...hotfixRun, run_attempt: 3, status: 'in_progress' };
+      },
+    })))).toBe('PROMOTE_MAIN_E2E_NOT_READY');
+  });
 });
 
 const dependencies = (

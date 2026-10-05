@@ -10,6 +10,22 @@ on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'E2E source'
+        required: true
+        default: diagnostic
+        type: choice
+        options: [diagnostic, hotfix]
+      hotfix_base_tag:
+        description: 'Verified Production base tag (hotfix only)'
+        type: string
+      hotfix_ref:
+        description: 'refs/heads/hotfix/... (hotfix only)'
+        type: string
+      hotfix_sha:
+        description: 'Exact hotfix source commit (hotfix only)'
+        type: string
 
 permissions:
   contents: read
@@ -21,6 +37,7 @@ jobs:
     timeout-minutes: 25
     outputs:
       test-outcome: ${{ steps.app_e2e.outcome }}
+      source-sha: ${{ steps.source.outputs.sha }}
     env:
       SVA_AUTH_ISSUER: https://accounts.google.com
       SVA_AUTH_CLIENT_ID: gha-e2e-client
@@ -29,13 +46,49 @@ jobs:
       SVA_AUTH_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
       REDIS_URL: redis://127.0.0.1:6379
       PLAYWRIGHT_MAX_FAILURES: '0'
-      APP_E2E_ALLOW_RETRY: ${{ github.event_name != 'push' && 'true' || 'false' }}
+      APP_E2E_ALLOW_RETRY: ${{ github.event_name != 'push' && inputs.mode != 'hotfix' && 'true' || 'false' }}
 
     steps:
+      - name: Checkout hotfix workflow controller
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .e2e-controller
+          fetch-depth: 0
+
+      - name: Setup hotfix controller Node.js runtime
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .e2e-controller/.nvmrc
+
+      - name: Validate hotfix source before checkout
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'
+        id: hotfix
+        env:
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_SHA: ${{ inputs.hotfix_sha }}
+        working-directory: .e2e-controller
+        run: node --experimental-strip-types scripts/ci/hotfix-source-contract.ts
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ steps.hotfix.outputs.source_sha || github.sha }}
           fetch-depth: 0
+
+      - name: Bind tested source revision
+        id: source
+        env:
+          EXPECTED_SOURCE_SHA: ${{ steps.hotfix.outputs.source_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse --verify HEAD)"
+          test "${source_sha}" = "${EXPECTED_SOURCE_SHA}"
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
@@ -122,6 +175,11 @@ jobs:
         env:
           APP_E2E_RESULT: ${{ needs.e2e.result }}
           APP_E2E_TEST_OUTCOME: ${{ needs.e2e.outputs.test-outcome }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          HOTFIX_SOURCE_SHA: ${{ needs.e2e.outputs.source-sha }}
+          HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
+          HOTFIX_REF: ${{ inputs.hotfix_ref }}
+          HOTFIX_MODE: ${{ inputs.mode }}
         run: node --experimental-strip-types scripts/ci/write-app-e2e-evidence.ts
 
       - name: Upload App E2E evidence

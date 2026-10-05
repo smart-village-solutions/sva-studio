@@ -26,30 +26,33 @@ const organizationContextErrorMessage = (error: IamHttpError | null) => {
 
 type OrganizationContextSwitcherProps = Readonly<{
   variant?: 'inline' | 'menu';
-  readOnly?: boolean;
+  allowPersonal?: boolean;
 }>;
 
 export const OrganizationContextSwitcher = ({
   variant = 'inline',
-  readOnly = false,
+  allowPersonal = false,
 }: OrganizationContextSwitcherProps) => {
   const organizationContext = useOrganizationContext();
   const organizationContextState = resolveOrganizationContextState({
+    ...(allowPersonal ? { roleNames: ['system_admin'] } : {}),
     organizations: organizationContext.context?.organizations,
     storedActiveOrganizationId: organizationContext.context?.activeOrganizationId,
   });
   const options = organizationContextState.activeOrganizations;
-  const activeOrganization = readOnly
-    ? undefined
-    : options.find((organization) => organization.organizationId === organizationContextState.activeOrganizationId);
+  const activeOrganization = options.find(
+    (organization) => organization.organizationId === organizationContextState.activeOrganizationId
+  );
   const errorMessage = organizationContextErrorMessage(organizationContext.error);
   const statusId = React.useId();
   const errorId = React.useId();
-  const describedBy = [statusId, errorMessage ? errorId : null].filter(Boolean).join(' ') || undefined;
+  const describedBy =
+    [statusId, errorMessage ? errorId : null].filter(Boolean).join(' ') || undefined;
   const isMenuVariant = variant === 'menu';
 
-  const shouldRenderSelector = !readOnly && organizationContextState.canSwitch;
-  const shouldRenderMenuMemberships = isMenuVariant && organizationContextState.hasVisibleMemberships;
+  const shouldRenderSelector = organizationContextState.canSwitch;
+  const shouldRenderMenuMemberships =
+    isMenuVariant && organizationContextState.hasVisibleMemberships;
 
   if (organizationContext.isLoading || (!shouldRenderSelector && !shouldRenderMenuMemberships)) {
     return null;
@@ -62,12 +65,21 @@ export const OrganizationContextSwitcher = ({
         isMenuVariant ? 'w-full gap-1.5 px-3 py-2' : 'gap-1'
       )}
     >
-      <div className={cn('field-group', isMenuVariant ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2')}>
+      <div
+        className={cn(
+          'field-group',
+          isMenuVariant ? 'flex w-full flex-col gap-2' : 'flex items-center gap-2'
+        )}
+      >
         {shouldRenderSelector ? (
           <>
             <Label
               htmlFor="organization-context-switcher"
-              className={cn(isMenuVariant ? 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground' : undefined)}
+              className={cn(
+                isMenuVariant
+                  ? 'text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground'
+                  : undefined
+              )}
             >
               {t('shell.header.organizationContext')}
             </Label>
@@ -77,10 +89,8 @@ export const OrganizationContextSwitcher = ({
               aria-describedby={describedBy}
               value={organizationContextState.activeOrganizationId ?? ''}
               onChange={(event) => {
-                if (!event.target.value) {
-                  return;
-                }
-                void organizationContext.switchOrganization(event.target.value);
+                if (!event.target.value && !allowPersonal) return;
+                void organizationContext.switchOrganization(event.target.value || null);
               }}
               className={cn(
                 'text-sm',
@@ -90,6 +100,9 @@ export const OrganizationContextSwitcher = ({
               )}
               disabled={organizationContext.isUpdating}
             >
+              {allowPersonal ? (
+                <option value="">{t('shell.header.organizationContextPersonal')}</option>
+              ) : null}
               {options.map((organization) => (
                 <option key={organization.organizationId} value={organization.organizationId}>
                   {organization.displayName}
@@ -104,11 +117,6 @@ export const OrganizationContextSwitcher = ({
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {t('shell.header.organizationMemberships')}
           </p>
-          {readOnly ? (
-            <p className="text-xs text-muted-foreground">
-              {t('shell.header.organizationMembershipsSystemAdminHint')}
-            </p>
-          ) : null}
           <ul className="flex flex-col gap-1 text-sm text-foreground">
             {options.map((organization) => (
               <li key={organization.organizationId}>{organization.displayName}</li>

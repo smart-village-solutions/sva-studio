@@ -5,16 +5,14 @@ type OrganizationContextOptionLike = {
   readonly isActive: boolean;
 };
 
-const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly string[] =>
-  [...new Set(roleNames?.map((roleName) => roleName.trim()).filter((roleName) => roleName.length > 0) ?? [])];
+const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly string[] => [
+  ...new Set(
+    roleNames?.map((roleName) => roleName.trim()).filter((roleName) => roleName.length > 0) ?? []
+  ),
+];
 
 export const hasSystemAdminRole = (roleNames: readonly string[] | undefined): boolean =>
   normalizeRoleNames(roleNames).includes(SYSTEM_ADMIN_ROLE);
-
-export const resolveSessionActiveOrganizationId = (input: {
-  readonly roleNames?: readonly string[];
-  readonly activeOrganizationId?: string;
-}): string | undefined => (hasSystemAdminRole(input.roleNames) ? undefined : input.activeOrganizationId);
 
 const defaultChooseActiveOrganizationId = <T extends OrganizationContextOptionLike>(input: {
   readonly storedActiveOrganizationId?: string;
@@ -22,7 +20,9 @@ const defaultChooseActiveOrganizationId = <T extends OrganizationContextOptionLi
 }): string | undefined => {
   if (
     input.storedActiveOrganizationId &&
-    input.activeOrganizations.some((organization) => organization.organizationId === input.storedActiveOrganizationId)
+    input.activeOrganizations.some(
+      (organization) => organization.organizationId === input.storedActiveOrganizationId
+    )
   ) {
     return input.storedActiveOrganizationId;
   }
@@ -39,10 +39,14 @@ export const resolveOrganizationContextState = <T extends OrganizationContextOpt
     readonly activeOrganizations: readonly T[];
   }) => string | undefined;
 }) => {
-  const activeOrganizations = (input.organizations ?? []).filter((organization) => organization.isActive);
-  const isReadOnly = hasSystemAdminRole(input.roleNames);
-  const activeOrganizationId = isReadOnly
-    ? undefined
+  const activeOrganizations = (input.organizations ?? []).filter(
+    (organization) => organization.isActive
+  );
+  const isSystemAdmin = hasSystemAdminRole(input.roleNames);
+  const activeOrganizationId = isSystemAdmin
+    ? activeOrganizations.find(
+        (organization) => organization.organizationId === input.storedActiveOrganizationId
+      )?.organizationId
     : (input.chooseActiveOrganizationId ?? defaultChooseActiveOrganizationId)({
         storedActiveOrganizationId: input.storedActiveOrganizationId,
         activeOrganizations,
@@ -51,8 +55,8 @@ export const resolveOrganizationContextState = <T extends OrganizationContextOpt
   return {
     activeOrganizations,
     activeOrganizationId,
-    canSwitch: !isReadOnly && activeOrganizations.length > 1,
+    canSwitch: isSystemAdmin ? activeOrganizations.length > 0 : activeOrganizations.length > 1,
     hasVisibleMemberships: activeOrganizations.length > 0,
-    isReadOnly,
+    isSystemAdmin,
   };
 };

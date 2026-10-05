@@ -95,7 +95,7 @@ export default function Header({
     organizations: organizationContext.context?.organizations,
     storedActiveOrganizationId: organizationContext.context?.activeOrganizationId,
   });
-  const isSystemAdmin = organizationContextState.isReadOnly;
+  const isSystemAdmin = organizationContextState.isSystemAdmin;
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const currentPathname = useRouterState({

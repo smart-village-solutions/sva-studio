@@ -116,7 +116,6 @@ export const authorizeContentPrimitiveForUser = async (input: {
     const activeOrganizationId = await resolveActiveOrganizationId({
       sessionId: input.ctx.sessionId,
       instanceId,
-      roleNames: input.ctx.user.roles,
       requestId: workspaceContext.requestId,
       traceId: workspaceContext.traceId,
     });

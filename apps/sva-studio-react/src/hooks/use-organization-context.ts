@@ -1,7 +1,12 @@
 import type { IamOrganizationContext } from '@sva/core';
 import React from 'react';
 
-import { asIamError, getMyOrganizationContext, IamHttpError, updateMyOrganizationContext } from '../lib/iam-api';
+import {
+  asIamError,
+  getMyOrganizationContext,
+  IamHttpError,
+  updateMyOrganizationContext,
+} from '../lib/iam-api';
 import {
   createOperationLogger,
   logBrowserOperationFailure,
@@ -16,13 +21,15 @@ export type OrganizationContextValue = {
   readonly isUpdating: boolean;
   readonly error: IamHttpError | null;
   readonly refetch: () => Promise<void>;
-  readonly switchOrganization: (organizationId: string) => Promise<boolean>;
+  readonly switchOrganization: (organizationId: string | null) => Promise<boolean>;
 };
 
 const OrganizationContext = React.createContext<OrganizationContextValue | null>(null);
 
 const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
-export const OrganizationContextProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
+export const OrganizationContextProvider = ({
+  children,
+}: Readonly<{ children: React.ReactNode }>) => {
   const { isAuthenticated, user } = useAuth();
   const [context, setContext] = React.useState<IamOrganizationContext | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -53,9 +60,14 @@ export const OrganizationContextProvider = ({ children }: Readonly<{ children: R
       const resolvedError = asIamError(cause);
       setContext(null);
       setError(resolvedError);
-      logBrowserOperationFailure(organizationContextLogger, 'organization_context_load_failed', resolvedError, {
-        operation: 'get_my_organization_context',
-      });
+      logBrowserOperationFailure(
+        organizationContextLogger,
+        'organization_context_load_failed',
+        resolvedError,
+        {
+          operation: 'get_my_organization_context',
+        }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -65,47 +77,59 @@ export const OrganizationContextProvider = ({ children }: Readonly<{ children: R
     void loadContext();
   }, [loadContext]);
 
-  const value = React.useMemo<OrganizationContextValue>(() => ({
-    context,
-    isLoading,
-    isUpdating,
-    error,
-    refetch: loadContext,
-    switchOrganization: async (organizationId) => {
-      if (!user?.instanceId) {
-        setContext(null);
-        setError(null);
-        setIsUpdating(false);
-        return false;
-      }
+  const value = React.useMemo<OrganizationContextValue>(
+    () => ({
+      context,
+      isLoading,
+      isUpdating,
+      error,
+      refetch: loadContext,
+      switchOrganization: async (organizationId) => {
+        if (!user?.instanceId) {
+          setContext(null);
+          setError(null);
+          setIsUpdating(false);
+          return false;
+        }
 
-      logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
-        operation: 'update_my_organization_context',
-        organization_id: organizationId,
-      });
-      setIsUpdating(true);
-      setError(null);
-      try {
-        const response = await updateMyOrganizationContext(organizationId);
-        setContext(response.data);
-        logBrowserOperationSuccess(organizationContextLogger, 'organization_context_switch_succeeded', {
+        logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
           operation: 'update_my_organization_context',
           organization_id: organizationId,
         });
-        return true;
-      } catch (cause) {
-        const resolvedError = asIamError(cause);
-        setError(resolvedError);
-        logBrowserOperationFailure(organizationContextLogger, 'organization_context_switch_failed', resolvedError, {
-          operation: 'update_my_organization_context',
-          organization_id: organizationId,
-        });
-        return false;
-      } finally {
-        setIsUpdating(false);
-      }
-    },
-  }), [context, error, isLoading, isUpdating, loadContext, user?.instanceId]);
+        setIsUpdating(true);
+        setError(null);
+        try {
+          const response = await updateMyOrganizationContext(organizationId);
+          setContext(response.data);
+          logBrowserOperationSuccess(
+            organizationContextLogger,
+            'organization_context_switch_succeeded',
+            {
+              operation: 'update_my_organization_context',
+              organization_id: organizationId,
+            }
+          );
+          return true;
+        } catch (cause) {
+          const resolvedError = asIamError(cause);
+          setError(resolvedError);
+          logBrowserOperationFailure(
+            organizationContextLogger,
+            'organization_context_switch_failed',
+            resolvedError,
+            {
+              operation: 'update_my_organization_context',
+              organization_id: organizationId,
+            }
+          );
+          return false;
+        } finally {
+          setIsUpdating(false);
+        }
+      },
+    }),
+    [context, error, isLoading, isUpdating, loadContext, user?.instanceId]
+  );
 
   return React.createElement(OrganizationContext.Provider, { value }, children);
 };

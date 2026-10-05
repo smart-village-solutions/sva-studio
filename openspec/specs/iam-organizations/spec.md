@@ -1,8 +1,11 @@
 # iam-organizations Specification
 
 ## Purpose
+
 Diese Spezifikation beschreibt das instanzzentrierte Mandanten- und Organisationsmodell im IAM, den Wechsel des Organisationskontexts innerhalb einer Instanz sowie die technischen Leitplanken für lokale Postgres-Bereitstellung, RLS-basierte Instanzisolation und betriebssichere Migrationen/Seeds.
+
 ## Requirements
+
 ### Requirement: Multi-Org-Kontextwechsel im aktiven Instanzkontext
 
 Das System MUST Benutzern mit mehreren Organisationszuordnungen den Kontextwechsel innerhalb der aktiven `instanceId` ermöglichen und den gewählten Organisationskontext belastbar für nachgelagerte Zugriffe bereitstellen.
@@ -12,6 +15,27 @@ Das System MUST Benutzern mit mehreren Organisationszuordnungen den Kontextwechs
 - **WHEN** ein authentifizierter Benutzer Mitglied in mehreren Organisationen derselben Instanz ist
 - **THEN** kann er den aktiven Organisationskontext wechseln
 - **AND** der gewählte Kontext wird in der Session für nachgelagerte Zugriffe bereitgestellt
+
+#### Scenario: Systemadministrator wählt eine eigene Organisation ausdrücklich
+
+- **GIVEN** ein `system_admin` ist Mitglied einer aktiven Organisation der aktuellen Instanz
+- **WHEN** er diese Organisation als Kontext auswählt
+- **THEN** wird sie in der Session für Content-Aktionen verwendet
+- **AND** die Organisationsautorenschaft beim Create folgt deren `contentAuthorPolicy`
+- **AND** die tenantweiten Administratorberechtigungen bleiben an die effektiven Permissions gebunden
+
+#### Scenario: Systemadministrator arbeitet wieder persönlich
+
+- **WHEN** ein `system_admin` den persönlichen Kontext auswählt oder noch keine Organisation gewählt hat
+- **THEN** ist kein aktiver Organisationskontext gesetzt
+- **AND** eine Default-Mitgliedschaft wählt keine Organisation automatisch
+
+#### Scenario: Entzogene Mitgliedschaft beendet den gespeicherten Kontext
+
+- **GIVEN** eine Session verwendet eine Organisationsmitgliedschaft als aktiven Kontext
+- **WHEN** diese Mitgliedschaft entzogen wird
+- **THEN** werden die Sessions des betroffenen Accounts vor dem Entzug invalidiert
+- **AND** die nächste Anmeldung kann keinen Kontext der entzogenen Organisation übernehmen
 
 #### Scenario: Benutzer wählt unzulässigen Organisationskontext
 
@@ -243,9 +267,7 @@ Das System SHALL Organisationsdaten in einem für Admin-Views geeigneten Read-Mo
       "contentAuthorPolicy": "org_or_personal",
       "isActive": true,
       "depth": 1,
-      "hierarchyPath": [
-        "9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001"
-      ],
+      "hierarchyPath": ["9d44d4f2-8c78-4d44-9f1d-6f6fe44d1001"],
       "childCount": 1,
       "membershipCount": 3
     }
@@ -406,6 +428,7 @@ Das System SHALL Organisationen und geografische Einheiten als separate, instanz
 **Datenbankschema (normativ):**
 
 Organisationen:
+
 - `id` UUID PK
 - `instance_id` UUID NOT NULL (FK, instanzgebunden)
 - `parent_id` UUID NULLABLE (FK → `organizations.id`, gleiche Instanz)
@@ -416,12 +439,14 @@ Organisationen:
 - Soft-Delete via `deleted_at` TIMESTAMP
 
 Geo-Hierarchie (Closure-Table):
+
 - `ancestor_id` UUID NOT NULL (FK → `geo_nodes.id`)
 - `descendant_id` UUID NOT NULL (FK → `geo_nodes.id`)
 - `depth` INTEGER NOT NULL (0 = self)
 - PK: `(ancestor_id, descendant_id)`
 
 Geo-Knoten:
+
 - `id` UUID PK
 - `instance_id` UUID NOT NULL
 - `key` TEXT NOT NULL (Format: `{ebene}:{schluessel}`, z. B. `district:09162`, `municipality:09162000`)
@@ -820,4 +845,3 @@ Datenbankfeld bleibt aus Kompatibilitätsgründen erhalten.
 - **WHEN** ein Administrator eine bestehende Organisationsmitgliedschaft in der Organisations- oder Accountansicht bearbeitet
 - **THEN** kann ausschließlich der Standardkontext geändert werden
 - **AND** die gespeicherte technische Sichtbarkeit wird durch diese Bearbeitung nicht verändert
-

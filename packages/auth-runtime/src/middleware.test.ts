@@ -181,9 +181,12 @@ describe('auth-runtime withAuthenticatedUser', () => {
   it('rejects an invalid host before using a retained platform session', async () => {
     authServerMocks.validateTenantHost.mockResolvedValueOnce(new Response(null, { status: 403 }));
     const handler = vi.fn(() => new Response('platform data'));
-    const response = await withAuthenticatedUser(new Request('https://dialog.kassel.de/api/iam/platform/users', {
-      headers: { cookie: 'sva_auth_session=retained-platform-session' },
-    }), handler);
+    const response = await withAuthenticatedUser(
+      new Request('https://dialog.kassel.de/api/iam/platform/users', {
+        headers: { cookie: 'sva_auth_session=retained-platform-session' },
+      }),
+      handler
+    );
     expect(response.status).toBe(403);
     expect(getSessionUserMock).not.toHaveBeenCalled();
     expect(handler).not.toHaveBeenCalled();
@@ -270,7 +273,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
     expect(dbMocks.withResolvedInstanceDb).toHaveBeenCalledTimes(1);
   });
 
-  it('clears stale active organization scope for system_admin users in the authenticated context', async () => {
+  it('preserves the selected active organization for system_admin users in the authenticated context', async () => {
     getSessionUserMock.mockResolvedValue({
       kind: 'authenticated',
       user: {
@@ -302,7 +305,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      activeOrganizationId: undefined,
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
       roles: ['system_admin'],
     });
   });

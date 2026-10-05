@@ -124,9 +124,9 @@ export const getMyOrganizationContext = async (): Promise<
   );
 
 export const updateMyOrganizationContext = async (
-  organizationId: string
+  organizationId: string | null
 ): Promise<ApiItemResponse<IamOrganizationContext>> =>
-  putJson<ApiItemResponse<IamOrganizationContext>, { organizationId: string }>(
+  putJson<ApiItemResponse<IamOrganizationContext>, { organizationId: string | null }>(
     '/api/v1/iam/me/context',
     {
       organizationId,

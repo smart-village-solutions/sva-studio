@@ -631,6 +631,21 @@ describe('iam-api organization helpers', () => {
     );
   });
 
+  it('sends the personal organization context as explicit null', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ data: {} }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await updateMyOrganizationContext(null);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/me/context',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ organizationId: null }),
+      })
+    );
+  });
+
   it('converts API error payloads to IamHttpError', async () => {
     vi.stubGlobal(
       'fetch',

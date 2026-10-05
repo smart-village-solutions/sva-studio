@@ -206,7 +206,7 @@ describe('organization read handlers', () => {
     expect(deps.loadOrganizationList).not.toHaveBeenCalled();
   });
 
-  it('returns no active organization context for system_admin users and clears stale session context', async () => {
+  it('preserves an explicitly selected organization for system_admin users', async () => {
     const deps = buildDeps();
     state.session = { activeOrganizationId: '11111111-1111-1111-8111-111111111111' };
     const handlers = createOrganizationReadHandlers(deps);
@@ -220,9 +220,10 @@ describe('organization read handlers', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(updateSession).toHaveBeenCalledWith('session-1', { activeOrganizationId: undefined });
+    expect(updateSession).not.toHaveBeenCalled();
     await expect(json(response)).resolves.toMatchObject({
       data: {
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
         organizations: [
           expect.objectContaining({
             organizationId: '11111111-1111-1111-8111-111111111111',
@@ -231,6 +232,23 @@ describe('organization read handlers', () => {
         ],
       },
     });
+  });
+
+  it('does not select a default organization for system_admin users', async () => {
+    const handlers = createOrganizationReadHandlers(buildDeps());
+    const response = await handlers.getMyOrganizationContextInternal(
+      new Request('http://localhost/api/v1/iam/me/context'),
+      { ...ctx, user: { ...ctx.user, roles: ['system_admin'] } }
+    );
+    expect(response.status).toBe(200);
+    expect(updateSession).not.toHaveBeenCalled();
+    const payload = await json(response);
+    expect(payload).toMatchObject({
+      data: { organizations: [expect.objectContaining({ isDefaultContext: true })] },
+    });
+    expect(
+      (payload.data as { activeOrganizationId?: string }).activeOrganizationId
+    ).toBeUndefined();
   });
 
   it('supports a custom access authorizer for permission-based tenant organization access', async () => {

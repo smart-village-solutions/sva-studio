@@ -112,9 +112,8 @@ export const shellENResources = {
     adminRoles: 'Roles',
     adminGroups: 'Groups',
     organizationContext: 'Active organization',
+    organizationContextPersonal: 'Personal account',
     organizationMemberships: 'Organization memberships',
-    organizationMembershipsSystemAdminHint:
-      'As a system admin, you work instance-wide; organization memberships do not limit your permissions.',
     organizationContextStatus: 'Active organization context: {{name}}',
     organizationContextUpdating: 'Organization context is being updated.',
     organizationContextError: 'Organization context could not be changed.',

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   hasSystemAdminRole,
   resolveOrganizationContextState,
-  resolveSessionActiveOrganizationId,
 } from './organization-context-policy.js';
 
 describe('organization context policy', () => {
@@ -15,23 +14,6 @@ describe('organization context policy', () => {
     });
   });
 
-  describe('resolveSessionActiveOrganizationId', () => {
-    it('clears active organization scope for system_admin users and keeps it for other roles', () => {
-      expect(
-        resolveSessionActiveOrganizationId({
-          roleNames: ['system_admin'],
-          activeOrganizationId: 'org-1',
-        })
-      ).toBeUndefined();
-      expect(
-        resolveSessionActiveOrganizationId({
-          roleNames: ['editor'],
-          activeOrganizationId: 'org-1',
-        })
-      ).toBe('org-1');
-    });
-  });
-
   describe('resolveOrganizationContextState', () => {
     const organizations = [
       { organizationId: 'org-1', isActive: true },
@@ -39,7 +21,7 @@ describe('organization context policy', () => {
       { organizationId: 'org-3', isActive: true },
     ] as const;
 
-    it('returns a read-only membership view for system_admin users', () => {
+    it('keeps an explicitly selected organization for system_admin users', () => {
       const state = resolveOrganizationContextState({
         roleNames: ['system_admin'],
         organizations,
@@ -52,11 +34,21 @@ describe('organization context policy', () => {
           { organizationId: 'org-1', isActive: true },
           { organizationId: 'org-3', isActive: true },
         ],
-        activeOrganizationId: undefined,
-        canSwitch: false,
+        activeOrganizationId: 'org-1',
+        canSwitch: true,
         hasVisibleMemberships: true,
-        isReadOnly: true,
+        isSystemAdmin: true,
       });
+    });
+
+    it('does not select a default organization for system_admin users', () => {
+      const state = resolveOrganizationContextState({
+        roleNames: ['system_admin'],
+        organizations,
+        storedActiveOrganizationId: 'org-2',
+      });
+      expect(state.activeOrganizationId).toBeUndefined();
+      expect(state.canSwitch).toBe(true);
     });
 
     it('resolves the active organization for non-admin users through the injected chooser', () => {
@@ -65,7 +57,9 @@ describe('organization context policy', () => {
         organizations,
         storedActiveOrganizationId: 'org-1',
         chooseActiveOrganizationId: ({ storedActiveOrganizationId, activeOrganizations }) =>
-          storedActiveOrganizationId === 'org-1' ? activeOrganizations[1]?.organizationId : undefined,
+          storedActiveOrganizationId === 'org-1'
+            ? activeOrganizations[1]?.organizationId
+            : undefined,
       });
 
       expect(state).toEqual({
@@ -76,7 +70,7 @@ describe('organization context policy', () => {
         activeOrganizationId: 'org-3',
         canSwitch: true,
         hasVisibleMemberships: true,
-        isReadOnly: false,
+        isSystemAdmin: false,
       });
     });
 
@@ -92,7 +86,7 @@ describe('organization context policy', () => {
         activeOrganizationId: undefined,
         canSwitch: false,
         hasVisibleMemberships: false,
-        isReadOnly: false,
+        isSystemAdmin: false,
       });
     });
 

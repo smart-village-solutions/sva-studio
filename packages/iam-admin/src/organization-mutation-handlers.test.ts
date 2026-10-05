@@ -599,7 +599,7 @@ describe('organization mutation handlers', () => {
     expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
   });
 
-  it('revokes member sessions before deactivating an organization', async () => {
+  it('revokes member sessions after update work and before committing deactivation', async () => {
     const deps = buildDeps();
     const query = vi.fn(async (text: string) =>
       text.includes('SELECT account.keycloak_subject')
@@ -635,12 +635,12 @@ describe('organization mutation handlers', () => {
       keycloakSubject: 'kc-second-member',
       reason: 'organization_membership_removed',
     });
-    expect(revokeUserSessions.mock.invocationCallOrder[1]).toBeLessThan(
-      query.mock.invocationCallOrder[1]
+    expect(query.mock.invocationCallOrder[0]).toBeLessThan(
+      revokeUserSessions.mock.invocationCallOrder[0]
     );
   });
 
-  it('keeps an organization active when member session revocation fails', async () => {
+  it('aborts organization deactivation when member session revocation fails', async () => {
     const deps = buildDeps();
     const query = vi.fn(async () => ({
       rowCount: 1,
@@ -664,7 +664,10 @@ describe('organization mutation handlers', () => {
     );
 
     expect(response.status).toBe(503);
-    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.organizations'),
+      expect.any(Array)
+    );
   });
 
   it('returns a conflict when credential changes race with active provisioning', async () => {
@@ -697,6 +700,63 @@ describe('organization mutation handlers', () => {
         message: 'Mainserver-Zugang wird gerade provisioniert.',
       },
     });
+  });
+
+  it('does not revoke member sessions when combined deactivation and credential update conflicts', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: { isActive: false, mainserverApplicationId: 'org-app-2' },
+      rawBody: '{}',
+    }));
+    deps.upsertOrganizationMainserverCredentials = vi.fn(async () => {
+      throw new Error('organization_mainserver_provisioning_in_progress');
+    });
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    expect(revokeUserSessions).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('does not revoke member sessions when a deactivation update violates the organization key', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async (text: string) => {
+      if (text.includes('UPDATE iam.organizations')) {
+        throw new Error(
+          'duplicate key value violates unique constraint "organizations_instance_key_uniq"'
+        );
+      }
+      return { rowCount: 1, rows: [] };
+    });
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: { isActive: false, organizationKey: 'taken' },
+      rawBody: '{}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    expect(revokeUserSessions).not.toHaveBeenCalled();
   });
 
   it('returns conflict when updating an organization reuses an existing key', async () => {

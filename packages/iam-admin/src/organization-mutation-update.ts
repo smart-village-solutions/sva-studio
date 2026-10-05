@@ -48,8 +48,14 @@ const persistUpdate = async <TFeatureFlags>(
     throw hierarchy;
   }
 
-  if (existing.is_active && input.data.isActive === false) {
-    await revokeOrganizationMemberSessions(deps, client, actor.instanceId, organizationId);
+  if (hasMainserverCredentialPatch(input.data)) {
+    await deps.upsertOrganizationMainserverCredentials(client, {
+      instanceId: actor.instanceId,
+      organizationId,
+      actorAccountId: actor.actorAccountId,
+      mainserverApplicationId: input.data.mainserverApplicationId,
+      mainserverApplicationSecret: input.data.mainserverApplicationSecret,
+    });
   }
 
   await client.query(
@@ -83,16 +89,6 @@ WHERE instance_id = $1
       hierarchy.depth,
     ]
   );
-  if (hasMainserverCredentialPatch(input.data)) {
-    await deps.upsertOrganizationMainserverCredentials(client, {
-      instanceId: actor.instanceId,
-      organizationId,
-      actorAccountId: actor.actorAccountId,
-      mainserverApplicationId: input.data.mainserverApplicationId,
-      mainserverApplicationSecret: input.data.mainserverApplicationSecret,
-    });
-  }
-
   await deps.rebuildOrganizationSubtree(client, {
     instanceId: actor.instanceId,
     organizationId,
@@ -107,10 +103,14 @@ WHERE instance_id = $1
     traceId: actor.traceId,
   });
 
-  return deps.loadOrganizationDetail(client, {
+  const detail = await deps.loadOrganizationDetail(client, {
     instanceId: actor.instanceId,
     organizationId,
   });
+  if (existing.is_active && input.data.isActive === false) {
+    await revokeOrganizationMemberSessions(deps, client, actor.instanceId, organizationId);
+  }
+  return detail;
 };
 
 const executeUpdate = async <TFeatureFlags>(

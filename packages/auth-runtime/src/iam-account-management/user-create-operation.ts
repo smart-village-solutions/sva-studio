@@ -200,6 +200,14 @@ const deleteCreatedExternalUser = async (input: {
 const createCoreAccountWithoutPluginClaims: AccountCreateContribution = async ({ execute }) =>
   execute({ readClaims: async () => ({ attributes: {} }) });
 
+const resolveCreateUserPayload = async (payload: CreateUserPayload) => ({
+  ...payload,
+  invitationPurpose:
+    payload.invitationPurpose ??
+    (await loadServerAccountInvitationTemplate()).defaultPurpose ??
+    'studio',
+});
+
 export const executeCreateUser = async (input: {
   actor: CreateUserActorInfo;
   actorSubject: string;
@@ -207,13 +215,7 @@ export const executeCreateUser = async (input: {
   payload: CreateUserPayload;
 }): Promise<IamCreateUserResult> => {
   const { actor, actorSubject, identityProvider } = input;
-  const payload = {
-    ...input.payload,
-    invitationPurpose:
-      input.payload.invitationPurpose ??
-      (await loadServerAccountInvitationTemplate()).defaultPurpose ??
-      'studio',
-  } as const;
+  const payload = await resolveCreateUserPayload(input.payload);
   let createdExternalId: string | undefined;
 
   try {

@@ -9,6 +9,7 @@ import type {
 import type { IamUserOrganizationMembership } from './account-organization-contract.js';
 
 export type IamRoleSyncState = 'synced' | 'pending' | 'failed';
+export type AccountInvitationPurpose = 'studio' | 'ssf';
 
 export type IamRoleSyncError = {
   readonly code: string;
@@ -100,7 +101,7 @@ export type IamUserListItem = {
 };
 
 export type IamUserDetail = IamUserListItem & {
-  readonly invitationPurpose?: import('../instances/account-invitation-template.js').AccountInvitationPurpose;
+  readonly invitationPurpose?: AccountInvitationPurpose;
   readonly username?: string;
   readonly firstName?: string;
   readonly lastName?: string;

@@ -1,3 +1,5 @@
+import type { AccountInvitationPurpose } from '../iam/account-user-contract.js';
+
 export type AccountInvitationTemplate = Readonly<{
   revision: number;
   subject: string;
@@ -7,8 +9,6 @@ export type AccountInvitationTemplate = Readonly<{
 }>;
 
 export const ACCOUNT_INVITATION_TEMPLATE_KEY = 'account_invitation' as const;
-
-export type AccountInvitationPurpose = 'studio' | 'ssf';
 
 export type AccountInvitationTemplateSource = 'instance' | 'server' | 'sva_default';
 

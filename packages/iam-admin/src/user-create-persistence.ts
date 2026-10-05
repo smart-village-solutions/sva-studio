@@ -1,4 +1,4 @@
-import type { IamUserDetail } from '@sva/core';
+import type { AccountInvitationPurpose, IamUserDetail } from '@sva/core';
 
 import type { QueryClient } from './query-client.js';
 import type { IamGroupRow, IamRoleRow } from './types.js';
@@ -23,7 +23,7 @@ export type CreateUserPersistencePayload = {
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly isTechnicalAccount?: boolean;
-  readonly invitationPurpose?: import('@sva/core').AccountInvitationPurpose;
+  readonly invitationPurpose?: AccountInvitationPurpose;
   readonly roleIds: readonly string[];
   readonly groupIds?: readonly string[];
 };

@@ -548,9 +548,9 @@ CREATE TABLE iam.accounts (
     is_technical_account boolean DEFAULT false NOT NULL,
     invitation_purpose text DEFAULT 'studio'::text NOT NULL,
     CONSTRAINT accounts_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
+    CONSTRAINT accounts_invitation_purpose_chk CHECK ((invitation_purpose = ANY (ARRAY['studio'::text, 'ssf'::text]))),
     CONSTRAINT accounts_notes_length_chk CHECK ((char_length(notes) <= 2000)),
-    CONSTRAINT accounts_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'inactive'::text]))),
-    CONSTRAINT accounts_invitation_purpose_chk CHECK ((invitation_purpose = ANY (ARRAY['studio'::text, 'ssf'::text])))
+    CONSTRAINT accounts_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'inactive'::text])))
 );
 
 
@@ -1413,12 +1413,12 @@ CREATE TABLE iam.server_account_invitation_templates (
     template_key text NOT NULL,
     revision integer DEFAULT 0 NOT NULL,
     template jsonb,
-    default_purpose text,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_by text,
+    default_purpose text,
+    CONSTRAINT server_account_invitation_templates_default_purpose_chk CHECK (((default_purpose IS NULL) OR (default_purpose = ANY (ARRAY['studio'::text, 'ssf'::text])))),
     CONSTRAINT server_account_invitation_templates_key_chk CHECK ((template_key = 'account_invitation'::text)),
     CONSTRAINT server_account_invitation_templates_revision_chk CHECK ((revision >= 0)),
-    CONSTRAINT server_account_invitation_templates_default_purpose_chk CHECK (((default_purpose IS NULL) OR (default_purpose = ANY (ARRAY['studio'::text, 'ssf'::text])))),
     CONSTRAINT server_account_invitation_templates_template_chk CHECK (((template IS NULL) OR ((jsonb_typeof(template) = 'object'::text) AND (jsonb_typeof((template -> 'revision'::text)) = 'number'::text) AND (((template ->> 'revision'::text))::integer = revision) AND (jsonb_typeof((template -> 'subject'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'body'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'passwordSetupLinkLabel'::text)) = 'string'::text) AND (jsonb_typeof((template -> 'tenantHomepageLinkLabel'::text)) = 'string'::text))))
 );
 

@@ -1,5 +1,9 @@
 import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
-import type { IamUserPermissionTraceInactiveReason, IamUserPermissionTraceStatus } from '@sva/core';
+import type {
+  AccountInvitationPurpose,
+  IamUserPermissionTraceInactiveReason,
+  IamUserPermissionTraceStatus,
+} from '@sva/core';
 
 import type { UserStatus } from './types.js';
 
@@ -87,7 +91,7 @@ export type UserDetailRow = {
   notes: string | null;
   status: UserStatus;
   is_technical_account: boolean;
-  invitation_purpose: import('@sva/core').AccountInvitationPurpose;
+  invitation_purpose: AccountInvitationPurpose;
   last_login_at: string | null;
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;

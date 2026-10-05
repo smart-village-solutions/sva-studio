@@ -23,6 +23,40 @@ const lineSwitchRiskPaths = [
 
 export type StagingLineSwitch = 'none' | 'beta-to-hotfix' | 'hotfix-to-beta';
 
+const verifyStagingLineSwitch = (
+  input: Readonly<{
+    changedFiles?: readonly string[];
+    declaredBase: string;
+    environment: PromoteEnvironment;
+    head: string;
+    isAncestor: (base: string, head: string) => boolean;
+    lineSwitch: Exclude<StagingLineSwitch, 'none'>;
+    liveConfigRevision?: string;
+    liveRevision: string;
+    sourceKind?: 'main' | 'hotfix';
+    targetConfigRevision?: string;
+  }>
+): void => {
+  const expectedKind = input.lineSwitch === 'beta-to-hotfix' ? 'hotfix' : 'main';
+  if (
+    input.environment !== 'staging' ||
+    input.sourceKind !== expectedKind ||
+    !commitShaPattern.test(input.declaredBase) ||
+    input.liveRevision === input.head ||
+    input.isAncestor(input.liveRevision, input.head) ||
+    !input.isAncestor(input.declaredBase, input.liveRevision) ||
+    !input.isAncestor(input.declaredBase, input.head) ||
+    !configRevisionPattern.test(input.liveConfigRevision ?? '') ||
+    input.liveConfigRevision !== input.targetConfigRevision ||
+    !input.changedFiles?.length ||
+    input.changedFiles.some((file) => lineSwitchRiskPaths.some((pattern) => pattern.test(file)))
+  ) {
+    throw new Error(
+      'Staging-Linienwechsel ist für Live-Schema, Config oder Quellklasse nicht belegt.'
+    );
+  }
+};
+
 export const resolveEffectiveDeploymentBase = (
   input: Readonly<{
     declaredBase: string;
@@ -59,19 +93,18 @@ export const resolveEffectiveDeploymentBase = (
     throw new Error('Die tatsächlich deployte OCI-Revision ist kein Ancestor von change_head.');
   }
   if (lineSwitch !== 'none') {
-    const expectedKind = lineSwitch === 'beta-to-hotfix' ? 'hotfix' : 'main';
-    const changedFiles = input.changedFiles;
-    if (input.environment !== 'staging' || input.sourceKind !== expectedKind ||
-        !commitShaPattern.test(input.declaredBase) || revision === input.head ||
-        input.isAncestor(revision, input.head) ||
-        !input.isAncestor(input.declaredBase, revision) ||
-        !input.isAncestor(input.declaredBase, input.head) ||
-        !configRevisionPattern.test(input.liveConfigRevision ?? '') ||
-        input.liveConfigRevision !== input.targetConfigRevision ||
-        !changedFiles?.length ||
-        changedFiles.some((file) => lineSwitchRiskPaths.some((pattern) => pattern.test(file)))) {
-      throw new Error('Staging-Linienwechsel ist für Live-Schema, Config oder Quellklasse nicht belegt.');
-    }
+    verifyStagingLineSwitch({
+      changedFiles: input.changedFiles,
+      declaredBase: input.declaredBase,
+      environment: input.environment,
+      head: input.head,
+      isAncestor: input.isAncestor,
+      lineSwitch,
+      liveConfigRevision: input.liveConfigRevision,
+      liveRevision: revision,
+      sourceKind: input.sourceKind,
+      targetConfigRevision: input.targetConfigRevision,
+    });
   }
   return {
     declaredBase: input.declaredBase,
@@ -108,11 +141,16 @@ const main = () => {
   const liveRevision = inspection.image?.config?.Labels?.['org.opencontainers.image.revision'];
   const sourceKind = readOption(args, '--source-kind') as 'main' | 'hotfix' | undefined;
   const prodLiveImage = readOption(args, '--prod-live-image');
-  const prodRevision = sourceKind === 'hotfix'
-    ? prodLiveImage
-      ? inspectRegistryImage(prodLiveImage).image?.config?.Labels?.['org.opencontainers.image.revision']
-      : environmentValue === 'prod' ? liveRevision : undefined
-    : undefined;
+  const prodRevision =
+    sourceKind === 'hotfix'
+      ? prodLiveImage
+        ? inspectRegistryImage(prodLiveImage).image?.config?.Labels?.[
+            'org.opencontainers.image.revision'
+          ]
+        : environmentValue === 'prod'
+          ? liveRevision
+          : undefined
+      : undefined;
   const result = resolveEffectiveDeploymentBase({
     declaredBase,
     environment: environmentValue,
@@ -132,9 +170,17 @@ const main = () => {
     prodRevision,
     liveConfigRevision: readOption(args, '--live-config-revision'),
     targetConfigRevision: readOption(args, '--target-config-revision'),
-    changedFiles: lineSwitch !== 'none'
-      ? execFileSync('git', ['diff', '--name-only', required(liveRevision, 'Live-Revision'), head], { encoding: 'utf8' }).trim().split('\n').filter(Boolean)
-      : undefined,
+    changedFiles:
+      lineSwitch !== 'none'
+        ? execFileSync(
+            'git',
+            ['diff', '--name-only', required(liveRevision, 'Live-Revision'), head],
+            { encoding: 'utf8' }
+          )
+            .trim()
+            .split('\n')
+            .filter(Boolean)
+        : undefined,
   });
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(

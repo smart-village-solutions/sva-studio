@@ -360,7 +360,12 @@ jobs:
           HOTFIX_E2E_RUN_ID: ${{ inputs.hotfix_e2e_run_id }}
           GITHUB_TOKEN: ${{ github.token }}
           PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
-        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-main-e2e-evidence.ts"
+        run: |
+          if [ "${SOURCE_KIND}" = hotfix ]; then
+            pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-hotfix-e2e-evidence.ts"
+          else
+            pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-main-e2e-evidence.ts"
+          fi
 
       - name: require source-bound controlled Build evidence
         if: ${{ inputs.environment == 'staging' && inputs.source_kind == 'hotfix' }}

@@ -100,10 +100,7 @@ type KeycloakProvisioningContext = {
   tenantAdminBootstrap?: TenantAdminBootstrap;
   pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
 };
-
-type KeycloakPlanContext = KeycloakProvisioningContext & {
-  realmBaselineApplicable?: boolean;
-};
+type KeycloakPlanContext = KeycloakProvisioningContext & { realmBaselineApplicable?: boolean };
 export type InstanceRegistryService = {
   prepareConfirmationChallenge(
     input: PrepareInstanceConfirmationChallengeInput
@@ -193,7 +190,6 @@ export type InstanceRegistryService = {
   resolveRuntimeInstance(host: string): Promise<ResolveRuntimeInstanceResult>;
   isTrafficAllowed(status: InstanceStatus): boolean;
 };
-
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;

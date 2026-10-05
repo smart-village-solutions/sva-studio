@@ -1,4 +1,4 @@
-import type { IamUserDetail } from '@sva/core';
+import type { AccountInvitationPurpose, IamUserDetail } from '@sva/core';
 
 import { getRoleExternalName } from './role-audit.js';
 import { resolveTenantTechnicalKeycloakRoleNames } from './role-governance.js';
@@ -20,7 +20,7 @@ type CreateUserPersistencePayload = {
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly isTechnicalAccount?: boolean;
-  readonly invitationPurpose?: import('@sva/core').AccountInvitationPurpose;
+  readonly invitationPurpose?: AccountInvitationPurpose;
   readonly roleIds: readonly string[];
   readonly groupIds?: readonly string[];
 };

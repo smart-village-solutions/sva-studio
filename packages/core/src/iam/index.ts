@@ -83,6 +83,7 @@ export type {
   IamRoleReconcileReport,
   IamRoleSyncError,
   IamRoleSyncState,
+  AccountInvitationPurpose,
   InstanceStatus,
   IamCreateUserResult,
   IamMainserverCredentialStatus,

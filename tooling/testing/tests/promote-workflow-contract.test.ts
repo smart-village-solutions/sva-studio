@@ -187,8 +187,16 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('packages: read');
     expect(workflow).toContain('actions: read');
     expect(workflow).toContain('require successful staging parity for production mutation');
-    expect(workflowStep('require successful staging parity for production mutation')).not.toContain(
-      'EXPECTED_CONTROLLER_SHA:'
+    const stagingParity = workflowStep('require successful staging parity for production mutation');
+    expect(stagingParity).not.toContain('EXPECTED_CONTROLLER_SHA:');
+    expect(stagingParity).toContain('QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}');
+    expect(stagingParity).toContain('GITHUB_RUN_ID="${GITHUB_RUN_ID}-staging-parity"');
+    expect(stagingParity).toContain(
+      'promote-live-digest.ts" staging --expected "${DEPLOY_IMAGE_REF}"'
+    );
+    expect(stagingParity).toContain('PROMOTE_LIVE_DIGEST_MISMATCH prod staging-parity');
+    expect(stagingParity.indexOf('promote-live-digest.ts')).toBeLessThan(
+      stagingParity.indexOf('verify-staging-promote-evidence.ts')
     );
     expect(workflow).toContain('create database backup before deployment');
     expect(workflow).toContain('verify database backup object');

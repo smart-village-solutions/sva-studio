@@ -586,6 +586,7 @@ jobs:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
+          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           FORCE_STAGING_PARITY: ${{ inputs.promote_mode == 'recovery' }}
@@ -593,6 +594,11 @@ jobs:
           HOTFIX_BASE_TAG: ${{ inputs.hotfix_base_tag }}
           HOTFIX_REF: ${{ inputs.hotfix_ref }}
         run: |
+          set -euo pipefail
+          if ! GITHUB_RUN_ID="${GITHUB_RUN_ID}-staging-parity" pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts" staging --expected "${DEPLOY_IMAGE_REF}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_LIVE_DIGEST_MISMATCH prod staging-parity
+            exit 1
+          fi
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"; then
             exit 1
           fi

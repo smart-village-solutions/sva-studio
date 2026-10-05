@@ -44,17 +44,27 @@ const parseMainE2E = (serialized: string | undefined): AppE2EEvidence | null => 
 const validateMainE2E = (
   serialized: string | undefined,
   parsed: AppE2EEvidence | null,
-  sourceSha: string
+  sourceSha: string,
+  env: NodeJS.ProcessEnv
 ): void => {
   if (!serialized?.trim() || !parsed)
     throw new Error('Staging benötigt eine gültige MAIN_E2E_ATTESTATION.');
+  const sourceKind = env.SOURCE_KIND ?? 'main';
+  const sourceMatches = sourceKind === 'main'
+    ? parsed.evidenceClass === 'canonical-main'
+    : sourceKind === 'hotfix' && parsed.evidenceClass === 'controlled-hotfix' &&
+      parsed.hotfix?.baseTag === env.HOTFIX_BASE_TAG &&
+      parsed.hotfix?.ref === env.HOTFIX_REF &&
+      parsed.hotfix?.controllerSha === env.EXPECTED_CONTROLLER_SHA;
   const canonicalSuccess =
-    parsed.evidenceClass === 'canonical-main' &&
+    sourceMatches &&
     parsed.result === 'success' &&
     parsed.testOutcome === 'success' &&
     parsed.headSha === sourceSha;
   if (!canonicalSuccess)
-    throw new Error('MAIN_E2E_ATTESTATION passt nicht zum erfolgreichen Main-Push.');
+    throw new Error(sourceKind === 'main'
+      ? 'MAIN_E2E_ATTESTATION passt nicht zum erfolgreichen Main-Push.'
+      : 'MAIN_E2E_ATTESTATION passt nicht zur kontrollierten Hotfix-Quelle.');
 };
 
 const buildEvidenceBase = (
@@ -89,7 +99,7 @@ export const buildStagingPromoteEvidence = (
 
   const serializedMainE2E = env.MAIN_E2E_ATTESTATION;
   const parsedMainE2E = parseMainE2E(serializedMainE2E);
-  validateMainE2E(serializedMainE2E, parsedMainE2E, sourceSha);
+  validateMainE2E(serializedMainE2E, parsedMainE2E, sourceSha, env);
   const base = buildEvidenceBase(env, completedAt);
   if (!parsedMainE2E) throw new Error('MAIN_E2E_ATTESTATION ist ungültig.');
   return { ...base, schemaVersion: 2, sourceSha, mainE2E: parsedMainE2E };

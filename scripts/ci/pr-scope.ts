@@ -238,7 +238,8 @@ export const resolveChangedFiles = (
   runGitCommand: (args: readonly string[], options?: { encoding: BufferEncoding }) => string = (
     args,
     options
-  ) => execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
+  ) => execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim(),
+  diffMode: 'merge-base' | 'direct' = 'merge-base'
 ): string[] => {
   const runDiff = (range: string): string =>
     runGitCommand(['diff', '--name-status', '--find-renames', '--diff-filter=ACDMR', range], {
@@ -248,7 +249,7 @@ export const resolveChangedFiles = (
   let output = '';
 
   try {
-    output = runDiff(`${base}...${head}`);
+    output = runDiff(diffMode === 'direct' ? `${base}..${head}` : `${base}...${head}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 

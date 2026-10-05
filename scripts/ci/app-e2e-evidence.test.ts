@@ -11,6 +11,13 @@ import {
 } from './app-e2e-evidence.ts';
 
 const sha = 'a'.repeat(40);
+const hotfixSha = 'b'.repeat(40);
+const hotfix = {
+  controllerSha: sha,
+  baseTag: 'studio-v0.10.4',
+  ref: 'refs/heads/hotfix/studio-v0-10-5-changelog',
+  sourceSha: hotfixSha,
+};
 const canonicalInput = {
   workflow: 'App E2E',
   event: 'push',
@@ -72,6 +79,52 @@ describe('App E2E evidence', () => {
       branch: 'hotfix/studio-v0.10.5-fix',
     });
     expect(evidence.evidenceClass).toBe('diagnostic');
+  });
+
+  it('binds a controlled hotfix to controller, source, base tag and branch', () => {
+    const evidence = buildAppE2EEvidence({
+      ...canonicalInput,
+      event: 'workflow_dispatch',
+      headSha: hotfixSha,
+      hotfix,
+    });
+    expect(evidence.evidenceClass).toBe('controlled-hotfix');
+    expect(parseAppE2EEvidence(evidence)).toEqual(evidence);
+    for (const invalid of [
+      { hotfix: { ...hotfix, sourceSha: sha } },
+      { hotfix: { ...hotfix, controllerSha: hotfixSha } },
+      { hotfix: { ...hotfix, baseTag: 'studio-v0.11.0-beta.1' } },
+      { hotfix: { ...hotfix, ref: 'refs/heads/feature/unrelated' } },
+      { evidenceClass: 'diagnostic' },
+    ]) expect(parseAppE2EEvidence({ ...evidence, ...invalid })).toBeNull();
+  });
+
+  it('writes only validated controlled hotfix metadata from a Main dispatch', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'app-e2e-hotfix-'));
+    try {
+      const env = {
+        GITHUB_WORKFLOW: 'App E2E',
+        GITHUB_EVENT_NAME: 'workflow_dispatch',
+        GITHUB_REF: 'refs/heads/main',
+        GITHUB_REF_NAME: 'main',
+        GITHUB_SHA: sha,
+        GITHUB_WORKFLOW_SHA: sha,
+        GITHUB_RUN_ID: '789',
+        GITHUB_RUN_ATTEMPT: '1',
+        APP_E2E_RESULT: 'success',
+        APP_E2E_TEST_OUTCOME: 'success',
+        HOTFIX_MODE: 'hotfix',
+        HOTFIX_SOURCE_SHA: hotfixSha,
+        HOTFIX_BASE_TAG: hotfix.baseTag,
+        HOTFIX_REF: hotfix.ref,
+        RUNNER_TEMP: directory,
+      };
+      const evidence = parseAppE2EEvidence(JSON.parse(readFileSync(writeAppE2EEvidenceFromEnvironment(env), 'utf8')));
+      expect(evidence).toMatchObject({ evidenceClass: 'controlled-hotfix', headSha: hotfixSha, hotfix });
+      expect(() => writeAppE2EEvidenceFromEnvironment({ ...env, GITHUB_WORKFLOW_SHA: hotfixSha })).toThrow();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('keeps a deterministic test failure red after finalization', () => {

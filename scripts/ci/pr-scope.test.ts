@@ -310,6 +310,16 @@ describe('pr-scope', () => {
     expect(changedFiles).toEqual(['packages/core/src/deleted.ts']);
   });
 
+  it('uses the complete live-to-target diff for a diverged Staging line switch', () => {
+    expect(resolveChangedFiles('beta', 'hotfix', (args) => {
+      expect(args.at(-1)).toBe('beta..hotfix');
+      return 'D\tpackages/data/migrations/0104_beta_only.sql\nM\tapps/sva-studio-react/src/index.ts';
+    }, 'direct')).toEqual([
+      'packages/data/migrations/0104_beta_only.sql',
+      'apps/sva-studio-react/src/index.ts',
+    ]);
+  });
+
   it('preserves both paths of renamed files for scope classification', () => {
     const changedFiles = resolveChangedFiles('origin/main', 'HEAD', () =>
       [

@@ -25,6 +25,13 @@ describe('matchesExpectedLiveImage', () => {
     ).toBe(false);
   });
 
+  it('rejects Production(H) after Staging changed from hotfix H to beta B', () => {
+    const hotfix = `ghcr.io/smart-village-solutions/sva-studio@sha256:${'a'.repeat(64)}`;
+    const beta = `ghcr.io/smart-village-solutions/sva-studio@sha256:${'b'.repeat(64)}`;
+    expect(matchesExpectedLiveImage(hotfix, hotfix)).toBe(true);
+    expect(matchesExpectedLiveImage(hotfix, beta)).toBe(false);
+  });
+
   it.each(['dev', 'staging', 'prod'] as const)(
     'accepts the %s promotion environment',
     (environment) => {

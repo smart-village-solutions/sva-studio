@@ -67,7 +67,13 @@ export type PromoteMainE2EReference = Readonly<{
   headSha: string;
   result: 'success';
   testOutcome: 'success';
-  evidenceClass: 'canonical-main';
+  evidenceClass: 'canonical-main' | 'controlled-hotfix';
+  hotfix?: Readonly<{
+    controllerSha: string;
+    baseTag: string;
+    ref: string;
+    sourceSha: string;
+  }>;
 }>;
 
 export type PromoteRecoveryEvidence = Readonly<{

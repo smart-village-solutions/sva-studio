@@ -222,9 +222,10 @@ export const evaluatePromoteDeployGates = ({
 const resolveCliChangedFiles = ({
   base,
   changedFiles,
+  diffMode,
   head,
-}: Pick<PromoteDeployGateCliOptions, 'base' | 'changedFiles' | 'head'>): string[] =>
-  changedFiles ?? resolveChangedFiles(base, head);
+}: Pick<PromoteDeployGateCliOptions, 'base' | 'changedFiles' | 'diffMode' | 'head'>): string[] =>
+  changedFiles ?? resolveChangedFiles(base, head, undefined, diffMode);
 
 export const executePromoteDeployGates = async (
   args: readonly string[]

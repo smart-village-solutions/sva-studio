@@ -608,6 +608,32 @@ describe('promote evidence contract', () => {
     expect(summary).toContain('| main_e2e_evidence_class | canonical-main |');
   });
 
+  it('records a controlled Hotfix-E2E reference with its source binding', () => {
+    const hotfix = {
+      controllerSha: sha,
+      baseTag: 'studio-v0.10.4',
+      ref: 'refs/heads/hotfix/studio-v0-10-5-changelog',
+      sourceSha: otherSha,
+    };
+    const evidence = buildPromoteEvidence({
+      runId: '797',
+      runAttempt: 1,
+      environment: 'staging',
+      status: 'passed',
+      baseRef: 'studio-v0.10.4',
+      headRef: otherSha,
+      headSha: otherSha,
+      mainE2EReference: {
+        ...mainE2EAttestation,
+        event: 'workflow_dispatch',
+        evidenceClass: 'controlled-hotfix',
+        hotfix,
+      },
+      gates: [{ gate: 'main-e2e-evidence', phase: 'main-e2e-evidence', status: 'passed' }],
+    });
+    expect(evidence.mainE2E).toMatchObject({ evidenceClass: 'controlled-hotfix', hotfix });
+  });
+
   it('drops invalid Main-E2E output without leaking untrusted fields', () => {
     const directory = mkdtempSync(join(tmpdir(), 'promote-invalid-main-e2e-'));
     const summaryPath = join(directory, 'summary.md');

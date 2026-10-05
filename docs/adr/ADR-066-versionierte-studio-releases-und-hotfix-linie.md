@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen am 4. Oktober 2026. Entscheidung und Implementierung stehen aus.
+Angenommen am 5. Oktober 2026. Die technische Freigabe eines konkreten Hotfixes setzt weiterhin die exakten Run- und Live-Nachweise voraus.
 
 ## Kontext
 
@@ -10,7 +10,7 @@ Studio baut jeden `main`-Push und aktualisiert Dev automatisch. Staging und Prod
 
 Das bestehende PR-Changelog verlangt nahezu immer einen Eintrag; die Studio-Oberfläche zeigt die neuesten Einträge nach PR-Nummer. Für Nutzer sind technische Refactorings und Routine-Updates meist keine sinnvollen Versionshinweise. Release Notes sollen den tatsächlich ausgelieferten Stand beschreiben.
 
-## Vorgeschlagene Entscheidung
+## Entscheidung
 
 1. Die Studio-Versionen verwenden eigene unveränderliche Git-Tags `studio-v0.10.4`, `studio-v0.10.5`, `studio-v0.11.0-beta.1` und `studio-v0.11.0`. `studio-v0.10.4` darf nur den nachgewiesenen aktuellen Production-Commit bezeichnen. Ein Tag ist Release-Metadatum; der verifizierte Image-Digest bleibt die technische Deploy-Identität.
 2. `main` bleibt Integrationslinie und aktualisiert Dev automatisch. Ein reguläres Release wählt einen konkreten Main-Commit und promotet genau dessen bereits gebautes Image über Staging nach Production. `Beta` bezeichnet den Kandidatenstatus auf Staging und kann als GitHub-Pre-release sichtbar sein; die technische Umgebung heißt weiter `staging`.

@@ -9,6 +9,53 @@ import type { PromoteEnvironment } from './promote-target.ts';
 const commitShaPattern = /^[a-f0-9]{40}$/u;
 const liveImagePattern =
   /^ghcr\.io\/smart-village-solutions\/sva-studio(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?@sha256:[a-f0-9]{64}$/u;
+const configRevisionPattern = /^[a-f0-9]{64}$/u;
+const lineSwitchRiskPaths = [
+  /^Dockerfile$/u,
+  /^pnpm-lock\.yaml$/u,
+  /^config\/runtime\//u,
+  /^deploy\/compose\./u,
+  /^deploy\/portainer\//u,
+  /^packages\/(?:data|auth-runtime|plugin-ssf|server-runtime|instance-registry)\//u,
+  /^packages\/iam-/u,
+  /^docs\/development\/studio-db-schema/u,
+];
+
+export type StagingLineSwitch = 'none' | 'beta-to-hotfix' | 'hotfix-to-beta';
+
+const verifyStagingLineSwitch = (
+  input: Readonly<{
+    changedFiles?: readonly string[];
+    declaredBase: string;
+    environment: PromoteEnvironment;
+    head: string;
+    isAncestor: (base: string, head: string) => boolean;
+    lineSwitch: Exclude<StagingLineSwitch, 'none'>;
+    liveConfigRevision?: string;
+    liveRevision: string;
+    sourceKind?: 'main' | 'hotfix';
+    targetConfigRevision?: string;
+  }>
+): void => {
+  const expectedKind = input.lineSwitch === 'beta-to-hotfix' ? 'hotfix' : 'main';
+  if (
+    input.environment !== 'staging' ||
+    input.sourceKind !== expectedKind ||
+    !commitShaPattern.test(input.declaredBase) ||
+    input.liveRevision === input.head ||
+    input.isAncestor(input.liveRevision, input.head) ||
+    !input.isAncestor(input.declaredBase, input.liveRevision) ||
+    !input.isAncestor(input.declaredBase, input.head) ||
+    !configRevisionPattern.test(input.liveConfigRevision ?? '') ||
+    input.liveConfigRevision !== input.targetConfigRevision ||
+    !input.changedFiles?.length ||
+    input.changedFiles.some((file) => lineSwitchRiskPaths.some((pattern) => pattern.test(file)))
+  ) {
+    throw new Error(
+      'Staging-Linienwechsel ist für Live-Schema, Config oder Quellklasse nicht belegt.'
+    );
+  }
+};
 
 export const resolveEffectiveDeploymentBase = (
   input: Readonly<{
@@ -18,6 +65,12 @@ export const resolveEffectiveDeploymentBase = (
     inspection: RegistryImageInspection;
     isAncestor: (base: string, head: string) => boolean;
     liveImage: string;
+    lineSwitch?: StagingLineSwitch;
+    sourceKind?: 'main' | 'hotfix';
+    liveConfigRevision?: string;
+    targetConfigRevision?: string;
+    changedFiles?: readonly string[];
+    prodRevision?: string;
   }>
 ) => {
   if (!liveImagePattern.test(input.liveImage)) {
@@ -29,8 +82,29 @@ export const resolveEffectiveDeploymentBase = (
       'Die OCI-Revision des tatsächlich deployten Images ist nicht vertrauenswürdig.'
     );
   }
-  if (!commitShaPattern.test(input.head) || !input.isAncestor(revision, input.head)) {
+  if (!commitShaPattern.test(input.head)) {
+    throw new Error('change_head ist keine gültige Revision.');
+  }
+  if (input.sourceKind === 'hotfix' && input.prodRevision !== input.declaredBase) {
+    throw new Error('Der Production-Basistag stimmt nicht mit der Live-OCI-Revision überein.');
+  }
+  const lineSwitch = input.lineSwitch ?? 'none';
+  if (lineSwitch === 'none' && !input.isAncestor(revision, input.head)) {
     throw new Error('Die tatsächlich deployte OCI-Revision ist kein Ancestor von change_head.');
+  }
+  if (lineSwitch !== 'none') {
+    verifyStagingLineSwitch({
+      changedFiles: input.changedFiles,
+      declaredBase: input.declaredBase,
+      environment: input.environment,
+      head: input.head,
+      isAncestor: input.isAncestor,
+      lineSwitch,
+      liveConfigRevision: input.liveConfigRevision,
+      liveRevision: revision,
+      sourceKind: input.sourceKind,
+      targetConfigRevision: input.targetConfigRevision,
+    });
   }
   return {
     declaredBase: input.declaredBase,
@@ -59,11 +133,29 @@ const main = () => {
   if (environmentValue !== 'dev' && environmentValue !== 'staging' && environmentValue !== 'prod') {
     throw new Error('--environment ist ungültig.');
   }
+  const lineSwitch = readOption(args, '--line-switch') ?? 'none';
+  if (lineSwitch !== 'none' && lineSwitch !== 'beta-to-hotfix' && lineSwitch !== 'hotfix-to-beta') {
+    throw new Error('--line-switch ist ungültig.');
+  }
+  const inspection = inspectRegistryImage(liveImage);
+  const liveRevision = inspection.image?.config?.Labels?.['org.opencontainers.image.revision'];
+  const sourceKind = readOption(args, '--source-kind') as 'main' | 'hotfix' | undefined;
+  const prodLiveImage = readOption(args, '--prod-live-image');
+  const prodRevision =
+    sourceKind === 'hotfix'
+      ? prodLiveImage
+        ? inspectRegistryImage(prodLiveImage).image?.config?.Labels?.[
+            'org.opencontainers.image.revision'
+          ]
+        : environmentValue === 'prod'
+          ? liveRevision
+          : undefined
+      : undefined;
   const result = resolveEffectiveDeploymentBase({
     declaredBase,
     environment: environmentValue,
     head,
-    inspection: inspectRegistryImage(liveImage),
+    inspection,
     isAncestor: (base, target) => {
       try {
         execFileSync('git', ['merge-base', '--is-ancestor', base, target], { stdio: 'ignore' });
@@ -73,6 +165,22 @@ const main = () => {
       }
     },
     liveImage,
+    lineSwitch,
+    sourceKind,
+    prodRevision,
+    liveConfigRevision: readOption(args, '--live-config-revision'),
+    targetConfigRevision: readOption(args, '--target-config-revision'),
+    changedFiles:
+      lineSwitch !== 'none'
+        ? execFileSync(
+            'git',
+            ['diff', '--name-only', required(liveRevision, 'Live-Revision'), head],
+            { encoding: 'utf8' }
+          )
+            .trim()
+            .split('\n')
+            .filter(Boolean)
+        : undefined,
   });
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(

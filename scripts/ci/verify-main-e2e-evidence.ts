@@ -48,12 +48,12 @@ export type MainE2EVerifierDependencies = Readonly<{
 const expectedWorkflowPath = '.github/workflows/app-e2e.yml';
 const shaPattern = /^[0-9a-f]{40}$/u;
 
-const contractError = (code: PromoteErrorCode): PromoteContractError =>
+export const contractError = (code: PromoteErrorCode): PromoteContractError =>
   new PromoteContractError(
     buildPromoteFailure({ code, environment: 'staging', phase: 'main-e2e-evidence' })
   );
 
-const readLookup = <T>(operation: () => T): T => {
+export const readLookup = <T>(operation: () => T): T => {
   try {
     return operation();
   } catch (error) {
@@ -62,7 +62,7 @@ const readLookup = <T>(operation: () => T): T => {
   }
 };
 
-const listPages = <T>(
+export const listPages = <T>(
   readPage: (page: number) => Readonly<{ items: readonly T[]; total?: number }>
 ): T[] => {
   const items: T[] = [];
@@ -82,14 +82,14 @@ const listPages = <T>(
 const isCanonicalMainRun = (run: MainE2EWorkflowRun): boolean =>
   run.path === expectedWorkflowPath && run.event === 'push' && run.head_branch === 'main';
 
-const hasValidRunIdentity = (run: MainE2EWorkflowRun | undefined): boolean =>
+export const hasValidRunIdentity = (run: MainE2EWorkflowRun | undefined): boolean =>
   Boolean(run) &&
   Number.isSafeInteger(run?.id) &&
   (run?.id ?? 0) > 0 &&
   Number.isSafeInteger(run?.run_attempt) &&
   (run?.run_attempt ?? 0) > 0;
 
-const isTerminalSuccessfulRun = (run: MainE2EWorkflowRun): boolean =>
+export const isTerminalSuccessfulRun = (run: MainE2EWorkflowRun): boolean =>
   run.status === 'completed' && run.conclusion === 'success';
 
 export const selectCanonicalMainRun = (
@@ -172,7 +172,7 @@ export const validateCanonicalMainEvidence = (
   return evidence;
 };
 
-const isCurrentSuccessfulSelection = (
+export const isCurrentSuccessfulSelection = (
   current: MainE2EWorkflowRun,
   run: Required<MainE2EWorkflowRun>,
   expectedHeadSha: string
@@ -217,7 +217,7 @@ export const verifyMainE2EEvidence = (
   return evidence;
 };
 
-const required = (value: string | undefined): string => {
+export const required = (value: string | undefined): string => {
   if (!value?.trim()) throw contractError('PROMOTE_MAIN_E2E_LOOKUP_FAILED');
   return value;
 };
@@ -237,7 +237,7 @@ export const buildWorkflowRunsPath = (
   return `repos/${repo}/actions/workflows/app-e2e.yml/runs?${query.toString()}`;
 };
 
-const createCliDependencies = (
+export const createCliDependencies = (
   repo: string,
   token: string,
   expectedHeadSha: string
@@ -292,14 +292,12 @@ export const runMainE2EPreflight = (
 ): AppE2EEvidence | null => {
   try {
     const expectedHeadSha = required(env.EXPECTED_CHANGE_HEAD);
-    const evidence = verifyMainE2EEvidence(
-      expectedHeadSha,
-      dependenciesFactory(
-        required(env.GITHUB_REPOSITORY),
-        required(env.GITHUB_TOKEN),
-        expectedHeadSha
-      )
+    const dependencies = dependenciesFactory(
+      required(env.GITHUB_REPOSITORY),
+      required(env.GITHUB_TOKEN),
+      expectedHeadSha
     );
+    const evidence = verifyMainE2EEvidence(expectedHeadSha, dependencies);
     if (env.GITHUB_OUTPUT)
       appendFileSync(env.GITHUB_OUTPUT, `e2e_attestation=${JSON.stringify(evidence)}\n`, 'utf8');
     return evidence;

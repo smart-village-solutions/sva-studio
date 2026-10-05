@@ -57,7 +57,7 @@ export function ContentOwnershipTargetSelect({
   };
 
   return (
-    <div ref={rootRef} className="relative space-y-1.5">
+    <div ref={rootRef} className="space-y-1.5">
       <span id={labelId} className="text-sm font-medium">
         {labels.targetOwner}
       </span>

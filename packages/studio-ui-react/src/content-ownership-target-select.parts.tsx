@@ -204,7 +204,7 @@ export function TargetSelectPopover({
   return (
     <div
       data-content-ownership-target-popover
-      className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-lg border border-border bg-popover shadow-shell"
+      className="mt-2 overflow-hidden rounded-lg border border-border bg-popover shadow-shell"
     >
       <div className="relative border-b border-border p-2">
         <Search
@@ -235,7 +235,7 @@ export function TargetSelectPopover({
         ref={listboxRef}
         id={listboxId}
         role="listbox"
-        className="max-h-72 overflow-y-auto p-1.5"
+        className="max-h-[max(5rem,min(18rem,calc(90dvh-20rem)))] overflow-y-auto p-1.5"
         onKeyDown={(event) => handleListboxKeyDown(event, onClose)}
       >
         <TargetResults labels={labels} onSelect={onSelect} {...resultsProps} />

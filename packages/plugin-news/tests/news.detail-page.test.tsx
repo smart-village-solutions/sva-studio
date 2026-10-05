@@ -551,6 +551,27 @@ describe('NewsDetailPage', () => {
     ).toEqual(['Stadt Musterhausen', 'Max Mustermann']);
   });
 
+  it('offers a member organization in the existing create-as field', async () => {
+    const onContextChange = vi.fn();
+    render(
+      <NewsDetailPage
+        mode="create"
+        principalControl={{
+          kind: 'fixed',
+          value: 'user',
+          label: 'Svs Admin',
+          contextOptions: [{ value: 'organization:org-1', label: 'Stadt Guben' }],
+          onContextChange,
+        }}
+      />
+    );
+
+    const selector = await screen.findByRole('combobox', { name: 'Erstellen als' });
+    expect(screen.getAllByLabelText('Erstellen als')).toHaveLength(1);
+    fireEvent.change(selector, { target: { value: 'organization:org-1' } });
+    expect(onContextChange).toHaveBeenCalledWith('organization:org-1');
+  });
+
   it('defaults to a fixed personal principal when no principal policy is provided', async () => {
     render(<NewsDetailPage mode="create" />);
 

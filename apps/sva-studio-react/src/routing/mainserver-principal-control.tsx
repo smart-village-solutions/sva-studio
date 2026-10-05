@@ -1,5 +1,5 @@
 import { resolveUserDisplayName, type IamOrganizationContextOption } from '@sva/core';
-import { type MainserverPrincipalControlModel } from '@sva/studio-ui-react';
+import { Button, type MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import React from 'react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useOrganizationContext } from '../hooks/use-organization-context';
@@ -105,8 +105,41 @@ export const MainserverPrincipalBoundary = ({
   children: (control: MainserverPrincipalControlModel) => React.ReactNode;
 }>) => {
   const resolution = useMainserverPrincipalControl();
-  if (resolution.kind === 'unavailable') {
-    return <MainserverPrincipalAlert reason={resolution.reason} />;
+  const organizationContext = useOrganizationContext();
+  const lastReadyControl = React.useRef<MainserverPrincipalControlModel | null>(null);
+  React.useEffect(() => {
+    if (resolution.kind === 'ready') {
+      lastReadyControl.current = resolution.control;
+    }
+  }, [resolution]);
+  const control = resolution.kind === 'ready' ? resolution.control : lastReadyControl.current;
+  const retry =
+    resolution.kind === 'unavailable' && resolution.reason === 'context_unavailable' ? (
+      <Button type="button" variant="secondary" onClick={() => void organizationContext.refetch()}>
+        {t('shared.errorFallback.retry')}
+      </Button>
+    ) : null;
+  if (!control) {
+    return resolution.kind === 'unavailable' ? (
+      <div className="space-y-3">
+        <MainserverPrincipalAlert reason={resolution.reason} />
+        {retry}
+      </div>
+    ) : null;
   }
-  return <>{children(resolution.control)}</>;
+  return (
+    <>
+      {resolution.kind === 'unavailable' ? (
+        <MainserverPrincipalAlert reason={resolution.reason} />
+      ) : null}
+      {retry}
+      <fieldset
+        disabled={resolution.kind === 'unavailable'}
+        aria-busy={resolution.kind === 'unavailable'}
+        className="min-w-0 border-0 p-0"
+      >
+        {children(control)}
+      </fieldset>
+    </>
+  );
 };

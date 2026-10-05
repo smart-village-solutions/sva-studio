@@ -84,6 +84,7 @@ export {
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalControlProps,
+  type MainserverPrincipalContextOption,
   type MainserverPrincipalOption,
   type MainserverPrincipalType,
 } from './mainserver-principal-control.js';

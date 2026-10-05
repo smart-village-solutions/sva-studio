@@ -7,7 +7,7 @@ import { NewsDetailPage, NewsEditPage } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { ProjectsCreatePage, ProjectsEditPage } from '@sva/plugin-projects';
 import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
-import { StudioLoadingState } from '@sva/studio-ui-react';
+import { StudioLoadingState, type MainserverPrincipalContextOption } from '@sva/studio-ui-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
@@ -80,9 +80,52 @@ export const ContentListRoutePage = () => {
 };
 
 export const NewsCreateRoutePage = () => {
+  const { user } = useAuth();
+  const organizationContext = useOrganizationContext();
+  const activeOrganizationId = organizationContext.context?.activeOrganizationId;
+  const memberOrganizations = user?.roles?.includes('system_admin')
+    ? (organizationContext.context?.organizations.filter((organization) => organization.isActive) ??
+      [])
+    : [];
+
   return (
     <MainserverPrincipalBoundary>
-      {(principalControl) => <NewsDetailPage mode="create" principalControl={principalControl} />}
+      {(principalControl) => {
+        const contextOptions: MainserverPrincipalContextOption[] = [
+          ...(activeOrganizationId &&
+          principalControl.kind === 'fixed' &&
+          principalControl.value === 'organization'
+            ? [{ value: 'personal' as const, label: t('shell.header.organizationContextPersonal') }]
+            : []),
+          ...memberOrganizations
+            .filter((organization) => organization.organizationId !== activeOrganizationId)
+            .map((organization) => ({
+              value: `organization:${organization.organizationId}` as const,
+              label: organization.displayName,
+            })),
+        ];
+        return (
+          <NewsDetailPage
+            mode="create"
+            principalControl={{
+              ...principalControl,
+              contextOptions,
+              onContextChange: (selection) => {
+                if (selection === 'personal') {
+                  void organizationContext.switchOrganization(null);
+                  return;
+                }
+                const organization = memberOrganizations.find(
+                  (candidate) => `organization:${candidate.organizationId}` === selection
+                );
+                if (organization) {
+                  void organizationContext.switchOrganization(organization.organizationId);
+                }
+              },
+            }}
+          />
+        );
+      }}
     </MainserverPrincipalBoundary>
   );
 };

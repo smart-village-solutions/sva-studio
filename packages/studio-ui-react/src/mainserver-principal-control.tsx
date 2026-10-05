@@ -11,7 +11,17 @@ export type MainserverPrincipalOption = Readonly<{
   label: string;
 }>;
 
-export type MainserverPrincipalControlModel =
+export type MainserverPrincipalContextOption = Readonly<{
+  value: 'personal' | `organization:${string}`;
+  label: string;
+}>;
+
+type ContextSelection = Readonly<{
+  contextOptions?: readonly MainserverPrincipalContextOption[];
+  onContextChange?: (value: MainserverPrincipalContextOption['value']) => void;
+}>;
+
+export type MainserverPrincipalControlModel = (
   | Readonly<{
       kind: 'fixed';
       value: MainserverPrincipalType;
@@ -21,7 +31,9 @@ export type MainserverPrincipalControlModel =
       kind: 'selectable';
       value: MainserverPrincipalType;
       options: readonly MainserverPrincipalOption[];
-    }>;
+    }>
+) &
+  ContextSelection;
 
 export const resolveMainserverPrincipalOptions = (
   control: MainserverPrincipalControlModel | undefined,
@@ -41,7 +53,8 @@ export type MainserverPrincipalControlProps = Readonly<{
   dataProvider?: Readonly<{ id?: string; name?: string }> | null;
   dataProviderLabel?: string;
   dataProviderUnavailableLabel?: string;
-}>;
+}> &
+  ContextSelection;
 
 const resolveOptionLabel = (
   options: readonly MainserverPrincipalOption[],
@@ -55,6 +68,8 @@ export const MainserverPrincipalControl = ({
   value,
   options,
   onChange,
+  contextOptions = [],
+  onContextChange,
   dataProvider,
   dataProviderLabel,
   dataProviderUnavailableLabel,
@@ -63,15 +78,22 @@ export const MainserverPrincipalControl = ({
     const nextValue = event.target.value;
     if (nextValue === 'organization' || nextValue === 'user') {
       onChange(nextValue);
+    } else if (contextOptions.some((option) => option.value === nextValue)) {
+      onContextChange?.(nextValue as MainserverPrincipalContextOption['value']);
     }
   };
 
   return (
     <div className="space-y-4">
       <StudioField id={id} label={label} description={description}>
-        {options.length > 1 ? (
+        {options.length + contextOptions.length > 1 ? (
           <Select id={id} value={value} onChange={handleChange}>
             {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+            {contextOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

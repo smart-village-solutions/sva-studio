@@ -651,6 +651,16 @@ Der membership-gefilterte Self-Service-Contract `GET /api/v1/iam/me/context` SHA
 - **THEN** ist ausschließlich `user` auswählbar
 - **AND** ein `organization`-Scope fällt für Content-Autorisierung auf `own` zurück
 
+#### Scenario: Systemadministrator wechselt den Kontext beim Erstellen einer Nachricht
+
+- **GIVEN** ein `system_admin` ist Mitglied einer aktiven Organisation und bearbeitet einen ungespeicherten Nachrichtenentwurf im persönlichen Kontext
+- **WHEN** er im bestehenden Feld „Erstellen als“ diese Organisation auswählt
+- **THEN** bleibt der Entwurf sichtbar und erhalten
+- **AND** ist Speichern bis zum bestätigten Kontextwechsel gesperrt
+- **AND** folgt die anschließende Principal-Auswahl der `contentAuthorPolicy` der gewählten Organisation
+- **AND** erscheint kein zusätzliches Organisations-Dropdown auf der Erstellungsseite
+- **AND** bleibt der Entwurf bei einem fehlgeschlagenen Kontextwechsel erhalten und Speichern bis zur erneuten Kontextbestätigung gesperrt
+
 ### Requirement: Organisationen erhalten optional einen provisionierten Mainserver-Zugang
 
 Das System SHALL bei der Erstellung einer Organisation nach erfolgreichem lokalem Commit best-effort einen organisationsbezogenen Mainserver-Zugang über einen eindeutig zugeordneten Studio-/Keycloak-Account provisionieren, sofern die Integration konfiguriert ist. `iam.org.write` SHALL dafür einschließlich der eng begrenzten internen technischen Accounterstellung ausreichen. Die lokale Organisation SHALL unabhängig von Keycloak-, persönlichen Mainserver-Credentials und Mainserver-Verfügbarkeit erstellbar bleiben. Fehlende Zugänge SHALL später über eine explizite, idempotente Organisationsaktion provisionierbar sein.

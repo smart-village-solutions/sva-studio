@@ -20,6 +20,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { getSession, updateSession } from '../redis-session.js';
+import { revokeUserSessions } from '../session-revocation.js';
 import { jsonResponse } from '../db.js';
 import {
   authorizeInstancePermissionForUser,
@@ -148,6 +149,7 @@ const organizationMutationHandlers = createOrganizationMutationHandlers({
   requireIdempotencyKey,
   requireRoles,
   reserveIdempotency,
+  revokeUserSessions,
   resolveActorInfo,
   resolveHierarchyFields,
   toPayloadHash,

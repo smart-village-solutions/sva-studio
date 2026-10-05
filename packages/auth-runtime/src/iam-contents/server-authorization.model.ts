@@ -1,4 +1,4 @@
-import { resolveSessionActiveOrganizationId, type PermissionDenialDetails } from '@sva/core';
+import type { PermissionDenialDetails } from '@sva/core';
 import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
@@ -168,16 +168,12 @@ export const resolveOrganizationOptionalDecision = (
 export const resolveActiveOrganizationId = async (input: {
   readonly sessionId: string;
   readonly instanceId: string;
-  readonly roleNames?: readonly string[];
   readonly requestId?: string;
   readonly traceId?: string;
 }): Promise<string | undefined | ContentPrimitiveAuthorizationResult> => {
   try {
     const session = await getSession(input.sessionId);
-    return resolveSessionActiveOrganizationId({
-      roleNames: input.roleNames,
-      activeOrganizationId: session?.activeOrganizationId,
-    });
+    return session?.activeOrganizationId;
   } catch (error) {
     accountLogger.error('Content primitive authorization session lookup failed', {
       operation: 'content_primitive_authorize',

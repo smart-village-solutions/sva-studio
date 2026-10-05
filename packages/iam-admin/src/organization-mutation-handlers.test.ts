@@ -54,6 +54,7 @@ const state = {
 const completeIdempotency = vi.fn();
 const emitActivityLog = vi.fn();
 const notifyPermissionInvalidation = vi.fn();
+const revokeUserSessions = vi.fn();
 const updateSession = vi.fn();
 const loggerInfo = vi.fn();
 const loggerError = vi.fn();
@@ -127,6 +128,7 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
         )
   ),
   reserveIdempotency: vi.fn(async () => state.reserve),
+  revokeUserSessions,
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   resolveHierarchyFields: vi.fn(async () => ({ ok: true, hierarchyPath: [], depth: 0 })),
   toPayloadHash: vi.fn(() => 'hash-org-1'),
@@ -995,8 +997,8 @@ describe('organization mutation handlers', () => {
   it('removes organization memberships and promotes a fallback default context when needed', async () => {
     const deps = buildDeps();
     const query = vi.fn(async (text: string) => {
-      if (text.includes('SELECT is_default_context')) {
-        return { rowCount: 1, rows: [{ is_default_context: true }] };
+      if (text.includes('SELECT membership.is_default_context')) {
+        return { rowCount: 1, rows: [{ is_default_context: true, keycloak_subject: 'kc-member' }] };
       }
       return { rowCount: 1, rows: [] };
     });
@@ -1020,6 +1022,13 @@ describe('organization mutation handlers', () => {
       expect.anything(),
       expect.objectContaining({ trigger: 'organization_membership_removed' })
     );
+    expect(revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-member',
+      reason: 'organization_membership_removed',
+    });
+    expect(revokeUserSessions.mock.invocationCallOrder[0]).toBeLessThan(
+      query.mock.invocationCallOrder[1]
+    );
     expect(emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -1030,6 +1039,28 @@ describe('organization mutation handlers', () => {
         },
       })
     );
+  });
+
+  it('keeps the membership when session revocation fails', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({
+      rowCount: 1,
+      rows: [{ is_default_context: false, keycloak_subject: 'kc-member' }],
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    revokeUserSessions.mockRejectedValueOnce(new Error('redis unavailable'));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.removeOrganizationMembershipInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships/22222222-2222-2222-8222-222222222222',
+        { method: 'DELETE' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 
   it('updates organization membership attributes and keeps a single default context', async () => {
@@ -1166,7 +1197,7 @@ describe('organization mutation handlers', () => {
     );
   });
 
-  it('keeps the organization context unset for system_admin actors', async () => {
+  it('lets system_admin actors select a member organization', async () => {
     const handlers = createOrganizationMutationHandlers(buildDeps());
 
     const response = await handlers.updateMyOrganizationContextInternal(
@@ -1179,15 +1210,51 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(updateSession).toHaveBeenCalledWith('session-1', {
-      activeOrganizationId: undefined,
+      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
     });
     await expect(json(response)).resolves.toMatchObject({
       data: {
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
         organizations: [
           expect.objectContaining({ organizationId: '11111111-1111-1111-8111-111111111111' }),
         ],
       },
     });
+  });
+
+  it('lets system_admin actors return to their personal context', async () => {
+    state.parseResult = {
+      ok: true,
+      data: { organizationId: null },
+      rawBody: '{"organizationId":null}',
+    };
+    const handlers = createOrganizationMutationHandlers(buildDeps());
+    const response = await handlers.updateMyOrganizationContextInternal(
+      new Request('http://localhost/api/v1/iam/me/context', { method: 'PUT' }),
+      { ...ctx, user: { ...ctx.user, roles: ['system_admin'] } }
+    );
+    expect(response.status).toBe(200);
+    expect(updateSession).toHaveBeenCalledWith('session-1', { activeOrganizationId: undefined });
+    expect(notifyPermissionInvalidation).toHaveBeenCalled();
+    expect(emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ payload: { organizationId: null } })
+    );
+  });
+
+  it('does not let a non-admin clear the organization context', async () => {
+    state.parseResult = {
+      ok: true,
+      data: { organizationId: null },
+      rawBody: '{"organizationId":null}',
+    };
+    const handlers = createOrganizationMutationHandlers(buildDeps());
+    const response = await handlers.updateMyOrganizationContextInternal(
+      new Request('http://localhost/api/v1/iam/me/context', { method: 'PUT' }),
+      ctx
+    );
+    expect(response.status).toBe(400);
+    expect(updateSession).not.toHaveBeenCalled();
   });
 
   it('rejects inactive organizations as new active context', async () => {
@@ -1215,23 +1282,26 @@ describe('organization mutation handlers', () => {
     });
   });
 
-  it('returns invalid_organization_id when the requested organization is outside the actor context', async () => {
-    const deps = buildDeps();
-    state.parseResult = {
-      ok: true,
-      data: { organizationId: '22222222-2222-2222-8222-222222222222' },
-      rawBody: '{}',
-    };
-    const handlers = createOrganizationMutationHandlers(deps);
+  it.each([['editor'], ['system_admin']])(
+    'returns invalid_organization_id when the requested organization is outside the %s actor context',
+    async (roles) => {
+      const deps = buildDeps();
+      state.parseResult = {
+        ok: true,
+        data: { organizationId: '22222222-2222-2222-8222-222222222222' },
+        rawBody: '{}',
+      };
+      const handlers = createOrganizationMutationHandlers(deps);
 
-    const response = await handlers.updateMyOrganizationContextInternal(
-      new Request('http://localhost/api/v1/iam/me/organization-context', { method: 'PATCH' }),
-      ctx
-    );
+      const response = await handlers.updateMyOrganizationContextInternal(
+        new Request('http://localhost/api/v1/iam/me/organization-context', { method: 'PATCH' }),
+        { ...ctx, user: { ...ctx.user, roles } }
+      );
 
-    expect(response.status).toBe(400);
-    await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'invalid_organization_id' },
-    });
-  });
+      expect(response.status).toBe(400);
+      await expect(json(response)).resolves.toMatchObject({
+        error: { code: 'invalid_organization_id' },
+      });
+    }
+  );
 });

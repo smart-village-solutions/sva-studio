@@ -1,8 +1,4 @@
-import {
-  resolveSessionActiveOrganizationId,
-  summarizeContentAccess,
-  type IamContentAccessSummary,
-} from '@sva/core';
+import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
 import {
@@ -282,10 +278,7 @@ export const resolveContentActor = async (
       actorDisplayName: ctx.user.id,
       requestId: actorResolution.actor.requestId,
       traceId: actorResolution.actor.traceId,
-      activeOrganizationId: resolveSessionActiveOrganizationId({
-        roleNames: ctx.user.roles,
-        activeOrganizationId: session?.activeOrganizationId,
-      }),
+      activeOrganizationId: session?.activeOrganizationId,
     },
   };
 };

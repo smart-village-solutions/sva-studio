@@ -8,6 +8,7 @@ import {
 export type SessionRevocationReason =
   | 'account_lifecycle_blocked'
   | 'dsr_deletion_requested'
+  | 'organization_membership_removed'
   | 'user_bulk_deactivated'
   | 'user_deactivated'
   | 'user_deleted'
@@ -55,12 +56,16 @@ const toBlockingSessionRevocationReason = (
 const isPersistentLoginBlockReason = (
   reason: BlockingSessionRevocationReason | undefined
 ): reason is Exclude<BlockingSessionRevocationReason, ReactivatableSessionRevocationReason> =>
-  reason === 'account_lifecycle_blocked' || reason === 'dsr_deletion_requested' || reason === 'user_deleted';
+  reason === 'account_lifecycle_blocked' ||
+  reason === 'dsr_deletion_requested' ||
+  reason === 'user_deleted';
 
 const isReactivatableLoginBlockReason = (
   reason: BlockingSessionRevocationReason | undefined
 ): reason is ReactivatableSessionRevocationReason =>
-  reason === 'user_bulk_deactivated' || reason === 'user_deactivated' || reason === 'user_status_inactivated';
+  reason === 'user_bulk_deactivated' ||
+  reason === 'user_deactivated' ||
+  reason === 'user_status_inactivated';
 
 export const revokeUserSessions = async (input: {
   readonly keycloakSubject: string;
@@ -69,14 +74,20 @@ export const revokeUserSessions = async (input: {
 }): Promise<void> => {
   const currentState = await getSessionControlState(input.keycloakSubject);
   const blockingReason = toBlockingSessionRevocationReason(input.reason);
-  const shouldPersistLoginBlock = input.persistLoginBlock ?? shouldPersistSessionControlState(input.reason);
+  const shouldPersistLoginBlock =
+    input.persistLoginBlock ??
+    (input.reason === 'organization_membership_removed' && currentState?.loginBlocked === true
+      ? true
+      : shouldPersistSessionControlState(input.reason));
   const currentBlockingReason =
-    currentState?.loginBlocked && currentState.loginBlockedReason ? currentState.loginBlockedReason : undefined;
+    currentState?.loginBlocked && currentState.loginBlockedReason
+      ? currentState.loginBlockedReason
+      : undefined;
   const nextBlockingReason = !shouldPersistLoginBlock
     ? undefined
     : isPersistentLoginBlockReason(currentBlockingReason)
-    ? currentBlockingReason
-    : blockingReason ?? currentBlockingReason;
+      ? currentBlockingReason
+      : (blockingReason ?? currentBlockingReason);
   const nextState = {
     minimumSessionVersion: Math.max(currentState?.minimumSessionVersion ?? 1, 1) + 1,
     forcedReauthAt: Date.now(),

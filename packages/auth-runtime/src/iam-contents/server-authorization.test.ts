@@ -246,7 +246,7 @@ describe('authorizeContentPrimitiveForUser', () => {
     );
   });
 
-  it('ignores stale session organization scope for system_admin users', async () => {
+  it('uses the selected session organization scope for system_admin users', async () => {
     getSessionMock.mockResolvedValueOnce({
       id: 'session-1',
       userId: 'user-1',
@@ -273,6 +273,7 @@ describe('authorizeContentPrimitiveForUser', () => {
       actor: {
         instanceId: 'instance-1',
         keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-4111-8111-111111111111',
       },
       permissions: [permission],
     });
@@ -280,7 +281,7 @@ describe('authorizeContentPrimitiveForUser', () => {
     expect(resolveEffectivePermissionsMock).toHaveBeenCalledWith({
       instanceId: 'instance-1',
       keycloakSubject: 'subject-1',
-      organizationId: undefined,
+      organizationId: '11111111-1111-4111-8111-111111111111',
     });
   });
 

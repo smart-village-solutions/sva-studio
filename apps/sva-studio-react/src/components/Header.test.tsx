@@ -3,7 +3,11 @@
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail, recordAuthDiagnosticEvent } from '../lib/auth-diagnostics';
+import {
+  clearAuthDiagnosticTrail,
+  readAuthDiagnosticTrail,
+  recordAuthDiagnosticEvent,
+} from '../lib/auth-diagnostics';
 import Header from './Header';
 
 const useAuthMock = vi.fn();
@@ -11,7 +15,7 @@ const useLocaleMock = vi.fn();
 const useThemeMock = vi.fn();
 const useOrganizationContextMock = vi.fn();
 const organizationContextSwitcherMock = vi.fn(
-  (_props?: { variant?: 'inline' | 'menu'; readOnly?: boolean }) => (
+  (_props?: { variant?: 'inline' | 'menu'; allowPersonal?: boolean }) => (
     <div data-testid="organization-context-switcher">Organization Context</div>
   )
 );
@@ -71,14 +75,17 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
-  useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+  useRouterState: (options?: {
+    select?: (state: { location: { pathname: string } }) => unknown;
+  }) => {
     const state = { location: { pathname: window.location.pathname } };
     return options?.select ? options.select(state) : state;
   },
 }));
 
 vi.mock('./OrganizationContextSwitcher', () => ({
-  OrganizationContextSwitcher: (props: { variant?: 'inline' | 'menu' }) => organizationContextSwitcherMock(props),
+  OrganizationContextSwitcher: (props: { variant?: 'inline' | 'menu' }) =>
+    organizationContextSwitcherMock(props),
 }));
 
 /**
@@ -218,8 +225,12 @@ describe('Header auth actions', () => {
       '/auth/login?returnTo=%2Faccount%3Ftab%3Dprofile'
     );
     expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).className).toContain('rounded-full');
-    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).className).toContain('text-muted-foreground');
+    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).className).toContain(
+      'rounded-full'
+    );
+    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).className).toContain(
+      'text-muted-foreground'
+    );
     expect(screen.queryByTestId('organization-context-switcher')).toBeNull();
   });
 
@@ -263,14 +274,24 @@ describe('Header auth actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
-    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
-    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('data-router-link')).toBe('true');
-    expect(screen.getByRole('menuitem', { name: 'Datenschutz' }).getAttribute('href')).toBe('/account/privacy');
-    expect(screen.getByRole('menuitem', { name: 'Kontoregeln' }).getAttribute('href')).toBe('/account/rules');
+    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('href')).toBe(
+      '/account'
+    );
+    expect(
+      screen.getByRole('menuitem', { name: 'Mein Konto' }).getAttribute('data-router-link')
+    ).toBe('true');
+    expect(screen.getByRole('menuitem', { name: 'Datenschutz' }).getAttribute('href')).toBe(
+      '/account/privacy'
+    );
+    expect(screen.getByRole('menuitem', { name: 'Kontoregeln' }).getAttribute('href')).toBe(
+      '/account/rules'
+    );
     expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('href')).toBe(
       '/auth/account-action?action=update-password&returnTo=%2Faccount'
     );
-    expect(screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('data-router-link')).toBeNull();
+    expect(
+      screen.getByRole('menuitem', { name: 'Passwort ändern' }).getAttribute('data-router-link')
+    ).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'E-Mail ändern' })).toBeNull();
     expect(screen.getAllByRole('separator')).toHaveLength(3);
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
@@ -286,12 +307,14 @@ describe('Header auth actions', () => {
     expect(screen.getByRole('dialog', { name: 'Kontomenü' }).className).toContain('rounded-lg');
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
     expect(
-      screen.getByTestId('organization-context-switcher').compareDocumentPosition(screen.getByRole('menuitem', { name: 'Mein Konto' }))
+      screen
+        .getByTestId('organization-context-switcher')
+        .compareDocumentPosition(screen.getByRole('menuitem', { name: 'Mein Konto' }))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(organizationContextSwitcherMock).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: 'menu',
-        readOnly: false,
+        allowPersonal: false,
       })
     );
 
@@ -301,7 +324,7 @@ describe('Header auth actions', () => {
     expect(logoutIntent?.getAttribute('value')).toBe('user');
   });
 
-  it('zeigt Organisationsmitgliedschaften auch für system_admin im Kontomenü als read-only Bereich', async () => {
+  it('bietet system_admin den Wechsel zwischen persönlichem und Organisationskontext im Kontomenü an', async () => {
     useOrganizationContextMock.mockReturnValue({
       context: {
         activeOrganizationId: 'org-1',
@@ -361,7 +384,7 @@ describe('Header auth actions', () => {
     expect(organizationContextSwitcherMock).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: 'menu',
-        readOnly: true,
+        allowPersonal: true,
       })
     );
   });
@@ -551,9 +574,9 @@ describe('Header auth actions', () => {
 
     fireEvent.focus(screen.getByRole('button', { name: 'Sprache wechseln' }));
     expect(screen.getByRole('tooltip', { name: 'Sprachen' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sprache wechseln' }).getAttribute('aria-describedby')).toBe(
-      screen.getByRole('tooltip', { name: 'Sprachen' }).getAttribute('id')
-    );
+    expect(
+      screen.getByRole('button', { name: 'Sprache wechseln' }).getAttribute('aria-describedby')
+    ).toBe(screen.getByRole('tooltip', { name: 'Sprachen' }).getAttribute('id'));
     fireEvent.blur(screen.getByRole('button', { name: 'Sprache wechseln' }));
     await waitFor(() => {
       expect(screen.queryByRole('tooltip', { name: 'Sprachen' })).toBeNull();
@@ -755,9 +778,11 @@ describe('Header auth actions', () => {
 
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
     expect(screen.getAllByRole('separator')).toHaveLength(3);
-    expect(screen.getByRole('menuitem', { name: 'Mein Konto' }).previousElementSibling?.getAttribute('role')).not.toBe(
-      'separator'
-    );
+    expect(
+      screen
+        .getByRole('menuitem', { name: 'Mein Konto' })
+        .previousElementSibling?.getAttribute('role')
+    ).not.toBe('separator');
   });
 
   it('delegates theme toggle to the theme provider', async () => {

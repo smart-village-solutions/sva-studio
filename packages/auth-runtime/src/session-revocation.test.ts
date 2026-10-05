@@ -45,6 +45,47 @@ describe('session-revocation', () => {
     expect(revocationMocks.deleteSession).toHaveBeenNthCalledWith(2, 'session-b');
   });
 
+  it('revokes sessions after membership removal without blocking future sign-in', async () => {
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-member',
+      reason: 'organization_membership_removed',
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-member',
+      { minimumSessionVersion: 2, forcedReauthAt: 1_717_000_000_000 },
+      undefined
+    );
+    expect(revocationMocks.deleteSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves an existing login block when revoking sessions after membership removal', async () => {
+    revocationMocks.getSessionControlState.mockResolvedValue({
+      minimumSessionVersion: 4,
+      loginBlocked: true,
+      loginBlockedReason: 'user_deactivated',
+    });
+    const { revokeUserSessions } = await import('./session-revocation.js');
+
+    await revokeUserSessions({
+      keycloakSubject: 'kc-member',
+      reason: 'organization_membership_removed',
+    });
+
+    expect(revocationMocks.setSessionControlState).toHaveBeenCalledWith(
+      'kc-member',
+      {
+        minimumSessionVersion: 5,
+        forcedReauthAt: 1_717_000_000_000,
+        loginBlocked: true,
+        loginBlockedReason: 'user_deactivated',
+      },
+      null
+    );
+  });
+
   it('preserves and advances existing control state on repeated revocations', async () => {
     revocationMocks.getSessionControlState.mockResolvedValue({
       minimumSessionVersion: 4,

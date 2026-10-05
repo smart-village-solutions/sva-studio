@@ -114,9 +114,8 @@ export const shellDEResources = {
     adminRoles: 'Rollen',
     adminGroups: 'Gruppen',
     organizationContext: 'Aktive Organisation',
+    organizationContextPersonal: 'Persönlicher Account',
     organizationMemberships: 'Organisationsmitgliedschaften',
-    organizationMembershipsSystemAdminHint:
-      'Als Systemadmin arbeiten Sie instanzweit; Organisationsmitgliedschaften schränken Ihre Rechte nicht ein.',
     organizationContextStatus: 'Aktiver Organisationskontext: {{name}}',
     organizationContextUpdating: 'Organisationskontext wird aktualisiert.',
     organizationContextError: 'Organisationskontext konnte nicht gewechselt werden.',

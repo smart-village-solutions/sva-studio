@@ -100,7 +100,7 @@ const createAccountMenuItems = ({
     ? ([
         {
           id: 'organization-context',
-          render: <OrganizationContextSwitcher variant="menu" readOnly={isSystemAdmin} />,
+          render: <OrganizationContextSwitcher variant="menu" allowPersonal={isSystemAdmin} />,
         },
         {
           id: 'divider-organization-context',

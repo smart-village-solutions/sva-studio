@@ -154,30 +154,43 @@ describe('useOrganizationContext', () => {
 
     expect(result.current.context?.activeOrganizationId).toBe('org-2');
     expect(authMockValue.refreshSession).not.toHaveBeenCalled();
+
+    updateMyOrganizationContextMock.mockResolvedValueOnce({
+      data: { activeOrganizationId: undefined, organizations: [] },
+    });
+    await act(async () => {
+      const switched = await result.current.switchOrganization(null);
+      expect(switched).toBe(true);
+    });
+    expect(updateMyOrganizationContextMock).toHaveBeenLastCalledWith(null);
+    expect(result.current.context?.activeOrganizationId).toBeUndefined();
   });
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores protected response errors without coupling them to an auth refresh (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    getMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-load'));
+  ])(
+    'stores protected response errors without coupling them to an auth refresh (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      getMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-load'));
 
-    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
+      const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe(protectedError);
+      });
+
+      updateMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-switch'));
+
+      await act(async () => {
+        const switched = await result.current.switchOrganization('org-2');
+        expect(switched).toBe(false);
+      });
+
+      expect(authMockValue.refreshSession).not.toHaveBeenCalled();
       expect(result.current.error).toBe(protectedError);
-    });
-
-    updateMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-switch'));
-
-    await act(async () => {
-      const switched = await result.current.switchOrganization('org-2');
-      expect(switched).toBe(false);
-    });
-
-    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
-    expect(result.current.error).toBe(protectedError);
-  });
+    }
+  );
 });

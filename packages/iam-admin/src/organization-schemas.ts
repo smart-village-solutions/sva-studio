@@ -68,5 +68,5 @@ export const updateOrganizationMembershipSchema = z
   });
 
 export const updateOrganizationContextSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.string().uuid().nullable(),
 });

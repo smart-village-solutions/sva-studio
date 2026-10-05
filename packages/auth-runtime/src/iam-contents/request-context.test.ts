@@ -352,7 +352,7 @@ describe('content request authorization context', () => {
     expect('error' in missingAccount && missingAccount.error.status).toBe(403);
   });
 
-  it('clears stale session organization scope when the actor is system_admin', async () => {
+  it('preserves the selected session organization when the actor is system_admin', async () => {
     getSessionMock.mockResolvedValueOnce({ activeOrganizationId: 'org-1' });
 
     await expect(
@@ -364,7 +364,7 @@ describe('content request authorization context', () => {
       actor: {
         instanceId: 'instance-1',
         actorAccountId: 'account-1',
-        activeOrganizationId: undefined,
+        activeOrganizationId: 'org-1',
       },
     });
   });

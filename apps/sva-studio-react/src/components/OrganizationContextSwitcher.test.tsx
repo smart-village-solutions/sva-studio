@@ -343,7 +343,8 @@ describe('OrganizationContextSwitcher', () => {
     expect(screen.getByText('Alpha')).toBeTruthy();
   });
 
-  it('renders system_admin memberships as read-only without a selector', () => {
+  it('lets a system admin explicitly select an organization from personal context', () => {
+    const switchOrganization = vi.fn().mockResolvedValue(true);
     useOrganizationContextMock.mockReturnValue({
       context: {
         activeOrganizationId: undefined,
@@ -370,19 +371,23 @@ describe('OrganizationContextSwitcher', () => {
       isUpdating: false,
       error: null,
       refetch: vi.fn(),
-      switchOrganization: vi.fn(),
+      switchOrganization,
     });
 
-    render(<OrganizationContextSwitcher variant="menu" readOnly />);
+    render(<OrganizationContextSwitcher variant="menu" allowPersonal />);
 
-    expect(screen.queryByLabelText('Aktive Organisation')).toBeNull();
+    const select = screen.getByLabelText('Aktive Organisation');
+    expect((select as HTMLSelectElement).value).toBe('');
+    expect(screen.getByRole('option', { name: 'Persönlicher Account' })).toBeTruthy();
+    fireEvent.change(select, { target: { value: 'org-1' } });
+    expect(switchOrganization).toHaveBeenCalledWith('org-1');
     expect(screen.getByText('Organisationsmitgliedschaften')).toBeTruthy();
-    expect(screen.getByText('Als Systemadmin arbeiten Sie instanzweit; Organisationsmitgliedschaften schränken Ihre Rechte nicht ein.')).toBeTruthy();
-    expect(screen.getByText('Alpha')).toBeTruthy();
-    expect(screen.getByText('Beta')).toBeTruthy();
+    expect(screen.getAllByText('Alpha')).toHaveLength(2);
+    expect(screen.getAllByText('Beta')).toHaveLength(2);
   });
 
-  it('does not announce a stale active organization in read-only mode', () => {
+  it('lets a system admin return to personal context', () => {
+    const switchOrganization = vi.fn().mockResolvedValue(true);
     useOrganizationContextMock.mockReturnValue({
       context: {
         activeOrganizationId: 'org-1',
@@ -401,11 +406,14 @@ describe('OrganizationContextSwitcher', () => {
       isUpdating: false,
       error: null,
       refetch: vi.fn(),
-      switchOrganization: vi.fn(),
+      switchOrganization,
     });
 
-    render(<OrganizationContextSwitcher variant="menu" readOnly />);
+    render(<OrganizationContextSwitcher variant="menu" allowPersonal />);
 
-    expect(screen.getByRole('status').textContent).toBe('');
+    const select = screen.getByLabelText('Aktive Organisation');
+    expect((select as HTMLSelectElement).value).toBe('org-1');
+    fireEvent.change(select, { target: { value: '' } });
+    expect(switchOrganization).toHaveBeenCalledWith(null);
   });
 });

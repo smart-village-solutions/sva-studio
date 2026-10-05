@@ -183,6 +183,10 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
     readonly idempotencyKey: string;
     readonly payloadHash: string;
   }) => Promise<IdempotencyReserveResult>;
+  readonly revokeUserSessions: (input: {
+    readonly keycloakSubject: string;
+    readonly reason: 'organization_membership_removed';
+  }) => Promise<void>;
   readonly resolveActorInfo: (
     request: Request,
     ctx: OrganizationMutationAuthenticatedRequestContext,

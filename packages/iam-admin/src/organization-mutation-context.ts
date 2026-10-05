@@ -52,6 +52,48 @@ const prepareContext = async <TFeatureFlags>(
   return { actor, parsed };
 };
 
+const executePersonalContext = async <TFeatureFlags>(
+  deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
+  ctx: OrganizationMutationAuthenticatedRequestContext,
+  prepared: Exclude<Awaited<ReturnType<typeof prepareContext>>, Response>,
+  organizations: Awaited<
+    ReturnType<OrganizationMutationHandlerDeps<TFeatureFlags>['loadContextOptions']>
+  >
+): Promise<Response> => {
+  const { actor } = prepared;
+  if (!hasSystemAdminRole(ctx.user.roles)) {
+    return deps.createApiError(
+      400,
+      'invalid_organization_id',
+      'Ein persönlicher Organisationskontext ist hier nicht zulässig.',
+      actor.requestId
+    );
+  }
+  await deps.updateSession(ctx.sessionId, { activeOrganizationId: undefined });
+  await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
+    await deps.notifyPermissionInvalidation(client, {
+      instanceId: actor.instanceId,
+      keycloakSubject: ctx.user.id,
+      trigger: 'organization_context_switched',
+    });
+    await deps.emitActivityLog(client, {
+      instanceId: actor.instanceId,
+      accountId: actor.actorAccountId,
+      subjectId: actor.actorAccountId,
+      eventType: 'organization.context_switched',
+      result: 'success',
+      payload: { organizationId: null },
+      requestId: actor.requestId,
+      traceId: actor.traceId,
+    });
+  });
+
+  return deps.jsonResponse(
+    200,
+    deps.asApiItem({ activeOrganizationId: undefined, organizations }, actor.requestId)
+  );
+};
+
 const executeContext = async <TFeatureFlags>(
   deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
   ctx: OrganizationMutationAuthenticatedRequestContext,
@@ -65,19 +107,8 @@ const executeContext = async <TFeatureFlags>(
         accountId: actor.actorAccountId,
       })
     );
-    if (hasSystemAdminRole(ctx.user.roles)) {
-      await deps.updateSession(ctx.sessionId, { activeOrganizationId: undefined });
-
-      return deps.jsonResponse(
-        200,
-        deps.asApiItem(
-          {
-            activeOrganizationId: undefined,
-            organizations,
-          },
-          actor.requestId
-        )
-      );
+    if (parsed.data.organizationId === null) {
+      return executePersonalContext(deps, ctx, prepared, organizations);
     }
     const target = organizations.find(
       (organization) => organization.organizationId === parsed.data.organizationId

@@ -4,6 +4,7 @@ import type {
   OrganizationMutationHandlerDeps,
   PreparedOrganizationMutationActor,
 } from './organization-mutation-handlers.js';
+import { revokeOrganizationMemberSessions } from './organization-mutation-membership-remove.js';
 import { createAdminMutationHandler, readOrganizationId } from './organization-mutation-request.js';
 import type { QueryClient } from './query-client.js';
 
@@ -45,6 +46,10 @@ const persistUpdate = async <TFeatureFlags>(
   });
   if (!hierarchy.ok) {
     throw hierarchy;
+  }
+
+  if (existing.is_active && input.data.isActive === false) {
+    await revokeOrganizationMemberSessions(deps, client, actor.instanceId, organizationId);
   }
 
   await client.query(
@@ -169,6 +174,7 @@ const persistDelete = async <TFeatureFlags>(
   }
 
   if (organization.membership_count > 0) {
+    await revokeOrganizationMemberSessions(deps, client, actor.instanceId, organizationId);
     await client.query(
       `
 WITH deleted_memberships AS (

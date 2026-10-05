@@ -11,6 +11,32 @@ type RemoveState = {
   readonly accountId: string;
 };
 
+export const revokeOrganizationMemberSessions = async <TFeatureFlags>(
+  deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
+  client: QueryClient,
+  instanceId: string,
+  organizationId: string
+): Promise<void> => {
+  const members = await client.query<{ keycloak_subject: string }>(
+    `
+SELECT account.keycloak_subject
+FROM iam.account_organizations membership
+JOIN iam.accounts account
+  ON account.id = membership.account_id
+ AND account.instance_id = membership.instance_id
+WHERE membership.instance_id = $1
+  AND membership.organization_id = $2::uuid;
+`,
+    [instanceId, organizationId]
+  );
+  for (const member of members.rows) {
+    await deps.revokeUserSessions({
+      keycloakSubject: member.keycloak_subject,
+      reason: 'organization_membership_removed',
+    });
+  }
+};
+
 const removeMembershipTransaction = async <TFeatureFlags>(
   deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
   state: RemoveState,

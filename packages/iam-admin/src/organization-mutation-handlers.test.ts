@@ -599,6 +599,74 @@ describe('organization mutation handlers', () => {
     expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
   });
 
+  it('revokes member sessions before deactivating an organization', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async (text: string) =>
+      text.includes('SELECT account.keycloak_subject')
+        ? {
+            rowCount: 2,
+            rows: [{ keycloak_subject: 'kc-member' }, { keycloak_subject: 'kc-second-member' }],
+          }
+        : { rowCount: 1, rows: [] }
+    );
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: { isActive: false },
+      rawBody: '{}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-member',
+      reason: 'organization_membership_removed',
+    });
+    expect(revokeUserSessions).toHaveBeenCalledTimes(2);
+    expect(revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-second-member',
+      reason: 'organization_membership_removed',
+    });
+    expect(revokeUserSessions.mock.invocationCallOrder[1]).toBeLessThan(
+      query.mock.invocationCallOrder[1]
+    );
+  });
+
+  it('keeps an organization active when member session revocation fails', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({
+      rowCount: 1,
+      rows: [{ keycloak_subject: 'kc-member' }],
+    }));
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: { isActive: false },
+      rawBody: '{}',
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    revokeUserSessions.mockRejectedValueOnce(new Error('redis unavailable'));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
   it('returns a conflict when credential changes race with active provisioning', async () => {
     const deps = buildDeps();
     deps.parseRequestBody = vi.fn(async () => ({
@@ -700,7 +768,11 @@ describe('organization mutation handlers', () => {
 
   it('deletes organizations when the organization still has memberships', async () => {
     const deps = buildDeps();
-    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    const query = vi.fn(async (text: string) =>
+      text.includes('SELECT account.keycloak_subject')
+        ? { rowCount: 1, rows: [{ keycloak_subject: 'kc-member' }] }
+        : { rowCount: 1, rows: [] }
+    );
     deps.loadOrganizationById = vi.fn(async () => ({
       id: '11111111-1111-1111-8111-111111111111',
       organization_key: 'alpha',
@@ -737,6 +809,45 @@ describe('organization mutation handlers', () => {
       expect.anything(),
       expect.objectContaining({ trigger: 'organization_membership_removed' })
     );
+    expect(revokeUserSessions).toHaveBeenCalledWith({
+      keycloakSubject: 'kc-member',
+      reason: 'organization_membership_removed',
+    });
+    expect(revokeUserSessions.mock.invocationCallOrder[0]).toBeLessThan(
+      query.mock.invocationCallOrder[1]
+    );
+  });
+
+  it('keeps an organization when member session revocation fails before deletion', async () => {
+    const deps = buildDeps();
+    const query = vi.fn(async () => ({
+      rowCount: 1,
+      rows: [{ keycloak_subject: 'kc-member' }],
+    }));
+    deps.loadOrganizationById = vi.fn(async () => ({
+      id: '11111111-1111-1111-8111-111111111111',
+      organization_key: 'alpha',
+      is_active: true,
+      parent_organization_id: null,
+      hierarchy_path: [],
+      depth: 0,
+      child_count: 0,
+      membership_count: 1,
+    }));
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => work({ query } as never));
+    revokeUserSessions.mockRejectedValueOnce(new Error('redis unavailable'));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.deleteOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'DELETE' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 
   it('deletes seeded organizations through the same hard-delete path', async () => {

@@ -143,13 +143,17 @@ test.describe('news plugin', () => {
             body: JSON.stringify({
               data: isAccountQuery
                 ? [
+                    ...Array.from({ length: 8 }, (_, index) => ({
+                      principal: { type: 'account', id: `account-target-${index + 1}` },
+                      displayName: `Zielkonto ${index + 1}`,
+                    })),
                     {
                       principal: { type: 'account', id: 'account-target' },
                       displayName: 'Zielredaktion',
                     },
                   ]
                 : [],
-              pagination: { page: 1, pageSize: 10, total: isAccountQuery ? 1 : 0 },
+              pagination: { page: 1, pageSize: 10, total: isAccountQuery ? 9 : 0 },
               currentOwner: {
                 principal: { type: 'organization', id: 'organization-source' },
                 displayName: ownershipTransferred ? 'Zielredaktion' : 'Redaktion Musterhausen',
@@ -271,13 +275,38 @@ test.describe('news plugin', () => {
     await expectNewsEditorReady(page, 'edit');
     await expect(page.getByRole('heading', { name: /Inhaber|Owner/ })).toHaveCount(1);
     await expect(page.getByText('Redaktion Musterhausen').first()).toBeVisible();
+    const originalViewport = page.viewportSize();
+    await page.setViewportSize({ width: 900, height: 520 });
     await page.getByRole('button', { name: /Inhalt übertragen|Transfer content/ }).click();
     await page.getByRole('combobox', { name: /Neuer Inhaber|New owner/ }).click();
+    const dialog = page.getByRole('dialog');
+    const listbox = page.getByRole('listbox');
+    await expect(page.getByRole('option', { name: 'Zielkonto 1' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Jetzt übertragen|Transfer now/ })).toBeVisible();
+    const dialogBounds = await dialog.boundingBox();
+    const listboxBounds = await listbox.boundingBox();
+    const confirmBounds = await page
+      .getByRole('button', { name: /Jetzt übertragen|Transfer now/ })
+      .boundingBox();
+    expect(dialogBounds).not.toBeNull();
+    expect(listboxBounds).not.toBeNull();
+    expect(confirmBounds).not.toBeNull();
+    if (!dialogBounds || !listboxBounds || !confirmBounds) {
+      throw new Error('Ownership dialog bounds unavailable');
+    }
+    expect(listboxBounds.y + listboxBounds.height).toBeLessThanOrEqual(
+      dialogBounds.y + dialogBounds.height
+    );
+    expect(confirmBounds.y + confirmBounds.height).toBeLessThanOrEqual(520);
+    expect(await listbox.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+      true
+    );
     await page.getByRole('option', { name: /Zielredaktion/ }).click();
     await page
       .getByRole('checkbox', { name: /Ich bestätige die Übertragung|I confirm the transfer/i })
       .check();
     await page.getByRole('button', { name: /Jetzt übertragen|Transfer now/ }).click();
+    if (originalViewport) await page.setViewportSize(originalViewport);
     await expect.poll(() => ownershipTransferred).toBe(true);
     await expect(page.getByText('Zielredaktion').first()).toBeVisible();
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News aktualisiert');

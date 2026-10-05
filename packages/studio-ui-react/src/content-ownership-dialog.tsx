@@ -62,7 +62,7 @@ export const ContentOwnershipDialog = ({
 }>) => (
   <Dialog open={open} onOpenChange={(nextOpen) => !state.pending && setOpen(nextOpen)}>
     <DialogContent
-      className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
+      className="flex max-h-[90dvh] flex-col sm:max-w-xl"
       onEscapeKeyDown={(event) => {
         if (document.activeElement?.closest('[data-content-ownership-target-popover]')) {
           event.preventDefault();
@@ -73,7 +73,7 @@ export const ContentOwnershipDialog = ({
         <DialogTitle>{labels.dialogTitle}</DialogTitle>
         <DialogDescription>{labels.dialogDescription}</DialogDescription>
       </DialogHeader>
-      <div className="space-y-4">
+      <div className="min-h-0 space-y-4 overflow-y-auto">
         <ContentOwnershipTargetSelect
           disabled={state.pending}
           hasMoreTargets={state.hasMoreTargets}

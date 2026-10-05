@@ -33,8 +33,8 @@ Das System MUST Benutzern mit mehreren Organisationszuordnungen den Kontextwechs
 #### Scenario: Entzogene Mitgliedschaft beendet den gespeicherten Kontext
 
 - **GIVEN** eine Session verwendet eine Organisationsmitgliedschaft als aktiven Kontext
-- **WHEN** diese Mitgliedschaft entzogen wird
-- **THEN** werden die Sessions des betroffenen Accounts vor dem Entzug invalidiert
+- **WHEN** diese Mitgliedschaft entzogen oder ihre Organisation gelöscht oder deaktiviert wird
+- **THEN** werden die Sessions des betroffenen Accounts vor der Änderung invalidiert
 - **AND** die nächste Anmeldung kann keinen Kontext der entzogenen Organisation übernehmen
 
 #### Scenario: Benutzer wählt unzulässigen Organisationskontext

@@ -43,15 +43,6 @@ export const homeDEResources = {
       description: 'Verwalten Sie Benutzerkonten und deren Zugriff auf das Studio.',
     },
   },
-  changelog: {
-    title: 'Letzte Änderungen',
-    description:
-      'Hier sehen Sie die zuletzt in das Studio übernommenen Verbesserungen und Korrekturen direkt nach dem Merge nach main.',
-    loading: 'Letzte Änderungen werden geladen ...',
-    empty: 'Noch keine Änderungen verfügbar.',
-    error: 'Die letzten Änderungen konnten gerade nicht geladen werden.',
-    entryTitle: 'Änderung aus PR #{{prNumber}}',
-  },
   authError: {
     loginFailed: 'Login fehlgeschlagen. Bitte erneut versuchen.',
     stateExpired: 'Login abgebrochen oder abgelaufen. Bitte erneut anmelden.',

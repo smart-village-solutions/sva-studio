@@ -21,7 +21,6 @@ const dispatchMainserverGenericItemsRequestMock = vi.fn();
 const dispatchMainserverMetadataRequestMock = vi.fn();
 const dispatchAggregatedContentListRequestMock = vi.fn();
 const dispatchMapGeocodingRequestMock = vi.fn();
-const dispatchStudioChangelogRequestMock = vi.fn();
 const ensurePluginOperationWorkerStartedMock = vi.fn();
 const ensurePrivilegedStudioJobWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
@@ -105,10 +104,6 @@ vi.mock('./lib/map-geocoding-api.server', () => ({
   dispatchMapGeocodingRequest: dispatchMapGeocodingRequestMock,
 }));
 
-vi.mock('./lib/studio-changelog-api.server', () => ({
-  dispatchStudioChangelogRequest: dispatchStudioChangelogRequestMock,
-}));
-
 vi.mock('./lib/server-function-request-diagnostics.server', () => ({
   createServerFunctionRequestDiagnostics: createServerFunctionRequestDiagnosticsMock,
   normalizeServerFnBase: vi.fn(() => '/_server'),
@@ -174,7 +169,6 @@ describe('server transport', () => {
     dispatchMainserverMetadataRequestMock.mockReset();
     dispatchAggregatedContentListRequestMock.mockReset();
     dispatchMapGeocodingRequestMock.mockReset();
-    dispatchStudioChangelogRequestMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockReset();
     ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     ensurePrivilegedStudioJobWorkerStartedMock.mockReset();
@@ -625,36 +619,6 @@ describe('server transport', () => {
     await expect(response.text()).resolves.toBe('map');
   });
 
-  it('bypasses studio changelog requests before auth routing', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-
-    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
-    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
-    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
-    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
-    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
-    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
-    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
-    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
-    dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
-    dispatchMapGeocodingRequestMock.mockResolvedValue(null);
-    dispatchStudioChangelogRequestMock.mockResolvedValue(
-      new Response('changelog', { status: 200 })
-    );
-    dispatchAuthRouteRequestMock.mockResolvedValue(null);
-    createStartHandlerMock.mockReturnValue(startFetch);
-
-    const mod = await import('./server');
-    const response = await mod.default.fetch(
-      new Request('http://localhost:3000/api/studio/changelog')
-    );
-
-    expect(dispatchStudioChangelogRequestMock).toHaveBeenCalledTimes(1);
-    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
-    expect(startFetch).not.toHaveBeenCalled();
-    await expect(response.text()).resolves.toBe('changelog');
-  });
-
   it('bypasses diagnostics for non server-function requests in development', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
@@ -839,7 +803,6 @@ describe('server transport', () => {
     dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
     dispatchMapGeocodingRequestMock.mockResolvedValue(null);
-    dispatchStudioChangelogRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockImplementation(async () => {
       observedContextStates.push(activeRequestContext);
       return new Response('auth');
@@ -1046,7 +1009,7 @@ describe('server transport', () => {
       new Request('http://localhost:3000/api/v1/plugin-operations/jobs')
     );
 
-    await vi.waitFor(() => expect(dispatchStudioChangelogRequestMock).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(dispatchMapGeocodingRequestMock).toHaveBeenCalledOnce());
     const authDispatchedBeforeRegistration = await vi
       .waitFor(() => expect(dispatchAuthRouteRequestMock).toHaveBeenCalledOnce(), { timeout: 250 })
       .then(

@@ -881,15 +881,7 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
     studioProjectJson,
     /generate-studio-changelog-artifact\.ts --output \.generated\/studio-changelog\.json/
   );
-  assert.match(studioProjectJson, /run-workspace-node\.sh -e/);
-  assert.match(
-    studioProjectJson,
-    /fs\.mkdirSync\('\.output\/server\/generated',\{recursive:true\}\)/
-  );
-  assert.match(
-    studioProjectJson,
-    /fs\.copyFileSync\('\.generated\/studio-changelog\.json','\.output\/server\/generated\/studio-changelog\.json'\)/
-  );
+  assert.doesNotMatch(studioProjectJson, /fs\.copyFileSync\('\.generated\/studio-changelog\.json'/);
   assert.match(
     studioProjectJson,
     /run-workspace-node\.sh --import tsx \.\.\/\.\.\/scripts\/ci\/patch-runtime-artifact\.ts \./

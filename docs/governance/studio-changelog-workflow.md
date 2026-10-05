@@ -66,26 +66,21 @@ Lokal kann der Repository-Katalog mit folgendem Befehl geprüft werden:
 pnpm check:studio-changelog
 ```
 
-## Studio-Anzeige
+## Release Notes
 
 Beim Studio-Build werden die neuen Eintragsdateien zwischen dem letzten stabilen
 `studio-v*`-Production-Tag und dem gebauten Commit ausgewählt. Einträge, die
 bereits im Production-Tag enthalten waren, erscheinen auch nach Übernahme eines
 Hotfixes nach `main` nicht erneut. Solange kein verifizierter Basistag existiert,
 bleibt die Auswahl leer; es werden keine historischen Einträge als neues Release
-ausgegeben. Für die Studio-Anzeige wird die Auswahl auf 20 Einträge begrenzt und
-als Zwischenartefakt unter
-`apps/sva-studio-react/.generated/studio-changelog.json` geschrieben. Dieses
-wird anschließend in das Runtime-Artefakt unter
-`apps/sva-studio-react/.output/server/generated/studio-changelog.json`
-kopiert. Der serverseitige Endpoint liest im Runtime-Image genau dieses
-serverseitige Artefakt und zeigt die Einträge auf der Startseite im Abschnitt
-„Letzte Änderungen“ an.
+ausgegeben. Die Build-Prüfung schreibt eine auf 20 Einträge begrenzte Auswahl
+unter `apps/sva-studio-react/.generated/studio-changelog.json` und bindet sie
+an den Quellcommit. Sie wird nicht in das Runtime-Artefakt kopiert oder im
+Studio-Dashboard angezeigt.
 
 Maßgeblich sind der ausgecheckte Build-Commit und der letzte stabile
 Production-Tag. Der reguläre Release-Kandidat muss nach dem letzten
-Production-Tag gebaut werden; ein älteres Image besitzt noch die damalige
-Changelog-Auswahl. Release Notes lassen sich aus derselben vollständigen
+Production-Tag gebaut werden. Release Notes lassen sich aus der vollständigen
 Auswahl erzeugen, etwa mit
 `pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts --format notes --base-ref studio-v0.10.4 --head-ref <commit-sha> --output <datei>`.
 Die Ausgabe wird vor einer GitHub-Veröffentlichung gegen den Live-Digest und

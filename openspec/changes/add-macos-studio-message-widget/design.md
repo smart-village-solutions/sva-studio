@@ -1,6 +1,8 @@
 ## Context
 
-Das Studio baut aus `docs/changelog/entries/pr-<nummer>.json` einen Katalog mit höchstens 20 Einträgen. `GET /api/studio/changelog` liefert diesen Katalog heute nur für eine gültige browserseitige Studio-Sitzung. Die Einträge bestehen aus PR-Nummer und Markdown-Text, werden absteigend nach PR-Nummer sortiert und auf der Studio-Startseite dargestellt.
+**Offene Entwurfsabhängigkeit:** Die PR-Einzelanzeige und `GET /api/studio/changelog` werden entfernt. Der unten beschriebene Changelog-Provider und seine Artefaktannahmen benötigen vor einer Umsetzung einen neuen fachlichen Zuschnitt; dieser Entwurf autorisiert keinen Ersatz-Feed für PR-Einträge.
+
+Das Studio baut aus `docs/changelog/entries/pr-<nummer>.json` weiterhin einen quellengebundenen Katalog für die Release-Notes-Prüfung. Er wird nicht an das Dashboard oder einen Runtime-Endpunkt ausgeliefert.
 
 Eine WidgetKit-Erweiterung kann die `httpOnly`-Browser-Session nicht sicher übernehmen. Gleichzeitig darf eine native App den bestehenden BFF-Vertrag nicht dadurch umgehen, dass Browser-Cookies, Passwörter oder ein vertrauliches Client-Secret kopiert werden. Für den nativen Kontext wird deshalb ein eigener öffentlicher OIDC-Client mit eng begrenzten Scopes benötigt. Der bestehende Browserflow bleibt unverändert.
 

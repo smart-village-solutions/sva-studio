@@ -42,15 +42,6 @@ export const homeENResources = {
       description: 'Manage user accounts and their access to Studio.',
     },
   },
-  changelog: {
-    title: 'Latest changes',
-    description:
-      'See the most recent Studio improvements and fixes here immediately after they are merged into main.',
-    loading: 'Latest changes are loading ...',
-    empty: 'No changes are available yet.',
-    error: 'The latest changes could not be loaded right now.',
-    entryTitle: 'Change from PR #{{prNumber}}',
-  },
   authError: {
     loginFailed: 'Login failed. Please try again.',
     stateExpired: 'Login was cancelled or expired. Please sign in again.',

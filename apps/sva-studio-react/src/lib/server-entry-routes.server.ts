@@ -86,14 +86,6 @@ export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
     ),
   },
   {
-    label: 'studio changelog',
-    getDispatcher: lazyDispatcher(() =>
-      import('./studio-changelog-api.server').then(
-        (module) => module.dispatchStudioChangelogRequest
-      )
-    ),
-  },
-  {
     label: 'user documentation',
     getDispatcher: lazyDispatcher(() =>
       import('./user-documentation-api.server').then(

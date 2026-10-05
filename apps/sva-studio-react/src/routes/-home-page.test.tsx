@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -56,16 +56,6 @@ describe('HomePage', () => {
   });
 
   it('uses the server-selected app name after login', () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ entries: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      )
-    );
-
     render(
       <StudioBrandingProvider branding="kassel-dialog">
         <HomePage />
@@ -91,73 +81,12 @@ describe('HomePage', () => {
     expect(screen.getByRole('status').textContent).toContain('Sitzung wird geladen');
   });
 
-  it('renders the latest changelog entries on the authenticated home page', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            entries: [
-              {
-                prNumber: 412,
-                body: 'Allgemeine Verbesserungen\n\n- Stabilere Speicherung',
-              },
-            ],
-          }),
-          {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }
-        )
-      )
-    );
-
+  it('shows action cards without loading individual PR entries', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
     render(<HomePage />);
-
-    expect(await screen.findByText('Letzte Änderungen')).toBeTruthy();
-    expect(screen.getByText('Allgemeine Verbesserungen')).toBeTruthy();
-    expect(screen.getByText('Stabilere Speicherung')).toBeTruthy();
-  });
-
-  it('shows an empty state when no changelog entries are available', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ entries: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
-      )
-    );
-
-    render(<HomePage />);
-
-    expect(await screen.findByText('Noch keine Änderungen verfügbar.')).toBeTruthy();
-  });
-
-  it('shows a non-blocking error state when the changelog cannot be loaded', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            error: 'studio_changelog_unavailable',
-            message: 'Studio-Changelog konnte nicht geladen werden.',
-          }),
-          {
-            status: 500,
-            headers: { 'content-type': 'application/json' },
-          }
-        )
-      )
-    );
-
-    render(<HomePage />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Die letzten Änderungen konnten gerade nicht geladen werden.')
-      ).toBeTruthy();
-    });
+    expect(screen.getByText('Studio Workspace')).toBeTruthy();
+    expect(screen.queryByText('Letzte Änderungen')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

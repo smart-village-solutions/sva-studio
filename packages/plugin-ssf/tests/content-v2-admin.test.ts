@@ -125,6 +125,19 @@ describe('SSF V2 admin supported-language catalog', () => {
     expect(writeSystemV2).toHaveBeenCalledOnce();
   });
 
+  it('rejects system guest-language removals while the catalog is unavailable', async () => {
+    const previous = systemContent();
+    const input = structuredClone(previous);
+    if (!input.runtimeTemplate) throw new Error('ssf_v2_test_runtime_missing');
+    input.runtimeTemplate.guestLanguages.pop();
+    const writeSystemV2 = vi.fn();
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous,
+      writeSystemV2, readSupportedLanguages: async () => { throw new Error('catalog unavailable'); } });
+    const response = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', input));
+    expect(response?.status).toBe(422);
+    expect(writeSystemV2).not.toHaveBeenCalled();
+  });
+
   it('rejects unsupported tenant staff locale changes before persisting', async () => {
     const writeTenantV2 = vi.fn();
     const handlers = createSsfAdminV2Handlers({
@@ -134,5 +147,31 @@ describe('SSF V2 admin supported-language catalog', () => {
     const response = await handlers['ssf.tenant-content-v2.write']?.(writeContext('tenant', { staff: { locale: 'fr' } }));
     expect(response?.status).toBe(422);
     expect(writeTenantV2).not.toHaveBeenCalled();
+  });
+
+  it('rejects tenant guest-language toggles while the catalog is unavailable', async () => {
+    const writeTenantV2 = vi.fn();
+    const handlers = createSsfAdminV2Handlers({
+      readTenantV2: async () => ({ runtimeTemplate: systemContent().runtimeTemplate, overrides: null }),
+      writeTenantV2, readSupportedLanguages: async () => { throw new Error('catalog unavailable'); },
+    });
+    const response = await handlers['ssf.tenant-content-v2.write']?.(writeContext('tenant', {
+      guestLanguages: [{ locale: 'en', enabled: false }],
+    }));
+    expect(response?.status).toBe(422);
+    expect(writeTenantV2).not.toHaveBeenCalled();
+  });
+
+  it('allows tenant guest-text edits while the catalog is unavailable', async () => {
+    const writeTenantV2 = vi.fn().mockResolvedValue(undefined);
+    const handlers = createSsfAdminV2Handlers({
+      readTenantV2: async () => ({ runtimeTemplate: systemContent().runtimeTemplate, overrides: null }),
+      writeTenantV2, readSupportedLanguages: async () => { throw new Error('catalog unavailable'); },
+    });
+    const response = await handlers['ssf.tenant-content-v2.write']?.(writeContext('tenant', {
+      guestLanguages: [{ locale: 'en', guest: { explanationHtml: '<p>Text</p>' } }],
+    }));
+    expect(response?.status).toBe(200);
+    expect(writeTenantV2).toHaveBeenCalledOnce();
   });
 });

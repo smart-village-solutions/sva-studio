@@ -45,12 +45,35 @@ const systemLocalesAreAllowed = (
 ): boolean => {
   if (input.installation && !localeIsAllowed(input.installation.localization.locale,
     previous.installation?.localization.locale, catalog)) return false;
-  if (!input.runtimeTemplate) return true;
   const previousRuntime = previous.runtimeTemplate;
+  if (!catalog && (previousRuntime === null) !== (input.runtimeTemplate === null)) return false;
+  if (!catalog && previousRuntime && input.runtimeTemplate) {
+    const previousGuests = previousRuntime.guestLanguages.map(({ locale }) => locale).sort();
+    const requestedGuests = input.runtimeTemplate.guestLanguages.map(({ locale }) => locale).sort();
+    if (previousGuests.length !== requestedGuests.length || previousGuests.some((locale, index) => locale !== requestedGuests[index])) return false;
+  }
+  if (!input.runtimeTemplate) return true;
   if (!localeIsAllowed(input.runtimeTemplate.staff.locale, previousRuntime?.staff.locale, catalog)) return false;
   const previousGuestLocales = new Set(previousRuntime?.guestLanguages.map(({ locale }) => locale) ?? []);
   return input.runtimeTemplate.guestLanguages.every(({ locale }) =>
     previousGuestLocales.has(locale) || Boolean(catalog?.languages[locale]));
+};
+
+const tenantGuestChangesAreAllowed = (
+  input: Record<string, unknown>,
+  previous: SsfTenantContentV2,
+  catalog: Awaited<ReturnType<typeof readCatalog>>
+): boolean => {
+  if (catalog) return true;
+  const guestLanguages = input['guestLanguages'];
+  if (guestLanguages === undefined) return true;
+  if (!Array.isArray(guestLanguages)) return false;
+  const templateLocales = new Set(previous.runtimeTemplate?.guestLanguages.map(({ locale }) => locale) ?? []);
+  return guestLanguages.every((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return false;
+    const value = entry as Record<string, unknown>;
+    return typeof value['locale'] === 'string' && templateLocales.has(value['locale']) && value['enabled'] === undefined;
+  });
 };
 
 const tenantStaffLocale = (value: Record<string, unknown> | null | undefined): string | undefined => {
@@ -144,6 +167,9 @@ const writeTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
       dependencies.readTenantV2(context.actor.instanceId), readCatalog(dependencies.readSupportedLanguages),
     ]);
     const requestedLocale = tenantStaffLocale(parsed.data);
+    if (!tenantGuestChangesAreAllowed(parsed.data, previous, catalog)) {
+      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
+    }
     if (requestedLocale) {
       const previousLocale = tenantStaffLocale(previous.overrides) ?? previous.runtimeTemplate?.staff.locale;
       if (!localeIsAllowed(requestedLocale, previousLocale, catalog)) {

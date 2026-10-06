@@ -41,11 +41,13 @@ const fetchAccessToken = async () => {
 
   let response;
   try {
+    // fallow-ignore-next-line security-sink -- Token URL comes from repository-managed staging secrets, not request input; redirects are rejected before sending the client secret.
     response = await fetch(tokenUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
       signal: AbortSignal.timeout(requestTimeoutMs),
+      redirect: 'error',
     });
   } catch (error) {
     if (isTimeoutError(error)) {
@@ -74,8 +76,8 @@ const run = async () => {
   const diff = spawnSync(
     'pnpm',
     [
-      'dlx',
-      '@graphql-inspector/cli',
+      'exec',
+      'graphql-inspector',
       'diff',
       snapshotPath,
       graphqlUrl,

@@ -176,6 +176,7 @@ export const isStandardCrudPluginRoute = (pluginNamespace: string, path: string)
     return true;
   }
 
+  // fallow-ignore-next-line security-sink -- pluginNamespace is constrained by PLUGIN_NAMESPACE_PATTERN before registry routes reach this function.
   const detailPattern = new RegExp(`^${pluginRoot.replace('/', '\\/')}/\\$[a-zA-Z][a-zA-Z0-9]*$`);
   return detailPattern.test(normalizedPath);
 };

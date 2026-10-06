@@ -235,6 +235,7 @@ const main = async () => {
   );
 };
 
+// fallow-ignore-next-line security-sink -- This resolves the entry script only to detect direct execution; filesystem targets use fixed workspace build paths.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error: unknown) => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);

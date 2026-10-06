@@ -40,6 +40,7 @@ const currentScriptPath = fileURLToPath(import.meta.url);
 
 if (entryScriptPath === currentScriptPath) {
   main().catch((error: unknown) => {
+    // fallow-ignore-next-line security-sink -- formatRuntimeEnvCliFailure redacts smoke failures and returns a fixed message for other errors.
     console.error(formatRuntimeEnvCliFailure(error, process.argv[2], process.env));
     process.exit(1);
   });

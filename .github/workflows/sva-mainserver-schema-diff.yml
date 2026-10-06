@@ -20,12 +20,6 @@ jobs:
     name: Schema Diff
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      SVA_MAINSERVER_SCHEMA_GRAPHQL_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL }}
-      SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL }}
-      SVA_MAINSERVER_SCHEMA_CLIENT_ID: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_ID }}
-      SVA_MAINSERVER_SCHEMA_CLIENT_SECRET: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -35,17 +29,35 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
 
+      - name: Check schema diff secrets
+        id: schema-diff-secrets
+        env:
+          SVA_MAINSERVER_SCHEMA_GRAPHQL_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL }}
+          SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL }}
+          SVA_MAINSERVER_SCHEMA_CLIENT_ID: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_ID }}
+          SVA_MAINSERVER_SCHEMA_CLIENT_SECRET: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET }}
+        run: |
+          if [ -n "$SVA_MAINSERVER_SCHEMA_GRAPHQL_URL" ] && [ -n "$SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL" ] && [ -n "$SVA_MAINSERVER_SCHEMA_CLIENT_ID" ] && [ -n "$SVA_MAINSERVER_SCHEMA_CLIENT_SECRET" ]; then
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Skip when schema diff secrets are missing
-        if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL == '' || env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_ID == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET == ''
+        if: steps.schema-diff-secrets.outputs.available != 'true'
         run: |
           echo 'Schema-Diff übersprungen: erforderliche Secrets fehlen.'
           echo 'Konfiguriere SVA_MAINSERVER_SCHEMA_GRAPHQL_URL, SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL, SVA_MAINSERVER_SCHEMA_CLIENT_ID und SVA_MAINSERVER_SCHEMA_CLIENT_SECRET.'
 
       - name: Run schema diff against staging
-        if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL != '' && env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL != '' && env.SVA_MAINSERVER_SCHEMA_CLIENT_ID != '' && env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET != ''
+        if: steps.schema-diff-secrets.outputs.available == 'true'
         id: diff
         continue-on-error: true
         env:
+          SVA_MAINSERVER_SCHEMA_GRAPHQL_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL }}
+          SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL }}
+          SVA_MAINSERVER_SCHEMA_CLIENT_ID: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_ID }}
+          SVA_MAINSERVER_SCHEMA_CLIENT_SECRET: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET }}
           SVA_MAINSERVER_SCHEMA_DIFF_OUTPUT: artifacts/schema-diff/sva-mainserver-schema-diff.md
         run: node scripts/ci/sva-mainserver-schema-diff.mjs
 

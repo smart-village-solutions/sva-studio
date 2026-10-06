@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   getRemoteJwks: vi.fn(),
 }));
 
-vi.mock('./config.js', () => ({ resolvePersonalApiAuthBinding: mocks.binding }));
+vi.mock('./config-request.js', () => ({ resolvePersonalApiAuthBinding: mocks.binding }));
 vi.mock('./effective-session-roles.js', () => ({
   enrichSessionUserWithEffectiveRoles: mocks.enrichRoles,
 }));

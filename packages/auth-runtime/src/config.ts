@@ -21,7 +21,7 @@ import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 import { TenantAuthResolutionError } from './runtime-errors.js';
 import { getAuthClientSecret, getAuthStateSecret } from './runtime-secrets.js';
-import type { AuthConfig, RuntimeScopeRef, SessionAuthContext } from './types.js';
+import type { AuthConfig, SessionAuthContext } from './types.js';
 
 const requireEnv = (key: string) => {
   const value = process.env[key];
@@ -90,12 +90,6 @@ const buildIssuerUrl = (realm: string, explicitIssuerUrl?: string): string => {
   }
 
   return `${normalizeBaseUrl(baseUrl)}/realms/${realm}`;
-};
-
-export type PersonalApiAuthBinding = {
-  readonly issuer: string;
-  readonly audience: string;
-  readonly scope: RuntimeScopeRef;
 };
 
 const applyLocalDevPortToOrigin = (origin: string, host: string): string => {
@@ -308,46 +302,4 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
   });
   logTenantAuthResolution(request, host, authConfig, registryEntry, tenantSecret);
   return authConfig;
-};
-
-/** Resolves the host's OIDC boundary without reading either browser client secret. */
-export const resolvePersonalApiAuthBinding = async (
-  request: Request
-): Promise<PersonalApiAuthBinding> => {
-  const host = resolveRequestHost(request);
-  const instanceConfig = getInstanceConfig();
-  if (!instanceConfig || isCanonicalAuthHost(host)) {
-    return {
-      issuer: requireEnv('SVA_AUTH_ISSUER'),
-      audience: requireEnv('SVA_AUTH_CLIENT_ID'),
-      scope: { kind: 'platform' },
-    };
-  }
-
-  const classification = classifyHost(
-    host,
-    instanceConfig.parentDomain,
-    instanceConfig.canonicalAuthHost
-  );
-  if (classification.kind === 'root') {
-    return {
-      issuer: requireEnv('SVA_AUTH_ISSUER'),
-      audience: requireEnv('SVA_AUTH_CLIENT_ID'),
-      scope: { kind: 'platform' },
-    };
-  }
-  if (classification.kind !== 'tenant') {
-    throw new TenantAuthResolutionError({ host, reason: 'tenant_host_invalid' });
-  }
-
-  const registryEntry = await loadRegistryEntryForHost(host);
-  if (!registryEntry) {
-    throw new TenantAuthResolutionError({ host, reason: 'tenant_not_found' });
-  }
-  assertActiveRegistryEntry(host, registryEntry);
-  return {
-    issuer: buildIssuerUrl(registryEntry.authRealm, registryEntry.authIssuerUrl),
-    audience: registryEntry.authClientId,
-    scope: { kind: 'instance', instanceId: registryEntry.instanceId },
-  };
 };

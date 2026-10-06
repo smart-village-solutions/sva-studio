@@ -1,7 +1,7 @@
 import { errors, jwtVerify, type JWTPayload } from 'jose';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
-import { resolvePersonalApiAuthBinding } from './config.js';
+import { resolvePersonalApiAuthBinding } from './config-request.js';
 import { createApiError } from './api-error.js';
 import { buildSessionUser } from './auth-server/shared.js';
 import { enrichSessionUserWithEffectiveRoles } from './effective-session-roles.js';

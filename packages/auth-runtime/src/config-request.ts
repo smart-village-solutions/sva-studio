@@ -1,14 +1,73 @@
-import { isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
+import { classifyHost, isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data-repositories/server';
-import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
+import { createSdkLogger, getInstanceConfig, isCanonicalAuthHost } from '@sva/server-runtime';
 
+import { resolveEffectiveRequestHost } from './request-hosts.js';
 import type { ResolvedTenantClientSecret } from './config-tenant-secret.js';
 import { TenantAuthResolutionError } from './runtime-errors.js';
-import type { AuthConfig } from './types.js';
+import type { AuthConfig, RuntimeScopeRef } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });
 
 type RegistryEntry = Awaited<ReturnType<typeof loadInstanceByHostname>>;
+
+export type PersonalApiAuthBinding = {
+  readonly issuer: string;
+  readonly audience: string;
+  readonly scope: RuntimeScopeRef;
+};
+
+const requireEnv = (key: string): string => {
+  const value = process.env[key];
+  if (!value) throw new Error(`Missing required env: ${key}`);
+  return value;
+};
+
+export const resolvePersonalApiAuthBinding = async (
+  request: Request
+): Promise<PersonalApiAuthBinding> => {
+  const host = resolveEffectiveRequestHost(request);
+  const instanceConfig = getInstanceConfig();
+  if (!instanceConfig || isCanonicalAuthHost(host)) {
+    return {
+      issuer: requireEnv('SVA_AUTH_ISSUER'),
+      audience: requireEnv('SVA_AUTH_CLIENT_ID'),
+      scope: { kind: 'platform' },
+    };
+  }
+
+  const classification = classifyHost(
+    host,
+    instanceConfig.parentDomain,
+    instanceConfig.canonicalAuthHost
+  );
+  if (classification.kind === 'root') {
+    return {
+      issuer: requireEnv('SVA_AUTH_ISSUER'),
+      audience: requireEnv('SVA_AUTH_CLIENT_ID'),
+      scope: { kind: 'platform' },
+    };
+  }
+  if (classification.kind !== 'tenant') {
+    throw new TenantAuthResolutionError({ host, reason: 'tenant_host_invalid' });
+  }
+
+  const registryEntry = await loadRegistryEntryForHost(host);
+  if (!registryEntry) {
+    throw new TenantAuthResolutionError({ host, reason: 'tenant_not_found' });
+  }
+  assertActiveRegistryEntry(host, registryEntry);
+  const keycloakBaseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL;
+  const issuer = registryEntry.authIssuerUrl ??
+    (keycloakBaseUrl
+      ? `${keycloakBaseUrl.replace(/\/+$/u, '')}/realms/${registryEntry.authRealm}`
+      : requireEnv('SVA_AUTH_ISSUER'));
+  return {
+    issuer,
+    audience: registryEntry.authClientId,
+    scope: { kind: 'instance', instanceId: registryEntry.instanceId },
+  };
+};
 
 export const logGlobalAuthResolution = (request: Request, host: string): void => {
   const instanceConfig = getInstanceConfig();

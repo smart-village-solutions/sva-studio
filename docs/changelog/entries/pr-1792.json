@@ -1,0 +1,4 @@
+{
+  "prNumber": 1792,
+  "body": "Die Mainserver-Schema-Prüfung stellt Zugangsdaten nur den benötigten Schritten bereit. Authentifizierungs- und GraphQL-Aufrufe brechen bei Weiterleitungen ab, damit Zugangsdaten und Bearer-Tokens nicht an umgeleitete Ziele gelangen."
+}

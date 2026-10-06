@@ -5,6 +5,7 @@ import {
   createSsfRuntimePluginServiceAccess,
   resolveSsfTenantReadinessReason,
 } from './ssf-runtime-plugin-service.js';
+import { createSsfRuntimeErrorResponse } from './ssf-runtime-plugin-service-observability.js';
 
 const revision = `sha256:${'a'.repeat(64)}`;
 
@@ -58,6 +59,13 @@ const readBody = async (response: Response) =>
   };
 
 describe('SSF runtime plugin service host gates', () => {
+  it('uses the requested contract version in V2 error responses', async () => {
+    const response = createSsfRuntimeErrorResponse(
+      new Request('https://studio.test/internal/plugins/ssf/v2/runtime-configuration'),
+      401, 'service_authentication_invalid', false
+    );
+    expect((await readBody(response)).contractVersion).toBe('2.0');
+  });
   const authenticateToken = vi.fn();
   const readInstance = vi.fn();
   const readPluginAccess = vi.fn();

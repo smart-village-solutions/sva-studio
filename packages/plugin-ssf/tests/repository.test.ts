@@ -1,4 +1,5 @@
 import type { Pool, PoolClient, QueryResult } from 'pg';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -7,11 +8,186 @@ import {
   readSsfTenant,
   upsertSsfTenantLocale,
 } from '../src/runtime.js';
+import {
+  readSsfInstallationContentV2,
+  readSsfSystemContentV2,
+  readSsfTenantContentV2,
+  replaceSsfSystemContentV2,
+  writeSsfTenantContentV2,
+} from '../src/content-v2-repository.js';
 
 const result = <T extends Record<string, unknown>>(rows: T[]): QueryResult<T> =>
   ({ rows, rowCount: rows.length, command: 'SELECT', oid: 0, fields: [] }) as QueryResult<T>;
 
+const runtimeTemplateV2 = (): NonNullable<
+  Parameters<typeof replaceSsfSystemContentV2>[1]['runtimeTemplate']
+> => {
+  const example = JSON.parse(
+    readFileSync(
+      new URL('../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url),
+      'utf8'
+    )
+  ) as Record<string, unknown>;
+  delete example['contractVersion'];
+  delete example['configurationRevision'];
+  delete example['tenant'];
+  return example as NonNullable<Parameters<typeof replaceSsfSystemContentV2>[1]['runtimeTemplate']>;
+};
+
+const installationContentV2 = (): NonNullable<
+  Parameters<typeof replaceSsfSystemContentV2>[1]['installation']
+> => {
+  const example = JSON.parse(
+    readFileSync(
+      new URL('../../../docs/api/ssf-installation-content-v2.example.json', import.meta.url),
+      'utf8'
+    )
+  ) as Record<string, unknown>;
+  delete example['contractVersion'];
+  delete example['configurationRevision'];
+  return example as NonNullable<Parameters<typeof replaceSsfSystemContentV2>[1]['installation']>;
+};
+
 describe('SSF PostgreSQL repository', () => {
+  it('reads stored V2 system and tenant content within the verified tenant scope', async () => {
+    const installation = installationContentV2();
+    const template = runtimeTemplateV2();
+    const overrides = { staff: { dashboard: { headline: 'Tenant A' } } };
+    const query = vi.fn(async (sql: string) =>
+      sql.includes('SELECT installation_content_v2, runtime_content_v2')
+        ? result([{ installation_content_v2: installation, runtime_content_v2: template }])
+        : sql.includes('SELECT installation_content_v2 FROM')
+          ? result([{ installation_content_v2: installation }])
+          : result([])
+    );
+    const clientQuery = vi.fn(async (sql: string) =>
+      sql.includes('FROM ssf.server_settings')
+        ? result([{ runtime_content_v2: template }])
+        : sql.includes('FROM ssf.tenant_settings')
+          ? result([{ runtime_content_v2: overrides }])
+          : result([])
+    );
+    const release = vi.fn();
+    const pool = {
+      query,
+      connect: vi.fn(async () => ({ query: clientQuery, release }) as unknown as PoolClient),
+    } as unknown as Pool;
+
+    await expect(readSsfSystemContentV2(pool)).resolves.toEqual({
+      installation,
+      runtimeTemplate: template,
+    });
+    await expect(readSsfInstallationContentV2(pool)).resolves.toEqual(installation);
+    await expect(readSsfTenantContentV2(pool, 'tenant-a')).resolves.toEqual({
+      runtimeTemplate: template,
+      overrides,
+    });
+    expect(clientQuery).toHaveBeenCalledWith('SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      'tenant-a',
+    ]);
+    expect(clientQuery).toHaveBeenCalledWith(
+      'SELECT runtime_content_v2 FROM ssf.tenant_settings WHERE instance_id = $1',
+      ['tenant-a']
+    );
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('validates existing tenant overrides before committing both V2 system documents', async () => {
+    const template = runtimeTemplateV2();
+    const installation = installationContentV2();
+    const query = vi.fn(async (sql: string, _values?: unknown[]) => {
+      void _values;
+      return sql.includes('SELECT instance_id, runtime_content_v2')
+        ? result([
+            {
+              instance_id: 'tenant-a',
+              runtime_content_v2: { staff: { dashboard: { headline: 'Tenant A' } } },
+            },
+          ])
+        : result([]);
+    });
+    const release = vi.fn();
+    const pool = {
+      connect: vi.fn(async () => ({ query, release }) as unknown as PoolClient),
+    } as unknown as Pool;
+
+    await replaceSsfSystemContentV2(pool, { installation, runtimeTemplate: template });
+
+    const installationWrite = query.mock.calls.find(([sql]) =>
+      sql.includes('installation_content_v2 = EXCLUDED.installation_content_v2')
+    );
+    const runtimeWrite = query.mock.calls.find(([sql]) =>
+      sql.includes('runtime_content_v2 = EXCLUDED.runtime_content_v2')
+    );
+    expect(JSON.parse(String(installationWrite?.[1]?.[0]))).toMatchObject({ legal: installation.legal });
+    expect(JSON.parse(String(runtimeWrite?.[1]?.[0]))).toMatchObject({
+      staff: { dashboard: { headline: template.staff.dashboard.headline } },
+    });
+    expect(query).toHaveBeenCalledWith('COMMIT');
+    expect(query).not.toHaveBeenCalledWith('ROLLBACK');
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('rolls back a V2 system change that invalidates a stored tenant override', async () => {
+    const query = vi.fn(async (sql: string) =>
+      sql.includes('SELECT instance_id, runtime_content_v2')
+        ? result([
+            {
+              instance_id: 'tenant-a',
+              runtime_content_v2: {
+                staff: { feedback: { questions: [{ id: 'unknown', question: 'Invalid' }] } },
+              },
+            },
+          ])
+        : result([])
+    );
+    const release = vi.fn();
+    const pool = {
+      connect: vi.fn(async () => ({ query, release }) as unknown as PoolClient),
+    } as unknown as Pool;
+
+    await expect(
+      replaceSsfSystemContentV2(pool, {
+        installation: null,
+        runtimeTemplate: runtimeTemplateV2(),
+      })
+    ).rejects.toThrow('ssf_v2_override_identity_unknown');
+
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(query).not.toHaveBeenCalledWith('COMMIT');
+    expect(query.mock.calls.some(([sql]) => sql.includes('INSERT INTO ssf.server_settings'))).toBe(
+      false
+    );
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('writes V2 tenant overrides only after a scoped transaction and template validation', async () => {
+    const template = runtimeTemplateV2();
+    const query = vi.fn(async (sql: string) =>
+      sql.includes('SELECT runtime_content_v2 FROM ssf.server_settings')
+        ? result([{ runtime_content_v2: template }])
+        : result([])
+    );
+    const release = vi.fn();
+    const pool = {
+      connect: vi.fn(async () => ({ query, release }) as unknown as PoolClient),
+    } as unknown as Pool;
+    const overrides = { staff: { dashboard: { headline: 'Tenant A' } } };
+
+    await expect(writeSsfTenantContentV2(pool, 'tenant-a', overrides)).resolves.toEqual(overrides);
+
+    expect(query).toHaveBeenCalledWith('SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      'tenant-a',
+    ]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO ssf.tenant_settings'), [
+      'tenant-a',
+      JSON.stringify(overrides),
+    ]);
+    expect(query).toHaveBeenCalledWith('COMMIT');
+    expect(release).toHaveBeenCalledOnce();
+  });
   it('provisions one tenant record idempotently and verifies it in the same transaction', async () => {
     const tenantRow = {
       instance_id: 'tenant-a',

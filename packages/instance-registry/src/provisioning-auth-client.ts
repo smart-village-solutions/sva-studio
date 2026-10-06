@@ -41,6 +41,7 @@ export type KeycloakProvisioningClient = {
     accessTokenLifespan?: 900;
     ownership?: Readonly<{ instanceId: string; artifactKey: string }>;
   }): Promise<void>;
+  ensurePersonalMcpAccess(audienceClientId: string): Promise<void>;
   ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
   listClientProtocolMappers(clientId: string): Promise<
     readonly {

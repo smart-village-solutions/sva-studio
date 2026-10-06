@@ -43,10 +43,8 @@ SQL
 export SSF_TEST_ROOT_DATABASE_URL="postgresql://ssf_plugin_root_test:ssf-root-test@127.0.0.1:${host_port}/postgres"
 export SSF_TEST_TENANT_DATABASE_URL="postgresql://ssf_plugin_tenant_test:ssf-tenant-test@127.0.0.1:${host_port}/postgres"
 
-pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests \
-  --testFiles=tests/postgresql.integration.test.ts \
-  --reporter=verbose \
-  --config vitest.config.ts
+pnpm exec vitest run tests/postgresql.integration.test.ts \
+  --reporter=verbose --config vitest.config.ts
 
 "${repo_dir}/packages/data/scripts/goosew.sh" \
   -dir "${package_dir}/migrations" postgres "${admin_url}" down-to 0

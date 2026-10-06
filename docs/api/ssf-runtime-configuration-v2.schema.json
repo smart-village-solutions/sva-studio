@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sva-studio:ssf:runtime-configuration:2",
+  "title": "SSF Runtime Configuration v2 (tenant)",
+  "description": "Response of GET /internal/plugins/ssf/v2/runtime-configuration. Authentication, the X-Studio-Tenant-Id and X-Correlation-Id headers, and the error envelope are unchanged from v1; v1 stays available until SSF has switched. The whole response is at most 4 MiB. Staff work in staff.locale; guests choose one of guestLanguages, and SSF translates between the two. Studio emits only the properties defined here; SSF consumers ignore unknown optional properties in compatible 2.x minor versions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "configurationRevision",
+    "tenant",
+    "branding",
+    "conversationContentStorage",
+    "staff",
+    "guestLanguages"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "pattern": "^2\\.(0|[1-9][0-9]*)$",
+      "description": "Major version 2; any 2.x minor version is compatible."
+    },
+    "configurationRevision": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Changes whenever anything in this response changes. SSF stores it with each session and each feedback submission, and may use it to cache the content. conversationContentStorage.mode is always read live and never served from a cache."
+    },
+    "tenant": {
+      "type": "object",
+      "description": "The tenant SSF requested. tenant.id must match X-Studio-Tenant-Id.",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "timeZone"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "description": "Stable Studio tenant identifier." },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Tenant name shown to users." },
+        "timeZone": { "type": "string", "minLength": 1, "maxLength": 100, "description": "IANA time zone, e.g. Europe/Berlin." }
+      }
+    },
+    "branding": {
+      "type": "object",
+      "description": "Effective tenant media, used once the tenant is known. null means no medium for that purpose.",
+      "additionalProperties": false,
+      "required": ["logo", "icon"],
+      "properties": {
+        "logo": { "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }] },
+        "icon": { "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }] }
+      }
+    },
+    "conversationContentStorage": {
+      "type": "object",
+      "description": "Effective policy for storing conversation content.",
+      "additionalProperties": false,
+      "required": ["mode", "retentionHours"],
+      "properties": {
+        "mode": {
+          "enum": ["ask", "disabled"],
+          "description": "ask: guests are asked with guest.storageQuestionHtml. disabled: no question is shown and nothing is stored."
+        },
+        "retentionHours": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 8760,
+          "description": "How long SSF keeps consented content before deleting it automatically. 0 means no automatic deletion (manual deletion only). Must be null when mode is disabled. The storage question text must state the same period."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "ask" } } },
+          "then": { "properties": { "retentionHours": { "type": "integer" } } }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "disabled" } } },
+          "then": { "properties": { "retentionHours": { "type": "null" } } }
+        }
+      ]
+    },
+    "staff": {
+      "type": "object",
+      "description": "Texts for the authenticated staff screens, in the staff language.",
+      "additionalProperties": false,
+      "required": ["locale", "dashboard", "newConversation", "feedback"],
+      "properties": {
+        "locale": { "$ref": "#/$defs/locale", "description": "Staff language, e.g. de-DE." },
+        "dashboard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headline", "explanationHtml", "callToAction", "load"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/text" },
+            "explanationHtml": { "$ref": "#/$defs/html" },
+            "callToAction": { "$ref": "#/$defs/text" },
+            "load": {
+              "type": "object",
+              "description": "Labels for the system-load indicator.",
+              "additionalProperties": false,
+              "required": ["headline", "green", "yellow", "red"],
+              "properties": {
+                "headline": { "$ref": "#/$defs/text" },
+                "green": { "$ref": "#/$defs/text" },
+                "yellow": { "$ref": "#/$defs/text" },
+                "red": { "$ref": "#/$defs/text" }
+              }
+            }
+          }
+        },
+        "newConversation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["headline", "descriptionHtml"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/text" },
+            "descriptionHtml": { "$ref": "#/$defs/html" }
+          }
+        },
+        "feedback": { "$ref": "#/$defs/feedback", "description": "Feedback form for staff after a conversation." }
+      }
+    },
+    "guestLanguages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "description": "Languages offered to guests, in display order. Each locale appears once and differs from the primary language of staff.locale. SSF maps a locale to its pipeline language by the primary subtag (pt-BR -> pt, kmr -> ku) and offers only languages its speech pipeline supports; SSF publishes that list, and unsupported entries are logged and skipped.",
+      "items": { "$ref": "#/$defs/guestLanguage" }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 500, "description": "Non-empty plain text." },
+    "html": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536,
+      "description": "HTML sanitised by Studio before delivery; SSF sanitises it again. No executable content."
+    },
+    "locale": {
+      "type": "string",
+      "maxLength": 35,
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+      "description": "Canonical BCP 47 language tag, e.g. de-DE, en, tr, pt-BR."
+    },
+    "media": {
+      "type": "object",
+      "description": "Resolved image with alternative text.",
+      "additionalProperties": false,
+      "required": ["url", "alternativeText"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2048,
+          "description": "Absolute HTTPS URL on a host agreed with SSF, so SSF's content security policy can allow it."
+        },
+        "alternativeText": { "type": "string", "maxLength": 500, "description": "Alternative text; empty only for purely decorative images." }
+      }
+    },
+    "guestLanguage": {
+      "type": "object",
+      "description": "A guest language with its guest texts and feedback form.",
+      "additionalProperties": false,
+      "required": ["locale", "nativeName", "staffName", "guest", "feedback"],
+      "properties": {
+        "locale": { "$ref": "#/$defs/locale" },
+        "nativeName": { "$ref": "#/$defs/text", "description": "Language name shown to guests, in the language itself (Türkçe)." },
+        "staffName": { "$ref": "#/$defs/text", "description": "Language name shown to staff, in the staff language (Türkisch)." },
+        "icon": {
+          "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }],
+          "description": "Optional icon for the language picker. If absent or null, SSF shows the language code."
+        },
+        "guest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["explanationHtml", "storageQuestionHtml"],
+          "properties": {
+            "explanationHtml": { "$ref": "#/$defs/html", "description": "Explanation shown to the guest after choosing this language." },
+            "storageQuestionHtml": {
+              "oneOf": [{ "$ref": "#/$defs/html" }, { "type": "null" }],
+              "description": "Storage question when conversationContentStorage.mode is ask; must be null when it is disabled."
+            }
+          }
+        },
+        "feedback": { "$ref": "#/$defs/feedback", "description": "Feedback form for guests in this language." }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "description": "Feedback form. Questions may be added, removed or reordered; a question keeps its id across languages and revisions. A new question type needs SSF support first. Answers and deletion are not part of this response.",
+      "additionalProperties": false,
+      "required": ["headline", "questions", "noticeHtml", "button"],
+      "properties": {
+        "headline": { "$ref": "#/$defs/text" },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "description": "Questions in display order. Ids are unique within the form.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/ratingQuestion" },
+              { "$ref": "#/$defs/scaleQuestion" },
+              { "$ref": "#/$defs/longTextQuestion" }
+            ]
+          }
+        },
+        "noticeHtml": {
+          "$ref": "#/$defs/html",
+          "description": "Notice shown before sending: recipient, purpose, retention and contact. Use approved statements only."
+        },
+        "button": { "$ref": "#/$defs/text" }
+      }
+    },
+    "questionId": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+      "description": "Stable technical id used to store answers and match translations."
+    },
+    "ratingQuestion": {
+      "type": "object",
+      "description": "Star rating from min to max; min must be less than max.",
+      "additionalProperties": false,
+      "required": ["id", "question", "type", "min", "max"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questionId" },
+        "headline": { "$ref": "#/$defs/text" },
+        "question": { "$ref": "#/$defs/text" },
+        "type": { "const": "rating" },
+        "required": { "type": "boolean", "default": false },
+        "min": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "max": { "type": "integer", "minimum": 1, "maximum": 10 }
+      }
+    },
+    "scaleQuestion": {
+      "type": "object",
+      "description": "Numeric scale from min to max; min must be less than max.",
+      "additionalProperties": false,
+      "required": ["id", "question", "type", "min", "max"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questionId" },
+        "headline": { "$ref": "#/$defs/text" },
+        "question": { "$ref": "#/$defs/text" },
+        "type": { "const": "scale" },
+        "required": { "type": "boolean", "default": false },
+        "min": { "type": "integer", "minimum": 0, "maximum": 9 },
+        "max": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "minLabel": { "$ref": "#/$defs/text" },
+        "maxLabel": { "$ref": "#/$defs/text" }
+      }
+    },
+    "longTextQuestion": {
+      "type": "object",
+      "description": "Multi-line free-text answer. SSF stores free-text answers encrypted.",
+      "additionalProperties": false,
+      "required": ["id", "question", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questionId" },
+        "headline": { "$ref": "#/$defs/text" },
+        "question": { "$ref": "#/$defs/text" },
+        "type": { "const": "longText" },
+        "required": { "type": "boolean", "default": false },
+        "placeholder": { "$ref": "#/$defs/text" },
+        "maxLength": { "type": "integer", "minimum": 1, "maximum": 4000, "default": 4000 }
+      }
+    }
+  }
+}

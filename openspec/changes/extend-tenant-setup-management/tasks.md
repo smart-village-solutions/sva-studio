@@ -1,0 +1,35 @@
+Die Abschnitte 2 bis 4 sind mögliche PR-Grenzen, abhängig vom Inventar und
+von eigenständig prüfbaren Zwischenständen. Abschnitt 1 ist Vorbereitung;
+Abschnitt 5 verteilt seine Nachweise auf die liefernden PRs und schließt den
+Gesamtfall ab.
+
+## 1. Verträge und Lücken am aktuellen Stand festlegen
+
+- [ ] 1.1 Die vorhandenen Verwaltungsrouten für Instanzen, Accounts, Einladungen, Rollen, Gruppen, Organisationen und Schnittstellen samt Methoden, Berechtigungen, CSRF/Fresh-Reauth und Löschschutz inventarisieren; aktive Instanz-Changes abgleichen. Für den ersten Kunden-Admin den vorhandenen Create-Vertrag `sendPasswordSetupEmail=false`, dessen `not_requested`-Ergebnis und den gesonderten Einladungs-/Resend-Pfad nachweisen.
+- [ ] 1.2 Vorhandene OIDC-/Credential-Mechanismen und Routen-/Auth-Guards prüfen; den getrennten persönlichen MCP-Client mit PKCE, das nur administrativ setzbare Keycloak-User-Attribut `svaStudioMcpAccess=true`, den clientgebundenen Attribut-Login-Flow sowie die getrennt prüfbare Studio-Audience am eingesetzten Keycloak-Stand verifizieren. Plattform- und aktive Tenant-Realms samt unterschiedlichen Studio-Login-Clients inventarisieren. `system_admin` und bloße MCP-Installation reichen nicht; keine zweite Provider-Freigabe in Studio. Nur die konkret fehlende persönliche API-Anmeldung, lokale Secret-Eingabe und Begrenzung zulässiger Admin-Aufrufe ergänzen. Secrettragende Mutationen bleiben bis zum Nachweis eines geeigneten Eingabewegs gesperrt.
+- [ ] 1.3 Den Einrichtungsauftrag als ersten Anwendungs- und Abnahmefall für die allgemeinen Funktionen festhalten: Tenant, Module, optionale Mainserver-Anbindung, Schnittstellen, Kundenorganisation, Provider- und Kunden-Admins, Einladungsempfänger. Bestehende Instanzfelder wiederverwenden; keinen neuen Workflow oder Fertig-Status einführen.
+
+## 2. PR-Kandidat: Persönliche Studio-API-Anmeldung
+
+- [ ] 2.1 Den serverseitigen API-Authentisierungspfad nur für freigegebene Verwaltungsrouten und Methoden an den bestehenden Identitäts-, Tenant- und Autorisierungskern anbinden. Ausstellenden Client und Studio-Audience getrennt prüfen; bei vorhandenem ungültigem Bearer-Token keinen Cookie-Fallback erlauben. Cookie-Session, Hostbindung, CSRF und erforderliche Fresh-Reauth-Prüfung funktionsfähig halten.
+- [ ] 2.2 Nachweisen, dass Kunden ihr MCP-Attribut nicht selbst setzen können; Keycloak-seitig erlaubte Token-Ausgabe nur für `svaStudioMcpAccess=true` und verweigerte Ausgabe für fehlendes/abweichendes Attribut bei Kunden-`system_admin` mit und ohne bestehende SSO-Sitzung prüfen. Entzug und Restlaufzeit bestehender Tokens prüfen. Bestehende Verwaltungsendpunkte direkt per persönlichem MCP-Token mit Lesen, zulässigem Schreiben und Ablehnungen prüfen; Realm-/Host-/Client-Verwechslung, Tenant-Grenzen, Tokenablauf, fehlende fachliche Rechte und Browser-Session-Parität belegen. Auth- und Server-Runtime-Pflichtgates beachten.
+
+## 3. PR-Kandidat: Allgemeiner MCP-Zugang zu bestehenden Verwaltungs-APIs
+
+- [ ] 3.1 Die MCP-Anmeldung für Plattform und Tenant-Realms mit getrennten persönlichen Provider-Accounts und expliziter Kontextwahl im vorhandenen MCP ergänzen; Token-Lifecycle und Abmeldung mit vorhandenen Mechanismen lösen. Den persönlichen Client, das admin-only-Profilattribut und den gebundenen Login-Flow im bestehenden New-Realm-Provisioning anlegen und aktive Bestands-Realms gezielt mit Readback nachrüsten; die Audience je Realm mit dessen Studio-Client abgleichen. Geteilte Realms nur einmal ändern und die Clients erst nach API-/MCP-Nachweis aktivieren. Bestehende servicegebundene Instanztools erhalten ihren Vertrag.
+- [ ] 3.2 Im bestehenden MCP einen kontextgebundenen Aufruf für die tatsächlich benötigten Methoden mit relativen Admin-Pfaden, Query und JSON-Body ergänzen; Zielhost und erlaubte Routen begrenzen, Redirects zu anderen Hosts sperren.
+- [ ] 3.3 Antwort, Fehler, Korrelation und bestehende Idempotenzangaben ohne Secrets oder unnötige PII übertragen. Bei unklarem Mutationsausgang Readback verlangen statt automatisch erneut zu schreiben.
+- [ ] 3.4 Bestehende Einzelaktionen für Accounts/Einladungen/Deaktivierung/Löschung, Rollen, Gruppen, Organisationen und Mitgliedschaften über den persönlichen Kontext prüfen. Serverautorisierung, Audit, Schutzregeln und Browser-Verhalten mit Positiv- und Negativfällen belegen.
+
+## 4. PR-Kandidat: Fehlende Schnittstellen-HTTP-Verträge und MCP-Nutzung
+
+- [ ] 4.1 Nur die für beauftragte Schnittstellenaktionen fehlenden HTTP-Endpunkte im zuständigen Interface-Pfad ergänzen; bestehende Services, Schemas, Verschlüsselung, Healthchecks und Berechtigungen wiederverwenden.
+- [ ] 4.2 Die vorhandene MCP-Credential-Auflösung für secrettragende Mutationen prüfen und nur bei belegter Lücke minimal ergänzen; Klartext aus MCP-Argumenten, Antworten, Fehlern und Logs fernhalten. Pluginverwaltete Interfaces bleiben für allgemeine Tenant-Verwaltung verborgen.
+- [ ] 4.3 CRUD-, Health-, Autorisierungs-, Tenant- und Secret-Negativtests ausführen; Mainserver nur bei beauftragter Anbindung und mit eigenen bestehenden Verträgen prüfen.
+
+## 5. Einrichtungs- und Verwaltungspfad abnehmen
+
+- [ ] 5.1 Einen vollständigen Einrichtungsauftrag über vorhandene Instanztools und neue Admin-API-Aufrufe nachvollziehen: technische Aktivierung gesondert, dann Schnittstellen, Kundenorganisation, Rollen/Gruppen, dauerhafte persönliche Provider-Accounts und Kunden-Accounts mit vollen Tenant-Adminrechten samt Readbacks.
+- [ ] 5.2 Einen Tenant mit und einen ohne Mainserver prüfen; bei letzterem abhängige Plugins und Organisations-Provisionierung auslassen. Provider-Zugriff und beauftragte Funktionen vor Einladung prüfen.
+- [ ] 5.3 Den ersten Kunden-Admin ohne Versand anlegen und `not_requested` prüfen. Die Einladung erst nach bestandenen Einrichtungsprüfungen über den gesonderten Vertrag auslösen, Versandstatus nachlesen und die spätere erste Kundenanmeldung als getrennten Nachweis dokumentieren. Offene Lücken dürfen nicht als abgeschlossene Einrichtung gelten.
+- [ ] 5.4 Laufende Einzelverwaltung einschließlich zulässiger Deaktivierung und Löschung sowie Ablehnungen durch Schutzregeln prüfen. Relevante arc42-Abschnitte und aktuelle MCP-Betriebsdokumentation aktualisieren; passende gezielte Gates und `openspec validate ... --strict` ausführen.

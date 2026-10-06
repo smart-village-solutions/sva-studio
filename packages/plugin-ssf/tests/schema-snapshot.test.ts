@@ -11,6 +11,7 @@ describe('SSF plugin schema snapshot', () => {
       '0004_ssf_authorization_readiness.sql',
       '0005_ssf_server_storage_settings.sql',
       '0006_ssf_authorization_subject_evidence.sql',
+      '0007_ssf_content_v2.sql',
     ] as const;
     const snapshot = readFileSync(
       new URL('../../../docs/development/ssf-plugin-db-schema-final.sql', import.meta.url),
@@ -27,8 +28,8 @@ describe('SSF plugin schema snapshot', () => {
       )
       .join('\n\n');
     const expected = [
-      '-- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1',
-      '-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0006_*.sql',
+      '-- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1/V2',
+      '-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0007_*.sql',
       '-- Diese Datenbank ist getrennt von sva_studio.',
       '',
       upSql,

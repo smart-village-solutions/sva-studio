@@ -55,7 +55,8 @@ export const createSsfRuntimeErrorResponse = (
   retryable: boolean
 ): Response =>
   jsonResponse(status, {
-    contractVersion: SSF_RUNTIME_CONTRACT_VERSION,
+    contractVersion: new URL(request.url).pathname === '/internal/plugins/ssf/v2/runtime-configuration'
+      ? '2.0' : SSF_RUNTIME_CONTRACT_VERSION,
     error: {
       code,
       message: 'Runtime configuration is unavailable.',

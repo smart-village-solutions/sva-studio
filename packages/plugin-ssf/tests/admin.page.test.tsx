@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   writeSystem: vi.fn(),
   readTenant: vi.fn(),
   writeTenant: vi.fn(),
+  readTenantV2: vi.fn(),
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -28,6 +29,7 @@ vi.mock('../src/admin-api.js', () => ({
   writeSsfSystemConfiguration: state.writeSystem,
   readSsfTenantConfiguration: state.readTenant,
   writeSsfTenantConfiguration: state.writeTenant,
+  readSsfTenantContentV2: state.readTenantV2,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -127,6 +129,7 @@ describe('SSF configuration pages', () => {
     state.readSystem.mockReset().mockResolvedValue(systemConfiguration);
     state.writeSystem.mockReset();
     state.readTenant.mockReset().mockResolvedValue(tenantView);
+    state.readTenantV2.mockReset().mockResolvedValue({ runtimeTemplate: null, overrides: null });
     state.writeTenant.mockReset();
   });
 

@@ -888,6 +888,20 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
+  it('rejects personal MCP setup when the tenant Studio audience client is missing', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensurePersonalMcpAccess('sva-studio-login')).rejects.toThrow(
+      'personal_mcp_audience_client_missing'
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain('clientId=sva-studio-login');
+  });
+
   it('marks newly created provisioning clients with instance ownership', async () => {
     const fetchImpl = vi
       .fn()

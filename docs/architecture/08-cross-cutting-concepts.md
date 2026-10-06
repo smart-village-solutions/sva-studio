@@ -1024,6 +1024,13 @@ Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Sna
   ausgestellt und trägt keine Tenantrevision. Es weist ausschließlich
   Backend-Identität, Audience und `ssf.runtime-configuration.read` nach; die
   bestätigte Tenantrevision liest Studio nach der hostseitigen Tenantbindung.
+- Die V2-Installationsinhalte werden mit demselben Service-Recht vor der
+  Mandantenbindung gelesen. Die V2-Runtime-Konfiguration verwendet die vorhandene
+  hostseitige Tenantbindung und RLS; V2-Inhalte liegen in zusätzlichen JSONB-Feldern
+  der SSF-System- und Mandantentabellen. System- und Mandantenbearbeitung verwenden
+  die bestehenden, getrennten SSF-Verwaltungsrechte. HTML wird vor der Speicherung
+  bereinigt; die ausgelieferte Antwort wird erneut validiert und auf 1 MiB
+  beziehungsweise 4 MiB begrenzt.
 - Dasselbe Service-Konto verwendet für das installationsweite
   Login-Mandantenverzeichnis die getrennte Action
   `ssf.admin-login-directory.read`. Der exakte hostseitige Pfad wird vor

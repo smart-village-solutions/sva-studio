@@ -1281,6 +1281,17 @@ Fehlerpfad:
 
 ### Szenario 20: SSF-Runtime-Konfiguration laden
 
+Für V2 liest SSF vor der Mandantenauswahl
+`GET /internal/plugins/ssf/v2/installation-content` mit demselben installationsweiten
+Service-Token ohne Tenant-Header. Nach der hostseitig geprüften Mandantenbindung
+liefert `GET /internal/plugins/ssf/v2/runtime-configuration` die aktuelle
+Systemvorlage mit den sparsam gespeicherten Mandanten-Overrides. Beide Antworten
+werden serverseitig bereinigt und validiert, erhalten eine Inhaltsrevision und
+sind bis zur vollständigen Konfiguration nicht verfügbar. Der V1-Pfad bleibt für
+den bisherigen SSF-Consumer erhalten. Die Verwaltung erfolgt auf den bestehenden
+System- und Mandantenseiten; ein Systemvorlagen-Update prüft vorhandene Overrides
+vor dem Commit. Der V2-Vertrag steht unter [docs/api](../api/ssf-runtime-configuration-v2.schema.json).
+
 1. Für angemeldete Benutzer hat Studio zuvor die effektiven tenantgebundenen
    `ssf.*`-Permissions mit einer tenantweiten Revision in den SSF-Client des
    gemeinsamen Tenant-Realms projiziert. Ein Fehler hält Client und Plugin-

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sva-studio:ssf:installation-content:2",
+  "title": "SSF Installation Content v2",
+  "description": "Response of GET /internal/plugins/ssf/v2/installation-content. Content for the pages SSF shows before a tenant is known: the start page (access-code entry), the organisation login and the feedback form on those two pages. Same service authentication and error envelope as the runtime configuration, without X-Studio-Tenant-Id. The whole response is at most 1 MiB. Studio emits only the properties defined here; SSF consumers ignore unknown optional properties in compatible 2.x minor versions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "configurationRevision", "branding", "legal", "localization"],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "pattern": "^2\\.(0|[1-9][0-9]*)$"
+    },
+    "configurationRevision": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Changes whenever anything in this response changes; SSF may cache the content by it."
+    },
+    "branding": {
+      "type": "object",
+      "description": "Installation media for the pre-tenant pages, including the browser favicon.",
+      "additionalProperties": false,
+      "required": ["logo", "icon"],
+      "properties": {
+        "logo": { "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }] },
+        "icon": { "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }] }
+      }
+    },
+    "legal": {
+      "type": "object",
+      "description": "Legal pages linked from every SSF page, before and after login.",
+      "additionalProperties": false,
+      "required": ["imprintUrl", "privacyPolicyUrl", "accessibilityStatementUrl"],
+      "properties": {
+        "imprintUrl": { "$ref": "#/$defs/url" },
+        "privacyPolicyUrl": { "$ref": "#/$defs/url" },
+        "accessibilityStatementUrl": { "oneOf": [{ "$ref": "#/$defs/url" }, { "type": "null" }] }
+      }
+    },
+    "localization": {
+      "type": "object",
+      "description": "Texts for the pre-tenant pages, in the staff language.",
+      "additionalProperties": false,
+      "required": ["locale", "startpage", "login", "feedback"],
+      "properties": {
+        "locale": { "$ref": "#/$defs/locale" },
+        "startpage": {
+          "type": "object",
+          "description": "Short labels of the access-code start page.",
+          "additionalProperties": false,
+          "required": ["enterCode", "send", "login"],
+          "properties": {
+            "enterCode": { "$ref": "#/$defs/text" },
+            "send": { "$ref": "#/$defs/text" },
+            "login": { "$ref": "#/$defs/text" }
+          }
+        },
+        "login": {
+          "type": "object",
+          "description": "Texts of the organisation selection before staff login.",
+          "additionalProperties": false,
+          "required": ["headline", "descriptionHtml"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/text" },
+            "descriptionHtml": { "$ref": "#/$defs/html" }
+          }
+        },
+        "feedback": {
+          "$ref": "urn:sva-studio:ssf:runtime-configuration:2#/$defs/feedback",
+          "description": "Feedback form on the start page and the organisation login. Which tenant receives these submissions is configured separately."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "html": { "type": "string", "minLength": 1, "maxLength": 65536, "description": "Sanitised HTML; no executable content." },
+    "locale": { "type": "string", "maxLength": 35, "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$" },
+    "url": { "type": "string", "format": "uri", "pattern": "^https://", "maxLength": 2048 },
+    "media": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "alternativeText"],
+      "properties": {
+        "url": { "$ref": "#/$defs/url" },
+        "alternativeText": { "type": "string", "maxLength": 500 }
+      }
+    }
+  }
+}

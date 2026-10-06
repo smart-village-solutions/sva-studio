@@ -112,6 +112,88 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
+  it('returns bounded validation and authentication failures without making an API request', async () => {
+    const { PersonalMcpAuthError } = await import('./personal-auth.js');
+    const personalFetch = vi.fn();
+    const context = {
+      id: 'platform-provider', name: 'Platform Provider', kind: 'platform' as const,
+      baseUrl: 'https://studio.example', issuer: 'https://id.example/realms/studio', clientId: 'personal-client',
+    };
+    const manager = {
+      list: () => [{ id: context.id, name: context.name, kind: context.kind,
+        host: 'studio.example', realm: 'studio', loginPending: false }],
+      getContext: (id: string) => id === context.id ? context : (() => { throw new PersonalMcpAuthError('context_not_configured'); })(),
+      getAccessToken: vi.fn(),
+      startLogin: vi.fn(),
+      logout: vi.fn(),
+    } as unknown as PersonalMcpContextManager;
+    const server = createStudioMcpServer({ request: vi.fn() }, { ...config, personalContexts: [context] }, personalFetch, manager);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const contexts = await client.callTool({ name: 'studio_personal_contexts', arguments: {} });
+    expect(contexts.structuredContent).toMatchObject({ data: [{ id: 'platform-provider', kind: 'platform', realm: 'studio' }] });
+    const unknownContext = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: { contextId: 'missing', method: 'GET', path: 'api/v1/iam/users' },
+    });
+    expect(unknownContext.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'context_not_configured', category: 'validation' },
+    });
+
+    const tooLarge = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: {
+        contextId: context.id, method: 'POST', path: 'api/v1/iam/users',
+        body: { description: 'x'.repeat(65 * 1024) },
+      },
+    });
+    expect(tooLarge.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'request_body_too_large', category: 'validation' },
+    });
+    expect(personalFetch).not.toHaveBeenCalled();
+    await Promise.all([client.close(), server.close()]);
+  });
+
+  it('does not label a definite API rejection as an uncertain mutation', async () => {
+    const personalFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 'forbidden' } }), {
+      status: 403,
+      headers: { 'content-type': 'application/json', 'x-request-id': 'req-forbidden' },
+    }));
+    const context = {
+      id: 'tenant-a', name: 'Tenant A', kind: 'tenant' as const, tenantId: 'tenant-a',
+      baseUrl: 'https://tenant-a.example', issuer: 'https://id.example/realms/tenant-a', clientId: 'personal-client',
+    };
+    const manager = {
+      list: () => [{ id: context.id, name: context.name, kind: context.kind,
+        host: 'tenant-a.example', realm: 'tenant-a', tenantId: 'tenant-a', account: 'operator', loginPending: false }],
+      getContext: () => context,
+      getAccessToken: vi.fn().mockResolvedValue('access-token'),
+    } as unknown as PersonalMcpContextManager;
+    const server = createStudioMcpServer({ request: vi.fn() }, { ...config, personalContexts: [context] }, personalFetch, manager);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: {
+        contextId: context.id, method: 'POST', path: 'api/v1/iam/users',
+        body: { email: 'synthetic@example.org' }, idempotencyKey: 'write-denied',
+      },
+    });
+    expect(response.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: 'forbidden' },
+      meta: { requestId: expect.any(String), idempotencyKey: 'write-denied' },
+    });
+    expect(response.structuredContent).not.toHaveProperty('mutationOutcome');
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('advertises the complete tool surface with risk annotations', async () => {
     const api: StudioApiClient = { request: vi.fn().mockResolvedValue({ data: [] }) };
     const server = createStudioMcpServer(api, config);

@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
@@ -166,6 +166,137 @@ describe('personal MCP context authentication', () => {
 
     await expect(manager.logout(context.id)).rejects.toMatchObject({ code: 'oidc_logout_revocation_failed' });
     expect(manager.list()[0]).not.toHaveProperty('account');
+    await manager.dispose();
+  });
+
+  it('rejects duplicate login attempts and an already authenticated context', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const callbackPort = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort });
+    const loginUrl = new URL(await manager.startLogin(context.id));
+    await expect(manager.startLogin(context.id)).rejects.toMatchObject({ code: 'context_login_pending' });
+
+    await fetch(`http://127.0.0.1:${callbackPort}/callback?state=${loginUrl.searchParams.get('state')}&code=authorization-code`);
+    await expect(manager.startLogin(context.id)).rejects.toMatchObject({ code: 'context_already_authenticated' });
+    await manager.dispose();
+  });
+
+  it('clears login state when the callback has no code or token exchange fails', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const callbackPort = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort });
+    const firstLogin = new URL(await manager.startLogin(context.id));
+    const missingCode = await fetch(
+      `http://127.0.0.1:${callbackPort}/callback?state=${firstLogin.searchParams.get('state')}`
+    );
+    expect(missingCode.status).toBe(400);
+    expect(manager.list()[0]?.loginPending).toBe(false);
+
+    const secondLogin = new URL(await manager.startLogin(context.id));
+    state.authorizationCodeGrant.mockRejectedValueOnce(new Error('provider failure'));
+    const failedExchange = await fetch(
+      `http://127.0.0.1:${callbackPort}/callback?state=${secondLogin.searchParams.get('state')}&code=authorization-code`
+    );
+    expect(failedExchange.status).toBe(400);
+    expect(manager.list()[0]).toMatchObject({ loginPending: false });
+    expect(manager.list()[0]).not.toHaveProperty('account');
+    await manager.dispose();
+  });
+
+  it('rejects identity-provider endpoints outside the configured issuer', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    state.discovery.mockResolvedValueOnce({
+      serverMetadata: () => ({
+        ...metadata,
+        token_endpoint: 'https://other.example/token',
+      }),
+    });
+    const manager = new PersonalMcpContextManager([context], { callbackPort: await unusedPort() });
+    await expect(manager.startLogin(context.id)).rejects.toMatchObject({ code: 'oidc_provider_unavailable' });
+    await manager.dispose();
+  });
+
+  it('requires a login again when an expired session has no usable refresh token', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const callbackPort = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort });
+    const loginUrl = new URL(await manager.startLogin(context.id));
+    state.authorizationCodeGrant.mockResolvedValueOnce({
+      access_token: 'short-lived-token',
+      claims: () => ({ sub: 'subject-1' }),
+      expiresIn: () => 0,
+    });
+    await fetch(`http://127.0.0.1:${callbackPort}/callback?state=${loginUrl.searchParams.get('state')}&code=authorization-code`);
+    await expect(manager.getAccessToken(context.id)).rejects.toMatchObject({ code: 'context_login_required' });
+    expect(manager.list()[0]).not.toHaveProperty('account');
+    await manager.dispose();
+  });
+
+  it('removes an expired session when refresh fails', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const callbackPort = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort });
+    const loginUrl = new URL(await manager.startLogin(context.id));
+    state.authorizationCodeGrant.mockResolvedValueOnce({
+      access_token: 'short-lived-token',
+      refresh_token: 'refresh-token',
+      claims: () => ({ sub: 'subject-1' }),
+      expiresIn: () => 0,
+    });
+    await fetch(`http://127.0.0.1:${callbackPort}/callback?state=${loginUrl.searchParams.get('state')}&code=authorization-code`);
+    state.refreshTokenGrant.mockRejectedValueOnce(new Error('refresh failed'));
+    await expect(manager.getAccessToken(context.id)).rejects.toMatchObject({ code: 'oidc_token_refresh_failed' });
+    await expect(manager.getAccessToken(context.id)).rejects.toMatchObject({ code: 'context_login_required' });
+    await manager.dispose();
+  });
+
+  it('requires an authenticated configured context before returning an access token', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const manager = new PersonalMcpContextManager([context]);
+    await expect(manager.getAccessToken(context.id)).rejects.toMatchObject({ code: 'context_login_required' });
+    await expect(manager.getAccessToken('missing')).rejects.toMatchObject({ code: 'context_login_required' });
+    await expect(manager.startLogin('missing')).rejects.toMatchObject({ code: 'context_not_configured' });
+    await manager.logout(context.id);
+    await manager.dispose();
+  });
+
+  it('accepts callbacks only for the exact loopback GET endpoint', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const callbackPort = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort });
+    await manager.startLogin(context.id);
+
+    const post = await fetch(`http://127.0.0.1:${callbackPort}/callback`, { method: 'POST' });
+    const otherPath = await fetch(`http://127.0.0.1:${callbackPort}/other`);
+    const wrongHostStatus = await new Promise<number>((resolve, reject) => {
+      const request = httpRequest({
+        hostname: '127.0.0.1',
+        port: callbackPort,
+        path: '/callback',
+        headers: { host: `wrong.example:${callbackPort}` },
+      }, (response) => resolve(response.statusCode ?? 0));
+      request.once('error', reject);
+      request.end();
+    });
+    expect([post.status, otherPath.status, wrongHostStatus]).toEqual([404, 404, 404]);
+    expect(manager.list()[0]?.loginPending).toBe(true);
+    manager.cancelLogin(context.id);
+    await manager.dispose();
+  });
+
+  it('reports unavailable remote revocation while keeping logout local', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const callbackPort = await unusedPort();
+    state.discovery.mockResolvedValue({
+      serverMetadata: () => ({ ...metadata, revocation_endpoint: undefined }),
+    });
+    const manager = new PersonalMcpContextManager([context], { callbackPort });
+    const loginUrl = new URL(await manager.startLogin(context.id));
+    await fetch(`http://127.0.0.1:${callbackPort}/callback?state=${loginUrl.searchParams.get('state')}&code=authorization-code`);
+
+    await expect(manager.logout(context.id)).rejects.toMatchObject({ code: 'oidc_logout_revocation_failed' });
+    expect(manager.list()[0]).not.toHaveProperty('account');
+    expect(state.tokenRevocation).not.toHaveBeenCalled();
     await manager.dispose();
   });
 });

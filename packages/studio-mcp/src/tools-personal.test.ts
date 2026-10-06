@@ -25,4 +25,10 @@ describe('personal MCP API request boundary', () => {
     expect(validatePersonalRequest({ ...valid, query: { pageSize: ['25', '50'] } })).toBe('page_size_out_of_range');
     expect(validatePersonalRequest({ ...valid, query: { pageSize: '100', search: 'provider' } })).toBeUndefined();
   });
+
+  it('rejects excessive query keys and malformed page sizes', () => {
+    const excessiveQuery = Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`field${index}`, 'value']));
+    expect(validatePersonalRequest({ ...valid, query: excessiveQuery })).toBe('query_limit_exceeded');
+    expect(validatePersonalRequest({ ...valid, query: { pageSize: 'many' } })).toBe('page_size_out_of_range');
+  });
 });

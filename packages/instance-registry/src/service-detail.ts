@@ -8,7 +8,7 @@ import {
   createGetKeycloakPreflightHandler,
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
-} from './service-keycloak.js';
+} from './service-keycloak-readers.js';
 import {
   buildInstanceDetail,
   buildModuleIamStatus,

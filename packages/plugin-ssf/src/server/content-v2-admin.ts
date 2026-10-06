@@ -23,7 +23,7 @@ const withSupportedLanguages = async <T extends object>(
 ): Promise<T & { supportedLanguages: unknown | null }> => {
   const [resolvedValue, rawCatalog] = await Promise.all([
     value,
-    read ? read().catch(() => null) : Promise.resolve(null),
+    read ? Promise.resolve().then(read).catch(() => null) : Promise.resolve(null),
   ]);
   const catalog = rawCatalog === null ? null : ssfSupportedLanguagesCatalogSchema.safeParse(rawCatalog);
   return { ...resolvedValue, supportedLanguages: catalog?.success ? catalog.data : null };

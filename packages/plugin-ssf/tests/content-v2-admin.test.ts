@@ -32,6 +32,16 @@ describe('SSF V2 admin supported-language catalog', () => {
     await expect(second?.json()).resolves.toMatchObject({ supportedLanguages: null });
   });
 
+  it('keeps the content response successful when the catalog reader throws synchronously', async () => {
+    const handlers = createSsfAdminV2Handlers({
+      readSystemV2: async () => ({ installation: null, runtimeTemplate: null }),
+      readSupportedLanguages: () => { throw new Error('network detail'); },
+    });
+    const response = await handlers['ssf.system-content-v2.read']?.(context('platform'));
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({ supportedLanguages: null });
+  });
+
   it('starts loading the catalog before the content read completes', async () => {
     let finishContent: ((value: { installation: null; runtimeTemplate: null }) => void) | undefined;
     const readSystemV2 = vi.fn(() => new Promise<{ installation: null; runtimeTemplate: null }>((resolve) => {
@@ -41,6 +51,7 @@ describe('SSF V2 admin supported-language catalog', () => {
     const handlers = createSsfAdminV2Handlers({ readSystemV2, readSupportedLanguages });
 
     const responsePromise = handlers['ssf.system-content-v2.read']?.(context('platform'));
+    await Promise.resolve();
     expect(readSupportedLanguages).toHaveBeenCalledOnce();
     finishContent?.({ installation: null, runtimeTemplate: null });
     const response = await responsePromise;

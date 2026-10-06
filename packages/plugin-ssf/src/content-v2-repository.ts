@@ -82,6 +82,18 @@ export const replaceSsfSystemContentV2 = async (
   const runtimeTemplate = input.runtimeTemplate === null
     ? null
     : ssfRuntimeContentV2FieldsSchema.parse(sanitizeSsfContentV2Fields(input.runtimeTemplate));
+  if (runtimeTemplate !== null) {
+    // Control characters use the largest JSON escape for each allowed tenant-profile character.
+    resolveSsfRuntimeContentV2({
+      tenant: {
+        id: '\u0000'.repeat(128),
+        displayName: '\u0000'.repeat(200),
+        timeZone: '\u0000'.repeat(100),
+      },
+      template: runtimeTemplate,
+      overrides: null,
+    });
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

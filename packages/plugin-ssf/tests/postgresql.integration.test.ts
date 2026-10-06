@@ -26,9 +26,11 @@ import {
   replaceSsfTenantConfiguration,
 } from '../src/admin-repository.js';
 import {
-  readSsfInstallationContentV2, readSsfTenantContentV2,
+  readSsfInstallationContentV2, readSsfSystemContentV2, readSsfTenantContentV2,
   replaceSsfSystemContentV2, writeSsfTenantContentV2,
 } from '../src/content-v2-repository.js';
+import { ssfRuntimeContentV2FieldsSchema } from '../src/content-v2-contracts.js';
+import { normalizeSsfLocale } from '../src/contracts.js';
 import { resolveSsfRuntimeContentV2 } from '../src/content-v2.js';
 
 const rootDatabaseUrl = process.env['SSF_TEST_ROOT_DATABASE_URL'];
@@ -238,6 +240,39 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     expect(b.overrides).toBeNull();
     expect(resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
       template: a.runtimeTemplate, overrides: a.overrides }).staff.dashboard.headline).toBe('Tenant A');
+  });
+
+  it('rejects a runtime template larger than the response limit before writing it', async () => {
+    const before = await readSsfSystemContentV2(rootPool);
+    const runtime = JSON.parse(readFileSync(new URL(
+      '../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url
+    ), 'utf8')) as Record<string, unknown>;
+    delete runtime['contractVersion'];
+    delete runtime['configurationRevision'];
+    delete runtime['tenant'];
+    const template = ssfRuntimeContentV2FieldsSchema.parse(runtime);
+    const language = template.guestLanguages[0];
+    if (!language) throw new Error('ssf_v2_test_language_missing');
+    const longHtml = `<p>${'x'.repeat(65_529)}</p>`;
+    const locales = Array.from({ length: 26 * 26 }, (_, index) =>
+      `en-${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(65 + index % 26)}`)
+      .filter((candidate) => normalizeSsfLocale(candidate) === candidate)
+      .slice(0, 30);
+    const oversized = {
+      ...template,
+      guestLanguages: locales.map((locale) => ({
+        ...language,
+        locale,
+        guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: longHtml },
+        feedback: { ...language.feedback, noticeHtml: longHtml },
+      })),
+    };
+
+    await expect(replaceSsfSystemContentV2(rootPool, {
+      installation: null,
+      runtimeTemplate: oversized,
+    })).rejects.toThrow('ssf_v2_response_too_large');
+    expect(await readSsfSystemContentV2(rootPool)).toEqual(before);
   });
 
   it('rejects a cross-tenant write and invalid oversized HTML', async () => {

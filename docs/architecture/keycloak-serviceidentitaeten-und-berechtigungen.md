@@ -99,6 +99,17 @@ Login-Client und die tenantlokale technische IAM-Identität. Ein Realm darf nur
 dann von mehreren Studio-Tenants verwendet werden, wenn dafür später ein
 eigener, ausdrücklich freigegebener Isolationsvertrag definiert wird.
 
+Für die persönliche Anmeldung des lokalen Studio-MCP besitzt jeder verwendete
+Plattform- oder Tenant-Realm einen eigenen öffentlichen Authorization-Code-
+Client `sva-studio-mcp-personal` mit PKCE S256. Sein clientgebundener
+Authentication-Flow verweigert die Anmeldung ohne das nur administrativ
+änderbare User-Profile-Attribut `svaStudioMcpAccess=true`, auch bei bestehender
+SSO-Sitzung. Der Access-Token-Mapper nennt den jeweiligen Studio-Login-Client
+als Audience; dessen ID kann zwischen Realms abweichen. Das New-Realm-
+Provisioning legt diese Artefakte mit deaktiviertem persönlichen Client an.
+Die spätere Aktivierung und persönliche API-Autorisierung benötigen einen
+eigenen Nachweis; der normale Browser-Flow bleibt unverändert.
+
 ## Verbindliche Benennungsregeln
 
 Der Anzeigename einer Studio-Komponente und die technische Keycloak-Client-ID

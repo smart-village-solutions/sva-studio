@@ -98,6 +98,7 @@ const createClient = (
   })),
   getOidcClientSecretValue: vi.fn(async () => 'secret'),
   ensureOidcClient: vi.fn(async () => undefined),
+  ensurePersonalMcpAccess: vi.fn(async () => undefined),
   ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
   listClientProtocolMappers: vi.fn(async () => [{ name: 'instanceId' }]),
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
@@ -314,6 +315,7 @@ describe('provisioning-auth-state', () => {
       expect.objectContaining({ clientId: 'tenant-admin' })
     );
     expect(client.ensureTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
+    expect(client.ensurePersonalMcpAccess).toHaveBeenCalledExactlyOnceWith('sva-studio');
     expect(client.ensureAdminOnlyUserProfileAttributes).toHaveBeenCalledWith([
       { name: 'instanceId', multivalued: false },
       { name: 'mainserverUserApplicationId', multivalued: false },
@@ -338,6 +340,27 @@ describe('provisioning-auth-state', () => {
     });
     expect(client.ensureRealmRole).not.toHaveBeenCalledWith('instance_registry_admin');
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
+  });
+
+  it('removes a new realm if personal MCP access cannot be configured', async () => {
+    const client = createClient({
+      ensurePersonalMcpAccess: vi.fn(async () => {
+        throw new Error('personal_mcp_flow_failed');
+      }),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'sva-studio-login',
+      })
+    ).rejects.toThrow('personal_mcp_flow_failed');
+    expect(client.deleteRealm).toHaveBeenCalledOnce();
+    expect(client.ensureRealmRole).not.toHaveBeenCalled();
   });
 
   it('ensures the protected tenant role without a tenant admin bootstrap', async () => {

@@ -141,6 +141,9 @@ const reconcileInstanceAuthArtifacts = async (
       });
     }
   }
+  if (input.realmMode === 'new') {
+    await client.ensurePersonalMcpAccess(input.authClientId);
+  }
 
   if (input.tenantAdminClient?.clientId && (input.reconcileTenantAdminClient ?? true)) {
     const expectedTenantAdminClient = buildExpectedTenantAdminClientConfig(input.primaryHostname);

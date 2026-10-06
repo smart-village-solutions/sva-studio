@@ -21,7 +21,7 @@
     "pg": "^8.22.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

@@ -11,6 +11,11 @@ export const workspacePluginModuleLoaders = {
   ...import.meta.glob('../../../../packages/plugin-ssf/src/browser.ts'),
   ...import.meta.glob('../../../../packages/plugin-ssf/src/index.ts'),
 } as Record<string, () => Promise<Record<string, unknown>>>;
+export const workspaceDescriptorModuleLoaders = import.meta.glob(
+  '../../../../packages/plugin-ssf/src/descriptor.ts'
+) as Record<string, () => Promise<Record<string, unknown>>>;
 
 export const nodeManifestModules: Record<string, PluginManifest> = {};
 export const nodePluginModuleLoaders: Record<string, () => Promise<Record<string, unknown>>> = {};
+export const nodeDescriptorModuleLoaders: Record<string, () => Promise<Record<string, unknown>>> =
+  {};

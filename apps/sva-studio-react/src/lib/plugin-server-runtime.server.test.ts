@@ -26,8 +26,8 @@ vi.mock('@sva/plugin-ssf/runtime', () => ssfRuntimeMocks);
 
 vi.mock('./ssf-login-readiness.server.js', () => ({ readStudioSsfLoginReadiness: vi.fn() }));
 
-vi.mock('./plugins.js', () => ({
-  studioPluginSnapshot: {
+vi.mock('./plugin-catalog.server.js', () => ({
+  studioServerPluginSnapshot: {
     pluginSources: [],
     registry: { pluginServerHandlerRegistry: new Map() },
   },
@@ -71,10 +71,12 @@ describe('plugin server runtime loader', () => {
 
   it('registers no Waste HTTP binding when the plugin is absent from the snapshot', async () => {
     const loadServerModule = vi.fn();
-    await expect(createPluginServerExecutionHandlersFromSnapshot({
-      pluginSources: [],
-      loadServerModule,
-    })).resolves.toEqual({});
+    await expect(
+      createPluginServerExecutionHandlersFromSnapshot({
+        pluginSources: [],
+        loadServerModule,
+      })
+    ).resolves.toEqual({});
     expect(loadServerModule).not.toHaveBeenCalled();
   });
 

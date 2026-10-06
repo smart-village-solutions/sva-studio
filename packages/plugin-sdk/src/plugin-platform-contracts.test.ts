@@ -73,6 +73,7 @@ describe('plugin platform contracts', () => {
           requiredCapabilities: [' routing ', ' jobs '],
         },
         entryPoints: {
+          descriptor: './dist/plugin.js',
           browser: './dist/browser.js',
           server: './dist/server.js',
           jobs: './dist/jobs.js',
@@ -93,6 +94,7 @@ describe('plugin platform contracts', () => {
         requiredCapabilities: ['jobs', 'routing'],
       },
       entryPoints: {
+        descriptor: './dist/plugin.js',
         browser: './dist/browser.js',
         server: './dist/server.js',
         jobs: './dist/jobs.js',

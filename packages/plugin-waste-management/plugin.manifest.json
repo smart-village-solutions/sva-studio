@@ -10,6 +10,7 @@
     "requiredCapabilities": ["routing", "navigation", "iam", "jobs", "imports", "exports"]
   },
   "entryPoints": {
+    "descriptor": "./dist/descriptor.js",
     "browser": "./dist/index.js",
     "server": "./dist/server.js"
   }

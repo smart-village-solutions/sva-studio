@@ -10,6 +10,7 @@
     "requiredCapabilities": ["routing", "navigation", "iam"]
   },
   "entryPoints": {
+    "descriptor": "./dist/plugin.js",
     "browser": "./dist/index.js"
   }
 }

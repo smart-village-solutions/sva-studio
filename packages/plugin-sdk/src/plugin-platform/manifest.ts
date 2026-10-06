@@ -88,6 +88,7 @@ export const definePluginManifest = (manifest: PluginManifest): PluginManifest =
       ),
     },
     entryPoints: {
+      descriptor: normalizeEntryPoint(manifest.entryPoints.descriptor),
       browser: normalizeEntryPoint(manifest.entryPoints.browser),
       server: normalizeEntryPoint(manifest.entryPoints.server),
       jobs: normalizeEntryPoint(manifest.entryPoints.jobs),

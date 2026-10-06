@@ -19,6 +19,10 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./descriptor": {
+      "types": "./dist/descriptor.d.ts",
+      "default": "./dist/descriptor.js"
+    },
     "./waste-management.job-definitions": {
       "types": "./dist/waste-management.job-definitions.d.ts",
       "default": "./dist/waste-management.job-definitions.js"

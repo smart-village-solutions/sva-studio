@@ -100,6 +100,8 @@ export type {
   PluginNavigationItem,
   PluginNavigationSection,
   PluginRouteDefinition,
+  PluginRouteDescriptor,
+  PluginDescriptor,
   PluginRouteGuard,
   PluginServerHandlerDefinition,
   PluginServerHandlerRegistryEntry,

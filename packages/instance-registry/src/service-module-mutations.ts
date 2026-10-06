@@ -243,7 +243,11 @@ export const createRevokeModuleHandler =
           activationPolicy
         );
         if (!restored) {
-          throw new Error(`rollback_restore_failed:${input.moduleId}`, { cause: error });
+          const restoreError = new Error(`rollback_restore_failed:${input.moduleId}`) as Error & {
+            cause?: unknown;
+          };
+          restoreError.cause = error;
+          throw restoreError;
         }
         const restoredModuleIds = await deps.repository.listAssignedModules(input.instanceId);
         await deps.repository.syncAssignedModuleIam({

@@ -19,8 +19,12 @@ export const filterPluginCatalogForDistribution = (
   distribution: StudioDistribution
 ): readonly StudioPluginCatalogConfigEntry[] =>
   distribution === 'studio'
-    ? catalog.filter(({ pluginId }) => !ssfPluginIds.has(pluginId))
-    : catalog.filter(({ pluginId }) => ssfPluginIds.has(pluginId));
+    ? catalog.filter(({ pluginId, sourceType }) =>
+        sourceType === 'workspace' ? !ssfPluginIds.has(pluginId) : true
+      )
+    : catalog.filter(({ pluginId, sourceType }) =>
+        sourceType === 'workspace' ? ssfPluginIds.has(pluginId) : true
+      );
 
 export const filterModuleContractsForDistribution = <T extends Readonly<{ moduleId: string }>>(
   contracts: readonly T[],

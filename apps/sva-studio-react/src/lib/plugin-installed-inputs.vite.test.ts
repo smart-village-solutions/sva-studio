@@ -115,9 +115,19 @@ describe('installed plugin build inputs', () => {
   it('does not include a package chosen for another profile', () => {
     const { appRoot } = createFixture({ distribution: 'ssf' });
     expect(resolveInstalledPluginSources(appRoot, 'studio')).toEqual([]);
+    expect(resolveInstalledPluginSources(appRoot, 'ssf')).toHaveLength(1);
+  });
+
+  it('keeps disabled packages in the catalog without loading their entrypoints', () => {
     const disabled = createFixture({ enabled: false });
-    rmSync(join(disabled.appRoot, 'node_modules'), { recursive: true, force: true });
-    expect(resolveInstalledPluginSources(disabled.appRoot, 'studio')).toEqual([]);
+    rmSync(join(disabled.packageRoot, 'dist'), { recursive: true, force: true });
+    const sources = resolveInstalledPluginSources(disabled.appRoot, 'studio');
+    expect(sources).toHaveLength(1);
+    expect(sources[0]?.catalog.enabled).toBe(false);
+    expect(renderInstalledPluginInputs(sources, 'catalog')).toContain('"enabled":false');
+    expect(renderInstalledPluginInputs(sources, 'client')).toContain('"pluginId":"calendar"');
+    expect(renderInstalledPluginInputs(sources, 'client')).not.toContain('import(');
+    expect(renderInstalledPluginInputs(sources, 'server')).not.toContain('import(');
   });
 
   it('fails before bundling when an entry is missing or escapes its package', () => {

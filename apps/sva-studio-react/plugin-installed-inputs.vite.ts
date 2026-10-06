@@ -53,7 +53,7 @@ const readCatalog = (appRoot: string, distribution: Distribution): readonly Cata
       throw new Error('installed_plugin_catalog_entry_invalid');
     }
     const entry = value as CatalogRecord;
-    if (entry.distribution === distribution && entry.enabled) entries.push(entry);
+    if (entry.distribution === distribution) entries.push(entry);
   }
   return entries;
 };
@@ -119,25 +119,27 @@ export const resolveInstalledPluginSources = (
     if (manifest.pluginId !== entry.pluginId) {
       throw new Error(`installed_plugin_manifest_mismatch:${entry.pluginId}`);
     }
-    if (
-      manifest.sdkVersion !== studioHostPluginPlatform.sdkVersion ||
-      !satisfiesVersionRange(
-        studioHostPluginPlatform.studioVersion,
-        manifest.hostCompatibility.studioVersionRange
-      ) ||
-      manifest.hostCompatibility.requiredCapabilities?.some(
-        (capability) => !studioHostPluginPlatform.capabilities.includes(capability)
-      )
-    ) {
-      throw new Error(`installed_plugin_incompatible:${entry.pluginId}`);
-    }
     const files: Partial<Record<EntryKind, string>> = {};
-    for (const kind of ['browser', 'descriptor', 'server', 'jobs'] as const) {
-      const path = manifest.entryPoints[kind];
-      if (path) files[kind] = resolveEntryFile(packageRoot, entry.pluginId, kind, path);
-    }
-    if (entry.enabled && (!files.browser || !files.descriptor)) {
-      throw new Error(`installed_plugin_entry_missing:${entry.pluginId}:browser_or_descriptor`);
+    if (entry.enabled) {
+      if (
+        manifest.sdkVersion !== studioHostPluginPlatform.sdkVersion ||
+        !satisfiesVersionRange(
+          studioHostPluginPlatform.studioVersion,
+          manifest.hostCompatibility.studioVersionRange
+        ) ||
+        manifest.hostCompatibility.requiredCapabilities?.some(
+          (capability) => !studioHostPluginPlatform.capabilities.includes(capability)
+        )
+      ) {
+        throw new Error(`installed_plugin_incompatible:${entry.pluginId}`);
+      }
+      for (const kind of ['browser', 'descriptor', 'server', 'jobs'] as const) {
+        const path = manifest.entryPoints[kind];
+        if (path) files[kind] = resolveEntryFile(packageRoot, entry.pluginId, kind, path);
+      }
+      if (!files.browser || !files.descriptor) {
+        throw new Error(`installed_plugin_entry_missing:${entry.pluginId}:browser_or_descriptor`);
+      }
     }
     const catalog = {
       pluginId: entry.pluginId,
@@ -156,12 +158,10 @@ const registryPath = (source: InstalledSource, kind: EntryKind): string =>
 const renderManifestModules = (sources: readonly InstalledSource[]): string =>
   `export const nodeManifestModules = ${JSON.stringify(
     Object.fromEntries(
-      sources
-        .filter((source) => source.catalog.enabled)
-        .map((source) => [
-          `../../../../node_modules/${source.catalog.sourceRef}/plugin.manifest.json`,
-          source.manifest,
-        ])
+      sources.map((source) => [
+        `../../../../node_modules/${source.catalog.sourceRef}/plugin.manifest.json`,
+        source.manifest,
+      ])
     )
   )};`;
 

@@ -208,7 +208,7 @@ Beispiel:
 
 `enabled: false` hält ein Plugin bewusst außerhalb von Routing, Navigation, IAM und Job-Registrierung. Inkompatible Plugins werden zusätzlich fail-closed verworfen und als Katalogproblem protokolliert.
 
-Für `installed-distribution` und `linked-package` ist `distribution` (`studio` oder `ssf`) erforderlich. Der Build liest nur Einträge des gewählten Profils, verlangt eine direkte App-Dependency auf `sourceRef` und löst `plugin.manifest.json` aus dem installierten Package auf. Browser-, Descriptor-, Server- und Job-Entrypoints müssen als Dateien innerhalb dieses Packages vorliegen. Die daraus erzeugten Imports speisen die bestehenden Register; ein nicht ausgewähltes Package erzeugt keinen Plugin-Chunk. Der Artefakt-Check vergleicht die gewählten Packages mit den tatsächlichen Chunks.
+Für `installed-distribution` und `linked-package` ist `distribution` (`studio` oder `ssf`) erforderlich. Der Build liest nur Einträge des gewählten Profils, verlangt eine direkte App-Dependency auf `sourceRef` und löst `plugin.manifest.json` aus dem installierten Package auf. Aktivierte Browser-, Descriptor-, Server- und Job-Entrypoints müssen als Dateien innerhalb dieses Packages vorliegen. Die daraus erzeugten Imports speisen die bestehenden Register; ein deaktiviertes Package bleibt im Katalog sichtbar, erzeugt aber keinen Plugin-Chunk. Ein nicht ausgewähltes Package erzeugt ebenfalls keinen Plugin-Chunk. Der Artefakt-Check vergleicht die gewählten aktivierten Packages mit den tatsächlichen Chunks.
 
 ## Lokaler Dev-Workflow
 

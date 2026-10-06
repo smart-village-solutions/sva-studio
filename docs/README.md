@@ -33,6 +33,13 @@ Der fachlich freigegebene Integrationsentwurf für SSF ist im [Studio–SSF-Vert
 
 Das [SSF-Login-Mandantenverzeichnis V1](./api/ssf-admin-login-mandanten-v1.md) liefert aktive Mandanten mit ID, Bezeichnung, Realm und Tenant-Studio-URL für den SSF-eigenen Login.
 
+Das SSF-V2-Zielbild beschreibt zwei neue Endpunkte:
+[Installationsinhalte vor der Mandantenauswahl](./api/ssf-installation-content-v2.schema.json)
+mit [Beispiel](./api/ssf-installation-content-v2.example.json) und
+[mandantenbezogene Runtime-Konfiguration](./api/ssf-runtime-configuration-v2.schema.json)
+mit [Beispiel](./api/ssf-runtime-configuration-v2.example.json).
+Die Umsetzung folgt separat; V1 bleibt bis zur Umstellung von SSF bestehen.
+
 Die kontrollierte Inhaltsmigration ist im [Migrationsnachweis](./governance/dokumentationsmigration.md) dokumentiert. Unter `docs/guides/` verbleibt ausschließlich der [kanonische Studio-Rollout](./guides/studio-rollout-process.md) als stabiler Kompatibilitätsanker und einzige verbindliche Bedienanleitung für reguläre Rollouts nach Dev, Staging und Production.
 
 ## Nicht Teil der aktuellen Wissensbasis

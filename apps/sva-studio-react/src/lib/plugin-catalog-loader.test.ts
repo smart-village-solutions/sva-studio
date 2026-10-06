@@ -46,6 +46,13 @@ describe('plugin catalog loader', () => {
       'src/plugin.tsx',
     ]);
     expect(getPackagePluginDescriptorCandidates(manifest)).toEqual(['dist/plugin.js']);
+
+    const withoutDescriptor = definePluginManifest({
+      ...manifest,
+      entryPoints: { browser: './dist/index.js' },
+    });
+    expect(getWorkspacePluginDescriptorCandidates(withoutDescriptor)).toEqual([]);
+    expect(getPackagePluginDescriptorCandidates(withoutDescriptor)).toEqual([]);
   });
 
   it('binds a browser component to a validated descriptor route', async () => {
@@ -137,6 +144,40 @@ describe('plugin catalog loader', () => {
         }),
       })
     ).rejects.toThrow('plugin_browser_descriptor_mismatch:news');
+  });
+
+  it('rejects a browser route without a component binding', async () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
+    });
+    const descriptor = {
+      id: 'news',
+      displayName: 'News',
+      routes: [{ id: 'news.home', path: '/plugins/news' }],
+    };
+
+    await expect(
+      createStudioPluginCatalogReport({
+        catalogConfig: [
+          {
+            pluginId: 'news',
+            sourceType: 'workspace',
+            enabled: true,
+            sourceRef: 'packages/plugin-news',
+          },
+        ],
+        resolveManifest: () => manifest,
+        resolvePluginModule: async () => ({ descriptor }),
+        resolveBrowserModule: async () => ({ plugin: descriptor }),
+      })
+    ).rejects.toThrow('plugin_browser_route_binding_mismatch:news:news.home');
   });
 
   it('builds catalog seeds from config and fails closed on unresolved manifests', () => {

@@ -4,7 +4,7 @@ import type {
 } from '@sva/plugin-sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SSF_RUNTIME_SERVER_HANDLER_ID } from '../src/constants.js';
+import { SSF_RUNTIME_SERVER_HANDLER_ID, SSF_RUNTIME_V2_SERVER_HANDLER_ID } from '../src/constants.js';
 import type { SsfRuntimeConfiguration } from '../src/contracts.js';
 import {
   SsfSystemLocaleInUseError,
@@ -106,7 +106,10 @@ describe('SSF plugin server handler', () => {
     const runtimeHandler = vi.fn().mockResolvedValue(successfulConfiguration);
     const handlers = createSsfPluginServerHandlers({ runtimeHandler });
 
-    expect(Object.keys(handlers)).toEqual([SSF_RUNTIME_SERVER_HANDLER_ID]);
+    expect(Object.keys(handlers)).toEqual([
+      SSF_RUNTIME_SERVER_HANDLER_ID,
+      SSF_RUNTIME_V2_SERVER_HANDLER_ID,
+    ]);
     const response = await handlers[SSF_RUNTIME_SERVER_HANDLER_ID]?.(serviceContext());
 
     expect(runtimeHandler).toHaveBeenCalledWith({
@@ -135,6 +138,21 @@ describe('SSF plugin server handler', () => {
 
     expect(runtimeHandler).not.toHaveBeenCalled();
     expect(response?.status).toBe(503);
+  });
+
+  it('binds the V2 runtime response to the verified tenant and keeps V1 unchanged', async () => {
+    const runtimeHandler = vi.fn().mockResolvedValue(successfulConfiguration);
+    const runtimeV2Handler = vi.fn().mockResolvedValue({ contractVersion: '2.0', tenant: { id: 'tenant-a' } });
+    const handlers = createSsfPluginServerHandlers({ runtimeHandler, runtimeV2Handler });
+    const context = { ...serviceContext(), handlerId: SSF_RUNTIME_V2_SERVER_HANDLER_ID };
+
+    const response = await handlers[SSF_RUNTIME_V2_SERVER_HANDLER_ID]?.(context);
+    expect(response?.status).toBe(200);
+    expect(runtimeV2Handler).toHaveBeenCalledWith({
+      id: 'tenant-a', displayName: 'Tenant A', timeZone: 'Europe/Berlin',
+    });
+    expect(runtimeHandler).not.toHaveBeenCalled();
+    await expect(response?.json()).resolves.toMatchObject({ contractVersion: '2.0' });
   });
 
   it('maps domain and database failures to the stable V1 response without leaking details', async () => {
@@ -196,6 +214,54 @@ describe('SSF plugin server handler', () => {
     await expect(allowed?.json()).resolves.toMatchObject({ defaultLocale: 'de-DE' });
     expect(denied?.status).toBe(403);
     expect(dependencies.readSystem).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a V2 system template that would invalidate tenant overrides', async () => {
+    const handlers = createSsfAdminServerHandlers({
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn(),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn(),
+      readSystemV2: vi.fn().mockResolvedValue({ installation: null, runtimeTemplate: null }),
+      writeSystemV2: vi.fn().mockRejectedValue(new Error('ssf_v2_override_identity_unknown')),
+    });
+    const response = await handlers['ssf.system-content-v2.write']?.(
+      adminContext('platform', 'PUT', { installation: null, runtimeTemplate: null })
+    );
+    expect(response?.status).toBe(422);
+    await expect(response?.json()).resolves.toEqual({ error: 'invalid_configuration' });
+  });
+
+  it('binds V2 tenant writes to the verified actor scope', async () => {
+    const writeTenantV2 = vi.fn().mockResolvedValue({});
+    const handlers = createSsfAdminServerHandlers({
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn(),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn(),
+      readTenantV2: vi.fn().mockResolvedValue({ runtimeTemplate: null, overrides: {} }),
+      writeTenantV2,
+    });
+    const denied = await handlers['ssf.tenant-content-v2.write']?.(adminContext('platform', 'PUT', {}));
+    const accepted = await handlers['ssf.tenant-content-v2.write']?.(adminContext('tenant', 'PUT', {}));
+    expect(denied?.status).toBe(403);
+    expect(accepted?.status).toBe(200);
+    expect(writeTenantV2).toHaveBeenCalledOnce();
+    expect(writeTenantV2).toHaveBeenCalledWith('tenant-a', {});
+  });
+
+  it('reports an unavailable V2 tenant store as a service error', async () => {
+    const handlers = createSsfAdminServerHandlers({
+      readSystem: vi.fn().mockResolvedValue(emptyOverrides),
+      writeSystem: vi.fn(),
+      readTenant: vi.fn().mockResolvedValue(emptyOverrides),
+      writeTenant: vi.fn(),
+      readTenantV2: vi.fn().mockResolvedValue({ runtimeTemplate: null, overrides: {} }),
+      writeTenantV2: vi.fn().mockRejectedValue(new Error('database unavailable')),
+    });
+    const response = await handlers['ssf.tenant-content-v2.write']?.(adminContext('tenant', 'PUT', {}));
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toEqual({ error: 'configuration_unavailable' });
   });
 
   it('binds tenant writes to the verified actor tenant and rejects invalid input atomically', async () => {

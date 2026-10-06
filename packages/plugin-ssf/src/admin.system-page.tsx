@@ -6,11 +6,13 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@sva/studio-ui-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { readSsfSystemConfiguration, writeSsfSystemConfiguration } from './admin-api.js';
 import { ConfigurationFields } from './admin.configuration-fields.js';
+import { SsfSystemContentV2Page } from './admin.content-v2-page.js';
 import type { SsfSystemConfigurationInput } from './admin-contracts.js';
 
 export const SsfSystemConfigurationPage = () => {
@@ -57,6 +59,13 @@ export const SsfSystemConfigurationPage = () => {
       title={pt('page.systemTitle')}
       description={pt('page.systemDescription')}
     >
+      <Tabs defaultValue="v2">
+      <TabsList aria-label={pt('page.systemTitle')}>
+        <TabsTrigger value="v2">{pt('v2.content')}</TabsTrigger>
+        <TabsTrigger value="v1">{pt('v2.legacy')}</TabsTrigger>
+      </TabsList>
+      <TabsContent value="v2"><SsfSystemContentV2Page /></TabsContent>
+      <TabsContent value="v1" className="space-y-5">
       {state === 'saved' ? (
         <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary>
       ) : null}
@@ -81,6 +90,8 @@ export const SsfSystemConfigurationPage = () => {
           {pt(state === 'saving' ? 'actions.saving' : 'actions.save')}
         </Button>
       </StudioFormActionBar>
+      </TabsContent>
+      </Tabs>
     </StudioOverviewPageTemplate>
   );
 };

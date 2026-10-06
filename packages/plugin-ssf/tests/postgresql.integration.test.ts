@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -24,6 +25,13 @@ import {
   replaceSsfSystemConfiguration,
   replaceSsfTenantConfiguration,
 } from '../src/admin-repository.js';
+import {
+  readSsfInstallationContentV2, readSsfSystemContentV2, readSsfTenantContentV2,
+  replaceSsfSystemContentV2, writeSsfTenantContentV2,
+} from '../src/content-v2-repository.js';
+import { ssfRuntimeContentV2FieldsSchema } from '../src/content-v2-contracts.js';
+import { normalizeSsfLocale } from '../src/contracts.js';
+import { resolveSsfRuntimeContentV2 } from '../src/content-v2.js';
 
 const rootDatabaseUrl = process.env['SSF_TEST_ROOT_DATABASE_URL'];
 const tenantDatabaseUrl = process.env['SSF_TEST_TENANT_DATABASE_URL'];
@@ -200,6 +208,71 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     } finally {
       client.release();
     }
+  });
+
+  it('persists V2 installation and tenant content through scoped roles', async () => {
+    const installation = JSON.parse(readFileSync(new URL(
+      '../../../docs/api/ssf-installation-content-v2.example.json', import.meta.url
+    ), 'utf8')) as Record<string, unknown>;
+    const runtime = JSON.parse(readFileSync(new URL(
+      '../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url
+    ), 'utf8')) as Record<string, unknown>;
+    delete installation['contractVersion'];
+    delete installation['configurationRevision'];
+    delete runtime['contractVersion'];
+    delete runtime['configurationRevision'];
+    delete runtime['tenant'];
+    const installationFields = installation;
+    const runtimeFields = runtime;
+    await replaceSsfSystemContentV2(rootPool, {
+      installation: installationFields as Parameters<typeof replaceSsfSystemContentV2>[1]['installation'],
+      runtimeTemplate: runtimeFields as Parameters<typeof replaceSsfSystemContentV2>[1]['runtimeTemplate'],
+    });
+    expect(await readSsfInstallationContentV2(tenantPool)).toMatchObject(installationFields);
+    await writeSsfTenantContentV2(tenantPool, 'tenant-a', {
+      staff: { dashboard: { headline: 'Tenant A' } },
+    });
+    const [a, b] = await Promise.all([
+      readSsfTenantContentV2(tenantPool, 'tenant-a'),
+      readSsfTenantContentV2(tenantPool, 'tenant-b'),
+    ]);
+    expect(a.overrides).toMatchObject({ staff: { dashboard: { headline: 'Tenant A' } } });
+    expect(b.overrides).toBeNull();
+    expect(resolveSsfRuntimeContentV2({ tenant: { id: 'tenant-a', displayName: 'A', timeZone: 'Europe/Berlin' },
+      template: a.runtimeTemplate, overrides: a.overrides }).staff.dashboard.headline).toBe('Tenant A');
+  });
+
+  it('rejects a runtime template larger than the response limit before writing it', async () => {
+    const before = await readSsfSystemContentV2(rootPool);
+    const runtime = JSON.parse(readFileSync(new URL(
+      '../../../docs/api/ssf-runtime-configuration-v2.example.json', import.meta.url
+    ), 'utf8')) as Record<string, unknown>;
+    delete runtime['contractVersion'];
+    delete runtime['configurationRevision'];
+    delete runtime['tenant'];
+    const template = ssfRuntimeContentV2FieldsSchema.parse(runtime);
+    const language = template.guestLanguages[0];
+    if (!language) throw new Error('ssf_v2_test_language_missing');
+    const longHtml = `<p>${'x'.repeat(65_529)}</p>`;
+    const locales = Array.from({ length: 26 * 26 }, (_, index) =>
+      `en-${String.fromCharCode(65 + Math.floor(index / 26))}${String.fromCharCode(65 + index % 26)}`)
+      .filter((candidate) => normalizeSsfLocale(candidate) === candidate)
+      .slice(0, 30);
+    const oversized = {
+      ...template,
+      guestLanguages: locales.map((locale) => ({
+        ...language,
+        locale,
+        guest: { ...language.guest, explanationHtml: longHtml, storageQuestionHtml: longHtml },
+        feedback: { ...language.feedback, noticeHtml: longHtml },
+      })),
+    };
+
+    await expect(replaceSsfSystemContentV2(rootPool, {
+      installation: null,
+      runtimeTemplate: oversized,
+    })).rejects.toThrow('ssf_v2_response_too_large');
+    expect(await readSsfSystemContentV2(rootPool)).toEqual(before);
   });
 
   it('rejects a cross-tenant write and invalid oversized HTML', async () => {
@@ -385,7 +458,7 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     );
   });
 
-  it('serializes projection work per tenant while allowing another tenant to proceed', async () => {
+  it('rejects concurrent projection work for one tenant while another proceeds', async () => {
     const store = createPostgresSsfAuthorizationProjectionStore(rootPool);
     let releaseTenantA: (() => void) | undefined;
     const tenantAGate = new Promise<void>((resolve) => {
@@ -404,6 +477,9 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
     const secondTenantA = store.withTenantLock('tenant-a', async () => {
       secondTenantAEntered = true;
     });
+    const rejectedTenantA = expect(secondTenantA).rejects.toThrow(
+      'ssf_authorization_projection_lock_unavailable'
+    );
     const tenantB = store.withTenantLock('tenant-b', async () => {
       tenantBEntered = true;
     });
@@ -412,9 +488,13 @@ describe.skipIf(!hasDatabase)('SSF PostgreSQL tenant isolation', () => {
 
     expect(tenantBEntered).toBe(true);
     expect(secondTenantAEntered).toBe(false);
+    await rejectedTenantA;
 
     releaseTenantA?.();
-    await Promise.all([firstTenantA, secondTenantA]);
+    await firstTenantA;
+    await store.withTenantLock('tenant-a', async () => {
+      secondTenantAEntered = true;
+    });
     expect(secondTenantAEntered).toBe(true);
   });
 });

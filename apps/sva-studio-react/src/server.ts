@@ -27,6 +27,7 @@ import { startStagingFallowBeacon } from './lib/fallow-staging-beacon.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const ssfAdminLoginDirectoryPath = '/internal/plugins/ssf/v1/admin-login-tenants';
+const ssfInstallationContentV2Path = '/internal/plugins/ssf/v2/installation-content';
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const devRuntimeRefreshEnabled = diagnosticsEnabled;
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
@@ -261,6 +262,13 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
         });
         return directoryResponse;
       }
+    }
+    if (requestPath === ssfInstallationContentV2Path) {
+      const dispatchInstallationContent = (
+        await import('#studio-ssf-admin-login-directory')
+      ).dispatchStudioSsfInstallationContentV2Request;
+      const installationResponse = await dispatchInstallationContent(request);
+      if (installationResponse) return installationResponse;
     }
 
     await ensurePluginActivationPoliciesConfigured();

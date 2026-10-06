@@ -10,6 +10,8 @@ import {
   SSF_RUNTIME_ENDPOINT_PATH,
   SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
+  SSF_RUNTIME_V2_ENDPOINT_PATH,
+  SSF_RUNTIME_V2_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVICE_ACTION,
   SSF_RUNTIME_SERVICE_ID,
   type SsfRuntimeConfiguration,
@@ -85,7 +87,14 @@ const createEndpoint = (runtimeHandler = vi.fn().mockResolvedValue(configuration
   return {
     runtimeHandler,
     dispatch: createPluginServerHandlerDispatcher({
-      descriptors: new Map([[descriptor.id, descriptor]]),
+      descriptors: new Map([
+        [descriptor.id, descriptor],
+        [SSF_RUNTIME_V2_SERVER_HANDLER_ID, {
+          ...descriptor,
+          id: SSF_RUNTIME_V2_SERVER_HANDLER_ID,
+          path: SSF_RUNTIME_V2_ENDPOINT_PATH,
+        }],
+      ]),
       handlers: createSsfPluginServerHandlers({ runtimeHandler }),
       dependencies: access,
     }),

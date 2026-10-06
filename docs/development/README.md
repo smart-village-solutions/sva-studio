@@ -40,6 +40,7 @@ Neue implementierungsnahe Dokumentation wird hier abgelegt. Betriebsanleitungen 
 
 ## Studio-UI und Interaktionsverträge
 
+- [SSF-V2-Inhaltsverwaltung: UI-Entwurf](./ssf-v2-inhaltsverwaltung-ui.md)
 - [Action Feedback](./action-feedback.md)
 - [Builder.io lokal bearbeiten](./builder-io-local-editing.md)
 - [Studio-Form-Migrationsinventur](./studio-form-migrationsinventur.md)

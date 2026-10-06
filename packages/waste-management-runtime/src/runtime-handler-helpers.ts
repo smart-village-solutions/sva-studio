@@ -60,9 +60,14 @@ const createProvisionTenantDatabaseHandler = (runtime: WasteManagementOperationR
     if (!context.tenantLifecycle) {
       return executeProvisioning(context);
     }
+    if (context.tenantLifecycle.operation === 'suspend') {
+      await runtime.suspendTenantDatabaseProvisioning(context.job.instanceId);
+      return;
+    }
     if (
       context.tenantLifecycle.operation !== 'provision' &&
-      context.tenantLifecycle.operation !== 'reconcile'
+      context.tenantLifecycle.operation !== 'reconcile' &&
+      context.tenantLifecycle.operation !== 'reactivate'
     ) {
       throw new Error(
         `unsupported_waste_tenant_lifecycle_operation:${context.tenantLifecycle.operation}`

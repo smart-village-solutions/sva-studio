@@ -6,7 +6,9 @@ import { createQueuedExecutor } from './test-support.js';
 
 describe('instance registry repository module iam', () => {
   it('persists active lifecycle reconcile intents and their Graphile wake-up together', async () => {
-    const { executor, statements } = createQueuedExecutor([[{ plugin_id: 'events' }]]);
+    const { executor, statements } = createQueuedExecutor([
+      [{ effective_active: true, lifecycle_exists: false, active_job_id: null, persisted: true }],
+    ]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(
@@ -18,13 +20,70 @@ describe('instance registry repository module iam', () => {
     ).resolves.toEqual(['events']);
 
     expect(statements[0]?.text).toContain('FOR UPDATE');
+    expect(statements[0]?.text).toContain(
+      "WHEN iam.instance_plugin_lifecycle.access_state = 'suspended' THEN 'reactivate'"
+    );
     expect(statements[0]?.text).toContain('active_job_id IS NULL');
     expect(statements[0]?.text).toContain('readiness_status');
     expect(statements[0]?.text).not.toMatch(/\breadiness\b/u);
     expect(statements[0]?.text).toContain('graphile_worker.sva_enqueue_job');
     expect(statements[0]?.text).toContain("identifier => 'plugin_tenant_lifecycle_retry'");
-    expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1', true]);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1', true, false]);
   });
+  it('suspends an existing lifecycle when a suspendable module is deactivated', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [{ effective_active: false, lifecycle_exists: true, active_job_id: null, persisted: true }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.persistPluginTenantLifecycleReconcileIntents({
+        instanceId: 'tenant-a',
+        lifecycles: [
+          {
+            pluginId: 'waste-management',
+            contractRevision: 'waste-1',
+            operations: [{ operation: 'suspend' }],
+          },
+        ],
+        forcePluginIds: ['waste-management'],
+      })
+    ).resolves.toEqual(['waste-management']);
+
+    expect(statements[0]?.text).toContain("ELSE 'suspend' END");
+    expect(statements[0]?.text).toContain("EXCLUDED.desired_operation = 'suspend'");
+    expect(statements[0]?.text).toContain('graphile_worker.sva_enqueue_job');
+    expect(statements[0]?.values).toEqual(['tenant-a', 'waste-management', 'waste-1', true, true]);
+  });
+
+  it('fails a deactivation intent when an active lifecycle job prevents suspension', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          effective_active: false,
+          lifecycle_exists: true,
+          active_job_id: 'job-1',
+          persisted: false,
+        },
+      ],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.persistPluginTenantLifecycleReconcileIntents({
+        instanceId: 'tenant-a',
+        lifecycles: [
+          {
+            pluginId: 'waste-management',
+            contractRevision: 'waste-1',
+            operations: [{ operation: 'suspend' }],
+          },
+        ],
+        forcePluginIds: ['waste-management'],
+      })
+    ).rejects.toThrow('plugin_tenant_lifecycle_suspend_conflict:waste-management');
+  });
+
   it('reads the persisted activation policy and normalizes bigint revisions', async () => {
     const { executor } = createQueuedExecutor([
       [
@@ -149,7 +208,7 @@ describe('instance registry repository module iam', () => {
     expect(statements[0]?.values).toEqual(['tenant-a', 'events', 'events-1:1']);
     expect(statements[0]?.text).toContain('INSERT INTO iam.instance_modules');
     expect(statements[0]?.text).toContain('INSERT INTO iam.instance_plugin_lifecycle');
-    expect(statements[0]?.text).not.toContain('reactivation_intent AS');
+    expect(statements[0]?.text).toContain("THEN 'reactivate' ELSE 'reconcile' END");
     expect(statements[0]?.text).toContain('retry_kind = NULL, retry_after = NULL');
     expect(statements[0]?.text).toContain("identifier => 'plugin_tenant_lifecycle_retry'");
     expect(statements[0]?.text).toContain('FROM lifecycle_intent');

@@ -123,6 +123,7 @@ describe('instance registry plugin activation policy snapshot', () => {
         {
           moduleId: 'ssf',
           permissionIds,
+          requiredTenantModuleIds: ['categories'],
           tenantBootstrapRoles: [{ roleName: 'tenant_admin', permissionIds }],
           rootSystemRoles: [{ roleName: 'root_admin', permissionIds }],
           systemRoles: [{ roleName: 'system_admin', permissionIds }],
@@ -148,6 +149,7 @@ describe('instance registry plugin activation policy snapshot', () => {
     expect(readInstanceRegistryModuleIamRegistry().get('ssf')).toEqual({
       moduleId: 'ssf',
       permissionIds: ['ssf.read'],
+      requiredTenantModuleIds: ['categories'],
       tenantBootstrapRoles: [{ roleName: 'tenant_admin', permissionIds: ['ssf.read'] }],
       rootSystemRoles: [{ roleName: 'root_admin', permissionIds: ['ssf.read'] }],
       systemRoles: [{ roleName: 'system_admin', permissionIds: ['ssf.read'] }],

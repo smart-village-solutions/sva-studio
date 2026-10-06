@@ -565,7 +565,12 @@ describe('plugin registries', () => {
       };
       expect(() => createPluginRegistry([{ ...plugin, serverHandlers: [handler] }])).not.toThrow();
       expect(() =>
-        createPluginRegistry([{ ...plugin, serverHandlers: [{ ...handler, path: '/api/v1/waste-management/items/$itemId' }] }])
+        createPluginRegistry([
+          {
+            ...plugin,
+            serverHandlers: [{ ...handler, path: '/api/v1/waste-management/items/$itemId' }],
+          },
+        ])
       ).toThrow('plugin_server_handler_path_invalid:news:news.load-item');
     });
 
@@ -1086,7 +1091,14 @@ describe('plugin registries', () => {
   });
 
   it('normalizes and merges plugin registry contracts', () => {
-    const registry = createPluginRegistry([{ ...newsPlugin, id: ' news ', displayName: ' News ' }]);
+    const registry = createPluginRegistry([
+      {
+        ...newsPlugin,
+        id: ' news ',
+        displayName: ' News ',
+        requiredTenantModuleIds: ['categories'],
+      },
+    ]);
 
     expect([...registry.keys()]).toEqual(['news']);
     expect(registry.get('news')?.displayName).toBe('News');
@@ -1097,7 +1109,9 @@ describe('plugin registries', () => {
     expect(mergePluginContentTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginAdminResourceDefinitions([...registry.values()])).toHaveLength(1);
     expect(mergePluginAuditEventDefinitions([...registry.values()])).toHaveLength(1);
-    expect(mergePluginModuleIamContracts([...registry.values()])).toHaveLength(1);
+    expect(mergePluginModuleIamContracts([...registry.values()])).toEqual([
+      expect.objectContaining({ requiredTenantModuleIds: ['categories'] }),
+    ]);
     expect(mergePluginJobTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginImportProfiles([...registry.values()])).toHaveLength(1);
     expect(mergePluginExportProfiles([...registry.values()])).toHaveLength(1);
@@ -1108,6 +1122,20 @@ describe('plugin registries', () => {
         actions: { read: 'Lesen' },
       },
     });
+  });
+
+  it('validates direct tenant module requirements without requiring host-wide providers', () => {
+    expect(() =>
+      createPluginRegistry([{ ...newsPlugin, requiredTenantModuleIds: ['categories'] }])
+    ).not.toThrow();
+    expect(() =>
+      createPluginRegistry([{ ...newsPlugin, requiredTenantModuleIds: ['news'] }])
+    ).toThrow('self_plugin_tenant_module_requirement:news');
+    expect(() =>
+      createPluginRegistry([
+        { ...newsPlugin, requiredTenantModuleIds: ['categories', 'categories'] },
+      ])
+    ).toThrow('invalid_plugin_tenant_module_requirements:news');
   });
 
   it('persists normalized job types and data profiles in the plugin registry snapshot', () => {

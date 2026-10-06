@@ -38,6 +38,7 @@ export type WasteManagementOperationRuntime = {
   readonly requestTenantDatabaseProvisioning: (
     instanceId: string
   ) => Promise<{ readonly desiredGeneration: number }>;
+  readonly suspendTenantDatabaseProvisioning: (instanceId: string) => Promise<unknown>;
   readonly readTenantDatabaseReadiness: (
     instanceId: string
   ) => Promise<PluginTenantLifecycleExecutionResult>;

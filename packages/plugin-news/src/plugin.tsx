@@ -78,6 +78,7 @@ export const getPluginNewsActionDefinition = (
 export const pluginNews: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'news',
   displayName: 'News',
+  requiredTenantModuleIds: ['categories'],
   contribution: {
     ...standardNewsContribution,
     actions: pluginNewsActionDefinitions,

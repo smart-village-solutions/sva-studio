@@ -236,4 +236,12 @@ export const assertPluginRegistryModuleIam = ({
   if (plugin.moduleIam) {
     definePluginModuleIamContract(pluginNamespace, plugin.moduleIam);
   }
+  const requirements = plugin.requiredTenantModuleIds ?? [];
+  const normalized = requirements.map((moduleId) => normalizePluginIdentifier(moduleId));
+  if (normalized.some((moduleId) => !moduleId) || new Set(normalized).size !== normalized.length) {
+    throw new Error(`invalid_plugin_tenant_module_requirements:${pluginNamespace}`);
+  }
+  if (normalized.includes(pluginNamespace)) {
+    throw new Error(`self_plugin_tenant_module_requirement:${pluginNamespace}`);
+  }
 };

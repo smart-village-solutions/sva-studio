@@ -139,7 +139,7 @@ describe('waste management runtime handlers', () => {
     });
   });
 
-  it.each(['provision', 'reconcile'] as const)(
+  it.each(['provision', 'reconcile', 'reactivate'] as const)(
     'adapts the generic %s lifecycle operation to the existing Waste provisioner',
     async (operation) => {
       const requestTenantDatabaseProvisioning = vi.fn(async () => ({
@@ -187,6 +187,26 @@ describe('waste management runtime handlers', () => {
       });
     }
   );
+
+  it('routes lifecycle suspension to the plugin-specific provisioning facade', async () => {
+    const suspendTenantDatabaseProvisioning = vi.fn(async () => null);
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ suspendTenantDatabaseProvisioning })
+    );
+    const context = createContext({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+      inputPayload: { studioTenantLifecycle: { operation: 'suspend', generation: 12 } },
+      tenantLifecycle: { operation: 'suspend', generation: 12 },
+    });
+
+    const result =
+      await handlers[wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]?.(
+        context
+      );
+
+    expect(suspendTenantDatabaseProvisioning).toHaveBeenCalledWith('instance-1');
+    expect(result).toBeUndefined();
+  });
 
   it('executes readiness as a read-only lifecycle operation', async () => {
     const readTenantDatabaseReadiness = vi.fn(async () => ({
@@ -483,6 +503,8 @@ const createRuntime = (
   overrides: Partial<WasteManagementOperationRuntime> = {}
 ): WasteManagementOperationRuntime => ({
   requestTenantDatabaseProvisioning: async () => ({ desiredGeneration: 1 }),
+  suspendTenantDatabaseProvisioning: async () => null,
+  suspendTenantDatabaseProvisioning: async () => null,
   readTenantDatabaseReadiness: async () => ({
     revision: 'waste-tenant-database-v2',
     checks: [

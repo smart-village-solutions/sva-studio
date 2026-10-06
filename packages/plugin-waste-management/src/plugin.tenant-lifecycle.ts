@@ -14,6 +14,14 @@ export const wasteManagementTenantLifecycle: PluginTenantLifecycleDefinition = {
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
     },
     {
+      operation: 'suspend',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+    },
+    {
+      operation: 'reactivate',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+    },
+    {
       operation: 'readiness',
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.tenantReadiness,
     },

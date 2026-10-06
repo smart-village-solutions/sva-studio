@@ -31,6 +31,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'adminResources',
   'auditEvents',
   'moduleIam',
+  'requiredTenantModuleIds',
   'jobTypes',
   'importProfiles',
   'exportProfiles',

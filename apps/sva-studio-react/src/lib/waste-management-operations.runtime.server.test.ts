@@ -12,15 +12,19 @@ import type { WasteOperationRuntimeDeps } from './waste-management-operations.ty
 describe('waste management operations runtime assembly', () => {
   it('assembles the full operation contract with stable callable handlers', async () => {
     const requestProvisioning = vi.fn(async () => ({ desiredGeneration: 4 }) as never);
+    const suspendProvisioning = vi.fn(async () => null);
     const deps: WasteOperationRuntimeDeps = {
       now: vi.fn(() => new Date('2026-06-15T06:00:00.000Z')),
       requestProvisioning,
+      suspendProvisioning,
     };
 
     const runtime = createWasteManagementOperationRuntime(deps);
 
     expect(runtime).toMatchObject({
       requestTenantDatabaseProvisioning: expect.any(Function),
+      suspendTenantDatabaseProvisioning: expect.any(Function),
+      suspendTenantDatabaseProvisioning: expect.any(Function),
       readTenantDatabaseReadiness: expect.any(Function),
       provisionTenantDatabase: expect.any(Function),
       initializeDataSource: expect.any(Function),
@@ -40,5 +44,7 @@ describe('waste management operations runtime assembly', () => {
       desiredGeneration: 4,
     });
     expect(requestProvisioning).toHaveBeenCalledWith('tenant-a');
+    await expect(runtime.suspendTenantDatabaseProvisioning('tenant-a')).resolves.toBeNull();
+    expect(suspendProvisioning).toHaveBeenCalledWith('tenant-a');
   });
 });

@@ -140,6 +140,7 @@ const reconcileInstanceAuthArtifacts = async (
         ...KEYCLOAK_REALM_BASELINE.instanceIdMapper,
       });
     }
+    await client.ensurePersonalMcpAccess(input.authClientId);
   }
 
   if (input.tenantAdminClient?.clientId && (input.reconcileTenantAdminClient ?? true)) {

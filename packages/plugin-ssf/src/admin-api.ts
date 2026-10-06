@@ -13,9 +13,10 @@ import {
 import {
   SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
   SSF_TENANT_CONTENT_V2_ADMIN_PATH,
-  ssfSystemContentV2InputSchema,
+  ssfSystemContentV2ViewSchema,
   ssfTenantContentV2ViewSchema,
   type SsfSystemContentV2Input,
+  type SsfSystemContentV2View,
   type SsfTenantContentV2View,
 } from './content-v2-admin-contracts.js';
 
@@ -63,13 +64,13 @@ export const writeSsfTenantConfiguration = async (
   };
 };
 
-export const readSsfSystemContentV2 = async (): Promise<SsfSystemContentV2Input> =>
-  ssfSystemContentV2InputSchema.parse(await requestJson(SSF_SYSTEM_CONTENT_V2_ADMIN_PATH));
+export const readSsfSystemContentV2 = async (): Promise<SsfSystemContentV2View> =>
+  ssfSystemContentV2ViewSchema.parse(await requestJson(SSF_SYSTEM_CONTENT_V2_ADMIN_PATH));
 
 export const writeSsfSystemContentV2 = async (
   input: SsfSystemContentV2Input
-): Promise<SsfSystemContentV2Input> =>
-  ssfSystemContentV2InputSchema.parse(
+): Promise<SsfSystemContentV2View> =>
+  ssfSystemContentV2ViewSchema.parse(
     await requestJson(SSF_SYSTEM_CONTENT_V2_ADMIN_PATH, {
       method: 'PUT',
       headers: createMainserverJsonRequestHeaders(),

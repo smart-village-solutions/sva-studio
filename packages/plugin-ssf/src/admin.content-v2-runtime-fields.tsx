@@ -10,14 +10,40 @@ import {
 } from './admin.content-v2-field-control.js';
 import { blankFeedback, BrandingFields, FeedbackFields } from './admin.content-v2-fields.js';
 import type { SsfRuntimeContentV2Fields } from './content-v2-contracts.js';
+import type { SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
 
-type Props = SsfV2EditorProps<SsfRuntimeContentV2Fields>;
+type Props = SsfV2EditorProps<SsfRuntimeContentV2Fields> & Readonly<{ supportedLanguages: SsfSupportedLanguagesCatalog | null }>;
 type Language = SsfRuntimeContentV2Fields['guestLanguages'][number];
+
+const catalogLanguages = (catalog: SsfSupportedLanguagesCatalog) => {
+  const popular = new Set(catalog.popular);
+  return Object.entries(catalog.languages).sort(([left], [right]) =>
+    Number(popular.has(right)) - Number(popular.has(left)) || left.localeCompare(right));
+};
+
+const catalogLocale = (locale: string, catalog: SsfSupportedLanguagesCatalog) =>
+  catalog.languages[locale] ? locale : locale.split(/[-_]/, 1)[0] ?? locale;
+const primaryLanguage = (locale: string) => locale.split('-')[0]?.toLowerCase();
 
 const StaffFields = (props: Props) => {
   const pt = usePluginTranslation('ssf');
+  const guestLanguages = new Set(props.value.guestLanguages.map(({ locale }) => primaryLanguage(locale)));
+  const availableStaffLanguages = props.supportedLanguages
+    ? catalogLanguages(props.supportedLanguages).filter(([locale]) => !guestLanguages.has(primaryLanguage(locale)))
+    : [];
   return <StudioSection title={pt('v2.staff')}>
-    <Field {...props} path={['staff', 'locale']} labelKey="v2.locale" />
+    <StudioField id="ssf-v2-staff-locale" label={pt('v2.locale')}>
+      <Select id="ssf-v2-staff-locale" disabled={props.disabled || !props.supportedLanguages}
+        value={props.supportedLanguages ? catalogLocale(props.value.staff.locale, props.supportedLanguages) : props.value.staff.locale}
+        onChange={(event) => props.onChange(updateSsfV2Field(props.value, ['staff', 'locale'], event.currentTarget.value))}>
+        {props.supportedLanguages && !props.supportedLanguages.languages[catalogLocale(props.value.staff.locale, props.supportedLanguages)]
+          ? <option value={catalogLocale(props.value.staff.locale, props.supportedLanguages)}>{pt('v2.savedLanguageUnavailable')}</option>
+          : null}
+        {props.supportedLanguages ? availableStaffLanguages.map(([locale, language]) =>
+          <option key={locale} value={locale}>{language.name} ({language.native}) · {locale}</option>) :
+          <option value={props.value.staff.locale}>{props.value.staff.locale}</option>}
+      </Select>
+    </StudioField>
     <Field {...props} path={['staff', 'dashboard', 'headline']} labelKey="v2.dashboardHeadline" />
     <Field {...props} path={['staff', 'dashboard', 'explanationHtml']} labelKey="v2.dashboardExplanation" kind="html" />
     <Field {...props} path={['staff', 'dashboard', 'callToAction']} labelKey="v2.callToAction" />
@@ -80,10 +106,18 @@ const StorageFields = (props: Props) => {
 
 const AddLanguage = (props: Props) => {
   const pt = usePluginTranslation('ssf');
+  const catalog = props.supportedLanguages;
   const [locale, setLocale] = useState('');
+  const staffLanguage = primaryLanguage(props.value.staff.locale);
+  const available = catalog ? catalogLanguages(catalog).filter(([code]) =>
+    primaryLanguage(code) !== staffLanguage &&
+    !props.value.guestLanguages.some((language) => language.locale === code)) : [];
   const add = () => {
+    if (!catalog) return;
+    const language = catalog.languages[locale];
+    if (!language) return;
     props.onChange({ ...props.value, guestLanguages: [...props.value.guestLanguages, {
-      locale, nativeName: locale, staffName: locale, icon: null,
+      locale, nativeName: language.native, staffName: language.name, icon: null,
       guest: { explanationHtml: '', storageQuestionHtml:
         props.value.conversationContentStorage.mode === 'ask' ? '' : null },
       feedback: blankFeedback(),
@@ -92,11 +126,14 @@ const AddLanguage = (props: Props) => {
   };
   return <div className="flex flex-wrap items-end gap-3">
     <StudioField id="ssf-v2-new-locale" label={pt('v2.newLanguage')}>
-      <Input id="ssf-v2-new-locale" value={locale} disabled={props.disabled}
-        onChange={(event) => setLocale(event.currentTarget.value)} />
+      <Select id="ssf-v2-new-locale" value={locale} disabled={props.disabled || !catalog}
+        onChange={(event) => setLocale(event.currentTarget.value)}>
+        <option value="">{pt('v2.chooseLanguage')}</option>
+        {available.map(([code, language]) =>
+          <option key={code} value={code}>{language.name} ({language.native}) · {code}</option>)}
+      </Select>
     </StudioField>
-    <Button type="button" variant="secondary" disabled={props.disabled || !locale ||
-      props.value.guestLanguages.some((language) => language.locale === locale) ||
+    <Button type="button" variant="secondary" disabled={props.disabled || !catalog || !locale || !catalog.languages[locale] ||
       props.value.guestLanguages.length >= 30} onClick={add}>{pt('v2.addLanguage')}</Button>
   </div>;
 };
@@ -123,7 +160,8 @@ const LanguageToggle = ({ props, language, hiddenLanguages }: {
     });
   };
   return <label className="flex items-center gap-2">
-    <Checkbox checked={active} disabled={props.disabled || (active && props.value.guestLanguages.length === 1)}
+    <Checkbox checked={active} disabled={props.disabled || !props.supportedLanguages ||
+      (active && props.value.guestLanguages.length === 1)}
       onChange={(event) => toggle(event.currentTarget.checked)} />
     <span>{language.nativeName} ({language.locale})</span>
   </label>;
@@ -133,7 +171,7 @@ const LanguageTab = ({ props, language, index }: { props: Props; language: Langu
   const pt = usePluginTranslation('ssf');
   return <TabsContent value={language.locale} className="space-y-5">
     {!props.inherited && props.value.guestLanguages.length > 1 ?
-      <Button type="button" variant="secondary" disabled={props.disabled}
+      <Button type="button" variant="secondary" disabled={props.disabled || !props.supportedLanguages}
         onClick={() => props.onChange({ ...props.value,
           guestLanguages: props.value.guestLanguages.filter((entry) => entry.locale !== language.locale),
         })}>{pt('v2.removeLanguage')}</Button> : null}
@@ -185,10 +223,16 @@ const GuestLanguages = (props: Props) => {
   </StudioSection>;
 };
 
-export const SsfRuntimeV2Editor = (props: Props) => <div className="space-y-5">
-  <BrandingFields {...props} />
-  <StaffFields {...props} />
-  <StorageFields {...props} />
-  <FeedbackFields {...props} path={['staff', 'feedback']} />
-  <GuestLanguages {...props} />
-</div>;
+export const SsfRuntimeV2Editor = (props: Props) => {
+  const pt = usePluginTranslation('ssf');
+  return <div className="space-y-5">
+    {!props.supportedLanguages ? <p className="text-sm text-muted-foreground" role="status">
+      {pt('v2.languageCatalogUnavailable')}
+    </p> : null}
+    <BrandingFields {...props} />
+    <StaffFields {...props} />
+    <StorageFields {...props} />
+    <FeedbackFields {...props} path={['staff', 'feedback']} />
+    <GuestLanguages {...props} />
+  </div>;
+};

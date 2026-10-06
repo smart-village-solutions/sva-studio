@@ -132,3 +132,12 @@ Registry persistiert Tenant, Audit und dauerhaften Auftrag atomar, und Keycloak
 bleibt ein externes Nachbarsystem mit read-only Preflight vor dem Commit.
 Kassel ergänzt nur technische Ingress-/TLS-Schritte. Weder Kassel-Provisioner
 noch ein anderes Nachbarsystem darf eine Instanz aktivieren.
+
+### Ergänzung 2026-10: SSF-Sprachkatalog
+
+Die SSF-Inhaltsverwaltung bezieht technisch unterstützte Sprachcodes über den
+öffentlichen SSF-Endpunkt `/api/languages/supported`. Der Server des SSF-Plugins
+lädt und validiert den Katalog für System- und Mandanteneditoren. Der Browser
+ruft SSF nicht direkt auf. Der Katalog wird nicht in Studio persistiert; ein
+Ausfall verhindert nur Sprachänderungen und das Hinzufügen von Sprachen, nicht
+die Bearbeitung vorhandener Texte.

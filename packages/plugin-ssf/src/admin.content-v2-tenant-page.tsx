@@ -31,7 +31,7 @@ const TenantEditor = ({ saved, draft, status, errors, canManage, onChange, onSav
     {status === 'invalid' ? <StudioFormSummary kind="error">{pt('v2.invalid')}</StudioFormSummary> : null}
     {status === 'error' ? <StudioFormSummary kind="error">{pt('status.saveError')}</StudioFormSummary> : null}
     <SsfRuntimeV2Editor value={draft} inherited={saved.runtimeTemplate} onChange={onChange}
-      errors={errors} disabled={!canManage || status === 'saving'} />
+      errors={errors} disabled={!canManage || status === 'saving'} supportedLanguages={saved.supportedLanguages ?? null} />
     {canManage ? <StudioFormActionBar>
       <Button type="button" variant="secondary" disabled={status === 'saving'} onClick={onDiscard}>
         {pt('actions.discard')}

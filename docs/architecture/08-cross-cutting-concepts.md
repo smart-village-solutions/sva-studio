@@ -1160,3 +1160,15 @@ Tokens, Secrets oder E-Mail-Adressen.
 ### Build-Zeit-Plugin-Grenze
 
 Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. Die Auswahl von Studio oder SSF erfolgt deshalb beim Build und entfernt nicht zulässige Katalog-, Route-, Job- und IAM-Beiträge vor dem Artefakt.
+
+### SSF-Sprachkatalog und Ausfallverhalten
+
+- Sprachoptionen der SSF-V2-Inhaltsverwaltung stammen aus dem serverseitig
+  geladenen SSF-Endpunkt `/api/languages/supported`; der Browser ruft den
+  Nachbarsystem-Endpunkt nicht direkt auf.
+- Die Katalogantwort wird strukturell validiert und nicht in Studio persistiert.
+  HTTP-Fehler, ungültige Daten und Zeitüberschreitungen führen zu einem
+  expliziten nicht verfügbaren Katalogzustand, nicht zum Fehlschlag des gesamten
+  Inhaltsreads.
+- In diesem Zustand bleiben gespeicherte Sprachen und deren Texte erhalten und
+  bearbeitbar; Änderungen und Ergänzungen von Sprachen sind deaktiviert.

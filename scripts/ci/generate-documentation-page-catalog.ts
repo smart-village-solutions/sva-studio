@@ -3,14 +3,19 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { createPluginRegistry, type PluginDefinition, type PluginManifest } from '@sva/plugin-sdk';
+import {
+  createPluginRegistry,
+  type PluginDefinition,
+  type PluginDescriptor,
+  type PluginManifest,
+} from '@sva/plugin-sdk';
 
 import type { AppRouteBindings } from '../../packages/routing/src/index.ts';
 import { collectDocumentationPageCatalog } from '../../packages/routing/src/documentation-page-catalog.ts';
 import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.ts';
 import {
   extractPluginDefinition,
-  getWorkspacePluginModuleCandidates,
+  getWorkspacePluginDescriptorCandidates,
   type StudioPluginCatalogConfigEntry,
 } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts';
 
@@ -18,6 +23,10 @@ const outputPath = resolve('docs/user-documentation/page-catalog.json');
 const pluginCatalogPath = resolve('apps/sva-studio-react/plugin-catalog.json');
 const packageRequire = createRequire(import.meta.url);
 const component = () => null;
+const withPlaceholderComponents = (descriptor: PluginDescriptor): PluginDefinition => ({
+  ...descriptor,
+  routes: descriptor.routes.map((route) => ({ ...route, component })),
+});
 const bindings = new Proxy(
   {},
   {
@@ -49,7 +58,7 @@ const loadWorkspacePlugin = async (
   manifest: PluginManifest
 ): Promise<PluginDefinition> => {
   const pluginRoot = resolve(entry.sourceRef);
-  const sourceCandidates = getWorkspacePluginModuleCandidates(manifest).filter((candidate) =>
+  const sourceCandidates = getWorkspacePluginDescriptorCandidates(manifest).filter((candidate) =>
     candidate.startsWith('src/')
   );
   for (const candidate of sourceCandidates) {
@@ -66,7 +75,7 @@ const loadWorkspacePlugin = async (
     }
     const definition = extractPluginDefinition(await import(pathToFileURL(modulePath).href));
     if (definition?.id === entry.pluginId) {
-      return definition;
+      return withPlaceholderComponents(definition);
     }
   }
   throw new Error(`documentation_plugin_module_missing:${entry.pluginId}`);
@@ -79,7 +88,7 @@ const loadPackagePlugin = async (
   if (definition?.id !== entry.pluginId) {
     throw new Error(`documentation_plugin_module_missing:${entry.pluginId}`);
   }
-  return definition;
+  return withPlaceholderComponents(definition);
 };
 
 const loadEnabledPlugins = async (): Promise<readonly PluginDefinition[]> => {

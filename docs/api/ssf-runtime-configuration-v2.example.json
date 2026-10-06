@@ -1,0 +1,283 @@
+{
+  "contractVersion": "2.0",
+  "configurationRevision": "sha256:f44b71388e53be04e80cca04d699f96f51b6bcdf9665377fb74a4b80a6c62e35",
+  "tenant": {
+    "id": "tenant-kassel",
+    "displayName": "Stadt Kassel",
+    "timeZone": "Europe/Berlin"
+  },
+  "branding": {
+    "logo": null,
+    "icon": null
+  },
+  "conversationContentStorage": {
+    "mode": "ask",
+    "retentionHours": 24
+  },
+  "staff": {
+    "locale": "de-DE",
+    "dashboard": {
+      "headline": "Willkommen bei KasselDIALOG",
+      "explanationHtml": "<p>KasselDIALOG stellt einen virtuellen Echtzeit-Dolmetscher bereit. Starten Sie ein neues Gespräch, um sofort mit einer anderssprachigen Person zu kommunizieren — ohne Wartezeit und ohne Vorkenntnisse.</p>",
+      "callToAction": "Neues Gespräch starten",
+      "load": {
+        "headline": "Systemauslastung",
+        "green": "Ausreichend Kapazitäten verfügbar",
+        "yellow": "Mittlere Auslastung",
+        "red": "Hohe Auslastung"
+      }
+    },
+    "newConversation": {
+      "headline": "Neues Gespräch",
+      "descriptionHtml": "<p>Code oder Link mit dem Gesprächspartner teilen</p>"
+    },
+    "feedback": {
+      "headline": "Feedback geben",
+      "questions": [
+        {
+          "id": "translationQuality",
+          "headline": "Übersetzungsqualität",
+          "question": "Wie genau waren die Übersetzungen?",
+          "type": "rating",
+          "required": true,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "performance",
+          "headline": "Leistung",
+          "question": "Wie schnell und reaktionsfähig war die Anwendung?",
+          "type": "rating",
+          "required": true,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "usability",
+          "headline": "Bedienbarkeit",
+          "question": "Wie einfach und angenehm war die Oberfläche zu bedienen?",
+          "type": "rating",
+          "required": true,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "recommendation",
+          "headline": "Weiterempfehlung",
+          "question": "Wie wahrscheinlich ist es, dass Sie KasselDIALOG einer Kollegin oder einem Kollegen empfehlen?",
+          "type": "scale",
+          "required": true,
+          "min": 0,
+          "max": 10,
+          "minLabel": "Überhaupt nicht wahrscheinlich",
+          "maxLabel": "Äußerst wahrscheinlich"
+        },
+        {
+          "id": "improvementIdeas",
+          "headline": "Verbesserungsideen",
+          "question": "Was würde KasselDIALOG noch besser machen?",
+          "type": "longText",
+          "required": false,
+          "placeholder": "Ihre Ideen, Funktionswünsche oder Dinge, die Sie gestört haben...",
+          "maxLength": 4000
+        }
+      ],
+      "noticeHtml": "<p>Ihr Feedback wird an die Stadt Kassel übermittelt und 12 Monate aufbewahrt. Bitte geben Sie keine sensiblen personenbezogenen Daten ein. Bei Fragen schreiben Sie an feedback@example.org.</p>",
+      "button": "Feedback senden"
+    }
+  },
+  "guestLanguages": [
+    {
+      "locale": "en",
+      "nativeName": "English",
+      "staffName": "Englisch",
+      "icon": null,
+      "guest": {
+        "explanationHtml": "<p>Welcome. You are now connected with a member of staff of the City of Kassel. Speak or type in your language; KasselDIALOG translates for both of you. You do not need an account.</p>",
+        "storageQuestionHtml": "<p>May we store the content of this conversation for 24 hours to improve translation quality? You can continue without agreeing.</p>"
+      },
+      "feedback": {
+        "headline": "Share your feedback",
+        "questions": [
+          {
+            "id": "translationQuality",
+            "headline": "Translation quality",
+            "question": "How accurate were the translations?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "performance",
+            "headline": "Performance",
+            "question": "How fast and responsive did the app feel?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "usability",
+            "headline": "Ease of use",
+            "question": "How easy and pleasant was the interface to use?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "recommendation",
+            "headline": "Recommendation",
+            "question": "How likely are you to recommend KasselDIALOG to others?",
+            "type": "scale",
+            "required": true,
+            "min": 0,
+            "max": 10,
+            "minLabel": "Not at all likely",
+            "maxLabel": "Extremely likely"
+          },
+          {
+            "id": "improvementIdeas",
+            "headline": "Improvement ideas",
+            "question": "What would make KasselDIALOG even better?",
+            "type": "longText",
+            "required": false,
+            "placeholder": "Your ideas, feature requests, or anything that bothered you...",
+            "maxLength": 4000
+          }
+        ],
+        "noticeHtml": "<p>Your feedback is sent to the City of Kassel and kept for 12 months. Please do not include sensitive personal information. For questions, contact feedback@example.org.</p>",
+        "button": "Send feedback"
+      }
+    },
+    {
+      "locale": "tr",
+      "nativeName": "Türkçe",
+      "staffName": "Türkisch",
+      "icon": null,
+      "guest": {
+        "explanationHtml": "<p>Hoş geldiniz. Artık Kassel Belediyesi'nden bir çalışanla bağlantıdasınız. Kendi dilinizde konuşun veya yazın; KasselDIALOG her ikiniz için çeviri yapar. Hesap açmanız gerekmez.</p>",
+        "storageQuestionHtml": "<p>Çeviri kalitesini iyileştirmek için bu görüşmenin içeriğini 24 saat boyunca saklamamıza izin veriyor musunuz? Onay vermeden de devam edebilirsiniz.</p>"
+      },
+      "feedback": {
+        "headline": "Deneyiminizi paylaşın",
+        "questions": [
+          {
+            "id": "translationQuality",
+            "headline": "Çeviri kalitesi",
+            "question": "Çeviriler ne kadar doğruydu?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "performance",
+            "headline": "Performans",
+            "question": "Uygulama ne kadar hızlı ve duyarlıydı?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "usability",
+            "headline": "Kullanım kolaylığı",
+            "question": "Arayüzü kullanmak ne kadar kolay ve rahattı?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "recommendation",
+            "headline": "Öneri",
+            "question": "KasselDIALOG'u başkalarına önerme olasılığınız nedir?",
+            "type": "scale",
+            "required": true,
+            "min": 0,
+            "max": 10,
+            "minLabel": "Hiç olası değil",
+            "maxLabel": "Son derece olası"
+          },
+          {
+            "id": "improvementIdeas",
+            "headline": "İyileştirme önerileri",
+            "question": "KasselDIALOG'u daha iyi hale getirecek ne olurdu?",
+            "type": "longText",
+            "required": false,
+            "placeholder": "Fikirleriniz, özellik istekleriniz veya sizi rahatsız eden başka şeyler...",
+            "maxLength": 4000
+          }
+        ],
+        "noticeHtml": "<p>Geri bildiriminiz Kassel Belediyesi'ne gönderilir ve 12 ay saklanır. Lütfen hassas kişisel bilgiler eklemeyin. Sorularınız için feedback@example.org adresine yazın.</p>",
+        "button": "Geri bildirim gönder"
+      }
+    },
+    {
+      "locale": "ru",
+      "nativeName": "Русский",
+      "staffName": "Russisch",
+      "icon": null,
+      "guest": {
+        "explanationHtml": "<p>Здравствуйте! Вы подключены к сотруднику городской администрации Касселя. Говорите или пишите на своём языке — KasselDIALOG переведёт для вас обоих. Учётная запись не нужна.</p>",
+        "storageQuestionHtml": "<p>Разрешаете ли вы хранить содержание этого разговора в течение 24 часов для улучшения качества перевода? Вы можете продолжить и без согласия.</p>"
+      },
+      "feedback": {
+        "headline": "Поделитесь отзывом",
+        "questions": [
+          {
+            "id": "translationQuality",
+            "headline": "Качество перевода",
+            "question": "Насколько точным был перевод?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "performance",
+            "headline": "Производительность",
+            "question": "Насколько быстро и отзывчиво работало приложение?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "usability",
+            "headline": "Удобство",
+            "question": "Насколько удобным и приятным был интерфейс?",
+            "type": "rating",
+            "required": true,
+            "min": 1,
+            "max": 5
+          },
+          {
+            "id": "recommendation",
+            "headline": "Рекомендация",
+            "question": "Насколько вероятно, что вы порекомендуете KasselDIALOG другим?",
+            "type": "scale",
+            "required": true,
+            "min": 0,
+            "max": 10,
+            "minLabel": "Совсем не вероятно",
+            "maxLabel": "Очень вероятно"
+          },
+          {
+            "id": "improvementIdeas",
+            "headline": "Идеи по улучшению",
+            "question": "Что сделало бы KasselDIALOG лучше?",
+            "type": "longText",
+            "required": false,
+            "placeholder": "Ваши идеи, пожелания по функциям или то, что вам мешало...",
+            "maxLength": 4000
+          }
+        ],
+        "noticeHtml": "<p>Ваш отзыв будет отправлен в городскую администрацию Касселя и храниться 12 месяцев. Пожалуйста, не указывайте конфиденциальные персональные данные. Если у вас есть вопросы, напишите на feedback@example.org.</p>",
+        "button": "Отправить отзыв"
+      }
+    }
+  ]
+}

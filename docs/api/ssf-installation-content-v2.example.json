@@ -1,0 +1,85 @@
+{
+  "contractVersion": "2.0",
+  "configurationRevision": "sha256:aaa05fe8818e6e1bf574da98aedff3527c838f1f56a87dafa6d6d4023312a06d",
+  "branding": {
+    "logo": {
+      "url": "https://media.example.org/ssf/kasseldialog-logo.svg",
+      "alternativeText": "KasselDIALOG"
+    },
+    "icon": {
+      "url": "https://media.example.org/ssf/kasseldialog-icon.png",
+      "alternativeText": ""
+    }
+  },
+  "legal": {
+    "imprintUrl": "https://www.example.org/impressum",
+    "privacyPolicyUrl": "https://www.example.org/datenschutz",
+    "accessibilityStatementUrl": null
+  },
+  "localization": {
+    "locale": "de-DE",
+    "startpage": {
+      "enterCode": "Code eingeben",
+      "send": "Weiter",
+      "login": "Login"
+    },
+    "login": {
+      "headline": "Login",
+      "descriptionHtml": "<p>Bitte wählen Sie Ihre Abteilung oder Organisation aus der Liste aus.</p>"
+    },
+    "feedback": {
+      "headline": "Feedback geben",
+      "questions": [
+        {
+          "id": "translationQuality",
+          "headline": "Übersetzungsqualität",
+          "question": "Wie genau waren die Übersetzungen?",
+          "type": "rating",
+          "required": true,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "performance",
+          "headline": "Leistung",
+          "question": "Wie schnell und reaktionsfähig war die Anwendung?",
+          "type": "rating",
+          "required": true,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "usability",
+          "headline": "Bedienbarkeit",
+          "question": "Wie einfach und angenehm war die Oberfläche zu bedienen?",
+          "type": "rating",
+          "required": true,
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "recommendation",
+          "headline": "Weiterempfehlung",
+          "question": "Wie wahrscheinlich ist es, dass Sie KasselDIALOG einer Kollegin oder einem Kollegen empfehlen?",
+          "type": "scale",
+          "required": true,
+          "min": 0,
+          "max": 10,
+          "minLabel": "Überhaupt nicht wahrscheinlich",
+          "maxLabel": "Äußerst wahrscheinlich"
+        },
+        {
+          "id": "improvementIdeas",
+          "headline": "Verbesserungsideen",
+          "question": "Was würde KasselDIALOG noch besser machen?",
+          "type": "longText",
+          "required": false,
+          "placeholder": "Ihre Ideen, Funktionswünsche oder Dinge, die Sie gestört haben...",
+          "maxLength": 4000
+        }
+      ],
+      "noticeHtml": "<p>Ihr Feedback wird an die Stadt Kassel übermittelt und 12 Monate aufbewahrt. Bitte geben Sie keine sensiblen personenbezogenen Daten ein. Bei Fragen schreiben Sie an feedback@example.org.</p>",
+      "button": "Feedback senden"
+    }
+  }
+}

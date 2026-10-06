@@ -19,6 +19,8 @@ const createFixture = (
     browserPath?: string;
     exportsManifest?: boolean;
     jobsPath?: string | null;
+    runtimeRequirement?: string;
+    sourceRef?: string;
     sdkVersion?: string;
     requiredCapabilities?: string[];
   } = {}
@@ -26,7 +28,8 @@ const createFixture = (
   const root = mkdtempSync(join(tmpdir(), 'studio-installed-plugin-'));
   temporaryRoots.push(root);
   const appRoot = join(root, 'app');
-  const packageRoot = join(appRoot, 'node_modules', '@vendor', 'calendar');
+  const sourceRef = input.sourceRef ?? '@vendor/calendar';
+  const packageRoot = join(appRoot, 'node_modules', ...sourceRef.split('/'));
   mkdirSync(packageRoot, { recursive: true });
   const paths = {
     descriptor: './dist/metadata.js',
@@ -38,7 +41,7 @@ const createFixture = (
     join(appRoot, 'package.json'),
     JSON.stringify({
       name: 'test-studio',
-      dependencies: { '@vendor/calendar': '1.0.0' },
+      dependencies: { [sourceRef]: '1.0.0' },
     })
   );
   writeFileSync(
@@ -48,7 +51,7 @@ const createFixture = (
         pluginId: 'calendar',
         sourceType: 'installed-distribution',
         enabled: input.enabled ?? true,
-        sourceRef: '@vendor/calendar',
+        sourceRef,
         distribution: input.distribution ?? 'studio',
       },
     ])
@@ -56,7 +59,7 @@ const createFixture = (
   writeFileSync(
     join(packageRoot, 'package.json'),
     JSON.stringify({
-      name: '@vendor/calendar',
+      name: sourceRef,
       version: '1.0.0',
       type: 'module',
       exports:
@@ -79,7 +82,7 @@ const createFixture = (
         requiredCapabilities: input.requiredCapabilities,
       },
       entryPoints: paths,
-      runtimeRequirements: { jobs: 'calendar.test' },
+      runtimeRequirements: { jobs: input.runtimeRequirement ?? 'waste-management.operations' },
     })
   );
   for (const path of Object.values(paths)) {
@@ -129,6 +132,21 @@ describe('installed plugin build inputs', () => {
       'installed_plugin_jobs_unsupported:calendar:ssf'
     );
   });
+
+  it('rejects a Studio job entrypoint without a registered runtime provider', () => {
+    const { appRoot } = createFixture({ runtimeRequirement: 'calendar.test' });
+    expect(() => resolveInstalledPluginSources(appRoot, 'studio')).toThrow(
+      'installed_plugin_jobs_unsupported:calendar:studio'
+    );
+  });
+
+  it.each(['@vendor/plugin.calendar', '@vendor/plugin_calendar'])(
+    'accepts valid npm package names such as %s',
+    (sourceRef) => {
+      const { appRoot } = createFixture({ jobsPath: null, sourceRef });
+      expect(resolveInstalledPluginSources(appRoot, 'studio')).toHaveLength(1);
+    }
+  );
 
   it('loads a package manifest without an exports-map subpath', () => {
     const { appRoot } = createFixture({ exportsManifest: false });

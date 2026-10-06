@@ -58,7 +58,8 @@ const readCatalog = (appRoot: string, distribution: Distribution): readonly Cata
     if (
       typeof value.pluginId !== 'string' ||
       typeof value.sourceRef !== 'string' ||
-      !/^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/u.test(value.sourceRef) ||
+      !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/u.test(value.sourceRef) ||
+      value.sourceRef.split('/').some((part) => part === '.' || part === '..') ||
       typeof value.enabled !== 'boolean' ||
       (value.distribution !== 'studio' && value.distribution !== 'ssf')
     ) {
@@ -137,6 +138,14 @@ export const resolveInstalledPluginSources = (
     }
     if (entry.enabled && distribution === 'ssf' && manifest.entryPoints.jobs) {
       throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:ssf`);
+    }
+    if (
+      entry.enabled &&
+      distribution === 'studio' &&
+      manifest.entryPoints.jobs &&
+      manifest.runtimeRequirements?.jobs !== 'waste-management.operations'
+    ) {
+      throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:studio`);
     }
     const files: Partial<Record<EntryKind, string>> = {};
     if (entry.enabled) {

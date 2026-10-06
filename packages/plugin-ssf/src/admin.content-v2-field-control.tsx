@@ -64,7 +64,7 @@ export type SsfV2EditorProps<T extends FormValue> = Readonly<{
 
 const parseInput = (raw: string, kind: FieldKind, nullable: boolean, optional: boolean): unknown => {
   if (raw !== '') return kind === 'number' ? Number(raw) : raw;
-  if (nullable || kind === 'number') return null;
+  if (nullable) return null;
   return optional ? undefined : raw;
 };
 
@@ -104,7 +104,7 @@ const ContentField = <T extends FormValue>({
     <div className="space-y-2">
       <StudioField id={id} label={pt(labelKey)} error={errors?.[path.join('.')]}>
         <EditorControl id={id} kind={kind} value={value} disabled={disabled} nullable={nullable}
-          optional={['headline', 'minLabel', 'maxLabel', 'placeholder'].includes(String(path[path.length - 1]))}
+          optional={['headline', 'minLabel', 'maxLabel', 'placeholder', 'maxLength'].includes(String(path[path.length - 1]))}
           set={set} />
       </StudioField>
       {inherited !== undefined ? (

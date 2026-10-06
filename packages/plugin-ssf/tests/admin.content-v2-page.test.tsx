@@ -73,6 +73,29 @@ describe('SSF V2 content administration', () => {
     }));
   });
 
+  it('clears an optional feedback length without sending null', async () => {
+    const installation = fields('ssf-installation-content-v2.example.json');
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readSystem.mockResolvedValue({ installation, runtimeTemplate });
+    api.writeSystem.mockImplementation(async (value) => value);
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+
+    await screen.findAllByLabelText('v2.maxLength');
+    const length = document.getElementById('ssf-v2-staff-feedback-questions-4-maxLength');
+    if (!length) throw new Error('max_length_field_missing');
+    fireEvent.change(length, { target: { value: '' } });
+    const save = screen.getAllByRole('button', { name: 'actions.save' })[1];
+    if (!save) throw new Error('runtime_save_button_missing');
+    fireEvent.click(save);
+
+    await waitFor(() => expect(api.writeSystem).toHaveBeenCalledOnce());
+    const written = api.writeSystem.mock.calls[0]?.[0] as { runtimeTemplate: {
+      staff: { feedback: { questions: { maxLength?: number }[] } };
+    } };
+    expect(written.runtimeTemplate.staff.feedback.questions[4]?.maxLength).toBeUndefined();
+  });
+
   it('writes only a tenant field override and keeps an unknown feedback question', async () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
     const staff = runtimeTemplate['staff'] as { feedback: { questions: unknown[] } };

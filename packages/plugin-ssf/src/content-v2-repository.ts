@@ -85,6 +85,7 @@ export const replaceSsfSystemContentV2 = async (
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ssf.content.v2', 0))");
     if (runtimeTemplate !== null) {
       const tenants = await client.query<{ instance_id: string; runtime_content_v2: unknown }>(
         'SELECT instance_id, runtime_content_v2 FROM ssf.tenant_settings WHERE runtime_content_v2 IS NOT NULL'
@@ -132,6 +133,7 @@ export const writeSsfTenantContentV2 = async (
   input: unknown
 ): Promise<Record<string, unknown>> =>
   withTenantTransaction(pool, instanceId, false, async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ssf.content.v2', 0))");
     const system = await client.query<Pick<SystemRow, 'runtime_content_v2'>>(
       'SELECT runtime_content_v2 FROM ssf.server_settings WHERE singleton = true'
     );

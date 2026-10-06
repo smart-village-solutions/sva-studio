@@ -14,6 +14,16 @@
   Plugins tragen dagegen nur deklarative Beiträge in `plugin.tsx`, während
   ihre `index.ts`-Entry-Points Seiten exportieren.
 
+Am Ausgangsstand `60059753b161236d0fd0b1ca6ffd99ab5feb2a48` haben alle
+elf Plugin-Pakete ein Manifest mit Browser-Entry-Point; SSF und Waste haben
+zusätzlich Server-Entry-Points, SSF auch einen Job-Entry-Point. Von den
+geprüften `plugin.tsx`-Definitionen importieren SSF und Waste direkt
+Fachseiten. Ein offener PR zu #1509, #1511 oder #1512 war am 06.10.2026
+nicht vorhanden. Die gezielten Ausgangstests sind grün: Server-Runtime
+6/6, Job-Runtime 18/18, Aktivierungsbootstrap 10/10. Diese Tests belegen
+noch nicht, dass ein serverseitig unladbarer Browser-Entry-Point toleriert
+wird; dafür ist D1 vorgesehen.
+
 ## Entscheidung
 
 Der Manifestvertrag erhält `entryPoints.descriptor`. Dieser Pfad exportiert

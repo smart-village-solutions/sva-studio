@@ -138,6 +138,19 @@ describe('SSF V2 admin supported-language catalog', () => {
     expect(writeSystemV2).not.toHaveBeenCalled();
   });
 
+  it('allows installation text saves with the runtime section omitted when the catalog is unavailable', async () => {
+    const previous = systemContent();
+    const input = { ...structuredClone(previous), runtimeTemplate: null };
+    if (!input.installation) throw new Error('ssf_v2_test_installation_missing');
+    input.installation.localization.startpage.enterCode = 'Enter the conversation code';
+    const writeSystemV2 = vi.fn();
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous,
+      writeSystemV2, readSupportedLanguages: async () => { throw new Error('catalog unavailable'); } });
+    const response = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', input));
+    expect(response?.status).toBe(200);
+    expect(writeSystemV2).toHaveBeenCalledWith(input);
+  });
+
   it('rejects unsupported tenant staff locale changes before persisting', async () => {
     const writeTenantV2 = vi.fn();
     const handlers = createSsfAdminV2Handlers({

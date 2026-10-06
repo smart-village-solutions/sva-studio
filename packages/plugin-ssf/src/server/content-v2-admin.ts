@@ -46,7 +46,6 @@ const systemLocalesAreAllowed = (
   if (input.installation && !localeIsAllowed(input.installation.localization.locale,
     previous.installation?.localization.locale, catalog)) return false;
   const previousRuntime = previous.runtimeTemplate;
-  if (!catalog && (previousRuntime === null) !== (input.runtimeTemplate === null)) return false;
   if (!catalog && previousRuntime && input.runtimeTemplate) {
     const previousGuests = previousRuntime.guestLanguages.map(({ locale }) => locale).sort();
     const requestedGuests = input.runtimeTemplate.guestLanguages.map(({ locale }) => locale).sort();

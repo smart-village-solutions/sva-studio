@@ -7,7 +7,6 @@ import type {
   TenantModuleActivationRecord,
   TenantModuleActivationPolicyDescriptor,
 } from '@sva/core';
-import type { WasteTenantProvisioningRecord } from '@sva/waste-management-contracts';
 
 export type TenantModuleActivationPolicyInput = TenantModuleActivationPolicyDescriptor;
 
@@ -102,38 +101,6 @@ export type ModuleActivationRollbackState = {
 };
 
 export type InstanceRegistryInstanceRepository = {
-  readonly requestWasteProvisioning: (instanceId: string) => Promise<WasteTenantProvisioningRecord>;
-  readonly getWasteProvisioning: (
-    instanceId: string
-  ) => Promise<WasteTenantProvisioningRecord | null>;
-  readonly disableWasteProvisioning: (
-    instanceId: string
-  ) => Promise<WasteTenantProvisioningRecord | null>;
-  readonly claimWasteProvisioning: (input: {
-    instanceId: string;
-    jobId: string;
-    desiredGeneration: number;
-  }) => Promise<WasteTenantProvisioningRecord | null>;
-  readonly completeWasteProvisioning: (input: {
-    instanceId: string;
-    jobId: string;
-    desiredGeneration: number;
-    databaseName: string;
-    interfaceId: string;
-  }) => Promise<WasteTenantProvisioningRecord | null>;
-  readonly failWasteProvisioning: (input: {
-    instanceId: string;
-    jobId: string;
-    desiredGeneration: number;
-    errorCode: string;
-    errorMessage: string;
-  }) => Promise<WasteTenantProvisioningRecord | null>;
-  readonly failWasteProvisioningRequest: (input: {
-    instanceId: string;
-    desiredGeneration: number;
-    errorCode: string;
-    errorMessage: string;
-  }) => Promise<WasteTenantProvisioningRecord | null>;
   readonly prepareConfirmationChallenge: (
     input: PrepareInstanceConfirmationChallengeInput
   ) => Promise<InstanceConfirmationChallengeRecord>;
@@ -189,7 +156,11 @@ export type InstanceRegistryInstanceRepository = {
   }) => Promise<PermissionCatalogReconcileResult | void>;
   readonly persistPluginTenantLifecycleReconcileIntents: (input: {
     instanceId: string;
-    lifecycles: readonly Readonly<{ pluginId: string; contractRevision: string }>[];
+    lifecycles: readonly Readonly<{
+      pluginId: string;
+      contractRevision: string;
+      operations?: readonly Readonly<{ operation: string }>[];
+    }>[];
     forcePluginIds: readonly string[];
   }) => Promise<readonly string[]>;
   readonly syncProtectedSystemRolePermissions: (input: {

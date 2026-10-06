@@ -54,6 +54,7 @@ export type WasteOperationRuntimeDeps = {
   readonly saveInterfaceRecord?: typeof saveExternalInterfaceRecord;
   readonly loadProvisioning?: typeof loadWasteTenantProvisioningRecord;
   readonly requestProvisioning?: typeof requestWasteTenantProvisioning;
+  readonly suspendProvisioning?: (instanceId: string) => Promise<unknown>;
   readonly loadManagedInterface?: typeof loadExternalInterfaceRecordByAlias;
   readonly checkSchema?: (instanceId: string) => Promise<boolean>;
   readonly revealSecret?: (
@@ -111,6 +112,7 @@ export type WasteManagementOperationRuntime = {
   requestTenantDatabaseProvisioning: (
     instanceId: string
   ) => Promise<{ readonly desiredGeneration: number }>;
+  suspendTenantDatabaseProvisioning: (instanceId: string) => Promise<unknown>;
   readTenantDatabaseReadiness: (
     instanceId: string
   ) => Promise<PluginTenantLifecycleExecutionResult>;

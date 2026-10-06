@@ -115,6 +115,7 @@ export const mergePluginModuleIamContracts = (
         ownerPluginId: normalizedPluginNamespace,
         permissionIds: normalizedContract.permissionIds,
         systemRoles: normalizedContract.systemRoles,
+        requiredTenantModuleIds: [...new Set(plugin.requiredTenantModuleIds ?? [])].sort(),
       },
     ];
   });

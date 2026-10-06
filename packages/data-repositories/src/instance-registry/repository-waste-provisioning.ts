@@ -1,7 +1,6 @@
 import type { WasteTenantProvisioningRecord } from '@sva/waste-management-contracts';
 import type { SqlExecutor } from '../iam/repositories/types.js';
 
-import type { InstanceRegistryRepository } from './repository-contract.js';
 import { statement } from './repository-shared.js';
 
 type WasteProvisioningRow = {
@@ -39,16 +38,36 @@ const mapRow = (row: WasteProvisioningRow): WasteTenantProvisioningRecord => ({
   updatedAt: toIso(row.updated_at),
 });
 
-type WasteProvisioningRepository = Pick<
-  InstanceRegistryRepository,
-  | 'requestWasteProvisioning'
-  | 'getWasteProvisioning'
-  | 'disableWasteProvisioning'
-  | 'claimWasteProvisioning'
-  | 'completeWasteProvisioning'
-  | 'failWasteProvisioning'
-  | 'failWasteProvisioningRequest'
->;
+type WasteProvisioningRepository = {
+  requestWasteProvisioning(instanceId: string): Promise<WasteTenantProvisioningRecord>;
+  getWasteProvisioning(instanceId: string): Promise<WasteTenantProvisioningRecord | null>;
+  disableWasteProvisioning(instanceId: string): Promise<WasteTenantProvisioningRecord | null>;
+  claimWasteProvisioning(input: {
+    instanceId: string;
+    jobId: string;
+    desiredGeneration: number;
+  }): Promise<WasteTenantProvisioningRecord | null>;
+  completeWasteProvisioning(input: {
+    instanceId: string;
+    jobId: string;
+    desiredGeneration: number;
+    databaseName: string;
+    interfaceId: string;
+  }): Promise<WasteTenantProvisioningRecord | null>;
+  failWasteProvisioning(input: {
+    instanceId: string;
+    jobId: string;
+    desiredGeneration: number;
+    errorCode: string;
+    errorMessage: string;
+  }): Promise<WasteTenantProvisioningRecord | null>;
+  failWasteProvisioningRequest(input: {
+    instanceId: string;
+    desiredGeneration: number;
+    errorCode: string;
+    errorMessage: string;
+  }): Promise<WasteTenantProvisioningRecord | null>;
+};
 
 export const createWasteProvisioningRepository = (
   executor: SqlExecutor

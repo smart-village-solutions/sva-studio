@@ -19,7 +19,6 @@ import { createMutationRepository } from './repository-mutations.js';
 import { createProvisioningRepository } from './repository-provisioning.js';
 import { createProvisioningRetryRepository } from './repository-provisioning-retry.js';
 import { createReadRepository } from './repository-reads.js';
-import { createWasteProvisioningRepository } from './repository-waste-provisioning.js';
 import { createPermissionCacheRevisionRepository } from '../iam/permission-cache-revisions.js';
 
 export type {
@@ -47,7 +46,6 @@ export const createInstanceRegistryRepository = (
     ...createProvisioningRetryRepository(executor),
     ...createMutationRepository(executor),
     ...createKeycloakProvisioningRepository(executor),
-    ...createWasteProvisioningRepository(executor),
     bumpPermissionCacheInstanceRevision: (instanceId) =>
       permissionCacheRevisions.bump({ kind: 'instance', instanceId }),
   };

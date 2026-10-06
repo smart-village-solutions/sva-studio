@@ -311,6 +311,7 @@ const createDeps = (
       'news',
       {
         moduleId: 'news',
+        requiredTenantModuleIds: ['categories'],
         ownerPluginId: 'news',
         permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
         systemRoles: [
@@ -325,6 +326,7 @@ const createDeps = (
       'events',
       {
         moduleId: 'events',
+        requiredTenantModuleIds: ['categories'],
         ownerPluginId: 'events',
         permissionIds: ['events.read'],
         systemRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
@@ -3415,6 +3417,49 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('rejects a missing declared tenant module requirement before assigning or syncing IAM', async () => {
+    const repository = createRepository();
+    const deps = createDeps(repository);
+    const moduleIamRegistry = new Map(deps.moduleIamRegistry);
+    moduleIamRegistry.set('events', {
+      ...moduleIamRegistry.get('events')!,
+      requiredTenantModuleIds: ['unavailable-module'],
+    });
+    const service = createInstanceRegistryService({ ...deps, moduleIamRegistry });
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'missing-req',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'unknown_module' });
+
+    expect(repository.assignModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('keeps a required tenant module assigned while a dependent module remains assigned', async () => {
+    const repository = createRepository({
+      listAssignedModules: vi.fn(async () => ['categories', 'events']),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.revokeModule({
+        instanceId: 'demo',
+        moduleId: 'categories',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'revoke-required-module',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'conflict' });
+
+    expect(repository.revokeModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('assigns the waste-management module and syncs its permission contract into instance IAM', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
@@ -3442,7 +3487,7 @@ describe('instance registry service facade', () => {
     });
 
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'waste-management');
-    expect(repository.requestWasteProvisioning).toHaveBeenCalledWith('demo');
+    expect(repository.requestWasteProvisioning).not.toHaveBeenCalled();
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -3468,6 +3513,7 @@ describe('instance registry service facade', () => {
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['categories', 'events', 'news'])
         .mockResolvedValueOnce(['categories', 'events', 'news']),
       getInstanceById: vi
         .fn()
@@ -3580,11 +3626,28 @@ describe('instance registry service facade', () => {
 
   it('continues bootstrapping when a requested module was assigned concurrently', async () => {
     const repository = createRepository({
-      assignModule: vi.fn(async () => false),
+      getModuleActivationPolicy: vi.fn(async (_instanceId: string, moduleId: string) =>
+        moduleId === 'categories'
+          ? {
+              activationPolicy: 'optional' as const,
+              activationOrigin: 'manual' as const,
+              effectiveActive: true,
+              manualOverride: 'enabled' as const,
+              reconcileId: null,
+              reconciledAt: null,
+              stateRevision: 1,
+              updatedBy: null,
+            }
+          : null
+      ),
+      assignModule: vi.fn(
+        async (_instanceId: string, moduleId: string) => moduleId === 'categories'
+      ),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
-        .mockResolvedValueOnce(['news', 'events']),
+        .mockResolvedValueOnce(['categories', 'events', 'news'])
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
@@ -3622,12 +3685,15 @@ describe('instance registry service facade', () => {
   it('rolls back newly assigned modules when bootstrap module IAM sync fails', async () => {
     const repository = createRepository({
       getModuleActivationPolicy: vi.fn(async () => null),
-      assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
+      assignModule: vi.fn(
+        async (instanceId: string, moduleId: string) =>
+          moduleId === 'events' || moduleId === 'categories'
+      ),
       restoreModuleActivation: vi.fn(async () => true),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
-        .mockResolvedValueOnce(['news', 'events']),
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -3666,13 +3732,22 @@ describe('instance registry service facade', () => {
       updatedBy: 'system',
     };
     const repository = createRepository({
-      getModuleActivationPolicy: vi.fn(async () => inactiveState),
+      getModuleActivationPolicy: vi.fn(async (_instanceId: string, moduleId: string) =>
+        moduleId === 'categories'
+          ? {
+              ...inactiveState,
+              activationPolicy: 'optional' as const,
+              effectiveActive: true,
+              manualOverride: 'enabled' as const,
+            }
+          : inactiveState
+      ),
       assignModule: vi.fn(async () => true),
       restoreModuleActivation: vi.fn(async () => true),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
-        .mockResolvedValueOnce(['news', 'events']),
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -3766,14 +3841,17 @@ describe('instance registry service facade', () => {
 
   it('throws a bootstrap rollback error when reverting newly assigned modules also fails', async () => {
     const repository = createRepository({
-      assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
+      assignModule: vi.fn(
+        async (instanceId: string, moduleId: string) =>
+          moduleId === 'events' || moduleId === 'categories'
+      ),
       restoreModuleActivation: vi.fn(async () => {
         throw new Error('rollback_failed');
       }),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
-        .mockResolvedValueOnce(['news', 'events']),
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -3793,7 +3871,7 @@ describe('instance registry service facade', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe(
-        'instance_module_bootstrap_rollback_failed:demo:events:sync_failed'
+        'instance_module_bootstrap_rollback_failed:demo:categories,events:sync_failed'
       );
       expect((error as Error).name).toBe('InstanceModuleBootstrapRollbackError');
       expect((error as Error).cause).toEqual({
@@ -3811,12 +3889,15 @@ describe('instance registry service facade', () => {
 
   it('throws a bootstrap rollback error when activation restoration reports no change', async () => {
     const repository = createRepository({
-      assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
+      assignModule: vi.fn(
+        async (instanceId: string, moduleId: string) =>
+          moduleId === 'events' || moduleId === 'categories'
+      ),
       restoreModuleActivation: vi.fn(async () => false),
       listAssignedModules: vi
         .fn()
         .mockResolvedValueOnce(['news'])
-        .mockResolvedValueOnce(['news', 'events']),
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -3836,7 +3917,7 @@ describe('instance registry service facade', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe(
-        'instance_module_bootstrap_rollback_failed:demo:events:sync_failed'
+        'instance_module_bootstrap_rollback_failed:demo:categories,events:sync_failed'
       );
       expect((error as Error).name).toBe('InstanceModuleBootstrapRollbackError');
       expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe(
@@ -4261,6 +4342,38 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('restores module activation and IAM when lifecycle intent persistence fails on revoke', async () => {
+    const repository = createRepository({
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(['news']),
+      persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => {
+        throw new Error('plugin_tenant_lifecycle_suspend_conflict:news');
+      }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-revoke-lifecycle-failure',
+      })
+    ).rejects.toThrow('plugin_tenant_lifecycle_suspend_conflict:news');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'news',
+      expect.objectContaining({ activationPolicy: 'optional', effectiveActive: true })
+    );
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledTimes(2);
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('rejects revocation of a persisted required plugin before changing IAM state', async () => {
     const repository = createRepository({
       getModuleActivationPolicy: vi.fn(async () => ({
@@ -4308,7 +4421,8 @@ describe('instance registry service facade', () => {
       })
     ).resolves.toMatchObject({ ok: true });
 
-    expect(repository.disableWasteProvisioning).toHaveBeenCalledWith('demo');
+    expect(repository.disableWasteProvisioning).not.toHaveBeenCalled();
+    expect(repository.persistPluginTenantLifecycleReconcileIntents).toHaveBeenCalled();
   });
 
   it('returns a local fallback keycloak status when no status snapshot exists yet', async () => {

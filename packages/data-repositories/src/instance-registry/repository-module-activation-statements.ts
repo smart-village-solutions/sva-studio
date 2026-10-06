@@ -65,7 +65,9 @@ lifecycle_intent AS (
   FROM mutation
   WHERE $3::text IS NOT NULL
   ON CONFLICT (instance_id, plugin_id) DO UPDATE
-  SET desired_operation = 'reconcile',
+  SET desired_operation = CASE WHEN iam.instance_plugin_lifecycle.access_state = 'suspended'
+      THEN 'reactivate' ELSE 'reconcile' END,
+    access_state = 'active',
     desired_generation = iam.instance_plugin_lifecycle.desired_generation + 1,
     readiness_status = 'pending', readiness_revision = NULL,
     contract_revision = EXCLUDED.contract_revision,

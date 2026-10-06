@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createInstanceRegistryRepository } from './index.js';
+import { createWasteProvisioningRepository } from './repository-waste-provisioning.js';
 import { createQueuedExecutor } from './test-support.js';
 
 const provisioningRow = {
@@ -22,7 +22,7 @@ const provisioningRow = {
 describe('instance registry waste provisioning repository', () => {
   it('requests an idempotent desired state and maps its tenant binding', async () => {
     const { executor, statements } = createQueuedExecutor([[provisioningRow]]);
-    const repository = createInstanceRegistryRepository(executor);
+    const repository = createWasteProvisioningRepository(executor);
 
     await expect(repository.requestWasteProvisioning('tenant-a')).resolves.toEqual({
       instanceId: 'tenant-a',
@@ -46,7 +46,7 @@ describe('instance registry waste provisioning repository', () => {
       updated_at: '2026-08-02T09:00:00.000Z',
     };
     const { executor, statements } = createQueuedExecutor([[provisioningRow], [disabledRow]]);
-    const repository = createInstanceRegistryRepository(executor);
+    const repository = createWasteProvisioningRepository(executor);
 
     await expect(repository.getWasteProvisioning('tenant-a')).resolves.toMatchObject({
       instanceId: 'tenant-a',
@@ -84,7 +84,7 @@ describe('instance registry waste provisioning repository', () => {
       [failedRow],
       [failedRequestRow],
     ]);
-    const repository = createInstanceRegistryRepository(executor);
+    const repository = createWasteProvisioningRepository(executor);
 
     await expect(
       repository.claimWasteProvisioning({ instanceId: 'tenant-a', jobId, desiredGeneration: 2 })
@@ -137,16 +137,8 @@ describe('instance registry waste provisioning repository', () => {
       started_at: new Date('2026-08-02T08:00:00.500Z'),
       updated_at: new Date('2026-08-02T08:00:01.000Z'),
     };
-    const { executor } = createQueuedExecutor([
-      [datedRow],
-      [],
-      [],
-      [],
-      [],
-      [],
-      [],
-    ]);
-    const repository = createInstanceRegistryRepository(executor);
+    const { executor } = createQueuedExecutor([[datedRow], [], [], [], [], [], []]);
+    const repository = createWasteProvisioningRepository(executor);
     const jobId = '00000000-0000-4000-8000-000000000001';
 
     await expect(repository.requestWasteProvisioning('tenant-a')).resolves.toMatchObject({
@@ -156,30 +148,38 @@ describe('instance registry waste provisioning repository', () => {
     });
     await expect(repository.getWasteProvisioning('missing')).resolves.toBeNull();
     await expect(repository.disableWasteProvisioning('missing')).resolves.toBeNull();
-    await expect(repository.claimWasteProvisioning({
-      instanceId: 'tenant-a',
-      jobId,
-      desiredGeneration: 1,
-    })).resolves.toBeNull();
-    await expect(repository.completeWasteProvisioning({
-      instanceId: 'tenant-a',
-      jobId,
-      desiredGeneration: 1,
-      databaseName: 'tenant-db',
-      interfaceId: 'interface-1',
-    })).resolves.toBeNull();
-    await expect(repository.failWasteProvisioning({
-      instanceId: 'tenant-a',
-      jobId,
-      desiredGeneration: 1,
-      errorCode: 'stale',
-      errorMessage: 'Stale transition',
-    })).resolves.toBeNull();
-    await expect(repository.failWasteProvisioningRequest({
-      instanceId: 'tenant-a',
-      desiredGeneration: 1,
-      errorCode: 'stale',
-      errorMessage: 'Stale transition',
-    })).resolves.toBeNull();
+    await expect(
+      repository.claimWasteProvisioning({
+        instanceId: 'tenant-a',
+        jobId,
+        desiredGeneration: 1,
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.completeWasteProvisioning({
+        instanceId: 'tenant-a',
+        jobId,
+        desiredGeneration: 1,
+        databaseName: 'tenant-db',
+        interfaceId: 'interface-1',
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.failWasteProvisioning({
+        instanceId: 'tenant-a',
+        jobId,
+        desiredGeneration: 1,
+        errorCode: 'stale',
+        errorMessage: 'Stale transition',
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.failWasteProvisioningRequest({
+        instanceId: 'tenant-a',
+        desiredGeneration: 1,
+        errorCode: 'stale',
+        errorMessage: 'Stale transition',
+      })
+    ).resolves.toBeNull();
   });
 });

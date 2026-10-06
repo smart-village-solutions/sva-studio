@@ -636,9 +636,10 @@ Fehlerpfad:
    Tenant-Autorisierung; der bestehende Dispatcher-Importvertrag bleibt der
    Eintrittspunkt für die Service- und Benutzerpfade.
 5. Der Readiness-Aggregatstatus wird aus den aktuell deklarierten Checks und der aktuellen `required`-Kennzeichnung neu berechnet; gespeicherte Evidenz kann eine nachträglich verschärfte Check-Deklaration nicht freigeben.
-6. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
-7. Waste bildet `provision` und `reconcile` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; ein separater `readiness`-Job liest nur diesen Datensatz und das instanzgebundene verwaltete Interface.
-8. Waste meldet die beiden Pflichtprüfungen `waste-management.tenant-provisioning` und `waste-management.tenant-database-interface`. Eine fehlende, unvollständige oder fremd besessene Evidenz ist `blocked`; `reconcile` bleibt die deklarierte Reparaturaktion.
+6. Tenant-Modulvoraussetzungen werden aus den direkten Anforderungen des Plugin-Beitrags aufgelöst. Assign und Bootstrap prüfen alle Zielbeiträge und widersprüchliche Required-Aktivierungen vor dem ersten Write; fehlende Module werden mit derselben Aktivierungs- und IAM-Reconcile-Transaktion ergänzt. Revoke bleibt gesperrt, solange ein zugewiesenes Modul das Ziel voraussetzt.
+7. Plugins ohne Tenant-Lifecycle bleiben rückwärtskompatibel; ihre bestehende Modul- und Action-Autorisierung wird nicht umgedeutet.
+8. Waste bildet `provision`, `reconcile` und `reactivate` auf denselben bestehenden Tenant-Datenbank-Provisioner ab. Vor dessen Claim bereitet der Adapter den bestehenden Waste-Provisionierungsdatensatz idempotent vor; `suspend` deaktiviert diesen Datensatz über die plugin-spezifische Fassade, ohne Tenant-Daten zu löschen. Ein separater `readiness`-Job liest nur den Datensatz und das instanzgebundene verwaltete Interface.
+9. Waste meldet die beiden Pflichtprüfungen `waste-management.tenant-provisioning` und `waste-management.tenant-database-interface`. Eine fehlende, unvollständige oder fremd besessene Evidenz ist `blocked`; `reconcile` bleibt die deklarierte Reparaturaktion.
 
 Fehlerfälle:
 

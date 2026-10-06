@@ -24,6 +24,7 @@ export const pluginEventsActionDefinitions = standardEventsContribution.actions;
 export const pluginEvents: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'events',
   displayName: 'Events',
+  requiredTenantModuleIds: ['categories'],
   contribution: standardEventsContribution,
   translations: pluginEventsTranslations,
 });

@@ -126,6 +126,8 @@ export type PluginDefinition = {
   readonly adminResources?: readonly PluginAdminResourceDefinition[];
   readonly auditEvents?: readonly PluginAuditEventDefinition[];
   readonly moduleIam?: PluginModuleIamContract;
+  /** Direct module IDs that must be active for this module in a tenant. */
+  readonly requiredTenantModuleIds?: readonly string[];
   readonly jobTypes?: readonly PluginJobTypeDefinition[];
   readonly importProfiles?: readonly PluginImportProfileDefinition[];
   readonly exportProfiles?: readonly PluginExportProfileDefinition[];

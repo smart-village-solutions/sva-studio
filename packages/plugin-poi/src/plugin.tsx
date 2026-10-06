@@ -24,6 +24,7 @@ export const pluginPoiActionDefinitions = standardPoiContribution.actions;
 export const pluginPoi: PluginDefinition = createStandardContentPluginDefinition({
   pluginId: 'poi',
   displayName: 'Orte',
+  requiredTenantModuleIds: ['categories'],
   contribution: standardPoiContribution,
   translations: pluginPoiTranslations,
 });

@@ -53,6 +53,7 @@ type ModuleActivationPolicyReconcileResult = Awaited<
 export type InstanceModuleIamRegistryEntry = {
   readonly moduleId: string;
   readonly permissionIds: readonly string[];
+  readonly requiredTenantModuleIds?: readonly string[];
   readonly tenantBootstrapRoles?: readonly {
     readonly roleName: string;
     readonly permissionIds: readonly string[];

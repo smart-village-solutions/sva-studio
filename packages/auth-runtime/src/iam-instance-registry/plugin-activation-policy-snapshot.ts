@@ -29,6 +29,7 @@ type PluginOidcClientRequirement = NonNullable<
 export type InstanceRegistryModuleIamSnapshotEntry = Readonly<{
   moduleId: string;
   permissionIds: readonly string[];
+  requiredTenantModuleIds?: readonly string[];
   tenantBootstrapRoles?: readonly Readonly<{
     roleName: string;
     permissionIds: readonly string[];
@@ -142,6 +143,9 @@ const copyModuleIamRegistry = (
       Object.freeze({
         ...contract,
         permissionIds: Object.freeze([...contract.permissionIds]),
+        ...(contract.requiredTenantModuleIds
+          ? { requiredTenantModuleIds: Object.freeze([...contract.requiredTenantModuleIds]) }
+          : {}),
         ...(contract.tenantBootstrapRoles
           ? {
               tenantBootstrapRoles: Object.freeze(

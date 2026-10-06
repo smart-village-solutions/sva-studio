@@ -3,36 +3,27 @@ import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
 
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import { createGetInstanceDetail } from './service-detail.js';
-import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import {
+  canActivateRequiredTenantModules,
+  createReconcileModuleActivationPoliciesHandler,
+  mergeReconcileResults,
+  normalizeReconcileResult,
+  withRequiredTenantModules,
+} from './service-module-activation.js';
 import {
   invalidateInstancePermissionSnapshots,
   requireModuleIamRegistry,
   resolveAssignedModuleContracts,
   resolveManagedModuleContracts,
 } from './service-shared.js';
-import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import type {
+  InstanceRegistryService,
+  InstanceRegistryServiceDeps,
+} from './service-types.js';
 
 const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
 const SYSTEM_ADMIN_DISPLAY_NAME = 'System Administrator';
 const SYSTEM_ADMIN_ROLE_LEVEL = 100;
-const CATEGORIES_MODULE_ID = 'categories';
-export const WASTE_MANAGEMENT_MODULE_ID = 'waste-management';
-const categoriesCompanionSourceModuleIds = new Set(['news', 'events', 'poi']);
-
-export const withRequiredCompanionModules = (moduleIds: readonly string[]): string[] => {
-  const normalizedModuleIds = Array.from(
-    new Set(moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))
-  );
-
-  if (normalizedModuleIds.some((moduleId) => categoriesCompanionSourceModuleIds.has(moduleId))) {
-    normalizedModuleIds.push(CATEGORIES_MODULE_ID);
-  }
-
-  return Array.from(new Set(normalizedModuleIds)).sort((left, right) =>
-    left.localeCompare(right, 'de')
-  );
-};
-
 export const syncProtectedSystemAdminPermissions = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string
@@ -54,31 +45,6 @@ export const syncProtectedSystemAdminPermissions = async (
     },
   });
 };
-
-export const normalizeReconcileResult = (
-  result: PermissionCatalogReconcileResult | void
-): PermissionCatalogReconcileResult =>
-  result ?? {
-    permissionsInserted: 0,
-    permissionsUpdated: 0,
-    permissionsUnchanged: 0,
-    grantsInserted: 0,
-    grantsUnchanged: 0,
-  };
-
-export const mergeReconcileResults = (
-  ...results: readonly (PermissionCatalogReconcileResult | void)[]
-): PermissionCatalogReconcileResult =>
-  results.map(normalizeReconcileResult).reduce(
-    (total, result) => ({
-      permissionsInserted: total.permissionsInserted + result.permissionsInserted,
-      permissionsUpdated: total.permissionsUpdated + result.permissionsUpdated,
-      permissionsUnchanged: total.permissionsUnchanged + result.permissionsUnchanged,
-      grantsInserted: total.grantsInserted + result.grantsInserted,
-      grantsUnchanged: total.grantsUnchanged + result.grantsUnchanged,
-    }),
-    normalizeReconcileResult(undefined)
-  );
 
 const createBootstrapAssignRollbackError = (
   instanceId: string,
@@ -116,12 +82,15 @@ const assignBootstrapModulesAndSyncIam = async (input: {
   readonly instanceId: string;
   readonly requestedModuleIds: readonly string[];
   readonly managedModuleIds: readonly string[];
+  readonly currentAssignedModuleIds?: readonly string[];
 }): Promise<{
   readonly assignedModuleIds: readonly string[];
   readonly permissionReconcile: PermissionCatalogReconcileResult | void;
 }> => {
   const { deps, instanceId, requestedModuleIds, managedModuleIds } = input;
-  const currentAssignedModuleIds = new Set(await deps.repository.listAssignedModules(instanceId));
+  const currentAssignedModuleIds = new Set(
+    input.currentAssignedModuleIds ?? (await deps.repository.listAssignedModules(instanceId))
+  );
   const changedAssignments: Array<{
     readonly moduleId: string;
     readonly previous: ModuleActivationSnapshot;
@@ -134,7 +103,16 @@ const assignBootstrapModulesAndSyncIam = async (input: {
         const inserted = lifecycle
           ? await deps.repository.assignModule(instanceId, moduleId, lifecycle.contractRevision)
           : await deps.repository.assignModule(instanceId, moduleId);
-        if (inserted) changedAssignments.push({ moduleId, previous });
+        if (!inserted) {
+          const assignedAfterConflict = await deps.repository.listAssignedModules(instanceId);
+          if (!assignedAfterConflict.includes(moduleId)) {
+            throw new Error(`plugin_activation_state_conflict:${moduleId}`);
+          }
+          currentAssignedModuleIds.add(moduleId);
+        } else {
+          changedAssignments.push({ moduleId, previous });
+          currentAssignedModuleIds.add(moduleId);
+        }
       }
     }
     const assignedModuleIds = await deps.repository.listAssignedModules(instanceId);
@@ -143,6 +121,11 @@ const assignBootstrapModulesAndSyncIam = async (input: {
       managedModuleIds,
       managedContracts: resolveManagedModuleContracts(deps),
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    await deps.repository.persistPluginTenantLifecycleReconcileIntents({
+      instanceId,
+      lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
+      forcePluginIds: requestedModuleIds,
     });
     return { assignedModuleIds, permissionReconcile };
   } catch (error) {
@@ -183,10 +166,27 @@ export const createBootstrapAdminStructureHandler =
     await assertNoActiveTenantProvisioning(deps.repository, input.instanceId);
 
     const registry = requireModuleIamRegistry(deps);
-    const requestedModuleIds = withRequiredCompanionModules(input.moduleIds);
+    let requestedModuleIds: string[];
+    try {
+      requestedModuleIds = withRequiredTenantModules(input.moduleIds, registry);
+    } catch {
+      return { ok: false, reason: 'unknown_module' };
+    }
 
     if (requestedModuleIds.some((moduleId) => !registry.has(moduleId))) {
       return { ok: false, reason: 'unknown_module' };
+    }
+
+    const assignedBeforeBootstrap = await deps.repository.listAssignedModules(input.instanceId);
+    if (
+      !(await canActivateRequiredTenantModules(
+        deps,
+        input.instanceId,
+        input.moduleIds,
+        assignedBeforeBootstrap
+      ))
+    ) {
+      return { ok: false, reason: 'conflict' };
     }
 
     const bootstrapAssignments = await assignBootstrapModulesAndSyncIam({
@@ -194,6 +194,7 @@ export const createBootstrapAdminStructureHandler =
       instanceId: input.instanceId,
       requestedModuleIds,
       managedModuleIds: [...registry.keys()],
+      currentAssignedModuleIds: assignedBeforeBootstrap,
     });
     const assignedModuleIds = bootstrapAssignments.assignedModuleIds;
     let modulePermissionReconcile = bootstrapAssignments.permissionReconcile;
@@ -230,10 +231,6 @@ export const createBootstrapAdminStructureHandler =
         outcome: 'bootstrapped',
       },
     });
-
-    if (requestedModuleIds.includes(WASTE_MANAGEMENT_MODULE_ID)) {
-      await deps.repository.requestWasteProvisioning(input.instanceId);
-    }
 
     const detail = await createGetInstanceDetail(deps)(input.instanceId);
     return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };

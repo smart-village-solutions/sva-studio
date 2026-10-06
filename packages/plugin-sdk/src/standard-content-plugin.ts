@@ -60,6 +60,7 @@ export type StandardContentPluginContribution = Readonly<{
 export type StandardContentPluginDefinitionOptions = Readonly<{
   pluginId: string;
   displayName: string;
+  requiredTenantModuleIds?: readonly string[];
   contribution: StandardContentPluginContribution;
   routes?: readonly PluginRouteDefinition[];
   auditEvents?: readonly PluginAuditEventDefinition[];
@@ -290,6 +291,9 @@ export const createStandardContentPluginDefinition = (
   actions: options.contribution.actions,
   permissions: options.contribution.permissions,
   moduleIam: options.contribution.moduleIam,
+  ...(options.requiredTenantModuleIds
+    ? { requiredTenantModuleIds: options.requiredTenantModuleIds }
+    : {}),
   contentTypes: options.contribution.contentTypes,
   contentHistory: { mode: 'host', coverage: 'studio_mutations' },
   adminResources: options.contribution.adminResources,

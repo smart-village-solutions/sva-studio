@@ -90,6 +90,7 @@ export type PluginModuleIamRegistryEntry = {
   readonly ownerPluginId: string;
   readonly permissionIds: readonly string[];
   readonly systemRoles: readonly PluginModuleIamSystemRoleDefinition[];
+  readonly requiredTenantModuleIds: readonly string[];
 };
 
 export type PluginAccessTransitionDiagnostic = Readonly<{

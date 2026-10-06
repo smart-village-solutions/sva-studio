@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn(),
   },
   createInstanceRegistryRepository: vi.fn(),
+  createWasteProvisioningRepository: vi.fn(),
   poolFactory: vi.fn(),
 }));
 
@@ -25,6 +26,10 @@ vi.mock('pg', () => ({
 
 vi.mock('./index.js', () => ({
   createInstanceRegistryRepository: (...args: unknown[]) => mocks.createInstanceRegistryRepository(...args),
+}));
+
+vi.mock('./repository-waste-provisioning.js', () => ({
+  createWasteProvisioningRepository: (...args: unknown[]) => mocks.createWasteProvisioningRepository(...args),
 }));
 
 const originalEnv = {
@@ -479,6 +484,7 @@ describe('instance registry server', () => {
     } as const;
     const repository = {
       getWasteProvisioning: vi.fn(async () => provisioningRecord),
+      disableWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'disabled' })),
       requestWasteProvisioning: vi.fn(async () => provisioningRecord),
       claimWasteProvisioning: vi.fn(async () => provisioningRecord),
       completeWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'ready' })),
@@ -488,7 +494,7 @@ describe('instance registry server', () => {
     const options = { getDatabaseUrl: () => 'postgres://db.example.test/sva' };
 
     mocks.poolFactory.mockReturnValue(poolDouble.pool);
-    mocks.createInstanceRegistryRepository.mockReturnValue(repository);
+    mocks.createWasteProvisioningRepository.mockReturnValue(repository);
 
     await expect(server.loadWasteTenantProvisioningRecord('tenant-a', options)).resolves.toEqual(
       provisioningRecord
@@ -496,6 +502,9 @@ describe('instance registry server', () => {
     await expect(server.requestWasteTenantProvisioning('tenant-a', options)).resolves.toEqual(
       provisioningRecord
     );
+    await expect(server.disableWasteTenantProvisioning('tenant-a', options)).resolves.toMatchObject({
+      status: 'disabled',
+    });
     await expect(server.claimWasteTenantProvisioning({
       instanceId: 'tenant-a',
       jobId: 'job-2',
@@ -534,9 +543,9 @@ describe('instance registry server', () => {
       ['COMMIT'],
     ];
     expect(poolDouble.query.mock.calls).toEqual(
-      Array.from({ length: 6 }, () => expectedTransactionCalls).flat()
+      Array.from({ length: 7 }, () => expectedTransactionCalls).flat()
     );
-    expect(poolDouble.release).toHaveBeenCalledTimes(6);
+    expect(poolDouble.release).toHaveBeenCalledTimes(7);
   });
 
   it('rolls back the tenant-scoped Waste provisioning transaction when the repository fails', async () => {
@@ -545,7 +554,7 @@ describe('instance registry server', () => {
     const repositoryError = new Error('provisioning lookup failed');
 
     mocks.poolFactory.mockReturnValue(poolDouble.pool);
-    mocks.createInstanceRegistryRepository.mockReturnValue({
+    mocks.createWasteProvisioningRepository.mockReturnValue({
       getWasteProvisioning: vi.fn(async () => Promise.reject(repositoryError)),
     });
 
@@ -576,7 +585,7 @@ describe('instance registry server', () => {
       return { rowCount: 0, rows: [] };
     });
     mocks.poolFactory.mockReturnValue(poolDouble.pool);
-    mocks.createInstanceRegistryRepository.mockReturnValue({
+    mocks.createWasteProvisioningRepository.mockReturnValue({
       getWasteProvisioning: vi.fn(async () => Promise.reject(repositoryError)),
     });
 

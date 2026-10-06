@@ -92,6 +92,7 @@ describe('SSF V2 content administration', () => {
     expect(staffLocale.tagName).toBe('SELECT');
     expect(document.getElementById('ssf-v2-localization-locale')?.tagName).toBe('SELECT');
     const languageSelect = screen.getByLabelText('v2.newLanguage');
+    expect(Array.from((languageSelect as HTMLSelectElement).options).some((option) => option.value === 'de')).toBe(false);
     fireEvent.change(languageSelect, { target: { value: 'ar' } });
     fireEvent.click(screen.getByRole('button', { name: 'v2.addLanguage' }));
     expect(await screen.findByDisplayValue('العربية')).toBeTruthy();
@@ -106,10 +107,13 @@ describe('SSF V2 content administration', () => {
     const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
     render(<SsfSystemContentV2Page />);
 
-    expect((await screen.findByRole('status')).textContent).toContain('v2.languageCatalogUnavailable');
+    await screen.findAllByLabelText('v2.locale');
+    expect(screen.getAllByRole('status').some((status) => status.textContent?.includes('v2.languageCatalogUnavailable'))).toBe(true);
     expect((document.getElementById('ssf-v2-staff-locale') as HTMLSelectElement | null)?.disabled).toBe(true);
     expect((document.getElementById('ssf-v2-localization-locale') as HTMLSelectElement | null)?.disabled).toBe(true);
     expect((screen.getByLabelText('v2.newLanguage') as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getAllByRole('button', { name: 'v2.removeLanguage' })
+      .every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
     expect((screen.getByLabelText('v2.dashboardHeadline') as HTMLInputElement).disabled).toBe(false);
   });
 
@@ -140,7 +144,7 @@ describe('SSF V2 content administration', () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
     const staff = runtimeTemplate['staff'] as { feedback: { questions: unknown[] } };
     staff.feedback.questions.push({ id: 'futureQuestion', type: 'longText', question: 'Another question?' });
-    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: null });
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: null, supportedLanguages });
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
@@ -159,6 +163,7 @@ describe('SSF V2 content administration', () => {
     api.readTenant.mockResolvedValue({
       runtimeTemplate,
       overrides: { conversationContentStorage: { mode: 'disabled' } },
+      supportedLanguages,
     });
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
@@ -181,6 +186,7 @@ describe('SSF V2 content administration', () => {
       overrides: { guestLanguages: [{ locale: first.locale, icon: {
         url: 'https://example.org/tenant.svg', alternativeText: 'Tenant icon',
       } }] },
+      supportedLanguages,
     });
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
@@ -198,7 +204,7 @@ describe('SSF V2 content administration', () => {
 
   it('keeps an unsaved guest translation when its language is toggled off and on', async () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
-    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: null });
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: null, supportedLanguages });
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
     render(<SsfTenantContentV2Page canManage />);
@@ -217,11 +223,21 @@ describe('SSF V2 content administration', () => {
     }));
   });
 
+  it('disables tenant guest-language changes when the catalog is unavailable', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readTenant.mockResolvedValue({ runtimeTemplate, overrides: null, supportedLanguages: null });
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+
+    expect((await screen.findByLabelText('English (en)') as HTMLInputElement).disabled).toBe(true);
+  });
+
   it('discards a hidden unsaved guest translation', async () => {
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
     api.readTenant.mockResolvedValue({
       runtimeTemplate,
       overrides: { guestLanguages: [{ locale: 'en', enabled: false }] },
+      supportedLanguages,
     });
     api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
     const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');

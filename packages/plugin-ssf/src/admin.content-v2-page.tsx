@@ -24,10 +24,19 @@ const fieldErrors = (issues: readonly { path: PropertyKey[] }[], message: string
   Object.fromEntries(issues.map((issue) => [issue.path.join('.'), message]));
 
 type Section = 'installation' | 'runtimeTemplate';
-const editableSystemContent = (saved: SsfSystemContentV2View) => ({
-  installation: saved.installation ?? blankSsfInstallationV2(),
-  runtimeTemplate: saved.runtimeTemplate ?? blankSsfRuntimeTemplateV2(),
-});
+const editableSystemContent = (saved: SsfSystemContentV2View) => {
+  const defaultLocale = saved.supportedLanguages?.admin_default;
+  const installation = saved.installation ?? blankSsfInstallationV2();
+  const runtimeTemplate = saved.runtimeTemplate ?? blankSsfRuntimeTemplateV2();
+  return {
+    installation: saved.installation || !defaultLocale ? installation : {
+      ...installation, localization: { ...installation.localization, locale: defaultLocale },
+    },
+    runtimeTemplate: saved.runtimeTemplate || !defaultLocale ? runtimeTemplate : {
+      ...runtimeTemplate, staff: { ...runtimeTemplate.staff, locale: defaultLocale },
+    },
+  };
+};
 
 const discardSection = (
   section: Section, saved: SsfSystemContentV2View,
@@ -73,6 +82,9 @@ const SystemContentSection = ({ section, saved, installation, runtimeTemplate,
   setInstallation, setRuntimeTemplate, status, errors, supportedLanguages, onSave, onDiscard }: SectionProps) => {
   const pt = usePluginTranslation('ssf');
   return <TabsContent value={section} className="space-y-5">
+    {section === 'installation' && !supportedLanguages ? <p className="text-sm text-muted-foreground" role="status">
+      {pt('v2.languageCatalogUnavailable')}
+    </p> : null}
     {saved[section] === null ? <p className="text-sm text-muted-foreground">{pt('v2.notConfigured')}</p> : null}
     {status === 'saved' ? <StudioFormSummary kind="success">{pt('status.saved')}</StudioFormSummary> : null}
     {status === 'invalid' ? <StudioFormSummary kind="error">{pt('v2.invalid')}</StudioFormSummary> : null}

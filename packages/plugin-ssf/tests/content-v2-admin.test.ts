@@ -1,13 +1,40 @@
+import { readFileSync } from 'node:fs';
+
 import type { PluginServerHandlerExecutionContext } from '@sva/plugin-sdk';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createDefaultSsfAdminV2Dependencies, createSsfAdminV2Handlers } from '../src/server/content-v2-admin.js';
+import type { SsfSystemContentV2 } from '../src/content-v2-repository.js';
+import { ssfInstallationContentV2FieldsSchema, ssfRuntimeContentV2FieldsSchema } from '../src/content-v2-contracts.js';
 
 const context = (scope: 'platform' | 'tenant'): PluginServerHandlerExecutionContext => ({
   request: new Request('https://studio.test/api/v1/plugins/ssf/content-v2/system'),
   pluginId: 'ssf', handlerId: 'ssf.system-content-v2.read', scope,
   actor: { id: 'admin', roles: [], ...(scope === 'tenant' ? { instanceId: 'tenant-a' } : {}) },
 });
+
+const writeContext = (scope: 'platform' | 'tenant', value: unknown): PluginServerHandlerExecutionContext => ({
+  ...context(scope), request: new Request('https://studio.test/api/v1/plugins/ssf/content-v2/write', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(value),
+  }),
+});
+
+const readExample = (name: string): Record<string, unknown> =>
+  JSON.parse(readFileSync(new URL(`../../../docs/api/${name}`, import.meta.url), 'utf8')) as Record<string, unknown>;
+
+const systemContent = (): SsfSystemContentV2 => {
+  const installation = readExample('ssf-installation-content-v2.example.json');
+  delete installation['contractVersion'];
+  delete installation['configurationRevision'];
+  const runtimeTemplate = readExample('ssf-runtime-configuration-v2.example.json');
+  delete runtimeTemplate['contractVersion'];
+  delete runtimeTemplate['configurationRevision'];
+  delete runtimeTemplate['tenant'];
+  return {
+    installation: ssfInstallationContentV2FieldsSchema.parse(installation),
+    runtimeTemplate: ssfRuntimeContentV2FieldsSchema.parse(runtimeTemplate),
+  };
+};
 
 const catalog = {
   languages: { de: { name: 'German', native: 'Deutsch' } },
@@ -71,5 +98,41 @@ describe('SSF V2 admin supported-language catalog', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(values).toEqual([catalog, catalog]);
     vi.unstubAllGlobals();
+  });
+
+  it('rejects unsupported system locales before persisting', async () => {
+    const previous = systemContent();
+    const input = structuredClone(previous);
+    if (!input.installation) throw new Error('ssf_v2_test_installation_missing');
+    input.installation.localization.locale = 'fr';
+    const writeSystemV2 = vi.fn();
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous,
+      writeSystemV2, readSupportedLanguages: async () => catalog });
+    const response = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', input));
+    expect(response?.status).toBe(422);
+    expect(writeSystemV2).not.toHaveBeenCalled();
+  });
+
+  it('preserves an unchanged saved locale when the catalog no longer contains it', async () => {
+    const previous = systemContent();
+    if (!previous.installation) throw new Error('ssf_v2_test_installation_missing');
+    previous.installation.localization.locale = 'de-DE';
+    const writeSystemV2 = vi.fn();
+    const handlers = createSsfAdminV2Handlers({ readSystemV2: async () => previous,
+      writeSystemV2, readSupportedLanguages: async () => catalog });
+    const response = await handlers['ssf.system-content-v2.write']?.(writeContext('platform', previous));
+    expect(response?.status).toBe(200);
+    expect(writeSystemV2).toHaveBeenCalledOnce();
+  });
+
+  it('rejects unsupported tenant staff locale changes before persisting', async () => {
+    const writeTenantV2 = vi.fn();
+    const handlers = createSsfAdminV2Handlers({
+      readTenantV2: async () => ({ runtimeTemplate: systemContent().runtimeTemplate, overrides: null }),
+      writeTenantV2, readSupportedLanguages: async () => catalog,
+    });
+    const response = await handlers['ssf.tenant-content-v2.write']?.(writeContext('tenant', { staff: { locale: 'fr' } }));
+    expect(response?.status).toBe(422);
+    expect(writeTenantV2).not.toHaveBeenCalled();
   });
 });

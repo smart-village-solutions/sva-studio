@@ -21,12 +21,43 @@ export type SsfAdminV2Dependencies = Readonly<{
 const withSupportedLanguages = async <T extends object>(
   value: Promise<T>, read: SsfAdminV2Dependencies['readSupportedLanguages']
 ): Promise<T & { supportedLanguages: unknown | null }> => {
-  const [resolvedValue, rawCatalog] = await Promise.all([
-    value,
-    read ? Promise.resolve().then(read).catch(() => null) : Promise.resolve(null),
-  ]);
-  const catalog = rawCatalog === null ? null : ssfSupportedLanguagesCatalogSchema.safeParse(rawCatalog);
-  return { ...resolvedValue, supportedLanguages: catalog?.success ? catalog.data : null };
+  const [resolvedValue, catalog] = await Promise.all([value, readCatalog(read)]);
+  return { ...resolvedValue, supportedLanguages: catalog };
+};
+
+const readCatalog = async (read: SsfAdminV2Dependencies['readSupportedLanguages']) => {
+  if (!read) return null;
+  try {
+    const parsed = ssfSupportedLanguagesCatalogSchema.safeParse(await read());
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+};
+
+const localeIsAllowed = (locale: string, previous: string | undefined, catalog: Awaited<ReturnType<typeof readCatalog>>) =>
+  locale === previous || Boolean(catalog?.languages[locale]);
+
+const systemLocalesAreAllowed = (
+  input: { installation: SsfSystemContentV2['installation']; runtimeTemplate: SsfSystemContentV2['runtimeTemplate'] },
+  previous: SsfSystemContentV2,
+  catalog: Awaited<ReturnType<typeof readCatalog>>
+): boolean => {
+  if (input.installation && !localeIsAllowed(input.installation.localization.locale,
+    previous.installation?.localization.locale, catalog)) return false;
+  if (!input.runtimeTemplate) return true;
+  const previousRuntime = previous.runtimeTemplate;
+  if (!localeIsAllowed(input.runtimeTemplate.staff.locale, previousRuntime?.staff.locale, catalog)) return false;
+  const previousGuestLocales = new Set(previousRuntime?.guestLanguages.map(({ locale }) => locale) ?? []);
+  return input.runtimeTemplate.guestLanguages.every(({ locale }) =>
+    previousGuestLocales.has(locale) || Boolean(catalog?.languages[locale]));
+};
+
+const tenantStaffLocale = (value: Record<string, unknown> | null | undefined): string | undefined => {
+  const staff = value?.staff;
+  if (typeof staff !== 'object' || staff === null || Array.isArray(staff)) return undefined;
+  const locale = (staff as Record<string, unknown>).locale;
+  return typeof locale === 'string' ? locale : undefined;
 };
 
 const SUPPORTED_LANGUAGES_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -76,6 +107,12 @@ const writeSystem = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
   if (!parsed.success) return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
   if (!dependencies.writeSystemV2 || !dependencies.readSystemV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   try {
+    const [previous, catalog] = await Promise.all([
+      dependencies.readSystemV2(), readCatalog(dependencies.readSupportedLanguages),
+    ]);
+    if (!systemLocalesAreAllowed(parsed.data, previous, catalog)) {
+      return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
+    }
     await dependencies.writeSystemV2(parsed.data);
     return jsonResponse(200, await withSupportedLanguages(dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
   } catch (error) {
@@ -103,6 +140,16 @@ const writeTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
   if (!parsed.success) return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
   if (!dependencies.writeTenantV2 || !dependencies.readTenantV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   try {
+    const [previous, catalog] = await Promise.all([
+      dependencies.readTenantV2(context.actor.instanceId), readCatalog(dependencies.readSupportedLanguages),
+    ]);
+    const requestedLocale = tenantStaffLocale(parsed.data);
+    if (requestedLocale) {
+      const previousLocale = tenantStaffLocale(previous.overrides) ?? previous.runtimeTemplate?.staff.locale;
+      if (!localeIsAllowed(requestedLocale, previousLocale, catalog)) {
+        return jsonResponse(422, { error: 'invalid_configuration' }, correlationId);
+      }
+    }
     await dependencies.writeTenantV2(context.actor.instanceId, parsed.data);
     return jsonResponse(200, await withSupportedLanguages(dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
   } catch (error) {

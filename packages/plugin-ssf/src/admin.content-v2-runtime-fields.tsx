@@ -23,6 +23,7 @@ const catalogLanguages = (catalog: SsfSupportedLanguagesCatalog) => {
 
 const catalogLocale = (locale: string, catalog: SsfSupportedLanguagesCatalog) =>
   catalog.languages[locale] ? locale : locale.split(/[-_]/, 1)[0] ?? locale;
+const primaryLanguage = (locale: string) => locale.split('-')[0]?.toLowerCase();
 
 const StaffFields = (props: Props) => {
   const pt = usePluginTranslation('ssf');
@@ -103,7 +104,9 @@ const AddLanguage = (props: Props) => {
   const pt = usePluginTranslation('ssf');
   const catalog = props.supportedLanguages;
   const [locale, setLocale] = useState('');
+  const staffLanguage = primaryLanguage(props.value.staff.locale);
   const available = catalog ? catalogLanguages(catalog).filter(([code]) =>
+    primaryLanguage(code) !== staffLanguage &&
     !props.value.guestLanguages.some((language) => language.locale === code)) : [];
   const add = () => {
     if (!catalog) return;
@@ -153,7 +156,8 @@ const LanguageToggle = ({ props, language, hiddenLanguages }: {
     });
   };
   return <label className="flex items-center gap-2">
-    <Checkbox checked={active} disabled={props.disabled || (active && props.value.guestLanguages.length === 1)}
+    <Checkbox checked={active} disabled={props.disabled || !props.supportedLanguages ||
+      (active && props.value.guestLanguages.length === 1)}
       onChange={(event) => toggle(event.currentTarget.checked)} />
     <span>{language.nativeName} ({language.locale})</span>
   </label>;
@@ -163,7 +167,7 @@ const LanguageTab = ({ props, language, index }: { props: Props; language: Langu
   const pt = usePluginTranslation('ssf');
   return <TabsContent value={language.locale} className="space-y-5">
     {!props.inherited && props.value.guestLanguages.length > 1 ?
-      <Button type="button" variant="secondary" disabled={props.disabled}
+      <Button type="button" variant="secondary" disabled={props.disabled || !props.supportedLanguages}
         onClick={() => props.onChange({ ...props.value,
           guestLanguages: props.value.guestLanguages.filter((entry) => entry.locale !== language.locale),
         })}>{pt('v2.removeLanguage')}</Button> : null}

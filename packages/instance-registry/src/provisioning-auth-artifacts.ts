@@ -140,8 +140,6 @@ const reconcileInstanceAuthArtifacts = async (
         ...KEYCLOAK_REALM_BASELINE.instanceIdMapper,
       });
     }
-  }
-  if (input.realmMode === 'new') {
     await client.ensurePersonalMcpAccess(input.authClientId);
   }
 

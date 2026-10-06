@@ -378,6 +378,7 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureRealmRole).toHaveBeenCalledWith('system_admin', 'tenant-havelland', {
       allowLegacyRealmRoleMigration: undefined,
     });
+    expect(client.ensurePersonalMcpAccess).toHaveBeenCalledExactlyOnceWith('sva-studio');
     expect(client.findUserByUsername).not.toHaveBeenCalled();
   });
 
@@ -447,6 +448,7 @@ describe('provisioning-auth-state', () => {
     ).rejects.toThrow('plugin_oidc_client_requirement_invalid');
 
     expect(client.ensureOidcClient).not.toHaveBeenCalled();
+    expect(client.ensurePersonalMcpAccess).not.toHaveBeenCalled();
   });
 
   it('fails closed when the SSF client read-back does not match the declared state', async () => {
@@ -828,6 +830,7 @@ describe('provisioning-auth-state', () => {
     });
 
     expect(client.ensureOidcClient).not.toHaveBeenCalled();
+    expect(client.ensurePersonalMcpAccess).not.toHaveBeenCalled();
     expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
     expect(client.createUser).toHaveBeenCalledWith(
       expect.objectContaining({

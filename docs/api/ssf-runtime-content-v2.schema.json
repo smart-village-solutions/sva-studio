@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SSF Content API v2",
+  "description": "Entwurf für die Runtime-Antwort von SVA Studio an SSF. Die anzeigbaren Sprachen ergeben sich aus localization.defaultLocale und localization.languages[].locale. Das Schema beschreibt Inhalte und Anzeigeeinstellungen, nicht die Speicherung oder Löschung von Feedback.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "tenant", "branding", "localization", "conversationContentStorage"],
+  "properties": {
+    "contractVersion": {
+      "const": "2.0",
+      "description": "Hauptversion dieses neuen Vertrags; die bisherige V1-Antwort bleibt davon getrennt."
+    },
+    "tenant": {
+      "type": "object",
+      "description": "Der Mandant, für den SSF die Konfiguration angefordert hat. tenant.id muss zum authentifizierten Request-Kontext passen.",
+      "additionalProperties": false,
+      "required": ["id", "displayName", "timeZone"],
+      "properties": {
+        "id": { "$ref": "#/$defs/text", "description": "Stabile Studio-Mandantenkennung." },
+        "displayName": { "$ref": "#/$defs/text", "description": "Anzuzeigender Name des Mandanten." },
+        "timeZone": { "$ref": "#/$defs/text", "description": "IANA-Zeitzone, beispielsweise Europe/Berlin." }
+      }
+    },
+    "branding": {
+      "type": "object",
+      "description": "Wirksame Medien des Mandanten. null bedeutet, dass für diesen Zweck kein Medium geliefert wird.",
+      "additionalProperties": false,
+      "required": ["logo", "icon"],
+      "properties": {
+        "logo": { "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }] },
+        "icon": { "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }] }
+      }
+    },
+    "localization": {
+      "type": "object",
+      "description": "Die direkten Texte gelten für defaultLocale. languages enthält nur zusätzliche Sprachen; die Standardsprache wird dort nicht wiederholt. SSF zeigt nur diese Sprachen an.",
+      "additionalProperties": false,
+      "required": ["defaultLocale", "startpage", "login", "dashboard", "newConversation", "feedback", "languages"],
+      "properties": {
+        "defaultLocale": {
+          "$ref": "#/$defs/locale",
+          "description": "Standardsprache der direkten Texte, beispielsweise de-DE."
+        },
+        "startpage": {
+          "type": "object",
+          "description": "Kurze Beschriftungen der Startseite in der Standardsprache.",
+          "additionalProperties": false,
+          "required": ["enterCode", "send", "login"],
+          "properties": {
+            "enterCode": { "$ref": "#/$defs/text" },
+            "send": { "$ref": "#/$defs/text" },
+            "login": { "$ref": "#/$defs/text" }
+          }
+        },
+        "login": {
+          "type": "object",
+          "description": "Texte für die Organisationsauswahl beim Login in der Standardsprache.",
+          "additionalProperties": false,
+          "required": ["headline", "description"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/text" },
+            "description": { "$ref": "#/$defs/html" }
+          }
+        },
+        "dashboard": {
+          "type": "object",
+          "description": "Texte der angemeldeten Startseite in der Standardsprache.",
+          "additionalProperties": false,
+          "required": ["headline", "explanation", "callToAction", "load"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/text" },
+            "explanation": { "$ref": "#/$defs/html" },
+            "callToAction": { "$ref": "#/$defs/text" },
+            "load": {
+              "type": "object",
+              "description": "Beschriftungen der angezeigten Systemauslastung.",
+              "additionalProperties": false,
+              "required": ["headline", "green", "yellow", "red"],
+              "properties": {
+                "headline": { "$ref": "#/$defs/text" },
+                "green": { "$ref": "#/$defs/text" },
+                "yellow": { "$ref": "#/$defs/text" },
+                "red": { "$ref": "#/$defs/text" }
+              }
+            }
+          }
+        },
+        "newConversation": {
+          "type": "object",
+          "description": "Texte beim Anlegen eines Gesprächs in der Standardsprache.",
+          "additionalProperties": false,
+          "required": ["headline", "description"],
+          "properties": {
+            "headline": { "$ref": "#/$defs/text" },
+            "description": { "$ref": "#/$defs/html" }
+          }
+        },
+        "feedback": {
+          "$ref": "#/$defs/feedback",
+          "description": "Feedbackformular in der Standardsprache. Antworten und Löschvorgänge gehören nicht zu dieser Antwort."
+        },
+        "languages": {
+          "type": "array",
+          "description": "Zusätzliche in SSF anzuzeigende Sprachen. Jeder Sprachcode darf nur einmal vorkommen und muss sich von defaultLocale unterscheiden.",
+          "items": { "$ref": "#/$defs/language" }
+        }
+      }
+    },
+    "conversationContentStorage": {
+      "type": "object",
+      "description": "Wirksame Einstellung für die Speicherung von Gesprächsinhalten. Aufbewahrungsfristen werden separat geregelt.",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["ask", "disabled"],
+          "description": "ask stellt die lokalisierte Frage; disabled unterbindet die Frage und die Speicherung."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "description": "Nicht leerer Klartext für die Anzeige." },
+    "html": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Vor der Auslieferung bereinigtes HTML. Erforderliche rechtliche Seiten und Kontakte können hier verlinkt werden; ausführbare Inhalte sind unzulässig."
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 2,
+      "description": "Kanonisches BCP-47-Sprachtag, beispielsweise de-DE, en, tr oder ru."
+    },
+    "media": {
+      "type": "object",
+      "description": "Aufgelöstes Bild mit Alternativtext.",
+      "additionalProperties": false,
+      "required": ["url", "alternativeText"],
+      "properties": {
+        "url": { "$ref": "#/$defs/text", "description": "Absolute Medien-URL." },
+        "alternativeText": { "type": "string", "description": "Alternativtext für das Bild." }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "description": "Anzuzeigendes Feedbackformular. Fragen können ergänzt oder entfernt werden; eine ID bleibt bei Übersetzungen gleich. Ein neuer Fragetyp erfordert Unterstützung in SSF.",
+      "additionalProperties": false,
+      "required": ["headline", "questions", "notice", "button"],
+      "properties": {
+        "headline": { "$ref": "#/$defs/text" },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Reihenfolge der Fragen im Formular. IDs müssen innerhalb des Formulars eindeutig und sprachübergreifend stabil sein.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/ratingQuestion" },
+              { "$ref": "#/$defs/scaleQuestion" },
+              { "$ref": "#/$defs/longTextQuestion" }
+            ]
+          }
+        },
+        "notice": {
+          "$ref": "#/$defs/html",
+          "description": "Hinweis vor dem Absenden; nur freigegebene Aussagen zu Zweck und Kontakt verwenden."
+        },
+        "button": { "$ref": "#/$defs/text" }
+      }
+    },
+    "questionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+      "description": "Stabile technische ID für Antwortzuordnung und Übersetzungen."
+    },
+    "ratingQuestion": {
+      "type": "object",
+      "description": "Bewertung mit Sternen zwischen min und max; min muss kleiner als max sein.",
+      "additionalProperties": false,
+      "required": ["id", "question", "type", "min", "max"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questionId" },
+        "headline": { "$ref": "#/$defs/text" },
+        "question": { "$ref": "#/$defs/text" },
+        "type": { "const": "rating" },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "scaleQuestion": {
+      "type": "object",
+      "description": "Numerische Skala zwischen min und max; min muss kleiner als max sein.",
+      "additionalProperties": false,
+      "required": ["id", "question", "type", "min", "max"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questionId" },
+        "headline": { "$ref": "#/$defs/text" },
+        "question": { "$ref": "#/$defs/text" },
+        "type": { "const": "scale" },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 1 },
+        "minLabel": { "$ref": "#/$defs/text" },
+        "maxLabel": { "$ref": "#/$defs/text" }
+      }
+    },
+    "longTextQuestion": {
+      "type": "object",
+      "description": "Freitextantwort über mehrere Zeilen.",
+      "additionalProperties": false,
+      "required": ["id", "question", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/questionId" },
+        "headline": { "$ref": "#/$defs/text" },
+        "question": { "$ref": "#/$defs/text" },
+        "type": { "const": "longText" },
+        "placeholder": { "$ref": "#/$defs/text" }
+      }
+    },
+    "language": {
+      "type": "object",
+      "description": "Zusätzliche Sprache mit ihren Gesprächs- und Feedbacktexten. Die Standardsprache steht direkt unter localization.",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "locale",
+        "authenticatedHomeExplanationHtml",
+        "guestExplanationHtml",
+        "conversationContentStorageQuestionHtml",
+        "feedback"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/text", "description": "Anzuzeigender Sprachname." },
+        "locale": { "$ref": "#/$defs/locale" },
+        "authenticatedHomeExplanationHtml": { "$ref": "#/$defs/html" },
+        "guestExplanationHtml": { "$ref": "#/$defs/html" },
+        "conversationContentStorageQuestionHtml": {
+          "oneOf": [{ "$ref": "#/$defs/html" }, { "type": "null" }],
+          "description": "Lokalisierte Frage bei mode=ask; null bei mode=disabled."
+        },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      }
+    }
+  }
+}

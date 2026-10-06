@@ -1,0 +1,257 @@
+{
+  "contractVersion": "2.0",
+  "tenant": {
+    "id": "tenant-kassel",
+    "displayName": "Beispielkommune",
+    "timeZone": "Europe/Berlin"
+  },
+  "branding": {
+    "logo": null,
+    "icon": null
+  },
+  "localization": {
+    "defaultLocale": "de-DE",
+    "startpage": {
+      "enterCode": "Code eingeben",
+      "send": "Weiter",
+      "login": "Login"
+    },
+    "login": {
+      "headline": "Login",
+      "description": "<p>Bitte wählen Sie Ihre Abteilung oder Organisation aus der Liste aus.</p>"
+    },
+    "dashboard": {
+      "headline": "Willkommen bei KasselDIALOG",
+      "explanation": "<p>KasselDIALOG stellt einen virtuellen Echtzeit-Dolmetscher bereit. Starten Sie ein neues Gespräch, um sofort mit einer anderssprachigen Person zu kommunizieren — ohne Wartezeit und ohne Vorkenntnisse.</p>",
+      "callToAction": "Neues Gespräch starten",
+      "load": {
+        "headline": "Systemauslastung",
+        "green": "Ausreichend Kapazitäten verfügbar",
+        "yellow": "Mittlere Auslastung",
+        "red": "Hohe Auslastung"
+      }
+    },
+    "newConversation": {
+      "headline": "Neues Gespräch",
+      "description": "<p>Code oder Link mit dem Gesprächspartner teilen</p>"
+    },
+    "feedback": {
+      "headline": "Feedback geben",
+      "questions": [
+        {
+          "id": "translationQuality",
+          "headline": "Übersetzungsqualität",
+          "question": "Wie genau waren die Übersetzungen?",
+          "type": "rating",
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "performance",
+          "headline": "Leistung",
+          "question": "Wie schnell und reaktionsfähig war die Anwendung?",
+          "type": "rating",
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "usability",
+          "headline": "Bedienbarkeit",
+          "question": "Wie einfach und angenehm war die Oberfläche zu bedienen?",
+          "type": "rating",
+          "min": 1,
+          "max": 5
+        },
+        {
+          "id": "recommendation",
+          "headline": "Weiterempfehlung",
+          "question": "Wie wahrscheinlich ist es, dass Sie KasselDIALOG einer Kollegin oder einem Kollegen empfehlen?",
+          "type": "scale",
+          "min": 0,
+          "max": 10,
+          "minLabel": "Überhaupt nicht wahrscheinlich",
+          "maxLabel": "Äußerst wahrscheinlich"
+        },
+        {
+          "id": "improvementIdeas",
+          "headline": "Verbesserungsideen",
+          "question": "Was würde KasselDIALOG noch besser machen?",
+          "type": "longText",
+          "placeholder": "Ihre Ideen, Funktionswünsche oder Dinge, die Sie gestört haben..."
+        }
+      ],
+      "notice": "<p>Ihr Feedback wird an die Beispielkommune übermittelt. Bitte geben Sie keine sensiblen personenbezogenen Daten ein. Bei Fragen schreiben Sie an feedback@example.org.</p>",
+      "button": "Feedback senden"
+    },
+    "languages": [
+      {
+        "name": "English",
+        "locale": "en",
+        "authenticatedHomeExplanationHtml": "<p>Welcome to Example City's conversation service. Start a new conversation or join an existing one.</p>",
+        "guestExplanationHtml": "<p>Welcome. Enter the code provided by a staff member to join your conversation. You do not need an account.</p>",
+        "conversationContentStorageQuestionHtml": "<p>May we store the content of this conversation so authorised staff can review it later? You can continue without agreeing.</p>",
+        "feedback": {
+          "headline": "Share your feedback",
+          "questions": [
+            {
+              "id": "translationQuality",
+              "headline": "Translation Quality",
+              "question": "How accurate were the translations?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "performance",
+              "headline": "Performance",
+              "question": "How fast and responsive did the app feel?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "usability",
+              "headline": "UI / UX",
+              "question": "How easy and pleasant was the interface to use?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "recommendation",
+              "headline": "Recommendation",
+              "question": "How likely are you to recommend KasselDIALOG to a colleague?",
+              "type": "scale",
+              "min": 0,
+              "max": 10,
+              "minLabel": "Not at all likely",
+              "maxLabel": "Extremely likely"
+            },
+            {
+              "id": "improvementIdeas",
+              "headline": "Improvement Ideas",
+              "question": "What would make KasselDIALOG even better?",
+              "type": "longText",
+              "placeholder": "Your ideas, feature requests, or anything that bothered you..."
+            }
+          ],
+          "notice": "<p>Your feedback is sent to Example City. Please do not include sensitive personal information. For questions about your feedback, contact feedback@example.org.</p>",
+          "button": "Send feedback"
+        }
+      },
+      {
+        "name": "Türkçe",
+        "locale": "tr",
+        "authenticatedHomeExplanationHtml": "<p>Örnek Belediyenin görüşme hizmetine hoş geldiniz. Yeni bir görüşme başlatın veya mevcut bir görüşmeye katılın.</p>",
+        "guestExplanationHtml": "<p>Hoş geldiniz. Görüşmeye katılmak için bir görevlinin verdiği kodu girin. Hesap açmanız gerekmez.</p>",
+        "conversationContentStorageQuestionHtml": "<p>Görüşme içeriğini, yetkili çalışanların daha sonra inceleyebilmesi için kaydetmemize izin veriyor musunuz? Onay vermeden de devam edebilirsiniz.</p>",
+        "feedback": {
+          "headline": "Deneyiminizi paylaşın",
+          "questions": [
+            {
+              "id": "translationQuality",
+              "headline": "Çeviri kalitesi",
+              "question": "Çeviriler ne kadar doğruydu?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "performance",
+              "headline": "Performans",
+              "question": "Uygulama ne kadar hızlı ve duyarlıydı?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "usability",
+              "headline": "Arayüz ve kullanım kolaylığı",
+              "question": "Arayüzü kullanmak ne kadar kolay ve rahattı?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "recommendation",
+              "headline": "Öneri",
+              "question": "KasselDIALOG'u bir iş arkadaşınıza önerme olasılığınız nedir?",
+              "type": "scale",
+              "min": 0,
+              "max": 10,
+              "minLabel": "Hiç olası değil",
+              "maxLabel": "Son derece olası"
+            },
+            {
+              "id": "improvementIdeas",
+              "headline": "İyileştirme önerileri",
+              "question": "KasselDIALOG'u daha iyi hale getirecek ne olurdu?",
+              "type": "longText",
+              "placeholder": "Fikirleriniz, özellik istekleriniz veya sizi rahatsız eden başka şeyler..."
+            }
+          ],
+          "notice": "<p>Geri bildiriminiz Örnek Belediyeye gönderilir. Lütfen hassas kişisel bilgiler eklemeyin. Sorularınız için feedback@example.org adresine yazın.</p>",
+          "button": "Geri bildirim gönder"
+        }
+      },
+      {
+        "name": "Русский",
+        "locale": "ru",
+        "authenticatedHomeExplanationHtml": "<p>Добро пожаловать в сервис общения муниципалитета «Пример». Начните новый разговор или присоединитесь к существующему.</p>",
+        "guestExplanationHtml": "<p>Здравствуйте! Введите код, который вам сообщил сотрудник, чтобы присоединиться к разговору. Учетная запись не нужна.</p>",
+        "conversationContentStorageQuestionHtml": "<p>Разрешаете ли вы сохранить содержание этого разговора, чтобы уполномоченные сотрудники могли просмотреть его позже? Вы можете продолжить и без согласия.</p>",
+        "feedback": {
+          "headline": "Поделитесь отзывом",
+          "questions": [
+            {
+              "id": "translationQuality",
+              "headline": "Качество перевода",
+              "question": "Насколько точным был перевод?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "performance",
+              "headline": "Производительность",
+              "question": "Насколько быстро и отзывчиво работало приложение?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "usability",
+              "headline": "Интерфейс и удобство",
+              "question": "Насколько удобным и приятным был интерфейс?",
+              "type": "rating",
+              "min": 1,
+              "max": 5
+            },
+            {
+              "id": "recommendation",
+              "headline": "Рекомендация",
+              "question": "Насколько вероятно, что вы порекомендуете KasselDIALOG коллеге?",
+              "type": "scale",
+              "min": 0,
+              "max": 10,
+              "minLabel": "Совсем не вероятно",
+              "maxLabel": "Очень вероятно"
+            },
+            {
+              "id": "improvementIdeas",
+              "headline": "Идеи по улучшению",
+              "question": "Что сделало бы KasselDIALOG лучше?",
+              "type": "longText",
+              "placeholder": "Ваши идеи, пожелания по функциям или то, что вам мешало..."
+            }
+          ],
+          "notice": "<p>Ваш отзыв будет отправлен в муниципалитет «Пример». Пожалуйста, не указывайте конфиденциальные персональные данные. Если у вас есть вопросы, напишите на feedback@example.org.</p>",
+          "button": "Отправить отзыв"
+        }
+      }
+    ]
+  },
+  "conversationContentStorage": {
+    "mode": "ask"
+  }
+}

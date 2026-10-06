@@ -90,6 +90,7 @@ describe('SSF plugin metadata', () => {
       requiredCapabilities: ['iam', 'server', 'jobs'],
     });
     expect(manifest['entryPoints']).toEqual({
+      descriptor: './dist/descriptor.js',
       browser: './dist/browser.js',
       server: './dist/server/index.js',
       jobs: './dist/server.js',

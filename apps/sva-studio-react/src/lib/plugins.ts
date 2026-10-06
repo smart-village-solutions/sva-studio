@@ -21,7 +21,9 @@ import {
 } from './plugin-build-registry.js';
 import {
   createStudioPluginCatalogReport,
+  getPackagePluginDescriptorCandidates,
   getPackagePluginModuleCandidates,
+  getWorkspacePluginDescriptorCandidates,
   getWorkspacePluginModuleCandidates,
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
@@ -31,9 +33,11 @@ import {
 } from './studio-distribution.js';
 import {
   nodeManifestModules,
+  nodeDescriptorModuleLoaders,
   nodePluginModuleLoaders,
   pluginCatalogConfig,
   workspaceManifestModules,
+  workspaceDescriptorModuleLoaders,
   workspacePluginModuleLoaders,
 } from '#studio-plugin-client-inputs';
 import { studioHostModuleContracts } from '#studio-module-iam-inputs';
@@ -60,6 +64,16 @@ const {
   workspacePluginModuleLoaders,
   nodeManifestModules,
   nodePluginModuleLoaders,
+});
+
+const {
+  workspacePluginRegistry: workspaceDescriptorRegistry,
+  nodePluginRegistry: nodeDescriptorRegistry,
+} = createPluginBuildRegistries({
+  workspaceManifestModules,
+  workspacePluginModuleLoaders: workspaceDescriptorModuleLoaders,
+  nodeManifestModules,
+  nodePluginModuleLoaders: nodeDescriptorModuleLoaders,
 });
 
 const resolveWorkspaceManifest = (
@@ -89,6 +103,18 @@ const resolveNodePluginModule = (
     getPackagePluginModuleCandidates(manifest)
   );
 
+const resolveDescriptorModule = (
+  entry: PluginCatalogEntry,
+  manifest: PluginManifest
+): Promise<Record<string, unknown> | undefined> =>
+  resolvePluginModuleFromRegistry(
+    entry.sourceType === 'workspace' ? workspaceDescriptorRegistry : nodeDescriptorRegistry,
+    entry.sourceRef,
+    entry.sourceType === 'workspace'
+      ? getWorkspacePluginDescriptorCandidates(manifest)
+      : getPackagePluginDescriptorCandidates(manifest)
+  );
+
 const studioPluginCatalogConfigEntries = filterPluginCatalogForDistribution(
   pluginCatalogConfig,
   studioDistribution
@@ -98,7 +124,8 @@ const studioPluginCatalogReport = await createStudioPluginCatalogReport({
   catalogConfig: studioPluginCatalogConfigEntries,
   resolveManifest: (entry) =>
     entry.sourceType === 'workspace' ? resolveWorkspaceManifest(entry) : resolveNodeManifest(entry),
-  resolvePluginModule: (entry, manifest) =>
+  resolvePluginModule: resolveDescriptorModule,
+  resolveBrowserModule: (entry, manifest) =>
     entry.sourceType === 'workspace'
       ? resolveWorkspacePluginModule(entry, manifest)
       : resolveNodePluginModule(entry, manifest),

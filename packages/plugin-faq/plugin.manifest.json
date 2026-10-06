@@ -9,5 +9,5 @@
     "studioVersionRange": "^0.0.1",
     "requiredCapabilities": ["routing", "navigation", "iam"]
   },
-  "entryPoints": { "browser": "./dist/index.js" }
+  "entryPoints": { "descriptor": "./dist/plugin.js", "browser": "./dist/index.js" }
 }

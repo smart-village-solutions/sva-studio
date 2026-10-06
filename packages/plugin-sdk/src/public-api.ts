@@ -129,6 +129,8 @@ export type {
   PluginPermissionDefinition,
   PluginPermissionRegistryEntry,
   PluginRouteDefinition,
+  PluginRouteDescriptor,
+  PluginDescriptor,
   PluginRouteGuard,
   PluginServerHandlerDefinition,
   PluginServerHandlerExecutionContext,

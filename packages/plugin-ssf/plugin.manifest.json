@@ -10,6 +10,7 @@
     "requiredCapabilities": ["iam", "server", "jobs"]
   },
   "entryPoints": {
+    "descriptor": "./dist/descriptor.js",
     "browser": "./dist/browser.js",
     "server": "./dist/server/index.js",
     "jobs": "./dist/server.js"

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { resolvePluginAuthComposition } from '#studio-plugin-auth-composition';
+import { studioHostModuleIamContracts } from '@sva/studio-module-iam';
 
 let configuredRevision: string | undefined;
 let reconciledRevision: string | undefined;
@@ -34,13 +35,14 @@ type FleetReconcileFailureState = Readonly<{
 
 const configurePluginActivationPolicies =
   async (): Promise<PluginActivationPolicyConfiguration> => {
-    const [{ studioHostModuleIamContracts, studioPluginSnapshot }, authRuntime] = await Promise.all(
-      [import('./plugins'), import('@sva/auth-runtime/server')]
-    );
-    const activationPolicies = studioPluginSnapshot.tenantActivationPolicySnapshot;
+    const [{ studioServerPluginSnapshot }, authRuntime] = await Promise.all([
+      import('./plugin-catalog.server.js'),
+      import('@sva/auth-runtime/server'),
+    ]);
+    const activationPolicies = studioServerPluginSnapshot.tenantActivationPolicySnapshot;
     const { accountCreateContribution, pluginOidcClientRequirements } =
       resolvePluginAuthComposition({
-        pluginSources: studioPluginSnapshot.pluginSources,
+        pluginSources: studioServerPluginSnapshot.pluginSources,
         readConfiguredPluginTenantAccess: authRuntime.readConfiguredPluginTenantAccess,
       });
     const revision = pluginOidcClientRequirements.length
@@ -53,9 +55,9 @@ const configurePluginActivationPolicies =
         activationPolicies,
         pluginOidcClientRequirements,
         accountCreateContribution,
-        tenantLifecycles: studioPluginSnapshot.registry.tenantLifecycles,
+        tenantLifecycles: studioServerPluginSnapshot.registry.tenantLifecycles,
         moduleIamContracts: [
-          ...studioPluginSnapshot.registry.pluginModuleIamContracts,
+          ...studioServerPluginSnapshot.registry.pluginModuleIamContracts,
           ...studioHostModuleIamContracts,
         ],
       });

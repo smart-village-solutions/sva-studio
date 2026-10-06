@@ -12,7 +12,13 @@ import {
 } from './admin-contracts.js';
 import { SsfSystemConfigurationPage, SsfTenantConfigurationPage } from './admin.page.js';
 import {
+  SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
+  SSF_TENANT_CONTENT_V2_ADMIN_PATH,
+} from './content-v2-admin-contracts.js';
+import {
   SSF_RUNTIME_ENDPOINT_PATH,
+  SSF_RUNTIME_V2_ENDPOINT_PATH,
+  SSF_RUNTIME_V2_SERVER_HANDLER_ID,
   SSF_RUNTIME_TENANT_HEADER,
   SSF_RUNTIME_SERVER_HANDLER_ID,
   SSF_RUNTIME_SERVICE_ACTION,
@@ -169,11 +175,50 @@ export const ssfPlugin = {
       },
     },
     {
+      id: SSF_RUNTIME_V2_SERVER_HANDLER_ID,
+      path: SSF_RUNTIME_V2_ENDPOINT_PATH,
+      method: 'GET',
+      actionId: SSF_RUNTIME_SERVICE_ACTION,
+      accessRequirement: {
+        kind: 'service',
+        serviceId: SSF_RUNTIME_SERVICE_ID,
+        tenantBinding: { kind: 'header', headerName: SSF_RUNTIME_TENANT_HEADER },
+      },
+    },
+    {
       id: 'ssf.system-configuration.read',
       path: SSF_SYSTEM_CONFIGURATION_PATH,
       method: 'GET',
       actionId: SSF_ADMIN_ACTIONS.systemRead,
       accessRequirement: platformAccess,
+    },
+    {
+      id: 'ssf.system-content-v2.read',
+      path: SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
+      method: 'GET',
+      actionId: SSF_ADMIN_ACTIONS.systemRead,
+      accessRequirement: platformAccess,
+    },
+    {
+      id: 'ssf.system-content-v2.write',
+      path: SSF_SYSTEM_CONTENT_V2_ADMIN_PATH,
+      method: 'PUT',
+      actionId: SSF_ADMIN_ACTIONS.systemManage,
+      accessRequirement: platformAccess,
+    },
+    {
+      id: 'ssf.tenant-content-v2.read',
+      path: SSF_TENANT_CONTENT_V2_ADMIN_PATH,
+      method: 'GET',
+      actionId: SSF_ADMIN_ACTIONS.tenantRead,
+      accessRequirement: tenantReadAccess,
+    },
+    {
+      id: 'ssf.tenant-content-v2.write',
+      path: SSF_TENANT_CONTENT_V2_ADMIN_PATH,
+      method: 'PUT',
+      actionId: SSF_ADMIN_ACTIONS.tenantManage,
+      accessRequirement: tenantManageAccess,
     },
     {
       id: 'ssf.system-configuration.write',

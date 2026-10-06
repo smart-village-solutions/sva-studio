@@ -1,5 +1,5 @@
--- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1
--- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0006_*.sql
+-- SSF-Plugin-Datenbank: reproduzierbarer Sollstand für Runtime-Konfiguration, IAM-Projektion und Tenant-Grunddaten V1/V2
+-- Quelle: packages/plugin-ssf/migrations/0001_*.sql bis 0007_*.sql
 -- Diese Datenbank ist getrennt von sva_studio.
 
 DO $$
@@ -296,3 +296,19 @@ ALTER TABLE ssf.authorization_projections
 
 GRANT SELECT (confirmed_has_subjects)
   ON ssf.authorization_projections TO ssf_plugin_tenant_runtime;
+
+ALTER TABLE ssf.server_settings
+  ADD COLUMN installation_content_v2 jsonb,
+  ADD COLUMN runtime_content_v2 jsonb,
+  ADD CONSTRAINT server_settings_installation_content_v2_object_check CHECK (
+    installation_content_v2 IS NULL OR jsonb_typeof(installation_content_v2) = 'object'
+  ),
+  ADD CONSTRAINT server_settings_runtime_content_v2_object_check CHECK (
+    runtime_content_v2 IS NULL OR jsonb_typeof(runtime_content_v2) = 'object'
+  );
+
+ALTER TABLE ssf.tenant_settings
+  ADD COLUMN runtime_content_v2 jsonb,
+  ADD CONSTRAINT tenant_settings_runtime_content_v2_object_check CHECK (
+    runtime_content_v2 IS NULL OR jsonb_typeof(runtime_content_v2) = 'object'
+  );

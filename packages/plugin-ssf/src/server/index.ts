@@ -4,10 +4,8 @@ import type {
 } from '@sva/plugin-sdk';
 
 import {
-  SSF_RUNTIME_CONTRACT_VERSION,
-  SSF_RUNTIME_LIMITS,
   SSF_RUNTIME_SERVER_HANDLER_ID,
-  type SsfRuntimeErrorCode,
+  SSF_RUNTIME_V2_SERVER_HANDLER_ID,
 } from '../constants.js';
 import {
   ssfSystemConfigurationInputSchema,
@@ -32,24 +30,18 @@ import {
 import { readSsfConfigurationOverrides } from '../repository.js';
 import type { SsfConfigurationOverrides } from '../repository.js';
 import { SsfRuntimeConfigurationValidationError, type SsfMediaResolver } from '../resolver.js';
+import { createDefaultSsfAdminV2Dependencies, createSsfAdminV2Handlers, type SsfAdminV2Dependencies } from './content-v2-admin.js';
+import { createSsfRuntimeV2ServerHandler, defaultSsfRuntimeV2Handler, type SsfRuntimeV2Handler, readResolvedSsfInstallationContentV2 } from './content-v2.js';
+import { jsonResponse, readCorrelationId, unavailableResponse } from './responses.js';
 
-const CORRELATION_HEADER = 'X-Correlation-Id';
-const PRINTABLE_ASCII_PATTERN = /^[\x20-\x7e]+$/u;
-
-const readCorrelationId = (request: Request): string => {
-  const value = request.headers.get(CORRELATION_HEADER)?.trim();
-  return value &&
-    value.length <= SSF_RUNTIME_LIMITS.correlationIdCharacters &&
-    PRINTABLE_ASCII_PATTERN.test(value)
-    ? value
-    : 'unavailable';
-};
+export { readResolvedSsfInstallationContentV2 };
 
 export interface SsfPluginServerHandlerDependencies {
   readonly runtimeHandler: SsfRuntimeConfigurationHandler;
+  readonly runtimeV2Handler?: SsfRuntimeV2Handler;
 }
 
-export interface SsfAdminServerHandlerDependencies {
+export interface SsfAdminServerHandlerDependencies extends SsfAdminV2Dependencies {
   readonly readSystem: () => Promise<
     Pick<SsfConfigurationOverrides, 'serverSettings' | 'serverLocales'>
   >;
@@ -62,32 +54,6 @@ export interface SsfAdminServerHandlerDependencies {
     input: Parameters<typeof replaceSsfTenantConfiguration>[2]
   ) => Promise<void>;
 }
-
-const jsonResponse = (status: number, body: unknown, correlationId: string): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      [CORRELATION_HEADER]: correlationId,
-    },
-  });
-
-const unavailableResponse = (correlationId: string): Response => {
-  const code: SsfRuntimeErrorCode = 'runtime_configuration_unavailable';
-  return jsonResponse(
-    503,
-    {
-      contractVersion: SSF_RUNTIME_CONTRACT_VERSION,
-      error: {
-        code,
-        message: 'Runtime configuration is unavailable.',
-        retryable: true,
-        correlationId,
-      },
-    },
-    correlationId
-  );
-};
 
 export const createSsfPluginServerHandlers = (
   dependencies: SsfPluginServerHandlerDependencies
@@ -113,7 +79,10 @@ export const createSsfPluginServerHandlers = (
     }
   };
 
-  return { [SSF_RUNTIME_SERVER_HANDLER_ID]: handler };
+  return {
+    [SSF_RUNTIME_SERVER_HANDLER_ID]: handler,
+    [SSF_RUNTIME_V2_SERVER_HANDLER_ID]: createSsfRuntimeV2ServerHandler(dependencies.runtimeV2Handler),
+  };
 };
 
 let defaultHandler: SsfRuntimeConfigurationHandler | undefined;
@@ -144,6 +113,7 @@ const getDefaultRuntimeHandler = (): SsfRuntimeConfigurationHandler => {
 export const createSsfAdminServerHandlers = (
   dependencies: SsfAdminServerHandlerDependencies
 ): ReturnType<PluginServerHandlerModuleFactory> => ({
+  ...createSsfAdminV2Handlers(dependencies),
   'ssf.system-configuration.read': async (context) => {
     const correlationId = readCorrelationId(context.request);
     if (context.scope !== 'platform')
@@ -221,6 +191,7 @@ export const createSsfAdminServerHandlers = (
 export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () => {
   const runtimeHandlers = createSsfPluginServerHandlers({
     runtimeHandler: (input) => getDefaultRuntimeHandler()(input),
+    runtimeV2Handler: defaultSsfRuntimeV2Handler,
   });
   const pool = resolveSsfDatabasePool();
   const rootPool = resolveSsfRootDatabasePool();
@@ -240,6 +211,7 @@ export const createPluginServerHandlers: PluginServerHandlerModuleFactory = () =
       writeTenant: pool
         ? (instanceId, input) => replaceSsfTenantConfiguration(pool, instanceId, input)
         : databaseUnavailable,
+      ...createDefaultSsfAdminV2Dependencies(pool, rootPool),
     }),
   };
 };

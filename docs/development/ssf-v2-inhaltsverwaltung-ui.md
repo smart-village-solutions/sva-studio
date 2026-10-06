@@ -1,6 +1,6 @@
 # SSF V2: Entwurf der Inhaltsverwaltung
 
-**Stand:** Fachlich abgestimmter UI-Aufbau zur Durchsicht vor der Implementierungsplanung. Die V2-Endpunkte und Felder sind in den [Schemas für Installationsinhalte](../api/ssf-installation-content-v2.schema.json) und [Runtime-Konfiguration](../api/ssf-runtime-configuration-v2.schema.json) beschrieben.
+**Stand:** Fachlich abgestimmter UI-Aufbau und Grundlage der Studio-Implementierung. Die V2-Endpunkte und Felder sind in den [Schemas für Installationsinhalte](../api/ssf-installation-content-v2.schema.json) und [Runtime-Konfiguration](../api/ssf-runtime-configuration-v2.schema.json) beschrieben.
 
 ## Ziel und Zuständigkeit
 

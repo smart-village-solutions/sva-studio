@@ -1,5 +1,7 @@
 export const SSF_RUNTIME_CONTRACT_VERSION = '1.0' as const;
 export const SSF_RUNTIME_ENDPOINT_PATH = '/internal/plugins/ssf/v1/runtime-configuration' as const;
+export const SSF_RUNTIME_V2_ENDPOINT_PATH = '/internal/plugins/ssf/v2/runtime-configuration' as const;
+export const SSF_RUNTIME_V2_SERVER_HANDLER_ID = 'ssf.runtime-configuration-v2' as const;
 export const SSF_RUNTIME_SERVICE_ACTION = 'ssf.runtime-configuration.read' as const;
 export const SSF_RUNTIME_SERVER_HANDLER_ID = 'ssf.runtime-configuration' as const;
 export const SSF_RUNTIME_SERVICE_ID = 'ssf-runtime' as const;

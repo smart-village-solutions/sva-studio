@@ -133,6 +133,7 @@ describe('ModulesPage', () => {
             moduleId: 'additional-plugin',
             namespace: 'additional-plugin',
             ownerPluginId: 'additional-plugin',
+            requiredTenantModuleIds: [],
             permissionIds: ['additional-plugin.read'],
             systemRoles: [],
           },

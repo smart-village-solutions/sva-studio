@@ -82,7 +82,8 @@ WITH module_state AS MATERIALIZED (
   FROM intent
 )
 SELECT module_state.effective_active, module_state.lifecycle_exists,
-  module_state.active_job_id, EXISTS (SELECT 1 FROM intent) AS persisted
+  module_state.active_job_id, EXISTS (SELECT 1 FROM intent) AS persisted,
+  (SELECT count(*) FROM enqueued) AS enqueued_count
 FROM module_state;
 `;
 

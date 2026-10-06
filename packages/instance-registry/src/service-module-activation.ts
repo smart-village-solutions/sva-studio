@@ -4,15 +4,91 @@ import {
   resolveAssignedModuleContracts,
   resolveManagedModuleContracts,
 } from './service-shared.js';
-import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import type {
+  InstanceModuleIamRegistryEntry,
+  InstanceRegistryService,
+  InstanceRegistryServiceDeps,
+} from './service-types.js';
+import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
 import type { InstanceProvisioningRun } from '@sva/core';
 import { readTenantProvisioningPluginSnapshot } from './tenant-provisioning-snapshot.js';
+
+export const withRequiredTenantModules = (
+  moduleIds: readonly string[],
+  registry: ReadonlyMap<string, InstanceModuleIamRegistryEntry>
+): string[] => {
+  const normalizedModuleIds = Array.from(new Set(moduleIds.map((id) => id.trim()).filter(Boolean)));
+  for (const moduleId of [...normalizedModuleIds]) {
+    for (const requiredModuleId of registry.get(moduleId)?.requiredTenantModuleIds ?? []) {
+      if (!registry.has(requiredModuleId)) {
+        throw new Error(
+          `plugin_tenant_module_requirement_unavailable:${moduleId}:${requiredModuleId}`
+        );
+      }
+      normalizedModuleIds.push(requiredModuleId);
+    }
+  }
+  return Array.from(new Set(normalizedModuleIds)).sort((left, right) =>
+    left.localeCompare(right, 'de')
+  );
+};
+
+export const canActivateRequiredTenantModules = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string,
+  moduleIds: readonly string[],
+  currentlyAssignedModuleIds: readonly string[]
+): Promise<boolean> => {
+  const assigned = new Set(currentlyAssignedModuleIds);
+  const requiredModuleIds = new Set(
+    moduleIds.flatMap(
+      (moduleId) => deps.moduleIamRegistry?.get(moduleId)?.requiredTenantModuleIds ?? []
+    )
+  );
+  const snapshotModules = deps.readModuleActivationPolicySnapshot?.().modules ?? [];
+  for (const requiredModuleId of requiredModuleIds) {
+    if (assigned.has(requiredModuleId)) continue;
+    const persisted = await deps.repository.getModuleActivationPolicy(instanceId, requiredModuleId);
+    const policy =
+      persisted?.activationPolicy ??
+      snapshotModules.find(({ moduleId }) => moduleId === requiredModuleId)?.activationPolicy;
+    if (persisted?.manualOverride === 'disabled') return false;
+    if (policy === 'required' || (policy === 'automatic' && persisted?.effectiveActive !== true))
+      return false;
+  }
+  return true;
+};
+
+export const normalizeReconcileResult = (
+  result: PermissionCatalogReconcileResult | void
+): PermissionCatalogReconcileResult =>
+  result ?? {
+    permissionsInserted: 0,
+    permissionsUpdated: 0,
+    permissionsUnchanged: 0,
+    grantsInserted: 0,
+    grantsUnchanged: 0,
+  };
 
 const emptyResult = {
   changedModuleIds: [] as readonly string[],
   conflictModuleIds: [] as readonly string[],
   unchangedModuleIds: [] as readonly string[],
 };
+
+export const mergeReconcileResults = (
+  ...results: readonly (PermissionCatalogReconcileResult | void)[]
+): PermissionCatalogReconcileResult =>
+  results.map(normalizeReconcileResult).reduce(
+    (total, result) => ({
+      permissionsInserted: total.permissionsInserted + result.permissionsInserted,
+      permissionsUpdated: total.permissionsUpdated + result.permissionsUpdated,
+      permissionsUnchanged: total.permissionsUnchanged + result.permissionsUnchanged,
+      grantsInserted: total.grantsInserted + result.grantsInserted,
+      grantsUnchanged: total.grantsUnchanged + result.grantsUnchanged,
+    }),
+    normalizeReconcileResult(undefined)
+  );
 
 export const createReconcileModuleActivationPoliciesHandler =
   (

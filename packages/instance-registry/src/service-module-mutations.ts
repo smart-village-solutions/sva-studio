@@ -6,7 +6,7 @@ import {
   canActivateRequiredTenantModules,
   normalizeReconcileResult,
   withRequiredTenantModules,
-} from './service-module-mutations-sync.js';
+} from './service-module-activation.js';
 import {
   invalidateInstancePermissionSnapshots,
   requireModuleIamRegistry,
@@ -18,9 +18,9 @@ import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './ser
 export {
   createBootstrapAdminStructureHandler,
   createSeedIamBaselineHandler,
-  mergeReconcileResults,
   syncProtectedSystemAdminPermissions,
 } from './service-module-mutations-sync.js';
+export { mergeReconcileResults } from './service-module-activation.js';
 
 const createModuleAssignRollbackError = (
   instanceId: string,
@@ -220,18 +220,45 @@ export const createRevokeModuleHandler =
       return { ok: false, reason: 'conflict' };
     }
 
-    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-    const permissionReconcile = await deps.repository.syncAssignedModuleIam({
-      instanceId: input.instanceId,
-      managedModuleIds: [...registry.keys()],
-      managedContracts: resolveManagedModuleContracts(deps),
-      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
-    });
-    await deps.repository.persistPluginTenantLifecycleReconcileIntents({
-      instanceId: input.instanceId,
-      lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
-      forcePluginIds: [input.moduleId],
-    });
+    let assignedModuleIds: readonly string[];
+    let permissionReconcile: PermissionCatalogReconcileResult | void;
+    try {
+      assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+      permissionReconcile = await deps.repository.syncAssignedModuleIam({
+        instanceId: input.instanceId,
+        managedModuleIds: [...registry.keys()],
+        managedContracts: resolveManagedModuleContracts(deps),
+        contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+      });
+      await deps.repository.persistPluginTenantLifecycleReconcileIntents({
+        instanceId: input.instanceId,
+        lifecycles: [...(deps.pluginTenantLifecycleRegistry?.values() ?? [])],
+        forcePluginIds: [input.moduleId],
+      });
+    } catch (error) {
+      try {
+        const restored = await deps.repository.restoreModuleActivation(
+          input.instanceId,
+          input.moduleId,
+          activationPolicy
+        );
+        if (!restored) throw new Error(`rollback_restore_failed:${input.moduleId}`);
+        const restoredModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+        await deps.repository.syncAssignedModuleIam({
+          instanceId: input.instanceId,
+          managedModuleIds: [...registry.keys()],
+          managedContracts: resolveManagedModuleContracts(deps),
+          contracts: resolveAssignedModuleContracts(deps, restoredModuleIds),
+        });
+      } catch (rollbackError) {
+        const combined = new Error(
+          `instance_module_revoke_rollback_failed:${input.instanceId}:${input.moduleId}`
+        ) as Error & { cause?: unknown };
+        combined.cause = { error, rollbackError };
+        throw combined;
+      }
+      throw error;
+    }
     await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_revoked');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,

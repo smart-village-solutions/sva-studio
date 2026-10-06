@@ -3,7 +3,13 @@ import type { PermissionCatalogReconcileResult } from '@sva/data-repositories';
 
 import { assertNoActiveTenantProvisioning } from './service-active-provisioning.js';
 import { createGetInstanceDetail } from './service-detail.js';
-import { createReconcileModuleActivationPoliciesHandler } from './service-module-activation.js';
+import {
+  canActivateRequiredTenantModules,
+  createReconcileModuleActivationPoliciesHandler,
+  mergeReconcileResults,
+  normalizeReconcileResult,
+  withRequiredTenantModules,
+} from './service-module-activation.js';
 import {
   invalidateInstancePermissionSnapshots,
   requireModuleIamRegistry,
@@ -11,7 +17,6 @@ import {
   resolveManagedModuleContracts,
 } from './service-shared.js';
 import type {
-  InstanceModuleIamRegistryEntry,
   InstanceRegistryService,
   InstanceRegistryServiceDeps,
 } from './service-types.js';
@@ -19,59 +24,6 @@ import type {
 const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
 const SYSTEM_ADMIN_DISPLAY_NAME = 'System Administrator';
 const SYSTEM_ADMIN_ROLE_LEVEL = 100;
-export const withRequiredTenantModules = (
-  moduleIds: readonly string[],
-  registry: ReadonlyMap<string, InstanceModuleIamRegistryEntry>
-): string[] => {
-  const normalizedModuleIds = Array.from(
-    new Set(moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))
-  );
-
-  for (const moduleId of [...normalizedModuleIds]) {
-    const contract = registry.get(moduleId);
-    if (!contract) continue;
-    for (const requiredModuleId of contract.requiredTenantModuleIds ?? []) {
-      if (!registry.has(requiredModuleId)) {
-        throw new Error(
-          `plugin_tenant_module_requirement_unavailable:${moduleId}:${requiredModuleId}`
-        );
-      }
-      normalizedModuleIds.push(requiredModuleId);
-    }
-  }
-
-  return Array.from(new Set(normalizedModuleIds)).sort((left, right) =>
-    left.localeCompare(right, 'de')
-  );
-};
-
-export const canActivateRequiredTenantModules = async (
-  deps: InstanceRegistryServiceDeps,
-  instanceId: string,
-  moduleIds: readonly string[],
-  currentlyAssignedModuleIds: readonly string[]
-): Promise<boolean> => {
-  const assigned = new Set(currentlyAssignedModuleIds);
-  const requiredModuleIds = new Set(
-    moduleIds.flatMap(
-      (moduleId) => deps.moduleIamRegistry?.get(moduleId)?.requiredTenantModuleIds ?? []
-    )
-  );
-  const snapshotModules = deps.readModuleActivationPolicySnapshot?.().modules ?? [];
-  for (const requiredModuleId of requiredModuleIds) {
-    if (assigned.has(requiredModuleId)) continue;
-    const persisted = await deps.repository.getModuleActivationPolicy(instanceId, requiredModuleId);
-    const policy =
-      persisted?.activationPolicy ??
-      snapshotModules.find(({ moduleId }) => moduleId === requiredModuleId)?.activationPolicy;
-    if (persisted?.manualOverride === 'disabled') return false;
-    if (policy === 'required' || (policy === 'automatic' && persisted?.effectiveActive !== true)) {
-      return false;
-    }
-  }
-  return true;
-};
-
 export const syncProtectedSystemAdminPermissions = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string
@@ -93,31 +45,6 @@ export const syncProtectedSystemAdminPermissions = async (
     },
   });
 };
-
-export const normalizeReconcileResult = (
-  result: PermissionCatalogReconcileResult | void
-): PermissionCatalogReconcileResult =>
-  result ?? {
-    permissionsInserted: 0,
-    permissionsUpdated: 0,
-    permissionsUnchanged: 0,
-    grantsInserted: 0,
-    grantsUnchanged: 0,
-  };
-
-export const mergeReconcileResults = (
-  ...results: readonly (PermissionCatalogReconcileResult | void)[]
-): PermissionCatalogReconcileResult =>
-  results.map(normalizeReconcileResult).reduce(
-    (total, result) => ({
-      permissionsInserted: total.permissionsInserted + result.permissionsInserted,
-      permissionsUpdated: total.permissionsUpdated + result.permissionsUpdated,
-      permissionsUnchanged: total.permissionsUnchanged + result.permissionsUnchanged,
-      grantsInserted: total.grantsInserted + result.grantsInserted,
-      grantsUnchanged: total.grantsUnchanged + result.grantsUnchanged,
-    }),
-    normalizeReconcileResult(undefined)
-  );
 
 const createBootstrapAssignRollbackError = (
   instanceId: string,

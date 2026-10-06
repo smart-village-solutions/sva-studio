@@ -4342,6 +4342,38 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('restores module activation and IAM when lifecycle intent persistence fails on revoke', async () => {
+    const repository = createRepository({
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(['news']),
+      persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => {
+        throw new Error('plugin_tenant_lifecycle_suspend_conflict:news');
+      }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-revoke-lifecycle-failure',
+      })
+    ).rejects.toThrow('plugin_tenant_lifecycle_suspend_conflict:news');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'news',
+      expect.objectContaining({ activationPolicy: 'optional', effectiveActive: true })
+    );
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledTimes(2);
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('rejects revocation of a persisted required plugin before changing IAM state', async () => {
     const repository = createRepository({
       getModuleActivationPolicy: vi.fn(async () => ({

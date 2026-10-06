@@ -24,7 +24,6 @@ describe('waste management operations runtime assembly', () => {
     expect(runtime).toMatchObject({
       requestTenantDatabaseProvisioning: expect.any(Function),
       suspendTenantDatabaseProvisioning: expect.any(Function),
-      suspendTenantDatabaseProvisioning: expect.any(Function),
       readTenantDatabaseReadiness: expect.any(Function),
       provisionTenantDatabase: expect.any(Function),
       initializeDataSource: expect.any(Function),

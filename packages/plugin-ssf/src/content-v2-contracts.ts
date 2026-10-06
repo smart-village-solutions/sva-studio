@@ -81,7 +81,7 @@ const guestLanguage = z
   })
   .strict();
 
-export const ssfRuntimeContentV2FieldsSchema = z
+const runtimeContentFieldsObjectSchema = z
   .object({
     branding,
     conversationContentStorage: z
@@ -107,37 +107,46 @@ export const ssfRuntimeContentV2FieldsSchema = z
       .strict(),
     guestLanguages: z.array(guestLanguage).min(1).max(30),
   })
-  .strict()
-  .superRefine((value, context) => {
-    const locales = value.guestLanguages.map((entry) => entry.locale);
-    if (new Set(locales).size !== locales.length) {
-      context.addIssue({ code: 'custom', path: ['guestLanguages'], message: 'duplicate_locale' });
+  .strict();
+
+const runtimeContentIssues = (value: z.infer<typeof runtimeContentFieldsObjectSchema>) => {
+  const issues: Array<{ path: string[]; message: string }> = [];
+  const locales = value.guestLanguages.map((entry) => entry.locale);
+  if (new Set(locales).size !== locales.length) {
+    issues.push({ path: ['guestLanguages'], message: 'duplicate_locale' });
+  }
+  const staffLanguage = value.staff.locale.split('-')[0]?.toLowerCase();
+  if (locales.some((entry) => entry.split('-')[0]?.toLowerCase() === staffLanguage)) {
+    issues.push({ path: ['guestLanguages'], message: 'staff_language_as_guest' });
+  }
+  if (value.conversationContentStorage.mode === 'disabled') {
+    if (value.conversationContentStorage.retentionHours !== null ||
+        value.guestLanguages.some((entry) => entry.guest.storageQuestionHtml !== null)) {
+      issues.push({ path: ['conversationContentStorage'], message: 'disabled_storage_has_question_or_retention' });
     }
-    const staffLanguage = value.staff.locale.split('-')[0]?.toLowerCase();
-    if (locales.some((entry) => entry.split('-')[0]?.toLowerCase() === staffLanguage)) {
-      context.addIssue({ code: 'custom', path: ['guestLanguages'], message: 'staff_language_as_guest' });
-    }
-    if (value.conversationContentStorage.mode === 'disabled') {
-      if (value.conversationContentStorage.retentionHours !== null ||
-          value.guestLanguages.some((entry) => entry.guest.storageQuestionHtml !== null)) {
-        context.addIssue({ code: 'custom', path: ['conversationContentStorage'], message: 'disabled_storage_has_question_or_retention' });
-      }
-    } else if (value.conversationContentStorage.retentionHours === null ||
-        value.guestLanguages.some((entry) => entry.guest.storageQuestionHtml === null)) {
-      context.addIssue({ code: 'custom', path: ['conversationContentStorage'], message: 'ask_storage_missing_question_or_retention' });
-    }
-  });
+  } else if (value.conversationContentStorage.retentionHours === null ||
+      value.guestLanguages.some((entry) => entry.guest.storageQuestionHtml === null)) {
+    issues.push({ path: ['conversationContentStorage'], message: 'ask_storage_missing_question_or_retention' });
+  }
+  return issues;
+};
+
+export const ssfRuntimeContentV2FieldsSchema = runtimeContentFieldsObjectSchema.superRefine((value, context) => {
+  for (const issue of runtimeContentIssues(value)) context.addIssue({ code: 'custom', ...issue });
+});
 
 export const ssfInstallationContentV2Schema = ssfInstallationContentV2FieldsSchema.extend({
   contractVersion: z.literal('2.0'),
   configurationRevision: ssfRevisionSchema,
 }).strict();
 
-export const ssfRuntimeConfigurationV2Schema = ssfRuntimeContentV2FieldsSchema.safeExtend({
+export const ssfRuntimeConfigurationV2Schema = runtimeContentFieldsObjectSchema.extend({
   contractVersion: z.literal('2.0'),
   configurationRevision: ssfRevisionSchema,
   tenant: z.object({ id: text.max(128), displayName: text.max(200), timeZone: text.max(100) }).strict(),
-}).strict();
+}).strict().superRefine((value, context) => {
+  for (const issue of runtimeContentIssues(value)) context.addIssue({ code: 'custom', ...issue });
+});
 
 export type SsfInstallationContentV2Fields = z.infer<typeof ssfInstallationContentV2FieldsSchema>;
 export type SsfRuntimeContentV2Fields = z.infer<typeof ssfRuntimeContentV2FieldsSchema>;

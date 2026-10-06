@@ -15,7 +15,7 @@ const locale = z
       return false;
     }
   });
-const httpsUrl = z.url().max(2048).refine((value) => value.startsWith('https://'));
+const httpsUrl = z.string().url().max(2048).refine((value) => value.startsWith('https://'));
 
 const media = z.object({ url: httpsUrl, alternativeText: z.string().max(500) }).strict();
 const branding = z.object({ logo: media.nullable(), icon: media.nullable() }).strict();

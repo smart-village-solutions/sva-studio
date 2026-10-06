@@ -33,10 +33,14 @@ import {
 import { withAuthenticatedIamHandler } from './core-shared.js';
 
 export const listUsersHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, listUsersInternal, { personalBearerMethod: 'GET' });
+  withAuthenticatedIamHandler(request, listUsersInternal, {
+    personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users' },
+  });
 
 export const getUserHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, getUserInternal);
+  withAuthenticatedIamHandler(request, getUserInternal, {
+    personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users/$userId' },
+  });
 
 export const getUserTimelineHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, getUserTimelineInternal);
@@ -48,10 +52,14 @@ export const mutateUserKeycloakRoleHandler = async (request: Request): Promise<R
   withAuthenticatedIamHandler(request, mutateUserKeycloakRoleInternal);
 
 export const createUserHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, createUserInternal, { personalBearerMethod: 'POST' });
+  withAuthenticatedIamHandler(request, createUserInternal, {
+    personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users' },
+  });
 
 export const sendPasswordSetupEmailHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal);
+  withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal, {
+    personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users/$userId/send-password-setup-email' },
+  });
 
 export const getTenantInvitationTemplateHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, getTenantInvitationTemplateInternal);
@@ -63,13 +71,19 @@ export const reprovisionMainserverUserHandler = async (request: Request): Promis
   withAuthenticatedIamHandler(request, reprovisionMainserverUserInternal);
 
 export const updateUserHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, updateUserInternal);
+  withAuthenticatedIamHandler(request, updateUserInternal, {
+    personalBearerRoute: { method: 'PATCH', path: '/api/v1/iam/users/$userId' },
+  });
 
 export const deactivateUserHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, deactivateUserInternal);
+  withAuthenticatedIamHandler(request, deactivateUserInternal, {
+    personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users/$userId/deactivate' },
+  });
 
 export const deleteUserHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, deleteUserInternal);
+  withAuthenticatedIamHandler(request, deleteUserInternal, {
+    personalBearerRoute: { method: 'DELETE', path: '/api/v1/iam/users/$userId' },
+  });
 
 export const bulkDeactivateUsersHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, bulkDeactivateInternal);
@@ -87,7 +101,9 @@ export const getMyProfileHandler = async (request: Request): Promise<Response> =
   withAuthenticatedIamHandler(request, getMyProfileInternal);
 
 export const listRolesHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, listRolesInternal);
+  withAuthenticatedIamHandler(request, listRolesInternal, {
+    personalBearerRoute: { method: 'GET', path: '/api/v1/iam/roles' },
+  });
 
 export const listKeycloakRolesHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, listKeycloakRolesInternal);
@@ -96,13 +112,19 @@ export const listPermissionsHandler = async (request: Request): Promise<Response
   withAuthenticatedIamHandler(request, listPermissionsInternal);
 
 export const createRoleHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, createRoleInternal);
+  withAuthenticatedIamHandler(request, createRoleInternal, {
+    personalBearerRoute: { method: 'POST', path: '/api/v1/iam/roles' },
+  });
 
 export const updateRoleHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, updateRoleInternal);
+  withAuthenticatedIamHandler(request, updateRoleInternal, {
+    personalBearerRoute: { method: 'PATCH', path: '/api/v1/iam/roles/$roleId' },
+  });
 
 export const deleteRoleHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, deleteRoleInternal);
+  withAuthenticatedIamHandler(request, deleteRoleInternal, {
+    personalBearerRoute: { method: 'DELETE', path: '/api/v1/iam/roles/$roleId' },
+  });
 
 export const reconcileHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, reconcilePlaceholderInternal);

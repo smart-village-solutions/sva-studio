@@ -20,4 +20,32 @@ describe('Studio MCP configuration', () => {
     });
     expect(config.clientSecret).toBe('resolved-secret');
   });
+
+  it('loads explicit platform and tenant contexts without secret fields', async () => {
+    const config = await readStudioMcpConfig({
+      SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',
+      SVA_STUDIO_MCP_TOKEN_URL: 'https://id.example/token',
+      SVA_STUDIO_MCP_CLIENT_SECRET: 'service-secret',
+      SVA_STUDIO_MCP_PERSONAL_CONTEXTS: JSON.stringify([
+        { id: 'platform-provider', name: 'Platform Provider', kind: 'platform', baseUrl: 'https://studio.example', issuer: 'https://id.example/realms/studio', clientId: 'sva-studio-mcp-personal' },
+        { id: 'tenant-demo-provider', name: 'Demo Provider', kind: 'tenant', tenantId: 'demo', baseUrl: 'https://demo.studio.example', issuer: 'https://id.example/realms/demo', clientId: 'sva-studio-mcp-personal' },
+      ]),
+    });
+    expect(config.personalContexts).toHaveLength(2);
+    expect(config.personalContexts?.[1]).toMatchObject({ id: 'tenant-demo-provider', kind: 'tenant', tenantId: 'demo' });
+    expect(config.personalContexts?.[0]).not.toHaveProperty('clientSecret');
+  });
+
+  it('rejects duplicate, non-HTTPS and non-realm personal contexts', async () => {
+    const common = { name: 'Context', kind: 'tenant', tenantId: 'demo', baseUrl: 'https://demo.studio.example', issuer: 'https://id.example/realms/demo', clientId: 'sva-studio-mcp-personal' };
+    const read = (contexts: unknown) => readStudioMcpConfig({
+      SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',
+      SVA_STUDIO_MCP_TOKEN_URL: 'https://id.example/token',
+      SVA_STUDIO_MCP_CLIENT_SECRET: 'service-secret',
+      SVA_STUDIO_MCP_PERSONAL_CONTEXTS: JSON.stringify(contexts),
+    });
+    await expect(read([{ ...common, id: 'duplicate' }, { ...common, id: 'duplicate' }])).rejects.toThrow();
+    await expect(read([{ ...common, id: 'insecure', baseUrl: 'http://demo.studio.example' }])).rejects.toThrow();
+    await expect(read([{ ...common, id: 'bad-issuer', issuer: 'https://id.example/not-a-realm' }])).rejects.toThrow();
+  });
 });

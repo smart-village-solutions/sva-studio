@@ -106,6 +106,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 064 | [Serverseitige Keycloak-Realm-Baseline](./ADR-064-serverseitige-keycloak-realm-baseline.md)                                                                                   | ✅     | 2026-09-15         | IAM / Keycloak / Provisioning     |
 | 065 | [Mainserver-Projektionsabgleich über Scope-Grenzen](./ADR-065-mainserver-projektionsabgleich-ueber-scope-grenzen.md)                                                          | ✅     | 2026-10-02         | Content / IAM / Projektion        |
 | 066 | [Versionierte Studio-Releases und Prod-basierte Hotfix-Linie](./ADR-066-versionierte-studio-releases-und-hotfix-linie.md)                                                     | ✅     | 2026-10-05         | Release / Deployment / Changelog  |
+| 067 | [Persönlicher Plattform- und Tenant-Zugang im Studio-MCP](./ADR-067-persoenlicher-plattform-und-tenant-zugang-im-studio-mcp.md)                                         | 📋     | 2026-10-06         | MCP / IAM / Security              |
 
 ### Kanonischer Ablageort
 

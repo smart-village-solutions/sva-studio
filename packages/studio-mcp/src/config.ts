@@ -4,6 +4,50 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
+const personalContextBaseSchema = z.object({
+  id: z.string().trim().min(1).max(64).regex(/^[a-z0-9][a-z0-9_-]*$/u),
+  name: z.string().trim().min(1).max(80),
+  baseUrl: z.string().url(),
+  issuer: z.string().url(),
+  clientId: z.string().trim().min(1).max(128),
+});
+
+const personalContextSchema = z.discriminatedUnion('kind', [
+  personalContextBaseSchema.extend({ kind: z.literal('platform') }),
+  personalContextBaseSchema.extend({
+    kind: z.literal('tenant'),
+    tenantId: z.string().trim().min(1).max(128),
+  }),
+]);
+
+const personalContextsSchema = z.array(personalContextSchema).max(100).superRefine((contexts, ctx) => {
+  const ids = new Set<string>();
+  contexts.forEach((context, index) => {
+    if (ids.has(context.id)) ctx.addIssue({ code: 'custom', path: [index, 'id'], message: 'duplicate_context_id' });
+    ids.add(context.id);
+    for (const [field, raw] of [['baseUrl', context.baseUrl], ['issuer', context.issuer]] as const) {
+      const url = new URL(raw);
+      const loopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+      if (url.protocol !== 'https:' && !(loopback && url.protocol === 'http:')) {
+        ctx.addIssue({ code: 'custom', path: [index, field], message: 'personal_context_requires_https' });
+      }
+      if (url.username || url.password || url.search || url.hash) {
+        ctx.addIssue({ code: 'custom', path: [index, field], message: 'personal_context_url_invalid' });
+      }
+    }
+    const baseUrl = new URL(context.baseUrl);
+    if (baseUrl.pathname !== '/') {
+      ctx.addIssue({ code: 'custom', path: [index, 'baseUrl'], message: 'studio_base_url_must_be_origin' });
+    }
+    const issuer = new URL(context.issuer);
+    if (!/^\/realms\/[^/]+\/?$/u.test(issuer.pathname)) {
+      ctx.addIssue({ code: 'custom', path: [index, 'issuer'], message: 'keycloak_realm_issuer_required' });
+    }
+  });
+});
+
+export type PersonalMcpContext = z.infer<typeof personalContextSchema>;
+
 const sourceSchema = z.object({
   baseUrl: z.string().url(),
   tokenUrl: z.string().url(),
@@ -16,10 +60,12 @@ const sourceSchema = z.object({
   tokenTimeoutMs: z.number().int().positive().default(10_000),
   diagnosisTimeoutMs: z.number().int().positive().default(15_000),
   caFilePath: z.string().trim().min(1).optional(),
+  personalContexts: personalContextsSchema.default([]),
 }).refine((value) => value.clientSecret || value.clientSecretCommand, 'Client-Secret oder Secret-Command fehlt.');
 
-export type StudioMcpConfig = Omit<z.infer<typeof sourceSchema>, 'clientSecret' | 'clientSecretCommand'> & {
+export type StudioMcpConfig = Omit<z.infer<typeof sourceSchema>, 'clientSecret' | 'clientSecretCommand' | 'personalContexts'> & {
   readonly clientSecret: string;
+  readonly personalContexts?: readonly PersonalMcpContext[];
 };
 
 const parseCommand = (raw: string | undefined): string[] | undefined => {
@@ -51,6 +97,9 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
       ? Number(env.SVA_STUDIO_MCP_DIAGNOSIS_TIMEOUT_MS)
       : undefined,
     caFilePath: env.SVA_STUDIO_MCP_CA_FILE,
+    personalContexts: env.SVA_STUDIO_MCP_PERSONAL_CONTEXTS
+      ? JSON.parse(env.SVA_STUDIO_MCP_PERSONAL_CONTEXTS)
+      : [],
   });
   let clientSecret = source.clientSecret;
   if (!clientSecret) {
@@ -72,5 +121,6 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
     diagnosisTimeoutMs: source.diagnosisTimeoutMs,
     caFilePath: source.caFilePath,
     clientSecret,
+    personalContexts: source.personalContexts,
   };
 };

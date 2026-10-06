@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createStudioApiClient, StudioApiError, UpstreamSchemaError } from './api-client.js';
+import { createStudioApiClient, StudioApiError, StudioApiRedirectError, UpstreamSchemaError } from './api-client.js';
 
 describe('Studio API client', () => {
   it('sets bearer, correlation and idempotency headers', async () => {
@@ -59,5 +59,35 @@ describe('Studio API client', () => {
       vi.fn().mockResolvedValue(new Response('{not-json', { status: 200 }))
     );
     await expect(client.request({ path: '/read' })).rejects.toBeInstanceOf(UpstreamSchemaError);
+  });
+
+  it('can reject redirects without following them for personal-context calls', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, {
+      status: 302,
+      headers: { location: 'https://other.example/collect' },
+    }));
+    const client = createStudioApiClient(
+      { baseUrl: 'https://studio.example', readTimeoutMs: 1_000, mutationTimeoutMs: 2_000 },
+      { getToken: vi.fn().mockResolvedValue('personal-token') },
+      fetchImpl,
+      { retryUnauthorized: false, rejectRedirects: true }
+    );
+    await expect(client.request({ method: 'POST', path: 'api/v1/iam/users', body: {} })).rejects.toBeInstanceOf(StudioApiRedirectError);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(fetchImpl.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' });
+  });
+
+  it('does not retry personal writes after an unauthorized response', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('{"error":{"code":"unauthorized"}}', { status: 401 }));
+    const tokens = { getToken: vi.fn().mockResolvedValue('personal-token') };
+    const client = createStudioApiClient(
+      { baseUrl: 'https://studio.example', readTimeoutMs: 1_000, mutationTimeoutMs: 2_000 },
+      tokens,
+      fetchImpl,
+      { retryUnauthorized: false, rejectRedirects: true }
+    );
+    await expect(client.request({ method: 'POST', path: 'api/v1/iam/users', body: {} })).rejects.toBeInstanceOf(StudioApiError);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(tokens.getToken).toHaveBeenCalledOnce();
   });
 });

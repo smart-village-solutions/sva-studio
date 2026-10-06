@@ -80,6 +80,14 @@ Der Secret-Resolver ist ein JSON-Array aus Programm und Argumenten und wird ohne
 
 Der MCP-Prozess holt kurzlebige Access Tokens per Client-Credentials-Flow. Studio validiert diese über OIDC-Metadaten und JWKS; das MCP-Client-Secret wird nicht in den Studio-Stack kopiert. Fehlerausgaben müssen Authorization-Header, Tokens, Client-Secrets, Tenant-Secrets, Connection-Strings und Stacktraces redigieren.
 
+### Persönliche Plattform- und Tenant-Kontexte
+
+Zusätzlich zum unveränderten servicegebundenen Instanz-MCP kann `SVA_STUDIO_MCP_PERSONAL_CONTEXTS` eine JSON-Liste explizit auswählbarer Plattform- und Tenant-Kontexte enthalten. Jeder Eintrag hat `id`, `name`, `kind`, `baseUrl`, `issuer`, `clientId` und bei `kind: "tenant"` außerdem `tenantId`. `baseUrl` muss der HTTPS-Ursprung der Studio-API und `issuer` der HTTPS-Realm-Issuer sein. Die Liste enthält keine Benutzer-Credentials oder Tokens. Personal-Tools werden nur registriert, wenn mindestens ein Kontext konfiguriert ist.
+
+`studio_personal_contexts` zeigt die Auswahl, `studio_personal_login` startet für genau einen Kontext Authorization Code mit PKCE im lokalen Standardbrowser, und `studio_personal_logout` löscht dessen In-Memory-Anmeldung. Der lokale Callback ist fest an `http://127.0.0.1:8765/callback` gebunden, wie im Provisioning-Vertrag des persönlichen Clients. Nur ein MCP-Prozess kann diesen Port gleichzeitig besitzen; ein belegter Port beendet den Login geschlossen. Eine parallele zweite Anmeldung desselben Kontexts ist gesperrt, andere Kontexte bleiben unabhängig. State, Nonce und PKCE-Verifier gelten nur für den konkreten Loginversuch. Tokens verbleiben im Prozessspeicher, werden vor Ablauf erneuert und bei Logout beziehungsweise Prozessende nach Möglichkeit widerrufen; es gibt keine persistente Credential-Ablage.
+
+Im ersten Stand darf `studio_personal_users_api` ausschließlich `GET` oder `POST api/v1/iam/users` auf dem gewählten Kontext ausführen. Es gibt keinen Hostwechsel über Tool-Eingaben, keine Weiterleitung an andere Hosts, keine automatische Wiederholung von POSTs und keinen Rückfall auf das Service-Credential. Nach einem unklaren POST-Ergebnis muss zuerst die autorisierte User-Liste gelesen werden. Diese lokale Fähigkeit ersetzt weder die Realm-Einrichtung noch den Live-Nachweis; persönliche Keycloak-Clients bleiben bis zur erfolgreichen API-/MCP-Abnahme inaktiv.
+
 ## Risikostufen
 
 - Read-/Diagnose-Tools benötigen nur Read-Actions und keine Bestätigung.

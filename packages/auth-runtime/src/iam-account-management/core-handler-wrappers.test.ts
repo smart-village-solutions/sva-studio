@@ -96,6 +96,7 @@ vi.mock('./reconcile-handler.js', () => ({
 describe('IAM core handler wrappers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.withAuthenticatedIamHandler.mockClear();
     state.withAuthenticatedIamHandler.mockResolvedValue(new Response('wrapped'));
   });
 
@@ -121,15 +122,15 @@ describe('IAM core handler wrappers', () => {
     await module.mutateUserKeycloakRoleHandler(request);
 
     expect(state.withAuthenticatedIamHandler.mock.calls).toEqual([
-      [request, state.userHandlers.listUsersInternal, { personalBearerMethod: 'GET' }],
-      [request, state.userHandlers.getUserInternal],
+      [request, state.userHandlers.listUsersInternal, { personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users' } }],
+      [request, state.userHandlers.getUserInternal, { personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users/$userId' } }],
       [request, state.userHandlers.getUserTimelineInternal],
-      [request, state.userHandlers.createUserInternal, { personalBearerMethod: 'POST' }],
-      [request, state.userHandlers.sendPasswordSetupEmailInternal],
+      [request, state.userHandlers.createUserInternal, { personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users' } }],
+      [request, state.userHandlers.sendPasswordSetupEmailInternal, { personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users/$userId/send-password-setup-email' } }],
       [request, state.userHandlers.reprovisionMainserverUserInternal],
-      [request, state.userHandlers.updateUserInternal],
-      [request, state.userHandlers.deactivateUserInternal],
-      [request, state.userHandlers.deleteUserInternal],
+      [request, state.userHandlers.updateUserInternal, { personalBearerRoute: { method: 'PATCH', path: '/api/v1/iam/users/$userId' } }],
+      [request, state.userHandlers.deactivateUserInternal, { personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users/$userId/deactivate' } }],
+      [request, state.userHandlers.deleteUserInternal, { personalBearerRoute: { method: 'DELETE', path: '/api/v1/iam/users/$userId' } }],
       [request, state.userHandlers.bulkDeactivateInternal],
       [request, state.userHandlers.bulkReprovisionMainserverInternal],
       [request, state.userHandlers.syncUsersFromKeycloakInternal],
@@ -153,12 +154,12 @@ describe('IAM core handler wrappers', () => {
     await module.reconcileHandler(request);
 
     expect(state.withAuthenticatedIamHandler.mock.calls).toEqual([
-      [request, state.roleHandlers.listRolesInternal],
+      [request, state.roleHandlers.listRolesInternal, { personalBearerRoute: { method: 'GET', path: '/api/v1/iam/roles' } }],
       [request, state.roleHandlers.listKeycloakRolesInternal],
       [request, state.roleHandlers.listPermissionsInternal],
-      [request, state.roleHandlers.createRoleInternal],
-      [request, state.roleHandlers.updateRoleInternal],
-      [request, state.roleHandlers.deleteRoleInternal],
+      [request, state.roleHandlers.createRoleInternal, { personalBearerRoute: { method: 'POST', path: '/api/v1/iam/roles' } }],
+      [request, state.roleHandlers.updateRoleInternal, { personalBearerRoute: { method: 'PATCH', path: '/api/v1/iam/roles/$roleId' } }],
+      [request, state.roleHandlers.deleteRoleInternal, { personalBearerRoute: { method: 'DELETE', path: '/api/v1/iam/roles/$roleId' } }],
       [request, state.reconcilePlaceholderInternal],
     ]);
   });

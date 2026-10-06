@@ -183,7 +183,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
     );
   });
 
-  it('accepts bearer auth only on the opted-in user list and create routes', async () => {
+  it('accepts bearer auth only on an explicitly opted-in resource route and method', async () => {
     personalApiAuthMock.mockResolvedValueOnce({
       user: { id: 'kc-provider', roles: [], instanceId: 'tenant-1' },
       expiresAt: 1_800_000_000_000,
@@ -193,7 +193,9 @@ describe('auth-runtime withAuthenticatedUser', () => {
       headers: { authorization: 'Bearer personal-token' },
     });
 
-    const response = await withAuthenticatedUser(request, handler, { personalBearerMethod: 'GET' });
+    const response = await withAuthenticatedUser(request, handler, {
+      personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users' },
+    });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ id: 'kc-provider' });
@@ -217,7 +219,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
         },
       }),
       handler,
-      { personalBearerMethod: 'POST' }
+      { personalBearerRoute: { method: 'POST', path: '/api/v1/iam/users' } }
     );
 
     expect(response.status).toBe(401);
@@ -234,7 +236,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
         headers: { authorization: 'Bearer personal-token' },
       }),
       handler,
-      { personalBearerMethod: 'GET' }
+      { personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users' } }
     );
 
     expect(response.status).toBe(401);
@@ -253,11 +255,40 @@ describe('auth-runtime withAuthenticatedUser', () => {
         },
       }),
       handler,
-      { personalBearerMethod: 'GET' }
+      { personalBearerRoute: { method: 'GET', path: '/api/v1/iam/users' } }
     );
 
     expect(response.status).toBe(401);
     expect(handler).not.toHaveBeenCalled();
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+  });
+
+  it('matches dynamic resource IDs without allowing extra or encoded path segments', async () => {
+    personalApiAuthMock.mockResolvedValueOnce({ user: { id: 'provider', roles: [], instanceId: 'tenant-1' } });
+    const handler = vi.fn(() => new Response('ok'));
+    const response = await withAuthenticatedUser(
+      new Request('https://tenant.example/api/v1/iam/organizations/org-1/memberships/account-1', {
+        method: 'DELETE',
+        headers: { authorization: 'Bearer personal-token' },
+      }),
+      handler,
+      { personalBearerRoute: { method: 'DELETE', path: '/api/v1/iam/organizations/$organizationId/memberships/$accountId' } }
+    );
+    expect(response.status).toBe(200);
+    expect(handler).toHaveBeenCalledOnce();
+
+    personalApiAuthMock.mockReset();
+    const rejectedHandler = vi.fn(() => new Response('unexpected'));
+    const rejected = await withAuthenticatedUser(
+      new Request('https://tenant.example/api/v1/iam/organizations/org-1/memberships/account-1/extra', {
+        method: 'DELETE',
+        headers: { authorization: 'Bearer personal-token', cookie: 'sva_auth_session=valid-session' },
+      }),
+      rejectedHandler,
+      { personalBearerRoute: { method: 'DELETE', path: '/api/v1/iam/organizations/$organizationId/memberships/$accountId' } }
+    );
+    expect(rejected.status).toBe(401);
+    expect(rejectedHandler).not.toHaveBeenCalled();
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 

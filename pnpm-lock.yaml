@@ -1489,6 +1489,9 @@ importers:
       '@sva/instance-registry':
         specifier: workspace:*
         version: link:../instance-registry
+      openid-client:
+        specifier: ^6.8.4
+        version: 6.8.4
       undici:
         specifier: ^8.11.2
         version: 8.11.2

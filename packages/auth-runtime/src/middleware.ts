@@ -39,15 +39,24 @@ export type AuthenticatedRequestContext = {
 
 export type AuthenticatedUserOptions = {
   readonly skipEffectiveRoleHydration?: boolean;
-  readonly personalBearerMethod?: 'GET' | 'POST';
+  readonly personalBearerRoute?: Readonly<{
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    path: string;
+  }>;
 };
 
 const isPersonalApiBearerRoute = (
   request: Request,
-  allowedMethod: AuthenticatedUserOptions['personalBearerMethod']
+  route: AuthenticatedUserOptions['personalBearerRoute']
 ): boolean => {
-  const url = new URL(request.url);
-  return url.pathname === '/api/v1/iam/users' && allowedMethod === request.method;
+  if (!route || route.method !== request.method) return false;
+  const requestSegments = new URL(request.url).pathname.split('/').filter(Boolean);
+  const routeSegments = route.path.split('/').filter(Boolean);
+  return requestSegments.length === routeSegments.length && routeSegments.every((segment, index) => {
+    const candidate = requestSegments[index];
+    if (segment.startsWith('$')) return Boolean(candidate && /^[A-Za-z0-9_-]+$/u.test(candidate));
+    return candidate === segment;
+  });
 };
 
 type SessionResolution =
@@ -83,7 +92,7 @@ const createAuthenticatedContext = async (
   }
 
   if (request.headers.has('authorization')) {
-    if (!isPersonalApiBearerRoute(request, options.personalBearerMethod)) {
+    if (!isPersonalApiBearerRoute(request, options.personalBearerRoute)) {
       return {
         kind: 'response',
         response: createApiError(

@@ -239,24 +239,55 @@ keine Behauptung bereits bestandener Abnahme.
 
 ## Offene Implementierungsprüfung
 
-### Inventar für den ersten PR (Quellstand `db330c730`)
+### Inventar und Scope-Grenzen (Quellstand `c0ef34bd`)
 
-Die vorhandene Route-Map bietet `GET` und `POST /api/v1/iam/users` als
-kleinstes direkt prüfbares Read-/Write-Paar. Sie enthält außerdem Einzelrouten
-für Nutzeränderung, Deaktivierung, Löschung und Einladung, Rollen, Gruppen,
-Organisationen und Mitgliedschaften. Die Bulk-Routen, Profilrouten und
-redaktionellen Routen gehören nicht zur Freigabe des allgemeinen MCP-Zugangs.
-Die Instanzrouten besitzen bereits einen separaten Service-Token-Pfad; dieser
-Vertrag bleibt bestehen.
-Die allgemeine Schnittstellenverwaltung liegt dagegen derzeit in
-`apps/sva-studio-react/src/lib/interfaces-api.ts` als TanStack-Server-Funktionen
-für Liste, Upsert und Delete. In der IAM-HTTP-Route-Map gibt es dafür keine
-entsprechenden Verwaltungsrouten. Diese Lücke gehört erst zum dritten
-PR-Kandidaten.
+Die kanonische Pfadliste steht in `packages/auth-runtime/src/routes.ts`; die
+Methoden und Aufrufverträge sind in den IAM-API-Clients sowie den Handlern in
+`packages/iam-admin` und `packages/auth-runtime/src/iam-account-management`
+definiert. Für die allgemeine Tenant-Verwaltung ergibt sich folgende
+Routenmatrix. Alle Session-Aufrufe bleiben an den Tenant-Host, den angemeldeten
+Akteur, dessen effektive Rollen und den bestehenden Berechtigungspfad gebunden.
+
+| Bereich | Vorhandene Methoden und Pfade | Berechtigung und Schutzvertrag |
+| --- | --- | --- |
+| Instanzen | `GET/POST /api/v1/iam/instances`, `GET/PATCH /:instanceId`; `GET /draft-readiness`, `/keycloak-realms`, `/audit`, `/:id`, `/:id/audit`, `/:id/plugin-readiness`, `/:id/keycloak/status`, `/preflight`, `/runs/:runId`; `POST /:id/provisioning/retry`, `/plugin-readiness`, `/keycloak/plan`, `/execute`, `/rotate-secret`, `/reconcile`, `/tenant-iam/access-probe`, `/tenant-iam/roles/reconcile`, `/modules/assign`, `/modules/bootstrap-admin-structure`, `/modules/revoke`, `/modules/seed-iam-baseline`, `/activate`, `/suspend`, `/archive` | Plattformkontext und bestehender Registry-Service-Token sind getrennte Identitäten. Interaktive Registry-Mutationen verlangen die vorhandenen Plattformrollen; kritische Aktionen verwenden Fresh-Reauth. Der Maschinenpfad bleibt auf seine Service-Actions begrenzt. Die Liste ist keine Freigabe dieser Routen für persönliche Tenant-Tokens. |
+| Nutzer und Einladungen | `GET/POST /users`, `GET/PATCH/DELETE /users/:userId`; `GET /:userId/timeline`, `/keycloak-roles`; `PATCH /:userId/keycloak-roles`; `POST /:userId/deactivate`, `/send-password-setup-email`, `/reprovision-mainserver`; außerdem Sync- und Bulk-Routen | `iam.user.read`/`iam.user.write`; physisches Löschen zusätzlich `iam.accounts.delete`. Handler behalten Tenant-Akteur, Lifecycle, Action, Audit und Idempotenz bei. Mutationen über Browser-Session prüfen CSRF. Letzter aktiver `system_admin` kann nicht deaktiviert werden; `system_admin` muss vor dem Löschen entzogen werden. Die Setup-Einladung ist eine separate POST-Mutation; beim Anlegen gilt `sendPasswordSetupEmail !== true` als `not_requested`. Sync/Bulk und Self-Service-Routen bleiben außerhalb des persönlichen MCP-Scopes. |
+| Rollen | `GET/POST /roles`, `PATCH/DELETE /roles/:roleId`; `GET /permissions`, `/keycloak-roles` | `iam.role.read`/`iam.role.write`; Permission-IDs und -Scopes werden serverseitig validiert. Root-only-Rechte sowie geschützte Systemrollen umgehen den bestehenden Governance-/IAM-Pfad nicht. Browser-Mutationen prüfen CSRF. |
+| Gruppen | `GET/POST /groups`, `GET/PATCH/DELETE /groups/:groupId`; `POST/DELETE /:groupId/roles`, `POST/DELETE /:groupId/memberships` | `iam.role.read`/`iam.role.write` über den Group-Authorizer, Actor- und Tenant-Kontext sowie CSRF bei Browser-Mutationen. Auditierte Handler schützen Gruppenzuordnungen; die getrennte Legacy-Gruppenroute wird nicht als allgemeiner Ersatz geöffnet. |
+| Organisationen | `GET/POST /organizations`, `GET/PATCH/DELETE /organizations/:organizationId`; `POST /:organizationId/provision-mainserver`, `/memberships`; `PATCH/DELETE /:organizationId/memberships/:accountId` | `iam.org.read`/`iam.org.write`, Organisation-/Tenant-Hierarchie und serverseitiger Mutation-Authorizer; Browser-Mutationen prüfen CSRF. Löschen läuft über bestehende Restriktions- und Referenzprüfungen. Die Erstellung nutzt den vorhandenen Mainserver-Provisioning-Hook, sofern die Instanz angebunden ist; die dedizierte Provisionierung bleibt ebenfalls verfügbar. |
+| Schnittstellen | Im allgemeinen IAM-HTTP-Vertrag keine Listen-/Upsert-/Delete-Route. Vorhanden sind TanStack-Server-Funktionen in `apps/sva-studio-react/src/lib/interfaces-api.ts`. | Bestehende Session-/Berechtigungs- und Secret-Persistenzpfade wiederverwenden. HTTP-Vertrag und MCP-Aufruf gehören in Abschnitt 4; bis dahin gibt es keine persönliche MCP-Freigabe und keine Übergabe von Secret-Werten als MCP-Argumente. |
+
+Die Methoden sind gegen `iam-api.ts`, `iam-api-instances.ts`,
+`iam-api-instance-operations.ts`, `iam-api-organizations.ts` und
+`iam-api-roles-groups.ts` abgeglichen. Die Route-Map selbst benennt keine
+Methoden; maßgeblich für Berechtigungen, CSRF und Löschschutz sind deshalb die
+konkreten Handler, nicht der Pfad allein.
+
+Der erste persönliche API-PR optiert nur `GET` und `POST /api/v1/iam/users`
+ein. Der allgemeine Verwaltungsaufruf ergänzt danach ausschließlich die
+Einzelaktionen der Routenmatrix: Accounts lesen, ändern, deaktivieren,
+einladen und nach Schutzprüfung löschen; Rollen und Gruppen verwalten und
+zuweisen; Organisationen und Mitgliedschaften verwalten. Server-Handler opten
+jede Route samt Methode einzeln ein. Der MCP-Client beschränkt dieselben
+Aktionen im vorhandenen Aufrufpfad auf relative Pfade und sichere
+ID-Segmente. Bulk-, Self-Service-, Sync-, Mainserver-Provisionierungs-,
+Instanz-, Content- und Plugin-Routen bleiben gesperrt. Die kryptografisch
+authentisierten Requests überspringen nur Browser-CSRF; sie erhalten keine
+Fresh-Reauth-Evidenz. Die vorhandene Instanz-Serviceauthentisierung bleibt
+getrennt.
+
+Die aktive Change-Inventur bestätigt die Abgrenzung zum Tenant-Setup:
+`refactor-tenant-creation-readiness` ordnet den allgemeinen Erstellungs- und
+Aktivierungsablauf sowie die betroffenen Changes `automate-kassel-tenant-ingress`,
+`automate-keycloak-realm-baseline`, `add-plugin-tenant-lifecycle` und
+`fix-tenant-iam-doctor-evidence` ein. Dieses Vorhaben konsumiert deren
+Instanz-/Lifecycle-Verträge und führt keinen konkurrierenden Aktivierungs- oder
+Provisionierungsweg ein. Die fehlende Schnittstellen-HTTP-API bleibt als
+konkrete Lücke in Abschnitt 4 erfasst.
 
 Die IAM-Account-Handler laufen durch `withAuthenticatedIamHandler` und
-`withAuthenticatedUser`. Der erste persönliche Bearer-Pfad ist opt-in und
-auf `GET` und `POST /api/v1/iam/users` begrenzt. `withAuthenticatedUser`
+`withAuthenticatedUser`. Jeder persönliche Bearer-Pfad ist an der konkreten
+Handler-Route und HTTP-Methode opt-in gebunden. `withAuthenticatedUser`
 prüft weiter Tenant-Host, Account-Lifecycle und Legal-Text-Compliance. `sub`
 wird über denselben Session-Principal- und Effective-Role-Pfad hydriert; der
 vorhandene Handler erhält unverändert Action-, Rollen-, Tenant-, Audit- und

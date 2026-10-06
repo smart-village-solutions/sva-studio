@@ -99,6 +99,17 @@ describe('SSF V2 content administration', () => {
     expect(screen.getByDisplayValue('Arabic')).toBeTruthy();
   });
 
+  it('excludes staff languages whose primary tag is already used by a guest language', async () => {
+    const installation = fields('ssf-installation-content-v2.example.json');
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readSystem.mockResolvedValue({ installation, runtimeTemplate, supportedLanguages });
+    const { SsfSystemContentV2Page } = await import('../src/admin.content-v2-page.js');
+    render(<SsfSystemContentV2Page />);
+
+    const staffLocale = await screen.findByLabelText('v2.locale', { selector: '#ssf-v2-staff-locale' }) as HTMLSelectElement;
+    expect(Array.from(staffLocale.options).some((option) => option.value === 'en')).toBe(false);
+  });
+
   it('keeps text editing available and disables language changes without the catalog', async () => {
     const installation = fields('ssf-installation-content-v2.example.json');
     const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');

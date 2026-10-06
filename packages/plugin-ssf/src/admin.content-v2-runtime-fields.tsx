@@ -27,6 +27,10 @@ const primaryLanguage = (locale: string) => locale.split('-')[0]?.toLowerCase();
 
 const StaffFields = (props: Props) => {
   const pt = usePluginTranslation('ssf');
+  const guestLanguages = new Set(props.value.guestLanguages.map(({ locale }) => primaryLanguage(locale)));
+  const availableStaffLanguages = props.supportedLanguages
+    ? catalogLanguages(props.supportedLanguages).filter(([locale]) => !guestLanguages.has(primaryLanguage(locale)))
+    : [];
   return <StudioSection title={pt('v2.staff')}>
     <StudioField id="ssf-v2-staff-locale" label={pt('v2.locale')}>
       <Select id="ssf-v2-staff-locale" disabled={props.disabled || !props.supportedLanguages}
@@ -35,7 +39,7 @@ const StaffFields = (props: Props) => {
         {props.supportedLanguages && !props.supportedLanguages.languages[catalogLocale(props.value.staff.locale, props.supportedLanguages)]
           ? <option value={catalogLocale(props.value.staff.locale, props.supportedLanguages)}>{pt('v2.savedLanguageUnavailable')}</option>
           : null}
-        {props.supportedLanguages ? catalogLanguages(props.supportedLanguages).map(([locale, language]) =>
+        {props.supportedLanguages ? availableStaffLanguages.map(([locale, language]) =>
           <option key={locale} value={locale}>{language.name} ({language.native}) · {locale}</option>) :
           <option value={props.value.staff.locale}>{props.value.staff.locale}</option>}
       </Select>

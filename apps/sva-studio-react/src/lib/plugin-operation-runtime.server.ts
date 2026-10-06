@@ -7,25 +7,14 @@ import {
 } from '@sva/auth-runtime/server';
 import { type PluginCatalogEntry, type PluginManifest } from '@sva/plugin-sdk';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
-import {
-  createPluginBuildRegistries,
-  resolvePluginModuleFromRegistry,
-} from './plugin-build-registry.js';
-import {
-  createStudioPluginCatalogReport,
-  getPackagePluginModuleCandidates,
-  getWorkspacePluginModuleCandidates,
-  type StudioPluginCatalogConfigEntry,
-} from './plugin-catalog-loader.js';
+import { createPluginBuildRegistries } from './plugin-build-registry.js';
+import { studioServerPluginCatalogReport } from './plugin-catalog.server.js';
 import {
   nodeJobModuleLoaders,
   nodeManifestModules,
-  nodePluginModuleLoaders,
   workspaceJobModuleLoaders,
   workspaceManifestModules,
-  workspacePluginModuleLoaders,
 } from '#studio-plugin-operation-inputs';
-import { pluginCatalogConfig } from '#studio-plugin-catalog-inputs';
 import { createNodemailerMailDispatcher } from '@sva/mail-runtime';
 import { protectField, revealField } from '@sva/auth-runtime/server';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
@@ -66,8 +55,6 @@ const cancellablePluginJobTypeIds = new Set<string>([
 const privilegedJobTypeId = wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase;
 
 const {
-  workspaceManifestRegistry,
-  nodeManifestRegistry,
   workspacePluginRegistry: workspaceJobModuleRegistry,
   nodePluginRegistry: nodeJobModuleRegistry,
 } = createPluginBuildRegistries({
@@ -76,53 +63,7 @@ const {
   nodeManifestModules,
   nodePluginModuleLoaders: nodeJobModuleLoaders,
 });
-const {
-  workspacePluginRegistry: workspaceBrowserPluginRegistry,
-  nodePluginRegistry: nodeBrowserPluginRegistry,
-} = createPluginBuildRegistries({
-  workspaceManifestModules,
-  workspacePluginModuleLoaders,
-  nodeManifestModules,
-  nodePluginModuleLoaders,
-});
-
-const studioPluginCatalogConfigEntries =
-  pluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
-const resolveStudioPluginManifest = (
-  entry: StudioPluginCatalogConfigEntry
-): PluginManifest | undefined =>
-  entry.sourceType === 'workspace'
-    ? workspaceManifestRegistry.get(entry.sourceRef)
-    : nodeManifestRegistry.get(entry.sourceRef);
-
-const resolveWorkspacePluginModule = (
-  entry: PluginCatalogEntry,
-  manifest: PluginManifest
-): Promise<Record<string, unknown> | undefined> =>
-  resolvePluginModuleFromRegistry(
-    workspaceBrowserPluginRegistry,
-    entry.sourceRef,
-    getWorkspacePluginModuleCandidates(manifest)
-  );
-
-const resolveNodePluginModule = (
-  entry: PluginCatalogEntry,
-  manifest: PluginManifest
-): Promise<Record<string, unknown> | undefined> =>
-  resolvePluginModuleFromRegistry(
-    nodeBrowserPluginRegistry,
-    entry.sourceRef,
-    getPackagePluginModuleCandidates(manifest)
-  );
-
-const studioPluginCatalogReport = await createStudioPluginCatalogReport({
-  catalogConfig: studioPluginCatalogConfigEntries,
-  resolveManifest: resolveStudioPluginManifest,
-  resolvePluginModule: (entry, manifest) =>
-    entry.sourceType === 'workspace'
-      ? resolveWorkspacePluginModule(entry, manifest)
-      : resolveNodePluginModule(entry, manifest),
-});
+const studioPluginCatalogReport = studioServerPluginCatalogReport;
 const studioDeclaredPluginOperationJobTypeIds =
   studioPluginCatalogReport.snapshot.registry.jobTypes.map((jobType) => jobType.jobTypeId);
 const createWasteManagementHostOwnedJobModuleFactory: PluginJobModuleFactory = (runtime) =>

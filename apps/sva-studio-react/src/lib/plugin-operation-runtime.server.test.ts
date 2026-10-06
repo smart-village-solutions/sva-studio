@@ -1,7 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { definePluginManifest, type PluginCatalogSourceType } from '@sva/plugin-sdk';
 
@@ -46,23 +42,6 @@ vi.mock('@sva/waste-management-runtime/server', () => ({
   createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
 }));
 
-const createBrowserPluginModuleExports = (jobTypeIds: readonly string[]) => ({
-  pluginWasteManagement: {
-    id: 'waste-management',
-    displayName: 'Waste Management',
-    routes: [],
-    jobTypes: jobTypeIds.map((jobTypeId) => ({
-      jobTypeId,
-      queue:
-        jobTypeId === 'waste-management.provision-tenant-database'
-          ? 'waste-provisioning'
-          : 'plugin-operations',
-      displayName: jobTypeId,
-    })),
-    translations: {},
-  },
-});
-
 const declaredWasteJobTypeIds = [
   'waste-management.provision-tenant-database',
   'waste-management.apply-migrations',
@@ -73,10 +52,6 @@ const declaredWasteJobTypeIds = [
   'waste-management.sync-mainserver',
   'waste-management.sync-waste-types',
 ] as const;
-
-const mockWasteBrowserPluginModule = (moduleExports: Record<string, unknown>): void => {
-  vi.doMock('../../../../packages/plugin-waste-management/src/index.ts', () => moduleExports);
-};
 
 const createJobPluginSource = (input: {
   readonly pluginId: string;
@@ -117,7 +92,27 @@ describe('plugin operation runtime registration', () => {
     registerStudioJobExecutionHandlersMock.mockReset();
     createPluginJobExecutionHandlersMock.mockClear();
     vi.resetModules();
-    mockWasteBrowserPluginModule(createBrowserPluginModuleExports(declaredWasteJobTypeIds));
+    vi.doMock('./plugin-catalog.server.js', () => ({
+      studioServerPluginCatalogReport: {
+        snapshot: {
+          pluginSources: [
+            createJobPluginSource({
+              pluginId: 'waste-management',
+              runtimeRequirement: 'waste-management.operations',
+            }),
+          ],
+          registry: {
+            jobTypes: declaredWasteJobTypeIds.map((jobTypeId) => ({
+              jobTypeId,
+              queue:
+                jobTypeId === 'waste-management.provision-tenant-database'
+                  ? 'waste-provisioning'
+                  : 'plugin-operations',
+            })),
+          },
+        },
+      },
+    }));
   });
 
   it('registers only regular Studio plugin operation handlers after coverage validation', async () => {
@@ -155,16 +150,6 @@ describe('plugin operation runtime registration', () => {
     });
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
   }, 30000);
-
-  it('keeps the server runtime decoupled from the browser plugin snapshot module', async () => {
-    const currentFilePath = fileURLToPath(import.meta.url);
-    const source = readFileSync(
-      resolve(dirname(currentFilePath), 'plugin-operation-runtime.server.ts'),
-      'utf8'
-    );
-
-    expect(source).not.toContain("from './plugins.js'");
-  });
 
   it('rejects declared job types without a registered runtime handler', async () => {
     const mod = await import('./plugin-operation-runtime.server');

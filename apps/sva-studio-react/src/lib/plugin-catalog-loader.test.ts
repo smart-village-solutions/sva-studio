@@ -6,7 +6,9 @@ import {
   createStudioPluginCatalogSeed,
   createStudioPluginCatalogReport,
   extractPluginDefinition,
+  getPackagePluginDescriptorCandidates,
   getPackagePluginModuleCandidates,
+  getWorkspacePluginDescriptorCandidates,
   getWorkspacePluginModuleCandidates,
   studioHostPluginPlatform,
 } from './plugin-catalog-loader.js';
@@ -25,7 +27,7 @@ describe('plugin catalog loader', () => {
       version: '0.0.1',
       sdkVersion: '0.0.1',
       hostCompatibility: { studioVersionRange: '^0.0.1' },
-      entryPoints: { browser: './dist/index.js' },
+      entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
     });
 
     expect(getWorkspacePluginModuleCandidates(manifest)).toEqual([
@@ -38,6 +40,144 @@ describe('plugin catalog loader', () => {
       'src/index.ts',
       'src/index.tsx',
     ]);
+    expect(getWorkspacePluginDescriptorCandidates(manifest)).toEqual([
+      'dist/plugin.js',
+      'src/plugin.ts',
+      'src/plugin.tsx',
+    ]);
+    expect(getPackagePluginDescriptorCandidates(manifest)).toEqual(['dist/plugin.js']);
+
+    const withoutDescriptor = definePluginManifest({
+      ...manifest,
+      entryPoints: { browser: './dist/index.js' },
+    });
+    expect(getWorkspacePluginDescriptorCandidates(withoutDescriptor)).toEqual([]);
+    expect(getPackagePluginDescriptorCandidates(withoutDescriptor)).toEqual([]);
+  });
+
+  it('binds a browser component to a validated descriptor route', async () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
+    });
+    const descriptor = {
+      id: 'news',
+      displayName: 'News',
+      routes: [
+        {
+          id: 'news.home',
+          path: '/plugins/news',
+          documentation: { kind: 'page', id: 'news.home', pageType: 'overview' },
+        },
+      ],
+    };
+    const component = () => null;
+    const report = await createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'news',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'packages/plugin-news',
+        },
+      ],
+      resolveManifest: () => manifest,
+      resolvePluginModule: async () => ({ descriptor }),
+      resolveBrowserModule: async () => ({
+        plugin: { ...descriptor, routes: [{ ...descriptor.routes[0], component }] },
+      }),
+    });
+
+    expect(report.issues).toEqual([]);
+    expect(report.snapshot.registry.pluginRegistry.get('news')?.routes[0]?.component).toBe(
+      component
+    );
+  });
+
+  it('rejects a browser route that does not match the descriptor', async () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
+    });
+    await expect(
+      createStudioPluginCatalogReport({
+        catalogConfig: [
+          {
+            pluginId: 'news',
+            sourceType: 'workspace',
+            enabled: true,
+            sourceRef: 'packages/plugin-news',
+          },
+        ],
+        resolveManifest: () => manifest,
+        resolvePluginModule: async () => ({
+          descriptor: {
+            id: 'news',
+            displayName: 'News',
+            routes: [
+              {
+                id: 'news.home',
+                path: '/plugins/news',
+                documentation: { kind: 'page', id: 'news.home', pageType: 'overview' },
+              },
+            ],
+          },
+        }),
+        resolveBrowserModule: async () => ({
+          plugin: {
+            id: 'news',
+            displayName: 'News',
+            routes: [{ id: 'other.home', path: '/plugins/news', component: () => null }],
+          },
+        }),
+      })
+    ).rejects.toThrow('plugin_browser_descriptor_mismatch:news');
+  });
+
+  it('rejects a browser route without a component binding', async () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
+    });
+    const descriptor = {
+      id: 'news',
+      displayName: 'News',
+      routes: [{ id: 'news.home', path: '/plugins/news' }],
+    };
+
+    await expect(
+      createStudioPluginCatalogReport({
+        catalogConfig: [
+          {
+            pluginId: 'news',
+            sourceType: 'workspace',
+            enabled: true,
+            sourceRef: 'packages/plugin-news',
+          },
+        ],
+        resolveManifest: () => manifest,
+        resolvePluginModule: async () => ({ descriptor }),
+        resolveBrowserModule: async () => ({ plugin: descriptor }),
+      })
+    ).rejects.toThrow('plugin_browser_route_binding_mismatch:news:news.home');
   });
 
   it('builds catalog seeds from config and fails closed on unresolved manifests', () => {
@@ -224,6 +364,56 @@ describe('plugin catalog loader', () => {
 
     expect(report.snapshot.registry.plugins).toHaveLength(0);
     expect(resolvePluginModule).not.toHaveBeenCalled();
+  });
+
+  it('keeps incompatible and missing descriptors out of all runtime registries', async () => {
+    const incompatible = definePluginManifest({
+      pluginId: 'news',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^999.0.0' },
+      entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
+    });
+    const compatible = definePluginManifest({
+      ...incompatible,
+      pluginId: 'events',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+    });
+    const resolvePluginModule = vi.fn(async () => undefined);
+    const resolveBrowserModule = vi.fn(async () => undefined);
+    const report = await createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'news',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'packages/plugin-news',
+        },
+        {
+          pluginId: 'events',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'packages/plugin-events',
+        },
+      ],
+      resolveManifest: (entry) => (entry.pluginId === 'news' ? incompatible : compatible),
+      resolvePluginModule,
+      resolveBrowserModule,
+    });
+
+    expect(resolvePluginModule).toHaveBeenCalledTimes(1);
+    expect(resolveBrowserModule).not.toHaveBeenCalled();
+    expect(report.issues.map(({ code }) => code)).toEqual([
+      'plugin_incompatible_studio_version',
+      'plugin_module_missing',
+    ]);
+    expect(report.snapshot.registry.plugins).toEqual([]);
+    expect(report.snapshot.registry.pluginModuleIamContracts).toEqual([]);
+    expect(report.snapshot.registry.jobTypes).toEqual([]);
+    expect(report.snapshot.registry.tenantLifecycles).toEqual([]);
   });
 
   it('extracts plugin definitions from named exports only when they match the public contract', () => {

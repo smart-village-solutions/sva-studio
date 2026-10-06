@@ -14,14 +14,14 @@ const pluginModuleIamContract = {
   permissionIds: ['news.read'],
   systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
 };
-const hostModuleIamContract = {
+const hostModuleIamContract = vi.hoisted(() => ({
   moduleId: 'media',
   namespace: 'media',
   ownerPluginId: 'studio-core',
   permissionIds: ['media.read'],
   tenantBootstrapRoles: [],
   rootSystemRoles: [],
-};
+}));
 const snapshot = {
   revision: 'catalog-1',
   modules: [
@@ -40,9 +40,12 @@ const tenantLifecycle = {
   readinessChecks: [],
 };
 
-vi.mock('./plugins', () => ({
+vi.mock('@sva/studio-module-iam', () => ({
   studioHostModuleIamContracts: [hostModuleIamContract],
-  studioPluginSnapshot: {
+}));
+
+vi.mock('./plugin-catalog.server.js', () => ({
+  studioServerPluginSnapshot: {
     pluginSources,
     tenantActivationPolicySnapshot: snapshot,
     registry: {

@@ -14,7 +14,7 @@ import {
   createPluginBuildRegistries,
   resolvePluginModuleFromRegistry,
 } from './plugin-build-registry.js';
-import { studioPluginSnapshot } from './plugins.js';
+import { studioServerPluginSnapshot } from './plugin-catalog.server.js';
 import { createStudioSsfRuntimeServiceAccess } from '#studio-ssf-runtime-service-access';
 import {
   nodeManifestModules,
@@ -106,10 +106,10 @@ export const createStudioPluginServerHandlerDispatcher = async (
   } = {}
 ): Promise<(request: Request) => Promise<Response | null>> => {
   const handlers = await createPluginServerExecutionHandlersFromSnapshot({
-    pluginSources: studioPluginSnapshot.pluginSources as readonly StudioPluginServerSource[],
+    pluginSources: studioServerPluginSnapshot.pluginSources as readonly StudioPluginServerSource[],
   });
   const dispatchPlugin = createPluginServerHandlerDispatcher({
-    descriptors: studioPluginSnapshot.registry.pluginServerHandlerRegistry,
+    descriptors: studioServerPluginSnapshot.registry.pluginServerHandlerRegistry,
     handlers,
     reservedPaths: authRoutePaths,
     dependencies: {

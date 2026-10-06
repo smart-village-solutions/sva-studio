@@ -130,7 +130,16 @@ Guard-Status auf aktuellem Stand:
 
 ## Pflicht-Export
 
-Jedes Plugin exportiert genau ein `PluginDefinition`-Objekt.
+Jedes Plugin stellt einen serverfähig importierbaren Descriptor bereit. Der
+Manifest-Eintrag `entryPoints.descriptor` verweist auf dieses Modul. Routen im
+`PluginDescriptor` tragen Metadaten, aber keine Browser-Komponente. Der
+Browser-Entry-Point ergänzt die Komponenten über die validierten Route-IDs zu
+einer `PluginDefinition`. Server, Aktivierungsbootstrap und Job-Runtime laden
+den Descriptor und werten den Browser-Entry-Point nicht aus.
+
+Standard-Content-Plugins ohne eigene Fachseite können ihre vorhandene
+Definition als Descriptor verwenden. Plugins mit Fachseiten trennen
+`src/descriptor.ts` und den Browser-Entry-Point.
 
 ```ts
 import type { PluginDefinition } from '@sva/plugin-sdk';
@@ -162,13 +171,14 @@ Jedes publishbare Plugin liefert ein serialisierbares Manifest:
     "requiredCapabilities": ["routing", "navigation", "iam"]
   },
   "entryPoints": {
+    "descriptor": "./dist/plugin.js",
     "browser": "./dist/index.js",
     "server": "./dist/server.js"
   }
 }
 ```
 
-Der `server`-Entry ist nur erforderlich, wenn `PluginDefinition.serverHandlers`
+Der `server`-Entry ist nur erforderlich, wenn `PluginDescriptor.serverHandlers`
 deklariert werden. Er darf nicht aus dem Browser-Entry re-exportiert werden.
 
 Der Host bindet Plugins über `apps/sva-studio-react/plugin-catalog.json` ein. Ein Katalogeintrag enthält nur Aktivierungs- und Quellinformationen; das Manifest wird anschließend aus dem referenzierten Package gelesen.
@@ -209,7 +219,9 @@ Lokal verlinktes Plugin außerhalb des Monorepos:
 1. Package lokal bauen, sodass `dist/` und `plugin.manifest.json` vorhanden sind.
 2. Package per `pnpm link` oder äquivalent nach `node_modules` verlinken.
 3. Katalogeintrag mit `sourceType: "linked-package"` und `sourceRef` als Package-Name ergänzen.
-4. Studio neu starten; der Host lädt Manifest und Browser-Entry aus dem verlinkten Package.
+4. Studio neu starten; der Host lädt Manifest und Descriptor-Entry, im Browser
+   zusätzlich den Browser-Entry, aus dem verlinkten Package. Die Auflösung
+   beliebiger gepackter Entry-Point-Pfade ist Gegenstand von #1512.
 
 ## Publish- und Installationsworkflow
 

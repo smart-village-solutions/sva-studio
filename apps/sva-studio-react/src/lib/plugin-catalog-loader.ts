@@ -6,6 +6,7 @@ import {
   type PluginCatalogEntry,
   type PluginCatalogIssue,
   type PluginCatalogSourceType,
+  type PluginDescriptor,
   type PluginDefinition,
   type PluginManifest,
   type PluginPlatformHost,
@@ -29,6 +30,10 @@ type StudioPluginCatalogLoaderInput = {
   readonly catalogConfig: readonly StudioPluginCatalogConfigEntry[];
   readonly resolveManifest: (entry: StudioPluginCatalogConfigEntry) => PluginManifest | undefined;
   readonly resolvePluginModule: (
+    entry: PluginCatalogEntry,
+    manifest: PluginManifest
+  ) => Promise<PluginModuleExports | undefined>;
+  readonly resolveBrowserModule?: (
     entry: PluginCatalogEntry,
     manifest: PluginManifest
   ) => Promise<PluginModuleExports | undefined>;
@@ -66,7 +71,10 @@ const pushUnique = (target: string[], value: string): void => {
   }
 };
 
-const createWorkspaceSourceFallbacks = (entryPath: string, defaults: readonly string[]): readonly string[] => {
+const createWorkspaceSourceFallbacks = (
+  entryPath: string,
+  defaults: readonly string[]
+): readonly string[] => {
   const candidates: string[] = [];
   pushUnique(candidates, entryPath);
 
@@ -108,15 +116,33 @@ export const getPackagePluginModuleCandidates = (manifest: PluginManifest): read
   return candidates;
 };
 
+export const getWorkspacePluginDescriptorCandidates = (
+  manifest: PluginManifest
+): readonly string[] => {
+  const entry = normalizeEntryPath(manifest.entryPoints.descriptor ?? '');
+  return entry ? createWorkspaceSourceFallbacks(entry, []) : [];
+};
+
+export const getPackagePluginDescriptorCandidates = (
+  manifest: PluginManifest
+): readonly string[] => {
+  const entry = normalizeEntryPath(manifest.entryPoints.descriptor ?? '');
+  return entry ? [entry] : [];
+};
+
 const isReadonlyRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
-const isPluginDefinitionCandidate = (value: unknown): value is PluginDefinition => {
+const isPluginDefinitionCandidate = (value: unknown): value is PluginDescriptor => {
   if (!isReadonlyRecord(value)) {
     return false;
   }
 
-  if (typeof value.id !== 'string' || typeof value.displayName !== 'string' || !Array.isArray(value.routes)) {
+  if (
+    typeof value.id !== 'string' ||
+    typeof value.displayName !== 'string' ||
+    !Array.isArray(value.routes)
+  ) {
     return false;
   }
 
@@ -134,7 +160,9 @@ const isPluginDefinitionCandidate = (value: unknown): value is PluginDefinition 
   );
 };
 
-export const extractPluginDefinition = (exportsObject: PluginModuleExports): PluginDefinition | undefined => {
+export const extractPluginDefinition = (
+  exportsObject: PluginModuleExports
+): PluginDescriptor | undefined => {
   for (const value of Object.values(exportsObject)) {
     if (isPluginDefinitionCandidate(value)) {
       return value;
@@ -187,7 +215,37 @@ export const createStudioPluginCatalogReport = async (
     host: studioHostPluginPlatform,
     resolvePlugin: async (entry) => {
       const exportsObject = await input.resolvePluginModule(entry, entry.manifest);
-      return exportsObject ? extractPluginDefinition(exportsObject) : undefined;
+      const descriptor = exportsObject ? extractPluginDefinition(exportsObject) : undefined;
+      if (!descriptor) return undefined;
+      if (!input.resolveBrowserModule) {
+        return {
+          ...descriptor,
+          routes: descriptor.routes.map((route) => ({ ...route, component: () => null })),
+        } satisfies PluginDefinition;
+      }
+
+      const browserExports = await input.resolveBrowserModule(entry, entry.manifest);
+      const browserPlugin = browserExports ? extractPluginDefinition(browserExports) : undefined;
+      if (!browserPlugin) return undefined;
+      if (JSON.stringify(browserPlugin) !== JSON.stringify(descriptor)) {
+        throw new Error(`plugin_browser_descriptor_mismatch:${entry.pluginId}`);
+      }
+      const browserRoutes = new Map(browserPlugin.routes.map((route) => [route.id, route]));
+      if (browserRoutes.size !== descriptor.routes.length) {
+        throw new Error(`plugin_browser_route_binding_mismatch:${entry.pluginId}`);
+      }
+      return {
+        ...descriptor,
+        routes: descriptor.routes.map((route) => {
+          const component = (
+            browserRoutes.get(route.id) as Partial<PluginDefinition['routes'][number]> | undefined
+          )?.component;
+          if (typeof component !== 'function') {
+            throw new Error(`plugin_browser_route_binding_mismatch:${entry.pluginId}:${route.id}`);
+          }
+          return { ...route, component };
+        }),
+      };
     },
     adminResources: input.adminResources,
   });

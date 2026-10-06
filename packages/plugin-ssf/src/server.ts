@@ -1,7 +1,7 @@
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 
 import type { SsfAuthorizationProjectionRuntime } from './authorization-projection-runtime.js';
-import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID, ssfPlugin } from './plugin.js';
+import { SSF_AUTHORIZATION_RECONCILE_JOB_TYPE_ID, ssfPlugin } from './descriptor.js';
 
 export { ssfPlugin };
 

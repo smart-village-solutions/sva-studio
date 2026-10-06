@@ -26,6 +26,8 @@ export type PluginRouteDefinition = {
   readonly component: (...args: never[]) => unknown;
 };
 
+export type PluginRouteDescriptor = Omit<PluginRouteDefinition, 'component'>;
+
 export type PluginServerHandlerDefinition = {
   readonly id: string;
   readonly path: string;
@@ -131,4 +133,8 @@ export type PluginDefinition = {
   readonly tenantLifecycle?: PluginTenantLifecycleDefinition;
   readonly contentHistory?: PluginContentHistoryContract;
   readonly translations?: PluginTranslations;
+};
+
+export type PluginDescriptor = Omit<PluginDefinition, 'routes'> & {
+  readonly routes: readonly PluginRouteDescriptor[];
 };

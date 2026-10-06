@@ -513,6 +513,9 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - klassifiziert Content-History als hostgeführt, fachgeführt oder explizit nicht erforderlich und blockiert bearbeitbare Contributions ohne hostgeführtes Binding vor der Registry-Veröffentlichung
 2. `apps/sva-studio-react/plugin-catalog.json` und `apps/sva-studio-react/src/lib/plugins.ts`
    - registrieren `pluginCategories`, `pluginNews`, `pluginEvents`, `pluginPoi` und `pluginWasteManagement` statisch im Host und materialisieren daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
+   - laden für Server-Dispatch, Aktivierungsbootstrap und Jobs den gemeinsamen
+     Descriptor-Katalog über `plugin-catalog.server.ts`; Browser-Views werden
+     erst im Client über validierte Route-IDs gebunden
 3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-categories/src/*`, `packages/plugin-news/src/*`, `packages/plugin-events/src/*`, `packages/plugin-poi/src/*`

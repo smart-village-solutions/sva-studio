@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'node:url';
 
 import { configureInstanceRegistryPluginRuntimeSnapshot } from '@sva/auth-runtime/server';
-import { createPluginSnapshot } from '@sva/plugin-sdk';
-import { ssfPlugin } from '@sva/plugin-ssf';
+import { pluginSdkVersion, resolvePluginCatalog } from '@sva/plugin-sdk';
+import { ssfPlugin } from '@sva/plugin-ssf/descriptor';
 import {
   SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
   readSsfLoginClientRequirement,
@@ -28,10 +28,33 @@ export const runSsfProvisioningWorker = async (
     await runKeycloakProvisioningWorkerLoop();
   }
 ) => {
-  const snapshot = createPluginSnapshot({
+  const resolved = resolvePluginCatalog({
     catalog: [catalogEntry],
-    loadedPlugins: [{ catalogEntry, plugin: ssfPlugin }],
+    host: {
+      studioVersion: '0.0.1',
+      sdkVersion: pluginSdkVersion,
+      capabilities: [
+        'routing',
+        'navigation',
+        'iam',
+        'audit',
+        'jobs',
+        'imports',
+        'exports',
+        'server',
+      ],
+    },
+    resolvePlugin: () => ({
+      ...ssfPlugin,
+      routes: ssfPlugin.routes.map((route) => ({ ...route, component: () => null })),
+    }),
   });
+  if (resolved.activeCatalog.length !== 1) {
+    throw new Error(
+      `ssf_plugin_catalog_rejected:${resolved.issues.map((issue) => issue.code).join(',')}`
+    );
+  }
+  const { snapshot } = resolved;
   configureInstanceRegistryPluginRuntimeSnapshot({
     activationPolicies: snapshot.tenantActivationPolicySnapshot,
     moduleIamContracts: [

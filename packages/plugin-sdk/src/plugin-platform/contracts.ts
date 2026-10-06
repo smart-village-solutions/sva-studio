@@ -29,6 +29,7 @@ export type PluginManifest = {
     readonly requiredCapabilities?: readonly PluginManifestCapability[];
   };
   readonly entryPoints: {
+    readonly descriptor?: string;
     readonly browser?: string;
     readonly server?: string;
     readonly jobs?: string;

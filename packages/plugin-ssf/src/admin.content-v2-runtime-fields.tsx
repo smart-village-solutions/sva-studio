@@ -3,7 +3,7 @@ import {
   Button, Checkbox, Input, Select, StudioField, StudioSection,
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@sva/studio-ui-react';
-import { useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 
 import {
   SsfV2Field as Field, type SsfV2EditorProps, updateSsfV2Field,
@@ -101,18 +101,27 @@ const AddLanguage = (props: Props) => {
   </div>;
 };
 
-const LanguageToggle = ({ props, language }: { props: Props; language: Language }) => {
+const LanguageToggle = ({ props, language, hiddenLanguages }: {
+  props: Props; language: Language; hiddenLanguages: RefObject<Map<string, Language>>;
+}) => {
   const inherited = props.inherited;
   if (!inherited) return null;
   const active = props.value.guestLanguages.some((entry) => entry.locale === language.locale);
-  const toggle = (enabled: boolean) => props.onChange({
-    ...props.value,
-    guestLanguages: enabled
-      ? inherited.guestLanguages.filter((entry) => entry.locale === language.locale ||
-        props.value.guestLanguages.some((current) => current.locale === entry.locale))
-        .map((entry) => props.value.guestLanguages.find((current) => current.locale === entry.locale) ?? entry)
-      : props.value.guestLanguages.filter((entry) => entry.locale !== language.locale),
-  });
+  const toggle = (enabled: boolean) => {
+    if (!enabled) {
+      const current = props.value.guestLanguages.find((entry) => entry.locale === language.locale);
+      if (current) hiddenLanguages.current.set(language.locale, current);
+    }
+    props.onChange({
+      ...props.value,
+      guestLanguages: enabled
+        ? inherited.guestLanguages.filter((entry) => entry.locale === language.locale ||
+          props.value.guestLanguages.some((current) => current.locale === entry.locale))
+          .map((entry) => props.value.guestLanguages.find((current) => current.locale === entry.locale) ??
+            hiddenLanguages.current.get(entry.locale) ?? entry)
+        : props.value.guestLanguages.filter((entry) => entry.locale !== language.locale),
+    });
+  };
   return <label className="flex items-center gap-2">
     <Checkbox checked={active} disabled={props.disabled || (active && props.value.guestLanguages.length === 1)}
       onChange={(event) => toggle(event.currentTarget.checked)} />
@@ -159,9 +168,11 @@ const LanguageTab = ({ props, language, index }: { props: Props; language: Langu
 
 const GuestLanguages = (props: Props) => {
   const pt = usePluginTranslation('ssf');
+  const hiddenLanguages = useRef(new Map<string, Language>());
   return <StudioSection title={pt('v2.guestLanguages')}>
     {props.inherited
-      ? props.inherited.guestLanguages.map((language) => <LanguageToggle key={language.locale} props={props} language={language} />)
+      ? props.inherited.guestLanguages.map((language) => <LanguageToggle key={language.locale} props={props}
+        language={language} hiddenLanguages={hiddenLanguages} />)
       : <AddLanguage {...props} />}
     <Tabs key={props.value.guestLanguages[0]?.locale ?? 'empty'} defaultValue={props.value.guestLanguages[0]?.locale ?? ''}>
       <TabsList aria-label={pt('v2.guestLanguages')}>

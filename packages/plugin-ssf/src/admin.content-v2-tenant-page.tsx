@@ -47,6 +47,7 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
   const pt = usePluginTranslation('ssf');
   const [saved, setSaved] = useState<SsfTenantContentV2View | null>(null);
   const [draft, setDraft] = useState<SsfRuntimeContentV2Fields | null>(null);
+  const [editorEpoch, setEditorEpoch] = useState(0);
   const [status, setStatus] = useState<Status>('loading');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const load = useCallback(async () => {
@@ -54,6 +55,7 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
       const next = await readSsfTenantContentV2();
       setSaved(next);
       setDraft(draftFromView(next));
+      setEditorEpoch((current) => current + 1);
       setStatus('ready');
     } catch { setStatus('error'); }
   }, []);
@@ -72,6 +74,7 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
       const next = await writeSsfTenantContentV2((overrides ?? {}) as Record<string, unknown>);
       setSaved(next);
       setDraft(draftFromView(next));
+      setEditorEpoch((current) => current + 1);
       setStatus('saved');
     } catch { setStatus('error'); }
   };
@@ -82,10 +85,11 @@ export const SsfTenantContentV2Page = ({ canManage }: { canManage: boolean }) =>
   if (!saved?.runtimeTemplate || !draft) {
     return <StudioSection title={pt('v2.template')}><p>{pt('v2.notConfigured')}</p></StudioSection>;
   }
-  return <TenantEditor saved={{ ...saved, runtimeTemplate: saved.runtimeTemplate }} draft={draft}
+  return <TenantEditor key={editorEpoch} saved={{ ...saved, runtimeTemplate: saved.runtimeTemplate }} draft={draft}
     status={status} errors={errors} canManage={canManage} onChange={setDraft}
     onSave={() => void save()} onDiscard={() => {
       setDraft(draftFromView(saved));
+      setEditorEpoch((current) => current + 1);
       setErrors({});
       setStatus('ready');
     }} />;

@@ -10,6 +10,10 @@
     "dev/**/*.ts",
     "dev/**/*.mjs",
     "deploy/**/*.mjs",
+    ".opencode/skills/monitor-ci/scripts/ci-poll-decide.mjs",
+    ".opencode/skills/monitor-ci/scripts/ci-state-update.mjs",
+    "apps/sva-studio-react/src/lib/ssf-provisioning-worker.mjs",
+    "scripts/debug/otel/test-otel-phase1.mts",
     "apps/*/vitest*.config.ts",
     "packages/*/bench/**/*.ts",
     "apps/public-waste-calendar-web/src/server.ts",
@@ -18,6 +22,7 @@
     "scripts/ci/keycloak-verify-mock.cjs"
   ],
   "dynamicallyLoaded": [
+    "apps/sva-studio-react/src/lib/ssf-admin-login-directory.server.ts",
     "tooling/testing/src/msw/browser.ts",
     "apps/public-waste-calendar-web/src/lib/public-waste-demo-runtime.ts",
     "apps/sva-studio-react/src/routes/__debug/phase1-test/-index.ts"
@@ -32,7 +37,15 @@
     "deploy/keycloak/themes/**",
     "packages/plugin-example/**",
     "tooling/quality/**",
+    "archive/fallow-unused/**",
     ".agents/**"
+  ],
+  "ignoreDependencies": [
+    "@eslint/js",
+    "@nx/vitest",
+    "sanitize-html",
+    "typescript-eslint",
+    "tooling-testing"
   ],
   "boundaries": {
     "zones": [

@@ -29,7 +29,7 @@ const fail = (code) => {
   throw new Error(code);
 };
 
-const verifyChunkProvenance = (distribution, provenance, files) => {
+const verifyChunkProvenance = (distribution, provenance, files, installedPlugins) => {
   if (
     provenance?.schemaVersion !== 1 ||
     provenance.distribution !== distribution ||
@@ -38,7 +38,11 @@ const verifyChunkProvenance = (distribution, provenance, files) => {
   )
     fail('chunk_provenance_manifest_invalid');
   if (!Array.isArray(files) || files.length === 0) fail('chunk_provenance_file_inventory_invalid');
-  const allowed = new Set(['plugin-sdk', ...pluginIds[distribution].map((id) => `plugin-${id}`)]);
+  const allowed = new Set([
+    'plugin-sdk',
+    ...pluginIds[distribution].map((id) => `plugin-${id}`),
+    ...installedPlugins.map((entry) => entry.sourceRef),
+  ]);
   const excluded = new Set(excludedWorkspacePackages[distribution]);
   const paths = new Set();
   const actual = new Map();
@@ -65,7 +69,7 @@ const verifyChunkProvenance = (distribution, provenance, files) => {
     if (actual.get(chunk.path) !== chunk.sha256)
       fail(`chunk_provenance_hash_mismatch:${chunk.path}`);
     for (const name of chunk.pluginPackages) {
-      if (typeof name !== 'string' || !/^plugin-[a-z0-9-]+$/.test(name)) {
+      if (typeof name !== 'string' || !/^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/.test(name)) {
         fail('chunk_provenance_manifest_invalid');
       }
       if (excluded.has(name) || !allowed.has(name))
@@ -73,16 +77,20 @@ const verifyChunkProvenance = (distribution, provenance, files) => {
     }
   }
   if (paths.size !== actual.size) fail('chunk_provenance_file_inventory_mismatch');
-  const required = distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news';
-  if (
-    !provenance.chunks.some(
-      (chunk) => chunk.path.startsWith('public/') && chunk.pluginPackages.includes(required)
-    ) ||
-    !provenance.chunks.some(
-      (chunk) => chunk.path.startsWith('server/_ssr/') && chunk.pluginPackages.includes(required)
-    )
-  ) {
-    fail(`chunk_provenance_required_plugin_missing:${required}`);
+  for (const required of [
+    distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news',
+    ...installedPlugins.map((entry) => entry.sourceRef),
+  ]) {
+    if (
+      !provenance.chunks.some(
+        (chunk) => chunk.path.startsWith('public/') && chunk.pluginPackages.includes(required)
+      ) ||
+      !provenance.chunks.some(
+        (chunk) => chunk.path.startsWith('server/_ssr/') && chunk.pluginPackages.includes(required)
+      )
+    ) {
+      fail(`chunk_provenance_required_plugin_missing:${required}`);
+    }
   }
   return {
     chunks: paths.size,
@@ -134,7 +142,26 @@ export const verifyStudioImageContract = (input) => {
   if (
     runtimeManifest?.schemaVersion !== 1 ||
     runtimeManifest.distribution !== distribution ||
-    JSON.stringify(runtimeManifest.includedPluginIds) !== JSON.stringify(pluginIds[distribution]) ||
+    !Array.isArray(runtimeManifest.installedPlugins) ||
+    runtimeManifest.installedPlugins.some(
+      (entry) =>
+        typeof entry?.pluginId !== 'string' ||
+        !/^[a-z0-9-]+$/.test(entry.pluginId) ||
+        typeof entry.sourceRef !== 'string' ||
+        !/^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/.test(entry.sourceRef)
+    ) ||
+    new Set(runtimeManifest.installedPlugins.map((entry) => entry.pluginId)).size !==
+      runtimeManifest.installedPlugins.length ||
+    runtimeManifest.installedPlugins.some((entry) =>
+      pluginIds[distribution].includes(entry.pluginId)
+    ) ||
+    new Set(runtimeManifest.installedPlugins.map((entry) => entry.sourceRef)).size !==
+      runtimeManifest.installedPlugins.length ||
+    JSON.stringify(runtimeManifest.includedPluginIds) !==
+      JSON.stringify([
+        ...pluginIds[distribution],
+        ...runtimeManifest.installedPlugins.map((entry) => entry.pluginId),
+      ]) ||
     JSON.stringify(runtimeManifest.excludedWorkspacePackages) !==
       JSON.stringify(excludedWorkspacePackages[distribution])
   ) {
@@ -169,12 +196,17 @@ export const verifyStudioImageContract = (input) => {
   if (!present.has('waste-management-contracts') || !present.has('waste-management-runtime')) {
     fail('waste_management_workspace_package_missing');
   }
-  const verifiedChunks = verifyChunkProvenance(distribution, chunkProvenance, chunkFiles);
+  const verifiedChunks = verifyChunkProvenance(
+    distribution,
+    chunkProvenance,
+    chunkFiles,
+    runtimeManifest.installedPlugins
+  );
   return {
     imageRef,
     revision: expectedRevision,
     distribution,
-    includedPluginIds: pluginIds[distribution],
+    includedPluginIds: runtimeManifest.includedPluginIds,
     excludedWorkspacePackages: excludedWorkspacePackages[distribution],
     presentWorkspacePackages: [...present]
       .filter((name) => name.startsWith('plugin-') || name.startsWith('waste-management-'))

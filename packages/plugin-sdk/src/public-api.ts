@@ -186,6 +186,7 @@ export type {
 } from './plugin-platform-contracts.js';
 // prettier-ignore
 export { PLUGIN_PLATFORM_ADMIN_ROLE, PLUGIN_ROUTE_SCOPE_HEADER_NAME, createPluginSnapshot, definePluginCatalogEntry, definePluginExecutionContextCapabilities, definePluginManifest } from './plugin-platform-contracts.js';
+export { satisfiesVersionRange } from './plugin-platform/version-range.js';
 export { resolvePluginCatalog, resolvePluginCatalogAsync } from './plugin-platform-resolution.js';
 export type {
   PluginCatalogIssue,

@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import { createInstalledPluginInputsPlugin } from './plugin-installed-inputs.vite.js';
 
 export const appRoot = fileURLToPath(new URL('.', import.meta.url));
 export const studioMswSetupFile = fileURLToPath(
@@ -12,6 +13,7 @@ export const prGateExcludedTestFiles = [
 
 export const sharedVitestConfig = defineConfig({
   root: appRoot,
+  plugins: [createInstalledPluginInputsPlugin(appRoot, 'studio')],
   resolve: {
     tsconfigPaths: true,
     alias: {

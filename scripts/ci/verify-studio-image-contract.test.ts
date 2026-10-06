@@ -26,7 +26,7 @@ const excludedWorkspacePackages = {
 const validInput = (distribution: 'studio' | 'ssf') => {
   const repository = `ghcr.io/smart-village-solutions/sva-studio${distribution === 'ssf' ? '-ssf' : ''}`;
   const imageRef = `${repository}@${digest}`;
-  const includedPluginIds = distribution === 'studio' ? regularPlugins : ['ssf'];
+  const includedPluginIds = distribution === 'studio' ? [...regularPlugins] : ['ssf'];
   return {
     imageRef,
     expectedRevision: revision,
@@ -49,6 +49,7 @@ const validInput = (distribution: 'studio' | 'ssf') => {
       schemaVersion: 1,
       distribution,
       includedPluginIds,
+      installedPlugins: [] as { pluginId: string; sourceRef: string }[],
       excludedWorkspacePackages: excludedWorkspacePackages[distribution],
     },
     packages:
@@ -91,6 +92,22 @@ const verify = (input: ReturnType<typeof validInput>) =>
   });
 
 describe('verify-studio-image-contract', () => {
+  it('accepts an attested installed package and rejects an undeclared package in the chunks', () => {
+    const input = validInput('studio');
+    input.runtimeManifest.installedPlugins.push({
+      pluginId: 'calendar',
+      sourceRef: '@vendor/calendar',
+    });
+    input.runtimeManifest.includedPluginIds.push('calendar');
+    const [clientChunk, serverChunk] = input.chunkProvenance.chunks;
+    if (!clientChunk || !serverChunk) throw new Error('chunk_fixture_incomplete');
+    clientChunk.pluginPackages.push('@vendor/calendar');
+    expect(() => verify(input)).toThrow();
+    serverChunk.pluginPackages.push('@vendor/calendar');
+    expect(JSON.parse(verify(input)).includedPluginIds).toContain('calendar');
+    clientChunk.pluginPackages.push('@vendor/hidden');
+    expect(() => verify(input)).toThrow();
+  });
   it.each(['studio', 'ssf'] as const)(
     'accepts the exact %s digest and inventory',
     (distribution) => {

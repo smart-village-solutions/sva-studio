@@ -1,5 +1,6 @@
 // prettier-ignore
 export { pluginSdkPackageRoles, pluginSdkVersion, type PluginSdkPackageRole } from './sdk-metadata.js';
+export { satisfiesVersionRange } from './plugin-platform/version-range.js';
 // prettier-ignore
 export type { PluginServerHandlerAccessRequirement, PluginServerHandlerExecutionContext, PluginServerHandlerModuleFactory, PluginServerExecutionHandler, PluginTechnicalServiceAccessRequirement, PluginTechnicalServiceTenantContext } from './plugins.js';
 export type {

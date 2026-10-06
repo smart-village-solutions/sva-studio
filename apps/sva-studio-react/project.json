@@ -168,6 +168,7 @@
     },
     "test:unit:ui": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "cache": true,
       "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
@@ -189,6 +190,7 @@
     },
     "test:unit:hooks": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "cache": true,
       "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],

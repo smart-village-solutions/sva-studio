@@ -1468,3 +1468,15 @@ Fehlerpfad:
 - Es gibt keinen globalen Projektionsstatus, keinen Fan-out beim Speichern und
   keinen separaten Retry-Workflow; der nächste Versand stellt erneut
   idempotent sicher.
+
+## SSF-Sprachkatalog in der Inhaltsverwaltung
+
+1. System- oder Mandanteneditor liest die bestehende V2-Admin-Ansicht über Studio.
+2. Der SSF-Plugin-Server lädt parallel den öffentlichen Sprachkatalog mit einem
+   kurzen Timeout und validiert Sprachcodes, Namen, Standardsprache und beliebte
+   Sprachen.
+3. Bei gültigem Katalog liefert die bestehende Admin-Antwort ihn zusammen mit
+   der Inhaltsansicht an den Browser. Der Browser greift nicht direkt auf SSF zu.
+4. Bei HTTP-, Struktur- oder Timeoutfehler bleibt die Inhaltsansicht verfügbar;
+   die Antwort markiert den Katalog als nicht verfügbar. Die UI lässt vorhandene
+   Texte bearbeiten, sperrt aber Sprachauswahl und neue Gastsprachen.

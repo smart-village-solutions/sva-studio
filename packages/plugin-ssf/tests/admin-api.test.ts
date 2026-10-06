@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   readSsfSystemConfiguration,
+  readSsfSystemContentV2,
   readSsfTenantConfiguration,
+  readSsfTenantContentV2,
+  writeSsfSystemContentV2,
   writeSsfSystemConfiguration,
   writeSsfTenantConfiguration,
 } from '../src/admin-api.js';
@@ -76,5 +79,21 @@ describe('SSF administration API', () => {
 
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
     await expect(readSsfSystemConfiguration()).rejects.toThrow();
+  });
+
+  it('reads the validated SSF language catalog with both V2 admin views', async () => {
+    const catalog = { languages: { de: { name: 'German', native: 'Deutsch' } }, admin_default: 'de', popular: ['de'] };
+    const systemView = { installation: null, runtimeTemplate: null, supportedLanguages: catalog };
+    const tenantView = { runtimeTemplate: null, overrides: null, supportedLanguages: catalog };
+    const fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => systemView })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...systemView, supportedLanguages: null }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => tenantView });
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(readSsfSystemContentV2()).resolves.toEqual(systemView);
+    await expect(writeSsfSystemContentV2({ installation: null, runtimeTemplate: null }))
+      .resolves.toEqual({ ...systemView, supportedLanguages: null });
+    await expect(readSsfTenantContentV2()).resolves.toEqual(tenantView);
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/plugins/ssf/content-v2/tenant', undefined);
   });
 });

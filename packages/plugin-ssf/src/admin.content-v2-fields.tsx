@@ -1,8 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Input, StudioField, StudioSection } from '@sva/studio-ui-react';
+import { Button, Input, Select, StudioField, StudioSection } from '@sva/studio-ui-react';
 
 import { SsfV2Field as Field, readSsfV2Path as readPath, type SsfV2EditorProps as EditorProps } from './admin.content-v2-field-control.js';
 import type { SsfInstallationContentV2Fields, SsfRuntimeContentV2Fields } from './content-v2-contracts.js';
+import type { SsfSupportedLanguagesCatalog } from './content-v2-admin-contracts.js';
 
 type FormValue = SsfInstallationContentV2Fields | SsfRuntimeContentV2Fields;
 type Path = readonly (string | number)[];
@@ -121,8 +122,13 @@ export const FeedbackFields = <T extends FormValue>(props: EditorProps<T> & { pa
   );
 };
 
-export const SsfInstallationV2Editor = (props: EditorProps<SsfInstallationContentV2Fields>) => {
+export const SsfInstallationV2Editor = (props: EditorProps<SsfInstallationContentV2Fields> & {
+  supportedLanguages: SsfSupportedLanguagesCatalog | null;
+}) => {
   const pt = usePluginTranslation('ssf');
+  const locale = props.supportedLanguages && !props.supportedLanguages.languages[props.value.localization.locale]
+    ? props.value.localization.locale.split(/[-_]/, 1)[0] ?? props.value.localization.locale
+    : props.value.localization.locale;
   return (
     <div className="space-y-5">
       <BrandingFields {...props} />
@@ -132,7 +138,21 @@ export const SsfInstallationV2Editor = (props: EditorProps<SsfInstallationConten
         <Field {...props} path={['legal', 'accessibilityStatementUrl']} labelKey="v2.accessibilityStatementUrl" kind="url" nullable />
       </StudioSection>
       <StudioSection title={pt('v2.startAndLogin')}>
-        <Field {...props} path={['localization', 'locale']} labelKey="v2.locale" />
+        <StudioField id="ssf-v2-localization-locale" label={pt('v2.locale')}>
+          <Select id="ssf-v2-localization-locale"
+            disabled={props.disabled || !props.supportedLanguages}
+            value={locale}
+            onChange={(event) => props.onChange({ ...props.value,
+              localization: { ...props.value.localization, locale: event.currentTarget.value },
+            })}>
+            {props.supportedLanguages && !props.supportedLanguages.languages[locale]
+              ? <option value={locale}>{pt('v2.savedLanguageUnavailable')}</option> : null}
+            {props.supportedLanguages ? Object.entries(props.supportedLanguages.languages)
+              .sort(([left], [right]) => Number(props.supportedLanguages?.popular.includes(right)) - Number(props.supportedLanguages?.popular.includes(left)) || left.localeCompare(right))
+              .map(([locale, language]) => <option key={locale} value={locale}>{language.name} ({language.native}) · {locale}</option>)
+              : <option value={props.value.localization.locale}>{props.value.localization.locale}</option>}
+          </Select>
+        </StudioField>
         <Field {...props} path={['localization', 'startpage', 'enterCode']} labelKey="v2.enterCode" />
         <Field {...props} path={['localization', 'startpage', 'send']} labelKey="v2.send" />
         <Field {...props} path={['localization', 'startpage', 'login']} labelKey="v2.login" />

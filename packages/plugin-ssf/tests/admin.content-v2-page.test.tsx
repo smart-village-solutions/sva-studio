@@ -129,4 +129,30 @@ describe('SSF V2 content administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
     await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
   });
+
+  it('removes a guest icon override when the inherited icon is absent', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    const languages = runtimeTemplate['guestLanguages'] as { locale: string; icon?: unknown }[];
+    const first = languages[0];
+    if (!first) throw new Error('ssf_v2_test_language_missing');
+    delete first.icon;
+    api.readTenant.mockResolvedValue({
+      runtimeTemplate,
+      overrides: { guestLanguages: [{ locale: first.locale, icon: {
+        url: 'https://example.org/tenant.svg', alternativeText: 'Tenant icon',
+      } }] },
+    });
+    api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+
+    await screen.findAllByLabelText('v2.iconUrl');
+    const input = document.getElementById('ssf-v2-guest-0-icon-url');
+    if (!input) throw new Error('ssf_v2_icon_input_missing');
+    const inherit = input.closest('label')?.nextElementSibling?.nextElementSibling?.querySelector('button');
+    if (!inherit) throw new Error('ssf_v2_icon_inherit_button_missing');
+    fireEvent.click(inherit);
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
+  });
 });

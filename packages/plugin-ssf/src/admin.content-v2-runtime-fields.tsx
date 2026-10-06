@@ -145,7 +145,7 @@ const LanguageTab = ({ props, language, index }: { props: Props; language: Langu
         ? 'v2.inherited' : 'v2.overridden')}</span>
       <Button type="button" variant="tertiary" disabled={props.disabled}
         onClick={() => props.onChange(updateSsfV2Field(props.value, ['guestLanguages', index, 'icon'],
-          props.inherited?.guestLanguages.find((entry) => entry.locale === language.locale)?.icon ?? null))}>
+          props.inherited?.guestLanguages.find((entry) => entry.locale === language.locale)?.icon))}>
         {pt('fields.inherit')}
       </Button>
     </div> : null}

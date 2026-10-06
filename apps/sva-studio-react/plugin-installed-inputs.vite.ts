@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { definePluginManifest, satisfiesVersionRange, type PluginManifest } from '@sva/plugin-sdk';
@@ -92,7 +91,6 @@ export const resolveInstalledPluginSources = (
   appRoot: string,
   distribution: Distribution
 ): readonly InstalledSource[] => {
-  const requireFromApp = createRequire(join(appRoot, 'package.json'));
   const appPackage = readJson(join(appRoot, 'package.json'));
   if (!isRecord(appPackage)) throw new Error('studio_package_invalid');
   const dependencies = isRecord(appPackage.dependencies) ? appPackage.dependencies : {};
@@ -101,13 +99,18 @@ export const resolveInstalledPluginSources = (
     if (!Object.hasOwn(dependencies, entry.sourceRef)) {
       throw new Error(`installed_plugin_dependency_missing:${entry.pluginId}`);
     }
-    let manifestPath: string;
+    let packageRoot: string;
     try {
-      manifestPath = requireFromApp.resolve(`${entry.sourceRef}/plugin.manifest.json`);
+      packageRoot = realpathSync(join(appRoot, 'node_modules', entry.sourceRef));
     } catch {
       throw new Error(`installed_plugin_manifest_missing:${entry.pluginId}`);
     }
-    const packageRoot = realpathSync(join(appRoot, 'node_modules', entry.sourceRef));
+    const manifestPath = join(packageRoot, 'plugin.manifest.json');
+    try {
+      if (!statSync(manifestPath).isFile()) throw new Error('not_file');
+    } catch {
+      throw new Error(`installed_plugin_manifest_missing:${entry.pluginId}`);
+    }
     if (realpathSync(manifestPath) !== join(packageRoot, 'plugin.manifest.json')) {
       throw new Error(`installed_plugin_manifest_invalid:${entry.pluginId}`);
     }

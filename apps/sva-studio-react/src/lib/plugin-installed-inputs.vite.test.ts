@@ -17,6 +17,7 @@ const createFixture = (
     distribution?: 'studio' | 'ssf';
     enabled?: boolean;
     browserPath?: string;
+    exportsManifest?: boolean;
     sdkVersion?: string;
     requiredCapabilities?: string[];
   } = {}
@@ -57,7 +58,10 @@ const createFixture = (
       name: '@vendor/calendar',
       version: '1.0.0',
       type: 'module',
-      exports: { './plugin.manifest.json': './plugin.manifest.json' },
+      exports:
+        input.exportsManifest === false
+          ? { '.': './dist/calendar-view.js' }
+          : { './plugin.manifest.json': './plugin.manifest.json' },
     })
   );
   writeFileSync(
@@ -116,6 +120,11 @@ describe('installed plugin build inputs', () => {
     const { appRoot } = createFixture({ distribution: 'ssf' });
     expect(resolveInstalledPluginSources(appRoot, 'studio')).toEqual([]);
     expect(resolveInstalledPluginSources(appRoot, 'ssf')).toHaveLength(1);
+  });
+
+  it('loads a package manifest without an exports-map subpath', () => {
+    const { appRoot } = createFixture({ exportsManifest: false });
+    expect(resolveInstalledPluginSources(appRoot, 'studio')).toHaveLength(1);
   });
 
   it('keeps disabled packages in the catalog without loading their entrypoints', () => {

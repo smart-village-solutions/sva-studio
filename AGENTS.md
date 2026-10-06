@@ -9,6 +9,11 @@ Die verbindlichen Entwicklungsrichtlinien stehen in [DEVELOPMENT_RULES.md](DEVEL
 - UI-Reihenfolge: native Browser-/HTML-Funktion, vorhandene shadcn/ui- oder Design-System-Komponente, vorhandene Workspace-Komponente, dann minimale neue Komponente.
 - Vereinfachungen dürfen Testabdeckung, Typklarheit, Security, Accessibility, i18n, Fehlerbehandlung, Datenintegrität, Server-Runtime-Regeln oder Architekturgrenzen nicht schwächen.
 
+## Referenzcoding
+
+- Vor nichttrivialen Codeänderungen, sofern der lokale XERJ-Dienst verfügbar ist, mit `xerj_search` (`match` auf `body`, bei Bedarf `ax_path`-Filter) in `studio-code` und der fachlich passenden Referenz `payload-code` oder `keystone-code` suchen, wie der konkrete Mechanismus umgesetzt wurde. Bei abweichenden Begriffen zusätzlich `xerj_semantic_search` auf `semantic_body` verwenden. Fundstellen mit Datei und Zeile prüfen und vor einer Codeübernahme die Lizenz beachten.
+- Den Indexstand gegen den aktuellen Quellstand prüfen. Wenn keine passende Referenz gefunden wird, den bestehenden zuständigen Projektpfad direkt untersuchen und dort weiterarbeiten.
+
 ## Anti-Ausdehnungsregel
 
 - Standard ist die Erweiterung des bestehenden zuständigen Pfads. Vor Eigenlogik vorhandene Projekt-/Workspace-Lösungen, Plattformmittel und etablierte Dependencies prüfen. Neue Packages, Services, Provider, Factories, Gates, Workflows, Agenten, Skripte, Spezifikationen oder Konfigurationsschichten sind nur zulässig, wenn ein konkreter aktueller Bedarf im bestehenden Pfad nicht korrekt erfüllt werden kann.

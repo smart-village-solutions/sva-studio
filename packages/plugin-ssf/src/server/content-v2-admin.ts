@@ -19,15 +19,40 @@ export type SsfAdminV2Dependencies = Readonly<{
 }>;
 
 const withSupportedLanguages = async <T extends object>(
-  value: T, read: SsfAdminV2Dependencies['readSupportedLanguages']
+  value: Promise<T>, read: SsfAdminV2Dependencies['readSupportedLanguages']
 ): Promise<T & { supportedLanguages: unknown | null }> => {
-  if (!read) return { ...value, supportedLanguages: null };
-  try {
-    const catalog = ssfSupportedLanguagesCatalogSchema.safeParse(await read());
-    return { ...value, supportedLanguages: catalog.success ? catalog.data : null };
-  } catch {
-    return { ...value, supportedLanguages: null };
+  const [resolvedValue, rawCatalog] = await Promise.all([
+    value,
+    read ? read().catch(() => null) : Promise.resolve(null),
+  ]);
+  const catalog = rawCatalog === null ? null : ssfSupportedLanguagesCatalogSchema.safeParse(rawCatalog);
+  return { ...resolvedValue, supportedLanguages: catalog?.success ? catalog.data : null };
+};
+
+const SUPPORTED_LANGUAGES_CACHE_TTL_MS = 5 * 60 * 1000;
+let supportedLanguagesCache: { expiresAt: number; value: Promise<unknown> } | null = null;
+
+const readSupportedLanguages = (): Promise<unknown> => {
+  const now = Date.now();
+  if (supportedLanguagesCache && (supportedLanguagesCache.expiresAt === 0 || supportedLanguagesCache.expiresAt > now)) {
+    return supportedLanguagesCache.value;
   }
+
+  const value = fetch('https://api.dialog.kassel.de/api/languages/supported', {
+    signal: AbortSignal.timeout(5_000),
+    headers: { accept: 'application/json' },
+  }).then(async (response) => {
+    if (!response.ok) throw new Error('ssf_supported_languages_unavailable');
+    return response.json();
+  }).then((catalog) => {
+    supportedLanguagesCache = { expiresAt: Date.now() + SUPPORTED_LANGUAGES_CACHE_TTL_MS, value: Promise.resolve(catalog) };
+    return catalog;
+  }).catch((error: unknown) => {
+    supportedLanguagesCache = null;
+    throw error;
+  });
+  supportedLanguagesCache = { expiresAt: 0, value };
+  return value;
 };
 
 const invalidInput = (error: unknown): boolean => error instanceof ZodError ||
@@ -38,7 +63,7 @@ const readSystem = (dependencies: SsfAdminV2Dependencies): PluginServerExecution
   if (context.scope !== 'platform') return jsonResponse(403, { error: 'forbidden' }, correlationId);
   if (!dependencies.readSystemV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   try {
-    return jsonResponse(200, await withSupportedLanguages(await dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
+    return jsonResponse(200, await withSupportedLanguages(dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
   } catch {
     return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   }
@@ -52,7 +77,7 @@ const writeSystem = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
   if (!dependencies.writeSystemV2 || !dependencies.readSystemV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   try {
     await dependencies.writeSystemV2(parsed.data);
-    return jsonResponse(200, await withSupportedLanguages(await dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
+    return jsonResponse(200, await withSupportedLanguages(dependencies.readSystemV2(), dependencies.readSupportedLanguages), correlationId);
   } catch (error) {
     const invalid = invalidInput(error);
     return jsonResponse(invalid ? 422 : 503,
@@ -65,7 +90,7 @@ const readTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecution
   if (context.scope !== 'tenant' || !context.actor.instanceId) return jsonResponse(403, { error: 'forbidden' }, correlationId);
   if (!dependencies.readTenantV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   try {
-    return jsonResponse(200, await withSupportedLanguages(await dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
+    return jsonResponse(200, await withSupportedLanguages(dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
   } catch {
     return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   }
@@ -79,7 +104,7 @@ const writeTenant = (dependencies: SsfAdminV2Dependencies): PluginServerExecutio
   if (!dependencies.writeTenantV2 || !dependencies.readTenantV2) return jsonResponse(503, { error: 'configuration_unavailable' }, correlationId);
   try {
     await dependencies.writeTenantV2(context.actor.instanceId, parsed.data);
-    return jsonResponse(200, await withSupportedLanguages(await dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
+    return jsonResponse(200, await withSupportedLanguages(dependencies.readTenantV2(context.actor.instanceId), dependencies.readSupportedLanguages), correlationId);
   } catch (error) {
     const invalid = invalidInput(error);
     return jsonResponse(invalid ? 422 : 503,
@@ -105,13 +130,6 @@ export const createDefaultSsfAdminV2Dependencies = (
     writeSystemV2: rootPool ? (input) => replaceSsfSystemContentV2(rootPool, input) : unavailable,
     readTenantV2: pool ? (instanceId) => readSsfTenantContentV2(pool, instanceId) : unavailable,
     writeTenantV2: pool ? (instanceId, input) => writeSsfTenantContentV2(pool, instanceId, input) : unavailable,
-    readSupportedLanguages: async () => {
-      const response = await fetch('https://api.dialog.kassel.de/api/languages/supported', {
-        signal: AbortSignal.timeout(5_000),
-        headers: { accept: 'application/json' },
-      });
-      if (!response.ok) throw new Error('ssf_supported_languages_unavailable');
-      return response.json();
-    },
+    readSupportedLanguages,
   };
 };

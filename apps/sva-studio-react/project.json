@@ -211,6 +211,7 @@
     "test:a11y": {
       "executor": "nx:run-commands",
       "cache": true,
+      "dependsOn": [{ "target": "build", "projects": ["plugin-sdk"] }],
       "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {

@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
+import { resolveInstalledPluginSources } from '../../apps/sva-studio-react/plugin-installed-inputs.vite.js';
 
 const distributions = ['studio', 'ssf'] as const;
 type StudioDistribution = (typeof distributions)[number];
@@ -76,11 +77,14 @@ const assertDirectory = (path: string): void => {
 
 const writeManifest = (outputRoot: string, distribution: StudioDistribution): void => {
   assertDirectory(outputRoot);
+  const installed = resolveInstalledPluginSources(resolve(outputRoot, '..'), distribution).filter(
+    (source) => source.catalog.enabled
+  );
   const generated = join(outputRoot, 'server', 'generated');
   mkdirSync(generated, { recursive: true });
   writeFileSync(
     join(generated, 'studio-distribution.json'),
-    `${JSON.stringify({ schemaVersion: 1, distribution, includedPluginIds: includedPluginIds[distribution], excludedWorkspacePackages: excludedPackages[distribution] }, null, 2)}\n`,
+    `${JSON.stringify({ schemaVersion: 1, distribution, includedPluginIds: [...includedPluginIds[distribution], ...installed.map((source) => source.catalog.pluginId)], installedPlugins: installed.map((source) => ({ pluginId: source.catalog.pluginId, sourceRef: source.catalog.sourceRef })), excludedWorkspacePackages: excludedPackages[distribution] }, null, 2)}\n`,
     'utf8'
   );
 };
@@ -126,8 +130,16 @@ const listJavaScriptFiles = (root: string): string[] => {
   return files.sort();
 };
 
-const pluginSource = (moduleId: string): string | undefined => {
+const pluginSource = (
+  moduleId: string,
+  installed: readonly { packageRoot: string; sourceRef: string }[]
+): string | undefined => {
   const normalized = moduleId.replaceAll('\\', '/');
+  const selected = installed.find(
+    ({ packageRoot, sourceRef }) =>
+      normalized.startsWith(`${packageRoot}/`) || normalized.includes(`/node_modules/${sourceRef}/`)
+  );
+  if (selected) return selected.sourceRef;
   return (
     /(?:^|\/)packages\/(plugin-[a-z0-9-]+)\/(?:src|dist)\//.exec(normalized)?.[1] ??
     /(?:^|\/)node_modules\/@sva\/(plugin-[a-z0-9-]+)\//.exec(normalized)?.[1] ??
@@ -155,6 +167,12 @@ const resolveNitroModules = (
 const writeChunkProvenance = (outputRoot: string, distribution: StudioDistribution): void => {
   assertDirectory(outputRoot);
   const appRoot = resolve(outputRoot, '..');
+  const installed = resolveInstalledPluginSources(appRoot, distribution)
+    .filter((source) => source.catalog.enabled)
+    .map((source) => ({
+      packageRoot: source.packageRoot.replaceAll('\\', '/'),
+      sourceRef: source.catalog.sourceRef,
+    }));
   const client = readBuildChunks(appRoot, 'client');
   const ssr = readBuildChunks(appRoot, 'ssr');
   const nitro = readBuildChunks(appRoot, 'nitro');
@@ -194,12 +212,17 @@ const writeChunkProvenance = (outputRoot: string, distribution: StudioDistributi
   const allowed = new Set([
     'plugin-sdk',
     ...includedPluginIds[distribution].map((id) => `plugin-${id}`),
+    ...installed.map((source) => source.sourceRef),
   ]);
   const chunks = actual.map((path) => {
     const sources = expected.get(path);
     if (!sources) throw new Error(`chunk_provenance_source_missing:${path}`);
     const pluginPackages = [
-      ...new Set(sources.map(pluginSource).filter((name) => name !== undefined)),
+      ...new Set(
+        sources
+          .map((source) => pluginSource(source, installed))
+          .filter((name) => name !== undefined)
+      ),
     ].sort();
     for (const name of pluginPackages) {
       if (excluded.has(name) || !allowed.has(name)) {
@@ -214,7 +237,10 @@ const writeChunkProvenance = (outputRoot: string, distribution: StudioDistributi
       pluginPackages,
     };
   });
-  const required = distribution === 'ssf' ? ['plugin-ssf'] : ['plugin-news'];
+  const required = [
+    distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news',
+    ...installed.map((source) => source.sourceRef),
+  ];
   for (const name of required) {
     if (
       !chunks.some(

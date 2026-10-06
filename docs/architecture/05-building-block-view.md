@@ -21,6 +21,7 @@ Modulen der jeweiligen Bausteine.
 
 1. App (`apps/sva-studio-react`)
    - TanStack Start App, UI, Root-Shell, Router-Erzeugung
+   - Die Vite-Composition liest für `studio` und `ssf` explizit ausgewählte installierte oder verlinkte Plugins aus `plugin-catalog.json`, prüft deren Manifest- und Package-Pfade und speist die getrennten Browser-, Descriptor-, Server- und Job-Register. Workspace-Plugins bleiben in ihren Profil-Inputs.
    - profilgebundene Auth-Composition: Das Standard-Studio bindet keinen SSF-Beitrag; das SSF-Profil bindet Account-Create-Beitrag und OIDC-Anforderungen vor Veröffentlichung des Runtime-Snapshots und verlangt dafür ein installiertes SSF-Plugin
    - offizieller Server-Entry unter `apps/sva-studio-react/src/server.ts`; der finale Release-Vertrag wird am gebauten `.output/server/**`-Artefakt, nicht an `.nitro/vite/services/ssr/**`, beurteilt
    - der App-Build enthält neben `build` einen expliziten Final-Artifact-Check `verify:runtime-artifact`, der den finalen Node-Output mit Health-Probes und Artefakt-Assertions verifiziert

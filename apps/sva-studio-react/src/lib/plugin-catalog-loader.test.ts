@@ -35,11 +35,7 @@ describe('plugin catalog loader', () => {
       'src/index.ts',
       'src/index.tsx',
     ]);
-    expect(getPackagePluginModuleCandidates(manifest)).toEqual([
-      'dist/index.js',
-      'src/index.ts',
-      'src/index.tsx',
-    ]);
+    expect(getPackagePluginModuleCandidates(manifest)).toEqual(['dist/index.js']);
     expect(getWorkspacePluginDescriptorCandidates(manifest)).toEqual([
       'dist/plugin.js',
       'src/plugin.ts',

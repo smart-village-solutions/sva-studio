@@ -15,7 +15,8 @@ export const workspaceDescriptorModuleLoaders = import.meta.glob(
   '../../../../packages/plugin-ssf/src/descriptor.ts'
 ) as Record<string, () => Promise<Record<string, unknown>>>;
 
-export const nodeManifestModules: Record<string, PluginManifest> = {};
-export const nodePluginModuleLoaders: Record<string, () => Promise<Record<string, unknown>>> = {};
-export const nodeDescriptorModuleLoaders: Record<string, () => Promise<Record<string, unknown>>> =
-  {};
+export {
+  nodeManifestModules,
+  nodePluginModuleLoaders,
+  nodeDescriptorModuleLoaders,
+} from 'virtual:studio-installed-plugin-client';

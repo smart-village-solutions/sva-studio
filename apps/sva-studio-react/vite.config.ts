@@ -9,6 +9,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { instrument } from 'oxc-coverage-instrument';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createInstalledPluginInputsPlugin } from './plugin-installed-inputs.vite.js';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 const resolveAppPath = (relativePath: string) =>
@@ -507,6 +508,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    createInstalledPluginInputsPlugin(appRoot, studioDistribution),
     fallowBrowserCoveragePlugin(),
     chunkProvenancePlugin(),
     tanstackStartClientEnvCompatPlugin(),

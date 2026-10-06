@@ -33,6 +33,23 @@ describe('studio distribution', () => {
     ).toEqual([{ moduleId: 'ssf' }, { moduleId: 'media' }]);
   });
 
+  it('keeps installed packages selected by the build profile in both distributions', () => {
+    const installed = {
+      pluginId: 'calendar',
+      sourceType: 'installed-distribution',
+      enabled: true,
+      sourceRef: '@vendor/calendar',
+    } as const;
+    expect(filterPluginCatalogForDistribution([...catalog, installed], 'studio')).toEqual([
+      catalog[0],
+      installed,
+    ]);
+    expect(filterPluginCatalogForDistribution([...catalog, installed], 'ssf')).toEqual([
+      catalog[1],
+      installed,
+    ]);
+  });
+
   it('rejects unknown distributions', () => {
     expect(() => resolveStudioDistribution('other')).toThrow('invalid_studio_distribution:other');
   });

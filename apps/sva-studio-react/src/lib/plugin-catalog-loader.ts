@@ -105,15 +105,7 @@ export const getWorkspacePluginModuleCandidates = (manifest: PluginManifest): re
 
 export const getPackagePluginModuleCandidates = (manifest: PluginManifest): readonly string[] => {
   const manifestBrowserEntry = normalizeEntryPath(manifest.entryPoints.browser ?? '');
-  const candidates = manifestBrowserEntry.length > 0 ? [manifestBrowserEntry] : [];
-
-  for (const fallback of ['dist/index.js', 'src/index.ts', 'src/index.tsx']) {
-    if (!candidates.includes(fallback)) {
-      candidates.push(fallback);
-    }
-  }
-
-  return candidates;
+  return manifestBrowserEntry ? [manifestBrowserEntry] : [];
 };
 
 export const getWorkspacePluginDescriptorCandidates = (

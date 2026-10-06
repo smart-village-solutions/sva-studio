@@ -164,6 +164,9 @@ Jedes publishbare Plugin liefert ein serialisierbares Manifest:
 ```json
 {
   "pluginId": "news",
+  "manifestVersion": 1,
+  "extensionTier": "feature",
+  "tenantActivationPolicy": "optional",
   "version": "0.0.1",
   "sdkVersion": "0.0.1",
   "hostCompatibility": {
@@ -197,12 +200,15 @@ Beispiel:
     "pluginId": "weather",
     "sourceType": "installed-distribution",
     "enabled": false,
-    "sourceRef": "@vendor/plugin-weather"
+    "sourceRef": "@vendor/plugin-weather",
+    "distribution": "studio"
   }
 ]
 ```
 
 `enabled: false` hält ein Plugin bewusst außerhalb von Routing, Navigation, IAM und Job-Registrierung. Inkompatible Plugins werden zusätzlich fail-closed verworfen und als Katalogproblem protokolliert.
+
+Für `installed-distribution` und `linked-package` ist `distribution` (`studio` oder `ssf`) erforderlich. Der Build liest nur Einträge des gewählten Profils, verlangt eine direkte App-Dependency auf `sourceRef` und löst `plugin.manifest.json` aus dem installierten Package auf. Aktivierte Browser-, Descriptor-, Server- und Job-Entrypoints müssen als Dateien innerhalb dieses Packages vorliegen. Installierte Job-Entrypoints werden im Studio-Profil nur mit der registrierten Runtime-Anforderung `waste-management.operations` unterstützt; andere Anforderungen werden beim Build abgewiesen. Ein aktiviertes SSF-Paket mit Job-Entrypoint wird abgelehnt, da das SSF-Profil keinen generischen installierten Job-Handler registriert. Die daraus erzeugten Imports speisen die bestehenden Register; ein deaktiviertes Package bleibt im Katalog sichtbar, erzeugt aber keinen Plugin-Chunk. Ein nicht ausgewähltes Package erzeugt ebenfalls keinen Plugin-Chunk. Der Artefakt-Check vergleicht die gewählten aktivierten Packages mit den tatsächlichen Chunks.
 
 ## Lokaler Dev-Workflow
 
@@ -217,11 +223,11 @@ Neues oder geändertes Plugin im Workspace:
 Lokal verlinktes Plugin außerhalb des Monorepos:
 
 1. Package lokal bauen, sodass `dist/` und `plugin.manifest.json` vorhanden sind.
-2. Package per `pnpm link` oder äquivalent nach `node_modules` verlinken.
-3. Katalogeintrag mit `sourceType: "linked-package"` und `sourceRef` als Package-Name ergänzen.
+2. Package als direkte App-Dependency per `pnpm link` oder äquivalent nach `node_modules` verlinken.
+3. Katalogeintrag mit `sourceType: "linked-package"`, `sourceRef` als Package-Name und `distribution` ergänzen.
 4. Studio neu starten; der Host lädt Manifest und Descriptor-Entry, im Browser
    zusätzlich den Browser-Entry, aus dem verlinkten Package. Die Auflösung
-   beliebiger gepackter Entry-Point-Pfade ist Gegenstand von #1512.
+   den im Manifest deklarierten Dateien des verlinkten Packages.
 
 ## Publish- und Installationsworkflow
 
@@ -229,9 +235,9 @@ Für veröffentlichte Plugins gilt der kanonische Artefaktvertrag:
 
 1. `pnpm nx run <plugin>:build` erzeugt `dist/`.
 2. Das NPM-Artefakt enthält mindestens `dist/` und `plugin.manifest.json`.
-3. Der Operator installiert das Package in die Host-Umgebung.
-4. Der Operator ergänzt oder ändert den Katalogeintrag mit `sourceType: "installed-distribution"` und `sourceRef` als Paketname.
-5. Beim nächsten Host-Start oder Build liest der Host zuerst das Manifest und aktiviert das Plugin nur bei erfolgreicher Kompatibilitätsprüfung.
+3. Der Operator nimmt das Package als direkte Dependency der Studio-App auf und installiert es für den Build.
+4. Der Operator ergänzt oder ändert den Katalogeintrag mit `sourceType: "installed-distribution"`, `sourceRef` als Paketname und `distribution`.
+5. Beim nächsten Build liest der Host zuerst das Manifest und bindet nur gültige Entrypoints des gewählten Profils ein. Die Tenant-Aktivierung bleibt davon getrennt.
 
 Der Publish-/Installationspfad führt keinen unvalidierten Plugin-Code vor dem Manifest-Check aus.
 

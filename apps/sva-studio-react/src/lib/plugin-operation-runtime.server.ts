@@ -109,17 +109,8 @@ const getWorkspaceJobModuleCandidates = (jobsEntry: string): readonly string[] =
 };
 
 const getPackageJobModuleCandidates = (jobsEntry: string): readonly string[] => {
-  const candidates = [] as string[];
   const normalizedJobsEntry = normalizeEntryPath(jobsEntry);
-  if (normalizedJobsEntry.length > 0) {
-    candidates.push(normalizedJobsEntry);
-  }
-  for (const fallback of ['dist/server.js', 'src/server.ts']) {
-    if (!candidates.includes(fallback)) {
-      candidates.push(fallback);
-    }
-  }
-  return candidates;
+  return normalizedJobsEntry ? [normalizedJobsEntry] : [];
 };
 
 const resolvePluginJobModule = (input: {

@@ -60,9 +60,7 @@ const getServerModuleCandidates = (
   if (sourceType === 'workspace' && normalizedEntry.endsWith('.js')) {
     candidates.push(normalizedEntry.slice(0, -'.js'.length) + '.ts');
   }
-  for (const fallback of sourceType === 'workspace'
-    ? ['src/server.ts', 'src/server/index.ts']
-    : ['dist/server.js', 'src/server.ts', 'src/server/index.ts']) {
+  for (const fallback of sourceType === 'workspace' ? ['src/server.ts', 'src/server/index.ts'] : []) {
     if (!candidates.includes(fallback)) candidates.push(fallback);
   }
   return candidates;

@@ -5,13 +5,19 @@ import { readStudioMcpConfig } from './config.js';
 import { createStudioMcpServer } from './index.js';
 import { createStudioFetch } from './fetch.js';
 import { createClientCredentialsTokenProvider } from './token-provider.js';
+import { PersonalMcpContextManager } from './personal-auth.js';
 
 const main = async (): Promise<void> => {
   const config = await readStudioMcpConfig();
   const fetchImpl = await createStudioFetch(config.caFilePath);
   const tokens = createClientCredentialsTokenProvider(config, fetchImpl);
   const client = createStudioApiClient(config, tokens, fetchImpl);
-  await createStudioMcpServer(client, config).connect(new StdioServerTransport());
+  const personalContexts = config.personalContexts?.length
+    ? new PersonalMcpContextManager(config.personalContexts, { fetchImpl, tokenTimeoutMs: config.tokenTimeoutMs })
+    : undefined;
+  const transport = new StdioServerTransport();
+  transport.onclose = () => { void personalContexts?.dispose(); };
+  await createStudioMcpServer(client, config, fetchImpl, personalContexts).connect(transport);
 };
 
 main().catch(() => {

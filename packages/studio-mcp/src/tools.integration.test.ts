@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { StudioApiError, type StudioApiClient } from './api-client.js';
 import { schemas } from './contracts.js';
 import { createStudioMcpServer } from './index.js';
+import type { PersonalMcpContextManager } from './personal-auth.js';
+
+vi.mock('./open-browser.js', () => ({ openLoginUrl: vi.fn().mockResolvedValue(undefined) }));
 
 const config = {
   baseUrl: 'https://studio.example',
@@ -29,6 +32,86 @@ const completeTenantCreateFields = {
 const confirmedPlanFingerprint = 'a'.repeat(64);
 
 describe('Studio MCP tools', () => {
+  it('routes personal user API calls through only the selected context and keeps credentials out of MCP output', async () => {
+    const serviceRequest = vi.fn().mockResolvedValue({ data: { service: true } });
+    const personalFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'user-1' }] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }));
+    const context = {
+      id: 'tenant-a', name: 'Tenant A', kind: 'tenant' as const, tenantId: 'tenant-a',
+      baseUrl: 'https://tenant-a.example', issuer: 'https://id.example/realms/tenant-a', clientId: 'personal-client',
+    };
+    const manager = {
+      list: () => [{ id: context.id, name: context.name, kind: context.kind, tenantId: context.tenantId,
+        host: 'tenant-a.example', realm: 'tenant-a', account: 'operator', loginPending: false }],
+      getContext: (id: string) => id === context.id ? context : (() => { throw new Error('unknown context'); })(),
+      getAccessToken: vi.fn().mockResolvedValue('personal-access-token'),
+      startLogin: vi.fn().mockResolvedValue('https://id.example/auth?redirect_uri=http%3A%2F%2F127.0.0.1%3A8765%2Fcallback&state=secret-state'),
+    } as unknown as PersonalMcpContextManager;
+    const server = createStudioMcpServer(
+      { request: serviceRequest },
+      { ...config, personalContexts: [context] },
+      personalFetch,
+      manager
+    );
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    const response = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: { contextId: 'tenant-a', method: 'GET', path: 'api/v1/iam/users', query: { pageSize: '10' } },
+    });
+
+    expect(response.structuredContent).toMatchObject({ ok: true, meta: { context: { id: 'tenant-a', account: 'operator' } } });
+    expect(personalFetch).toHaveBeenCalledTimes(1);
+    expect(personalFetch.mock.calls[0]?.[0]).toBeInstanceOf(URL);
+    expect(String(personalFetch.mock.calls[0]?.[0])).toBe('https://tenant-a.example/api/v1/iam/users?pageSize=10');
+    expect((personalFetch.mock.calls[0]?.[1] as RequestInit).headers).toMatchObject({ authorization: 'Bearer personal-access-token' });
+    expect(serviceRequest).not.toHaveBeenCalled();
+    expect(JSON.stringify(response)).not.toContain('personal-access-token');
+
+    const login = await client.callTool({
+      name: 'studio_personal_login',
+      arguments: { contextId: 'tenant-a' },
+    });
+    expect(login.structuredContent).toMatchObject({ ok: true, data: { id: 'tenant-a', loginPending: true } });
+    expect(JSON.stringify(login)).not.toMatch(/redirect_uri|callback|secret-state|https:\/\//u);
+
+    personalFetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'temporarily_unavailable' } }), {
+      status: 503,
+      headers: { 'content-type': 'application/json', 'x-request-id': 'req-post-1' },
+    }));
+    const writeResponse = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: {
+        contextId: 'tenant-a', method: 'POST', path: 'api/v1/iam/users',
+        body: { email: 'synthetic@example.org' }, idempotencyKey: 'write-1',
+      },
+    });
+    expect(writeResponse.structuredContent).toMatchObject({
+      ok: false,
+      mutationOutcome: 'unknown',
+      nextStep: expect.stringContaining('Read the authorized user list'),
+      meta: { idempotencyKey: 'write-1', requestId: expect.any(String) },
+    });
+    expect(personalFetch).toHaveBeenCalledTimes(2);
+    expect((personalFetch.mock.calls[1]?.[1] as RequestInit).headers).toMatchObject({
+      'idempotency-key': 'write-1',
+      'x-request-id': expect.any(String),
+    });
+
+    const denied = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: { contextId: 'tenant-a', method: 'GET', path: '/api/v1/iam/users' },
+    });
+    expect(denied.structuredContent).toMatchObject({ ok: false, error: { code: 'personal_route_not_allowed' } });
+    expect(personalFetch).toHaveBeenCalledTimes(2);
+
+    await Promise.all([client.close(), server.close()]);
+  });
+
   it('advertises the complete tool surface with risk annotations', async () => {
     const api: StudioApiClient = { request: vi.fn().mockResolvedValue({ data: [] }) };
     const server = createStudioMcpServer(api, config);

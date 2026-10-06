@@ -456,7 +456,16 @@ Fehlerpfad:
 - Bearer-Tokens an nicht freigegebenen Routen oder mit falschem Realm, Client, Audience, Signatur oder Ablauf werden fail-closed abgewiesen, auch wenn ein gültiges Browser-Cookie mitgesendet wird.
 - Eine nicht erreichbare JWKS-Quelle liefert `identity_provider_unavailable`; Tokens und Claims werden nicht protokolliert.
 
-### Szenario 2c: Root-Host-Instanzverwaltung
+### Szenario 2c: Persönlicher MCP-Kontext und erlaubter User-API-Aufruf
+
+1. Der lokale Operator wählt eine vorkonfigurierte Plattform- oder Tenant-Identität explizit über `contextId`; die Konfiguration bindet Studio-Ursprung, Realm-Issuer und Client-ID.
+2. `studio_personal_login` entdeckt den OIDC-Provider mit HTTPS, begrenzt Discovery-Endpunkte auf denselben Origin und bindet State, Nonce sowie PKCE-Verifier an diesen Loginversuch. Der Browser verwendet den festen Loopback-Callback `127.0.0.1:8765`; ein nicht verfügbarer Port lässt den Login fehlschlagen.
+3. Nach erfolgreichem Callback werden Access- und optional Refresh-Token ausschließlich im Speicher des MCP-Prozesses gehalten. API-Aufrufe wählen denselben Kontext ausdrücklich erneut; nur `GET`/`POST api/v1/iam/users` sind freigegeben, Redirects werden abgewiesen und Service-Tokens werden nicht als Fallback verwendet.
+4. Logout, Login-Fehler und Timeout entfernen den jeweiligen Kontextzustand. Logout und Prozessende widerrufen das Refresh-Token nach Möglichkeit; Fehlerausgaben enthalten weder Callback-URL noch Token.
+
+Weitere Routen, persönliche Client-Provisionierung und Live-Abnahme bleiben gesonderte Nachweise.
+
+### Szenario 2d: Root-Host-Instanzverwaltung
 
 1. Admin öffnet `/admin/instances` auf dem Root-Host.
 2. UI lädt `GET /iam/instances`.

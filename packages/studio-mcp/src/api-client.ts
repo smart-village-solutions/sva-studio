@@ -31,6 +31,15 @@ export class UpstreamSchemaError extends Error {
   constructor() { super('invalid_upstream_response'); }
 }
 
+export class StudioApiRedirectError extends Error {
+  constructor(readonly requestId: string) { super('studio_api_redirect_rejected'); }
+}
+
+export type StudioApiClientPolicy = {
+  readonly retryUnauthorized?: boolean;
+  readonly rejectRedirects?: boolean;
+};
+
 export type StudioApiClient = { request(input: StudioApiRequest): Promise<unknown> };
 
 const buildStudioUrl = (baseUrl: string, input: StudioApiRequest): URL => {
@@ -68,7 +77,8 @@ const parseJsonResponse = async (response: Response): Promise<unknown> => {
 export const createStudioApiClient = (
   config: Pick<StudioMcpConfig, 'baseUrl' | 'readTimeoutMs' | 'mutationTimeoutMs'>,
   tokens: TokenProvider,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  policy: StudioApiClientPolicy = {}
 ): StudioApiClient => ({
   async request(input) {
     const requestId = input.requestId ?? randomUUID();
@@ -82,11 +92,15 @@ export const createStudioApiClient = (
         method: input.method ?? 'GET',
         signal,
         headers: buildHeaders(input, token, requestId),
+        ...(policy.rejectRedirects ? { redirect: 'manual' as const } : {}),
         ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
       });
     };
     let response = await execute(false);
-    if (response.status === 401) response = await execute(true);
+    if (policy.rejectRedirects && response.status >= 300 && response.status < 400) {
+      throw new StudioApiRedirectError(requestId);
+    }
+    if (response.status === 401 && policy.retryUnauthorized !== false) response = await execute(true);
     const payload = redact(await parseJsonResponse(response));
     if (!response.ok) throw new StudioApiError(response.status, payload, requestId, input.idempotencyKey);
     return payload;

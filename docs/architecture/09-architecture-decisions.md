@@ -701,3 +701,15 @@ unbestätigten Keycloak-Mutationen am Plan-Fingerprint an.
 Zuordnung:
 
 - Abschnitt 03/04/05/06/08/09/10/11: ADR-047
+
+### Fortschreibung 2026-10: Persönlicher Plattform- und Tenant-Zugang im MCP
+
+[ADR-067](../adr/ADR-067-persoenlicher-plattform-und-tenant-zugang-im-studio-mcp.md)
+legt explizite persönliche Realm-Kontexte, PKCE über den provisionierten Loopback-
+Callback und den strikt begrenzten User-API-Aufruf im vorhandenen MCP fest. Die
+servicegebundenen Instanztools bleiben unverändert; Client-Aktivierung und Live-
+Abnahme sind dadurch nicht vorweggenommen.
+
+Zuordnung:
+
+- Abschnitt 05/06/08/09: ADR-067

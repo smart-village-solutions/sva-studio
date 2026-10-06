@@ -1,4 +1,4 @@
-import { StudioApiError } from './api-client.js';
+import { StudioApiError, StudioApiRedirectError } from './api-client.js';
 import type { ErrorCategory, McpError } from './contracts.js';
 import { redact, redactText } from './redaction.js';
 
@@ -63,6 +63,18 @@ const retryClassFor = (
 };
 
 export const normalizeError = (error: unknown): McpError => {
+  if (error instanceof StudioApiRedirectError) {
+    return {
+      version: '1',
+      code: 'studio_api_redirect_rejected',
+      category: 'authorization',
+      retryable: false,
+      retryClass: 'never',
+      summary: 'Studio hat die Anfrage umgeleitet. Der MCP hat das Ziel nicht aufgerufen.',
+      recommendedAction: 'studio_context_and_api_configuration_inspect',
+      requestId: error.requestId,
+    };
+  }
   if (error instanceof StudioApiError) {
     const contract =
       objectField(error.payload, 'error') ?? (error.payload as Record<string, unknown> | undefined);

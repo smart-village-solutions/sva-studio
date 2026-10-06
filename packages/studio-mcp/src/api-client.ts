@@ -7,7 +7,7 @@ import { z } from 'zod';
 const jsonResponseSchema = z.json();
 
 export type StudioApiRequest = {
-  readonly method?: 'GET' | 'POST' | 'PATCH';
+  readonly method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   readonly path: string;
   readonly query?: Readonly<Record<string, string | readonly string[] | boolean | undefined>>;
   readonly body?: unknown;

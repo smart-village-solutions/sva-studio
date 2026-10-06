@@ -8,20 +8,7 @@ import { openLoginUrl } from './open-browser.js';
 import { PersonalMcpAuthError, PersonalMcpContextManager } from './personal-auth.js';
 import { redact } from './redaction.js';
 import { result, type ToolResult } from './tools-support.js';
-
-const contextInput = z.object({ contextId: z.string().trim().min(1).max(64) });
-const requestInput = z.object({
-  contextId: z.string().trim().min(1).max(64),
-  method: z.enum(['GET', 'POST']),
-  path: z.string().trim().min(1).max(128),
-  query: z.record(z.string().trim().min(1).max(64), z.union([
-    z.string().max(500),
-    z.array(z.string().max(500)).max(20),
-  ])).optional(),
-  body: z.record(z.string(), z.json()).optional(),
-  requestId: z.string().uuid().optional(),
-  idempotencyKey: z.string().trim().min(1).max(128).optional(),
-}).strict();
+import { contextInput, requestInput, type PersonalRequest, validatePersonalRequest } from './tools-personal-request.js';
 
 const errorResult = (error: unknown, contextId?: string, extra: Record<string, unknown> = {}): ToolResult => {
   if (error instanceof PersonalMcpAuthError) {
@@ -60,33 +47,12 @@ const contextDescription = (context: PersonalMcpContext, account?: string) => {
   };
 };
 
-export const validatePersonalRequest = (input: z.infer<typeof requestInput>): string | undefined => {
-  if (input.method !== 'GET' && input.method !== 'POST') return 'personal_method_not_allowed';
-  if (input.path !== 'api/v1/iam/users') return 'personal_route_not_allowed';
-  if (input.method === 'GET' && input.body !== undefined) return 'get_body_not_allowed';
-  if (input.method === 'POST' && (!input.body || input.query !== undefined)) return 'post_contract_invalid';
-  return validatePersonalQuery(input.query);
-};
-
-const validatePersonalQuery = (queryInput: z.infer<typeof requestInput>['query']): string | undefined => {
-  const query = queryInput ?? {};
-  if (Object.keys(query).length > 20) return 'query_limit_exceeded';
-  const pageSizeValue = query.pageSize;
-  if (pageSizeValue !== undefined) {
-    const values = Array.isArray(pageSizeValue) ? pageSizeValue : [pageSizeValue];
-    if (values.length !== 1 || !/^\d+$/u.test(values[0] ?? '') || Number(values[0]) > 100) {
-      return 'page_size_out_of_range';
-    }
-  }
-  return undefined;
-};
-
 const personalRequestSuccess = (
   data: unknown,
-  input: z.infer<typeof requestInput>,
   context: PersonalMcpContext,
   manager: PersonalMcpContextManager,
-  requestId: string
+  requestId: string,
+  idempotencyKey?: string
 ): ToolResult => {
   const session = manager.list().find((item) => item.id === context.id);
   return result({
@@ -95,36 +61,37 @@ const personalRequestSuccess = (
     meta: {
       requestId,
       context: contextDescription(context, session?.account),
-      ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     },
   });
 };
 
 const personalRequestFailure = (
   caught: unknown,
-  input: z.infer<typeof requestInput>,
+  input: PersonalRequest,
   context: PersonalMcpContext,
   manager: PersonalMcpContextManager,
-  requestId: string
+  requestId: string,
+  idempotencyKey?: string
 ): ToolResult => {
   if (caught instanceof PersonalMcpAuthError) return errorResult(caught, input.contextId, { requestId });
-  const uncertain = input.method === 'POST' && (!(caught instanceof StudioApiError) || caught.status >= 500);
+  const uncertain = input.method !== 'GET' && (!(caught instanceof StudioApiError) || caught.status >= 500);
   const normalized = normalizeError(caught);
   const session = manager.list().find((item) => item.id === context.id);
   return result({
     ok: false,
     error: normalized,
-    ...(uncertain ? { mutationOutcome: 'unknown', nextStep: 'Read the authorized user list before attempting another write.' } : {}),
+    ...(uncertain ? { mutationOutcome: 'unknown', nextStep: 'Read the affected resource before attempting another write.' } : {}),
     meta: {
       requestId: normalized.requestId ?? requestId,
       context: contextDescription(context, session?.account),
-      ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     },
   }, true);
 };
 
 const requestUsers = async (
-  input: z.infer<typeof requestInput>,
+  input: PersonalRequest,
   config: StudioMcpConfig,
   manager: PersonalMcpContextManager,
   fetchImpl: typeof fetch
@@ -144,6 +111,7 @@ const requestUsers = async (
     return errorResult(caught, input.contextId);
   }
   const requestId = input.requestId ?? randomUUID();
+  const idempotencyKey = input.method === 'GET' ? undefined : input.idempotencyKey ?? randomUUID();
   const bodyText = input.body === undefined ? undefined : JSON.stringify(input.body);
   if (bodyText && Buffer.byteLength(bodyText, 'utf8') > 64 * 1024) {
     return result({
@@ -166,11 +134,11 @@ const requestUsers = async (
       ...(input.query ? { query: input.query } : {}),
       ...(input.body ? { body: input.body } : {}),
       requestId,
-      ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     });
-    return personalRequestSuccess(data, input, context, manager, requestId);
+    return personalRequestSuccess(data, context, manager, requestId, idempotencyKey);
   } catch (caught) {
-    return personalRequestFailure(caught, input, context, manager, requestId);
+    return personalRequestFailure(caught, input, context, manager, requestId, idempotencyKey);
   }
 };
 
@@ -236,11 +204,11 @@ export const registerPersonalTools = (
   });
 
   server.registerTool('studio_personal_users_api', {
-    title: 'User-Verwaltungs-API aufrufen',
-    description: 'Ruft ausschließlich GET oder POST auf der freigegebenen User-Collection des ausdrücklich gewählten persönlichen Kontexts auf.',
+    title: 'Persönliche Verwaltungs-API aufrufen',
+    description: 'Ruft freigegebene Einzelaktionen für Accounts, Rollen, Gruppen, Organisationen und Mitgliedschaften im ausdrücklich gewählten persönlichen Kontext auf.',
     inputSchema: requestInput.shape,
     outputSchema,
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   }, async (raw) => {
     const parsed = requestInput.safeParse(raw);
     if (!parsed.success) return errorResult(new Error('personal_api_request_invalid'));

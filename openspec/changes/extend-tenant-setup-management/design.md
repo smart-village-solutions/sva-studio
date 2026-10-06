@@ -263,12 +263,18 @@ Die Methoden sind gegen `iam-api.ts`, `iam-api-instances.ts`,
 Methoden; maßgeblich für Berechtigungen, CSRF und Löschschutz sind deshalb die
 konkreten Handler, nicht der Pfad allein.
 
-Für den ersten persönlichen API-Zugriff bleibt es bei `GET` und
-`POST /api/v1/iam/users`. Bearer-Authentisierung wird nur für dieses Paar
-opt-in aktiviert. Sie ersetzt für diese kryptografisch markierten Requests die
-Browser-CSRF-Prüfung, verleiht aber keine Fresh-Reauth-Evidenz. Alle übrigen
-Routen und Methoden lehnt der persönliche MCP-HTTP-Aufruf ab. Die vorhandene
-Instanz-Serviceauthentisierung bleibt getrennt.
+Der erste persönliche API-PR optiert nur `GET` und `POST /api/v1/iam/users`
+ein. Der allgemeine Verwaltungsaufruf ergänzt danach ausschließlich die
+Einzelaktionen der Routenmatrix: Accounts lesen, ändern, deaktivieren,
+einladen und nach Schutzprüfung löschen; Rollen und Gruppen verwalten und
+zuweisen; Organisationen und Mitgliedschaften verwalten. Server-Handler opten
+jede Route samt Methode einzeln ein. Der MCP-Client beschränkt dieselben
+Aktionen im vorhandenen Aufrufpfad auf relative Pfade und sichere
+ID-Segmente. Bulk-, Self-Service-, Sync-, Mainserver-Provisionierungs-,
+Instanz-, Content- und Plugin-Routen bleiben gesperrt. Die kryptografisch
+authentisierten Requests überspringen nur Browser-CSRF; sie erhalten keine
+Fresh-Reauth-Evidenz. Die vorhandene Instanz-Serviceauthentisierung bleibt
+getrennt.
 
 Die aktive Change-Inventur bestätigt die Abgrenzung zum Tenant-Setup:
 `refactor-tenant-creation-readiness` ordnet den allgemeinen Erstellungs- und
@@ -280,8 +286,8 @@ Provisionierungsweg ein. Die fehlende Schnittstellen-HTTP-API bleibt als
 konkrete Lücke in Abschnitt 4 erfasst.
 
 Die IAM-Account-Handler laufen durch `withAuthenticatedIamHandler` und
-`withAuthenticatedUser`. Der erste persönliche Bearer-Pfad ist opt-in und
-auf `GET` und `POST /api/v1/iam/users` begrenzt. `withAuthenticatedUser`
+`withAuthenticatedUser`. Jeder persönliche Bearer-Pfad ist an der konkreten
+Handler-Route und HTTP-Methode opt-in gebunden. `withAuthenticatedUser`
 prüft weiter Tenant-Host, Account-Lifecycle und Legal-Text-Compliance. `sub`
 wird über denselben Session-Principal- und Effective-Role-Pfad hydriert; der
 vorhandene Handler erhält unverändert Action-, Rollen-, Tenant-, Audit- und

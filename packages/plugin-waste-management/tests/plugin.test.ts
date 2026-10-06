@@ -348,6 +348,14 @@ describe('pluginWasteManagement contract', () => {
           jobTypeId: 'waste-management.provision-tenant-database',
         },
         {
+          operation: 'suspend',
+          jobTypeId: 'waste-management.provision-tenant-database',
+        },
+        {
+          operation: 'reactivate',
+          jobTypeId: 'waste-management.provision-tenant-database',
+        },
+        {
           operation: 'readiness',
           jobTypeId: 'waste-management.tenant-readiness',
         },

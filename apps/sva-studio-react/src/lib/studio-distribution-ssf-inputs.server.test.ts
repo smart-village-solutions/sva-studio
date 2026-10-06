@@ -23,6 +23,12 @@ vi.mock('./ssf-authorization-projection-runtime.server.js', () => ({
   createStudioSsfAuthorizationProjectionRuntime: vi.fn(() => ({})),
 }));
 
+vi.mock('./plugin-catalog.server.js', () => ({
+  studioServerPluginSnapshot: {
+    registry: { jobTypes: [{ jobTypeId: 'ssf.reconcile-authorization' }] },
+  },
+}));
+
 describe('SSF Studio distribution inputs', () => {
   it('discovers SSF browser and server modules only from the workspace package', async () => {
     const clientInputs = await import('./plugin-client-inputs.ssf');

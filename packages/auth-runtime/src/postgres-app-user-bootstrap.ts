@@ -103,23 +103,32 @@ const runBootstrap = async (): Promise<boolean> => {
         [appDbUser]
       );
       if (existingRole.rowCount === 0) {
+        // fallow-ignore-next-line security-sink -- SQL identifiers and literals are escaped with the dedicated PostgreSQL quote helpers above.
         await client.query(
           `CREATE ROLE ${quotedAppDbUser} LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`
         );
       } else {
+        // fallow-ignore-next-line security-sink -- SQL identifiers and literals are escaped with the dedicated PostgreSQL quote helpers above.
         await client.query(
           `ALTER ROLE ${quotedAppDbUser} WITH LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`
         );
       }
+      // fallow-ignore-next-line security-sink -- Database and role identifiers are escaped with quoteIdentifier.
       await client.query(`GRANT CONNECT ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
+      // fallow-ignore-next-line security-sink -- Database and role identifiers are escaped with quoteIdentifier.
       await client.query(`REVOKE CREATE ON DATABASE ${quotedPostgresDb} FROM ${quotedAppDbUser}`);
       await client.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
+      // fallow-ignore-next-line security-sink -- Role identifiers are escaped with quoteIdentifier.
       await client.query(`REVOKE CREATE ON SCHEMA public FROM ${quotedAppDbUser}`);
+      // fallow-ignore-next-line security-sink -- Role identifiers are escaped with quoteIdentifier.
       await client.query(`GRANT iam_app TO ${quotedAppDbUser}`);
+      // fallow-ignore-next-line security-sink -- Role identifiers are escaped with quoteIdentifier.
       await client.query(`GRANT USAGE ON SCHEMA iam TO ${quotedAppDbUser}`);
+      // fallow-ignore-next-line security-sink -- Role identifiers are escaped with quoteIdentifier.
       await client.query(
         `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${quotedAppDbUser}`
       );
+      // fallow-ignore-next-line security-sink -- Role identifiers are escaped with quoteIdentifier.
       await client.query(
         `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${quotedAppDbUser}`
       );

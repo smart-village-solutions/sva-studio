@@ -72,11 +72,13 @@ const fetchAccessToken = async () => {
     client_secret: clientSecret,
   });
 
+  // fallow-ignore-next-line security-sink -- Endpoint is operator-configured for the local benchmark; redirects are rejected before sending the client secret.
   const response = await fetch(oauthUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
     signal: AbortSignal.timeout(requestTimeoutMs),
+    redirect: 'error',
   });
 
   const elapsedMs = performance.now() - start;
@@ -98,6 +100,7 @@ const executeGraphql = async (accessToken) => {
   const start = performance.now();
   let response;
   try {
+    // fallow-ignore-next-line security-sink -- Endpoint is operator-configured for the local benchmark; redirects are rejected before sending the bearer token.
     response = await fetch(graphqlUrl, {
       method: 'POST',
       headers: {
@@ -106,6 +109,7 @@ const executeGraphql = async (accessToken) => {
       },
       body: JSON.stringify({ query }),
       signal: AbortSignal.timeout(requestTimeoutMs),
+      redirect: 'error',
     });
   } catch (error) {
     if (isTimeoutError(error)) {

@@ -18,6 +18,7 @@ const createFixture = (
     enabled?: boolean;
     browserPath?: string;
     exportsManifest?: boolean;
+    jobsPath?: string | null;
     sdkVersion?: string;
     requiredCapabilities?: string[];
   } = {}
@@ -31,7 +32,7 @@ const createFixture = (
     descriptor: './dist/metadata.js',
     browser: input.browserPath ?? './dist/calendar-view.js',
     server: './dist/calendar-http.js',
-    jobs: './dist/calendar-worker.js',
+    jobs: input.jobsPath === null ? undefined : (input.jobsPath ?? './dist/calendar-worker.js'),
   };
   writeFileSync(
     join(appRoot, 'package.json'),
@@ -82,7 +83,7 @@ const createFixture = (
     })
   );
   for (const path of Object.values(paths)) {
-    if (path.includes('..')) continue;
+    if (!path || path.includes('..')) continue;
     const file = join(packageRoot, path);
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, 'export const marker = true;');
@@ -117,14 +118,31 @@ describe('installed plugin build inputs', () => {
   });
 
   it('does not include a package chosen for another profile', () => {
-    const { appRoot } = createFixture({ distribution: 'ssf' });
+    const { appRoot } = createFixture({ distribution: 'ssf', jobsPath: null });
     expect(resolveInstalledPluginSources(appRoot, 'studio')).toEqual([]);
     expect(resolveInstalledPluginSources(appRoot, 'ssf')).toHaveLength(1);
+  });
+
+  it('rejects an enabled SSF package whose job entrypoint the host cannot register', () => {
+    const { appRoot } = createFixture({ distribution: 'ssf' });
+    expect(() => resolveInstalledPluginSources(appRoot, 'ssf')).toThrow(
+      'installed_plugin_jobs_unsupported:calendar:ssf'
+    );
   });
 
   it('loads a package manifest without an exports-map subpath', () => {
     const { appRoot } = createFixture({ exportsManifest: false });
     expect(resolveInstalledPluginSources(appRoot, 'studio')).toHaveLength(1);
+  });
+
+  it('escapes dangerous characters in generated JavaScript import strings', () => {
+    const { appRoot } = createFixture({ browserPath: './dist/</script>.js' });
+    const generated = renderInstalledPluginInputs(
+      resolveInstalledPluginSources(appRoot, 'studio'),
+      'client'
+    );
+    expect(generated).toContain('\\u003c/script\\u003e.js');
+    expect(generated).not.toContain('</script>');
   });
 
   it('keeps disabled packages in the catalog without loading their entrypoints', () => {

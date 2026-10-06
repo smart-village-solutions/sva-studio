@@ -31,6 +31,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const readJson = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8')) as unknown;
 
+const serializeJavaScriptValue = (value: unknown): string => {
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) throw new Error('installed_plugin_module_serialization_failed');
+  return serialized
+    .replaceAll('<', '\\u003c')
+    .replaceAll('>', '\\u003e')
+    .replaceAll('&', '\\u0026')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
+};
+
+const javascriptStringLiteral = (value: string): string => serializeJavaScriptValue(value);
+
 const readCatalog = (appRoot: string, distribution: Distribution): readonly CatalogRecord[] => {
   const raw = readJson(join(appRoot, 'plugin-catalog.json'));
   if (!Array.isArray(raw)) throw new Error('plugin_catalog_invalid');
@@ -122,6 +135,9 @@ export const resolveInstalledPluginSources = (
     if (manifest.pluginId !== entry.pluginId) {
       throw new Error(`installed_plugin_manifest_mismatch:${entry.pluginId}`);
     }
+    if (entry.enabled && distribution === 'ssf' && manifest.entryPoints.jobs) {
+      throw new Error(`installed_plugin_jobs_unsupported:${entry.pluginId}:ssf`);
+    }
     const files: Partial<Record<EntryKind, string>> = {};
     if (entry.enabled) {
       if (
@@ -159,7 +175,7 @@ const registryPath = (source: InstalledSource, kind: EntryKind): string =>
   `../../../../node_modules/${source.catalog.sourceRef}/${source.manifest.entryPoints[kind]?.replace(/^\.\//u, '')}`;
 
 const renderManifestModules = (sources: readonly InstalledSource[]): string =>
-  `export const nodeManifestModules = ${JSON.stringify(
+  `export const nodeManifestModules = ${serializeJavaScriptValue(
     Object.fromEntries(
       sources.map((source) => [
         `../../../../node_modules/${source.catalog.sourceRef}/plugin.manifest.json`,
@@ -177,7 +193,7 @@ const renderLoaders = (
     .filter((source) => source.catalog.enabled && source.files[kind])
     .map(
       (source) =>
-        `${JSON.stringify(registryPath(source, kind))}: () => import(${JSON.stringify(source.files[kind])})`
+        `${javascriptStringLiteral(registryPath(source, kind))}: () => import(${javascriptStringLiteral(source.files[kind]!)})`
     );
   return `export const ${exportName} = { ${entries.join(', ')} };`;
 };
@@ -187,7 +203,7 @@ export const renderInstalledPluginInputs = (
   module: keyof typeof installedInputIds
 ): string => {
   if (module === 'catalog') {
-    return `export const installedPluginCatalogConfig = ${JSON.stringify(sources.map((source) => source.catalog))};`;
+    return `export const installedPluginCatalogConfig = ${serializeJavaScriptValue(sources.map((source) => source.catalog))};`;
   }
   const declarations = [renderManifestModules(sources)];
   if (module === 'client') {

@@ -93,7 +93,7 @@ describe('Studio MCP tools', () => {
     expect(writeResponse.structuredContent).toMatchObject({
       ok: false,
       mutationOutcome: 'unknown',
-      nextStep: expect.stringContaining('Read the authorized user list'),
+      nextStep: expect.stringContaining('Read the affected resource'),
       meta: { idempotencyKey: 'write-1', requestId: expect.any(String) },
     });
     expect(personalFetch).toHaveBeenCalledTimes(2);
@@ -102,12 +102,32 @@ describe('Studio MCP tools', () => {
       'x-request-id': expect.any(String),
     });
 
+    personalFetch.mockRejectedValueOnce(new TypeError('network unavailable'));
+    const deleteResponse = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: {
+        contextId: 'tenant-a', method: 'DELETE', path: 'api/v1/iam/users/user-1',
+        idempotencyKey: 'delete-1',
+      },
+    });
+    expect(deleteResponse.structuredContent).toMatchObject({
+      ok: false,
+      mutationOutcome: 'unknown',
+      nextStep: expect.stringContaining('Read the affected resource'),
+      meta: { idempotencyKey: expect.any(String) },
+    });
+    expect(personalFetch).toHaveBeenCalledTimes(3);
+    expect((personalFetch.mock.calls[2]?.[1] as RequestInit).method).toBe('DELETE');
+    expect((personalFetch.mock.calls[2]?.[1] as RequestInit).headers).toMatchObject({
+      'idempotency-key': expect.any(String),
+    });
+
     const denied = await client.callTool({
       name: 'studio_personal_users_api',
       arguments: { contextId: 'tenant-a', method: 'GET', path: '/api/v1/iam/users' },
     });
     expect(denied.structuredContent).toMatchObject({ ok: false, error: { code: 'personal_route_not_allowed' } });
-    expect(personalFetch).toHaveBeenCalledTimes(2);
+    expect(personalFetch).toHaveBeenCalledTimes(3);
 
     await Promise.all([client.close(), server.close()]);
   });

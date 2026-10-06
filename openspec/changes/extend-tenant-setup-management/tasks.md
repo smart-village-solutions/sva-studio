@@ -11,7 +11,7 @@ Gesamtfall ab.
 
 ## 2. PR-Kandidat: Persönliche Studio-API-Anmeldung
 
-- [ ] 2.1 Den serverseitigen API-Authentisierungspfad nur für freigegebene Verwaltungsrouten und Methoden an den bestehenden Identitäts-, Tenant- und Autorisierungskern anbinden. Ausstellenden Client und Studio-Audience getrennt prüfen; bei vorhandenem ungültigem Bearer-Token keinen Cookie-Fallback erlauben. Cookie-Session, Hostbindung, CSRF und erforderliche Fresh-Reauth-Prüfung funktionsfähig halten.
+- [x] 2.1 Den serverseitigen API-Authentisierungspfad nur für das User-Listen-/Anlegepaar `GET` und `POST /api/v1/iam/users` opt-in an den bestehenden Identitäts-, Tenant- und Autorisierungskern anbinden. Ausstellenden Client (`azp`) und Studio-Audience getrennt prüfen; Issuer und Tenant-Host ohne Browser-Client-Secret an den Request-Kontext binden; ungültige oder nicht freigegebene Bearer-Requests ohne Cookie-Fallback abweisen. Cookie-Session, Browser-CSRF, Account-Lifecycle und Fresh-Reauth-Semantik erhalten.
 - [ ] 2.2 Nachweisen, dass Kunden ihr MCP-Attribut nicht selbst setzen können; Keycloak-seitig erlaubte Token-Ausgabe nur für `svaStudioMcpAccess=true` und verweigerte Ausgabe für fehlendes/abweichendes Attribut bei Kunden-`system_admin` mit und ohne bestehende SSO-Sitzung prüfen. Entzug und Restlaufzeit bestehender Tokens prüfen. Bestehende Verwaltungsendpunkte direkt per persönlichem MCP-Token mit Lesen, zulässigem Schreiben und Ablehnungen prüfen; Realm-/Host-/Client-Verwechslung, Tenant-Grenzen, Tokenablauf, fehlende fachliche Rechte und Browser-Session-Parität belegen. Auth- und Server-Runtime-Pflichtgates beachten.
 
 ## 3. PR-Kandidat: Allgemeiner MCP-Zugang zu bestehenden Verwaltungs-APIs

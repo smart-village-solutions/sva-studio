@@ -67,7 +67,7 @@ describe('withAuthenticatedIamHandler', () => {
       },
       expect.any(Function)
     );
-    expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function));
+    expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function), {});
     expect(handler).toHaveBeenCalledWith(
       request,
       expect.objectContaining({ sessionId: 'session-1' })

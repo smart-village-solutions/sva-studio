@@ -121,10 +121,10 @@ describe('IAM core handler wrappers', () => {
     await module.mutateUserKeycloakRoleHandler(request);
 
     expect(state.withAuthenticatedIamHandler.mock.calls).toEqual([
-      [request, state.userHandlers.listUsersInternal],
+      [request, state.userHandlers.listUsersInternal, { personalBearerMethod: 'GET' }],
       [request, state.userHandlers.getUserInternal],
       [request, state.userHandlers.getUserTimelineInternal],
-      [request, state.userHandlers.createUserInternal],
+      [request, state.userHandlers.createUserInternal, { personalBearerMethod: 'POST' }],
       [request, state.userHandlers.sendPasswordSetupEmailInternal],
       [request, state.userHandlers.reprovisionMainserverUserInternal],
       [request, state.userHandlers.updateUserInternal],

@@ -49,6 +49,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - gemischte oder nicht eindeutig klassifizierbare App-Änderungen fallen bewusst auf das aggregierte `sva-studio-react:test:unit` zurück
   - neue oder grundlegend überarbeitete HTTP-nahe Frontend-Tests nutzen `msw`; reine Modul-Mocks sind dort kein ausreichender Qualitätsnachweis
   - für geänderte kritische framework-agnostische Hotspots muss eine `fast-check`-Property oder eine dokumentierte Gegenbegründung reviewbar vorliegen
+  - persönliche MCP-Bearer-Authentisierung bleibt auf explizit aktivierte Route-/Methoden-Paare begrenzt und benötigt Negativtests für Client-, Issuer-, Audience-, Ablauf- und Cookie-Fallback-Verwechslung
   - neue oder grundlegend überarbeitete Formular-Flows müssen dem RHF-/`zodResolver`-Standardpfad folgen oder als Ausnahme dokumentiert sein
 - Accessibility-Gate:
   - `Quality Gates / A11y` läuft auf allen Pull Requests und auf `main`

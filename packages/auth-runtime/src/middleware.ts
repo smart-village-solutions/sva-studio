@@ -18,6 +18,7 @@ import {
 import { resolveSessionUser as resolveStoredSessionUser } from './auth-server/session.js';
 import { getAuthConfig } from './config.js';
 import { enrichSessionUserWithEffectiveRoles } from './effective-session-roles.js';
+import { authenticatePersonalApiRequest } from './personal-api-auth.js';
 import { buildLogContext } from './log-context.js';
 import { createMockSessionUser, hasActiveMockAuthSession, isMockAuthEnabled } from './mock-auth.js';
 import type { SessionUser } from './types.js';
@@ -38,6 +39,15 @@ export type AuthenticatedRequestContext = {
 
 export type AuthenticatedUserOptions = {
   readonly skipEffectiveRoleHydration?: boolean;
+  readonly personalBearerMethod?: 'GET' | 'POST';
+};
+
+const isPersonalApiBearerRoute = (
+  request: Request,
+  allowedMethod: AuthenticatedUserOptions['personalBearerMethod']
+): boolean => {
+  const url = new URL(request.url);
+  return url.pathname === '/api/v1/iam/users' && allowedMethod === request.method;
 };
 
 type SessionResolution =
@@ -70,6 +80,36 @@ const createAuthenticatedContext = async (
   const tenantHostValidationMs = performance.now() - tenantHostValidationStartedAt;
   if (tenantHostError) {
     return { kind: 'response', response: tenantHostError };
+  }
+
+  if (request.headers.has('authorization')) {
+    if (!isPersonalApiBearerRoute(request, options.personalBearerMethod)) {
+      return {
+        kind: 'response',
+        response: createApiError(
+          401,
+          'unauthorized',
+          'Anmeldung erforderlich.',
+          buildLogContext(undefined, { includeTraceId: true }).request_id,
+          {
+            reason_code: 'bearer_not_allowed',
+          }
+        ),
+      };
+    }
+    const bearerResolution = await authenticatePersonalApiRequest(request);
+    if (bearerResolution instanceof Response) {
+      return { kind: 'response', response: bearerResolution };
+    }
+    return {
+      kind: 'authenticated',
+      tenantHostValidationMs,
+      storedSessionResolutionMs: 0,
+      runtimeSessionHydrationMs: 0,
+      sessionId: 'personal-api-token',
+      sessionExpiresAt: bearerResolution.expiresAt,
+      user: bearerResolution.user,
+    };
   }
 
   if (isMockAuthEnabled() && hasActiveMockAuthSession(request)) {

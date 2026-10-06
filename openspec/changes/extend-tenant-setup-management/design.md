@@ -255,16 +255,16 @@ entsprechenden Verwaltungsrouten. Diese Lücke gehört erst zum dritten
 PR-Kandidaten.
 
 Die IAM-Account-Handler laufen durch `withAuthenticatedIamHandler` und
-`withAuthenticatedUser`, die derzeit ausschließlich eine Cookie-Session
-auflösen. Gruppen und Organisationen verwenden denselben Auth-Kern über eigene
-Wrapper. `withAuthenticatedUser` prüft den Tenant-Host, die Account-Lifecycle-
-Sperre und die Legal-Text-Compliance. Schreibaktionen prüfen zusätzlich ihre
-bestehenden Action-, Rollen-, Tenant-, CSRF- und Idempotenzverträge. Der neue
-persönliche Bearer-Pfad muss daher die Identität vor diesen fachlichen Guards
-auflösen und die abweichende CSRF-Semantik für Bearer-Requests ausdrücklich
-begrenzen; ein ungültiger Authorization-Header darf nie in den Cookie-Pfad
-fallen. Die heutige Instanz-Serviceauthentisierung zeigt bereits dieses
-Fail-Closed-Muster, ist aber keine persönliche Tenant-Identität.
+`withAuthenticatedUser`. Der erste persönliche Bearer-Pfad ist opt-in und
+auf `GET` und `POST /api/v1/iam/users` begrenzt. `withAuthenticatedUser`
+prüft weiter Tenant-Host, Account-Lifecycle und Legal-Text-Compliance. `sub`
+wird über denselben Session-Principal- und Effective-Role-Pfad hydriert; der
+vorhandene Handler erhält unverändert Action-, Rollen-, Tenant-, Audit- und
+Idempotenzprüfungen. Nur die Browser-CSRF-Prüfung entfällt für einen Request,
+den das Auth-Middleware zuvor kryptografisch als persönlichen Bearer-Request
+markiert hat. Ein solcher Request erhält keine Fresh-Reauth-Evidenz. Ein
+ungültiger oder nicht zugelassener Authorization-Header fällt nie in den
+Cookie-Pfad. Die heutige Instanz-Serviceauthentisierung bleibt getrennt.
 
 Für den ersten Kunden-Admin ist der bestehende Vertrag bestätigt:
 `sendPasswordSetupEmail !== true` liefert `invitation.status = not_requested`;
@@ -344,18 +344,19 @@ dem Code-Rollout wirksam. Persönliche Clients bleiben bis zum API- und
 MCP-Nachweis deaktiviert; Provider-Freigaben werden je Realm einzeln
 gesetzt.
 
-Vor einer Aktivierung bleiben der Nachweis mit einem echten Kunden-
-`system_admin`, die Selbständerungs-Negativprobe des Profilattributs und
-die persönliche Studio-API-Anmeldung des ersten PRs offen. Für den
-Bearer-Pfad ist außerdem festzulegen, wie Issuer und Tenant-Host ohne den
-nur für den Browser-Login benötigten Client-Secret-Lookup gebunden werden.
+Die Realm-/Host-Bindung für den Bearer-Pfad wird ohne Browser-Client-Secret
+aus Request-Host, aktivem Registry-Eintrag sowie dessen Issuer- und
+Studio-Client-Werten aufgelöst. Der persönliche Client wird weiterhin nicht
+aktiviert, bevor Studio-API- und MCP-Nachweise erbracht sind. Offen bleiben
+für die Keycloak-/MCP-Abnahme der Nachweis mit einem echten Kunden-
+`system_admin`, die Selbständerungs-Negativprobe des Profilattributs,
+Token-Entzug und Restlaufzeit sowie die produktionsnahe API-Aufrufprobe nach
+Bereitstellung dieses Codepfads.
 
 - Wie werden der Kunden-`system_admin` und die untersagte Selbständerung
   des Attributs ohne produktive Kundendaten nachgewiesen?
-- Wie werden Issuer, Audience und Tenant-Host beim persönlichen Bearer-Pfad
-  gebunden, ohne den Browser-Client-Secret-Lookup zu übernehmen?
-- Welche Endpunkte brauchen neben der neuen Anmeldung eine Anpassung ihrer
-  CSRF- oder Fresh-Reauth-Prüfung für API-Aufrufe?
+- Welche weiteren Verwaltungsrouten benötigen für ihre eigenen CSRF- oder
+  Fresh-Reauth-Verträge eine Anpassung?
 - Wie werden Secret-Eingaben aus einer lokalen geschützten Quelle nur für den
   konkreten Schnittstellen-Aufruf bereitgestellt, ohne in MCP-Argumenten zu
   erscheinen?

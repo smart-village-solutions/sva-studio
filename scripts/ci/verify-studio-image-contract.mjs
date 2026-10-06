@@ -69,7 +69,11 @@ const verifyChunkProvenance = (distribution, provenance, files, installedPlugins
     if (actual.get(chunk.path) !== chunk.sha256)
       fail(`chunk_provenance_hash_mismatch:${chunk.path}`);
     for (const name of chunk.pluginPackages) {
-      if (typeof name !== 'string' || !/^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/.test(name)) {
+      if (
+        typeof name !== 'string' ||
+        !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(name) ||
+        name.split('/').some((part) => part === '.' || part === '..')
+      ) {
         fail('chunk_provenance_manifest_invalid');
       }
       if (excluded.has(name) || !allowed.has(name))
@@ -148,7 +152,8 @@ export const verifyStudioImageContract = (input) => {
         typeof entry?.pluginId !== 'string' ||
         !/^[a-z0-9-]+$/.test(entry.pluginId) ||
         typeof entry.sourceRef !== 'string' ||
-        !/^(?:@[a-z0-9-]+\/)?[a-z0-9-]+$/.test(entry.sourceRef)
+        !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(entry.sourceRef) ||
+        entry.sourceRef.split('/').some((part) => part === '.' || part === '..')
     ) ||
     new Set(runtimeManifest.installedPlugins.map((entry) => entry.pluginId)).size !==
       runtimeManifest.installedPlugins.length ||

@@ -108,6 +108,18 @@ describe('verify-studio-image-contract', () => {
     clientChunk.pluginPackages.push('@vendor/hidden');
     expect(() => verify(input)).toThrow();
   });
+
+  it.each(['@vendor/plugin.calendar', '@vendor/plugin_calendar'])(
+    'accepts valid npm package names in the runtime image manifest: %s',
+    (sourceRef) => {
+      const input = validInput('studio');
+      input.runtimeManifest.installedPlugins.push({ pluginId: 'calendar', sourceRef });
+      input.runtimeManifest.includedPluginIds.push('calendar');
+      for (const chunk of input.chunkProvenance.chunks) chunk.pluginPackages.push(sourceRef);
+      expect(JSON.parse(verify(input)).includedPluginIds).toContain('calendar');
+    }
+  );
+
   it.each(['studio', 'ssf'] as const)(
     'accepts the exact %s digest and inventory',
     (distribution) => {

@@ -5,7 +5,11 @@ import {
   withRequestContext,
 } from '@sva/server-runtime';
 
-import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
+import {
+  withAuthenticatedUser,
+  type AuthenticatedRequestContext,
+  type AuthenticatedUserOptions,
+} from '../middleware.js';
 import { buildLogContext } from '../log-context.js';
 
 const logger = createSdkLogger({ component: 'iam-service', level: 'info' });
@@ -15,11 +19,12 @@ const withIamRequestContext = <T>(request: Request, work: () => Promise<T>): Pro
 
 export const withAuthenticatedIamHandler = (
   request: Request,
-  handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>
+  handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>,
+  options: AuthenticatedUserOptions = {}
 ): Promise<Response> =>
   withIamRequestContext(request, async () => {
     try {
-      return await withAuthenticatedUser(request, (ctx) => handler(request, ctx));
+      return await withAuthenticatedUser(request, (ctx) => handler(request, ctx), options);
     } catch (error) {
       const logContext = buildLogContext(undefined, { includeTraceId: true });
       logger.error('IAM request failed unexpectedly', {

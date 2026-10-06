@@ -127,6 +127,8 @@ gleichzeitig beeinflussen.
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE
+- Persönliche MCP-Bearer-Tokens werden nur für ausdrücklich aktivierte Verwaltungsrouten und Methoden angenommen. Im ersten Schritt sind dies `GET` und `POST /api/v1/iam/users`; `azp`, Issuer und Studio-Audience werden getrennt geprüft und aus Host sowie Realm aufgelöst. Ein ungültiger oder nicht zugelassener Bearer-Token fällt nie auf ein Cookie zurück.
+- Ein erfolgreich verifizierter Bearer-Request umgeht nur den Browser-CSRF-Nachweis. Er erzeugt keine Session und keinen Fresh-Reauth-Nachweis; fachliche IAM-Rechte, Account-Lifecycle, Tenant-Bindung und sensible Mutationsschutzregeln bleiben bestehen.
 - Signiertes Login-State-Cookie (HMAC)
 - Session-Cookies: `httpOnly`, `sameSite=lax`, `secure` in Production
 - `Session.expiresAt` ist die fachlich führende Session-Gültigkeit; Cookie und Redis-TTL werden daraus abgeleitet

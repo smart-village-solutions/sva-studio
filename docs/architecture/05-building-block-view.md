@@ -249,6 +249,7 @@ Modulen der jeweiligen Bausteine.
 
 - Identity und OIDC-Flow:
   - `packages/auth-runtime` (`routes`, `auth-server`, `oidc`, Session, Cookies, Runtime-Health)
+  - Der persönliche MCP-Bearer-Pfad verwendet denselben IAM-Principal und dieselbe Effective-Role-Auflösung; im ersten Lieferabschnitt ist er auf `GET` und `POST /api/v1/iam/users` begrenzt. Issuer und Studio-Audience werden getrennt an den Host-/Realm-Kontext gebunden.
 - Account- und Rollenmanagement inkl. IdP-Synchronisation:
   - `packages/iam-admin` (User-, Rollen-, Gruppen-, Organisations-, Actor-, Reconcile- und Keycloak-Admin-Orchestrierung)
   - Die bewusste administrative Account-Anlage beginnt ohne ausdrücklichen Status als `active`; die automatische JIT-Anlage beim Login bleibt standardmäßig `pending`. Die Keycloak-Passwort-Einladung ändert den IAM-Status nicht.

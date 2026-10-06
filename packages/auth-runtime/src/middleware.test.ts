@@ -20,6 +20,7 @@ type SessionResolutionResult =
 const getSessionUserMock = vi.hoisted(() =>
   vi.fn<(_sessionId: string) => Promise<SessionResolutionResult>>()
 );
+const personalApiAuthMock = vi.hoisted(() => vi.fn());
 const middlewareLogger = vi.hoisted(() => ({
   debug: vi.fn(),
   error: vi.fn(),
@@ -100,6 +101,10 @@ vi.mock('./auth-server/session.js', () => ({
   resolveSessionUser: getSessionUserMock,
 }));
 
+vi.mock('./personal-api-auth.js', () => ({
+  authenticatePersonalApiRequest: personalApiAuthMock,
+}));
+
 describe('auth-runtime withAuthenticatedUser', () => {
   let withAuthenticatedUser: typeof import('./middleware.js').withAuthenticatedUser;
 
@@ -176,6 +181,84 @@ describe('auth-runtime withAuthenticatedUser', () => {
         trace_id: 'trace-auth-runtime',
       })
     );
+  });
+
+  it('accepts bearer auth only on the opted-in user list and create routes', async () => {
+    personalApiAuthMock.mockResolvedValueOnce({
+      user: { id: 'kc-provider', roles: [], instanceId: 'tenant-1' },
+      expiresAt: 1_800_000_000_000,
+    });
+    const handler = vi.fn(({ user }) => Response.json({ id: user.id }));
+    const request = new Request('https://tenant.example/api/v1/iam/users?search=test', {
+      headers: { authorization: 'Bearer personal-token' },
+    });
+
+    const response = await withAuthenticatedUser(request, handler, { personalBearerMethod: 'GET' });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ id: 'kc-provider' });
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'personal-api-token',
+        sessionExpiresAt: 1_800_000_000_000,
+        freshReauthAt: undefined,
+      })
+    );
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to a valid cookie for a bearer token outside the allowlist', async () => {
+    const handler = vi.fn(() => new Response('unexpected'));
+    const response = await withAuthenticatedUser(
+      new Request('https://tenant.example/api/v1/iam/users/bulk-deactivate', {
+        headers: {
+          authorization: 'Bearer personal-token',
+          cookie: 'sva_auth_session=valid-session',
+        },
+      }),
+      handler,
+      { personalBearerMethod: 'POST' }
+    );
+
+    expect(response.status).toBe(401);
+    expect(handler).not.toHaveBeenCalled();
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+    expect(personalApiAuthMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects a bearer token when the same user route uses an unapproved method', async () => {
+    const handler = vi.fn(() => new Response('unexpected'));
+    const response = await withAuthenticatedUser(
+      new Request('https://tenant.example/api/v1/iam/users', {
+        method: 'POST',
+        headers: { authorization: 'Bearer personal-token' },
+      }),
+      handler,
+      { personalBearerMethod: 'GET' }
+    );
+
+    expect(response.status).toBe(401);
+    expect(handler).not.toHaveBeenCalled();
+    expect(personalApiAuthMock).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to a valid cookie when personal bearer validation fails', async () => {
+    personalApiAuthMock.mockResolvedValueOnce(new Response(null, { status: 401 }));
+    const handler = vi.fn(() => new Response('unexpected'));
+    const response = await withAuthenticatedUser(
+      new Request('https://tenant.example/api/v1/iam/users', {
+        headers: {
+          authorization: 'Bearer invalid-token',
+          cookie: 'sva_auth_session=valid-session',
+        },
+      }),
+      handler,
+      { personalBearerMethod: 'GET' }
+    );
+
+    expect(response.status).toBe(401);
+    expect(handler).not.toHaveBeenCalled();
+    expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid host before using a retained platform session', async () => {

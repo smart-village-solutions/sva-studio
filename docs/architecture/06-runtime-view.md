@@ -443,6 +443,19 @@ Fehlerpfad:
 - Profilfehler beruehren die Session-Hydration nicht; die App behaelt ihren minimalen Auth-State
 - Host-/Realm-/Claim-Konflikte erzeugen keinen tenant-losen Fallback, sondern bleiben als Auth-Fehler sichtbar.
 
+### Szenario 2b: Persönlicher MCP-Token an freigegebener IAM-Route
+
+1. `GET` oder `POST /api/v1/iam/users` erreicht den bestehenden IAM-Handler mit einem Bearer-Token.
+2. `@sva/auth-runtime` validiert zuerst Host und Tenant-Registry und löst danach den für diesen Host konfigurierten Realm-Issuer sowie die Studio-Audience auf, ohne ein Browser-Client-Secret zu laden.
+3. Die JWT-Prüfung verlangt RS256, gültige Signatur und Laufzeit, den passenden Issuer und die Studio-Audience sowie `azp=sva-studio-mcp-personal`.
+4. `sub` wird als Keycloak-Principal in den bestehenden IAM-Principal- und Effective-Role-Pfad übergeben. Der vorhandene Handler prüft unverändert Action, Tenant-Grenze, Account-Lifecycle und Mutationsschutz.
+5. Ein erfolgreicher Bearer-Request verwendet keinen Cookie-Session-Fallback. Für ihn gilt kein Browser-CSRF-Nachweis; daraus entsteht kein Fresh-Reauth-Nachweis.
+
+Fehlerpfad:
+
+- Bearer-Tokens an nicht freigegebenen Routen oder mit falschem Realm, Client, Audience, Signatur oder Ablauf werden fail-closed abgewiesen, auch wenn ein gültiges Browser-Cookie mitgesendet wird.
+- Eine nicht erreichbare JWKS-Quelle liefert `identity_provider_unavailable`; Tokens und Claims werden nicht protokolliert.
+
 ### Szenario 2c: Root-Host-Instanzverwaltung
 
 1. Admin öffnet `/admin/instances` auf dem Root-Host.

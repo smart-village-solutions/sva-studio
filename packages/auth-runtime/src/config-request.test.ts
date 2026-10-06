@@ -18,6 +18,8 @@ vi.mock('@sva/data-repositories/server', () => ({
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => logger,
   getInstanceConfig: getInstanceConfigMock,
+  isCanonicalAuthHost: (host: string) =>
+    host === getInstanceConfigMock()?.canonicalAuthHost,
 }));
 
 const {
@@ -26,6 +28,7 @@ const {
   logGlobalAuthResolution,
   logInstanceConfigMissing,
   logTenantAuthResolution,
+  resolvePersonalApiAuthBinding,
 } = await import('./config-request.js');
 
 const request = new Request('https://tenant.example.test/auth', {
@@ -171,5 +174,52 @@ describe('tenant auth request logging helpers', () => {
         allowKasselProvisioningLoginProbe: true,
       })
     ).toThrow('is inactive');
+  });
+});
+
+describe('personal API auth binding', () => {
+  beforeEach(() => {
+    loadInstanceByHostnameMock.mockReset();
+    getInstanceConfigMock.mockReturnValue({
+      canonicalAuthHost: 'auth.example.test',
+      parentDomain: 'example.test',
+    });
+    vi.stubEnv('SVA_AUTH_ISSUER', 'https://id.example/realms/platform');
+    vi.stubEnv('SVA_AUTH_CLIENT_ID', 'sva-studio');
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://id.example/');
+  });
+
+  it('binds a platform host to the platform issuer and audience', async () => {
+    const result = await resolvePersonalApiAuthBinding(
+      new Request('https://auth.example.test/api/v1/iam/users')
+    );
+
+    expect(result).toEqual({
+      issuer: 'https://id.example/realms/platform',
+      audience: 'sva-studio',
+      scope: { kind: 'platform' },
+    });
+    expect(loadInstanceByHostnameMock).not.toHaveBeenCalled();
+  });
+
+  it('binds an active tenant host to its registry realm and Studio client', async () => {
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'tenant-a',
+      status: 'active',
+      parentDomain: 'example.test',
+      authRealm: 'tenant-a-realm',
+      authIssuerUrl: null,
+      authClientId: 'tenant-studio-client',
+    });
+
+    const result = await resolvePersonalApiAuthBinding(
+      new Request('https://tenant-a.example.test/api/v1/iam/users')
+    );
+
+    expect(result).toEqual({
+      issuer: 'https://id.example/realms/tenant-a-realm',
+      audience: 'tenant-studio-client',
+      scope: { kind: 'instance', instanceId: 'tenant-a' },
+    });
   });
 });

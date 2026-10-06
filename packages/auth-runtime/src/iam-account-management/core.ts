@@ -33,7 +33,7 @@ import {
 import { withAuthenticatedIamHandler } from './core-shared.js';
 
 export const listUsersHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, listUsersInternal);
+  withAuthenticatedIamHandler(request, listUsersInternal, { personalBearerMethod: 'GET' });
 
 export const getUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, getUserInternal);
@@ -48,7 +48,7 @@ export const mutateUserKeycloakRoleHandler = async (request: Request): Promise<R
   withAuthenticatedIamHandler(request, mutateUserKeycloakRoleInternal);
 
 export const createUserHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, createUserInternal);
+  withAuthenticatedIamHandler(request, createUserInternal, { personalBearerMethod: 'POST' });
 
 export const sendPasswordSetupEmailHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal);

@@ -113,4 +113,20 @@ describe('SSF V2 content administration', () => {
     }));
     expect(staff.feedback.questions).toHaveLength(6);
   });
+
+  it('restores inherited storage settings when a tenant re-enables storage', async () => {
+    const runtimeTemplate = fields('ssf-runtime-configuration-v2.example.json');
+    api.readTenant.mockResolvedValue({
+      runtimeTemplate,
+      overrides: { conversationContentStorage: { mode: 'disabled' } },
+    });
+    api.writeTenant.mockImplementation(async (overrides) => ({ runtimeTemplate, overrides }));
+    const { SsfTenantContentV2Page } = await import('../src/admin.content-v2-tenant-page.js');
+    render(<SsfTenantContentV2Page canManage />);
+
+    const mode = await screen.findByLabelText('fields.storageMode');
+    fireEvent.change(mode, { target: { value: 'ask' } });
+    fireEvent.click(screen.getByRole('button', { name: 'actions.save' }));
+    await waitFor(() => expect(api.writeTenant).toHaveBeenCalledWith({}));
+  });
 });

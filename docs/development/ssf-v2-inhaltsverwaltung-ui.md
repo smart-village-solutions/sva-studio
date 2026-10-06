@@ -21,6 +21,8 @@ Innerhalb der Mandantenvorlage gliedern Abschnitte die Mitarbeitendenansicht, Ge
 
 Die Mandantenseite verwendet dieselben Abschnitte der Mandantenvorlage. An jedem änderbaren Feld ist erkennbar, ob der Wert aus der Systemvorlage stammt oder lokal überschrieben wurde. „Systemstandard verwenden“ entfernt nur den Override dieses Feldes; der geerbte Wert bleibt sichtbar. Das gilt auch für Texte innerhalb einer Sprache und innerhalb einer Feedbackfrage. Die wirksame Gesprächsspeicherung berücksichtigt den geerbten oder überschriebenen Modus und die Aufbewahrungsdauer.
 
+Ein leeres optionales Text- oder Zahlenfeld entfernt den geerbten Wert; ein ausdrücklich geleertes Bildfeld unterdrückt das geerbte Bild. Wird die Speicherung nach `disabled` wieder aktiviert, übernimmt der Editor zunächst die Speicherangaben der Systemvorlage. Fehlen dort Angaben für `ask`, müssen sie vor dem Speichern ergänzt werden.
+
 Ein Mandant kann eine in der Systemvorlage angebotene Gastsprache aktivieren oder deaktivieren und ihre Texte einzeln überschreiben. Eine nicht angebotene Sprache kann er nicht selbst hinzufügen. Mandantenname und Zeitzone bleiben in der allgemeinen Instanzverwaltung.
 
 ## Feedback in der ersten UI-Version

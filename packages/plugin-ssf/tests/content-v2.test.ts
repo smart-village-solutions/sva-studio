@@ -98,4 +98,32 @@ describe('SSF V2 content resolution', () => {
     expect(again.guestLanguages.some((language) => language.locale === 'tr')).toBe(false);
     expect(again.conversationContentStorage.retentionHours).toBeNull();
   });
+
+  it('round-trips cleared inherited media and optional feedback fields', () => {
+    const source = template();
+    const branding = source['branding'] as Record<string, unknown>;
+    branding['logo'] = { url: 'https://example.org/logo.svg', alternativeText: 'Logo' };
+    const languages = source['guestLanguages'] as Record<string, unknown>[];
+    const first = languages[0];
+    if (!first) throw new Error('ssf_v2_test_language_missing');
+    first['icon'] = { url: 'https://example.org/language.svg', alternativeText: 'Language' };
+
+    const edited = effectiveSsfRuntimeFieldsV2(source, null);
+    edited.branding.logo = null;
+    const editedFirst = edited.guestLanguages[0];
+    if (!editedFirst) throw new Error('ssf_v2_test_language_missing');
+    editedFirst.icon = null;
+    const longText = edited.staff.feedback.questions.find((question) => question.id === 'improvementIdeas');
+    if (!longText || longText.type !== 'longText') throw new Error('ssf_v2_test_question_missing');
+    delete longText.headline;
+    delete longText.maxLength;
+
+    const overrides = diffSsfContentV2(source, edited);
+    const effective = effectiveSsfRuntimeFieldsV2(source, overrides);
+    expect(effective.branding.logo).toBeNull();
+    expect(effective.guestLanguages[0]?.icon).toBeNull();
+    const effectiveLongText = effective.staff.feedback.questions.find((question) => question.id === 'improvementIdeas');
+    expect(effectiveLongText?.headline).toBeUndefined();
+    expect(effectiveLongText?.type === 'longText' ? effectiveLongText.maxLength : null).toBeUndefined();
+  });
 });

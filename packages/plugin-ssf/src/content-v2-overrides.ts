@@ -3,6 +3,8 @@ import { ssfRuntimeContentV2FieldsSchema, type SsfRuntimeContentV2Fields } from 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const optionalFields = new Set(['headline', 'required', 'minLabel', 'maxLabel', 'placeholder', 'maxLength']);
+
 const contentIdentity = (value: unknown): string | null => {
   if (!isRecord(value)) return null;
   return typeof value['locale'] === 'string'
@@ -32,13 +34,13 @@ const mergeArray = (base: unknown[], overrides: unknown[]): unknown[] => {
 const mergeObject = (base: Record<string, unknown>, overrides: Record<string, unknown>) => {
     for (const key of Object.keys(overrides)) {
       if (!Object.prototype.hasOwnProperty.call(base, key) && key !== 'enabled' &&
-          !['headline', 'required', 'minLabel', 'maxLabel', 'placeholder', 'maxLength', 'icon'].includes(key)) {
+          !optionalFields.has(key) && key !== 'icon') {
         throw new Error('ssf_v2_override_field_unknown');
       }
     }
     return Object.fromEntries(
       [...new Set([...Object.keys(base), ...Object.keys(overrides)])]
-        .filter((key) => key !== 'enabled')
+        .filter((key) => key !== 'enabled' && !(optionalFields.has(key) && overrides[key] === null))
         .map((key) => [key, mergeSsfContentV2(base[key], overrides[key])])
     );
 };
@@ -46,6 +48,7 @@ const mergeObject = (base: Record<string, unknown>, overrides: Record<string, un
 /** Sparse tenant overrides use stable locale and question IDs. */
 export const mergeSsfContentV2 = (base: unknown, overrides: unknown): unknown => {
   if (overrides === undefined) return base;
+  if (overrides === null) return null;
   if (Array.isArray(base)) {
     if (!Array.isArray(overrides)) throw new Error('ssf_v2_override_array_invalid');
     return mergeArray(base, overrides);
@@ -90,6 +93,7 @@ const diffObject = (base: Record<string, unknown>, current: Record<string, unkno
 };
 
 export const diffSsfContentV2 = (base: unknown, current: unknown): unknown => {
+  if (base !== undefined && current === undefined) return null;
   if (Array.isArray(base) && Array.isArray(current)) return diffArray(base, current);
   if (isRecord(base) && isRecord(current)) return diffObject(base, current);
   return Object.is(base, current) ? undefined : current;

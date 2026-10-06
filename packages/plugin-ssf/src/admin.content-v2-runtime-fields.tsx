@@ -35,12 +35,14 @@ const StorageFields = (props: Props) => {
     ...props.value,
     conversationContentStorage: {
       mode,
-      retentionHours: mode === 'disabled' ? null : props.value.conversationContentStorage.retentionHours,
+      retentionHours: mode === 'disabled' ? null :
+        (props.value.conversationContentStorage.retentionHours ?? inherited?.conversationContentStorage.retentionHours ?? null),
     },
     guestLanguages: props.value.guestLanguages.map((language) => ({
       ...language,
       guest: { ...language.guest, storageQuestionHtml:
-        mode === 'disabled' ? null : (language.guest.storageQuestionHtml ?? '') },
+        mode === 'disabled' ? null : (language.guest.storageQuestionHtml ??
+          inherited?.guestLanguages.find((entry) => entry.locale === language.locale)?.guest.storageQuestionHtml ?? '') },
     })),
   });
   const restore = () => {

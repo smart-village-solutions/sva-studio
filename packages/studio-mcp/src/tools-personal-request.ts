@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { resolveInterfaceSecret, type PersonalMcpContext, type StudioMcpConfig } from './config.js';
 import { isPersonalRouteAllowed } from './tools-personal-routes.js';
 
 export const contextInput = z.object({ contextId: z.string().trim().min(1).max(64) });
@@ -16,6 +17,78 @@ export const requestInput = z.object({
 }).strict();
 
 export type PersonalRequest = z.infer<typeof requestInput>;
+
+const secretReference = z.object({
+  secretRef: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9][A-Za-z0-9:_./-]*$/u),
+}).strict();
+
+const interfaceSecretFields: Readonly<Record<string, readonly string[]>> = {
+  s3: ['secretAccessKey'],
+  supabase: ['databaseUrl', 'serviceRoleKey'],
+  postgresql: ['databaseUrl'],
+  mailTransport: ['password'],
+  mapGeocoding: ['apiKey'],
+};
+
+const resolveInterfaceSecretField = async (
+  value: unknown,
+  input: Readonly<{ contextId: string; interfaceType: string; interfaceId?: string; field: string }>,
+  config: StudioMcpConfig
+): Promise<Readonly<{ value: string }> | Readonly<{ error: string }>> => {
+  if (typeof value === 'string' && value.length === 0) return { value };
+  const reference = secretReference.safeParse(value);
+  if (!reference.success) return { error: 'interface_secret_reference_required' };
+  try {
+    return {
+      value: await resolveInterfaceSecret(config, { ...input, secretRef: reference.data.secretRef }),
+    };
+  } catch (error) {
+    const code = error instanceof Error && error.message.startsWith('interface_secret_')
+      ? error.message
+      : 'interface_secret_resolution_failed';
+    return { error: code };
+  }
+};
+
+const resolveInterfaceDraftSecrets = async (
+  body: Record<string, unknown>,
+  context: PersonalMcpContext,
+  config: StudioMcpConfig
+): Promise<Readonly<{ body: Record<string, unknown> }> | Readonly<{ error: string }>> => {
+  const draft = body.draft;
+  if (!draft || typeof draft !== 'object' || Array.isArray(draft)) return { body };
+  const draftRecord = draft as Record<string, unknown>;
+  const fields = interfaceSecretFields[String(draftRecord.type)];
+  const draftConfig = draftRecord.config;
+  if (!fields || !draftConfig || typeof draftConfig !== 'object' || Array.isArray(draftConfig)) {
+    return { body };
+  }
+  const configRecord = draftConfig as Record<string, unknown>;
+  for (const field of fields) {
+    const result = await resolveInterfaceSecretField(configRecord[field], {
+      contextId: context.id,
+      interfaceType: String(draftRecord.type),
+      ...(typeof body.existingId === 'string' ? { interfaceId: body.existingId } : {}),
+      field,
+    }, config);
+    if ('error' in result) return result;
+    configRecord[field] = result.value;
+  }
+  return { body };
+};
+
+export const resolvePersonalInterfaceRequestBody = async (
+  input: PersonalRequest,
+  context: PersonalMcpContext,
+  config: StudioMcpConfig
+): Promise<Readonly<{ body?: Record<string, unknown>; error?: string }>> => {
+  if (input.method !== 'POST' || input.path !== 'api/v1/interfaces') {
+    return { ...(input.body ? { body: input.body } : {}) };
+  }
+  if (!input.body) return { error: 'mutation_body_required' };
+  const body = JSON.parse(JSON.stringify(input.body)) as Record<string, unknown>;
+  return resolveInterfaceDraftSecrets(body, context, config);
+};
 
 const isCollectionCreate = (request: PersonalRequest): boolean =>
   request.method === 'POST' && request.path.split('/').length === 4;

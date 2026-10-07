@@ -2,67 +2,13 @@ import { randomUUID } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { createStudioApiClient, StudioApiError } from './api-client.js';
-import { resolveInterfaceSecret, type PersonalMcpContext, type StudioMcpConfig } from './config.js';
+import type { PersonalMcpContext, StudioMcpConfig } from './config.js';
 import { normalizeError } from './errors.js';
 import { openLoginUrl } from './open-browser.js';
 import { PersonalMcpAuthError, PersonalMcpContextManager } from './personal-auth.js';
 import { redact } from './redaction.js';
 import { result, type ToolResult } from './tools-support.js';
-import { contextInput, requestInput, type PersonalRequest, validatePersonalRequest } from './tools-personal-request.js';
-
-const secretReference = z.object({
-  secretRef: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9][A-Za-z0-9:_./-]*$/u),
-}).strict();
-
-const interfaceSecretFields: Readonly<Record<string, readonly string[]>> = {
-  s3: ['secretAccessKey'],
-  supabase: ['databaseUrl', 'serviceRoleKey'],
-  postgresql: ['databaseUrl'],
-  mailTransport: ['password'],
-  mapGeocoding: ['apiKey'],
-};
-
-const resolveInterfaceRequestBody = async (
-  input: PersonalRequest,
-  context: PersonalMcpContext,
-  config: StudioMcpConfig
-): Promise<Readonly<{ body?: Record<string, unknown>; error?: string }>> => {
-  if (input.method !== 'POST' || input.path !== 'api/v1/interfaces') {
-    return { ...(input.body ? { body: input.body } : {}) };
-  }
-  if (!input.body) return { error: 'mutation_body_required' };
-  const body = JSON.parse(JSON.stringify(input.body)) as Record<string, unknown>;
-  const draft = body.draft;
-  if (!draft || typeof draft !== 'object' || Array.isArray(draft)) return { body };
-  const draftRecord = draft as Record<string, unknown>;
-  const fields = interfaceSecretFields[String(draftRecord.type)];
-  const draftConfig = draftRecord.config;
-  if (!fields || !draftConfig || typeof draftConfig !== 'object' || Array.isArray(draftConfig)) {
-    return { body };
-  }
-  const configRecord = draftConfig as Record<string, unknown>;
-  for (const field of fields) {
-    const value = configRecord[field];
-    if (typeof value === 'string' && value.length === 0) continue;
-    const reference = secretReference.safeParse(value);
-    if (!reference.success) return { error: 'interface_secret_reference_required' };
-    try {
-      configRecord[field] = await resolveInterfaceSecret(config, {
-        contextId: context.id,
-        interfaceType: String(draftRecord.type),
-        ...(typeof body.existingId === 'string' ? { interfaceId: body.existingId } : {}),
-        field,
-        secretRef: reference.data.secretRef,
-      });
-    } catch (error) {
-      const code = error instanceof Error && error.message.startsWith('interface_secret_')
-        ? error.message
-        : 'interface_secret_resolution_failed';
-      return { error: code };
-    }
-  }
-  return { body };
-};
+import { contextInput, requestInput, type PersonalRequest, resolvePersonalInterfaceRequestBody, validatePersonalRequest } from './tools-personal-request.js';
 
 const localInterfaceSecretFailure = (code: string, requestId: string, contextId: string): ToolResult =>
   result({
@@ -185,7 +131,7 @@ const requestUsers = async (
   }
   const requestId = input.requestId ?? randomUUID();
   const idempotencyKey = input.method === 'GET' ? undefined : input.idempotencyKey ?? randomUUID();
-  const resolvedBody = await resolveInterfaceRequestBody(input, context, config);
+  const resolvedBody = await resolvePersonalInterfaceRequestBody(input, context, config);
   if (resolvedBody.error) return localInterfaceSecretFailure(resolvedBody.error, requestId, context.id);
   const bodyText = resolvedBody.body === undefined ? undefined : JSON.stringify(resolvedBody.body);
   if (bodyText && Buffer.byteLength(bodyText, 'utf8') > 64 * 1024) {

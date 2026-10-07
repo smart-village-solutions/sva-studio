@@ -1,0 +1,4 @@
+{
+  "prNumber": 1804,
+  "body": "Neue Keycloak-Realms verwenden die produktive SVA-Absenderadresse, deaktiviertes SMTP-Debugging sowie das sva-kern2-Theme für Login und E-Mail."
+}

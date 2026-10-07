@@ -1,0 +1,4 @@
+{
+  "prNumber": 1806,
+  "body": "Die dedizierte Produktions-Testinstanz für die Tenant-Einrichtung erhält eine explizite Hostfreigabe und den passenden Browser-CSRF-Origin."
+}

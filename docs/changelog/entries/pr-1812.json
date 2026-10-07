@@ -1,0 +1,4 @@
+{
+  "prNumber": 1812,
+  "body": "Die Tests prüfen nun zusätzlich Namenskollisionen und die reflektierbare Bereitstellung von Plugin-Ansichten. Dadurch wird die bestehende Routing-Testabdeckung wieder vollständig eingehalten."
+}

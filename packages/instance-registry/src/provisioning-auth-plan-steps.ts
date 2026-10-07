@@ -246,26 +246,18 @@ export const buildTenantAdminStep = (
     };
   }
 
+  const action = resolveTenantAdminAction(
+    ownershipConflict,
+    adoption,
+    hasMinimalProfile,
+    adminStatus?.tenantAdminExists
+  );
   return {
     stepKey: 'tenant_admin',
     title: 'Tenant-Admin sicherstellen',
-    action: ownershipConflict
-      ? 'skip'
-      : adoption
-        ? 'update'
-        : hasMinimalProfile
-          ? 'verify'
-          : adminStatus?.tenantAdminExists
-            ? 'update'
-            : 'create',
+    action,
     status: blocked ? 'blocked' : 'ready',
-    summary: ownershipConflict
-      ? 'Der gleichnamige Tenant-Admin ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
-      : adoption
-        ? 'Der bestehende Admin wird nach bestätigtem Identitätsabgleich dieser Instanz zugeordnet.'
-        : hasMinimalProfile
-          ? 'Der Tenant-Admin entspricht bereits dem Minimalprofil.'
-          : 'Der Tenant-Admin wird erstellt oder auf das Minimalprofil korrigiert.',
+    summary: resolveTenantAdminSummary(ownershipConflict, adoption, hasMinimalProfile),
     details: {
       ...(adminStatus ?? {}),
       ownershipConflict,
@@ -278,6 +270,34 @@ export const buildTenantAdminStep = (
         : {}),
     },
   };
+};
+
+const resolveTenantAdminAction = (
+  ownershipConflict: boolean,
+  adoption: boolean,
+  hasMinimalProfile: boolean,
+  tenantAdminExists: boolean | undefined
+): KeycloakTenantPlan['steps'][number]['action'] => {
+  if (ownershipConflict) return 'skip';
+  if (adoption) return 'update';
+  if (hasMinimalProfile) return 'verify';
+  return tenantAdminExists ? 'update' : 'create';
+};
+
+const resolveTenantAdminSummary = (
+  ownershipConflict: boolean,
+  adoption: boolean,
+  hasMinimalProfile: boolean
+): string => {
+  if (ownershipConflict) {
+    return 'Der gleichnamige Tenant-Admin ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.';
+  }
+  if (adoption) {
+    return 'Der bestehende Admin wird nach bestätigtem Identitätsabgleich dieser Instanz zugeordnet.';
+  }
+  return hasMinimalProfile
+    ? 'Der Tenant-Admin entspricht bereits dem Minimalprofil.'
+    : 'Der Tenant-Admin wird erstellt oder auf das Minimalprofil korrigiert.';
 };
 
 const hasTenantAdminMinimalProfile = (

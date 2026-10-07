@@ -22,6 +22,22 @@ import {
 
 export const KEYCLOAK_PLAN_CONTRACT_VERSION = '1.0' as const;
 
+type BuildPlanInput = {
+  instanceId: string;
+  realmMode: InstanceRealmMode;
+  authClientSecret?: string;
+  tenantAdminClient?: {
+    clientId: string;
+    secretConfigured?: boolean;
+  };
+  tenantAdminClientSecret?: string;
+  tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
+  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
+  realmBaselineApplicable?: boolean;
+  preflight: KeycloakTenantPreflight;
+  state?: KeycloakReadState;
+};
+
 export const buildKeycloakPlanFingerprint = (
   instanceId: string,
   plan: Pick<
@@ -38,24 +54,32 @@ export const buildKeycloakPlanFingerprint = (
     steps: plan.steps,
   });
 
-export const buildPlan = (input: {
-  instanceId: string;
-  realmMode: InstanceRealmMode;
-  authClientSecret?: string;
-  tenantAdminClient?: {
-    clientId: string;
-    secretConfigured?: boolean;
-  };
-  tenantAdminClientSecret?: string;
-  tenantAdminBootstrap?: KeycloakProvisioningInput['tenantAdminBootstrap'];
-  pluginOidcClients?: KeycloakProvisioningInput['pluginOidcClients'];
-  realmBaselineApplicable?: boolean;
-  preflight: KeycloakTenantPreflight;
-  state?: KeycloakReadState;
-}): KeycloakTenantPlan => {
+export const buildPlan = (input: BuildPlanInput): KeycloakTenantPlan => {
   const blocked = input.preflight.overallStatus === 'blocked';
   const realmBaselineApplicable = input.realmBaselineApplicable ?? input.realmMode === 'new';
   const requireTenantAdmin = isInstanceTenantAdminRequired(input);
+  const steps = buildPlanSteps(input, blocked, realmBaselineApplicable, requireTenantAdmin);
+
+  const plan: Omit<KeycloakTenantPlan, 'fingerprint' | 'generatedAt'> = {
+    contractVersion: KEYCLOAK_PLAN_CONTRACT_VERSION,
+    mode: input.realmMode,
+    overallStatus: blocked ? 'blocked' : 'ready',
+    driftSummary: resolveDriftSummary(blocked, steps),
+    steps,
+  };
+  return {
+    ...plan,
+    fingerprint: buildKeycloakPlanFingerprint(input.instanceId, plan),
+    generatedAt: new Date().toISOString(),
+  };
+};
+
+const buildPlanSteps = (
+  input: BuildPlanInput,
+  blocked: boolean,
+  realmBaselineApplicable: boolean,
+  requireTenantAdmin: boolean
+): KeycloakTenantPlan['steps'] => {
   const alignment = readClientAlignment(input.state);
   const tenantAdminClientAlignment = readTenantAdminClientAlignment(input.state);
   const clientOwnershipConflict =
@@ -84,7 +108,7 @@ export const buildPlan = (input: {
     input.state?.pluginOidcClients.map(({ requirement }) => requirement) ??
     [];
 
-  const steps: KeycloakTenantPlan['steps'] = [
+  return [
     buildRealmStep(input.realmMode, input.state, blocked),
     ...buildRealmBaselinePlanSteps(input.state, blocked, realmBaselineApplicable),
     buildClientStep({
@@ -126,19 +150,6 @@ export const buildPlan = (input: {
       input.tenantAdminBootstrap
     ),
   ];
-
-  const plan: Omit<KeycloakTenantPlan, 'fingerprint' | 'generatedAt'> = {
-    contractVersion: KEYCLOAK_PLAN_CONTRACT_VERSION,
-    mode: input.realmMode,
-    overallStatus: blocked ? 'blocked' : 'ready',
-    driftSummary: resolveDriftSummary(blocked, steps),
-    steps,
-  };
-  return {
-    ...plan,
-    fingerprint: buildKeycloakPlanFingerprint(input.instanceId, plan),
-    generatedAt: new Date().toISOString(),
-  };
 };
 
 const resolveDriftSummary = (

@@ -288,9 +288,10 @@ describe('instance registry repository provisioning', () => {
     expect(
       statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))
     ).toHaveLength(3);
-    expect(statements[0]?.text).toContain('$18::jsonb, $19, $20, $20');
-    expect(statements[0]?.values.at(17)).toBe('{"preview":true}');
-    expect(statements[0]?.values.at(18)).toBe('mainserver-ref');
+    expect(statements[0]?.text).toContain('$19::jsonb, $20, $21, $21');
+    expect(statements[0]?.values.at(17)).toBeNull();
+    expect(statements[0]?.values.at(18)).toBe('{"preview":true}');
+    expect(statements[0]?.values.at(19)).toBe('mainserver-ref');
     expect(statements[2]?.values.at(8)).toBe(true);
     expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
   });

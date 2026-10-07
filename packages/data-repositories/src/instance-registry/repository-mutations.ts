@@ -5,6 +5,7 @@ import * as invitationTemplates from './repository-account-invitation-template.j
 import {
   buildInstanceSelectColumns,
   demotePreviousPrimaryHostnameSql,
+  instanceExistsSql,
   upsertPrimaryHostnameSql,
 } from './repository-instance-select.js';
 import { mapInstance } from './repository-mappers.js';
@@ -62,26 +63,13 @@ const upsertPrimaryHostname = async (
   }
 };
 
-const demotePreviousPrimaryHostname = async (
-  executor: SqlExecutor,
-  instanceId: string,
-  hostname: string
-): Promise<void> => {
-  await executor.execute({
-    text: demotePreviousPrimaryHostnameSql,
-    values: [instanceId, hostname],
-  });
-};
-
-const instanceExists = async (executor: SqlExecutor, instanceId: string): Promise<boolean> => {
-  const rows = await queryRows<{ instance_exists: boolean }>(
-    executor,
-    statement(`SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`, [
-      instanceId,
-    ])
-  );
-  return rows[0]?.instance_exists === true;
-};
+const instanceExists = async (executor: SqlExecutor, instanceId: string): Promise<boolean> =>
+  (
+    await queryRows<{ instance_exists: boolean }>(
+      executor,
+      statement(instanceExistsSql, [instanceId])
+    )
+  )[0]?.instance_exists === true;
 
 const createInstance = async (
   executor: SqlExecutor,
@@ -162,7 +150,10 @@ ${buildInstanceSelectColumns()};
     return null;
   }
   await runMutationStep('previous_primary_hostname_demote', () =>
-    demotePreviousPrimaryHostname(executor, input.instanceId, input.primaryHostname)
+    executor.execute({
+      text: demotePreviousPrimaryHostnameSql,
+      values: [input.instanceId, input.primaryHostname],
+    })
   );
   await runMutationStep('primary_hostname_upsert', () =>
     upsertPrimaryHostname(executor, input.primaryHostname, input.instanceId, input.actorId)

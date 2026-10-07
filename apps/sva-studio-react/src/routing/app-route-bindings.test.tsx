@@ -774,6 +774,26 @@ describe('appRouteBindings', () => {
     expect(routeState.requestMainserverJson).not.toHaveBeenCalled();
   });
 
+  it('wraps plugin editor contributions with host principal context in the SSF profile', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+
+    const { studioRoutePlugins } = await import('./app-route-bindings.ssf');
+    const newsEditor = studioRoutePlugins
+      .find((plugin) => plugin.id === 'news')
+      ?.viewBindings?.find((binding) => binding.bindingKey === 'newsEditor')?.component;
+    expect(newsEditor).toBeDefined();
+
+    const NewsEditor = newsEditor as ComponentType;
+    render(<NewsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-principal-value').textContent).toBe('user');
+    });
+  });
+
   it('renders remaining placeholder bindings with translated section and title metadata', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 

@@ -10,7 +10,8 @@ import { ContentTypePickerPage } from '../routes/content/-content-type-picker-pa
 import { studioPlugins } from '../lib/plugins';
 import { coreAppRouteBindings } from './app-route-bindings.core';
 import { readStringParam } from './mainserver-resource-principal';
-import { ContentListRoutePage, createHostOwnedPluginView } from './app-route-pages';
+import { createHostOwnedPluginView } from './app-plugin-view-adapter';
+import { ContentListRoutePage } from './app-route-pages';
 
 export {
   resolveMainserverPrincipalControl,

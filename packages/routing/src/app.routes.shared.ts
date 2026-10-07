@@ -43,6 +43,12 @@ export const mergePluginViewBindings = (
       if (contributedViews.has(view.bindingKey)) {
         throw new Error(`plugin_view_binding_collision:${view.bindingKey}`);
       }
+      const hostBinding = (bindings as unknown as Readonly<Record<string, RouteComponent>>)[
+        view.bindingKey
+      ];
+      if (hostBinding && hostBinding !== view.component) {
+        throw new Error(`plugin_view_binding_host_collision:${view.bindingKey}`);
+      }
       contributedViews.set(view.bindingKey, view.component as RouteComponent);
     }
   }

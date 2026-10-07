@@ -69,7 +69,12 @@ import {
   mapPluginGuardToAccountGuard,
 } from './app.routes';
 import { getServerRouteFactories } from './app.routes.server';
-import { createUiRouteFactories, getAdminDetailRoutePath } from './app.routes.shared';
+import {
+  createUiRouteFactories,
+  getAdminDetailRoutePath,
+  mergePluginViewBindings,
+} from './app.routes.shared';
+import type { AppRouteBindings } from './app-route-bindings';
 import {
   normalizeIamTab,
   normalizeOrganizationDetailTab,
@@ -88,6 +93,46 @@ function expectDefined<T>(value: T | undefined): T {
   expect(value).toBeDefined();
   return value as T;
 }
+
+describe('mergePluginViewBindings', () => {
+  it('rejects plugin bindings that would replace a host route component', () => {
+    const HostHomePage = () => null;
+    const PluginHomePage = () => null;
+    const plugin = {
+      id: 'plugin-a',
+      displayName: 'Plugin A',
+      routes: [],
+      viewBindings: [{ bindingKey: 'home', component: PluginHomePage }],
+    };
+
+    expect(() =>
+      mergePluginViewBindings(
+        { ...bindings, home: HostHomePage } as unknown as AppRouteBindings,
+        [plugin]
+      )
+    ).toThrow('plugin_view_binding_host_collision:home');
+  });
+
+  it('accepts a contribution already materialized by the browser host', () => {
+    const ExistingPluginPage = () => null;
+    const plugin = {
+      id: 'plugin-a',
+      displayName: 'Plugin A',
+      routes: [],
+      viewBindings: [{ bindingKey: 'pluginAEditor', component: ExistingPluginPage }],
+    };
+
+    const merged = mergePluginViewBindings(
+      {
+        ...bindings,
+        pluginAEditor: ExistingPluginPage,
+      } as unknown as AppRouteBindings,
+      [plugin]
+    );
+
+    expect(merged).toHaveProperty('pluginAEditor', ExistingPluginPage);
+  });
+});
 
 const bindingKeys = [
   'home',

@@ -90,6 +90,8 @@ Zusätzlich zum unveränderten servicegebundenen Instanz-MCP kann `SVA_STUDIO_MC
 
 `studio_personal_users_api` lässt für den gewählten Kontext `GET` und `POST api/v1/iam/users`, `GET` und `POST api/v1/interfaces` sowie `DELETE api/v1/interfaces/{interfaceId}` zu. Der Interface-Read liefert nur tenantverwaltete Schnittstellen; Mainserver-Übersichten und pluginverwaltete Einträge sind ausgenommen. Pluginverwaltete Interfaces können über diesen allgemeinen Vertrag weder angelegt noch geändert oder gelöscht werden. Die HTTP-Antworten enthalten keine freien Healthcheck-Statusmeldungen, da diese Providerdetails enthalten können. Der Server erzwingt weiterhin `integration.manage`, Tenant-Bindung, bestehende Validierung, Verschlüsselung und Healthchecks.
 
+Beim Entfernen einer Gruppenmitgliedschaft über `DELETE api/v1/iam/groups/{groupId}/memberships` ist ein JSON-Body mit `keycloakSubject` erforderlich. Nur diese DELETE-Route nimmt einen Body an; andere DELETE-Aufrufe bleiben ohne Body.
+
 Es gibt keinen Hostwechsel über Tool-Eingaben, keine Weiterleitung an andere Hosts, keine automatische Wiederholung von Mutationen und keinen Rückfall auf das Service-Credential. Nach einem unklaren Mutations-Ergebnis muss zuerst der autorisierte Zustand gelesen werden. Diese lokale Fähigkeit ersetzt weder die Realm-Einrichtung noch den Live-Nachweis; persönliche Keycloak-Clients bleiben bis zur erfolgreichen API-/MCP-Abnahme inaktiv.
 
 ## Risikostufen

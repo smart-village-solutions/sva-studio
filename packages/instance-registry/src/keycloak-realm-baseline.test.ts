@@ -11,6 +11,10 @@ describe('keycloak realm baseline', () => {
   it('contains only the German locale and no SMTP password', () => {
     expect(KEYCLOAK_REALM_BASELINE.realm.supportedLocales).toEqual(['de']);
     expect(KEYCLOAK_REALM_BASELINE.realm.defaultLocale).toBe('de');
+    expect(KEYCLOAK_REALM_BASELINE.realm.smtpServer.from).toBe(
+      'sva-studio@smart-village.solutions'
+    );
+    expect(KEYCLOAK_REALM_BASELINE.realm.smtpServer.debug).toBe('false');
     expect(KEYCLOAK_REALM_BASELINE.realm.smtpServer).not.toHaveProperty('password');
     expect(KEYCLOAK_REALM_BASELINE_FINGERPRINT).toMatch(/^[a-f0-9]{64}$/);
   });

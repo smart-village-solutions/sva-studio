@@ -3,7 +3,7 @@ import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import type { KeycloakReadState } from './provisioning-auth-types.js';
 
 export const KEYCLOAK_REALM_BASELINE = {
-  version: '1.0',
+  version: '1.1',
   loginClientId: 'sva-studio-login',
   tenantAdminClientId: 'sva-studio-realm-admin',
   realm: {
@@ -26,9 +26,9 @@ export const KEYCLOAK_REALM_BASELINE = {
     smtpServer: {
       auth: 'true',
       authType: 'basic',
-      debug: 'true',
+      debug: 'false',
       envelopeFrom: '',
-      from: 'sva-studio-sandbox@smart-village.app',
+      from: 'sva-studio@smart-village.solutions',
       fromDisplayName: 'SVA Studio',
       host: 'mail.smart-village.solutions',
       port: '587',

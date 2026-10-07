@@ -126,7 +126,7 @@ Das SMTP-Passwort wird bewusst weder in der Baseline noch in Registry, Snapshot,
 
 ## Login-Theme
 
-Für neue Realms setzt die Baseline das Login-Theme `sva-kern2`.
+Für neue Realms setzt die Baseline das Login- und E-Mail-Theme `sva-kern2`.
 
 Die zugehörige Repository-Ablage und der Deployment-Pfad sind unter
 [Keycloak-Login-Theme `sva-kern2`](../development/keycloak-login-theme-kern2.md)

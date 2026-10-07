@@ -1,0 +1,4 @@
+{
+  "prNumber": 1810,
+  "body": "Rollouts prüfen geplante Runtime-Einstellungen vor dem Deployment und gleichen die laufende Konfiguration anschließend verbindlich ab. Änderungen an erlaubten Tenant-Origins blockieren dadurch nicht mehr vorzeitig die Bereitstellung."
+}

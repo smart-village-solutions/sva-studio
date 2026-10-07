@@ -126,10 +126,10 @@ Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren 
 4. Terminales Ergebnis aus MinIO abwarten und das Dump-Objekt unabhängig per S3-`HEAD` verifizieren.
 5. Migration ausführen, falls angefordert.
 6. Bootstrap ausführen, falls angefordert.
-7. Postconditions gegen Datenbank und aktuellen Runtime-Vertrag prüfen.
+7. Postconditions gegen Datenbank und Zielkonfiguration prüfen. In dieser expliziten Predeploy-Phase validiert der Doctor die geplanten Runtime-Flags, vergleicht sie aber noch nicht mit dem alten App-Container. Readiness-, Datenbank-, Schema- und Secret-Prüfungen bleiben aktiv.
 8. App-Stack `studio-staging` aktualisieren.
 9. Swarm-Service-Updates und alle Services mit gewünschten Replicas terminal auswerten. Pausierte Updates oder fehlgeschlagene Tasks blockieren vor HTTP.
-10. Erst nach erfolgreicher Swarm-Konvergenz den Release-Runtime-Smoke für Root-Host und einen unbekannten Host sowie den Live-Digest verifizieren. Tenant-Hosts und ihre TLS-/Login-Verträge werden bei Tenant-Aktivierung und durch gezielte operative Smokes geprüft, nicht als Release-Gate.
+10. Erst nach erfolgreicher Swarm-Konvergenz den Release-Runtime-Smoke für Root-Host und einen unbekannten Host sowie den Live-Digest verifizieren. Der Doctor vergleicht in dieser Postdeploy-Phase die vollständigen erwarteten Runtime-Flags mit dem laufenden Container; Abweichungen blockieren den Abschluss. Tenant-Hosts und ihre TLS-/Login-Verträge werden bei Tenant-Aktivierung und durch gezielte operative Smokes geprüft, nicht als Release-Gate.
 11. Redigierte Staging-Paritätsevidenz für genau diesen Digest schreiben.
 
 Migration und Bootstrap führen im jeweiligen One-shot denselben IAM-Datenbank-Verifier aus, den auch Container-Boot und `health/ready` verwenden. Der Verifier vergleicht den höchsten angewendeten Goose-Ledgerstand mit dem im Zielimage enthaltenen Migrations-Head und prüft anschließend die kritischen Tabellen, Spalten, Indizes und RLS-Verträge. `migration_drift` und `schema_drift` bleiben getrennte, maschinenlesbare Fehlerursachen; beide blockieren den nächsten Rolloutschritt. Ein neuerer Datenbankstand als der Image-Head wird akzeptiert, damit ein App-Rollback nach einer vorwärtskompatiblen Migration möglich bleibt.

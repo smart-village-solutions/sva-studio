@@ -23,6 +23,23 @@ afterEach(() => {
 });
 
 describe('promote-deploy-gates', () => {
+  it('keeps target validation before deployment and mandatory live parity after deployment', () => {
+    const workflow = readFileSync(new URL('../../.github/workflows/promote.yml', import.meta.url), 'utf8');
+    const postconditions = workflow.slice(
+      workflow.indexOf('- name: run one-shot postconditions'), workflow.indexOf('- name: deploy\n')
+    );
+    const runtimeSmoke = workflow.slice(
+      workflow.indexOf('- name: verify deployed runtime\n'), workflow.indexOf('- name: verify deployed runtime image digest')
+    );
+    expect(postconditions).toContain('SVA_PROMOTE_PHASE: predeploy');
+    expect(postconditions).toContain("SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE: 'true'");
+    expect(postconditions).toContain('runtime-env.ts doctor studio');
+    expect(runtimeSmoke).toContain('SVA_PROMOTE_PHASE: postdeploy');
+    expect(runtimeSmoke).toContain('runtime-env.ts smoke studio');
+    expect(runtimeSmoke).not.toContain('SVA_PROMOTE_PHASE: predeploy');
+    expect(runtimeSmoke).not.toContain('SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE');
+  });
+
   it('treats docs-only changes as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

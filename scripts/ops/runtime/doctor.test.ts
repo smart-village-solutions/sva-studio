@@ -8,6 +8,7 @@ import type {
   RuntimeProfile,
 } from '../runtime-env.shared.ts';
 import { createRuntimeDoctorOps } from './doctor.ts';
+import type { RuntimeDoctorDeps } from './doctor.types.ts';
 import type { LocalState } from './local-runtime.ts';
 
 const createCheck = (name: string, status: DoctorCheck['status'] = 'ok'): DoctorCheck => ({
@@ -27,6 +28,10 @@ const createWorkerState = (): LocalState => ({
 describe('createRuntimeDoctorOps', () => {
   it('uses acceptance service checks for remote profiles and otel checks only for local profiles', async () => {
     const assertLoginFlow = vi.fn(async () => {});
+    const buildLiveRuntimeEnvCheck = vi.fn(async () => createCheck('runtime-env-live'));
+    const validateRuntimeProfileEnv = vi.fn<RuntimeDoctorDeps['validateRuntimeProfileEnv']>(() => ({
+      derived: {}, invalid: [], missing: [], placeholders: [],
+    }));
     const buildTenantAuthProofCheck = vi.fn(async () => createCheck('tenant-auth-proof'));
     const finalizeDoctorReport = vi.fn((profile: RuntimeProfile, checks: readonly DoctorCheck[]): DoctorReport => ({
       checks,
@@ -51,7 +56,7 @@ describe('createRuntimeDoctorOps', () => {
       buildInstanceAuthConfigCheck: vi.fn(() => createCheck('instance-auth-config')),
       buildInstanceHostnameMappingCheck: vi.fn(async () => createCheck('instance-hostname-mapping')),
       buildKeycloakClientSecretCheck: vi.fn(async () => createCheck('keycloak-client-secret')),
-      buildLiveRuntimeEnvCheck: vi.fn(async () => createCheck('runtime-env-live')),
+      buildLiveRuntimeEnvCheck,
       buildLocalInstanceIdentityDoctorCheck: vi.fn(() => createCheck('instance-identity')),
       buildLocalProvisioningWorkerCheck: vi.fn(() => createCheck('local-worker')),
       buildMigrationStatusCheck: vi.fn(() => createCheck('migration-status')),
@@ -80,20 +85,16 @@ describe('createRuntimeDoctorOps', () => {
         name,
         status,
       })),
-      validateRuntimeProfileEnv: vi.fn(() => ({
-        derived: {},
-        invalid: [],
-        missing: [],
-        placeholders: [],
-      })),
+      validateRuntimeProfileEnv,
       buildGuardrailDoctorChecks: vi.fn(async () => [createCheck('guardrail')]),
     });
 
     const remoteReport = await ops.doctorRuntime('studio', {
       SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
     });
-    await ops.doctorRuntime('studio', {
-      SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE: 'true',
+    const predeployReport = await ops.doctorRuntime('studio', {
+      SVA_ACCEPTANCE_RELEASE_MODE: 'prod',
+      SVA_PROMOTE_PHASE: 'predeploy',
       SVA_PUBLIC_BASE_URL: 'https://studio.example.org',
     });
     const releaseReport = await ops.doctorRuntime('studio', {
@@ -121,6 +122,11 @@ describe('createRuntimeDoctorOps', () => {
     expect(remoteReport.checks.map((check) => check.name)).toContain('runtime-env-live');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('runtime-env');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('otel');
+    expect(predeployReport.checks.map((check) => check.name)).toContain('runtime-env');
+    expect(predeployReport.checks.map((check) => check.name)).not.toContain('runtime-env-live');
+    expect(predeployReport.checks.map((check) => check.name)).toEqual(expect.arrayContaining([
+      'health-live', 'health-ready', 'app-db-principal', 'migration-status', 'schema-guard', 'keycloak-client-secret',
+    ]));
     expect(releaseReport.checks.map((check) => check.name)).not.toContain('tenant-auth-proof');
     expect(releaseReport.checks.map((check) => check.name)).not.toContain('instance-auth-config');
     expect(releaseReport.checks.map((check) => check.name)).not.toContain('tenant-auth-secret');
@@ -136,13 +142,26 @@ describe('createRuntimeDoctorOps', () => {
       expect.any(Object),
       { allowImplicitQueryResponseMode: true },
     );
-    expect(buildTenantAuthProofCheck).toHaveBeenCalledWith(
-      'studio',
-      expect.any(Object),
-      { allowImplicitQueryResponseMode: true },
-    );
     expect(buildTenantAuthProofCheck).toHaveBeenCalledWith('studio', expect.any(Object));
     expect(finalizeDoctorReport).toHaveBeenCalledTimes(6);
+
+    // Planned target flags differ from the old container until deployment.
+    buildLiveRuntimeEnvCheck.mockResolvedValue(createCheck('runtime-env-live', 'error'));
+    const liveCallsBeforePredeploy = buildLiveRuntimeEnvCheck.mock.calls.length;
+    const targetEnv = {
+      SVA_ACCEPTANCE_RELEASE_MODE: 'prod',
+      SVA_PROMOTE_PHASE: 'predeploy',
+      IAM_CSRF_ALLOWED_ORIGINS: 'https://new-tenant.studio.example.org',
+    };
+    expect((await ops.doctorRuntime('studio', targetEnv)).status).toBe('ok');
+    expect(buildLiveRuntimeEnvCheck).toHaveBeenCalledTimes(liveCallsBeforePredeploy);
+    expect((await ops.doctorRuntime('studio', { ...targetEnv, SVA_PROMOTE_PHASE: 'postdeploy' })).status).toBe('error');
+    expect((await ops.doctorRuntime('studio', { ...targetEnv, SVA_PROMOTE_PHASE: undefined })).status).toBe('error');
+    expect((await ops.doctorRuntime('studio', { ...targetEnv, SVA_ACCEPTANCE_RELEASE_MODE: undefined })).status).toBe('error');
+    validateRuntimeProfileEnv.mockReturnValueOnce({
+      derived: {}, invalid: [], missing: ['SVA_AUTH_ISSUER'], placeholders: [],
+    });
+    expect((await ops.doctorRuntime('studio', targetEnv)).status).toBe('error');
   });
 
   it('uses explicit endpoint error messages for non-200 health responses', async () => {

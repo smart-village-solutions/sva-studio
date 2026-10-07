@@ -3,11 +3,13 @@ import {
   isSystemAdminRoleOwnedByInstance,
   readStudioOwnedClient,
   readStudioOwnedUser,
+  isApprovedTenantAdminAdoption,
 } from './provisioning-auth-policy.js';
 
 export const readRealmOwnershipConflicts = (
   state: KeycloakReadState,
-  instanceId: string
+  instanceId: string,
+  tenantAdminBootstrap?: import('./provisioning-auth-types.js').TenantAdminBootstrap
 ): string[] => {
   const conflicts: string[] = [];
   if (
@@ -46,7 +48,8 @@ export const readRealmOwnershipConflicts = (
   }
   if (
     state.tenantAdminRepresentation &&
-    readStudioOwnedUser(state.tenantAdminRepresentation, instanceId, 'tenant_admin') !== 'owned'
+    readStudioOwnedUser(state.tenantAdminRepresentation, instanceId, 'tenant_admin') !== 'owned' &&
+    !isApprovedTenantAdminAdoption(state.tenantAdminRepresentation, tenantAdminBootstrap)
   ) {
     conflicts.push('tenant_admin');
   }

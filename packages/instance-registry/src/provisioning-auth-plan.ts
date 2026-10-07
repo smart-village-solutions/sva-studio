@@ -118,7 +118,13 @@ export const buildPlan = (input: {
       tenantAdminClientOwnershipConflict
     ),
     buildRoleStep(blocked, input.state, input.instanceId),
-    buildTenantAdminStep(blocked, input.state, requireTenantAdmin, input.instanceId),
+    buildTenantAdminStep(
+      blocked,
+      input.state,
+      requireTenantAdmin,
+      input.instanceId,
+      input.tenantAdminBootstrap
+    ),
   ];
 
   const plan: Omit<KeycloakTenantPlan, 'fingerprint' | 'generatedAt'> = {

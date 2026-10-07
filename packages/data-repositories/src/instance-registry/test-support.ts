@@ -17,6 +17,7 @@ export const instanceRow = {
   tenant_admin_email: null,
   tenant_admin_first_name: 'Ada',
   tenant_admin_last_name: null,
+  tenant_admin_adopt_existing: false,
   theme_key: null,
   assigned_module_ids: ['news', 'events'],
   feature_flags: null,

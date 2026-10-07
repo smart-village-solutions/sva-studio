@@ -17,6 +17,7 @@ type TenantAdminBootstrap = {
   readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
+  readonly adoptExisting?: boolean;
 };
 
 type TenantAdminClient = {

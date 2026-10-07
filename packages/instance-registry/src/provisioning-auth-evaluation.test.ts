@@ -121,9 +121,7 @@ describe('provisioning-auth-evaluation', () => {
         realm: { realm: 'demo' },
         clientRepresentation: {},
         tenantAdminClientRepresentation: {},
-        pluginOidcClients: [
-          { requirement: { pluginId: 'ssf' }, clientRepresentation: {} },
-        ],
+        pluginOidcClients: [{ requirement: { pluginId: 'ssf' }, clientRepresentation: {} }],
         systemAdminRole: {},
         tenantAdminRepresentation: {},
       } as never,
@@ -163,6 +161,43 @@ describe('provisioning-auth-evaluation', () => {
       details: { applicable: false, actionCode: 'none' },
     });
     expect(plan.driftSummary).not.toContain('Tenant-Admin wird erstellt');
+  });
+
+  it('binds an approved tenant-admin adoption plan to the exact user without exposing the user id', () => {
+    const makePlan = (userId: string) =>
+      buildPlan({
+        instanceId: 'customer-1',
+        realmMode: 'existing',
+        tenantAdminBootstrap: {
+          username: 'admin@smart-village.app',
+          email: 'admin@smart-village.app',
+          firstName: 'SVS',
+          lastName: 'Admin',
+          adoptExisting: true,
+        },
+        preflight: { overallStatus: 'ready', checkedAt: '2026-10-07T00:00:00Z', checks: [] },
+        state: {
+          tenantAdminStatus: { tenantAdminExists: true, tenantAdminHasSystemAdmin: false },
+          tenantAdminRepresentation: {
+            id: userId,
+            username: 'admin@smart-village.app',
+            email: 'Admin@smart-village.app',
+            emailUniqueMatch: true,
+            attributes: {},
+          },
+          pluginOidcClients: [],
+        } as never,
+      });
+    const plan = makePlan('keycloak-user-1');
+    const tenantAdminStep = plan.steps.find((step) => step.stepKey === 'tenant_admin');
+
+    expect(plan.overallStatus).toBe('ready');
+    expect(tenantAdminStep).toMatchObject({
+      action: 'update',
+      details: { adoptionBinding: expect.any(String), ownershipConflict: false },
+    });
+    expect(JSON.stringify(plan)).not.toContain('keycloak-user-1');
+    expect(makePlan('keycloak-user-2').fingerprint).not.toBe(plan.fingerprint);
   });
 
   it('keeps manual SMTP follow-up in the post-transition plan of a managed realm', () => {

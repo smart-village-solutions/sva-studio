@@ -1,9 +1,11 @@
 import type { InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPlan } from './keycloak-types.js';
 import type { KeycloakReadState } from './provisioning-auth-types.js';
+import { buildPayloadFingerprint } from './payload-fingerprint.js';
 import {
   isSystemAdminRoleOwnedByInstance,
   readStudioOwnedUser,
+  isApprovedTenantAdminAdoption,
 } from './provisioning-auth-policy.js';
 
 export const buildRealmStep = (
@@ -192,7 +194,8 @@ const resolveTenantAdminClientSecretSummary = (
 export const buildRoleStep = (
   blocked: boolean,
   state: KeycloakReadState | undefined,
-  instanceId: string
+  instanceId: string,
+  tenantAdminBootstrap?: import('./provisioning-auth-types.js').TenantAdminBootstrap
 ): KeycloakTenantPlan['steps'][number] => {
   const systemAdminRoleExists = isSystemAdminRoleOwnedByInstance(
     state?.systemAdminRole,
@@ -217,13 +220,20 @@ export const buildTenantAdminStep = (
   blocked: boolean,
   state: KeycloakReadState | undefined,
   requireTenantAdmin: boolean,
-  instanceId: string
+  instanceId: string,
+  tenantAdminBootstrap?: import('./provisioning-auth-types.js').TenantAdminBootstrap
 ): KeycloakTenantPlan['steps'][number] => {
   const adminStatus = state?.tenantAdminStatus;
   const hasMinimalProfile = hasTenantAdminMinimalProfile(adminStatus);
   const ownershipConflict =
     Boolean(state?.tenantAdminRepresentation) &&
-    readStudioOwnedUser(state?.tenantAdminRepresentation, instanceId, 'tenant_admin') !== 'owned';
+    readStudioOwnedUser(state?.tenantAdminRepresentation, instanceId, 'tenant_admin') !== 'owned' &&
+    !isApprovedTenantAdminAdoption(state?.tenantAdminRepresentation, tenantAdminBootstrap);
+  const adoption = Boolean(
+    state?.tenantAdminRepresentation &&
+    !ownershipConflict &&
+    readStudioOwnedUser(state.tenantAdminRepresentation, instanceId, 'tenant_admin') !== 'owned'
+  );
 
   if (!requireTenantAdmin) {
     return {
@@ -241,18 +251,32 @@ export const buildTenantAdminStep = (
     title: 'Tenant-Admin sicherstellen',
     action: ownershipConflict
       ? 'skip'
-      : hasMinimalProfile
-        ? 'verify'
-        : adminStatus?.tenantAdminExists
-          ? 'update'
-          : 'create',
+      : adoption
+        ? 'update'
+        : hasMinimalProfile
+          ? 'verify'
+          : adminStatus?.tenantAdminExists
+            ? 'update'
+            : 'create',
     status: blocked ? 'blocked' : 'ready',
     summary: ownershipConflict
       ? 'Der gleichnamige Tenant-Admin ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
-      : hasMinimalProfile
-        ? 'Der Tenant-Admin entspricht bereits dem Minimalprofil.'
-        : 'Der Tenant-Admin wird erstellt oder auf das Minimalprofil korrigiert.',
-    details: { ...(adminStatus ?? {}), ownershipConflict },
+      : adoption
+        ? 'Der bestehende Admin wird nach bestätigtem Identitätsabgleich dieser Instanz zugeordnet.'
+        : hasMinimalProfile
+          ? 'Der Tenant-Admin entspricht bereits dem Minimalprofil.'
+          : 'Der Tenant-Admin wird erstellt oder auf das Minimalprofil korrigiert.',
+    details: {
+      ...(adminStatus ?? {}),
+      ownershipConflict,
+      ...(adoption && state?.tenantAdminRepresentation?.id
+        ? {
+            adoptionBinding: buildPayloadFingerprint({
+              userId: state.tenantAdminRepresentation.id,
+            }),
+          }
+        : {}),
+    },
   };
 };
 

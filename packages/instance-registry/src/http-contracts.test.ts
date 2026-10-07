@@ -21,6 +21,20 @@ const tenantAdminBootstrap = {
 };
 
 describe('http-contracts', () => {
+  it('accepts explicit tenant-admin adoption only for an existing realm', () => {
+    const payload = {
+      instanceId: 'de-test',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'existing',
+      authRealm: 'existing-realm',
+      authClientId: 'sva-studio-login',
+      tenantAdminBootstrap: { ...tenantAdminBootstrap, adoptExisting: true },
+    };
+    expect(createInstanceSchema.safeParse(payload).success).toBe(true);
+    expect(createInstanceSchema.safeParse({ ...payload, realmMode: 'new' }).success).toBe(false);
+  });
+
   it('extracts detail instance ids from nested routes', () => {
     expect(
       readDetailInstanceId(

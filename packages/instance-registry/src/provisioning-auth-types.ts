@@ -59,6 +59,7 @@ export type TenantAdminBootstrap = {
   email?: string;
   firstName?: string;
   lastName?: string;
+  adoptExisting?: boolean;
 };
 
 export type TenantAdminStatus = {
@@ -74,6 +75,7 @@ export type TenantAdminRepresentation = Readonly<{
   lastName?: string;
   enabled?: boolean;
   attributes?: Readonly<Record<string, readonly string[]>>;
+  emailUniqueMatch?: boolean;
 }>;
 
 export type KeycloakReadState = {

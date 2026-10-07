@@ -1,4 +1,8 @@
-import type { KeycloakClientRepresentation, KeycloakReadState, KeycloakRoleRepresentation } from './provisioning-auth-types.js';
+import type {
+  KeycloakClientRepresentation,
+  KeycloakReadState,
+  KeycloakRoleRepresentation,
+} from './provisioning-auth-types.js';
 import type { KeycloakRealmBaselineSettings } from './keycloak-realm-baseline.js';
 
 export type KeycloakAdminUser = {
@@ -9,6 +13,7 @@ export type KeycloakAdminUser = {
   readonly lastName?: string;
   readonly enabled?: boolean;
   readonly attributes?: Readonly<Record<string, readonly string[]>>;
+  readonly emailUniqueMatch?: boolean;
 };
 
 export type KeycloakProvisioningClient = {
@@ -84,6 +89,7 @@ export type KeycloakProvisioningClient = {
   getRoleByName(externalName: string): Promise<KeycloakRoleRepresentation>;
   findUserByUsername(username: string): Promise<KeycloakAdminUser | null>;
   findUserByEmail(email: string): Promise<KeycloakAdminUser | null>;
+  findUsersByEmail(email: string): Promise<readonly KeycloakAdminUser[]>;
   createUser(input: {
     username: string;
     email: string;
@@ -104,6 +110,7 @@ export type KeycloakProvisioningClient = {
     }
   ): Promise<unknown>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
+  assignRealmRoles(externalId: string, roles: readonly string[]): Promise<void>;
   setUserPassword(externalId: string, password: string, temporary?: boolean): Promise<void>;
   setUserRequiredActions(externalId: string, requiredActions: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;

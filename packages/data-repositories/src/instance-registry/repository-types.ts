@@ -26,6 +26,7 @@ export type InstanceListRow = {
   tenant_admin_email: string | null;
   tenant_admin_first_name: string | null;
   tenant_admin_last_name: string | null;
+  tenant_admin_adopt_existing: boolean;
   theme_key: string | null;
   account_invitation_template: AccountInvitationTemplate | null;
   assigned_module_ids: readonly string[] | null;

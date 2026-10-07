@@ -217,7 +217,11 @@ export const buildPreflightChecks = (input: {
   );
 
   if (input.realmMode === 'existing' && input.instanceId && input.state?.realm) {
-    const conflicts = readRealmOwnershipConflicts(input.state, input.instanceId);
+    const conflicts = readRealmOwnershipConflicts(
+      input.state,
+      input.instanceId,
+      input.tenantAdminBootstrap
+    );
     checks.push(
       createPreflightCheck(
         'realm_ownership',

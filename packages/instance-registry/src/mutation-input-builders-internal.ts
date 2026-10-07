@@ -5,6 +5,7 @@ export type TenantAdminBootstrapPayload = {
   readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
+  readonly adoptExisting?: boolean;
 };
 
 export type TenantAdminClientPayload = {

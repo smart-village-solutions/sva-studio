@@ -118,7 +118,11 @@ zusätzlich als IANA-Zeitzone. Die optionale JSONB-Spalte
 `iam.instances.account_invitation_template` hält ausschließlich die typisierte,
 revisionsgebundene Individualvorlage. Speichern und Reset bleiben DB-only; die
 wirksamen Realmwerte werden erst unmittelbar vor einem Einladungsversand
-bedarfsgesteuert sichergestellt. `iam.instances.auth_realm` ist eindeutig, damit
+bedarfsgesteuert sichergestellt. `iam.instances.tenant_admin_adopt_existing`
+speichert ein explizites Opt-in zur Übernahme eines unmarkierten Tenant-Admins
+nach exaktem Username- und E-Mail-Abgleich. Der Standard ist `false`; andere
+Studio- oder fremde Ownership-Marker sperren die Übernahme. Migration `0105`
+ergänzt dieses Flag. `iam.instances.auth_realm` ist eindeutig, damit
 ein Keycloak-Realm atomar höchstens einer Studio-Instanz zugeordnet werden kann.
 Migration `0094` sperrt die Registry-Tabelle kurz und prüft Bestandsdaten vor
 dem Constraint. Bei vorhandenen Duplikaten bricht sie mit einer konkreten

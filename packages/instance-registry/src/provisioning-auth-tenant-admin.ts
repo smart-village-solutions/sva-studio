@@ -1,7 +1,11 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { TenantAdminStatus } from './provisioning-auth-types.js';
 import type { KeycloakAdminUser, KeycloakProvisioningClient } from './provisioning-auth-client.js';
-import { STUDIO_OWNERSHIP_ATTRIBUTES, readStudioOwnedUser } from './provisioning-auth-policy.js';
+import {
+  isUnmarkedStudioUser,
+  STUDIO_OWNERSHIP_ATTRIBUTES,
+  readStudioOwnedUser,
+} from './provisioning-auth-policy.js';
 import { SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
@@ -12,6 +16,7 @@ type TenantAdminInput = {
   firstName?: string;
   lastName?: string;
   temporaryPassword?: string;
+  adoptExisting?: boolean;
 };
 
 const isConflictRequestError = (error: unknown): boolean =>
@@ -37,7 +42,8 @@ export const ensureTenantAdmin = async (
     [STUDIO_OWNERSHIP_ATTRIBUTES.artifactKey]: ['tenant_admin'],
   } as const;
   const syncTenantAdminAccess = async (userId: string) => {
-    await client.syncRoles(userId, [SYSTEM_ADMIN_ROLE]);
+    if (input.adoptExisting) await client.assignRealmRoles(userId, [SYSTEM_ADMIN_ROLE]);
+    else await client.syncRoles(userId, [SYSTEM_ADMIN_ROLE]);
     checkpoint('roles_synced');
     if (!input.temporaryPassword) {
       return;
@@ -47,8 +53,30 @@ export const ensureTenantAdmin = async (
   };
 
   const updateExisting = async (user: KeycloakAdminUser) => {
-    if (readStudioOwnedUser(user, input.instanceId, 'tenant_admin') !== 'owned') {
+    const owned = readStudioOwnedUser(user, input.instanceId, 'tenant_admin') === 'owned';
+    const emailMatches =
+      input.adoptExisting && input.email ? await client.findUsersByEmail(input.email) : [];
+    const adoptable =
+      input.adoptExisting === true &&
+      isUnmarkedStudioUser(user) &&
+      normalizeEmail(user.email) === normalizeEmail(input.email) &&
+      emailMatches.length === 1 &&
+      emailMatches[0]?.id === user.id;
+    if (!owned && !adoptable) {
       throw new Error('tenant_admin_ownership_conflict');
+    }
+    if (!owned && adoptable) {
+      await client.updateUser(user.id, {
+        username: user.username!,
+        email: user.email!,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        enabled: user.enabled ?? false,
+        attributes: { ...(user.attributes ?? {}), ...ownershipAttributes },
+      });
+      await syncTenantAdminAccess(user.id);
+      checkpoint('completed');
+      return;
     }
     await client.updateUser(user.id, {
       username: input.username,
@@ -56,7 +84,7 @@ export const ensureTenantAdmin = async (
       firstName: input.firstName,
       lastName: input.lastName,
       enabled: user.enabled ?? true,
-      attributes: ownershipAttributes,
+      attributes: { ...(user.attributes ?? {}), ...ownershipAttributes },
     });
     await syncTenantAdminAccess(user.id);
     checkpoint('completed');
@@ -65,7 +93,11 @@ export const ensureTenantAdmin = async (
   const fallbackEmail = `${input.username}@tenant.invalid`;
   const resolvedEmail = input.email ?? fallbackEmail;
 
-  const existing = await client.findUserByUsername(input.username);
+  const existing = input.adoptExisting
+    ? ((await client.findUsersByEmail(input.email ?? '')).find(
+        (user) => normalizeEmail(user.email) === normalizeEmail(input.email)
+      ) ?? null)
+    : await client.findUserByUsername(input.username);
   checkpoint(existing ? 'user_found' : 'user_missing');
   if (!existing) {
     try {
@@ -99,26 +131,63 @@ export const ensureTenantAdmin = async (
   await updateExisting(existing);
 };
 
+const normalizeEmail = (email: string | undefined): string | undefined =>
+  email?.trim().toLocaleLowerCase('en-US');
+
+export const assertTenantAdminAdoptionTarget = async (
+  client: KeycloakProvisioningClient,
+  input: TenantAdminInput
+): Promise<void> => {
+  if (!input.adoptExisting) return;
+  const emailMatches = input.email ? await client.findUsersByEmail(input.email) : [];
+  const user = emailMatches.length === 1 ? emailMatches[0] : undefined;
+  if (
+    !user ||
+    !isUnmarkedStudioUser(user) ||
+    normalizeEmail(user.email) !== normalizeEmail(input.email) ||
+    emailMatches.length !== 1 ||
+    emailMatches[0]?.id !== user.id
+  ) {
+    throw new Error('tenant_admin_ownership_conflict');
+  }
+};
+
 export const readTenantAdminStatus = async (
   client: KeycloakProvisioningClient,
   input: {
     username: string | undefined;
+    email?: string;
+    adoptExisting?: boolean;
   }
 ): Promise<{ status: TenantAdminStatus; representation: KeycloakAdminUser | null }> => {
-  if (!input.username) {
+  if (!input.username && !input.adoptExisting) {
     return {
       status: { tenantAdminExists: false, tenantAdminHasSystemAdmin: false },
       representation: null,
     };
   }
 
-  const tenantAdmin = await client.findUserByUsername(input.username);
+  const emailMatches = input.email ? await client.findUsersByEmail(input.email) : [];
+  const tenantAdmin = input.adoptExisting
+    ? emailMatches.length === 1 &&
+      normalizeEmail(emailMatches[0]?.email) === normalizeEmail(input.email)
+      ? emailMatches[0]
+      : null
+    : input.username
+      ? await client.findUserByUsername(input.username)
+      : null;
   const tenantAdminRoles = tenantAdmin ? await client.listUserRoleNames(tenantAdmin.id) : [];
+  const representation = tenantAdmin
+    ? {
+        ...tenantAdmin,
+        emailUniqueMatch: emailMatches.length === 1 && emailMatches[0]?.id === tenantAdmin.id,
+      }
+    : null;
   return {
     status: {
       tenantAdminExists: Boolean(tenantAdmin),
       tenantAdminHasSystemAdmin: tenantAdminRoles.includes(SYSTEM_ADMIN_ROLE),
     },
-    representation: tenantAdmin,
+    representation,
   };
 };

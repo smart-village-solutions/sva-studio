@@ -30,6 +30,7 @@ const tenantAdminBootstrapSchema = z
     email: z.string().trim().email(),
     firstName: z.string().trim().min(1),
     lastName: z.string().trim().min(1),
+    adoptExisting: z.boolean().optional(),
   })
   .optional();
 
@@ -39,6 +40,7 @@ const persistedTenantAdminBootstrapSchema = z
     email: z.string().trim().email().optional(),
     firstName: z.string().trim().min(1).optional(),
     lastName: z.string().trim().min(1).optional(),
+    adoptExisting: z.boolean().optional(),
   })
   .optional();
 
@@ -106,6 +108,14 @@ export const createInstanceSchema = z
         code: 'custom',
         path: ['tenantAdminBootstrap'],
         message: 'Vollständiges Tenant-Admin-Profil fehlt',
+      });
+    }
+    if (value.tenantAdminBootstrap?.adoptExisting && value.realmMode !== 'existing') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['tenantAdminBootstrap', 'adoptExisting'],
+        message:
+          'Bestehende Tenant-Admins können nur in einem vorhandenen Realm übernommen werden.',
       });
     }
     if (value.realmMode === 'existing') {

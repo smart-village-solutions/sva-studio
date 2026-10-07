@@ -116,9 +116,11 @@ const createClient = (
   })),
   findUserByUsername: vi.fn(async () => null),
   findUserByEmail: vi.fn(async () => null),
+  findUsersByEmail: vi.fn(async () => []),
   createUser: vi.fn(async () => ({ externalId: 'user-1' })),
   updateUser: vi.fn(async () => undefined),
   syncRoles: vi.fn(async () => undefined),
+  assignRealmRoles: vi.fn(async () => undefined),
   setUserPassword: vi.fn(async () => undefined),
   setUserRequiredActions: vi.fn(async () => undefined),
   listUserRoleNames: vi.fn(async () => []),
@@ -146,7 +148,9 @@ describe('provisioning-auth-state', () => {
         return { externalId: user.id };
       }),
       findUserByUsername: vi.fn(async () => user),
-      syncRoles: vi.fn(async (_id, assignedRoles) => { roles = assignedRoles; }),
+      syncRoles: vi.fn(async (_id, assignedRoles) => {
+        roles = assignedRoles;
+      }),
       listUserRoleNames: vi.fn(async () => roles),
     });
     const factory = vi.fn(() => client);
@@ -804,6 +808,85 @@ describe('provisioning-auth-state', () => {
 
     expect(client.updateUser).not.toHaveBeenCalled();
     expect(client.syncRoles).not.toHaveBeenCalled();
+  });
+
+  it('adopts the unique unmarked user by email regardless of username while preserving account state', async () => {
+    const user = {
+      id: 'existing-admin',
+      username: 'admin@smart-village.app',
+      email: 'Admin@smart-village.app',
+      firstName: 'Old',
+      lastName: 'Name',
+      enabled: false,
+      attributes: { instanceId: ['customer-1'], custom: ['keep'] },
+    };
+    const client = createClient({
+      findUserByUsername: vi.fn(async () => null),
+      findUsersByEmail: vi.fn(async () => [user]),
+    });
+    await createProvisionInstanceAuthArtifacts(() => client)({
+      instanceId: 'customer-1',
+      primaryHostname: 'customer-1.example.org',
+      realmMode: 'existing',
+      authRealm: 'customer-1',
+      authClientId: 'sva-studio-login',
+      tenantAdminBootstrap: {
+        // Adoption resolves by the approved email; the configured username is irrelevant.
+        username: 'configured-name-is-not-used',
+        email: 'admin@smart-village.app',
+        firstName: 'SVS',
+        lastName: 'Admin',
+        adoptExisting: true,
+      },
+    });
+    expect(client.updateUser).toHaveBeenCalledWith(
+      user.id,
+      expect.objectContaining({
+        username: user.username,
+        email: user.email,
+        firstName: 'SVS',
+        lastName: 'Admin',
+        enabled: false,
+        attributes: expect.objectContaining({
+          instanceId: ['customer-1'],
+          custom: ['keep'],
+          managed_by: ['studio'],
+        }),
+      })
+    );
+    expect(client.assignRealmRoles).toHaveBeenCalledWith(user.id, ['system_admin']);
+    expect(client.syncRoles).not.toHaveBeenCalled();
+    expect(client.setUserPassword).not.toHaveBeenCalled();
+    expect(client.findUserByUsername).not.toHaveBeenCalled();
+  });
+
+  it('blocks adoption when email does not uniquely resolve to the approved email', async () => {
+    const user = {
+      id: 'existing-admin',
+      username: 'admin@smart-village.app',
+      email: 'other@example.org',
+      attributes: {},
+    };
+    const client = createClient({
+      findUserByUsername: vi.fn(async () => null),
+      findUsersByEmail: vi.fn(async () => [user]),
+    });
+    await expect(
+      createProvisionInstanceAuthArtifacts(() => client)({
+        instanceId: 'customer-1',
+        primaryHostname: 'customer-1.example.org',
+        realmMode: 'existing',
+        authRealm: 'customer-1',
+        authClientId: 'sva-studio-login',
+        tenantAdminBootstrap: {
+          username: user.username,
+          email: 'admin@smart-village.app',
+          adoptExisting: true,
+        },
+      })
+    ).rejects.toThrow('tenant_admin_ownership_conflict');
+    expect(client.updateUser).not.toHaveBeenCalled();
+    expect(client.assignRealmRoles).not.toHaveBeenCalled();
   });
 
   it('skips client reconciliation for tenant-admin-only reset flows', async () => {

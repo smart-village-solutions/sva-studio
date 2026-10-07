@@ -40,7 +40,7 @@ const expectSqlValues = (
 };
 
 describe('instance registry mutation SQL values', () => {
-  it('maps a minimal create input to the exact 20-value contract and upserts the hostname second', async () => {
+  it('maps a minimal create input to the exact 21-value contract and upserts the hostname second', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],
       [{ hostname: 'tenant-a.example.test' }],
@@ -54,7 +54,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements).toHaveLength(2);
     expect(statements[0]?.text).toContain('INSERT INTO iam.instances');
     expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
-    expectSqlValues(statements[0], 20, [
+    expectSqlValues(statements[0], 21, [
       'tenant-a',
       'Tenant A',
       'active',
@@ -71,6 +71,7 @@ describe('instance registry mutation SQL values', () => {
       null,
       null,
       null,
+      false,
       null,
       '{}',
       null,
@@ -85,7 +86,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements[1]?.values).toStrictEqual(['tenant-a.example.test', 'tenant-a', 'system']);
   });
 
-  it('maps a fully populated create input to the exact 20-value contract', async () => {
+  it('maps a fully populated create input to the exact 21-value contract', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],
       [{ hostname: 'tenant-a.example.test' }],
@@ -109,7 +110,7 @@ describe('instance registry mutation SQL values', () => {
       actorId: 'actor-1',
     });
 
-    expectSqlValues(statements[0], 20, [
+    expectSqlValues(statements[0], 21, [
       'tenant-a',
       'Tenant A',
       'active',
@@ -126,6 +127,7 @@ describe('instance registry mutation SQL values', () => {
       'admin@example.test',
       'Ada',
       'Lovelace',
+      false,
       'municipal',
       '{"preview":true,"beta":false}',
       'mainserver-ref',
@@ -155,10 +157,10 @@ describe('instance registry mutation SQL values', () => {
       null,
       null,
     ]);
-    expect(statements[0]?.values).toHaveLength(20);
+    expect(statements[0]?.values).toHaveLength(21);
   });
 
-  it('maps a minimal update input to the exact 21-value contract and switches the primary hostname safely', async () => {
+  it('maps a minimal update input to the exact 22-value contract and switches the primary hostname safely', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],
       [],
@@ -174,7 +176,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements[0]?.text).toContain('UPDATE iam.instances');
     expect(statements[0]?.text).toContain('AND NOT EXISTS');
     expect(statements[0]?.text).toContain("overall_status IN ('planned', 'running')");
-    expectSqlValues(statements[0], 21, [
+    expectSqlValues(statements[0], 22, [
       'tenant-a',
       'Tenant A',
       'example.test',
@@ -192,6 +194,7 @@ describe('instance registry mutation SQL values', () => {
       null,
       null,
       null,
+      false,
       null,
       '{}',
       null,
@@ -205,7 +208,7 @@ describe('instance registry mutation SQL values', () => {
     expect(statements[2]?.values).toStrictEqual(['tenant-a.example.test', 'tenant-a', 'system']);
   });
 
-  it('maps a fully populated update input to the exact 21-value contract', async () => {
+  it('maps a fully populated update input to the exact 22-value contract', async () => {
     const { executor, statements } = createQueuedExecutor([
       [instanceRow],
       [],
@@ -232,7 +235,7 @@ describe('instance registry mutation SQL values', () => {
       actorId: 'actor-1',
     });
 
-    expectSqlValues(statements[0], 21, [
+    expectSqlValues(statements[0], 22, [
       'tenant-a',
       'Tenant A',
       'example.test',
@@ -250,6 +253,7 @@ describe('instance registry mutation SQL values', () => {
       'admin@example.test',
       'Ada',
       'Lovelace',
+      false,
       'municipal',
       '{"preview":true,"beta":false}',
       'mainserver-ref',
@@ -281,7 +285,7 @@ describe('instance registry mutation SQL values', () => {
       null,
       null,
     ]);
-    expect(statements[0]?.values).toHaveLength(21);
+    expect(statements[0]?.values).toHaveLength(22);
   });
 });
 
@@ -373,7 +377,7 @@ describe('instance registry update secret preservation matrix', () => {
 
       await expect(repository.updateInstance(input)).resolves.toBeNull();
 
-      expect(statements[0]?.values).toHaveLength(21);
+      expect(statements[0]?.values).toHaveLength(22);
       expect(statements[0]?.values.slice(8, 10)).toStrictEqual([expectedKeep, expectedCiphertext]);
     }
   );
@@ -391,7 +395,7 @@ describe('instance registry update secret preservation matrix', () => {
 
       await expect(repository.updateInstance(input)).resolves.toBeNull();
 
-      expect(statements[0]?.values).toHaveLength(21);
+      expect(statements[0]?.values).toHaveLength(22);
       expect(statements[0]?.values.slice(10, 13)).toStrictEqual([
         'tenant-admin',
         expectedKeep,

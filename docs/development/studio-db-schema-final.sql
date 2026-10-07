@@ -1391,6 +1391,7 @@ CREATE TABLE iam.instances (
     tenant_admin_email text,
     tenant_admin_first_name text,
     tenant_admin_last_name text,
+    tenant_admin_adopt_existing boolean DEFAULT false NOT NULL,
     realm_mode text DEFAULT 'new'::text NOT NULL,
     tenant_admin_client_id text NOT NULL,
     tenant_admin_client_secret_ciphertext text,

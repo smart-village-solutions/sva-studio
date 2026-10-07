@@ -586,6 +586,15 @@ Das System SHALL fuer kritische Root-Host-Control-Plane-Mutationen der Instanzve
 ### Requirement: Tenant-Admin-Bootstrap vergibt nur tenantlokale Sonderrechte
 Das System SHALL beim Bootstrap einer neuen Instanz dem initialen Tenant-Admin ausschließlich tenantlokale Sonderrechte des Tenant-Realm zuweisen.
 
+#### Scenario: Vorhandener Tenant-Admin wird nur nach explizitem Identitätsabgleich übernommen
+- **WHEN** eine Registry-Instanz im bestehenden Realm `tenantAdminBootstrap.adoptExisting = true` setzt
+- **AND** genau ein unmarkierter Benutzer die normalisierte E-Mail aus dem Bootstrap-Profil erfüllt; sein Username bleibt erhalten
+- **THEN** übernimmt das System den Benutzer instanzgebunden und weist additiv nur `system_admin` zu
+- **AND** bewahrt Passwort, Aktivierungsstatus, fremde Attribute und sonstige Rollen
+- **AND** blockiert Benutzer mit fremden oder partiellen Studio-Ownership-Markern, abweichender E-Mail oder mehrdeutiger E-Mail
+- **AND** bindet die Ausführung an die beim bestätigten Plan gelesene Benutzeridentität und prüft sie vor Keycloak-Schreibvorgängen erneut
+- **AND** bleibt die Übernahme ohne das explizite Flag gesperrt
+
 #### Scenario: Bootstrap vergibt system_admin, aber keine Plattformrolle
 - **WHEN** der initiale Tenant-Admin einer neuen Instanz angelegt oder aktualisiert wird
 - **THEN** synchronisiert das System im Tenant-Realm mindestens die Rolle `system_admin`

@@ -76,33 +76,34 @@ const demotePreviousPrimaryHostname = async (
 const instanceExists = async (executor: SqlExecutor, instanceId: string): Promise<boolean> => {
   const rows = await queryRows<{ instance_exists: boolean }>(
     executor,
-    statement(
-      `SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`,
-      [instanceId]
-    )
+    statement(`SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;`, [
+      instanceId,
+    ])
   );
   return rows[0]?.instance_exists === true;
 };
 
-const createInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['createInstance']>[0]) => {
-  const rows = await runMutationStep('registry_insert', () => queryRows<InstanceListRow>(
-    executor,
-    {
+const createInstance = async (
+  executor: SqlExecutor,
+  input: Parameters<MutationRepository['createInstance']>[0]
+) => {
+  const rows = await runMutationStep('registry_insert', () =>
+    queryRows<InstanceListRow>(executor, {
       text: `
 INSERT INTO iam.instances (
   id, display_name, status, parent_domain, primary_hostname, realm_mode, auth_realm, auth_client_id,
   auth_issuer_url, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext,
-  tenant_admin_username, tenant_admin_email, tenant_admin_first_name, tenant_admin_last_name, theme_key,
+  tenant_admin_username, tenant_admin_email, tenant_admin_first_name, tenant_admin_last_name, tenant_admin_adopt_existing, theme_key,
   feature_flags, mainserver_config_ref, created_by, updated_by
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19, $20, $20)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20, $21, $21)
 ON CONFLICT (id) DO NOTHING
 RETURNING
 ${buildInstanceSelectColumns()};
 `,
       values: createInstanceValues(input),
-    }
-  ));
+    })
+  );
   if (!rows[0]) {
     return null;
   }
@@ -112,7 +113,10 @@ ${buildInstanceSelectColumns()};
   return mapInstance(rows[0]);
 };
 
-const updateInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['updateInstance']>[0]) => {
+const updateInstance = async (
+  executor: SqlExecutor,
+  input: Parameters<MutationRepository['updateInstance']>[0]
+) => {
   const rows = await queryRows<InstanceListRow>(
     executor,
     statement(
@@ -133,10 +137,11 @@ SET
   tenant_admin_email = $15,
   tenant_admin_first_name = $16,
   tenant_admin_last_name = $17,
-  theme_key = $18,
-  feature_flags = $19::jsonb,
-  mainserver_config_ref = $20,
-  updated_by = $21,
+  tenant_admin_adopt_existing = $18,
+  theme_key = $19,
+  feature_flags = $20::jsonb,
+  mainserver_config_ref = $21,
+  updated_by = $22,
   updated_at = NOW()
 WHERE id = $1
   AND NOT EXISTS (

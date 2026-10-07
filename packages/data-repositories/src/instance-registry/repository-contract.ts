@@ -49,6 +49,7 @@ export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & {
       email?: string;
       firstName?: string;
       lastName?: string;
+      adoptExisting?: boolean;
     };
     actorId?: string;
     requestId?: string;
@@ -77,6 +78,7 @@ export type InstanceRegistryRepository = InstanceRegistryInstanceRepository & {
       email?: string;
       firstName?: string;
       lastName?: string;
+      adoptExisting?: boolean;
     };
     actorId?: string;
     requestId?: string;

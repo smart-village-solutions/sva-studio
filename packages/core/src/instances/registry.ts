@@ -45,6 +45,7 @@ export type InstanceRegistryRecord = {
     readonly email?: string;
     readonly firstName?: string;
     readonly lastName?: string;
+    readonly adoptExisting?: boolean;
   };
   readonly themeKey?: string;
   readonly accountInvitationTemplate?: import('./account-invitation-template.js').AccountInvitationTemplate;

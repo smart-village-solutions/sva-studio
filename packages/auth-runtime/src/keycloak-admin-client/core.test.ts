@@ -2278,6 +2278,28 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('returns no single email match when multiple realm users share the email', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'user-1', email: 'admin@example.com' },
+          { id: 'user-2', email: 'ADMIN@example.com' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'user-1', email: 'admin@example.com' },
+          { id: 'user-2', email: 'ADMIN@example.com' },
+        ])
+      );
+    const client = await createClient(fetchImpl);
+
+    await expect(client.findUserByEmail('admin@example.com')).resolves.toBeNull();
+    await expect(client.findUsersByEmail('admin@example.com')).resolves.toHaveLength(2);
+  });
+
   it('requests full user representations when explicitly required', async () => {
     const fetchImpl = vi
       .fn()

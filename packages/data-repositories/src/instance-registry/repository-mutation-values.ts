@@ -2,17 +2,11 @@ import type { SqlPrimitive } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
 
-type MutationRepository = Pick<
-  InstanceRegistryRepository,
-  'createInstance' | 'updateInstance'
->;
+type MutationRepository = Pick<InstanceRegistryRepository, 'createInstance' | 'updateInstance'>;
 type CreateInstanceInput = Parameters<MutationRepository['createInstance']>[0];
 type UpdateInstanceInput = Parameters<MutationRepository['updateInstance']>[0];
 
-type CreateAuthClientValues = readonly [
-  issuerUrl: string | null,
-  secretCiphertext: string | null,
-];
+type CreateAuthClientValues = readonly [issuerUrl: string | null, secretCiphertext: string | null];
 type UpdateAuthClientValues = readonly [
   issuerUrl: string | null,
   keepSecret: boolean,
@@ -32,6 +26,7 @@ type TenantAdminBootstrapValues = readonly [
   email: string | null,
   firstName: string | null,
   lastName: string | null,
+  adoptExisting: boolean,
 ];
 type InstanceConfigurationValues = readonly [
   themeKey: string | null,
@@ -90,7 +85,7 @@ const tenantAdminBootstrapValues = (
     firstName = null,
     lastName = null,
   } = input.tenantAdminBootstrap ?? {};
-  return [username, email, firstName, lastName];
+  return [username, email, firstName, lastName, input.tenantAdminBootstrap?.adoptExisting ?? false];
 };
 
 const instanceConfigurationValues = (

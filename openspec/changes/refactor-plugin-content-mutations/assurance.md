@@ -48,6 +48,7 @@ pnpm nx run sva-mainserver:test:unit --testFiles=src/server/events-poi-routes.te
 pnpm nx run sva-studio-react:test:types
 pnpm check:server-runtime
 pnpm nx run plugin-sdk:check:runtime
+pnpm exec tsx scripts/ci/complexity-gate.ts --base 4dea7a59094a5cf08f1f923c724f7acf836544aa
 pnpm nx run-many -t lint -p plugin-sdk,plugin-news,plugin-events,plugin-poi,plugin-surveys,plugin-generic-items,plugin-faq,plugin-cockpit-cards,plugin-projects,sva-studio-react --parallel=2
 pnpm check:plugin-ui-boundary
 pnpm check:plugin-architecture-boundary
@@ -59,14 +60,14 @@ Der erste Plugin-Sammellauf war für sieben Pakete grün; Survey meldete einen f
 
 Das App-Server-Target nimmt nur Server-Testdateien auf; die Prüfung installierter Artefakte lief deshalb separat über das Hooks-Target mit zwölf tatsächlich ausgeführten Tests.
 
-Eine parallele App-Prüfung kollidierte beim Synchronisieren injizierter Workspace-Pakete mit `ENOTEMPTY`; die abschließenden App-/Server-/Typ-/Runtime-Gates wurden nacheinander erfolgreich ausgeführt. Test-Fixture- und Responsive-View-Assertionfehler wurden korrigiert und gezielt nachgeprüft; der abschließende vollständige Listen-/Dialog-Dateilauf ist grün.
+Eine parallele App-Prüfung kollidierte beim Synchronisieren injizierter Workspace-Pakete mit `ENOTEMPTY`; die abschließenden App-/Server-/Typ-/Runtime-Gates wurden nacheinander erfolgreich ausgeführt. Test-Fixture- und Responsive-View-Assertionfehler wurden korrigiert und gezielt nachgeprüft; der abschließende vollständige Listen-/Dialog-Dateilauf ist grün. Der initiale PR-Complexity-Lauf fand drei neue Überschreitungen. Die Mutationsvalidierung wurde in `content-type-mutations.ts` aus der zu großen Typdefinitionsdatei herausgelöst; das Feedback-Navigations-Effect wurde aus dem Listen-Deletion-Hook extrahiert. Der erneute lokale Gate-Lauf meldet null neue Findings; die betroffenen SDK- und Listen-/Dialogtests sind grün.
 
 Der Plugin-Architekturguard beendet seinen bestehenden Warnmodus erfolgreich, meldet aber weiterhin die unveränderten Pfadsignale `packages/plugin-ssf/src/server.ts` und `packages/plugin-waste-management/src/server.ts`. Beide Dateien stimmen bytegenau mit dem Basis-HEAD überein; es wurden keine neuen unerlaubten Importkanten gemeldet. Dieser Warnbefund wird nicht als fehlerfreier Architekturguard ausgegeben.
 
 ### Oberfläche und verbleibende Grenzen
 
-Keine neuen Produktionsdateien, Packages, Dependencies, Provider, Registries, Workflows oder DB-Schemata. Die bestehenden Content-Beiträge, Browser-Einstiege und Katalogmaterialisierung wurden erweitert; die acht neuen Testdateien gehören zu ihren Plugin-Paketen. Die fachlichen Host-Dispatches und Statusmappings wurden entfernt. Die bestehende Liste der Mainserver-Typen dient ausschließlich der unveränderten IAM-Bulk-Auswahlgrenze.
+Eine neue Produktionsdatei, `packages/plugin-sdk/src/content-type-mutations.ts`, kapselt ausschließlich die Mutation-Validierung, damit die bestehende `content-types.ts` unter dem Complexity-Grenzwert bleibt. Es gibt keine neuen Packages, Dependencies, Provider, Registries, Workflows oder DB-Schemata. Die bestehenden Content-Beiträge, Browser-Einstiege und Katalogmaterialisierung wurden erweitert; die acht neuen Testdateien gehören zu ihren Plugin-Paketen. Die fachlichen Host-Dispatches und Statusmappings wurden entfernt. Die bestehende Liste der Mainserver-Typen dient ausschließlich der unveränderten IAM-Bulk-Auswahlgrenze.
 
 Die Plugin-Mutationshandler werden im Browser-Einstieg an die Descriptor-Contenttypen gebunden. Der Loader vergleicht die übrigen Metadaten unverändert mit dem Descriptor und lässt die Fähigkeiten anschließend durch dieselbe Registry-Validierung laufen. Node-Deskriptoren und Manifeste bleiben unverändert.
 
-Kein Commit, Push, PR, Merge, Rollout oder produktiver Schreibtest wurde ausgeführt. Vor Merge sind die GitHub-Gates für den exakten PR-HEAD und die erforderliche Review-Evidenz noch zu prüfen. Es wird keine neue Concurrency-, Upstream-Reparatur- oder Live-Abnahmegarantie behauptet.
+PR #1805 wurde auf Commit `738aefb59e2a716de17930232736106d680b7b92` eröffnet. Die initialen GitHub-Gates für diesen HEAD meldeten den Complexity-Befund; der Worktree-Follow-up behebt ihn und wurde lokal gezielt geprüft. Nach Push des Folgecommits sind die GitHub-Gates erneut für den exakten PR-HEAD zu prüfen. Kein Merge, Rollout oder produktiver Schreibtest wurde ausgeführt. Es wird keine neue Concurrency-, Upstream-Reparatur- oder Live-Abnahmegarantie behauptet.

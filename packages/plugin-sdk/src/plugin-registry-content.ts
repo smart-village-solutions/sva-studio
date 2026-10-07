@@ -1,4 +1,4 @@
-import { validateContentTypeMutations } from './content-types.js';
+import { validateContentTypeMutations } from './content-type-mutations.js';
 import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import {
   normalizePluginIdentifier,

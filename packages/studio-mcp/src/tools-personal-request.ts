@@ -115,6 +115,9 @@ const validatePersonalPayload = (request: PersonalRequest): string | undefined =
   if (isCollectionCreate(request) && (!body || query !== undefined)) return 'post_contract_invalid';
   if (forbidsMutationQuery(request) && query !== undefined) return 'mutation_query_not_allowed';
   if (requiresBody(request) && body === undefined) return 'mutation_body_required';
+  if (isGroupMembershipDelete(request) && (typeof body?.keycloakSubject !== 'string' || body.keycloakSubject.length === 0)) {
+    return 'group_membership_subject_required';
+  }
   return undefined;
 };
 

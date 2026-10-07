@@ -13,6 +13,9 @@ describe('personal MCP API request boundary', () => {
     const body = { keycloakSubject: 'subject-1' };
     expect(validatePersonalRequest(removal)).toBe('mutation_body_required');
     expect(validatePersonalRequest({ ...removal, body })).toBeUndefined();
+    for (const invalidBody of [{}, { keycloakSubject: '' }, { keycloakSubject: 42 }, { keycloakSubject: null }]) {
+      expect(validatePersonalRequest({ ...removal, body: invalidBody })).toBe('group_membership_subject_required');
+    }
     for (const path of [
       'api/v1/iam/groups/group-1',
       'api/v1/iam/groups/group-1/roles/role-1',

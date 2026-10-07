@@ -148,6 +148,16 @@ describe('Studio MCP tools', () => {
     });
     expect(serviceRequest).not.toHaveBeenCalled();
     expect(JSON.stringify(membershipRemoval)).not.toContain('personal-access-token');
+    const invalidMembershipRemoval = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: {
+        contextId: 'tenant-a', method: 'DELETE', path: 'api/v1/iam/groups/group-1/memberships', body: {},
+      },
+    });
+    expect(invalidMembershipRemoval.structuredContent).toMatchObject({
+      ok: false, error: { code: 'group_membership_subject_required' },
+    });
+    expect(personalFetch).toHaveBeenCalledTimes(4);
 
     await Promise.all([client.close(), server.close()]);
   });

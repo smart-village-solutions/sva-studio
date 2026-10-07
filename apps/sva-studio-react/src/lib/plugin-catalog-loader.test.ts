@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { definePluginManifest } from '@sva/plugin-sdk';
+import { createStandardContentPluginContribution, definePluginManifest } from '@sva/plugin-sdk';
 
 import {
   createStudioPluginCatalogSeed,
@@ -446,4 +446,77 @@ describe('plugin catalog loader', () => {
     ).toBeUndefined();
     expect(extractPluginDefinition({ helper: { foo: 'bar' } })).toBeUndefined();
   });
+});
+
+it('binds content mutations only in the validated browser snapshot', async () => {
+  const contribution = createStandardContentPluginContribution({
+    pluginId: 'sample',
+    contentType: 'sample.entry',
+    displayName: 'Sample',
+    titleKey: 'sample.title',
+    listBindingKey: 'sampleList',
+    detailBindingKey: 'sampleDetail',
+    editorBindingKey: 'sampleEditor',
+  });
+  const descriptor = {
+    id: 'sample',
+    displayName: 'Sample',
+    routes: [],
+    ...contribution,
+    contentHistory: { mode: 'host', coverage: 'studio_mutations' } as const,
+  };
+  const execute = vi.fn(async () => undefined);
+  const manifest = definePluginManifest({
+    pluginId: 'sample',
+    manifestVersion: 1,
+    extensionTier: 'feature',
+    tenantActivationPolicy: 'optional',
+    version: '0.0.1',
+    sdkVersion: '0.0.1',
+    hostCompatibility: { studioVersionRange: '^0.0.1' },
+    entryPoints: { descriptor: './dist/plugin.js', browser: './dist/index.js' },
+  });
+  const input = {
+    catalogConfig: [
+      {
+        pluginId: 'sample',
+        sourceType: 'workspace' as const,
+        enabled: true,
+        sourceRef: 'packages/sample',
+      },
+    ],
+    resolveManifest: () => manifest,
+    resolvePluginModule: async () => ({ descriptor }),
+  };
+  const browser = {
+    ...descriptor,
+    contentTypes: descriptor.contentTypes.map((definition) => ({
+      ...definition,
+      mutations: { delete: { requiredAction: 'sample.delete', execute } },
+    })),
+  };
+  const report = await createStudioPluginCatalogReport({
+    ...input,
+    resolveBrowserModule: async () => ({ browser }),
+  });
+  expect(report.issues).toEqual([]);
+  expect(report.snapshot.registry.studioContentTypes[0]?.mutations?.delete?.execute).toBe(execute);
+  const server = await createStudioPluginCatalogReport(input);
+  expect(server.snapshot.registry.studioContentTypes[0]?.mutations).toBeUndefined();
+  const removed = await createStudioPluginCatalogReport({ ...input, catalogConfig: [] });
+  expect(removed.snapshot.registry.contentTypes).toEqual([]);
+  await expect(
+    createStudioPluginCatalogReport({
+      ...input,
+      resolveBrowserModule: async () => ({
+        browser: {
+          ...browser,
+          contentTypes: browser.contentTypes.map((definition) => ({
+            ...definition,
+            mutations: { delete: { requiredAction: 'other.delete', execute } },
+          })),
+        },
+      }),
+    })
+  ).rejects.toThrow('invalid_content_mutation');
 });

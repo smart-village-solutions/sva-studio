@@ -628,3 +628,9 @@ Vor einem Push bevorzugt:
 Mainserver-basierte Plugins verwenden für neue Detailseiten `getDetail(id)`, wenn feldgruppenbezogene Abweichungen sichtbar werden müssen. `data` bleibt das Fachmodell; `deviations` wird über die gemeinsame `MainserverDeviationSummary` lokalisiert dargestellt. Plugins dürfen daraus weder Rohwerte rekonstruieren noch unbekannte GraphQL-Felder schreiben.
 
 Vor einer Editormigration ist eine Feldmatrix für harte, kontrollierte, Passthrough-, nur lesbare und nicht erhaltbare Felder erforderlich. Passthrough-Erhaltung setzt voraus, dass Detailquery und Mutation-Input das Feld typisiert unterstützen. Optionale Anreicherungen werden unabhängig geladen und erhalten eine eigene lokalisierte Fehler- und Wiederholungsdarstellung.
+
+## Content-Mutationen im Browser
+
+Der Browser-Einstieg darf die bestehenden `contentTypes` seines Descriptors um `mutations.delete` und `mutations.status` ergänzen. Jeder Beitrag nennt eine im eigenen Plugin deklarierte `requiredAction` und einen `execute`-Handler mit Content-ID und `MainserverActingPrincipalType`; Statusbeiträge nennen zusätzlich eindeutige `supportedStatuses`. `requiresMainserverMutationAction: true` erhält die zusätzliche Laufzeitfreigabe der Survey-Mutationen. Die Registry prüft Deklarationen und Handler-Verfügbarkeit, nicht Funktionskörper.
+
+Handler verwenden bestehende Plugin-API-Clients. Bei Read-Merge-Write erhalten sie alle übrigen Felder; Event-/POI-Detailabweichungen mit möglicher Schreibwirkung müssen vor dem Update abbrechen. Node-Descriptor, Manifest und Job-Einstiege enthalten keine Browserhandler. Die gemeinsame Liste orchestriert Dialoge, Berechtigungsanzeige, Bulk-Ergebnisse und Refresh; fehlende Beiträge haben keinen ausführbaren Fallback.

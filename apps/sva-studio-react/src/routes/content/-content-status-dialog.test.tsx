@@ -72,6 +72,8 @@ describe('ContentStatusDialog', () => {
   it('keeps unsupported and read-only records non-interactive', () => {
     const { rerender } = render(
       <ContentStatusDialog
+        permissionActions={['news.update']}
+        enabledMainserverMutationActions={[]}
         item={item}
         canUpdate={false}
         actingPrincipalType="organization"
@@ -85,6 +87,8 @@ describe('ContentStatusDialog', () => {
     statusMutation.supported.mockReturnValue([]);
     rerender(
       <ContentStatusDialog
+        permissionActions={['news.update']}
+        enabledMainserverMutationActions={[]}
         item={item}
         canUpdate
         actingPrincipalType="organization"
@@ -97,6 +101,8 @@ describe('ContentStatusDialog', () => {
   it('closes without a mutation when the current status is selected', async () => {
     render(
       <ContentStatusDialog
+        permissionActions={['news.update']}
+        enabledMainserverMutationActions={[]}
         item={item}
         canUpdate
         actingPrincipalType="organization"
@@ -122,6 +128,8 @@ describe('ContentStatusDialog', () => {
 
     render(
       <ContentStatusDialog
+        permissionActions={['news.update']}
+        enabledMainserverMutationActions={[]}
         item={item}
         canUpdate
         actingPrincipalType="organization"
@@ -138,7 +146,13 @@ describe('ContentStatusDialog', () => {
 
     expect(screen.getByRole('button', { name: 'Entwurf' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'Abbrechen' }).hasAttribute('disabled')).toBe(true);
-    expect(statusMutation.update).toHaveBeenCalledWith(item, 'draft', 'organization');
+    expect(statusMutation.update).toHaveBeenCalledWith(
+      item,
+      'draft',
+      'organization',
+      ['news.update'],
+      []
+    );
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
     expect(screen.getByRole('dialog')).toBeTruthy();
 
@@ -151,7 +165,14 @@ describe('ContentStatusDialog', () => {
     statusMutation.update.mockRejectedValue(new Error('network'));
 
     render(
-      <ContentStatusDialog item={item} canUpdate actingPrincipalType="user" onUpdated={vi.fn()} />
+      <ContentStatusDialog
+        permissionActions={['news.update']}
+        enabledMainserverMutationActions={[]}
+        item={item}
+        canUpdate
+        actingPrincipalType="user"
+        onUpdated={vi.fn()}
+      />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Status von Rathausmeldung ändern' }));
     fireEvent.click(screen.getByRole('button', { name: 'Entwurf' }));

@@ -1,3 +1,6 @@
+import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
+import { studioContentTypes } from '../../lib/plugins';
+import { deleteMainserverItem } from './-content-list-row-actions';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,12 +22,12 @@ const useContentsMock = vi.fn();
 const useContentAccessMock = vi.fn();
 const useAuthMock = vi.fn();
 const useOrganizationContextMock = vi.fn();
-const deleteNewsMock = vi.fn();
-const deleteEventMock = vi.fn();
-const deleteFaqMock = vi.fn();
-const deletePoiMock = vi.fn();
-const deleteSurveyMock = vi.fn();
-const deleteProjectMock = vi.fn();
+const deleteNewsMock = vi.hoisted(() => vi.fn());
+const deleteEventMock = vi.hoisted(() => vi.fn());
+const deleteFaqMock = vi.hoisted(() => vi.fn());
+const deletePoiMock = vi.hoisted(() => vi.fn());
+const deleteSurveyMock = vi.hoisted(() => vi.fn());
+const deleteProjectMock = vi.hoisted(() => vi.fn());
 const navigateMock = vi.fn();
 let searchState: Record<string, unknown> = {};
 let locationState: Record<string, unknown> = {};
@@ -195,11 +198,55 @@ vi.mock('@sva/plugin-projects', () => ({
 
 vi.mock('../../lib/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/plugins')>()),
-  studioContentTypes: mockedStudioContentTypes,
+  studioContentTypes: mockedStudioContentTypes.map((definition) => {
+    const namespace = definition.contentType.split('.')[0];
+    const handlers: Record<string, typeof deleteNewsMock> = {
+      news: deleteNewsMock,
+      events: deleteEventMock,
+      faq: deleteFaqMock,
+      poi: deletePoiMock,
+      surveys: deleteSurveyMock,
+      projects: deleteProjectMock,
+    };
+    const execute = namespace ? handlers[namespace] : undefined;
+    return {
+      ...definition,
+      ...(execute
+        ? {
+            mutations: {
+              delete: {
+                requiredAction: `${namespace}.delete`,
+                ...(namespace === 'surveys' ? { requiresMainserverMutationAction: true } : {}),
+                execute,
+              },
+              ...(['news', 'events', 'poi', 'surveys'].includes(namespace ?? '')
+                ? {
+                    status: {
+                      requiredAction: `${namespace}.update`,
+                      supportedStatuses:
+                        namespace === 'surveys'
+                          ? ['draft', 'published', 'archived']
+                          : ['draft', 'published'],
+                      ...(namespace === 'surveys'
+                        ? { requiresMainserverMutationAction: true }
+                        : {}),
+                      execute: vi.fn(),
+                    },
+                  }
+                : {}),
+            },
+          }
+        : {}),
+    };
+  }),
 }));
+
+const registryDefinitions = studioContentTypes as RegisteredStudioContentType[];
+const originalDefinitions = [...registryDefinitions];
 
 describe('ContentListPage', () => {
   beforeEach(() => {
+    registryDefinitions.splice(0, registryDefinitions.length, ...originalDefinitions);
     resetMergedI18nResources();
     mergeI18nResources({
       de: {
@@ -287,6 +334,7 @@ describe('ContentListPage', () => {
         'events.delete',
         'surveys.read',
         'surveys.create',
+        'surveys.update',
         'surveys.delete',
       ],
       isLoading: false,
@@ -1862,5 +1910,152 @@ describe('ContentListPage', () => {
       sortBy: 'title',
       sortDirection: 'asc',
     });
+  });
+  const mutationRow = {
+    id: 'item-1',
+    contentType: 'news.article',
+    title: 'Mutation entry',
+    createdAt: '2026-10-07T12:00:00Z',
+    updatedAt: '2026-10-07T12:00:00Z',
+    author: 'Editor',
+    payload: {},
+    status: 'draft',
+    credentialSource: 'user',
+    access: {
+      state: 'editable',
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      organizationIds: [],
+      sourceKinds: [],
+    },
+  };
+
+  it('uses the shared list, dialog, delete and refresh path for an additional contribution', async () => {
+    const remove = vi.fn(async () => undefined);
+    const status = vi.fn(async () => undefined);
+    registryDefinitions.push({
+      contentType: 'sample.entry',
+      displayName: 'Sample',
+      requiredReadAction: 'sample.read',
+      requiredCreateAction: 'sample.create',
+      createPath: '/admin/sample/new',
+      detailPath: '/admin/sample/$id',
+      mutations: {
+        delete: { requiredAction: 'sample.delete', execute: remove },
+        status: {
+          requiredAction: 'sample.update',
+          supportedStatuses: ['draft', 'published'],
+          execute: status,
+        },
+      },
+    });
+    const access = useContentAccessMock();
+    useContentAccessMock.mockReturnValue({
+      ...access,
+      permissionActions: [
+        ...access.permissionActions,
+        'sample.read',
+        'sample.create',
+        'sample.delete',
+        'sample.update',
+      ],
+    });
+    const refetch = vi.fn(async () => undefined);
+    const refetchWithOutcome = vi.fn(async () => true);
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [{ ...mutationRow, contentType: 'sample.entry' }],
+        refetch,
+        refetchWithOutcome,
+      })
+    );
+    render(<ContentListPage />);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Status von Mutation entry ändern' })[0]!
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Veröffentlicht' }));
+    await waitFor(() =>
+      expect(status).toHaveBeenCalledExactlyOnceWith('item-1', 'published', 'user')
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(refetch).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
+    await waitFor(() => expect(remove).toHaveBeenCalledExactlyOnceWith('item-1', 'user'));
+    await waitFor(() => expect(refetchWithOutcome).toHaveBeenCalledOnce());
+  });
+
+  it('does not offer or directly execute missing or removed capabilities', async () => {
+    const index = registryDefinitions.findIndex(
+      (definition) => definition.contentType === 'news.article'
+    );
+    registryDefinitions[index] = { ...registryDefinitions[index]!, mutations: undefined };
+    useContentsMock.mockReturnValue(createContentsApiResult({ contents: [mutationRow] }));
+    render(<ContentListPage />);
+    expect(
+      (screen.getAllByRole('button', { name: 'Löschen' })[0]! as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Status von Mutation entry ändern' })).toBeNull();
+    await expect(
+      deleteMainserverItem('news.article', 'item-1', 'user', ['news.delete'], [])
+    ).rejects.toThrow('unsupported_content_delete');
+    registryDefinitions.splice(index, 1);
+    await expect(
+      deleteMainserverItem('news.article', 'item-1', 'user', ['news.delete'], [])
+    ).rejects.toThrow('unsupported_content_delete');
+    expect(deleteNewsMock).not.toHaveBeenCalled();
+  });
+
+  it('rechecks delete permission when the confirmation is submitted', async () => {
+    useContentsMock.mockReturnValue(createContentsApiResult({ contents: [mutationRow] }));
+    const view = render(<ContentListPage />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const access = useContentAccessMock();
+    useContentAccessMock.mockReturnValue({
+      ...access,
+      permissionActions: access.permissionActions.filter(
+        (action: string) => action !== 'news.delete'
+      ),
+    });
+    view.rerender(<ContentListPage />);
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Der Inhalt konnte nicht gelöscht werden.')).toBeTruthy()
+    );
+    expect(deleteNewsMock).not.toHaveBeenCalled();
+  });
+
+  it('rechecks current row access when the confirmation is submitted', async () => {
+    useContentsMock.mockReturnValue(createContentsApiResult({ contents: [mutationRow] }));
+    const view = render(<ContentListPage />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            ...mutationRow,
+            access: {
+              ...mutationRow.access,
+              state: 'server_denied',
+              canRead: false,
+              canUpdate: false,
+            },
+          },
+        ],
+      })
+    );
+    view.rerender(<ContentListPage />);
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Der Inhalt konnte nicht gelöscht werden.')).toBeTruthy()
+    );
+    expect(deleteNewsMock).not.toHaveBeenCalled();
   });
 });

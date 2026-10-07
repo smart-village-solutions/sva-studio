@@ -2,8 +2,10 @@ import {
   GENERIC_CONTENT_TYPE,
   resolveIamContentCapabilityMapping,
   type ContentJsonValue,
+  type IamContentStatus,
   type IamContentDomainCapability,
 } from '@sva/core';
+import type { MainserverActingPrincipalType } from './mainserver-client.js';
 import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import { validateMainserverGenericType } from './mainserver-generic-type-registry.js';
 import {
@@ -46,6 +48,28 @@ export type RegisteredStudioContentType = StudioContentTypeDefinition & {
   readonly contentType: string;
   readonly displayName: string;
   readonly titleKey?: string;
+  readonly mutations?: ContentTypeMutations;
+};
+
+export type ContentTypeMutations = {
+  readonly delete?: {
+    readonly requiredAction: string;
+    readonly requiresMainserverMutationAction?: true;
+    readonly execute: (
+      contentId: string,
+      principal: MainserverActingPrincipalType
+    ) => Promise<void>;
+  };
+  readonly status?: {
+    readonly requiredAction: string;
+    readonly requiresMainserverMutationAction?: true;
+    readonly supportedStatuses: readonly IamContentStatus[];
+    readonly execute: (
+      contentId: string,
+      status: IamContentStatus,
+      principal: MainserverActingPrincipalType
+    ) => Promise<void>;
+  };
 };
 
 export type ContentTypeDefinition = {
@@ -57,6 +81,7 @@ export type ContentTypeDefinition = {
   readonly editorFields?: readonly ContentTypeEditorFieldDefinition[];
   readonly listColumns?: readonly ContentTypeListColumnDefinition[];
   readonly actions?: readonly ContentTypeActionDefinition[];
+  readonly mutations?: ContentTypeMutations;
   readonly validatePayload?: (payload: ContentJsonValue) => readonly string[];
 };
 
@@ -70,6 +95,7 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'listColumns',
   'actions',
   'validatePayload',
+  'mutations',
 ] as const);
 const contentTypeActionDefinitionAllowedKeys = new Set([
   'key',
@@ -116,6 +142,62 @@ const normalizeContentTypeDefinition = (
       }
     : {}),
 });
+
+export const validateContentTypeMutations = (definition: ContentTypeDefinition): void => {
+  const mutations = definition.mutations;
+  if (mutations === undefined) return;
+  if (mutations === null || typeof mutations !== 'object' || Array.isArray(mutations)) {
+    throw new Error(`invalid_content_mutation:${definition.contentType}`);
+  }
+  const namespace = definition.contentType.split('.')[0] ?? 'host';
+  assertPluginContributionAllowedKeys(
+    mutations,
+    new Set(['delete', 'status']),
+    namespace,
+    `${definition.contentType}.mutations`
+  );
+  for (const operation of ['delete', 'status'] as const) {
+    const capability = mutations[operation];
+    if (capability === undefined) continue;
+    if (capability === null || typeof capability !== 'object' || Array.isArray(capability)) {
+      throw new Error(`invalid_content_mutation:${definition.contentType}:${operation}`);
+    }
+    assertPluginContributionAllowedKeys(
+      capability,
+      new Set([
+        'requiredAction',
+        'requiresMainserverMutationAction',
+        'execute',
+        ...(operation === 'status' ? ['supportedStatuses'] : []),
+      ]),
+      namespace,
+      `${definition.contentType}.${operation}`
+    );
+    if (
+      typeof capability.requiredAction !== 'string' ||
+      parseNamespacedPluginIdentifier(capability.requiredAction)?.namespace !== namespace ||
+      capability.requiredAction !==
+        `${namespace}.${operation === 'delete' ? 'delete' : 'update'}` ||
+      typeof capability.execute !== 'function' ||
+      (capability.requiresMainserverMutationAction !== undefined &&
+        capability.requiresMainserverMutationAction !== true)
+    ) {
+      throw new Error(`invalid_content_mutation:${definition.contentType}:${operation}`);
+    }
+  }
+  const statuses = mutations.status?.supportedStatuses;
+  if (
+    mutations.status &&
+    (!Array.isArray(statuses) ||
+      statuses.length === 0 ||
+      new Set(statuses).size !== statuses.length ||
+      statuses.some(
+        (status) => !['draft', 'in_review', 'approved', 'published', 'archived'].includes(status)
+      ))
+  ) {
+    throw new Error(`invalid_content_mutation_statuses:${definition.contentType}`);
+  }
+};
 
 const validateContentTypeActions = (definition: ContentTypeDefinition): void => {
   for (const action of definition.actions ?? []) {
@@ -211,6 +293,7 @@ export const definePluginContentTypes = <
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(definition);
+    validateContentTypeMutations(definition);
     validateMainserverGenericType(definition);
     if (definition.studioContentType) {
       validateStudioContentTypeDefinition(definition.contentType, definition.studioContentType);
@@ -249,6 +332,7 @@ export const createContentTypeRegistry = (
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(normalizedDefinition);
+    validateContentTypeMutations(normalizedDefinition);
     validateMainserverGenericType(normalizedDefinition);
     if (normalizedDefinition.studioContentType) {
       validateStudioContentTypeDefinition(normalizedType, normalizedDefinition.studioContentType);
@@ -278,6 +362,7 @@ export const collectRegisteredStudioContentTypes = (
             displayName: definition.displayName,
             ...(definition.titleKey ? { titleKey: definition.titleKey } : {}),
             ...definition.studioContentType,
+            ...(definition.mutations ? { mutations: definition.mutations } : {}),
           },
         ]
       : []

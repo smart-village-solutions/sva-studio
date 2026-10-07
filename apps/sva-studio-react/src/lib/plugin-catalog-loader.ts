@@ -250,7 +250,13 @@ export const createStudioPluginCatalogReport = async (
       const browserExports = await input.resolveBrowserModule(entry, entry.manifest);
       const browserPlugin = browserExports ? extractPluginDefinition(browserExports) : undefined;
       if (!browserPlugin) return undefined;
-      if (JSON.stringify(browserPlugin) !== JSON.stringify(descriptor)) {
+      const browserMetadata = {
+        ...browserPlugin,
+        contentTypes: browserPlugin.contentTypes?.map(
+          ({ mutations: _mutations, ...definition }) => definition
+        ),
+      };
+      if (JSON.stringify(browserMetadata) !== JSON.stringify(descriptor)) {
         throw new Error(`plugin_browser_descriptor_mismatch:${entry.pluginId}`);
       }
       const viewBindings = browserExports
@@ -262,6 +268,7 @@ export const createStudioPluginCatalogReport = async (
       }
       return {
         ...descriptor,
+        contentTypes: browserPlugin.contentTypes,
         viewBindings,
         routes: descriptor.routes.map((route) => {
           const component = (

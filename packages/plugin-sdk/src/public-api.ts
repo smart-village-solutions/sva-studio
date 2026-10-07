@@ -90,6 +90,7 @@ export { fetchIamContentHistory } from './content-history-client.js';
 export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,
+  ContentTypeMutations,
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,

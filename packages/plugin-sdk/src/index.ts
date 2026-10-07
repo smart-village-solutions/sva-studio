@@ -23,6 +23,7 @@ export type {
   BuildTimeRegistryInput,
   ContentTypeActionDefinition,
   ContentTypeDefinition,
+  ContentTypeMutations,
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,

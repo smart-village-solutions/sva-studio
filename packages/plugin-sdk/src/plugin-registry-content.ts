@@ -1,3 +1,4 @@
+import { validateContentTypeMutations } from './content-types.js';
 import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import {
   normalizePluginIdentifier,
@@ -22,6 +23,7 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'listColumns',
   'actions',
   'validatePayload',
+  'mutations',
 ] as const);
 const adminResourceDefinitionAllowedKeys = new Set([
   'resourceId',
@@ -85,6 +87,20 @@ export const assertPluginRegistryContentTypes = ({
       throw new Error(
         `plugin_content_type_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedContentType}`
       );
+    }
+
+    validateContentTypeMutations(contentTypeDefinition);
+    for (const capability of Object.values(contentTypeDefinition.mutations ?? {})) {
+      const action = plugin.actions?.find((entry) => entry.id === capability.requiredAction);
+      if (
+        !action ||
+        action.requiredAction !== capability.requiredAction ||
+        !pluginPermissionIds.has(capability.requiredAction)
+      ) {
+        throw new Error(
+          `plugin_content_mutation_action_missing:${pluginNamespace}:${contributionId}:${capability.requiredAction}`
+        );
+      }
     }
 
     const studioContentType = contentTypeDefinition.studioContentType;

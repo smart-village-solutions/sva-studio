@@ -363,3 +363,7 @@ reparierbaren Background-Provisioning. Bestands-Realm-Mutationen benötigen
 eindeutige Studio-/Instanz-Ownership und einen versionierten, aktuellen
 Plan-Fingerprint. Unbekannte Fehler sind nicht retrybar; nur explizit sichere,
 persistiert korrelierte Schritte dürfen wieder aufgenommen werden.
+
+### Plugin-eigene Content-Mutationen
+
+Die gemeinsame Inhaltsliste löst Lösch- und Schnellstatusfähigkeiten über die vorhandenen Content-Beiträge im validierten Browser-Snapshot auf. Plugins besitzen Fachmapping und erlaubte Zielstatus; der Host behält Action-Prüfung, Principal-Ermittlung, Dialoge, Bulk-Ergebnisse und Refresh. Browserhandler werden erst am Browser-Einstieg gebunden und bleiben außerhalb der Node-Deskriptoren und Manifeste.

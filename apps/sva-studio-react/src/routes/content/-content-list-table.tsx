@@ -190,6 +190,7 @@ export const ContentListTable = ({
   const studioDataTableLabels = createStudioDataTableLabels();
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const contentColumns = useContentColumns({
+    permissionActions: effectivePermissionActions,
     contentsApi,
     enabledMainserverMutationActions,
     principalControl,

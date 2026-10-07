@@ -15,6 +15,11 @@ import { studioServerPluginCatalogReport } from './plugin-catalog.server.js';
 describe('server plugin catalog', () => {
   it('loads the active descriptors without evaluating browser pages', () => {
     expect(
+      studioServerPluginCatalogReport.snapshot.registry.contentTypes.every(
+        (definition) => definition.mutations === undefined
+      )
+    ).toBe(true);
+    expect(
       studioServerPluginCatalogReport.snapshot.registry.pluginRegistry.has('waste-management')
     ).toBe(true);
     expect(

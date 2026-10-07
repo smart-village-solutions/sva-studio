@@ -3417,6 +3417,78 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('returns a conflict when the primary module assignment loses a concurrent race', async () => {
+    const repository = createRepository({ assignModule: vi.fn(async () => false) });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'waste-management',
+        idempotencyKey: 'module-primary-assignment-race',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'conflict' });
+
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('allows assignment when the required tenant module is automatically active', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async (_instanceId: string, moduleId: string) =>
+        moduleId === 'categories'
+          ? {
+              activationPolicy: 'automatic' as const,
+              activationOrigin: 'manifest' as const,
+              effectiveActive: true,
+              manualOverride: null,
+              reconcileId: null,
+              reconciledAt: null,
+              stateRevision: 1,
+              updatedBy: null,
+            }
+          : null
+      ),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'automatically-active-required-module',
+      })
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+  });
+
+  it('rolls back the primary assignment when a required module loses a concurrent race', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async (_instanceId: string, moduleId: string) => moduleId === 'events'),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['events', 'news']),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'module-required-assignment-race',
+      })
+    ).rejects.toThrow('plugin_activation_state_conflict:categories');
+
+    expect(repository.restoreModuleActivation).toHaveBeenCalledWith(
+      'demo',
+      'events',
+      expect.objectContaining({ activationPolicy: 'optional', effectiveActive: true })
+    );
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+  });
+
   it('rejects a missing declared tenant module requirement before assigning or syncing IAM', async () => {
     const repository = createRepository();
     const deps = createDeps(repository);
@@ -3438,6 +3510,164 @@ describe('instance registry service facade', () => {
     expect(repository.assignModule).not.toHaveBeenCalled();
     expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
     expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects bootstrap when a required module is absent from the registry', async () => {
+    const repository = createRepository();
+    const deps = createDeps(repository);
+    const moduleIamRegistry = new Map(deps.moduleIamRegistry);
+    moduleIamRegistry.set('events', {
+      ...moduleIamRegistry.get('events')!,
+      requiredTenantModuleIds: ['unavailable-module'],
+    });
+    const service = createInstanceRegistryService({ ...deps, moduleIamRegistry });
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['events'],
+        idempotencyKey: 'bootstrap-unavailable-required-module',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'unknown_module' });
+
+    expect(repository.assignModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: 'a disabled manual override',
+      policy: {
+        activationPolicy: 'optional' as const,
+        effectiveActive: true,
+        manualOverride: 'disabled' as const,
+      },
+    },
+    {
+      label: 'a required module policy',
+      policy: {
+        activationPolicy: 'required' as const,
+        effectiveActive: true,
+        manualOverride: null,
+      },
+    },
+    {
+      label: 'an inactive automatic module',
+      policy: {
+        activationPolicy: 'automatic' as const,
+        effectiveActive: false,
+        manualOverride: null,
+      },
+    },
+  ])(
+    'rejects assignment when the required tenant module is unavailable due to $label',
+    async ({ policy }) => {
+      const repository = createRepository({
+        getModuleActivationPolicy: vi.fn(async () => ({
+          ...policy,
+          activationOrigin: 'manual' as const,
+          reconcileId: null,
+          reconciledAt: null,
+          stateRevision: 1,
+          updatedBy: null,
+        })),
+      });
+      const service = createInstanceRegistryService(createDeps(repository));
+
+      await expect(
+        service.assignModule({
+          instanceId: 'demo',
+          moduleId: 'events',
+          idempotencyKey: `unavailable-required-module-${policy.activationPolicy}`,
+        })
+      ).resolves.toEqual({ ok: false, reason: 'conflict' });
+
+      expect(repository.assignModule).not.toHaveBeenCalled();
+      expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+      expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+    }
+  );
+
+  it('uses the activation policy snapshot when persisted policy is missing', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async () => null),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        readModuleActivationPolicySnapshot: () => ({
+          revision: 'policy-1',
+          modules: [
+            {
+              moduleId: 'categories',
+              activationPolicy: 'required',
+              manifestVersion: 1,
+              policyRevision: 'categories-1',
+            },
+          ],
+        }),
+      })
+    );
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'required-module-policy-snapshot',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'conflict' });
+
+    expect(repository.getModuleActivationPolicy).toHaveBeenCalledWith('demo', 'categories');
+    expect(repository.assignModule).not.toHaveBeenCalled();
+  });
+
+  it('rejects bootstrap when a required module assignment loses a concurrent race', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => false),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news']),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['events'],
+        idempotencyKey: 'bootstrap-required-module-race',
+      })
+    ).rejects.toThrow('plugin_activation_state_conflict:categories');
+
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('rejects bootstrap before assigning modules when a required tenant module is disabled', async () => {
+    const repository = createRepository({
+      getModuleActivationPolicy: vi.fn(async (_instanceId, moduleId: string) =>
+        moduleId === 'categories'
+          ? {
+              activationPolicy: 'optional' as const,
+              activationOrigin: 'manual' as const,
+              effectiveActive: true,
+              manualOverride: 'disabled' as const,
+              reconcileId: null,
+              reconciledAt: null,
+              stateRevision: 1,
+              updatedBy: null,
+            }
+          : null
+      ),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['events'],
+        idempotencyKey: 'bootstrap-disabled-required-module',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'conflict' });
+
+    expect(repository.assignModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).not.toHaveBeenCalled();
   });
 
   it('keeps a required tenant module assigned while a dependent module remains assigned', async () => {
@@ -4240,6 +4470,43 @@ describe('instance registry service facade', () => {
     expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
   });
 
+  it('rolls back required module assignments when lifecycle intent persistence fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['events', 'news'])
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
+      persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => {
+        throw new Error('lifecycle_intent_persist_failed');
+      }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-lifecycle-intent-rollback',
+      })
+    ).rejects.toThrow('lifecycle_intent_persist_failed');
+
+    expect(repository.restoreModuleActivation).toHaveBeenNthCalledWith(
+      1,
+      'demo',
+      'categories',
+      expect.objectContaining({ activationPolicy: 'optional', effectiveActive: true })
+    );
+    expect(repository.restoreModuleActivation).toHaveBeenNthCalledWith(
+      2,
+      'demo',
+      'events',
+      expect.objectContaining({ activationPolicy: 'optional', effectiveActive: true })
+    );
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
   it('preserves sync and rollback failures when the rollback itself fails', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
@@ -4371,6 +4638,37 @@ describe('instance registry service facade', () => {
       expect.objectContaining({ activationPolicy: 'optional', effectiveActive: true })
     );
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledTimes(2);
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a rollback failure when restoring a revoked module does not succeed', async () => {
+    const repository = createRepository({
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce([]),
+      persistPluginTenantLifecycleReconcileIntents: vi.fn(async () => {
+        throw new Error('plugin_tenant_lifecycle_suspend_conflict:news');
+      }),
+      restoreModuleActivation: vi.fn(async () => false),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-revoke-rollback-failure',
+      })
+    ).rejects.toMatchObject({
+      message: 'instance_module_revoke_rollback_failed:demo:news',
+      cause: {
+        error: expect.objectContaining({
+          message: 'plugin_tenant_lifecycle_suspend_conflict:news',
+        }),
+        rollbackError: expect.objectContaining({ message: 'rollback_restore_failed:news' }),
+      },
+    });
+
     expect(repository.appendAuditEvent).not.toHaveBeenCalled();
   });
 

@@ -86,10 +86,7 @@ describe('interfaces app adapter', () => {
 
   const setAuthenticatedUserContext = (user: TestUser = defaultUser) => {
     state.withAuthenticatedUser.mockImplementation(
-      async (
-        _request: Request,
-        handler: (ctx: { user: TestUser }) => Promise<unknown>
-      ) =>
+      async (_request: Request, handler: (ctx: { user: TestUser }) => Promise<unknown>) =>
         handler({
           user,
         })
@@ -214,7 +211,14 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding', 'supabase'],
+      availableTypes: [
+        'mainserver',
+        's3',
+        'postgresql',
+        'mailTransport',
+        'mapGeocoding',
+        'supabase',
+      ],
       entries: [
         expect.objectContaining({
           id: 's3-1',
@@ -516,6 +520,27 @@ describe('interfaces app adapter', () => {
     expect(state.listStoredInterfaces).not.toHaveBeenCalled();
   });
 
+  it('opts the personal HTTP delete route into the existing tenant permission path', async () => {
+    setAuthenticatedUserContext();
+    state.deleteStoredInterface.mockResolvedValue(true);
+    const request = new Request('https://tenant.example/api/v1/interfaces/s3-1', {
+      method: 'DELETE',
+    });
+
+    const { deleteInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(deleteInstanceInterfaceForRequest({ id: 's3-1' }, request)).resolves.toEqual({
+      deleted: true,
+    });
+
+    expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function), {
+      personalBearerRoute: { method: 'DELETE', path: '/api/v1/interfaces/$interfaceId' },
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'integration.manage' })
+    );
+    expect(state.deleteStoredInterface).toHaveBeenCalledWith('de-musterhausen', 's3-1');
+  });
+
   it('delegates saving to the settings contract with request context and payload', async () => {
     const config = {
       instanceId: 'de-musterhausen',
@@ -554,7 +579,9 @@ describe('interfaces app adapter', () => {
       instanceId: 'de-musterhausen',
       roles: ['system_admin'],
     });
-    state.saveSvaMainserverSettings.mockRejectedValue(new Error('Error: boom\n    at save (/srv/app.ts:1:1)'));
+    state.saveSvaMainserverSettings.mockRejectedValue(
+      new Error('Error: boom\n    at save (/srv/app.ts:1:1)')
+    );
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 

@@ -70,149 +70,159 @@ export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().hand
 
 export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerFn;
 
-export const listInstanceInterfacesServerFn = createServerFn().handler(listInstanceInterfaces);
+export const listInstanceInterfacesServerFn = createServerFn().handler(() =>
+  listInstanceInterfaces()
+);
 
 type UpsertInstanceInterfaceInput = Readonly<{
-  instanceId: string;
+  instanceId?: string;
   draft: InstanceInterfaceDraft;
   existingId?: string;
 }>;
 
-export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: UpsertInstanceInterfaceInput) => data)
-  .handler(async ({ data }): Promise<InstanceInterface> => {
-    if (data.draft.type === 'mainserver') {
-      throw new Error('mainserver_interfaces_use_dedicated_endpoint');
-    }
-    const dependencies = await loadInterfacesRequestDependencies();
-    const { getStoredInterface, upsertStoredInterface } =
-      await import('./instance-interfaces-server.js');
-    return runWithAuthenticatedInterfacesUser({
-      request: dependencies.request,
-      fallbackMessage: 'Schnittstelle konnte nicht gespeichert werden.',
-      run: async (ctx) => {
-        const instanceId = await resolveAuthorizedInterfacesInstanceId(
-          dependencies.logger,
-          ctx,
-          'upsert_interface',
-          data.instanceId
-        );
-        dependencies.logger.info('Received interface upsert request', {
+export const upsertInstanceInterfaceForRequest = async (
+  data: UpsertInstanceInterfaceInput,
+  request?: Request
+): Promise<InstanceInterface> => {
+  if (data.draft.type === 'mainserver') {
+    throw new Error('mainserver_interfaces_use_dedicated_endpoint');
+  }
+  const dependencies = await loadInterfacesRequestDependencies(request);
+  const { getStoredInterface, upsertStoredInterface } =
+    await import('./instance-interfaces-server.js');
+  return runWithAuthenticatedInterfacesUser({
+    request: dependencies.request,
+    fallbackMessage: 'Schnittstelle konnte nicht gespeichert werden.',
+    personalBearerRoute: { method: 'POST', path: '/api/v1/interfaces' },
+    run: async (ctx) => {
+      const instanceId = await resolveAuthorizedInterfacesInstanceId(
+        dependencies.logger,
+        ctx,
+        'upsert_interface',
+        data.instanceId
+      );
+      dependencies.logger.info('Received interface upsert request', {
+        operation: 'upsert_interface',
+        workspace_id: instanceId,
+        requested_workspace_id: data.instanceId,
+        interface_type: data.draft.type,
+        existing_interface_id: data.existingId,
+        enabled: data.draft.enabled,
+        user_id: ctx.user.id,
+        has_secret_input:
+          data.draft.type === 's3'
+            ? data.draft.config.secretAccessKey.length > 0
+            : data.draft.type === 'supabase'
+              ? data.draft.config.databaseUrl.length > 0 ||
+                data.draft.config.serviceRoleKey.length > 0
+              : data.draft.type === 'postgresql'
+                ? data.draft.config.databaseUrl.length > 0
+                : data.draft.type === 'mailTransport'
+                  ? data.draft.config.password.length > 0
+                  : data.draft.type === 'mapGeocoding'
+                    ? data.draft.config.apiKey.length > 0
+                    : false,
+        request_host: new URL(dependencies.request.url).host,
+        has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
+      });
+      await requireWasteManagementModuleForSupabase(data.draft, instanceId);
+      let stored;
+      try {
+        stored = await upsertStoredInterface(instanceId, data.draft, data.existingId);
+      } catch (error) {
+        dependencies.logger.error('Interface upsert failed before projection refresh', {
           operation: 'upsert_interface',
           workspace_id: instanceId,
-          requested_workspace_id: data.instanceId,
           interface_type: data.draft.type,
           existing_interface_id: data.existingId,
-          enabled: data.draft.enabled,
           user_id: ctx.user.id,
-          has_secret_input:
-            data.draft.type === 's3'
-              ? data.draft.config.secretAccessKey.length > 0
-              : data.draft.type === 'supabase'
-                ? data.draft.config.databaseUrl.length > 0 ||
-                  data.draft.config.serviceRoleKey.length > 0
-                : data.draft.type === 'postgresql'
-                  ? data.draft.config.databaseUrl.length > 0
-                  : data.draft.type === 'mailTransport'
-                    ? data.draft.config.password.length > 0
-                    : data.draft.type === 'mapGeocoding'
-                      ? data.draft.config.apiKey.length > 0
-                      : false,
-          request_host: new URL(dependencies.request.url).host,
-          has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
+          error_type: error instanceof Error ? error.constructor.name : typeof error,
         });
-        await requireWasteManagementModuleForSupabase(data.draft, instanceId);
-        let stored;
+        throw error;
+      }
+
+      if (
+        stored.type === 'supabase' ||
+        stored.type === 'postgresql' ||
+        stored.type === 's3' ||
+        (stored.type === 'mapGeocoding' && stored.config.provider === 'geoapify')
+      ) {
         try {
-          stored = await upsertStoredInterface(instanceId, data.draft, data.existingId);
+          const { runStoredInterfaceHealthcheck } =
+            await import('./instance-interface-healthcheck.server.js');
+          await runStoredInterfaceHealthcheck({
+            instanceId,
+            interfaceId: stored.id,
+          });
         } catch (error) {
-          dependencies.logger.error('Interface upsert failed before projection refresh', {
+          dependencies.logger.warn('Interface healthcheck failed after save', {
             operation: 'upsert_interface',
             workspace_id: instanceId,
-            interface_type: data.draft.type,
-            existing_interface_id: data.existingId,
-            user_id: ctx.user.id,
-            error_message: readErrorMessage(
-              error,
-              'Schnittstelle konnte nicht gespeichert werden.'
-            ),
-            ...extractErrorDiagnostics(error),
+            interface_id: stored.id,
+            interface_type: stored.type,
+            error_type: error instanceof Error ? error.constructor.name : typeof error,
           });
-          throw error;
         }
+      }
 
-        if (
-          stored.type === 'supabase' ||
-          stored.type === 'postgresql' ||
-          stored.type === 's3' ||
-          (stored.type === 'mapGeocoding' && stored.config.provider === 'geoapify')
-        ) {
-          try {
-            const { runStoredInterfaceHealthcheck } =
-              await import('./instance-interface-healthcheck.server.js');
-            await runStoredInterfaceHealthcheck({
-              instanceId,
-              interfaceId: stored.id,
-            });
-          } catch (error) {
-            dependencies.logger.warn('Interface healthcheck failed after save', {
-              operation: 'upsert_interface',
-              workspace_id: instanceId,
-              interface_id: stored.id,
-              interface_type: stored.type,
-              error_message: readErrorMessage(error, 'Healthcheck fehlgeschlagen.'),
-            });
-          }
-        }
-
-        const refreshed = await getStoredInterface(instanceId, stored.id);
-        dependencies.logger.info('Interface upsert finished', {
-          operation: 'upsert_interface',
-          workspace_id: instanceId,
-          interface_id: stored.id,
-          interface_type: stored.type,
-          refreshed_after_save: Boolean(refreshed),
-        });
-        return projectStoredEntry(instanceId, refreshed ?? stored);
-      },
-    });
+      const refreshed = await getStoredInterface(instanceId, stored.id);
+      dependencies.logger.info('Interface upsert finished', {
+        operation: 'upsert_interface',
+        workspace_id: instanceId,
+        interface_id: stored.id,
+        interface_type: stored.type,
+        refreshed_after_save: Boolean(refreshed),
+      });
+      return projectStoredEntry(instanceId, refreshed ?? stored);
+    },
   });
+};
+
+export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: UpsertInstanceInterfaceInput) => data)
+  .handler(async ({ data }): Promise<InstanceInterface> => upsertInstanceInterfaceForRequest(data));
 
 type DeleteInstanceInterfaceInput = Readonly<{
-  instanceId: string;
+  instanceId?: string;
   id: string;
 }>;
 
+export const deleteInstanceInterfaceForRequest = async (
+  data: DeleteInstanceInterfaceInput,
+  request?: Request
+): Promise<{ deleted: boolean }> => {
+  const dependencies = await loadInterfacesRequestDependencies(request);
+  return runWithAuthenticatedInterfacesUser({
+    request: dependencies.request,
+    fallbackMessage: 'Schnittstelle konnte nicht gelöscht werden.',
+    personalBearerRoute: { method: 'DELETE', path: '/api/v1/interfaces/$interfaceId' },
+    run: async (ctx) => {
+      const instanceId = await resolveAuthorizedInterfacesInstanceId(
+        dependencies.logger,
+        ctx,
+        'delete_interface',
+        data.instanceId
+      );
+      const isMainserverDelete =
+        data.id === `mainserver:${instanceId}` || data.id === `sva-mainserver:${instanceId}`;
+      const deleted = isMainserverDelete
+        ? await (await import('@sva/sva-mainserver/server')).deleteSvaMainserverSettings(instanceId)
+        : await (
+            await import('./instance-interfaces-server.js')
+          ).deleteStoredInterface(instanceId, data.id);
+      if (!deleted) {
+        throw new Error('interface_not_found');
+      }
+      return { deleted: true };
+    },
+  });
+};
+
 export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: DeleteInstanceInterfaceInput) => data)
-  .handler(async ({ data }): Promise<{ deleted: boolean }> => {
-    const dependencies = await loadInterfacesRequestDependencies();
-    return runWithAuthenticatedInterfacesUser({
-      request: dependencies.request,
-      fallbackMessage: 'Schnittstelle konnte nicht gelöscht werden.',
-      run: async (ctx) => {
-        const instanceId = await resolveAuthorizedInterfacesInstanceId(
-          dependencies.logger,
-          ctx,
-          'delete_interface',
-          data.instanceId
-        );
-        const isMainserverDelete =
-          data.id === `mainserver:${instanceId}` || data.id === `sva-mainserver:${instanceId}`;
-        const deleted = isMainserverDelete
-          ? await (
-              await import('@sva/sva-mainserver/server')
-            ).deleteSvaMainserverSettings(instanceId)
-          : await (
-              await import('./instance-interfaces-server.js')
-            ).deleteStoredInterface(instanceId, data.id);
-        if (!deleted) {
-          throw new Error('interface_not_found');
-        }
-        return { deleted: true };
-      },
-    });
-  });
+  .handler(async ({ data }): Promise<{ deleted: boolean }> =>
+    deleteInstanceInterfaceForRequest(data)
+  );
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
   .inputValidator((data: SaveSvaMainserverInterfaceSettingsInput['data']) => data)

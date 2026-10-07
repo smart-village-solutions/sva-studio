@@ -28,13 +28,17 @@ const isGroupMembershipDelete = (request: PersonalRequest): boolean => {
   return request.method === 'DELETE' && parts[3] === 'groups' && parts.length === 6 && parts[5] === 'memberships';
 };
 const requiresBody = (request: PersonalRequest): boolean =>
-  request.method === 'PATCH' || isNestedCreate(request) || isGroupMembershipDelete(request);
+  request.method === 'PATCH' ||
+  (request.method === 'POST' && request.path === 'api/v1/interfaces') ||
+  isNestedCreate(request) || isGroupMembershipDelete(request);
 const forbidsMutationQuery = (request: PersonalRequest): boolean =>
   ['POST', 'PATCH'].includes(request.method);
 
 const validatePersonalPayload = (request: PersonalRequest): string | undefined => {
   const { method, body, query } = request;
   if (method === 'GET' && body !== undefined) return 'get_body_not_allowed';
+  if (method === 'DELETE' && body !== undefined) return 'delete_body_not_allowed';
+  if (request.path.startsWith('api/v1/interfaces') && query !== undefined) return 'interface_query_not_supported';
   if (isCollectionCreate(request) && (!body || query !== undefined)) return 'post_contract_invalid';
   if (forbidsMutationQuery(request) && query !== undefined) return 'mutation_query_not_allowed';
   if (requiresBody(request) && body === undefined) return 'mutation_body_required';

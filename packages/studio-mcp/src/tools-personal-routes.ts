@@ -7,10 +7,18 @@ const isMethod = (request: PersonalRequest, ...methods: string[]): boolean =>
 const isIamPath = (segments: string[]): boolean =>
   segments[0] === 'api' && segments[1] === 'v1' && segments[2] === 'iam';
 
+const allowedInterfacesRoute = (request: PersonalRequest, parts: string[]): boolean => {
+  if (parts[0] !== 'api' || parts[1] !== 'v1' || parts[2] !== 'interfaces') return false;
+  if (parts.length === 3) return isMethod(request, 'GET', 'POST');
+  return parts.length === 4 && isId(parts[3]) && request.method === 'DELETE';
+};
+
 const allowedUserRoute = (request: PersonalRequest, parts: string[]): boolean =>
   (parts.length === 4 && isMethod(request, 'GET', 'POST')) ||
   (parts.length === 5 && isId(parts[4]) && isMethod(request, 'GET', 'PATCH', 'DELETE')) ||
-  (parts.length === 6 && isId(parts[4]) && request.method === 'POST' &&
+  (parts.length === 6 &&
+    isId(parts[4]) &&
+    request.method === 'POST' &&
     ['deactivate', 'send-password-setup-email'].includes(parts[5] ?? ''));
 
 const allowedRoleRoute = (request: PersonalRequest, parts: string[]): boolean =>
@@ -40,6 +48,7 @@ const allowedOrganizationRoute = (request: PersonalRequest, parts: string[]): bo
 
 const routeAllowed = (request: PersonalRequest): boolean => {
   const parts = request.path.split('/');
+  if (allowedInterfacesRoute(request, parts)) return true;
   if (!isIamPath(parts)) return false;
   const resource = parts[3];
   if (resource === 'users') return allowedUserRoute(request, parts);

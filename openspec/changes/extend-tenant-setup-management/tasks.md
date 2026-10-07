@@ -30,9 +30,9 @@ Gesamtfall ab.
 
 ## 4. PR-Kandidat: Fehlende Schnittstellen-HTTP-Verträge und MCP-Nutzung
 
-- [ ] 4.1 Nur die für beauftragte Schnittstellenaktionen fehlenden HTTP-Endpunkte im zuständigen Interface-Pfad ergänzen; bestehende Services, Schemas, Verschlüsselung, Healthchecks und Berechtigungen wiederverwenden.
-- [ ] 4.2 Die vorhandene MCP-Credential-Auflösung für secrettragende Mutationen prüfen und nur bei belegter Lücke minimal ergänzen; Klartext aus MCP-Argumenten, Antworten, Fehlern und Logs fernhalten. Pluginverwaltete Interfaces bleiben für allgemeine Tenant-Verwaltung verborgen.
-- [ ] 4.3 CRUD-, Health-, Autorisierungs-, Tenant- und Secret-Negativtests ausführen; Mainserver nur bei beauftragter Anbindung und mit eigenen bestehenden Verträgen prüfen.
+- [x] 4.1 Nur die für beauftragte Schnittstellenaktionen fehlenden HTTP-Endpunkte im zuständigen Interface-Pfad ergänzen; bestehende Services, Schemas, Verschlüsselung, Healthchecks und Berechtigungen wiederverwenden.
+- [x] 4.2 Die vorhandene MCP-Credential-Auflösung für secrettragende Mutationen prüfen und nur bei belegter Lücke minimal ergänzen; Klartext aus MCP-Argumenten, Antworten, Fehlern und Logs fernhalten. Pluginverwaltete Interfaces bleiben für allgemeine Tenant-Verwaltung verborgen.
+- [x] 4.3 CRUD-, Health-, Autorisierungs-, Tenant- und Secret-Negativtests ausführen; Mainserver nur bei beauftragter Anbindung und mit eigenen bestehenden Verträgen prüfen.
 
 ## 5. Einrichtungs- und Verwaltungspfad abnehmen
 

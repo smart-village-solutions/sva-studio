@@ -377,15 +377,37 @@ gesetzt.
 
 Die Realm-/Host-Bindung für den Bearer-Pfad wird ohne Browser-Client-Secret
 aus Request-Host, aktivem Registry-Eintrag sowie dessen Issuer- und
-Studio-Client-Werten aufgelöst. Der persönliche Client wird weiterhin nicht
-aktiviert, bevor Studio-API- und MCP-Nachweise erbracht sind. Offen bleiben
-für die Keycloak-/MCP-Abnahme der Nachweis mit einem echten Kunden-
-`system_admin`, die Selbständerungs-Negativprobe des Profilattributs,
-Token-Entzug und Restlaufzeit sowie die produktionsnahe API-Aufrufprobe nach
-Bereitstellung dieses Codepfads.
+Studio-Client-Werten aufgelöst.
 
-- Wie werden der Kunden-`system_admin` und die untersagte Selbständerung
-  des Attributs ohne produktive Kundendaten nachgewiesen?
+### Live-Abnahme Task 3.5 (Dev, 2026-10-07)
+
+Der neue Smoke-Tenant-Host wurde mit PR #1797 in die bestehende Dev-Ingress-
+Route aufgenommen und mit dem regulären Build `37613696250` ausgerollt. Der
+Host bestand TLS-Prüfung, lieferte `200` auf `/health/live` und leitete
+`/auth/login` mit `realm=dev-mcp-smoke`, dem Studio-Client und demselben
+Rückkehr-Host an Keycloak weiter.
+
+Ein synthetischer Provider-Account im Realm `de-teststadt-dev` las die
+bereitgestellte User-Collection (`200`) und legte einen isolierten Probeuser
+ohne Einladungsversand an (`201`). Der Probeuser wurde über die API gelöscht
+(`204`) und sein Fehlen per Readback bestätigt. Ein korrekt signierter Token
+mit passender Realm-Audience, aber anderem Client, sowie Tokens aus dem
+jeweils anderen Tenant-Realm wurden abgewiesen (`401`); das galt für beide
+Richtungen zwischen `de-teststadt-dev` und `dev-mcp-smoke`. Der Token am
+falschen Dev-Root-Host und ein abgelaufener Token wurden ebenfalls mit `401`
+abgewiesen. Ein gültiger Smoke-Token am eigenen Tenant-Host erreichte die
+Fachautorisierung und erhielt mangels Instanzrolle `403`. Nach Entzug von
+`svaStudioMcpAccess` verweigerte Keycloak eine erneute persönliche Anmeldung
+mit „Access denied“.
+
+Im Keycloak-Account-Profil war `svaStudioMcpAccess` für den Kunden-
+`system_admin` nicht sichtbar oder änderbar. Admin-Readback bestätigte nach
+der Abnahme entfernte synthetische Testaccounts und deaktivierte persönliche
+Clients in beiden Dev-Realms. Auch der nur für die falsche-Client-Probe
+angelegte Client wurde entfernt. Staging- und Produktions-Realms wurden
+nicht verändert; Tokens, Passwörter und personenbezogene Testdaten wurden
+nicht in Repository oder Bericht abgelegt.
+
 - Welche weiteren Verwaltungsrouten benötigen für ihre eigenen CSRF- oder
   Fresh-Reauth-Verträge eine Anpassung?
 - Wie werden Secret-Eingaben aus einer lokalen geschützten Quelle nur für den

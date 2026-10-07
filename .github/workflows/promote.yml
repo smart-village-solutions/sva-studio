@@ -734,6 +734,8 @@ jobs:
           SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
           SVA_ACCEPTANCE_RELEASE_MODE: ${{ inputs.environment }}
           SVA_PROMOTE_PHASE: predeploy
+          # Older release checkouts still consume the original compatibility flag.
+          SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE: 'true'
         run: |
           set -euo pipefail
           umask 077

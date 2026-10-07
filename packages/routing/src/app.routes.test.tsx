@@ -96,6 +96,60 @@ function expectDefined<T>(value: T | undefined): T {
 }
 
 describe('mergePluginViewBindings', () => {
+  it('rejects duplicate view names even when plugins contribute the same component', () => {
+    const component = () => null;
+    const plugins = ['plugin-a', 'plugin-b'].map((id) => ({
+      id,
+      displayName: id,
+      viewBindings: [{ bindingKey: 'sharedEditor', component }],
+    }));
+
+    expect(() => mergePluginViewBindings(bindings, plugins)).toThrow(
+      'plugin_view_binding_collision:sharedEditor'
+    );
+  });
+
+  it('exposes contributed views to reflection and content validation without changing host bindings', () => {
+    const component = () => null;
+    const hostMarker = Symbol('host-marker');
+    const hostBindings = { ...bindings, [hostMarker]: 'host-value' };
+    const plugin = {
+      id: 'plugin-a',
+      displayName: 'Plugin A',
+      viewBindings: [{ bindingKey: 'pluginAEditor', component }],
+      adminResources: [{
+        resourceId: 'plugin-a.entries',
+        contentUi: { bindings: { detail: { bindingKey: 'pluginAEditor' } } },
+      }],
+    };
+    const merged = mergePluginViewBindings(hostBindings, [plugin]);
+
+    expect(Object.getOwnPropertyDescriptor(merged, 'pluginAEditor')).toEqual({
+      configurable: true, enumerable: true, value: component, writable: false,
+    });
+    expect(Object.keys(merged)).toContain('pluginAEditor');
+    expect(Reflect.has(merged, 'pluginAEditor')).toBe(true);
+    expect(Reflect.has(merged, 'home')).toBe(true);
+    expect(Reflect.has(merged, hostMarker)).toBe(true);
+    expect(Reflect.has(merged, 'missingView')).toBe(false);
+    expect(Object.getOwnPropertyDescriptor(merged, 'home')).toEqual(
+      Object.getOwnPropertyDescriptor(hostBindings, 'home')
+    );
+    expect(Object.getOwnPropertyDescriptor(merged, hostMarker)?.value).toBe('host-value');
+    expect(Object.getOwnPropertyDescriptor(merged, Symbol('missing'))).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(merged, 'missingView')).toBeUndefined();
+    expect(Reflect.get(merged, hostMarker)).toBe('host-value');
+    expect(() => assertPluginContentUiBindings(merged, [plugin])).not.toThrow();
+    expect(Object.hasOwn(hostBindings, 'pluginAEditor')).toBe(false);
+  });
+
+  it('accepts plugins and resources that do not contribute content views', () => {
+    expect(() => assertPluginContentUiBindings(bindings, [
+      { id: 'no-resources', displayName: 'No resources' },
+      { id: 'no-content-ui', displayName: 'No content UI', adminResources: [{ resourceId: 'plain.entries' }] },
+    ])).not.toThrow();
+  });
+
   it('rejects plugin bindings that would replace a host route component', () => {
     const HostHomePage = () => null;
     const PluginHomePage = () => null;

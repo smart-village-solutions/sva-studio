@@ -460,3 +460,29 @@ Die versionierte Ergänzung ist erst nach dem regulären Build-/Promote-Pfad
 und einem erfolgreichen HTTPS-/Login-Smoke als live abgenommen zu werten.
 Aktivierung, persönlicher Provider-Zugang, fachliche Einrichtung, Einladung,
 erste Kundenanmeldung und der Fall mit Mainserver sind hiermit nicht belegt.
+
+Der folgende Abnahmeschritt verwendet zwei getrennte Testinstanzen gemäß
+Task 5.2: `codex-mcp-test-prod` ohne Mainserver und
+`codex-mcp-mainserver-prod` für die beauftragte Mainserver-Anbindung.
+Beim ersten Tenant wurden die abhängigen Module `news`, `events`, `poi`
+und `categories` über die challenge-geschützten Einzelaktionen entzogen;
+der Readback bestätigt ausschließlich `media`. Organisations-Provisionierung
+gegen einen Mainserver wird in diesem Fall nicht ausgeführt.
+
+Nach zeitlich begrenzter Aktivierung des persönlichen Clients und Freigabe
+ausschließlich des synthetischen Providers wurde dessen echter PKCE-Login
+im lokalen stdio-MCP um 21:32 UTC erfolgreich abgeschlossen. Das beweist
+die persönliche Anmeldung; Tenant-API-Zugriff und fachliche Verwaltung sind
+erst nach HTTPS-Freigabe und separater Instanzaktivierung abzunehmen.
+
+Der zweite Testtenant wurde über `studio_instance_process` angelegt;
+der Keycloak-Lauf `9f3eb7dd-e664-4572-a3e0-47e73b292e9c` endete mit
+`succeeded`. SMTP-Passwort und Versand sind für diesen neuen Realm noch
+nicht nachgewiesen; die Einladungsabnahme ist dem ersten Testtenant zugeordnet.
+Sein Host `codex-mcp-mainserver-prod.studio.smart-village.app` erhält dieselbe
+explizite, versionierte Hostfreigabe und einen exakten CSRF-Origin.
+Die vorhandenen Mainserver-Credentials wurden zuvor ausschließlich lesend
+gegen den konfigurierten Staging-Mainserver geprüft: OAuth, GraphQL-Probe
+und Provider-Identität jeweils HTTP 200. Dieser Zugangsnachweis ersetzt
+weder die tenantgebundene Konfiguration noch Organisations-Provisionierung.
+Alle Aufgaben unter Abschnitt 5 bleiben deshalb weiterhin offen.

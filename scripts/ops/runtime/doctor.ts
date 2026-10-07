@@ -10,11 +10,6 @@ import { isStudioReleaseVerification } from './remote-verification.ts';
 import type { RuntimeDoctorDeps } from './doctor.types.ts';
 import type { OidcDoctorCompatibilityOptions } from './runtime-health.types.ts';
 
-const resolveOidcDoctorCompatibility = (env: NodeJS.ProcessEnv): OidcDoctorCompatibilityOptions => ({
-  allowImplicitQueryResponseMode:
-    env.SVA_PROMOTE_PREDEPLOY_ALLOW_IMPLICIT_QUERY_RESPONSE_MODE === 'true',
-});
-
 const addRuntimeEnvCheck = (
   deps: RuntimeDoctorDeps,
   checks: DoctorCheck[],
@@ -194,8 +189,9 @@ const doctorRuntime = async (
   env: NodeJS.ProcessEnv,
 ): Promise<DoctorReport> => {
   const checks: DoctorCheck[] = [];
-  const oidcCompatibility = resolveOidcDoctorCompatibility(env);
-  if (deps.isRemoteRuntimeProfile(runtimeProfile)) {
+  const isPredeploy = isStudioReleaseVerification(runtimeProfile, env) && env.SVA_PROMOTE_PHASE === 'predeploy';
+  const oidcCompatibility: OidcDoctorCompatibilityOptions = { allowImplicitQueryResponseMode: isPredeploy };
+  if (deps.isRemoteRuntimeProfile(runtimeProfile) && !isPredeploy) {
     checks.push(await deps.buildLiveRuntimeEnvCheck(runtimeProfile, env));
   } else {
     addRuntimeEnvCheck(deps, checks, runtimeProfile, env, 'Runtime-Profil ist nicht vollstaendig konfiguriert.');

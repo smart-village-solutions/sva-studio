@@ -70,6 +70,7 @@ import {
 } from './app.routes';
 import { getServerRouteFactories } from './app.routes.server';
 import {
+  assertPluginContentUiBindings,
   createUiRouteFactories,
   getAdminDetailRoutePath,
   mergePluginViewBindings,
@@ -106,10 +107,9 @@ describe('mergePluginViewBindings', () => {
     };
 
     expect(() =>
-      mergePluginViewBindings(
-        { ...bindings, home: HostHomePage } as unknown as AppRouteBindings,
-        [plugin]
-      )
+      mergePluginViewBindings({ ...bindings, home: HostHomePage } as unknown as AppRouteBindings, [
+        plugin,
+      ])
     ).toThrow('plugin_view_binding_host_collision:home');
   });
 
@@ -131,6 +131,25 @@ describe('mergePluginViewBindings', () => {
     );
 
     expect(merged).toHaveProperty('pluginAEditor', ExistingPluginPage);
+  });
+
+  it('rejects plugin content views without a materialized component', () => {
+    const plugin = {
+      id: 'plugin-a',
+      displayName: 'Plugin A',
+      routes: [],
+      adminResources: [
+        {
+          resourceId: 'plugin-a.entries',
+          contentUi: { bindings: { detail: { bindingKey: 'pluginAEntryDetail' } } },
+        },
+      ],
+    };
+
+    const merged = mergePluginViewBindings(bindings, [plugin]);
+    expect(() => assertPluginContentUiBindings(merged, [plugin])).toThrow(
+      'unknown_admin_resource_binding_key:plugin-a.entries:contentUi.detail:pluginAEntryDetail'
+    );
   });
 });
 

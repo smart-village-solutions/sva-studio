@@ -4,6 +4,7 @@ import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { authServerRouteFactories } from './auth.routes.server.js';
 import {
   createUiRouteFactories,
+  assertPluginContentUiBindings,
   getPluginRouteFactories,
   mergePluginViewBindings,
   type AppRouteBindings,
@@ -27,6 +28,7 @@ export const getServerRouteFactories = ({
   readonly pluginScope?: import('./plugin.routes.js').PluginRouteScope;
 }): readonly AppRouteFactory[] => {
   const routeBindings = mergePluginViewBindings(bindings, plugins);
+  assertPluginContentUiBindings(routeBindings, plugins);
   return [
     ...createUiRouteFactories(routeBindings, {
       adminResources,

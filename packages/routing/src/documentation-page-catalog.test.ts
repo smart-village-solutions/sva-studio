@@ -5,13 +5,12 @@ import type { AppRouteBindings } from './app-route-bindings.js';
 import { collectDocumentationPageCatalog } from './documentation-page-catalog.js';
 
 const component = () => null;
-const bindings = new Proxy(
-  {},
-  {
-    get: () => component,
-    getOwnPropertyDescriptor: () => ({ configurable: true, value: component }),
-  }
-) as AppRouteBindings;
+const bindings = {
+  home: component,
+  content: component,
+  contentCreate: component,
+  contentDetail: component,
+} as AppRouteBindings;
 
 const resource: AdminResourceDefinition = {
   resourceId: 'catalog.entries',
@@ -92,6 +91,21 @@ describe('documentation page catalog', () => {
     const catalog = collectDocumentationPageCatalog({ bindings: bindingsWithoutCategories });
 
     expect(catalog.pages.some((page) => page.id === 'categories.overview')).toBe(false);
+  });
+
+  it('includes static plugin view documentation when its contribution is installed', () => {
+    const CategoriesPage = () => null;
+    const catalog = collectDocumentationPageCatalog({
+      bindings,
+      plugins: [
+        {
+          ...plugin,
+          viewBindings: [{ bindingKey: 'categories', component: CategoriesPage }],
+        },
+      ],
+    });
+
+    expect(catalog.pages.some((page) => page.id === 'categories.overview')).toBe(true);
   });
 
   it('keeps ownership for normalized plugin resource ids', () => {

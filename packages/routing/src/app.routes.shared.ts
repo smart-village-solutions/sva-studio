@@ -52,7 +52,45 @@ export const mergePluginViewBindings = (
       contributedViews.set(view.bindingKey, view.component as RouteComponent);
     }
   }
-  return Object.assign({}, bindings, Object.fromEntries(contributedViews)) as AppRouteBindings;
+  return new Proxy(bindings, {
+    get: (target, key, receiver) =>
+      typeof key === 'string' && contributedViews.has(key)
+        ? contributedViews.get(key)
+        : Reflect.get(target, key, receiver),
+    getOwnPropertyDescriptor: (target, key) => {
+      const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
+      if (descriptor || typeof key !== 'string' || !contributedViews.has(key)) {
+        return descriptor;
+      }
+      return {
+        configurable: true,
+        enumerable: true,
+        value: contributedViews.get(key),
+        writable: false,
+      };
+    },
+    has: (target, key) =>
+      (typeof key === 'string' && contributedViews.has(key)) || Reflect.has(target, key),
+    ownKeys: (target) =>
+      Array.from(new Set([...Reflect.ownKeys(target), ...contributedViews.keys()])),
+  }) as AppRouteBindings;
+};
+
+export const assertPluginContentUiBindings = (
+  bindings: AppRouteBindings,
+  plugins: readonly PluginDefinition[]
+): void => {
+  for (const plugin of plugins) {
+    for (const resource of plugin.adminResources ?? []) {
+      for (const [viewName, view] of Object.entries(resource.contentUi?.bindings ?? {})) {
+        if (!Object.prototype.hasOwnProperty.call(bindings, view.bindingKey)) {
+          throw new Error(
+            `unknown_admin_resource_binding_key:${resource.resourceId}:contentUi.${viewName}:${view.bindingKey}`
+          );
+        }
+      }
+    }
+  }
 };
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;

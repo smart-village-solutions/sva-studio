@@ -1,5 +1,5 @@
 import { mailTransportContract } from '@sva/core';
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import {
@@ -111,9 +111,29 @@ const readInterfaceId = (pathname: string): string | null => {
   return match?.[1] ?? null;
 };
 
-const withoutStatusMessage = <T extends { readonly statusMessage?: unknown }>(entry: T) => {
+const secretFieldsByType: Readonly<Record<string, readonly string[]>> = {
+  s3: ['secretAccessKey'],
+  supabase: ['databaseUrl', 'serviceRoleKey'],
+  postgresql: ['databaseUrl'],
+  mailTransport: ['password'],
+  mapGeocoding: ['apiKey'],
+};
+
+const withoutSecrets = <T extends {
+  readonly type?: string;
+  readonly config?: unknown;
+  readonly statusMessage?: unknown;
+}>(entry: T) => {
   const { statusMessage: _statusMessage, ...safeEntry } = entry;
-  return safeEntry;
+  const fields = entry.type ? secretFieldsByType[entry.type] : undefined;
+  if (!fields || !entry.config || typeof entry.config !== 'object' || Array.isArray(entry.config)) {
+    return safeEntry;
+  }
+  const config = { ...entry.config } as Record<string, unknown>;
+  for (const field of fields) {
+    if (typeof config[field] === 'string' && config[field] !== '') config[field] = '';
+  }
+  return { ...safeEntry, config };
 };
 
 const responseStatusFor = (error: unknown): number => {
@@ -138,7 +158,7 @@ const errorResponse = (request: Request, error: unknown): Response => {
   const status = responseStatusFor(error);
   logger.error('Interface API request failed', {
     operation: 'interface_api_request',
-    request_id: request.headers.get('x-request-id'),
+    request_id: getWorkspaceContext().requestId ?? null,
     method: request.method,
     route: new URL(request.url).pathname,
     status_code: status,
@@ -151,7 +171,7 @@ const handleList = async (request: Request): Promise<Response> => {
   try {
     const data = await listInstanceInterfaces(request, { includeMainserver: false });
     return Response.json({
-      data: { ...data, entries: data.entries.map(withoutStatusMessage) },
+      data: { ...data, entries: data.entries.map(withoutSecrets) },
     });
   } catch (error) {
     return errorResponse(request, error);
@@ -171,7 +191,7 @@ const handleUpsert = async (request: Request): Promise<Response> => {
   }
   try {
     const data = await upsertInstanceInterfaceForRequest(parsed.data, request);
-    return Response.json({ data: withoutStatusMessage(data) });
+    return Response.json({ data: withoutSecrets(data) });
   } catch (error) {
     return errorResponse(request, error);
   }

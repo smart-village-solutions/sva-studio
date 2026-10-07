@@ -4,10 +4,14 @@ const state = vi.hoisted(() => ({
   list: vi.fn(),
   upsert: vi.fn(),
   remove: vi.fn(),
+  getWorkspaceContext: vi.fn(() => ({ requestId: 'sanitized-request-id' })),
   logger: { error: vi.fn() },
 }));
 
-vi.mock('@sva/server-runtime', () => ({ createSdkLogger: () => state.logger }));
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => state.logger,
+  getWorkspaceContext: state.getWorkspaceContext,
+}));
 vi.mock('./interfaces-api', () => ({
   deleteInstanceInterfaceForRequest: state.remove,
   upsertInstanceInterfaceForRequest: state.upsert,
@@ -27,6 +31,8 @@ describe('personal interface HTTP routes', () => {
       entries: [
         {
           id: 's3-1',
+          type: 's3',
+          config: { secretAccessKey: 'list-secret', accessKeyId: 'visible-id' },
           status: 'error',
           statusMessage: 'postgres://db-user:private-value@db.example/wm',
         },
@@ -42,7 +48,7 @@ describe('personal interface HTTP routes', () => {
       data: {
         instanceId: 'tenant-a',
         availableTypes: ['s3'],
-        entries: [{ id: 's3-1', status: 'error' }],
+        entries: [{ id: 's3-1', type: 's3', config: { secretAccessKey: '', accessKeyId: 'visible-id' }, status: 'error' }],
       },
     });
     expect(state.list).toHaveBeenCalledWith(request, { includeMainserver: false });
@@ -52,6 +58,7 @@ describe('personal interface HTTP routes', () => {
     state.upsert.mockResolvedValue({
       id: 's3-1',
       type: 's3',
+      config: { secretAccessKey: 'upsert-secret', accessKeyId: 'visible-id' },
       statusMessage: 's3://account:private-value@storage.example',
     });
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
@@ -78,18 +85,49 @@ describe('personal interface HTTP routes', () => {
     const response = await dispatchInterfacesApiRequest(request);
 
     expect(response?.status).toBe(200);
-    expect(await response?.json()).toEqual({ data: { id: 's3-1', type: 's3' } });
+    expect(await response?.json()).toEqual({
+      data: { id: 's3-1', type: 's3', config: { secretAccessKey: '', accessKeyId: 'visible-id' } },
+    });
     expect(state.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ draft: expect.objectContaining({ type: 's3' }) }),
       request
     );
   });
 
+  it('removes every supported interface secret from list responses', async () => {
+    state.list.mockResolvedValue({
+      instanceId: 'tenant-a',
+      availableTypes: ['supabase', 'postgresql', 'mailTransport', 'mapGeocoding'],
+      entries: [
+        { id: 'supabase-1', type: 'supabase', config: { databaseUrl: 'db-secret', serviceRoleKey: 'role-secret' } },
+        { id: 'postgres-1', type: 'postgresql', config: { databaseUrl: 'pg-secret' } },
+        { id: 'mail-1', type: 'mailTransport', config: { password: 'mail-secret' } },
+        { id: 'map-1', type: 'mapGeocoding', config: { apiKey: 'map-secret' } },
+      ],
+    });
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+
+    const response = await dispatchInterfacesApiRequest(
+      new Request('https://tenant-a.example/api/v1/interfaces')
+    );
+
+    const body = await response?.text();
+    expect(response?.status).toBe(200);
+    expect(body).not.toContain('db-secret');
+    expect(body).not.toContain('role-secret');
+    expect(body).not.toContain('pg-secret');
+    expect(body).not.toContain('mail-secret');
+    expect(body).not.toContain('map-secret');
+  });
+
   it('rejects malformed inputs before invoking interface mutations', async () => {
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
     const request = new Request('https://tenant-a.example/api/v1/interfaces', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'x-request-id': 'caller-supplied-private-value',
+      },
       body: JSON.stringify({ draft: { type: 'mainserver', config: {} } }),
     });
 
@@ -149,6 +187,11 @@ describe('personal interface HTTP routes', () => {
 
     expect(response?.status).toBe(500);
     expect(visible).not.toContain('private-value');
+    expect(visible).not.toContain('caller-supplied');
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Interface API request failed',
+      expect.objectContaining({ request_id: 'sanitized-request-id' })
+    );
     expect(visible).toContain('interface_request_failed');
   });
 });

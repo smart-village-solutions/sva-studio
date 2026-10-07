@@ -11,10 +11,15 @@ describe('redaction', () => {
       'postgres://[REDACTED]@db.example/studio'
     );
     expect(
-      redact({ databaseUrl: 'postgres://db-user:pw@db.example/studio', apiKey: 'provider-key' })
+      redact({
+        databaseUrl: 'postgres://db-user:pw@db.example/studio',
+        apiKey: 'provider-key',
+        serviceRoleKey: 'service-role-key',
+      })
     ).toEqual({
       databaseUrl: '[REDACTED]',
       apiKey: '[REDACTED]',
+      serviceRoleKey: '[REDACTED]',
     });
     expect(
       redact({

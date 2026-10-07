@@ -1,5 +1,5 @@
 const sensitiveKey =
-  /(?:authorization|cookie|password|secret|token|api.?key|database.?url|connection.?string|confirmation.?challenge|confirmation.?phrase)/i;
+  /(?:authorization|cookie|password|secret|token|api.?key|service.?role.?key|database.?url|connection.?string|confirmation.?challenge|confirmation.?phrase)/i;
 const bearer = /Bearer\s+[A-Za-z0-9._~+/=-]+/gi;
 const jwt = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
 const credentialsInUrl = /((?:https?|postgres(?:ql)?):\/\/)[^/@\s]+@/gi;

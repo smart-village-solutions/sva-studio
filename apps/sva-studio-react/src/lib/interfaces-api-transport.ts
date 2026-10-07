@@ -17,6 +17,7 @@ export type ErrorPayload = {
   readonly error?: string;
   readonly field?: InterfacesErrorField;
   readonly details?: PermissionDenialDetails;
+  readonly statusCode?: number;
 };
 
 const SAFE_CLIENT_ERROR_CODE_PATTERN = /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/;
@@ -195,11 +196,22 @@ export const getErrorPayload = (error: unknown, fallbackCode?: string): ErrorPay
   const permissionDenial = parsePermissionDenialDetails(
     isRecord(error) ? (error.permissionDenial ?? error.details) : undefined
   );
+  const statusCode = getErrorStatusCode(
+    error,
+    permissionDenial
+      ? 403
+      : message === 'interface_not_found'
+        ? 404
+        : /^(invalid_|.*_invalid|.*_required|.*_not_supported)$/u.test(message)
+          ? 400
+          : 500
+  );
 
   return {
     ...(errorCode || fallbackCode ? { error: errorCode ?? fallbackCode } : {}),
     ...(field ? { field } : {}),
     ...(permissionDenial ? { details: permissionDenial } : {}),
+    statusCode,
   };
 };
 

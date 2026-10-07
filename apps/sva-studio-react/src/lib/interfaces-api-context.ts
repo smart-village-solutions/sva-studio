@@ -109,7 +109,7 @@ export const runWithAuthenticatedInterfacesUser = async <T>(input: {
 
     throw Object.assign(createClientError(payload.error, input.fallbackMessage), {
       code: payload.error.error,
-      statusCode: payload.error.details ? 403 : payload.error.error === 'not_found' ? 404 : 400,
+      statusCode: payload.error.statusCode ?? 500,
     });
   }
 

@@ -8,6 +8,25 @@ const valid = {
 };
 
 describe('personal MCP API request boundary', () => {
+  it('requires a body only for group membership removal among DELETE routes', () => {
+    const removal = { ...valid, method: 'DELETE' as const, path: 'api/v1/iam/groups/group-1/memberships' };
+    const body = { keycloakSubject: 'subject-1' };
+    expect(validatePersonalRequest(removal)).toBe('mutation_body_required');
+    expect(validatePersonalRequest({ ...removal, body })).toBeUndefined();
+    for (const invalidBody of [{}, { keycloakSubject: '' }, { keycloakSubject: 42 }, { keycloakSubject: null }]) {
+      expect(validatePersonalRequest({ ...removal, body: invalidBody })).toBe('group_membership_subject_required');
+    }
+    for (const path of [
+      'api/v1/iam/groups/group-1',
+      'api/v1/iam/groups/group-1/roles/role-1',
+      'api/v1/iam/organizations/org-1/memberships/account-1',
+      'api/v1/iam/users/user-1',
+      'api/v1/interfaces/interface-1',
+    ]) {
+      expect(validatePersonalRequest({ ...removal, path, body })).toBe('delete_body_not_allowed');
+    }
+  });
+
   it('allows bounded admin resource routes and methods', () => {
     expect(validatePersonalRequest(valid)).toBeUndefined();
     expect(validatePersonalRequest({ ...valid, method: 'POST', body: { email: 'provider@example.org' } })).toBeUndefined();

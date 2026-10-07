@@ -18,6 +18,8 @@ export const requestInput = z.object({
 
 export type PersonalRequest = z.infer<typeof requestInput>;
 
+const groupMembershipDeleteBody = z.object({ keycloakSubject: z.string().min(1) });
+
 const secretReference = z.object({
   secretRef: z.string().trim().min(1).max(256).regex(/^[A-Za-z0-9][A-Za-z0-9:_./-]*$/u),
 }).strict();
@@ -110,7 +112,7 @@ const forbidsMutationQuery = (request: PersonalRequest): boolean =>
 const validatePersonalPayload = (request: PersonalRequest): string | undefined => {
   const { method, body, query } = request;
   if (method === 'GET' && body !== undefined) return 'get_body_not_allowed';
-  if (method === 'DELETE' && body !== undefined) return 'delete_body_not_allowed';
+  if (method === 'DELETE' && body !== undefined && !isGroupMembershipDelete(request)) return 'delete_body_not_allowed';
   if (request.path.startsWith('api/v1/interfaces') && query !== undefined) return 'interface_query_not_supported';
   if (isCollectionCreate(request) && (!body || query !== undefined)) return 'post_contract_invalid';
   if (forbidsMutationQuery(request) && query !== undefined) return 'mutation_query_not_allowed';
@@ -131,5 +133,8 @@ const validateQuery = (queryInput: PersonalRequest['query']): string | undefined
 
 export const validatePersonalRequest = (request: PersonalRequest): string | undefined => {
   if (!isPersonalRouteAllowed(request)) return 'personal_route_not_allowed';
+  if (isGroupMembershipDelete(request) && request.body !== undefined && !groupMembershipDeleteBody.safeParse(request.body).success) {
+    return 'group_membership_subject_required';
+  }
   return validatePersonalPayload(request) ?? validateQuery(request.query);
 };

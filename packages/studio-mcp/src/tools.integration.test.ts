@@ -129,6 +129,26 @@ describe('Studio MCP tools', () => {
     expect(denied.structuredContent).toMatchObject({ ok: false, error: { code: 'personal_route_not_allowed' } });
     expect(personalFetch).toHaveBeenCalledTimes(3);
 
+    personalFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { removed: true } }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    const membershipRemoval = await client.callTool({
+      name: 'studio_personal_users_api',
+      arguments: {
+        contextId: 'tenant-a', method: 'DELETE', path: 'api/v1/iam/groups/group-1/memberships',
+        body: { keycloakSubject: 'subject-1' }, idempotencyKey: 'membership-delete-1',
+      },
+    });
+    expect(membershipRemoval.structuredContent).toMatchObject({ ok: true });
+    expect(personalFetch).toHaveBeenCalledTimes(4);
+    expect(String(personalFetch.mock.calls[3]?.[0])).toBe('https://tenant-a.example/api/v1/iam/groups/group-1/memberships');
+    expect(personalFetch.mock.calls[3]?.[1]).toMatchObject({
+      method: 'DELETE', body: JSON.stringify({ keycloakSubject: 'subject-1' }),
+      headers: { authorization: 'Bearer personal-access-token', 'idempotency-key': 'membership-delete-1' },
+    });
+    expect(serviceRequest).not.toHaveBeenCalled();
+    expect(JSON.stringify(membershipRemoval)).not.toContain('personal-access-token');
+
     await Promise.all([client.close(), server.close()]);
   });
 

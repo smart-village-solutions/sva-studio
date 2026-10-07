@@ -4,7 +4,9 @@ import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { authRouteFactories } from './auth.routes.js';
 import {
   createUiRouteFactories,
+  assertPluginContentUiBindings,
   getPluginRouteFactories,
+  mergePluginViewBindings,
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.shared.js';
@@ -28,9 +30,12 @@ export const getClientRouteFactories = ({
   readonly plugins?: readonly PluginDefinition[];
   readonly diagnostics?: RoutingDiagnosticsHook;
   readonly pluginScope?: import('./plugin.routes.js').PluginRouteScope;
-}): readonly AppRouteFactory[] =>
-  [
-    ...createUiRouteFactories(bindings, { adminResources, diagnostics }),
+}): readonly AppRouteFactory[] => {
+  const routeBindings = mergePluginViewBindings(bindings, plugins);
+  assertPluginContentUiBindings(routeBindings, plugins);
+  return [
+    ...createUiRouteFactories(routeBindings, { adminResources, diagnostics }),
     ...authRouteFactories,
     ...getPluginRouteFactories(plugins, { diagnostics, scope: pluginScope }),
   ] as const;
+};

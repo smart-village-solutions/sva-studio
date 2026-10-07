@@ -26,6 +26,14 @@ export type PluginRouteDefinition = {
   readonly component: (...args: never[]) => unknown;
 };
 
+/** Browser-only views contributed by a plugin and resolved from its validated Browser entry. */
+export type PluginViewBinding = {
+  readonly bindingKey: string;
+  readonly component: (...args: never[]) => unknown;
+  /** Allows the host's principal control to offer organization/personal switching on create views. */
+  readonly allowPrincipalContextSwitch?: boolean;
+};
+
 export type PluginRouteDescriptor = Omit<PluginRouteDefinition, 'component'>;
 
 export type PluginServerHandlerDefinition = {
@@ -118,6 +126,8 @@ export type PluginDefinition = {
   readonly id: string;
   readonly displayName: string;
   readonly routes: readonly PluginRouteDefinition[];
+  /** Browser-only custom views. This field is omitted from server descriptors. */
+  readonly viewBindings?: readonly PluginViewBinding[];
   readonly navigation?: readonly PluginNavigationItem[];
   readonly actions?: readonly PluginActionDefinition[];
   readonly serverHandlers?: readonly PluginServerHandlerDefinition[];
@@ -137,6 +147,6 @@ export type PluginDefinition = {
   readonly translations?: PluginTranslations;
 };
 
-export type PluginDescriptor = Omit<PluginDefinition, 'routes'> & {
+export type PluginDescriptor = Omit<PluginDefinition, 'routes' | 'viewBindings'> & {
   readonly routes: readonly PluginRouteDescriptor[];
 };

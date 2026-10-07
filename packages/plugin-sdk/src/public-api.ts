@@ -130,6 +130,7 @@ export type {
   PluginPermissionRegistryEntry,
   PluginRouteDefinition,
   PluginRouteDescriptor,
+  PluginViewBinding,
   PluginDescriptor,
   PluginRouteGuard,
   PluginServerHandlerDefinition,

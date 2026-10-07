@@ -6,6 +6,7 @@ import {
 } from '@sva/plugin-sdk';
 
 import type { AppRouteBindings } from './app-route-bindings.js';
+import { mergePluginViewBindings } from './app.routes.shared.js';
 import { collectAdminResourceRouteDocumentationPages } from './admin-resource-routes.js';
 import { collectUiRouteDocumentationPages } from './app.routes.shared.js';
 import { collectPluginRouteDocumentationPages } from './plugin.routes.js';
@@ -21,6 +22,7 @@ export const collectDocumentationPageCatalog = (input: {
   readonly plugins?: readonly PluginDefinition[];
 }): DocumentationPageCatalog => {
   const plugins = input.plugins ?? [];
+  const bindings = mergePluginViewBindings(input.bindings, plugins);
   const hostAdminResources = mergeAdminResourceDefinitions(input.adminResources ?? []);
   const pluginAdminResources = mergePluginAdminResourceDefinitions(plugins);
   const adminResources = mergeAdminResourceDefinitions([
@@ -39,12 +41,8 @@ export const collectDocumentationPageCatalog = (input: {
     ),
   ]);
   return createDocumentationPageCatalog([
-    ...collectUiRouteDocumentationPages(adminResources),
-    ...collectAdminResourceRouteDocumentationPages(
-      input.bindings,
-      adminResources,
-      ownerByResourceId
-    ),
+    ...collectUiRouteDocumentationPages(adminResources, bindings),
+    ...collectAdminResourceRouteDocumentationPages(bindings, adminResources, ownerByResourceId),
     ...collectPluginRouteDocumentationPages(plugins),
   ]);
 };

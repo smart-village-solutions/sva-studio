@@ -120,6 +120,7 @@ vi.mock('./routing/app-route-bindings', () => ({
   appRouteBindings: {
     home: () => null,
   },
+  studioRoutePlugins: [{ id: 'plugin-a' }],
 }));
 
 vi.mock('./lib/plugins', () => ({

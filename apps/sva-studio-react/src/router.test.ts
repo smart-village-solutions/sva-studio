@@ -8,8 +8,8 @@ import {
   resolveBaseUrl,
 } from './router';
 import { createRouterDiagnosticsSnapshot } from './lib/router-diagnostics';
-import { appRouteBindings } from './routing/app-route-bindings';
-import { studioAdminResources, studioPlugins } from './lib/plugins';
+import { appRouteBindings, studioRoutePlugins } from './routing/app-route-bindings';
+import { studioAdminResources } from './lib/plugins';
 
 describe('createRuntimeRouteTree', () => {
   afterEach(() => {
@@ -19,7 +19,11 @@ describe('createRuntimeRouteTree', () => {
   it('builds the route tree solely from @sva/routing and the root route', async () => {
     const { getClientRouteFactories } = await import('@sva/routing');
     const routeTree = createRuntimeRouteTree(
-      getClientRouteFactories({ bindings: appRouteBindings, adminResources: studioAdminResources, plugins: studioPlugins })
+      getClientRouteFactories({
+        bindings: appRouteBindings,
+        adminResources: studioAdminResources,
+        plugins: studioRoutePlugins,
+      })
     );
     const router = createRouter({
       routeTree,
@@ -36,7 +40,7 @@ describe('createRuntimeRouteTree', () => {
       router,
     });
     const normalizedRoutePaths = snapshot.routerRegistry.routePaths.map((path) =>
-      path !== '/' && path.endsWith('/') ? path.slice(0, -1) : path,
+      path !== '/' && path.endsWith('/') ? path.slice(0, -1) : path
     );
 
     expect(normalizedRoutePaths).toEqual(
@@ -50,7 +54,7 @@ describe('createRuntimeRouteTree', () => {
         '/admin/news/$id',
         '/content',
         '/auth/login',
-      ]),
+      ])
     );
   });
 
@@ -63,7 +67,7 @@ describe('createRuntimeRouteTree', () => {
           permissionActions: ['news.read', false, 'events.read'],
           assignedModules: ['news', false, 'media'],
         },
-      }),
+      })
     ).toEqual({
       instanceId: 'instance-1',
       roles: ['iam_admin', 'editor'],
@@ -91,7 +95,7 @@ describe('createRuntimeRouteTree', () => {
           permissionStatus: 'degraded',
           assignedModules: ['news'],
         },
-      }),
+      })
     ).toEqual({
       instanceId: 'instance-2',
       roles: ['editor'],
@@ -117,7 +121,7 @@ describe('createRuntimeRouteTree', () => {
           id: 'user-1',
           instanceId: 'instance-1',
         },
-      }),
+      })
     ).toEqual({
       instanceId: 'instance-1',
       roles: [],
@@ -154,5 +158,4 @@ describe('createRuntimeRouteTree', () => {
       process.env.SVA_PUBLIC_BASE_URL = originalPublicBaseUrl;
     }
   });
-
 });

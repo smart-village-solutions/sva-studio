@@ -23,6 +23,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'id',
   'displayName',
   'routes',
+  'viewBindings',
   'navigation',
   'actions',
   'serverHandlers',

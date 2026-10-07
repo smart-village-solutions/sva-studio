@@ -140,12 +140,158 @@ vi.mock('../i18n', () => ({
     )[key] ?? key,
 }));
 
-vi.mock('../lib/plugins', () => ({
-  studioBuildTimeRegistry: {
-    contentTypes: [{ contentType: 'faq', titleKey: 'faq.navigation.title' }],
-    mainserverGenericTypeRegistry: new Map([['FAQ', 'faq']]),
-  },
-}));
+vi.mock('../lib/plugins', async () => {
+  const [news, events, genericItems, faq, cockpitCards, projects, poi, surveys, categories] =
+    await Promise.all([
+      import('@sva/plugin-news'),
+      import('@sva/plugin-events'),
+      import('@sva/plugin-generic-items'),
+      import('@sva/plugin-faq'),
+      import('@sva/plugin-cockpit-cards'),
+      import('@sva/plugin-projects'),
+      import('@sva/plugin-poi'),
+      import('@sva/plugin-surveys'),
+      import('@sva/plugin-categories'),
+    ]);
+  const entries = [
+    [
+      'news',
+      'news.article',
+      news,
+      [
+        ['newsList', 'NewsListPage'],
+        ['newsDetail', 'NewsEditPage'],
+        ['newsEditor', 'NewsCreatePage'],
+      ],
+    ],
+    [
+      'events',
+      'events.event-record',
+      events,
+      [
+        ['eventsList', 'EventsListPage'],
+        ['eventsDetail', 'EventsEditPage'],
+        ['eventsEditor', 'EventsCreatePage'],
+      ],
+    ],
+    [
+      'generic-items',
+      'generic-items.generic-item',
+      genericItems,
+      [
+        ['genericItemsList', 'GenericItemsListPage'],
+        ['genericItemsDetail', 'GenericItemsEditPage'],
+        ['genericItemsEditor', 'GenericItemsCreatePage'],
+      ],
+    ],
+    [
+      'faq',
+      'faq.faq',
+      faq,
+      [
+        ['faqList', 'FaqListPage'],
+        ['faqDetail', 'FaqEditPage'],
+        ['faqEditor', 'FaqCreatePage'],
+      ],
+    ],
+    [
+      'cockpit-cards',
+      'cockpit-cards.cockpit-card',
+      cockpitCards,
+      [
+        ['cockpitCardsList', 'CockpitCardsListPage'],
+        ['cockpitCardsDetail', 'CockpitCardsEditPage'],
+        ['cockpitCardsEditor', 'CockpitCardsCreatePage'],
+      ],
+    ],
+    [
+      'projects',
+      'projects.project',
+      projects,
+      [
+        ['projectsList', 'ProjectsListPage'],
+        ['projectsDetail', 'ProjectsEditPage'],
+        ['projectsEditor', 'ProjectsCreatePage'],
+      ],
+    ],
+    [
+      'poi',
+      'poi.point-of-interest',
+      poi,
+      [
+        ['poiList', 'PoiListPage'],
+        ['poiDetail', 'PoiEditPage'],
+        ['poiEditor', 'PoiCreatePage'],
+      ],
+    ],
+    [
+      'surveys',
+      'surveys.survey',
+      surveys,
+      [
+        ['surveysList', 'SurveysListPage'],
+        ['surveysDetail', 'SurveyEditPage'],
+        ['surveysEditor', 'SurveyCreatePage'],
+      ],
+    ],
+  ] as const;
+  const studioPlugins = entries.map(([id, contentType, pages, views]) => ({
+    id,
+    displayName: id,
+    routes: [],
+    adminResources: [
+      {
+        resourceId: `${id}.content`,
+        contentUi: {
+          contentType,
+          bindings: Object.fromEntries(
+            views.map(([bindingKey]) => [
+              bindingKey.endsWith('List') ||
+              bindingKey.endsWith('Editor') ||
+              bindingKey.endsWith('Detail')
+                ? bindingKey.toLowerCase().includes('list')
+                  ? 'list'
+                  : bindingKey.toLowerCase().includes('editor')
+                    ? 'editor'
+                    : 'detail'
+                : 'detail',
+              { bindingKey },
+            ])
+          ),
+        },
+      },
+    ],
+    viewBindings: views
+      .filter(
+        ([bindingKey]) =>
+          !['newsList', 'eventsList', 'genericItemsList', 'poiList', 'surveysList'].includes(
+            bindingKey
+          )
+      )
+      .map(([bindingKey, componentName]) => ({
+        bindingKey,
+        component: (pages as unknown as Readonly<Record<string, never>>)[componentName],
+        ...(bindingKey === 'newsEditor' ? { allowPrincipalContextSwitch: true } : {}),
+      })),
+  }));
+  studioPlugins.push({
+    id: 'categories',
+    displayName: 'Categories',
+    routes: [],
+    adminResources: [],
+    viewBindings: [{ bindingKey: 'categories', component: categories.CategoriesPage }],
+  } as never);
+  const adminResources = studioPlugins.flatMap((plugin) => plugin.adminResources ?? []);
+  return {
+    studioPlugins,
+    studioAdminResources: adminResources,
+    studioBuildTimeRegistry: {
+      adminResources,
+      contentTypes: [{ contentType: 'faq', titleKey: 'faq.navigation.title' }],
+      mainserverGenericTypeRegistry: new Map([['FAQ', 'faq']]),
+    },
+  };
+});
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => ({
@@ -387,9 +533,8 @@ vi.mock('../routes/monitoring/-job-detail-page', () => ({
   ),
 }));
 
-vi.mock('@sva/plugin-news', () => ({
-  NewsCreatePage: () => <div data-testid="news-create-page" />,
-  NewsDetailPage: ({
+vi.mock('@sva/plugin-news', () => {
+  const NewsDetailPage = ({
     mode,
     principalControl,
   }: {
@@ -430,13 +575,23 @@ vi.mock('@sva/plugin-news', () => ({
       </div>
     ) : (
       <div data-testid="news-edit-page" data-principal-value={principalControl?.value} />
+    );
+  return {
+    NewsListPage: () => <div data-testid="news-list-page" />,
+    NewsCreatePage: ({
+      principalControl,
+    }: {
+      principalControl?: MainserverPrincipalControlModel;
+    }) => <NewsDetailPage mode="create" principalControl={principalControl} />,
+    NewsDetailPage,
+    NewsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+      <div data-testid="news-edit-page" data-principal-value={principalControl?.value} />
     ),
-  NewsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
-    <div data-testid="news-edit-page" data-principal-value={principalControl?.value} />
-  ),
-}));
+  };
+});
 
 vi.mock('@sva/plugin-events', () => ({
+  EventsListPage: () => <div data-testid="events-list-page" />,
   EventsCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
     <div data-testid="events-create-page" data-principal-value={principalControl?.value} />
   ),
@@ -446,6 +601,7 @@ vi.mock('@sva/plugin-events', () => ({
 }));
 
 vi.mock('@sva/plugin-generic-items', () => ({
+  GenericItemsListPage: () => <div data-testid="generic-items-list-page" />,
   GenericItemsCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
     <div data-testid="generic-items-create-page" data-principal-value={principalControl?.value} />
   ),
@@ -485,6 +641,7 @@ vi.mock('@sva/plugin-projects', () => ({
 }));
 
 vi.mock('@sva/plugin-poi', () => ({
+  PoiListPage: () => <div data-testid="poi-list-page" />,
   PoiCreatePage: ({
     instanceId,
     principalControl,
@@ -510,6 +667,7 @@ vi.mock('@sva/plugin-poi', () => ({
 }));
 
 vi.mock('@sva/plugin-surveys', () => ({
+  SurveysListPage: () => <div data-testid="surveys-list-page" />,
   SurveyCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
     <div data-testid="surveys-create-page" data-principal-value={principalControl?.value} />
   ),
@@ -598,11 +756,10 @@ describe('appRouteBindings', () => {
     cleanup();
   });
 
-  it('keeps the seven legacy host URLs inert in the SSF profile', async () => {
+  it('keeps the six legacy host URLs inert in the SSF profile', async () => {
     const { appRouteBindings: ssfBindings } = await import('./app-route-bindings.ssf');
     const { default: NotFound } = await import('../components/NotFound');
     const urlsAndBindings = [
-      ['/categories', ssfBindings.categories],
       ['/admin/content', ssfBindings.content],
       ['/admin/content/new', ssfBindings.contentCreate],
       ['/admin/content/$id', ssfBindings.contentDetail],
@@ -615,6 +772,26 @@ describe('appRouteBindings', () => {
     }
     expect(routeState.getContent).not.toHaveBeenCalled();
     expect(routeState.requestMainserverJson).not.toHaveBeenCalled();
+  });
+
+  it('wraps plugin editor contributions with host principal context in the SSF profile', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+
+    const { studioRoutePlugins } = await import('./app-route-bindings.ssf');
+    const newsEditor = studioRoutePlugins
+      .find((plugin) => plugin.id === 'news')
+      ?.viewBindings?.find((binding) => binding.bindingKey === 'newsEditor')?.component;
+    expect(newsEditor).toBeDefined();
+
+    const NewsEditor = newsEditor as ComponentType;
+    render(<NewsEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('news-create-principal-value').textContent).toBe('user');
+    });
   });
 
   it('renders remaining placeholder bindings with translated section and title metadata', async () => {

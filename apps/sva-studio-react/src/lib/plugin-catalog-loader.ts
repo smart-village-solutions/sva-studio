@@ -10,6 +10,7 @@ import {
   type PluginDefinition,
   type PluginManifest,
   type PluginPlatformHost,
+  type PluginViewBinding,
   type ResolvedPluginCatalog,
 } from '@sva/plugin-sdk';
 
@@ -125,6 +126,36 @@ export const getPackagePluginDescriptorCandidates = (
 const isReadonlyRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
+const extractPluginViewBindings = (
+  exportsObject: PluginModuleExports,
+  pluginId: string
+): readonly PluginViewBinding[] => {
+  const candidate = exportsObject.pluginViewBindings;
+  if (candidate === undefined) return [];
+  if (!Array.isArray(candidate))
+    throw new Error(`plugin_browser_view_bindings_invalid:${pluginId}`);
+  const keys = new Set<string>();
+  return candidate.map((binding) => {
+    if (
+      !isReadonlyRecord(binding) ||
+      typeof binding.bindingKey !== 'string' ||
+      binding.bindingKey.trim() === '' ||
+      typeof binding.component !== 'function' ||
+      (binding.allowPrincipalContextSwitch !== undefined &&
+        typeof binding.allowPrincipalContextSwitch !== 'boolean') ||
+      keys.has(binding.bindingKey)
+    ) {
+      throw new Error(`plugin_browser_view_binding_invalid:${pluginId}`);
+    }
+    keys.add(binding.bindingKey);
+    return {
+      bindingKey: binding.bindingKey,
+      component: binding.component as PluginViewBinding['component'],
+      ...(binding.allowPrincipalContextSwitch ? { allowPrincipalContextSwitch: true } : {}),
+    };
+  });
+};
+
 const isPluginDefinitionCandidate = (value: unknown): value is PluginDescriptor => {
   if (!isReadonlyRecord(value)) {
     return false;
@@ -222,12 +253,16 @@ export const createStudioPluginCatalogReport = async (
       if (JSON.stringify(browserPlugin) !== JSON.stringify(descriptor)) {
         throw new Error(`plugin_browser_descriptor_mismatch:${entry.pluginId}`);
       }
+      const viewBindings = browserExports
+        ? extractPluginViewBindings(browserExports, entry.pluginId)
+        : [];
       const browserRoutes = new Map(browserPlugin.routes.map((route) => [route.id, route]));
       if (browserRoutes.size !== descriptor.routes.length) {
         throw new Error(`plugin_browser_route_binding_mismatch:${entry.pluginId}`);
       }
       return {
         ...descriptor,
+        viewBindings,
         routes: descriptor.routes.map((route) => {
           const component = (
             browserRoutes.get(route.id) as Partial<PluginDefinition['routes'][number]> | undefined

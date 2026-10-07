@@ -1,0 +1,4 @@
+{
+  "prNumber": 1796,
+  "body": "Die Instance-Registry-Tests decken jetzt Pflichtmodul-Aktivierung, konkurrierende Zuweisungen und die Wiederherstellung nach Fehlern verlässlicher ab."
+}

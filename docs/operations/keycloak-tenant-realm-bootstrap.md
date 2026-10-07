@@ -197,6 +197,18 @@ email: admin@example.org
 attributes.instanceId = de-musterhausen
 ```
 
+### Vorhandenen Benutzer übernehmen
+
+Für einen bestehenden Realm darf `tenantAdminBootstrap.adoptExisting` nur nach
+expliziter Prüfung pro Instanz auf `true` gesetzt werden. Studio übernimmt dann
+ausschließlich einen unmarkierten Benutzer, dessen normalisierte E-Mail im
+Realm eindeutig auf genau diesen Benutzer zeigt. Der konfigurierte Username
+ist für die Suche unerheblich; der vorhandene Keycloak-Username bleibt erhalten.
+Abweichende oder bereits anderweitig markierte Benutzer bleiben blockiert.
+Beim Übernehmen bleiben Passwort, Aktivierungsstatus, fremde Attribute und
+sonstige Rollen erhalten; Studio ergänzt seine Ownership-Marker und weist
+`system_admin` additiv zu. Ein Passwort-Reset bleibt ein separater Vorgang.
+
 ## Rollenvertrag für Tenant-Admins
 
 ### Minimaler Standard

@@ -32,7 +32,7 @@ const registerCatalogTools = (register: ToolRegistrar, client: StudioApiClient):
   register(
     'studio_instance_draft_readiness',
     'Instanzentwurf prüfen',
-    'Prüft einen noch nicht gespeicherten Instanzentwurf ohne Mutation.',
+    'Prüft einen noch nicht gespeicherten Instanzentwurf ohne Mutation. tenantAdminBootstrap.adoptExisting kann ausschließlich im vorhandenen Realm einen exakt passenden, unmarkierten Bestands-Admin zur Übernahme freigeben.',
     schemas.draftReadiness,
     readAnnotations,
     (p) => call(client, { method: 'POST', path: '/api/v1/iam/instances/draft-readiness', body: p })

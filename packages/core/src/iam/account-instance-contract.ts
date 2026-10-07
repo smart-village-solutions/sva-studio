@@ -58,6 +58,7 @@ export type IamInstanceListItem = {
     readonly email?: string;
     readonly firstName?: string;
     readonly lastName?: string;
+    readonly adoptExisting?: boolean;
   };
   readonly themeKey?: string;
   readonly accountInvitationTemplate?: import('../instances/account-invitation-template.js').AccountInvitationTemplate;

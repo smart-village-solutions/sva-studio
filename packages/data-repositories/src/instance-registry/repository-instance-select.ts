@@ -1,6 +1,9 @@
 const qualify = (alias: string | undefined, column: string): string =>
   alias ? `${alias}.${column}` : column;
 
+export const instanceExistsSql =
+  'SELECT EXISTS (SELECT 1 FROM iam.instances WHERE id = $1) AS instance_exists;';
+
 export const buildInstanceSelectColumns = (alias?: string): string => {
   const id = qualify(alias, 'id');
   return `
@@ -21,6 +24,7 @@ export const buildInstanceSelectColumns = (alias?: string): string => {
   ${qualify(alias, 'tenant_admin_email')},
   ${qualify(alias, 'tenant_admin_first_name')},
   ${qualify(alias, 'tenant_admin_last_name')},
+  ${qualify(alias, 'tenant_admin_adopt_existing')},
   ${qualify(alias, 'theme_key')},
   ${qualify(alias, 'account_invitation_template')},
   (

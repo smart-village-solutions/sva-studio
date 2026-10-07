@@ -1,9 +1,22 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { KeycloakProvisioningInput, TenantAdminBootstrap } from './provisioning-auth-types.js';
-import type { KeycloakProvisioningClient, KeycloakProvisioningClientFactory } from './provisioning-auth-client.js';
-import { ensureTenantAdmin } from './provisioning-auth-tenant-admin.js';
-import { buildExpectedClientConfig, buildExpectedTenantAdminClientConfig, SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
-import { readPluginOidcClientAlignment, readPluginOidcClientRequirements } from './provisioning-auth-plugin-clients.js';
+import type {
+  KeycloakProvisioningClient,
+  KeycloakProvisioningClientFactory,
+} from './provisioning-auth-client.js';
+import {
+  assertTenantAdminAdoptionTarget,
+  ensureTenantAdmin,
+} from './provisioning-auth-tenant-admin.js';
+import {
+  buildExpectedClientConfig,
+  buildExpectedTenantAdminClientConfig,
+  SYSTEM_ADMIN_ROLE,
+} from './provisioning-auth-utils.js';
+import {
+  readPluginOidcClientAlignment,
+  readPluginOidcClientRequirements,
+} from './provisioning-auth-plugin-clients.js';
 import { KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
@@ -115,6 +128,12 @@ const reconcileInstanceAuthArtifacts = async (
   input: ProvisionInstanceAuthArtifactsInput,
   pluginOidcClientRequirements: KeycloakProvisioningInput['pluginOidcClients']
 ): Promise<void> => {
+  if (input.tenantAdminBootstrap?.adoptExisting && input.realmMode !== 'existing') {
+    throw new Error('tenant_admin_adoption_requires_existing_realm');
+  }
+  if (input.tenantAdminBootstrap?.adoptExisting) {
+    await assertTenantAdminAdoptionTarget(client, input.tenantAdminBootstrap);
+  }
   await reconcilePluginOidcClients(client, {
     ...input,
     pluginOidcClients: pluginOidcClientRequirements,

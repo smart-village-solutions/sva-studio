@@ -2,10 +2,17 @@ import { createSdkLogger } from '@sva/server-runtime';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
 import type { KeycloakProvisioningClientFactory } from './provisioning-auth-client.js';
 import { readTenantAdminStatus } from './provisioning-auth-tenant-admin.js';
-import { buildExpectedClientConfig, buildExpectedTenantAdminClientConfig, SYSTEM_ADMIN_ROLE } from './provisioning-auth-utils.js';
+import {
+  buildExpectedClientConfig,
+  buildExpectedTenantAdminClientConfig,
+  SYSTEM_ADMIN_ROLE,
+} from './provisioning-auth-utils.js';
 import { readStudioOwnedClient, readStudioOwnedUser } from './provisioning-auth-policy.js';
 import { readPluginOidcClientRequirements } from './provisioning-auth-plugin-clients.js';
-import { isKeycloakRealmBaselineAligned, KEYCLOAK_REALM_BASELINE } from './keycloak-realm-baseline.js';
+import {
+  isKeycloakRealmBaselineAligned,
+  KEYCLOAK_REALM_BASELINE,
+} from './keycloak-realm-baseline.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 
@@ -64,6 +71,8 @@ export const createReadKeycloakState =
       : [];
     const tenantAdmin = await readTenantAdminStatus(client, {
       username: input.tenantAdminBootstrap?.username,
+      email: input.tenantAdminBootstrap?.email,
+      adoptExisting: input.tenantAdminBootstrap?.adoptExisting,
     });
     logger.info('tenant_admin_readback', {
       operation: 'read_tenant_admin_status',

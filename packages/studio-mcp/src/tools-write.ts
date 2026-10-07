@@ -11,7 +11,7 @@ const registerInstanceWriteTools = (
   register(
     'studio_instances_create',
     'Studio-Instanz erstellen',
-    'Erstellt idempotent eine Registry-Instanz; Provisionierung und Aktivierung bleiben getrennt.',
+    'Erstellt idempotent eine Registry-Instanz; Provisionierung und Aktivierung bleiben getrennt. adoptExisting im tenantAdminBootstrap erlaubt nur bei exaktem Username- und eindeutigem E-Mail-Treffer die Übernahme eines unmarkierten Bestands-Admins.',
     schemas.create,
     writeAnnotations,
     (p) =>

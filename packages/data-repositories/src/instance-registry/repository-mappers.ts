@@ -38,6 +38,7 @@ export const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
         email: row.tenant_admin_email ?? undefined,
         firstName: row.tenant_admin_first_name ?? undefined,
         lastName: row.tenant_admin_last_name ?? undefined,
+        adoptExisting: row.tenant_admin_adopt_existing,
       }
     : undefined,
   themeKey: row.theme_key ?? undefined,

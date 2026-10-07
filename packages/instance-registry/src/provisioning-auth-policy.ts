@@ -16,6 +16,23 @@ export const STUDIO_OWNERSHIP_ATTRIBUTES = {
 
 export type StudioArtifactOwnership = 'owned' | 'foreign_or_unowned';
 
+export const isUnmarkedStudioUser = (
+  user: KeycloakReadState['tenantAdminRepresentation'] | undefined
+): boolean =>
+  !Object.values(STUDIO_OWNERSHIP_ATTRIBUTES).some((key) => user?.attributes?.[key] !== undefined);
+
+export const isApprovedTenantAdminAdoption = (
+  user: KeycloakReadState['tenantAdminRepresentation'] | undefined,
+  bootstrap: KeycloakProvisioningInput['tenantAdminBootstrap']
+): boolean =>
+  Boolean(
+    bootstrap?.adoptExisting === true &&
+    isUnmarkedStudioUser(user) &&
+    user?.emailUniqueMatch === true &&
+    user?.email?.trim().toLocaleLowerCase('en-US') ===
+      bootstrap.email?.trim().toLocaleLowerCase('en-US')
+  );
+
 export const readStudioOwnedClient = (
   client: KeycloakReadState['clientRepresentation'] | undefined,
   instanceId: string,

@@ -191,6 +191,21 @@ export class KeycloakUserReadOperations extends KeycloakRoleOperations {
       operation: 'find_user_by_email',
     });
 
-    return users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
+    const matches = users.filter((user) => user.email?.toLowerCase() === email.toLowerCase());
+    return matches.length === 1 ? (matches[0] ?? null) : null;
+  }
+
+  async findUsersByEmail(email: string): Promise<readonly KeycloakAdminUser[]> {
+    if (this.isCircuitOpen()) {
+      throw new KeycloakAdminUnavailableError(
+        'Keycloak unavailable and user lookup is temporarily disabled.'
+      );
+    }
+    const users = await this.executeWithResilience<KeycloakAdminUser[]>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users?exact=true&email=${encodeURIComponent(email)}`,
+      operation: 'find_users_by_email',
+    });
+    return users.filter((user) => user.email?.toLowerCase() === email.toLowerCase());
   }
 }

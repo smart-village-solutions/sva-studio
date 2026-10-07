@@ -12,6 +12,7 @@ import { type ContentListRouteState, type RouteSearchState } from './-content-li
 import {
   buildBulkActionLabel,
   deleteMainserverItem,
+  resolveRowAccess,
   isBulkActionableContent,
   resolveListMutationPrincipal,
   type RegisteredContentRow,
@@ -91,18 +92,43 @@ const useBulkActionButtons = ({
   );
 };
 
+const useDestructiveFeedbackNavigation = (
+  locationState: unknown,
+  navigate: ReturnType<typeof useNavigate>,
+  setDestructiveResult: React.Dispatch<React.SetStateAction<ContentDeletionResult | null>>
+): void => {
+  React.useEffect(() => {
+    const feedback = readStudioDestructiveNavigationFeedback(locationState);
+    if (!feedback) return;
+    setDestructiveResult({
+      kind: 'success',
+      description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
+    });
+    void navigate({
+      to: '/admin/content',
+      replace: true,
+      search: (current: RouteSearchState) => current,
+      state: (previous) => removeStudioActionNavigationFeedback(previous),
+    });
+  }, [locationState, navigate, setDestructiveResult]);
+};
+
 export const useContentListDeletion = ({
   contentsApi,
   routeState,
   registeredContents,
   principalControl,
   unscopedPermissionActions,
+  permissionActions,
+  enabledMainserverMutationActions,
 }: Readonly<{
   contentsApi: ReturnType<typeof useContents>;
   routeState: ContentListRouteState;
   registeredContents: readonly RegisteredContentRow[];
   principalControl: MainserverPrincipalControlModel | undefined;
   unscopedPermissionActions: readonly string[];
+  permissionActions: readonly string[];
+  enabledMainserverMutationActions: readonly string[];
 }>) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,20 +154,7 @@ export const useContentListDeletion = ({
   const [bulkDeletePending, setBulkDeletePending] = React.useState(false);
   const [bulkDeleteError, setBulkDeleteError] = React.useState<string | null>(null);
   const deleteFocusFallbackRef = React.useRef<HTMLElement | null>(null);
-  React.useEffect(() => {
-    const feedback = readStudioDestructiveNavigationFeedback(location.state);
-    if (!feedback) return;
-    setDestructiveResult({
-      kind: 'success',
-      description: t('content.messages.deleteSuccess', { id: feedback.resourceId }),
-    });
-    void navigate({
-      to: '/admin/content',
-      replace: true,
-      search: (current: RouteSearchState) => current,
-      state: (previous) => removeStudioActionNavigationFeedback(previous),
-    });
-  }, [location.state, navigate]);
+  useDestructiveFeedbackNavigation(location.state, navigate, setDestructiveResult);
   const hasBulkActionableContents = React.useMemo(
     () => registeredContents.some(isBulkActionableContent),
     [registeredContents]
@@ -153,11 +166,22 @@ export const useContentListDeletion = ({
     setRowDeletePending(true);
     setRowDeleteError(null);
     try {
-      const principal = resolveListMutationPrincipal(item, principalControl);
+      const currentItem = registeredContents.find(
+        (row) => row.id === item.id && row.contentType === item.contentType
+      );
+      if (!currentItem || !resolveRowAccess(currentItem.access, contentsApi.error).canRead)
+        throw new Error('content_mutation_unavailable');
+      const principal = resolveListMutationPrincipal(currentItem, principalControl);
       if (!principal) {
         throw new Error('mainserver_mutation_principal_unavailable');
       }
-      await deleteMainserverItem(item.contentType, item.id, principal);
+      await deleteMainserverItem(
+        item.contentType,
+        item.id,
+        principal,
+        permissionActions,
+        enabledMainserverMutationActions
+      );
     } catch {
       setRowDeleteError(t('content.messages.deleteError'));
       setRowDeletePending(false);
@@ -177,7 +201,15 @@ export const useContentListDeletion = ({
       });
     }
     setRowDeletePending(false);
-  }, [contentsApi, pendingRowDeletion, principalControl, rowDeletePending]);
+  }, [
+    contentsApi,
+    pendingRowDeletion,
+    principalControl,
+    rowDeletePending,
+    permissionActions,
+    enabledMainserverMutationActions,
+    registeredContents,
+  ]);
 
   const confirmBulkDeletion = React.useCallback(async () => {
     const pending = pendingBulkDeletion;

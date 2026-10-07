@@ -3,14 +3,6 @@ import {
   type IamContentAccessSummary,
   type IamContentListItem,
 } from '@sva/core';
-import { deleteEvent } from '@sva/plugin-events';
-import { deleteFaq } from '@sva/plugin-faq';
-import { deleteCockpitCard } from '@sva/plugin-cockpit-cards';
-import { deleteGenericItem } from '@sva/plugin-generic-items';
-import { deleteNews } from '@sva/plugin-news';
-import { deletePoi } from '@sva/plugin-poi';
-import { deleteProject } from '@sva/plugin-projects';
-import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconTrash } from '@tabler/icons-react';
 import {
   StudioTableActionButton,
@@ -25,7 +17,11 @@ import { useContents } from '../../hooks/use-contents';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { ContentStatusDialog } from './-content-status-dialog';
 import { t } from '../../i18n';
-import { resolveStandaloneMainserverPrincipal } from '../../lib/content-status-mutation';
+import {
+  getContentMutations,
+  isContentMutationAvailable,
+  resolveStandaloneMainserverPrincipal,
+} from '../../lib/content-status-mutation';
 import type { IamHttpError } from '../../lib/iam-api';
 
 export type RegisteredContentRow = IamContentListItem &
@@ -64,67 +60,45 @@ export const resolveRowAccess = (
   };
 };
 
-const deriveDeleteAction = (contentType: string): string | null => {
-  const namespace = contentType.split('.')[0]?.trim();
-  return namespace ? `${namespace}.delete` : null;
-};
-
 export const canDeleteMainserverItem = (
   contentType: string,
   permissionActions: readonly string[] = [],
   enabledMainserverMutationActions: readonly string[] = []
-): boolean => {
-  const deleteAction = deriveDeleteAction(contentType);
-  if (!deleteAction || !permissionActions.includes(deleteAction)) {
-    return false;
-  }
-  return (
-    contentType !== 'surveys.survey' || enabledMainserverMutationActions.includes(deleteAction)
+): boolean =>
+  isContentMutationAvailable(
+    contentType,
+    'delete',
+    permissionActions,
+    enabledMainserverMutationActions
   );
-};
 
 export const canUpdateMainserverItem = (
   contentType: string,
   enabledMainserverMutationActions: readonly string[]
-): boolean =>
-  contentType !== 'surveys.survey' || enabledMainserverMutationActions.includes('surveys.update');
+): boolean => {
+  const capability = getContentMutations(contentType)?.status;
+  return (
+    !capability?.requiresMainserverMutationAction ||
+    enabledMainserverMutationActions.includes(capability.requiredAction)
+  );
+};
 
 export const deleteMainserverItem = async (
   contentType: string,
   contentId: string,
-  actingPrincipalType: MainserverPrincipalType
+  actingPrincipalType: MainserverPrincipalType,
+  permissionActions: readonly string[],
+  enabledMainserverMutationActions: readonly string[]
 ): Promise<void> => {
-  if (contentType === 'news.article') {
-    await deleteNews(contentId, actingPrincipalType);
-    return;
+  const capability = getContentMutations(contentType)?.delete;
+  if (!capability) throw new Error(`unsupported_content_delete:${contentType}`);
+  if (
+    (actingPrincipalType !== 'user' && actingPrincipalType !== 'organization') ||
+    !canDeleteMainserverItem(contentType, permissionActions, enabledMainserverMutationActions)
+  ) {
+    throw new Error('content_mutation_unavailable');
   }
-  if (contentType === 'events.event-record') {
-    await deleteEvent(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'poi.point-of-interest') {
-    await deletePoi(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'surveys.survey') {
-    await deleteSurvey(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'faq.faq') {
-    await deleteFaq(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'cockpit-cards.cockpit-card') {
-    await deleteCockpitCard(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'projects.project') {
-    await deleteProject(contentId, actingPrincipalType);
-    return;
-  }
-  if (contentType === 'generic-items.generic-item') {
-    await deleteGenericItem(contentId, actingPrincipalType);
-  }
+  await capability.execute(contentId, actingPrincipalType);
 };
 
 const isMainserverContentType = (contentType: string): boolean =>
@@ -172,7 +146,10 @@ export const ContentRowActions = ({
       item.contentType,
       permissionActions,
       enabledMainserverMutationActions
-    ) && mutationPrincipalAvailable;
+    ) &&
+    mutationPrincipalAvailable &&
+    item.access?.state !== 'server_denied' &&
+    item.access?.canRead !== false;
 
   return (
     <StudioTableActionButton
@@ -193,7 +170,9 @@ export const useContentColumns = ({
   contentsApi,
   enabledMainserverMutationActions,
   principalControl,
+  permissionActions,
 }: Readonly<{
+  permissionActions: readonly string[];
   contentsApi: Pick<ReturnType<typeof useContents>, 'error' | 'refetch'>;
   enabledMainserverMutationActions: readonly string[];
   principalControl: MainserverPrincipalControlModel | undefined;
@@ -285,8 +264,15 @@ export const useContentColumns = ({
               canUpdate={
                 mutationPrincipal !== undefined &&
                 resolveRowAccess(item.access, contentsApi.error).canUpdate &&
-                canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
+                isContentMutationAvailable(
+                  item.contentType,
+                  'status',
+                  permissionActions,
+                  enabledMainserverMutationActions
+                )
               }
+              permissionActions={permissionActions}
+              enabledMainserverMutationActions={enabledMainserverMutationActions}
               actingPrincipalType={mutationPrincipal ?? 'user'}
               onUpdated={contentsApi.refetch}
             />
@@ -294,6 +280,12 @@ export const useContentColumns = ({
         },
       },
     ],
-    [contentsApi.error, contentsApi.refetch, enabledMainserverMutationActions, principalControl]
+    [
+      contentsApi.error,
+      contentsApi.refetch,
+      enabledMainserverMutationActions,
+      principalControl,
+      permissionActions,
+    ]
   );
 };

@@ -262,6 +262,8 @@ export const ContentListPage = ({
     confirmBulkDeletion,
     bulkActionButtons,
   } = useContentListDeletion({
+    permissionActions: effectivePermissionActions,
+    enabledMainserverMutationActions,
     contentsApi,
     routeState,
     registeredContents,

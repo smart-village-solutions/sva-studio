@@ -89,3 +89,9 @@ Die öffentliche History-Projektion enthält Actor-Anzeige, Aktion, Zeitpunkt, s
 Mainserver-basierte Inhalte erhalten erst nach einer erfolgreichen fachlichen Mutation einen lokalen History-Core und eine gebundene Provider-Referenz. Abgelehnte oder fehlgeschlagene Versuche bleiben ausschließlich im Audit- und Diagnosepfad. Direkte Änderungen außerhalb des Studios werden nicht nachträglich als Studio-History rekonstruiert.
 
 Ein fehlender History-Core oder eine fehlende Provider-Referenz blockiert weder Liste, Detail noch Bearbeitung eines durch die typspezifische IAM-Action autorisierten Mainserver-Inhalts. `404 not_found` des History-Pfads wird für typisierte Mainserver-Inhalte als leere Studio-History mit der dokumentierten Abdeckung `studio_mutations` behandelt.
+
+## Plugin-eigene Einzelmutationen
+
+Löschen und Schnellstatuswechsel werden über optionale `ContentTypeDefinition.mutations` aus dem validierten Browser-Snapshot ausgeführt. Fachmapping und erlaubte Zielstatus gehören dem Plugin; Action-Prüfung, Zeilenzugriff, Principal-Ermittlung und Ergebnisdarstellung bleiben beim Host. Die bestehenden API-/Servergrenzen für Validierung, Autorisierung und Auditierung gelten weiterhin.
+
+Event-/POI-Statuswechsel brechen bei Detailabweichungen mit möglicher Schreibwirkung auf unbeteiligte Felder vor dem Update ab. Survey behält Locale-Merge, Statusmapping und zusätzliche Mainserver-Laufzeitfreigabe. Der bestehende IAM-Bulk-Pfad und seine Auswahlgrenzen werden durch Einzelmutationsbeiträge nicht erweitert.

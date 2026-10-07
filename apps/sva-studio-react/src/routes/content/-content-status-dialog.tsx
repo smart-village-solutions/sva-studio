@@ -54,6 +54,8 @@ export const ContentStatusBadge = ({
 type ContentStatusDialogProps = Readonly<{
   item: IamContentListItem;
   canUpdate: boolean;
+  permissionActions: readonly string[];
+  enabledMainserverMutationActions: readonly string[];
   actingPrincipalType: MainserverPrincipalType;
   onUpdated: () => Promise<void>;
 }>;
@@ -61,6 +63,8 @@ type ContentStatusDialogProps = Readonly<{
 export const ContentStatusDialog = ({
   item,
   canUpdate,
+  permissionActions,
+  enabledMainserverMutationActions,
   actingPrincipalType,
   onUpdated,
 }: ContentStatusDialogProps) => {
@@ -81,6 +85,7 @@ export const ContentStatusDialog = ({
   }
 
   const updateStatus = async (status: IamContentStatus) => {
+    if (!canUpdate) return;
     if (status === item.status) {
       setOpen(false);
       return;
@@ -89,7 +94,13 @@ export const ContentStatusDialog = ({
     setPendingStatus(status);
     setError(false);
     try {
-      await updateMainserverContentStatus(item, status, actingPrincipalType);
+      await updateMainserverContentStatus(
+        item,
+        status,
+        actingPrincipalType,
+        permissionActions,
+        enabledMainserverMutationActions
+      );
       await onUpdated();
       setOpen(false);
     } catch {

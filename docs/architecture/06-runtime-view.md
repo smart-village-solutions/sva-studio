@@ -1492,3 +1492,9 @@ Fehlerpfad:
 4. Bei HTTP-, Struktur- oder Timeoutfehler bleibt die Inhaltsansicht verfügbar;
    die Antwort markiert den Katalog als nicht verfügbar. Die UI lässt vorhandene
    Texte bearbeiten, sperrt aber Sprachauswahl und neue Gastsprachen.
+
+### Einzelmutation aus der Inhaltsliste
+
+Vor Anzeige und Ausführung löst der Host den Content-Beitrag aus dem validierten Browser-Snapshot auf und prüft Zeilenzugriff, deklarierte Action, gegebenenfalls Mainserver-Laufzeitfreigabe sowie den Ressourcen-Principal. Fehlende Fähigkeiten oder nicht deklarierte Zielstatus führen zu einem kontrollierten Fehler ohne Client-Fallback. Der Plugin-Handler verwendet die bestehende API-/Servergrenze; serverseitige Validierung, Autorisierung und Audit bleiben maßgeblich.
+
+Event und POI lesen vor dem Statusupdate mit demselben Principal wie beim Schreiben. Detailabweichungen in unverändert zurückzuschreibenden Feldern oder unbekannten Feldgruppen verhindern das Update. Ausschließlich gezielt ersetzte Statusfelder und nachweislich nicht geschriebene Metadaten dürfen abweichen. Erfolg und Fehler gelangen in den bestehenden Dialog- und Refresh-Pfad; IAM-Bulk-Auswahl, Teilfehler und Retry bleiben unverändert.

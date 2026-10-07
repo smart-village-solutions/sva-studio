@@ -1,140 +1,127 @@
+import type { IamContentAccessSummary } from '@sva/core';
+import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const events = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
-const genericItems = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
-const news = vi.hoisted(() => ({ get: vi.fn(), setVisibility: vi.fn() }));
-const poi = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
-const surveys = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
-
-vi.mock('@sva/plugin-events', () => ({ getEvent: events.get, updateEvent: events.update }));
-vi.mock('@sva/plugin-generic-items', () => ({
-  getGenericItem: genericItems.get,
-  updateGenericItem: genericItems.update,
+const state = vi.hoisted(() => ({
+  definitions: [] as RegisteredStudioContentType[],
+  execute: vi.fn(),
 }));
-vi.mock('@sva/plugin-news', () => ({ getNews: news.get, setNewsVisibility: news.setVisibility }));
-vi.mock('@sva/plugin-poi', () => ({ getPoi: poi.get, updatePoi: poi.update }));
-vi.mock('@sva/plugin-surveys/api', () => ({
-  getSurvey: surveys.get,
-  updateSurvey: surveys.update,
-}));
-
+vi.mock('./plugins', () => ({ studioContentTypes: state.definitions }));
 import {
   getSupportedQuickStatuses,
+  isContentMutationAvailable,
   resolveStandaloneMainserverPrincipal,
   updateMainserverContentStatus,
 } from './content-status-mutation';
 
+const access: IamContentAccessSummary = {
+  state: 'editable',
+  canRead: true,
+  canCreate: true,
+  canUpdate: true,
+  organizationIds: [],
+  sourceKinds: [],
+};
+const item = { id: 'item-1', contentType: 'sample.entry', access };
+const definition: RegisteredStudioContentType = {
+  contentType: 'sample.entry',
+  displayName: 'Sample',
+  requiredReadAction: 'sample.read',
+  requiredCreateAction: 'sample.create',
+  createPath: '/sample/new',
+  detailPath: '/sample/$id',
+  mutations: {
+    status: {
+      requiredAction: 'sample.update',
+      supportedStatuses: ['draft', 'published'],
+      execute: state.execute,
+    },
+  },
+};
 describe('content status mutation', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    state.definitions.splice(0, state.definitions.length, definition);
   });
-
-  it('publishes and hides news through the dedicated visibility contract', async () => {
-    await updateMainserverContentStatus(
-      { id: 'news-1', contentType: 'news.article' },
-      'draft',
-      'organization'
-    );
-    await updateMainserverContentStatus(
-      { id: 'news-1', contentType: 'news.article' },
-      'published',
-      'organization'
-    );
-
-    expect(news.setVisibility).toHaveBeenNthCalledWith(1, 'news-1', false, 'organization');
-    expect(news.setVisibility).toHaveBeenNthCalledWith(2, 'news-1', true, 'organization');
-    expect(news.get).toHaveBeenCalledTimes(2);
+  it('executes an additional registered content type through the same host path', async () => {
+    expect(getSupportedQuickStatuses(item.contentType)).toEqual(['draft', 'published']);
+    await updateMainserverContentStatus(item, 'published', 'organization', ['sample.update'], []);
+    expect(state.execute).toHaveBeenCalledExactlyOnceWith('item-1', 'published', 'organization');
   });
-
-  it('preserves event, generic-item, and POI fields while changing visibility', async () => {
-    events.get.mockResolvedValue({ id: 'event-1', title: 'Fest', visible: true });
-    genericItems.get.mockResolvedValue({
-      id: 'generic-1',
-      title: 'FAQ',
-      genericType: 'faq',
-      visible: true,
-    });
-    poi.get.mockResolvedValue({ id: 'poi-1', name: 'Rathaus', active: true });
-
-    await updateMainserverContentStatus(
-      { id: 'event-1', contentType: 'events.event-record' },
-      'draft',
-      'user'
-    );
-    await updateMainserverContentStatus(
-      { id: 'generic-1', contentType: 'generic-items.generic-item' },
-      'draft',
-      'user'
-    );
-    await updateMainserverContentStatus(
-      { id: 'poi-1', contentType: 'poi.point-of-interest' },
-      'draft',
-      'user'
-    );
-
-    expect(events.update).toHaveBeenCalledWith(
-      'event-1',
-      expect.objectContaining({ title: 'Fest', visible: false }),
-      'user'
-    );
-    expect(genericItems.update).toHaveBeenCalledWith(
-      'generic-1',
-      expect.objectContaining({ genericType: 'faq', visible: false }),
-      'user'
-    );
-    expect(poi.update).toHaveBeenCalledWith(
-      'poi-1',
-      expect.objectContaining({ name: 'Rathaus', active: false }),
-      'user'
-    );
+  it('rejects missing and removed capabilities without a fallback', async () => {
+    state.definitions.splice(0);
+    expect(getSupportedQuickStatuses(item.contentType)).toEqual([]);
+    await expect(
+      updateMainserverContentStatus(item, 'draft', 'user', ['sample.update'], [])
+    ).rejects.toThrow('unsupported_content_status');
+    expect(state.execute).not.toHaveBeenCalled();
   });
-
-  it('maps the shared status to the survey contract and preserves localized data', async () => {
-    const current = {
-      id: 'survey-1',
-      title: { de: 'Befragung', en: 'Survey' },
-      shortDescription: { en: 'Short' },
-      status: 'DRAFT',
-      resultVisibility: 'NONE',
-      targetAreaIds: ['area-1'],
-      showResultsInApp: false,
-      isAnonymous: true,
-      questions: [],
+  it('rejects undeclared target statuses', async () => {
+    await expect(
+      updateMainserverContentStatus(item, 'archived', 'user', ['sample.update'], [])
+    ).rejects.toThrow('unsupported_content_status');
+    expect(state.execute).not.toHaveBeenCalled();
+  });
+  it('rechecks action availability before executing', async () => {
+    expect(isContentMutationAvailable(item.contentType, 'status', ['sample.update'], [])).toBe(
+      true
+    );
+    await expect(updateMainserverContentStatus(item, 'draft', 'user', [], [])).rejects.toThrow(
+      'content_mutation_unavailable'
+    );
+    expect(state.execute).not.toHaveBeenCalled();
+  });
+  it('rejects read-only and server-denied row access', async () => {
+    for (const state of ['read_only', 'server_denied'] as const) {
+      await expect(
+        updateMainserverContentStatus(
+          { ...item, access: { ...access, state, canUpdate: false } },
+          'draft',
+          'user',
+          ['sample.update'],
+          []
+        )
+      ).rejects.toThrow('content_mutation_unavailable');
+    }
+    expect(state.execute).not.toHaveBeenCalled();
+  });
+  it('requires the declared additional Mainserver runtime action', async () => {
+    state.definitions[0] = {
+      ...definition,
+      mutations: {
+        status: { ...definition.mutations!.status!, requiresMainserverMutationAction: true },
+      },
     };
-    surveys.get.mockResolvedValue(current);
-
+    await expect(
+      updateMainserverContentStatus(item, 'draft', 'user', ['sample.update'], [])
+    ).rejects.toThrow('content_mutation_unavailable');
+    expect(state.execute).not.toHaveBeenCalled();
     await updateMainserverContentStatus(
-      { id: 'survey-1', contentType: 'surveys.survey' },
-      'archived',
-      'organization'
+      item,
+      'draft',
+      'user',
+      ['sample.update'],
+      ['sample.update']
     );
-
-    expect(surveys.update).toHaveBeenCalledWith(
-      'survey-1',
-      expect.objectContaining({
-        title: 'Befragung',
-        shortDescription: 'Short',
-        status: 'ARCHIVED',
-      }),
-      current,
-      'organization'
-    );
+    expect(state.execute).toHaveBeenCalledOnce();
   });
-
-  it('exposes only supported transitions and rejects invalid combinations', async () => {
-    expect(getSupportedQuickStatuses('news.article')).toEqual(['draft', 'published']);
-    expect(getSupportedQuickStatuses('surveys.survey')).toEqual(['draft', 'published', 'archived']);
-    expect(getSupportedQuickStatuses('unknown.type')).toEqual([]);
-
+  it('rejects an unavailable principal before calling the handler', async () => {
     await expect(
       updateMainserverContentStatus(
-        { id: 'news-1', contentType: 'news.article' },
-        'archived',
-        'user'
+        item,
+        'draft',
+        undefined as unknown as 'user',
+        ['sample.update'],
+        []
       )
-    ).rejects.toThrow('unsupported_content_status:news.article:archived');
+    ).rejects.toThrow('content_mutation_unavailable');
+    expect(state.execute).not.toHaveBeenCalled();
   });
-
+  it('propagates plugin failures to the existing dialog error path', async () => {
+    state.execute.mockRejectedValue(new Error('content_status_detail_degraded'));
+    await expect(
+      updateMainserverContentStatus(item, 'draft', 'user', ['sample.update'], [])
+    ).rejects.toThrow('content_status_detail_degraded');
+  });
   it('uses the resource credential source before the create policy', () => {
     expect(
       resolveStandaloneMainserverPrincipal(

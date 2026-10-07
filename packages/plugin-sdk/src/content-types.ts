@@ -2,10 +2,13 @@ import {
   GENERIC_CONTENT_TYPE,
   resolveIamContentCapabilityMapping,
   type ContentJsonValue,
+  type IamContentStatus,
   type IamContentDomainCapability,
 } from '@sva/core';
+import type { MainserverActingPrincipalType } from './mainserver-client.js';
 import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import { validateMainserverGenericType } from './mainserver-generic-type-registry.js';
+import { validateContentTypeMutations } from './content-type-mutations.js';
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
@@ -46,6 +49,28 @@ export type RegisteredStudioContentType = StudioContentTypeDefinition & {
   readonly contentType: string;
   readonly displayName: string;
   readonly titleKey?: string;
+  readonly mutations?: ContentTypeMutations;
+};
+
+export type ContentTypeMutations = {
+  readonly delete?: {
+    readonly requiredAction: string;
+    readonly requiresMainserverMutationAction?: true;
+    readonly execute: (
+      contentId: string,
+      principal: MainserverActingPrincipalType
+    ) => Promise<void>;
+  };
+  readonly status?: {
+    readonly requiredAction: string;
+    readonly requiresMainserverMutationAction?: true;
+    readonly supportedStatuses: readonly IamContentStatus[];
+    readonly execute: (
+      contentId: string,
+      status: IamContentStatus,
+      principal: MainserverActingPrincipalType
+    ) => Promise<void>;
+  };
 };
 
 export type ContentTypeDefinition = {
@@ -57,6 +82,7 @@ export type ContentTypeDefinition = {
   readonly editorFields?: readonly ContentTypeEditorFieldDefinition[];
   readonly listColumns?: readonly ContentTypeListColumnDefinition[];
   readonly actions?: readonly ContentTypeActionDefinition[];
+  readonly mutations?: ContentTypeMutations;
   readonly validatePayload?: (payload: ContentJsonValue) => readonly string[];
 };
 
@@ -70,6 +96,7 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'listColumns',
   'actions',
   'validatePayload',
+  'mutations',
 ] as const);
 const contentTypeActionDefinitionAllowedKeys = new Set([
   'key',
@@ -211,6 +238,7 @@ export const definePluginContentTypes = <
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(definition);
+    validateContentTypeMutations(definition);
     validateMainserverGenericType(definition);
     if (definition.studioContentType) {
       validateStudioContentTypeDefinition(definition.contentType, definition.studioContentType);
@@ -249,6 +277,7 @@ export const createContentTypeRegistry = (
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(normalizedDefinition);
+    validateContentTypeMutations(normalizedDefinition);
     validateMainserverGenericType(normalizedDefinition);
     if (normalizedDefinition.studioContentType) {
       validateStudioContentTypeDefinition(normalizedType, normalizedDefinition.studioContentType);
@@ -278,6 +307,7 @@ export const collectRegisteredStudioContentTypes = (
             displayName: definition.displayName,
             ...(definition.titleKey ? { titleKey: definition.titleKey } : {}),
             ...definition.studioContentType,
+            ...(definition.mutations ? { mutations: definition.mutations } : {}),
           },
         ]
       : []

@@ -1110,3 +1110,7 @@ Details offen.
 ### Distributionsgrenze Studio und SSF
 
 Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt profiliert: `studio` enthält kein SSF, `ssf` ausschließlich SSF und Media.
+
+### Content-Mutationsbeiträge
+
+`@sva/plugin-sdk` beschreibt und validiert `ContentTypeDefinition.mutations` für Löschen und Statuswechsel. Die Plugin-Browser-Einstiege binden ihre bestehenden API-Clients; die Studio-Katalogmaterialisierung übernimmt ausschließlich diese zusätzlichen Fähigkeiten bei ansonsten übereinstimmenden Descriptor-Metadaten. Die gemeinsame Inhaltsliste konsumiert die Beiträge ohne fachtypabhängigen Mutationsdispatch.

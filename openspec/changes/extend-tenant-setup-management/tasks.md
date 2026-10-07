@@ -16,13 +16,13 @@ Gesamtfall ab.
 
 ## 3. PR-Kandidat: Allgemeiner MCP-Zugang zu bestehenden Verwaltungs-APIs
 
-- [ ] 3.1 Persönliche MCP-Anmeldung für Plattform- und Tenant-Kontexte mit getrennter Kontextwahl und Token-Lifecycle liefern; die servicegebundenen Instanztools unverändert lassen.
+- [x] 3.1 Persönliche MCP-Anmeldung für Plattform- und Tenant-Kontexte mit getrennter Kontextwahl und Token-Lifecycle liefern; die servicegebundenen Instanztools unverändert lassen.
   - [x] 3.1a PKCE-Login pro explizit konfiguriertem Realm-Kontext, lokaler Callback, In-Memory-Tokenhaltung, Refresh, Abmeldung und Fehler-/Timeout-Bereinigung im bestehenden `@sva/studio-mcp` umsetzen.
   - [x] 3.1b Den persönlichen Client, das admin-only-Profilattribut und den gebundenen Login-Flow im New-Realm-Provisioning sicherstellen; aktive Bestands-Realms gezielt mit Readback nachrüsten, Audience je Realm abgleichen und Clients erst nach erfolgreichem API-/MCP-Nachweis aktivieren.
-- [ ] 3.2 Kontextgebundene API-Aufrufe im bestehenden MCP mit relativen Admin-Pfaden, Query und JSON-Body ergänzen; Zielhost, Routen und Redirects begrenzen.
+- [x] 3.2 Kontextgebundene API-Aufrufe im bestehenden MCP mit relativen Admin-Pfaden, Query und JSON-Body ergänzen; Zielhost, Routen und Redirects begrenzen.
   - [x] 3.2a Für den ersten Lieferstand ausschließlich `GET` und `POST api/v1/iam/users` mit explizitem Kontext, relativer Route, begrenzten Parametern/Body und abgewiesenen Redirects aufrufen.
   - [x] 3.2b Weitere für den Einrichtungs- und Verwaltungsfall benötigte Methoden und bestehende Admin-Routen nach Autorisierungs-/Browser-Paritätsnachweis freigeben.
-- [ ] 3.3 Antwort, Fehler, Korrelation und Idempotenzangaben ohne Secrets oder unnötige PII übertragen; bei unklarem Mutationsausgang Readback verlangen statt automatisch erneut zu schreiben.
+- [x] 3.3 Antwort, Fehler, Korrelation und Idempotenzangaben ohne Secrets oder unnötige PII übertragen; bei unklarem Mutationsausgang Readback verlangen statt automatisch erneut zu schreiben.
   - [x] 3.3a Für die User-Collection Fehler redigieren, Request- und Idempotency-IDs weiterreichen, Mutationen nicht automatisch wiederholen und bei unklarem POST-Ausgang Readback verlangen.
   - [x] 3.3b Den Fehler-, Audit-, Korrelation- und Idempotenzvertrag für alle weiteren freizugebenden Verwaltungsrouten nachweisen.
 - [x] 3.4 Bestehende Einzelaktionen für Accounts/Einladungen/Deaktivierung/Löschung, Rollen, Gruppen, Organisationen und Mitgliedschaften über den persönlichen Kontext prüfen. Serverautorisierung, Audit, Schutzregeln und Browser-Verhalten mit Positiv- und Negativfällen belegen.

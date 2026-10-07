@@ -552,6 +552,71 @@ describe('app.routes', () => {
     ).toBe(rootRoute);
   });
 
+  it('materializes a plugin contributed view from the plugin list without adding a host binding field', () => {
+    const contributedView = () => null;
+    const { categories: _categories, ...hostBindings } = bindings;
+    const routeFactories = getClientRouteFactories({
+      bindings: hostBindings,
+      plugins: [
+        {
+          id: 'categories',
+          displayName: 'Categories',
+          routes: [],
+          viewBindings: [{ bindingKey: 'categories', component: contributedView }],
+        },
+      ],
+    });
+    const routes = routeFactories.map((factory) => factory({ id: 'root' } as never));
+    const categoriesRoute = routes.find((route) => readRouteOptions(route).path === '/categories');
+
+    expect(categoriesRoute).toBeDefined();
+    expect(readRouteOptions(expectDefined(categoriesRoute)).component).toBe(contributedView);
+  });
+
+  it('resolves specialized content bindings from the plugin contributions at route materialization time', () => {
+    const editorView = () => null;
+    const routeFactories = getClientRouteFactories({
+      bindings,
+      adminResources: [
+        {
+          resourceId: 'news.article',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+          contentUi: {
+            contentType: 'news.article',
+            bindings: { editor: { bindingKey: 'news.editor' } },
+          },
+        },
+      ],
+      plugins: [
+        {
+          id: 'news',
+          displayName: 'News',
+          routes: [],
+          viewBindings: [{ bindingKey: 'news.editor', component: editorView }],
+        },
+      ],
+    });
+    const routes = routeFactories.map((factory) => factory({ id: 'root' } as never));
+    const createRoute = routes.find((route) => readRouteOptions(route).path === '/admin/news/new');
+
+    expect(readRouteOptions(expectDefined(createRoute)).component).toBe(editorView);
+  });
+
+  it('does not materialize a plugin view route when its plugin is absent', () => {
+    const { categories: _categories, ...hostBindings } = bindings;
+    const routeFactories = getClientRouteFactories({ bindings: hostBindings });
+    const routes = routeFactories.map((factory) => factory({ id: 'root' } as never));
+
+    expect(routes.some((route) => readRouteOptions(route).path === '/categories')).toBe(false);
+  });
+
   it('keeps the seven legacy host URLs guarded or redirected with inert SSF bindings', async () => {
     const inert = () => null;
     const ssfBindings = {

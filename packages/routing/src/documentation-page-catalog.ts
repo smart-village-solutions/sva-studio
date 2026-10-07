@@ -39,7 +39,7 @@ export const collectDocumentationPageCatalog = (input: {
     ),
   ]);
   return createDocumentationPageCatalog([
-    ...collectUiRouteDocumentationPages(adminResources),
+    ...collectUiRouteDocumentationPages(adminResources, input.bindings),
     ...collectAdminResourceRouteDocumentationPages(
       input.bindings,
       adminResources,

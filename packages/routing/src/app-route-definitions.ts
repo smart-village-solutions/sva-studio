@@ -1,11 +1,11 @@
 import { defineRouteDocumentation } from '@sva/plugin-sdk/route-documentation';
 import type { RouteDocumentation } from '@sva/plugin-sdk/route-documentation';
 
-import type { AppRouteBindings } from './app-route-bindings.js';
 import type { AccountUiRouteGuardKey } from './account-ui.routes.js';
+import type { AppRouteBindings } from './app-route-bindings.js';
 import { uiRoutePaths } from './route-paths.js';
 
-export type AppRouteBindingKey = keyof AppRouteBindings;
+export type AppRouteBindingKey = Extract<keyof AppRouteBindings, string> | 'categories';
 export type UiRouteDefinition = {
   readonly binding: AppRouteBindingKey;
   readonly documentation: RouteDocumentation;

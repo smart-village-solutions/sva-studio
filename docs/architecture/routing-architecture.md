@@ -10,7 +10,7 @@ Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 2. **Eine öffentliche Routing-Schnittstelle** über `@sva/routing`.
 3. **Code-basierte produktive Seitenrouten** ohne app-lokale Parallel-Registrierung.
 4. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
-5. **Erweiterbarkeit** durch statisch registrierte Plugins ueber `@sva/plugin-sdk` und einen kanonischen Build-time-Registry-Vertrag.
+5. **Erweiterbarkeit** durch validierte Plugin-Deskriptoren und Browser-View-Beiträge über `@sva/plugin-sdk` und einen kanonischen Build-time-Registry-Vertrag.
 6. **Gezielte Routing-Observability** für Guard-Denials, Plugin-Anomalien und serverseitige Dispatch-Fehler ohne Browser-Noise.
 7. **Deklarative Admin-Ressourcen** für CRUD-artige Host-Flächen statt verteilter Einzelverdrahtung.
 
@@ -21,7 +21,7 @@ Abgedeckt:
 - `packages/routing` als kanonische Routing-Library
 - `packages/auth-runtime` für Auth-Runtime-Pfade und Server-Handler sowie IAM-Zielpackages für Fachhandler
 - `apps/sva-studio-react` für Root-Shell, Router-Erzeugung und Seiten-Bindings
-- statisch registrierte Plugin-Routen über `PluginDefinition`
+- statisch registrierte Plugin-Routen und Browser-View-Beiträge über `PluginDefinition`
 - statisch registrierte Admin-Ressourcen über `AdminResourceDefinition`
 - konsolidierte Build-time-Materialisierung über `createBuildTimeRegistry(...)`
 
@@ -46,7 +46,7 @@ packages/routing
   -> routePaths / Guards / Search-Normalisierung
 
 apps/sva-studio-react
-  routing/app-route-bindings.tsx
+  routing/app-route-bindings.tsx (Host-Bindings und Host-Kontextadapter)
   routes/__root.tsx
   router.tsx
 

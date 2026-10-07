@@ -23,6 +23,12 @@ export {
   projectToFormValues,
 } from './projects.model.js';
 export { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from './projects.pages.js';
+import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from './projects.pages.js';
+export const pluginViewBindings = [
+  { bindingKey: 'projectsList', component: ProjectsListPage },
+  { bindingKey: 'projectsDetail', component: ProjectsEditPage },
+  { bindingKey: 'projectsEditor', component: ProjectsCreatePage },
+] as const;
 export {
   pluginProjects,
   pluginProjectsActionDefinitions,

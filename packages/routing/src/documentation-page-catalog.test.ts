@@ -71,7 +71,9 @@ describe('documentation page catalog', () => {
       kind: 'plugin',
       pluginId: 'catalog',
     });
-    expect(catalog.pages).toEqual([...catalog.pages].sort((a, b) => a.id.localeCompare(b.id, 'en')));
+    expect(catalog.pages).toEqual(
+      [...catalog.pages].sort((a, b) => a.id.localeCompare(b.id, 'en'))
+    );
   });
 
   it('supports the host-only catalog defaults', () => {
@@ -80,6 +82,16 @@ describe('documentation page catalog', () => {
     expect(catalog.pages).toContainEqual(
       expect.objectContaining({ id: 'home.overview', owner: { kind: 'host' } })
     );
+  });
+
+  it('omits plugin-owned static view documentation when its binding is not installed', () => {
+    const bindingsWithoutCategories = new Proxy(bindings, {
+      getOwnPropertyDescriptor: (target, key) =>
+        key === 'categories' ? undefined : Reflect.getOwnPropertyDescriptor(target, key),
+    });
+    const catalog = collectDocumentationPageCatalog({ bindings: bindingsWithoutCategories });
+
+    expect(catalog.pages.some((page) => page.id === 'categories.overview')).toBe(false);
   });
 
   it('keeps ownership for normalized plugin resource ids', () => {
@@ -123,8 +135,8 @@ describe('documentation page catalog', () => {
       ],
     };
 
-    expect(collectDocumentationPageCatalog({ bindings, plugins: [excludedPlugin] }).pages).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'catalog.technical' })])
-    );
+    expect(
+      collectDocumentationPageCatalog({ bindings, plugins: [excludedPlugin] }).pages
+    ).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'catalog.technical' })]));
   });
 });

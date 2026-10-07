@@ -1,13 +1,10 @@
-import { CategoriesPage, type CategoryDataTypeOption } from '@sva/plugin-categories';
-import { CockpitCardsCreatePage, CockpitCardsEditPage } from '@sva/plugin-cockpit-cards';
-import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
-import { FaqCreatePage, FaqEditPage } from '@sva/plugin-faq';
-import { GenericItemsCreatePage, GenericItemsEditPage } from '@sva/plugin-generic-items';
-import { NewsDetailPage, NewsEditPage } from '@sva/plugin-news';
-import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
-import { ProjectsCreatePage, ProjectsEditPage } from '@sva/plugin-projects';
-import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
-import { StudioLoadingState, type MainserverPrincipalContextOption } from '@sva/studio-ui-react';
+import type { PluginViewBinding } from '@sva/plugin-sdk';
+import {
+  StudioLoadingState,
+  type MainserverPrincipalContextOption,
+  type MainserverPrincipalControlModel,
+} from '@sva/studio-ui-react';
+import React from 'react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
@@ -22,41 +19,7 @@ import {
 } from './mainserver-principal-control';
 import { MainserverResourcePrincipalBoundary } from './mainserver-resource-principal-boundary';
 
-export const CategoriesRoutePage = () => {
-  const mutationCapabilities = useMainserverMutationCapabilities();
-  const organizationContext = useOrganizationContext();
-  const dataTypeOptions: readonly CategoryDataTypeOption[] = [
-    ...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries(),
-  ].map(([value, contentType]) => {
-    const definition = studioBuildTimeRegistry.contentTypes.find(
-      (candidate) => candidate.contentType === contentType
-    );
-    return {
-      value,
-      label: definition?.titleKey
-        ? t(definition.titleKey)
-        : (definition?.displayName ?? contentType),
-    };
-  });
-  if (organizationContext.isLoading || organizationContext.isUpdating)
-    return <StudioLoadingState>{t('content.principal.contextLoading')}</StudioLoadingState>;
-  if (organizationContext.context === null || organizationContext.error !== null)
-    return (
-      <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-        <AlertDescription>{t('content.principal.contextUnavailable')}</AlertDescription>
-      </Alert>
-    );
-  return (
-    <CategoriesPage
-      key={organizationContext.context?.activeOrganizationId ?? 'personal'}
-      dataTypeOptions={dataTypeOptions}
-      enabledMutationActions={mutationCapabilities.enabledActions}
-      mutationActionsError={mutationCapabilities.error !== null}
-      mutationActionsLoading={mutationCapabilities.isLoading}
-      onReloadMutationActions={mutationCapabilities.reload}
-    />
-  );
-};
+type PluginViewComponent = React.ComponentType<Record<string, unknown>>;
 
 export const ContentListRoutePage = () => {
   const mutationCapabilities = useMainserverMutationCapabilities();
@@ -79,18 +42,85 @@ export const ContentListRoutePage = () => {
   );
 };
 
-export const NewsCreateRoutePage = () => {
-  const { user } = useAuth();
+const CategoriesRoutePage = ({ Page }: Readonly<{ Page: PluginViewComponent }>) => {
+  const mutationCapabilities = useMainserverMutationCapabilities();
   const organizationContext = useOrganizationContext();
-  const activeOrganizationId = organizationContext.context?.activeOrganizationId;
-  const memberOrganizations = user?.roles?.includes('system_admin')
-    ? (organizationContext.context?.organizations.filter((organization) => organization.isActive) ??
-      [])
-    : [];
+  const dataTypeOptions = [...studioBuildTimeRegistry.mainserverGenericTypeRegistry.entries()].map(
+    ([value, contentType]) => {
+      const definition = studioBuildTimeRegistry.contentTypes.find(
+        (candidate) => candidate.contentType === contentType
+      );
+      return {
+        value,
+        label: definition?.titleKey
+          ? t(definition.titleKey)
+          : (definition?.displayName ?? contentType),
+      };
+    }
+  );
+  if (organizationContext.isLoading || organizationContext.isUpdating)
+    return <StudioLoadingState>{t('content.principal.contextLoading')}</StudioLoadingState>;
+  if (organizationContext.context === null || organizationContext.error !== null)
+    return (
+      <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+        <AlertDescription>{t('content.principal.contextUnavailable')}</AlertDescription>
+      </Alert>
+    );
+  return (
+    <Page
+      key={organizationContext.context.activeOrganizationId ?? 'personal'}
+      dataTypeOptions={dataTypeOptions}
+      enabledMutationActions={mutationCapabilities.enabledActions}
+      mutationActionsError={mutationCapabilities.error !== null}
+      mutationActionsLoading={mutationCapabilities.isLoading}
+      onReloadMutationActions={mutationCapabilities.reload}
+    />
+  );
+};
+
+const PluginContentView = ({
+  Page,
+  pluginId,
+  binding,
+  contentType,
+  viewKind,
+}: Readonly<{
+  Page: PluginViewComponent;
+  pluginId: string;
+  binding: PluginViewBinding;
+  contentType: string;
+  viewKind: 'list' | 'detail' | 'editor';
+}>) => {
+  const { user } = useAuth();
+  const mutationCapabilities = useMainserverMutationCapabilities();
+  const organizationContext = useOrganizationContext();
+  const makePage = (principalControl?: MainserverPrincipalControlModel) => (
+    <Page
+      principalControl={principalControl}
+      instanceId={user?.instanceId}
+      canUpdate={mutationCapabilities.enabledActions.includes(`${pluginId}.update`)}
+    />
+  );
+
+  if (viewKind === 'list') return makePage();
+  if (viewKind === 'detail') {
+    return (
+      <MainserverResourcePrincipalBoundary contentType={contentType}>
+        {(principalControl) => makePage(principalControl)}
+      </MainserverResourcePrincipalBoundary>
+    );
+  }
 
   return (
     <MainserverPrincipalBoundary>
       {(principalControl) => {
+        if (!binding.allowPrincipalContextSwitch) return makePage(principalControl);
+        const activeOrganizationId = organizationContext.context?.activeOrganizationId;
+        const memberOrganizations = user?.roles?.includes('system_admin')
+          ? (organizationContext.context?.organizations.filter(
+              (organization) => organization.isActive
+            ) ?? [])
+          : [];
         const contextOptions: MainserverPrincipalContextOption[] = [
           ...(activeOrganizationId &&
           principalControl.kind === 'fixed' &&
@@ -104,160 +134,52 @@ export const NewsCreateRoutePage = () => {
               label: organization.displayName,
             })),
         ];
-        return (
-          <NewsDetailPage
-            mode="create"
-            principalControl={{
-              ...principalControl,
-              contextOptions,
-              onContextChange: (selection) => {
-                if (selection === 'personal') {
-                  void organizationContext.switchOrganization(null);
-                  return;
-                }
-                const organization = memberOrganizations.find(
-                  (candidate) => `organization:${candidate.organizationId}` === selection
-                );
-                if (organization) {
-                  void organizationContext.switchOrganization(organization.organizationId);
-                }
-              },
-            }}
-          />
-        );
+        return makePage({
+          ...principalControl,
+          contextOptions,
+          onContextChange: (selection) => {
+            if (selection === 'personal') {
+              void organizationContext.switchOrganization(null);
+              return;
+            }
+            const organization = memberOrganizations.find(
+              (candidate) => `organization:${candidate.organizationId}` === selection
+            );
+            if (organization)
+              void organizationContext.switchOrganization(organization.organizationId);
+          },
+        });
       }}
     </MainserverPrincipalBoundary>
   );
 };
 
-export const NewsEditRoutePage = () => {
-  return (
-    <MainserverResourcePrincipalBoundary contentType="news.article">
-      {(principalControl) => <NewsEditPage principalControl={principalControl} />}
-    </MainserverResourcePrincipalBoundary>
+export const createHostOwnedPluginView = (
+  pluginId: string,
+  binding: PluginViewBinding,
+  Page: React.ComponentType<never>
+): React.ComponentType => {
+  const Component = Page as unknown as PluginViewComponent;
+  if (binding.bindingKey === 'categories') {
+    return () => <CategoriesRoutePage Page={Component} />;
+  }
+  const resource = studioBuildTimeRegistry.adminResources.find((candidate) =>
+    Object.values(candidate.contentUi?.bindings ?? {}).some(
+      (view) => view?.bindingKey === binding.bindingKey
+    )
   );
-};
-
-export const EventsCreateRoutePage = () => {
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => <EventsCreatePage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+  const matchedView = Object.entries(resource?.contentUi?.bindings ?? {}).find(
+    ([, view]) => view?.bindingKey === binding.bindingKey
   );
-};
-
-export const EventsEditRoutePage = () => {
-  return (
-    <MainserverResourcePrincipalBoundary contentType="events.event-record">
-      {(principalControl) => <EventsEditPage principalControl={principalControl} />}
-    </MainserverResourcePrincipalBoundary>
-  );
-};
-
-export const GenericItemsCreateRoutePage = () => {
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => <GenericItemsCreatePage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
-  );
-};
-
-export const GenericItemsEditRoutePage = () => {
-  return (
-    <MainserverResourcePrincipalBoundary contentType="generic-items.generic-item">
-      {(principalControl) => <GenericItemsEditPage principalControl={principalControl} />}
-    </MainserverResourcePrincipalBoundary>
-  );
-};
-
-export const FaqCreateRoutePage = () => {
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => <FaqCreatePage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
-  );
-};
-
-export const FaqEditRoutePage = () => {
-  return (
-    <MainserverResourcePrincipalBoundary contentType="faq.faq">
-      {(principalControl) => <FaqEditPage principalControl={principalControl} />}
-    </MainserverResourcePrincipalBoundary>
-  );
-};
-
-export const CockpitCardsCreateRoutePage = () => {
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => <CockpitCardsCreatePage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
-  );
-};
-
-export const CockpitCardsEditRoutePage = () => {
-  return (
-    <MainserverResourcePrincipalBoundary contentType="cockpit-cards.cockpit-card">
-      {(principalControl) => <CockpitCardsEditPage principalControl={principalControl} />}
-    </MainserverResourcePrincipalBoundary>
-  );
-};
-
-export const ProjectsCreateRoutePage = () => {
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => <ProjectsCreatePage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
-  );
-};
-
-export const ProjectsEditRoutePage = () => {
-  return (
-    <MainserverResourcePrincipalBoundary contentType="projects.project">
-      {(principalControl) => <ProjectsEditPage principalControl={principalControl} />}
-    </MainserverResourcePrincipalBoundary>
-  );
-};
-
-export const PoiCreateRoutePage = () => {
-  const { user } = useAuth();
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => (
-        <PoiCreatePage instanceId={user?.instanceId} principalControl={principalControl} />
-      )}
-    </MainserverPrincipalBoundary>
-  );
-};
-
-export const PoiEditRoutePage = () => {
-  const { user } = useAuth();
-  return (
-    <MainserverResourcePrincipalBoundary contentType="poi.point-of-interest">
-      {(principalControl) => (
-        <PoiEditPage instanceId={user?.instanceId} principalControl={principalControl} />
-      )}
-    </MainserverResourcePrincipalBoundary>
-  );
-};
-
-export const SurveyCreateRoutePage = () => {
-  return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => <SurveyCreatePage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
-  );
-};
-
-export const SurveyEditRoutePage = () => {
-  const mutationCapabilities = useMainserverMutationCapabilities();
-  return (
-    <MainserverResourcePrincipalBoundary contentType="surveys.survey">
-      {(principalControl) => (
-        <SurveyEditPage
-          canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}
-          principalControl={principalControl}
-        />
-      )}
-    </MainserverResourcePrincipalBoundary>
+  if (!resource?.contentUi?.contentType || !matchedView) return () => <Component />;
+  const viewKind = matchedView[0] as 'list' | 'detail' | 'editor';
+  return () => (
+    <PluginContentView
+      Page={Component}
+      pluginId={pluginId}
+      binding={binding}
+      contentType={resource.contentUi!.contentType}
+      viewKind={viewKind}
+    />
   );
 };

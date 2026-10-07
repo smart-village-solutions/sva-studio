@@ -1,5 +1,5 @@
 import type { AdminResourceDefinition } from '@sva/plugin-sdk';
-import { createRoute, type RootRoute } from '@tanstack/react-router';
+import { createRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { withCoreContentAdminResource } from './admin-resource-route-aliases.js';
 import {
@@ -32,7 +32,7 @@ export {
   createLegacyContentAliasFactories,
 } from './admin-resource-route-legacy-alias-factories.js';
 
-type BindingKey = keyof AppRouteBindings;
+type BindingKey = string;
 type UiRouteDefinition = {
   readonly binding: BindingKey;
   readonly guard: AccountUiRouteGuardKey;
@@ -47,6 +47,12 @@ type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
 
 const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
+
+const resolveRouteComponent = (bindings: AppRouteBindings, bindingKey: string): RouteComponent => {
+  const component = (bindings as unknown as Readonly<Record<string, RouteComponent>>)[bindingKey];
+  if (!component) throw new Error(`unknown_app_route_binding_key:${bindingKey}`);
+  return component;
+};
 
 const resolveBindingKey = (
   bindings: AppRouteBindings,
@@ -247,7 +253,7 @@ export const createAdminResourceRouteFactories = (
             }
           },
           validateSearch: definition.validateSearch,
-          component: bindings[definition.binding],
+          component: resolveRouteComponent(bindings, definition.binding),
         });
       }
   );

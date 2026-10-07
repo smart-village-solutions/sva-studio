@@ -260,9 +260,11 @@ Fehlerpfad:
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
 2. Core-Route-Factories werden client- oder serverseitig geladen
-3. Der Host liest die statische Plugin-Liste sowie deklarative Admin-Ressourcen und materialisiert daraus Plugin-Sonderrouten und host-owned Admin-Routen
+3. Der Host liest den validierten Plugin-Snapshot sowie deklarative Admin-Ressourcen. Browser-Entries liefern die zugehörigen View-Komponenten; der Host löst ihre Bindungsschlüssel auf und materialisiert Plugin-Sonderrouten und host-owned Admin-Routen daraus.
 4. Core-/Auth-Runtime-Routen, host-owned Admin-Routen und verbleibende Plugin-Sonderrouten werden zu einem gemeinsamen Route-Tree kombiniert
 5. Router wird mit RouteTree und SSR-Kontext erstellt
+
+Spezialisierte Content-Views bleiben in ihrem Plugin-Paket. Der Host setzt die Views anhand der validierten `contentUi`-Bindungen ein und stellt Principal-, Ownership- und Mutationskontext bereit. Das Routing-Paket enthält dafür keine plugin-spezifischen Pflichtfelder.
 
 Fehlerpfad:
 

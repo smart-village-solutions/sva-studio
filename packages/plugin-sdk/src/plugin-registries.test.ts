@@ -2143,11 +2143,13 @@ describe('plugin registries', () => {
 
   it('keeps plugin UI components and host-invoked content validation hooks allowed', () => {
     const validatePayload = () => [] as const;
+    const viewComponent = () => null;
     const registry = createBuildTimeRegistry({
       plugins: [
         {
           ...newsPlugin,
           contentHistory: { mode: 'host', coverage: 'studio_mutations' },
+          viewBindings: [{ bindingKey: 'newsEditor', component: viewComponent }],
           contentTypes: [
             {
               contentType: 'news.article',
@@ -2161,6 +2163,7 @@ describe('plugin registries', () => {
     });
 
     expect(registry.routes[0]?.component).toBe(component);
+    expect(registry.pluginRegistry.get('news')?.viewBindings?.[0]?.component).toBe(viewComponent);
     expect(registry.contentTypes[0]?.validatePayload).toBe(validatePayload);
     expect(registry.contentTypes[0]?.titleKey).toBe('news.contentTypes.article.title');
   });

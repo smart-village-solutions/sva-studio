@@ -74,6 +74,7 @@ describe('plugin catalog loader', () => {
       ],
     };
     const component = () => null;
+    const newsEditor = () => null;
     const report = await createStudioPluginCatalogReport({
       catalogConfig: [
         {
@@ -87,6 +88,9 @@ describe('plugin catalog loader', () => {
       resolvePluginModule: async () => ({ descriptor }),
       resolveBrowserModule: async () => ({
         plugin: { ...descriptor, routes: [{ ...descriptor.routes[0], component }] },
+        pluginViewBindings: [
+          { bindingKey: 'newsEditor', component: newsEditor, allowPrincipalContextSwitch: true },
+        ],
       }),
     });
 
@@ -94,6 +98,9 @@ describe('plugin catalog loader', () => {
     expect(report.snapshot.registry.pluginRegistry.get('news')?.routes[0]?.component).toBe(
       component
     );
+    expect(report.snapshot.registry.pluginRegistry.get('news')?.viewBindings).toEqual([
+      { bindingKey: 'newsEditor', component: newsEditor, allowPrincipalContextSwitch: true },
+    ]);
   });
 
   it('rejects a browser route that does not match the descriptor', async () => {

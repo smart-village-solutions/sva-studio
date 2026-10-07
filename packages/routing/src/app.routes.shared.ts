@@ -1,6 +1,7 @@
-import type { AdminResourceDefinition, RouteFactory } from '@sva/plugin-sdk';
+import type { AdminResourceDefinition, PluginDefinition, RouteFactory } from '@sva/plugin-sdk';
 import { mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
 import { createRoute, type AnyRoute, type RootRoute } from '@tanstack/react-router';
+import type { RouteComponent } from '@tanstack/react-router';
 
 import {
   assertNoStaticAdminRouteShadowing,
@@ -32,6 +33,22 @@ export { getAdminDetailRoutePath } from './admin-resource-route-paths.js';
 export { getPluginRouteFactories } from './plugin.routes.js';
 export type { AppRouteBindings } from './app-route-bindings.js';
 
+export const mergePluginViewBindings = (
+  bindings: AppRouteBindings,
+  plugins: readonly PluginDefinition[]
+): AppRouteBindings => {
+  const contributedViews = new Map<string, RouteComponent>();
+  for (const plugin of plugins) {
+    for (const view of plugin.viewBindings ?? []) {
+      if (contributedViews.has(view.bindingKey)) {
+        throw new Error(`plugin_view_binding_collision:${view.bindingKey}`);
+      }
+      contributedViews.set(view.bindingKey, view.component as RouteComponent);
+    }
+  }
+  return Object.assign({}, bindings, Object.fromEntries(contributedViews)) as AppRouteBindings;
+};
+
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
 export type { AppRouteBindingKey } from './app-route-definitions.js';
 
@@ -53,10 +70,14 @@ const resolveUiRouteDefinitions = (
 };
 
 export const collectUiRouteDocumentationPages = (
-  adminResources: readonly AdminResourceDefinition[] = []
+  adminResources: readonly AdminResourceDefinition[] = [],
+  bindings?: AppRouteBindings
 ): readonly DocumentationPageCatalogEntry[] =>
   [
-    ...resolveUiRouteDefinitions(mergeAdminResourceDefinitions(adminResources)),
+    ...resolveUiRouteDefinitions(mergeAdminResourceDefinitions(adminResources)).filter(
+      (definition) =>
+        !bindings || Object.prototype.hasOwnProperty.call(bindings, definition.binding)
+    ),
     ...collectLegacyContentAliasDefinitions(adminResources),
   ].flatMap((definition) => {
     const entry = toDocumentationPageCatalogEntry({
@@ -76,7 +97,9 @@ export const createUiRouteFactories = (
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
   const adminResources = mergeAdminResourceDefinitions(options.adminResources ?? []);
-  const routeDefinitions = resolveUiRouteDefinitions(adminResources);
+  const routeDefinitions = resolveUiRouteDefinitions(adminResources).filter((definition) =>
+    Object.prototype.hasOwnProperty.call(bindings, definition.binding)
+  );
   return [
     ...routeDefinitions.map((definition) => {
       if (definition.guard) {
@@ -93,7 +116,9 @@ export const createUiRouteFactories = (
               });
             },
             validateSearch: definition.validateSearch,
-            component: bindings[definition.binding],
+            component: (bindings as unknown as Readonly<Record<string, RouteComponent>>)[
+              definition.binding
+            ],
           });
       }
 
@@ -103,7 +128,9 @@ export const createUiRouteFactories = (
           path: definition.path,
           staticData: { documentation: definition.documentation },
           validateSearch: definition.validateSearch,
-          component: bindings[definition.binding],
+          component: (bindings as unknown as Readonly<Record<string, RouteComponent>>)[
+            definition.binding
+          ],
         });
     }),
     ...createAdminResourceRouteFactories(bindings, adminResources, diagnostics),

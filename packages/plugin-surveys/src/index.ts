@@ -10,3 +10,8 @@ export type {
   SurveyStatus,
 } from './surveys.types.js';
 export { pluginSurveysContract } from './plugin.js';
+import { SurveyCreatePage, SurveyEditPage } from './surveys.pages.js';
+export const pluginViewBindings = [
+  { bindingKey: 'surveysDetail', component: SurveyEditPage },
+  { bindingKey: 'surveysEditor', component: SurveyCreatePage },
+] as const;

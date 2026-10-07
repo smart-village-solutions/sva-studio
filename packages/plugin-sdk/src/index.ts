@@ -102,6 +102,7 @@ export type {
   PluginNavigationSection,
   PluginRouteDefinition,
   PluginRouteDescriptor,
+  PluginViewBinding,
   PluginDescriptor,
   PluginRouteGuard,
   PluginServerHandlerDefinition,

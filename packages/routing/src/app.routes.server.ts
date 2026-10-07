@@ -5,15 +5,13 @@ import { authServerRouteFactories } from './auth.routes.server.js';
 import {
   createUiRouteFactories,
   getPluginRouteFactories,
+  mergePluginViewBindings,
   type AppRouteBindings,
   type AppRouteFactory,
 } from './app.routes.shared.js';
 import { defaultServerRoutingDiagnostics } from './diagnostics.server.js';
 
-export {
-  type AppRouteBindings,
-  type AppRouteFactory,
-} from './app.routes.shared.js';
+export { type AppRouteBindings, type AppRouteFactory } from './app.routes.shared.js';
 
 export const getServerRouteFactories = ({
   bindings,
@@ -27,9 +25,10 @@ export const getServerRouteFactories = ({
   readonly plugins?: readonly PluginDefinition[];
   readonly diagnostics?: RoutingDiagnosticsHook;
   readonly pluginScope?: import('./plugin.routes.js').PluginRouteScope;
-}): readonly AppRouteFactory[] =>
-  [
-    ...createUiRouteFactories(bindings, {
+}): readonly AppRouteFactory[] => {
+  const routeBindings = mergePluginViewBindings(bindings, plugins);
+  return [
+    ...createUiRouteFactories(routeBindings, {
       adminResources,
       diagnostics: diagnostics ?? defaultServerRoutingDiagnostics,
     }),
@@ -39,3 +38,4 @@ export const getServerRouteFactories = ({
       scope: pluginScope,
     }),
   ] as const;
+};

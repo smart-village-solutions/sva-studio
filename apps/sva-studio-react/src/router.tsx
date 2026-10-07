@@ -1,4 +1,4 @@
-import { studioAdminResources, studioPlugins } from './lib/plugins';
+import { studioAdminResources } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
@@ -16,7 +16,7 @@ import {
   readPluginRouteScope,
   type PluginRouteScope,
 } from './lib/plugin-route-scope';
-import { appRouteBindings } from '#studio-app-route-bindings';
+import { appRouteBindings, studioRoutePlugins } from '#studio-app-route-bindings';
 import { rootRoute } from './routes/__root';
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
@@ -30,7 +30,7 @@ const getRuntimeRouteFactories = createIsomorphicFn()
     return mod.getServerRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
-      plugins: studioPlugins,
+      plugins: studioRoutePlugins,
       pluginScope,
     });
   })
@@ -62,7 +62,7 @@ const getRuntimeRouteFactories = createIsomorphicFn()
     return mod.getClientRouteFactories({
       bindings: appRouteBindings,
       adminResources: studioAdminResources,
-      plugins: studioPlugins,
+      plugins: studioRoutePlugins,
       pluginScope,
     });
   });

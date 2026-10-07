@@ -425,3 +425,38 @@ Interface-Pfad. Mainserver-Übersichten werden bei persönlichem Interface-Read
 ausgelassen, Plugin-Interfaces bleiben verborgen und nicht mutierbar. Freie
 Healthcheck-Statusmeldungen werden aus persönlichen HTTP-Antworten entfernt,
 weil sie Providerdetails enthalten können.
+
+### Produktionsabnahme Abschnitt 5: Zwischenstand 2026-10-07
+
+Für die separat freigegebene Abnahme wurde `codex-mcp-test-prod` als dedizierte
+Produktions-Testinstanz ohne Mainserver angelegt. Abschnitt 5 bleibt offen,
+bis die fachlichen Abläufe einschließlich persönlichem MCP-Zugang und
+Kundenanmeldung tatsächlich nachgewiesen sind.
+
+Nach dem Rollout der Realm-Baseline 1.1 passten die bisherigen
+Snapshot-Fingerprints nicht mehr zum aktuellen Vertrag. Der öffentliche
+Status-Reader verwendet dann einen lokalen Ersatzstatus; dessen
+`realmExists=false` ist kein Live-Nachweis eines fehlenden Realms. Auch der
+lokale Plan kann in diesem Zustand bereits vorhandene Artefakte als fehlend
+darstellen. `plan_source=local` und `worker_pending` müssen deshalb zusammen
+mit den Worker-Snapshots ausgewertet werden.
+
+Der kontrollierte Lauf `87212dba-d2f1-4cc5-b990-da6608f65d3b` nahm am
+7. Oktober 2026 um 21:18 UTC einen neuen Live-Plan auf und brach vor der
+Keycloak-Mutation wegen des abweichenden bestätigten Plans ab. Nach erneutem
+Plan-Read war der Folgelauf `76e4e546-d31a-48ad-b659-7532b0bcff39` insgesamt
+`succeeded`. Der anschließende Rollenabgleich korrigierte eine Rolle;
+die tenantlokale IAM-Zugriffsprobe bestätigte um 21:19 UTC Konfiguration,
+Rollenabgleich und Zugriff jeweils als `ready`.
+
+Der anschließende direkte Keycloak-Readback bestätigte den durch diesen Lauf
+angelegten öffentlichen PKCE-Client `sva-studio-mcp-personal` mit gebundenem
+Browser-Flow, deaktivierten Direct Grants und deaktiviertem Service-Account.
+Der Client ist bis zur persönlichen Zugangsprüfung deaktiviert.
+
+Der Host `codex-mcp-test-prod.studio.smart-village.app` benötigt zusätzlich
+die explizite Produktions-Ingressfreigabe und den Browser-CSRF-Origin.
+Die versionierte Ergänzung ist erst nach dem regulären Build-/Promote-Pfad
+und einem erfolgreichen HTTPS-/Login-Smoke als live abgenommen zu werten.
+Aktivierung, persönlicher Provider-Zugang, fachliche Einrichtung, Einladung,
+erste Kundenanmeldung und der Fall mit Mainserver sind hiermit nicht belegt.

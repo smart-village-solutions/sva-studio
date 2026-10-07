@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   saveSvaMainserverSettings: vi.fn(),
   withAuthenticatedUser: vi.fn(),
   authorizeInstancePermissionForUser: vi.fn(),
+  validateCsrf: vi.fn<(request: Request) => Response | null>(() => null),
   logger: {
     error: vi.fn(),
     info: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeInstancePermissionForUser: state.authorizeInstancePermissionForUser,
+  validateCsrf: state.validateCsrf,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -86,10 +88,7 @@ describe('interfaces app adapter', () => {
 
   const setAuthenticatedUserContext = (user: TestUser = defaultUser) => {
     state.withAuthenticatedUser.mockImplementation(
-      async (
-        _request: Request,
-        handler: (ctx: { user: TestUser }) => Promise<unknown>
-      ) =>
+      async (_request: Request, handler: (ctx: { user: TestUser }) => Promise<unknown>) =>
         handler({
           user,
         })
@@ -111,6 +110,8 @@ describe('interfaces app adapter', () => {
     state.saveSvaMainserverSettings.mockReset();
     state.withAuthenticatedUser.mockReset();
     state.authorizeInstancePermissionForUser.mockReset();
+    state.validateCsrf.mockReset();
+    state.validateCsrf.mockReturnValue(null);
     state.logger.error.mockReset();
     state.logger.info.mockReset();
     state.logger.warn.mockReset();
@@ -214,7 +215,14 @@ describe('interfaces app adapter', () => {
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
-      availableTypes: ['mainserver', 's3', 'postgresql', 'mailTransport', 'mapGeocoding', 'supabase'],
+      availableTypes: [
+        'mainserver',
+        's3',
+        'postgresql',
+        'mailTransport',
+        'mapGeocoding',
+        'supabase',
+      ],
       entries: [
         expect.objectContaining({
           id: 's3-1',
@@ -516,6 +524,64 @@ describe('interfaces app adapter', () => {
     expect(state.listStoredInterfaces).not.toHaveBeenCalled();
   });
 
+  it('opts the personal HTTP delete route into the existing tenant permission path', async () => {
+    setAuthenticatedUserContext();
+    state.deleteStoredInterface.mockResolvedValue(true);
+    const request = new Request('https://tenant.example/api/v1/interfaces/s3-1', {
+      method: 'DELETE',
+    });
+
+    const { deleteInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(deleteInstanceInterfaceForRequest({ id: 's3-1' }, request)).resolves.toEqual({
+      deleted: true,
+    });
+
+    expect(state.withAuthenticatedUser).toHaveBeenCalledWith(request, expect.any(Function), {
+      personalBearerRoute: { method: 'DELETE', path: '/api/v1/interfaces/$interfaceId' },
+    });
+    expect(state.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'integration.manage' })
+    );
+    expect(state.deleteStoredInterface).toHaveBeenCalledWith('de-musterhausen', 's3-1');
+  });
+
+  it('rejects cookie-authenticated interface writes without valid CSRF headers', async () => {
+    setAuthenticatedUserContext();
+    state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
+    const request = new Request('https://tenant.example/api/v1/interfaces', { method: 'POST' });
+
+    const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(
+      upsertInstanceInterfaceForRequest(
+        { draft: { type: 's3', name: 'Uploads', enabled: true, config: {
+          endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', forcePathStyle: false,
+        } } },
+        request
+      )
+    ).rejects.toMatchObject({ message: 'csrf_validation_failed', statusCode: 403 });
+
+    expect(state.upsertStoredInterface).not.toHaveBeenCalled();
+  });
+
+  it('skips browser CSRF validation for a bearer request already accepted by auth middleware', async () => {
+    setAuthenticatedUserContext();
+    state.upsertStoredInterface.mockResolvedValue({ id: 's3-1', type: 's3' });
+    const request = new Request('https://tenant.example/api/v1/interfaces', {
+      method: 'POST',
+      headers: { authorization: 'Bearer verified-by-auth-middleware' },
+    });
+
+    const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await upsertInstanceInterfaceForRequest(
+      { draft: { type: 's3', name: 'Uploads', enabled: true, config: {
+        endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', forcePathStyle: false,
+      } } },
+      request
+    );
+
+    expect(state.validateCsrf).not.toHaveBeenCalled();
+  });
+
   it('delegates saving to the settings contract with request context and payload', async () => {
     const config = {
       instanceId: 'de-musterhausen',
@@ -554,7 +620,9 @@ describe('interfaces app adapter', () => {
       instanceId: 'de-musterhausen',
       roles: ['system_admin'],
     });
-    state.saveSvaMainserverSettings.mockRejectedValue(new Error('Error: boom\n    at save (/srv/app.ts:1:1)'));
+    state.saveSvaMainserverSettings.mockRejectedValue(
+      new Error('Error: boom\n    at save (/srv/app.ts:1:1)')
+    );
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 
@@ -918,6 +986,29 @@ describe('interfaces app adapter', () => {
           id: 'missing',
         },
       })
-    ).rejects.toThrow('interface_not_found');
+    ).rejects.toMatchObject({ message: 'interface_not_found', statusCode: 404 });
+  });
+
+  it('preserves unexpected storage failures as server errors through the auth envelope', async () => {
+    setAuthenticatedUserContext({
+      id: 'subject-1',
+      instanceId: 'de-musterhausen',
+      roles: ['interface_manager'],
+    });
+    state.upsertStoredInterface.mockRejectedValue(new Error('database_unavailable'));
+    const request = new Request('https://tenant.example/api/v1/interfaces', {
+      method: 'POST',
+      headers: { authorization: 'Bearer verified-by-auth-middleware' },
+    });
+
+    const { upsertInstanceInterfaceForRequest } = await import('./interfaces-api');
+    await expect(
+      upsertInstanceInterfaceForRequest(
+        { draft: { type: 's3', name: 'Uploads', enabled: true, config: {
+          endpoint: '', region: '', bucket: '', accessKeyId: '', secretAccessKey: '', forcePathStyle: false,
+        } } },
+        request
+      )
+    ).rejects.toMatchObject({ message: 'database_unavailable', statusCode: 500 });
   });
 });

@@ -8,7 +8,26 @@ import { openLoginUrl } from './open-browser.js';
 import { PersonalMcpAuthError, PersonalMcpContextManager } from './personal-auth.js';
 import { redact } from './redaction.js';
 import { result, type ToolResult } from './tools-support.js';
-import { contextInput, requestInput, type PersonalRequest, validatePersonalRequest } from './tools-personal-request.js';
+import { contextInput, requestInput, type PersonalRequest, resolvePersonalInterfaceRequestBody, validatePersonalRequest } from './tools-personal-request.js';
+
+const localInterfaceSecretFailure = (code: string, requestId: string, contextId: string): ToolResult =>
+  result({
+    ok: false,
+    error: {
+      version: '1',
+      code,
+      category: code === 'interface_secret_reference_required' ? 'validation' : 'platform_readiness',
+      retryable: false,
+      retryClass: 'never',
+      summary: code === 'interface_secret_reference_required'
+        ? 'Interface-Secrets müssen über eine lokale Secret-Referenz bereitgestellt werden.'
+        : 'Das lokale Auflösen eines Interface-Secrets ist fehlgeschlagen.',
+      recommendedAction: code === 'interface_secret_resolver_not_configured'
+        ? 'configure_local_interface_secret_resolver'
+        : 'check_local_interface_secret_reference',
+    },
+    meta: { requestId, contextId },
+  }, true);
 
 const errorResult = (error: unknown, contextId?: string, extra: Record<string, unknown> = {}): ToolResult => {
   if (error instanceof PersonalMcpAuthError) {
@@ -112,7 +131,9 @@ const requestUsers = async (
   }
   const requestId = input.requestId ?? randomUUID();
   const idempotencyKey = input.method === 'GET' ? undefined : input.idempotencyKey ?? randomUUID();
-  const bodyText = input.body === undefined ? undefined : JSON.stringify(input.body);
+  const resolvedBody = await resolvePersonalInterfaceRequestBody(input, context, config);
+  if (resolvedBody.error) return localInterfaceSecretFailure(resolvedBody.error, requestId, context.id);
+  const bodyText = resolvedBody.body === undefined ? undefined : JSON.stringify(resolvedBody.body);
   if (bodyText && Buffer.byteLength(bodyText, 'utf8') > 64 * 1024) {
     return result({
       ok: false,
@@ -132,7 +153,7 @@ const requestUsers = async (
       method: input.method,
       path: input.path,
       ...(input.query ? { query: input.query } : {}),
-      ...(input.body ? { body: input.body } : {}),
+      ...(resolvedBody.body ? { body: resolvedBody.body } : {}),
       requestId,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
@@ -205,7 +226,7 @@ export const registerPersonalTools = (
 
   server.registerTool('studio_personal_users_api', {
     title: 'Persönliche Verwaltungs-API aufrufen',
-    description: 'Ruft freigegebene Einzelaktionen für Accounts, Rollen, Gruppen, Organisationen und Mitgliedschaften im ausdrücklich gewählten persönlichen Kontext auf.',
+    description: 'Ruft freigegebene Admin-API-Routen im gewählten Kontext auf. Schnittstellen-Secrets werden ausschließlich über lokal aufgelöste Secret-Referenzen übergeben.',
     inputSchema: requestInput.shape,
     outputSchema,
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },

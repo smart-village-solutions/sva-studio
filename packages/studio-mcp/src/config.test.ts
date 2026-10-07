@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readStudioMcpConfig } from './config.js';
+import { readStudioMcpConfig, resolveInterfaceSecret } from './config.js';
 
 describe('Studio MCP configuration', () => {
   it('prefers the direct environment secret', async () => {
@@ -47,5 +47,43 @@ describe('Studio MCP configuration', () => {
     await expect(read([{ ...common, id: 'duplicate' }, { ...common, id: 'duplicate' }])).rejects.toThrow();
     await expect(read([{ ...common, id: 'insecure', baseUrl: 'http://demo.studio.example' }])).rejects.toThrow();
     await expect(read([{ ...common, id: 'bad-issuer', issuer: 'https://id.example/not-a-realm' }])).rejects.toThrow();
+  });
+
+  it('resolves interface secrets with argv placeholders and hides resolver diagnostics', async () => {
+    const config = await readStudioMcpConfig({
+      SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',
+      SVA_STUDIO_MCP_TOKEN_URL: 'https://id.example/token',
+      SVA_STUDIO_MCP_CLIENT_SECRET: 'service-secret',
+      SVA_STUDIO_MCP_INTERFACE_SECRET_COMMAND: JSON.stringify([
+        process.execPath, '-e', 'process.stdout.write(process.argv[1] + "\\n")',
+        '{contextId}:{interfaceType}:{interfaceId}:{field}:{secretRef}',
+      ]),
+    });
+    await expect(resolveInterfaceSecret(config, {
+      contextId: 'tenant-a', interfaceType: 's3', interfaceId: 'interface-1',
+      field: 'secretAccessKey', secretRef: 'vault/team/s3',
+    })).resolves.toBe('tenant-a:s3:interface-1:secretAccessKey:vault/team/s3');
+
+    const failingConfig = await readStudioMcpConfig({
+      SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',
+      SVA_STUDIO_MCP_TOKEN_URL: 'https://id.example/token',
+      SVA_STUDIO_MCP_CLIENT_SECRET: 'service-secret',
+      SVA_STUDIO_MCP_INTERFACE_SECRET_COMMAND: JSON.stringify([
+        process.execPath, '-e', 'process.stderr.write("private-diagnostic"); process.exit(1)', '{secretRef}',
+      ]),
+    });
+    await expect(resolveInterfaceSecret(failingConfig, {
+      contextId: 'tenant-a', interfaceType: 's3', field: 'secretAccessKey', secretRef: 'private-ref',
+    })).rejects.toThrow('interface_secret_resolution_failed');
+
+    const missingReferenceConfig = await readStudioMcpConfig({
+      SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',
+      SVA_STUDIO_MCP_TOKEN_URL: 'https://id.example/token',
+      SVA_STUDIO_MCP_CLIENT_SECRET: 'service-secret',
+      SVA_STUDIO_MCP_INTERFACE_SECRET_COMMAND: JSON.stringify([process.execPath, '-e', 'process.stdout.write("secret")']),
+    });
+    await expect(resolveInterfaceSecret(missingReferenceConfig, {
+      contextId: 'tenant-a', interfaceType: 's3', field: 'secretAccessKey', secretRef: 'private-ref',
+    })).rejects.toThrow('interface_secret_reference_placeholder_missing');
   });
 });

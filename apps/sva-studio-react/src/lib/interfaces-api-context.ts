@@ -43,16 +43,17 @@ export type SaveInterfacesDependencies = InterfacesRequestDependencies & {
 export type InterfacesOperation =
   'list_interfaces' | 'save_interfaces_settings' | 'upsert_interface' | 'delete_interface';
 
-export const loadInterfacesRequestDependencies =
-  async (): Promise<InterfacesRequestDependencies> => {
-    const { getRequest } = await import('@tanstack/react-start/server');
-    const { createSdkLogger } = await import('@sva/server-runtime');
+export const loadInterfacesRequestDependencies = async (
+  request?: Request
+): Promise<InterfacesRequestDependencies> => {
+  const { getRequest } = await import('@tanstack/react-start/server');
+  const { createSdkLogger } = await import('@sva/server-runtime');
 
-    return {
-      request: getRequest(),
-      logger: createSdkLogger({ component: COMPONENT }),
-    };
+  return {
+    request: request ?? getRequest(),
+    logger: createSdkLogger({ component: COMPONENT }),
   };
+};
 
 export const loadSaveInterfacesDependencies = async (): Promise<SaveInterfacesDependencies> => {
   const base = await loadInterfacesRequestDependencies();
@@ -67,26 +68,34 @@ export const loadSaveInterfacesDependencies = async (): Promise<SaveInterfacesDe
 export const runWithAuthenticatedInterfacesUser = async <T>(input: {
   readonly request: Request;
   readonly fallbackMessage: string;
+  readonly personalBearerRoute?: Readonly<{
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    path: string;
+  }>;
   readonly run: (ctx: AuthenticatedInterfacesContext) => Promise<T>;
 }): Promise<T> => {
   const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
 
-  const response = await withAuthenticatedUser(input.request, async (ctx) => {
-    try {
-      return jsonResponse(200, {
-        ok: true,
-        result: await input.run({
-          sessionId: ctx.sessionId,
-          user: ctx.user,
-        }),
-      } satisfies AuthenticatedInterfacesRunResult<T>);
-    } catch (error) {
-      return jsonResponse(200, {
-        ok: false,
-        error: getErrorPayload(error, 'invalid_config'),
-      } satisfies AuthenticatedInterfacesRunResult<T>);
-    }
-  });
+  const response = await withAuthenticatedUser(
+    input.request,
+    async (ctx) => {
+      try {
+        return jsonResponse(200, {
+          ok: true,
+          result: await input.run({
+            sessionId: ctx.sessionId,
+            user: ctx.user,
+          }),
+        } satisfies AuthenticatedInterfacesRunResult<T>);
+      } catch (error) {
+        return jsonResponse(200, {
+          ok: false,
+          error: getErrorPayload(error, 'invalid_config'),
+        } satisfies AuthenticatedInterfacesRunResult<T>);
+      }
+    },
+    input.personalBearerRoute ? { personalBearerRoute: input.personalBearerRoute } : undefined
+  );
 
   if (response.ok) {
     const payload = await parseJson<AuthenticatedInterfacesRunResult<T>>(response);
@@ -98,11 +107,17 @@ export const runWithAuthenticatedInterfacesUser = async <T>(input: {
       return payload.result;
     }
 
-    throw createClientError(payload.error, input.fallbackMessage);
+    throw Object.assign(createClientError(payload.error, input.fallbackMessage), {
+      code: payload.error.error,
+      statusCode: payload.error.statusCode ?? 500,
+    });
   }
 
   const payload = await parseJson<ErrorPayload>(response);
-  throw createClientError(payload, input.fallbackMessage);
+  throw Object.assign(createClientError(payload, input.fallbackMessage), {
+    code: payload?.error,
+    statusCode: response.status,
+  });
 };
 
 const logMissingInterfacesInstanceContext = (

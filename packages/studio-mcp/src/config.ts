@@ -54,6 +54,7 @@ const sourceSchema = z.object({
   clientId: z.string().trim().min(1),
   clientSecret: z.string().min(1).optional(),
   clientSecretCommand: z.array(z.string().min(1)).min(1).optional(),
+  interfaceSecretCommand: z.array(z.string().min(1)).min(1).optional(),
   readTimeoutMs: z.number().int().positive().default(10_000),
   mutationTimeoutMs: z.number().int().positive().default(30_000),
   processTimeoutMs: z.number().int().positive().default(120_000),
@@ -63,8 +64,9 @@ const sourceSchema = z.object({
   personalContexts: personalContextsSchema.default([]),
 }).refine((value) => value.clientSecret || value.clientSecretCommand, 'Client-Secret oder Secret-Command fehlt.');
 
-export type StudioMcpConfig = Omit<z.infer<typeof sourceSchema>, 'clientSecret' | 'clientSecretCommand' | 'personalContexts'> & {
+export type StudioMcpConfig = Omit<z.infer<typeof sourceSchema>, 'clientSecret' | 'clientSecretCommand' | 'interfaceSecretCommand' | 'personalContexts'> & {
   readonly clientSecret: string;
+  readonly interfaceSecretCommand?: readonly string[];
   readonly personalContexts?: readonly PersonalMcpContext[];
 };
 
@@ -81,6 +83,7 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
     clientId: env.SVA_STUDIO_MCP_CLIENT_ID ?? 'sva-studio-mcp',
     clientSecret: env.SVA_STUDIO_MCP_CLIENT_SECRET,
     clientSecretCommand: parseCommand(env.SVA_STUDIO_MCP_CLIENT_SECRET_COMMAND),
+    interfaceSecretCommand: parseCommand(env.SVA_STUDIO_MCP_INTERFACE_SECRET_COMMAND),
     readTimeoutMs: env.SVA_STUDIO_MCP_READ_TIMEOUT_MS
       ? Number(env.SVA_STUDIO_MCP_READ_TIMEOUT_MS)
       : undefined,
@@ -121,6 +124,46 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
     diagnosisTimeoutMs: source.diagnosisTimeoutMs,
     caFilePath: source.caFilePath,
     clientSecret,
+    interfaceSecretCommand: source.interfaceSecretCommand,
     personalContexts: source.personalContexts,
   };
+};
+
+export const resolveInterfaceSecret = async (
+  config: StudioMcpConfig,
+  reference: Readonly<{
+    contextId: string;
+    interfaceType: string;
+    interfaceId?: string;
+    field: string;
+    secretRef: string;
+  }>
+): Promise<string> => {
+  const [executable, ...args] = config.interfaceSecretCommand ?? [];
+  if (!executable) throw new Error('interface_secret_resolver_not_configured');
+  if (!args.some((argument) => argument.includes('{secretRef}'))) {
+    throw new Error('interface_secret_reference_placeholder_missing');
+  }
+  const values: Readonly<Record<string, string>> = {
+    contextId: reference.contextId,
+    interfaceType: reference.interfaceType,
+    interfaceId: reference.interfaceId ?? 'new',
+    field: reference.field,
+    secretRef: reference.secretRef,
+  };
+  const resolvedArgs = args.map((argument) =>
+    argument.replace(/\{(contextId|interfaceType|interfaceId|field|secretRef)\}/gu, (_match, key: string) => values[key] ?? '')
+  );
+  try {
+    const { stdout } = await execFileAsync(executable, resolvedArgs, {
+      encoding: 'utf8', timeout: 10_000, maxBuffer: 16_384,
+    });
+    const secret = stdout.endsWith('\r\n') ? stdout.slice(0, -2)
+      : stdout.endsWith('\n') ? stdout.slice(0, -1) : stdout;
+    if (!secret) throw new Error('interface_secret_resolver_empty');
+    return secret;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('interface_secret_resolver_')) throw error;
+    throw Object.assign(new Error('interface_secret_resolution_failed'), { cause: error });
+  }
 };

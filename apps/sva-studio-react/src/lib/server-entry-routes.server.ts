@@ -86,6 +86,12 @@ export const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
     ),
   },
   {
+    label: 'external interface administration',
+    getDispatcher: lazyDispatcher(() =>
+      import('./interfaces-api-http.server').then((module) => module.dispatchInterfacesApiRequest)
+    ),
+  },
+  {
     label: 'user documentation',
     getDispatcher: lazyDispatcher(() =>
       import('./user-documentation-api.server').then(

@@ -71,49 +71,62 @@ export const projectStoredEntry = async (
   } as InstanceInterface;
 };
 
-export const listInstanceInterfaces = async (): Promise<ListInstanceInterfacesResponse> => {
-  const dependencies = await loadInterfacesRequestDependencies();
+export const listInstanceInterfaces = async (
+  request?: Request,
+  options: Readonly<{ includeMainserver?: boolean }> = {}
+): Promise<ListInstanceInterfacesResponse> => {
+  const dependencies = await loadInterfacesRequestDependencies(request);
 
   const result = await runWithAuthenticatedInterfacesUser({
     request: dependencies.request,
     fallbackMessage: 'Schnittstellen konnten nicht geladen werden.',
+    personalBearerRoute: { method: 'GET', path: '/api/v1/interfaces' },
     run: async (ctx) => {
       const authorizedInstanceId = await resolveAuthorizedInterfacesInstanceId(
         dependencies.logger,
         ctx,
         'list_interfaces'
       );
-      const overview = await (async () => {
-        try {
-          const { loadSvaMainserverInterfacesOverview } =
-            await import('@sva/sva-mainserver/server');
-          return await loadSvaMainserverInterfacesOverview(dependencies.request);
-        } catch (error) {
-          const message = readErrorMessage(
-            error,
-            'Schnittstellenstatus konnte nicht geladen werden.'
-          );
-          return {
-            instanceId: authorizedInstanceId,
-            config: null,
-            status: createErrorStatus('network_error', message),
-          } satisfies SvaMainserverInterfacesOverview;
-        }
-      })();
+      const overview =
+        options.includeMainserver === false
+          ? null
+          : await (async () => {
+              try {
+                const { loadSvaMainserverInterfacesOverview } =
+                  await import('@sva/sva-mainserver/server');
+                return await loadSvaMainserverInterfacesOverview(dependencies.request);
+              } catch (error) {
+                const message = readErrorMessage(
+                  error,
+                  'Schnittstellenstatus konnte nicht geladen werden.'
+                );
+                return {
+                  instanceId: authorizedInstanceId,
+                  config: null,
+                  status: createErrorStatus('network_error', message),
+                } satisfies SvaMainserverInterfacesOverview;
+              }
+            })();
 
-      const blockedOverview =
-        overview.status.errorCode === 'forbidden' ||
-        (overview.instanceId.length > 0 && overview.instanceId !== authorizedInstanceId);
+      const blockedOverview = Boolean(
+        overview &&
+        (overview.status.errorCode === 'forbidden' ||
+          (overview.instanceId.length > 0 && overview.instanceId !== authorizedInstanceId))
+      );
 
       const { listStoredInterfaces } = await import('./instance-interfaces-server.js');
       const stored = blockedOverview ? [] : await listStoredInterfaces(authorizedInstanceId);
       const projected = await Promise.all(
         stored.map((entry) => projectStoredEntry(authorizedInstanceId, entry))
       );
-      const availableTypes = await resolveAvailableInterfaceTypes(authorizedInstanceId);
+      const resolvedTypes = await resolveAvailableInterfaceTypes(authorizedInstanceId);
+      const availableTypes =
+        options.includeMainserver === false
+          ? resolvedTypes.filter((type) => type !== 'mainserver')
+          : resolvedTypes;
 
       const mainserverEntry: InstanceInterface | null =
-        !blockedOverview && overview.config
+        !blockedOverview && overview?.config
           ? ({
               id: `mainserver:${authorizedInstanceId}`,
               instanceId: authorizedInstanceId,

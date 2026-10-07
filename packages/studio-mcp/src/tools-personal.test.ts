@@ -22,10 +22,17 @@ describe('personal MCP API request boundary', () => {
     expect(validatePersonalRequest({ ...valid, path: 'api/v1/iam/users/../users' })).toBe('personal_route_not_allowed');
     expect(validatePersonalRequest({ ...valid, path: 'api/v1/iam/organizations/org-1/provision-mainserver' })).toBe('personal_route_not_allowed');
     expect(validatePersonalRequest({ ...valid, path: 'api/v1/iam/contents' })).toBe('personal_route_not_allowed');
+    expect(validatePersonalRequest({ ...valid, path: 'api/v1/interfaces' })).toBeUndefined();
+    expect(validatePersonalRequest({ ...valid, method: 'POST', path: 'api/v1/interfaces', body: { draft: {} } })).toBeUndefined();
+    expect(validatePersonalRequest({ ...valid, method: 'DELETE', path: 'api/v1/interfaces/s3-1' })).toBeUndefined();
+    expect(validatePersonalRequest({ ...valid, method: 'PATCH', path: 'api/v1/interfaces/s3-1', body: {} })).toBe('personal_route_not_allowed');
   });
 
   it('keeps methods, body and collection pagination bounded', () => {
     expect(validatePersonalRequest({ ...valid, method: 'GET', body: {} })).toBe('get_body_not_allowed');
+    expect(validatePersonalRequest({ ...valid, method: 'DELETE', path: 'api/v1/interfaces/s3-1', body: {} })).toBe('delete_body_not_allowed');
+    expect(validatePersonalRequest({ ...valid, path: 'api/v1/interfaces', query: { pageSize: '10' } })).toBe('interface_query_not_supported');
+    expect(validatePersonalRequest({ ...valid, method: 'POST', path: 'api/v1/interfaces' })).toBe('mutation_body_required');
     expect(validatePersonalRequest({ ...valid, method: 'POST' })).toBe('post_contract_invalid');
     expect(validatePersonalRequest({ ...valid, method: 'POST', body: {}, query: { search: 'provider' } })).toBe('post_contract_invalid');
     expect(validatePersonalRequest({ ...valid, method: 'PATCH', path: 'api/v1/iam/users/user-1' })).toBe('mutation_body_required');

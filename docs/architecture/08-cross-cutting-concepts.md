@@ -780,6 +780,12 @@ Referenzen:
 - PostgreSQL-Logs erlauben nur SQLSTATE, Tabelle, Spalte und Constraint. Rohe Meldungen, Details, Hints, Queries, Parameter, Stacktraces und Providerantworten bleiben ebenso ausgeschlossen wie E-Mail, Passwort, Token und Connection-String.
 - Audit-Ereignisse bleiben fachlich und append-only; technische Diagnosedetails werden nicht in den Audit-Pfad verschoben. Der lokale stdio-MCP hält `stdout` für das MCP-Protokoll frei.
 
+### Persönliche MCP-Schnittstellenverwaltung
+
+- Persönliche Schnittstellenaufrufe verwenden ausschließlich die explizit gewählte Tenant-API und den bestehenden `integration.manage`-Autorisierungs- und Instanzkontext. Die Listenprojektion enthält keine Mainserver-Übersicht; pluginverwaltete Interfaces bleiben außerhalb allgemeiner Tenant-Verwaltung.
+- Schnittstellen-Secrets werden im MCP-Argument ausschließlich als lokale `secretRef` übergeben und pro Aufruf durch einen konfigurierten lokalen Resolver aufgelöst. Der Klartext wird nur im API-Request an den bestehenden verschlüsselnden Interface-Pfad weitergegeben und weder in MCP-Ausgaben noch Fehlern oder Logs ausgegeben.
+- API-Fehler und Interface-Healthchecks geben keine rohen Verbindungsfehler oder Secretwerte in Logs zurück. Persönliche HTTP-Antworten verwenden die bestehende secretfreie Interface-Projektion ohne freie Healthcheck-Statusmeldungen.
+
 ## Backup-Sicherheitsvertrag
 
 Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Nicht-sensitive Werte stammen ausschließlich aus dem getrackten Profil; `secret-value`- und `secret-reference`-Werte stehen im geschützten `PROMOTE_CONFIG_OVERRIDES`. Für Staging werden die separaten GitHub-Environment-Secrets `FALLOW_BROWSER_INGEST_KEY` und `BEACON_API_KEY` vor der Validierung in das autoritative Bundle aufgenommen; in Dev und Production sind Beacon-Schlüssel verboten. Fehlende, unbekannte oder falsch klassifizierte Schlüssel stoppen vor jeder Remote-Mutation. `Promote` liest `APP_CONFIG` nicht mehr. Das umgebungsspezifische `REDIS_SNAPSHOT_HMAC_SECRET` wird als eigenständiges geschütztes GitHub-Environment-Secret geführt, vor jeder Mutation validiert und nur beim Stack-Render an die App gebunden. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.

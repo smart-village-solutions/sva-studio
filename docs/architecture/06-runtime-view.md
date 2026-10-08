@@ -458,14 +458,16 @@ Fehlerpfad:
 - Bearer-Tokens an nicht freigegebenen Routen oder mit falschem Realm, Client, Audience, Signatur oder Ablauf werden fail-closed abgewiesen, auch wenn ein gültiges Browser-Cookie mitgesendet wird.
 - Eine nicht erreichbare JWKS-Quelle liefert `identity_provider_unavailable`; Tokens und Claims werden nicht protokolliert.
 
-### Szenario 2c: Persönlicher MCP-Kontext und erlaubter User-API-Aufruf
+### Szenario 2c: Persönlicher MCP-Kontext und administrative Einzelaktionen
 
 1. Der lokale Operator wählt eine vorkonfigurierte Plattform- oder Tenant-Identität explizit über `contextId`; die Konfiguration bindet Studio-Ursprung, Realm-Issuer und Client-ID.
 2. `studio_personal_login` entdeckt den OIDC-Provider mit HTTPS, begrenzt Discovery-Endpunkte auf denselben Origin und bindet State, Nonce sowie PKCE-Verifier an diesen Loginversuch. Der Browser verwendet den festen Loopback-Callback `127.0.0.1:8765`; ein nicht verfügbarer Port lässt den Login fehlschlagen.
-3. Nach erfolgreichem Callback werden Access- und optional Refresh-Token ausschließlich im Speicher des MCP-Prozesses gehalten. API-Aufrufe wählen denselben Kontext ausdrücklich erneut; nur `GET`/`POST api/v1/iam/users` sind freigegeben, Redirects werden abgewiesen und Service-Tokens werden nicht als Fallback verwendet.
+3. Nach erfolgreichem Callback werden Access- und optional Refresh-Token ausschließlich im Speicher des MCP-Prozesses gehalten. API-Aufrufe wählen denselben Kontext ausdrücklich erneut. Die Routen-Allowlist begrenzt die Einzelaktionen auf Accounts, Rollen, Gruppen, Organisationen, deren freigegebene Zuordnungen und tenantverwaltete Schnittstellen. Redirects werden abgewiesen und Service-Tokens werden nicht als Fallback verwendet. Der bestehende serverseitige Autorisierungs- und Schutzpfad bleibt maßgeblich.
 4. Logout, Login-Fehler und Timeout entfernen den jeweiligen Kontextzustand. Logout und Prozessende widerrufen das Refresh-Token nach Möglichkeit; Fehlerausgaben enthalten weder Callback-URL noch Token.
 
-Weitere Routen, persönliche Client-Provisionierung und Live-Abnahme bleiben gesonderte Nachweise.
+Secrettragende Schnittstellenfelder werden vor dem HTTPS-Aufruf ausschließlich aus lokalen `secretRef`-Referenzen aufgelöst. Mainserver-Konfiguration und ausdrückliche Organisations-Provisionierung verwenden ihre bestehenden Browserverträge. Die konkrete Routen- und Übergabefolge steht in der [MCP-Betriebsanleitung](../operations/studio-instance-mcp-betrieb.md#persönliche-plattform--und-tenant-kontexte).
+
+Eine technische Aktivierung gilt noch nicht als abgeschlossene Kundeneinrichtung: Auf den erfolgreichen persönlichen Provider-Zugriff folgen Ressourcen-Readbacks und gegebenenfalls Mainserver-Provisionierung. Die Kundenanlage mit `sendPasswordSetupEmail=false` liefert `not_requested`; erst danach wird die gesonderte Einladung ausgelöst. `sent`, Zustellung und erste Kundenanmeldung sind getrennte Nachweise.
 
 ### Szenario 2d: Root-Host-Instanzverwaltung
 

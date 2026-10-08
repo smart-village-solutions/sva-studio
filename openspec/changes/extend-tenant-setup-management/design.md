@@ -441,8 +441,7 @@ lokale Plan kann in diesem Zustand bereits vorhandene Artefakte als fehlend
 darstellen. `plan_source=local` und `worker_pending` müssen deshalb zusammen
 mit den Worker-Snapshots ausgewertet werden.
 
-Der kontrollierte Lauf `87212dba-d2f1-4cc5-b990-da6608f65d3b` nahm am
-7. Oktober 2026 um 21:18 UTC einen neuen Live-Plan auf und brach vor der
+Der kontrollierte Lauf `87212dba-d2f1-4cc5-b990-da6608f65d3b` nahm am 7. Oktober 2026 um 21:18 UTC einen neuen Live-Plan auf und brach vor der
 Keycloak-Mutation wegen des abweichenden bestätigten Plans ab. Nach erneutem
 Plan-Read war der Folgelauf `76e4e546-d31a-48ad-b659-7532b0bcff39` insgesamt
 `succeeded`. Der anschließende Rollenabgleich korrigierte eine Rolle;
@@ -486,3 +485,100 @@ gegen den konfigurierten Staging-Mainserver geprüft: OAuth, GraphQL-Probe
 und Provider-Identität jeweils HTTP 200. Dieser Zugangsnachweis ersetzt
 weder die tenantgebundene Konfiguration noch Organisations-Provisionierung.
 Alle Aufgaben unter Abschnitt 5 bleiben deshalb weiterhin offen.
+
+### Produktionsabnahme Abschnitt 5: Nachweise 2026-10-08
+
+Dieser Nachweis aktualisiert den historischen Zwischenstand vom 7. Oktober.
+Die Produktionsprüfung verwendet weiterhin ausschließlich die beiden eigens
+freigegebenen Testinstanzen. Secrets und Token sind kein Bestandteil des Nachweises.
+
+**Bereitgestellter Stand:** Commit `e9c5fe98cdf25f0b373fe1e4fdc63478ae73d5a1`,
+Studio-Image `sha256:36d0aae50b205428042910daf855d97219db975850b3587edf787a5787991eb8`.
+[Build einschließlich Dev](https://github.com/smart-village-solutions/sva-studio/actions/runs/37708182102),
+[Main-E2E](https://github.com/smart-village-solutions/sva-studio/actions/runs/37708181768),
+[Staging](https://github.com/smart-village-solutions/sva-studio/actions/runs/37710181178)
+und [Production](https://github.com/smart-village-solutions/sva-studio/actions/runs/37710572008)
+endeten erfolgreich. Der Digest wurde unabhängig am Produktionsdienst nachgelesen.
+Beide Tenant-Hosts bestanden TLS-Hostname-/Zertifikatsprüfung und `/health/live`.
+
+Die vorbereitenden Korrekturen sind gemergt: Host-/CSRF-Freigaben #1806/#1807,
+Gruppenmitgliedschafts-DELETE #1808, phasengerechter Promote-Doctor #1810/#1813
+und der getrennte Routing-Testnachweis #1812. Die fehlgeschlagenen früheren
+Promote-Versuche werden dadurch nicht als erfolgreiche Rollouts umgedeutet.
+
+| Nachweis                        | Ergebnis / Korrelation                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Technische Aktivierung          | Beide Instanzen `active`; spätere Registry-Readbacks `7ba5ca38-b033-4666-a8ae-438ac0eb4498` und `a2df12bb-80e4-4a8a-97fb-223aeb7984f0`                                                                                                                                                                         |
+| Persönlicher MCP-Zugang         | Echter Browser-PKCE-Callback und persönliche Rollen-Reads in beiden Realms; Requests `1e671152-e4d3-4402-b3da-2ebd41296267` und `1c4a8a9a-b6f2-4a6c-a700-e33ab086c613`; kein Ersatz durch ein Service-Token                                                                                                    |
+| Ohne Mainserver                 | `codex-mcp-test-prod` besitzt nur `media`; Organisation meldet `not_provisioned` / `integration_not_configured`; nach Organisationsanlage bestand weiterhin nur der Provider-Account, kein technischer Mainserver-Account                                                                                      |
+| Organisation, Rolle, Gruppe     | Anlage, Bearbeitung und Readbacks über persönlichen MCP; Organisation mit Kundenmitgliedschaft, Gruppe mit zugewiesener Rolle und Kundenmitgliedschaft; abschließende Reads `23073bb0-5bf2-40d2-9f5e-7ea4b1c24253`, `c0d76261-1f48-40c8-8d9c-74c72364ad90`, `4e391ca9-cbf9-4a1f-b84e-7ca8ae5c3a8e`             |
+| Gruppenmitgliedschaft entfernen | DELETE mit `keycloakSubject` erfolgreich (`2ea7f320-e123-4f90-814c-d0a320c19d75`), Readback `memberCount=0`, anschließend wieder zugeordnet und `memberCount=1` nachgelesen                                                                                                                                    |
+| Secrettragende Schnittstelle    | Karte über lokale `secretRef` angelegt, ohne Secret-Ausgabe gelesen, mit leerem Secret-Eingabefeld unter Erhalt des Secrets bearbeitet; Browser zeigt denselben Eintrag; Kartenstil HTTP 200, Style-Version 8. `unknown` bezeichnet hier keinen ausgeführten Geoapify-Healthcheck                              |
+| Schnittstelle löschen           | DELETE `22f75016-0051-4b3f-b071-4ab600cb5d36`, danach leere Liste (`6684246a-b1af-476a-a40c-f2e7cbfa81a7`); geprüfte Konfiguration anschließend wieder angelegt (`6fea99cb-1c4b-404d-83b4-6889bfb7cdb0`)                                                                                                       |
+| Zulässige Einzelverwaltung      | Separate Rolle, Gruppe und Organisation erfolgreich angelegt und gelöscht. Separates unprivilegiertes Testkonto deaktiviert (`07da4ec3-8766-431d-8244-d8cb3a511fad`), `inactive` nachgelesen, gelöscht (`2bdbc781-96cd-42bc-aa41-3bd613fde35d`), anschließend GET 404 (`8fb13fd7-b935-46e2-9141-ad078cffb203`) |
+| Löschschutz                     | Eigener Provider: HTTP 409 `self_protection` (`1b060f04-ab40-4cba-975a-ed760f07fb29`); weiterhin privilegierter Kunden-Admin: HTTP 409 `system_admin_delete_protection` (`e3a0057f-c0d2-44a5-af04-e16936b15913`)                                                                                               |
+| Kunden-Admins ohne Versand      | Beide Kunden-Accounts mit `system_admin` und `sendPasswordSetupEmail=false`: jeweils `not_requested`; Requests `7b719f1f-20eb-4ac5-ad24-df01f3a98396` und `175fc5bd-682c-48e7-855d-90e86faa8fe9`                                                                                                               |
+
+**Mainserver-Fall:** `codex-mcp-mainserver-prod` besitzt `categories`, `media`
+und `news`. Die zunächst lesend getesteten Zugangsdaten für `de-musterhausen`
+waren kein geeigneter Provisionierungsnachweis: Der zugehörige Staging-Mainserver
+adressiert den Realm `de-musterhausen`, während der neue technische Account im
+Realm `codex-mcp-mainserver-prod` liegt. Der erste Versuch endete als `failed`
+mit `keycloak_unavailable` (Studio-Request
+`5495e32f-69dc-469e-afd3-22550e0618c5`; korrelierter Upstream-Request
+`4922ccf0-e67a-492f-9e5e-5ec9fae3e2d0`). Die Upstream-Logs zeigten außerdem
+eine fehlgeschlagene Keycloak-Tokenverarbeitung; der allgemeine Fehlercode
+allein beweist keinen Keycloak-Ausfall.
+
+Für den isolierten Test wurde deshalb auf dem bestehenden Staging-Mainserver
+eine eigene Kommune `codex-mcp-mainserver-prod` über dessen bestehendes
+Municipality-Modell mit seinen regulären Anlage-Callbacks eingerichtet.
+Ihr Keycloak-Zugang besitzt ausschließlich `manage-users` für diesen Realm;
+ein Kontrollzugriff auf den anderen Test-Realm wurde abgewiesen. Der bisherige
+Mainserver-Tenant `de-musterhausen` wurde nicht umkonfiguriert.
+Der Studio-Testprovider erhielt die Credentials seiner eigenen Testkommune.
+Der bestehende Schnittstellendialog verwendet nun
+`https://codex-mcp-mainserver-prod.staging-server.smart-village.app/graphql`
+und die zugehörige `/oauth/token`-URL; OAuth, GraphQL und Browserstatus
+bestätigen die Verbindung. Dies ist eine Studio-Produktionsabnahme mit einem
+isolierten Staging-Mainserver als Testgegenstelle.
+
+Die ausdrückliche Browseraktion zur Wiederaufnahme verwendete dieselbe
+Organisation und denselben technischen Account. Der anschließende persönliche
+MCP-Read bestätigte `ready`, `phase=completed`, `attemptCount=2`
+(`a24154b2-3e7e-4f90-84ce-90ef07465a42`). Der technische Account ist
+`isTechnicalAccount=true`, besitzt keine Studio-Rollen und in Keycloak nur die
+Default-Realm-Rolle. Sein eigener OAuth-Aufruf und `/data_provider.json`
+lieferten jeweils HTTP 200 und die Provider-ID `586`; `instanceId` stimmt
+mit dem Test-Realm überein. Der Kunden-Admin wurde anschließend dieser
+Organisation zugeordnet; Readback `d0df5632-972c-44a0-be9b-5e55ba85ad83`
+bestätigt eine Mitgliedschaft und weiterhin `ready`.
+
+**Einladung und offene Übergabe:** Erst nach den Einrichtungsprüfungen des
+Tenants ohne Mainserver wurde sein gesonderter Einladungsendpunkt aufgerufen.
+Request `8e6a4bc4-07e8-48b0-b76a-a251b2342185` bestätigte `status=sent`.
+Im angebundenen Operator-Postfach war die Einladung bei der Prüfung nicht
+vorhanden. Zustellung und erste Kundenanmeldung sind daher noch nicht
+nachgewiesen; Task 5.3 und die Gesamtübergabe bleiben offen. Im zweiten
+Test-Realm wurde keine Einladung ausgelöst; dessen SMTP-Versand ist nicht
+Teil dieses Einladungsnachweises.
+
+Die beiden geprüften Provider-Freigaben und die fachlichen Abnahmeobjekte
+bleiben für die offene Übergabe bestehen. Nur die eigens für Löschprüfungen
+angelegten Objekte wurden entfernt. Die Berechtigungen der Kunden-Admins
+erteilen keine persönliche MCP-Freigabe. Die Betriebsfolge steht in
+`docs/operations/studio-instance-mcp-betrieb.md`, der Laufzeitvertrag in
+`docs/architecture/06-runtime-view.md`, Szenario 2c.
+
+Der Versuch, eine zweite Kartenkonfiguration anzulegen, wurde ohne Mutation
+abgewiesen, jedoch mit HTTP 500 `invalid_config` statt eines passenden
+Validierungsstatus. Dieser begrenzte Fehler im HTTP-Mapping wird separat in
+[#1815](https://github.com/smart-village-solutions/sva-studio/issues/1815)
+verfolgt; der Singleton-Schutz sowie Bearbeiten, Löschen und Wiederanlage
+wurden erfolgreich geprüft.
+
+Für die reine Dokumentationsaktualisierung sind `pnpm check:file-placement`,
+`pnpm check:docs` und `pnpm exec openspec validate extend-tenant-setup-management --strict`
+erfolgreich. Der unabhängige Dokumentations-/Operationsreview fand keine
+Blocker. Die Live-Nachweise beziehen sich auf den oben genannten Image-Digest;
+eine neue Produktimplementierung ist nicht Bestandteil dieses Abschluss-PRs.

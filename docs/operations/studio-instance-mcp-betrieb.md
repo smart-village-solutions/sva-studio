@@ -88,11 +88,33 @@ Zusätzlich zum unveränderten servicegebundenen Instanz-MCP kann `SVA_STUDIO_MC
 
 `studio_personal_contexts` zeigt die Auswahl, `studio_personal_login` startet für genau einen Kontext Authorization Code mit PKCE im lokalen Standardbrowser, und `studio_personal_logout` löscht dessen In-Memory-Anmeldung. Der lokale Callback ist fest an `http://127.0.0.1:8765/callback` gebunden, wie im Provisioning-Vertrag des persönlichen Clients. Nur ein MCP-Prozess kann diesen Port gleichzeitig besitzen; ein belegter Port beendet den Login geschlossen. Eine parallele zweite Anmeldung desselben Kontexts ist gesperrt, andere Kontexte bleiben unabhängig. State, Nonce und PKCE-Verifier gelten nur für den konkreten Loginversuch. Tokens verbleiben im Prozessspeicher, werden vor Ablauf erneuert und bei Logout beziehungsweise Prozessende nach Möglichkeit widerrufen; es gibt keine persistente Credential-Ablage.
 
-`studio_personal_users_api` lässt für den gewählten Kontext `GET` und `POST api/v1/iam/users`, `GET` und `POST api/v1/interfaces` sowie `DELETE api/v1/interfaces/{interfaceId}` zu. Der Interface-Read liefert nur tenantverwaltete Schnittstellen; Mainserver-Übersichten und pluginverwaltete Einträge sind ausgenommen. Pluginverwaltete Interfaces können über diesen allgemeinen Vertrag weder angelegt noch geändert oder gelöscht werden. Die HTTP-Antworten enthalten keine freien Healthcheck-Statusmeldungen, da diese Providerdetails enthalten können. Der Server erzwingt weiterhin `integration.manage`, Tenant-Bindung, bestehende Validierung, Verschlüsselung und Healthchecks.
+`studio_personal_users_api` verwendet relative Pfade ohne führenden Schrägstrich. Es erlaubt die freigegebenen Einzelaktionen für Accounts, Rollen, Gruppen, Organisationen und Schnittstellen:
+
+| Pfad unter `api/v1/` | Methoden / Aktionen                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `iam/users`          | `GET`, `POST`; am Account `GET`, `PATCH`, `DELETE`; `POST` auf `deactivate` und `send-password-setup-email`                  |
+| `iam/roles`          | `GET`, `POST`; an der Rolle `PATCH`, `DELETE`                                                                                |
+| `iam/groups`         | `GET`, `POST`; an der Gruppe `GET`, `PATCH`, `DELETE`; Rollen- und Mitgliedschaftszuordnung über die bestehenden Unterrouten |
+| `iam/organizations`  | `GET`, `POST`; an der Organisation `GET`, `PATCH`, `DELETE`; Mitgliedschaften anlegen, ändern und entfernen                  |
+| `interfaces`         | `GET`, `POST` mit `draft` und optionalem `existingId`; `DELETE interfaces/{interfaceId}`                                     |
+
+Beim Entfernen einer Gruppenmitgliedschaft benötigt `DELETE iam/groups/{groupId}/memberships` den JSON-Body `{ "keycloakSubject": "..." }`. Die übrigen freigegebenen DELETE-Aufrufe tragen keinen Body. Bulk-, Sync- und Mainserver-Provisionierungsaktionen sind nicht Teil dieses persönlichen MCP-Vertrags. Der Server prüft weiterhin die jeweilige Action, Tenant-Bindung, Lifecycle- und Löschschutzregeln sowie gegebenenfalls Fresh-Reauth.
+
+Der Interface-Read liefert nur tenantverwaltete Schnittstellen; Mainserver-Übersichten und pluginverwaltete Einträge sind ausgenommen. Pluginverwaltete Interfaces können über diesen allgemeinen Vertrag weder angelegt noch geändert oder gelöscht werden. Die HTTP-Antworten enthalten keine freien Healthcheck-Statusmeldungen, da diese Providerdetails enthalten können. Der Server erzwingt weiterhin `integration.manage`, bestehende Validierung, Verschlüsselung und Healthchecks. Pro Tenant ist nur eine Karten-/Geocoding-Konfiguration zulässig; Änderungen verwenden deren `existingId`. Ein eigener Kartenstil ohne aktivierte Geocoding-Funktionen besitzt keinen Geoapify-Verbindungsnachweis; `unknown` ist dabei kein erfolgreich ausgeführter Provider-Healthcheck.
 
 Beim Entfernen einer Gruppenmitgliedschaft über `DELETE api/v1/iam/groups/{groupId}/memberships` ist ein JSON-Body mit `keycloakSubject` erforderlich. Nur diese DELETE-Route nimmt einen Body an; andere DELETE-Aufrufe bleiben ohne Body.
 
 Es gibt keinen Hostwechsel über Tool-Eingaben, keine Weiterleitung an andere Hosts, keine automatische Wiederholung von Mutationen und keinen Rückfall auf das Service-Credential. Nach einem unklaren Mutations-Ergebnis muss zuerst der autorisierte Zustand gelesen werden. Diese lokale Fähigkeit ersetzt weder die Realm-Einrichtung noch den Live-Nachweis; persönliche Keycloak-Clients bleiben bis zur erfolgreichen API-/MCP-Abnahme inaktiv.
+
+### Einrichtung und Übergabe abnehmen
+
+1. Technische Instanzaktivierung, HTTPS-Host und persönlichen PKCE-/API-Zugriff getrennt nachweisen. Dauerhafte Provider-Freigaben werden erst nach dem erfolgreichen Zugriffsnachweis beibehalten; Kunden-Admins erhalten dadurch keine MCP-Freigabe.
+2. Beauftragte Schnittstellen, Organisationen, Rollen, Gruppen und Accounts anlegen und nachlesen. Ohne Mainserver bleiben abhängige Module aus; die Organisation meldet `integration_not_configured`, ohne einen technischen Mainserver-Account anzulegen.
+3. Bei Mainserver-Anbindung dessen eigenen Schnittstellendialog verwenden. Studio-Realm und Mainserver-Kommune müssen dieselbe Identität adressieren: Eine erfolgreiche OAuth-/GraphQL-Probe mit Zugangsdaten einer anderen Kommune genügt nicht. Organisations-Provisionierung bis `ready` und den technischen Zugang bis zur Provider-Identität prüfen. Nach einem Fehler zuerst Status und korrelierte Logs lesen; die vorhandene Browseraktion kann die Provisionierung ausdrücklich wieder aufnehmen.
+4. Den ersten Kunden-Admin mit `sendPasswordSetupEmail=false` und `invitationPurpose=studio` anlegen und `not_requested` prüfen. Erst nach den Einrichtungsprüfungen `POST iam/users/{userId}/send-password-setup-email` ausführen.
+5. Die Antwort `sent`, den tatsächlichen Maileingang und die erste Kundenanmeldung getrennt dokumentieren. Ohne Zustellungs-/Anmeldenachweis bleibt die Übergabe offen. Selbstlöschung, geschützte Admin-Löschung und zulässige Deaktivierung/Löschung werden mit isolierten Testobjekten geprüft.
+
+Die Produktionsabnahme des Changes ist im [Abnahmenachweis](../../openspec/changes/extend-tenant-setup-management/design.md#produktionsabnahme-abschnitt-5-nachweise-2026-10-08) festgehalten. Der reguläre Rollout folgt weiterhin ausschließlich dem [Studio-Rollout-Prozess](../guides/studio-rollout-process.md).
 
 ## Risikostufen
 

@@ -152,6 +152,10 @@ Für `studio_instance_secret_rotate` muss zusätzlich der unmittelbar zuvor mit 
 
 ### Fehlerhaften Tenant reparieren
 
+Bei `realmMode="existing"` kann der Realm bereits vorhanden sein, während seine Studio-Clients noch fehlen. Für diesen Bootstrap wird der Plan über den Provisioner aus dem aktuellen Keycloak-Zustand gelesen. Ein nachweislich fehlender Login-Client benötigt vor der Anlage kein Registry-Secret: Der Worker legt die Clients an, liest ihre Secrets anschließend intern aus und speichert sie verschlüsselt in der Registry. Ein Lauf gilt erst nach erfolgreicher Secret-Übernahme als abgeschlossen; MCP-Ausgaben enthalten keine Geheimwerte.
+
+Existiert der Login-Client bereits und fehlt seine lesbare Registry-Credential, bleibt die reguläre Provisionierung blockiert. Dafür ist der bestehende kontrollierte Credential-Recovery-Pfad erforderlich. Dasselbe gilt nach einem fehlgeschlagenen Secret-Sync, wenn die Clients bereits angelegt wurden. Ein fehlgeschlagener Lauf wird mit einem neu gelesenen Plan und einer neuen Idempotenz-ID erneut gestartet; sein alter Fingerprint wird nicht wiederverwendet.
+
 1. Mit `studio_instance_diagnose`, `studio_instance_keycloak_status` und `studio_instance_keycloak_preflight` die aktuelle Evidenz lesen.
 2. Bei Rollen- oder Zugriffsproblemen `studio_instance_iam_roles_reconcile` und anschließend `studio_instance_tenant_iam_access_probe` ausführen.
 3. Bei Keycloak-Drift `studio_instance_process` im Modus `repair` verwenden; laufende oder fehlgeschlagene Runs mit `studio_instance_provisioning_run_get` verfolgen.

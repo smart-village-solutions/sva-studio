@@ -8,8 +8,33 @@ import {
   toOverallPreflightStatus,
 } from './provisioning-auth-evaluation.js';
 import { buildExpectedClientConfig } from './provisioning-auth-utils.js';
+import { buildMissingRealmReadState } from './provisioning-auth-read-state.js';
 
 describe('provisioning-auth-evaluation', () => {
+  it.each([
+    { clientExists: false, configured: false, expected: 'warning', generated: true },
+    { clientExists: true, configured: false, expected: 'blocked', generated: false },
+    { clientExists: false, configured: true, expected: 'blocked', generated: false },
+  ])(
+    'gates an existing realm by login-client presence and readable registry credentials: %j',
+    ({ clientExists, configured, expected, generated }) => {
+      const state = {
+        ...buildMissingRealmReadState({ primaryHostname: 'tenant.example.test' }),
+        realm: { realm: 'tenant' },
+        clientRepresentation: clientExists ? { id: 'existing-login-client' } : null,
+      };
+      const checks = buildPreflightChecks({
+        realmMode: 'existing',
+        authClientSecretConfigured: configured,
+        state,
+      });
+      expect(checks.find((check) => check.checkKey === 'tenant_secret')).toMatchObject({
+        status: expected,
+        details: { generatedDuringProvisioning: generated, readable: false },
+      });
+    }
+  );
+
   it('builds missing realm status for tenant and global secret sources', () => {
     const tenantSecretStatus = buildMissingRealmStatus(true, 'tenant-secret');
     const globalSecretStatus = buildMissingRealmStatus(false, undefined);

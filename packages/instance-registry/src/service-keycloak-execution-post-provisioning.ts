@@ -31,6 +31,7 @@ const syncClientSecretAfterProvisioning = async (
   }
   await syncProvisionedClientSecretToRegistry(deps, {
     loaded,
+    requireProvisionedSecrets: run.intent === 'provision' && !loaded.authClientSecret,
     requestId: run.requestId,
     actorId: run.actorId,
   });

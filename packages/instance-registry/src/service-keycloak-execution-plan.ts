@@ -133,10 +133,22 @@ export const validateWorkerSnapshot = async (
 
   const rotatingMissingTenantSecret =
     run.intent === 'rotate_client_secret' && !loaded.authClientSecret;
+  const bootstrappingMissingLoginClient =
+    run.intent === 'provision' &&
+    plan.steps?.some(
+      (step) => step.stepKey === 'client' && step.action === 'create' && step.status === 'ready'
+    ) &&
+    preflight.checks.some(
+      (check) =>
+        check.checkKey === 'tenant_secret' &&
+        check.status === 'warning' &&
+        check.details.generatedDuringProvisioning === true
+    );
   if (
     run.mode === 'existing' &&
     run.intent !== 'provision_admin_client' &&
     !rotatingMissingTenantSecret &&
+    !bootstrappingMissingLoginClient &&
     !loaded.authClientSecret
   ) {
     throw new Error('tenant_auth_client_secret_missing');

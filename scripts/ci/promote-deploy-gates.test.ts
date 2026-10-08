@@ -25,6 +25,18 @@ afterEach(() => {
 describe('promote-deploy-gates', () => {
   it('keeps target validation before deployment and mandatory live parity after deployment', () => {
     const workflow = readFileSync(new URL('../../.github/workflows/promote.yml', import.meta.url), 'utf8');
+    const configStart = workflow.indexOf('- name: build authoritative remote config');
+    const postconditionsStart = workflow.indexOf('- name: run one-shot postconditions');
+    const deployStart = workflow.indexOf('- name: deploy\n');
+    expect(configStart).toBeGreaterThanOrEqual(0);
+    expect(postconditionsStart).toBeGreaterThan(configStart);
+    expect(deployStart).toBeGreaterThan(postconditionsStart);
+    const configBuild = workflow.slice(configStart, workflow.indexOf('- name: verify target config revision label contract'));
+    expect(configBuild).toContain('set -euo pipefail');
+    expect(configBuild).toContain('build-remote-app-config.ts');
+    expect(configBuild).toContain('--output "${RUNNER_TEMP}/promote-app-config.vars"');
+    expect(configBuild).not.toContain('continue-on-error');
+    expect(configBuild).not.toContain('if:');
     const postconditions = workflow.slice(
       workflow.indexOf('- name: run one-shot postconditions'), workflow.indexOf('- name: deploy\n')
     );

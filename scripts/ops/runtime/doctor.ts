@@ -193,7 +193,7 @@ const doctorRuntime = async (
   const oidcCompatibility: OidcDoctorCompatibilityOptions = { allowImplicitQueryResponseMode: isPredeploy };
   if (deps.isRemoteRuntimeProfile(runtimeProfile) && !isPredeploy) {
     checks.push(await deps.buildLiveRuntimeEnvCheck(runtimeProfile, env));
-  } else {
+  } else if (!isPredeploy) {
     addRuntimeEnvCheck(deps, checks, runtimeProfile, env, 'Runtime-Profil ist nicht vollstaendig konfiguriert.');
   }
   checks.push(deps.buildLocalProvisioningWorkerCheck(runtimeProfile, deps.readLocalWorkerState(deps.localWorkerStateFile)));

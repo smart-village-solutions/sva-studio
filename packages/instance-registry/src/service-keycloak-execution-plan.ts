@@ -8,7 +8,7 @@ import {
   loadInstanceWithSecret,
   loadKeycloakSnapshotSecretVersions,
 } from './service-keycloak-secrets.js';
-import type { KeycloakTenantPlan } from './keycloak-types.js';
+import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
 import {
   annotateInstanceRegistryError,
   buildKeycloakPlanComparisonDiagnostics,
@@ -98,6 +98,24 @@ export const appendPlanSnapshot = async (
   return plan;
 };
 
+const isMissingLoginClientBootstrap = (
+  intent: InstanceKeycloakProvisioningRun['intent'],
+  plan: KeycloakTenantPlan,
+  preflight: KeycloakTenantPreflight
+): boolean =>
+  intent === 'provision' &&
+  Boolean(
+    plan.steps?.some(
+      (step) => step.stepKey === 'client' && step.action === 'create' && step.status === 'ready'
+    )
+  ) &&
+  preflight.checks.some(
+    (check) =>
+      check.checkKey === 'tenant_secret' &&
+      check.status === 'warning' &&
+      check.details.generatedDuringProvisioning === true
+  );
+
 export const validateWorkerSnapshot = async (
   deps: InstanceRegistryServiceDeps,
   run: InstanceKeycloakProvisioningRun,
@@ -133,10 +151,16 @@ export const validateWorkerSnapshot = async (
 
   const rotatingMissingTenantSecret =
     run.intent === 'rotate_client_secret' && !loaded.authClientSecret;
+  const bootstrappingMissingLoginClient = isMissingLoginClientBootstrap(
+    run.intent,
+    plan,
+    preflight
+  );
   if (
     run.mode === 'existing' &&
     run.intent !== 'provision_admin_client' &&
     !rotatingMissingTenantSecret &&
+    !bootstrappingMissingLoginClient &&
     !loaded.authClientSecret
   ) {
     throw new Error('tenant_auth_client_secret_missing');

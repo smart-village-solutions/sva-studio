@@ -92,10 +92,10 @@ const readProvisionedSecrets = async (
 const readStateForRegistrySync = async (
   deps: InstanceRegistryServiceDeps,
   input: Parameters<typeof buildProvisioningInput>[0],
-  realmMode: Parameters<typeof buildProvisioningInput>[0]['instance']['realmMode'],
+  requireProvisionedSecrets: boolean,
   tenantAdminClientConfigured: boolean
 ) => {
-  if (realmMode === 'new') {
+  if (requireProvisionedSecrets) {
     return readProvisionedSecrets(deps, input, tenantAdminClientConfigured);
   }
   if (!deps.readKeycloakClientSecretsViaProvisioner) {
@@ -105,12 +105,12 @@ const readStateForRegistrySync = async (
 };
 
 const assertProvisionedSecretsAvailable = (
-  realmMode: Parameters<typeof buildProvisioningInput>[0]['instance']['realmMode'],
+  requireProvisionedSecrets: boolean,
   provisionedSecret: string | null | undefined,
   provisionedTenantAdminSecret: string | null | undefined,
   tenantAdminClientConfigured: boolean
 ): void => {
-  if (realmMode !== 'new') {
+  if (!requireProvisionedSecrets) {
     return;
   }
   if (
@@ -191,22 +191,25 @@ export const syncProvisionedClientSecretToRegistry = async (
   deps: InstanceRegistryServiceDeps,
   input: {
     loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
+    requireProvisionedSecrets?: boolean;
     requestId?: string;
     actorId?: string;
   }
 ) => {
   const { loaded } = input;
   const tenantAdminClientConfigured = Boolean(loaded.instance.tenantAdminClient?.clientId);
+  const requireProvisionedSecrets =
+    loaded.instance.realmMode === 'new' || input.requireProvisionedSecrets === true;
   const state = await readStateForRegistrySync(
     deps,
     loaded,
-    loaded.instance.realmMode,
+    requireProvisionedSecrets,
     tenantAdminClientConfigured
   );
   const provisionedSecret = state.keycloakClientSecret;
   const provisionedTenantAdminSecret = state.tenantAdminClientSecret;
   assertProvisionedSecretsAvailable(
-    loaded.instance.realmMode,
+    requireProvisionedSecrets,
     provisionedSecret,
     provisionedTenantAdminSecret,
     tenantAdminClientConfigured

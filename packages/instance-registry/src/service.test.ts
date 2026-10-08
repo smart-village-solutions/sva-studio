@@ -4971,6 +4971,42 @@ describe('instance registry service facade', () => {
     await expect(createPlanKeycloakProvisioningHandler(deps)('demo')).resolves.toEqual(plan);
   });
 
+  it('confirms a live bootstrap plan for an existing realm without a registry secret', async () => {
+    const instance = {
+      ...baseInstance,
+      realmMode: 'existing' as const,
+      authClientSecretConfigured: false,
+    };
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => instance),
+      getAuthClientSecretCiphertext: vi.fn(async () => null),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+    });
+    const livePlan = {
+      contractVersion: '1.0' as const,
+      mode: 'existing' as const,
+      overallStatus: 'ready' as const,
+      fingerprint: 'live-bootstrap-fingerprint',
+      generatedAt: '2026-10-08T18:00:00Z',
+      driftSummary: 'Clients fehlen; bestehender Admin wird übernommen.',
+      steps: [],
+    };
+    const planKeycloakProvisioning = vi.fn(async () => livePlan);
+    await expect(
+      createPlanKeycloakProvisioningHandler(createDeps(repository, { planKeycloakProvisioning }))(
+        'demo'
+      )
+    ).resolves.toEqual(livePlan);
+    expect(planKeycloakProvisioning).toHaveBeenCalledOnce();
+    expect(planKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({
+        realmMode: 'existing',
+        authClientSecret: undefined,
+        realmBaselineApplicable: false,
+      })
+    );
+  });
+
   it('bypasses persisted plan snapshots for an explicit live postflight', async () => {
     const managedInstance = {
       ...baseInstance,

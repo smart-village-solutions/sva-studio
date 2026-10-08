@@ -7,8 +7,6 @@ import type {
 } from './provisioning-auth-types.js';
 import { readRealmOwnershipConflicts } from './provisioning-auth-ownership.js';
 
-const isTenantSecretRequired = (realmMode: InstanceRealmMode): boolean => realmMode === 'existing';
-
 const createPreflightCheck = (
   checkKey: string,
   title: string,
@@ -63,9 +61,15 @@ const buildTenantSecretCheck = (input: {
   realmMode: InstanceRealmMode;
   authClientSecretConfigured: boolean;
   authClientSecret?: string;
+  state?: KeycloakReadState;
 }): InstanceKeycloakPreflightCheck => {
   const hasReadableSecret = Boolean(input.authClientSecret);
-  const requiresTenantSecret = isTenantSecretRequired(input.realmMode);
+  const canCreateLoginClient =
+    !input.authClientSecretConfigured &&
+    Boolean(input.state?.realm) &&
+    input.state?.clientRepresentation === null;
+  const generatedDuringProvisioning = input.realmMode === 'new' || canCreateLoginClient;
+  const requiresTenantSecret = !generatedDuringProvisioning;
   const status = resolveTenantSecretStatus(
     input.authClientSecretConfigured,
     hasReadableSecret,
@@ -80,7 +84,7 @@ const buildTenantSecretCheck = (input: {
   return createPreflightCheck('tenant_secret', 'Tenant-Client-Secret', status, summary, {
     configured: input.authClientSecretConfigured,
     readable: hasReadableSecret,
-    generatedDuringProvisioning: input.realmMode === 'new',
+    generatedDuringProvisioning,
   });
 };
 
@@ -107,7 +111,7 @@ const resolveTenantSecretSummary = (
 
   return requiresTenantSecret
     ? 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
-    : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
+    : 'Das Tenant-Client-Secret wird beim Anlegen des Clients automatisch erzeugt und anschließend gespeichert.';
 };
 
 const buildTenantAdminCheck = (
@@ -208,6 +212,7 @@ export const buildPreflightChecks = (input: {
       realmMode: input.realmMode,
       authClientSecretConfigured: input.authClientSecretConfigured,
       authClientSecret: input.authClientSecret,
+      state: input.state,
     }),
     buildTenantAdminClientCheck({
       tenantAdminClient: input.tenantAdminClient,

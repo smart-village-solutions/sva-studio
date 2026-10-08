@@ -242,61 +242,67 @@ describe('service-keycloak-execution-shared', () => {
     expect(readKeycloakStateViaProvisioner).not.toHaveBeenCalled();
   });
 
-  it('rejects a new realm when Keycloak secrets cannot be read after provisioning', async () => {
-    const loaded = createLoaded();
-    loaded.instance.realmMode = 'new';
-    const repository = { updateInstanceKeycloakSecrets: vi.fn(async () => undefined) };
+  it.each(['new', 'existing'] as const)(
+    'rejects %s realm bootstrap when Keycloak secrets cannot be read after provisioning',
+    async (realmMode) => {
+      const loaded = createLoaded();
+      loaded.instance.realmMode = realmMode;
+      const repository = { updateInstanceKeycloakSecrets: vi.fn(async () => undefined) };
 
-    await expect(
-      syncProvisionedClientSecretToRegistry(
+      await expect(
+        syncProvisionedClientSecretToRegistry(
+          {
+            repository: repository as never,
+            readKeycloakClientSecretsViaProvisioner: vi.fn(async () => ({})),
+            waitForProvisionedSecretRead: vi.fn(async () => undefined),
+            protectSecret: vi.fn(),
+          } as never,
+          { loaded: loaded as never, requireProvisionedSecrets: true }
+        )
+      ).rejects.toThrow('tenant_client_secrets_missing_after_provisioning');
+
+      expect(repository.updateInstanceKeycloakSecrets).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['new', 'existing'] as const)(
+    'retries reading newly provisioned secrets in a %s realm before persisting them',
+    async (realmMode) => {
+      const loaded = createLoaded();
+      loaded.instance.realmMode = realmMode;
+      loaded.authClientSecret = undefined;
+      loaded.tenantAdminClientSecret = undefined;
+      const repository = {
+        updateInstanceKeycloakSecrets: vi.fn(async () => ({
+          ...createLoaded().instance,
+          realmMode,
+          updatedAt: '2026-01-01T00:00:01.000Z',
+        })),
+      };
+      const readKeycloakClientSecretsViaProvisioner = vi
+        .fn()
+        .mockResolvedValueOnce({})
+        .mockResolvedValue({
+          keycloakClientSecret: 'actual-auth-secret',
+          tenantAdminClientSecret: 'actual-tenant-admin-secret',
+        });
+      const waitForProvisionedSecretRead = vi.fn(async () => undefined);
+
+      await syncProvisionedClientSecretToRegistry(
         {
           repository: repository as never,
-          readKeycloakClientSecretsViaProvisioner: vi.fn(async () => ({})),
-          waitForProvisionedSecretRead: vi.fn(async () => undefined),
-          protectSecret: vi.fn(),
+          readKeycloakClientSecretsViaProvisioner,
+          waitForProvisionedSecretRead,
+          protectSecret: vi.fn((value: string) => `protected:${value}`),
         } as never,
-        { loaded: loaded as never }
-      )
-    ).rejects.toThrow('tenant_client_secrets_missing_after_provisioning');
+        { loaded: loaded as never, requireProvisionedSecrets: true }
+      );
 
-    expect(repository.updateInstanceKeycloakSecrets).not.toHaveBeenCalled();
-  });
-
-  it('retries reading newly provisioned secrets before persisting them', async () => {
-    const loaded = createLoaded();
-    loaded.instance.realmMode = 'new';
-    loaded.authClientSecret = undefined;
-    loaded.tenantAdminClientSecret = undefined;
-    const repository = {
-      updateInstanceKeycloakSecrets: vi.fn(async () => ({
-        ...createLoaded().instance,
-        realmMode: 'new' as const,
-        updatedAt: '2026-01-01T00:00:01.000Z',
-      })),
-    };
-    const readKeycloakClientSecretsViaProvisioner = vi
-      .fn()
-      .mockResolvedValueOnce({})
-      .mockResolvedValue({
-        keycloakClientSecret: 'actual-auth-secret',
-        tenantAdminClientSecret: 'actual-tenant-admin-secret',
-      });
-    const waitForProvisionedSecretRead = vi.fn(async () => undefined);
-
-    await syncProvisionedClientSecretToRegistry(
-      {
-        repository: repository as never,
-        readKeycloakClientSecretsViaProvisioner,
-        waitForProvisionedSecretRead,
-        protectSecret: vi.fn((value: string) => `protected:${value}`),
-      } as never,
-      { loaded: loaded as never }
-    );
-
-    expect(readKeycloakClientSecretsViaProvisioner).toHaveBeenCalledTimes(2);
-    expect(waitForProvisionedSecretRead).toHaveBeenCalledWith(100);
-    expect(repository.updateInstanceKeycloakSecrets).toHaveBeenCalledTimes(1);
-  });
+      expect(readKeycloakClientSecretsViaProvisioner).toHaveBeenCalledTimes(2);
+      expect(waitForProvisionedSecretRead).toHaveBeenCalledWith(100);
+      expect(repository.updateInstanceKeycloakSecrets).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('syncs rotated client secrets back into the registry', async () => {
     const loaded = createLoaded() as never;

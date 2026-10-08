@@ -154,6 +154,102 @@ describe('service-keycloak-execution', () => {
     );
   });
 
+  it.each([false, true])(
+    'bootstraps an existing realm only when its login client is absent (clientExists=%s)',
+    async (clientExists) => {
+      const { processClaimedKeycloakProvisioningRun } =
+        await import('./service-keycloak-execution.js');
+      const { buildPreflightChecks, buildPlan, toOverallPreflightStatus } =
+        await import('./provisioning-auth-evaluation.js');
+      const { buildMissingRealmReadState } = await import('./provisioning-auth-read-state.js');
+      const loaded = {
+        ...createLoaded(),
+        authClientSecret: undefined,
+        instance: {
+          ...createLoaded().instance,
+          realmMode: 'existing',
+          authClientSecretConfigured: false,
+          tenantAdminClient: { clientId: 'sva-studio-realm-admin', secretConfigured: false },
+          tenantAdminBootstrap: {
+            username: 'admin',
+            email: 'admin@example.invalid',
+            firstName: 'Test',
+            lastName: 'Admin',
+          },
+        },
+      };
+      const readState = {
+        ...buildMissingRealmReadState(loaded.instance),
+        realm: { realm: 'tenant' },
+        clientRepresentation: clientExists
+          ? {
+              id: 'client-1',
+              attributes: {
+                managed_by: 'studio',
+                instance_id: 'instance-1',
+                artifact_key: 'login_client',
+              },
+            }
+          : null,
+      };
+      const checks = buildPreflightChecks({ ...loaded.instance, state: readState } as never);
+      const preflight = {
+        checks,
+        overallStatus: toOverallPreflightStatus(checks),
+        checkedAt: new Date().toISOString(),
+      };
+      const plan = buildPlan({ ...loaded.instance, preflight, state: readState } as never);
+      state.loadInstanceWithSecret.mockResolvedValue(loaded);
+      state.buildProvisioningInput.mockReturnValue(loaded.instance);
+      const provisionInstanceAuth = vi.fn(async () => undefined);
+      const repository = {
+        getKeycloakProvisioningRun: vi.fn(async () => ({
+          id: 'run-1',
+          overallStatus: clientExists ? 'failed' : 'succeeded',
+        })),
+        listKeycloakProvisioningRuns: vi.fn(async () => []),
+      };
+      const run = createRun({
+        mode: 'existing',
+        steps: [{ stepKey: 'queued', details: { confirmedPlanFingerprint: plan.fingerprint } }],
+      });
+      await processClaimedKeycloakProvisioningRun(
+        {
+          repository,
+          listProvisioningRealmAssignments: vi.fn(async () => [
+            { instanceId: 'instance-1', authRealm: 'tenant' },
+          ]),
+          provisionInstanceAuth,
+          readKeycloakStateViaProvisioner: vi.fn(),
+          getKeycloakPreflight: vi.fn(async () => preflight),
+          planKeycloakProvisioning: vi.fn(async () => plan),
+        } as never,
+        run
+      );
+      if (clientExists) {
+        expect(provisionInstanceAuth).not.toHaveBeenCalled();
+        expect(state.syncProvisionedClientSecretToRegistry).not.toHaveBeenCalled();
+        expect(state.failRun).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            error: expect.objectContaining({ message: 'tenant_auth_client_secret_missing' }),
+          })
+        );
+      } else {
+        expect(state.failRun).not.toHaveBeenCalled();
+        expect(provisionInstanceAuth).toHaveBeenCalledOnce();
+        expect(state.syncProvisionedClientSecretToRegistry).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ requireProvisionedSecrets: true })
+        );
+        expect(provisionInstanceAuth.mock.invocationCallOrder[0]).toBeLessThan(
+          state.syncProvisionedClientSecretToRegistry.mock.invocationCallOrder[0]
+        );
+        expect(state.completeRun).toHaveBeenCalledOnce();
+      }
+    }
+  );
+
   it('returns null when no claimed run is available', async () => {
     const { processClaimedKeycloakProvisioningRun } =
       await import('./service-keycloak-execution.js');
@@ -1432,9 +1528,9 @@ describe('service-keycloak-execution', () => {
       expect.objectContaining({ readKeycloakClientSecretsViaProvisioner }),
       'instance-1'
     );
-    expect(
-      state.syncProtectedSystemAdminPermissions.mock.invocationCallOrder[0] ?? 0
-    ).toBeLessThan(withInstanceProvisioningLock.mock.invocationCallOrder[0] ?? 0);
+    expect(state.syncProtectedSystemAdminPermissions.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+      withInstanceProvisioningLock.mock.invocationCallOrder[0] ?? 0
+    );
     expect(lockedRepository.getKeycloakProvisioningRun).toHaveBeenCalledWith('instance-1', 'run-1');
     expect(state.loadInstanceWithSecret).toHaveBeenCalledWith(
       expect.objectContaining({

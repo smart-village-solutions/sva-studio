@@ -80,7 +80,10 @@ export const createPlanKeycloakProvisioningHandler =
       loaded.instance,
       runs
     );
-    if (options?.forceLive) {
+    // A local preview cannot confirm which clients/users already exist in an imported realm.
+    const requiresLiveBootstrapPlan =
+      loaded.instance.realmMode === 'existing' && !loaded.authClientSecret;
+    if (options?.forceLive || requiresLiveBootstrapPlan) {
       if (!deps.planKeycloakProvisioning) return null;
       const completedNewRealmRun =
         loaded.instance.realmMode === 'new' &&

@@ -257,6 +257,15 @@ const createHarness = (activationPolicy: 'automatic' | 'optional' = 'automatic')
     readModuleActivationPolicySnapshot: () => activationPolicies,
     readPluginOidcClientRequirements: vi.fn(() => []),
     readRoleCatalogFingerprint: vi.fn(async () => 'c'.repeat(64)),
+    planKeycloakProvisioning: vi.fn(async () => ({
+      contractVersion: '1.0' as const,
+      mode: 'existing' as const,
+      overallStatus: 'ready' as const,
+      fingerprint: 'live-bootstrap-fingerprint',
+      generatedAt: now.toISOString(),
+      driftSummary: 'Missing Studio clients can be created in the existing realm.',
+      steps: [],
+    })),
     publishTenantIngress: vi.fn(async () => ({
       routerName: 'studio-tenant-tenant-a',
       configHash: 'sha256:router',

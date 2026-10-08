@@ -554,17 +554,22 @@ mit dem Test-Realm überein. Der Kunden-Admin wurde anschließend dieser
 Organisation zugeordnet; Readback `d0df5632-972c-44a0-be9b-5e55ba85ad83`
 bestätigt eine Mitgliedschaft und weiterhin `ready`.
 
-**Einladung und offene Übergabe:** Erst nach den Einrichtungsprüfungen des
+**Einladung und abgeschlossene Übergabe:** Erst nach den Einrichtungsprüfungen des
 Tenants ohne Mainserver wurde sein gesonderter Einladungsendpunkt aufgerufen.
 Request `8e6a4bc4-07e8-48b0-b76a-a251b2342185` bestätigte `status=sent`.
 Im angebundenen Operator-Postfach war die Einladung bei der Prüfung nicht
-vorhanden. Zustellung und erste Kundenanmeldung sind daher noch nicht
-nachgewiesen; Task 5.3 und die Gesamtübergabe bleiben offen. Im zweiten
+vorhanden. Am 8. Oktober 2026 bestätigte der Nutzer anschließend im Chat
+den Eingang der Einladung mit dem Betreff „Willkommen bei Codex MCP Test
+Production - Zugang einrichten“. Auf die darauffolgende Aufforderung, den
+Einladungslink zu öffnen, ein Passwort zu setzen und sich im Studio anzumelden,
+antwortete er „angemeldet“. Zustellung und erste Kundenanmeldung sind damit
+als manuelle Nutzerabnahme belegt, getrennt vom automatisierten API-Nachweis.
+Task 5.3 und die Abnahme dieses Changes sind abgeschlossen. Im zweiten
 Test-Realm wurde keine Einladung ausgelöst; dessen SMTP-Versand ist nicht
 Teil dieses Einladungsnachweises.
 
 Die beiden geprüften Provider-Freigaben und die fachlichen Abnahmeobjekte
-bleiben für die offene Übergabe bestehen. Nur die eigens für Löschprüfungen
+bleiben nach der Abnahme als isolierte Testkonfiguration bestehen. Nur die eigens für Löschprüfungen
 angelegten Objekte wurden entfernt. Die Berechtigungen der Kunden-Admins
 erteilen keine persönliche MCP-Freigabe. Die Betriebsfolge steht in
 `docs/operations/studio-instance-mcp-betrieb.md`, der Laufzeitvertrag in

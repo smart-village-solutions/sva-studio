@@ -1,0 +1,4 @@
+{
+  "prNumber": 1818,
+  "body": "Die Mandanteneinrichtung kann fehlende Studio-Clients in bereits vorhandenen Keycloak-Realms anlegen. Die Zugangsdaten werden anschließend intern übernommen und verschlüsselt gespeichert; ein erfolgreicher Abschluss setzt diese Übernahme voraus."
+}

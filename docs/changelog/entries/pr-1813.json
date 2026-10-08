@@ -1,0 +1,4 @@
+{
+  "prNumber": 1813,
+  "body": "Die Vorprüfung eines Remote-Rollouts verwendet wieder den dafür vorgesehenen Konfigurationsvertrag. Lokale Profilanforderungen blockieren keine gültige Remote-Konfiguration mehr; die Prüfungen nach dem Deployment bleiben vollständig erhalten."
+}

@@ -36,11 +36,13 @@ Gesamtfall ab.
 
 ## 5. Einrichtungs- und Verwaltungspfad abnehmen
 
-Zwischenstand der Produktions-Testinstanz und nachgewiesene Teilprüfungen:
-siehe `design.md`, „Produktionsabnahme Abschnitt 5: Zwischenstand 2026-10-07“.
-Die folgenden Aufgaben bleiben bis zur vollständigen jeweiligen Abnahme offen.
+Aktuelle Produktionsnachweise: siehe `design.md`, „Produktionsabnahme Abschnitt 5:
+Nachweise 2026-10-08“. Versand und erste Kundenanmeldung werden getrennt bewertet.
 
-- [ ] 5.1 Einen vollständigen Einrichtungsauftrag über vorhandene Instanztools und neue Admin-API-Aufrufe nachvollziehen: technische Aktivierung gesondert, dann Schnittstellen, Kundenorganisation, Rollen/Gruppen, dauerhafte persönliche Provider-Accounts und Kunden-Accounts mit vollen Tenant-Adminrechten samt Readbacks.
-- [ ] 5.2 Einen Tenant mit und einen ohne Mainserver prüfen; bei letzterem abhängige Plugins und Organisations-Provisionierung auslassen. Provider-Zugriff und beauftragte Funktionen vor Einladung prüfen.
+- [x] 5.1 Einen vollständigen Einrichtungsauftrag über vorhandene Instanztools und neue Admin-API-Aufrufe nachvollziehen: technische Aktivierung gesondert, dann Schnittstellen, Kundenorganisation, Rollen/Gruppen, dauerhafte persönliche Provider-Accounts und Kunden-Accounts mit vollen Tenant-Adminrechten samt Readbacks.
+- [x] 5.2 Einen Tenant mit und einen ohne Mainserver prüfen; bei letzterem abhängige Plugins und Organisations-Provisionierung auslassen. Provider-Zugriff und beauftragte Funktionen vor Einladung prüfen.
 - [ ] 5.3 Den ersten Kunden-Admin ohne Versand anlegen und `not_requested` prüfen. Die Einladung erst nach bestandenen Einrichtungsprüfungen über den gesonderten Vertrag auslösen, Versandstatus nachlesen und die spätere erste Kundenanmeldung als getrennten Nachweis dokumentieren. Offene Lücken dürfen nicht als abgeschlossene Einrichtung gelten.
-- [ ] 5.4 Laufende Einzelverwaltung einschließlich zulässiger Deaktivierung und Löschung sowie Ablehnungen durch Schutzregeln prüfen. Relevante arc42-Abschnitte und aktuelle MCP-Betriebsdokumentation aktualisieren; passende gezielte Gates und `openspec validate ... --strict` ausführen.
+  - [x] Kunden-Admins in beiden isolierten Produktions-Testinstanzen mit `sendPasswordSetupEmail=false` angelegt; jeweils `not_requested` bestätigt.
+  - [x] Nach bestandenen Einrichtungsprüfungen des Tenants ohne Mainserver dessen gesonderten Einladungsaufruf ausgeführt; Antwort `sent` bestätigt.
+  - [ ] Zustellung und erste Kundenanmeldung über den Einladungslink bestätigen. Im angebundenen Operator-Postfach lag die Einladung bei der Prüfung nicht vor; der API-Versandnachweis ersetzt diesen Nachweis nicht.
+- [x] 5.4 Laufende Einzelverwaltung einschließlich zulässiger Deaktivierung und Löschung sowie Ablehnungen durch Schutzregeln prüfen. Relevante arc42-Abschnitte und aktuelle MCP-Betriebsdokumentation aktualisieren; passende gezielte Gates und `openspec validate ... --strict` ausführen.

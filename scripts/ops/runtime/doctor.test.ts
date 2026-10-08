@@ -122,7 +122,7 @@ describe('createRuntimeDoctorOps', () => {
     expect(remoteReport.checks.map((check) => check.name)).toContain('runtime-env-live');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('runtime-env');
     expect(remoteReport.checks.map((check) => check.name)).not.toContain('otel');
-    expect(predeployReport.checks.map((check) => check.name)).toContain('runtime-env');
+    expect(predeployReport.checks.map((check) => check.name)).not.toContain('runtime-env');
     expect(predeployReport.checks.map((check) => check.name)).not.toContain('runtime-env-live');
     expect(predeployReport.checks.map((check) => check.name)).toEqual(expect.arrayContaining([
       'health-live', 'health-ready', 'app-db-principal', 'migration-status', 'schema-guard', 'keycloak-client-secret',
@@ -159,8 +159,15 @@ describe('createRuntimeDoctorOps', () => {
     expect((await ops.doctorRuntime('studio', { ...targetEnv, SVA_PROMOTE_PHASE: undefined })).status).toBe('error');
     expect((await ops.doctorRuntime('studio', { ...targetEnv, SVA_ACCEPTANCE_RELEASE_MODE: undefined })).status).toBe('error');
     validateRuntimeProfileEnv.mockReturnValueOnce({
-      derived: {}, invalid: [], missing: ['SVA_AUTH_ISSUER'], placeholders: [],
+      derived: {}, invalid: [],
+      missing: ['IAM_PII_KEYRING_JSON', 'POSTGRES_PASSWORD', 'SVA_MAINSERVER_CLIENT_SECRET'],
+      placeholders: [],
     });
+    const localValidationCalls = validateRuntimeProfileEnv.mock.calls.length;
+    expect((await ops.doctorRuntime('studio', targetEnv)).status).toBe('ok');
+    expect(validateRuntimeProfileEnv).toHaveBeenCalledTimes(localValidationCalls);
+    expect((await ops.doctorRuntime('local-builder', {})).status).toBe('error');
+    assertLoginFlow.mockRejectedValueOnce(new Error('login_unavailable'));
     expect((await ops.doctorRuntime('studio', targetEnv)).status).toBe('error');
   });
 

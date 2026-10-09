@@ -1,6 +1,9 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { KeycloakProvisioningInput, KeycloakReadState } from './provisioning-auth-types.js';
-import type { KeycloakProvisioningClientFactory } from './provisioning-auth-client.js';
+import type {
+  KeycloakProvisioningClient,
+  KeycloakProvisioningClientFactory,
+} from './provisioning-auth-client.js';
 import { readTenantAdminStatus } from './provisioning-auth-tenant-admin.js';
 import {
   buildExpectedClientConfig,
@@ -38,6 +41,37 @@ export const buildMissingRealmReadState = (
   userProfileBaselineAligned: false,
 });
 
+const readTenantAdminServiceAccess = async (
+  client: KeycloakProvisioningClient,
+  input: KeycloakProvisioningInput,
+  tenantAdminClientRepresentation: KeycloakReadState['tenantAdminClientRepresentation']
+): Promise<KeycloakReadState['tenantAdminServiceAccess']> => {
+  let tenantAdminServiceAccess: KeycloakReadState['tenantAdminServiceAccess'];
+  if (
+    input.tenantAdminClient?.clientId &&
+    tenantAdminClientRepresentation?.serviceAccountsEnabled &&
+    readStudioOwnedClient(
+      tenantAdminClientRepresentation,
+      input.instanceId,
+      'tenant_admin_client'
+    ) === 'owned'
+  ) {
+    try {
+      tenantAdminServiceAccess = await client.getTenantAdminServiceAccess(
+        input.tenantAdminClient.clientId
+      );
+    } catch {
+      tenantAdminServiceAccess = null;
+      logger.error('tenant_admin_service_access_read_failed', {
+        operation: 'read_tenant_admin_service_access',
+        instance_id: input.instanceId,
+        reason_code: 'tenant_admin_service_access_unreadable',
+      });
+    }
+  }
+  return tenantAdminServiceAccess;
+};
+
 export const createReadKeycloakState =
   (createClient: KeycloakProvisioningClientFactory) =>
   async (input: KeycloakProvisioningInput): Promise<KeycloakReadState> => {
@@ -57,6 +91,11 @@ export const createReadKeycloakState =
     const tenantAdminClientRepresentation = input.tenantAdminClient?.clientId
       ? await client.getOidcClientByClientId(input.tenantAdminClient.clientId)
       : null;
+    const tenantAdminServiceAccess = await readTenantAdminServiceAccess(
+      client,
+      input,
+      tenantAdminClientRepresentation
+    );
     const pluginOidcClients = await Promise.all(
       pluginOidcClientRequirements.map(async (requirement) => {
         const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
@@ -110,6 +149,7 @@ export const createReadKeycloakState =
       realm,
       clientRepresentation,
       tenantAdminClientRepresentation,
+      tenantAdminServiceAccess,
       pluginOidcClients,
       protocolMappers,
       tenantAdminStatus: tenantAdmin.status,

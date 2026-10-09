@@ -99,6 +99,11 @@ const buildAcceptedKeycloakState = (input: KeycloakProvisioningInput): KeycloakR
         artifact_key: 'login_client',
       },
     },
+    tenantAdminServiceAccess: {
+      defaultRealmRoleId: 'default-role', defaultRealmRoleAssigned: false,
+      directRoleNames: ['manage-users', 'view-users', 'view-realm', 'manage-realm', 'view-clients'],
+      effectiveRoleNames: ['manage-users', 'view-users', 'view-realm', 'manage-realm', 'view-clients'], rolesSafe: true,
+    },
     tenantAdminClientRepresentation: {
       id: 'integration-tenant-admin-client',
       clientId: input.tenantAdminClient?.clientId,

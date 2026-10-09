@@ -84,6 +84,7 @@ export type KeycloakUserProfileConfig = Readonly<{
 
 export type KeycloakRealmRepresentation = Readonly<{
   realm: string;
+  defaultRole?: KeycloakRoleMapping;
   loginTheme?: string;
   emailTheme?: string;
   internationalizationEnabled?: boolean;

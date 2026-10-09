@@ -1,0 +1,4 @@
+{
+  "prNumber": 1824,
+  "body": "Die Mandanteneinrichtung unterstützt gemeinsam genutzte Keycloak-Realms mit zusätzlichen Standardberechtigungen. Studio richtet seinen technischen Verwaltungszugang mit gezielt begrenzten Rechten ein, ohne die Standardrollen anderer Anwendungen zu verändern."
+}

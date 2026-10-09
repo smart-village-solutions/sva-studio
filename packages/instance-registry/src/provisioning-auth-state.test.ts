@@ -100,6 +100,13 @@ const createClient = (
   ensureOidcClient: vi.fn(async () => undefined),
   ensurePersonalMcpAccess: vi.fn(async () => undefined),
   ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
+  getTenantAdminServiceAccess: vi.fn(async () => ({
+    defaultRealmRoleId: 'default-role',
+    defaultRealmRoleAssigned: false,
+    directRoleNames: [],
+    effectiveRoleNames: [],
+    rolesSafe: true,
+  })),
   listClientProtocolMappers: vi.fn(async () => [{ name: 'instanceId' }]),
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
   ensureAdminOnlyUserProfileAttributes: vi.fn(async () => undefined),
@@ -229,6 +236,76 @@ describe('provisioning-auth-state', () => {
     expect(state.clientRepresentation).toEqual(expect.objectContaining({ id: 'sva-studio-id' }));
     expect(client.getOidcClientByClientId).toHaveBeenCalledWith('tenant-admin');
     expect(client.ensureRealm).not.toHaveBeenCalled();
+  });
+
+  it.each(['owned', 'foreign', 'disabled'])(
+    'reads service-account drift only for an enabled, Studio-owned client (%s)',
+    async (mode) => {
+      const client = createClient({
+        getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+          id: `${clientId}-id`,
+          clientId,
+          serviceAccountsEnabled: mode !== 'disabled',
+          attributes: {
+            managed_by: 'studio',
+            instance_id: mode === 'foreign' ? 'another' : 'demo',
+            artifact_key: 'tenant_admin_client',
+          },
+        })),
+      });
+      const state = await createReadKeycloakState(() => client)({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'login',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      });
+      if (mode === 'owned') {
+        expect(client.getTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
+        expect(state.tenantAdminServiceAccess).toMatchObject({ defaultRealmRoleAssigned: false });
+      } else {
+        expect(client.getTenantAdminServiceAccess).not.toHaveBeenCalled();
+        expect(state.tenantAdminServiceAccess).toBeUndefined();
+      }
+      expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
+    }
+  );
+
+  it('preserves diagnostic state and a fail-closed marker when service-account access cannot be read', async () => {
+    const client = createClient({
+      getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+        id: `${clientId}-id`,
+        clientId,
+        serviceAccountsEnabled: true,
+        attributes: {
+          managed_by: 'studio',
+          instance_id: 'demo',
+          artifact_key: clientId === 'tenant-admin' ? 'tenant_admin_client' : 'login_client',
+        },
+      })),
+      getTenantAdminServiceAccess: vi.fn(async () => {
+        throw new Error('upstream-private-detail');
+      }),
+    });
+    const state = await createReadKeycloakState(() => client)({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'login',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'tenant-admin' },
+    });
+    expect(state.realm).toEqual({ realm: 'demo' });
+    expect(state.tenantAdminClientRepresentation?.id).toBe('tenant-admin-id');
+    expect(state.tenantAdminServiceAccess).toBeNull();
+    expect(JSON.stringify(loggerErrorMock.mock.calls)).not.toContain('upstream-private-detail');
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      'tenant_admin_service_access_read_failed',
+      expect.objectContaining({ reason_code: 'tenant_admin_service_access_unreadable' })
+    );
   });
 
   it('returns an empty auth state when the realm does not exist', async () => {

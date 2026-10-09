@@ -4971,6 +4971,15 @@ describe('instance registry service facade', () => {
     await expect(createPlanKeycloakProvisioningHandler(deps)('demo')).resolves.toEqual(plan);
   });
 
+  it('returns no executable plan when a shared realm service-account plan cannot be read live', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({ ...baseInstance, realmMode: 'existing' as const })),
+    });
+    await expect(
+      createPlanKeycloakProvisioningHandler(createDeps(repository))('demo')
+    ).resolves.toBeNull();
+  });
+
   it('confirms a live bootstrap plan for an existing realm without a registry secret', async () => {
     const instance = {
       ...baseInstance,
@@ -5007,7 +5016,7 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('bypasses persisted plan snapshots for an explicit live postflight', async () => {
+  it.each([true, false])('bypasses persisted plan snapshots for tenant service-account plans (forceLive=%s)', async (forceLive) => {
     const managedInstance = {
       ...baseInstance,
       realmMode: 'existing' as const,
@@ -5071,7 +5080,7 @@ describe('instance registry service facade', () => {
     await expect(
       createPlanKeycloakProvisioningHandler(createDeps(repository, { planKeycloakProvisioning }))(
         'demo',
-        { forceLive: true }
+        { forceLive }
       )
     ).resolves.toEqual(livePlan);
     expect(planKeycloakProvisioning).toHaveBeenCalledWith(
@@ -5179,6 +5188,7 @@ describe('instance registry service facade', () => {
       getInstanceById: vi.fn(async () => ({
         ...baseInstance,
         realmMode: 'existing' as const,
+        tenantAdminClient: undefined,
         tenantAdminBootstrap: undefined,
       })),
       listKeycloakProvisioningRuns: vi.fn(async () => [
@@ -5229,6 +5239,7 @@ describe('instance registry service facade', () => {
     const managedInstance = {
       ...baseInstance,
       realmMode: 'existing' as const,
+      tenantAdminClient: undefined,
     };
     const repository = createRepository({
       getInstanceById: vi.fn(async () => managedInstance),
@@ -5475,6 +5486,7 @@ describe('instance registry service facade', () => {
     const managedInstance = {
       ...baseInstance,
       realmMode: 'existing' as const,
+      tenantAdminClient: undefined,
     };
     const secretVersions = {
       authClientSecretCiphertext: 'auth-ciphertext',

@@ -126,6 +126,7 @@ export class KeycloakRealmOperations extends KeycloakTransport {
       const smtpPassword = smtpServer.password?.trim();
       return {
         realm: realm.realm,
+        defaultRole: realm.defaultRole,
         loginTheme: realm.loginTheme,
         emailTheme: realm.emailTheme,
         internationalizationEnabled: realm.internationalizationEnabled,

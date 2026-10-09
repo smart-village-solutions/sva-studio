@@ -270,6 +270,7 @@ gleichzeitig beeinflussen.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll
+- In gemeinsam genutzten Keycloak-Realms entkoppelt der Provisioner ausschließlich den Service-Account des ownership-geprüften Studio-Tenant-Admin-Clients von der tatsächlichen Realm-Standardrolle. Gemeinsam genutzte Rollenobjekte und andere Identitäten werden nicht verändert. Der aktuelle Plan bindet Standardrollenzuweisung sowie direkte und effektive Verwaltungsrollen in seinen Fingerprint; Bestands-Realms mit Tenant-Admin-Client werden dafür live geprüft. Entfernung und minimale effektive Rechte werden nach der Mutation erneut bestätigt.
 - Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten führt keine implizite Keycloak-Änderung aus
 - Registry-Mutationen halten ihre SQL-Parameterlisten explizit positionsstabil. Für Auth- und Tenant-Admin-Secrets bleiben Keep-Flag und Ciphertext getrennte Werte, sodass `undefined`, explizites Löschen und Ersetzen ohne impliziten Secret-Default unterscheidbar sind.
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie

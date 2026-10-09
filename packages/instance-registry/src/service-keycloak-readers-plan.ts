@@ -80,10 +80,12 @@ export const createPlanKeycloakProvisioningHandler =
       loaded.instance,
       runs
     );
-    // A local preview cannot confirm which clients/users already exist in an imported realm.
-    const requiresLiveBootstrapPlan =
-      loaded.instance.realmMode === 'existing' && !loaded.authClientSecret;
-    if (options?.forceLive || requiresLiveBootstrapPlan) {
+    // Shared realm defaults can change independently of Registry inputs. Neither a
+    // local preview nor a persisted snapshot can confirm service-account isolation.
+    const requiresLiveTenantPlan =
+      loaded.instance.realmMode === 'existing' &&
+      (!loaded.authClientSecret || Boolean(loaded.instance.tenantAdminClient?.clientId));
+    if (options?.forceLive || requiresLiveTenantPlan) {
       if (!deps.planKeycloakProvisioning) return null;
       const completedNewRealmRun =
         loaded.instance.realmMode === 'new' &&

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1819,
+  "body": "Der regelmäßige Integrationstest zur Mandantenaktivierung verwendet jetzt vollständige gespeicherte Test-Zugangsdaten. Dadurch prüft er die Aktivierung weiterhin zuverlässig gegen den aktuellen Keycloak-Bereitschaftsvertrag."
+}

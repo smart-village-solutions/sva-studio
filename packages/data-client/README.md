@@ -26,9 +26,9 @@ Das von `createDataClient` zurückgegebene `get`-API verhält sich laut Implemen
 
 - bildet die Request-URL aus `baseUrl` und `path`
 - setzt ohne vorhandenen Header standardmäßig `accept: application/json`
-- cached erfolgreiche GET-Antworten in einer prozessweiten `Map`
+- cached die unverarbeiteten JSON-Payloads erfolgreicher GET-Antworten in einer prozessweiten `Map`; bei übergebenem Schema erst nach erfolgreicher Validierung
 - scoped Cache-Einträge nach URL und normalisierten Request-Headern
-- validiert Payloads optional mit einem übergebenen Zod-Schema
+- validiert Payloads aus Netzwerk und Cache optional mit dem jeweils übergebenen Zod-Schema; Transformationen werden pro Aufruf auf die Rohdaten angewendet, sodass unterschiedliche Schemas keine Felder im Cache entfernen
 - protokolliert Cache-Hits, Cache-Misses, Request-Start, Request-Fehler und Schemafehler über den konfigurierbaren Logger
 - wirft bei nicht erfolgreichen Responses einen Fehler im Format `DataClient GET <path> failed with <status>`
 - gibt bei Aufrufen ohne Schema einmalig pro Pfad eine Prozesswarnung mit dem Code `SVA_DATA_RUNTIME_SCHEMA` aus, sofern `process.emitWarning` verfügbar ist

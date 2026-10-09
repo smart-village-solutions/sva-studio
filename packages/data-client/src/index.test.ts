@@ -50,6 +50,51 @@ describe('@sva/data-client package scaffold', () => {
     );
   });
 
+  it('applies transformations to raw payloads consistently on network and cache hits', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ count: 1 }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+    const schema = z.object({ count: z.number().transform((count) => count + 1) });
+
+    await expect(client.get('/cache/transform', schema)).resolves.toEqual({ count: 2 });
+    await expect(client.get('/cache/transform', schema)).resolves.toEqual({ count: 2 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves raw fields for different schemas sharing a cached response', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ name: 'Example', age: 42 }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+
+    await expect(client.get('/cache/schemas', z.object({ name: z.string() }))).resolves.toEqual({ name: 'Example' });
+    await expect(client.get('/cache/schemas', z.object({ age: z.number() }))).resolves.toEqual({ age: 42 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the raw cached response without a schema after a schema-based request', async () => {
+    vi.spyOn(process, 'emitWarning').mockImplementation(() => undefined);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ count: 1, extra: 'preserve' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+    const schema = z.object({ count: z.number().transform((count) => count + 1) });
+
+    await expect(client.get('/cache/raw', schema)).resolves.toEqual({ count: 2 });
+    await expect(client.get('/cache/raw')).resolves.toEqual({ count: 1, extra: 'preserve' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('scopes cached responses by base URL and request headers', async () => {
     const fetchMock = vi
       .fn()

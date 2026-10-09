@@ -14,6 +14,7 @@ const reservedInstancePaths = new Set(['audit', 'draft-readiness', 'keycloak-rea
 const forwardedInstanceRoutes = new Map<string, ReadonlySet<string>>([
   ['', new Set(['GET'])],
   ['/keycloak/plan', new Set(['GET', 'POST'])],
+  ['/keycloak/execute', new Set(['POST'])],
   ['/tenant-iam/roles/reconcile', new Set(['POST'])],
   ['/actions/instance.status.activate/confirmation', new Set(['POST'])],
   ['/activate', new Set(['POST'])],
@@ -58,13 +59,15 @@ const isForwardedRoute = (request: Request, url: URL): boolean => {
   const method = request.method.toUpperCase();
   if (forwardedRoutes.get(url.pathname)?.has(method)) return true;
   const match =
-    /^\/api\/v1\/iam\/instances\/([^/]+)(\/keycloak\/plan|\/tenant-iam\/roles\/reconcile|\/actions\/instance\.status\.activate\/confirmation|\/activate)?$/u.exec(
+    /^\/api\/v1\/iam\/instances\/([^/]+)(\/keycloak\/plan|\/keycloak\/execute|\/keycloak\/runs\/[^/]+|\/tenant-iam\/roles\/reconcile|\/actions\/instance\.status\.activate\/confirmation|\/activate)?$/u.exec(
       url.pathname
     );
+  const instanceRoute = match?.[2] ?? '';
   return Boolean(
     match &&
     !reservedInstancePaths.has(match[1]) &&
-    forwardedInstanceRoutes.get(match[2] ?? '')?.has(method)
+    (forwardedInstanceRoutes.get(instanceRoute)?.has(method) ||
+      (method === 'GET' && instanceRoute.startsWith('/keycloak/runs/')))
   );
 };
 

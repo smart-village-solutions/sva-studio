@@ -162,7 +162,9 @@ speichert weder Token noch Providerfehlertext.
 
 Die öffentlichen Endpunkte für Realm-Katalog, Draft-Readiness, Registry-Create
 und den lesenden Keycloak-Provisionierungsplan bleiben am App-Dienst. Dieser
-leitet exakt diese Methoden und Pfade über `http://provisioner:3000` weiter.
+leitet exakt diese Methoden und Pfade über `http://provisioner:3000` weiter;
+der Planpfad erlaubt `GET` und `POST`, damit sowohl read-only- als auch
+CSRF-geschützte Planabrufe denselben Live-Provisioner verwenden.
 Der private Provisioner übernimmt
 den Request unverändert hinsichtlich Session beziehungsweise Bearer-Token,
 Origin, CSRF-Header und Idempotency-Key und prüft Authentifizierung, CSRF und

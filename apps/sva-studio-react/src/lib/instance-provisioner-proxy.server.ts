@@ -13,7 +13,7 @@ const forwardedRoutes = new Map<string, ReadonlySet<string>>([
 const reservedInstancePaths = new Set(['audit', 'draft-readiness', 'keycloak-realms']);
 const forwardedInstanceRoutes = new Map<string, ReadonlySet<string>>([
   ['', new Set(['GET'])],
-  ['/keycloak/plan', new Set(['GET'])],
+  ['/keycloak/plan', new Set(['GET', 'POST'])],
   ['/tenant-iam/roles/reconcile', new Set(['POST'])],
   ['/actions/instance.status.activate/confirmation', new Set(['POST'])],
   ['/activate', new Set(['POST'])],

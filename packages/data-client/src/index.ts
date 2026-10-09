@@ -198,7 +198,7 @@ export const createDataClient = (options: DataClientOptions) => {
       source: 'network',
     });
     inMemoryCache.set(cacheKey.internal, {
-      value: payload,
+      value: rawPayload,
       expiresAt: Date.now() + cacheTtlMs,
     });
 

@@ -646,6 +646,16 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       readPluginOidcClientRequirements: () => [],
       isAutomatedTenantProvisioningEnabled: () => false,
       getKeycloakStatus: async () => readyStatus,
+      // Existing realms require a current live plan, even with persisted postflight evidence.
+      planKeycloakProvisioning: vi.fn(async (): Promise<KeycloakTenantPlan> => ({
+        contractVersion: '1.0',
+        fingerprint: 'b'.repeat(64),
+        mode: 'existing',
+        overallStatus: 'ready',
+        generatedAt: new Date().toISOString(),
+        driftSummary: 'Kein Drift.',
+        steps: [],
+      })),
       moduleIamRegistry: new Map([['news', { permissionIds: ['news.read'], systemRoles: [] }]]),
     } satisfies Omit<InstanceRegistryServiceDeps, 'repository' | 'withInstanceProvisioningLock'>;
     try {
@@ -746,6 +756,8 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
           requestId: 'integration-manual-activation-request',
         })
       ).resolves.toMatchObject({ ok: true, instance: { status: 'active' } });
+
+      expect(baseDeps.planKeycloakProvisioning).toHaveBeenCalled();
 
       await expect(repository.getInstanceById(activationInstanceId)).resolves.toMatchObject({
         status: 'active',
@@ -987,6 +999,14 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         )
       ).toThrow('provisioning_snapshot_drift');
 
+      // The retry must consume the current blocked live plan, not the previously confirmed plan.
+      confirmedWorkerPlan = {
+        ...confirmedWorkerPlan,
+        mode: 'existing',
+        overallStatus: 'blocked',
+        driftSummary: 'Aktuelle Vorbedingungen blockieren den Retry.',
+        steps: confirmedWorkerPlan.steps.map((step) => ({ ...step, status: 'blocked' as const })),
+      };
       await processNextTenantProvisioningRun(deps, { workerId: 'integration-parent-retry-worker' });
       const parentAfterRetry = (await repository.listProvisioningRuns(instanceId))[0];
       assert(parentAfterRetry?.childKeycloakRunId);

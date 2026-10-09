@@ -110,7 +110,7 @@ export type KeycloakReadState = {
     readonly directRoleNames: readonly string[];
     readonly effectiveRoleNames: readonly string[];
     readonly rolesSafe: boolean;
-  };
+  } | null;
   readonly pluginOidcClients: readonly PluginOidcClientState[];
   readonly protocolMappers: readonly {
     readonly name: string;

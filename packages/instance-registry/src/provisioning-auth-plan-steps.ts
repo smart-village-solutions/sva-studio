@@ -100,8 +100,16 @@ export const buildTenantAdminClientStep = (input: {
     input.standardFlowEnabledMatch &&
     input.directAccessGrantsEnabledMatch &&
     input.serviceAccountsEnabledMatch &&
-    (!input.serviceAccess ||
-      (!input.serviceAccess.defaultRealmRoleAssigned && input.serviceAccess.rolesSafe));
+    Boolean(
+      input.serviceAccess &&
+      !input.serviceAccess.defaultRealmRoleAssigned &&
+      input.serviceAccess.rolesSafe
+    );
+  const accessUnreadable =
+    input.clientExists &&
+    input.serviceAccountsEnabledMatch &&
+    !input.ownershipConflict &&
+    !input.serviceAccess;
 
   return {
     stepKey: 'tenant_admin_client',
@@ -113,14 +121,16 @@ export const buildTenantAdminClientStep = (input: {
         : fullyAligned
           ? 'verify'
           : 'update',
-    status: input.blocked ? 'blocked' : 'ready',
+    status: input.blocked || accessUnreadable ? 'blocked' : 'ready',
     summary: input.ownershipConflict
       ? 'Der gleichnamige Tenant-Admin-Client ist nicht eindeutig dieser Instanz zugeordnet und wird nicht verändert.'
-      : !input.clientExists
-        ? 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.'
-        : fullyAligned
-          ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
-          : 'Der Tenant-Admin-Client und seine isolierten Service-Account-Rechte werden abgeglichen.',
+      : accessUnreadable
+        ? 'Die Service-Account-Rechte konnten nicht gelesen werden.'
+        : !input.clientExists
+          ? 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.'
+          : fullyAligned
+            ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
+            : 'Der Tenant-Admin-Client und seine isolierten Service-Account-Rechte werden abgeglichen.',
     details: {
       clientExists: input.clientExists,
       directAccessGrantsEnabledMatch: input.directAccessGrantsEnabledMatch,
@@ -132,6 +142,7 @@ export const buildTenantAdminClientStep = (input: {
       webOriginsMatch: input.webOriginsMatch,
       ownershipConflict: input.ownershipConflict,
       ...(input.serviceAccess ? { serviceAccess: input.serviceAccess } : {}),
+      ...(accessUnreadable ? { reasonCode: 'tenant_admin_service_access_unreadable' } : {}),
     },
   };
 };

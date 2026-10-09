@@ -139,19 +139,27 @@ const buildTenantAdminCheck = (
 const buildTenantAdminClientCheck = (input: {
   tenantAdminClient?: KeycloakProvisioningInput['tenantAdminClient'];
   tenantAdminClientSecret?: string;
+  state?: KeycloakReadState;
 }): InstanceKeycloakPreflightCheck => {
   const configured = Boolean(input.tenantAdminClient?.clientId);
   const readable = Boolean(input.tenantAdminClientSecret);
+  const accessUnreadable = Boolean(
+    input.state?.tenantAdminClientRepresentation?.serviceAccountsEnabled &&
+    !input.state.tenantAdminServiceAccess
+  );
   return createPreflightCheck(
     'tenant_admin_client',
     'Tenant-Admin-Client',
-    configured ? 'ready' : 'blocked',
-    resolveTenantAdminClientSummary(configured, readable),
+    configured && !accessUnreadable ? 'ready' : 'blocked',
+    accessUnreadable
+      ? 'Die Service-Account-Rechte konnten nicht gelesen werden.'
+      : resolveTenantAdminClientSummary(configured, readable),
     {
       configured,
       clientId: input.tenantAdminClient?.clientId,
       secretConfigured: input.tenantAdminClient?.secretConfigured ?? false,
       readable,
+      ...(accessUnreadable ? { reasonCode: 'tenant_admin_service_access_unreadable' } : {}),
     }
   );
 };
@@ -217,6 +225,7 @@ export const buildPreflightChecks = (input: {
     buildTenantAdminClientCheck({
       tenantAdminClient: input.tenantAdminClient,
       tenantAdminClientSecret: input.tenantAdminClientSecret,
+      state: input.state,
     }),
     buildTenantAdminCheck(input.realmMode, input.tenantAdminBootstrap)
   );

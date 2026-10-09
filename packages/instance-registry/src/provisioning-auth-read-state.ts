@@ -57,7 +57,8 @@ export const createReadKeycloakState =
     const tenantAdminClientRepresentation = input.tenantAdminClient?.clientId
       ? await client.getOidcClientByClientId(input.tenantAdminClient.clientId)
       : null;
-    const tenantAdminServiceAccess =
+    let tenantAdminServiceAccess: KeycloakReadState['tenantAdminServiceAccess'];
+    if (
       input.tenantAdminClient?.clientId &&
       tenantAdminClientRepresentation?.serviceAccountsEnabled &&
       readStudioOwnedClient(
@@ -65,8 +66,20 @@ export const createReadKeycloakState =
         input.instanceId,
         'tenant_admin_client'
       ) === 'owned'
-        ? await client.getTenantAdminServiceAccess(input.tenantAdminClient.clientId)
-        : undefined;
+    ) {
+      try {
+        tenantAdminServiceAccess = await client.getTenantAdminServiceAccess(
+          input.tenantAdminClient.clientId
+        );
+      } catch {
+        tenantAdminServiceAccess = null;
+        logger.error('tenant_admin_service_access_read_failed', {
+          operation: 'read_tenant_admin_service_access',
+          instance_id: input.instanceId,
+          reason_code: 'tenant_admin_service_access_unreadable',
+        });
+      }
+    }
     const pluginOidcClients = await Promise.all(
       pluginOidcClientRequirements.map(async (requirement) => {
         const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);

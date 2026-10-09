@@ -68,6 +68,19 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
     webOrigins: ['https://demo.example.org'],
     rootUrl: 'https://demo.example.org',
   },
+  tenantAdminServiceAccess: {
+    defaultRealmRoleId: 'default-role',
+    defaultRealmRoleAssigned: false,
+    directRoleNames: ['manage-users', 'view-users', 'view-realm', 'manage-realm', 'view-clients'],
+    effectiveRoleNames: [
+      'manage-users',
+      'view-users',
+      'view-realm',
+      'manage-realm',
+      'view-clients',
+    ],
+    rolesSafe: true,
+  },
   tenantAdminClientRepresentation: {
     id: 'tenant-admin-client-1',
     clientId: 'tenant-admin',
@@ -246,6 +259,36 @@ describe('provisioning-auth readers', () => {
       })
     );
   });
+
+  it.each([undefined, null])(
+    'blocks an unreadable expected service-account state (%s)',
+    async (access) => {
+      const stateReader = vi.fn(async (): Promise<KeycloakReadState> => ({
+        ...(await readState(input)),
+        tenantAdminServiceAccess: access,
+      }));
+      const preflight = createInstanceKeycloakPreflightReader(stateReader);
+      const checks = await preflight(input);
+      expect(checks.overallStatus).toBe('blocked');
+      expect(checks.checks.find((check) => check.checkKey === 'tenant_admin_client')).toMatchObject(
+        {
+          status: 'blocked',
+          details: { reasonCode: 'tenant_admin_service_access_unreadable' },
+        }
+      );
+      const plan = await createInstanceKeycloakPlanReader(stateReader, preflight)(input);
+      expect(plan.overallStatus).toBe('blocked');
+      expect(plan.steps.find((step) => step.stepKey === 'tenant_admin_client')).toMatchObject({
+        action: 'update',
+        status: 'blocked',
+      });
+      const inconsistentPreflight = async () => ({ ...checks, overallStatus: 'ready' as const });
+      expect(
+        (await createInstanceKeycloakPlanReader(stateReader, inconsistentPreflight)(input))
+          .overallStatus
+      ).toBe('blocked');
+    }
+  );
 
   it('binds service-account default-role isolation and effective permissions into the plan fingerprint', async () => {
     let access: NonNullable<KeycloakReadState['tenantAdminServiceAccess']> = {

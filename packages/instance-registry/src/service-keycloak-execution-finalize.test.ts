@@ -198,6 +198,7 @@ describe('service-keycloak-execution-finalize', () => {
       usedTemporaryPassword: true,
       requireTenantAdmin: true,
       requireRealmBaseline: true,
+      tenantAdminServiceAccess: undefined,
     });
     expect(repository.setInstanceStatus).toHaveBeenCalledWith({
       instanceId: 'instance-1',
@@ -225,6 +226,97 @@ describe('service-keycloak-execution-finalize', () => {
       expect.objectContaining({ stepKey: 'smtp_password', status: 'pending' })
     );
   });
+
+  it.each(['provision', 'reset_tenant_admin'] as const)(
+    'requires isolated, readable service-account rights at completion for %s',
+    async (intent) => {
+      const { completeRun } = await import('./service-keycloak-execution-finalize.js');
+      const actualSteps = await vi.importActual<typeof import('./service-keycloak-run-steps.js')>(
+        './service-keycloak-run-steps.js'
+      );
+      state.buildFinalRunSteps.mockImplementation(actualSteps.buildFinalRunSteps);
+      state.areAllRequirementsSatisfied.mockReturnValue(true);
+      state.buildKeycloakStatus.mockReturnValue({
+        realmExists: true,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretAligned: true,
+        systemAdminRoleExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminExists: true,
+      });
+      state.buildProvisioningInput.mockReturnValue({
+        instanceId: 'instance-1',
+        tenantAdminClient: { clientId: 'studio-admin' },
+      });
+      for (const access of [
+        undefined,
+        null,
+        {
+          defaultRealmRoleId: 'default-id',
+          defaultRealmRoleAssigned: true,
+          rolesSafe: true,
+          directRoleNames: [],
+          effectiveRoleNames: [],
+        },
+        {
+          defaultRealmRoleId: 'default-id',
+          defaultRealmRoleAssigned: false,
+          rolesSafe: false,
+          directRoleNames: [],
+          effectiveRoleNames: [],
+        },
+        {
+          defaultRealmRoleId: 'default-id',
+          defaultRealmRoleAssigned: false,
+          rolesSafe: true,
+          directRoleNames: [],
+          effectiveRoleNames: [],
+        },
+      ]) {
+        const repository = {
+          listProvisioningRuns: vi.fn(async () => []),
+          listKeycloakProvisioningRuns: vi.fn(async () => []),
+          updateKeycloakProvisioningRun: vi.fn(),
+          setInstanceStatus: vi.fn(),
+        };
+        const result = await completeRun(
+          {
+            repository,
+            readKeycloakStateViaProvisioner: vi.fn(async () => ({
+              realm: { realm: 'demo' },
+              tenantAdminServiceAccess: access,
+            })),
+          } as never,
+          {
+            loaded: {
+              instance: {
+                instanceId: 'instance-1',
+                realmMode: 'existing',
+                status: 'requested',
+                tenantAdminClient: { clientId: 'studio-admin' },
+              },
+            } as never,
+            runId: 'run-1',
+            requestId: 'req-1',
+            actorId: 'actor-1',
+            intent,
+            tenantAdminTemporaryPassword: 'test-only-password',
+          }
+        );
+        const safe = Boolean(access && !access.defaultRealmRoleAssigned && access.rolesSafe);
+        expect(result).toBe(safe ? 'succeeded' : 'failed');
+        if (!safe) expect(repository.setInstanceStatus).not.toHaveBeenCalled();
+        expect(state.buildFinalRunSteps).toHaveBeenLastCalledWith(
+          expect.objectContaining({ tenantAdminServiceAccess: access ?? null })
+        );
+      }
+    }
+  );
 
   it('completes an existing realm secret rotation and resumes its parent run', async () => {
     const { completeRun } = await import('./service-keycloak-execution-finalize.js');
@@ -257,9 +349,7 @@ describe('service-keycloak-execution-finalize', () => {
       completeRun(
         {
           repository: repository as never,
-          readKeycloakStateViaProvisioner: vi
-            .fn()
-            .mockResolvedValue({ realm: { realm: 'demo' } }),
+          readKeycloakStateViaProvisioner: vi.fn().mockResolvedValue({ realm: { realm: 'demo' } }),
         } as never,
         {
           loaded: {

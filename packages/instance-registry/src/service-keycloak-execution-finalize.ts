@@ -160,6 +160,9 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
     usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
     requireTenantAdmin,
     requireRealmBaseline: realmBaselineApplicable,
+    tenantAdminServiceAccess: provisioningInput.tenantAdminClient?.clientId
+      ? (state.tenantAdminServiceAccess ?? null)
+      : undefined,
   });
 
   const completionSatisfied = completionSteps.every((step) => step.ok);

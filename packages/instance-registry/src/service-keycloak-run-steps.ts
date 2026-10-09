@@ -1,4 +1,5 @@
 import type { KeycloakTenantStatus } from './keycloak-types.js';
+import type { KeycloakReadState } from './provisioning-auth-types.js';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
@@ -117,17 +118,36 @@ const buildClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep
     status.webOriginsMatch,
 });
 
-const buildTenantAdminClientCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
+const buildTenantAdminClientCompletionStep = (
+  status: KeycloakTenantStatus,
+  serviceAccess?: KeycloakReadState['tenantAdminServiceAccess']
+): CompletionStep => ({
   stepKey: 'tenant_admin_client',
   title: 'Tenant-Admin-Client abgleichen',
-  summary: status.tenantAdminClientExists
-    ? 'Der Tenant-Admin-Client ist vorhanden.'
-    : 'Der Tenant-Admin-Client fehlt weiterhin.',
+  summary:
+    serviceAccess === null ||
+    (serviceAccess && (serviceAccess.defaultRealmRoleAssigned || !serviceAccess.rolesSafe))
+      ? 'Die isolierten Service-Account-Rechte konnten nicht bestätigt werden.'
+      : status.tenantAdminClientExists
+        ? 'Der Tenant-Admin-Client ist vorhanden.'
+        : 'Der Tenant-Admin-Client fehlt weiterhin.',
   details: {
     tenantAdminClientExists: status.tenantAdminClientExists,
+    ...(serviceAccess !== undefined
+      ? {
+          serviceAccess,
+          reasonCode:
+            serviceAccess && !serviceAccess.defaultRealmRoleAssigned && serviceAccess.rolesSafe
+              ? 'tenant_admin_service_access_verified'
+              : 'tenant_admin_service_access_readback_failed',
+        }
+      : {}),
     titleKey: 'iam.provisioning.steps.tenant_admin_client.title',
   },
-  ok: status.tenantAdminClientExists,
+  ok:
+    status.tenantAdminClientExists &&
+    serviceAccess !== null &&
+    (!serviceAccess || (!serviceAccess.defaultRealmRoleAssigned && serviceAccess.rolesSafe)),
 });
 
 const buildSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
@@ -211,10 +231,14 @@ export const buildFinalRunSteps = (input: {
   usedTemporaryPassword: boolean;
   requireTenantAdmin?: boolean;
   requireRealmBaseline?: boolean;
+  tenantAdminServiceAccess?: KeycloakReadState['tenantAdminServiceAccess'];
 }): CompletionStep[] => {
   if (input.intent === 'reset_tenant_admin') {
     return [
       buildRealmCompletionStep(input.status),
+      ...(input.tenantAdminServiceAccess !== undefined
+        ? [buildTenantAdminClientCompletionStep(input.status, input.tenantAdminServiceAccess)]
+        : []),
       buildRolesCompletionStep(input.status, true),
       buildTenantAdminCompletionStep(input.status),
       buildTenantAdminPasswordStep(input.usedTemporaryPassword),
@@ -231,7 +255,7 @@ export const buildFinalRunSteps = (input: {
         ]
       : []),
     buildClientCompletionStep(input.status),
-    buildTenantAdminClientCompletionStep(input.status),
+    buildTenantAdminClientCompletionStep(input.status, input.tenantAdminServiceAccess),
     buildSecretCompletionStep(input.status),
     buildTenantAdminClientSecretCompletionStep(input.status),
     buildRolesCompletionStep(input.status, requireTenantAdmin),

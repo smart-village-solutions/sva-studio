@@ -273,6 +273,41 @@ describe('provisioning-auth-state', () => {
     }
   );
 
+  it('preserves diagnostic state and a fail-closed marker when service-account access cannot be read', async () => {
+    const client = createClient({
+      getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+        id: `${clientId}-id`,
+        clientId,
+        serviceAccountsEnabled: true,
+        attributes: {
+          managed_by: 'studio',
+          instance_id: 'demo',
+          artifact_key: clientId === 'tenant-admin' ? 'tenant_admin_client' : 'login_client',
+        },
+      })),
+      getTenantAdminServiceAccess: vi.fn(async () => {
+        throw new Error('upstream-private-detail');
+      }),
+    });
+    const state = await createReadKeycloakState(() => client)({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'login',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'tenant-admin' },
+    });
+    expect(state.realm).toEqual({ realm: 'demo' });
+    expect(state.tenantAdminClientRepresentation?.id).toBe('tenant-admin-id');
+    expect(state.tenantAdminServiceAccess).toBeNull();
+    expect(JSON.stringify(loggerErrorMock.mock.calls)).not.toContain('upstream-private-detail');
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      'tenant_admin_service_access_read_failed',
+      expect.objectContaining({ reason_code: 'tenant_admin_service_access_unreadable' })
+    );
+  });
+
   it('returns an empty auth state when the realm does not exist', async () => {
     const client = createClient({
       getRealm: vi.fn(async () => null),

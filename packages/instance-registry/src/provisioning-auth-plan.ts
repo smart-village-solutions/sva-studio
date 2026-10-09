@@ -59,12 +59,13 @@ export const buildPlan = (input: BuildPlanInput): KeycloakTenantPlan => {
   const realmBaselineApplicable = input.realmBaselineApplicable ?? input.realmMode === 'new';
   const requireTenantAdmin = isInstanceTenantAdminRequired(input);
   const steps = buildPlanSteps(input, blocked, realmBaselineApplicable, requireTenantAdmin);
+  const planBlocked = blocked || steps.some((step) => step.status === 'blocked');
 
   const plan: Omit<KeycloakTenantPlan, 'fingerprint' | 'generatedAt'> = {
     contractVersion: KEYCLOAK_PLAN_CONTRACT_VERSION,
     mode: input.realmMode,
-    overallStatus: blocked ? 'blocked' : 'ready',
-    driftSummary: resolveDriftSummary(blocked, steps),
+    overallStatus: planBlocked ? 'blocked' : 'ready',
+    driftSummary: resolveDriftSummary(planBlocked, steps),
     steps,
   };
   return {

@@ -139,6 +139,12 @@ const appendFinalStatusSnapshot = async (
   });
 };
 
+const readCompletionServiceAccess = (
+  input: KeycloakProvisioningInput,
+  state: KeycloakReadState
+): KeycloakReadState['tenantAdminServiceAccess'] =>
+  input.tenantAdminClient?.clientId ? (state.tenantAdminServiceAccess ?? null) : undefined;
+
 export const completeRun = async (deps: InstanceRegistryServiceDeps, input: CompleteRunInput) => {
   const readKeycloakState = deps.readKeycloakStateViaProvisioner;
   if (!readKeycloakState) {
@@ -160,9 +166,7 @@ export const completeRun = async (deps: InstanceRegistryServiceDeps, input: Comp
     usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
     requireTenantAdmin,
     requireRealmBaseline: realmBaselineApplicable,
-    tenantAdminServiceAccess: provisioningInput.tenantAdminClient?.clientId
-      ? (state.tenantAdminServiceAccess ?? null)
-      : undefined,
+    tenantAdminServiceAccess: readCompletionServiceAccess(provisioningInput, state),
   });
 
   const completionSatisfied = completionSteps.every((step) => step.ok);

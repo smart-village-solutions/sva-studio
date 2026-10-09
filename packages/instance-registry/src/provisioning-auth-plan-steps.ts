@@ -92,19 +92,16 @@ export const buildTenantAdminClientStep = (input: {
   webOriginsMatch: boolean;
   ownershipConflict: boolean;
 }): KeycloakTenantPlan['steps'][number] => {
-  const fullyAligned =
-    input.rootUrlMatch &&
-    input.redirectUrisMatch &&
-    input.logoutUrisMatch &&
-    input.webOriginsMatch &&
-    input.standardFlowEnabledMatch &&
-    input.directAccessGrantsEnabledMatch &&
-    input.serviceAccountsEnabledMatch &&
-    Boolean(
-      input.serviceAccess &&
-      !input.serviceAccess.defaultRealmRoleAssigned &&
-      input.serviceAccess.rolesSafe
-    );
+  const fullyAligned = [
+    input.rootUrlMatch,
+    input.redirectUrisMatch,
+    input.logoutUrisMatch,
+    input.webOriginsMatch,
+    input.standardFlowEnabledMatch,
+    input.directAccessGrantsEnabledMatch,
+    input.serviceAccountsEnabledMatch,
+    Boolean(input.serviceAccess?.rolesSafe && !input.serviceAccess.defaultRealmRoleAssigned),
+  ].every(Boolean);
   const accessUnreadable =
     input.clientExists &&
     input.serviceAccountsEnabledMatch &&

@@ -48,6 +48,9 @@ export type KeycloakProvisioningClient = {
   }): Promise<void>;
   ensurePersonalMcpAccess(audienceClientId: string): Promise<void>;
   ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
+  getTenantAdminServiceAccess(
+    clientId: string
+  ): Promise<NonNullable<KeycloakReadState['tenantAdminServiceAccess']>>;
   listClientProtocolMappers(clientId: string): Promise<
     readonly {
       name: string;

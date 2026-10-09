@@ -57,6 +57,16 @@ export const createReadKeycloakState =
     const tenantAdminClientRepresentation = input.tenantAdminClient?.clientId
       ? await client.getOidcClientByClientId(input.tenantAdminClient.clientId)
       : null;
+    const tenantAdminServiceAccess =
+      input.tenantAdminClient?.clientId &&
+      tenantAdminClientRepresentation?.serviceAccountsEnabled &&
+      readStudioOwnedClient(
+        tenantAdminClientRepresentation,
+        input.instanceId,
+        'tenant_admin_client'
+      ) === 'owned'
+        ? await client.getTenantAdminServiceAccess(input.tenantAdminClient.clientId)
+        : undefined;
     const pluginOidcClients = await Promise.all(
       pluginOidcClientRequirements.map(async (requirement) => {
         const clientRepresentation = await client.getOidcClientByClientId(requirement.clientId);
@@ -110,6 +120,7 @@ export const createReadKeycloakState =
       realm,
       clientRepresentation,
       tenantAdminClientRepresentation,
+      tenantAdminServiceAccess,
       pluginOidcClients,
       protocolMappers,
       tenantAdminStatus: tenantAdmin.status,

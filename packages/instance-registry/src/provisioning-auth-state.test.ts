@@ -100,6 +100,13 @@ const createClient = (
   ensureOidcClient: vi.fn(async () => undefined),
   ensurePersonalMcpAccess: vi.fn(async () => undefined),
   ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
+  getTenantAdminServiceAccess: vi.fn(async () => ({
+    defaultRealmRoleId: 'default-role',
+    defaultRealmRoleAssigned: false,
+    directRoleNames: [],
+    effectiveRoleNames: [],
+    rolesSafe: true,
+  })),
   listClientProtocolMappers: vi.fn(async () => [{ name: 'instanceId' }]),
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
   ensureAdminOnlyUserProfileAttributes: vi.fn(async () => undefined),
@@ -230,6 +237,41 @@ describe('provisioning-auth-state', () => {
     expect(client.getOidcClientByClientId).toHaveBeenCalledWith('tenant-admin');
     expect(client.ensureRealm).not.toHaveBeenCalled();
   });
+
+  it.each(['owned', 'foreign', 'disabled'])(
+    'reads service-account drift only for an enabled, Studio-owned client (%s)',
+    async (mode) => {
+      const client = createClient({
+        getOidcClientByClientId: vi.fn(async (clientId: string) => ({
+          id: `${clientId}-id`,
+          clientId,
+          serviceAccountsEnabled: mode !== 'disabled',
+          attributes: {
+            managed_by: 'studio',
+            instance_id: mode === 'foreign' ? 'another' : 'demo',
+            artifact_key: 'tenant_admin_client',
+          },
+        })),
+      });
+      const state = await createReadKeycloakState(() => client)({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'login',
+        authClientSecretConfigured: true,
+        tenantAdminClient: { clientId: 'tenant-admin' },
+      });
+      if (mode === 'owned') {
+        expect(client.getTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
+        expect(state.tenantAdminServiceAccess).toMatchObject({ defaultRealmRoleAssigned: false });
+      } else {
+        expect(client.getTenantAdminServiceAccess).not.toHaveBeenCalled();
+        expect(state.tenantAdminServiceAccess).toBeUndefined();
+      }
+      expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
+    }
+  );
 
   it('returns an empty auth state when the realm does not exist', async () => {
     const client = createClient({

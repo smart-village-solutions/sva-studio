@@ -247,6 +247,47 @@ describe('provisioning-auth readers', () => {
     );
   });
 
+  it('binds service-account default-role isolation and effective permissions into the plan fingerprint', async () => {
+    let access: NonNullable<KeycloakReadState['tenantAdminServiceAccess']> = {
+      defaultRealmRoleId: 'actual-default-id',
+      defaultRealmRoleAssigned: true,
+      directRoleNames: ['manage-users'],
+      effectiveRoleNames: ['manage-users', 'view-identity-providers'],
+      rolesSafe: false,
+    };
+    const stateReader = vi.fn(async (): Promise<KeycloakReadState> => ({
+      ...(await readState(input)),
+      tenantAdminServiceAccess: access,
+    }));
+    const plan = createInstanceKeycloakPlanReader(
+      stateReader,
+      createInstanceKeycloakPreflightReader(stateReader)
+    );
+    const before = await plan(input);
+    expect(before.steps.find((step) => step.stepKey === 'tenant_admin_client')).toMatchObject({
+      action: 'update',
+      details: { serviceAccess: access },
+    });
+    access = {
+      ...access,
+      defaultRealmRoleAssigned: false,
+      effectiveRoleNames: ['manage-users'],
+      rolesSafe: true,
+    };
+    const after = await plan(input);
+    expect(after.steps.find((step) => step.stepKey === 'tenant_admin_client')?.action).toBe(
+      'verify'
+    );
+    expect(after.fingerprint).not.toBe(before.fingerprint);
+    expect((await plan(input)).fingerprint).toBe(after.fingerprint);
+    access = { ...access, effectiveRoleNames: ['manage-users', 'impersonation'], rolesSafe: false };
+    const changedPermissions = await plan(input);
+    expect(changedPermissions.fingerprint).not.toBe(after.fingerprint);
+    expect(
+      changedPermissions.steps.find((step) => step.stepKey === 'tenant_admin_client')?.action
+    ).toBe('update');
+  });
+
   it('marks tenant admin client drift as an update in the plan preview', async () => {
     const driftedReadState = vi.fn(async (): Promise<KeycloakReadState> => ({
       ...(await readState(input)),

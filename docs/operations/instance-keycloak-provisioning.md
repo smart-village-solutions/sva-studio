@@ -543,6 +543,10 @@ Optional und weiter diagnostizierbar:
 
 ## Rollen- und Rechte-Modell
 
+- Der technische Tenant-Admin-Service-Account wird von der tatsächlichen Realm-Standardrolle entkoppelt. Der Provisioner verwendet dazu `defaultRole.id` aus Keycloak und entfernt ausschließlich deren Zuweisung am Service-Account des zuvor ownership-geprüften Studio-Clients. Die gemeinsame Rollendefinition, andere Clients, Gruppen und normale Benutzer bleiben unverändert.
+- Der Service-Account erhält direkt genau `manage-users`, `view-users`, `view-realm`, `manage-realm` und `view-clients` des Clients `realm-management`. Effektiv sind zusätzlich nur `query-users`, `query-groups` und `query-clients` zulässig. Weitere wirksame Verwaltungsrechte bleiben ein blockierender Befund, auch nach dem Entkoppeln der Standardrolle.
+- Der aktuelle Plan enthält die ID und den Zuweisungsstatus der Standardrolle sowie die sortierten direkten und effektiven Verwaltungsrollen. Bestands-Realms mit Tenant-Admin-Client werden dafür live gelesen; persistierte Pläne bestätigen keinen aktuellen Service-Account-Zustand. Drift wird im bestehenden Schritt `tenant_admin_client` als `update` angezeigt und in dessen Fingerprint gebunden.
+- Nach der Entfernung prüft der Provisioner die fehlende Standardrollenzuweisung und anschließend die direkten und effektiven Verwaltungsrechte erneut. Ein nicht bestätigter Abgleich scheitert mit `tenant_admin_service_access_readback_failed`; eine nicht eindeutig lesbare Realm-Standardrolle mit `realm_default_role_missing`. Eine Wiederholung entfernt keine weiteren Zuweisungen. Secret-Recovery und Aktivierung bleiben eigenständige, geschützte Folgeschritte.
 - `instance_registry_admin` ist eine Plattformrolle und bleibt Root-Host-exklusiv.
 - `system_admin` ist die minimale Tenant-Admin-Rolle für tenant-lokale Admin-Funktionen.
 - Tenant-Admins erhalten im Bootstrap nicht automatisch `instance_registry_admin`.

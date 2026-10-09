@@ -104,6 +104,13 @@ export type KeycloakReadState = {
   } | null;
   readonly clientRepresentation: KeycloakClientRepresentation;
   readonly tenantAdminClientRepresentation: KeycloakClientRepresentation;
+  readonly tenantAdminServiceAccess?: {
+    readonly defaultRealmRoleId: string;
+    readonly defaultRealmRoleAssigned: boolean;
+    readonly directRoleNames: readonly string[];
+    readonly effectiveRoleNames: readonly string[];
+    readonly rolesSafe: boolean;
+  };
   readonly pluginOidcClients: readonly PluginOidcClientState[];
   readonly protocolMappers: readonly {
     readonly name: string;

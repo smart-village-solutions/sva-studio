@@ -87,6 +87,7 @@ export const buildTenantAdminClientStep = (input: {
   redirectUrisMatch: boolean;
   logoutUrisMatch: boolean;
   serviceAccountsEnabledMatch: boolean;
+  serviceAccess?: KeycloakReadState['tenantAdminServiceAccess'];
   standardFlowEnabledMatch: boolean;
   webOriginsMatch: boolean;
   ownershipConflict: boolean;
@@ -98,7 +99,9 @@ export const buildTenantAdminClientStep = (input: {
     input.webOriginsMatch &&
     input.standardFlowEnabledMatch &&
     input.directAccessGrantsEnabledMatch &&
-    input.serviceAccountsEnabledMatch;
+    input.serviceAccountsEnabledMatch &&
+    (!input.serviceAccess ||
+      (!input.serviceAccess.defaultRealmRoleAssigned && input.serviceAccess.rolesSafe));
 
   return {
     stepKey: 'tenant_admin_client',
@@ -117,7 +120,7 @@ export const buildTenantAdminClientStep = (input: {
         ? 'Der technische Tenant-Admin-Client wird angelegt oder ergänzt.'
         : fullyAligned
           ? 'Der Tenant-Admin-Client entspricht bereits dem Sollzustand.'
-          : 'Der Tenant-Admin-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
+          : 'Der Tenant-Admin-Client und seine isolierten Service-Account-Rechte werden abgeglichen.',
     details: {
       clientExists: input.clientExists,
       directAccessGrantsEnabledMatch: input.directAccessGrantsEnabledMatch,
@@ -128,6 +131,7 @@ export const buildTenantAdminClientStep = (input: {
       standardFlowEnabledMatch: input.standardFlowEnabledMatch,
       webOriginsMatch: input.webOriginsMatch,
       ownershipConflict: input.ownershipConflict,
+      ...(input.serviceAccess ? { serviceAccess: input.serviceAccess } : {}),
     },
   };
 };

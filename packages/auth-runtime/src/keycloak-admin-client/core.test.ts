@@ -1415,6 +1415,135 @@ describe('Keycloak admin client', () => {
     expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
   });
 
+  describe('tenant admin isolation from shared realm defaults', () => {
+    const requiredNames = [
+      'manage-users',
+      'view-users',
+      'view-realm',
+      'manage-realm',
+      'view-clients',
+    ];
+    const requiredRoles = requiredNames.map((name) => ({ id: `role-${name}`, name }));
+    const defaultRole = { id: 'actual-default-id', name: 'shared-application-defaults' };
+    const unrelatedRole = { id: 'other-id', name: 'default-roles-demo' };
+
+    const createSharedRealmClient = async (
+      options: {
+        keepDefault?: boolean;
+        extraEffectiveRole?: boolean;
+        defaultMissing?: boolean;
+        detachStatus?: number;
+      } = {}
+    ) => {
+      let realmRoles = [defaultRole, unrelatedRole];
+      const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit) => {
+        const url = new URL(input);
+        const path = url.pathname;
+        if (path.endsWith('/token'))
+          return createJsonResponse(200, { access_token: 'test-token', expires_in: 120 });
+        if (path.endsWith('/clients')) {
+          const clientId = url.searchParams.get('clientId');
+          return createJsonResponse(200, [{ id: `${clientId}-id`, clientId }]);
+        }
+        if (path.endsWith('/service-account-user'))
+          return createJsonResponse(200, { id: 'studio-service-user' });
+        if (path === '/admin/realms/demo')
+          return createJsonResponse(200, {
+            realm: 'demo',
+            defaultRole: options.defaultMissing ? undefined : defaultRole,
+          });
+        if (path.endsWith('/role-mappings/realm')) {
+          if (init?.method === 'DELETE') {
+            if (options.detachStatus)
+              return createJsonResponse(options.detachStatus, { error: 'denied' });
+            if (!options.keepDefault)
+              realmRoles = realmRoles.filter((role) => role.id !== defaultRole.id);
+            return new Response(null, { status: 204 });
+          }
+          return createJsonResponse(200, realmRoles);
+        }
+        if (path.endsWith('/roles') || path.endsWith('/clients/realm-management-id')) {
+          return createJsonResponse(200, requiredRoles);
+        }
+        if (path.endsWith('/composite'))
+          return createJsonResponse(200, [
+            ...requiredRoles,
+            ...(realmRoles.some((role) => role.id === defaultRole.id) || options.extraEffectiveRole
+              ? [{ id: 'extra-role', name: 'view-identity-providers' }]
+              : []),
+          ]);
+        throw new Error(`Unexpected request: ${init?.method} ${path}`);
+      });
+      return { client: await createClient(fetchImpl), fetchImpl, realmRoles: () => realmRoles };
+    };
+
+    it('removes only the authoritative default-role assignment, verifies it, and is idempotent', async () => {
+      const { client, fetchImpl, realmRoles } = await createSharedRealmClient();
+      await client.ensureTenantAdminServiceAccess('tenant-admin');
+      expect(realmRoles()).toEqual([unrelatedRole]);
+      const mutations = fetchImpl.mock.calls.filter(
+        ([, init]) => init?.method !== 'GET' && !String(init?.body).includes('grant_type')
+      );
+      expect(mutations).toHaveLength(1);
+      expect(mutations[0]?.[0]).toBe(
+        'https://keycloak.example/admin/realms/demo/users/studio-service-user/role-mappings/realm'
+      );
+      expect(mutations[0]?.[1]?.method).toBe('DELETE');
+      expect(JSON.parse(String(mutations[0]?.[1]?.body))).toEqual([defaultRole]);
+      const before = fetchImpl.mock.calls.length;
+      await client.ensureTenantAdminServiceAccess('tenant-admin');
+      expect(fetchImpl.mock.calls.slice(before).every(([, init]) => init?.method === 'GET')).toBe(
+        true
+      );
+    });
+
+    it('reports inherited permission drift without any mutation or credential fields', async () => {
+      const { client, fetchImpl } = await createSharedRealmClient();
+      const access = await client.getTenantAdminServiceAccess('tenant-admin');
+      expect(access).toEqual({
+        defaultRealmRoleId: defaultRole.id,
+        defaultRealmRoleAssigned: true,
+        directRoleNames: [...requiredNames].sort(),
+        effectiveRoleNames: [...requiredNames, 'view-identity-providers'].sort(),
+        rolesSafe: false,
+      });
+      expect(
+        fetchImpl.mock.calls
+          .filter(([url]) => !String(url).endsWith('/token'))
+          .every(([, init]) => init?.method === 'GET')
+      ).toBe(true);
+      expect(fetchImpl.mock.calls.some(([url]) => String(url).includes('client-secret'))).toBe(
+        false
+      );
+    });
+
+    it.each([{ keepDefault: true }, { extraEffectiveRole: true }])(
+      'fails closed when isolation or effective-role verification fails (%j)',
+      async (options) => {
+        const { client } = await createSharedRealmClient(options);
+        await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject({
+          code: 'tenant_admin_service_access_readback_failed',
+          retryable: false,
+        });
+      }
+    );
+
+    it('does not guess the default role when the authoritative ID is missing', async () => {
+      const { client, fetchImpl } = await createSharedRealmClient({ defaultMissing: true });
+      await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject({
+        code: 'realm_default_role_missing',
+      });
+      expect(fetchImpl.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+    });
+
+    it('propagates a rejected detachment instead of proceeding as ready', async () => {
+      const { client } = await createSharedRealmClient({ detachStatus: 403 });
+      await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject({
+        statusCode: 403,
+      });
+    });
+  });
+
   it('grants required realm-management client roles to the tenant admin service account', async () => {
     const fetchImpl = vi
       .fn()
@@ -1446,6 +1575,13 @@ describe('Keycloak admin client', () => {
       .mockResolvedValueOnce(
         createJsonResponse(200, [{ id: 'role-view-users', name: 'view-users' }])
       )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          realm: 'demo',
+          defaultRole: { id: 'default-id', name: 'custom-default' },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, [
@@ -1470,7 +1606,7 @@ describe('Keycloak admin client', () => {
 
     await client.ensureTenantAdminServiceAccess('tenant-admin');
 
-    const addRolesCall = fetchImpl.mock.calls[6];
+    const addRolesCall = fetchImpl.mock.calls[8];
     expect(String(addRolesCall?.[0])).toContain(
       '/users/service-account-user-id/role-mappings/clients/realm-management-client-id'
     );
@@ -1521,6 +1657,13 @@ describe('Keycloak admin client', () => {
           { id: 'role-view-clients', name: 'view-clients' },
         ])
       )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          realm: 'demo',
+          defaultRole: { id: 'default-id', name: 'custom-default' },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, [
@@ -1544,13 +1687,13 @@ describe('Keycloak admin client', () => {
     const client = await createClient(fetchImpl);
 
     await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
-    expect(fetchImpl.mock.calls[6]?.[1]?.method).toBe('DELETE');
-    expect(JSON.parse(String(fetchImpl.mock.calls[6]?.[1]?.body))).toEqual([
+    expect(fetchImpl.mock.calls[8]?.[1]?.method).toBe('DELETE');
+    expect(JSON.parse(String(fetchImpl.mock.calls[8]?.[1]?.body))).toEqual([
       { id: 'role-manage-clients', name: 'manage-clients' },
     ]);
-    expect(fetchImpl.mock.calls[7]?.[1]?.method).toBe('GET');
-    expect(String(fetchImpl.mock.calls[8]?.[0])).toContain('/composite');
-    expect(fetchImpl).toHaveBeenCalledTimes(9);
+    expect(fetchImpl.mock.calls[9]?.[1]?.method).toBe('GET');
+    expect(String(fetchImpl.mock.calls[10]?.[0])).toContain('/composite');
+    expect(fetchImpl).toHaveBeenCalledTimes(11);
   });
 
   it('adds client read access before revoking legacy client write access', async () => {
@@ -1590,6 +1733,13 @@ describe('Keycloak admin client', () => {
           { id: 'role-manage-clients', name: 'manage-clients' },
         ])
       )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          realm: 'demo',
+          defaultRole: { id: 'default-id', name: 'custom-default' },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
@@ -1615,11 +1765,11 @@ describe('Keycloak admin client', () => {
 
     await client.ensureTenantAdminServiceAccess('tenant-admin');
 
-    expect(fetchImpl.mock.calls[6]?.[1]?.method).toBe('POST');
-    expect(fetchImpl.mock.calls[7]?.[1]?.method).toBe('DELETE');
-    expect(fetchImpl.mock.calls[8]?.[1]?.method).toBe('GET');
-    expect(String(fetchImpl.mock.calls[9]?.[0])).toContain('/composite');
-    expect(fetchImpl).toHaveBeenCalledTimes(10);
+    expect(fetchImpl.mock.calls[8]?.[1]?.method).toBe('POST');
+    expect(fetchImpl.mock.calls[9]?.[1]?.method).toBe('DELETE');
+    expect(fetchImpl.mock.calls[10]?.[1]?.method).toBe('GET');
+    expect(String(fetchImpl.mock.calls[11]?.[0])).toContain('/composite');
+    expect(fetchImpl).toHaveBeenCalledTimes(12);
   });
 
   it('fails closed when the tenant admin service role readback still has client write access', async () => {
@@ -1651,6 +1801,13 @@ describe('Keycloak admin client', () => {
       )
       .mockResolvedValueOnce(createJsonResponse(200, roleMappings))
       .mockResolvedValueOnce(createJsonResponse(200, roleMappings))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          realm: 'demo',
+          defaultRole: { id: 'default-id', name: 'custom-default' },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(createJsonResponse(200, roleMappings))
       .mockResolvedValueOnce(createJsonResponse(200, roleMappings));
@@ -1692,6 +1849,13 @@ describe('Keycloak admin client', () => {
       )
       .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
       .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          realm: 'demo',
+          defaultRole: { id: 'default-id', name: 'custom-default' },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []))
       .mockResolvedValueOnce(createJsonResponse(200, exactRoles))
       .mockResolvedValueOnce(
         createJsonResponse(200, [
@@ -1707,8 +1871,8 @@ describe('Keycloak admin client', () => {
     await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
     expect(fetchImpl.mock.calls.slice(1).some((call) => call[1]?.method === 'POST')).toBe(false);
     expect(fetchImpl.mock.calls.some((call) => call[1]?.method === 'DELETE')).toBe(false);
-    expect(String(fetchImpl.mock.calls[7]?.[0])).toContain('/composite');
-    expect(fetchImpl).toHaveBeenCalledTimes(8);
+    expect(String(fetchImpl.mock.calls[9]?.[0])).toContain('/composite');
+    expect(fetchImpl).toHaveBeenCalledTimes(10);
   });
 
   it.each(['manage-clients', 'create-client', 'impersonation'])(
@@ -1743,6 +1907,13 @@ describe('Keycloak admin client', () => {
         )
         .mockResolvedValueOnce(createJsonResponse(200, directRoles))
         .mockResolvedValueOnce(createJsonResponse(200, directRoles))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, {
+            realm: 'demo',
+            defaultRole: { id: 'default-id', name: 'custom-default' },
+          })
+        )
+        .mockResolvedValueOnce(createJsonResponse(200, []))
         .mockResolvedValueOnce(createJsonResponse(200, directRoles))
         .mockResolvedValueOnce(
           createJsonResponse(200, [
@@ -1759,7 +1930,7 @@ describe('Keycloak admin client', () => {
         code: 'tenant_admin_service_access_readback_failed',
         statusCode: 500,
       });
-      expect(String(fetchImpl.mock.calls[7]?.[0])).toContain(
+      expect(String(fetchImpl.mock.calls[9]?.[0])).toContain(
         '/role-mappings/clients/realm-management-client-id/composite'
       );
     }

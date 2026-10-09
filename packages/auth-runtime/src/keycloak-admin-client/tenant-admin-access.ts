@@ -38,6 +38,69 @@ const tenantAdminServiceRoleMappingsAreSafe = (
 };
 
 export class KeycloakTenantAdminAccessOperations extends KeycloakOidcClientOperations {
+  private async readServiceAccountDefaultRole(serviceAccountUserId: string) {
+    const [realm, realmRoleMappings] = await Promise.all([
+      this.getRealm(),
+      this.readUserRoleMappings(serviceAccountUserId, 'list_service_account_realm_roles'),
+    ]);
+    const defaultRole = realm?.defaultRole;
+    if (!defaultRole?.id || !defaultRole.name) {
+      throw new KeycloakAdminRequestError({
+        message: 'The realm default role could not be identified.',
+        statusCode: 500,
+        code: 'realm_default_role_missing',
+        retryable: false,
+      });
+    }
+    return {
+      defaultRole,
+      assigned: realmRoleMappings.some((role) => role.id === defaultRole.id),
+    };
+  }
+
+  async getTenantAdminServiceAccess(clientId: string) {
+    const [tenantAdminClient, realmManagementClient] = await Promise.all([
+      this.getOidcClientByClientId(clientId),
+      this.getOidcClientByClientId('realm-management'),
+    ]);
+    if (!tenantAdminClient || !realmManagementClient) {
+      throw new KeycloakAdminRequestError({
+        message: 'Tenant admin or realm-management client is missing.',
+        statusCode: 404,
+        code: 'unknown_client',
+        retryable: false,
+      });
+    }
+    const user = await this.executeWithResilience<KeycloakAdminUser>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(tenantAdminClient.id)}/service-account-user`,
+      operation: 'get_service_account_user',
+    });
+    const path =
+      `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(user.id)}` +
+      `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`;
+    const [defaultRole, directRoles, effectiveRoles] = await Promise.all([
+      this.readServiceAccountDefaultRole(user.id),
+      this.executeWithResilience<KeycloakRoleMapping[]>({
+        method: 'GET',
+        path,
+        operation: 'verify_direct_service_account_client_roles',
+      }),
+      this.executeWithResilience<KeycloakRoleMapping[]>({
+        method: 'GET',
+        path: `${path}/composite`,
+        operation: 'verify_effective_service_account_client_roles',
+      }),
+    ]);
+    return {
+      defaultRealmRoleId: defaultRole.defaultRole.id,
+      defaultRealmRoleAssigned: defaultRole.assigned,
+      directRoleNames: [...new Set(directRoles.map((role) => role.name))].sort(),
+      effectiveRoleNames: [...new Set(effectiveRoles.map((role) => role.name))].sort(),
+      rolesSafe: tenantAdminServiceRoleMappingsAreSafe(directRoles, effectiveRoles),
+    };
+  }
+
   async ensureTenantAdminServiceAccess(clientId: string): Promise<void> {
     await this.assertWriteAvailability();
     const tenantAdminClient = await this.getOidcClientByClientId(clientId);
@@ -92,6 +155,32 @@ export class KeycloakTenantAdminAccessOperations extends KeycloakOidcClientOpera
         code: 'realm_management_role_missing',
         retryable: false,
       });
+    }
+
+    // Realm defaults belong to all applications in a shared realm. Only detach the
+    // authoritative default-role mapping from this client's own service account.
+    const { defaultRole, assigned } = await this.readServiceAccountDefaultRole(
+      serviceAccountUser.id
+    );
+    if (assigned) {
+      await this.executeWithResilience<void>({
+        method: 'DELETE',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}/role-mappings/realm`,
+        body: JSON.stringify([{ id: defaultRole.id, name: defaultRole.name }]),
+        operation: 'detach_service_account_default_role',
+      });
+      const remainingRoles = await this.readUserRoleMappings(
+        serviceAccountUser.id,
+        'verify_service_account_default_role_detached'
+      );
+      if (remainingRoles.some((role) => role.id === defaultRole.id)) {
+        throw new KeycloakAdminRequestError({
+          message: 'Tenant admin service-account default role detachment could not be verified.',
+          statusCode: 500,
+          code: 'tenant_admin_service_access_readback_failed',
+          retryable: false,
+        });
+      }
     }
 
     await this.reconcileTenantAdminServiceRoleMappings({

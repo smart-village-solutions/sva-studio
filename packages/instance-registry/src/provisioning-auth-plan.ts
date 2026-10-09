@@ -130,6 +130,7 @@ const buildPlanSteps = (
       standardFlowEnabledMatch: tenantAdminClientAlignment.standardFlowEnabledMatch,
       webOriginsMatch: tenantAdminClientAlignment.webOriginsMatch,
       ownershipConflict: tenantAdminClientOwnershipConflict,
+      serviceAccess: input.state?.tenantAdminServiceAccess,
     }),
     ...pluginOidcClients.map((requirement) =>
       buildPluginOidcClientStep(requirement, input.state, blocked, input.instanceId)

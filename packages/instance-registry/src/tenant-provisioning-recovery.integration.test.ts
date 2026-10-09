@@ -654,7 +654,11 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
         authRealm: activationInstanceId,
         authClientId: 'sva-studio-login',
         authIssuerUrl: `https://auth.example.invalid/realms/${activationInstanceId}`,
-        tenantAdminClient: { clientId: 'sva-studio-realm-admin' },
+        authClientSecretCiphertext: authClientSecret,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secretCiphertext: tenantAdminClientSecret,
+        },
         tenantAdminBootstrap: {
           username: 'tenant-admin',
           email: 'tenant-admin@example.invalid',
@@ -665,7 +669,11 @@ integrationDescribe('tenant provisioning recovery persistence', () => {
       });
       assert(instance);
 
-      const inputFingerprint = buildKeycloakSnapshotInputFingerprint(instance);
+      // Persisted postflight evidence belongs to the provisioned client secret versions.
+      const inputFingerprint = buildKeycloakSnapshotInputFingerprint(instance, {
+        authClientSecretCiphertext: authClientSecret,
+        tenantAdminClientSecretCiphertext: tenantAdminClientSecret,
+      });
       const keycloakRun = await repository.createKeycloakProvisioningRun({
         instanceId: activationInstanceId,
         mutation: 'executeKeycloakProvisioning',

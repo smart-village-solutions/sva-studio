@@ -13,6 +13,7 @@ const forwardedRoutes = new Map<string, ReadonlySet<string>>([
 const reservedInstancePaths = new Set(['audit', 'draft-readiness', 'keycloak-realms']);
 const forwardedInstanceRoutes = new Map<string, ReadonlySet<string>>([
   ['', new Set(['GET'])],
+  ['/keycloak/plan', new Set(['GET'])],
   ['/tenant-iam/roles/reconcile', new Set(['POST'])],
   ['/actions/instance.status.activate/confirmation', new Set(['POST'])],
   ['/activate', new Set(['POST'])],
@@ -57,7 +58,7 @@ const isForwardedRoute = (request: Request, url: URL): boolean => {
   const method = request.method.toUpperCase();
   if (forwardedRoutes.get(url.pathname)?.has(method)) return true;
   const match =
-    /^\/api\/v1\/iam\/instances\/([^/]+)(\/tenant-iam\/roles\/reconcile|\/actions\/instance\.status\.activate\/confirmation|\/activate)?$/u.exec(
+    /^\/api\/v1\/iam\/instances\/([^/]+)(\/keycloak\/plan|\/tenant-iam\/roles\/reconcile|\/actions\/instance\.status\.activate\/confirmation|\/activate)?$/u.exec(
       url.pathname
     );
   return Boolean(

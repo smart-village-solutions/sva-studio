@@ -160,9 +160,10 @@ Rollen werden erst im getrennten, bestätigten Provisioning benötigt. Der
 Readiness-Pfad probiert keine Berechtigung durch eine Testmutation aus und
 speichert weder Token noch Providerfehlertext.
 
-Die öffentlichen Endpunkte für Realm-Katalog, Draft-Readiness und
-Registry-Create bleiben am App-Dienst. Dieser leitet exakt diese Methoden und
-Pfade über `http://provisioner:3000` weiter. Der private Provisioner übernimmt
+Die öffentlichen Endpunkte für Realm-Katalog, Draft-Readiness, Registry-Create
+und den lesenden Keycloak-Provisionierungsplan bleiben am App-Dienst. Dieser
+leitet exakt diese Methoden und Pfade über `http://provisioner:3000` weiter.
+Der private Provisioner übernimmt
 den Request unverändert hinsichtlich Session beziehungsweise Bearer-Token,
 Origin, CSRF-Header und Idempotency-Key und prüft Authentifizierung, CSRF und
 `instance.create` selbst erneut. Sein expliziter Local-Handling-Modus übergibt

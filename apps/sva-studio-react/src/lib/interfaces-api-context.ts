@@ -55,8 +55,10 @@ export const loadInterfacesRequestDependencies = async (
   };
 };
 
-export const loadSaveInterfacesDependencies = async (): Promise<SaveInterfacesDependencies> => {
-  const base = await loadInterfacesRequestDependencies();
+export const loadSaveInterfacesDependencies = async (
+  request?: Request
+): Promise<SaveInterfacesDependencies> => {
+  const base = await loadInterfacesRequestDependencies(request);
   const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
 
   return {
@@ -204,4 +206,14 @@ export const resolveAuthorizedInterfacesInstanceId = async (
   }
 
   return user.instanceId;
+};
+
+export const validateInterfaceMutationCsrf = async (request: Request): Promise<void> => {
+  // withAuthenticatedUser must first validate Bearer tokens on an opted-in route.
+  if (request.headers.has('authorization')) return;
+  const { validateCsrf } = await import('@sva/auth-runtime/server');
+  const response = validateCsrf(request);
+  if (response) {
+    throw Object.assign(new Error('csrf_validation_failed'), { statusCode: response.status });
+  }
 };

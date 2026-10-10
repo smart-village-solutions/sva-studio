@@ -1,8 +1,13 @@
+import { z } from 'zod';
+
 import type { SvaMainserverInstanceConfig } from '@sva/sva-mainserver';
 
 import { extractErrorDiagnostics } from './error-message-utils';
 import {
   resolveAuthorizedInterfacesInstanceId,
+  loadSaveInterfacesDependencies,
+  runWithAuthenticatedInterfacesUser,
+  validateInterfaceMutationCsrf,
   type AuthenticatedInterfacesContext,
   type AuthenticatedInterfacesUser,
   type SaveInterfacesDependencies,
@@ -12,6 +17,8 @@ import {
   getErrorPayload,
   getErrorStatusCode,
   jsonResponse,
+  isErrorPayload,
+  isSvaMainserverInstanceConfig,
   type ErrorPayload,
 } from './interfaces-api-transport';
 
@@ -115,4 +122,82 @@ export const saveInterfacesSettingsForUser = async (
   });
 
   return config instanceof Response ? config : jsonResponse(200, config);
+};
+
+const mainserverSettingsInput = z
+  .object({
+    graphqlBaseUrl: z.string().trim().min(1).max(4096).url(),
+    oauthTokenUrl: z.string().trim().min(1).max(4096).url(),
+    enabled: z.boolean(),
+  })
+  .strict();
+
+const projectMainserverSettings = (config: SvaMainserverInstanceConfig | null) => {
+  if (!config) return null;
+  const {
+    instanceId,
+    providerKey,
+    graphqlBaseUrl,
+    oauthTokenUrl,
+    enabled,
+    lastVerifiedAt,
+    lastVerifiedStatus,
+  } = config;
+  return {
+    instanceId,
+    providerKey,
+    graphqlBaseUrl,
+    oauthTokenUrl,
+    enabled,
+    lastVerifiedAt,
+    lastVerifiedStatus,
+  };
+};
+
+export const dispatchMainserverSettingsRequest = async (request: Request): Promise<Response> => {
+  if (request.method !== 'GET' && request.method !== 'POST') {
+    return new Response(null, { status: 405, headers: { allow: 'GET, POST' } });
+  }
+  if (new URL(request.url).search) {
+    return Response.json({ error: { code: 'invalid_request' } }, { status: 400 });
+  }
+  let payload: z.infer<typeof mainserverSettingsInput> | undefined;
+  if (request.method === 'POST') {
+    const parsed = mainserverSettingsInput.safeParse(await request.json().catch(() => null));
+    if (!parsed.success)
+      return Response.json({ error: { code: 'invalid_request' } }, { status: 400 });
+    payload = parsed.data;
+  }
+  const dependencies = await loadSaveInterfacesDependencies(request);
+  const config = await runWithAuthenticatedInterfacesUser({
+    request,
+    fallbackMessage: 'mainserver_settings_request_failed',
+    personalBearerRoute: { method: request.method, path: '/api/v1/interfaces/mainserver' },
+    run: async (ctx): Promise<SvaMainserverInstanceConfig | null> => {
+      if (!payload) {
+        const instanceId = await resolveAuthorizedInterfacesInstanceId(
+          dependencies.logger,
+          ctx,
+          'list_interfaces'
+        );
+        const { loadSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
+        return loadSvaMainserverSettings(instanceId);
+      }
+      await validateInterfaceMutationCsrf(request);
+      const response = await saveInterfacesSettingsForUser({
+        ...dependencies,
+        ctx,
+        payloadData: payload,
+      });
+      const result: unknown = await response.json();
+      if (!response.ok || !isSvaMainserverInstanceConfig(result)) {
+        throw Object.assign(new Error('mainserver_settings_request_failed'), {
+          code: isErrorPayload(result) ? result.error : 'mainserver_settings_request_failed',
+          statusCode: response.ok ? 500 : response.status,
+        });
+      }
+      return result;
+    },
+  });
+  return Response.json({ data: projectMainserverSettings(config) });
 };

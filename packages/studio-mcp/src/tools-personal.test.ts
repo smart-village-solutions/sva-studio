@@ -66,4 +66,16 @@ describe('personal MCP API request boundary', () => {
     expect(validatePersonalRequest({ ...valid, query: excessiveQuery })).toBe('query_limit_exceeded');
     expect(validatePersonalRequest({ ...valid, query: { pageSize: 'many' } })).toBe('page_size_out_of_range');
   });
+  it('allows only bounded Mainserver settings reads and saves', () => {
+    const request = { ...valid, path: 'api/v1/interfaces/mainserver' };
+    const body = { graphqlBaseUrl: 'https://server.example/graphql', oauthTokenUrl: 'https://identity.example/token', enabled: true };
+    expect(validatePersonalRequest(request)).toBeUndefined();
+    expect(validatePersonalRequest({ ...request, method: 'POST', body })).toBeUndefined();
+    for (const method of ['DELETE', 'PATCH'] as const) expect(validatePersonalRequest({ ...request, method, body })).toBe('personal_route_not_allowed');
+    expect(validatePersonalRequest({ ...request, method: 'POST' })).toBe('mainserver_settings_invalid');
+    for (const field of ['instanceId', 'clientSecret', 'secretRef']) expect(validatePersonalRequest({ ...request, method: 'POST', body: { ...body, [field]: 'other' } })).toBe('mainserver_settings_invalid');
+    expect(validatePersonalRequest({ ...request, method: 'POST', body: { ...body, graphqlBaseUrl: 'invalid' } })).toBe('mainserver_settings_invalid');
+    expect(validatePersonalRequest({ ...request, query: { instanceId: 'other' } })).toBe('interface_query_not_supported');
+  });
+
 });

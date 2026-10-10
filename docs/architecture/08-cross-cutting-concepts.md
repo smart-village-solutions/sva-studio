@@ -785,6 +785,8 @@ Referenzen:
 
 ### Persönliche MCP-Schnittstellenverwaltung
 
+- Mainserver-Konfigurationen besitzen den dedizierten GET-/POST-Vertrag `/api/v1/interfaces/mainserver`. Actor-/Host-/Tenant-Bindung und `integration.manage` bleiben zuständig; POST delegiert öffentliche URLs und Aktivierungsstatus an den vorhandenen Mainserver-Speicherpfad. Browser-CSRF und persönliche Bearer-Prüfung bleiben erhalten; Save und Provider-Readiness sind getrennte Nachweise.
+
 - Persönliche Schnittstellenaufrufe verwenden ausschließlich die explizit gewählte Tenant-API und den bestehenden `integration.manage`-Autorisierungs- und Instanzkontext. Die Listenprojektion enthält keine Mainserver-Übersicht; pluginverwaltete Interfaces bleiben außerhalb allgemeiner Tenant-Verwaltung.
 - Schnittstellen-Secrets werden im MCP-Argument ausschließlich als lokale `secretRef` übergeben und pro Aufruf durch einen konfigurierten lokalen Resolver aufgelöst. Der Klartext wird nur im API-Request an den bestehenden verschlüsselnden Interface-Pfad weitergegeben und weder in MCP-Ausgaben noch Fehlern oder Logs ausgegeben.
 - API-Fehler und Interface-Healthchecks geben keine rohen Verbindungsfehler oder Secretwerte in Logs zurück. Persönliche HTTP-Antworten verwenden die bestehende secretfreie Interface-Projektion ohne freie Healthcheck-Statusmeldungen.

@@ -12,6 +12,22 @@ describe('Studio MCP configuration', () => {
     expect(config).toMatchObject({ readTimeoutMs: 10_000, mutationTimeoutMs: 30_000, processTimeoutMs: 120_000, tokenTimeoutMs: 10_000 });
   });
 
+  it('enables persistent sessions only through the explicit keychain setting', async () => {
+    const env = {
+      SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',
+      SVA_STUDIO_MCP_TOKEN_URL: 'https://id.example/token',
+      SVA_STUDIO_MCP_CLIENT_SECRET: 'test-secret',
+    };
+    expect((await readStudioMcpConfig(env)).personalSessionStorage).toBe('memory');
+    expect(
+      (await readStudioMcpConfig({ ...env, SVA_STUDIO_MCP_PERSONAL_SESSION_STORAGE: 'keychain' }))
+        .personalSessionStorage
+    ).toBe('keychain');
+    await expect(
+      readStudioMcpConfig({ ...env, SVA_STUDIO_MCP_PERSONAL_SESSION_STORAGE: 'file' })
+    ).rejects.toThrow();
+  });
+
   it('resolves a secret with an argv command without shell interpretation', async () => {
     const config = await readStudioMcpConfig({
       SVA_STUDIO_MCP_BASE_URL: 'https://studio.example',

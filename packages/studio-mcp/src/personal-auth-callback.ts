@@ -1,16 +1,22 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import * as oidc from 'openid-client';
 import type { PersonalMcpContext } from './config.js';
 import { PersonalMcpAuthError } from './personal-auth-errors.js';
-import { CALLBACK_HOST, CALLBACK_PATH, callbackUri, isLoopback, writeCallbackPage } from './personal-auth-oidc.js';
+import {
+  CALLBACK_HOST,
+  CALLBACK_PATH,
+  callbackUri,
+  isLoopback,
+  writeCallbackPage,
+} from './personal-auth-oidc.js';
 
 export type PersonalSession = {
   readonly contextId: string;
   readonly account: string;
+  readonly subject: string;
   accessToken: string;
   accessTokenExpiresAt: number;
   refreshToken?: string;
-  refreshInFlight?: Promise<string>;
 };
 
 export type PendingPersonalLogin = {
@@ -25,7 +31,12 @@ export type PendingPersonalLogin = {
 
 const parseCallbackUrl = (request: IncomingMessage, port: number): URL | undefined => {
   const expectedHost = `${CALLBACK_HOST}:${port}`;
-  if (request.method !== 'GET' || !isLoopback(request.socket.remoteAddress) || request.headers.host !== expectedHost) return undefined;
+  if (
+    request.method !== 'GET' ||
+    !isLoopback(request.socket.remoteAddress) ||
+    request.headers.host !== expectedHost
+  )
+    return undefined;
   if (!request.url?.startsWith('/') || request.url.startsWith('//')) return undefined;
   try {
     const callbackUrl = new URL(request.url, callbackUri(port));
@@ -40,27 +51,43 @@ const finishLogin = async (
   state: string,
   pending: PendingPersonalLogin,
   pendingStateByContext: Map<string, string>,
-  sessions: Map<string, PersonalSession>
+  installSession: (
+    context: PersonalMcpContext,
+    session: PersonalSession,
+    state: string
+  ) => Promise<void>
 ): Promise<void> => {
-  const tokenResponse = await oidc.authorizationCodeGrant(
-    pending.configuration,
-    callbackUrl,
-    { pkceCodeVerifier: pending.codeVerifier, expectedState: pending.state, expectedNonce: pending.nonce }
-  );
+  const tokenResponse = await oidc.authorizationCodeGrant(pending.configuration, callbackUrl, {
+    pkceCodeVerifier: pending.codeVerifier,
+    expectedState: pending.state,
+    expectedNonce: pending.nonce,
+  });
   const accessToken = tokenResponse.access_token;
   const subject = tokenResponse.claims()?.sub;
-  if (typeof accessToken !== 'string' || typeof subject !== 'string' || !subject) throw new PersonalMcpAuthError('oidc_login_failed');
+  if (typeof accessToken !== 'string' || typeof subject !== 'string' || !subject)
+    throw new PersonalMcpAuthError('oidc_login_failed');
   const userInfo = await oidc.fetchUserInfo(pending.configuration, accessToken, subject);
-  const account = typeof userInfo.preferred_username === 'string' ? userInfo.preferred_username : '';
-  if (!account || pendingStateByContext.get(pending.context.id) !== state) throw new PersonalMcpAuthError('oidc_login_failed');
+  const account =
+    typeof userInfo.preferred_username === 'string' ? userInfo.preferred_username : '';
+  if (
+    userInfo.sub !== subject ||
+    !account ||
+    pendingStateByContext.get(pending.context.id) !== state
+  )
+    throw new PersonalMcpAuthError('oidc_login_failed');
   const expiresIn = tokenResponse.expiresIn() ?? 60;
-  sessions.set(pending.context.id, {
-    contextId: pending.context.id,
-    account,
-    accessToken,
-    accessTokenExpiresAt: Date.now() + expiresIn * 1000,
-    ...(tokenResponse.refresh_token ? { refreshToken: tokenResponse.refresh_token } : {}),
-  });
+  await installSession(
+    pending.context,
+    {
+      contextId: pending.context.id,
+      account,
+      subject,
+      accessToken,
+      accessTokenExpiresAt: Date.now() + expiresIn * 1000,
+      ...(tokenResponse.refresh_token ? { refreshToken: tokenResponse.refresh_token } : {}),
+    },
+    state
+  );
 };
 
 export const handlePersonalCallback = async (
@@ -69,7 +96,11 @@ export const handlePersonalCallback = async (
   port: number,
   pendingByState: Map<string, PendingPersonalLogin>,
   pendingStateByContext: Map<string, string>,
-  sessions: Map<string, PersonalSession>,
+  installSession: (
+    context: PersonalMcpContext,
+    session: PersonalSession,
+    state: string
+  ) => Promise<void>,
   removePending: (state: string, preserveContext?: boolean) => void
 ): Promise<void> => {
   const callbackUrl = parseCallbackUrl(request, port);
@@ -86,17 +117,46 @@ export const handlePersonalCallback = async (
   }
   removePending(state, true);
   if (callbackUrl.searchParams.has('error') || !callbackUrl.searchParams.get('code')) {
-    pendingStateByContext.delete(pending.context.id);
+    if (pendingStateByContext.get(pending.context.id) === state)
+      pendingStateByContext.delete(pending.context.id);
     writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
     return;
   }
   try {
-    await finishLogin(callbackUrl, state, pending, pendingStateByContext, sessions);
-    pendingStateByContext.delete(pending.context.id);
-    writeCallbackPage(response, 200, 'Anmeldung abgeschlossen. Dieses Browserfenster kann geschlossen werden.');
-  } catch {
-    sessions.delete(pending.context.id);
-    pendingStateByContext.delete(pending.context.id);
-    writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
+    await finishLogin(callbackUrl, state, pending, pendingStateByContext, installSession);
+    if (pendingStateByContext.get(pending.context.id) === state)
+      pendingStateByContext.delete(pending.context.id);
+    writeCallbackPage(
+      response,
+      200,
+      'Anmeldung abgeschlossen. Dieses Browserfenster kann geschlossen werden.'
+    );
+  } catch (error) {
+    if (pendingStateByContext.get(pending.context.id) === state)
+      pendingStateByContext.delete(pending.context.id);
+    if (error instanceof PersonalMcpAuthError && error.code === 'personal_session_store_unavailable') {
+      response.writeHead(503, {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'content-security-policy': "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+        'referrer-policy': 'no-referrer',
+        'x-content-type-options': 'nosniff',
+      });
+      response.end(JSON.stringify({ error: error.code }));
+    } else {
+      writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
+    }
   }
+};
+
+export const startPersonalCallbackServer = async (
+  port: number,
+  handler: (request: IncomingMessage, response: ServerResponse) => void
+): Promise<Server> => {
+  const server = createServer(handler);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', () => reject(new PersonalMcpAuthError('login_callback_unavailable')));
+    server.listen(port, CALLBACK_HOST, () => resolve());
+  });
+  return server;
 };

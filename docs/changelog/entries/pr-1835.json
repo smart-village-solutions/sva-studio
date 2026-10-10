@@ -1,0 +1,4 @@
+{
+  "prNumber": 1835,
+  "body": "Studio-Builds können vorhandene Plugins als expliziten Satz auswählen. App, Provisioning und Artefaktprüfung verwenden dieselbe validierte Auswahl; die bestehenden Studio- und SSF-Distributionen bleiben erhalten."
+}

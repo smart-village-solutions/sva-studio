@@ -123,13 +123,15 @@ const updateExistingTenantAdmin = async (
   const owned = readStudioOwnedUser(user, input.instanceId, 'tenant_admin') === 'owned';
   const emailMatches =
     input.adoptExisting && input.email ? await client.findUsersByEmail(input.email) : [];
-  const adoptable =
-    input.adoptExisting === true &&
-    isUnmarkedStudioUser(user) &&
+  const emailIdentifiesUser =
     normalizeEmail(user.email) === normalizeEmail(input.email) &&
     emailMatches.length === 1 &&
     emailMatches[0]?.id === user.id;
-  if (!owned && !adoptable) throw new Error('tenant_admin_ownership_conflict');
+  const adoptable =
+    input.adoptExisting === true && isUnmarkedStudioUser(user) && emailIdentifiesUser;
+  if ((input.adoptExisting && !emailIdentifiesUser) || (!owned && !adoptable)) {
+    throw new Error('tenant_admin_ownership_conflict');
+  }
 
   await client.updateUser(user.id, {
     username: input.adoptExisting ? user.username! : input.username,

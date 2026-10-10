@@ -984,6 +984,47 @@ describe('provisioning-auth-state', () => {
     expect(client.assignRealmRoles).toHaveBeenCalledWith(user.id, ['system_admin']);
   });
 
+  it.each(['ambiguous', 'replaced'] as const)(
+    'rejects an owned adopted admin when the final email lookup becomes %s',
+    async (kind) => {
+      const user = {
+        id: 'existing-admin',
+        username: 'shared-realm-admin',
+        email: 'admin@smart-village.app',
+        attributes: {
+          managed_by: ['studio'],
+          instance_id: ['customer-1'],
+          artifact_key: ['tenant_admin'],
+        },
+      };
+      const other = { ...user, id: 'second-user' };
+      const client = createClient({
+        findUsersByEmail: vi
+          .fn()
+          .mockResolvedValueOnce([user])
+          .mockResolvedValueOnce([user])
+          .mockResolvedValue(kind === 'ambiguous' ? [user, other] : [other]),
+      });
+      await expect(
+        createProvisionInstanceAuthArtifacts(() => client)({
+          instanceId: 'customer-1',
+          primaryHostname: 'customer-1.example.org',
+          realmMode: 'existing',
+          authRealm: 'customer-1',
+          authClientId: 'sva-studio-login',
+          tenantAdminBootstrap: {
+            username: 'configured-name-is-not-used',
+            email: 'admin@smart-village.app',
+            adoptExisting: true,
+          },
+        })
+      ).rejects.toThrow('tenant_admin_ownership_conflict');
+      expect(client.findUsersByEmail).toHaveBeenCalledTimes(3);
+      expect(client.updateUser).not.toHaveBeenCalled();
+      expect(client.assignRealmRoles).not.toHaveBeenCalled();
+    }
+  );
+
   it.each(['foreign-instance', 'foreign-artifact', 'foreign-manager', 'ambiguous-email'] as const)(
     'rejects an adopted admin with %s before mutating any realm artifact',
     async (kind) => {

@@ -22,6 +22,7 @@ import {
   loadSaveInterfacesDependencies,
   resolveAuthorizedInterfacesInstanceId,
   runWithAuthenticatedInterfacesUser,
+  validateInterfaceMutationCsrf,
 } from './interfaces-api-context';
 import {
   saveInterfacesSettingsForUser,
@@ -218,17 +219,6 @@ export const deleteInstanceInterfaceForRequest = async (
       return { deleted: true };
     },
   });
-};
-
-const validateInterfaceMutationCsrf = async (request: Request): Promise<void> => {
-  // withAuthenticatedUser has already validated any Authorization header and only accepts
-  // personal Bearer tokens on the explicitly opted-in routes above.
-  if (request.headers.has('authorization')) return;
-  const { validateCsrf } = await import('@sva/auth-runtime/server');
-  const response = validateCsrf(request);
-  if (response) {
-    throw Object.assign(new Error('csrf_validation_failed'), { statusCode: response.status });
-  }
 };
 
 export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' })

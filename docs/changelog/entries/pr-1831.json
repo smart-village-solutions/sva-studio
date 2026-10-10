@@ -1,0 +1,4 @@
+{
+  "prNumber": 1831,
+  "body": "Alle in Studio unterstützten Schnittstellenarten können über den persönlichen MCP angelegt werden: Mainserver, S3, Supabase, PostgreSQL, Mailtransport und Karten/Geocoding. Die bisher fehlende Mainserver-Konfiguration lässt sich jetzt lesen und speichern. Geheimwerte werden bei den übrigen Schnittstellen über lokale Referenzen übernommen. Bestehende Berechtigungen, Modulvoraussetzungen und Mandantenzuordnung bleiben verbindlich; Speichern ersetzt keine Verbindungsprüfung."
+}

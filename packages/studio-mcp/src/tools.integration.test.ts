@@ -162,9 +162,15 @@ describe('Studio MCP tools', () => {
     await Promise.all([client.close(), server.close()]);
   });
 
-  it('resolves interface secret references locally and never returns them through MCP', async () => {
+  it.each([
+    { type: 's3', fields: ['secretAccessKey'] },
+    { type: 'supabase', fields: ['databaseUrl', 'serviceRoleKey'] },
+    { type: 'postgresql', fields: ['databaseUrl'] },
+    { type: 'mailTransport', fields: ['password'] },
+    { type: 'mapGeocoding', fields: ['apiKey'] },
+  ] as const)('creates $type through MCP with local secret references and no secret response', async ({ type, fields }) => {
     const personalFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
-      id: 'interface-1', type: 's3', config: { accessKeyId: 'public-id', secretAccessKey: 'resolved-secret-value' },
+      id: 'interface-1', type, config: Object.fromEntries(fields.map((field) => [field, 'resolved-secret-value'])),
     } }), { status: 200, headers: { 'content-type': 'application/json' } }));
     const context = {
       id: 'tenant-a', name: 'Tenant A', kind: 'tenant' as const, tenantId: 'tenant-a',
@@ -187,37 +193,50 @@ describe('Studio MCP tools', () => {
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const validArguments = {
       contextId: context.id, method: 'POST', path: 'api/v1/interfaces',
-      body: { draft: { type: 's3', name: 'Storage', enabled: true, config: {
-        endpoint: 'https://s3.example', region: 'eu-central-1', bucket: 'tenant-data',
-        accessKeyId: 'synthetic-id', secretAccessKey: { secretRef: 'vault/team/s3' }, forcePathStyle: false,
-      } } },
+      body: { draft: { type, name: 'Integration', enabled: true, config: Object.fromEntries(
+        fields.map((field) => [field, { secretRef: `vault/team/${type}/${field}` }])
+      ) } },
     };
     const response = await client.callTool({ name: 'studio_personal_users_api', arguments: validArguments });
     expect(personalFetch).toHaveBeenCalledTimes(1);
     const outbound = JSON.parse((personalFetch.mock.calls[0]?.[1] as RequestInit).body as string) as {
-      draft: { config: { secretAccessKey: string } };
+      draft: { type: string; config: Record<string, string> };
     };
-    expect(outbound.draft.config.secretAccessKey).toBe('resolved-secret-value');
+    expect(outbound.draft.type).toBe(type);
+    for (const field of fields) expect(outbound.draft.config[field]).toBe('resolved-secret-value');
     expect(JSON.stringify(response)).not.toContain('resolved-secret-value');
 
     const rawSecret = await client.callTool({ name: 'studio_personal_users_api', arguments: {
       ...validArguments,
       body: { draft: { ...validArguments.body.draft, config: {
-        ...validArguments.body.draft.config, secretAccessKey: 'plaintext-secret-value',
+        ...validArguments.body.draft.config, [fields[0]]: 'plaintext-secret-value',
       } } },
     } });
     expect(rawSecret.structuredContent).toMatchObject({ ok: false, error: { code: 'interface_secret_reference_required' } });
     expect(personalFetch).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(rawSecret)).not.toContain('plaintext-secret-value');
 
+    const oauthTokenUrl = 'https://id.example/realms/tenant-a/protocol/openid-connect/token';
+    for (const method of ['GET', 'POST']) {
+      personalFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+        instanceId: context.tenantId, providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://server.example/graphql', oauthTokenUrl, enabled: true,
+      } }), { status: 200 }));
+      const mainserverResponse = await client.callTool({ name: 'studio_personal_users_api', arguments: {
+        contextId: context.id, method, path: 'api/v1/interfaces/mainserver',
+        ...(method === 'POST' ? { body: { graphqlBaseUrl: 'https://server.example/graphql', oauthTokenUrl, enabled: true } } : {}),
+      } });
+      expect(mainserverResponse.structuredContent).toMatchObject({ ok: true, data: { data: { oauthTokenUrl } } });
+    }
+    personalFetch.mockClear();
     const noResolver = createStudioMcpServer({ request: vi.fn() }, { ...config, personalContexts: [context] }, personalFetch, manager);
     const client2 = new Client({ name: 'test-client', version: '1' });
     const [clientTransport2, serverTransport2] = InMemoryTransport.createLinkedPair();
     await Promise.all([noResolver.connect(serverTransport2), client2.connect(clientTransport2)]);
     const unresolved = await client2.callTool({ name: 'studio_personal_users_api', arguments: validArguments });
     expect(unresolved.structuredContent).toMatchObject({ ok: false, error: { code: 'interface_secret_resolver_not_configured' } });
-    expect(personalFetch).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(unresolved)).not.toContain('vault/team/s3');
+    expect(personalFetch).not.toHaveBeenCalled();
+    expect(JSON.stringify(unresolved)).not.toContain('vault/team/');
     await Promise.all([client2.close(), noResolver.close()]);
     await Promise.all([client.close(), server.close()]);
   });

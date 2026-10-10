@@ -10,7 +10,18 @@ export const redactText = (value: string): string =>
     .replace(jwt, '[REDACTED]')
     .replace(credentialsInUrl, '$1[REDACTED]@');
 
-const isSensitiveKey = (key: string): boolean =>
+const isPublicOauthTokenUrl = (key: string, value: unknown): boolean => {
+  if (key !== 'oauthTokenUrl' || typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+};
+
+const isSensitiveKey = (key: string, value: unknown): boolean =>
+  !isPublicOauthTokenUrl(key, value) &&
   key !== 'confirmationPhrase' &&
   !/(?:secret|apiKey)Configured$/iu.test(key) &&
   sensitiveKey.test(key);
@@ -22,7 +33,7 @@ export const redact = (value: unknown): unknown => {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        isSensitiveKey(key) ? '[REDACTED]' : redact(item),
+        isSensitiveKey(key, item) ? '[REDACTED]' : redact(item),
       ])
     );
   }

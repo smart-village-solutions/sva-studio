@@ -18,6 +18,12 @@ export const requestInput = z.object({
 
 export type PersonalRequest = z.infer<typeof requestInput>;
 
+const mainserverSettingsBody = z.object({
+  graphqlBaseUrl: z.string().trim().min(1).max(4096).url(),
+  oauthTokenUrl: z.string().trim().min(1).max(4096).url(),
+  enabled: z.boolean(),
+}).strict();
+
 const groupMembershipDeleteBody = z.object({ keycloakSubject: z.string().min(1) });
 
 const secretReference = z.object({
@@ -104,7 +110,7 @@ const isGroupMembershipDelete = (request: PersonalRequest): boolean => {
 };
 const requiresBody = (request: PersonalRequest): boolean =>
   request.method === 'PATCH' ||
-  (request.method === 'POST' && request.path === 'api/v1/interfaces') ||
+  (request.method === 'POST' && request.path.startsWith('api/v1/interfaces')) ||
   isNestedCreate(request) || isGroupMembershipDelete(request);
 const forbidsMutationQuery = (request: PersonalRequest): boolean =>
   ['POST', 'PATCH'].includes(request.method);
@@ -133,6 +139,9 @@ const validateQuery = (queryInput: PersonalRequest['query']): string | undefined
 
 export const validatePersonalRequest = (request: PersonalRequest): string | undefined => {
   if (!isPersonalRouteAllowed(request)) return 'personal_route_not_allowed';
+  if (request.method === 'POST' && request.path === 'api/v1/interfaces/mainserver' && !mainserverSettingsBody.safeParse(request.body).success) {
+    return 'mainserver_settings_invalid';
+  }
   if (isGroupMembershipDelete(request) && request.body !== undefined && !groupMembershipDeleteBody.safeParse(request.body).success) {
     return 'group_membership_subject_required';
   }

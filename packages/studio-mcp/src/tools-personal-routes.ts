@@ -10,6 +10,7 @@ const isIamPath = (segments: string[]): boolean =>
 const allowedInterfacesRoute = (request: PersonalRequest, parts: string[]): boolean => {
   if (parts[0] !== 'api' || parts[1] !== 'v1' || parts[2] !== 'interfaces') return false;
   if (parts.length === 3) return isMethod(request, 'GET', 'POST');
+  if (parts.length === 4 && parts[3] === 'mainserver') return isMethod(request, 'GET', 'POST');
   return parts.length === 4 && isId(parts[3]) && request.method === 'DELETE';
 };
 

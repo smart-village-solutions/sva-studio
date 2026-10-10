@@ -94,6 +94,26 @@ describe('personal interface HTTP routes', () => {
     );
   });
 
+
+  it.each([
+    { type: 's3', config: { endpoint: 'https://s3.example', region: 'eu-central-1', bucket: 'uploads', accessKeyId: 'synthetic-id', secretAccessKey: '', forcePathStyle: false } },
+    { type: 'supabase', config: { projectUrl: 'https://db.example', schemaName: 'public', databaseUrl: '', serviceRoleKey: '' } },
+    { type: 'postgresql', config: { schemaName: 'public', databaseUrl: '' } },
+    { type: 'mailTransport', config: { transportId: 'mail', host: 'smtp.example', port: '587', securityMode: 'starttls', authMode: 'none', username: '', defaultFromEmail: 'sender@example.org', defaultFromName: 'Sender', defaultReplyToEmail: '', maxBatchSize: '10', rateLimitPerMinute: '60', password: '' } },
+    { type: 'mapGeocoding', config: { provider: 'custom', styleUrl: 'https://map.example/style.json', autocompleteEnabled: false, geocodeEnabled: false, reverseGeocodeEnabled: false, suggestEndpoint: '', geocodeEndpoint: '', reverseGeocodeEndpoint: '', requestTimeoutMs: '5000', rateLimitPerMinute: '60', killSwitchEnabled: false, apiKey: '' } },
+  ])('accepts the complete $type create contract and delegates to the existing operation', async ({ type, config }) => {
+    const draft = { type, name: 'Integration', enabled: true, config };
+    state.upsert.mockResolvedValue({ id: 'interface-1', ...draft });
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const request = new Request('https://tenant-a.example/api/v1/interfaces', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ draft }),
+    });
+    const response = await dispatchInterfacesApiRequest(request);
+    expect(response?.status).toBe(200);
+    expect(state.upsert).toHaveBeenCalledWith({ draft }, request);
+    expect(await response?.json()).toMatchObject({ data: { type, id: 'interface-1' } });
+  });
+
   it('removes every supported interface secret from list responses', async () => {
     state.list.mockResolvedValue({
       instanceId: 'tenant-a',

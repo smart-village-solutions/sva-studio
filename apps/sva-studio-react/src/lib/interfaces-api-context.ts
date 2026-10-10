@@ -1,9 +1,12 @@
 import type { PermissionDenialDetails } from '@sva/core';
 
+import { isRecord } from './error-message-utils';
+
 import {
   createClientError,
   getErrorPayload,
   isAuthenticatedInterfacesRunResult,
+  isErrorPayload,
   jsonResponse,
   parseJson,
   type AuthenticatedInterfacesRunResult,
@@ -55,8 +58,10 @@ export const loadInterfacesRequestDependencies = async (
   };
 };
 
-export const loadSaveInterfacesDependencies = async (): Promise<SaveInterfacesDependencies> => {
-  const base = await loadInterfacesRequestDependencies();
+export const loadSaveInterfacesDependencies = async (
+  request?: Request
+): Promise<SaveInterfacesDependencies> => {
+  const base = await loadInterfacesRequestDependencies(request);
   const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
 
   return {
@@ -113,7 +118,11 @@ export const runWithAuthenticatedInterfacesUser = async <T>(input: {
     });
   }
 
-  const payload = await parseJson<ErrorPayload>(response);
+  const raw = await parseJson<unknown>(response);
+  const payload: ErrorPayload | null =
+    isRecord(raw) && isRecord(raw.error) && typeof raw.error.code === 'string'
+      ? { error: raw.error.code }
+      : isErrorPayload(raw) ? raw : null;
   throw Object.assign(createClientError(payload, input.fallbackMessage), {
     code: payload?.error,
     statusCode: response.status,
@@ -204,4 +213,14 @@ export const resolveAuthorizedInterfacesInstanceId = async (
   }
 
   return user.instanceId;
+};
+
+export const validateInterfaceMutationCsrf = async (request: Request): Promise<void> => {
+  // withAuthenticatedUser must first validate Bearer tokens on an opted-in route.
+  if (request.headers.has('authorization')) return;
+  const { validateCsrf } = await import('@sva/auth-runtime/server');
+  const response = validateCsrf(request);
+  if (response) {
+    throw Object.assign(new Error('csrf_validation_failed'), { statusCode: response.status });
+  }
 };

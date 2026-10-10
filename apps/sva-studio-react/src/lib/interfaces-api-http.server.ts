@@ -7,6 +7,7 @@ import {
   upsertInstanceInterfaceForRequest,
 } from './interfaces-api';
 import { listInstanceInterfaces } from './interfaces-api-list';
+import { dispatchMainserverSettingsRequest } from './interfaces-api-settings';
 import { getErrorStatusCode } from './interfaces-api-transport';
 
 const logger = createSdkLogger({ component: 'interfaces-api-http' });
@@ -208,6 +209,13 @@ const handleDelete = async (request: Request, id: string): Promise<Response> => 
 
 export const dispatchInterfacesApiRequest = async (request: Request): Promise<Response | null> => {
   const { pathname } = new URL(request.url);
+  if (pathname === '/api/v1/interfaces/mainserver') {
+    try {
+      return await dispatchMainserverSettingsRequest(request);
+    } catch (error) {
+      return errorResponse(request, error);
+    }
+  }
   if (pathname === '/api/v1/interfaces') {
     if (request.method === 'GET') return handleList(request);
     if (request.method === 'POST') return handleUpsert(request);

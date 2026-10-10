@@ -19,3 +19,10 @@ Der lokale Studio-MCP SHALL für ausdrücklich konfigurierte persönliche Tenant
 - **WHEN** die Anfrage fremde Instanz-IDs, Secrets, zusätzliche Felder, Query-Parameter oder andere Methoden enthält oder persönliche Authentifizierung beziehungsweise `integration.manage` fehlt
 - **THEN** wird die Aktion ohne fachliche Mutation abgelehnt
 - **AND** ein ungültiger Bearer fällt nicht auf eine vorhandene Browser-Sitzung zurück
+
+#### Scenario: Alle unterstützten Schnittstellenarten anlegen
+
+- **WHEN** ein berechtigter Actor eine in Studio unterstützte Schnittstelle über den persönlichen MCP anlegt
+- **THEN** werden Mainserver über den dedizierten POST-Vertrag und S3, Supabase, PostgreSQL, Mailtransport sowie Karten/Geocoding über den bestehenden allgemeinen Interface-POST-Vertrag gespeichert
+- **AND** lokale Secret-Referenzen werden nur intern aufgelöst, ohne Geheimwerte im MCP-Ergebnis auszugeben
+- **AND** bestehende Modul- und Ownership-Prüfungen bleiben verbindlich.

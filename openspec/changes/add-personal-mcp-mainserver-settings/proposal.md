@@ -23,3 +23,7 @@ Gezielte Tests für HTTP-Dispatch, Tenant-/Permission-Grenzen, Browser-CSRF, ung
 ## Betroffene Dokumentation
 
 Betriebsrunbook `docs/operations/studio-instance-mcp-betrieb.md` und arc42 Abschnitt 8. Die Scope-Freigabe erfolgte im Nutzerauftrag „Minimalen MCP-PR erstellen“.
+
+## Ergänzende Nutzeranforderung
+
+Alle aktuell unterstützten Schnittstellenarten sollen über MCP anlegbar sein. Die bestehenden allgemeinen POST-Verträge decken S3, Supabase, PostgreSQL, Mailtransport und Karten/Geocoding bereits ab; dieser Change schließt die Mainserver-Lücke. Die Abdeckung wird für alle Arten dokumentiert und durch HTTP-Vertrags- und MCP-Transporttests mit lokaler Secret-Auflösung nachgewiesen. Bestehende Modul- und Ownership-Gates bleiben erhalten.

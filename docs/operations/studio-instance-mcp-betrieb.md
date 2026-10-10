@@ -111,6 +111,19 @@ Vor Änderung oder Entfernung einer Kontextkonfiguration die gespeicherte Sitzun
 
 Beim Entfernen einer Gruppenmitgliedschaft benötigt `DELETE iam/groups/{groupId}/memberships` den JSON-Body `{ "keycloakSubject": "..." }`. Die übrigen freigegebenen DELETE-Aufrufe tragen keinen Body. Bulk-, Sync- und Mainserver-Provisionierungsaktionen sind nicht Teil dieses persönlichen MCP-Vertrags. Der Server prüft weiterhin die jeweilige Action, Tenant-Bindung, Lifecycle- und Löschschutzregeln sowie gegebenenfalls Fresh-Reauth.
 
+Alle sechs aktuell in Studio unterstützten Schnittstellenarten können über den persönlichen MCP angelegt werden:
+
+| Schnittstellenart | Anlegen/Speichern | Voraussetzung |
+| --- | --- | --- |
+| Mainserver | `POST api/v1/interfaces/mainserver` | `integration.manage`; öffentliche URLs und `enabled` |
+| S3 | `POST api/v1/interfaces`, `draft.type="s3"` | `integration.manage`; lokale Secret-Referenz |
+| Supabase | `POST api/v1/interfaces`, `draft.type="supabase"` | Zusätzlich zu `integration.manage` das zugewiesene Modul `waste-management`; lokale Secret-Referenzen |
+| PostgreSQL | `POST api/v1/interfaces`, `draft.type="postgresql"` | `integration.manage`; lokale Secret-Referenz |
+| Mailtransport | `POST api/v1/interfaces`, `draft.type="mailTransport"` | `integration.manage`; bei Authentifizierung lokale Secret-Referenz |
+| Karten/Geocoding | `POST api/v1/interfaces`, `draft.type="mapGeocoding"` | `integration.manage`; bei benötigtem API-Key lokale Secret-Referenz |
+
+Die allgemeinen POST-Aufrufe verwenden `{ "draft": { "type": "...", "name": "...", "enabled": true, "config": { ... } } }`; vorhandene Einträge werden über `existingId` aktualisiert. Secret-Felder werden als `{ "secretRef": "..." }` lokal aufgelöst; Klartext-Secrets dürfen nicht im MCP-Aufruf stehen. Die bestehenden Modul-, Ownership-, Validierungs- und Healthcheck-Regeln gelten für alle Arten. Pluginverwaltete Einträge werden weiter durch ihren zuständigen Plugin-Pfad verwaltet.
+
 `GET api/v1/interfaces/mainserver` liefert die öffentliche Mainserver-Konfiguration oder `null`. `POST` akzeptiert ausschließlich `graphqlBaseUrl`, `oauthTokenUrl` und `enabled`; Instanz-IDs und Credentials werden nicht übergeben. Beide Methoden benötigen `integration.manage`, der Server bindet den Actor an den Tenant-Host und verwendet den vorhandenen Mainserver-Speicherpfad samt URL-/SSRF-Validierung. Ein erfolgreicher Save ist kein OAuth-/GraphQL-Verbindungsnachweis. Nach einem unklaren Ergebnis zuerst GET verwenden; Mutationen werden nicht automatisch wiederholt.
 
 Der Interface-Read liefert nur tenantverwaltete Schnittstellen; Mainserver-Übersichten und pluginverwaltete Einträge sind ausgenommen. Pluginverwaltete Interfaces können über diesen allgemeinen Vertrag weder angelegt noch geändert oder gelöscht werden. Die HTTP-Antworten enthalten keine freien Healthcheck-Statusmeldungen, da diese Providerdetails enthalten können. Der Server erzwingt weiterhin `integration.manage`, bestehende Validierung, Verschlüsselung und Healthchecks. Pro Tenant ist nur eine Karten-/Geocoding-Konfiguration zulässig; Änderungen verwenden deren `existingId`. Ein eigener Kartenstil ohne aktivierte Geocoding-Funktionen besitzt keinen Geoapify-Verbindungsnachweis; `unknown` ist dabei kein erfolgreich ausgeführter Provider-Healthcheck.

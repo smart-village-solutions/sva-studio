@@ -9,3 +9,5 @@
 ## Lokale Evidenz
 
 55 Interface-/MCP-Tests, 19 bestehende persönliche Auth-/Middleware-Tests und 7 URL-/SSRF-Tests grün. App- und MCP-Typechecks, MCP-Runtime, MCP-Lint, Lint der neuen Settings-/Context-Logik, OpenSpec strict, Dateiablage und Dokumentationsprüfung grün. Der breitere Interface-App-Lint meldet drei bereits auf dem unveränderten Basiscommit `52c3afe0a` reproduzierte Import-/Boundary-Fehler; diese bleiben außerhalb dieses Zuschnitts und sind keine neue Regression. Finale CI und Merge-Freigabe sind offen.
+
+Die ergänzte Typmatrix ist ebenfalls grün: 11 HTTP-Vertragstests und 40 MCP-SDK-Transporttests einschließlich Secret-Referenzauflösung für S3, Supabase, PostgreSQL, Mailtransport und Karten/Geocoding. Keine weiteren Runtime-Pfade wurden eingeführt.

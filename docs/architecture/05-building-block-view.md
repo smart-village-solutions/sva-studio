@@ -430,6 +430,7 @@ Modulen der jeweiligen Bausteine.
 5. Öffentlicher Abfallkalender (`apps/public-waste-calendar-web`)
 
 - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
+- liefert im selben Build zusätzlich `embed.js` für direkte Einbettung ohne iframe: vorhandene Komponenten im offenen Shadow DOM, Regionsbindung über Containerattribute und API-Origin pro React-Root; der Standalone-Einstieg bleibt erhalten
 - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
 - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
 - trennt in der vollständigen Standortansicht Kalender-/Dialog-Ownership vom konkreten Action-Hub; Reminder-Slot-Auswahl und lokaler Panel-/Formularzustand bleiben app-lokal, während Fraktionsfilter und PDF-Download weiterhin aus dem gemeinsamen Standortmodell gespeist werden

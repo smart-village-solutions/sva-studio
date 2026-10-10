@@ -6,6 +6,27 @@ Die Public-Waste-Runtime stellt öffentliche, ausschließlich lesende Endpunkte 
 
 Der Ortskatalog verändert keine Waste-Fachdaten. Er liefert keine E-Mail-Abonnements, Consent-, Token-, Outbox-, Credential-, Audit- oder Jobdaten.
 
+## Direkt in eine externe Website einbetten
+
+Die bestehende Kalenderoberfläche lässt sich ohne iframe mit einem div und einem JavaScript-Modul einbetten:
+
+```html
+<div data-public-waste-calendar data-region="amt-bad-wilsnack"></div>
+<script type="module" src="https://abfallkalender.example/embed.js"></script>
+```
+
+Die Script-Adresse muss auf die öffentliche Kalender-Instanz zeigen. `data-region` ist verpflichtend und akzeptiert einen eindeutigen Regions-Slug aus `GET /api/public-waste/regions` oder die UUID der Region. Fehlende oder unbekannte Regionen erzeugen einen zugänglichen Fehlerzustand statt einer ungefilterten Auswahl. Die URL der externen Website hat keinen Einfluss auf die Regionsbindung.
+
+Der Moduleinstieg startet beim Laden alle bereits vorhandenen Container mit `data-public-waste-calendar`. Mehrere Container können unterschiedliche Regionen derselben Kalender-Instanz verwenden. Das Script einmal pro Seite einbinden; dynamisch später erzeugte Container gehören nicht zu dieser automatischen Initialisierung.
+
+Jeder Container erhält ein offenes Shadow DOM mit den bestehenden Kalenderkomponenten und deren Styles. CSS und ARIA-IDs sind dadurch auf die jeweilige Instanz begrenzt. Die Host-Seite behält ihre Navigation und ihre globalen Styles. Regionsauswahl, Kalenderansichten, PDF, iCal und konfigurierte E-Mail-Erinnerungen verwenden die vorhandenen öffentlichen Endpunkte der Script-Origin. Im Widget erfolgt keine Speicherung der Adresse in Host-Cookies; nach einem Neuladen wird sie erneut ausgewählt. Die Standalone-App behält ihren bisherigen Cookie-Restore.
+
+Die Host-Seite benötigt eine passende Content Security Policy: `script-src` für die Kalender-Origin und die von dort importierten Module, `connect-src` für die Kalender-API sowie eine Freigabe des im Shadow DOM eingefügten Stylesheets über dessen Hash oder die entsprechende Inline-Style-Regel. Der Moduleinstieg und die importierten Chunks müssen aus demselben Release stammen. Bestehende Proxies dürfen deren CORS-Header nicht entfernen.
+
+Die Runtime liefert CORS ohne Credential-Freigabe für die bekannten öffentlichen API-Endpunkte und JavaScript-/CSS-Assets. API-Fetches des Widgets senden keine Credentials an die Kalender-Origin. iCal-Links verwenden die normale Download-Navigation des Browsers. PDF-Antworten geben `Content-Disposition` frei, damit der Download den serverseitigen Dateinamen erhält. OPTIONS erlaubt für die Read-Endpunkte GET/HEAD und für die bestehende Erinnerungsanmeldung POST mit Content-Type. Bestätigungs- und Abmeldeseiten erhalten keine CORS-Freigabe; deren bestehende Validierung und die Limits der Erinnerungsanmeldung bleiben erhalten.
+
+Der Kalender verwendet die vorhandenen semantischen Auswahl- und Kalenderkomponenten. Termin-Details verwenden einen nativen modalen Dialog, der auch den Host-Hintergrund sperrt und den Fokus an den auslösenden Button im Shadow DOM zurückgibt. Automatische Tests decken Tastaturbedienung, Fokus, Exporte und Axe-Prüfungen auf einer zweiten Origin ab. Eine manuelle Screenreader-Abnahme der konkreten Host-Seite wird dadurch nicht ersetzt.
+
 ## Weboberfläche an eine Region binden
 
 Einbettende Seiten begrenzen die öffentliche Weboberfläche über einen lesbaren Regionspfad dauerhaft auf eine öffentlich auswählbare Region. Der Pfad wird aus dem Regionsnamen gebildet; Umlaute werden als `ae`, `oe` beziehungsweise `ue`, `ß` als `ss` und Worttrenner als Bindestriche geschrieben:

@@ -43,6 +43,29 @@ export const isPublicWasteApiPath = (pathname: string): boolean =>
   resolvePublicWasteReadApiRoute(pathname) !== null ||
   pathname.startsWith('/api/public-waste/reminder-signups');
 
+// Only the existing public API, never confirmation/unsubscribe pages, is exposed.
+export const isPublicWasteCorsApiPath = (pathname: string): boolean =>
+  resolvePublicWasteReadApiRoute(pathname) !== null ||
+  pathname === '/api/public-waste/reminder-signups';
+
+export const withPublicWasteCors = (response: Response): Response => {
+  response.headers.set('access-control-allow-origin', '*');
+  response.headers.set('access-control-expose-headers', 'Content-Disposition');
+  return response;
+};
+
+export const createPublicWastePreflightResponse = (pathname: string): Response =>
+  withPublicWasteCors(
+    new Response(null, {
+      status: 204,
+      headers: {
+        'access-control-allow-methods':
+          pathname === '/api/public-waste/reminder-signups' ? 'POST' : 'GET, HEAD',
+        'access-control-allow-headers': 'Content-Type',
+      },
+    })
+  );
+
 export const createInvalidConfigResponse = (bootstrapState: PublicWasteBootstrapState): Response =>
   jsonResponse(
     {
@@ -91,12 +114,13 @@ export const serveStaticAsset = async (input: {
 
   try {
     const body = input.method === 'HEAD' ? null : await readFile(filePath);
-    return new Response(body, {
+    const response = new Response(body, {
       status: 200,
       headers: {
         'content-type': staticMimeTypes[extname(filePath)] ?? 'application/octet-stream',
       },
     });
+    return ['.js', '.css'].includes(extname(filePath)) ? withPublicWasteCors(response) : response;
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return new Response('Not Found', {

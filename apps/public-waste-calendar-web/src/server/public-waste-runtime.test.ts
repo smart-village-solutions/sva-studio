@@ -112,6 +112,7 @@ describe('public waste runtime', () => {
       new Request('http://localhost/api/public-waste/regions')
     );
     expect(regionsResponse.status).toBe(200);
+    expect(regionsResponse.headers.get('access-control-allow-origin')).toBe('*');
     await expect(regionsResponse.json()).resolves.toEqual({
       items: [
         {
@@ -479,6 +480,56 @@ describe('public waste runtime', () => {
       expect.any(Array)
     );
 
+    await runtime.dispose();
+  });
+});
+
+describe('embedded public calendar HTTP access', () => {
+  it('exposes public API errors and supported preflights without credentials', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const runtime = await createPublicWasteRuntime({ assetsDir, env: {} });
+    for (const [path, methods] of [
+      ['selection', 'GET, HEAD'],
+      ['reminder-signups', 'POST'],
+    ]) {
+      const response = await runtime.handle(
+        new Request(`http://calendar.example/api/public-waste/${path}`, { method: 'OPTIONS' })
+      );
+      expect(response.status).toBe(204);
+      expect(response.headers.get('access-control-allow-origin')).toBe('*');
+      expect(response.headers.get('access-control-allow-methods')).toBe(methods);
+      expect(response.headers.get('access-control-allow-credentials')).toBeNull();
+    }
+    const error = await runtime.handle(
+      new Request('http://calendar.example/api/public-waste/calendar')
+    );
+    expect(error.status).toBe(500);
+    expect(error.headers.get('access-control-allow-origin')).toBe('*');
+    for (const path of [
+      '/health/live',
+      '/api/public-waste/reminder-signups/confirm',
+      '/api/unknown',
+    ]) {
+      const response = await runtime.handle(
+        new Request(`http://calendar.example${path}`, { method: 'OPTIONS' })
+      );
+      expect(response.status).toBe(405);
+      expect(response.headers.get('access-control-allow-origin')).toBeNull();
+    }
+    await runtime.dispose();
+  });
+
+  it('serves module entries and chunks cross-origin but does not expose HTML pages', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    await writeFile(join(assetsDir, 'embed.js'), 'export {};');
+    const runtime = await createPublicWasteRuntime({ assetsDir, env: {} });
+    const script = await runtime.handle(new Request('http://calendar.example/embed.js'));
+    expect(script.headers.get('access-control-allow-origin')).toBe('*');
+    expect(script.headers.get('content-type')).toBe('text/javascript; charset=utf-8');
+    const page = await runtime.handle(new Request('http://calendar.example/'));
+    expect(page.headers.get('access-control-allow-origin')).toBeNull();
     await runtime.dispose();
   });
 });

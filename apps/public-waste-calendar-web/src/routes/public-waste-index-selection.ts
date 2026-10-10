@@ -81,7 +81,8 @@ export const resolveSelectionState = async (
   initialSelection: PublicWasteSelectionState,
   initialSelectionPath: readonly PublicWasteSelectionPathItem[],
   preferredSelection?: PublicWasteResolvedSelection,
-  boundRegionId?: string
+  boundRegionId?: string,
+  apiOrigin = ''
 ): Promise<
   | {
       readonly status: 'incomplete';
@@ -101,7 +102,7 @@ export const resolveSelectionState = async (
   let selectionPath: readonly PublicWasteSelectionPathItem[] = initialSelectionPath;
 
   for (;;) {
-    const response = await requestPublicWasteSelection(selection);
+    const response = await requestPublicWasteSelection(selection, apiOrigin);
 
     if (response.options.length === 0) {
       if (boundRegionId && response.step === 'city') {
@@ -111,23 +112,22 @@ export const resolveSelectionState = async (
         throw new Error('public_waste_selection_unresolved');
       }
 
-      const calendar = await requestPublicWasteCalendar({
-        selection: {
-          cityId: selection.cityId,
-          streetId: selection.streetId,
-          ...(selection.regionId ? { regionId: selection.regionId } : {}),
-          ...(selection.houseNumberId ? { houseNumberId: selection.houseNumberId } : {}),
+      const resolvedSelection: PublicWasteResolvedSelection = {
+        cityId: selection.cityId,
+        streetId: selection.streetId,
+        ...(selection.regionId ? { regionId: selection.regionId } : {}),
+        ...(selection.houseNumberId ? { houseNumberId: selection.houseNumberId } : {}),
+      };
+      const calendar = await requestPublicWasteCalendar(
+        {
+          selection: resolvedSelection,
+          referenceDate: REFERENCE_DATE,
         },
-        referenceDate: REFERENCE_DATE,
-      });
+        apiOrigin
+      );
       return {
         status: 'complete',
-        selection: {
-          cityId: selection.cityId,
-          streetId: selection.streetId,
-          ...(selection.regionId ? { regionId: selection.regionId } : {}),
-          ...(selection.houseNumberId ? { houseNumberId: selection.houseNumberId } : {}),
-        },
+        selection: resolvedSelection,
         selectionPath,
         ...calendar,
       };

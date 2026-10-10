@@ -1,0 +1,4 @@
+{
+  "prNumber": 1827,
+  "body": "Die Integrationstests der Mandanteneinrichtung prüfen Aktivierung und Reparatur jetzt mit aktuellen Keycloak-Plänen. Dadurch bleibt die automatische Freigabeprüfung auch für bereits vorhandene Nutzer-Datenbanken verlässlich."
+}

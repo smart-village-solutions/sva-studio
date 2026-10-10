@@ -135,7 +135,14 @@ export const handlePersonalCallback = async (
     if (pendingStateByContext.get(pending.context.id) === state)
       pendingStateByContext.delete(pending.context.id);
     if (error instanceof PersonalMcpAuthError && error.code === 'personal_session_store_unavailable') {
-      writeCallbackPage(response, 503, 'Anmeldung fehlgeschlagen: personal_session_store_unavailable. Schlüsselbund prüfen und im MCP erneut starten.');
+      response.writeHead(503, {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'content-security-policy': "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+        'referrer-policy': 'no-referrer',
+        'x-content-type-options': 'nosniff',
+      });
+      response.end(JSON.stringify({ error: error.code }));
     } else {
       writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
     }

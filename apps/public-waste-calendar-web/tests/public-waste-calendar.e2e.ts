@@ -182,7 +182,7 @@ test('resolves a location, restores it from cookie, and exposes accessible expor
   await embeddedCalendar.getByRole('button', { name: 'Informationen zu Abfallfraktionen' }).click();
   await expect(
     embeddedCalendar.getByText(
-      'Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung gemeinsam.'
+      'Diese Auswahl steuert Liste, Kalenderexport und PDF/Druckversion gemeinsam.'
     )
   ).toBeVisible();
 
@@ -399,4 +399,153 @@ test('rejects a malformed URL region without starting an unfiltered selection', 
 
   await expect(page.getByRole('alert')).toContainText('Die angegebene Region ist ungültig');
   expect(selectionRequestCount).toBe(0);
+});
+
+test('embeds the built calendar on another origin with isolated styles, keyboard focus and exports', async ({
+  page,
+}) => {
+  const { createServer } = await import('node:http');
+  const { once } = await import('node:events');
+  const { resolve } = await import('node:path');
+  const { createPublicWasteRuntime } = await import('../src/server/public-waste-runtime.js');
+  const { createPublicWasteHttpServer } = await import('../src/server/public-waste-http-server.js');
+  const { deriveWasteTenantDatabaseNames } =
+    await import('@sva/waste-management-runtime/repositories');
+  const names = deriveWasteTenantDatabaseNames('bb-prignitz');
+  const regionId = '11111111-1111-4111-8111-111111111111';
+  const secondRegionId = '55555555-5555-4555-8555-555555555555';
+  const cityId = '22222222-2222-4222-8222-222222222222';
+  const streetId = '33333333-3333-4333-8333-333333333333';
+  const requestedRegions: (string | undefined)[] = [];
+  const date = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const runtime = await createPublicWasteRuntime({
+    assetsDir: resolve('dist/client'),
+    env: {
+      PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
+      PUBLIC_WASTE_DATABASE_URL: `postgresql://${names.publicAppRole}:fixture@localhost:5432/${names.database}`,
+      PUBLIC_WASTE_SCHEMA_NAME: 'public',
+    },
+    createRepository: () => ({
+      repository: {
+        listPublicLocations: async () => [],
+        listPublicRegions: async () => [
+          { id: regionId, label: 'Erste Region' },
+          { id: secondRegionId, label: 'Zweite Region' },
+        ],
+        listSelectionOptions: async ({ selection }) => {
+          requestedRegions.push(selection.regionId);
+          if (!selection.cityId)
+            return {
+              step: 'city',
+              options: [
+                { id: cityId, label: 'Ort A' },
+                { id: '66666666-6666-4666-8666-666666666666', label: 'Ort B' },
+              ],
+            };
+          if (!selection.streetId)
+            return { step: 'street', options: [{ id: streetId, label: 'Hauptstraße' }] };
+          return { step: 'houseNumber', options: [] };
+        },
+        loadCalendarEntries: async () => [
+          {
+            id: 'pickup-1',
+            date,
+            fractionId: 'bio',
+            fractionLabel: 'Bioabfall',
+            fractionShortLabel: 'BIO',
+            note: 'Bitte bereitstellen.',
+          },
+        ],
+        loadSelectionSummary: async () => 'Ort A, Hauptstraße',
+        loadReminderOptions: async () => [],
+      },
+      pool: {} as never,
+      schemaName: 'public',
+      dispose: async () => {},
+    }),
+  });
+  const calendarServer = createPublicWasteHttpServer({ runtime });
+  calendarServer.listen(0, '127.0.0.1');
+  await once(calendarServer, 'listening');
+  const calendarAddress = calendarServer.address();
+  if (!calendarAddress || typeof calendarAddress === 'string')
+    throw new Error('missing calendar address');
+  const calendarOrigin = `http://127.0.0.1:${calendarAddress.port}`;
+  const hostServer = createServer((_request, response) => {
+    response.setHeader('content-type', 'text/html; charset=utf-8');
+    response.end(
+      `<!doctype html><html lang="de"><head><title>Gemeinde</title><style>.panel { display:none } button {font-size:40px;color:black} body{margin:16px}</style></head><body><main><h1>Gemeindeseite</h1><button id="host-action">Externe Aktion</button><div id="calendar" data-public-waste-calendar data-region="${regionId}"></div><div id="second" data-public-waste-calendar data-region="zweite-region"></div></main><script type="module" src="${calendarOrigin}/embed.js"></script></body></html>`
+    );
+  });
+  hostServer.listen(0, '127.0.0.1');
+  await once(hostServer, 'listening');
+  const hostAddress = hostServer.address();
+  if (!hostAddress || typeof hostAddress === 'string') throw new Error('missing host address');
+  const hostUrl = `http://127.0.0.1:${hostAddress.port}/article?regionId=invalid`;
+  try {
+    await page.goto(hostUrl);
+    const widget = page.locator('#calendar');
+    await expect(widget.getByRole('combobox', { name: 'Ort suchen' })).toBeVisible();
+    await expect(
+      page.locator('#second').getByRole('combobox', { name: 'Ort suchen' })
+    ).toBeVisible();
+    expect(requestedRegions).toContain(secondRegionId);
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.locator('body')).toHaveCSS('margin', '16px');
+    await expect(page.locator('#host-action')).toHaveCSS('font-size', '40px');
+    await expectNoAccessibilityViolations(page);
+    const search = widget.getByRole('combobox', { name: 'Ort suchen' });
+    await search.fill('Ort A');
+    await search.press('ArrowDown');
+    await search.press('Enter');
+    await expect(widget.getByText('Hauptstraße', { exact: true })).toBeVisible();
+    const tab = widget.getByRole('tab', { name: 'Liste' });
+    await tab.focus();
+    await tab.press('ArrowRight');
+    await expect(widget.getByRole('tab', { name: 'Monat' })).toBeFocused();
+    const pickup = widget.getByRole('button', { name: /Termin Bioabfall am/ });
+    await pickup.click();
+    const close = widget.getByRole('button', { name: 'Schließen' });
+    await expect(close).toBeFocused();
+    await close.press('Tab');
+    await expect(close).toBeFocused();
+    await close.press('Shift+Tab');
+    await expect(close).toBeFocused();
+    await page.locator('#host-action').evaluate((button: HTMLButtonElement) => button.focus());
+    await expect(close).toBeFocused();
+    await expectNoAccessibilityViolations(page);
+    await close.press('Escape');
+    await expect(pickup).toBeFocused();
+    await widget.getByRole('button', { name: 'Kalender exportieren' }).click();
+    const exportLink = widget.getByRole('link', { name: 'Kalender exportieren' });
+    expect(new URL((await exportLink.getAttribute('href')) ?? '').origin).toBe(calendarOrigin);
+    const icalResponse = page.waitForResponse((response) =>
+      response.url().startsWith(`${calendarOrigin}/api/public-waste/ical?`)
+    );
+    const icalDownload = page.waitForEvent('download');
+    await exportLink.click();
+    expect((await icalResponse).status()).toBe(200);
+    await icalDownload;
+    await widget.getByRole('button', { name: 'PDF / Druckversion' }).click();
+    const pdfResponse = page.waitForResponse((response) =>
+      response.url().startsWith(`${calendarOrigin}/api/public-waste/pdf?`)
+    );
+    const download = page.waitForEvent('download');
+    await widget.getByRole('button', { name: 'PDF herunterladen' }).click();
+    expect((await pdfResponse).status()).toBe(200);
+    expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+    await expectNoAccessibilityViolations(page);
+    expect(page.url()).toBe(hostUrl);
+    expect(requestedRegions.every((id) => id === regionId || id === secondRegionId)).toBe(true);
+  } finally {
+    await Promise.all(
+      [calendarServer, hostServer].map(
+        (server) =>
+          new Promise<void>((resolve, reject) =>
+            server.close((error) => (error ? reject(error) : resolve()))
+          )
+      )
+    );
+    await runtime.dispose();
+  }
 });

@@ -11,8 +11,12 @@ type PublicWasteEventDialogProps = Readonly<{
 
 const findDialogFocusableElements = (dialog: HTMLElement): readonly HTMLElement[] =>
   Array.from(
-    dialog.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
-  ).filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
+    dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter(
+    (element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true'
+  );
 
 const trapDialogFocus = (event: React.KeyboardEvent, dialog: HTMLElement): void => {
   const focusableElements = findDialogFocusableElements(dialog);
@@ -23,7 +27,8 @@ const trapDialogFocus = (event: React.KeyboardEvent, dialog: HTMLElement): void 
 
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
-  const activeElement = document.activeElement;
+  const root = dialog.getRootNode();
+  const activeElement = root instanceof ShadowRoot ? root.activeElement : document.activeElement;
 
   if (event.shiftKey && activeElement === firstElement) {
     event.preventDefault();
@@ -64,50 +69,63 @@ const handleDialogKeyDown = (
 
 export function PublicWasteEventDialog(props: PublicWasteEventDialogProps) {
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const modalRef = React.useRef<HTMLDialogElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
-    if (!props.entry) {
-      return;
-    }
+    if (!props.entry) return;
 
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const root = modalRef.current?.getRootNode();
+    const activeElement = root instanceof ShadowRoot ? root.activeElement : document.activeElement;
+    previousFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+    modalRef.current?.showModal();
     closeButtonRef.current?.focus();
 
+    const modal = modalRef.current;
     return () => {
+      modal?.close();
       previousFocusRef.current?.focus();
       previousFocusRef.current = null;
     };
   }, [props.entry]);
 
-  if (!props.entry) {
-    return null;
-  }
+  if (!props.entry) return null;
 
   const dialogTitleId = `pickup-dialog-title-${props.entry.id}`;
   const hints = resolveEventHints(props.entry);
 
   return (
-    <div className="dialog-backdrop" role="presentation" onClick={props.onClose}>
-      <div
-        ref={dialogRef}
-        className="dialog-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={dialogTitleId}
-        onKeyDown={(event) => handleDialogKeyDown(event, dialogRef.current, props.onClose)}
-        onClick={(event) => event.stopPropagation()}
-      >
+    <dialog
+      ref={modalRef}
+      className="dialog-backdrop"
+      aria-labelledby={dialogTitleId}
+      onCancel={(event) => {
+        event.preventDefault();
+        props.onClose();
+      }}
+      onKeyDown={(event) => handleDialogKeyDown(event, dialogRef.current, props.onClose)}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) props.onClose();
+      }}
+    >
+      <div ref={dialogRef} className="dialog-panel" onClick={(event) => event.stopPropagation()}>
         <div className="dialog-header">
           <div>
             <p className="dialog-eyebrow">Abholtermin</p>
             <h3 id={dialogTitleId} className="dialog-title">
               {props.entry.fractionLabel}
             </h3>
-            {props.entry.tourName ? <p className="dialog-subtitle">{props.entry.tourName}</p> : null}
+            {props.entry.tourName ? (
+              <p className="dialog-subtitle">{props.entry.tourName}</p>
+            ) : null}
           </div>
-          <button ref={closeButtonRef} type="button" className="dialog-close" onClick={props.onClose}>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="dialog-close"
+            onClick={props.onClose}
+          >
             Schließen
           </button>
         </div>
@@ -118,10 +136,14 @@ export function PublicWasteEventDialog(props: PublicWasteEventDialogProps) {
         <div className="dialog-section">
           <p className="dialog-section-label">Hinweis</p>
           {hints.map((hint, index) => (
-            <PublicWasteRichText key={`${index}:${hint}`} className="body-copy rich-text" html={hint} />
+            <PublicWasteRichText
+              key={`${index}:${hint}`}
+              className="body-copy rich-text"
+              html={hint}
+            />
           ))}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

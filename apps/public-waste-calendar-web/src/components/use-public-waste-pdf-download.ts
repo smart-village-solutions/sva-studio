@@ -1,4 +1,5 @@
 import React from 'react';
+import { PublicWasteApiOriginContext } from '../lib/public-waste-api-context.js';
 
 import type { PublicWasteResolvedSelection } from '../lib/public-waste-contract.js';
 import { requestPublicWastePdf } from '../lib/public-waste-api.js';
@@ -28,6 +29,7 @@ export const usePublicWastePdfDownload = ({
   calendarModel,
   year,
 }: UsePublicWastePdfDownloadInput) => {
+  const apiOrigin = React.useContext(PublicWasteApiOriginContext);
   const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
     calendarModel.fractionOptions.map((fraction) => fraction.id)
   );
@@ -44,7 +46,9 @@ export const usePublicWastePdfDownload = ({
 
   const toggleFraction = (fractionId: string) => {
     setSelectedFractions((current) =>
-      current.includes(fractionId) ? current.filter((entry) => entry !== fractionId) : [...current, fractionId]
+      current.includes(fractionId)
+        ? current.filter((entry) => entry !== fractionId)
+        : [...current, fractionId]
     );
   };
 
@@ -57,14 +61,19 @@ export const usePublicWastePdfDownload = ({
     setPdfError(null);
 
     try {
-      const { blob, filename } = await requestPublicWastePdf({
-        selection,
-        year,
-        fractionIds: selectedFractions,
-      });
+      const { blob, filename } = await requestPublicWastePdf(
+        {
+          selection,
+          year,
+          fractionIds: selectedFractions,
+        },
+        apiOrigin
+      );
       downloadBlob(blob, filename);
     } catch (error) {
-      setPdfError(error instanceof Error ? error.message : 'Die PDF-Datei konnte nicht erzeugt werden.');
+      setPdfError(
+        error instanceof Error ? error.message : 'Die PDF-Datei konnte nicht erzeugt werden.'
+      );
     } finally {
       setPdfRunning(false);
     }

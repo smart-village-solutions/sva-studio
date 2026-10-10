@@ -104,6 +104,7 @@
     },
     "test:e2e": {
       "executor": "nx:run-commands",
+      "dependsOn": ["build"],
       "outputs": [],
       "options": {
         "cwd": "apps/public-waste-calendar-web",

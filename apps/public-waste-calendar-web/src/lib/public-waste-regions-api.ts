@@ -1,3 +1,4 @@
+import { fetchPublicWasteApi } from './public-waste-api.js';
 import { toPublicWasteRegionSlug } from './public-waste-region-slug.js';
 
 export type PublicWasteRegionResponse = {
@@ -8,8 +9,10 @@ export type PublicWasteRegionResponse = {
   }[];
 };
 
-export const requestPublicWasteRegions = async (): Promise<PublicWasteRegionResponse> => {
-  const response = await fetch('/api/public-waste/regions');
+export const requestPublicWasteRegions = async (
+  apiOrigin = ''
+): Promise<PublicWasteRegionResponse> => {
+  const response = await fetchPublicWasteApi('/api/public-waste/regions', apiOrigin);
   if (!response.ok) {
     throw new Error(`public_waste_regions_failed:${response.status}`);
   }

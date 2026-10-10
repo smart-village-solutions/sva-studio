@@ -19,6 +19,9 @@ import {
 import {
   jsonResponse,
   isPublicWasteApiPath,
+  isPublicWasteCorsApiPath,
+  withPublicWasteCors,
+  createPublicWastePreflightResponse,
   createInvalidConfigResponse,
   createMethodNotAllowedResponse,
   toHeadResponse,
@@ -112,9 +115,13 @@ export const createPublicWasteRuntime = async (input: {
       const url = new URL(request.url);
       const method = request.method.toUpperCase();
 
+      const corsApi = isPublicWasteCorsApiPath(url.pathname);
+      if (method === 'OPTIONS' && corsApi) return createPublicWastePreflightResponse(url.pathname);
+
       const allowsPost = url.pathname.startsWith('/api/public-waste/reminder-signups');
       if (method !== 'GET' && method !== 'HEAD' && !(allowsPost && method === 'POST')) {
-        return createMethodNotAllowedResponse();
+        const response = createMethodNotAllowedResponse();
+        return corsApi ? withPublicWasteCors(response) : response;
       }
 
       if (url.pathname === '/health/live') {
@@ -129,7 +136,8 @@ export const createPublicWasteRuntime = async (input: {
 
       if (isPublicWasteApiPath(url.pathname)) {
         if (bootstrapState.status !== 'ready' || !repositoryHandle) {
-          return createInvalidConfigResponse(bootstrapState);
+          const response = createInvalidConfigResponse(bootstrapState);
+          return corsApi ? withPublicWasteCors(response) : response;
         }
 
         const response = await dispatchPublicWasteApiRequest({
@@ -142,6 +150,7 @@ export const createPublicWasteRuntime = async (input: {
           submitReminderSignup,
         });
 
+        if (corsApi) withPublicWasteCors(response);
         return method === 'HEAD' ? toHeadResponse(response) : response;
       }
 

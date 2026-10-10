@@ -116,6 +116,14 @@ gleichzeitig beeinflussen.
 - Der Portainer-Updatepfad verändert ausschließlich `PUBLIC_WASTE_IMAGE_TAG` und belässt alle übrigen Stack-Variablen unverändert, damit Host, Datenbankpfad und PDF-Konfiguration operativ getrennt steuerbar bleiben.
 - Für diesen speziellen Bürger-Frontend-Stack ist bewusst das einfache SemVer-Tag-Modell führend; Digest-Pinning des Studio-Referenzpfads wird hier nicht auf den Waste-Web-Stack übertragen.
 
+### Direkte Einbettung des öffentlichen Abfallkalenders
+
+- Der Moduleinstieg `embed.js` rendert die bestehende UI im offenen Shadow DOM eines Host-Containers, ohne iframe, globales CSS oder Änderung der Host-URL. Regionsbindung und API-Origin gehören zur einzelnen Instanz.
+- Widget-Requests verwenden die Script-Origin ohne Credentials. Die vorhandene öffentliche Runtime erlaubt CORS für bekannte Kalender-API-Endpunkte und JS-/CSS-Assets, einschließlich eingeschränkter Preflights und des PDF-Dateinamens. Erinnerungsbestätigungs- und Abmeldeseiten bleiben ausgenommen; bestehende API-Validierung und Limits bleiben erhalten.
+- Im Widget werden keine Adressauswahl-Cookies auf der Host-Origin gelesen oder geschrieben. Die Standalone-App behält den bestehenden Restore-Pfad.
+- Native modale Termin-Dialoge sperren den Host-Hintergrund; die Fokusrückgabe berücksichtigt Shadow DOM. Automatisierte Cross-Origin-, Tastatur- und Axe-Prüfungen ergänzen die gesonderte manuelle Screenreader-Abnahme.
+- Einbindung und CSP-Voraussetzungen: [Public-Waste-API](../reference/public-waste-api.md#direkt-in-eine-externe-website-einbetten).
+
 ### Datenminimierung im öffentlichen Waste-Ortskatalog
 
 - `/api/public-waste/locations` liefert ausschließlich aktive Adresswerte, die bereits über den öffentlichen Standortauswahlfluss erreichbar sind, sowie die zugehörigen öffentlichen Kalenderparameter.

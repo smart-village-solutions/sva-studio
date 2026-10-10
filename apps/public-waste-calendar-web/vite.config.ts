@@ -161,6 +161,18 @@ const publicWasteApiPlugin = (): Plugin => {
 
 export default defineConfig({
   plugins: [react(), publicWasteApiPlugin()],
+  build: {
+    rolldownOptions: {
+      input: {
+        index: resolve(import.meta.dirname, 'index.html'),
+        embed: resolve(import.meta.dirname, 'src/embed.tsx'),
+      },
+      output: {
+        entryFileNames: (chunk) =>
+          chunk.name === 'embed' ? 'embed.js' : 'assets/[name]-[hash].js',
+      },
+    },
+  },
   resolve: {
     alias: {
       '@sva/waste-management-contracts/unsubscribe-token': resolve(

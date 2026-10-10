@@ -11,6 +11,20 @@ import {
 import { projectPublicWasteCalendar } from './public-waste-projection.js';
 import type { PublicWasteRepository } from './public-waste-repository.server.js';
 
+// Keep URL resolution instance-local; standalone calls retain their relative URLs.
+export const resolvePublicWasteApiUrl = (path: string, apiOrigin = ''): string =>
+  apiOrigin ? new URL(path, apiOrigin).href : path;
+
+export const fetchPublicWasteApi = (
+  path: string,
+  apiOrigin = '',
+  init?: RequestInit
+): Promise<Response> => {
+  const url = resolvePublicWasteApiUrl(path, apiOrigin);
+  if (apiOrigin) return fetch(url, { ...init, credentials: 'omit' });
+  return init ? fetch(url, init) : fetch(url);
+};
+
 export const loadNextPublicWasteSelection = async (input: {
   readonly repository: Pick<PublicWasteRepository, 'listSelectionOptions'>;
   readonly input: {
@@ -90,35 +104,43 @@ const appendReminderItems = (
   }
 };
 
-export const buildPublicWasteIcalUrl = (input: {
-  readonly selection: PublicWasteResolvedSelection;
-  readonly calendarName: string;
-  readonly fractionIds: readonly string[];
-  readonly reminderItems?: readonly PublicWasteReminderSelectionItem[];
-}): string => {
+export const buildPublicWasteIcalUrl = (
+  input: {
+    readonly selection: PublicWasteResolvedSelection;
+    readonly calendarName: string;
+    readonly fractionIds: readonly string[];
+    readonly reminderItems?: readonly PublicWasteReminderSelectionItem[];
+  },
+  apiOrigin = ''
+): string => {
   const params = toSearchParams(input.selection);
   params.set('calendarName', input.calendarName);
   appendFractionIds(params, input.fractionIds);
   appendReminderItems(params, input.reminderItems ?? []);
-  return `/api/public-waste/ical?${params.toString()}`;
+  return resolvePublicWasteApiUrl(`/api/public-waste/ical?${params.toString()}`, apiOrigin);
 };
 
-export const buildPublicWastePdfDownloadUrl = (input: {
-  readonly selection: PublicWasteResolvedSelection;
-  readonly year: number;
-  readonly fractionIds: readonly string[];
-}): string => {
+export const buildPublicWastePdfDownloadUrl = (
+  input: {
+    readonly selection: PublicWasteResolvedSelection;
+    readonly year: number;
+    readonly fractionIds: readonly string[];
+  },
+  apiOrigin = ''
+): string => {
   const params = toSearchParams(input.selection);
   params.set('year', String(input.year));
   appendFractionIds(params, input.fractionIds);
-  return `/api/public-waste/pdf?${params.toString()}`;
+  return resolvePublicWasteApiUrl(`/api/public-waste/pdf?${params.toString()}`, apiOrigin);
 };
 
 export const requestPublicWasteSelection = async (
-  selection: PublicWasteSelectionState
+  selection: PublicWasteSelectionState,
+  apiOrigin = ''
 ): Promise<PublicWasteSelectionResponse> => {
-  const response = await fetch(
-    `/api/public-waste/selection?${toSearchParams(selection).toString()}`
+  const response = await fetchPublicWasteApi(
+    `/api/public-waste/selection?${toSearchParams(selection).toString()}`,
+    apiOrigin
   );
   if (!response.ok) {
     throw new Error(`public_waste_selection_failed:${response.status}`);
@@ -126,25 +148,34 @@ export const requestPublicWasteSelection = async (
   return (await response.json()) as PublicWasteSelectionResponse;
 };
 
-export const requestPublicWasteCalendar = async (input: {
-  readonly selection: PublicWasteResolvedSelection;
-  readonly referenceDate: string;
-}): Promise<PublicWasteCalendarResponse> => {
+export const requestPublicWasteCalendar = async (
+  input: {
+    readonly selection: PublicWasteResolvedSelection;
+    readonly referenceDate: string;
+  },
+  apiOrigin = ''
+): Promise<PublicWasteCalendarResponse> => {
   const params = toSearchParams(input.selection);
   params.set('referenceDate', input.referenceDate);
-  const response = await fetch(`/api/public-waste/calendar?${params.toString()}`);
+  const response = await fetchPublicWasteApi(
+    `/api/public-waste/calendar?${params.toString()}`,
+    apiOrigin
+  );
   if (!response.ok) {
     throw new Error(`public_waste_calendar_failed:${response.status}`);
   }
   return (await response.json()) as PublicWasteCalendarResponse;
 };
 
-export const requestPublicWastePdf = async (input: {
-  readonly selection: PublicWasteResolvedSelection;
-  readonly year: number;
-  readonly fractionIds: readonly string[];
-}): Promise<{ readonly blob: Blob; readonly filename: string }> => {
-  const response = await fetch(buildPublicWastePdfDownloadUrl(input), {
+export const requestPublicWastePdf = async (
+  input: {
+    readonly selection: PublicWasteResolvedSelection;
+    readonly year: number;
+    readonly fractionIds: readonly string[];
+  },
+  apiOrigin = ''
+): Promise<{ readonly blob: Blob; readonly filename: string }> => {
+  const response = await fetchPublicWasteApi(buildPublicWastePdfDownloadUrl(input), apiOrigin, {
     headers: {
       accept: 'application/pdf, application/json;q=0.9, text/plain;q=0.8',
     },
@@ -164,9 +195,10 @@ export const requestPublicWastePdf = async (input: {
 };
 
 export const requestPublicWasteReminderSignup = async (
-  input: PublicWasteReminderSignupRequest
+  input: PublicWasteReminderSignupRequest,
+  apiOrigin = ''
 ): Promise<PublicWasteReminderSignupResponse> => {
-  const response = await fetch('/api/public-waste/reminder-signups', {
+  const response = await fetchPublicWasteApi('/api/public-waste/reminder-signups', apiOrigin, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',

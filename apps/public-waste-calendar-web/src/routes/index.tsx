@@ -1,4 +1,5 @@
 import React from 'react';
+import { PublicWasteApiOriginContext } from '../lib/public-waste-api-context.js';
 
 import { PublicWasteRootDocument } from './__root.js';
 import { PublicWasteApp } from '../components/public-waste-app.js';
@@ -21,12 +22,16 @@ import {
 
 export { readPublicWasteRegionBinding } from './public-waste-index-binding.js';
 
-export function PublicWasteIndexPage() {
+export function PublicWasteIndexPage({
+  binding,
+  embedded = false,
+}: Readonly<{ binding?: PublicWasteRegionBinding; embedded?: boolean }> = {}) {
+  const apiOrigin = React.useContext(PublicWasteApiOriginContext);
   const [t] = React.useState(() =>
     createPublicWasteTranslator(document.documentElement.lang || 'de')
   );
-  const [regionBinding] = React.useState<PublicWasteRegionBinding>(() =>
-    readPublicWasteRegionBinding(window.location.search, window.location.pathname)
+  const [regionBinding] = React.useState<PublicWasteRegionBinding>(
+    () => binding ?? readPublicWasteRegionBinding(window.location.search, window.location.pathname)
   );
   const boundRegionIdRef = React.useRef<string | undefined>(undefined);
   const [pageState, setPageState] = React.useState<PageState>({ status: 'loading' });
@@ -40,8 +45,8 @@ export function PublicWasteIndexPage() {
 
     const load = async () => {
       try {
-        const restoredSelection = readStoredLocationSelection();
-        const boundRegionId = await resolveBoundRegionId(regionBinding);
+        const restoredSelection = embedded ? null : readStoredLocationSelection();
+        const boundRegionId = await resolveBoundRegionId(regionBinding, apiOrigin);
         boundRegionIdRef.current = boundRegionId;
         const preferredSelection =
           restoredSelection &&
@@ -54,14 +59,15 @@ export function PublicWasteIndexPage() {
           boundRegionId ? { regionId: boundRegionId } : {},
           [],
           preferredSelection,
-          boundRegionId
+          boundRegionId,
+          apiOrigin
         );
         if (cancelled) {
           return;
         }
 
         if (preferredSelection && nextState.status !== 'complete') {
-          document.cookie = serializeClearedPublicWastePreferenceCookie();
+          if (!embedded) document.cookie = serializeClearedPublicWastePreferenceCookie();
         }
 
         if (nextState.status === 'complete') {
@@ -89,7 +95,7 @@ export function PublicWasteIndexPage() {
     return () => {
       cancelled = true;
     };
-  }, [regionBinding]);
+  }, [regionBinding, apiOrigin, embedded]);
 
   const handleSelectOption = async (optionId: string) => {
     if (pageState.status !== 'incomplete') {
@@ -111,10 +117,11 @@ export function PublicWasteIndexPage() {
         applySelectionStep(pageState.selection, pageState.step, optionId),
         nextSelectionPath,
         undefined,
-        boundRegionIdRef.current
+        boundRegionIdRef.current,
+        apiOrigin
       );
 
-      if (nextState.status === 'complete') {
+      if (!embedded && nextState.status === 'complete') {
         writeStoredLocationSelection(nextState.selection);
       }
 
@@ -139,7 +146,8 @@ export function PublicWasteIndexPage() {
         trimSelectionToStep(pageState.selection, stepIndex, boundRegionIdRef.current),
         pageState.selectionPath.slice(0, stepIndex),
         undefined,
-        boundRegionIdRef.current
+        boundRegionIdRef.current,
+        apiOrigin
       );
       React.startTransition(() => {
         setPageState(nextState);
@@ -153,14 +161,15 @@ export function PublicWasteIndexPage() {
   };
 
   const handleResetLocation = async () => {
-    document.cookie = serializeClearedPublicWastePreferenceCookie();
+    if (!embedded) document.cookie = serializeClearedPublicWastePreferenceCookie();
     try {
       const boundRegionId = boundRegionIdRef.current;
       const nextState = await resolveSelectionState(
         boundRegionId ? { regionId: boundRegionId } : {},
         [],
         undefined,
-        boundRegionId
+        boundRegionId,
+        apiOrigin
       );
       React.startTransition(() => {
         setPageState(nextState);
@@ -173,12 +182,14 @@ export function PublicWasteIndexPage() {
     }
   };
 
+  const Panel = embedded ? 'div' : 'main';
+
   return (
     <PublicWasteRootDocument>
-      <main className="panel">
+      <Panel className="panel">
         {pageState.status === 'loading' ? (
           <p className="body-copy" role="status" aria-live="polite">
-            Abfallkalender wird geladen.
+            {t('calendar.loading')}
           </p>
         ) : pageState.status === 'error' ? (
           <p className="body-copy" role="alert">
@@ -205,7 +216,7 @@ export function PublicWasteIndexPage() {
             onChangeLocation={handleResetLocation}
           />
         )}
-      </main>
+      </Panel>
     </PublicWasteRootDocument>
   );
 }

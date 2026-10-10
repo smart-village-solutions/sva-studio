@@ -50,7 +50,8 @@ export const readPublicWasteRegionBinding = (
 };
 
 export const resolveBoundRegionId = async (
-  binding: PublicWasteRegionBinding
+  binding: PublicWasteRegionBinding,
+  apiOrigin = ''
 ): Promise<string | undefined> => {
   if (binding.status === 'unbound') {
     return undefined;
@@ -62,7 +63,7 @@ export const resolveBoundRegionId = async (
     throw new Error(BOUND_REGION_UNAVAILABLE_ERROR);
   }
 
-  const regions = await requestPublicWasteRegions();
+  const regions = await requestPublicWasteRegions(apiOrigin);
   const matches = regions.items.filter((region) => region.slug === binding.regionSlug);
   const matchedRegion = matches[0];
   if (matches.length !== 1 || !matchedRegion || !isPublicWasteUuid(matchedRegion.id)) {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PublicWasteApiOriginContext } from '../lib/public-waste-api-context.js';
 
 import {
   buildPublicWasteIcalUrl,
@@ -143,6 +144,7 @@ const useReminderSubmission = (
   emailSelectionComplete: boolean,
   feedback: ReturnType<typeof useReminderFeedback>
 ) => {
+  const apiOrigin = React.useContext(PublicWasteApiOriginContext);
   const [submitting, setSubmitting] = React.useState(false);
   const submit = async () => {
     if (!input.reminderSignup?.enabled) {
@@ -162,12 +164,15 @@ const useReminderSubmission = (
     setSubmitting(true);
     feedback.setError(null);
     try {
-      const response = await requestPublicWasteReminderSignup({
-        selection: input.selection,
-        email: feedback.email.trim(),
-        items: emailItems,
-        consentAccepted: true,
-      });
+      const response = await requestPublicWasteReminderSignup(
+        {
+          selection: input.selection,
+          email: feedback.email.trim(),
+          items: emailItems,
+          consentAccepted: true,
+        },
+        apiOrigin
+      );
       feedback.setSuccess({ headline: response.headline, message: response.message });
     } catch (requestError) {
       feedback.setError(
@@ -183,6 +188,7 @@ const useReminderSubmission = (
 };
 
 export const usePublicWasteActionState = (input: ActionStateInput) => {
+  const apiOrigin = React.useContext(PublicWasteApiOriginContext);
   const feedback = useReminderFeedback(input.locationKey, input.selectedFractions.join('|'));
   const emailContext = React.useMemo(
     () =>
@@ -214,12 +220,15 @@ export const usePublicWasteActionState = (input: ActionStateInput) => {
   return {
     activePanel: feedback.activePanel,
     calendarContext,
-    calendarExportUrl: buildPublicWasteIcalUrl({
-      selection: input.selection,
-      calendarName: input.selectionSummary,
-      fractionIds: input.selectedFractions,
-      reminderItems: calendarSelectionComplete ? calendarItems : [],
-    }),
+    calendarExportUrl: buildPublicWasteIcalUrl(
+      {
+        selection: input.selection,
+        calendarName: input.selectionSummary,
+        fractionIds: input.selectedFractions,
+        reminderItems: calendarSelectionComplete ? calendarItems : [],
+      },
+      apiOrigin
+    ),
     calendarSelectionComplete,
     canSubmit:
       emailSelectionComplete &&

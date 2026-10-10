@@ -168,7 +168,7 @@ describe('Studio MCP tools', () => {
     { type: 'postgresql', fields: ['databaseUrl'] },
     { type: 'mailTransport', fields: ['password'] },
     { type: 'mapGeocoding', fields: ['apiKey'] },
-  ])('creates $type through MCP with local secret references and no secret response', async ({ type, fields }) => {
+  ] as const)('creates $type through MCP with local secret references and no secret response', async ({ type, fields }) => {
     const personalFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
       id: 'interface-1', type, config: Object.fromEntries(fields.map((field) => [field, 'resolved-secret-value'])),
     } }), { status: 200, headers: { 'content-type': 'application/json' } }));
@@ -209,20 +209,33 @@ describe('Studio MCP tools', () => {
     const rawSecret = await client.callTool({ name: 'studio_personal_users_api', arguments: {
       ...validArguments,
       body: { draft: { ...validArguments.body.draft, config: {
-        ...validArguments.body.draft.config, [fields[0]!]: 'plaintext-secret-value',
+        ...validArguments.body.draft.config, [fields[0]]: 'plaintext-secret-value',
       } } },
     } });
     expect(rawSecret.structuredContent).toMatchObject({ ok: false, error: { code: 'interface_secret_reference_required' } });
     expect(personalFetch).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(rawSecret)).not.toContain('plaintext-secret-value');
 
+    const oauthTokenUrl = 'https://id.example/realms/tenant-a/protocol/openid-connect/token';
+    for (const method of ['GET', 'POST']) {
+      personalFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: {
+        instanceId: context.tenantId, providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://server.example/graphql', oauthTokenUrl, enabled: true,
+      } }), { status: 200 }));
+      const mainserverResponse = await client.callTool({ name: 'studio_personal_users_api', arguments: {
+        contextId: context.id, method, path: 'api/v1/interfaces/mainserver',
+        ...(method === 'POST' ? { body: { graphqlBaseUrl: 'https://server.example/graphql', oauthTokenUrl, enabled: true } } : {}),
+      } });
+      expect(mainserverResponse.structuredContent).toMatchObject({ ok: true, data: { data: { oauthTokenUrl } } });
+    }
+    personalFetch.mockClear();
     const noResolver = createStudioMcpServer({ request: vi.fn() }, { ...config, personalContexts: [context] }, personalFetch, manager);
     const client2 = new Client({ name: 'test-client', version: '1' });
     const [clientTransport2, serverTransport2] = InMemoryTransport.createLinkedPair();
     await Promise.all([noResolver.connect(serverTransport2), client2.connect(clientTransport2)]);
     const unresolved = await client2.callTool({ name: 'studio_personal_users_api', arguments: validArguments });
     expect(unresolved.structuredContent).toMatchObject({ ok: false, error: { code: 'interface_secret_resolver_not_configured' } });
-    expect(personalFetch).toHaveBeenCalledTimes(1);
+    expect(personalFetch).not.toHaveBeenCalled();
     expect(JSON.stringify(unresolved)).not.toContain('vault/team/');
     await Promise.all([client2.close(), noResolver.close()]);
     await Promise.all([client.close(), server.close()]);

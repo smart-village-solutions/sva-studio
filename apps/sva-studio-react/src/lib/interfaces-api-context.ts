@@ -1,9 +1,12 @@
 import type { PermissionDenialDetails } from '@sva/core';
 
+import { isRecord } from './error-message-utils';
+
 import {
   createClientError,
   getErrorPayload,
   isAuthenticatedInterfacesRunResult,
+  isErrorPayload,
   jsonResponse,
   parseJson,
   type AuthenticatedInterfacesRunResult,
@@ -115,7 +118,11 @@ export const runWithAuthenticatedInterfacesUser = async <T>(input: {
     });
   }
 
-  const payload = await parseJson<ErrorPayload>(response);
+  const raw = await parseJson<unknown>(response);
+  const payload: ErrorPayload | null =
+    isRecord(raw) && isRecord(raw.error) && typeof raw.error.code === 'string'
+      ? { error: raw.error.code }
+      : isErrorPayload(raw) ? raw : null;
   throw Object.assign(createClientError(payload, input.fallbackMessage), {
     code: payload?.error,
     statusCode: response.status,

@@ -1099,10 +1099,17 @@ describe('interfaces app adapter', () => {
     expect(state.validateCsrf).toHaveBeenCalledWith(request); expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
   });
 
-  it('does not run a Mainserver operation after invalid Bearer authentication', async () => {
-    state.withAuthenticatedUser.mockResolvedValue(Response.json({ error: 'unauthorized' }, { status: 401 }));
+  it.each([
+    { status: 401, code: 'unauthorized', error: 'unauthorized' },
+    { status: 401, code: 'unauthorized', error: { code: 'unauthorized', message: 'private diagnostic' } },
+    { status: 403, code: 'forbidden', error: { code: 'forbidden', message: 'private diagnostic' } },
+  ])('preserves $code auth failures without invoking Mainserver operations', async ({ status, code, error }) => {
+    state.withAuthenticatedUser.mockResolvedValue(Response.json({ error }, { status }));
     const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
-    expect((await dispatchInterfacesApiRequest(mainserverRequest()))?.status).toBe(401);
+    const response = await dispatchInterfacesApiRequest(mainserverRequest());
+    expect(response?.status).toBe(status);
+    expect(await response?.json()).toEqual({ error: { code } });
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
     expect(state.loadSvaMainserverSettings).not.toHaveBeenCalled();
   });
 

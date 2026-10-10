@@ -237,7 +237,7 @@ describe('plugin operation runtime registration', () => {
     expect(() => mod.assertStudioPluginOperationHandlerCoverage(handlers)).not.toThrow();
   });
 
-  it('rejects privileged lane metadata from plugins outside the host allowlist', async () => {
+  it('rejects the Waste runtime for plugins outside the host allowlist', async () => {
     const pluginId = 'untrusted-waste-plugin';
     const source = createJobPluginSource({
       pluginId,
@@ -267,7 +267,7 @@ describe('plugin operation runtime registration', () => {
     const mod = await import('./plugin-operation-runtime.server');
 
     await expect(mod.createStudioPluginOperationExecutionHandlers()).rejects.toThrowError(
-      `plugin_job_privileged_execution_not_allowed:${pluginId}`
+      `plugin_job_runtime_owner_mismatch:${pluginId}:waste-management.operations`
     );
   });
 
@@ -418,6 +418,7 @@ describe('plugin operation runtime registration', () => {
 
   it('does not apply the host-owned waste runtime factory to unrelated plugins with the same runtime requirement', async () => {
     const mod = await import('./plugin-operation-runtime.server');
+    const runtimeFactory = vi.fn(() => ({}));
 
     await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
@@ -431,10 +432,13 @@ describe('plugin operation runtime registration', () => {
         ],
         jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {
-          'waste-management.operations': () => ({}),
+          'waste-management.operations': runtimeFactory,
         },
       })
-    ).rejects.toThrowError('missing_plugin_job_module_factory:custom-waste-plugin');
+    ).rejects.toThrowError(
+      'plugin_job_runtime_owner_mismatch:custom-waste-plugin:waste-management.operations'
+    );
+    expect(runtimeFactory).not.toHaveBeenCalled();
   });
 
   it('rejects package job sources without a loadable module factory', async () => {
@@ -624,13 +628,13 @@ describe('plugin operation runtime registration', () => {
         pluginSources: [
           createJobPluginSource({
             pluginId: 'other-plugin',
-            runtimeRequirement: 'waste-management.operations',
+            runtimeRequirement: 'custom.runtime',
             sourceRef: 'packages/plugin-other',
           }),
         ],
         jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {
-          'waste-management.operations': () => ({}),
+          'custom.runtime': () => ({}),
         },
       })
     ).rejects.toThrowError(

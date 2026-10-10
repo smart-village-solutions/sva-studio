@@ -53,7 +53,7 @@ type StudioPluginJobSource = {
 const compareAlphabetically = (left: string, right: string): number =>
   left.localeCompare(right, 'de');
 
-const privilegedRuntimeOwners = new Map([['waste-management.operations', 'waste-management']]);
+const hostOwnedRuntimeOwners = new Map([['waste-management.operations', 'waste-management']]);
 
 const {
   workspacePluginRegistry: workspaceJobModuleRegistry,
@@ -182,6 +182,10 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
           `plugin_job_runtime_provider_missing:${source.pluginId}:${runtimeRequirement}`
         );
       }
+      const runtimeOwner = hostOwnedRuntimeOwners.get(runtimeRequirement);
+      if (runtimeOwner && runtimeOwner !== source.pluginId) {
+        throw new Error(`plugin_job_runtime_owner_mismatch:${source.pluginId}:${runtimeRequirement}`);
+      }
 
       const createPluginJobExecutionHandlers = (
         await resolvePluginJobModule({
@@ -235,7 +239,7 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
       const executionLane = jobType.executionLane ?? 'default';
       if (
         executionLane === 'privileged' &&
-        privilegedRuntimeOwners.get(runtimeRequirement ?? '') !== jobType.ownerPluginId
+        hostOwnedRuntimeOwners.get(runtimeRequirement ?? '') !== jobType.ownerPluginId
       ) {
         throw new Error(`plugin_job_privileged_execution_not_allowed:${jobType.ownerPluginId}`);
       }

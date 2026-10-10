@@ -1,9 +1,8 @@
-import { Button } from '@sva/studio-ui-react';
+import { Button, Checkbox } from '@sva/studio-ui-react';
 import React from 'react';
 
 import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
 import { SearchableMultiSelect } from '../../../components/ui/searchable-multi-select';
 import type { useOrganizations } from '../../../hooks/use-organizations';

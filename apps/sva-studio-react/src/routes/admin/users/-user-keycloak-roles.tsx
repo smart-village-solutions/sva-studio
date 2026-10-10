@@ -1,11 +1,10 @@
 import type { IamKeycloakRealmRoleAssignment } from '@sva/core';
-import { Button } from '@sva/studio-ui-react';
+import { Button, Checkbox } from '@sva/studio-ui-react';
 import { IconKey } from '@tabler/icons-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Checkbox } from '../../../components/ui/checkbox';
 import {
   Dialog,
   DialogContent,

@@ -1,6 +1,7 @@
+import { Checkbox } from '@sva/studio-ui-react';
+
 import { t } from '../../i18n';
 import type { InstanceInterfaceDraft } from '../../lib/instance-interfaces';
-import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 

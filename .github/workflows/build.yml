@@ -109,12 +109,17 @@ jobs:
           pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts "${args[@]}"
 
       - name: Resolve optional custom plugin selection
-        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'main' && inputs.plugin_ids != ''
+        if: github.event_name == 'workflow_dispatch' && inputs.plugin_ids != ''
         id: custom_selection
         env:
+          BUILD_MODE: ${{ inputs.mode }}
           SVA_STUDIO_PLUGIN_IDS: ${{ inputs.plugin_ids }}
         run: |
           set -euo pipefail
+          if [ "${BUILD_MODE}" != "main" ]; then
+            echo "custom_plugin_selection_requires_main_mode" >&2
+            exit 1
+          fi
           selection="$(pnpm exec tsx scripts/ci/studio-distribution-artifact.ts selection ignored custom)"
           plugin_ids="$(jq -r '.pluginIds | join(",")' <<<"${selection}")"
           fingerprint="$(jq -r '.pluginSetFingerprint' <<<"${selection}")"

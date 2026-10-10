@@ -136,6 +136,33 @@ describe('installed plugin build inputs', () => {
     }
   });
 
+  it('escapes workspace paths in generated custom JavaScript modules', () => {
+    const root = mkdtempSync(join(tmpdir(), 'studio-selected-escaping-'));
+    temporaryRoots.push(root);
+    const appRoot = join(root, 'apps', 'studio');
+    const sourceRef = 'packages/plugin-<script>&\u2028\u2029';
+    const packageRoot = join(root, sourceRef);
+    mkdirSync(appRoot, { recursive: true });
+    mkdirSync(join(packageRoot, 'src'), { recursive: true });
+    writeFileSync(join(appRoot, 'plugin-catalog.json'), JSON.stringify([
+      { pluginId: 'news', sourceType: 'workspace', sourceRef, enabled: true },
+    ]));
+    writeFileSync(join(packageRoot, 'plugin.manifest.json'), '{"pluginId":"news"}');
+    writeFileSync(join(packageRoot, 'src', 'browser.ts'), 'export {};');
+    writeFileSync(join(packageRoot, 'src', 'descriptor.ts'), 'export {};');
+    writeFileSync(join(packageRoot, 'src', 'server.ts'), 'export {};');
+    writeFileSync(join(packageRoot, 'src', 'generic-item-ownership.ts'), 'export {};');
+    const hook = createSelectedWorkspacePluginInputsPlugin(appRoot, ['news']) as unknown as {
+      resolveId: (id: string) => string;
+      load: (id: string) => string;
+    };
+    for (const kind of ['catalog', 'client', 'server', 'jobs', 'ownership']) {
+      const code = hook.load(hook.resolveId(`virtual:studio-selected-plugin-${kind}`));
+      expect(code).not.toMatch(/[<&\u2028\u2029]/u);
+      expect(code).toContain('\\u003cscript\\u003e\\u0026\\u2028\\u2029');
+    }
+  });
+
   it('uses the selected package and exact manifest paths for all runtime registers', () => {
     const { appRoot } = createFixture();
     const sources = resolveInstalledPluginSources(appRoot, 'studio');

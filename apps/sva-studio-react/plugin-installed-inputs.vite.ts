@@ -271,12 +271,6 @@ const selectedWorkspaceInputIds = {
   runtimeFactories: 'virtual:studio-selected-plugin-runtime-factories',
 } as const;
 
-const serialize = (value: unknown): string => {
-  const result = JSON.stringify(value);
-  if (result === undefined) throw new Error('selected_plugin_input_serialization_failed');
-  return result;
-};
-
 const renderStaticModuleMap = (
   entries: readonly Readonly<{ key: string; path: string }>[],
   exportName: string,
@@ -285,12 +279,12 @@ const renderStaticModuleMap = (
   const localPrefix = exportName.replace(/[^a-zA-Z0-9_$]/gu, '_');
   const imports = entries.map((entry, index) =>
     eager !== false
-      ? `import ${eager === 'namespace' ? `* as ${localPrefix}Module${index}` : `${localPrefix}Module${index}`} from ${serialize(entry.path)};`
-      : `const ${localPrefix}Load${index} = () => import(${serialize(entry.path)});`
+      ? `import ${eager === 'namespace' ? `* as ${localPrefix}Module${index}` : `${localPrefix}Module${index}`} from ${serializeJavaScriptValue(entry.path)};`
+      : `const ${localPrefix}Load${index} = () => import(${serializeJavaScriptValue(entry.path)});`
   );
   const values = entries.map(
     (entry, index) =>
-      `${serialize(entry.key)}: ${eager !== false ? `${localPrefix}Module${index}` : `${localPrefix}Load${index}`}`
+      `${serializeJavaScriptValue(entry.key)}: ${eager !== false ? `${localPrefix}Module${index}` : `${localPrefix}Load${index}`}`
   );
   return `${imports.join('\n')}\nexport const ${exportName} = { ${values.join(', ')} };`;
 };
@@ -368,7 +362,7 @@ export const createSelectedWorkspacePluginInputsPlugin = (
   const modules: Record<string, string> = {
     [`\0${selectedWorkspaceInputIds.catalog}`]:
       `import { installedPluginCatalogConfig } from 'virtual:studio-installed-plugin-catalog';\n` +
-      `export const pluginCatalogConfig = [...${serialize(catalog.filter((entry) => entry.sourceType === 'workspace' && selectedPluginIds.includes(entry.pluginId)))}, ...installedPluginCatalogConfig];`,
+      `export const pluginCatalogConfig = [...${serializeJavaScriptValue(catalog.filter((entry) => entry.sourceType === 'workspace' && selectedPluginIds.includes(entry.pluginId)))}, ...installedPluginCatalogConfig];`,
     [`\0${selectedWorkspaceInputIds.client}`]: [
       `export { nodeManifestModules, nodePluginModuleLoaders, nodeDescriptorModuleLoaders } from 'virtual:studio-installed-plugin-client';`,
       renderStaticModuleMap(files.manifests, 'workspaceManifestModules', 'default'),
@@ -389,7 +383,7 @@ export const createSelectedWorkspacePluginInputsPlugin = (
     ].join('\n'),
     [`\0${selectedWorkspaceInputIds.ownership}`]: `${renderStaticModuleMap(files.ownership, 'workspaceOwnershipModules', 'namespace')}\nexport const nodeOwnershipModules = {};`,
     [`\0${selectedWorkspaceInputIds.runtimeFactories}`]: selectedPluginIds.includes('ssf')
-      ? `import { createStudioSsfAuthorizationProjectionRuntime } from ${serialize(join(appRoot, 'src/lib/ssf-authorization-projection-runtime.server.ts'))};\nexport const selectedPluginJobRuntimeFactories = { 'ssf.authorization-projection': () => createStudioSsfAuthorizationProjectionRuntime() };`
+      ? `import { createStudioSsfAuthorizationProjectionRuntime } from ${serializeJavaScriptValue(join(appRoot, 'src/lib/ssf-authorization-projection-runtime.server.ts'))};\nexport const selectedPluginJobRuntimeFactories = { 'ssf.authorization-projection': () => createStudioSsfAuthorizationProjectionRuntime() };`
       : `export const selectedPluginJobRuntimeFactories = {};`,
   };
   return {

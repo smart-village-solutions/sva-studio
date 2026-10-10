@@ -4,7 +4,7 @@ import { findSelectedWasteManagementInterfaceRecord } from '@sva/waste-managemen
 import { Pool } from 'pg';
 import { resolveWasteDataSource } from './repositories/data-source.server.js';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
-import { createWasteProvisioningAccess } from './repositories/waste-provisioning.js';
+import { createWasteProvisioningAccess } from './repositories/waste-provisioning-access.js';
 import type { WasteServerLoaderHost } from './server-loaders.js';
 
 export type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;

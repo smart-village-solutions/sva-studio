@@ -237,6 +237,22 @@
       }
     },
     {
+      "id": "waste-runtime-operations",
+      "label": "Waste Runtime Operations",
+      "class": "zentral",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": ["packages/waste-management-runtime/src/operations/**/*.ts"],
+      "exclude": ["**/*.test.ts"],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 400,
+        "functionLines": 180,
+        "cyclomaticComplexity": 25,
+        "publicExports": 20
+      }
+    },
+    {
       "id": "frontend-app",
       "label": "Frontend App",
       "class": "zentral",
@@ -2038,13 +2054,13 @@
       "status": "open",
       "summary": "Restore-Request-Auflösung und Validierung in getrennte Schritte aufteilen"
     },
-    "frontend-app:apps/sva-studio-react/src/lib/waste-tenant-database-provisioner.server.ts:cyclomaticComplexity": {
+    "waste-runtime-operations:packages/waste-management-runtime/src/operations/waste-tenant-database-provisioner.server.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Tenant-Datenbank-Provisionierung in explizite idempotente Phasen aufteilen"
     },
-    "instance-registry-repositories:packages/data-repositories/src/instance-registry/repository-waste-provisioning.ts:functionLines": {
+    "packages-default:packages/waste-management-runtime/src/repositories/waste-provisioning.ts:functionLines": {
       "ticketId": "QUAL-WASTE-TENANT-PROVISIONING-001",
       "ticketSystem": "backlog",
       "status": "open",

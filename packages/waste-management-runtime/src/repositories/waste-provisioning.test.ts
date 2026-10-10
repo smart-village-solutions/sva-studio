@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createWasteProvisioningAccess, createWasteProvisioningRepository } from './waste-provisioning.js';
+import { createWasteProvisioningAccess } from './waste-provisioning-access.js';
+import { createWasteProvisioningRepository } from './waste-provisioning.js';
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '@sva/data-repositories';
 
 const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unknown>[])[]) => {

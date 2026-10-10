@@ -53,7 +53,7 @@ vi.mock('./repositories.js', () => ({
   runWasteConnectionCheck: hostCapabilityMocks.runWasteConnectionCheck,
 }));
 
-vi.mock('./repositories/waste-provisioning.js', () => ({
+vi.mock('./repositories/waste-provisioning-access.js', () => ({
   createWasteProvisioningAccess: () => ({
     loadWasteTenantProvisioningRecord: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
     requestWasteTenantProvisioning: dataRepositoryMocks.requestWasteTenantProvisioning,

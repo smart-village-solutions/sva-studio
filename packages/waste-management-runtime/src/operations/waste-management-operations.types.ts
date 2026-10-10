@@ -27,7 +27,7 @@ import type {
   listExternalInterfaceRecords,
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
-import type { WasteProvisioningAccess, WasteProvisioningDbClient } from '../repositories/waste-provisioning.js';
+import type { WasteProvisioningAccess, WasteProvisioningDbClient } from '../repositories/waste-provisioning-access.js';
 import type { PluginTenantLifecycleExecutionResult } from '@sva/plugin-sdk';
 
 export type SqlClient = {

@@ -4,7 +4,7 @@ import {
   type WasteManagementProvisionTenantDatabaseJobInput,
 } from '@sva/waste-management-contracts';
 import type { loadExternalInterfaceRecordByAlias, saveExternalInterfaceRecord } from '@sva/data-repositories/server';
-import type { WasteProvisioningAccess } from '../repositories/waste-provisioning.js';
+import type { WasteProvisioningAccess } from '../repositories/waste-provisioning-access.js';
 import {
   buildExternalInterfaceSecretConfigAad,
 } from '@sva/server-runtime';
@@ -155,6 +155,25 @@ const verifyRuntimeAccess = async (
   }
 };
 
+const verifyRuntimeRoles = async (
+  createPool: (databaseUrl: string) => ProvisioningPool,
+  appUrl: string,
+  publicAppUrl: string
+): Promise<void> => {
+  const appPool = createPool(appUrl);
+  try {
+    await verifyRuntimeAccess(appPool, 'read-write');
+  } finally {
+    await appPool.end();
+  }
+  const publicAppPool = createPool(publicAppUrl);
+  try {
+    await verifyRuntimeAccess(publicAppPool, 'public-runtime');
+  } finally {
+    await publicAppPool.end();
+  }
+};
+
 export const createProvisionTenantDatabaseOperation = (
   deps: WasteTenantDatabaseProvisionerDeps
 ) => async (
@@ -283,18 +302,7 @@ export const createProvisionTenantDatabaseOperation = (
     if (schemaInspection.missingTables.length > 0) {
       throw new Error('waste_database_schema_incomplete');
     }
-    const appPool = createPool(appUrl);
-    try {
-      await verifyRuntimeAccess(appPool, 'read-write');
-    } finally {
-      await appPool.end();
-    }
-    const publicAppPool = createPool(publicAppUrl);
-    try {
-      await verifyRuntimeAccess(publicAppPool, 'public-runtime');
-    } finally {
-      await publicAppPool.end();
-    }
+    await verifyRuntimeRoles(createPool, appUrl, publicAppUrl);
 
     await saveManagedInterface({
       ...baseRecord,

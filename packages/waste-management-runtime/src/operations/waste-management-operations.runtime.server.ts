@@ -19,7 +19,7 @@ import type {
 import { createProvisionTenantDatabaseOperation } from './waste-tenant-database-provisioner.server.js';
 import { createEnrichPostalCodesOperation } from './waste-management-postal-code-enrichment.server.js';
 import { createReadWasteTenantDatabaseReadinessOperation } from './waste-tenant-database-readiness.server.js';
-import { createWasteProvisioningAccess } from '../repositories/waste-provisioning.js';
+import { createWasteProvisioningAccess } from '../repositories/waste-provisioning-access.js';
 import { createWasteDataSourceAccess } from '../repositories/waste-data-sources.js';
 
 export const createWasteManagementOperationRuntime = (

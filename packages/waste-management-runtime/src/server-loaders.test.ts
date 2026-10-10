@@ -267,7 +267,7 @@ vi.mock('./audit/read-models.js', () => ({
   listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
 }));
 
-vi.mock('./repositories/waste-provisioning.js', () => ({
+vi.mock('./repositories/waste-provisioning-access.js', () => ({
   createWasteProvisioningAccess: () => ({
     }),
 }));

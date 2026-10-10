@@ -14,6 +14,6 @@ export { createWasteDataSourceAccess } from './repositories/waste-data-sources.j
 export type { WasteDataSourceAccess, WasteDataSourceDbClient } from './repositories/waste-data-sources.js';
 export {
   createWasteProvisioningAccess,
-  createWasteProvisioningRepository,
-} from './repositories/waste-provisioning.js';
-export type { WasteProvisioningAccess, WasteProvisioningDbClient } from './repositories/waste-provisioning.js';
+} from './repositories/waste-provisioning-access.js';
+export { createWasteProvisioningRepository } from './repositories/waste-provisioning.js';
+export type { WasteProvisioningAccess, WasteProvisioningDbClient } from './repositories/waste-provisioning-access.js';

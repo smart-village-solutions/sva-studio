@@ -25,6 +25,8 @@ export type StudioJobExecutionRegistration = {
   readonly queueName: string;
   readonly executionLane?: 'default' | 'privileged';
   readonly supportsCancellation?: boolean;
+  readonly startPolicy?: 'standard' | 'dedicated';
+  readonly artifactPermissionId?: string;
 };
 
 export type PluginOperationExecutionRegistration = {
@@ -32,6 +34,8 @@ export type PluginOperationExecutionRegistration = {
   readonly queueName: string;
   readonly executionLane?: 'default' | 'privileged';
   readonly supportsCancellation?: boolean;
+  readonly startPolicy?: 'standard' | 'dedicated';
+  readonly artifactPermissionId?: string;
 };
 
 export type StudioJobExecutionRegistry = ReadonlyMap<string, StudioJobExecutionRegistration>;

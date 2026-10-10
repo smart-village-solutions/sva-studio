@@ -1,9 +1,5 @@
 import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service-types';
 
-import {
-  loadWasteDataSourceRecord,
-  saveWasteDataSourceRecord,
-} from '../waste-management/waste-data-sources.server.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { readInstanceRegistryPluginOidcClientRequirements } from './plugin-activation-policy-snapshot.js';
 import {
@@ -23,8 +19,6 @@ export const withAuthInstanceRegistryDeps = <TDeps extends Partial<InstanceRegis
     | 'readKeycloakStateViaProvisioner'
     | 'readKeycloakRealmCreateCapability'
     | 'readPluginOidcClientRequirements'
-    | 'loadWasteDataSourceRecord'
-    | 'saveWasteDataSourceRecord'
   > => ({
   ...deps,
   protectSecret: protectField,
@@ -33,6 +27,4 @@ export const withAuthInstanceRegistryDeps = <TDeps extends Partial<InstanceRegis
   readKeycloakStateViaProvisioner,
   readKeycloakRealmCreateCapability: readKeycloakRealmCreateCapabilityViaProvisioner,
   readPluginOidcClientRequirements: readInstanceRegistryPluginOidcClientRequirements,
-  loadWasteDataSourceRecord,
-  saveWasteDataSourceRecord,
 });

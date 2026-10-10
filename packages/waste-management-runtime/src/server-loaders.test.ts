@@ -262,6 +262,16 @@ vi.mock('pg', () => ({
   Pool: PoolMock,
 }));
 
+vi.mock('./audit/read-models.js', () => ({
+  listWasteManagementAuditRecords: listWasteManagementAuditRecordsMock,
+  listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
+}));
+
+vi.mock('./repositories/waste-provisioning.js', () => ({
+  createWasteProvisioningAccess: () => ({
+    }),
+}));
+
 import { createWasteServerLoaders, type WasteServerLoaderHost } from './server-loaders.js';
 
 const {
@@ -272,13 +282,10 @@ const {
 } = createWasteServerLoaders({
   listExternalInterfaceRecords: vi.fn(async () => []),
   loadDefaultExternalInterfaceRecord: vi.fn(async () => null),
-  loadWasteTenantProvisioningRecord: vi.fn(async () => null),
   withInstanceDb: withInstanceDbMock,
   withStudioJobRepository: withStudioJobRepositoryMock,
   revealField: revealFieldMock,
   readPluginOperationInput: vi.fn(async () => ({ body: new Uint8Array() })),
-  listWasteManagementAuditRecords: listWasteManagementAuditRecordsMock,
-  listWasteManagementTechnicalAuditRecords: listWasteManagementTechnicalAuditRecordsMock,
 } as unknown as WasteServerLoaderHost);
 
 describe('waste-management server loaders', () => {

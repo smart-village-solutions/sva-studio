@@ -158,3 +158,57 @@ export const wasteDataSourceStatements = {
   upsert: upsertStatement,
   updateConnectionCheck: updateConnectionCheckStatement,
 } as const;
+
+export type WasteDataSourceDbClient = {
+  query<TRow = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[]
+  ): Promise<{ readonly rowCount: number | null; readonly rows: readonly TRow[] }>;
+};
+
+export type WasteDataSourceAccess = Readonly<{
+  loadWasteDataSourceRecord(
+    instanceId: string
+  ): Promise<WasteManagementDataSourceRecord | null>;
+  saveWasteDataSourceRecord(record: WasteManagementDataSourceRecord): Promise<void>;
+  saveWasteConnectionCheck(input: WasteManagementConnectionCheckRecord): Promise<void>;
+  checkWasteDataSourceSchema(instanceId: string): Promise<boolean>;
+}>;
+
+export const createWasteDataSourceAccess = (
+  withInstanceDb: <T>(
+    instanceId: string,
+    work: (client: WasteDataSourceDbClient) => Promise<T>
+  ) => Promise<T>
+): WasteDataSourceAccess => {
+  const withRepository = <T>(
+    instanceId: string,
+    work: (repository: WasteDataSourceRepository) => Promise<T>
+  ) =>
+    withInstanceDb(instanceId, async (client) =>
+      work(
+        createWasteDataSourceRepository({
+          async execute<TRow = Record<string, unknown>>(query: SqlStatement) {
+            const result = await client.query<TRow>(query.text, query.values);
+            return { rowCount: result.rowCount ?? 0, rows: result.rows };
+          },
+        })
+      )
+    );
+
+  return {
+    loadWasteDataSourceRecord: (instanceId) =>
+      withRepository(instanceId, (repository) => repository.getByInstanceId(instanceId)),
+    saveWasteDataSourceRecord: (record) =>
+      withRepository(record.instanceId, (repository) => repository.upsert(record)),
+    saveWasteConnectionCheck: (input) =>
+      withRepository(input.instanceId, (repository) => repository.updateConnectionCheck(input)),
+    checkWasteDataSourceSchema: (instanceId) =>
+      withInstanceDb(instanceId, async (client) => {
+        const result = await client.query<{ exists: boolean }>(
+          "SELECT to_regclass('iam.instance_waste_data_sources') IS NOT NULL AS exists"
+        );
+        return result.rows[0]?.exists === true;
+      }),
+  };
+};

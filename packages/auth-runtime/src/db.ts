@@ -99,7 +99,15 @@ export const withResolvedIamAppDb = async <T>(
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      logger.warn('iam_database_transaction_rollback_failed', {
+        operation: 'iam_database_transaction',
+        error_type:
+          rollbackError instanceof Error ? rollbackError.constructor.name : typeof rollbackError,
+      });
+    }
     throw error;
   } finally {
     client.release();

@@ -4,6 +4,9 @@ import { createWasteServerContext } from './server-context.js';
 import { createWasteJobStarter } from './server-job-start.js';
 import { createWasteServerLoaders } from './server-loaders.js';
 import { createWasteRuntimeOperationHandlers } from './runtime-handler-helpers.js';
+export type { WasteServerContextHost } from './server-context.js';
+export type { WasteServerLoaderHost } from './server-loaders.js';
+export type { WasteJobHost } from './server-job-start.js';
 export {
   wasteManagementMasterDataSchemas,
   wasteManagementSettingsSchemas,
@@ -19,6 +22,11 @@ export const wasteManagementHttpRuntime = {
 } as const;
 export type { SaveWasteCustomRecurrencePresetsInput } from './handlers/custom-recurrence-deps.js';
 export type { WasteManagementOperationRuntime } from './runtime-types.js';
+export { createWasteManagementOperationRuntime } from './operations/waste-management-operations.runtime.server.js';
+export type {
+  OperationSummary,
+  WasteOperationRuntimeDeps,
+} from './operations/waste-management-operations.types.js';
 
 export const createWasteManagementPluginOperationExecutionHandlers = (
   runtime: import('./runtime-types.js').WasteManagementOperationRuntime
@@ -27,3 +35,4 @@ export const createWasteManagementPluginOperationExecutionHandlers = (
 
 export const createPluginJobExecutionHandlers =
   createWasteManagementPluginOperationExecutionHandlers;
+export type { WasteHistoryQuery } from './server-loaders.history-jobs.js';

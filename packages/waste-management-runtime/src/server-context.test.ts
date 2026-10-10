@@ -12,7 +12,6 @@ const dataRepositoryMocks = vi.hoisted(() => ({
 
 const authMocks = vi.hoisted(() => ({
   readConfiguredPluginTenantAccess: vi.fn(),
-  withAuthenticatedUser: vi.fn(),
 }));
 
 const hostCapabilityMocks = vi.hoisted(() => ({
@@ -45,8 +44,21 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
 }));
 
 vi.mock('./repositories.js', () => ({
+  createWasteProvisioningAccess: () => ({
+    loadWasteTenantProvisioningRecord: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+    requestWasteTenantProvisioning: dataRepositoryMocks.requestWasteTenantProvisioning,
+    failWasteTenantProvisioningRequest: dataRepositoryMocks.failWasteTenantProvisioningRequest,
+  }),
   resolveWasteDataSource: hostCapabilityMocks.resolveWasteDataSource,
   runWasteConnectionCheck: hostCapabilityMocks.runWasteConnectionCheck,
+}));
+
+vi.mock('./repositories/waste-provisioning.js', () => ({
+  createWasteProvisioningAccess: () => ({
+    loadWasteTenantProvisioningRecord: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+    requestWasteTenantProvisioning: dataRepositoryMocks.requestWasteTenantProvisioning,
+    failWasteTenantProvisioningRequest: dataRepositoryMocks.failWasteTenantProvisioningRequest,
+  }),
 }));
 
 import { createWasteServerContext, type WasteServerContextHost } from './server-context.js';
@@ -82,6 +94,10 @@ const { sharedWasteManagementDeps, withAuthenticatedWasteManagementHandler } =
     hasIdempotentAuditEvent: vi.fn(),
     completeIdempotency: vi.fn(),
   } as unknown as WasteServerContextHost);
+
+const tenantContext = {
+  user: { id: 'user-1', instanceId: 'tenant-a' },
+} as Parameters<typeof withAuthenticatedWasteManagementHandler>[0];
 
 describe('sharedWasteManagementDeps', () => {
   it('resolves secrets and probes the connection within the host', async () => {
@@ -216,9 +232,6 @@ describe('sharedWasteManagementDeps', () => {
   });
 
   it('blocks dedicated waste handlers when tenant lifecycle access is not ready', async () => {
-    authMocks.withAuthenticatedUser.mockImplementationOnce(async (_request, work) =>
-      work({ user: { id: 'user-1', instanceId: 'tenant-a' } })
-    );
     authMocks.readConfiguredPluginTenantAccess.mockResolvedValueOnce({
       allowed: false,
       reason: 'blocked',
@@ -226,6 +239,7 @@ describe('sharedWasteManagementDeps', () => {
     const handler = vi.fn(async () => new Response('handled'));
 
     const response = await withAuthenticatedWasteManagementHandler(
+      tenantContext,
       new Request('https://studio.example/api/v1/waste-management/settings', {
         headers: { 'accept-language': 'en-GB,en;q=0.9,de;q=0.8' },
       }),
@@ -247,9 +261,6 @@ describe('sharedWasteManagementDeps', () => {
   });
 
   it('dispatches dedicated waste handlers when tenant lifecycle access is ready', async () => {
-    authMocks.withAuthenticatedUser.mockImplementationOnce(async (_request, work) =>
-      work({ user: { id: 'user-1', instanceId: 'tenant-a' } })
-    );
     authMocks.readConfiguredPluginTenantAccess.mockResolvedValueOnce({
       allowed: true,
       reason: 'ready',
@@ -257,6 +268,7 @@ describe('sharedWasteManagementDeps', () => {
     const handler = vi.fn(async () => new Response('handled'));
 
     const response = await withAuthenticatedWasteManagementHandler(
+      tenantContext,
       new Request('https://studio.example/api/v1/waste-management/settings'),
       handler
     );

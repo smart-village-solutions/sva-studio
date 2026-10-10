@@ -13,7 +13,6 @@ const PLUGIN_SPECIFIC_WORKSPACE_DEPENDENCIES = new Map<string, ReadonlySet<strin
     new Set([
       '@sva/waste-management-contracts',
       '@sva/waste-management-runtime',
-      '@sva/auth-runtime',
     ]),
   ],
 ]);
@@ -88,12 +87,12 @@ export const isAllowedWorkspaceModuleSpecifier = (
 ): boolean => {
   const wasteServerSource =
     pluginPackageName === '@sva/plugin-waste-management' &&
-    /packages\/plugin-waste-management\/src\/server(?:-context|-loaders)?\.ts$/.test(sourcePath);
+    /packages\/plugin-waste-management\/src\/server(?:-context|-jobs)?\.ts$/.test(sourcePath);
   if (
     pluginPackageName === '@sva/plugin-waste-management' &&
     (moduleSpecifier === '@sva/auth-runtime' || moduleSpecifier.startsWith('@sva/auth-runtime/'))
   ) {
-    return wasteServerSource && moduleSpecifier === '@sva/auth-runtime/plugin-server-host';
+    return false;
   }
   if (
     moduleSpecifier === '@sva/waste-management-runtime' ||

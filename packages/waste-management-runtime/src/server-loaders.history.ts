@@ -4,6 +4,10 @@ import type {
 } from '@sva/waste-management-contracts';
 import type { WasteServerLoaderHost } from './server-loaders.js';
 import { WasteHistoryJobLoader, type WasteHistoryQuery } from './server-loaders.history-jobs.js';
+import {
+  listWasteManagementAuditRecords,
+  listWasteManagementTechnicalAuditRecords,
+} from './audit/read-models.js';
 
 export class WasteHistoryLoaders {
   private readonly jobs: WasteHistoryJobLoader;
@@ -40,7 +44,7 @@ export class WasteHistoryLoaders {
 
     do {
       const technicalAuditPage = await this.host.withInstanceDb(query.instanceId, (client) =>
-        this.host.listWasteManagementTechnicalAuditRecords(client, {
+        listWasteManagementTechnicalAuditRecords(client, {
           ...query,
           page: currentPage,
           pageSize: query.pageSize,
@@ -61,7 +65,7 @@ export class WasteHistoryLoaders {
     query: WasteHistoryQuery
   ): Promise<WasteManagementHistoryOverview> => {
     const audit = await this.host.withInstanceDb(query.instanceId, (client) =>
-      this.host.listWasteManagementAuditRecords(client, query)
+      listWasteManagementAuditRecords(client, query)
     );
     const technicalOffset = (query.page - 1) * query.pageSize;
     const technicalLimit = technicalOffset + query.pageSize;

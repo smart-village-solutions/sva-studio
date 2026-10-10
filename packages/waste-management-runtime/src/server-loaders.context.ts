@@ -4,6 +4,7 @@ import { findSelectedWasteManagementInterfaceRecord } from '@sva/waste-managemen
 import { Pool } from 'pg';
 import { resolveWasteDataSource } from './repositories/data-source.server.js';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
+import { createWasteProvisioningAccess } from './repositories/waste-provisioning.js';
 import type { WasteServerLoaderHost } from './server-loaders.js';
 
 export type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;
@@ -16,7 +17,10 @@ type WastePoolEntry = {
 };
 
 export class WasteLoaderContext {
-  constructor(private readonly host: WasteServerLoaderHost) {}
+  private readonly provisioning;
+  constructor(private readonly host: WasteServerLoaderHost) {
+    this.provisioning = createWasteProvisioningAccess(host.withInstanceDb);
+  }
 
   schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
   logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
@@ -107,7 +111,7 @@ export class WasteLoaderContext {
       resolveWasteDataSource({
         instanceId,
         loadDefaultInterface: async () => await this.loadSelectedWasteInterfaceRecord(instanceId),
-        loadProvisioning: this.host.loadWasteTenantProvisioningRecord,
+        loadProvisioning: this.provisioning.loadWasteTenantProvisioningRecord,
         revealSecret: (ciphertext, aad) => this.host.revealField(ciphertext, aad) ?? undefined,
       })
     );

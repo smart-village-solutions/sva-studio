@@ -1,9 +1,9 @@
 export * from './export-profile-definitions.js';
 export * from './import-profile-definitions.js';
 export * from './job-definitions.js';
+export type { WasteMainserverSyncItem, WasteMainserverSyncSnapshot } from './waste-management-mainserver-sync.js';
 export * from './tenant-lifecycle.js';
 export * from './tenant-readiness-job-definition.js';
-export type { WasteIamInstanceDetail } from './waste-management-contract.js';
 export { wasteManagementDataSourceContract } from './waste-management-contract.js';
 export {
   buildWasteManagementPublicConfig,

@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import {
+  createWasteDataSourceAccess,
   createWasteDataSourceRepository,
   wasteDataSourceStatements,
 } from './waste-data-sources.js';
@@ -124,5 +125,24 @@ describe('waste data source repository', () => {
       'connection_refused',
       'Host unreachable',
     ]);
+  });
+});
+
+
+describe('Waste data source host access', () => {
+  it('reads datasource schema availability inside the tenant-scoped host transaction', async () => {
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [{ exists: true }] }));
+    const scopedClient = { query };
+    const withInstanceDb = vi.fn(
+      async (_instanceId: string, work: (client: never) => Promise<unknown>) => work(scopedClient as never)
+    );
+    const access = createWasteDataSourceAccess(withInstanceDb as never);
+
+    await expect(access.checkWasteDataSourceSchema('tenant-a')).resolves.toBe(true);
+
+    expect(withInstanceDb).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    expect(query).toHaveBeenCalledWith(
+      "SELECT to_regclass('iam.instance_waste_data_sources') IS NOT NULL AS exists"
+    );
   });
 });

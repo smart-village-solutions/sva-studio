@@ -72,49 +72,6 @@ export const encryptTenantAdminClientSecret = (
   );
 };
 
-export const encryptWasteDatabaseUrl = (
-  deps: InstanceRegistryServiceDeps,
-  instanceId: string,
-  databaseUrl: string | undefined
-): string | undefined => {
-  const normalizedDatabaseUrl = databaseUrl?.trim();
-  if (!normalizedDatabaseUrl) {
-    return undefined;
-  }
-  return protectSecret(
-    deps,
-    normalizedDatabaseUrl,
-    `iam.instance_waste_data_sources.database_url:${instanceId}`
-  );
-};
-
-export const buildWasteManagementSettingsRecord = async (
-  deps: InstanceRegistryServiceDeps,
-  instanceId: string,
-  input: LegacyWasteManagementSettingsInput
-) => {
-  const existing = (await deps.loadWasteDataSourceRecord?.(instanceId)) ?? null;
-  const databaseUrlCiphertext = encryptWasteDatabaseUrl(deps, instanceId, input.databaseUrl);
-  const nextDatabaseUrlCiphertext = databaseUrlCiphertext ?? existing?.databaseUrlCiphertext;
-
-  return {
-    instanceId,
-    provider: input.provider,
-    schemaName: input.schemaName?.trim() || 'public',
-    enabled: input.enabled,
-    disruptionLocationEnabled: existing?.disruptionLocationEnabled ?? false,
-    disruptionAllLocationsEnabled: existing?.disruptionAllLocationsEnabled ?? false,
-    databaseUrlConfigured: Boolean(nextDatabaseUrlCiphertext),
-    databaseUrlCiphertext: nextDatabaseUrlCiphertext,
-    visibleStatus: nextDatabaseUrlCiphertext ? 'unknown' : 'not_configured',
-    lastCheckedAt: existing?.lastCheckedAt,
-    lastCheckStatus: existing?.lastCheckStatus,
-    lastCheckErrorCode: existing?.lastCheckErrorCode,
-    lastCheckErrorMessage: existing?.lastCheckErrorMessage,
-    updatedAt: existing?.updatedAt,
-  } as const;
-};
-
 export const requireModuleIamRegistry = (deps: InstanceRegistryServiceDeps) =>
   deps.moduleIamRegistry ?? new Map();
 

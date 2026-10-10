@@ -32,7 +32,6 @@
     }
   },
   "dependencies": {
-    "@sva/auth-runtime": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*",

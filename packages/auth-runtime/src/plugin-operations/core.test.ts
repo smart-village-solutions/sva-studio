@@ -207,6 +207,18 @@ describe('plugin operations handlers', () => {
   });
 
   it('rejects waste-management jobs on the generic endpoint before reserving idempotency', async () => {
+    runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(
+      new Map([
+        [
+          'waste-management.reset-data',
+          { handler: vi.fn(), queueName: 'plugin-operations', startPolicy: 'standard' },
+        ],
+        [
+          'waste-management.provision-tenant-database',
+          { handler: vi.fn(), queueName: 'waste-provisioning', startPolicy: 'dedicated' },
+        ],
+      ])
+    );
     const response = await startPluginOperationJobHandler(
       new Request('https://studio.test/api/v1/plugin-operations/jobs', {
         method: 'POST',
@@ -218,7 +230,7 @@ describe('plugin operations handlers', () => {
         },
         body: JSON.stringify({
           pluginId: 'waste-management',
-          jobTypeId: 'waste-management.reset-data',
+          jobTypeId: 'waste-management.provision-tenant-database',
           input: {
             operation: 'reset-data',
             confirmationToken: 'RESET',
@@ -1126,6 +1138,18 @@ describe('plugin operations handlers', () => {
   });
 
   it('downloads an intact export artifact only for its actor and current export permission', async () => {
+    runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(
+      new Map([
+        [
+          'waste-management.export-data',
+          {
+            handler: vi.fn(),
+            queueName: 'plugin-operations',
+            artifactPermissionId: 'waste-management.export.execute',
+          },
+        ],
+      ])
+    );
     const body = new TextEncoder().encode('{"ok":true}');
     const artifactId = '22222222-2222-4222-8222-222222222222';
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
@@ -1134,6 +1158,7 @@ describe('plugin operations handlers', () => {
           id: '11111111-1111-4111-8111-111111111111',
           status: 'succeeded',
           pluginId: 'waste-management',
+          jobTypeId: 'waste-management.export-data',
           actorAccountId: 'account-1',
           resultPayload: {
             artifacts: [

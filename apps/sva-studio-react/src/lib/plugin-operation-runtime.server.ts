@@ -159,6 +159,7 @@ const resolvePluginJobRuntimeRequirement = (input: {
 
 export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
   readonly pluginSources: readonly StudioPluginJobSource[];
+  readonly jobTypeOwners: ReadonlyMap<string, { readonly ownerPluginId: string }>;
   readonly runtimeFactories: PluginJobRuntimeFactoryRegistry;
 }): Promise<Readonly<Record<string, PluginOperationExecutionHandler>>> => {
   return (async () => {
@@ -196,6 +197,11 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
       for (const [jobTypeId, handler] of Object.entries(
         createPluginJobExecutionHandlers(runtimeFactory())
       )) {
+        if (input.jobTypeOwners.get(jobTypeId)?.ownerPluginId !== source.pluginId) {
+          throw new Error(
+            `plugin_operation_handler_owner_mismatch:${jobTypeId}:${source.pluginId}`
+          );
+        }
         const existingOwner = handlerOwners.get(jobTypeId);
         if (existingOwner) {
           throw new Error(
@@ -217,6 +223,7 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
   return (async () => {
     const handlers = await createPluginOperationExecutionHandlersFromSnapshot({
       pluginSources: studioPluginJobSources,
+      jobTypeOwners: studioPluginCatalogReport.snapshot.registry.pluginJobTypeRegistry,
       runtimeFactories: studioPluginJobRuntimeFactories,
     });
 

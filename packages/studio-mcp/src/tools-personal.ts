@@ -210,7 +210,7 @@ export const registerPersonalTools = (
 
   server.registerTool('studio_personal_logout', {
     title: 'Persönlich abmelden',
-    description: 'Entfernt die persönliche Anmeldung aus dem Arbeitsspeicher und widerruft nach Möglichkeit das Refresh-Token.',
+    description: 'Entfernt die persönliche Anmeldung aus dem Arbeitsspeicher und löscht einen gespeicherten Schlüsselbund-Eintrag und widerruft nach Möglichkeit das Refresh-Token.',
     inputSchema: contextInput.shape,
     outputSchema,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -220,7 +220,7 @@ export const registerPersonalTools = (
       await manager.logout(contextId);
       return result({ ok: true, data: { contextId, loggedOutLocally: true }, meta: {} });
     } catch (error) {
-      return errorResult(error, contextId, { loggedOutLocally: true });
+      return errorResult(error, contextId, { loggedOutLocally: error instanceof PersonalMcpAuthError && error.code === 'oidc_logout_revocation_failed' });
     }
   });
 

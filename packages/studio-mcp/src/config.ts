@@ -62,12 +62,14 @@ const sourceSchema = z.object({
   diagnosisTimeoutMs: z.number().int().positive().default(15_000),
   caFilePath: z.string().trim().min(1).optional(),
   personalContexts: personalContextsSchema.default([]),
+  personalSessionStorage: z.enum(['memory', 'keychain']).default('memory'),
 }).refine((value) => value.clientSecret || value.clientSecretCommand, 'Client-Secret oder Secret-Command fehlt.');
 
-export type StudioMcpConfig = Omit<z.infer<typeof sourceSchema>, 'clientSecret' | 'clientSecretCommand' | 'interfaceSecretCommand' | 'personalContexts'> & {
+export type StudioMcpConfig = Omit<z.infer<typeof sourceSchema>, 'clientSecret' | 'clientSecretCommand' | 'interfaceSecretCommand' | 'personalContexts' | 'personalSessionStorage'> & {
   readonly clientSecret: string;
   readonly interfaceSecretCommand?: readonly string[];
   readonly personalContexts?: readonly PersonalMcpContext[];
+  readonly personalSessionStorage?: 'memory' | 'keychain';
 };
 
 const parseCommand = (raw: string | undefined): string[] | undefined => {
@@ -100,6 +102,7 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
       ? Number(env.SVA_STUDIO_MCP_DIAGNOSIS_TIMEOUT_MS)
       : undefined,
     caFilePath: env.SVA_STUDIO_MCP_CA_FILE,
+    personalSessionStorage: env.SVA_STUDIO_MCP_PERSONAL_SESSION_STORAGE,
     personalContexts: env.SVA_STUDIO_MCP_PERSONAL_CONTEXTS
       ? JSON.parse(env.SVA_STUDIO_MCP_PERSONAL_CONTEXTS)
       : [],
@@ -126,6 +129,7 @@ export const readStudioMcpConfig = async (env: NodeJS.ProcessEnv = process.env):
     clientSecret,
     interfaceSecretCommand: source.interfaceSecretCommand,
     personalContexts: source.personalContexts,
+    personalSessionStorage: source.personalSessionStorage,
   };
 };
 

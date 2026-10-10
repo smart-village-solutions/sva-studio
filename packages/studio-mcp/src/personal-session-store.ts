@@ -89,7 +89,10 @@ export class MacOsPersonalSessionStore implements PersonalSessionStore {
     );
     const args = ['add-generic-password', '-U', ...this.args(context), '-w', value];
     // All tokens are base64, all other arguments are fixed strings or hex hashes.
-    const result = await security(['-i'], args.join(' ') + '\n');
+    const command = args.join(' ') + '\n';
+    // The native interactive CLI accepts at most 4095 bytes per input line.
+    if (Buffer.byteLength(command) > 4095) throw new PersonalMcpAuthError('personal_session_store_unavailable');
+    const result = await security(['-i'], command);
     if (result.code !== 0) throw new PersonalMcpAuthError('personal_session_store_unavailable');
   }
   async delete(context: PersonalMcpContext): Promise<void> {
@@ -98,3 +101,22 @@ export class MacOsPersonalSessionStore implements PersonalSessionStore {
       throw new PersonalMcpAuthError('personal_session_store_unavailable');
   }
 }
+
+export const persistPersonalSession = async (
+  context: PersonalMcpContext,
+  session: import('./personal-auth-callback.js').PersonalSession,
+  store?: PersonalSessionStore
+): Promise<void> => {
+  if (!store) return;
+  if (!session.refreshToken) {
+    await store.delete(context);
+    return;
+  }
+  await store.save(context, {
+    version: 1,
+    binding: personalSessionBinding(context),
+    subject: session.subject,
+    account: session.account,
+    refreshToken: session.refreshToken,
+  });
+};

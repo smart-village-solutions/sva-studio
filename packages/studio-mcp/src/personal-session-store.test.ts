@@ -53,6 +53,10 @@ describe('macOS personal session store', () => {
     expect(input).toContain(Buffer.from(JSON.stringify(stored)).toString('base64'));
     expect(JSON.stringify(state.spawn.mock.calls)).not.toContain(stored.refreshToken);
   });
+  it('rejects oversized records before invoking the native input-line parser', async () => {
+    await expect(new MacOsPersonalSessionStore().save(context, { ...stored, refreshToken: 'x'.repeat(8192) })).rejects.toMatchObject({ code: 'personal_session_store_unavailable' });
+    expect(state.spawn).not.toHaveBeenCalled();
+  });
   it('loads only a validated context-bound record', async () => {
     response(0, Buffer.from(JSON.stringify(stored)).toString('base64') + '\n');
     await expect(new MacOsPersonalSessionStore().load(context)).resolves.toEqual(stored);

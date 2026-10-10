@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import * as oidc from 'openid-client';
 import type { PersonalMcpContext } from './config.js';
 import { PersonalMcpAuthError } from './personal-auth-errors.js';
@@ -136,4 +136,16 @@ export const handlePersonalCallback = async (
       pendingStateByContext.delete(pending.context.id);
     writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
   }
+};
+
+export const startPersonalCallbackServer = async (
+  port: number,
+  handler: (request: IncomingMessage, response: ServerResponse) => void
+): Promise<Server> => {
+  const server = createServer(handler);
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', () => reject(new PersonalMcpAuthError('login_callback_unavailable')));
+    server.listen(port, CALLBACK_HOST, () => resolve());
+  });
+  return server;
 };

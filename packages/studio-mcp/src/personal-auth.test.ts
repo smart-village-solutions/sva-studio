@@ -492,4 +492,18 @@ describe('personal MCP context authentication', () => {
     });
     await restarted.dispose();
   });
+  it('removes the old saved identity before a new browser login can fail', async () => {
+    const { PersonalMcpContextManager } = await import('./personal-auth.js');
+    const store = persistentStore();
+    const port = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort: port, sessionStore: store });
+    const url = new URL(await manager.startLogin(context.id));
+    expect(await store.load()).toBeUndefined();
+    state.authorizationCodeGrant.mockRejectedValueOnce(new Error('provider unavailable'));
+    expect((await fetch(`http://127.0.0.1:${port}/callback?state=${url.searchParams.get('state')}&code=test`)).status).toBe(400);
+    await expect(manager.getAccessToken(context.id)).rejects.toMatchObject({ code: 'context_login_required' });
+    expect(state.refreshTokenGrant).not.toHaveBeenCalled();
+    await manager.dispose();
+  });
+
 });

@@ -171,3 +171,27 @@ export const resolveInterfaceSecret = async (
     throw Object.assign(new Error('interface_secret_resolution_failed'), { cause: error });
   }
 };
+
+export type PersonalContextSummary = {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: 'platform' | 'tenant';
+  readonly host: string;
+  readonly realm: string;
+  readonly tenantId?: string;
+  readonly account?: string;
+  readonly loginPending: boolean;
+};
+
+export const summarizePersonalContext = (
+  context: PersonalMcpContext,
+  account: string | undefined,
+  loginPending: boolean
+): PersonalContextSummary => ({
+  id: context.id, name: context.name, kind: context.kind,
+  host: new URL(context.baseUrl).host,
+  realm: new URL(context.issuer).pathname.split('/').filter(Boolean).slice(-1)[0] ?? '',
+  ...(context.kind === 'tenant' ? { tenantId: context.tenantId } : {}),
+  ...(account ? { account } : {}),
+  loginPending,
+});

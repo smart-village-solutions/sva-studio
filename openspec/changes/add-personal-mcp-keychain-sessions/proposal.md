@@ -21,7 +21,7 @@ Ausschließlich `packages/studio-mcp`, Tests und bestehende Betriebs-/Architektu
 2. Kein Token in argv, Environment, Dateien, Ausgaben oder Fehlern; native `security -i` erhält den Base64-Record ausschließlich über stdin. Adaptertest und synthetischer macOS-Save/Load/Delete-Smoke.
 3. Rotation wird vor Token-Rückgabe gespeichert; fehlende/ungültige Tokens und Speicherfehler sperren den API-Zugriff. Unit-Tests.
 4. Kontextoperationen werden im vorhandenen Manager serialisiert. Logout kann eine laufende Wiederherstellung nicht wiederbeleben; während Browser-Login ist Restore gesperrt. Race-Tests.
-5. Ein neuer Login ohne Refresh-Token löscht den alten Eintrag. Ein Kontext speichert genau seine zuletzt ausdrücklich angemeldete Identität. Account-Wechsel-Test.
+5. Ein neuer interaktiver Login entfernt bereits vor dem Browserstart den alten Eintrag; ohne Refresh-Token bleibt kein alter Account restaurierbar. Ein Kontext speichert genau seine zuletzt ausdrücklich angemeldete Identität. Account-Wechsel-Test.
 
 Ein konfigurierter Kontext wird durch genau einen aktiven MCP-Prozess verwendet; parallele Prozesse mit demselben Kontext und rotierenden Tokens werden nicht unterstützt. Ein gesperrter Schlüsselbund wird nicht automatisch entsperrt. OIDC-Sessionlaufzeiten und Fresh-Reauth bleiben Provider-/API-Verträge.
 

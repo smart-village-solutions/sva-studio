@@ -3,7 +3,7 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { resolveActorInfo } from '../iam-account-management/shared.js';
 import { authorizeInstancePermissionForUser, toInstancePermissionApiErrorCode } from '../instance-permission-authorization.js';
-import { withAuthenticatedUser } from '../middleware.js';
+import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
 import { readPluginOperationArtifact } from '../plugin-operation-artifacts.server.js';
 import { isUuid } from '../shared/input-readers.js';
 import { createApiError, readPathSegment } from '../shared/request-helpers.js';
@@ -22,6 +22,23 @@ const readArtifactIds = (request: Request): { jobId: string; artifactId: string 
   return jobId && isUuid(jobId) && artifactId && isUuid(artifactId)
     ? { jobId, artifactId }
     : createApiError(400, 'invalid_request', 'Job- oder Artefakt-ID ist ungültig.', getRequestId());
+};
+
+const authorizeArtifactDownload = async (
+  ctx: AuthenticatedRequestContext,
+  jobTypeId: string
+): Promise<Response | null> => {
+  const registration = getRegisteredPluginOperationExecutionRegistry().get(jobTypeId);
+  if (!registration) {
+    return createApiError(404, 'not_found', 'Exportartefakt wurde nicht gefunden.', getRequestId());
+  }
+  if (!registration.artifactPermissionId) {
+    return requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
+  }
+  const authorization = await authorizeInstancePermissionForUser({ ctx, action: registration.artifactPermissionId });
+  return authorization.ok
+    ? null
+    : createApiError(authorization.status, toInstancePermissionApiErrorCode(authorization.error), 'Keine Berechtigung zum Herunterladen des Exportartefakts.', getRequestId(), authorization.permissionDenial);
 };
 
 export const downloadPluginOperationArtifactHandler = async (request: Request): Promise<Response> =>
@@ -43,16 +60,8 @@ export const downloadPluginOperationArtifactHandler = async (request: Request): 
       if (!actorResolution.actor.actorAccountId || job.actorAccountId !== actorResolution.actor.actorAccountId) {
         return createApiError(403, 'forbidden', 'Exportartefakt gehört einem anderen Akteur.', getRequestId());
       }
-      const registration = getRegisteredPluginOperationExecutionRegistry().get(job.jobTypeId);
-      if (registration?.artifactPermissionId) {
-        const authorization = await authorizeInstancePermissionForUser({ ctx, action: registration.artifactPermissionId });
-        if (!authorization.ok) {
-          return createApiError(authorization.status, toInstancePermissionApiErrorCode(authorization.error), 'Keine Berechtigung zum Herunterladen des Exportartefakts.', getRequestId(), authorization.permissionDenial);
-        }
-      } else {
-        const monitoringError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
-        if (monitoringError) return monitoringError;
-      }
+      const authorizationError = await authorizeArtifactDownload(ctx, job.jobTypeId);
+      if (authorizationError) return authorizationError;
       const artifact = job.resultPayload?.artifacts?.find((entry) => entry.artifactId === ids.artifactId);
       const expiresAt = artifact ? Date.parse(artifact.expiresAt) : Number.NaN;
       if (!artifact || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {

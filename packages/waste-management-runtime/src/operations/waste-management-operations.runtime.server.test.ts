@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.runtime.server.js';
 import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
+const createProvisionTenantDatabaseOperationMock = vi.hoisted(() =>
+  vi.fn((_deps: unknown) => vi.fn())
+);
+vi.mock('./waste-tenant-database-provisioner.server.js', () => ({
+  createProvisionTenantDatabaseOperation: createProvisionTenantDatabaseOperationMock,
+}));
+
 describe('waste management operations runtime assembly', () => {
   it('assembles the full operation contract with stable callable handlers', async () => {
     const requestProvisioning = vi.fn(async () => ({ desiredGeneration: 4 }) as never);
@@ -39,5 +46,26 @@ describe('waste management operations runtime assembly', () => {
     expect(requestProvisioning).toHaveBeenCalledWith('tenant-a');
     await expect(runtime.suspendTenantDatabaseProvisioning('tenant-a')).resolves.toBeNull();
     expect(suspendProvisioning).toHaveBeenCalledWith('tenant-a');
+  });
+
+  it('passes derived provisioning access and managed interface capabilities to the privileged operation', () => {
+    createProvisionTenantDatabaseOperationMock.mockClear();
+    const loadManagedInterface = vi.fn(async () => null);
+    const saveInterfaceRecord = vi.fn(async () => undefined);
+    createWasteManagementOperationRuntime({
+      withInstanceDb: vi.fn() as WasteOperationRuntimeDeps['withInstanceDb'],
+      loadManagedInterface,
+      saveInterfaceRecord,
+    });
+
+    expect(createProvisionTenantDatabaseOperationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        claimProvisioning: expect.any(Function),
+        completeProvisioning: expect.any(Function),
+        failProvisioning: expect.any(Function),
+        loadManagedInterface,
+        saveManagedInterface: saveInterfaceRecord,
+      })
+    );
   });
 });

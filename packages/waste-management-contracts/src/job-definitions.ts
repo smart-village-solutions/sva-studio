@@ -14,7 +14,6 @@ const pluginNamespace = wasteManagementOperationsContract.pluginId;
 const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
-    startPolicy: 'dedicated',
     queue: wasteManagementOperationsContract.provisioningQueueName,
     executionLane: 'privileged',
     displayName: 'Waste-Tenant-Datenbank provisionieren',
@@ -225,4 +224,7 @@ const wasteManagementPluginJobTypes = [
 ] satisfies readonly PluginJobTypeDefinition[];
 
 export const createWasteManagementPluginJobTypes = (): readonly PluginJobTypeDefinition[] =>
-  definePluginJobTypes(pluginNamespace, wasteManagementPluginJobTypes);
+  definePluginJobTypes(
+    pluginNamespace,
+    wasteManagementPluginJobTypes.map((jobType) => ({ ...jobType, startPolicy: 'dedicated' as const }))
+  );

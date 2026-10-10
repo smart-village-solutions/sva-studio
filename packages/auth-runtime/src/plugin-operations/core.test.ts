@@ -206,12 +206,15 @@ describe('plugin operations handlers', () => {
     });
   });
 
-  it('rejects waste-management jobs on the generic endpoint before reserving idempotency', async () => {
+  it.each([
+    'waste-management.reset-data',
+    'waste-management.provision-tenant-database',
+  ])('rejects %s on the generic endpoint before reserving idempotency', async (jobTypeId) => {
     runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(
       new Map([
         [
           'waste-management.reset-data',
-          { handler: vi.fn(), queueName: 'plugin-operations', startPolicy: 'standard' },
+          { handler: vi.fn(), queueName: 'plugin-operations', startPolicy: 'dedicated' },
         ],
         [
           'waste-management.provision-tenant-database',
@@ -230,7 +233,7 @@ describe('plugin operations handlers', () => {
         },
         body: JSON.stringify({
           pluginId: 'waste-management',
-          jobTypeId: 'waste-management.provision-tenant-database',
+          jobTypeId,
           input: {
             operation: 'reset-data',
             confirmationToken: 'RESET',
@@ -1258,11 +1261,24 @@ describe('plugin operations handlers', () => {
   });
 
   it('enforces the current waste export permission', async () => {
+    runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(
+      new Map([
+        [
+          'waste-management.export-data',
+          {
+            handler: vi.fn(),
+            queueName: 'plugin-operations',
+            artifactPermissionId: 'waste-management.export.execute',
+          },
+        ],
+      ])
+    );
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
         getJobDetail: vi.fn(async () => ({
           status: 'succeeded',
           pluginId: 'waste-management',
+          jobTypeId: 'waste-management.export-data',
           actorAccountId: 'account-1',
         })),
       })
@@ -1280,6 +1296,33 @@ describe('plugin operations handlers', () => {
     );
 
     expect(response.status).toBe(403);
+    expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'waste-management.export.execute' })
+    );
+    expect(artifactState.readPluginOperationArtifact).not.toHaveBeenCalled();
+  });
+
+  it('denies an old export artifact when its job registration is unavailable', async () => {
+    runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(new Map());
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          status: 'succeeded',
+          pluginId: 'waste-management',
+          jobTypeId: 'waste-management.export-data',
+          actorAccountId: 'account-1',
+        })),
+      })
+    );
+
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/22222222-2222-4222-8222-222222222222'
+      )
+    );
+
+    expect(response.status).toBe(404);
+    expect(middlewareState.authorizeInstancePermissionForUser).not.toHaveBeenCalled();
     expect(artifactState.readPluginOperationArtifact).not.toHaveBeenCalled();
   });
 
@@ -1313,6 +1356,7 @@ describe('plugin operations handlers', () => {
         getJobDetail: vi.fn(async () => ({
           status: 'succeeded',
           pluginId: 'news',
+          jobTypeId: 'news.import-articles',
           actorAccountId: 'account-1',
           resultPayload: { artifacts: artifact ? [artifact] : [] },
         })),
@@ -1338,6 +1382,7 @@ describe('plugin operations handlers', () => {
         getJobDetail: vi.fn(async () => ({
           status: 'succeeded',
           pluginId: 'news',
+          jobTypeId: 'news.import-articles',
           actorAccountId: 'account-1',
           resultPayload: {
             artifacts: [

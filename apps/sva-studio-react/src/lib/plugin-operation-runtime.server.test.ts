@@ -120,10 +120,7 @@ describe('plugin operation runtime registration', () => {
                 jobTypeId === 'waste-management.provision-tenant-database'
                   ? 'privileged'
                   : 'default',
-              startPolicy:
-                jobTypeId === 'waste-management.provision-tenant-database'
-                  ? 'dedicated'
-                  : 'standard',
+              startPolicy: 'dedicated',
               supportsCancellation: jobTypeId === 'waste-management.sync-mainserver',
               ...(jobTypeId === 'waste-management.export-data'
                 ? { artifactPermissionId: 'waste-management.export.execute' }
@@ -143,10 +140,7 @@ describe('plugin operation runtime registration', () => {
                     jobTypeId === 'waste-management.provision-tenant-database'
                       ? 'privileged'
                       : 'default',
-                  startPolicy:
-                    jobTypeId === 'waste-management.provision-tenant-database'
-                      ? 'dedicated'
-                      : 'standard',
+                  startPolicy: 'dedicated',
                   supportsCancellation: jobTypeId === 'waste-management.sync-mainserver',
                   ...(jobTypeId === 'waste-management.export-data'
                     ? { artifactPermissionId: 'waste-management.export.execute' }
@@ -190,6 +184,7 @@ describe('plugin operation runtime registration', () => {
     expect(handlers).not.toHaveProperty('ssf.reconcile-authorization');
     expect(handlers['waste-management.reset-data']).toMatchObject({
       supportsCancellation: false,
+      startPolicy: 'dedicated',
     });
     expect(handlers['waste-management.seed-data']).toMatchObject({
       supportsCancellation: false,

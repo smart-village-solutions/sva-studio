@@ -7,13 +7,7 @@ import { PersonalMcpAuthError } from './personal-auth-errors.js';
 export const CALLBACK_HOST = '127.0.0.1';
 export const CALLBACK_PORT = 8765;
 export const CALLBACK_PATH = '/callback';
-export const LOGIN_TIMEOUT_MS = 5 * 60_000;
-export const TOKEN_REFRESH_MARGIN_MS = 30_000;
-
-export const realmFor = (issuer: string): string => {
-  const parts = new URL(issuer).pathname.split('/').filter(Boolean);
-  return parts[parts.length - 1] ?? '';
-};
+const LOGIN_TIMEOUT_MS = 5 * 60_000;
 
 export const callbackUri = (port: number): string =>
   `http://${CALLBACK_HOST}:${port}${CALLBACK_PATH}`;
@@ -39,7 +33,7 @@ export const writeCallbackPage = (
 export const isLoopback = (address: string | undefined): boolean =>
   address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 
-export const assertIssuerEndpoints = (
+const assertIssuerEndpoints = (
   context: PersonalMcpContext,
   configuration: oidc.Configuration
 ): void => {
@@ -152,12 +146,13 @@ export const createPersonalLogin = async (
   context: PersonalMcpContext,
   configuration: oidc.Configuration,
   port: number,
-  timeoutMs: number,
+  loginTimeoutMs: number | undefined,
   onTimeout: (state: string) => void
 ): Promise<{
   pending: import('./personal-auth-callback.js').PendingPersonalLogin;
   loginUrl: string;
 }> => {
+  const timeoutMs = loginTimeoutMs ?? LOGIN_TIMEOUT_MS;
   const state = oidc.randomState();
   const nonce = oidc.randomNonce();
   const codeVerifier = oidc.randomPKCECodeVerifier();

@@ -15,8 +15,6 @@ import {
 import {
   CALLBACK_PORT,
   discoverConfiguration,
-  LOGIN_TIMEOUT_MS,
-  TOKEN_REFRESH_MARGIN_MS,
   refreshPersonalSession,
   restorePersonalSession,
   createPersonalLogin,
@@ -25,6 +23,7 @@ import {
 } from './personal-auth-oidc.js';
 export { PersonalMcpAuthError } from './personal-auth-errors.js';
 export type { PersonalContextSummary } from './config.js';
+const TOKEN_REFRESH_MARGIN_MS = 30_000;
 
 export class PersonalMcpContextManager {
   private readonly contextsById: ReadonlyMap<string, PersonalMcpContext>;
@@ -76,7 +75,7 @@ export class PersonalMcpContextManager {
       context,
       configuration,
       this.options.callbackPort ?? CALLBACK_PORT,
-      this.options.loginTimeoutMs ?? LOGIN_TIMEOUT_MS,
+      this.options.loginTimeoutMs,
       (state) => this.removePending(state)
     );
     this.pendingByState.set(pending.state, pending);

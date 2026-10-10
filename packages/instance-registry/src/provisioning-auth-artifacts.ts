@@ -132,7 +132,10 @@ const reconcileInstanceAuthArtifacts = async (
     throw new Error('tenant_admin_adoption_requires_existing_realm');
   }
   if (input.tenantAdminBootstrap?.adoptExisting) {
-    await assertTenantAdminAdoptionTarget(client, input.tenantAdminBootstrap);
+    await assertTenantAdminAdoptionTarget(client, {
+      ...input.tenantAdminBootstrap,
+      instanceId: input.instanceId,
+    });
   }
   await reconcilePluginOidcClients(client, {
     ...input,

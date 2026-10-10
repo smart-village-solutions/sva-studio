@@ -21,6 +21,7 @@ const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
 const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
 const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
+const getInstanceKeycloakPreflightViaProvisionerMock = vi.fn();
 const runRoleCatalogReconciliationMock = vi.fn(async () => ({
   outcome: 'success' as const,
   checkedCount: 1,
@@ -132,7 +133,7 @@ vi.mock('./provisioning-auth.js', () => ({
   deleteProvisionedRealmViaProvisioner: vi.fn(),
   getInstanceKeycloakStatusViaTenantAdmin: getInstanceKeycloakStatusViaTenantAdminMock,
   getInstanceKeycloakPlanViaProvisioner: vi.fn(),
-  getInstanceKeycloakPreflightViaProvisioner: vi.fn(),
+  getInstanceKeycloakPreflightViaProvisioner: getInstanceKeycloakPreflightViaProvisionerMock,
   getInstanceKeycloakStatusViaProvisioner: getInstanceKeycloakStatusViaProvisionerMock,
   provisionInstanceAuthArtifactsViaProvisioner: vi.fn(),
 }));
@@ -203,6 +204,12 @@ describe('iam instance registry repository wiring', () => {
 
     const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls[0]?.[0];
     expect(runtimeConfig).toBeDefined();
+    expect(runtimeConfig?.serviceDeps.getKeycloakPreflight).toBe(
+      runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakPreflight
+    );
+    const preflightInput = { instanceId: 'tenant-one', realmMode: 'existing' };
+    await runtimeConfig?.serviceDeps.getKeycloakPreflight(preflightInput);
+    expect(getInstanceKeycloakPreflightViaProvisionerMock).toHaveBeenCalledWith(preflightInput);
 
     const serviceRegistry = runtimeConfig?.serviceDeps.moduleIamRegistry;
     const workerRegistry = runtimeConfig?.provisioningWorkerServiceDeps.moduleIamRegistry;

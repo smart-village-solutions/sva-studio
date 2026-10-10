@@ -7,12 +7,11 @@ import { syncProtectedSystemAdminPermissions } from './service-module-mutations.
 import { isSupportedTenantProvisioningSnapshotVersion } from './tenant-provisioning-snapshot.js';
 import { readParentKeycloakPlanGate } from './tenant-provisioning-state.js';
 import {
-  createGetKeycloakPreflightHandler,
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
 } from './service-keycloak-readers.js';
 import { loadInstanceWithSecret } from './service-keycloak-secrets.js';
-import { createQueuedRun } from './service-keycloak-execution-shared.js';
+import { buildProvisioningInput, createQueuedRun } from './service-keycloak-execution-shared.js';
 import {
   ensureReconcilePreconditions,
   resolveReconcileIntent,
@@ -40,7 +39,8 @@ const canRecoverMissingTenantSecret = async (
   ) {
     return false;
   }
-  const preflight = await createGetKeycloakPreflightHandler(deps)(loaded.instance.instanceId);
+  // Recovery authorization requires current evidence, never a historical bootstrap snapshot.
+  const preflight = await deps.getKeycloakPreflight?.(buildProvisioningInput(loaded));
   const blockers = preflight?.checks.filter((check) => check.status === 'blocked') ?? [];
   return blockers.length > 0 && blockers.every((check) => check.checkKey === 'tenant_secret');
 };

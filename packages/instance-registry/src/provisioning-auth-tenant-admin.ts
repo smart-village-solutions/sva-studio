@@ -132,13 +132,13 @@ const updateExistingTenantAdmin = async (
   if (!owned && !adoptable) throw new Error('tenant_admin_ownership_conflict');
 
   await client.updateUser(user.id, {
-    username: adoptable ? user.username! : input.username,
-    email: adoptable
+    username: input.adoptExisting ? user.username! : input.username,
+    email: input.adoptExisting
       ? user.email!
       : (input.email ?? user.email ?? `${input.username}@tenant.invalid`),
     firstName: input.firstName,
     lastName: input.lastName,
-    enabled: user.enabled ?? !adoptable,
+    enabled: user.enabled ?? !input.adoptExisting,
     attributes: { ...(user.attributes ?? {}), ...ownershipAttributes },
   });
   await syncTenantAdminAccess(client, input, user.id, checkpoint);
@@ -150,14 +150,15 @@ const normalizeEmail = (email: string | undefined): string | undefined =>
 
 export const assertTenantAdminAdoptionTarget = async (
   client: KeycloakProvisioningClient,
-  input: TenantAdminInput
+  input: ScopedTenantAdminInput
 ): Promise<void> => {
   if (!input.adoptExisting) return;
   const emailMatches = input.email ? await client.findUsersByEmail(input.email) : [];
   const user = emailMatches.length === 1 ? emailMatches[0] : undefined;
   if (
     !user ||
-    !isUnmarkedStudioUser(user) ||
+    (!isUnmarkedStudioUser(user) &&
+      readStudioOwnedUser(user, input.instanceId, 'tenant_admin') !== 'owned') ||
     normalizeEmail(user.email) !== normalizeEmail(input.email) ||
     emailMatches.length !== 1 ||
     emailMatches[0]?.id !== user.id

@@ -1237,7 +1237,7 @@ describe('service-keycloak-execution', () => {
     });
   });
 
-  it('enqueues missing-secret recovery when tenant_secret is the only blocker', async () => {
+  it('enqueues missing-secret recovery from live preflight despite a historical warning', async () => {
     const { createExecuteKeycloakProvisioningHandler } =
       await import('./service-keycloak-execution.js');
     state.loadInstanceWithSecret.mockResolvedValue({
@@ -1247,10 +1247,14 @@ describe('service-keycloak-execution', () => {
     });
     state.createGetKeycloakPreflightHandler.mockReturnValue(
       vi.fn(async () => ({
-        overallStatus: 'blocked',
-        checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
+        overallStatus: 'warning',
+        checks: [{ checkKey: 'tenant_secret', status: 'warning' }],
       }))
     );
+    const getKeycloakPreflight = vi.fn(async () => ({
+      overallStatus: 'blocked',
+      checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
+    }));
     state.createPlanKeycloakProvisioningHandler.mockReturnValue(
       vi.fn(async () => ({
         contractVersion: '1.0',
@@ -1281,7 +1285,10 @@ describe('service-keycloak-execution', () => {
     };
 
     await expect(
-      createExecuteKeycloakProvisioningHandler({ repository: repository as never } as never)({
+      createExecuteKeycloakProvisioningHandler({
+        repository: repository as never,
+        getKeycloakPreflight,
+      } as never)({
         instanceId: 'instance-1',
         idempotencyKey: 'idem-1',
         requestId: 'request-1',
@@ -1291,6 +1298,8 @@ describe('service-keycloak-execution', () => {
       })
     ).resolves.toEqual({ id: 'run-1', overallStatus: 'queued' });
 
+    expect(getKeycloakPreflight).toHaveBeenCalledWith({ payload: 'provisioning' });
+    expect(state.createGetKeycloakPreflightHandler).not.toHaveBeenCalled();
     expect(state.createQueuedRun).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -1316,12 +1325,16 @@ describe('service-keycloak-execution', () => {
     state.createGetKeycloakPreflightHandler.mockReturnValue(
       vi.fn(async () => ({
         overallStatus: 'blocked',
-        checks: [
-          { checkKey: 'tenant_secret', status: 'blocked' },
-          { checkKey: 'realm', status: 'blocked' },
-        ],
+        checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
       }))
     );
+    const getKeycloakPreflight = vi.fn(async () => ({
+      overallStatus: 'blocked',
+      checks: [
+        { checkKey: 'tenant_secret', status: 'blocked' },
+        { checkKey: 'realm', status: 'blocked' },
+      ],
+    }));
     state.createPlanKeycloakProvisioningHandler.mockReturnValue(
       vi.fn(async () => ({
         contractVersion: '1.0',
@@ -1332,7 +1345,10 @@ describe('service-keycloak-execution', () => {
     const repository = { listProvisioningRuns: vi.fn().mockResolvedValue([]) };
 
     await expect(
-      createExecuteKeycloakProvisioningHandler({ repository: repository as never } as never)({
+      createExecuteKeycloakProvisioningHandler({
+        repository: repository as never,
+        getKeycloakPreflight,
+      } as never)({
         instanceId: 'instance-1',
         idempotencyKey: 'idem-1',
         requestId: 'request-1',
@@ -1343,6 +1359,55 @@ describe('service-keycloak-execution', () => {
     ).rejects.toThrow('keycloak_plan_blocked');
     expect(state.createQueuedRun).not.toHaveBeenCalled();
   });
+
+  it.each(['missing', 'empty', 'unavailable'] as const)(
+    'fails missing-secret recovery closed when live preflight is %s',
+    async (kind) => {
+      const { createExecuteKeycloakProvisioningHandler } =
+        await import('./service-keycloak-execution.js');
+      state.loadInstanceWithSecret.mockResolvedValue({
+        ...createLoaded(),
+        instance: { ...createLoaded().instance, realmMode: 'existing' },
+        authClientSecret: undefined,
+      });
+      state.createGetKeycloakPreflightHandler.mockReturnValue(
+        vi.fn(async () => ({
+          overallStatus: 'blocked',
+          checks: [{ checkKey: 'tenant_secret', status: 'blocked' }],
+        }))
+      );
+      state.createPlanKeycloakProvisioningHandler.mockReturnValue(
+        vi.fn(async () => ({
+          contractVersion: '1.0',
+          fingerprint: confirmedPlanFingerprint,
+          overallStatus: 'blocked',
+        }))
+      );
+      const getKeycloakPreflight =
+        kind === 'missing'
+          ? undefined
+          : vi.fn(async () => {
+              if (kind === 'unavailable') throw new Error('keycloak_unavailable');
+              return { overallStatus: 'ready', checks: [] };
+            });
+      const repository = { listProvisioningRuns: vi.fn().mockResolvedValue([]) };
+      await expect(
+        createExecuteKeycloakProvisioningHandler({
+          repository,
+          getKeycloakPreflight,
+        } as never)({
+          instanceId: 'instance-1',
+          idempotencyKey: 'idem-1',
+          requestId: 'request-1',
+          actorId: 'actor-1',
+          intent: 'rotate_client_secret',
+          planFingerprint: confirmedPlanFingerprint,
+        })
+      ).rejects.toThrow(kind === 'unavailable' ? 'keycloak_unavailable' : 'keycloak_plan_blocked');
+      expect(state.createQueuedRun).not.toHaveBeenCalled();
+      expect(state.createGetKeycloakPreflightHandler).not.toHaveBeenCalled();
+    }
+  );
 
   it('rejects worker execution when the current readback changes the confirmed plan', async () => {
     const { processClaimedKeycloakProvisioningRun } =

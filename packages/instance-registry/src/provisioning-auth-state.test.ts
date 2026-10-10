@@ -937,6 +937,92 @@ describe('provisioning-auth-state', () => {
     expect(client.findUserByUsername).not.toHaveBeenCalled();
   });
 
+  it('reconciles an already adopted tenant admin idempotently without renaming its identity', async () => {
+    const user = {
+      id: 'existing-admin',
+      username: 'shared-realm-admin',
+      email: 'Admin@smart-village.app',
+      enabled: false,
+      attributes: {
+        managed_by: ['studio'],
+        instance_id: ['customer-1'],
+        artifact_key: ['tenant_admin'],
+        custom: ['keep'],
+      },
+    };
+    const client = createClient({ findUsersByEmail: vi.fn(async () => [user]) });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+    const input = {
+      instanceId: 'customer-1',
+      primaryHostname: 'customer-1.example.org',
+      realmMode: 'existing' as const,
+      authRealm: 'customer-1',
+      authClientId: 'sva-studio-login',
+      tenantAdminBootstrap: {
+        username: 'configured-name-is-not-used',
+        email: 'admin@smart-village.app',
+        firstName: 'SVS',
+        lastName: 'Admin',
+        adoptExisting: true,
+      },
+    };
+    await provision(input);
+    await provision(input);
+    expect(client.updateUser).toHaveBeenCalledTimes(2);
+    expect(client.updateUser).toHaveBeenCalledWith(
+      user.id,
+      expect.objectContaining({
+        username: user.username,
+        email: user.email,
+        enabled: false,
+        attributes: expect.objectContaining({ custom: ['keep'] }),
+      })
+    );
+    expect(client.findUserByUsername).not.toHaveBeenCalled();
+    expect(client.createUser).not.toHaveBeenCalled();
+    expect(client.syncRoles).not.toHaveBeenCalled();
+    expect(client.assignRealmRoles).toHaveBeenCalledWith(user.id, ['system_admin']);
+  });
+
+  it.each(['foreign-instance', 'foreign-artifact', 'foreign-manager', 'ambiguous-email'] as const)(
+    'rejects an adopted admin with %s before mutating any realm artifact',
+    async (kind) => {
+      const user = {
+        id: 'existing-admin',
+        username: 'shared-realm-admin',
+        email: 'admin@smart-village.app',
+        attributes: {
+          managed_by: [kind === 'foreign-manager' ? 'other' : 'studio'],
+          instance_id: [kind === 'foreign-instance' ? 'other-tenant' : 'customer-1'],
+          artifact_key: [kind === 'foreign-artifact' ? 'other-artifact' : 'tenant_admin'],
+        },
+      };
+      const client = createClient({
+        findUsersByEmail: vi.fn(async () =>
+          kind === 'ambiguous-email' ? [user, { ...user, id: 'second-user' }] : [user]
+        ),
+      });
+      await expect(
+        createProvisionInstanceAuthArtifacts(() => client)({
+          instanceId: 'customer-1',
+          primaryHostname: 'customer-1.example.org',
+          realmMode: 'existing',
+          authRealm: 'customer-1',
+          authClientId: 'sva-studio-login',
+          tenantAdminBootstrap: {
+            username: 'configured-name-is-not-used',
+            email: 'admin@smart-village.app',
+            adoptExisting: true,
+          },
+        })
+      ).rejects.toThrow('tenant_admin_ownership_conflict');
+      expect(client.ensureOidcClient).not.toHaveBeenCalled();
+      expect(client.ensureTenantAdminServiceAccess).not.toHaveBeenCalled();
+      expect(client.updateUser).not.toHaveBeenCalled();
+      expect(client.assignRealmRoles).not.toHaveBeenCalled();
+    }
+  );
+
   it('blocks adoption when email does not uniquely resolve to the approved email', async () => {
     const user = {
       id: 'existing-admin',

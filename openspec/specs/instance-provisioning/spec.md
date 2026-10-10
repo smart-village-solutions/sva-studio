@@ -604,6 +604,20 @@ Das System SHALL beim Bootstrap einer neuen Instanz dem initialen Tenant-Admin a
 - **AND** bindet die Ausführung an die beim bestätigten Plan gelesene Benutzeridentität und prüft sie vor Keycloak-Schreibvorgängen erneut
 - **AND** bleibt die Übernahme ohne das explizite Flag gesperrt
 
+#### Scenario: Bereits übernommener Tenant-Admin wird idempotent abgeglichen
+
+- **WHEN** `adoptExisting = true` gesetzt bleibt und die normalisierte E-Mail weiterhin genau einen Benutzer bestimmt
+- **AND** dessen Studio-Ownership exakt dieselbe Instanz und das Artefakt `tenant_admin` ausweist
+- **THEN** erlaubt das System den erneuten Abgleich und bewahrt Username, E-Mail, Aktivierungsstatus, fremde Attribute und sonstige Rollen
+- **AND** blockieren fremde oder partielle Ownership und mehrdeutige E-Mail vor jeder Keycloak-Mutation
+
+#### Scenario: Credential-Recovery verwendet aktuellen Preflight
+
+- **WHEN** eine bestätigte Secret-Rotation eine fehlende Registry-Credential im Bestands-Realm reparieren soll
+- **THEN** stammen Challenge, Rotation und Plan aus demselben Provisioner-Kontext
+- **AND** autorisiert ausschließlich ein aktueller Live-Preflight mit `tenant_secret` als einzigem Blocker die Recovery
+- **AND** bleiben historische Snapshots, fehlende Live-Evidenz, weitere aktuelle Blocker und abweichende Plan-Fingerprints gesperrt
+
 #### Scenario: Bootstrap vergibt system_admin, aber keine Plattformrolle
 - **WHEN** der initiale Tenant-Admin einer neuen Instanz angelegt oder aktualisiert wird
 - **THEN** synchronisiert das System im Tenant-Realm mindestens die Rolle `system_admin`

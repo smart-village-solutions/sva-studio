@@ -21,6 +21,9 @@ on:
       hotfix_sha:
         description: 'Exact hotfix source commit (hotfix only)'
         type: string
+      plugin_ids:
+        description: 'Optional comma-separated workspace plugin IDs for a custom image'
+        type: string
 
 concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix' && format('build-hotfix-{0}', inputs.hotfix_sha) || 'build-main' }}
@@ -41,6 +44,8 @@ jobs:
       backup_agent_image_digest: ${{ steps.build_backup_agent_image.outputs.digest }}
       image_digest: ${{ steps.build_image.outputs.digest }}
       ssf_image_digest: ${{ steps.build_ssf_image.outputs.digest }}
+      custom_image_digest: ${{ steps.build_custom_image.outputs.digest }}
+      custom_plugin_ids: ${{ steps.custom_selection.outputs.plugin_ids }}
       source_sha: ${{ steps.source.outputs.sha }}
     steps:
       - name: Checkout hotfix workflow controller
@@ -103,6 +108,21 @@ jobs:
           fi
           pnpm exec tsx scripts/ci/generate-studio-changelog-artifact.ts "${args[@]}"
 
+      - name: Resolve optional custom plugin selection
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'main' && inputs.plugin_ids != ''
+        id: custom_selection
+        env:
+          SVA_STUDIO_PLUGIN_IDS: ${{ inputs.plugin_ids }}
+        run: |
+          set -euo pipefail
+          selection="$(pnpm exec tsx scripts/ci/studio-distribution-artifact.ts selection ignored custom)"
+          plugin_ids="$(jq -r '.pluginIds | join(",")' <<<"${selection}")"
+          fingerprint="$(jq -r '.pluginSetFingerprint' <<<"${selection}")"
+          tag="custom-${{ steps.source.outputs.sha }}-${fingerprint:0:12}"
+          echo "plugin_ids=${plugin_ids}" >> "${GITHUB_OUTPUT}"
+          echo "fingerprint=${fingerprint}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
       - name: Login to GHCR
         uses: docker/login-action@v4
         with:
@@ -142,6 +162,22 @@ jobs:
           tags: |
             ghcr.io/smart-village-solutions/sva-studio-ssf:${{ steps.source.outputs.sha }}
             ${{ inputs.mode != 'hotfix' && 'ghcr.io/smart-village-solutions/sva-studio-ssf:latest' || '' }}
+
+      - name: Build and push custom Studio Docker image
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'main' && inputs.plugin_ids != ''
+        id: build_custom_image
+        uses: docker/build-push-action@v5
+        with:
+          build-args: |
+            SVA_IMAGE_REVISION=${{ steps.source.outputs.sha }}
+            SVA_STUDIO_DISTRIBUTION=custom
+            SVA_STUDIO_PLUGIN_IDS=${{ steps.custom_selection.outputs.plugin_ids }}
+            SVA_STUDIO_PLUGIN_SET_FINGERPRINT=${{ steps.custom_selection.outputs.fingerprint }}
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/smart-village-solutions/sva-studio:${{ steps.custom_selection.outputs.tag }}
 
       - name: Build and push backup agent image
         id: build_backup_agent_image
@@ -203,6 +239,19 @@ jobs:
             bash scripts/ci/verify-studio-image.sh \
               "ghcr.io/smart-village-solutions/sva-studio-ssf@${{ needs.build.outputs.ssf_image_digest }}" \
               artifacts/runtime/ssf-image-verify ssf "${{ needs.build.outputs.source_sha }}"
+
+      - name: Verify custom Studio image
+        if: needs.build.outputs.custom_image_digest != ''
+        env:
+          CUSTOM_PLUGIN_IDS: ${{ needs.build.outputs.custom_plugin_ids }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/smart-village-solutions/sva-studio@${{ needs.build.outputs.custom_image_digest }}"
+          docker pull "${image}"
+          SVA_IMAGE_VERIFY_PORT=39082 SVA_IMAGE_VERIFY_POSTGRES_PORT=35435 \
+            bash scripts/ci/verify-studio-image.sh \
+              "${image}" artifacts/runtime/custom-image-verify custom "${{ needs.build.outputs.source_sha }}" \
+              "${CUSTOM_PLUGIN_IDS}"
 
       - name: Verify backup agent image
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'hotfix'

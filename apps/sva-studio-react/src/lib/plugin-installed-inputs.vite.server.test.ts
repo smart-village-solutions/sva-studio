@@ -7,6 +7,7 @@ import { pluginSdkVersion } from '@sva/plugin-sdk';
 import { build } from 'vite';
 import {
   createInstalledPluginInputsPlugin,
+  createSelectedWorkspacePluginInputsPlugin,
   renderInstalledPluginInputs,
   resolveInstalledPluginSources,
 } from '../../plugin-installed-inputs.vite.js';
@@ -99,6 +100,42 @@ afterEach(() => {
 });
 
 describe('installed plugin build inputs', () => {
+  it('generates browser, server, worker, descriptor, manifest, and ownership maps from one selection', () => {
+    const appRoot = process.cwd();
+    const plugin = createSelectedWorkspacePluginInputsPlugin(appRoot, [
+      'categories',
+      'news',
+      'ssf',
+    ]);
+    const hook = plugin as unknown as {
+      resolveId: (id: string) => string | undefined;
+      load: (id: string) => string | undefined;
+    };
+    const loadVirtual = (id: string): string => {
+      const resolved = hook.resolveId(id);
+      if (!resolved) throw new Error(`virtual_module_missing:${id}`);
+      const code = hook.load(resolved);
+      if (!code) throw new Error(`virtual_module_empty:${id}`);
+      return code;
+    };
+
+    const client = loadVirtual('virtual:studio-selected-plugin-client');
+    const server = loadVirtual('virtual:studio-selected-plugin-server');
+    const jobs = loadVirtual('virtual:studio-selected-plugin-jobs');
+    const ownership = loadVirtual('virtual:studio-selected-plugin-ownership');
+    for (const pluginId of ['categories', 'news', 'ssf']) {
+      expect(client).toContain(`packages/plugin-${pluginId}/`);
+    }
+    expect(server).toContain('packages/plugin-ssf/');
+    expect(jobs).toContain('packages/plugin-ssf/');
+    for (const pluginId of ['events', 'poi', 'faq', 'waste-management']) {
+      expect(server).not.toContain(`packages/plugin-${pluginId}/`);
+      expect(jobs).not.toContain(`packages/plugin-${pluginId}/`);
+      expect(client).not.toContain(`packages/plugin-${pluginId}/`);
+      expect(ownership).not.toContain(`packages/plugin-${pluginId}/`);
+    }
+  });
+
   it('uses the selected package and exact manifest paths for all runtime registers', () => {
     const { appRoot } = createFixture();
     const sources = resolveInstalledPluginSources(appRoot, 'studio');

@@ -53,6 +53,8 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
 - Plugin-Distributionsartefakte als eigener Betriebsgegenstand neben dem App-Image; sie werden über Manifest plus gebaute Artefakte aktiviert, nicht über Core-Codeänderungen
 
+Der bestehende `Build`-Workflow kann bei manuellem Start optional ein zusätzliches Studio-Image für eine explizite Plugin-Menge erzeugen. `studio` und `ssf` behalten ihre bisherigen Images und Tags. Das Zusatzimage trägt die normalisierte Auswahl als OCI-Fingerabdruck; Manifest, Chunk-Provenienz und Paketinventar müssen vor der Freigabe des Digests übereinstimmen. Es wird nicht automatisch nach Dev promoviert. Der geplante Kassel-Staging-Zielsatz lautet `categories`, `news` und `ssf`; Medien bleiben Host-Funktion. Die separate Instanz wird später mit dem verifizierten Image-Digest und dem zugehörigen Manifest-/Paketnachweis eingerichtet, sobald Hostname und getrennte Mainserver-/SSF-Testkontexte feststehen.
+
 ### Hostgebundener OIDC-Vertrag
 
 - Root- und Tenant-Hosts starten ihren Login selbst; Authorization-Redirect, Callback und Post-Logout-Redirect bleiben auf exakt diesem Host.

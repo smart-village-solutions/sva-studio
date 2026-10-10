@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 const source = 'https://github.com/smart-village-solutions/sva-studio';
@@ -19,6 +20,19 @@ const regularPlugins = [
   'waste-management',
 ];
 const pluginIds = { studio: regularPlugins, ssf: ['ssf'] };
+const workspacePluginIds = [
+  'categories',
+  'news',
+  'events',
+  'poi',
+  'generic-items',
+  'faq',
+  'cockpit-cards',
+  'projects',
+  'surveys',
+  'ssf',
+  'waste-management',
+];
 const packagedRegularPlugins = regularPlugins.filter((id) => id !== 'waste-management');
 const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
@@ -29,10 +43,18 @@ const fail = (code) => {
   throw new Error(code);
 };
 
-const verifyChunkProvenance = (distribution, provenance, files, installedPlugins) => {
+const verifyChunkProvenance = (
+  distribution,
+  selectedPluginIds,
+  expectedFingerprint,
+  provenance,
+  files,
+  installedPlugins
+) => {
   if (
     provenance?.schemaVersion !== 1 ||
     provenance.distribution !== distribution ||
+    (provenance.pluginSetFingerprint || undefined) !== expectedFingerprint ||
     !Array.isArray(provenance.chunks) ||
     provenance.chunks.length === 0
   )
@@ -40,10 +62,12 @@ const verifyChunkProvenance = (distribution, provenance, files, installedPlugins
   if (!Array.isArray(files) || files.length === 0) fail('chunk_provenance_file_inventory_invalid');
   const allowed = new Set([
     'plugin-sdk',
-    ...pluginIds[distribution].map((id) => `plugin-${id}`),
+    ...selectedPluginIds.map((id) => `plugin-${id}`),
     ...installedPlugins.map((entry) => entry.sourceRef),
   ]);
-  const excluded = new Set(excludedWorkspacePackages[distribution]);
+  const excluded = new Set(
+    workspacePluginIds.filter((id) => !selectedPluginIds.includes(id)).map((id) => `plugin-${id}`)
+  );
   const paths = new Set();
   const actual = new Map();
   for (const file of files) {
@@ -82,7 +106,9 @@ const verifyChunkProvenance = (distribution, provenance, files, installedPlugins
   }
   if (paths.size !== actual.size) fail('chunk_provenance_file_inventory_mismatch');
   for (const required of [
-    distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news',
+    ...(distribution === 'custom'
+      ? selectedPluginIds.map((id) => `plugin-${id}`)
+      : [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news']),
     ...installedPlugins.map((entry) => entry.sourceRef),
   ]) {
     if (
@@ -107,14 +133,31 @@ export const verifyStudioImageContract = (input) => {
     imageRef,
     expectedRevision,
     distribution,
+    expectedPluginIds,
     inspection,
     runtimeManifest,
     packages,
     chunkProvenance,
     chunkFiles,
   } = input;
-  const repository = repositories[distribution];
-  if (!repository) fail('invalid_studio_distribution');
+  const repository = repositories[distribution === 'custom' ? 'studio' : distribution];
+  if (!repository || !['studio', 'ssf', 'custom'].includes(distribution))
+    fail('invalid_studio_distribution');
+  const selectedPluginIds = distribution === 'custom' ? expectedPluginIds : pluginIds[distribution];
+  if (
+    !Array.isArray(selectedPluginIds) ||
+    selectedPluginIds.length === 0 ||
+    selectedPluginIds.some((id) => !workspacePluginIds.includes(id)) ||
+    new Set(selectedPluginIds).size !== selectedPluginIds.length ||
+    (distribution === 'custom' &&
+      JSON.stringify(selectedPluginIds) !==
+        JSON.stringify(workspacePluginIds.filter((id) => selectedPluginIds.includes(id))))
+  )
+    fail('invalid_expected_plugin_selection');
+  const expectedFingerprint =
+    distribution === 'custom'
+      ? createHash('sha256').update(JSON.stringify(selectedPluginIds)).digest('hex')
+      : undefined;
   if (!/^[a-f0-9]{40}$/.test(expectedRevision)) fail('invalid_expected_revision');
   const digestPrefix = `${repository}@sha256:`;
   if (
@@ -132,6 +175,8 @@ export const verifyStudioImageContract = (input) => {
   if (labels?.['org.opencontainers.image.revision'] !== expectedRevision)
     fail('image_revision_mismatch');
   if (labels?.['com.sva-studio.distribution'] !== distribution) fail('image_distribution_mismatch');
+  if ((labels?.['com.sva-studio.plugin-set-fingerprint'] || undefined) !== expectedFingerprint)
+    fail('image_plugin_set_fingerprint_mismatch');
   const runtimeDistributions = Array.isArray(image.Config?.Env)
     ? image.Config.Env.filter(
         (entry) => typeof entry === 'string' && entry.startsWith('SVA_STUDIO_DISTRIBUTION=')
@@ -157,18 +202,23 @@ export const verifyStudioImageContract = (input) => {
     ) ||
     new Set(runtimeManifest.installedPlugins.map((entry) => entry.pluginId)).size !==
       runtimeManifest.installedPlugins.length ||
-    runtimeManifest.installedPlugins.some((entry) =>
-      pluginIds[distribution].includes(entry.pluginId)
-    ) ||
+    runtimeManifest.installedPlugins.some((entry) => selectedPluginIds.includes(entry.pluginId)) ||
     new Set(runtimeManifest.installedPlugins.map((entry) => entry.sourceRef)).size !==
       runtimeManifest.installedPlugins.length ||
     JSON.stringify(runtimeManifest.includedPluginIds) !==
       JSON.stringify([
-        ...pluginIds[distribution],
+        ...selectedPluginIds,
         ...runtimeManifest.installedPlugins.map((entry) => entry.pluginId),
       ]) ||
     JSON.stringify(runtimeManifest.excludedWorkspacePackages) !==
-      JSON.stringify(excludedWorkspacePackages[distribution])
+      JSON.stringify(
+        distribution === 'custom'
+          ? workspacePluginIds
+              .filter((id) => !selectedPluginIds.includes(id))
+              .map((id) => `plugin-${id}`)
+          : excludedWorkspacePackages[distribution]
+      ) ||
+    runtimeManifest.pluginSetFingerprint !== expectedFingerprint
   ) {
     fail('runtime_manifest_mismatch');
   }
@@ -182,7 +232,7 @@ export const verifyStudioImageContract = (input) => {
   if (!present.has('plugin-sdk')) fail('workspace_package_inventory_incomplete');
   for (const id of [...regularPlugins, 'ssf']) {
     const shouldBePresent =
-      distribution === 'studio' ? packagedRegularPlugins.includes(id) : id === 'ssf';
+      selectedPluginIds.includes(id) && (id === 'ssf' || packagedRegularPlugins.includes(id));
     if (present.has(`plugin-${id}`) !== shouldBePresent)
       fail(`plugin_package_inventory_mismatch:${id}`);
   }
@@ -195,7 +245,10 @@ export const verifyStudioImageContract = (input) => {
       fail(`unexpected_plugin_package_present:${name}`);
     }
   }
-  for (const name of excludedWorkspacePackages[distribution]) {
+  const excluded = workspacePluginIds
+    .filter((id) => !selectedPluginIds.includes(id))
+    .map((id) => `plugin-${id}`);
+  for (const name of excluded) {
     if (present.has(name)) fail(`excluded_workspace_package_present:${name}`);
   }
   if (!present.has('waste-management-contracts') || !present.has('waste-management-runtime')) {
@@ -203,6 +256,8 @@ export const verifyStudioImageContract = (input) => {
   }
   const verifiedChunks = verifyChunkProvenance(
     distribution,
+    selectedPluginIds,
+    expectedFingerprint,
     chunkProvenance,
     chunkFiles,
     runtimeManifest.installedPlugins
@@ -212,7 +267,7 @@ export const verifyStudioImageContract = (input) => {
     revision: expectedRevision,
     distribution,
     includedPluginIds: runtimeManifest.includedPluginIds,
-    excludedWorkspacePackages: excludedWorkspacePackages[distribution],
+    excludedWorkspacePackages: excluded,
     presentWorkspacePackages: [...present]
       .filter((name) => name.startsWith('plugin-') || name.startsWith('waste-management-'))
       .sort(),

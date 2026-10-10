@@ -85,5 +85,5 @@ SQL
 export WASTE_DATE_SHIFT_TEST_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_HOST_PORT}/${TEST_DB_NAME}"
 export WASTE_DATA_EXCHANGE_TEST_DATABASE_URL="${WASTE_DATE_SHIFT_TEST_DATABASE_URL}"
 
-pnpm --dir apps/sva-studio-react exec vitest run --config vitest.integration.config.ts
+pnpm --dir packages/waste-management-runtime exec vitest run --config vitest.integration.config.ts
 pnpm --dir apps/public-waste-calendar-web exec vitest run src/lib/public-waste-repository.postgres.integration.test.ts

@@ -45,8 +45,21 @@ vi.mock('@sva/server-runtime', async (importOriginal) => ({
 }));
 
 vi.mock('./repositories.js', () => ({
+  createWasteProvisioningAccess: () => ({
+    loadWasteTenantProvisioningRecord: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+    requestWasteTenantProvisioning: dataRepositoryMocks.requestWasteTenantProvisioning,
+    failWasteTenantProvisioningRequest: dataRepositoryMocks.failWasteTenantProvisioningRequest,
+  }),
   resolveWasteDataSource: hostCapabilityMocks.resolveWasteDataSource,
   runWasteConnectionCheck: hostCapabilityMocks.runWasteConnectionCheck,
+}));
+
+vi.mock('./repositories/waste-provisioning.js', () => ({
+  createWasteProvisioningAccess: () => ({
+    loadWasteTenantProvisioningRecord: dataRepositoryMocks.loadWasteTenantProvisioningRecord,
+    requestWasteTenantProvisioning: dataRepositoryMocks.requestWasteTenantProvisioning,
+    failWasteTenantProvisioningRequest: dataRepositoryMocks.failWasteTenantProvisioningRequest,
+  }),
 }));
 
 import { createWasteServerContext, type WasteServerContextHost } from './server-context.js';

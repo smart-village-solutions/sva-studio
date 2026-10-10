@@ -4,9 +4,22 @@ import {
   registerPluginOperationExecutionHandlers,
   registerStudioJobExecutionHandlers,
   type PluginOperationExecutionRegistration,
+  readPluginOperationInput,
+  storePluginOperationArtifact,
 } from '@sva/auth-runtime/server';
+import {
+  loadDefaultExternalInterfaceRecord,
+  loadExternalInterfaceRecordByAlias,
+  listExternalInterfaceRecords,
+  saveExternalInterfaceRecord,
+} from '@sva/data-repositories/server';
 import { type PluginCatalogEntry, type PluginManifest } from '@sva/plugin-sdk';
-import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
+import {
+  createOrUpdateSvaMainserverStaticContent,
+  createSvaMainserverWastePickupTimes,
+  deleteSvaMainserverWastePickupTimes,
+  listSvaMainserverWasteSyncSnapshot,
+} from '@sva/sva-mainserver/server';
 import { createPluginBuildRegistries } from './plugin-build-registry.js';
 import { studioServerPluginCatalogReport } from './plugin-catalog.server.js';
 import {
@@ -17,12 +30,9 @@ import {
 } from '#studio-plugin-operation-inputs';
 import { createNodemailerMailDispatcher } from '@sva/mail-runtime';
 import { protectField, revealField } from '@sva/auth-runtime/server';
-import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
+import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';
+import { createWasteManagementOperationRuntime } from '@sva/waste-management-runtime/server';
 import { createMapPostalCodeResolver } from './map-geocoding-api.operations.js';
-import {
-  createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
-  type WasteManagementOperationRuntime,
-} from '@sva/waste-management-runtime/server';
 type PluginOperationExecutionHandler =
   import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 type PluginJobModuleFactory = (
@@ -33,11 +43,6 @@ type PluginJobModuleExports = {
 };
 type PluginJobRuntimeFactory = () => unknown;
 type PluginJobRuntimeFactoryRegistry = Readonly<Record<string, PluginJobRuntimeFactory>>;
-type HostOwnedPluginJobModuleDescriptor = Readonly<{
-  pluginId: string;
-  runtimeRequirement: string;
-  createPluginJobExecutionHandlers: PluginJobModuleFactory;
-}>;
 type StudioPluginJobSource = {
   readonly pluginId: string;
   readonly sourceType: PluginCatalogEntry['sourceType'];
@@ -48,11 +53,7 @@ type StudioPluginJobSource = {
 const compareAlphabetically = (left: string, right: string): number =>
   left.localeCompare(right, 'de');
 
-const cancellablePluginJobTypeIds = new Set<string>([
-  wasteManagementOperationsContract.jobTypeIds.syncMainserver,
-  wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
-]);
-const privilegedJobTypeId = wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase;
+const privilegedRuntimeOwners = new Map([['waste-management.operations', 'waste-management']]);
 
 const {
   workspacePluginRegistry: workspaceJobModuleRegistry,
@@ -66,24 +67,9 @@ const {
 const studioPluginCatalogReport = studioServerPluginCatalogReport;
 const studioDeclaredPluginOperationJobTypeIds =
   studioPluginCatalogReport.snapshot.registry.jobTypes.map((jobType) => jobType.jobTypeId);
-const createWasteManagementHostOwnedJobModuleFactory: PluginJobModuleFactory = (runtime) =>
-  createWasteManagementPluginJobExecutionHandlers(runtime as WasteManagementOperationRuntime);
-const hostOwnedPluginJobModuleDescriptors = [
-  {
-    pluginId: 'waste-management',
-    runtimeRequirement: 'waste-management.operations',
-    createPluginJobExecutionHandlers: createWasteManagementHostOwnedJobModuleFactory,
-  },
-] as const satisfies readonly HostOwnedPluginJobModuleDescriptor[];
-const getHostOwnedPluginJobModuleDescriptor = (
-  pluginId: string
-): HostOwnedPluginJobModuleDescriptor | undefined =>
-  hostOwnedPluginJobModuleDescriptors.find((entry) => entry.pluginId === pluginId);
 const studioPluginJobSources = studioPluginCatalogReport.snapshot.pluginSources.filter(
   (entry): entry is StudioPluginJobSource =>
-    Boolean(
-      entry.manifest.entryPoints.jobs || getHostOwnedPluginJobModuleDescriptor(entry.pluginId)
-    )
+    Boolean(entry.manifest.entryPoints.jobs)
 );
 
 const normalizeEntryPath = (value: string): string => value.replace(/^[.][/]/, '').trim();
@@ -142,6 +128,18 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
       revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
       protectSecret: protectField,
       createPostalCodeResolver: createMapPostalCodeResolver,
+      withInstanceDb: pluginServerHost.withInstanceDb,
+      loadDefaultInterfaceRecord: loadDefaultExternalInterfaceRecord,
+      listInterfaceRecords: listExternalInterfaceRecords,
+      saveInterfaceRecord: saveExternalInterfaceRecord,
+      loadManagedInterface: loadExternalInterfaceRecordByAlias,
+      readPluginOperationInput,
+      storeJobArtifact: storePluginOperationArtifact,
+      getProvisionerDatabaseUrl: () => process.env.WASTE_DATABASE_PROVISIONER_URL,
+      listMainserverWasteSyncSnapshot: listSvaMainserverWasteSyncSnapshot,
+      createMainserverWastePickupTimes: createSvaMainserverWastePickupTimes,
+      deleteMainserverWastePickupTimes: deleteSvaMainserverWastePickupTimes,
+      writeWasteStaticContent: createOrUpdateSvaMainserverStaticContent,
     }),
 };
 
@@ -169,14 +167,11 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
 
     for (const source of input.pluginSources) {
       const jobsEntry = source.manifest.entryPoints.jobs;
-      const hostOwnedJobModuleDescriptor = getHostOwnedPluginJobModuleDescriptor(source.pluginId);
-      if (!jobsEntry && !hostOwnedJobModuleDescriptor) {
+      if (!jobsEntry) {
         continue;
       }
 
-      const runtimeRequirement =
-        hostOwnedJobModuleDescriptor?.runtimeRequirement ??
-        resolvePluginJobRuntimeRequirement({
+      const runtimeRequirement = resolvePluginJobRuntimeRequirement({
           pluginId: source.pluginId,
           manifest: source.manifest,
         });
@@ -187,15 +182,13 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
         );
       }
 
-      const createPluginJobExecutionHandlers =
-        hostOwnedJobModuleDescriptor?.createPluginJobExecutionHandlers ??
-        (
-          await resolvePluginJobModule({
-            sourceRef: source.sourceRef,
-            jobsEntry: jobsEntry ?? '',
-            sourceType: source.sourceType,
-          })
-        )?.createPluginJobExecutionHandlers;
+      const createPluginJobExecutionHandlers = (
+        await resolvePluginJobModule({
+          sourceRef: source.sourceRef,
+          jobsEntry,
+          sourceType: source.sourceType,
+        })
+      )?.createPluginJobExecutionHandlers;
       if (!createPluginJobExecutionHandlers) {
         throw new Error(`missing_plugin_job_module_factory:${source.pluginId}`);
       }
@@ -227,19 +220,27 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
       runtimeFactories: studioPluginJobRuntimeFactories,
     });
 
-    return Object.fromEntries(
-      Object.entries(handlers).map(([jobTypeId, handler]) => [
-        jobTypeId,
-        {
-          handler,
-          queueName: studioPluginCatalogReport.snapshot.registry.jobTypes.find(
-            (jobType) => jobType.jobTypeId === jobTypeId
-          )!.queue,
-          executionLane: jobTypeId === privilegedJobTypeId ? 'privileged' : 'default',
-          supportsCancellation: cancellablePluginJobTypeIds.has(jobTypeId),
-        },
-      ])
-    );
+    return Object.fromEntries(Object.entries(handlers).map(([jobTypeId, handler]) => {
+      const jobType = studioPluginCatalogReport.snapshot.registry.pluginJobTypeRegistry.get(jobTypeId);
+      if (!jobType) throw new Error(`plugin_operation_job_type_missing:${jobTypeId}`);
+      const source = studioPluginJobSources.find((entry) => entry.pluginId === jobType.ownerPluginId);
+      const runtimeRequirement = source?.manifest.runtimeRequirements?.jobs;
+      const executionLane = jobType.executionLane ?? 'default';
+      if (
+        executionLane === 'privileged' &&
+        privilegedRuntimeOwners.get(runtimeRequirement ?? '') !== jobType.ownerPluginId
+      ) {
+        throw new Error(`plugin_job_privileged_execution_not_allowed:${jobType.ownerPluginId}`);
+      }
+      return [jobTypeId, {
+        handler,
+        queueName: jobType.queue,
+        executionLane,
+        supportsCancellation: jobType.supportsCancellation === true,
+        startPolicy: jobType.startPolicy ?? 'standard',
+        artifactPermissionId: jobType.artifactPermissionId,
+      }];
+    }));
   })();
 };
 

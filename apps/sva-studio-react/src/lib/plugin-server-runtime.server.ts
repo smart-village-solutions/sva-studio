@@ -2,12 +2,18 @@ import {
   createPluginServerHandlerDispatcher,
   type PluginServerHandlerDispatcherDependencies,
 } from '@sva/auth-runtime/server';
+import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';
 import type {
   PluginManifest,
   PluginCatalogSourceType,
   PluginServerExecutionHandler,
   PluginServerHandlerModuleFactory,
 } from '@sva/plugin-sdk';
+import type {
+  WasteJobHost,
+  WasteServerContextHost,
+  WasteServerLoaderHost,
+} from '@sva/waste-management-runtime/server';
 import { authRoutePaths } from '@sva/routing/auth';
 
 import {
@@ -73,6 +79,41 @@ const resolveServerModule = (source: StudioPluginServerSource) =>
     getServerModuleCandidates(source.manifest.entryPoints.server ?? '', source.sourceType)
   ) as Promise<PluginServerModuleExports | undefined>;
 
+type WastePluginServerCapabilities = Omit<
+  WasteServerContextHost,
+  'startPluginOperationJobFromFacade'
+> & WasteServerLoaderHost & WasteJobHost;
+
+const createWastePluginServerCapabilities = (): WastePluginServerCapabilities => ({
+  emitAuthAuditEvent: pluginServerHost.emitAuthAuditEvent,
+  listExternalInterfaceRecords: pluginServerHost.listExternalInterfaceRecords,
+  loadDefaultExternalInterfaceRecord: pluginServerHost.loadDefaultExternalInterfaceRecord,
+  saveExternalInterfaceRecord: pluginServerHost.saveExternalInterfaceRecord,
+  saveExternalInterfaceConnectionCheck: pluginServerHost.saveExternalInterfaceConnectionCheck,
+  withInstanceDb: pluginServerHost.withInstanceDb,
+  revealField: pluginServerHost.revealField,
+  completeIdempotency: pluginServerHost.completeIdempotency,
+  hasIdempotentAuditEvent: pluginServerHost.hasIdempotentAuditEvent,
+  releaseIdempotencyReservation: pluginServerHost.releaseIdempotencyReservation,
+  renewIdempotencyLease: pluginServerHost.renewIdempotencyLease,
+  reserveIdempotency: pluginServerHost.reserveIdempotency,
+  resolveIamActorInfo: pluginServerHost.resolveActorInfo,
+  authorizePluginAction: pluginServerHost.authorizePluginAction,
+  buildLogContext: pluginServerHost.buildLogContext,
+  readPluginOperationInput: pluginServerHost.readPluginOperationInput,
+  storePluginOperationInput: pluginServerHost.storePluginOperationInput,
+  withStudioJobRepository: pluginServerHost.withStudioJobRepository,
+  readConfiguredPluginTenantAccess: pluginServerHost.readConfiguredPluginTenantAccess,
+  translatePluginTenantLifecycleMessage: pluginServerHost.translatePluginTenantLifecycleMessage,
+  createApiError: pluginServerHost.createApiError,
+  validateCsrf: pluginServerHost.validateCsrf,
+  createPluginOperationJob: pluginServerHost.createPluginOperationJob,
+  markPluginOperationEnqueueFailed: pluginServerHost.markPluginOperationEnqueueFailed,
+  queuePluginOperationJob: pluginServerHost.queuePluginOperationJob,
+  createJsonItemResponse: pluginServerHost.createJsonItemResponse,
+  toPayloadHash: pluginServerHost.toPayloadHash,
+});
+
 export const createPluginServerExecutionHandlersFromSnapshot = async (input: {
   readonly pluginSources: readonly StudioPluginServerSource[];
   readonly loadServerModule?: (
@@ -85,7 +126,10 @@ export const createPluginServerExecutionHandlersFromSnapshot = async (input: {
     if (!source.manifest.entryPoints.server) continue;
     const factory = (await loadServerModule(source))?.createPluginServerHandlers;
     if (!factory) throw new Error(`missing_plugin_server_module_factory:${source.pluginId}`);
-    for (const [handlerId, handler] of Object.entries(factory())) {
+    const bindings = source.pluginId === 'waste-management'
+      ? (factory as (capabilities: WastePluginServerCapabilities) => Readonly<Record<string, PluginServerExecutionHandler>>)(createWastePluginServerCapabilities())
+      : (factory as () => Readonly<Record<string, PluginServerExecutionHandler>>)();
+    for (const [handlerId, handler] of Object.entries(bindings)) {
       if (typeof handler !== 'function') {
         throw new Error(`invalid_plugin_server_handler_binding:${source.pluginId}:${handlerId}`);
       }

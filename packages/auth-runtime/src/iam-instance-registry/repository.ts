@@ -3,7 +3,6 @@ import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import {
   invalidateInstanceRegistryHost,
 } from '@sva/data-repositories/server';
-import { loadWasteDataSourceRecord, saveWasteDataSourceRecord } from '../waste-management/waste-data-sources.server.js';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
 import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 import {
@@ -154,8 +153,6 @@ const registryRuntime = createInstanceRegistryRuntime({
     readKeycloakRealmCreateCapability: readKeycloakRealmCreateCapabilityViaProvisioner,
     protectSecret: protectField,
     revealSecret: revealField,
-    loadWasteDataSourceRecord,
-    saveWasteDataSourceRecord,
     readProvisioningModuleReadiness: readConfiguredProvisioningModuleReadiness,
     getKeycloakPreflight: getWorkerKeycloakPreflight,
     planKeycloakProvisioning: getWorkerKeycloakPlan,
@@ -182,8 +179,6 @@ const registryRuntime = createInstanceRegistryRuntime({
     protectSecret: protectField,
     revealSecret: revealField,
     syncTenantAdminBootstrapAccount,
-    loadWasteDataSourceRecord,
-    saveWasteDataSourceRecord,
     readKeycloakStateViaProvisioner,
     provisionInstanceAuth: provisionInstanceAuthArtifactsViaProvisioner,
     deleteProvisionedRealm: deleteProvisionedRealmViaProvisioner,

@@ -100,7 +100,6 @@
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
-    "@sva/waste-management-contracts": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {

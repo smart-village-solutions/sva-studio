@@ -143,7 +143,7 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
     await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
   });
 
-  it('allows the Waste server files to import the host contract', async () => {
+  it('allows the Waste server entry to use its runtime and rejects direct host imports', async () => {
     const workspaceRoot = createTempWorkspace();
     createPluginPackage(workspaceRoot, 'plugin-waste-management', {
       packageName: '@sva/plugin-waste-management',
@@ -152,8 +152,8 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
         '@sva/waste-management-runtime': 'workspace:*',
       },
       sourceFiles: {
-        'src/server.ts': `import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';\nexport const authenticate = pluginServerHost.withAuthenticatedUser;\n`,
-        'src/server-loaders.ts': `import { wasteManagementHttpRuntime } from '@sva/waste-management-runtime/server';\nexport const loaders = wasteManagementHttpRuntime.createWasteServerLoaders;\n`,
+        'src/server.ts': `import { wasteManagementHttpRuntime } from '@sva/waste-management-runtime/server';\nexport const runtime = wasteManagementHttpRuntime;\n`,
+        'src/server-context.ts': `import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';\nexport const authenticate = pluginServerHost.withAuthenticatedUser;\n`,
         'src/client.ts': `import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';\nexport const authenticate = pluginServerHost.withAuthenticatedUser;\n`,
         'src/client-repositories.ts': `import { wasteDataSourceStatements } from '@sva/waste-management-runtime/repositories';\nexport const statements = wasteDataSourceStatements;\n`,
         'src/other.ts': `import { getAuthConfig } from '@sva/auth-runtime/server';\nexport const config = getAuthConfig;\n`,
@@ -166,6 +166,12 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
         expect.objectContaining({ rule: 'workspace-import', subject: '@sva/auth-runtime' }),
       ])
     );
+    expect(
+      violations.some(
+        (violation) =>
+          violation.relativePath.endsWith('src/server-context.ts') && violation.rule === 'workspace-import'
+      )
+    ).toBe(true);
     expect(
       violations.some(
         (violation) =>

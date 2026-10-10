@@ -13,7 +13,9 @@ const pluginNamespace = wasteManagementOperationsContract.pluginId;
 const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
+    startPolicy: 'dedicated',
     queue: wasteManagementOperationsContract.provisioningQueueName,
+    executionLane: 'privileged',
     displayName: 'Waste-Tenant-Datenbank provisionieren',
     progress: {
       phaseKeys: [
@@ -107,6 +109,7 @@ const wasteManagementPluginJobTypes = [
   },
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.exportData,
+    artifactPermissionId: 'waste-management.export.execute',
     queue: wasteManagementOperationsContract.queueName,
     displayName: 'Abfall-Daten exportieren',
     progress: {
@@ -160,6 +163,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
     queue: wasteManagementOperationsContract.queueName,
+    supportsCancellation: true,
     displayName: 'Abfalldaten mit dem Mainserver synchronisieren',
     progress: {
       phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],

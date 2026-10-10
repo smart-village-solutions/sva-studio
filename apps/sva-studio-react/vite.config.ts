@@ -266,9 +266,6 @@ const config = defineConfig({
       '@sva/auth-runtime/plugin-server-host': resolveAppPath(
         '../../packages/auth-runtime/src/plugin-server-host.ts'
       ),
-      '@sva/auth-runtime/waste-readiness': resolveAppPath(
-        '../../packages/auth-runtime/src/waste-readiness.ts'
-      ),
       '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),
       '@sva/auth-runtime/runtime-routes': resolveAppPath(
         '../../packages/auth-runtime/src/runtime-routes.ts'

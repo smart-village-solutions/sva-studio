@@ -72,6 +72,10 @@ export const createPluginJobTypeRegistry = (
         progress: normalizedJobType.progress,
         result: normalizedJobType.result,
         errors: normalizedJobType.errors,
+        executionLane: normalizedJobType.executionLane,
+        supportsCancellation: normalizedJobType.supportsCancellation,
+        startPolicy: normalizedJobType.startPolicy,
+        artifactPermissionId: normalizedJobType.artifactPermissionId,
       });
     }
   }

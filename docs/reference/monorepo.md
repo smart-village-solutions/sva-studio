@@ -29,7 +29,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | `studio-ui-react`            | Library | `packages/studio-ui-react/`            | React/UI-Basis einschließlich gemeinsamer Map-, Media-Picker- und Retry-Orchestrierung      |
 | `sva-mainserver`             | Library | `packages/sva-mainserver/`             | Serverseitige Integration des externen SVA-Mainservers                                      |
 | `waste-management-contracts` | Library | `packages/waste-management-contracts/` | Gemeinsame Waste-Job-, Importprofil- und Abmeldetokenverträge                               |
-| `waste-management-runtime`   | Library | `packages/waste-management-runtime/`   | Host-owned Runtime-Adapter für Waste-Management-Plugin-Jobs                                 |
+| `waste-management-runtime`   | Library | `packages/waste-management-runtime/`   | Serverseitige Waste-Fachausführung, HTTP-Handler, Jobs, Persistenzadapter und Auditprojektionen |
 | `tooling-testing`            | Library | `tooling/testing/`                     | Interne Test-Huelle fuer CI-, Coverage- und Ops-nahe Skriptpruefungen                       |
 
 ## Ordner

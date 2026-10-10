@@ -29,6 +29,10 @@ export type PluginJobTypeDefinition = {
   readonly errors?: {
     readonly detailKeys?: readonly string[];
   };
+  readonly executionLane?: 'default' | 'privileged';
+  readonly supportsCancellation?: boolean;
+  readonly startPolicy?: 'standard' | 'dedicated';
+  readonly artifactPermissionId?: string;
 };
 
 export type PluginJobTypeRegistryEntry = {
@@ -57,6 +61,10 @@ export type PluginJobTypeRegistryEntry = {
   readonly errors?: {
     readonly detailKeys?: readonly string[];
   };
+  readonly executionLane?: 'default' | 'privileged';
+  readonly supportsCancellation?: boolean;
+  readonly startPolicy?: 'standard' | 'dedicated';
+  readonly artifactPermissionId?: string;
 };
 
 const jobTypeDefinitionAllowedKeys = new Set([
@@ -67,6 +75,10 @@ const jobTypeDefinitionAllowedKeys = new Set([
   'progress',
   'result',
   'errors',
+  'executionLane',
+  'supportsCancellation',
+  'startPolicy',
+  'artifactPermissionId',
 ] as const);
 
 const jobTypeProgressAllowedKeys = new Set(['phaseKeys', 'stepKeys'] as const);
@@ -152,6 +164,12 @@ const normalizeJobTypeDefinition = (
         detailKeys: normalizeDetailKeys(definition.errors.detailKeys),
       }
     : undefined,
+  executionLane: definition.executionLane ?? 'default',
+  supportsCancellation: definition.supportsCancellation ?? false,
+  startPolicy: definition.startPolicy ?? 'standard',
+  ...(definition.artifactPermissionId?.trim()
+    ? { artifactPermissionId: normalizePluginIdentifier(definition.artifactPermissionId) }
+    : {}),
 });
 
 export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobTypeDefinition[]>(
@@ -211,7 +229,19 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
       (jobType.progress?.phaseKeys && normalizedJobType.progress?.phaseKeys === undefined) ||
       (jobType.progress?.stepKeys && normalizedJobType.progress?.stepKeys === undefined) ||
       (jobType.result?.detailKeys && normalizedJobType.result?.detailKeys === undefined) ||
-      (jobType.errors?.detailKeys && normalizedJobType.errors?.detailKeys === undefined)
+      (jobType.errors?.detailKeys && normalizedJobType.errors?.detailKeys === undefined) ||
+      (jobType.executionLane !== undefined &&
+        jobType.executionLane !== 'default' &&
+        jobType.executionLane !== 'privileged') ||
+      (jobType.supportsCancellation !== undefined &&
+        typeof jobType.supportsCancellation !== 'boolean') ||
+      (jobType.startPolicy !== undefined &&
+        jobType.startPolicy !== 'standard' &&
+        jobType.startPolicy !== 'dedicated') ||
+      (jobType.artifactPermissionId !== undefined &&
+        (!normalizedJobType.artifactPermissionId ||
+          parseNamespacedPluginIdentifier(normalizedJobType.artifactPermissionId)?.namespace !==
+            normalizedNamespace))
     ) {
       throw new Error(`invalid_plugin_job_type:${normalizedJobType.jobTypeId}`);
     }

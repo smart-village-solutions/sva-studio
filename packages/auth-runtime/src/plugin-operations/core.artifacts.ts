@@ -9,6 +9,7 @@ import { isUuid } from '../shared/input-readers.js';
 import { createApiError, readPathSegment } from '../shared/request-helpers.js';
 import { requireActorInstanceId, requireMonitoringAccess } from './core.monitoring.js';
 import { withStudioJobRepository } from './repository.js';
+import { getRegisteredPluginOperationExecutionRegistry } from './runner.js';
 
 const MONITORING_READ_ACTION = 'iam.monitoring.read';
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
@@ -42,10 +43,11 @@ export const downloadPluginOperationArtifactHandler = async (request: Request): 
       if (!actorResolution.actor.actorAccountId || job.actorAccountId !== actorResolution.actor.actorAccountId) {
         return createApiError(403, 'forbidden', 'Exportartefakt gehört einem anderen Akteur.', getRequestId());
       }
-      if (job.pluginId === 'waste-management') {
-        const authorization = await authorizeInstancePermissionForUser({ ctx, action: 'waste-management.export.execute' });
+      const registration = getRegisteredPluginOperationExecutionRegistry().get(job.jobTypeId);
+      if (registration?.artifactPermissionId) {
+        const authorization = await authorizeInstancePermissionForUser({ ctx, action: registration.artifactPermissionId });
         if (!authorization.ok) {
-          return createApiError(authorization.status, toInstancePermissionApiErrorCode(authorization.error), 'Keine Berechtigung zum Herunterladen des Waste-Exports.', getRequestId(), authorization.permissionDenial);
+          return createApiError(authorization.status, toInstancePermissionApiErrorCode(authorization.error), 'Keine Berechtigung zum Herunterladen des Exportartefakts.', getRequestId(), authorization.permissionDenial);
         }
       } else {
         const monitoringError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);

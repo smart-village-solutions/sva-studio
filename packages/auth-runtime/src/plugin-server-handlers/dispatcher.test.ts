@@ -80,7 +80,7 @@ const serviceDescriptor = (): PluginServerHandlerRegistryEntry => ({
 });
 
 const authenticateAs = (
-  user: { id: string; roles: string[]; instanceId?: string },
+  user: { id: string; roles: string[]; instanceId?: string; email?: string; displayName?: string },
   activeOrganizationId?: string
 ) =>
   vi.fn(async (_request: Request, handler: (context: never) => Promise<Response> | Response) =>
@@ -473,7 +473,7 @@ describe('plugin server handler dispatcher', () => {
       handlers: { [descriptor.id]: handler },
       dependencies: {
         authenticate: authenticateAs(
-          { id: 'user-1', roles: [], instanceId: 'tenant-a' },
+          { id: 'user-1', roles: [], instanceId: 'tenant-a', email: 'person@example.test', displayName: 'Person' },
           'organization-a'
         ),
         readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
@@ -488,8 +488,14 @@ describe('plugin server handler dispatcher', () => {
         pluginId: 'news',
         handlerId: 'news.list',
         scope: 'tenant',
+        sessionId: 'session-1',
         activeOrganizationId: 'organization-a',
-        actor: expect.objectContaining({ id: 'user-1', instanceId: 'tenant-a' }),
+        actor: expect.objectContaining({
+          id: 'user-1',
+          instanceId: 'tenant-a',
+          email: 'person@example.test',
+          displayName: 'Person',
+        }),
       })
     );
     expect(resolvePermissions).toHaveBeenCalledWith({

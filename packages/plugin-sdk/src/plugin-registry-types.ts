@@ -24,6 +24,7 @@ export type PluginServerHandlerRegistryEntry = PluginServerHandlerDefinition & {
 
 type PluginUserServerHandlerExecutionContext = Readonly<{
   request: Request;
+  sessionId: string;
   pluginId: string;
   handlerId: string;
   scope: 'platform' | 'tenant';
@@ -33,6 +34,8 @@ type PluginUserServerHandlerExecutionContext = Readonly<{
     id: string;
     roles: readonly string[];
     instanceId?: string;
+    email?: string;
+    displayName?: string;
   }>;
 }>;
 
@@ -63,9 +66,8 @@ export type PluginServerExecutionHandler = (
   context: PluginServerHandlerExecutionContext
 ) => Promise<Response> | Response;
 
-export type PluginServerHandlerModuleFactory = () => Readonly<
-  Record<string, PluginServerExecutionHandler>
->;
+export type PluginServerHandlerModuleFactory = () =>
+  Readonly<Record<string, PluginServerExecutionHandler>>;
 
 export type PluginAuditEventRegistryEntry = {
   readonly eventType: string;

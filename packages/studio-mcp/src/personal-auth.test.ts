@@ -506,4 +506,34 @@ describe('personal MCP context authentication', () => {
     await manager.dispose();
   });
 
+  it('surfaces keychain errors from the browser callback without restoring an older account', async () => {
+    const { PersonalMcpContextManager, PersonalMcpAuthError } = await import('./personal-auth.js');
+    const store = persistentStore();
+    const port = await unusedPort();
+    const manager = new PersonalMcpContextManager([context], { callbackPort: port, sessionStore: store });
+    const url = new URL(await manager.startLogin(context.id));
+    store.save.mockRejectedValueOnce(new PersonalMcpAuthError('personal_session_store_unavailable'));
+    const response = await fetch(`http://127.0.0.1:${port}/callback?state=${url.searchParams.get('state')}&code=test`);
+    expect(response.status).toBe(503);
+    expect(await response.text()).toContain('personal_session_store_unavailable');
+    expect(manager.list()[0]).not.toHaveProperty('account');
+    expect(await store.load()).toBeUndefined();
+    await manager.dispose();
+  });
+
+  it.each(['restore', 'refresh'] as const)('preserves keychain error codes during %s', async (kind) => {
+    const { PersonalMcpContextManager, PersonalMcpAuthError } = await import('./personal-auth.js');
+    const store = persistentStore();
+    if (kind === 'refresh') state.refreshTokenGrant.mockResolvedValueOnce({ access_token: 'expired-access', claims: () => undefined, expiresIn: () => 0 });
+    store.save.mockImplementation(async () => {
+      if (kind === 'refresh' && store.save.mock.calls.length === 1) return;
+      throw new PersonalMcpAuthError('personal_session_store_unavailable');
+    });
+    const manager = new PersonalMcpContextManager([context], { sessionStore: store });
+    await expect(manager.getAccessToken(context.id)).rejects.toMatchObject({ code: 'personal_session_store_unavailable' });
+    expect(manager.list()[0]).not.toHaveProperty('account');
+    expect(await store.load()).toBeUndefined();
+    await manager.dispose();
+  });
+
 });

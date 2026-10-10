@@ -192,9 +192,10 @@ export class PersonalMcpContextManager {
       await persistPersonalSession(context, updated, this.options.sessionStore);
       Object.assign(session, updated);
       return session.accessToken;
-    } catch {
+    } catch (error) {
       if (this.sessions.get(contextId) === session) this.sessions.delete(contextId);
       await this.options.sessionStore?.delete(context);
+      if (error instanceof PersonalMcpAuthError && error.code === 'personal_session_store_unavailable') throw error;
       throw new PersonalMcpAuthError('oidc_token_refresh_failed');
     }
   }

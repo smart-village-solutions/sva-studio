@@ -136,8 +136,9 @@ export const restorePersonalSession = async (
     );
     await persistPersonalSession(context, session, store);
     return session;
-  } catch {
+  } catch (error) {
     await store.delete(context);
+    if (error instanceof PersonalMcpAuthError && error.code === 'personal_session_store_unavailable') throw error;
     throw new PersonalMcpAuthError('context_login_required');
   }
 };

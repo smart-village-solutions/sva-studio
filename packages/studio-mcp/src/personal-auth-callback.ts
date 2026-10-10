@@ -131,10 +131,14 @@ export const handlePersonalCallback = async (
       200,
       'Anmeldung abgeschlossen. Dieses Browserfenster kann geschlossen werden.'
     );
-  } catch {
+  } catch (error) {
     if (pendingStateByContext.get(pending.context.id) === state)
       pendingStateByContext.delete(pending.context.id);
-    writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
+    if (error instanceof PersonalMcpAuthError && error.code === 'personal_session_store_unavailable') {
+      writeCallbackPage(response, 503, 'Anmeldung fehlgeschlagen: personal_session_store_unavailable. Schlüsselbund prüfen und im MCP erneut starten.');
+    } else {
+      writeCallbackPage(response, 400, 'Anmeldung fehlgeschlagen. Bitte im MCP erneut starten.');
+    }
   }
 };
 

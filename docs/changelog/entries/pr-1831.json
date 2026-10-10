@@ -1,0 +1,4 @@
+{
+  "prNumber": 1831,
+  "body": "Die Mainserver-Anbindung eines Mandanten kann über den persönlichen Studio-MCP gelesen und gespeichert werden. Dafür werden ausschließlich die GraphQL- und OAuth-URLs sowie der Aktivierungsstatus übergeben. Bestehende Berechtigungen, Mandantenzuordnung und URL-Sicherheitsprüfungen bleiben verbindlich; ein erfolgreicher Speichervorgang ersetzt keine Verbindungsprüfung."
+}

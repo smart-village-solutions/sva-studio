@@ -290,7 +290,7 @@ describe('waste management job definitions', () => {
       jobTypes.find(({ jobTypeId }) => jobTypeId === 'waste-management.sync-mainserver')
     ).toMatchObject({
       executionLane: 'default',
-      startPolicy: 'standard',
+      startPolicy: 'dedicated',
       supportsCancellation: true,
     });
     expect(jobTypes).toContainEqual(

@@ -16,7 +16,8 @@ type SidebarProps = Readonly<{
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
 const COMMUNITY_URL = 'https://verwaltungen-havelland.humhub.smart-village.app/s/sva-community/';
-const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
+const HELP_DOCUMENTATION_URL =
+  'https://smart-village-solutions.github.io/sva-studio-user-documentation/';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
 /**
@@ -64,7 +65,7 @@ export default function Sidebar({
             {
               kind: 'link' as const,
               id: 'help',
-              href: HELP_DISCUSSIONS_URL,
+              href: HELP_DOCUMENTATION_URL,
               label: t('shell.sidebar.help'),
               icon: IconHelpCircle,
             },

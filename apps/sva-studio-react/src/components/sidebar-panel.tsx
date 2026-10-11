@@ -109,15 +109,15 @@ export const SidebarPanel = ({
           <div className="space-y-5">
             {sections.map((section) => (
               <section key={section.id} className="space-y-2">
-                {isCollapsed ? (
+                {isCollapsed && section.label ? (
                   <div className="px-2" aria-hidden="true">
                     <span className="mx-auto block h-px w-8 bg-sidebar-border" />
                   </div>
-                ) : (
+                ) : section.label ? (
                   <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                     {section.label}
                   </p>
-                )}
+                ) : null}
                 <ul className="space-y-1">
                   {section.items.map((item) => (
                     <SidebarNavItem

@@ -166,14 +166,6 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
           },
         ]
       : []),
-    {
-      kind: 'link',
-      id: 'overview',
-      to: '/',
-      label: t('shell.sidebar.overview'),
-      icon: IconLayoutDashboard,
-      exact: true,
-    },
     ...(brandingProfile.showContentNavigation && canAccessWorkspace && contentChildren.length > 0
       ? [
           {
@@ -238,5 +230,14 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     ...pluginApplicationItems,
   ];
 
-  return { dataManagementItems, applicationItems, pluginSystemItems };
+  const overviewItem: SidebarLeafItem = {
+    kind: 'link',
+    id: 'overview',
+    to: '/',
+    label: t('shell.sidebar.overview'),
+    icon: IconLayoutDashboard,
+    exact: true,
+  };
+
+  return { overviewItem, dataManagementItems, applicationItems, pluginSystemItems };
 };

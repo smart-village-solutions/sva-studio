@@ -14,7 +14,8 @@ import Sidebar from './Sidebar';
 
 const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
 const COMMUNITY_URL = 'https://verwaltungen-havelland.humhub.smart-village.app/s/sva-community/';
-const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
+const HELP_DOCUMENTATION_URL =
+  'https://smart-village-solutions.github.io/sva-studio-user-documentation/';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const COCKPIT_URL = 'https://cockpit.guben.de';
 
@@ -419,6 +420,17 @@ describe('Sidebar', () => {
       'page'
     );
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
+    const overviewSection = screen.getByRole('link', { name: 'Übersicht' }).closest('section');
+    const dataManagementSection = screen.getByText('Datenverwaltung').closest('section');
+    expect(overviewSection).toBeTruthy();
+    expect(dataManagementSection).toBeTruthy();
+    expect(overviewSection).not.toBe(dataManagementSection);
+    expect(
+      screen
+        .getByRole('link', { name: 'Übersicht' })
+        .compareDocumentPosition(screen.getByText('Datenverwaltung')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Inhalte' }));
     expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('href')).toBe(
       '/admin/content?page=1'
@@ -455,7 +467,7 @@ describe('Sidebar', () => {
       '/monitoring'
     );
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
-      HELP_DISCUSSIONS_URL
+      HELP_DOCUMENTATION_URL
     );
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL
@@ -491,7 +503,7 @@ describe('Sidebar', () => {
     );
   });
 
-  it('zeigt den primären Erstellen-Einstieg vor der Übersicht bei mindestens einem anlegbaren Inhaltstyp', () => {
+  it('zeigt den primären Erstellen-Einstieg in der Datenverwaltung bei mindestens einem anlegbaren Inhaltstyp', () => {
     enableRegisteredContentTypes();
     renderSidebar({
       user: createSidebarUser({ assignedModules: ['news'] }),
@@ -506,7 +518,9 @@ describe('Sidebar', () => {
     const links = within(dataManagementSection as HTMLElement).getAllByRole('link');
     expect(links[0]?.textContent).toContain('Inhalt erstellen');
     expect(links[0]?.getAttribute('href')).toBe('/admin/content/new');
-    expect(links[1]?.textContent).toContain('Übersicht');
+    expect(
+      within(dataManagementSection as HTMLElement).queryByRole('link', { name: 'Übersicht' })
+    ).toBeNull();
     expect(links[0]?.className).toContain('bg-action-primary');
 
     fireEvent.click(screen.getByRole('button', { name: 'Seitenleiste einklappen' }));
@@ -718,7 +732,7 @@ describe('Sidebar', () => {
       '/interfaces'
     );
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
-      HELP_DISCUSSIONS_URL
+      HELP_DOCUMENTATION_URL
     );
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL
@@ -780,7 +794,7 @@ describe('Sidebar', () => {
       communityLink.compareDocumentPosition(helpLink) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
 
-    expect(helpLink.getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
+    expect(helpLink.getAttribute('href')).toBe(HELP_DOCUMENTATION_URL);
     expect(within(navigation).getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL
     );
@@ -1141,7 +1155,7 @@ describe('Sidebar', () => {
     });
 
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
-      HELP_DISCUSSIONS_URL
+      HELP_DOCUMENTATION_URL
     );
     expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL

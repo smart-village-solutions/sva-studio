@@ -30,7 +30,7 @@ export type SidebarItem = SidebarLeafItem | SidebarGroupItem;
 
 export type SidebarSection = {
   readonly id: string;
-  readonly label: string;
+  readonly label?: string;
   readonly items: readonly SidebarItem[];
 };
 

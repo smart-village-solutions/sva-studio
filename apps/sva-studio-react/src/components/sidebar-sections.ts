@@ -7,15 +7,23 @@ import { buildSidebarSystemItems } from './sidebar-system-items';
 
 export const useSidebarSections = (access: SidebarAccess): readonly SidebarSection[] =>
   React.useMemo<readonly SidebarSection[]>(() => {
-    const { dataManagementItems, applicationItems, pluginSystemItems } =
+    const { overviewItem, dataManagementItems, applicationItems, pluginSystemItems } =
       buildSidebarPrimaryItems(access);
     const systemItems = buildSidebarSystemItems(access, pluginSystemItems);
     return [
       {
-        id: 'data-management',
-        label: t('shell.sidebar.sections.dataManagement'),
-        items: dataManagementItems,
+        id: 'overview',
+        items: [overviewItem],
       },
+      ...(dataManagementItems.length > 0
+        ? [
+            {
+              id: 'data-management',
+              label: t('shell.sidebar.sections.dataManagement'),
+              items: dataManagementItems,
+            },
+          ]
+        : []),
       ...(applicationItems.length > 0
         ? [
             {

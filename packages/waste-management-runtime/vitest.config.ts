@@ -27,6 +27,7 @@ export default defineConfig({
         currentDir,
         '../waste-management-contracts/src/index.ts'
       ),
+      '@sva/waste-management-runtime/repositories': resolve(currentDir, 'src/repositories.ts'),
     },
   },
   test: {

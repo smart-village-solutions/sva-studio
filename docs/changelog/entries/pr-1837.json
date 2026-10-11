@@ -1,0 +1,4 @@
+{
+  "prNumber": 1837,
+  "body": "Checkboxen und Bestätigungsdialoge verwenden jetzt gemeinsame UI-Bausteine. Darstellung und Bedienung bleiben erhalten; doppelt gepflegte Implementierungen wurden entfernt."
+}

@@ -1,7 +1,6 @@
-import { useStudioSaveFeedback, type StudioColumnDef } from '@sva/studio-ui-react';
+import { Checkbox, useStudioSaveFeedback, type StudioColumnDef } from '@sva/studio-ui-react';
 import React from 'react';
 
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useRolePermissions } from '../../../hooks/use-role-permissions';

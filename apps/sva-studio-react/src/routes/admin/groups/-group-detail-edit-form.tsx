@@ -1,7 +1,6 @@
-import { Button, StudioSaveButton } from '@sva/studio-ui-react';
+import { Button, Checkbox, StudioSaveButton } from '@sva/studio-ui-react';
 
 import { Card } from '../../../components/ui/card';
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
 import { t } from '../../../i18n';
 import { GroupTextFields } from './-group-shared';

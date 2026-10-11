@@ -1,8 +1,7 @@
-import { getStudioFormFieldProps, StudioField } from '@sva/studio-ui-react';
+import { Checkbox, getStudioFormFieldProps, StudioField } from '@sva/studio-ui-react';
 import { Controller } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';

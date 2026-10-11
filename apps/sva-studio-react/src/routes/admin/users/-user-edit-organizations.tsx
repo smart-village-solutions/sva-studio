@@ -1,7 +1,6 @@
-import { Button } from '@sva/studio-ui-react';
+import { Button, Checkbox } from '@sva/studio-ui-react';
 import * as React from 'react';
 
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
 import { SearchableSelect } from '../../../components/ui/searchable-select';
 import { t } from '../../../i18n';

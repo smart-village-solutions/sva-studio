@@ -101,6 +101,21 @@ afterEach(() => {
 });
 
 describe('installed plugin build inputs', () => {
+  const createPublicCodeFixture = () => {
+    const root = mkdtempSync(join(tmpdir(), 'studio-publiccode-'));
+    temporaryRoots.push(root);
+    const appRoot = join(root, 'apps', 'studio');
+    const mediaFile = join(root, 'packages', 'media', 'publiccode.yml');
+    mkdirSync(dirname(mediaFile), { recursive: true });
+    mkdirSync(appRoot, { recursive: true });
+    writeFileSync(join(appRoot, 'plugin-catalog.json'), '[]');
+    writeFileSync(
+      mediaFile,
+      readFileSync(join(process.cwd(), '../../packages/media/publiccode.yml'))
+    );
+    return { appRoot, mediaFile };
+  };
+
   it('reads public names and descriptions from module-owned publiccode files', () => {
     const plugin = createModulePublicCodePlugin(process.cwd(), 'studio', []) as unknown as {
       resolveId: (id: string) => string;
@@ -111,6 +126,59 @@ describe('installed plugin build inputs', () => {
     expect(code).toContain('Erstellt und veröffentlicht Nachrichten');
     expect(code).toContain('Mediathek');
     expect(code).not.toContain('Smart Speech Flow');
+  });
+
+  it('rejects malformed module metadata before generating the virtual module', () => {
+    const { appRoot, mediaFile } = createPublicCodeFixture();
+    writeFileSync(mediaFile, 'name: [broken\n');
+    expect(() => createModulePublicCodePlugin(appRoot, 'studio', [])).toThrow(
+      'module_publiccode_yaml_invalid:media'
+    );
+
+    writeFileSync(mediaFile, 'publiccodeYmlVersion: "1"\nname: Media\ndescription: {}\n');
+    expect(() => createModulePublicCodePlugin(appRoot, 'studio', [])).toThrow(
+      'module_publiccode_invalid:media'
+    );
+
+    writeFileSync(
+      mediaFile,
+      'publiccodeYmlVersion: "0"\nname: Media\ndescription:\n  de:\n    shortDescription: Valid\n  en:\n    shortDescription: ""\n'
+    );
+    expect(() => createModulePublicCodePlugin(appRoot, 'studio', [])).toThrow(
+      'module_publiccode_description_invalid:media:en'
+    );
+  });
+
+  it('requires metadata from an installed module selected for the distribution', () => {
+    const { appRoot } = createPublicCodeFixture();
+    writeFileSync(
+      join(appRoot, 'plugin-catalog.json'),
+      JSON.stringify([
+        {
+          pluginId: 'calendar',
+          sourceType: 'installed-distribution',
+          enabled: true,
+          sourceRef: '@vendor/calendar',
+          distribution: 'studio',
+        },
+      ])
+    );
+    expect(() => createModulePublicCodePlugin(appRoot, 'studio', [])).toThrow(
+      'module_publiccode_missing:calendar'
+    );
+    const packageRoot = join(appRoot, 'node_modules', '@vendor', 'calendar');
+    mkdirSync(packageRoot, { recursive: true });
+    writeFileSync(
+      join(packageRoot, 'publiccode.yml'),
+      'publiccodeYmlVersion: "0"\nname: Calendar\ndescription:\n  de:\n    shortDescription: Termine verwalten.\n  en:\n    localisedName: Calendar\n    shortDescription: Manage events.\n'
+    );
+    const plugin = createModulePublicCodePlugin(appRoot, 'studio', []) as unknown as {
+      resolveId: (id: string) => string;
+      load: (id: string) => string;
+    };
+    expect(plugin.load(plugin.resolveId('virtual:studio-module-publiccode'))).toContain(
+      'Termine verwalten.'
+    );
   });
 
   it('generates browser, server, worker, descriptor, manifest, and ownership maps from one selection', () => {

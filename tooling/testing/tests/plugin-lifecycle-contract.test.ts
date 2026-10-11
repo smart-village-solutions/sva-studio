@@ -16,6 +16,7 @@ const lifecycleModules = [
   'plugin-lifecycle-contract-lc-start',
   'plugin-lifecycle-contract-activation',
   'plugin-lifecycle-contract-topology',
+  'plugin-lifecycle-contract-queue-isolation',
   'plugin-lifecycle-contract-terminal-retry',
   'plugin-lifecycle-contract-redelivery',
   'plugin-lifecycle-contract-generation',
@@ -54,7 +55,7 @@ describe('plugin lifecycle database contract gate', () => {
       'runObservability',
       'runObservabilityMigration',
     ]);
-    expect(harness.match(/await reportCase\(/g)).toHaveLength(29);
+    expect(harness.match(/await reportCase\(/g)).toHaveLength(30);
     expect(harness).toContain("['after_request', 'after_job', 'after_claim', 'after_enqueue']");
     expect(harness).toContain("'after_lifecycle_terminal',");
     expect(harness).toContain("'after_terminal_job_status',");
@@ -81,7 +82,12 @@ describe('plugin lifecycle database contract gate', () => {
     expect(harness).toContain('top01_original_scheduled_job_completed_after_restart');
     expect(harness).toContain('top01_clean_shutdown_not_restarted');
     expect(harness).toContain('top01_existing_job_not_rerouted_to_current_queue');
-    expect(harness).toContain('top01-privileged-job-completed-while-default-queue-blocked');
+    expect(harness).toContain(
+      'TOP-01-waste-provisioning-attempts-within-150-seconds-while-plugin-queue-blocked'
+    );
+    expect(harness).toContain(
+      'TOP-01-waste-provisioning-attempts-within-150-seconds-under-plugin-retries'
+    );
     expect(harness).not.toContain("sva_enqueue_job('studio_job_execute_privileged'");
     expect(harness).toContain('packages/data/scripts/run-migrations.sh');
     expect(harness).toContain('assertPersistedTerminalOutcome');

@@ -157,6 +157,7 @@ export const shellENResources = {
     wasteManagement: 'Waste management',
     modules: 'Modules',
     monitoring: 'Monitoring',
+    community: 'User community',
     help: 'Help',
     support: 'Support',
     license: 'License',

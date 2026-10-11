@@ -262,10 +262,8 @@ export const getStudioPluginAction = (actionId: string) => {
   return action;
 };
 
-export const getStudioPluginNavigationModuleId = (item: { readonly id: string }): string | null => {
-  const owner = studioPluginNavigationOwners.get(item.id);
-  return owner && studioModuleIamRegistry.has(owner) ? owner : null;
-};
+export const getStudioPluginNavigationModuleId = (item: { readonly id: string }): string | null =>
+  studioPluginNavigationOwners.get(item.id) ?? null;
 
 export const initializePluginTranslations = () => {
   registerPluginTranslationResolver((key, variables) => t(key, variables));

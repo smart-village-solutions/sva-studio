@@ -173,7 +173,14 @@
       "dependsOn": ["^build"],
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling",
+        "{workspaceRoot}/packages/media/publiccode.yml",
+        "{workspaceRoot}/packages/plugin-*/publiccode.yml"
+      ],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -203,7 +210,14 @@
       "dependsOn": ["^build"],
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling",
+        "{workspaceRoot}/packages/media/publiccode.yml",
+        "{workspaceRoot}/packages/plugin-*/publiccode.yml"
+      ],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -232,7 +246,14 @@
       "executor": "nx:run-commands",
       "cache": true,
       "dependsOn": [{ "target": "build", "projects": ["plugin-sdk"] }],
-      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling",
+        "{workspaceRoot}/packages/media/publiccode.yml",
+        "{workspaceRoot}/packages/plugin-*/publiccode.yml"
+      ],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",

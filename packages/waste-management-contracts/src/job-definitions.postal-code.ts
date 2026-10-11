@@ -4,6 +4,7 @@ import { wasteManagementOperationsContract } from './waste-management-operations
 export const wastePostalCodeJobType = {
   jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
   queue: wasteManagementOperationsContract.queueName,
+  supportsCancellation: true,
   displayName: 'Fehlende Waste-Postleitzahlen ergänzen',
   progress: {
     phaseKeys: ['waste-management.enrich-postal-codes', 'waste-management.completed'],

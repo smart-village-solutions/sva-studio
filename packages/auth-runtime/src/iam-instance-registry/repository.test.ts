@@ -116,11 +116,6 @@ vi.mock('@sva/data-repositories/server', () => ({
   invalidateInstanceRegistryHost: vi.fn(),
 }));
 
-vi.mock('../waste-management/waste-data-sources.server.js', () => ({
-  loadWasteDataSourceRecord: vi.fn(),
-  saveWasteDataSourceRecord: vi.fn(),
-}));
-
 vi.mock('@sva/instance-registry/runtime-wiring', () => ({
   createInstanceRegistryRuntime: createInstanceRegistryRuntimeMock,
 }));
@@ -264,16 +259,12 @@ describe('iam instance registry repository wiring', () => {
       expect.objectContaining({
         serviceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
-          loadWasteDataSourceRecord: expect.any(Function),
-          saveWasteDataSourceRecord: expect.any(Function),
         }),
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
           syncTenantAdminBootstrapAccount: expect.any(Function),
           reconcileTenantIamRoles: expect.any(Function),
           probeTenantIamAccess: expect.any(Function),
-          loadWasteDataSourceRecord: expect.any(Function),
-          saveWasteDataSourceRecord: expect.any(Function),
         }),
       })
     );

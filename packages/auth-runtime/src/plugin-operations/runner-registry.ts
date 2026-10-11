@@ -48,6 +48,8 @@ const normalizePluginRegistration = (
   queueName: typeof value === 'function' ? 'plugin-operations' : value.queueName,
   executionLane: typeof value === 'function' ? 'default' : value.executionLane,
   supportsCancellation: typeof value === 'function' ? false : value.supportsCancellation,
+  startPolicy: typeof value === 'function' ? 'standard' : value.startPolicy,
+  artifactPermissionId: typeof value === 'function' ? undefined : value.artifactPermissionId,
 });
 
 const replaceRegistrationsBySource = (
@@ -104,6 +106,8 @@ export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperation
           queueName: entry.queueName,
           executionLane: entry.executionLane,
           supportsCancellation: entry.supportsCancellation,
+          startPolicy: entry.startPolicy,
+          artifactPermissionId: entry.artifactPermissionId,
         },
       ])
   );

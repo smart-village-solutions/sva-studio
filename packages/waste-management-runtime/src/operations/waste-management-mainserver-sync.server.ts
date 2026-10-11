@@ -1,0 +1,387 @@
+import type { WasteMainserverSyncItem } from '@sva/waste-management-contracts';
+import {
+  buildMaterializedLocationTourPickupDates,
+  buildStudioRowsFromMaterialization,
+} from './waste-management-mainserver-sync.materialization.js';
+import {
+  getEffectiveYearWindow,
+  parseIsoDateUtc,
+} from './waste-management-mainserver-sync.materialization.shared.js';
+import {
+  loadWasteMainserverStudioSnapshot,
+  type WasteMaterializationSyncState,
+} from './waste-management-mainserver-sync.snapshot.server.js';
+import {
+  averageBatchDuration,
+  buildSyncProgress,
+  formatBatchStepLabel,
+  reportSyncProgress,
+  type WasteSyncBatchProgressDetails,
+  type WasteSyncProgressReporter,
+} from './waste-management-mainserver-sync.progress.js';
+import {
+  buildWasteSyncCompatibilityKey,
+  chunkWasteSyncItems,
+  toWasteSyncRow,
+  type WasteSyncRow,
+} from './waste-management-mainserver-sync.rows.js';
+
+import type { WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
+
+type WasteManagementSyncMainserverJobInput = {
+  readonly operation: 'sync-mainserver';
+  readonly keycloakSubject?: string;
+  readonly activeOrganizationId?: string;
+};
+
+export { buildWasteSyncKey } from './waste-management-mainserver-sync.rows.js';
+export type { WasteSyncRow } from './waste-management-mainserver-sync.rows.js';
+
+export type WasteManagementMainserverSyncResult = Readonly<{
+  studioItemCount: number;
+  mainserverItemCount: number;
+  createCount: number;
+  createBatchCount: number;
+  deleteCount: number;
+  deleteByIdCount: number;
+  deleteByValueCount: number;
+  errorCount: number;
+  totalBatchCount: number;
+  processedItemCount: number;
+  finalCreateCount: number;
+  finalDeleteCount: number;
+  averageBatchDurationMs: number;
+  longestBatchDurationMs: number;
+  mainserverSnapshotCount: number;
+  studioSnapshotCount: number;
+  createItems: readonly WasteMainserverSyncItem[];
+  deleteItems: readonly WasteMainserverSyncItem[];
+}>;
+
+export type WasteManagementMainserverSyncExecutionResult = WasteManagementMainserverSyncResult &
+  Readonly<{
+    sourceRevision: string;
+    yearWindow: readonly [number, number];
+  }>;
+
+type WasteManagementMainserverSyncPlanDetails = Readonly<{
+  createCount: number;
+  deleteCount: number;
+  totalCount: number;
+}>;
+
+const DEFAULT_MAINSERVER_SYNC_BATCH_SIZE = 100;
+
+const filterSyncRowsToYearWindow = (
+  rows: readonly WasteSyncRow[],
+  currentYear: number,
+  nextYear: number
+): readonly WasteSyncRow[] => {
+  const yearWindow = new Set(getEffectiveYearWindow(currentYear, nextYear));
+  return rows.filter((row) => {
+    const pickupDate = parseIsoDateUtc(row.pickupDate);
+    return pickupDate ? yearWindow.has(pickupDate.getUTCFullYear()) : false;
+  });
+};
+
+const buildStudioRowsFromSyncState = (
+  studioState: WasteMaterializationSyncState,
+  now: Date
+): readonly WasteSyncRow[] => {
+  const currentYear = now.getUTCFullYear();
+  const nextYear = currentYear + 1;
+  return buildStudioRowsFromMaterialization({
+    pickupDates: buildMaterializedLocationTourPickupDates({
+      ...studioState,
+      locationTourPickupDates: studioState.locationTourPickupDates,
+      tourAssignments: studioState.tourAssignments,
+      currentYear,
+      nextYear,
+    }),
+    tours: studioState.tours,
+    fractions: studioState.fractions,
+    locations: studioState.locations,
+    houseNumbers: studioState.houseNumbers,
+    cities: studioState.cities,
+    streets: studioState.streets,
+  }).map(toWasteSyncRow);
+};
+
+export const runWasteManagementMainserverSync = async (input: {
+  studioRows: readonly WasteSyncRow[];
+  mainserverRows: readonly WasteSyncRow[];
+  dryRun: boolean;
+  batchSize?: number;
+  getNow?: () => Date;
+  createItems?: (items: readonly WasteMainserverSyncItem[]) => Promise<void>;
+  deleteItems?: (items: readonly WasteMainserverSyncItem[]) => Promise<void>;
+  onPlanReady?: (details: WasteManagementMainserverSyncPlanDetails) => Promise<void> | void;
+  onBatchProgress?: (details: WasteSyncBatchProgressDetails) => Promise<void> | void;
+}): Promise<WasteManagementMainserverSyncResult> => {
+  const studioByKey = new Map(input.studioRows.map((row) => [row.key, row] as const));
+  const mainserverByKey = new Map(input.mainserverRows.map((row) => [row.key, row] as const));
+  const mainserverCompatibilityKeys = new Set(
+    input.mainserverRows.map(buildWasteSyncCompatibilityKey)
+  );
+  const studioCompatibilityKeysWithoutZip = new Set(
+    input.studioRows.filter((row) => !row.zip?.trim()).map(buildWasteSyncCompatibilityKey)
+  );
+
+  const createItems = input.studioRows
+    .filter(
+      (row) =>
+        !mainserverByKey.has(row.key) &&
+        (Boolean(row.zip?.trim()) ||
+          !mainserverCompatibilityKeys.has(buildWasteSyncCompatibilityKey(row)))
+    )
+    .map(({ key: _key, ...row }) => row);
+  const deleteItems = input.mainserverRows
+    .filter(
+      (row) =>
+        !studioByKey.has(row.key) &&
+        !studioCompatibilityKeysWithoutZip.has(buildWasteSyncCompatibilityKey(row))
+    )
+    .map(({ key: _key, ...row }) => row);
+  const deleteByIdCount = deleteItems.filter((row) => Boolean(row.id?.trim())).length;
+  const deleteByValueCount = deleteItems.length - deleteByIdCount;
+  const totalPlannedItemCount = createItems.length + deleteItems.length;
+
+  await input.onPlanReady?.({
+    createCount: createItems.length,
+    deleteCount: deleteItems.length,
+    totalCount: totalPlannedItemCount,
+  });
+
+  if (!input.dryRun && createItems.length > 0 && !input.createItems) {
+    throw new Error('waste_mainserver_sync_missing_create_writer');
+  }
+  if (!input.dryRun && deleteItems.length > 0 && !input.deleteItems) {
+    throw new Error('waste_mainserver_sync_missing_delete_writer');
+  }
+
+  let processedItemCount = 0;
+  let createCount = 0;
+  let deleteCount = 0;
+  const batchDurationsMs: number[] = [];
+  const batchSize = Math.max(1, input.batchSize ?? DEFAULT_MAINSERVER_SYNC_BATCH_SIZE);
+
+  const processBatches = async (params: {
+    readonly items: readonly WasteMainserverSyncItem[];
+    readonly operationMode: 'create' | 'delete';
+    readonly writer?: (items: readonly WasteMainserverSyncItem[]) => Promise<void>;
+  }): Promise<void> => {
+    const batches = chunkWasteSyncItems(params.items, batchSize);
+
+    if (params.items.length === 0) {
+      await input.onBatchProgress?.({
+        operationMode: params.operationMode,
+        totalItemCount: totalPlannedItemCount,
+        totalBatchCount: 0,
+        currentBatchIndex: 0,
+        currentBatchSize: 0,
+        processedItemCount,
+        createCount,
+        deleteCount,
+      });
+      return;
+    }
+
+    for (const [batchIndex, batch] of batches.entries()) {
+      const batchStartedAt = (input.getNow ?? (() => new Date()))().getTime();
+      await params.writer?.(batch);
+      const batchFinishedAt = input.getNow ?? (() => new Date());
+      const batchFinishedAtDate = batchFinishedAt();
+      const batchDurationMs = batchFinishedAtDate.getTime() - batchStartedAt;
+      batchDurationsMs.push(batchDurationMs);
+      processedItemCount += batch.length;
+      if (params.operationMode === 'create') {
+        createCount += batch.length;
+      } else {
+        deleteCount += batch.length;
+      }
+
+      await input.onBatchProgress?.({
+        operationMode: params.operationMode,
+        totalItemCount: totalPlannedItemCount,
+        totalBatchCount: batches.length,
+        currentBatchIndex: batchIndex + 1,
+        currentBatchSize: batch.length,
+        processedItemCount,
+        createCount,
+        deleteCount,
+        lastSuccessfulBatchAt: batchFinishedAtDate.toISOString(),
+        lastBatchDurationMs: batchDurationMs,
+        averageBatchDurationMs: averageBatchDuration(batchDurationsMs),
+      });
+    }
+  };
+
+  if (!input.dryRun) {
+    await processBatches({
+      items: createItems,
+      operationMode: 'create',
+      writer: input.createItems,
+    });
+    await processBatches({
+      items: deleteItems,
+      operationMode: 'delete',
+      writer: input.deleteItems,
+    });
+  }
+
+  return {
+    studioItemCount: input.studioRows.length,
+    mainserverItemCount: input.mainserverRows.length,
+    createCount: createItems.length,
+    createBatchCount: Math.ceil(createItems.length / batchSize),
+    deleteCount: deleteItems.length,
+    deleteByIdCount,
+    deleteByValueCount,
+    errorCount: 0,
+    totalBatchCount:
+      Math.ceil(createItems.length / batchSize) + Math.ceil(deleteItems.length / batchSize),
+    processedItemCount,
+    finalCreateCount: input.dryRun ? createItems.length : createCount,
+    finalDeleteCount: input.dryRun ? deleteItems.length : deleteCount,
+    averageBatchDurationMs: averageBatchDuration(batchDurationsMs),
+    longestBatchDurationMs: batchDurationsMs.length > 0 ? Math.max(...batchDurationsMs) : 0,
+    mainserverSnapshotCount: input.mainserverRows.length,
+    studioSnapshotCount: input.studioRows.length,
+    createItems,
+    deleteItems,
+  };
+};
+
+export const runWasteManagementMainserverSyncForInstance = async (input: {
+  instanceId: string;
+  runtimeDeps?: WasteOperationRuntimeDeps;
+  syncInput: WasteManagementSyncMainserverJobInput;
+  progressReporter?: WasteSyncProgressReporter;
+  batchSize?: number;
+}): Promise<WasteManagementMainserverSyncExecutionResult> => {
+  await reportSyncProgress(
+    input.progressReporter,
+    buildSyncProgress({
+      completedSteps: 1,
+      currentStepKey: 'load-studio-state',
+      currentStepLabel: 'load-studio-state',
+    })
+  );
+  const studioSnapshot = await loadWasteMainserverStudioSnapshot(
+    input.runtimeDeps ?? {},
+    input.instanceId
+  );
+
+  const now = input.runtimeDeps?.now?.() ?? new Date();
+  const currentYear = now.getUTCFullYear();
+  const nextYear = currentYear + 1;
+  const studioRows = buildStudioRowsFromSyncState(studioSnapshot.studioState, now);
+  const keycloakSubject = input.syncInput.keycloakSubject?.trim() || 'plugin-operation-runtime';
+  const activeOrganizationId = input.syncInput.activeOrganizationId?.trim() || undefined;
+  const listSnapshot = input.runtimeDeps?.listMainserverWasteSyncSnapshot;
+  const createPickupTimes = input.runtimeDeps?.createMainserverWastePickupTimes;
+  const deletePickupTimes = input.runtimeDeps?.deleteMainserverWastePickupTimes;
+  if (!listSnapshot || !createPickupTimes || !deletePickupTimes) {
+    throw new Error('waste_mainserver_sync_host_capability_unavailable');
+  }
+  const mainserverSnapshot = await listSnapshot({
+    instanceId: input.instanceId,
+    keycloakSubject,
+    activeOrganizationId,
+  });
+  await reportSyncProgress(
+    input.progressReporter,
+    buildSyncProgress({
+      completedSteps: 2,
+      currentStepKey: 'load-mainserver-snapshot',
+      currentStepLabel: 'load-mainserver-snapshot',
+      details: {
+        studioSnapshotCount: studioRows.length,
+      },
+    })
+  );
+  const mainserverRows = filterSyncRowsToYearWindow(
+    mainserverSnapshot.pickupTimes.map(toWasteSyncRow),
+    currentYear,
+    nextYear
+  );
+  const result = await runWasteManagementMainserverSync({
+    studioRows,
+    mainserverRows,
+    dryRun: false,
+    batchSize: input.batchSize,
+    getNow: input.runtimeDeps?.now,
+    onPlanReady: async (plan) => {
+      await reportSyncProgress(
+        input.progressReporter,
+        buildSyncProgress({
+          completedSteps: 3,
+          currentStepKey: 'diff-sync-state',
+          currentStepLabel: 'diff-sync-state',
+          details: {
+            studioSnapshotCount: studioRows.length,
+            mainserverSnapshotCount: mainserverRows.length,
+            plannedCreateCount: plan.createCount,
+            plannedDeleteCount: plan.deleteCount,
+            plannedTotalCount: plan.totalCount,
+          },
+        })
+      );
+    },
+    createItems: async (items) => {
+      await createPickupTimes({
+        instanceId: input.instanceId,
+        keycloakSubject,
+        activeOrganizationId,
+        items,
+      });
+    },
+    deleteItems: async (items) => {
+      await deletePickupTimes({
+        instanceId: input.instanceId,
+        keycloakSubject,
+        activeOrganizationId,
+        items,
+      });
+    },
+    onBatchProgress: async (details) => {
+      const isCreate = details.operationMode === 'create';
+      const currentStepKey = isCreate ? 'create-batches' : 'delete-batches';
+
+      await reportSyncProgress(
+        input.progressReporter,
+        buildSyncProgress({
+          completedSteps: isCreate ? 4 : 5,
+          currentStepKey,
+          currentStepLabel: formatBatchStepLabel(details),
+          details,
+        })
+      );
+    },
+  });
+
+  await reportSyncProgress(
+    input.progressReporter,
+    buildSyncProgress({
+      completedSteps: 6,
+      currentStepKey: 'complete-operation',
+      currentStepLabel: 'complete-operation',
+      details: {
+        totalBatchCount: result.totalBatchCount,
+        processedItemCount: result.processedItemCount,
+        finalCreateCount: result.finalCreateCount,
+        finalDeleteCount: result.finalDeleteCount,
+        averageBatchDurationMs: result.averageBatchDurationMs,
+        longestBatchDurationMs: result.longestBatchDurationMs,
+        studioSnapshotCount: result.studioSnapshotCount,
+        mainserverSnapshotCount: result.mainserverSnapshotCount,
+      },
+    })
+  );
+
+  return {
+    ...result,
+    sourceRevision: studioSnapshot.sourceState.sourceRevision,
+    yearWindow: [currentYear, nextYear],
+  };
+};

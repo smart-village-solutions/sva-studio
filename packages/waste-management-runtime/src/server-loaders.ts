@@ -2,13 +2,7 @@ import type { StudioJobRepository } from '@sva/data-repositories';
 import type {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
-  loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
-import type {
-  WasteManagementAuditOverview,
-  WasteManagementAuditQuery,
-  WasteManagementTechnicalHistoryOverview,
-} from '@sva/waste-management-contracts';
 import { createWasteLoaderContext } from './server-loaders.context.js';
 import { WasteRecurrenceLoaders } from './server-loaders.recurrence.js';
 import { WasteSyncLoaders } from './server-loaders.sync.js';
@@ -33,7 +27,6 @@ type IamQueryClient = {
 export type WasteServerLoaderHost = Readonly<{
   listExternalInterfaceRecords: typeof listExternalInterfaceRecords;
   loadDefaultExternalInterfaceRecord: typeof loadDefaultExternalInterfaceRecord;
-  loadWasteTenantProvisioningRecord: typeof loadWasteTenantProvisioningRecord;
   withInstanceDb: <T>(
     instanceId: string,
     work: (client: IamQueryClient) => Promise<T>
@@ -47,14 +40,6 @@ export type WasteServerLoaderHost = Readonly<{
     instanceId: string;
     blobRef: string;
   }) => Promise<{ body: Uint8Array }>;
-  listWasteManagementAuditRecords: (
-    client: IamQueryClient,
-    query: WasteManagementAuditQuery
-  ) => Promise<WasteManagementAuditOverview>;
-  listWasteManagementTechnicalAuditRecords: (
-    client: IamQueryClient,
-    query: WasteManagementAuditQuery
-  ) => Promise<WasteManagementTechnicalHistoryOverview>;
 }>;
 
 export const createWasteServerLoaders = (host: WasteServerLoaderHost) => {

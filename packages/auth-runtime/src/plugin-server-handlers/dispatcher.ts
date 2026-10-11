@@ -207,6 +207,7 @@ export const createPluginServerHandlerDispatcher = (input: {
 
       return handler({
         request,
+        sessionId: context.sessionId,
         pluginId: descriptor.ownerPluginId,
         handlerId: descriptor.id,
         scope: requirement.kind,
@@ -218,6 +219,8 @@ export const createPluginServerHandlerDispatcher = (input: {
           id: context.user.id,
           roles: context.user.roles,
           ...(context.user.instanceId ? { instanceId: context.user.instanceId } : {}),
+          ...(context.user.email ? { email: context.user.email } : {}),
+          ...(context.user.displayName ? { displayName: context.user.displayName } : {}),
         },
       });
     });

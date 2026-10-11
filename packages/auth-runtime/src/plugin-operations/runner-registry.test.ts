@@ -358,12 +358,16 @@ describe('plugin operation runner registry', () => {
       queueName: 'plugin-operations',
       executionLane: 'default',
       supportsCancellation: false,
+      startPolicy: 'standard',
+      artifactPermissionId: undefined,
     });
     expect(pluginRegistry.get('waste.sync')).toEqual({
       handler: expect.any(Function),
       queueName: 'custom-plugin-queue',
       executionLane: 'privileged',
       supportsCancellation: true,
+      startPolicy: undefined,
+      artifactPermissionId: undefined,
     });
   });
 

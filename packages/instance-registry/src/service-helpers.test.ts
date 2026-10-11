@@ -52,17 +52,7 @@ describe('service-helpers', () => {
         undefined,
         [],
         undefined,
-        undefined,
-        {
-          instanceId: 'demo',
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
-          schemaName: 'public',
-          enabled: true,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          visibleStatus: 'ok',
-        }
+        undefined
       )
     ).toEqual(
       expect.objectContaining({
@@ -74,10 +64,6 @@ describe('service-helpers', () => {
           },
         ],
         auditEvents: [{ id: 'audit-1' }],
-        wasteManagementSettings: expect.objectContaining({
-          provider: 'supabase',
-          visibleStatus: 'ok',
-        }),
       })
     );
   });

@@ -29,6 +29,10 @@ export type PluginJobTypeDefinition = {
   readonly errors?: {
     readonly detailKeys?: readonly string[];
   };
+  readonly executionLane?: 'default' | 'privileged';
+  readonly supportsCancellation?: boolean;
+  readonly startPolicy?: 'standard' | 'dedicated';
+  readonly artifactPermissionId?: string;
 };
 
 export type PluginJobTypeRegistryEntry = {
@@ -57,6 +61,10 @@ export type PluginJobTypeRegistryEntry = {
   readonly errors?: {
     readonly detailKeys?: readonly string[];
   };
+  readonly executionLane?: 'default' | 'privileged';
+  readonly supportsCancellation?: boolean;
+  readonly startPolicy?: 'standard' | 'dedicated';
+  readonly artifactPermissionId?: string;
 };
 
 const jobTypeDefinitionAllowedKeys = new Set([
@@ -67,6 +75,10 @@ const jobTypeDefinitionAllowedKeys = new Set([
   'progress',
   'result',
   'errors',
+  'executionLane',
+  'supportsCancellation',
+  'startPolicy',
+  'artifactPermissionId',
 ] as const);
 
 const jobTypeProgressAllowedKeys = new Set(['phaseKeys', 'stepKeys'] as const);
@@ -152,7 +164,41 @@ const normalizeJobTypeDefinition = (
         detailKeys: normalizeDetailKeys(definition.errors.detailKeys),
       }
     : undefined,
+  executionLane: definition.executionLane ?? 'default',
+  supportsCancellation: definition.supportsCancellation ?? false,
+  startPolicy: definition.startPolicy ?? 'standard',
+  ...(definition.artifactPermissionId?.trim()
+    ? { artifactPermissionId: normalizePluginIdentifier(definition.artifactPermissionId) }
+    : {}),
 });
+
+const hasInvalidJobPayload = (
+  definition: PluginJobTypeDefinition,
+  normalized: PluginJobTypeDefinition
+): boolean =>
+  normalized.queue.length === 0 ||
+  normalized.displayName.length === 0 ||
+  (definition.progress?.phaseKeys !== undefined && normalized.progress?.phaseKeys === undefined) ||
+  (definition.progress?.stepKeys !== undefined && normalized.progress?.stepKeys === undefined) ||
+  (definition.result?.detailKeys !== undefined && normalized.result?.detailKeys === undefined) ||
+  (definition.errors?.detailKeys !== undefined && normalized.errors?.detailKeys === undefined);
+
+const hasInvalidJobExecutionOptions = (
+  definition: PluginJobTypeDefinition,
+  normalized: PluginJobTypeDefinition,
+  namespace: string
+): boolean =>
+  (definition.executionLane !== undefined &&
+    definition.executionLane !== 'default' &&
+    definition.executionLane !== 'privileged') ||
+  (definition.supportsCancellation !== undefined &&
+    typeof definition.supportsCancellation !== 'boolean') ||
+  (definition.startPolicy !== undefined &&
+    definition.startPolicy !== 'standard' &&
+    definition.startPolicy !== 'dedicated') ||
+  (definition.artifactPermissionId !== undefined &&
+    (!normalized.artifactPermissionId ||
+      parseNamespacedPluginIdentifier(normalized.artifactPermissionId)?.namespace !== namespace));
 
 export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobTypeDefinition[]>(
   namespace: string,
@@ -206,12 +252,8 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
       );
     }
     if (
-      normalizedJobType.queue.length === 0 ||
-      normalizedJobType.displayName.length === 0 ||
-      (jobType.progress?.phaseKeys && normalizedJobType.progress?.phaseKeys === undefined) ||
-      (jobType.progress?.stepKeys && normalizedJobType.progress?.stepKeys === undefined) ||
-      (jobType.result?.detailKeys && normalizedJobType.result?.detailKeys === undefined) ||
-      (jobType.errors?.detailKeys && normalizedJobType.errors?.detailKeys === undefined)
+      hasInvalidJobPayload(jobType, normalizedJobType) ||
+      hasInvalidJobExecutionOptions(jobType, normalizedJobType, normalizedNamespace)
     ) {
       throw new Error(`invalid_plugin_job_type:${normalizedJobType.jobTypeId}`);
     }

@@ -280,8 +280,6 @@ const createDeps = (
   isAutomatedTenantProvisioningEnabled: vi.fn(() => true),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
-  loadWasteDataSourceRecord: vi.fn(async () => null),
-  saveWasteDataSourceRecord: vi.fn(async () => undefined),
   moduleIamRegistry: new Map([
     [
       'categories',
@@ -2299,27 +2297,6 @@ describe('instance registry service facade', () => {
     await expect(result).rejects.toMatchObject({ instanceRegistryStep: stepKey });
   });
 
-  it('does not persist legacy waste-management settings during create', async () => {
-    const repository = createRepository({
-      getInstanceById: vi.fn(async () => null),
-    });
-    const deps = createDeps(repository);
-    const service = createInstanceRegistryService(deps);
-
-    await service.createProvisioningRequest({
-      ...completeCreateIdentity,
-      instanceId: 'demo',
-      displayName: 'Demo',
-      parentDomain: 'Studio.Example.Org',
-      realmMode: 'new',
-      authRealm: 'demo',
-      authClientId: 'studio-client',
-      idempotencyKey: 'idem-1',
-    });
-
-    expect(deps.saveWasteDataSourceRecord).not.toHaveBeenCalled();
-  });
-
   it('defaults the tenant admin client id on create when the form does not submit one', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
@@ -3050,46 +3027,6 @@ describe('instance registry service facade', () => {
     expect(repository.updateAccountInvitationTemplate).not.toHaveBeenCalled();
   });
 
-  it('does not update the legacy waste datasource during instance updates', async () => {
-    const updated = {
-      ...baseInstance,
-      displayName: 'Updated',
-      parentDomain: 'example.org',
-      primaryHostname: 'demo.example.org',
-    };
-    const repository = createRepository({
-      getInstanceById: vi.fn().mockResolvedValueOnce(baseInstance).mockResolvedValue(updated),
-      updateInstance: vi.fn(async () => updated),
-    });
-    const deps = createDeps(repository, {
-      loadWasteDataSourceRecord: vi.fn(async () => ({
-        instanceId: 'demo',
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
-        schemaName: 'public',
-        enabled: true,
-        databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
-        databaseUrlCiphertext: 'existing-db-cipher',
-        serviceRoleKeyCiphertext: 'existing-service-cipher',
-        visibleStatus: 'ok',
-        lastCheckedAt: '2026-05-09T10:00:00.000Z',
-        lastCheckStatus: 'succeeded',
-      })),
-    });
-
-    await createInstanceRegistryService(deps).updateInstance({
-      instanceId: 'demo',
-      displayName: 'Updated',
-      parentDomain: 'Example.Org',
-      realmMode: 'existing',
-      authRealm: 'demo',
-      authClientId: 'studio-client',
-    });
-
-    expect(deps.saveWasteDataSourceRecord).not.toHaveBeenCalled();
-  });
-
   it('returns null when updating a missing instance', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
@@ -3153,7 +3090,6 @@ describe('instance registry service facade', () => {
     await expect(service.getInstanceDetail('demo')).resolves.toEqual(
       expect.objectContaining({
         assignedModules: ['news'],
-        wasteManagementSettings: undefined,
         moduleIamStatus: expect.objectContaining({
           overall: expect.objectContaining({ status: 'ready' }),
           modules: [
@@ -3240,62 +3176,14 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('projects waste-management settings into instance detail when a datasource is configured', async () => {
+  it('keeps Waste settings outside the generic instance detail response', async () => {
     const repository = createRepository({
       listAuditEvents: vi.fn(async () => []),
       listKeycloakProvisioningRuns: vi.fn(async () => []),
     });
-    const service = createInstanceRegistryService(
-      createDeps(repository, {
-        loadWasteDataSourceRecord: vi.fn(async () => ({
-          instanceId: 'demo',
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
-          schemaName: 'public',
-          enabled: true,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: false,
-          visibleStatus: 'error',
-          lastCheckedAt: '2026-05-09T10:00:00.000Z',
-          lastCheckStatus: 'failed',
-          lastCheckErrorCode: 'connection_refused',
-          lastCheckErrorMessage: 'Host unreachable',
-        })),
-      })
-    );
+    const detail = await createInstanceRegistryService(createDeps(repository)).getInstanceDetail('demo');
 
-    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
-      expect.objectContaining({
-        wasteManagementSettings: expect.objectContaining({
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
-          visibleStatus: 'error',
-          lastCheckStatus: 'failed',
-          lastCheckErrorCode: 'connection_refused',
-        }),
-      })
-    );
-  });
-
-  it('keeps instance detail available when waste-management settings cannot be loaded', async () => {
-    const repository = createRepository({
-      listAuditEvents: vi.fn(async () => []),
-      listKeycloakProvisioningRuns: vi.fn(async () => []),
-    });
-    const service = createInstanceRegistryService(
-      createDeps(repository, {
-        loadWasteDataSourceRecord: vi.fn(async () => {
-          throw new Error('relation "iam.instance_waste_data_sources" does not exist');
-        }),
-      })
-    );
-
-    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
-      expect.objectContaining({
-        instanceId: 'demo',
-        wasteManagementSettings: undefined,
-      })
-    );
+    expect(detail).not.toHaveProperty('wasteManagementSettings');
   });
 
   it('probes tenant IAM access, persists audit evidence and returns the updated status', async () => {

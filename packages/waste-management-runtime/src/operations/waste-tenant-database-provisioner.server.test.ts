@@ -1,0 +1,709 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { ExternalInterfaceRecord } from '@sva/core';
+
+import {
+  createProvisionTenantDatabaseOperation,
+  deriveWasteTenantDatabaseNames,
+} from './waste-tenant-database-provisioner.server.js';
+import { requiredWasteTables } from './waste-management-operations.shared.js';
+
+const createProvisioningPool = (options: {
+  readonly missingTables?: boolean;
+  readonly invalidRuntimeUrlPart?: string;
+  readonly existingRoleNames?: readonly string[];
+  readonly statements?: string[];
+} = {}) => (url: string) => ({
+  connect: async () => ({
+    query: async <TRow>(text: string) => {
+      options.statements?.push(text);
+      if (text.includes('FROM pg_roles')) {
+        const rows = (options.existingRoleNames ?? []).map((rolname) => ({
+          rolname,
+          rolsuper: false,
+          rolreplication: false,
+          rolbypassrls: false,
+        })) as TRow[];
+        return { rowCount: rows.length, rows };
+      }
+      if (text.includes('FROM pg_database')) {
+        return { rowCount: 1, rows: [{ exists: true }] as TRow[] };
+      }
+      if (text.includes('information_schema.tables')) {
+        const tables = options.missingTables ? requiredWasteTables.slice(1) : requiredWasteTables;
+        return {
+          rowCount: tables.length,
+          rows: tables.map((table_name) => ({ table_name })) as TRow[],
+        };
+      }
+      if (text.includes('has_table_privilege')) {
+        const isApp = url.includes('_app:');
+        const isInvalid = options.invalidRuntimeUrlPart
+          ? url.includes(options.invalidRuntimeUrlPart)
+          : false;
+        return {
+          rowCount: 1,
+          rows: [{
+            can_select: !isInvalid,
+            can_insert: isApp,
+            can_insert_subscription: true,
+          }] as TRow[],
+        };
+      }
+      return { rowCount: 0, rows: [] as TRow[] };
+    },
+    release: vi.fn(),
+  }),
+  end: vi.fn(async () => undefined),
+});
+
+const createReadyDeps = (overrides: Record<string, unknown> = {}) => ({
+  getProvisionerDatabaseUrl: () =>
+    'postgresql://provisioner:admin@postgres:5432/sva_studio',
+  createPool: createProvisioningPool(),
+  createPassword: () => 'test-secret',
+  protectSecret: (plaintext: string) => `encrypted:${plaintext}`,
+  revealSecret: (ciphertext: string | null | undefined) => ciphertext?.replace(/^encrypted:/u, ''),
+  claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+  completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
+  failProvisioning: vi.fn(async () => null),
+  loadManagedInterface: vi.fn(async () => null),
+  saveManagedInterface: vi.fn(async () => undefined),
+  now: () => new Date('2026-08-02T10:00:00.000Z'),
+  ...overrides,
+});
+
+const createManagedInterface = (
+  instanceId: string,
+  overrides: Partial<ExternalInterfaceRecord> = {}
+): ExternalInterfaceRecord => {
+  const names = deriveWasteTenantDatabaseNames(instanceId);
+  return {
+    id: `waste-management:${instanceId}`,
+    instanceId,
+    typeKey: 'postgresql',
+    ownerKind: 'plugin',
+    ownerId: 'waste-management',
+    displayName: 'Waste PostgreSQL',
+    alias: 'waste-management',
+    enabled: true,
+    isDefault: true,
+    category: 'database',
+    authMode: 'database_credentials',
+    publicConfig: { schemaName: 'public', databaseName: names.database, managed: true },
+    secretConfigCiphertext: `encrypted:${JSON.stringify({
+      databaseUrl: `postgresql://${names.appRole}:stable-app@postgres:5432/${names.database}`,
+      publicDatabaseUrl: `postgresql://${names.publicAppRole}:stable-public@postgres:5432/${names.database}`,
+    })}`,
+    statusCheckKind: 'postgresql',
+    visibleStatus: 'ok',
+    createdAt: '2026-08-01T08:00:00.000Z',
+    updatedAt: '2026-08-01T08:00:00.000Z',
+    ...overrides,
+  };
+};
+
+describe('waste tenant database provisioner', () => {
+  it.each(['rolsuper', 'rolreplication', 'rolbypassrls'] as const)(
+    'rejects an existing role with %s before changing roles or publishing credentials',
+    async (attribute) => {
+      const names = deriveWasteTenantDatabaseNames('bb-prignitz');
+      const statements: string[] = [];
+      const deps = createReadyDeps({
+        createPool: () => ({
+          connect: async () => ({
+            query: async <TRow>(text: string) => {
+              statements.push(text);
+              return {
+                rowCount: 1,
+                rows: [
+                  {
+                    rolname: names.appRole,
+                    rolsuper: false,
+                    rolreplication: false,
+                    rolbypassrls: false,
+                    [attribute]: true,
+                  },
+                ] as TRow[],
+              };
+            },
+            release: vi.fn(),
+          }),
+          end: vi.fn(async () => undefined),
+        }),
+      });
+      await expect(
+        createProvisionTenantDatabaseOperation(deps)(
+          'bb-prignitz',
+          { operation: 'provision-tenant-database', desiredGeneration: 2 },
+          { jobId: '00000000-0000-4000-8000-000000000003' }
+        )
+      ).rejects.toThrow('waste_tenant_role_privilege_drift');
+      expect(statements).toHaveLength(1);
+      expect(statements[0]).toContain('FROM pg_roles');
+      expect(deps.saveManagedInterface).not.toHaveBeenCalled();
+      expect(deps.completeProvisioning).not.toHaveBeenCalled();
+      expect(deps.failProvisioning).toHaveBeenCalled();
+    }
+  );
+
+  it('derives stable, bounded and collision-resistant PostgreSQL identifiers', () => {
+    const names = deriveWasteTenantDatabaseNames('BB Prignitz/Äußerst-langer Tenant-Identifier-1234567890');
+    expect(Object.values(names).every((name) => /^[a-z][a-z0-9_]{0,62}$/u.test(name))).toBe(true);
+    expect(names).toEqual(
+      deriveWasteTenantDatabaseNames('BB Prignitz/Äußerst-langer Tenant-Identifier-1234567890')
+    );
+    expect(names.database).not.toBe(deriveWasteTenantDatabaseNames('bb-prignitz').database);
+  });
+
+  it('provisions roles, database, migrations and a hidden managed interface before readiness', async () => {
+    const statements: Array<{ url: string; text: string; values?: readonly unknown[] }> = [];
+    const savedInterfaces: Record<string, unknown>[] = [];
+    const completeProvisioning = vi.fn(async (input) => ({ ...input, status: 'ready' } as never));
+    const failProvisioning = vi.fn(async () => null);
+    const createPool = (url: string) => ({
+      connect: async () => ({
+        query: async <TRow>(text: string, values?: readonly unknown[]) => {
+          statements.push({ url, text, values });
+          if (text.includes('FROM pg_roles')) {
+            return { rowCount: 0, rows: [] as TRow[] };
+          }
+          if (text.includes('FROM pg_database')) {
+            return { rowCount: 1, rows: [{ exists: false }] as TRow[] };
+          }
+          if (text.includes('information_schema.tables')) {
+            return {
+              rowCount: requiredWasteTables.length,
+              rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
+            };
+          }
+          if (text.includes('has_table_privilege')) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  can_select: true,
+                  can_insert: url.includes('_app:app-secret@'),
+                  can_insert_subscription: true,
+                },
+              ] as TRow[],
+            };
+          }
+          return { rowCount: 0, rows: [] as TRow[] };
+        },
+        release: vi.fn(),
+      }),
+      end: vi.fn(async () => undefined),
+    });
+
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: () => 'postgresql://provisioner:admin@postgres:5432/sva_studio',
+      createPool,
+      createPassword: vi
+        .fn()
+        .mockReturnValueOnce('migrator-secret')
+        .mockReturnValueOnce('app-secret')
+        .mockReturnValueOnce('public-secret'),
+      protectSecret: (plaintext, aad) => `encrypted:${aad}:${plaintext}`,
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning,
+      failProvisioning,
+      loadManagedInterface: vi.fn(async () => null),
+      saveManagedInterface: vi.fn(async (record) => {
+        savedInterfaces.push(record as unknown as Record<string, unknown>);
+      }),
+      now: () => new Date('2026-08-02T10:00:00.000Z'),
+    });
+
+    const result = await operation(
+      'bb-prignitz',
+      { operation: 'provision-tenant-database', desiredGeneration: 1 },
+      { jobId: '00000000-0000-4000-8000-000000000001' }
+    );
+
+    expect(result.details).toMatchObject({
+      interfaceId: 'waste-management:bb-prignitz',
+      desiredGeneration: 1,
+    });
+    expect(savedInterfaces).toHaveLength(2);
+    expect(savedInterfaces[0]).toMatchObject({
+      ownerKind: 'plugin',
+      ownerId: 'waste-management',
+      alias: 'waste-management',
+      enabled: false,
+      visibleStatus: 'disabled',
+    });
+    expect(savedInterfaces[1]).toMatchObject({ enabled: true, visibleStatus: 'ok' });
+    expect(JSON.stringify(savedInterfaces[0]?.publicConfig)).not.toContain('secret');
+    expect(String(savedInterfaces[0]?.secretConfigCiphertext)).toContain('app-secret');
+    expect(statements.some(({ text }) => text.startsWith('CREATE DATABASE'))).toBe(true);
+    expect(statements.some(({ text }) => text.includes('TO CURRENT_USER WITH SET TRUE'))).toBe(true);
+    expect(statements.some(({ text }) => text.includes('TO CURRENT_USER WITH ADMIN OPTION'))).toBe(false);
+    expect(statements.some(({ text }) => text.includes('REVOKE ALL ON DATABASE'))).toBe(true);
+    expect(
+      statements.some(({ text }) =>
+        text.includes('GRANT CONNECT ON DATABASE') && text.includes('TO CURRENT_USER')
+      )
+    ).toBe(true);
+    expect(
+      statements.some(({ text }) =>
+        text.includes('public.waste_email_reminder_subscriptions')
+      )
+    ).toBe(true);
+    expect(statements.some(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS'))).toBe(true);
+    expect(completeProvisioning).toHaveBeenCalledOnce();
+    expect(failProvisioning).not.toHaveBeenCalled();
+  });
+
+  it('records a redacted failed state when privileged deployment configuration is absent', async () => {
+    const failProvisioning = vi.fn(async (input) => ({ ...input, status: 'failed' } as never));
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: () => undefined,
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning: vi.fn(async () => null),
+      failProvisioning,
+      loadManagedInterface: vi.fn(async () => null),
+      saveManagedInterface: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 2 },
+        { jobId: '00000000-0000-4000-8000-000000000002' }
+      )
+    ).rejects.toThrow('waste_database_provisioner_url_missing');
+    expect(failProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        errorCode: 'waste_database_provisioner_url_missing',
+        errorMessage: 'Die Waste-Datenbank konnte nicht vollständig provisioniert werden.',
+      })
+    );
+  });
+
+  it.each([
+    [{ operation: 'provision-tenant-database', desiredGeneration: 0 }, { jobId: 'job' }],
+    [{ operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '' }],
+  ] as const)('rejects malformed provisioning input before claiming work', async (input, context) => {
+    const claimProvisioning = vi.fn();
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ claimProvisioning })
+    );
+
+    await expect(operation('tenant-a', input, context)).rejects.toThrow(
+      'invalid_waste_tenant_provisioning_input'
+    );
+    expect(claimProvisioning).not.toHaveBeenCalled();
+  });
+
+  it('rejects a stale provisioning claim before touching infrastructure', async () => {
+    const createPool = vi.fn();
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ claimProvisioning: vi.fn(async () => null), createPool })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_tenant_provisioning_claim_rejected');
+    expect(createPool).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when secret protection is unavailable', async () => {
+    const failProvisioning = vi.fn(async () => null);
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: () =>
+        'postgresql://provisioner:admin@postgres:5432/sva_studio',
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning: vi.fn(async () => null),
+      failProvisioning,
+      loadManagedInterface: vi.fn(async () => null),
+      saveManagedInterface: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_secret_protection_missing');
+    expect(failProvisioning).toHaveBeenCalledOnce();
+  });
+
+  it('persists a disabled error interface when encryption returns no ciphertext', async () => {
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ protectSecret: () => null, saveManagedInterface })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_secret_protection_failed');
+    expect(saveManagedInterface).not.toHaveBeenCalled();
+  });
+
+  it('rejects an alias owned outside the Waste plugin without overwriting it', async () => {
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        loadManagedInterface: vi.fn(async () => ({
+          ownerKind: 'tenant',
+          ownerId: 'tenant-a',
+        } as unknown as ExternalInterfaceRecord)),
+        saveManagedInterface,
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_managed_interface_owner_conflict');
+    expect(saveManagedInterface).not.toHaveBeenCalled();
+  });
+
+  it('fails before touching PostgreSQL when existing runtime credentials cannot be revealed', async () => {
+    const createPool = vi.fn();
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const existing = createManagedInterface('tenant-a', {
+      secretConfigCiphertext: 'unreadable-ciphertext',
+    });
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPool,
+        revealSecret: () => undefined,
+        loadManagedInterface: vi.fn(async () => existing),
+        saveManagedInterface,
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 2 },
+        { jobId: 'job-2' }
+      )
+    ).rejects.toThrow('waste_database_existing_secret_unreadable');
+    expect(createPool).not.toHaveBeenCalled();
+    expect(saveManagedInterface).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: existing.id,
+        secretConfigCiphertext: 'unreadable-ciphertext',
+        enabled: false,
+        visibleStatus: 'error',
+        lastCheckErrorCode: 'waste_database_existing_secret_unreadable',
+      })
+    );
+  });
+
+  it('rejects runtime credentials for a different role before touching PostgreSQL', async () => {
+    const names = deriveWasteTenantDatabaseNames('tenant-a');
+    const createPool = vi.fn();
+    const existing = createManagedInterface('tenant-a', {
+      secretConfigCiphertext: `encrypted:${JSON.stringify({
+        databaseUrl: `postgresql://wrong_role:stable-app@postgres:5432/${names.database}`,
+        publicDatabaseUrl: `postgresql://${names.publicAppRole}:stable-public@postgres:5432/${names.database}`,
+      })}`,
+    });
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ createPool, loadManagedInterface: vi.fn(async () => existing) })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 2 },
+        { jobId: 'job-2' }
+      )
+    ).rejects.toThrow('waste_database_existing_secret_unreadable');
+    expect(createPool).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when migrations leave the Waste schema incomplete', async () => {
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({ createPool: createProvisioningPool({ missingTables: true }) })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_schema_incomplete');
+  });
+
+  it.each(['_app:', '_public:'])(
+    'fails closed when %s runtime privileges do not match the contract',
+    async (invalidRuntimeUrlPart) => {
+      const operation = createProvisionTenantDatabaseOperation(
+        createReadyDeps({
+          createPool: createProvisioningPool({ invalidRuntimeUrlPart }),
+        })
+      );
+
+      await expect(
+        operation(
+          'tenant-a',
+          { operation: 'provision-tenant-database', desiredGeneration: 1 },
+          { jobId: 'job-1' }
+        )
+      ).rejects.toThrow('waste_database_runtime_privileges_invalid');
+    }
+  );
+
+  it('keeps the interface failed when the readiness transition is rejected', async () => {
+    const saveManagedInterface = vi.fn(async () => undefined);
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        completeProvisioning: vi.fn(async () => null),
+        saveManagedInterface,
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_tenant_provisioning_completion_rejected');
+    expect(saveManagedInterface).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false, visibleStatus: 'error' })
+    );
+  });
+
+  it('preserves the original failure when failure-state persistence also rejects', async () => {
+    const saveManagedInterface = vi
+      .fn(async () => undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('interface failure write rejected'));
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPool: createProvisioningPool({ missingTables: true }),
+        saveManagedInterface,
+        failProvisioning: vi.fn(async () => {
+          throw new Error('provisioning failure write rejected');
+        }),
+      })
+    );
+
+    await expect(
+      operation(
+        'tenant-a',
+        { operation: 'provision-tenant-database', desiredGeneration: 1 },
+        { jobId: 'job-1' }
+      )
+    ).rejects.toThrow('waste_database_schema_incomplete');
+    expect(saveManagedInterface).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        lastCheckStatus: 'failed',
+        updatedAt: '2026-08-02T10:00:00.000Z',
+      })
+    );
+  });
+
+  it('sets generated passwords when retrying orphaned roles without saved credentials', async () => {
+    const names = deriveWasteTenantDatabaseNames('tenant-a');
+    const statements: string[] = [];
+    const createPassword = vi.fn(() => 'recovered-secret');
+    const operation = createProvisionTenantDatabaseOperation(
+      createReadyDeps({
+        createPassword,
+        createPool: createProvisioningPool({
+          existingRoleNames: [
+            names.ownerRole,
+            names.migratorRole,
+            names.appRole,
+            names.publicAppRole,
+          ],
+          statements,
+        }),
+      })
+    );
+
+    await operation(
+      'tenant-a',
+      { operation: 'provision-tenant-database', desiredGeneration: 2 },
+      { jobId: 'job-2' }
+    );
+
+    const alteredRoles = statements.filter((statement) => statement.startsWith('ALTER ROLE '));
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.appRole}"`))).toContain(
+      "PASSWORD 'recovered-secret'"
+    );
+    expect(
+      alteredRoles.find((statement) => statement.includes(`"${names.publicAppRole}"`))
+    ).toContain("PASSWORD 'recovered-secret'");
+    expect(createPassword).toHaveBeenCalledTimes(3);
+  });
+
+  it('reconciles a partially provisioned tenant without rotating runtime credentials or deleting data', async () => {
+    const names = deriveWasteTenantDatabaseNames('bb-prignitz');
+    const statements: string[] = [];
+    const savedInterfaces: Record<string, unknown>[] = [];
+    const existing = createManagedInterface('bb-prignitz', {
+      enabled: false,
+      visibleStatus: 'error',
+    });
+    const createPassword = vi.fn(() => 'rotated-migrator');
+    const createPool = (url: string) => ({
+      connect: async () => ({
+        query: async <TRow>(text: string) => {
+          statements.push(text);
+          if (text.includes('FROM pg_roles')) {
+            return {
+              rowCount: 4,
+              rows: [
+                names.ownerRole,
+                names.migratorRole,
+                names.appRole,
+                names.publicAppRole,
+              ].map((rolname) => ({ rolname, rolsuper: false, rolreplication: false, rolbypassrls: false })) as TRow[],
+            };
+          }
+          if (text.includes('FROM pg_database')) {
+            return { rowCount: 1, rows: [{ exists: true }] as TRow[] };
+          }
+          if (text.includes('information_schema.tables')) {
+            return {
+              rowCount: requiredWasteTables.length,
+              rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
+            };
+          }
+          if (text.includes('has_table_privilege')) {
+            return {
+              rowCount: 1,
+              rows: [
+                {
+                  can_select: true,
+                  can_insert: url.includes(`${names.appRole}:stable-app@`),
+                  can_insert_subscription: true,
+                },
+              ] as TRow[],
+            };
+          }
+          return { rowCount: 0, rows: [] as TRow[] };
+        },
+        release: vi.fn(),
+      }),
+      end: vi.fn(async () => undefined),
+    });
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: () =>
+        'postgresql://provisioner:admin@postgres:5432/sva_studio',
+      createPool,
+      createPassword,
+      protectSecret: (plaintext) => `encrypted:${plaintext}`,
+      revealSecret: (ciphertext) => ciphertext?.replace(/^encrypted:/u, ''),
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
+      failProvisioning: vi.fn(async () => null),
+      loadManagedInterface: vi.fn(async () => existing),
+      saveManagedInterface: vi.fn(async (record) => {
+        savedInterfaces.push(record as unknown as Record<string, unknown>);
+      }),
+      now: () => new Date('2026-08-02T10:00:00.000Z'),
+    });
+
+    await operation(
+      'bb-prignitz',
+      { operation: 'provision-tenant-database', desiredGeneration: 2 },
+      { jobId: '00000000-0000-4000-8000-000000000003' }
+    );
+
+    const alteredRoles = statements.filter((text) => text.startsWith('ALTER ROLE '));
+    expect(alteredRoles).toHaveLength(4);
+    for (const statement of alteredRoles) {
+      // PostgreSQL 16 rejects even negative privileged attributes for a CREATEROLE principal.
+      expect(statement).not.toMatch(/\b(?:NOSUPERUSER|NOREPLICATION|NOBYPASSRLS)\b/u);
+      expect(statement).toContain('NOCREATEDB NOCREATEROLE');
+    }
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.appRole}"`))).not.toContain('PASSWORD');
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.publicAppRole}"`))).not.toContain('PASSWORD');
+    expect(alteredRoles.find((statement) => statement.includes(`"${names.migratorRole}"`))).toContain("PASSWORD 'rotated-migrator'");
+    expect(createPassword).toHaveBeenCalledOnce();
+    expect(statements.some((text) => text.startsWith('CREATE ROLE '))).toBe(false);
+    expect(statements.some((text) => text.startsWith('CREATE DATABASE '))).toBe(false);
+    expect(
+      statements.some((text) => /\b(?:DROP\s+TABLE|TRUNCATE|DELETE\s+FROM)\b/iu.test(text))
+    ).toBe(false);
+    expect(savedInterfaces).toHaveLength(2);
+    expect(savedInterfaces[0]).toMatchObject({
+      createdAt: '2026-08-01T08:00:00.000Z',
+      enabled: false,
+    });
+    expect(savedInterfaces[1]).toMatchObject({ enabled: true, visibleStatus: 'ok' });
+    expect(savedInterfaces[1]?.secretConfigCiphertext).toBe(existing.secretConfigCiphertext);
+  });
+
+  it('activates additional tenants with the same deployment contract and isolated databases', async () => {
+    const statements: string[] = [];
+    const interfaces: Array<{ instanceId: string; enabled: boolean }> = [];
+    const provisionerUrl = vi.fn(() => 'postgresql://provisioner:admin@postgres:5432/sva_studio');
+    let passwordIndex = 0;
+    const operation = createProvisionTenantDatabaseOperation({
+      getProvisionerDatabaseUrl: provisionerUrl,
+      createPassword: () => `tenant-secret-${String(passwordIndex += 1)}`,
+      protectSecret: (plaintext) => `encrypted:${plaintext}`,
+      claimProvisioning: vi.fn(async () => ({ status: 'provisioning' } as never)),
+      completeProvisioning: vi.fn(async (input) => ({ ...input, status: 'ready' } as never)),
+      failProvisioning: vi.fn(async () => null),
+      loadManagedInterface: vi.fn(async () => null),
+      saveManagedInterface: vi.fn(async (record) => {
+        interfaces.push({ instanceId: record.instanceId, enabled: record.enabled });
+      }),
+      createPool: (url) => ({
+        connect: async () => ({
+          query: async <TRow>(text: string) => {
+            statements.push(`${url}\n${text}`);
+            if (text.includes('FROM pg_roles')) return { rowCount: 0, rows: [] as TRow[] };
+            if (text.includes('FROM pg_database')) {
+              return { rowCount: 1, rows: [{ exists: false }] as TRow[] };
+            }
+            if (text.includes('information_schema.tables')) {
+              return {
+                rowCount: requiredWasteTables.length,
+                rows: requiredWasteTables.map((table_name) => ({ table_name })) as TRow[],
+              };
+            }
+            if (text.includes('has_table_privilege')) {
+              return {
+                rowCount: 1,
+                rows: [{ can_select: true, can_insert: url.includes('_app:'), can_insert_subscription: true }] as TRow[],
+              };
+            }
+            return { rowCount: 0, rows: [] as TRow[] };
+          },
+          release: vi.fn(),
+        }),
+        end: vi.fn(async () => undefined),
+      }),
+    });
+
+    await operation('bb-prignitz', { operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '00000000-0000-4000-8000-000000000011' });
+    await operation('bb-guben', { operation: 'provision-tenant-database', desiredGeneration: 1 }, { jobId: '00000000-0000-4000-8000-000000000012' });
+
+    expect(provisionerUrl).toHaveBeenCalledTimes(2);
+    expect(interfaces.filter(({ enabled }) => enabled)).toEqual([
+      { instanceId: 'bb-prignitz', enabled: true },
+      { instanceId: 'bb-guben', enabled: true },
+    ]);
+    const createdDatabases = statements.filter((statement) => statement.includes('CREATE DATABASE'));
+    expect(createdDatabases).toHaveLength(2);
+    expect(createdDatabases[0]).not.toBe(createdDatabases[1]);
+    expect(createdDatabases.join('\n')).toContain(deriveWasteTenantDatabaseNames('bb-prignitz').database);
+    expect(createdDatabases.join('\n')).toContain(deriveWasteTenantDatabaseNames('bb-guben').database);
+  });
+});

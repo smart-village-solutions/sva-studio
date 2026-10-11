@@ -18,6 +18,7 @@ Architekturprinzipien auf IST-Basis.
 - Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/plugin-sdk` auf Host-APIs zu
+- Fachliche Serverausführung und Persistenzadapter gehören in das owning Plugin-Runtime-Package; der Host stellt am bestehenden Composition-Punkt ausschließlich benötigte technische Fähigkeiten bereit und behält Authentifizierung, Autorisierung, Tenantkontext, Queue und privilegierte Worker-Lanes.
 - Standardisierte technische Wiederverwendung zwischen CRUD-Content-Plugins wird im Plugin-SDK zentralisiert; es gibt keine direkten Plugin-zu-Plugin-Abhängigkeiten
 - Plugin-Vertrag v1: Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Plugin-Plattform v2 erweitert dieses Zielbild um Manifest-, Katalog-, Loader- und Runtime-Verträge, damit lokale Entwicklung und externe Distribution denselben hostvalidierten Snapshot-Pfad nutzen

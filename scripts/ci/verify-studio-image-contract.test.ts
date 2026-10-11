@@ -21,7 +21,11 @@ const regularPlugins = [
 ];
 const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
-  ssf: [...regularPlugins.map((id) => `plugin-${id}`)],
+  ssf: [
+    ...regularPlugins.map((id) => `plugin-${id}`),
+    'waste-management-contracts',
+    'waste-management-runtime',
+  ],
 };
 const workspacePluginIds = [
   'categories',
@@ -104,7 +108,7 @@ const validInput = (
               'waste-management-contracts',
               'waste-management-runtime',
             ]
-          : ['plugin-sdk', 'plugin-ssf', 'waste-management-contracts', 'waste-management-runtime'],
+          : ['plugin-sdk', 'plugin-ssf'],
     chunkProvenance: {
       schemaVersion: 1,
       distribution,
@@ -339,15 +343,15 @@ describe('verify-studio-image-contract', () => {
       },
     ],
     [
-      'missing shared waste contracts',
+      'present waste contracts',
       (input: ReturnType<typeof validInput>) => {
-        input.packages = input.packages.filter((name) => name !== 'waste-management-contracts');
+        input.packages.push('waste-management-contracts');
       },
     ],
     [
-      'missing required runtime',
+      'present waste runtime',
       (input: ReturnType<typeof validInput>) => {
-        input.packages = input.packages.filter((name) => name !== 'waste-management-runtime');
+        input.packages.push('waste-management-runtime');
       },
     ],
   ])('rejects %s mismatch', (_reason, mutate) => {
@@ -365,6 +369,12 @@ describe('verify-studio-image-contract', () => {
   it('rejects a studio image without the host-owned Waste runtime package', () => {
     const input = validInput('studio');
     input.packages = input.packages.filter((name) => name !== 'waste-management-runtime');
+    expect(() => verify(input)).toThrow();
+  });
+
+  it('rejects a studio image without the Waste contracts package', () => {
+    const input = validInput('studio');
+    input.packages = input.packages.filter((name) => name !== 'waste-management-contracts');
     expect(() => verify(input)).toThrow();
   });
 
@@ -391,4 +401,17 @@ describe('verify-studio-image-contract', () => {
     input.chunkProvenance.chunks[0]!.pluginPackages.push('plugin-news');
     expect(() => verify(input)).toThrow();
   });
+
+  it.each(['waste-management-contracts', 'waste-management-runtime'] as const)(
+    'accepts %s provenance in Studio and rejects it in SSF',
+    (packageName) => {
+      const studio = validInput('studio');
+      studio.chunkProvenance.chunks[0]!.pluginPackages.push(packageName);
+      expect(JSON.parse(verify(studio)).verifiedChunks.pluginPackages).toContain(packageName);
+
+      const ssf = validInput('ssf');
+      ssf.chunkProvenance.chunks[0]!.pluginPackages.push(packageName);
+      expect(() => verify(ssf)).toThrow(`chunk_provenance_excluded_plugin:${packageName}`);
+    }
+  );
 });

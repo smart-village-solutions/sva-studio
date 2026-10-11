@@ -3,6 +3,7 @@ import { definePluginJobTypes, type PluginJobTypeDefinition } from '@sva/plugin-
 import { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
 
 import { wastePostalCodeJobType } from './job-definitions.postal-code.js';
+import { wasteEmailReminderJobTypes } from './job-definitions.email-reminders.js';
 import { wasteTenantReadinessJobType } from './tenant-readiness-job-definition.js';
 
 export { createWasteManagementPluginExportProfiles } from './export-profile-definitions.js';
@@ -14,6 +15,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase,
     queue: wasteManagementOperationsContract.provisioningQueueName,
+    executionLane: 'privileged',
     displayName: 'Waste-Tenant-Datenbank provisionieren',
     progress: {
       phaseKeys: [
@@ -107,6 +109,7 @@ const wasteManagementPluginJobTypes = [
   },
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.exportData,
+    artifactPermissionId: 'waste-management.export.execute',
     queue: wasteManagementOperationsContract.queueName,
     displayName: 'Abfall-Daten exportieren',
     progress: {
@@ -160,6 +163,7 @@ const wasteManagementPluginJobTypes = [
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.syncMainserver,
     queue: wasteManagementOperationsContract.queueName,
+    supportsCancellation: true,
     displayName: 'Abfalldaten mit dem Mainserver synchronisieren',
     progress: {
       phaseKeys: ['waste-management.mainserver-sync', 'waste-management.completed'],
@@ -216,44 +220,11 @@ const wasteManagementPluginJobTypes = [
     },
   },
   wastePostalCodeJobType,
-  {
-    jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
-    queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Abfall-E-Mail-Erinnerungen materialisieren',
-    progress: {
-      phaseKeys: ['waste-management.materialize-email-reminders', 'waste-management.completed'],
-      stepKeys: ['load-reminder-state', 'complete-operation'],
-    },
-    result: {
-      summaryKeys: ['durationMs'],
-      detailKeys: [
-        'activeSubscriptionCount',
-        'createdOutboxCount',
-        'duplicateOutboxCount',
-        'skippedPickupCount',
-      ],
-    },
-    errors: {
-      detailKeys: ['failed-step'],
-    },
-  },
-  {
-    jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
-    queue: wasteManagementOperationsContract.queueName,
-    displayName: 'Abfall-E-Mail-Erinnerungs-Outbox verarbeiten',
-    progress: {
-      phaseKeys: ['waste-management.process-email-reminder-outbox', 'waste-management.completed'],
-      stepKeys: ['lease-outbox', 'complete-operation'],
-    },
-    result: {
-      summaryKeys: ['durationMs'],
-      detailKeys: ['leasedCount', 'sentCount', 'retryScheduledCount', 'failedCount', 'batchSize'],
-    },
-    errors: {
-      detailKeys: ['failed-step', 'outboxId'],
-    },
-  },
+  ...wasteEmailReminderJobTypes,
 ] satisfies readonly PluginJobTypeDefinition[];
 
 export const createWasteManagementPluginJobTypes = (): readonly PluginJobTypeDefinition[] =>
-  definePluginJobTypes(pluginNamespace, wasteManagementPluginJobTypes);
+  definePluginJobTypes(
+    pluginNamespace,
+    wasteManagementPluginJobTypes.map((jobType) => ({ ...jobType, startPolicy: 'dedicated' as const }))
+  );

@@ -12,6 +12,10 @@
   "entryPoints": {
     "descriptor": "./dist/descriptor.js",
     "browser": "./dist/index.js",
-    "server": "./dist/server.js"
+    "server": "./dist/server.js",
+    "jobs": "./dist/server-jobs.js"
+  },
+  "runtimeRequirements": {
+    "jobs": "waste-management.operations"
   }
 }

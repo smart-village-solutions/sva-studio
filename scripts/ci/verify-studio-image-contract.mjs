@@ -36,7 +36,11 @@ const workspacePluginIds = [
 const packagedRegularPlugins = regularPlugins.filter((id) => id !== 'waste-management');
 const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
-  ssf: [...regularPlugins.map((id) => `plugin-${id}`)],
+  ssf: [
+    ...regularPlugins.map((id) => `plugin-${id}`),
+    'waste-management-contracts',
+    'waste-management-runtime',
+  ],
 };
 
 const fail = (code) => {
@@ -62,11 +66,15 @@ const verifyChunkProvenance = (
   if (!Array.isArray(files) || files.length === 0) fail('chunk_provenance_file_inventory_invalid');
   const allowed = new Set([
     'plugin-sdk',
+    ...(distribution === 'ssf' ? [] : ['waste-management-contracts', 'waste-management-runtime']),
     ...selectedPluginIds.map((id) => `plugin-${id}`),
     ...installedPlugins.map((entry) => entry.sourceRef),
   ]);
   const excluded = new Set(
-    workspacePluginIds.filter((id) => !selectedPluginIds.includes(id)).map((id) => `plugin-${id}`)
+    [
+      ...workspacePluginIds.filter((id) => !selectedPluginIds.includes(id)).map((id) => `plugin-${id}`),
+      ...(distribution === 'ssf' ? ['waste-management-contracts', 'waste-management-runtime'] : []),
+    ]
   );
   const paths = new Set();
   const actual = new Map();
@@ -251,8 +259,11 @@ export const verifyStudioImageContract = (input) => {
   for (const name of excluded) {
     if (present.has(name)) fail(`excluded_workspace_package_present:${name}`);
   }
-  if (!present.has('waste-management-contracts') || !present.has('waste-management-runtime')) {
-    fail('waste_management_workspace_package_missing');
+  for (const name of ['waste-management-contracts', 'waste-management-runtime']) {
+    if (distribution === 'ssf' && present.has(name))
+      fail(`excluded_workspace_package_present:${name}`);
+    if (distribution !== 'ssf' && !present.has(name))
+      fail('waste_management_workspace_package_missing');
   }
   const verifiedChunks = verifyChunkProvenance(
     distribution,

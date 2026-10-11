@@ -37,6 +37,12 @@ describe('waste management contracts job definitions', () => {
     ]);
   });
 
+  it('reserves every Waste job for its dedicated start path', () => {
+    expect(createWasteManagementPluginJobTypes().map(({ startPolicy }) => startPolicy)).toEqual(
+      Array(13).fill('dedicated')
+    );
+  });
+
   it('exposes every supported Waste import profile', () => {
     expect(createWasteManagementPluginImportProfiles().map(({ profileId }) => profileId)).toEqual([
       'waste-management.fraktionen',

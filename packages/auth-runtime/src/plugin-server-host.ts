@@ -1,15 +1,8 @@
 import { emitAuthAuditEvent } from './audit-events.js';
 import { evaluateAuthorizeDecision } from '@sva/iam-core';
 import {
-  listWasteManagementAuditRecords,
-  listWasteManagementTechnicalAuditRecords,
-} from '@sva/iam-governance';
-import {
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
-  loadWasteTenantProvisioningRecord,
-  requestWasteTenantProvisioning,
-  failWasteTenantProvisioningRequest,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
 } from '@sva/data-repositories/server';
@@ -70,9 +63,6 @@ export const pluginServerHost = {
   emitAuthAuditEvent,
   listExternalInterfaceRecords,
   loadDefaultExternalInterfaceRecord,
-  loadWasteTenantProvisioningRecord,
-  requestWasteTenantProvisioning,
-  failWasteTenantProvisioningRequest,
   saveExternalInterfaceRecord,
   saveExternalInterfaceConnectionCheck,
   withInstanceDb,
@@ -84,8 +74,6 @@ export const pluginServerHost = {
   reserveIdempotency,
   resolveActorInfo,
   authorizePluginAction,
-  listWasteManagementAuditRecords,
-  listWasteManagementTechnicalAuditRecords,
   buildLogContext,
   withAuthenticatedUser,
   readPluginOperationInput,

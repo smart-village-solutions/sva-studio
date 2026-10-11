@@ -9,10 +9,6 @@ import type {
   IamInstanceProvisioningReadiness,
   IamTenantIamStatus,
 } from '@sva/core';
-import type {
-  WasteIamInstanceDetail,
-  WasteManagementSettingsRecord,
-} from '@sva/waste-management-contracts';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 import type { ChangeInstanceStatusInput } from './mutation-types.js';
@@ -124,7 +120,6 @@ export const buildInstanceDetail = (
   keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = [],
   tenantIamStatus?: IamTenantIamStatus,
   moduleIamStatus?: IamInstanceDetail['moduleIamStatus'],
-  wasteManagementSettings?: WasteManagementSettingsRecord,
   provisioningReadiness: IamInstanceProvisioningReadiness = {
     state: 'unknown',
     capabilities: [],
@@ -141,7 +136,7 @@ export const buildInstanceDetail = (
     source: instance.accountInvitationTemplate ? 'instance' : 'sva_default',
   },
   serverAccountInvitationTemplateRevision = 0
-): WasteIamInstanceDetail => ({
+): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
     {
@@ -161,7 +156,6 @@ export const buildInstanceDetail = (
   tenantIamStatus,
   moduleIamStatus,
   provisioningReadiness,
-  wasteManagementSettings,
   effectiveAccountInvitationTemplate: effectiveAccountInvitationTemplate.template,
   accountInvitationTemplateSource: effectiveAccountInvitationTemplate.source,
   serverAccountInvitationTemplateRevision,

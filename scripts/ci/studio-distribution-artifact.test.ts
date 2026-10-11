@@ -188,6 +188,56 @@ describe('studio-distribution-artifact', () => {
     expect(() => runArtifactCommand('write-chunk-provenance', outputRoot, 'ssf')).toThrow();
   });
 
+  it.each(['waste-management-contracts', 'waste-management-runtime'] as const)(
+    'rejects %s from workspace, node_modules and pnpm chunks in SSF',
+    (packageName) => {
+      const { outputRoot, reportRoot } = createChunkFixture('ssf');
+      const sources = [
+        `/workspace/packages/${packageName}/src/index.ts`,
+        `/workspace/node_modules/@sva/${packageName}/dist/index.js`,
+        `/workspace/node_modules/.pnpm/@sva+${packageName}@1.0.0/node_modules/@sva/${packageName}/dist/index.js`,
+      ];
+      for (const source of sources) {
+        const serverChunk = source.includes('/.pnpm/');
+        writeFileSync(
+          path.join(reportRoot, serverChunk ? 'ssr.json' : 'client.json'),
+          JSON.stringify([{ fileName: serverChunk ? 'assets/router.js' : 'assets/index.js', modules: [source] }])
+        );
+        expect(() => runArtifactCommand('write-chunk-provenance', outputRoot, 'ssf')).toThrow(
+          `chunk_provenance_excluded_plugin:${packageName}`
+        );
+      }
+    }
+  );
+
+  it('records bundled Waste packages as allowed Studio chunk sources', () => {
+    const { outputRoot, reportRoot } = createChunkFixture('studio');
+    writeFileSync(
+      path.join(reportRoot, 'client.json'),
+      JSON.stringify([
+        {
+          fileName: 'assets/index.js',
+          modules: [
+            '/workspace/packages/plugin-news/src/client.ts',
+            '/workspace/packages/waste-management-contracts/src/index.ts',
+            '/workspace/packages/waste-management-runtime/src/index.ts',
+          ],
+        },
+      ])
+    );
+    runArtifactCommand('write-chunk-provenance', outputRoot, 'studio');
+    const provenance = JSON.parse(
+      readFileSync(
+        path.join(outputRoot, 'server', 'generated', 'studio-chunk-provenance.json'),
+        'utf8'
+      )
+    );
+    expect(
+      provenance.chunks.find((chunk: { path: string }) => chunk.path === 'public/assets/index.js')
+        .pluginPackages
+    ).toEqual(['plugin-news', 'waste-management-contracts', 'waste-management-runtime']);
+  });
+
   it('rejects source maps from the final output', () => {
     const { outputRoot } = createChunkFixture('ssf');
     writeFileSync(path.join(outputRoot, 'public', 'assets', 'index.js.map'), '{}');
@@ -397,26 +447,12 @@ describe('studio-distribution-artifact', () => {
     runArtifactCommand('write-manifest', outputRoot, 'ssf');
 
     expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', 'plugin-ssf'))).toBe(true);
-    expect(
-      existsSync(path.join(deployRoot, 'node_modules', '@sva', 'waste-management-contracts'))
-    ).toBe(true);
-    expect(
-      existsSync(path.join(deployRoot, 'node_modules', '@sva', 'waste-management-runtime'))
-    ).toBe(true);
-    expect(
-      existsSync(
-        path.join(
-          deployRoot,
-          'node_modules',
-          '.pnpm',
-          'waste-management-runtime@1.0.0',
-          'node_modules',
-          '@sva',
-          'waste-management-runtime'
-        )
-      )
-    ).toBe(true);
-    for (const packageName of ['plugin-news', 'plugin-waste-management']) {
+    for (const packageName of [
+      'plugin-news',
+      'plugin-waste-management',
+      'waste-management-contracts',
+      'waste-management-runtime',
+    ]) {
       expect(existsSync(path.join(deployRoot, 'node_modules', '@sva', packageName))).toBe(false);
       expect(
         existsSync(
@@ -455,6 +491,8 @@ describe('studio-distribution-artifact', () => {
         'plugin-projects',
         'plugin-surveys',
         'plugin-waste-management',
+        'waste-management-contracts',
+        'waste-management-runtime',
       ],
     });
   });

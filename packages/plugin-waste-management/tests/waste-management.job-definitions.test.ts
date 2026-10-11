@@ -10,7 +10,7 @@ describe('waste management job definitions', () => {
     const jobTypes = createWasteManagementPluginJobTypes();
     expect(
       jobTypes.filter(({ jobTypeId }) => jobTypeId !== 'waste-management.export-data')
-    ).toEqual([
+    ).toMatchObject([
       {
         jobTypeId: 'waste-management.provision-tenant-database',
         queue: 'waste-provisioning',
@@ -279,6 +279,20 @@ describe('waste management job definitions', () => {
         },
       },
     ]);
+    expect(
+      jobTypes.find(({ jobTypeId }) => jobTypeId === 'waste-management.provision-tenant-database')
+    ).toMatchObject({
+      executionLane: 'privileged',
+      startPolicy: 'dedicated',
+      supportsCancellation: false,
+    });
+    expect(
+      jobTypes.find(({ jobTypeId }) => jobTypeId === 'waste-management.sync-mainserver')
+    ).toMatchObject({
+      executionLane: 'default',
+      startPolicy: 'dedicated',
+      supportsCancellation: true,
+    });
     expect(jobTypes).toContainEqual(
       expect.objectContaining({
         jobTypeId: 'waste-management.export-data',

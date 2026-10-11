@@ -37,6 +37,8 @@ const excludedPackages: Readonly<Record<'studio' | 'ssf', readonly string[]>> = 
     'plugin-projects',
     'plugin-surveys',
     'plugin-waste-management',
+    'waste-management-contracts',
+    'waste-management-runtime',
   ],
 };
 

@@ -26,6 +26,9 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*",
+    "@sva/mail-runtime": "workspace:*",
+    "exceljs": "^4.4.0",
+    "fflate": "^0.8.2",
     "pg": "^8.22.0",
     "zod": "^4.3.6"
   },

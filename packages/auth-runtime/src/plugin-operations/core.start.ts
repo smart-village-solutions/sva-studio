@@ -31,7 +31,8 @@ export const validateStartRequestData = (
   request: Request,
   requestId: string | undefined
 ): Response | null => {
-  if (data.pluginId === 'waste-management') {
+  const registration = getRegisteredPluginOperationExecutionRegistry().get(data.jobTypeId);
+  if (registration?.startPolicy === 'dedicated') {
     return createApiError(
       400,
       'invalid_request',
@@ -71,7 +72,7 @@ export const validateStartRequestData = (
     }
   }
 
-  if (!getRegisteredPluginOperationExecutionRegistry().has(data.jobTypeId)) {
+  if (!registration) {
     return createApiError(400, 'invalid_request', 'Unbekannter Plugin-Jobtyp.', requestId);
   }
 

@@ -26,8 +26,6 @@ const createDeps = (repository: InstanceRegistryRepository, overrides: Partial<I
     protectSecret: vi.fn(),
     invalidateHost: vi.fn(),
     invalidatePermissionSnapshots: vi.fn(),
-    loadWasteDataSourceRecord: vi.fn(),
-    saveWasteDataSourceRecord: vi.fn(),
     moduleIamRegistry: new Map(),
     ...overrides,
   }) as unknown as InstanceRegistryServiceDeps;

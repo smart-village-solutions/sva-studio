@@ -88,6 +88,22 @@ describe('plugin server runtime loader', () => {
     expect(bindings['waste-management.getHistory.get']).toBeTypeOf('function');
   }, 15_000);
 
+  it('passes only the composed Waste host capabilities to its server factory', async () => {
+    const factory = vi.fn(() => ({}));
+    await createPluginServerExecutionHandlersFromSnapshot({
+      pluginSources: [source('waste-management')],
+      loadServerModule: vi.fn().mockResolvedValue({ createPluginServerHandlers: factory }),
+    });
+    expect(factory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        withInstanceDb: expect.any(Function),
+        withStudioJobRepository: expect.any(Function),
+        authorizePluginAction: expect.any(Function),
+        validateCsrf: expect.any(Function),
+      })
+    );
+  });
+
   it('fails closed for a missing factory or duplicate handler binding', async () => {
     await expect(
       createPluginServerExecutionHandlersFromSnapshot({

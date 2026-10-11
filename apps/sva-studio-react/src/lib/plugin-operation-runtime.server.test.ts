@@ -10,6 +10,8 @@ vi.mock('@sva/auth-runtime/server', () => ({
     jobTypeId: 'media.content-save-recovery',
   },
   protectField: vi.fn((value: string) => value),
+  readPluginOperationInput: vi.fn(async () => ({ body: new Uint8Array() })),
+  storePluginOperationArtifact: vi.fn(),
   readTenantPermissionProjectionSubjects: vi.fn(),
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
@@ -29,6 +31,7 @@ vi.mock('@sva/plugin-ssf/provisioning', () => ({
 
 const createPluginJobExecutionHandlersMock = vi.fn(() => ({
   'waste-management.provision-tenant-database': vi.fn(),
+  'waste-management.export-data': vi.fn(),
   'waste-management.apply-migrations': vi.fn(),
   'waste-management.import-data': vi.fn(),
   'waste-management.initialize-data-source': vi.fn(),
@@ -40,10 +43,12 @@ const createPluginJobExecutionHandlersMock = vi.fn(() => ({
 
 vi.mock('@sva/waste-management-runtime/server', () => ({
   createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
+  createWasteManagementOperationRuntime: vi.fn(() => ({})),
 }));
 
 const declaredWasteJobTypeIds = [
   'waste-management.provision-tenant-database',
+  'waste-management.export-data',
   'waste-management.apply-migrations',
   'waste-management.import-data',
   'waste-management.initialize-data-source',
@@ -52,6 +57,9 @@ const declaredWasteJobTypeIds = [
   'waste-management.sync-mainserver',
   'waste-management.sync-waste-types',
 ] as const;
+const wasteJobTypeOwners = new Map(
+  declaredWasteJobTypeIds.map((jobTypeId) => [jobTypeId, { ownerPluginId: 'waste-management' }])
+);
 
 const createJobPluginSource = (input: {
   readonly pluginId: string;
@@ -76,7 +84,7 @@ const createJobPluginSource = (input: {
     },
     entryPoints: {
       browser: './dist/index.js',
-      jobs: input.jobsEntry ?? './dist/server.js',
+      jobs: input.jobsEntry ?? './dist/server-jobs.js',
     },
     runtimeRequirements: input.runtimeRequirement
       ? {
@@ -108,7 +116,38 @@ describe('plugin operation runtime registration', () => {
                 jobTypeId === 'waste-management.provision-tenant-database'
                   ? 'waste-provisioning'
                   : 'plugin-operations',
+              executionLane:
+                jobTypeId === 'waste-management.provision-tenant-database'
+                  ? 'privileged'
+                  : 'default',
+              startPolicy: 'dedicated',
+              supportsCancellation: jobTypeId === 'waste-management.sync-mainserver',
+              ...(jobTypeId === 'waste-management.export-data'
+                ? { artifactPermissionId: 'waste-management.export.execute' }
+                : {}),
             })),
+            pluginJobTypeRegistry: new Map(
+              declaredWasteJobTypeIds.map((jobTypeId) => [
+                jobTypeId,
+                {
+                  jobTypeId,
+                  ownerPluginId: 'waste-management',
+                  queue:
+                    jobTypeId === 'waste-management.provision-tenant-database'
+                      ? 'waste-provisioning'
+                      : 'plugin-operations',
+                  executionLane:
+                    jobTypeId === 'waste-management.provision-tenant-database'
+                      ? 'privileged'
+                      : 'default',
+                  startPolicy: 'dedicated',
+                  supportsCancellation: jobTypeId === 'waste-management.sync-mainserver',
+                  ...(jobTypeId === 'waste-management.export-data'
+                    ? { artifactPermissionId: 'waste-management.export.execute' }
+                    : {}),
+                },
+              ])
+            ),
           },
         },
       },
@@ -122,6 +161,7 @@ describe('plugin operation runtime registration', () => {
 
     expect(Object.keys(handlers).sort()).toEqual([
       'waste-management.apply-migrations',
+      'waste-management.export-data',
       'waste-management.import-data',
       'waste-management.initialize-data-source',
       'waste-management.provision-tenant-database',
@@ -144,6 +184,7 @@ describe('plugin operation runtime registration', () => {
     expect(handlers).not.toHaveProperty('ssf.reconcile-authorization');
     expect(handlers['waste-management.reset-data']).toMatchObject({
       supportsCancellation: false,
+      startPolicy: 'dedicated',
     });
     expect(handlers['waste-management.seed-data']).toMatchObject({
       supportsCancellation: false,
@@ -196,6 +237,40 @@ describe('plugin operation runtime registration', () => {
     expect(() => mod.assertStudioPluginOperationHandlerCoverage(handlers)).not.toThrow();
   });
 
+  it('rejects the Waste runtime for plugins outside the host allowlist', async () => {
+    const pluginId = 'untrusted-waste-plugin';
+    const source = createJobPluginSource({
+      pluginId,
+      runtimeRequirement: 'waste-management.operations',
+    });
+    const jobTypes = declaredWasteJobTypeIds.map((jobTypeId) => ({
+      jobTypeId,
+      ownerPluginId: pluginId,
+      queue:
+        jobTypeId === 'waste-management.provision-tenant-database'
+          ? 'waste-provisioning'
+          : 'plugin-operations',
+      executionLane:
+        jobTypeId === 'waste-management.provision-tenant-database' ? 'privileged' : 'default',
+    }));
+    vi.doMock('./plugin-catalog.server.js', () => ({
+      studioServerPluginCatalogReport: {
+        snapshot: {
+          pluginSources: [source],
+          registry: {
+            jobTypes,
+            pluginJobTypeRegistry: new Map(jobTypes.map((entry) => [entry.jobTypeId, entry])),
+          },
+        },
+      },
+    }));
+    const mod = await import('./plugin-operation-runtime.server');
+
+    await expect(mod.createStudioPluginOperationExecutionHandlers()).rejects.toThrowError(
+      `plugin_job_runtime_owner_mismatch:${pluginId}:waste-management.operations`
+    );
+  });
+
   it('rejects active plugin job types without a matching runtime handler', async () => {
     const mod = await import('./plugin-operation-runtime.server');
     const handlers = await mod.createStudioPluginOperationExecutionHandlers();
@@ -213,6 +288,7 @@ describe('plugin operation runtime registration', () => {
 
     const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
       pluginSources: [],
+      jobTypeOwners: wasteJobTypeOwners,
       runtimeFactories: {},
     });
 
@@ -235,6 +311,7 @@ describe('plugin operation runtime registration', () => {
           runtimeRequirement: 'waste-management.operations',
         }),
       ],
+      jobTypeOwners: wasteJobTypeOwners,
       runtimeFactories: {
         'waste-management.operations': () => ({}),
       },
@@ -242,6 +319,7 @@ describe('plugin operation runtime registration', () => {
 
     expect(Object.keys(handlers).sort()).toEqual([
       'waste-management.apply-migrations',
+      'waste-management.export-data',
       'waste-management.import-data',
       'waste-management.initialize-data-source',
       'waste-management.provision-tenant-database',
@@ -278,6 +356,7 @@ describe('plugin operation runtime registration', () => {
           }),
         },
       ],
+      jobTypeOwners: wasteJobTypeOwners,
       runtimeFactories: {},
     });
 
@@ -312,6 +391,7 @@ describe('plugin operation runtime registration', () => {
             },
           },
         ],
+        jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {},
       })
     ).rejects.toThrowError('plugin_job_runtime_requirement_missing:custom-waste-plugin');
@@ -328,6 +408,7 @@ describe('plugin operation runtime registration', () => {
             runtimeRequirement: 'custom.runtime',
           }),
         ],
+        jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {},
       })
     ).rejects.toThrowError(
@@ -337,6 +418,7 @@ describe('plugin operation runtime registration', () => {
 
   it('does not apply the host-owned waste runtime factory to unrelated plugins with the same runtime requirement', async () => {
     const mod = await import('./plugin-operation-runtime.server');
+    const runtimeFactory = vi.fn(() => ({}));
 
     await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
@@ -348,11 +430,15 @@ describe('plugin operation runtime registration', () => {
             sourceRef: '@acme/plugin-waste-management',
           }),
         ],
+        jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {
-          'waste-management.operations': () => ({}),
+          'waste-management.operations': runtimeFactory,
         },
       })
-    ).rejects.toThrowError('missing_plugin_job_module_factory:custom-waste-plugin');
+    ).rejects.toThrowError(
+      'plugin_job_runtime_owner_mismatch:custom-waste-plugin:waste-management.operations'
+    );
+    expect(runtimeFactory).not.toHaveBeenCalled();
   });
 
   it('rejects package job sources without a loadable module factory', async () => {
@@ -370,6 +456,7 @@ describe('plugin operation runtime registration', () => {
             sourceRef: '@acme/plugin-custom',
           },
         ],
+        jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {
           'custom.runtime': () => ({}),
         },
@@ -377,7 +464,7 @@ describe('plugin operation runtime registration', () => {
     ).rejects.toThrowError('missing_plugin_job_module_factory:installed-custom-plugin');
   });
 
-  it('registers the host-owned waste runtime even when the waste plugin no longer declares a jobs entry point', async () => {
+  it('does not register Waste handlers when the manifest omits its jobs entry point', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
     const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
@@ -404,13 +491,14 @@ describe('plugin operation runtime registration', () => {
           }),
         },
       ],
+      jobTypeOwners: wasteJobTypeOwners,
       runtimeFactories: {
         'waste-management.operations': () => ({}),
       },
     });
 
-    expect(Object.keys(handlers)).toContain('waste-management.initialize-data-source');
-    expect(createPluginJobExecutionHandlersMock).toHaveBeenCalled();
+    expect(Object.keys(handlers)).toEqual([]);
+    expect(createPluginJobExecutionHandlersMock).not.toHaveBeenCalled();
   });
 
   it('loads workspace job modules through normalized fallback candidates when the declared jobs entry points to dist output', async () => {
@@ -458,6 +546,7 @@ describe('plugin operation runtime registration', () => {
           jobsEntry: './dist/jobs/custom-entry.js',
         }),
       ],
+      jobTypeOwners: new Map([['custom.job', { ownerPluginId: 'custom-waste-plugin' }]]),
       runtimeFactories: {
         'custom.runtime': () => ({}),
       },
@@ -511,6 +600,7 @@ describe('plugin operation runtime registration', () => {
           jobsEntry: './',
         }),
       ],
+      jobTypeOwners: new Map([['custom.empty-job', { ownerPluginId: 'custom-empty-plugin' }]]),
       runtimeFactories: {
         'custom.runtime': () => ({}),
       },
@@ -519,21 +609,75 @@ describe('plugin operation runtime registration', () => {
     expect(Object.keys(handlers)).toEqual(['custom.empty-job']);
   });
 
-  it('rejects duplicate job handlers when two plugin sources register the same job type', async () => {
+  it('rejects a handler declared by another plugin before registration', async () => {
+    vi.doMock('./plugin-build-registry.js', () => ({
+      createPluginBuildRegistries: () => ({
+        workspacePluginRegistry: new Map([
+          [
+            'packages/plugin-other::src/server-jobs.ts',
+            async () => ({ createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock }),
+          ],
+        ]),
+        nodePluginRegistry: new Map(),
+      }),
+    }));
     const mod = await import('./plugin-operation-runtime.server');
 
     await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
         pluginSources: [
           createJobPluginSource({
-            pluginId: 'waste-management',
-            runtimeRequirement: 'waste-management.operations',
-          }),
-          createJobPluginSource({
-            pluginId: 'waste-management',
-            runtimeRequirement: 'waste-management.operations',
+            pluginId: 'other-plugin',
+            runtimeRequirement: 'custom.runtime',
+            sourceRef: 'packages/plugin-other',
           }),
         ],
+        jobTypeOwners: wasteJobTypeOwners,
+        runtimeFactories: {
+          'custom.runtime': () => ({}),
+        },
+      })
+    ).rejects.toThrowError(
+      'plugin_operation_handler_owner_mismatch:waste-management.provision-tenant-database:other-plugin'
+    );
+  });
+
+  it('rejects duplicate job handlers contributed by two sources', async () => {
+    vi.doMock('./plugin-build-registry.js', () => ({
+      createPluginBuildRegistries: () => ({
+        workspacePluginRegistry: new Map([
+          [
+            'packages/plugin-custom-a::src/server-jobs.ts',
+            async () => ({
+              createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
+            }),
+          ],
+          [
+            'packages/plugin-custom-b::src/server-jobs.ts',
+            async () => ({
+              createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
+            }),
+          ],
+        ]),
+        nodePluginRegistry: new Map(),
+      }),
+    }));
+    const mod = await import('./plugin-operation-runtime.server');
+    const first = createJobPluginSource({
+      pluginId: 'waste-management',
+      runtimeRequirement: 'waste-management.operations',
+      sourceRef: 'packages/plugin-custom-a',
+    });
+    const second = createJobPluginSource({
+      pluginId: 'waste-management',
+      runtimeRequirement: 'waste-management.operations',
+      sourceRef: 'packages/plugin-custom-b',
+    });
+
+    await expect(
+      mod.createPluginOperationExecutionHandlersFromSnapshot({
+        pluginSources: [first, second],
+        jobTypeOwners: wasteJobTypeOwners,
         runtimeFactories: {
           'waste-management.operations': () => ({}),
         },

@@ -179,7 +179,9 @@ Modulen der jeweiligen Bausteine.
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
 - `@sva/waste-management-contracts` besitzt die browserfähigen Waste-Verträge und reinen Fachfunktionen einschließlich `wasteTypes`-Static-Content, Importprofilen, Jahreswechselregeln und Kalenderausgabe; der Node-basierte PDF-Renderer liegt im Server-Subpath `./pdf`. Core und Plugin-SDK reichen die Fachverträge nicht weiter
-- `@sva/waste-management-runtime/server` besitzt die fachlichen HTTP-Handler und Jobs; `./repositories` besitzt Waste-SQL und die transaktionalen Schreibvorgänge
+- `@sva/waste-management-runtime` besitzt Waste-HTTP-Handler, Jobs, Fachoperationen, Persistenzadapter und Auditprojektionen; `./repositories` hält die Waste-SQL- und Transaktionsgrenze
+- der Plugin-Server-Entry erhält am bestehenden Studio-Snapshot-Ladepunkt nur die benötigten Hostfähigkeiten. Der generische Dispatcher liefert den bereits authentifizierten Actor-, Session- und Organisationskontext; das Plugin importiert keine Auth-Fassade und authentifiziert Anfragen nicht erneut
+- die App bleibt Owner von Authentifizierung, Tenant-/Permission-Entscheidung, CSRF, Audit-Infrastruktur und tenantgebundenem `withInstanceDb`; die Runtime behält fachliche Lifecycle- und Zusatzrechteprüfungen
 - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, PDF-Stamminhalte, technische Werkzeuge und instanzbezogene Einstellungen
 - kontextuelle Ausweichtermin-Aktionen in Tourenliste, Jahreskalender und Terminlogik verwenden dieselbe route-basierte Erfassungsansicht in einem neuen Browser-Tab; die reine Auswahl zwischen jährlicher Grundregel und jahresbezogener Ausnahme gehört framework-agnostisch zu `@sva/waste-management-contracts`
 - deklariert alle 49 Waste-Pfade und 62 Methoden unter `/api/v1/waste-management/*` im Plugin-Server-Snapshot; der Host prüft Authentifizierung, Tenant, Rechte und CSRF vor der Fachausführung

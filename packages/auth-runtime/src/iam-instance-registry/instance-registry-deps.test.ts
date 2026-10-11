@@ -7,13 +7,6 @@ const mocks = vi.hoisted(() => ({
   readKeycloakRealmCreateCapabilityViaProvisioner: vi.fn(),
   readKeycloakStateViaProvisioner: vi.fn(),
   readInstanceRegistryPluginOidcClientRequirements: vi.fn(),
-  loadWasteDataSourceRecord: vi.fn(),
-  saveWasteDataSourceRecord: vi.fn(),
-}));
-
-vi.mock('../waste-management/waste-data-sources.server.js', () => ({
-  loadWasteDataSourceRecord: mocks.loadWasteDataSourceRecord,
-  saveWasteDataSourceRecord: mocks.saveWasteDataSourceRecord,
 }));
 
 vi.mock('../iam-account-management/encryption.js', () => ({
@@ -36,7 +29,7 @@ vi.mock('./plugin-activation-policy-snapshot.js', () => ({
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 
 describe('withAuthInstanceRegistryDeps', () => {
-  it('injects encryption, provisioner, and waste datasource helpers into auth registry deps', () => {
+  it('injects encryption and provisioner helpers into auth registry deps', () => {
     const custom = {
       invalidateHost: vi.fn(),
     };
@@ -56,7 +49,5 @@ describe('withAuthInstanceRegistryDeps', () => {
     expect(enriched.readPluginOidcClientRequirements).toBe(
       mocks.readInstanceRegistryPluginOidcClientRequirements
     );
-    expect(enriched.loadWasteDataSourceRecord).toBe(mocks.loadWasteDataSourceRecord);
-    expect(enriched.saveWasteDataSourceRecord).toBe(mocks.saveWasteDataSourceRecord);
   });
 });

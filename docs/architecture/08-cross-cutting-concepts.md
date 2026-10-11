@@ -1181,6 +1181,13 @@ Tokens, Secrets oder E-Mail-Adressen.
 
 Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. `studio` und `ssf` behalten ihre festen Build-Auswahlen. Ein manueller Build kann optional eine explizite Workspace-Plugin-Menge verwenden; daraus entstehen Katalog, Route, Server-, Job-, Mainserver- und IAM-Beiträge gemeinsam. Unbekannte, doppelte oder widersprüchliche IDs stoppen den Build. Die Auswahl wird im Manifest und OCI-Fingerabdruck gebunden; Image-Prüfung gleicht sie mit Chunk-Provenienz und Paketbestand ab.
 
+### Waste-Plugin-Runtime-Grenze
+
+- `@sva/plugin-waste-management` enthält Browser-UI und deklarative Beiträge. Serverseitige Waste-Handler, Fachoperationen, Datenquellen-/Provisionierungsadapter und Auditprojektionen liegen in `@sva/waste-management-runtime`.
+- Die Studio-App komponiert am vorhandenen Snapshot-Ladepunkt explizite Hostfähigkeiten. Der Plugin-Handler erhält den vom generischen Dispatcher geprüften Actor-, Session- und Organisationskontext, statt Authentifizierung erneut aufzurufen.
+- Authentifizierung, Tenantbindung, Berechtigungen, CSRF, Audit-Ausgabe, Queue und tenantgebundenes `withInstanceDb` bleiben Hostverantwortung. Die Waste-Runtime hält ihre Lifecycle- und fachlichen Zusatzprüfungen.
+- Allgemeine Instanz- und Jobpfade enthalten keine Waste-ID-Sonderfälle. Ein Profil ohne Waste muss deshalb ohne Waste-Pakete booten und generische Instanz-/Jobzugriffe bereitstellen können.
+
 ### SSF-Sprachkatalog und Ausfallverhalten
 
 - Sprachoptionen der SSF-V2-Inhaltsverwaltung stammen aus dem serverseitig

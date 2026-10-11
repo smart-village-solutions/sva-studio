@@ -55,9 +55,9 @@ const pluginSource = (
   );
   if (selected) return selected.sourceRef;
   return (
-    /(?:^|\/)packages\/(plugin-[a-z0-9-]+)\/(?:src|dist)\//.exec(normalized)?.[1] ??
-    /(?:^|\/)node_modules\/@sva\/(plugin-[a-z0-9-]+)\//.exec(normalized)?.[1] ??
-    /(?:^|\/)node_modules\/\.pnpm\/@sva\+(plugin-[a-z0-9-]+)@/.exec(normalized)?.[1]
+    /(?:^|\/)packages\/(plugin-[a-z0-9-]+|waste-management-(?:contracts|runtime))\/(?:src|dist)\//.exec(normalized)?.[1] ??
+    /(?:^|\/)node_modules\/@sva\/(plugin-[a-z0-9-]+|waste-management-(?:contracts|runtime))\//.exec(normalized)?.[1] ??
+    /(?:^|\/)node_modules\/\.pnpm\/@sva\+(plugin-[a-z0-9-]+|waste-management-(?:contracts|runtime))@/.exec(normalized)?.[1]
   );
 };
 
@@ -135,6 +135,7 @@ export const writeChunkProvenance = (
   const excluded = new Set(excludedPackages);
   const allowed = new Set([
     'plugin-sdk',
+    ...(distribution === 'ssf' ? [] : ['waste-management-contracts', 'waste-management-runtime']),
     ...selectedPluginIds.map((id) => `plugin-${id}`),
     ...installed.map((source) => source.sourceRef),
   ]);

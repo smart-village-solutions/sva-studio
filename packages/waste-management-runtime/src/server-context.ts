@@ -4,15 +4,15 @@ import {
   toSafeLogPath,
   withRequestContext,
 } from '@sva/server-runtime';
-import { resolveWasteDataSource, runWasteConnectionCheck } from './repositories.js';
+import {
+  createWasteProvisioningAccess,
+  resolveWasteDataSource,
+  runWasteConnectionCheck,
+} from './repositories.js';
 import { Pool } from 'pg';
 import { wasteManagementOperationsContract } from '@sva/waste-management-contracts';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
-import type {
-  listExternalInterfaceRecords,
-  loadDefaultExternalInterfaceRecord,
-  loadWasteTenantProvisioningRecord,
-} from '@sva/data-repositories/server';
+import type { listExternalInterfaceRecords, loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 
 import type {
   AuthenticatedRequestContext,
@@ -25,10 +25,6 @@ type RequiredDependency<K extends keyof WasteManagementHandlerDeps> = NonNullabl
 >;
 
 export type WasteServerContextHost = Readonly<{
-  withAuthenticatedUser: (
-    request: Request,
-    handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
-  ) => Promise<Response>;
   readConfiguredPluginTenantAccess: (
     instanceId: string,
     pluginId: string
@@ -75,9 +71,7 @@ export type WasteServerContextHost = Readonly<{
   completeIdempotency: RequiredDependency<'completeIdempotency'>;
   listExternalInterfaceRecords: typeof listExternalInterfaceRecords;
   loadDefaultExternalInterfaceRecord: typeof loadDefaultExternalInterfaceRecord;
-  loadWasteTenantProvisioningRecord: typeof loadWasteTenantProvisioningRecord;
-  requestWasteTenantProvisioning: RequiredDependency<'requestWasteTenantProvisioning'>;
-  failWasteTenantProvisioningRequest: RequiredDependency<'failWasteTenantProvisioningRequest'>;
+  withInstanceDb: Parameters<typeof createWasteProvisioningAccess>[0];
   saveExternalInterfaceRecord: RequiredDependency<'saveExternalInterfaceRecord'>;
   saveExternalInterfaceConnectionCheck: RequiredDependency<'saveExternalInterfaceConnectionCheck'>;
 }>;
@@ -87,30 +81,29 @@ const logger = createSdkLogger({ component: 'waste-management-auth-runtime', lev
 const createAuthenticatedWasteHandler =
   (host: WasteServerContextHost) =>
   (
+    ctx: AuthenticatedRequestContext,
     request: Request,
     handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>
   ): Promise<Response> =>
     withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
       try {
-        return await host.withAuthenticatedUser(request, async (ctx) => {
-          const instanceId = ctx.user.instanceId;
-          if (instanceId) {
-            const access = await host.readConfiguredPluginTenantAccess(
-              instanceId,
-              wasteManagementOperationsContract.pluginId
+        const instanceId = ctx.user.instanceId;
+        if (instanceId) {
+          const access = await host.readConfiguredPluginTenantAccess(
+            instanceId,
+            wasteManagementOperationsContract.pluginId
+          );
+          if (!access.allowed) {
+            return host.createApiError(
+              409,
+              'plugin_tenant_access_blocked',
+              host.translatePluginTenantLifecycleMessage(request, 'pluginAccessBlocked'),
+              host.buildLogContext(instanceId).request_id,
+              { reason_code: access.reason }
             );
-            if (!access.allowed) {
-              return host.createApiError(
-                409,
-                'plugin_tenant_access_blocked',
-                host.translatePluginTenantLifecycleMessage(request, 'pluginAccessBlocked'),
-                host.buildLogContext(instanceId).request_id,
-                { reason_code: access.reason }
-              );
-            }
           }
-          return handler(request, ctx);
-        });
+        }
+        return handler(request, ctx);
       } catch (error) {
         const logContext = host.buildLogContext('default', { includeTraceId: true });
         logger.error('Waste management request failed unexpectedly', {
@@ -173,7 +166,7 @@ const createWasteActionAuthorizer =
   };
 
 const createWasteConnectionCheck =
-  (host: WasteServerContextHost) => async (instanceId: string, interfaceId: string) => {
+  (host: WasteServerContextHost, provisioning: ReturnType<typeof createWasteProvisioningAccess>) => async (instanceId: string, interfaceId: string) => {
     const interfaceRecord =
       (await host.listExternalInterfaceRecords(instanceId)).find(
         (record) => record.id === interfaceId
@@ -188,7 +181,7 @@ const createWasteConnectionCheck =
     const dataSource = await resolveWasteDataSource({
       instanceId,
       loadDefaultInterface: async () => interfaceRecord,
-      loadProvisioning: host.loadWasteTenantProvisioningRecord,
+      loadProvisioning: provisioning.loadWasteTenantProvisioningRecord,
       revealSecret: host.revealField,
     });
     return runWasteConnectionCheck({
@@ -215,7 +208,9 @@ const createWasteConnectionCheck =
     });
   };
 
-export const createWasteServerContext = (host: WasteServerContextHost) => ({
+export const createWasteServerContext = (host: WasteServerContextHost) => {
+  const provisioning = createWasteProvisioningAccess(host.withInstanceDb);
+  return {
   withAuthenticatedWasteManagementHandler: createAuthenticatedWasteHandler(host),
   sharedWasteManagementDeps: {
     authorizeAction: createWasteActionAuthorizer(host),
@@ -232,11 +227,12 @@ export const createWasteServerContext = (host: WasteServerContextHost) => ({
     emitAuditEvent: host.emitAuthAuditEvent,
     loadDefaultInterfaceRecord: host.loadDefaultExternalInterfaceRecord,
     listInterfaceRecords: host.listExternalInterfaceRecords,
-    loadWasteTenantProvisioning: host.loadWasteTenantProvisioningRecord,
-    requestWasteTenantProvisioning: host.requestWasteTenantProvisioning,
-    failWasteTenantProvisioningRequest: host.failWasteTenantProvisioningRequest,
+    loadWasteTenantProvisioning: provisioning.loadWasteTenantProvisioningRecord,
+    requestWasteTenantProvisioning: provisioning.requestWasteTenantProvisioning,
+    failWasteTenantProvisioningRequest: provisioning.failWasteTenantProvisioningRequest,
     saveExternalInterfaceRecord: host.saveExternalInterfaceRecord,
     saveExternalInterfaceConnectionCheck: host.saveExternalInterfaceConnectionCheck,
-    checkWasteConnection: createWasteConnectionCheck(host),
+    checkWasteConnection: createWasteConnectionCheck(host, provisioning),
   },
-});
+  };
+};

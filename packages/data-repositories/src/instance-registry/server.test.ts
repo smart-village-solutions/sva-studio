@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn(),
   },
   createInstanceRegistryRepository: vi.fn(),
-  createWasteProvisioningRepository: vi.fn(),
   poolFactory: vi.fn(),
 }));
 
@@ -29,7 +28,6 @@ vi.mock('./index.js', () => ({
 }));
 
 vi.mock('./repository-waste-provisioning.js', () => ({
-  createWasteProvisioningRepository: (...args: unknown[]) => mocks.createWasteProvisioningRepository(...args),
 }));
 
 const originalEnv = {
@@ -471,139 +469,4 @@ describe('instance registry server', () => {
     expect(poolDouble.release).toHaveBeenCalledTimes(1);
   });
 
-  it('delegates the complete Waste provisioning lifecycle through the server repository', async () => {
-    const server = await import('./server.js');
-    const poolDouble = createPoolDouble();
-    const provisioningRecord = {
-      instanceId: 'tenant-a',
-      status: 'provisioning',
-      desiredGeneration: 2,
-      completedGeneration: 1,
-      requestedAt: '2026-08-02T10:00:00.000Z',
-      updatedAt: '2026-08-02T10:00:00.000Z',
-    } as const;
-    const repository = {
-      getWasteProvisioning: vi.fn(async () => provisioningRecord),
-      disableWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'disabled' })),
-      requestWasteProvisioning: vi.fn(async () => provisioningRecord),
-      claimWasteProvisioning: vi.fn(async () => provisioningRecord),
-      completeWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'ready' })),
-      failWasteProvisioning: vi.fn(async () => ({ ...provisioningRecord, status: 'failed' })),
-      failWasteProvisioningRequest: vi.fn(async () => ({ ...provisioningRecord, status: 'failed' })),
-    };
-    const options = { getDatabaseUrl: () => 'postgres://db.example.test/sva' };
-
-    mocks.poolFactory.mockReturnValue(poolDouble.pool);
-    mocks.createWasteProvisioningRepository.mockReturnValue(repository);
-
-    await expect(server.loadWasteTenantProvisioningRecord('tenant-a', options)).resolves.toEqual(
-      provisioningRecord
-    );
-    await expect(server.requestWasteTenantProvisioning('tenant-a', options)).resolves.toEqual(
-      provisioningRecord
-    );
-    await expect(server.disableWasteTenantProvisioning('tenant-a', options)).resolves.toMatchObject({
-      status: 'disabled',
-    });
-    await expect(server.claimWasteTenantProvisioning({
-      instanceId: 'tenant-a',
-      jobId: 'job-2',
-      desiredGeneration: 2,
-    }, options)).resolves.toEqual(provisioningRecord);
-    await expect(server.completeWasteTenantProvisioning({
-      instanceId: 'tenant-a',
-      jobId: 'job-2',
-      desiredGeneration: 2,
-      databaseName: 'sva_waste_tenant_a',
-      interfaceId: 'waste-management:tenant-a',
-    }, options)).resolves.toMatchObject({ status: 'ready' });
-    await expect(server.failWasteTenantProvisioning({
-      instanceId: 'tenant-a',
-      jobId: 'job-2',
-      desiredGeneration: 2,
-      errorCode: 'probe_failed',
-      errorMessage: 'Probe failed',
-    }, options)).resolves.toMatchObject({ status: 'failed' });
-    await expect(server.failWasteTenantProvisioningRequest({
-      instanceId: 'tenant-a',
-      desiredGeneration: 2,
-      errorCode: 'enqueue_failed',
-      errorMessage: 'Enqueue failed',
-    }, options)).resolves.toMatchObject({ status: 'failed' });
-
-    expect(repository.getWasteProvisioning).toHaveBeenCalledWith('tenant-a');
-    expect(repository.requestWasteProvisioning).toHaveBeenCalledWith('tenant-a');
-    expect(repository.claimWasteProvisioning).toHaveBeenCalledOnce();
-    expect(repository.completeWasteProvisioning).toHaveBeenCalledOnce();
-    expect(repository.failWasteProvisioning).toHaveBeenCalledOnce();
-    expect(repository.failWasteProvisioningRequest).toHaveBeenCalledOnce();
-    const expectedTransactionCalls = [
-      ['BEGIN'],
-      ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
-      ['COMMIT'],
-    ];
-    expect(poolDouble.query.mock.calls).toEqual(
-      Array.from({ length: 7 }, () => expectedTransactionCalls).flat()
-    );
-    expect(poolDouble.release).toHaveBeenCalledTimes(7);
-  });
-
-  it('rolls back the tenant-scoped Waste provisioning transaction when the repository fails', async () => {
-    const server = await import('./server.js');
-    const poolDouble = createPoolDouble();
-    const repositoryError = new Error('provisioning lookup failed');
-
-    mocks.poolFactory.mockReturnValue(poolDouble.pool);
-    mocks.createWasteProvisioningRepository.mockReturnValue({
-      getWasteProvisioning: vi.fn(async () => Promise.reject(repositoryError)),
-    });
-
-    await expect(
-      server.loadWasteTenantProvisioningRecord('tenant-a', {
-        getDatabaseUrl: () => 'postgres://db.example.test/sva',
-      })
-    ).rejects.toBe(repositoryError);
-
-    expect(poolDouble.query.mock.calls.map(([statement]) => statement)).toEqual([
-      'BEGIN',
-      'SELECT set_config($1, $2, true);',
-      'ROLLBACK',
-    ]);
-    expect(poolDouble.query).not.toHaveBeenCalledWith('COMMIT');
-    expect(poolDouble.release).toHaveBeenCalledOnce();
-  });
-
-  it('keeps the original repository error when rolling back the Waste provisioning transaction fails', async () => {
-    const server = await import('./server.js');
-    const poolDouble = createPoolDouble();
-    const repositoryError = new Error('provisioning lookup failed');
-
-    poolDouble.query.mockImplementation(async (statement: string) => {
-      if (statement === 'ROLLBACK') {
-        throw new Error('rollback failed');
-      }
-      return { rowCount: 0, rows: [] };
-    });
-    mocks.poolFactory.mockReturnValue(poolDouble.pool);
-    mocks.createWasteProvisioningRepository.mockReturnValue({
-      getWasteProvisioning: vi.fn(async () => Promise.reject(repositoryError)),
-    });
-
-    await expect(
-      server.loadWasteTenantProvisioningRecord('tenant-a', {
-        getDatabaseUrl: () => 'postgres://db.example.test/sva',
-      })
-    ).rejects.toBe(repositoryError);
-
-    expect(poolDouble.query).toHaveBeenCalledWith('ROLLBACK');
-    expect(poolDouble.release).toHaveBeenCalledOnce();
-    expect(mocks.logger.warn).toHaveBeenCalledWith(
-      'Waste provisioning transaction rollback failed',
-      {
-        operation: 'waste_provisioning_repository_transaction',
-        error: 'rollback failed',
-        error_type: 'Error',
-      }
-    );
-  });
 });

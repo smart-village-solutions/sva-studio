@@ -24,7 +24,7 @@ vi.mock('pg', () => ({
   }),
 }));
 
-import { createPoolResolver, jsonResponse, withResolvedIamAppDb } from './db.js';
+import { createPoolResolver, jsonResponse, withResolvedIamAppDb, withResolvedInstanceDb } from './db.js';
 
 describe('jsonResponse', () => {
   beforeEach(() => {
@@ -129,4 +129,59 @@ describe('withResolvedIamAppDb', () => {
     ]);
     expect(release).toHaveBeenCalledOnce();
   });
+
+  it('preserves the original IAM failure when transaction rollback also fails', async () => {
+    const release = vi.fn();
+    const query = vi.fn(async (statement: string) => {
+      if (statement === 'ROLLBACK') throw new Error('rollback failed');
+      return { rowCount: 0, rows: [] };
+    });
+    const pool = { connect: vi.fn(async () => ({ query, release })) };
+    const failure = new Error('tenant query failed');
+
+    await expect(
+      withResolvedIamAppDb(
+        () => pool as never,
+        async () => {
+          throw failure;
+        }
+      )
+    ).rejects.toBe(failure);
+
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(release).toHaveBeenCalledOnce();
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'iam_database_transaction_rollback_failed',
+      expect.objectContaining({ operation: 'iam_database_transaction', error_type: 'Error' })
+    );
+  });
+
+
+  it('sets the tenant binding under iam_app within the same transaction', async () => {
+    const release = vi.fn();
+    const query = vi.fn(async (statement: string) => ({
+      rowCount: statement === 'SELECT tenant row' ? 1 : 0,
+      rows: statement === 'SELECT tenant row' ? [{ instance_id: 'tenant-a' }] : [],
+    }));
+    const pool = { connect: vi.fn(async () => ({ query, release })) };
+
+    await expect(
+      withResolvedInstanceDb(
+        () => pool as never,
+        'tenant-a',
+        async (client) =>
+          (await client.query<{ instance_id: string }>('SELECT tenant row')).rows[0]?.instance_id
+      )
+    ).resolves.toBe('tenant-a');
+
+    expect(query.mock.calls).toEqual([
+      ['BEGIN'],
+      ['SET LOCAL ROLE iam_app;'],
+      ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
+      ['SELECT tenant row'],
+      ['COMMIT'],
+    ]);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
 });

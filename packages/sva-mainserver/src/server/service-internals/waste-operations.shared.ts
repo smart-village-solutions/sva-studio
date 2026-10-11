@@ -1,4 +1,5 @@
 import type { SvaMainserverConnectionInput, SvaMainserverInstanceConfig } from '../../types.js';
+import type { WasteMainserverSyncItem, WasteMainserverSyncSnapshot } from '@sva/waste-management-contracts';
 import { buildLogContext, logger } from './observability.js';
 import {
   assertCreateMutationSucceeded,
@@ -10,23 +11,8 @@ import {
 } from './waste-operations.payloads.js';
 import { toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
-export type SvaMainserverWasteSyncItem = Readonly<{
-  id?: string;
-  pickupDate: string;
-  wasteType: string;
-  street: string;
-  zip?: string;
-  city?: string;
-  note?: string;
-  district?: string;
-  rhythmRrule?: string;
-  rhythmStartDate?: string;
-  rhythmExcludes?: readonly string[];
-}>;
-
-export type SvaMainserverWasteSyncSnapshot = Readonly<{
-  pickupTimes: readonly SvaMainserverWasteSyncItem[];
-}>;
+export type SvaMainserverWasteSyncItem = WasteMainserverSyncItem;
+export type SvaMainserverWasteSyncSnapshot = WasteMainserverSyncSnapshot;
 type WasteAddressesQuery = {
   readonly wasteAddresses?: ReadonlyArray<{
     readonly street?: string | null;

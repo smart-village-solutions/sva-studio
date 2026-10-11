@@ -5,6 +5,7 @@ export { nodeJobModuleLoaders, nodeManifestModules } from 'virtual:studio-instal
 
 export const workspaceJobModuleLoaders = import.meta.glob([
   '../../../../packages/plugin-*/src/server.ts',
+  '../../../../packages/plugin-*/src/server-jobs.ts',
   '!../../../../packages/plugin-ssf/src/**',
 ]) as Record<string, PluginModuleLoader>;
 

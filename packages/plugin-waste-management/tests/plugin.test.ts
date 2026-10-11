@@ -3,7 +3,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
-import { createPluginRegistry, createPluginTenantReadinessReadModel, evaluatePluginTenantAccess } from '@sva/plugin-sdk';
+import {
+  createPluginRegistry,
+  createPluginTenantReadinessReadModel,
+  evaluatePluginTenantAccess,
+} from '@sva/plugin-sdk';
 
 import {
   pluginWasteManagement,
@@ -38,8 +42,8 @@ describe('pluginWasteManagement contract', () => {
 
     expect(manifest.entryPoints?.browser).toBe('./dist/index.js');
     expect(manifest.entryPoints?.server).toBe('./dist/server.js');
-    expect(manifest.entryPoints?.jobs).toBeUndefined();
-    expect(manifest.runtimeRequirements?.jobs).toBeUndefined();
+    expect(manifest.entryPoints?.jobs).toBe('./dist/server-jobs.js');
+    expect(manifest.runtimeRequirements?.jobs).toBe('waste-management.operations');
   });
 
   it('declares each existing Waste method and path once as a server handler', () => {
@@ -47,11 +51,13 @@ describe('pluginWasteManagement contract', () => {
     expect(descriptors).toHaveLength(62);
     expect(new Set(descriptors.map(({ path }) => path)).size).toBe(49);
     expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(62);
-    expect(descriptors).toContainEqual(expect.objectContaining({
-      path: '/api/v1/waste-management/tours/annual-transfer',
-      method: 'POST',
-      actionId: 'waste-management.annual-transfer.execute',
-    }));
+    expect(descriptors).toContainEqual(
+      expect.objectContaining({
+        path: '/api/v1/waste-management/tours/annual-transfer',
+        method: 'POST',
+        actionId: 'waste-management.annual-transfer.execute',
+      })
+    );
   });
 
   it('declares the canonical free plugin route, module iam and job registrations', () => {

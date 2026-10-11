@@ -10,3 +10,10 @@ export { resolveWasteDataSource, runWasteConnectionCheck, WasteRuntimeError } fr
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from './repositories/tenant-database-identifiers.server.js';
 export { createWasteDataSourceRepository, wasteDataSourceStatements } from './repositories/waste-data-sources.js';
 export type { WasteDataSourceRepository } from './repositories/waste-data-sources.js';
+export { createWasteDataSourceAccess } from './repositories/waste-data-sources.js';
+export type { WasteDataSourceAccess, WasteDataSourceDbClient } from './repositories/waste-data-sources.js';
+export {
+  createWasteProvisioningAccess,
+} from './repositories/waste-provisioning-access.js';
+export { createWasteProvisioningRepository } from './repositories/waste-provisioning.js';
+export type { WasteProvisioningAccess, WasteProvisioningDbClient } from './repositories/waste-provisioning-access.js';

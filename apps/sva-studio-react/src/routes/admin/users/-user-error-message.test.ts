@@ -81,12 +81,12 @@ describe('userErrorMessage', () => {
     {
       code: 'mainserver_tenant_forbidden',
       expected:
-        'The Mainserver rejected provisioning for this organization. Check the active organization and tenant assignment.',
+        'Mainserver rejected the setup for this organization. Check the active organization and its assignment.',
     },
     {
       code: 'mainserver_request_rejected',
       expected:
-        'The Mainserver rejected the provisioning request as invalid. Check the integration contract and requested role.',
+        'Mainserver rejected the setup request. Ask an administrator to check the connection and requested role.',
     },
   ])('localizes the bulk rejection code $code in English', ({ code, expected }) => {
     setActiveLocale('en');

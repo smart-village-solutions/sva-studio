@@ -88,12 +88,12 @@ export const organizationsAdminENResources = {
     baseDataDescription: 'Edit the name, type, parent organization, and how authors are shown.',
     membershipsTitle: 'Memberships',
     membershipsDescription:
-      'Assign people. Their default organization is used if no other active organization is selected.',
+      'Assign people. For accounts without the system administrator role, the default organization is used if no other active organization is selected.',
   },
   membershipsDialog: {
     title: 'Manage memberships',
     description:
-      'Add or remove members of {{name}}. Their default organization is used if no other active organization is selected.',
+      'Add or remove members of {{name}}. For accounts without the system administrator role, the default organization is used if no other active organization is selected.',
     searchLabel: 'Search members',
     searchPlaceholder: 'Search by name, email, or identifier',
     accountLabel: 'User accounts',

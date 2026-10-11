@@ -219,7 +219,7 @@ export const usersAdminDEResources = {
     organizations: {
       title: 'Organisationen',
       description:
-        'Ordnen Sie diesem Konto Organisationen zu. Die Standardorganisation wird verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
+        'Ordnen Sie diesem Konto Organisationen zu. Ohne System-Administrator-Rolle wird die Standardorganisation verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
       empty: 'Keine Organisationsmitgliedschaften vorhanden.',
       searchLabel: 'Organisation suchen',
       searchPlaceholder: 'Nach Organisationsname oder Schlüssel filtern',

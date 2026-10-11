@@ -214,7 +214,7 @@ export const usersAdminENResources = {
     organizations: {
       title: 'Organizations',
       description:
-        'Assign organizations to this account. The default organization is used if no other active organization is selected.',
+        'Assign organizations to this account. Without the system administrator role, the default organization is used if no other active organization is selected.',
       empty: 'No organization memberships available.',
       searchLabel: 'Search organizations',
       searchPlaceholder: 'Filter by organization name or key',

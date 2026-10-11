@@ -90,12 +90,12 @@ export const organizationsAdminDEResources = {
       'Bearbeiten Sie Name, Typ, übergeordnete Organisation und die Anzeige von Autoren.',
     membershipsTitle: 'Mitgliedschaften',
     membershipsDescription:
-      'Ordnen Sie Personen zu. Ihre Standardorganisation wird verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
+      'Ordnen Sie Personen zu. Bei Konten ohne System-Administrator-Rolle wird die Standardorganisation verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
   },
   membershipsDialog: {
     title: 'Mitgliedschaften verwalten',
     description:
-      'Ordnen Sie Personen {{name}} zu oder entfernen Sie sie. Die Standardorganisation wird verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
+      'Ordnen Sie Personen {{name}} zu oder entfernen Sie sie. Bei Konten ohne System-Administrator-Rolle wird die Standardorganisation verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
     searchLabel: 'Mitglieder suchen',
     searchPlaceholder: 'Nach Name, E-Mail oder Kennung suchen',
     accountLabel: 'Benutzerkonten',

@@ -1,0 +1,49 @@
+publiccodeYmlVersion: "0"
+name: Cockpit
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Öffnet das externe Cockpit über einen Link in der Studio-Seitenleiste;
+      seine Inhalte bleiben im Cockpit.
+    longDescription: Öffnet das externe Cockpit über einen Link in der Studio-Seitenleiste;
+      seine Inhalte bleiben im Cockpit. Das Modul ergänzt die Navigation von SVA Studio
+      um den Zugang zu einem angebundenen Cockpit. Der Link führt in die externe
+      Anwendung. Es stellt innerhalb des Studios keine eigene Inhaltsverwaltung für das
+      Cockpit bereit. Das Modul ist Teil der modularen SVA-Studio-Plattform für
+      kommunale Redaktions- und Verwaltungsprozesse. Eine Instanz erhält den Fachbereich
+      über ihre Modulzuweisung; Rollen und Berechtigungen steuern die einzelnen
+      Aktionen. Die Modulübersicht zeigt Name, Beschreibung und Aktivierungsstatus,
+      damit Verantwortliche den Zweck des Bereichs vor der Zuweisung erkennen können.
+    features:
+      - Cockpit im SVA Studio nutzen
+  en:
+    localisedName: Cockpit
+    shortDescription: Opens the external cockpit from the Studio sidebar; its content
+      remains managed in the cockpit.
+    longDescription: Opens the external cockpit from the Studio sidebar; its content remains
+      managed in the cockpit. This addon belongs to SVA Studio and is described
+      independently from its technical package identifier. The module overview displays
+      its public name, purpose, and current availability so administrators can
+      understand the scope before assigning it to an instance. Access to available
+      modules is still governed by the Studio module assignment and the relevant
+      permissions. The source package carries this metadata with the plugin, so it can
+      move to a separate repository together with the module.
+    features:
+      - Use Cockpit in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

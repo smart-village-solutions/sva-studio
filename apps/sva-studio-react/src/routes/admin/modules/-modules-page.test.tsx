@@ -8,6 +8,7 @@ import {
   studioModuleIamContracts,
   studioPluginSnapshot,
 } from '../../../lib/plugins';
+import { setActiveLocale } from '../../../i18n';
 import { createStudioPluginCatalogReport } from '../../../lib/plugin-catalog-loader';
 import { ModulesPage } from './-modules-page';
 
@@ -222,6 +223,7 @@ describe('ModulesPage', () => {
 
   afterEach(() => {
     cleanup();
+    setActiveLocale('de');
   });
 
   it('shows prepared plugins as in development without assignment controls', () => {
@@ -277,11 +279,11 @@ describe('ModulesPage', () => {
     expect(studioModuleIamContracts.every((module) => module.descriptionKey.length > 0)).toBe(true);
 
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
-    expect(screen.getByText('news')).toBeTruthy();
-    expect(screen.getByText('categories')).toBeTruthy();
-    expect(screen.getByText('events')).toBeTruthy();
-    expect(screen.getAllByText('media').length).toBeGreaterThan(0);
-    expect(screen.getByText('waste-management')).toBeTruthy();
+    expect(screen.getByText('Nachrichten')).toBeTruthy();
+    expect(screen.getByText('Kategorien')).toBeTruthy();
+    expect(screen.getByText('Veranstaltungen')).toBeTruthy();
+    expect(screen.getByText('Mediathek')).toBeTruthy();
+    expect(screen.getByText('Abfallwirtschaft')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     await waitFor(() =>
@@ -406,15 +408,30 @@ describe('ModulesPage', () => {
     render(<ModulesPage />);
 
     expect(screen.getByText('IAM-Basis der Module')).toBeTruthy();
-    expect(screen.getByText('news')).toBeTruthy();
-    expect(screen.getByText('events')).toBeTruthy();
+    expect(screen.getByText('Nachrichten')).toBeTruthy();
+    expect(screen.getByText('Veranstaltungen')).toBeTruthy();
     expect(screen.getAllByText('Aktiv')).toHaveLength(2);
     expect(screen.getAllByText('Deaktiviert').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('removed-plugin')).toBeTruthy();
     expect(screen.getByText('Nicht verfügbar (historische Zuweisung)')).toBeTruthy();
+    expect(
+      screen.getByText(/Erstellt und veröffentlicht Nachrichten mit Text, Medien/)
+    ).toBeTruthy();
+    expect(screen.getByText(/Verwaltet Bilder und Dokumente zentral für Upload/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Modul zuweisen' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
     expect(useInstancesMock).not.toHaveBeenCalled();
+  });
+
+  it('uses localized public names and descriptions', () => {
+    setActiveLocale('en');
+    useAuthMock.mockReturnValue({ user: { instanceId: 'demo', assignedModules: ['news'] } });
+
+    render(<ModulesPage />);
+
+    expect(screen.getByText('News')).toBeTruthy();
+    expect(screen.getByText(/Creates and publishes news with text, media/)).toBeTruthy();
+    expect(screen.getByText('Media Library')).toBeTruthy();
   });
 
   it('keeps an assigned pending lifecycle separate from assignment and blocks duplicate actions', async () => {

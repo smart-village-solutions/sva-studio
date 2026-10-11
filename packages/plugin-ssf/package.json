@@ -6,7 +6,8 @@
   "files": [
     "dist",
     "migrations",
-    "plugin.manifest.json"
+    "plugin.manifest.json",
+    "publiccode.yml"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

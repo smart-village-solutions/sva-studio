@@ -1,0 +1,49 @@
+publiccodeYmlVersion: "0"
+name: Projekte
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Stellt ausgewählte Projekte mit redaktionellen Texten und einer
+      sortierbaren Bildergalerie vor.
+    longDescription: Stellt ausgewählte Projekte mit redaktionellen Texten und einer
+      sortierbaren Bildergalerie vor. Redaktionsteams pflegen Projektangaben,
+      Kurzbeschreibung und ausführliche Texte. Medien können ausgewählt, hochgeladen und
+      in eine gewünschte Reihenfolge gebracht werden. Die Veröffentlichung steuert die
+      Sichtbarkeit der Projektpräsentation. Das Modul ist Teil der modularen
+      SVA-Studio-Plattform für kommunale Redaktions- und Verwaltungsprozesse. Eine
+      Instanz erhält den Fachbereich über ihre Modulzuweisung; Rollen und Berechtigungen
+      steuern die einzelnen Aktionen. Die Modulübersicht zeigt Name, Beschreibung und
+      Aktivierungsstatus, damit Verantwortliche den Zweck des Bereichs vor der Zuweisung
+      erkennen können.
+    features:
+      - Projekte im SVA Studio nutzen
+  en:
+    localisedName: Projects
+    shortDescription: Presents selected projects with editorial text and an ordered image gallery.
+    longDescription: Presents selected projects with editorial text and an ordered image
+      gallery. This addon belongs to SVA Studio and is described independently from its
+      technical package identifier. The module overview displays its public name,
+      purpose, and current availability so administrators can understand the scope
+      before assigning it to an instance. Access to available modules is still governed
+      by the Studio module assignment and the relevant permissions. The source package
+      carries this metadata with the plugin, so it can move to a separate repository
+      together with the module.
+    features:
+      - Use Projects in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

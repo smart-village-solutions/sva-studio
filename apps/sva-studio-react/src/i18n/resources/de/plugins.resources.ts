@@ -1,37 +1,3 @@
 export const pluginsDEResources = {
-  news: {
-    description: 'Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.',
-  },
-  events: {
-    description: 'Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.',
-  },
-  poi: {
-    description: 'Veröffentlicht Orte und zugehörige Standortinformationen für den Mandanten.',
-  },
-  'generic-items': {
-    description: 'Veröffentlicht frei modellierbare generische Inhalte für den Mandanten.',
-  },
-  faq: {
-    description: 'Veröffentlicht mehrsprachige Fragen und Antworten für den Mandanten.',
-  },
-  'cockpit-cards': {
-    description: 'Veröffentlicht kategorisierte Kacheln mit Text, Bildern und weiterführendem Link.',
-  },
-  projects: {
-    description: 'Veröffentlicht hervorgehobene Projekte mit Texten und einer geordneten Bildergalerie.',
-  },
-  categories: {
-    description:
-      'Stellt die Mainserver-Kategorien als redaktionelles Begleitmodul für Nachrichten, Veranstaltungen und Orte bereit.',
-  },
-  'waste-management': {
-    description:
-      'Aktiviert die Abfallwirtschaft mit Stammdaten, Tourenplanung und Betriebswerkzeugen.',
-  },
-  ssf: {
-    description: 'Stellt Smart Speech Flow für den Mandanten bereit.',
-  },
-  empty: {
-    description: '',
-  },
+  empty: { description: '' },
 } as const;

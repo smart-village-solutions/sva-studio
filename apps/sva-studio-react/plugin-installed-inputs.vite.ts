@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { parseDocument } from 'yaml';
 import { definePluginManifest, satisfiesVersionRange, type PluginManifest } from '@sva/plugin-sdk';
 import type { Plugin } from 'vite';
 import { studioHostPluginPlatform } from './src/lib/plugin-catalog-loader.js';
@@ -25,6 +26,99 @@ export const installedInputIds = {
   client: 'virtual:studio-installed-plugin-client',
   server: 'virtual:studio-installed-plugin-server',
 } as const;
+
+export const modulePublicCodeInputId = 'virtual:studio-module-publiccode';
+
+type ModulePublicCode = Readonly<{
+  name: string;
+  description: Readonly<
+    Record<
+      string,
+      Readonly<{
+        localisedName?: string;
+        shortDescription: string;
+      }>
+    >
+  >;
+}>;
+
+const readModulePublicCode = (file: string, moduleId: string): ModulePublicCode => {
+  const document = parseDocument(readFileSync(file, 'utf8'), { uniqueKeys: true });
+  if (document.errors.length > 0) {
+    throw new Error(`module_publiccode_yaml_invalid:${moduleId}`);
+  }
+  const value: unknown = document.toJS();
+  if (
+    !isRecord(value) ||
+    value.publiccodeYmlVersion !== '0' ||
+    typeof value.name !== 'string' ||
+    !value.name.trim() ||
+    !isRecord(value.description)
+  ) {
+    throw new Error(`module_publiccode_invalid:${moduleId}`);
+  }
+  const descriptions: Record<string, { localisedName?: string; shortDescription: string }> = {};
+  for (const locale of ['de', 'en']) {
+    const entry = value.description[locale];
+    if (
+      !isRecord(entry) ||
+      typeof entry.shortDescription !== 'string' ||
+      !entry.shortDescription.trim() ||
+      entry.shortDescription.length > 150 ||
+      (entry.localisedName !== undefined && typeof entry.localisedName !== 'string')
+    ) {
+      throw new Error(`module_publiccode_description_invalid:${moduleId}:${locale}`);
+    }
+    descriptions[locale] = {
+      shortDescription: entry.shortDescription,
+      ...(typeof entry.localisedName === 'string' ? { localisedName: entry.localisedName } : {}),
+    };
+  }
+  return { name: value.name.trim(), description: descriptions };
+};
+
+export const createModulePublicCodePlugin = (
+  appRoot: string,
+  distribution: Distribution,
+  selectedPluginIds: readonly string[]
+): Plugin => {
+  const workspaceRoot = resolve(appRoot, '../..');
+  const rawCatalog = readJson(join(appRoot, 'plugin-catalog.json'));
+  if (!Array.isArray(rawCatalog)) throw new Error('plugin_catalog_invalid');
+  const metadata: Record<string, ModulePublicCode> = {
+    media: readModulePublicCode(join(workspaceRoot, 'packages/media/publiccode.yml'), 'media'),
+  };
+  for (const entry of rawCatalog as CatalogRecord[]) {
+    if (
+      entry.sourceType !== 'workspace' ||
+      (distribution === 'studio' && entry.pluginId === 'ssf') ||
+      (distribution === 'ssf' && entry.pluginId !== 'ssf') ||
+      (distribution === 'custom' && !selectedPluginIds.includes(entry.pluginId))
+    )
+      continue;
+    metadata[entry.pluginId] = readModulePublicCode(
+      join(workspaceRoot, entry.sourceRef, 'publiccode.yml'),
+      entry.pluginId
+    );
+  }
+  for (const entry of readCatalog(appRoot, distribution, selectedPluginIds)) {
+    const file = join(appRoot, 'node_modules', entry.sourceRef, 'publiccode.yml');
+    if (!existsSync(file)) throw new Error(`module_publiccode_missing:${entry.pluginId}`);
+    metadata[entry.pluginId] = readModulePublicCode(file, entry.pluginId);
+  }
+  const virtualId = `\0${modulePublicCodeInputId}`;
+  return {
+    name: 'studio-module-publiccode',
+    resolveId(id) {
+      return id === modulePublicCodeInputId ? virtualId : undefined;
+    },
+    load(id) {
+      return id === virtualId
+        ? `export const modulePublicCode = ${serializeJavaScriptValue(metadata)};`
+        : undefined;
+    },
+  };
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

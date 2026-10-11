@@ -11,6 +11,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   createInstalledPluginInputsPlugin,
+  createModulePublicCodePlugin,
   createSelectedWorkspacePluginInputsPlugin,
 } from './plugin-installed-inputs.vite.js';
 import {
@@ -563,6 +564,7 @@ const config = defineConfig({
   },
   plugins: [
     createInstalledPluginInputsPlugin(appRoot, studioDistribution, studioPluginIds),
+    createModulePublicCodePlugin(appRoot, studioDistribution, studioPluginIds),
     ...(studioDistribution === 'custom'
       ? [createSelectedWorkspacePluginInputsPlugin(appRoot, studioPluginIds)]
       : []),

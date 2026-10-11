@@ -184,6 +184,14 @@ Jedes publishbare Plugin liefert ein serialisierbares Manifest:
 Der `server`-Entry ist nur erforderlich, wenn `PluginDescriptor.serverHandlers`
 deklariert werden. Er darf nicht aus dem Browser-Entry re-exportiert werden.
 
+Jedes Studio-Modul führt außerdem eine `publiccode.yml` an der Package-Wurzel und
+liefert sie im veröffentlichten Package mit. `name` ist der offizielle deutsche
+Modulname; `description.en.localisedName` kann den englischen Namen angeben.
+Die Modulübersicht liest `description.de/en.shortDescription` zusammen mit dem
+Namen beim Build aus dieser Datei. Die technische `pluginId` bleibt für Katalog,
+IAM und Routing maßgeblich. In einem eigenen Repository gehört die Datei an die
+Repository-Wurzel; dabei muss `url` auf dieses Repository angepasst werden.
+
 Der Host bindet Plugins über `apps/sva-studio-react/plugin-catalog.json` ein. Ein Katalogeintrag enthält nur Aktivierungs- und Quellinformationen; das Manifest wird anschließend aus dem referenzierten Package gelesen.
 
 Beispiel:

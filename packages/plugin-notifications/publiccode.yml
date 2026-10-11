@@ -1,0 +1,50 @@
+publiccodeYmlVersion: "0"
+name: Meldungen
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: concept
+softwareType: addon
+description:
+  de:
+    shortDescription: Geplantes Modul für Meldungen im Studio; es ist noch nicht verfügbar
+      oder einer Instanz zuweisbar.
+    longDescription: Geplantes Modul für Meldungen im Studio; es ist noch nicht verfügbar
+      oder einer Instanz zuweisbar. Dieses Plugin ist als eigenständiger Bereich für
+      Meldungen vorbereitet. Die bisherige Darstellung in der Studio-Shell bleibt als
+      Vorschau erhalten, ohne eine nutzbare Benachrichtigungsfunktion vorzutäuschen.
+      Funktionen und fachliche Abläufe werden in einer späteren Ausbaustufe ergänzt. Das
+      Plugin ist im Katalog als in Entwicklung gekennzeichnet. Es bietet derzeit keine
+      zuweisbare Funktion und wird nicht als verfügbares Modul geladen. Die Beschreibung
+      erläutert ausschließlich den geplanten Bereich und macht den Entwicklungsstand in
+      der Modulübersicht sichtbar. Eine spätere Freigabe benötigt einen eigenen
+      geprüften Funktionsumfang und die reguläre Plugin-Registrierung.
+    features:
+      - Meldungen im SVA Studio nutzen
+  en:
+    localisedName: Notifications
+    shortDescription: Planned module for Studio notifications; it is not yet available or
+      assignable to an instance.
+    longDescription: Planned module for Studio notifications; it is not yet available or
+      assignable to an instance. This addon belongs to SVA Studio and is described
+      independently from its technical package identifier. The module overview displays
+      its public name, purpose, and current availability so administrators can
+      understand the scope before assigning it to an instance. Access to available
+      modules is still governed by the Studio module assignment and the relevant
+      permissions. The source package carries this metadata with the plugin, so it can
+      move to a separate repository together with the module.
+    features:
+      - Use Notifications in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

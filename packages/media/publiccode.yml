@@ -1,0 +1,50 @@
+publiccodeYmlVersion: "0"
+name: Mediathek
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Verwaltet Bilder und Dokumente zentral für Upload, Wiederverwendung in
+      Inhalten und geschützte Auslieferung.
+    longDescription: Verwaltet Bilder und Dokumente zentral für Upload, Wiederverwendung in
+      Inhalten und geschützte Auslieferung. Redaktionsteams laden Dateien in die
+      zentrale Mediathek hoch und nutzen sie in verschiedenen Inhalten. Referenzen
+      verbinden Medien mit redaktionellen Einträgen. Berechtigungen und geschützte
+      Auslieferung steuern den Zugriff auf nicht öffentliche Dateien. Das Modul ist Teil
+      der modularen SVA-Studio-Plattform für kommunale Redaktions- und
+      Verwaltungsprozesse. Eine Instanz erhält den Fachbereich über ihre Modulzuweisung;
+      Rollen und Berechtigungen steuern die einzelnen Aktionen. Die Modulübersicht zeigt
+      Name, Beschreibung und Aktivierungsstatus, damit Verantwortliche den Zweck des
+      Bereichs vor der Zuweisung erkennen können.
+    features:
+      - Mediathek im SVA Studio nutzen
+  en:
+    localisedName: Media Library
+    shortDescription: Manages images and documents centrally for upload, reuse in content,
+      and protected delivery.
+    longDescription: Manages images and documents centrally for upload, reuse in content,
+      and protected delivery. This addon belongs to SVA Studio and is described
+      independently from its technical package identifier. The module overview displays
+      its public name, purpose, and current availability so administrators can
+      understand the scope before assigning it to an instance. Access to available
+      modules is still governed by the Studio module assignment and the relevant
+      permissions. The source package carries this metadata with the plugin, so it can
+      move to a separate repository together with the module.
+    features:
+      - Use Media Library in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

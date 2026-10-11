@@ -7,6 +7,7 @@ import { pluginSdkVersion } from '@sva/plugin-sdk';
 import { build } from 'vite';
 import {
   createInstalledPluginInputsPlugin,
+  createModulePublicCodePlugin,
   createSelectedWorkspacePluginInputsPlugin,
   renderInstalledPluginInputs,
   resolveInstalledPluginSources,
@@ -100,6 +101,18 @@ afterEach(() => {
 });
 
 describe('installed plugin build inputs', () => {
+  it('reads public names and descriptions from module-owned publiccode files', () => {
+    const plugin = createModulePublicCodePlugin(process.cwd(), 'studio', []) as unknown as {
+      resolveId: (id: string) => string;
+      load: (id: string) => string;
+    };
+    const code = plugin.load(plugin.resolveId('virtual:studio-module-publiccode'));
+    expect(code).toContain('Nachrichten');
+    expect(code).toContain('Erstellt und veröffentlicht Nachrichten');
+    expect(code).toContain('Mediathek');
+    expect(code).not.toContain('Smart Speech Flow');
+  });
+
   it('generates browser, server, worker, descriptor, manifest, and ownership maps from one selection', () => {
     const appRoot = process.cwd();
     const plugin = createSelectedWorkspacePluginInputsPlugin(appRoot, [
@@ -144,9 +157,10 @@ describe('installed plugin build inputs', () => {
     const packageRoot = join(root, sourceRef);
     mkdirSync(appRoot, { recursive: true });
     mkdirSync(join(packageRoot, 'src'), { recursive: true });
-    writeFileSync(join(appRoot, 'plugin-catalog.json'), JSON.stringify([
-      { pluginId: 'news', sourceType: 'workspace', sourceRef, enabled: true },
-    ]));
+    writeFileSync(
+      join(appRoot, 'plugin-catalog.json'),
+      JSON.stringify([{ pluginId: 'news', sourceType: 'workspace', sourceRef, enabled: true }])
+    );
     writeFileSync(join(packageRoot, 'plugin.manifest.json'), '{"pluginId":"news"}');
     writeFileSync(join(packageRoot, 'src', 'browser.ts'), 'export {};');
     writeFileSync(join(packageRoot, 'src', 'descriptor.ts'), 'export {};');

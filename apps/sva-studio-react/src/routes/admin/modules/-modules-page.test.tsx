@@ -11,6 +11,7 @@ import {
 import { setActiveLocale } from '../../../i18n';
 import { createStudioPluginCatalogReport } from '../../../lib/plugin-catalog-loader';
 import { ModulesPage } from './-modules-page';
+import { resolveModuleDescription, resolveModuleName } from './-module-description';
 
 const useInstancesMock = vi.fn();
 const useAuthMock = vi.fn();
@@ -114,6 +115,18 @@ describe('ModulesPage', () => {
   beforeEach(() => {
     readinessState.items = [];
     readinessState.error = null;
+  });
+  it('uses localized public metadata and falls back for modules without metadata', () => {
+    setActiveLocale('en');
+    expect(resolveModuleName('media')).toBe('Media Library');
+    expect(resolveModuleDescription('media')).toContain('images and documents');
+    expect(resolveModuleName('unknown-module')).toBe('unknown-module');
+    expect(
+      resolveModuleDescription('unknown-module', 'admin.instances.instanceModules.title')
+    ).not.toBe(resolveModuleDescription('unknown-module'));
+    expect(resolveModuleDescription('unknown-module', 'missing.description')).toBe(
+      resolveModuleDescription('unknown-module')
+    );
   });
   it('projects only validated plugin contracts plus host modules', () => {
     expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([

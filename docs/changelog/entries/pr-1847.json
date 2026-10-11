@@ -1,0 +1,4 @@
+{
+  "prNumber": 1847,
+  "body": "Die Modulübersicht zeigt jetzt verständliche Modulnamen und ausführlichere Beschreibungen. Die Angaben kommen aus der publiccode.yml des jeweiligen Moduls und stehen auch für eine spätere Auslagerung des Moduls in ein eigenes Repository bereit."
+}

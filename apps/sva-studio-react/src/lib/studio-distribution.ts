@@ -23,7 +23,9 @@ export const resolveStudioPluginIds = (
   }
   const unknown = supplied.filter((pluginId) => !availablePluginIds.includes(pluginId));
   if (unknown.length > 0) {
-    throw new Error(`studio_plugin_selection_unknown:${unknown.sort().join(',')}`);
+    throw new Error(
+      `studio_plugin_selection_unknown:${unknown.sort((left, right) => left.localeCompare(right)).join(',')}`
+    );
   }
   const selected = new Set(supplied);
   return availablePluginIds.filter((pluginId) => selected.has(pluginId));

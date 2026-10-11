@@ -13,6 +13,7 @@ import { StudioBrandingProvider } from '../providers/studio-branding-provider';
 import Sidebar from './Sidebar';
 
 const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/main/LICENSE';
+const COMMUNITY_URL = 'https://verwaltungen-havelland.humhub.smart-village.app/s/sva-community/';
 const HELP_DISCUSSIONS_URL = 'https://github.com/smart-village-solutions/sva-studio/discussions';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
 const COCKPIT_URL = 'https://cockpit.guben.de';
@@ -760,7 +761,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
-  it('rendert Hilfe, Support und Lizenz innerhalb der Bereichsnavigation', () => {
+  it('rendert die Anwendergemeinschaft vor Hilfe innerhalb der Bereichsnavigation', () => {
     renderSidebar({
       user: createSidebarUser({
         id: 'experimental-user',
@@ -770,10 +771,16 @@ describe('Sidebar', () => {
     });
 
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
+    const communityLink = within(navigation).getByRole('link', { name: 'Anwendergemeinschaft' });
+    const helpLink = within(navigation).getByRole('link', { name: 'Hilfe' });
 
-    expect(within(navigation).getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
-      HELP_DISCUSSIONS_URL
-    );
+    expect(communityLink.getAttribute('href')).toBe(COMMUNITY_URL);
+    expect(communityLink.getAttribute('target')).toBe('_blank');
+    expect(
+      communityLink.compareDocumentPosition(helpLink) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    expect(helpLink.getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
     expect(within(navigation).getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
       SUPPORT_ISSUES_URL
     );

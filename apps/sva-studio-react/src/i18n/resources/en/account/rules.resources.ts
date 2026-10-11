@@ -2,7 +2,7 @@ export const rulesAccountENResources = {
   title: 'Account rules',
   navLabel: 'Account rules',
   subtitle:
-    'See when your account is restricted after a long period without signing in and what happens to your content.',
+    'See what happens to your account and content after a long period without signing in. The deadlines apply only after your first successful sign-in.',
   summary: {
     deactivateAfterDays: 'Deactivate account after',
     deactivateAfterDaysHint: 'Days without a successful sign-in before the account is blocked.',

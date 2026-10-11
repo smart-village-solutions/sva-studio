@@ -2,7 +2,7 @@ export const rulesAccountDEResources = {
   title: 'Kontoregeln',
   navLabel: 'Kontoregeln',
   subtitle:
-    'Hier sehen Sie, wann Ihr Konto nach längerer Zeit ohne Anmeldung eingeschränkt wird und was mit Ihren Inhalten geschieht.',
+    'Hier sehen Sie, was nach längerer Zeit ohne Anmeldung mit Ihrem Konto und Ihren Inhalten geschieht. Die Fristen gelten erst nach Ihrer ersten erfolgreichen Anmeldung.',
   summary: {
     deactivateAfterDays: 'Konto deaktivieren nach',
     deactivateAfterDaysHint: 'Tage ohne erfolgreiche Anmeldung, bis das Konto gesperrt wird.',

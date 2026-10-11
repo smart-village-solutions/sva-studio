@@ -46,7 +46,7 @@ export const iamAdminENResources = {
     deletionRules: {
       title: 'Manage rules for unused accounts',
       description:
-        'Decide what happens to accounts and their content after a long period without sign-in. The rules apply to non-technical accounts in this instance.',
+        'Decide what happens to accounts and their content after a long period without sign-in. The rules apply only to non-technical accounts that have signed in successfully at least once.',
       options: {
         first:
           'Choose when accounts are deactivated, personal details are removed, and accounts are marked as deleted.',
@@ -241,7 +241,7 @@ export const iamAdminENResources = {
   deletionRules: {
     title: 'Rules for unused accounts',
     subtitle:
-      'Choose how many days without a successful sign-in pass before accounts are deactivated, personal details are removed, and accounts are marked as deleted. Choose the content rule below.',
+      'Choose how many days since the last successful sign-in pass before accounts are deactivated, personal details are removed, and accounts are marked as deleted. Accounts that have never signed in successfully are excluded. Choose the content rule below.',
     fields: {
       deactivateAfterDays: 'Deactivate account after days without sign-in',
       pseudonymizeAfterDays: 'Remove personal details after days without sign-in',

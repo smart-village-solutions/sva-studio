@@ -52,7 +52,7 @@ export const iamAdminDEResources = {
     deletionRules: {
       title: 'Regeln für ungenutzte Konten verwalten',
       description:
-        'Legen Sie fest, was nach längerer Zeit ohne Anmeldung mit Konten und ihren Inhalten geschieht. Die Regeln gelten für nichttechnische Konten dieser Instanz.',
+        'Legen Sie fest, was nach längerer Zeit ohne Anmeldung mit Konten und ihren Inhalten geschieht. Die Regeln gelten nur für nichttechnische Konten nach mindestens einer erfolgreichen Anmeldung.',
       options: {
         first:
           'Festlegen, wann Konten deaktiviert, persönliche Angaben entfernt und Konten als gelöscht markiert werden.',
@@ -250,7 +250,7 @@ export const iamAdminDEResources = {
   deletionRules: {
     title: 'Regeln für ungenutzte Konten',
     subtitle:
-      'Legen Sie fest, nach wie vielen Tagen ohne erfolgreiche Anmeldung Konten deaktiviert, persönliche Angaben entfernt und Konten als gelöscht markiert werden. Die Regel für Inhalte wählen Sie darunter.',
+      'Legen Sie fest, nach wie vielen Tagen seit der letzten erfolgreichen Anmeldung Konten deaktiviert, persönliche Angaben entfernt und Konten als gelöscht markiert werden. Konten ohne erfolgreiche Anmeldung sind ausgenommen. Die Regel für Inhalte wählen Sie darunter.',
     fields: {
       deactivateAfterDays: 'Konto deaktivieren nach Tagen ohne Anmeldung',
       pseudonymizeAfterDays: 'Persönliche Angaben entfernen nach Tagen ohne Anmeldung',

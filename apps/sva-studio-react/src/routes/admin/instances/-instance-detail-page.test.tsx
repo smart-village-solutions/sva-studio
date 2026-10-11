@@ -997,7 +997,7 @@ describe('InstanceDetailPage', () => {
     });
   });
 
-  it('renders all known modules with derived activation status and translated descriptions in the modules tab', async () => {
+  it('renders all known modules with derived activation status and public descriptions in the modules tab', async () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         selectedInstance: createSelectedInstance({
@@ -1014,21 +1014,24 @@ describe('InstanceDetailPage', () => {
     expect((await screen.findAllByText('news')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('events').length).toBeGreaterThan(0);
     expect(screen.getAllByText('media').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Nachrichten').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Veranstaltungen').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mediathek').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Modul entziehen' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: 'Modul zuweisen' })).toHaveLength(1);
 
     expect(
       screen.getAllByText(
-        'Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.'
+        'Erstellt und veröffentlicht Nachrichten mit Text, Medien, Veröffentlichungszeitpunkt und optionaler Push-Benachrichtigung.'
       ).length
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText('Veröffentlicht Termine und Veranstaltungsdaten für den Mandanten.')
+      screen.getAllByText('Erfasst Veranstaltungen mit Terminen, Veranstaltungsorten, Kontakten, Medien und Veröffentlichungsangaben.')
         .length
     ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(
-        'Aktiviert die Medienverwaltung für Uploads, Referenzen und geschützte Auslieferung.'
+        'Verwaltet Bilder und Dokumente zentral für Upload, Wiederverwendung in Inhalten und geschützte Auslieferung.'
       ).length
     ).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeTruthy();

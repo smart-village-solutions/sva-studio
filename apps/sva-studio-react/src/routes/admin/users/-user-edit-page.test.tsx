@@ -695,9 +695,9 @@ describe('UserEditPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
 
-    expect(screen.getByText('Effektive Berechtigungen')).toBeTruthy();
-    expect(screen.getByText('Wirksame Quellen')).toBeTruthy();
-    expect(screen.getByText('Nicht wirksame Quellen')).toBeTruthy();
+    expect(screen.getByText('Welche Rechte gelten?')).toBeTruthy();
+    expect(screen.getByText('Derzeit gültige Zuweisungen')).toBeTruthy();
+    expect(screen.getByText('Derzeit nicht gültige Zuweisungen')).toBeTruthy();
     expect(screen.getByText('content.read')).toBeTruthy();
     expect(screen.getByText('content.archive')).toBeTruthy();
     expect(screen.getByText(/Organisation: org-1/)).toBeTruthy();
@@ -847,7 +847,7 @@ describe('UserEditPage', () => {
     );
 
     expect(screen.queryByText(/Sichtbarkeit/)).toBeNull();
-    fireEvent.click(screen.getByLabelText('Als Default-Kontext setzen'));
+    fireEvent.click(screen.getByLabelText('Als Standardorganisation auswählen'));
     fireEvent.click(screen.getByRole('button', { name: 'Organisation zuweisen' }));
 
     await waitFor(() => {
@@ -1397,12 +1397,12 @@ describe('UserEditPage', () => {
     expect((screen.getByLabelText('Mainserver Application-ID') as HTMLInputElement).value).toBe(
       'app-id-1'
     );
-    expect(screen.getByText('Ein Secret ist bereits hinterlegt.')).toBeTruthy();
+    expect(screen.getByText('Ein Zugangsschlüssel ist bereits hinterlegt.')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Mainserver Application-ID'), {
       target: { value: 'updated-app-id' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Neues Secret eingeben'), {
+    fireEvent.change(screen.getByPlaceholderText('Neuen Zugangsschlüssel eingeben'), {
       target: { value: 'new-secret' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'Änderungen speichern' })[1]!);
@@ -1568,11 +1568,11 @@ describe('UserEditPage', () => {
     ],
     [
       'tenant_admin_client_not_configured',
-      'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
+      'Der technische Zugang zum Anmeldedienst fehlt für diese Instanz. Bitte lassen Sie die Einrichtung der Instanz prüfen.',
     ],
     [
       'tenant_admin_client_secret_missing',
-      'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
+      'Der Zugangsschlüssel zum Anmeldedienst fehlt für diese Instanz. Bitte lassen Sie die Einrichtung der Instanz prüfen.',
     ],
     [
       'keycloak_unavailable',
@@ -1584,19 +1584,19 @@ describe('UserEditPage', () => {
     ],
     [
       'mainserver_configuration_incomplete',
-      'Die Mainserver-Integration ist unvollständig konfiguriert. Bitte die Schnittstellen-Konfiguration prüfen.',
+      'Die Verbindung zum Mainserver ist noch nicht vollständig eingerichtet. Bitte lassen Sie die Verbindung prüfen.',
     ],
     [
       'mainserver_credentials_missing',
-      'Für die Mainserver-Aktualisierung fehlen die erforderlichen Mainserver-Credentials des ausführenden Kontos.',
+      'Für diese Aktualisierung fehlen die Zugangsdaten des verwendeten Kontos zum Mainserver.',
     ],
     [
       'mainserver_credentials_unavailable',
-      'Die Mainserver-Credentials des ausführenden Kontos konnten derzeit nicht aufgelöst werden.',
+      'Die Zugangsdaten des verwendeten Kontos zum Mainserver sind derzeit nicht verfügbar.',
     ],
     [
       'mainserver_credentials_invalid',
-      'Der Mainserver lehnt die hinterlegten Zugangsdaten für die Aktualisierung ab. Bitte die Mainserver-Credentials prüfen.',
+      'Der Mainserver hat die hinterlegten Zugangsdaten abgelehnt. Bitte lassen Sie diese prüfen.',
     ],
     [
       'mainserver_user_conflict',
@@ -1700,7 +1700,7 @@ describe('UserEditPage', () => {
         classification: 'keycloak_reconcile',
       } as never)
     ).toBe(
-      'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.'
+      'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder muss geprüft werden. Bitte sehen Sie sich das Ergebnis des Abgleichs an.'
     );
     expect(
       userErrorMessage({

@@ -99,7 +99,7 @@ describe('IamViewerPage', () => {
 
     render(<IamViewerPage activeTab="rights" />);
 
-    expect(screen.getByText('IAM Transparenz-Cockpit wird initialisiert ...')).toBeTruthy();
+    expect(screen.getByText('Rechte und Vorgänge werden geladen ...')).toBeTruthy();
   });
 
   it('redirects to the first allowed tab when the current tab is not allowed', async () => {
@@ -207,7 +207,7 @@ describe('IamViewerPage', () => {
       );
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zugriff prüfen' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(
@@ -263,7 +263,9 @@ describe('IamViewerPage', () => {
       expect(screen.getByText('Rechte verständlich prüfen')).toBeTruthy();
       expect(screen.getByText('Das können Sie hier tun')).toBeTruthy();
       expect(
-        screen.getByText(/Mit "Authorize prüfen" einen konkreten Zugriff testen/)
+        screen.getByText(
+          /Mit „Zugriff prüfen“ testen, ob eine bestimmte Aktion auf einem Inhalt erlaubt ist./
+        )
       ).toBeTruthy();
     });
 
@@ -271,7 +273,7 @@ describe('IamViewerPage', () => {
     rerender(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Governance-Fälle einordnen')).toBeTruthy();
+      expect(screen.getByText('Freigaben und weitere Vorgänge prüfen')).toBeTruthy();
       expect(
         screen.getByText(/Bei vorhandener Berechtigung die aktuelle Sicht als CSV exportieren/)
       ).toBeTruthy();
@@ -282,16 +284,18 @@ describe('IamViewerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Datenschutzfälle im Blick behalten')).toBeTruthy();
-      expect(screen.getByText(/Blocker, Metadaten und den genauen Bearbeitungsstand/)).toBeTruthy();
+      expect(
+        screen.getByText(/Hindernisse, weitere Angaben und den Bearbeitungsstand/)
+      ).toBeTruthy();
     });
 
     getAllowedIamCockpitTabsMock.mockReturnValue(['deletion-rules']);
     rerender(<IamViewerPage activeTab="deletion-rules" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Löschregeln tenantweit verwalten')).toBeTruthy();
+      expect(screen.getByText('Regeln für ungenutzte Konten verwalten')).toBeTruthy();
       expect(
-        screen.getByText(/Fristen in Tagen für Deaktivierung, Pseudonymisierung und Löschung/)
+        screen.getByText(/Legen Sie fest, was nach längerer Zeit ohne Anmeldung/)
       ).toBeTruthy();
     });
   });
@@ -352,7 +356,7 @@ describe('IamViewerPage', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText('Handeln als'), {
+    fireEvent.change(screen.getByLabelText('Rechte prüfen für'), {
       target: { value: 'user-9' },
     });
     fireEvent.change(screen.getByLabelText('Suche'), {
@@ -367,10 +371,10 @@ describe('IamViewerPage', () => {
     fireEvent.change(document.getElementById('iam-authorize-resource-id') as HTMLInputElement, {
       target: { value: 'news-1' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zugriff prüfen' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Authorize/ })).toHaveProperty('disabled', true);
+      expect(screen.getByRole('button', { name: /Zugriff wird geprüft/ })).toHaveProperty('disabled', true);
     });
 
     resolveAuthorize(
@@ -779,34 +783,29 @@ describe('IamViewerPage', () => {
       expect(getAdminDeletionRulesMock).toHaveBeenCalledWith(
         '11111111-1111-1111-8111-111111111111'
       );
-      expect(screen.getByRole('heading', { name: 'Tenant-Löschregeln' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Regeln für ungenutzte Konten' })).toBeTruthy();
     });
 
+    fireEvent.change(screen.getByLabelText('Konto deaktivieren nach Tagen ohne Anmeldung'), {
+      target: { value: '120' },
+    });
     fireEvent.change(
-      screen.getByLabelText('Deaktivierung nach Tagen seit dem letzten erfolgreichen Login'),
-      {
-        target: { value: '120' },
-      }
-    );
-    fireEvent.change(
-      screen.getByLabelText('Pseudonymisierung nach Tagen seit dem letzten erfolgreichen Login'),
+      screen.getByLabelText('Persönliche Angaben entfernen nach Tagen ohne Anmeldung'),
       {
         target: { value: '240' },
       }
     );
     fireEvent.change(
-      screen.getByLabelText(
-        'Tombstone-Soft-Delete nach Tagen seit dem letzten erfolgreichen Login'
-      ),
+      screen.getByLabelText('Konto als gelöscht markieren nach Tagen ohne Anmeldung'),
       {
         target: { value: '480' },
       }
     );
-    fireEvent.change(screen.getByLabelText('Standardregel für Inhalte'), {
+    fireEvent.change(screen.getByLabelText('Was soll mit zugehörigen Inhalten geschehen?'), {
       target: { value: 'with_owner_lifecycle' },
     });
     fireEvent.click(
-      screen.getByLabelText('Nutzer dürfen die Standardregel für eigene Inhalte überschreiben')
+      screen.getByLabelText('Personen dürfen für eigene Inhalte eine andere Regel wählen')
     );
     fireEvent.click(screen.getByRole('button', { name: 'Löschregeln speichern' }));
 
@@ -859,7 +858,7 @@ describe('IamViewerPage', () => {
     rerender(<IamViewerPage activeTab="governance" />);
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Governance' })).toBe(document.activeElement);
+      expect(screen.getByRole('tab', { name: 'Freigaben und Vorgänge' })).toBe(document.activeElement);
     });
   });
 
@@ -876,7 +875,9 @@ describe('IamViewerPage', () => {
 
     render(<IamViewerPage activeTab="deletion-rules" />);
 
-    expect(screen.getByText('Instanzkontext fehlt für Tenant-Löschregeln.')).toBeTruthy();
+    expect(
+      screen.getByText('Wählen Sie eine Instanz, um ihre Regeln für ungenutzte Konten anzusehen.')
+    ).toBeTruthy();
     cleanup();
 
     getAdminDeletionRulesMock.mockResolvedValue({
@@ -978,7 +979,7 @@ describe('IamViewerPage', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zugriff prüfen' }));
 
     await waitFor(() => {
       expect(invalidateEffectiveAccessMock).not.toHaveBeenCalled();
@@ -1041,7 +1042,9 @@ describe('IamViewerPage', () => {
     getAllowedIamCockpitTabsMock.mockReturnValue(['rights']);
 
     rerender(<IamViewerPage activeTab="rights" />);
-    expect(screen.getByText('Das IAM Transparenz-Cockpit ist derzeit deaktiviert.')).toBeTruthy();
+    expect(
+      screen.getByText('Die Prüfung von Rechten und Vorgängen ist derzeit deaktiviert.')
+    ).toBeTruthy();
 
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(false);
@@ -1049,7 +1052,7 @@ describe('IamViewerPage', () => {
 
     rerender(<IamViewerPage activeTab="rights" />);
     expect(
-      screen.getByText('Für dieses IAM Transparenz-Cockpit fehlen die erforderlichen Rollen.')
+      screen.getByText('Sie haben keinen Zugriff auf die Prüfung von Rechten und Vorgängen.')
     ).toBeTruthy();
   });
 
@@ -1108,7 +1111,7 @@ describe('IamViewerPage', () => {
     await waitFor(() => {
       expect(screen.getByText('content.read')).toBeTruthy();
       expect(screen.getByText('content.updatePayload')).toBeTruthy();
-      expect(screen.getByText('Impersonation durch user-2')).toBeTruthy();
+      expect(screen.getByText('Prüfung ausgelöst von user-2')).toBeTruthy();
       expect(screen.getAllByText('org-1').length).toBeGreaterThan(0);
       expect(screen.getByText('locale: de')).toBeTruthy();
       expect(screen.getByText('Redaktion Standard')).toBeTruthy();
@@ -1219,7 +1222,7 @@ describe('IamViewerPage', () => {
 
     render(<IamViewerPage activeTab="rights" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zugriff prüfen' }));
 
     await waitFor(() => {
       expect(screen.getByText('Instanz-ID fehlt.')).toBeTruthy();
@@ -1269,7 +1272,7 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="rights" />);
 
     const rightsTab = screen.getByRole('tab', { name: 'Rechte' });
-    const governanceTab = screen.getByRole('tab', { name: 'Governance' });
+    const governanceTab = screen.getByRole('tab', { name: 'Freigaben und Vorgänge' });
 
     expect(rightsTab.getAttribute('tabindex')).toBe('0');
     expect(governanceTab.getAttribute('tabindex')).toBe('-1');

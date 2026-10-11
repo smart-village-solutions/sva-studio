@@ -101,13 +101,15 @@ describe('OrganizationCreatePage', () => {
       }
     );
     fireEvent.change(
-      screen.getByLabelText('Autoren-Policy', { selector: '#organization-policy' }),
+      screen.getByLabelText('Unter welchem Namen Inhalte erstellt werden dürfen', {
+        selector: '#organization-policy',
+      }),
       {
         target: { value: 'org_or_personal' },
       }
     );
     fireEvent.change(
-      screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }),
+      screen.getByLabelText('Übergeordnete Organisation', { selector: '#organization-parent' }),
       {
         target: { value: 'parent-1' },
       }
@@ -273,7 +275,7 @@ describe('OrganizationCreatePage', () => {
     });
 
     fireEvent.change(
-      screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }),
+      screen.getByLabelText('Übergeordnete Organisation', { selector: '#organization-parent' }),
       {
         target: { value: 'parent-2' },
       }

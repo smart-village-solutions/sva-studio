@@ -182,7 +182,7 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    expect(screen.getAllByText('Technischer Account').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Technisches Konto').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('switch', { name: 'Auch technische Accounts anzeigen' }));
     expect(setIncludeTechnicalAccounts).toHaveBeenCalledWith(false);
   });
@@ -523,7 +523,7 @@ describe('UserListPage', () => {
     const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
     expect(deleteButton.className).toContain('bg-action-destructive');
     fireEvent.click(deleteButton);
-    expect(screen.getByText(/physisch in Studio und Keycloak gelöscht/i)).toBeTruthy();
+    expect(screen.getByText(/dauerhaft aus Studio und dem Anmeldedienst Keycloak entfernt/i)).toBeTruthy();
 
     fireEvent.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })

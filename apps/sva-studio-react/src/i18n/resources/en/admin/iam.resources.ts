@@ -1,12 +1,12 @@
 export const iamAdminENResources = {
   page: {
-    title: 'IAM transparency cockpit',
-    subtitle: 'Inspect rights, governance cases, and privacy workflows with typed read models.',
+    title: 'Check permissions and cases',
+    subtitle: 'Check access permissions, approvals, and privacy cases.',
   },
   tabs: {
-    ariaLabel: 'IAM transparency tabs',
+    ariaLabel: 'Permissions and cases sections',
     rights: 'Rights',
-    governance: 'Governance',
+    governance: 'Approvals and cases',
     dsr: 'Privacy',
     deletionRules: 'Deletion rules',
   },
@@ -18,16 +18,15 @@ export const iamAdminENResources = {
         'This area shows which permissions are currently effective for a user in the selected context. It helps explain why something is allowed or denied.',
       options: {
         first: 'Filter by organization, user context, or search terms to narrow the list.',
-        second:
-          'Use "Check authorize" to test a specific access decision for an action and resource.',
+        second: 'Use “Check access” to test whether a specific action on content is allowed.',
         third:
           'Review source roles, groups, and origin to understand where a permission comes from.',
       },
     },
     governance: {
-      title: 'Understand governance cases',
+      title: 'Review approvals and other cases',
       description:
-        'This area lists approvals, delegations, and similar IAM processes. It helps you review open cases and understand their current status.',
+        'This area lists approvals, delegated permissions, and similar cases. You can see which cases are still open.',
       options: {
         first: 'Filter by search term, case type, or status to find the relevant case faster.',
         second: 'Open a case to inspect involved people, ticket context, and additional details.',
@@ -41,25 +40,25 @@ export const iamAdminENResources = {
       options: {
         first: 'Filter by type and status to focus on open or completed cases.',
         second: 'Compare affected and requesting people to understand the case correctly.',
-        third: 'Open an entry to inspect blockers, metadata, and the exact processing state.',
+        third: 'Open an entry to see obstacles, further details, and its current status.',
       },
     },
     deletionRules: {
-      title: 'Manage tenant-wide deletion rules',
+      title: 'Manage rules for unused accounts',
       description:
-        'This area defines how account and content cleanup works over time. The settings apply across the tenant and control the default lifecycle for deactivation, pseudonymization, and deletion.',
+        'Decide what happens to accounts and their content after a long period without sign-in. The rules apply only to non-technical accounts that have signed in successfully at least once.',
       options: {
         first:
-          'Review or change the day-based time limits for deactivation, pseudonymization, and deletion.',
-        second: 'Choose whether content is kept by default or follows the owner lifecycle.',
+          'Choose when accounts are deactivated, personal details are removed, and accounts are marked as deleted.',
+        second: 'Choose whether content is kept or follows the status of its account.',
         third: 'Control whether users may override the default rule for their own content.',
       },
     },
   },
   messages: {
-    initializing: 'Initializing IAM transparency cockpit ...',
-    disabled: 'The IAM transparency cockpit is currently disabled.',
-    forbidden: 'The required roles for this IAM transparency cockpit are missing.',
+    initializing: 'Loading permissions and cases ...',
+    disabled: 'Checking permissions and cases is currently disabled.',
+    forbidden: 'You do not have access to the permissions and cases view.',
   },
   shared: {
     all: 'All',
@@ -81,12 +80,12 @@ export const iamAdminENResources = {
     targetLabel: 'Target account',
     requester: 'Requester',
     requestNote: 'Request description',
-    meta: 'Metadata',
+    meta: 'Further details',
     selectPrompt: 'Select an entry on the left to inspect details.',
   },
   rights: {
-    empty: 'No effective permissions found.',
-    tableAriaLabel: 'Table of effective permissions',
+    empty: 'No currently valid permissions found.',
+    tableAriaLabel: 'Table of currently valid permissions',
     noOrganization: 'No organization',
     columns: {
       action: 'Action',
@@ -94,20 +93,20 @@ export const iamAdminENResources = {
       resourceType: 'Resource type',
       resourceId: 'Resource ID',
       organization: 'Organization',
-      scope: 'Scope',
-      sourceRoles: 'Source roles',
-      sourceGroups: 'Source groups',
+      scope: 'Applies to',
+      sourceRoles: 'Related roles',
+      sourceGroups: 'Related groups',
       origin: 'Origin',
     },
     filters: {
       organization: 'Organization',
-      actingAs: 'Acting as',
+      actingAs: 'Check permissions for',
       search: 'Search',
     },
     subject: {
-      title: 'Subject',
-      impersonating: 'Impersonated by {{actor}}',
-      self: 'Own context',
+      title: 'Person being checked',
+      impersonating: 'Check started by {{actor}}',
+      self: 'Own permissions',
     },
     messages: {
       error: 'Permissions could not be loaded: {{value}}',
@@ -117,17 +116,17 @@ export const iamAdminENResources = {
       resourceType: 'Resource type',
       resourceId: 'Resource ID',
       organizationId: 'Organization',
-      run: 'Check authorize',
-      running: 'Checking authorize ...',
+      run: 'Check access',
+      running: 'Checking access ...',
       allowed: 'Allowed',
       denied: 'Denied',
       instanceRequired: 'Instance ID is missing.',
       summary: {
         action: 'Checked action',
         resource: 'Resource',
-        organization: 'Context organization',
+        organization: 'Selected organization',
         cause: 'Cause',
-        origin: 'Derivation',
+        origin: 'Where the permission comes from',
       },
     },
     permissionSource: {
@@ -240,17 +239,17 @@ export const iamAdminENResources = {
     },
   },
   deletionRules: {
-    title: 'Tenant deletion rules',
+    title: 'Rules for unused accounts',
     subtitle:
-      'Manage the tenant-wide deadlines for deactivation, pseudonymization, and soft delete as well as the default content rule.',
+      'Choose how many days since the last successful sign-in pass before accounts are deactivated, personal details are removed, and accounts are marked as deleted. Accounts that have never signed in successfully are excluded. Choose the content rule below.',
     fields: {
-      deactivateAfterDays: 'Deactivation after days since the last successful login',
-      pseudonymizeAfterDays: 'Pseudonymization after days since the last successful login',
-      deleteAfterDays: 'Tombstone soft delete after days since the last successful login',
-      defaultContentStrategy: 'Default content rule',
-      allowContentPreferenceOverride: 'Users may override the default rule for their own content',
+      deactivateAfterDays: 'Deactivate account after days without sign-in',
+      pseudonymizeAfterDays: 'Remove personal details after days without sign-in',
+      deleteAfterDays: 'Mark account as deleted after days without sign-in',
+      defaultContentStrategy: 'What should happen to related content?',
+      allowContentPreferenceOverride: 'People may choose a different rule for their own content',
       allowContentPreferenceOverrideHint:
-        'If disabled, no personal override is shown in the privacy cockpit.',
+        'If this option is off, people cannot change the rule for their content themselves.',
     },
     actions: {
       save: 'Save deletion rules',
@@ -258,13 +257,13 @@ export const iamAdminENResources = {
       saved: 'Saved',
     },
     messages: {
-      loading: 'Loading tenant deletion rules ...',
-      instanceMissing: 'Tenant deletion rules require an instance context.',
+      loading: 'Loading rules for unused accounts ...',
+      instanceMissing: 'Select an instance to view its rules for unused accounts.',
       readOnly: 'These deletion rules are read-only.',
     },
     strategies: {
       retain: 'Keep content',
-      with_owner_lifecycle: 'Handle content together with the owner lifecycle',
+      with_owner_lifecycle: 'Handle content according to the account status',
     },
   },
 } as const;

@@ -289,7 +289,7 @@ describe('RolesPage', () => {
     });
 
     expect(screen.getAllByText('Keycloak-Built-in-Rolle').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Read-only').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Nur ansehen').length).toBeGreaterThan(0);
     expect(screen.queryByText('Synchronisierung')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
     expect(useKeycloakRolesMock).toHaveBeenCalledWith(true);
@@ -443,7 +443,7 @@ describe('RolesPage', () => {
 
     expect(
       screen.getByText(
-        'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.'
+        'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder muss geprüft werden. Bitte sehen Sie sich das Ergebnis des Abgleichs an.'
       )
     ).toBeTruthy();
     expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy();

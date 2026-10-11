@@ -27,7 +27,7 @@ export const usersAdminDEResources = {
   },
   editability: {
     editable: 'Bearbeitbar',
-    readOnly: 'Read-only',
+    readOnly: 'Nur ansehen',
     blocked: 'Blockiert',
   },
   keycloakRoles: {
@@ -35,7 +35,8 @@ export const usersAdminDEResources = {
     description:
       'Diese Rollen gelten für angebundene Anwendungen und verleihen keine Studio-Berechtigungen.',
     dialogTitle: 'Keycloak-Rollen für {{name}}',
-    dialogDescription: 'Direkte und über Composite Roles geerbte Realm-Rollen getrennt verwalten.',
+    dialogDescription:
+      'Sehen Sie, welche Rollen direkt zugewiesen sind und welche über andere Rollen gelten.',
     open: 'Keycloak-Rollen öffnen',
     openForUser: 'Keycloak-Rollen für {{name}} öffnen',
     loading: 'Keycloak-Rollen werden geladen ...',
@@ -47,9 +48,8 @@ export const usersAdminDEResources = {
     direct: 'Direkt',
     inherited: 'Geerbt',
     directHint: 'Diese Rolle ist direkt zugewiesen und kann hier entzogen werden.',
-    inheritedHint:
-      'Diese Rolle ist über eine Composite Role wirksam. Eine zusätzliche direkte Zuweisung ist möglich.',
-    unassignedHint: 'Diese Realm-Rolle kann direkt zugewiesen werden.',
+    inheritedHint: 'Diese Rolle gilt über eine andere Rolle. Sie können sie auch direkt zuweisen.',
+    unassignedHint: 'Diese Rolle kann direkt zugewiesen werden.',
     protectedHint: 'Diese technische oder geschützte Rolle ist hier schreibgeschützt.',
     systemAdminHint:
       'System-Administrator wird ausschließlich über die geschützte lokale Studio-Rollenzuweisung verwaltet.',
@@ -95,14 +95,14 @@ export const usersAdminDEResources = {
   },
   createDialog: {
     title: 'Nutzer anlegen',
-    description: 'Erstellt ein neues Nutzerkonto in Keycloak und IAM.',
-    groupsLabel: 'Gruppen-Zuweisung',
-    groupsHint:
-      'Gruppen sind der bevorzugte Startpunkt für neue Nutzer und bündeln passende Rollen.',
+    description:
+      'Erstellt ein Benutzerkonto. Ob eine Einladungs-E-Mail versendet wird, wählen Sie unten aus.',
+    groupsLabel: 'Gruppen auswählen',
+    groupsHint: 'Wählen Sie eine Gruppe, um mehrere passende Rechte gemeinsam zu vergeben.',
     groupsEmpty: 'Es sind keine aktiven Gruppen verfügbar.',
     advancedRolesTitle: 'Direkte Rollen optional ergänzen',
     advancedRolesHint:
-      'Direkte Rollen sind additive Sonderfälle und sollten nur zusätzlich zu Gruppen verwendet werden.',
+      'Geben Sie eine Rolle zusätzlich direkt, wenn die ausgewählte Gruppe nicht alle benötigten Rechte enthält.',
     rolePlaceholder: 'Es sind keine direkten Rollen verfügbar.',
     sendPasswordSetupEmail: 'Einladungs-E-Mail zum Passwort setzen senden',
     invitationPurpose: 'Ziel nach dem Passwortsetzen',
@@ -110,9 +110,9 @@ export const usersAdminDEResources = {
     invitationPurposeStudio: 'Studio',
     invitationPurposeSsf: 'KasselDIALOG',
     invitationPurposeHint: 'Die Auswahl wird für spätere Einladungen dieses Kontos gespeichert.',
-    isTechnicalAccount: 'Ist ein technischer Account',
+    isTechnicalAccount: 'Technisches Konto',
     isTechnicalAccountHint:
-      'Technische Accounts werden von den konfigurierten Kontolöschungsregeln ausgenommen. Andere Accountfunktionen bleiben unverändert.',
+      'Technische Konten sind von den automatischen Regeln zum Deaktivieren, Entfernen persönlicher Angaben und Löschen ausgenommen. Anmeldung, Rollen und Gruppen bleiben davon unberührt.',
   },
   confirm: {
     activateTitle: 'Nutzer aktivieren',
@@ -126,7 +126,7 @@ export const usersAdminDEResources = {
       'Die Mainserver-Daten aller markierten Nutzer werden aktualisiert (maximal 50). Teil-Erfolge werden einzeln ausgewiesen.',
     deleteTitle: 'Nutzerkonto dauerhaft löschen',
     deleteDescription:
-      'Das ausgewählte Tenant-Konto wird physisch in Studio und Keycloak gelöscht. Inhalte werden entsprechend der wirksamen Tenant- oder Konto-Regel behandelt.',
+      'Dieses Konto wird dauerhaft aus Studio und dem Anmeldedienst Keycloak entfernt. Zugehörige Inhalte bleiben je nach geltender Regel ohne Zuordnung zur Person erhalten oder werden als gelöscht markiert.',
     deleteSystemAdminDisabled:
       'Konten mit aktiver Rolle System-Administrator können erst nach Entzug dieser Rolle gelöscht werden.',
   },
@@ -141,38 +141,39 @@ export const usersAdminDEResources = {
       'Der Nutzer wurde angelegt, aber die Einladungs-E-Mail zum Passwort setzen konnte nicht versendet werden.',
     mainserverApplicationIdLabel: 'Mainserver Application-ID',
     mainserverApplicationSecretLabel: 'Mainserver Application-Secret',
-    mainserverApplicationSecretPlaceholder: 'Neues Secret eingeben',
-    mainserverApplicationSecretConfigured: 'Ein Secret ist bereits hinterlegt.',
-    mainserverApplicationSecretMissing: 'Es ist noch kein Secret hinterlegt.',
-    mainserverApplicationSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
-    isTechnicalAccount: 'Ist ein technischer Account',
+    mainserverApplicationSecretPlaceholder: 'Neuen Zugangsschlüssel eingeben',
+    mainserverApplicationSecretConfigured: 'Ein Zugangsschlüssel ist bereits hinterlegt.',
+    mainserverApplicationSecretMissing: 'Es ist noch kein Zugangsschlüssel hinterlegt.',
+    mainserverApplicationSecretHint:
+      'Lassen Sie das Feld leer, wenn der bestehende Zugangsschlüssel bleiben soll.',
+    isTechnicalAccount: 'Technisches Konto',
     isTechnicalAccountHint:
-      'Die Klassifikation nimmt den Account von Kontolöschungsregeln aus und ändert weder Login noch Rollen oder Gruppen.',
+      'Technische Konten sind von den automatischen Regeln zum Deaktivieren, Entfernen persönlicher Angaben und Löschen ausgenommen. Anmeldung, Rollen und Gruppen bleiben davon unberührt.',
     removeTechnicalAccountWarning:
-      'Nach dem Speichern unterliegt dieser Account ab dem nächsten Lauf wieder den bestehenden Kontolöschungsregeln. Bereits erreichte Lifecycle-Zustände werden nicht zurückgesetzt.',
-    rolesLabel: 'Rollen-Zuweisung',
-    groupsLabel: 'Gruppen-Zuweisung',
+      'Wenn Sie die Markierung entfernen, gelten für dieses Konto ab dem nächsten Prüflauf wieder die automatischen Löschregeln. Frühere Änderungen am Kontostatus werden dadurch nicht rückgängig gemacht.',
+    rolesLabel: 'Rollen auswählen',
+    groupsLabel: 'Gruppen auswählen',
     notesLabel: 'Notizen',
     notesCounter: '{{count}} / 2000 Zeichen',
     validation: {
       notesTooLong: 'Notizen dürfen höchstens 2000 Zeichen enthalten.',
     },
-    effectivePermissionsTitle: 'Aktuell wirksame Rechte',
+    effectivePermissionsTitle: 'Derzeit verfügbare Rechte',
     effectivePermissionsHint:
-      'Diese Liste zeigt die derzeit aufgelösten Rechte des Nutzers aus Rollen- und Gruppen-Zuweisungen.',
+      'Diese Rechte erhält die Person derzeit über ihre Rollen und Gruppen.',
     permissionsLoading: 'Berechtigungskatalog wird geladen ...',
     permissionDescriptionFallback: 'Keine zusätzliche Beschreibung vorhanden.',
     permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
     permissionTrace: {
-      title: 'Effektive Berechtigungen',
+      title: 'Welche Rechte gelten?',
       description:
-        'Schreibgeschützte Auflösung aller wirksamen und nicht wirksamen Berechtigungsquellen.',
-      effectiveTitle: 'Wirksame Quellen',
-      inactiveTitle: 'Nicht wirksame Quellen',
+        'Sehen Sie, über welche Rollen und Gruppen ein Recht gilt oder warum es nicht gilt.',
+      effectiveTitle: 'Derzeit gültige Zuweisungen',
+      inactiveTitle: 'Derzeit nicht gültige Zuweisungen',
       directAssignmentsTitle: 'Direkte Zuweisungen',
       resourceType: 'Ressource: {{value}}',
       organization: 'Organisation: {{value}}',
-      scope: 'Scope: {{value}}',
+      scope: 'Geltungsbereich: {{value}}',
       inheritedOrganization: 'Vererbt ab Organisation: {{value}}',
       inheritedGeoUnit: 'Geo-Freigabe ab: {{value}}',
       restrictedGeoUnit: 'Geo-Restriktion: {{value}}',
@@ -217,14 +218,15 @@ export const usersAdminDEResources = {
     groupOrigin: 'Herkunft: {{value}}',
     organizations: {
       title: 'Organisationen',
-      description: 'Organisationsmitgliedschaften dieses Kontos anzeigen und pflegen.',
+      description:
+        'Ordnen Sie diesem Konto Organisationen zu. Ohne System-Administrator-Rolle wird die Standardorganisation verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
       empty: 'Keine Organisationsmitgliedschaften vorhanden.',
       searchLabel: 'Organisation suchen',
       searchPlaceholder: 'Nach Organisationsname oder Schlüssel filtern',
       selectLabel: 'Organisation auswählen',
       selectPlaceholder: 'Organisation für neue Zuordnung auswählen',
-      assignDefaultLabel: 'Als Default-Kontext setzen',
-      defaultContextLabel: 'Default-Kontext',
+      assignDefaultLabel: 'Als Standardorganisation auswählen',
+      defaultContextLabel: 'Standardorganisation',
       createdAt: 'Zugeordnet am {{value}}',
       assignAction: 'Organisation zuweisen',
       updateAction: 'Mitgliedschaft für {{name}} aktualisieren',
@@ -268,7 +270,7 @@ export const usersAdminDEResources = {
     bulkReprovisionFailureItem: '{{id}}: {{code}} - {{message}}',
     resultCount: '{{count}} Nutzer gefunden.',
     statusSwitchLabel: 'Aktivstatus für {{name}}',
-    technicalAccountBadge: 'Technischer Account',
+    technicalAccountBadge: 'Technisches Konto',
     mainserverCredentialsMissing: 'Mainserver-Daten fehlen',
     mainserverApplicationIdMissing: 'Mainserver Application-ID fehlt',
     mainserverApplicationSecretMissing: 'Mainserver Application-Secret fehlt',
@@ -303,31 +305,31 @@ export const usersAdminDEResources = {
     conflict:
       'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
     keycloakReconcile:
-      'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.',
+      'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder muss geprüft werden. Bitte sehen Sie sich das Ergebnis des Abgleichs an.',
     tenantAdminClientNotConfigured:
-      'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
+      'Der technische Zugang zum Anmeldedienst fehlt für diese Instanz. Bitte lassen Sie die Einrichtung der Instanz prüfen.',
     tenantAdminClientSecretMissing:
-      'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
+      'Der Zugangsschlüssel zum Anmeldedienst fehlt für diese Instanz. Bitte lassen Sie die Einrichtung der Instanz prüfen.',
     keycloakUnavailable:
       'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
     databaseUnavailable:
       'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
     mainserverConfigurationIncomplete:
-      'Die Mainserver-Integration ist unvollständig konfiguriert. Bitte die Schnittstellen-Konfiguration prüfen.',
+      'Die Verbindung zum Mainserver ist noch nicht vollständig eingerichtet. Bitte lassen Sie die Verbindung prüfen.',
     mainserverCredentialsMissing:
-      'Für die Mainserver-Aktualisierung fehlen die erforderlichen Mainserver-Credentials des ausführenden Kontos.',
+      'Für diese Aktualisierung fehlen die Zugangsdaten des verwendeten Kontos zum Mainserver.',
     mainserverCredentialsUnavailable:
-      'Die Mainserver-Credentials des ausführenden Kontos konnten derzeit nicht aufgelöst werden.',
+      'Die Zugangsdaten des verwendeten Kontos zum Mainserver sind derzeit nicht verfügbar.',
     mainserverCredentialsInvalid:
-      'Der Mainserver lehnt die hinterlegten Zugangsdaten für die Aktualisierung ab. Bitte die Mainserver-Credentials prüfen.',
+      'Der Mainserver hat die hinterlegten Zugangsdaten abgelehnt. Bitte lassen Sie diese prüfen.',
     mainserverUserConflict:
       'Der Mainserver-Benutzer ist bereits mit einer anderen Identität verknüpft. Eine Wiederholung löst den Konflikt nicht. Bitte den Mainserver-Betrieb mit der angezeigten Request-ID kontaktieren.',
     mainserverProvisioningFailed:
       'Die Aktualisierung der Mainserver-Daten ist am Mainserver fehlgeschlagen. Bitte die Mainserver-Integration prüfen und erneut versuchen.',
     mainserverTenantForbidden:
-      'Der Mainserver hat die Provisionierung für diese Organisation abgelehnt. Bitte die aktive Organisation und Mandantenzuordnung prüfen.',
+      'Der Mainserver hat die Einrichtung für diese Organisation abgelehnt. Bitte prüfen Sie die aktive Organisation und ihre Zuordnung.',
     mainserverRequestRejected:
-      'Der Mainserver hat die Provisionierungsanfrage als ungültig abgelehnt. Bitte den Integrationsvertrag und die angeforderte Rolle prüfen.',
+      'Der Mainserver hat die Anfrage zur Einrichtung abgelehnt. Bitte lassen Sie die Verbindung und die angeforderte Rolle prüfen.',
     lastAdminProtection:
       'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
     selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',

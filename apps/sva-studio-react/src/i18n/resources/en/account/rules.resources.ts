@@ -2,28 +2,29 @@ export const rulesAccountENResources = {
   title: 'Account rules',
   navLabel: 'Account rules',
   subtitle:
-    'Review tenant-wide deletion rules and the handling of your own content in a dedicated view.',
+    'See what happens to your account and content after a long period without signing in. The deadlines apply only after your first successful sign-in.',
   summary: {
-    deactivateAfterDays: 'Deactivate after',
-    deactivateAfterDaysHint: 'Days since the last successful login until account deactivation.',
-    pseudonymizeAfterDays: 'Pseudonymize after',
-    pseudonymizeAfterDaysHint: 'Days since the last successful login until pseudonymization.',
-    deleteAfterDays: 'Tombstone soft delete after',
+    deactivateAfterDays: 'Deactivate account after',
+    deactivateAfterDaysHint: 'Days without a successful sign-in before the account is blocked.',
+    pseudonymizeAfterDays: 'Remove personal details after',
+    pseudonymizeAfterDaysHint:
+      'Days without a successful sign-in before personal details are removed.',
+    deleteAfterDays: 'Mark account as deleted after',
     deleteAfterDaysHint:
-      'Days since the last successful login until the final tombstone soft delete.',
-    defaultContentStrategy: 'Default content rule',
+      'Days without a successful sign-in before the account is marked as deleted.',
+    defaultContentStrategy: 'What happens to your content',
   },
   sections: {
     global: {
-      title: 'Tenant-wide rules',
+      title: 'Rules for personal accounts in this instance',
       deactivateAfterDays:
-        'After the configured number of days since the last successful login, the account is deactivated and blocked for direct sign-ins.',
+        'After the specified time without signing in, the account is deactivated. Direct sign-in is no longer possible.',
       pseudonymizeAfterDays:
-        'After the configured number of days since the last successful login, personal data is pseudonymized unless retention duties still apply.',
+        'Later, personal details are removed from the account unless they must be retained.',
       deleteAfterDays:
-        'After the configured number of days since the last successful login, the account enters the final tombstone soft-delete state; it is not physically removed.',
+        'After that, the account is marked as deleted. The record is not completely removed.',
       defaultContentStrategy:
-        'The default content rule defines whether personal content is kept or follows the owner lifecycle.',
+        'The content rule determines whether your content is kept or handled together with your account.',
     },
     personal: {
       title: 'Personal content rule',
@@ -32,7 +33,7 @@ export const rulesAccountENResources = {
   fields: {
     contentPreference: 'Rule for own content',
     contentPreferenceHint:
-      'Choose whether your own content stays retained or follows the account lifecycle.',
+      'Choose whether your content is kept or handled together with your account.',
   },
   actions: {
     save: 'Save content rule',
@@ -45,6 +46,6 @@ export const rulesAccountENResources = {
   },
   strategies: {
     retain: 'Keep content',
-    with_owner_lifecycle: 'Handle content with the account lifecycle',
+    with_owner_lifecycle: 'Handle content together with the account',
   },
 } as const;

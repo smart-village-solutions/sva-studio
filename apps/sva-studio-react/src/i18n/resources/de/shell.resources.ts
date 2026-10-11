@@ -123,7 +123,7 @@ export const shellDEResources = {
       'Diese Organisation steht im aktuellen Kontext nicht zur Auswahl.',
     organizationContextErrorInactive:
       'Inaktive Organisationen können nicht als aktiver Kontext gesetzt werden.',
-    organizationContextDefault: 'Default-Kontext',
+    organizationContextDefault: 'Standardorganisation',
     iamViewer: 'IAM-Viewer',
   },
   sidebar: {

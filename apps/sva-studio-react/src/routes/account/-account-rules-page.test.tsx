@@ -45,21 +45,21 @@ describe('AccountRulesPage', () => {
       expect(screen.getByRole('heading', { name: 'Kontoregeln' })).toBeTruthy();
     });
 
-    expect(screen.getByText('Deaktivierung nach')).toBeTruthy();
-    expect(screen.getByText('Pseudonymisierung nach')).toBeTruthy();
-    expect(screen.getByText('Tombstone-Soft-Delete nach')).toBeTruthy();
+    expect(screen.getByText('Konto deaktivieren nach')).toBeTruthy();
+    expect(screen.getByText('Persönliche Angaben entfernen nach')).toBeTruthy();
+    expect(screen.getByText('Konto als gelöscht markieren nach')).toBeTruthy();
     expect(screen.getByText('365')).toBeTruthy();
     expect(screen.getByText('730')).toBeTruthy();
     expect(screen.getByText('1095')).toBeTruthy();
     expect(
-      screen.getByText('Tage seit dem letzten erfolgreichen Login bis zur Deaktivierung.')
+      screen.getByText('Tage ohne erfolgreiche Anmeldung, bis das Konto gesperrt wird.')
     ).toBeTruthy();
     expect(
-      screen.getByText('Tage seit dem letzten erfolgreichen Login bis zur Pseudonymisierung.')
+      screen.getByText('Tage ohne erfolgreiche Anmeldung, bis persönliche Angaben entfernt werden.')
     ).toBeTruthy();
     expect(
       screen.getByText(
-        'Tage seit dem letzten erfolgreichen Login bis zum finalen Tombstone-Soft-Delete.'
+        'Tage ohne erfolgreiche Anmeldung, bis das Konto als gelöscht markiert wird.'
       )
     ).toBeTruthy();
     expect(screen.getByLabelText('Regel für eigene Inhalte')).toBeTruthy();

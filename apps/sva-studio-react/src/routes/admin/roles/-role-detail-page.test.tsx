@@ -318,9 +318,9 @@ describe('RoleDetailPage', () => {
     const scopeOptions = screen.getAllByRole('combobox', {
       name: /Geltungsbereich/,
     })[0]?.textContent;
-    expect(scopeOptions).toContain('Alle Inhalte im Mandanten');
+    expect(scopeOptions).toContain('Alle Inhalte dieser Instanz');
     expect(scopeOptions).toContain('Nur eigene Inhalte');
-    expect(scopeOptions).toContain('Inhalte der eigenen Organisation');
+    expect(scopeOptions).toContain('Eigene Inhalte und Inhalte der aktiven Organisation');
 
     fireEvent.click(screen.getAllByLabelText(/Inhalte anzeigen/)[0]!);
     const saveButtons = screen.getAllByRole('button', { name: 'Rechte speichern' });
@@ -371,7 +371,7 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
 
-    fireEvent.click(screen.getAllByLabelText(/Konfigurieren IAM/)[0]!);
+    fireEvent.click(screen.getAllByLabelText(/Konfigurieren Verwaltung/)[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Rechte speichern' })[1]!);
 
     await waitFor(() => {
@@ -496,7 +496,7 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
 
-    const cockpitLinks = screen.getAllByRole('link', { name: 'Im IAM-Cockpit prüfen' });
+    const cockpitLinks = screen.getAllByRole('link', { name: 'Zugriff im Detail prüfen' });
     expect(cockpitLinks).toHaveLength(2);
     expect(cockpitLinks[0]?.getAttribute('href')).toBe('/admin/iam?tab=rights');
     expect(cockpitLinks[1]?.getAttribute('href')).toBe('/admin/iam?tab=rights');
@@ -510,7 +510,7 @@ describe('RoleDetailPage', () => {
     expect(screen.getAllByText('Inhalte').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Nachrichten').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Lesen').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText('Payload bearbeiten').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Inhalt bearbeiten').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Zugeordnet').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Nicht zugeordnet').length).toBeGreaterThanOrEqual(1);
   });
@@ -550,9 +550,7 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-1" activeTab="general" />);
 
     expect(
-      screen.getByText(
-        'Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.'
-      )
+      screen.getByText('Die Rechte dieser Systemrolle können hier nicht geändert werden.')
     ).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
@@ -595,9 +593,7 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-legacy-editor" activeTab="general" />);
 
     expect(
-      screen.queryByText(
-        'Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.'
-      )
+      screen.queryByText('Die Rechte dieser Systemrolle können hier nicht geändert werden.')
     ).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
@@ -779,16 +775,14 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="sync" />);
 
     expect(
-      screen.getByText(
-        'Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.'
-      )
+      screen.getByText('Hier sehen Sie, ob die Rollendaten mit Keycloak abgeglichen wurden.')
     ).toBeTruthy();
     expect(
       screen.getByText(
-        'Berechtigungen, Zuweisungen und interne Schutzmerkmale werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.'
+        'Rechte und Zuweisungen bleiben in Studio. Sie sind nicht Teil des Abgleichs.'
       )
     ).toBeTruthy();
-    expect(screen.getByText('Keycloak-Metadatenstatus')).toBeTruthy();
+    expect(screen.getByText('Status des Abgleichs')).toBeTruthy();
     expect(screen.getByText('IDP_UNAVAILABLE')).toBeTruthy();
     expect(screen.getByText('Berechtigungen der Rolle')).toBeTruthy();
     expect(screen.getByText('Benutzerzuweisungen zur Rolle')).toBeTruthy();
@@ -825,7 +819,7 @@ describe('RoleDetailPage', () => {
 
     expect(
       screen.getByText(
-        'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.'
+        'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder muss geprüft werden. Bitte sehen Sie sich das Ergebnis des Abgleichs an.'
       )
     ).toBeTruthy();
     expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy();
@@ -1075,9 +1069,7 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="assignments" />);
 
     expect(
-      screen.getByText(
-        'Extern verwaltete Rollen bleiben schreibgeschützt und müssen in der führenden Quelle angepasst werden.'
-      )
+      screen.getByText('Diese Rolle wird außerhalb von Studio verwaltet. Ändern Sie sie dort.')
     ).toBeTruthy();
     expect(screen.getByText('Rollen konnten nicht geladen werden.')).toBeTruthy();
     expect(screen.getByText('Die Benutzerzuweisungen konnten nicht geladen werden.')).toBeTruthy();

@@ -151,7 +151,7 @@ describe('OrganizationContextSwitcher', () => {
 
     render(<OrganizationContextSwitcher variant="menu" />);
 
-    expect(screen.queryByText('beta · municipality · Default-Kontext')).toBeNull();
+    expect(screen.queryByText('beta · municipality · Standardorganisation')).toBeNull();
   });
 
   it('renders a visible error message when switching the context fails', () => {
@@ -312,7 +312,7 @@ describe('OrganizationContextSwitcher', () => {
     const select = screen.getByLabelText('Aktive Organisation');
     expect(select.className).toContain('w-full');
     expect(select.className).toContain('rounded-lg');
-    expect(screen.queryByText('beta · municipality · Default-Kontext')).toBeNull();
+    expect(screen.queryByText('beta · municipality · Standardorganisation')).toBeNull();
   });
 
   it('renders organization memberships in the menu even when only one active organization exists', () => {

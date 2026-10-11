@@ -15,6 +15,10 @@ const bundledShim = `import { l as require_react } from "../_libs/react.mjs";
 //#region use-sync-external-store-shim/with-selector.production.js
 var React1 = __require("react");
 var React2 = __require("react");`;
+const bundledLibraryShim = `import { l as require_react } from "../_libs/react.mjs";
+//#region use-sync-external-store-shim/with-selector.production.js
+var React = require_react();
+//#endregion`;
 
 describe('SSR React shim artifact', () => {
   it('uses the renderer React instance for both shim hooks', () => {
@@ -38,11 +42,17 @@ describe('SSR React shim artifact', () => {
     await mkdir(path.join(serverDir, '_ssr'));
     await mkdir(path.join(serverDir, '_libs'));
     const libraryPath = path.join(serverDir, '_libs', 'router.mjs');
-    await writeFile(libraryPath, bundledShim.replaceAll('__require("react")', 'require_react()'));
+    await writeFile(libraryPath, bundledLibraryShim);
 
     await expect(patchReactShimRequires(serverDir)).resolves.toBeUndefined();
 
-    await writeFile(libraryPath, bundledShim);
+    await writeFile(libraryPath, bundledLibraryShim.replace('var React = require_react();', "var React = __require('react');"));
+    await expect(patchReactShimRequires(serverDir)).rejects.toThrow('SSR-React-Shim-Vertrag geaendert');
+
+    await writeFile(libraryPath, bundledLibraryShim.replace('as require_react', 'as other_react'));
+    await expect(patchReactShimRequires(serverDir)).rejects.toThrow('SSR-React-Shim-Vertrag geaendert');
+
+    await writeFile(libraryPath, bundledLibraryShim.replace('var React = require_react();', 'var React = other_react();'));
     await expect(patchReactShimRequires(serverDir)).rejects.toThrow('SSR-React-Shim-Vertrag geaendert');
   });
 

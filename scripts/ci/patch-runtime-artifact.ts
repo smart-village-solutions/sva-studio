@@ -58,7 +58,18 @@ export const patchReactShimRequires = async (serverDir: string = outputServerDir
         libraryFiles.map(async (fileName) => readFile(path.join(serverDir, '_libs', fileName), 'utf8'))
       )
     ).filter((source) => source.includes(reactShimMarker));
-    if (shimLibraries.length === 1 && !shimLibraries[0]?.includes(externalReactRequire)) {
+    const bundledShim = shimLibraries[0];
+    const shimRegion = bundledShim?.match(
+      /\/\/#region[^\n]*use-sync-external-store-shim\/with-selector\.production\.js[\s\S]*?\/\/#endregion/
+    )?.[0];
+    if (
+      shimLibraries.length === 1 &&
+      bundledShim &&
+      /^import \{[^}]*\bas require_react\b[^}]*\} from /m.test(bundledShim) &&
+      shimRegion &&
+      /\bvar React = require_react\(\);/.test(shimRegion) &&
+      !/(?:__require|require)\s*\(\s*["']react["']\s*\)/.test(bundledShim)
+    ) {
       return;
     }
   }

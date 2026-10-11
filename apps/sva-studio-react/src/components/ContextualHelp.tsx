@@ -30,6 +30,11 @@ type LoadState =
   | Readonly<{ kind: 'ready'; payload: DocumentationResponse }>
   | Readonly<{ kind: 'error' }>;
 
+const stripFrontmatter = (markdown: string): string => {
+  const frontmatter = /^---\r?\n[\s\S]*?\r?\n---(?=\r?\n|$)/u.exec(markdown);
+  return frontmatter ? markdown.slice(frontmatter[0].length).trimStart() : markdown;
+};
+
 const loadDocumentation = async (pageId: string): Promise<DocumentationResponse> => {
   const response = await fetch(`/api/studio/documentation/${encodeURIComponent(pageId)}`, {
     credentials: 'same-origin',
@@ -47,13 +52,20 @@ const loadDocumentation = async (pageId: string): Promise<DocumentationResponse>
   ) {
     throw new Error('documentation_invalid');
   }
-  return value as DocumentationResponse;
+  return { ...value, markdown: stripFrontmatter(value.markdown) } as DocumentationResponse;
 };
 
-const resolveLink = (value: string | undefined, websiteUrl: string): string | undefined => {
+const resolveLink = (
+  value: string | undefined,
+  websiteUrl: string,
+  documentationBaseUrl: string
+): string | undefined => {
   if (!value) return undefined;
   try {
-    const resolved = new URL(value, websiteUrl);
+    const resolved =
+      value.startsWith('/') && !value.startsWith('//')
+        ? new URL(value.slice(1), documentationBaseUrl)
+        : new URL(value, websiteUrl);
     return resolved.protocol === 'https:' || resolved.protocol === 'mailto:'
       ? resolved.toString()
       : undefined;
@@ -91,7 +103,7 @@ const DocumentationMarkdown = ({ payload }: Readonly<{ payload: DocumentationRes
         h2: ({ children }) => <h3>{children}</h3>,
         h3: ({ children }) => <h4>{children}</h4>,
         a: ({ href, children }) => {
-          const safeHref = resolveLink(href, payload.websiteUrl);
+          const safeHref = resolveLink(href, payload.websiteUrl, payload.documentationBaseUrl);
           return safeHref ? (
             <a href={safeHref} target="_blank" rel="noopener noreferrer">
               {children}

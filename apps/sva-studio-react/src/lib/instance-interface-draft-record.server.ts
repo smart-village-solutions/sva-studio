@@ -18,7 +18,7 @@ import { buildMailTransportRecord } from './instance-interface-mail-record.serve
 import { buildMapGeocodingRecord } from './instance-interface-map-record.server.js';
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
-export const buildS3Record = (input: {
+const buildS3Record = (input: {
   readonly instanceId: string;
   readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' }>;
   readonly interfaceId: string;
@@ -66,7 +66,7 @@ export const buildS3Record = (input: {
   };
 };
 
-export const buildSupabaseRecord = (input: {
+const buildSupabaseRecord = (input: {
   readonly instanceId: string;
   readonly draft: Extract<InstanceInterfaceDraft, { type: 'supabase' }>;
   readonly interfaceId: string;
@@ -115,7 +115,7 @@ export const buildSupabaseRecord = (input: {
   };
 };
 
-export const buildPostgresqlRecord = (input: {
+const buildPostgresqlRecord = (input: {
   readonly instanceId: string;
   readonly draft: Extract<InstanceInterfaceDraft, { type: 'postgresql' }>;
   readonly interfaceId: string;

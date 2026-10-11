@@ -29,11 +29,11 @@ import {
 import { defined, optionalNumber, optionalString } from './shared.js';
 import { mapDataProvider } from './mappers-shared.js';
 
-export const mapLocalizedText = (
+const mapLocalizedText = (
   value: z.infer<typeof localizedTextSchema>
 ): SvaMainserverLocalizedText => (typeof value === 'string' ? { de: value } : value);
 
-export const optionalLocalizedField = <TKey extends string>(
+const optionalLocalizedField = <TKey extends string>(
   key: TKey,
   value: z.infer<typeof localizedTextSchema> | null | undefined
 ): Partial<Record<TKey, SvaMainserverLocalizedText>> =>
@@ -43,7 +43,7 @@ export const optionalLocalizedField = <TKey extends string>(
       >)
     : {};
 
-export const optionalTimestampField = <TKey extends string>(
+const optionalTimestampField = <TKey extends string>(
   key: TKey,
   value: string | null | undefined
 ): Partial<Record<TKey, string>> => {
@@ -53,7 +53,7 @@ export const optionalTimestampField = <TKey extends string>(
     : {};
 };
 
-export const mapFreeTextResult = (
+const mapFreeTextResult = (
   value: z.infer<typeof surveyFreeTextResultSchema>,
   fallbackTimestamp: string
 ): SvaMainserverSurveyFreeTextResult => ({
@@ -63,7 +63,7 @@ export const mapFreeTextResult = (
   createdAt: value.createdAt ?? fallbackTimestamp,
 });
 
-export const mapOptionResult = (
+const mapOptionResult = (
   value: z.infer<typeof surveyOptionResultSchema>,
   fallbackTimestamp: string
 ): SvaMainserverSurveyOptionResult => ({
@@ -78,7 +78,7 @@ export const mapOptionResult = (
   ),
 });
 
-export const mapQuestionResults = (
+const mapQuestionResults = (
   value: z.infer<typeof surveyQuestionResultsSchema>,
   fallbackTimestamp: string
 ): SvaMainserverSurveyQuestionResults => ({
@@ -93,7 +93,7 @@ export const mapQuestionResults = (
   ),
 });
 
-export const mapQuestionOption = (
+const mapQuestionOption = (
   value: z.infer<typeof surveyQuestionOptionSchema>,
   fallbackQuestionId: string
 ): SvaMainserverSurveyQuestionOption => ({
@@ -104,7 +104,7 @@ export const mapQuestionOption = (
   enablesFreeText: value.enablesFreeText === true,
 });
 
-export const mapQuestion = (
+const mapQuestion = (
   value: z.infer<typeof surveyQuestionSchema>,
   fallbackTimestamp: string
 ): SvaMainserverSurveyQuestion => ({
@@ -130,7 +130,7 @@ export const mapSurveyResults = (
   questions: (value.questions ?? []).map((item) => mapQuestionResults(item, fallbackTimestamp)),
 });
 
-export const buildSurveyResultFields = (
+const buildSurveyResultFields = (
   survey: z.infer<typeof surveySchema>,
   fallbackTimestamp: string
 ) => ({

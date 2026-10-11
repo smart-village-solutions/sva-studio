@@ -33,6 +33,7 @@ import { protectField, revealField } from '@sva/auth-runtime/server';
 import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';
 import { createWasteManagementOperationRuntime } from '@sva/waste-management-runtime/server';
 import { createMapPostalCodeResolver } from './map-geocoding-api.operations.js';
+import { selectedPluginJobRuntimeFactories } from '#studio-plugin-runtime-factories';
 type PluginOperationExecutionHandler =
   import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 type PluginJobModuleFactory = (
@@ -141,6 +142,7 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
       deleteMainserverWastePickupTimes: deleteSvaMainserverWastePickupTimes,
       writeWasteStaticContent: createOrUpdateSvaMainserverStaticContent,
     }),
+  ...selectedPluginJobRuntimeFactories,
 };
 
 const resolvePluginJobRuntimeRequirement = (input: {

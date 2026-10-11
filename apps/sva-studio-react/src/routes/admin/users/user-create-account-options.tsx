@@ -1,4 +1,4 @@
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 
 export const UserCreateAccountOptions = ({

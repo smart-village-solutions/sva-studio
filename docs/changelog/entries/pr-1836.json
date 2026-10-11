@@ -1,0 +1,4 @@
+{
+  "prNumber": 1836,
+  "body": "Die internen Modul-Schnittstellen wurden bereinigt und veraltete Analyse-Ausnahmen entfernt. Bestehende Funktionen und öffentliche Schnittstellen bleiben unverändert."
+}

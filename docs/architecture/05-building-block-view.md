@@ -1112,7 +1112,7 @@ Details offen.
 
 ### Distributionsgrenze Studio und SSF
 
-Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt profiliert: `studio` enthält kein SSF, `ssf` ausschließlich SSF und Media.
+Browser-, Server-, Job-, Mainserver- und IAM-Eingaben werden am Build-Zeitpunkt profiliert: `studio` enthält kein SSF, `ssf` ausschließlich SSF und Media. Der bestehende Build kann zusätzlich eine explizite Workspace-Plugin-Menge annehmen. Der Plugin-Katalog erzeugt daraus die statischen Registries; Media bleibt eine Host-Funktion und ist keine Plugin-ID. Das Laufzeit-Manifest hält die normalisierte Auswahl und ihren Fingerabdruck fest.
 
 ### Content-Mutationsbeiträge
 

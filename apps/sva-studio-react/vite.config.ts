@@ -9,7 +9,15 @@ import tailwindcss from '@tailwindcss/vite';
 import { instrument } from 'oxc-coverage-instrument';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createInstalledPluginInputsPlugin } from './plugin-installed-inputs.vite.js';
+import {
+  createInstalledPluginInputsPlugin,
+  createSelectedWorkspacePluginInputsPlugin,
+} from './plugin-installed-inputs.vite.js';
+import {
+  resolveStudioDistribution,
+  resolveStudioPluginIds,
+} from './src/lib/studio-distribution.js';
+import pluginCatalog from './plugin-catalog.json';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 const resolveAppPath = (relativePath: string) =>
@@ -28,7 +36,15 @@ const chunkProvenancePlugin = (): Plugin => ({
     const outputs = Object.values(bundle);
     const chunks = outputs
       .filter(
-        (output): output is { type: 'chunk'; fileName: string; name: string; modules: Record<string, unknown>; facadeModuleId: string | null } =>
+        (
+          output
+        ): output is {
+          type: 'chunk';
+          fileName: string;
+          name: string;
+          modules: Record<string, unknown>;
+          facadeModuleId: string | null;
+        } =>
           typeof output === 'object' &&
           output !== null &&
           'type' in output &&
@@ -48,7 +64,14 @@ const chunkProvenancePlugin = (): Plugin => ({
           .map(([id]) => id),
       }));
     const workerChunks = outputs.filter(
-      (output): output is { type: 'chunk'; name: string; modules: Record<string, unknown>; facadeModuleId: string } =>
+      (
+        output
+      ): output is {
+        type: 'chunk';
+        name: string;
+        modules: Record<string, unknown>;
+        facadeModuleId: string;
+      } =>
         typeof output === 'object' &&
         output !== null &&
         'type' in output &&
@@ -59,14 +82,17 @@ const chunkProvenancePlugin = (): Plugin => ({
     );
     for (const output of outputs) {
       if (
-        typeof output !== 'object' || output === null || !('type' in output) ||
-        output.type !== 'asset' || !('fileName' in output) ||
-        typeof output.fileName !== 'string' || !output.fileName.endsWith('.js')
-      ) continue;
+        typeof output !== 'object' ||
+        output === null ||
+        !('type' in output) ||
+        output.type !== 'asset' ||
+        !('fileName' in output) ||
+        typeof output.fileName !== 'string' ||
+        !output.fileName.endsWith('.js')
+      )
+        continue;
       const fileName = output.fileName;
-      const owners = workerChunks.filter((chunk) =>
-        fileName.startsWith(`assets/${chunk.name}-`)
-      );
+      const owners = workerChunks.filter((chunk) => fileName.startsWith(`assets/${chunk.name}-`));
       if (owners.length !== 1) throw new Error(`chunk_provenance_worker_owner_missing:${fileName}`);
       chunks.push({ fileName, modules: [owners[0].facadeModuleId] });
     }
@@ -87,7 +113,8 @@ const fallowBrowserCoveragePlugin = (): Plugin => ({
         file.startsWith(join(workspaceRoot, 'packages') + '/')
       ) ||
       /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file)
-    ) return;
+    )
+      return;
     const result = instrument(code, file, { sourceMap: true });
     return {
       code: result.code,
@@ -110,12 +137,19 @@ const tanstackDevtoolsEnabled =
 const configuredParentDomain = process.env.SVA_PARENT_DOMAIN?.trim().toLowerCase();
 const configuredDevHost = process.env.HOST?.trim();
 const studioDistribution = (() => {
-  const value = process.env.SVA_STUDIO_DISTRIBUTION?.trim();
-  if (!value || value === 'studio') return 'studio';
-  if (value === 'ssf') return 'ssf';
-  throw new Error(`invalid_studio_distribution:${value}`);
+  return resolveStudioDistribution(
+    process.env.SVA_STUDIO_DISTRIBUTION,
+    process.env.SVA_STUDIO_PLUGIN_IDS
+  );
 })();
+const studioPluginIds = resolveStudioPluginIds(
+  studioDistribution,
+  process.env.SVA_STUDIO_PLUGIN_IDS,
+  pluginCatalog.filter((entry) => entry.sourceType === 'workspace').map((entry) => entry.pluginId)
+);
 process.env.VITE_SVA_STUDIO_DISTRIBUTION = studioDistribution;
+process.env.VITE_SVA_STUDIO_PLUGIN_IDS =
+  studioDistribution === 'custom' ? studioPluginIds.join(',') : '';
 const allowedHosts = [
   'localhost',
   '127.0.0.1',
@@ -184,30 +218,41 @@ const config = defineConfig({
     tsconfigPaths: true,
     alias: {
       '#studio-app-route-bindings': resolveAppPath(
-        studioDistribution === 'ssf'
+        studioDistribution === 'ssf' ||
+          (studioDistribution === 'custom' && studioPluginIds.every((id) => id === 'ssf'))
           ? './src/routing/app-route-bindings.ssf.tsx'
           : './src/routing/app-route-bindings.tsx'
       ),
       '#studio-plugin-auth-composition': resolveAppPath(
-        studioDistribution === 'ssf'
+        studioDistribution === 'ssf' ||
+          (studioDistribution === 'custom' && studioPluginIds.includes('ssf'))
           ? './src/lib/plugin-auth-composition.ssf.server.ts'
           : './src/lib/plugin-auth-composition.studio.server.ts'
       ),
-      '#studio-plugin-client-inputs': resolveAppPath(
-        studioDistribution === 'ssf'
-          ? './src/lib/plugin-client-inputs.ssf.ts'
-          : './src/lib/plugin-client-inputs.studio.ts'
-      ),
-      '#studio-plugin-catalog-inputs': resolveAppPath(
-        studioDistribution === 'ssf'
-          ? './src/lib/plugin-catalog-inputs.ssf.ts'
-          : './src/lib/plugin-catalog-inputs.studio.ts'
-      ),
-      '#studio-mainserver-generic-type-inputs': resolveAppPath(
-        studioDistribution === 'ssf'
-          ? './src/lib/mainserver-generic-type-inputs.ssf.server.ts'
-          : './src/lib/mainserver-generic-type-inputs.studio.server.ts'
-      ),
+      '#studio-plugin-client-inputs':
+        studioDistribution === 'custom'
+          ? 'virtual:studio-selected-plugin-client'
+          : resolveAppPath(
+              studioDistribution === 'ssf'
+                ? './src/lib/plugin-client-inputs.ssf.ts'
+                : './src/lib/plugin-client-inputs.studio.ts'
+            ),
+      '#studio-plugin-catalog-inputs':
+        studioDistribution === 'custom'
+          ? 'virtual:studio-selected-plugin-catalog'
+          : resolveAppPath(
+              studioDistribution === 'ssf'
+                ? './src/lib/plugin-catalog-inputs.ssf.ts'
+                : './src/lib/plugin-catalog-inputs.studio.ts'
+            ),
+      '#studio-mainserver-generic-type-inputs':
+        studioDistribution === 'custom'
+          ? 'virtual:studio-selected-plugin-ownership'
+          : resolveAppPath(
+              studioDistribution === 'ssf'
+                ? './src/lib/mainserver-generic-type-inputs.ssf.server.ts'
+                : './src/lib/mainserver-generic-type-inputs.studio.server.ts'
+            ),
       '#studio-module-iam-inputs': resolveAppPath(
         studioDistribution === 'ssf'
           ? './src/lib/module-iam-inputs.ssf.ts'
@@ -218,21 +263,31 @@ const config = defineConfig({
           ? './src/lib/plugin-operation-runtime.ssf.server.ts'
           : './src/lib/plugin-operation-runtime.server.ts'
       ),
-      '#studio-plugin-operation-inputs': resolveAppPath(
-        './src/lib/plugin-operation-inputs.studio.server.ts'
-      ),
-      '#studio-plugin-server-inputs': resolveAppPath(
-        studioDistribution === 'ssf'
-          ? './src/lib/plugin-server-inputs.ssf.server.ts'
-          : './src/lib/plugin-server-inputs.studio.server.ts'
-      ),
+      '#studio-plugin-operation-inputs':
+        studioDistribution === 'custom'
+          ? 'virtual:studio-selected-plugin-jobs'
+          : resolveAppPath('./src/lib/plugin-operation-inputs.studio.server.ts'),
+      '#studio-plugin-runtime-factories':
+        studioDistribution === 'custom'
+          ? 'virtual:studio-selected-plugin-runtime-factories'
+          : 'virtual:studio-empty-plugin-runtime-factories',
+      '#studio-plugin-server-inputs':
+        studioDistribution === 'custom'
+          ? 'virtual:studio-selected-plugin-server'
+          : resolveAppPath(
+              studioDistribution === 'ssf'
+                ? './src/lib/plugin-server-inputs.ssf.server.ts'
+                : './src/lib/plugin-server-inputs.studio.server.ts'
+            ),
       '#studio-ssf-runtime-service-access': resolveAppPath(
-        studioDistribution === 'ssf'
+        studioDistribution === 'ssf' ||
+          (studioDistribution === 'custom' && studioPluginIds.includes('ssf'))
           ? './src/lib/ssf-runtime-service-access.ssf.server.ts'
           : './src/lib/ssf-runtime-service-access.studio.server.ts'
       ),
       '#studio-ssf-admin-login-directory': resolveAppPath(
-        studioDistribution === 'ssf'
+        studioDistribution === 'ssf' ||
+          (studioDistribution === 'custom' && studioPluginIds.includes('ssf'))
           ? './src/lib/ssf-admin-login-directory.server.ts'
           : './src/lib/ssf-admin-login-directory.excluded.server.ts'
       ),
@@ -505,7 +560,10 @@ const config = defineConfig({
     },
   },
   plugins: [
-    createInstalledPluginInputsPlugin(appRoot, studioDistribution),
+    createInstalledPluginInputsPlugin(appRoot, studioDistribution, studioPluginIds),
+    ...(studioDistribution === 'custom'
+      ? [createSelectedWorkspacePluginInputsPlugin(appRoot, studioPluginIds)]
+      : []),
     fallowBrowserCoveragePlugin(),
     chunkProvenancePlugin(),
     tanstackStartClientEnvCompatPlugin(),

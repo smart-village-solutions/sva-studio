@@ -17,6 +17,7 @@ export const sharedVitestConfig = defineConfig({
   resolve: {
     tsconfigPaths: true,
     alias: {
+      '#studio-plugin-runtime-factories': 'virtual:studio-empty-plugin-runtime-factories',
       '#studio-mainserver-generic-type-inputs': fileURLToPath(
         new URL('./src/lib/mainserver-generic-type-inputs.studio.server.ts', import.meta.url)
       ),

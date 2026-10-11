@@ -8,13 +8,23 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import type { PluginManifest } from '@sva/plugin-sdk';
+import { studioHostModuleIamContracts } from '@sva/studio-module-iam';
+import {
+  createStudioPluginCatalogReport,
+  getWorkspacePluginDescriptorCandidates,
+} from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.js';
+import { appAdminResources } from '../../apps/sva-studio-react/src/routing/admin-resources.js';
 import { resolveInstalledPluginSources } from '../../apps/sva-studio-react/plugin-installed-inputs.vite.js';
+import pluginCatalog from '../../apps/sva-studio-react/plugin-catalog.json';
+import { writeChunkProvenance } from './studio-chunk-provenance.js';
 
-const distributions = ['studio', 'ssf'] as const;
+const distributions = ['studio', 'ssf', 'custom'] as const;
 type StudioDistribution = (typeof distributions)[number];
 
-const excludedPackages: Readonly<Record<StudioDistribution, readonly string[]>> = {
+const excludedPackages: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
   studio: ['plugin-ssf'],
   ssf: [
     'plugin-categories',
@@ -32,7 +42,7 @@ const excludedPackages: Readonly<Record<StudioDistribution, readonly string[]>> 
   ],
 };
 
-const includedPluginIds: Readonly<Record<StudioDistribution, readonly string[]>> = {
+const includedPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
   studio: [
     'categories',
     'cockpit-cards',
@@ -48,12 +58,53 @@ const includedPluginIds: Readonly<Record<StudioDistribution, readonly string[]>>
   ssf: ['ssf'],
 };
 
-const parseDistribution = (value: string | undefined): StudioDistribution => {
-  if (value && (distributions as readonly string[]).includes(value)) {
-    return value as StudioDistribution;
-  }
-  throw new Error(`invalid_studio_distribution:${value ?? ''}`);
+const workspacePluginIds = pluginCatalog
+  .filter(({ sourceType }) => sourceType === 'workspace')
+  .map(({ pluginId }) => pluginId);
+const builtInPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
+  studio: includedPluginIds.studio,
+  ssf: ['ssf'],
 };
+
+const parseSelection = (
+  distributionInput: string | undefined,
+  pluginIdsInput: string | undefined
+): Readonly<{ distribution: StudioDistribution; pluginIds: readonly string[] }> => {
+  const distribution = distributionInput?.trim() || (pluginIdsInput?.trim() ? 'custom' : 'studio');
+  if (!(distributions as readonly string[]).includes(distribution)) {
+    throw new Error(`invalid_studio_distribution:${distribution}`);
+  }
+  if (distribution !== 'custom') {
+    if (pluginIdsInput?.trim())
+      throw new Error('studio_distribution_and_plugin_selection_conflict');
+    return {
+      distribution: distribution as 'studio' | 'ssf',
+      pluginIds: builtInPluginIds[distribution as 'studio' | 'ssf'],
+    };
+  }
+  const supplied = pluginIdsInput?.split(',').map((id) => id.trim()) ?? [];
+  if (supplied.length === 0 || supplied.some((id) => !id)) {
+    throw new Error('studio_plugin_selection_required');
+  }
+  if (new Set(supplied).size !== supplied.length) {
+    throw new Error('studio_plugin_selection_duplicate');
+  }
+  const unknown = supplied.filter((id) => !workspacePluginIds.includes(id));
+  if (unknown.length > 0)
+    throw new Error(`studio_plugin_selection_unknown:${unknown.sort().join(',')}`);
+  const selected = new Set(supplied);
+  return { distribution: 'custom', pluginIds: workspacePluginIds.filter((id) => selected.has(id)) };
+};
+
+const packagesFor = (distribution: StudioDistribution, pluginIds: readonly string[]) => {
+  const selected = new Set(pluginIds);
+  return distribution === 'custom'
+    ? workspacePluginIds.filter((id) => !selected.has(id)).map((id) => `plugin-${id}`)
+    : excludedPackages[distribution];
+};
+
+const pluginSetFingerprint = (pluginIds: readonly string[]): string =>
+  createHash('sha256').update(JSON.stringify(pluginIds)).digest('hex');
 
 const removePath = (path: string): void => {
   if (existsSync(path)) rmSync(path, { force: true, recursive: true });
@@ -77,212 +128,94 @@ const assertDirectory = (path: string): void => {
   }
 };
 
-const writeManifest = (outputRoot: string, distribution: StudioDistribution): void => {
+const createProvisioningSnapshot = async (selectedPluginIds: readonly string[]) => {
+  const workspaceRoot = resolve(dirname(process.argv[1]!), '../..');
+  const report = await createStudioPluginCatalogReport({
+    catalogConfig: pluginCatalog.filter(
+      ({ sourceType, pluginId }) =>
+        sourceType === 'workspace' && selectedPluginIds.includes(pluginId)
+    ) as Parameters<typeof createStudioPluginCatalogReport>[0]['catalogConfig'],
+    resolveManifest: (entry) =>
+      JSON.parse(
+        readFileSync(join(workspaceRoot, entry.sourceRef, 'plugin.manifest.json'), 'utf8')
+      ) as PluginManifest,
+    resolvePluginModule: async (entry, manifest) => {
+      for (const candidate of getWorkspacePluginDescriptorCandidates(manifest)) {
+        const path = join(workspaceRoot, entry.sourceRef, candidate);
+        if (existsSync(path)) return import(pathToFileURL(path).href);
+      }
+      return undefined;
+    },
+    adminResources: appAdminResources,
+  });
+  if (report.activeCatalog.length !== selectedPluginIds.length || report.issues.length > 0) {
+    throw new Error(
+      `custom_plugin_catalog_rejected:${report.issues.map(({ code }) => code).join(',')}`
+    );
+  }
+  const { snapshot } = report;
+  return {
+    activationPolicies: snapshot.tenantActivationPolicySnapshot,
+    moduleIamContracts: [
+      ...snapshot.registry.pluginModuleIamContracts,
+      ...studioHostModuleIamContracts,
+    ],
+    tenantLifecycles: snapshot.registry.tenantLifecycles,
+  };
+};
+
+const writeManifest = async (
+  outputRoot: string,
+  distribution: StudioDistribution,
+  selectedPluginIds: readonly string[]
+): Promise<void> => {
   assertDirectory(outputRoot);
-  const installed = resolveInstalledPluginSources(resolve(outputRoot, '..'), distribution).filter(
-    (source) => source.catalog.enabled
-  );
+  const installed = resolveInstalledPluginSources(
+    resolve(outputRoot, '..'),
+    distribution,
+    selectedPluginIds
+  ).filter((source) => source.catalog.enabled);
   const generated = join(outputRoot, 'server', 'generated');
   mkdirSync(generated, { recursive: true });
   writeFileSync(
     join(generated, 'studio-distribution.json'),
-    `${JSON.stringify({ schemaVersion: 1, distribution, includedPluginIds: [...includedPluginIds[distribution], ...installed.map((source) => source.catalog.pluginId)], installedPlugins: installed.map((source) => ({ pluginId: source.catalog.pluginId, sourceRef: source.catalog.sourceRef })), excludedWorkspacePackages: excludedPackages[distribution] }, null, 2)}\n`,
+    `${JSON.stringify({ schemaVersion: 1, distribution, ...(distribution === 'custom' ? { pluginSetFingerprint: pluginSetFingerprint(selectedPluginIds), provisioningSnapshot: await createProvisioningSnapshot(selectedPluginIds) } : {}), includedPluginIds: [...selectedPluginIds, ...installed.map((source) => source.catalog.pluginId)], installedPlugins: installed.map((source) => ({ pluginId: source.catalog.pluginId, sourceRef: source.catalog.sourceRef })), excludedWorkspacePackages: packagesFor(distribution, selectedPluginIds) }, null, 2)}\n`,
     'utf8'
   );
 };
 
-type BuildChunk = Readonly<{ fileName: string; modules: readonly string[] }>;
-
-const readBuildChunks = (
-  appRoot: string,
-  environment: 'client' | 'ssr' | 'nitro'
-): BuildChunk[] => {
-  const path = join(appRoot, '.generated', 'chunk-provenance', `${environment}.json`);
-  if (!existsSync(path)) throw new Error(`chunk_provenance_build_report_missing:${environment}`);
-  const chunks: unknown = JSON.parse(readFileSync(path, 'utf8'));
-  if (
-    !Array.isArray(chunks) ||
-    chunks.length === 0 ||
-    chunks.some(
-      (chunk) =>
-        typeof chunk !== 'object' ||
-        chunk === null ||
-        typeof chunk.fileName !== 'string' ||
-        !Array.isArray(chunk.modules) ||
-        chunk.modules.some((module: unknown) => typeof module !== 'string')
-    )
-  )
-    throw new Error(`chunk_provenance_build_report_invalid:${environment}`);
-  return chunks as BuildChunk[];
-};
-
-const listJavaScriptFiles = (root: string): string[] => {
-  const files: string[] = [];
-  const walk = (directory: string): void => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name);
-      if (entry.isSymbolicLink()) throw new Error(`chunk_provenance_symlink_present:${path}`);
-      if (entry.isDirectory()) walk(path);
-      else if (entry.isFile() && /\.(?:[cm]?js|map)$/.test(entry.name)) {
-        files.push(relative(root, path).split(sep).join('/'));
-      }
-    }
-  };
-  walk(root);
-  return files.sort();
-};
-
-const pluginSource = (
-  moduleId: string,
-  installed: readonly { packageRoot: string; sourceRef: string }[]
-): string | undefined => {
-  const normalized = moduleId.replaceAll('\\', '/');
-  const selected = installed.find(
-    ({ packageRoot, sourceRef }) =>
-      normalized.startsWith(`${packageRoot}/`) || normalized.includes(`/node_modules/${sourceRef}/`)
-  );
-  if (selected) return selected.sourceRef;
-  return (
-    /(?:^|\/)packages\/(plugin-[a-z0-9-]+|waste-management-(?:contracts|runtime))\/(?:src|dist)\//.exec(normalized)?.[1] ??
-    /(?:^|\/)node_modules\/@sva\/(plugin-[a-z0-9-]+|waste-management-(?:contracts|runtime))\//.exec(normalized)?.[1] ??
-    /(?:^|\/)node_modules\/\.pnpm\/@sva\+(plugin-[a-z0-9-]+|waste-management-(?:contracts|runtime))@/.exec(normalized)?.[1]
-  );
-};
-
-const resolveNitroModules = (
-  chunk: BuildChunk,
-  ssrByFile: ReadonlyMap<string, readonly string[]>
-): string[] => {
-  const modules = [...chunk.modules];
-  for (const id of chunk.modules) {
-    const marker = '/.nitro/vite/services/ssr/';
-    const offset = id.replaceAll('\\', '/').indexOf(marker);
-    if (offset < 0) continue;
-    const ssrFile = id.slice(offset + marker.length);
-    const sources = ssrByFile.get(ssrFile);
-    if (!sources) throw new Error(`chunk_provenance_unknown_ssr_chunk:${ssrFile}`);
-    modules.push(...sources);
-  }
-  return modules;
-};
-
-const writeChunkProvenance = (outputRoot: string, distribution: StudioDistribution): void => {
-  assertDirectory(outputRoot);
-  const appRoot = resolve(outputRoot, '..');
-  const installed = resolveInstalledPluginSources(appRoot, distribution)
-    .filter((source) => source.catalog.enabled)
-    .map((source) => ({
-      packageRoot: source.packageRoot.replaceAll('\\', '/'),
-      sourceRef: source.catalog.sourceRef,
-    }));
-  const client = readBuildChunks(appRoot, 'client');
-  const ssr = readBuildChunks(appRoot, 'ssr');
-  const nitro = readBuildChunks(appRoot, 'nitro');
-  const ssrByFile = new Map(ssr.map((chunk) => [chunk.fileName, chunk.modules]));
-  if (ssrByFile.size !== ssr.length) throw new Error('chunk_provenance_duplicate_ssr_chunk');
-  const expected = new Map<string, readonly string[]>();
-  for (const chunk of client) {
-    const path = `public/${chunk.fileName}`;
-    // Nitro can drop an emitted CSS-only browser entry after Vite's bundle hook.
-    if (!existsSync(join(outputRoot, path))) continue;
-    if (expected.has(path)) throw new Error(`chunk_provenance_duplicate_chunk:${path}`);
-    expected.set(path, chunk.modules);
-  }
-  for (const chunk of nitro) {
-    const path = `server/${chunk.fileName}`;
-    if (expected.has(path)) throw new Error(`chunk_provenance_duplicate_chunk:${path}`);
-    expected.set(path, resolveNitroModules(chunk, ssrByFile));
-  }
-  const copiedTslib = [
-    'server/node_modules/tslib/tslib.js',
-    'server/node_modules/tslib/tslib.es6.js',
-    'server/node_modules/tslib/tslib.es6.mjs',
-    'server/node_modules/tslib/modules/index.js',
-  ];
-  for (const path of copiedTslib) {
-    if (expected.has(path)) throw new Error(`chunk_provenance_duplicate_chunk:${path}`);
-    expected.set(path, []);
-  }
-  const actual = [
-    ...listJavaScriptFiles(join(outputRoot, 'public')).map((path) => `public/${path}`),
-    ...listJavaScriptFiles(join(outputRoot, 'server')).map((path) => `server/${path}`),
-  ].sort();
-  if (JSON.stringify(actual) !== JSON.stringify([...expected.keys()].sort())) {
-    throw new Error('chunk_provenance_final_file_inventory_mismatch');
-  }
-  const excluded = new Set(excludedPackages[distribution]);
-  const allowed = new Set([
-    'plugin-sdk',
-    ...includedPluginIds[distribution].map((id) => `plugin-${id}`),
-    'waste-management-contracts',
-    'waste-management-runtime',
-    ...installed.map((source) => source.sourceRef),
-  ]);
-  const chunks = actual.map((path) => {
-    const sources = expected.get(path);
-    if (!sources) throw new Error(`chunk_provenance_source_missing:${path}`);
-    const pluginPackages = [
-      ...new Set(
-        sources
-          .map((source) => pluginSource(source, installed))
-          .filter((name) => name !== undefined)
-      ),
-    ].sort();
-    for (const name of pluginPackages) {
-      if (excluded.has(name) || !allowed.has(name)) {
-        throw new Error(`chunk_provenance_excluded_plugin:${name}:${path}`);
-      }
-    }
-    return {
-      path,
-      sha256: createHash('sha256')
-        .update(readFileSync(join(outputRoot, path)))
-        .digest('hex'),
-      pluginPackages,
-    };
-  });
-  const required = [
-    distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news',
-    ...installed.map((source) => source.sourceRef),
-  ];
-  for (const name of required) {
-    if (
-      !chunks.some(
-        (chunk) => chunk.path.startsWith('public/') && chunk.pluginPackages.includes(name)
-      ) ||
-      !chunks.some(
-        (chunk) => chunk.path.startsWith('server/_ssr/') && chunk.pluginPackages.includes(name)
-      )
-    ) {
-      throw new Error(`chunk_provenance_required_plugin_missing:${name}`);
-    }
-  }
-  const generated = join(outputRoot, 'server', 'generated');
-  mkdirSync(generated, { recursive: true });
-  writeFileSync(
-    join(generated, 'studio-chunk-provenance.json'),
-    `${JSON.stringify({ schemaVersion: 1, distribution, chunks }, null, 2)}\n`,
-    'utf8'
-  );
-};
-
-const pruneDeploy = (deployRoot: string, distribution: StudioDistribution): void => {
+const pruneDeploy = (
+  deployRoot: string,
+  distribution: StudioDistribution,
+  selectedPluginIds: readonly string[]
+): void => {
   assertDirectory(deployRoot);
-  for (const packageName of excludedPackages[distribution]) {
+  for (const packageName of packagesFor(distribution, selectedPluginIds)) {
     removeDeployedWorkspacePackage(deployRoot, packageName);
   }
 };
 
 const [command, target, distributionInput] = process.argv.slice(2);
-const distribution = parseDistribution(distributionInput);
+const { distribution, pluginIds } = parseSelection(
+  distributionInput,
+  process.env.SVA_STUDIO_PLUGIN_IDS
+);
 const targetPath = resolve(target ?? '');
 
-if (command === 'write-manifest') {
-  writeManifest(targetPath, distribution);
+if (command === 'selection') {
+  process.stdout.write(
+    `${JSON.stringify({ distribution, pluginIds, pluginSetFingerprint: pluginSetFingerprint(pluginIds) })}\n`
+  );
+} else if (command === 'write-manifest') {
+  void writeManifest(targetPath, distribution, pluginIds).catch((error: unknown) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
 } else if (command === 'write-chunk-provenance') {
-  writeChunkProvenance(targetPath, distribution);
+  assertDirectory(targetPath);
+  writeChunkProvenance(targetPath, distribution, pluginIds, packagesFor(distribution, pluginIds));
 } else if (command === 'prune-deploy') {
-  pruneDeploy(targetPath, distribution);
+  pruneDeploy(targetPath, distribution, pluginIds);
 } else {
   throw new Error(`invalid_studio_distribution_artifact_command:${command ?? ''}`);
 }

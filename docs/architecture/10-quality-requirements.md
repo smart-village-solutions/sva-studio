@@ -75,6 +75,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
   - Vitest-Characterization sichert ohne echte Zugangsdaten den CLI-Exitcode, den redigierten Konfigurationsfehlerbericht und die feste Reihenfolge der Pflichtprüfungen; fachliche Phasen bleiben einzeln typisiert und der Einstieg bleibt eine explizite Orchestrierung
 - Produktionsnahe Release-Validierung:
+  - Ein optionales, manuell angefordertes Plugin-Set-Image muss vor Veröffentlichung Auswahl, OCI-Fingerabdruck, Manifest, ausführbare Plugin-Chunks und Workspace-Paketbestand konsistent nachweisen; das reguläre Push-Buildverhalten für `studio` und `ssf` bleibt erhalten.
   - Der einzige Main-Workflow `Build` muss `verify:runtime-artifact` ausführen, genau ein App-Image für `linux/amd64` veröffentlichen und dessen Digest an Dev übergeben.
   - `Promote` muss den Git-Änderungsbereich von der OCI-Revision des tatsächlich live konfigurierten Images bis `change_head`, Executor-Revision, Image-Digest und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
   - Staging und Production dürfen nur `assert-none` oder `run` verwenden; `auto` bleibt auf den automatischen Dev-Promote begrenzt.

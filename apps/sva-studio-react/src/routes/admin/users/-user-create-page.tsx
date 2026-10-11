@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  Checkbox,
   getStudioFormFieldProps,
   StudioField,
   StudioFieldGroup,
@@ -19,7 +20,6 @@ import { z } from 'zod';
 
 import { Card } from '../../../components/ui/card';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
-import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';

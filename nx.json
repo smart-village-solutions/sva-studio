@@ -73,6 +73,7 @@
     "frontendEnvBuild": [
       { "env": "CODECOV_TOKEN" },
       { "env": "SVA_STUDIO_DISTRIBUTION" },
+      { "env": "SVA_STUDIO_PLUGIN_IDS" },
       { "env": "VITE_GIT_SHA" }
     ],
     "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],

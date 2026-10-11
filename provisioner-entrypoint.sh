@@ -62,7 +62,7 @@ if [ "${SVA_PROVISIONER_COMBINED_WORKER:-false}" = "true" ] && [ "$#" -eq 0 ]; t
   set -- node --import ./otel-bootstrap.mjs .output/server/index.mjs
 fi
 
-if [ "${SVA_STUDIO_DISTRIBUTION:-studio}" = "ssf" ]; then
+if [ "${SVA_STUDIO_DISTRIBUTION:-studio}" = "ssf" ] || [ "${SVA_STUDIO_DISTRIBUTION:-studio}" = "custom" ]; then
   provisioning_worker_entrypoint=./ssf-provisioning-worker.mjs
 else
   provisioning_worker_entrypoint=node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js

@@ -1179,7 +1179,7 @@ Tokens, Secrets oder E-Mail-Adressen.
 
 ### Build-Zeit-Plugin-Grenze
 
-Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. Die Auswahl von Studio oder SSF erfolgt deshalb beim Build und entfernt nicht zulässige Katalog-, Route-, Job- und IAM-Beiträge vor dem Artefakt.
+Laufzeitflags deaktivieren keine ausgelieferten Fähigkeiten. `studio` und `ssf` behalten ihre festen Build-Auswahlen. Ein manueller Build kann optional eine explizite Workspace-Plugin-Menge verwenden; daraus entstehen Katalog, Route, Server-, Job-, Mainserver- und IAM-Beiträge gemeinsam. Unbekannte, doppelte oder widersprüchliche IDs stoppen den Build. Die Auswahl wird im Manifest und OCI-Fingerabdruck gebunden; Image-Prüfung gleicht sie mit Chunk-Provenienz und Paketbestand ab.
 
 ### Waste-Plugin-Runtime-Grenze
 

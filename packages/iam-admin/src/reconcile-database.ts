@@ -81,7 +81,7 @@ const createMissingIdentityRole = async (input: {
   }
 };
 
-const updateMatchedIdentityRole = async (input: {
+const reconcileMatchedIdentityRole = async (input: {
   deps: RoleCatalogReconciliationDeps;
   identityProvider: { provider: IdentityProviderPort };
   role: ManagedRoleRow;
@@ -124,7 +124,10 @@ const updateMatchedIdentityRole = async (input: {
       role: input.role,
       externalRoleName: input.reportedExternalRoleName,
       action: input.shouldUpdateIdentityRole ? 'update' : 'noop',
-      status: 'corrected',
+      status:
+        input.shouldUpdateIdentityRole || input.role.sync_state !== 'synced'
+          ? 'corrected'
+          : 'synced',
     });
   } catch (error) {
     const errorCode = mapRoleSyncErrorCode(error);
@@ -212,31 +215,19 @@ export const reconcileDatabaseRoles = async (input: {
     const shouldUpdateIdentityRole =
       !aliasSatisfiedByCanonicalRole &&
       (descriptionChanged || displayNameChanged || roleKeyChanged);
-    const shouldResyncDbState = role.sync_state !== 'synced';
-
-    if (shouldUpdateIdentityRole || shouldResyncDbState) {
-      await updateMatchedIdentityRole({
-        deps,
-        identityProvider: input.identityProvider,
-        role,
-        instanceId: input.instanceId,
-        actorAccountId: input.actorAccountId,
-        requestId: input.requestId,
-        traceId: input.traceId,
-        entries: input.entries,
-        expectedDisplayName,
-        canonicalExternalRoleName,
-        reportedExternalRoleName,
-        shouldUpdateIdentityRole,
-      });
-      continue;
-    }
-
-    appendDatabaseRoleResult(input.entries, {
+    await reconcileMatchedIdentityRole({
+      deps,
+      identityProvider: input.identityProvider,
       role,
-      externalRoleName: reportedExternalRoleName,
-      action: 'noop',
-      status: 'synced',
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      entries: input.entries,
+      expectedDisplayName,
+      canonicalExternalRoleName,
+      reportedExternalRoleName,
+      shouldUpdateIdentityRole,
     });
   }
 };

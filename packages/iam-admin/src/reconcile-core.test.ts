@@ -606,6 +606,84 @@ describe('runRoleCatalogReconciliation', () => {
     });
   });
 
+  it('refreshes successful reconciliation evidence for an already synced role without an idp update', async () => {
+    const updateRole = vi.fn(async () => undefined);
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
+        description: 'Canonical description',
+        displayName: 'System Admin',
+        updateRole,
+      }),
+      withInstanceScopedDb: createScopedDbWithRoles([
+        createDatabaseRole({
+          sync_state: 'synced',
+          last_synced_at: '2026-09-28T21:42:02.127Z',
+          last_error_code: null,
+        }),
+      ]),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      requestId: 'req-fresh-evidence',
+    });
+
+    expect(updateRole).not.toHaveBeenCalled();
+    expectRoleSyncMarkedSynced(deps, 'role-1');
+    expect(deps.emitRoleAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        roleId: 'role-1',
+        eventType: 'role.reconciled',
+        result: 'success',
+        requestId: 'req-fresh-evidence',
+      })
+    );
+    expect(report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 0,
+      failedCount: 0,
+      roles: [{ roleId: 'role-1', action: 'noop', status: 'synced' }],
+    });
+  });
+
+  it('reports a failed evidence write for an unchanged role instead of a successful reconciliation', async () => {
+    const updateRole = vi.fn(async () => undefined);
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: createSystemAdminProviderResolver({
+        description: 'Canonical description',
+        displayName: 'System Admin',
+        updateRole,
+      }),
+      withInstanceScopedDb: createScopedDbWithRoles([
+        createDatabaseRole({ sync_state: 'synced', last_error_code: null }),
+      ]),
+      setRoleSyncState: vi
+        .fn(async () => undefined)
+        .mockRejectedValueOnce(new Error('DB_WRITE_FAILED')),
+    });
+
+    const report = await runRoleCatalogReconciliation({ deps, instanceId: 'tenant-a' });
+
+    expect(updateRole).not.toHaveBeenCalled();
+    expect(deps.setRoleSyncState).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ instanceId: 'tenant-a', roleId: 'role-1', syncState: 'failed' })
+    );
+    expect(deps.emitRoleAuditEvent).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ result: 'success' })
+    );
+    expect(report).toMatchObject({
+      outcome: 'failed',
+      correctedCount: 0,
+      failedCount: 1,
+      roles: [{ roleId: 'role-1', action: 'noop', status: 'failed' }],
+    });
+  });
+
   it('accepts canonical identity roles for legacy external-name aliases without forcing an idp update', async () => {
     const updateRole = vi.fn(async () => undefined);
     const deps = createDeps({

@@ -54,6 +54,13 @@ Empfohlene Startwerte:
 
 Für normale tenantlokale Fachrollen sind diese Zustände keine Keycloak-Wahrheit mehr.
 
+Ein erfolgreicher Abgleich einer bereits synchronen technischen Sonderrolle aktualisiert
+ebenfalls `last_synced_at` und schreibt das Audit-Event `role.reconciled`. Das Ergebnis
+bleibt `action = noop`, `status = synced`; es ist keine Driftkorrektur und erzeugt
+keinen Keycloak-Schreibaufruf. Für die Instanzaktivierung müssen Rollenabgleich und
+Zugriffsprobe mindestens so aktuell wie die letzte erfolgreiche Provisionierung sein.
+Nach einer erneuten Provisionierung deshalb beide Nachweise erneut ausführen.
+
 Häufige Fehlercodes:
 
 - `IDP_UNAVAILABLE`: Keycloak oder vorgelagerte Verbindung nicht erreichbar

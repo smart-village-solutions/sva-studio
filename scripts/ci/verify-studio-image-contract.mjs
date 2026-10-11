@@ -44,6 +44,8 @@ const verifyChunkProvenance = (distribution, provenance, files, installedPlugins
   if (!Array.isArray(files) || files.length === 0) fail('chunk_provenance_file_inventory_invalid');
   const allowed = new Set([
     'plugin-sdk',
+    'waste-management-contracts',
+    'waste-management-runtime',
     ...pluginIds[distribution].map((id) => `plugin-${id}`),
     ...installedPlugins.map((entry) => entry.sourceRef),
   ]);

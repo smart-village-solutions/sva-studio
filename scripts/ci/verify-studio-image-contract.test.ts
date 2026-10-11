@@ -284,4 +284,17 @@ describe('verify-studio-image-contract', () => {
     input.chunkProvenance.chunks[0]!.pluginPackages.push('plugin-news');
     expect(() => verify(input)).toThrow();
   });
+
+  it.each(['waste-management-contracts', 'waste-management-runtime'] as const)(
+    'accepts %s provenance in Studio and rejects it in SSF',
+    (packageName) => {
+      const studio = validInput('studio');
+      studio.chunkProvenance.chunks[0]!.pluginPackages.push(packageName);
+      expect(JSON.parse(verify(studio)).verifiedChunks.pluginPackages).toContain(packageName);
+
+      const ssf = validInput('ssf');
+      ssf.chunkProvenance.chunks[0]!.pluginPackages.push(packageName);
+      expect(() => verify(ssf)).toThrow(`chunk_provenance_excluded_plugin:${packageName}`);
+    }
+  );
 });

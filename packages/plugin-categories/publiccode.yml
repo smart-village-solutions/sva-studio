@@ -1,0 +1,50 @@
+publiccodeYmlVersion: "0"
+name: Kategorien
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Ordnet Nachrichten, Veranstaltungen und Orte in einer gemeinsamen
+      Kategorienhierarchie mit Status und Datentypen.
+    longDescription: Ordnet Nachrichten, Veranstaltungen und Orte in einer gemeinsamen
+      Kategorienhierarchie mit Status und Datentypen. Redaktionen können Kategorien
+      anlegen, bearbeiten und in einer Hierarchie ordnen. Der Mainserver nutzt die
+      Zuordnungen zur Strukturierung redaktioneller Inhalte. Auch Aktivstatus und
+      Datentypen lassen sich pflegen. Das Modul ist Teil der modularen
+      SVA-Studio-Plattform für kommunale Redaktions- und Verwaltungsprozesse. Eine
+      Instanz erhält den Fachbereich über ihre Modulzuweisung; Rollen und Berechtigungen
+      steuern die einzelnen Aktionen. Die Modulübersicht zeigt Name, Beschreibung und
+      Aktivierungsstatus, damit Verantwortliche den Zweck des Bereichs vor der Zuweisung
+      erkennen können.
+    features:
+      - Kategorien im SVA Studio nutzen
+  en:
+    localisedName: Categories
+    shortDescription: Organizes news, events, and places in a shared category hierarchy with
+      status and data types.
+    longDescription: Organizes news, events, and places in a shared category hierarchy with
+      status and data types. This addon belongs to SVA Studio and is described
+      independently from its technical package identifier. The module overview displays
+      its public name, purpose, and current availability so administrators can
+      understand the scope before assigning it to an instance. Access to available
+      modules is still governed by the Studio module assignment and the relevant
+      permissions. The source package carries this metadata with the plugin, so it can
+      move to a separate repository together with the module.
+    features:
+      - Use Categories in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

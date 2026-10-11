@@ -1,0 +1,50 @@
+publiccodeYmlVersion: "0"
+name: Häufige Fragen
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Pflegt häufig gestellte Fragen mit mehrsprachigen Antworten,
+      Reihenfolge und Veröffentlichung.
+    longDescription: Pflegt häufig gestellte Fragen mit mehrsprachigen Antworten,
+      Reihenfolge und Veröffentlichung. Redaktionsteams erfassen Fragen und Antworten in
+      verschiedenen Sprachen. Sie können die Sortierung und Sichtbarkeit anpassen und
+      Einträge für die Veröffentlichung vorbereiten. So entsteht eine gepflegte Sammlung
+      wiederkehrender Anliegen. Das Modul ist Teil der modularen SVA-Studio-Plattform
+      für kommunale Redaktions- und Verwaltungsprozesse. Eine Instanz erhält den
+      Fachbereich über ihre Modulzuweisung; Rollen und Berechtigungen steuern die
+      einzelnen Aktionen. Die Modulübersicht zeigt Name, Beschreibung und
+      Aktivierungsstatus, damit Verantwortliche den Zweck des Bereichs vor der Zuweisung
+      erkennen können.
+    features:
+      - Häufige Fragen im SVA Studio nutzen
+  en:
+    localisedName: Frequently Asked Questions
+    shortDescription: Maintains frequently asked questions with multilingual answers,
+      ordering, and publication controls.
+    longDescription: Maintains frequently asked questions with multilingual answers,
+      ordering, and publication controls. This addon belongs to SVA Studio and is
+      described independently from its technical package identifier. The module overview
+      displays its public name, purpose, and current availability so administrators can
+      understand the scope before assigning it to an instance. Access to available
+      modules is still governed by the Studio module assignment and the relevant
+      permissions. The source package carries this metadata with the plugin, so it can
+      move to a separate repository together with the module.
+    features:
+      - Use Frequently Asked Questions in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

@@ -11,7 +11,7 @@ import { getErrorMessage } from '../instances/-instances-shared';
 import type { IamInstanceDetail } from '@sva/core';
 import type { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { PluginReadinessCard } from '../instances/-instance-plugin-readiness-card';
-import { resolveModuleDescription } from './-module-description';
+import { resolveModuleDescription, resolveModuleName } from './-module-description';
 
 type ModuleWorkspaceInstance = {
   readonly instanceId: string;
@@ -48,7 +48,6 @@ const getModulePresentation = (
   const pluginId = studioPluginSnapshot.registry.pluginModuleIamContracts.find(
     (entry) => entry.moduleId === moduleId
   )?.ownerPluginId;
-  const plugin = pluginId ? studioPluginSnapshot.registry.pluginRegistry.get(pluginId) : undefined;
   const lifecycle = studioPluginSnapshot.registry.tenantLifecycles.find(
     (entry) => entry.pluginId === pluginId
   );
@@ -64,7 +63,7 @@ const getModulePresentation = (
     : !readiness || pluginReadiness?.error
       ? t('admin.instances.instanceModules.notVerified')
       : t(`admin.instances.pluginReadiness.status.${readiness.status}`);
-  return { plugin, readiness, activation, policy, readinessLabel };
+  return { readiness, activation, policy, readinessLabel };
 };
 
 const ModuleRow = ({
@@ -82,7 +81,7 @@ const ModuleRow = ({
   onAction: (moduleId: string) => void;
   pluginReadiness?: ReturnType<typeof usePluginTenantReadiness>;
 }) => {
-  const { plugin, readiness, activation, policy, readinessLabel } = getModulePresentation(
+  const { readiness, activation, policy, readinessLabel } = getModulePresentation(
     module.moduleId,
     instance,
     pluginReadiness
@@ -91,7 +90,7 @@ const ModuleRow = ({
     <section className="space-y-3 rounded-lg border border-border p-3" aria-label={module.moduleId}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h3 className="font-medium">{plugin?.displayName ?? module.moduleId}</h3>
+          <h3 className="font-medium">{resolveModuleName(module.moduleId)}</h3>
           <p className="text-sm">
             {t(
               assigned
@@ -147,7 +146,7 @@ const ModuleRow = ({
         </summary>
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">
           <p>{module.moduleId}</p>
-          <p>{resolveModuleDescription(module.descriptionKey)}</p>
+          <p>{resolveModuleDescription(module.moduleId, module.descriptionKey)}</p>
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
               <dt>{t('admin.instances.instanceModules.detail.table.origin')}</dt>

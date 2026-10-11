@@ -2,7 +2,7 @@
   "name": "@sva/plugin-faq",
   "version": "0.0.1",
   "type": "module",
-  "files": ["dist", "plugin.manifest.json"],
+  "files": ["dist", "plugin.manifest.json", "publiccode.yml"],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {

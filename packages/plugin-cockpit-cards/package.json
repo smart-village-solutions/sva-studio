@@ -4,7 +4,8 @@
   "type": "module",
   "files": [
     "dist",
-    "plugin.manifest.json"
+    "plugin.manifest.json",
+    "publiccode.yml"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

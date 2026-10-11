@@ -10,6 +10,9 @@ Dieses Runbook beschreibt den operativen Umgang mit der kanonischen Instanz-Modu
 - Build-time-Plugin-Registrierung, `featureFlags` oder Integrationsdaten aktivieren kein Modul implizit.
 - Zuweisung und Entzug arbeiten fail-closed.
 - Die IAM-Basis einer Instanz besteht immer aus `Core + zugewiesene Module`.
+- Die Modulübersicht zeigt den offiziellen Namen und die Kurzbeschreibung aus
+  der `publiccode.yml` des jeweiligen Moduls. Die technische Modul-ID bleibt
+  für IAM und Diagnose erhalten.
 
 ## Voraussetzungen
 

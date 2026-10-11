@@ -10,7 +10,7 @@ import { t } from '../../../i18n';
 import { studioModuleIamContracts, studioPluginCatalog } from '../../../lib/plugins';
 import { useEffectiveAuth } from '../../../providers/effective-access-provider';
 import { InstanceModulesWorkspace } from './-instance-modules-workspace';
-import { resolveModuleDescription } from './-module-description';
+import { resolveModuleDescription, resolveModuleName } from './-module-description';
 
 const TenantModulesPage = ({
   assignedModules,
@@ -53,14 +53,16 @@ const TenantModulesPage = ({
             <tbody>
               {studioModuleIamContracts.map((module) => (
                 <tr key={module.moduleId} className="border-t border-border align-top">
-                  <td className="px-3 py-2 font-medium text-foreground">{module.moduleId}</td>
+                  <td className="px-3 py-2 font-medium text-foreground">
+                    {resolveModuleName(module.moduleId)}
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {assignedModuleIds.has(module.moduleId)
                       ? t('admin.instances.instanceModules.detail.status.active')
                       : t('admin.instances.instanceModules.detail.status.inactive')}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {resolveModuleDescription(module.descriptionKey)}
+                    {resolveModuleDescription(module.moduleId, module.descriptionKey)}
                   </td>
                 </tr>
               ))}
@@ -175,11 +177,6 @@ export const ModulesPage = () => {
   const developmentPlugins = studioPluginCatalog.filter(
     (entry) => entry.availability === 'in-development'
   );
-  const developmentPluginNames: Readonly<Record<string, string>> = {
-    notifications: t('shell.header.notificationsTooltip'),
-    assistant: t('shell.header.assistantPrompt'),
-    search: t('shell.header.searchPrompt'),
-  };
 
   return (
     <div className="space-y-5">
@@ -200,7 +197,12 @@ export const ModulesPage = () => {
                 key={entry.pluginId}
                 className="flex flex-wrap justify-between gap-2 rounded-lg border border-border p-3"
               >
-                <span>{developmentPluginNames[entry.pluginId] ?? entry.pluginId}</span>
+                <span className="space-y-1">
+                  <span className="block font-medium">{resolveModuleName(entry.pluginId)}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {resolveModuleDescription(entry.pluginId)}
+                  </span>
+                </span>
                 <span className="text-sm text-muted-foreground">
                   {t('admin.instances.instanceModules.development.status')}
                 </span>

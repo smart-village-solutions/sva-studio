@@ -1,0 +1,49 @@
+publiccodeYmlVersion: "0"
+name: Abfallwirtschaft
+url: https://github.com/smart-village-solutions/sva-studio
+platforms:
+  - web
+developmentStatus: development
+softwareType: addon
+description:
+  de:
+    shortDescription: Verwaltet Abfallfraktionen, Standorte und Entsorgungstouren samt
+      Planung und Ausspielung.
+    longDescription: Verwaltet Abfallfraktionen, Standorte und Entsorgungstouren samt
+      Planung und Ausspielung. Fachteams pflegen Stammdaten der Abfallwirtschaft und
+      planen Entsorgungstouren. Die Daten werden für die Ausgabe an angebundene Kanäle
+      aufbereitet. Betriebswerkzeuge unterstützen Prüfung und laufende Pflege derselben
+      Informationen. Das Modul ist Teil der modularen SVA-Studio-Plattform für kommunale
+      Redaktions- und Verwaltungsprozesse. Eine Instanz erhält den Fachbereich über ihre
+      Modulzuweisung; Rollen und Berechtigungen steuern die einzelnen Aktionen. Die
+      Modulübersicht zeigt Name, Beschreibung und Aktivierungsstatus, damit
+      Verantwortliche den Zweck des Bereichs vor der Zuweisung erkennen können.
+    features:
+      - Abfallwirtschaft im SVA Studio nutzen
+  en:
+    localisedName: Waste Management
+    shortDescription: Manages waste fractions, locations, and collection routes together
+      with scheduling and publishing.
+    longDescription: Manages waste fractions, locations, and collection routes together with
+      scheduling and publishing. This addon belongs to SVA Studio and is described
+      independently from its technical package identifier. The module overview displays
+      its public name, purpose, and current availability so administrators can
+      understand the scope before assigning it to an instance. Access to available
+      modules is still governed by the Studio module assignment and the relevant
+      permissions. The source package carries this metadata with the plugin, so it can
+      move to a separate repository together with the module.
+    features:
+      - Use Waste Management in SVA Studio
+legal:
+  license: EUPL-1.2
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de

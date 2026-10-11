@@ -31,3 +31,22 @@ declare module 'virtual:studio-installed-plugin-server' {
 declare module '#studio-plugin-runtime-factories' {
   export const selectedPluginJobRuntimeFactories: Readonly<Record<string, () => unknown>>;
 }
+declare module 'virtual:studio-module-publiccode' {
+  export const modulePublicCode: Readonly<
+    Record<
+      string,
+      Readonly<{
+        name: string;
+        description: Readonly<
+          Record<
+            string,
+            Readonly<{
+              localisedName?: string;
+              shortDescription: string;
+            }>
+          >
+        >;
+      }>
+    >
+  >;
+}

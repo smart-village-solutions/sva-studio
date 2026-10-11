@@ -47,10 +47,10 @@ describe('i18n resource structure', () => {
     expect(interfacesENResources.edit.deleteConfirm).toBe('Delete permanently');
   });
 
-  it('provides the SSF module description in both supported locales', () => {
+  it('keeps plugin descriptions out of host resources', () => {
     expect(deResources.plugins).toBe(pluginsDEResources);
     expect(enResources.plugins).toBe(pluginsENResources);
-    expect(pluginsDEResources.ssf.description).not.toBe('');
-    expect(pluginsENResources.ssf.description).not.toBe('');
+    expect(Object.keys(pluginsDEResources)).toEqual(['empty']);
+    expect(Object.keys(pluginsENResources)).toEqual(['empty']);
   });
 });

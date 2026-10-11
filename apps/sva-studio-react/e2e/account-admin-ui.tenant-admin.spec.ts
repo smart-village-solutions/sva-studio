@@ -45,5 +45,5 @@ test('tenant admin mutations fail closed in the browser when the admin client co
   await page.getByRole('tab', { name: 'Verwaltung' }).click();
   await page.getByLabel('Mainserver Application-ID').fill('updated-app-id');
   await page.getByRole('button', { name: 'Änderungen speichern' }).last().click();
-  await expect(page.getByText('Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.')).toBeVisible();
+  await expect(page.getByText('Der technische Zugang zum Anmeldedienst fehlt für diese Instanz. Bitte lassen Sie die Einrichtung der Instanz prüfen.')).toBeVisible();
 });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1840,
+  "body": "Aktueller Rollenprüfnachweis für die Instanzaktivierung\n\n- Ein erfolgreicher Rollenabgleich aktualisiert den Prüfzeitpunkt auch dann, wenn die Rollen bereits übereinstimmen.\n- Nach einer erneuten Bereitstellung bleibt die Aktivierung dadurch nicht wegen eines veralteten Rollenprüfnachweises blockiert."
+}

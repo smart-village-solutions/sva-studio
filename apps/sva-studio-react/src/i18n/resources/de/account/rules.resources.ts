@@ -2,29 +2,29 @@ export const rulesAccountDEResources = {
   title: 'Kontoregeln',
   navLabel: 'Kontoregeln',
   subtitle:
-    'Prüfen Sie tenantweite Löschregeln und die Behandlung Ihrer eigenen Inhalte in einer separaten Ansicht.',
+    'Hier sehen Sie, wann Ihr Konto nach längerer Zeit ohne Anmeldung eingeschränkt wird und was mit Ihren Inhalten geschieht.',
   summary: {
-    deactivateAfterDays: 'Deaktivierung nach',
-    deactivateAfterDaysHint: 'Tage seit dem letzten erfolgreichen Login bis zur Deaktivierung.',
-    pseudonymizeAfterDays: 'Pseudonymisierung nach',
+    deactivateAfterDays: 'Konto deaktivieren nach',
+    deactivateAfterDaysHint: 'Tage ohne erfolgreiche Anmeldung, bis das Konto gesperrt wird.',
+    pseudonymizeAfterDays: 'Persönliche Angaben entfernen nach',
     pseudonymizeAfterDaysHint:
-      'Tage seit dem letzten erfolgreichen Login bis zur Pseudonymisierung.',
-    deleteAfterDays: 'Tombstone-Soft-Delete nach',
+      'Tage ohne erfolgreiche Anmeldung, bis persönliche Angaben entfernt werden.',
+    deleteAfterDays: 'Konto als gelöscht markieren nach',
     deleteAfterDaysHint:
-      'Tage seit dem letzten erfolgreichen Login bis zum finalen Tombstone-Soft-Delete.',
-    defaultContentStrategy: 'Standardregel für Inhalte',
+      'Tage ohne erfolgreiche Anmeldung, bis das Konto als gelöscht markiert wird.',
+    defaultContentStrategy: 'Was mit Ihren Inhalten geschieht',
   },
   sections: {
     global: {
-      title: 'Tenantweite Regeln',
+      title: 'Regeln für Konten von Personen in dieser Instanz',
       deactivateAfterDays:
-        'Nach der konfigurierten Anzahl von Tagen seit dem letzten erfolgreichen Login wird das Konto deaktiviert und für direkte Logins gesperrt.',
+        'Nach der festgelegten Zeit ohne Anmeldung wird das Konto deaktiviert. Eine direkte Anmeldung ist dann nicht mehr möglich.',
       pseudonymizeAfterDays:
-        'Nach der konfigurierten Anzahl von Tagen seit dem letzten erfolgreichen Login werden personenbezogene Daten pseudonymisiert, soweit keine Aufbewahrungspflicht greift.',
+        'Später werden persönliche Angaben aus dem Konto entfernt, soweit sie nicht aufbewahrt werden müssen.',
       deleteAfterDays:
-        'Nach der konfigurierten Anzahl von Tagen seit dem letzten erfolgreichen Login erhält das Konto den finalen Tombstone-Soft-Delete-Zustand; es wird dabei nicht physisch entfernt.',
+        'Danach wird das Konto als gelöscht markiert. Der Datensatz wird dabei nicht vollständig entfernt.',
       defaultContentStrategy:
-        'Die Standardregel für Inhalte legt fest, ob eigene Inhalte erhalten bleiben oder mit dem Besitzer-Lebenszyklus mitlaufen.',
+        'Die Regel für Inhalte legt fest, ob Ihre Inhalte erhalten bleiben oder zusammen mit dem Konto behandelt werden.',
     },
     personal: {
       title: 'Eigene Inhaltsregel',
@@ -33,7 +33,7 @@ export const rulesAccountDEResources = {
   fields: {
     contentPreference: 'Regel für eigene Inhalte',
     contentPreferenceHint:
-      'Wählen Sie, ob Ihre eigenen Inhalte dauerhaft erhalten bleiben oder dem Konto-Lebenszyklus folgen sollen.',
+      'Wählen Sie, ob Ihre Inhalte erhalten bleiben oder zusammen mit Ihrem Konto behandelt werden.',
   },
   actions: {
     save: 'Inhaltsregel speichern',
@@ -46,6 +46,6 @@ export const rulesAccountDEResources = {
   },
   strategies: {
     retain: 'Inhalte beibehalten',
-    with_owner_lifecycle: 'Inhalte mit dem Konto-Lebenszyklus behandeln',
+    with_owner_lifecycle: 'Inhalte zusammen mit dem Konto behandeln',
   },
 } as const;

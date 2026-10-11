@@ -1,13 +1,12 @@
 export const iamAdminDEResources = {
   page: {
-    title: 'IAM Transparenz-Cockpit',
-    subtitle:
-      'Rechte, Governance-Fälle und Datenschutzvorgänge mit typisierten Read-Modellen prüfen.',
+    title: 'Rechte und Vorgänge prüfen',
+    subtitle: 'Prüfen Sie Zugriffsrechte, Freigaben und Datenschutzvorgänge.',
   },
   tabs: {
-    ariaLabel: 'IAM Transparenz Tabs',
+    ariaLabel: 'Bereiche für Rechte und Vorgänge',
     rights: 'Rechte',
-    governance: 'Governance',
+    governance: 'Freigaben und Vorgänge',
     dsr: 'Datenschutz',
     deletionRules: 'Löschregeln',
   },
@@ -21,15 +20,15 @@ export const iamAdminDEResources = {
         first:
           'Nach Organisation, Nutzerkontext oder Begriffen filtern, um die Liste einzugrenzen.',
         second:
-          'Mit "Authorize prüfen" einen konkreten Zugriff testen, zum Beispiel für eine Aktion auf einem Inhalt.',
+          'Mit „Zugriff prüfen“ testen, ob eine bestimmte Aktion auf einem Inhalt erlaubt ist.',
         third:
           'Quellrollen, Gruppen und Herkunft ansehen, um die Ursache einer Berechtigung besser zu verstehen.',
       },
     },
     governance: {
-      title: 'Governance-Fälle einordnen',
+      title: 'Freigaben und weitere Vorgänge prüfen',
       description:
-        'Hier finden Sie Freigaben, Delegationen und ähnliche IAM-Vorgänge. Der Bereich hilft dabei, offene Fälle zu sichten und deren Status nachzuvollziehen.',
+        'Hier finden Sie Freigaben, übertragene Rechte und ähnliche Vorgänge. Sie sehen, welche Fälle noch offen sind.',
       options: {
         first:
           'Nach Suchbegriff, Falltyp oder Status filtern, um schneller den passenden Fall zu finden.',
@@ -47,27 +46,27 @@ export const iamAdminDEResources = {
         second:
           'Betroffene und anfragende Personen vergleichen, um den Fall fachlich richtig einzuordnen.',
         third:
-          'Einen Eintrag öffnen, um Blocker, Metadaten und den genauen Bearbeitungsstand zu prüfen.',
+          'Einen Eintrag öffnen, um Hindernisse, weitere Angaben und den Bearbeitungsstand zu prüfen.',
       },
     },
     deletionRules: {
-      title: 'Löschregeln tenantweit verwalten',
+      title: 'Regeln für ungenutzte Konten verwalten',
       description:
-        'Hier legen Sie fest, nach welchen Fristen Konten und Inhalte behandelt werden. Die Einstellungen gelten tenantweit und steuern die Standardlogik für Deaktivierung, Pseudonymisierung und Löschung.',
+        'Legen Sie fest, was nach längerer Zeit ohne Anmeldung mit Konten und ihren Inhalten geschieht. Die Regeln gelten für nichttechnische Konten dieser Instanz.',
       options: {
         first:
-          'Fristen in Tagen für Deaktivierung, Pseudonymisierung und Löschung prüfen oder anpassen.',
+          'Festlegen, wann Konten deaktiviert, persönliche Angaben entfernt und Konten als gelöscht markiert werden.',
         second:
-          'Festlegen, ob Inhalte standardmäßig erhalten bleiben oder mit dem Besitzer-Lebenszyklus mitlaufen.',
+          'Festlegen, ob Inhalte erhalten bleiben oder dem Status des zugehörigen Kontos folgen.',
         third:
           'Steuern, ob Nutzer diese Standardregel für eigene Inhalte selbst überschreiben dürfen.',
       },
     },
   },
   messages: {
-    initializing: 'IAM Transparenz-Cockpit wird initialisiert ...',
-    disabled: 'Das IAM Transparenz-Cockpit ist derzeit deaktiviert.',
-    forbidden: 'Für dieses IAM Transparenz-Cockpit fehlen die erforderlichen Rollen.',
+    initializing: 'Rechte und Vorgänge werden geladen ...',
+    disabled: 'Die Prüfung von Rechten und Vorgängen ist derzeit deaktiviert.',
+    forbidden: 'Sie haben keinen Zugriff auf die Prüfung von Rechten und Vorgängen.',
   },
   shared: {
     all: 'Alle',
@@ -89,12 +88,12 @@ export const iamAdminDEResources = {
     targetLabel: 'Zielkonto',
     requester: 'Anfragende Person',
     requestNote: 'Anfragebeschreibung',
-    meta: 'Metadaten',
+    meta: 'Weitere Angaben',
     selectPrompt: 'Wählen Sie links einen Eintrag aus, um Details anzuzeigen.',
   },
   rights: {
-    empty: 'Keine effektiven Berechtigungen gefunden.',
-    tableAriaLabel: 'Tabelle effektiver Berechtigungen',
+    empty: 'Keine derzeit gültigen Rechte gefunden.',
+    tableAriaLabel: 'Tabelle der derzeit gültigen Rechte',
     noOrganization: 'Keine Organisation',
     columns: {
       action: 'Aktion',
@@ -102,20 +101,20 @@ export const iamAdminDEResources = {
       resourceType: 'Ressourcentyp',
       resourceId: 'Ressourcen-ID',
       organization: 'Organisation',
-      scope: 'Scope',
-      sourceRoles: 'Quellrollen',
-      sourceGroups: 'Quellgruppen',
+      scope: 'Geltungsbereich',
+      sourceRoles: 'Zugehörige Rollen',
+      sourceGroups: 'Zugehörige Gruppen',
       origin: 'Herkunft',
     },
     filters: {
       organization: 'Organisation',
-      actingAs: 'Handeln als',
+      actingAs: 'Rechte prüfen für',
       search: 'Suche',
     },
     subject: {
-      title: 'Subjekt',
-      impersonating: 'Impersonation durch {{actor}}',
-      self: 'Eigener Kontext',
+      title: 'Geprüfte Person',
+      impersonating: 'Prüfung ausgelöst von {{actor}}',
+      self: 'Eigene Rechte',
     },
     messages: {
       error: 'Berechtigungen konnten nicht geladen werden: {{value}}',
@@ -125,17 +124,17 @@ export const iamAdminDEResources = {
       resourceType: 'Ressourcentyp',
       resourceId: 'Ressourcen-ID',
       organizationId: 'Organisation',
-      run: 'Authorize prüfen',
-      running: 'Authorize wird geprüft ...',
+      run: 'Zugriff prüfen',
+      running: 'Zugriff wird geprüft ...',
       allowed: 'Erlaubt',
       denied: 'Verweigert',
       instanceRequired: 'Instanz-ID fehlt.',
       summary: {
         action: 'Geprüfte Aktion',
         resource: 'Ressource',
-        organization: 'Kontext-Organisation',
+        organization: 'Gewählte Organisation',
         cause: 'Ursache',
-        origin: 'Herleitung',
+        origin: 'Woher das Recht stammt',
       },
     },
     permissionSource: {
@@ -249,18 +248,17 @@ export const iamAdminDEResources = {
     },
   },
   deletionRules: {
-    title: 'Tenant-Löschregeln',
+    title: 'Regeln für ungenutzte Konten',
     subtitle:
-      'Verwalten Sie die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und Soft-Delete sowie die Standardregel für Inhalte.',
+      'Legen Sie fest, nach wie vielen Tagen ohne erfolgreiche Anmeldung Konten deaktiviert, persönliche Angaben entfernt und Konten als gelöscht markiert werden. Die Regel für Inhalte wählen Sie darunter.',
     fields: {
-      deactivateAfterDays: 'Deaktivierung nach Tagen seit dem letzten erfolgreichen Login',
-      pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen seit dem letzten erfolgreichen Login',
-      deleteAfterDays: 'Tombstone-Soft-Delete nach Tagen seit dem letzten erfolgreichen Login',
-      defaultContentStrategy: 'Standardregel für Inhalte',
-      allowContentPreferenceOverride:
-        'Nutzer dürfen die Standardregel für eigene Inhalte überschreiben',
+      deactivateAfterDays: 'Konto deaktivieren nach Tagen ohne Anmeldung',
+      pseudonymizeAfterDays: 'Persönliche Angaben entfernen nach Tagen ohne Anmeldung',
+      deleteAfterDays: 'Konto als gelöscht markieren nach Tagen ohne Anmeldung',
+      defaultContentStrategy: 'Was soll mit zugehörigen Inhalten geschehen?',
+      allowContentPreferenceOverride: 'Personen dürfen für eigene Inhalte eine andere Regel wählen',
       allowContentPreferenceOverrideHint:
-        'Wenn deaktiviert, wird im Datenschutz-Cockpit keine persönliche Überschreibung angeboten.',
+        'Wenn diese Option ausgeschaltet ist, können Personen die Regel für ihre Inhalte nicht selbst ändern.',
     },
     actions: {
       save: 'Löschregeln speichern',
@@ -268,13 +266,13 @@ export const iamAdminDEResources = {
       saved: 'Gespeichert',
     },
     messages: {
-      loading: 'Tenant-Löschregeln werden geladen ...',
-      instanceMissing: 'Instanzkontext fehlt für Tenant-Löschregeln.',
+      loading: 'Regeln für ungenutzte Konten werden geladen ...',
+      instanceMissing: 'Wählen Sie eine Instanz, um ihre Regeln für ungenutzte Konten anzusehen.',
       readOnly: 'Diese Löschregeln sind nur lesbar.',
     },
     strategies: {
       retain: 'Inhalte beibehalten',
-      with_owner_lifecycle: 'Inhalte mitbehandeln',
+      with_owner_lifecycle: 'Inhalte entsprechend dem Kontostatus behandeln',
     },
   },
 } as const;

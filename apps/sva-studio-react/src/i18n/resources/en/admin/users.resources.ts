@@ -27,15 +27,14 @@ export const usersAdminENResources = {
   },
   editability: {
     editable: 'Editable',
-    readOnly: 'Read-only',
+    readOnly: 'View only',
     blocked: 'Blocked',
   },
   keycloakRoles: {
     title: 'Keycloak roles',
     description: 'These roles apply to connected applications and do not grant Studio permissions.',
     dialogTitle: 'Keycloak roles for {{name}}',
-    dialogDescription:
-      'Manage direct realm roles separately from roles inherited through composites.',
+    dialogDescription: 'See which roles are assigned directly and which apply through other roles.',
     open: 'Open Keycloak roles',
     openForUser: 'Open Keycloak roles for {{name}}',
     loading: 'Loading Keycloak roles ...',
@@ -47,9 +46,8 @@ export const usersAdminENResources = {
     direct: 'Direct',
     inherited: 'Inherited',
     directHint: 'This role is assigned directly and can be removed here.',
-    inheritedHint:
-      'This role is effective through a composite role. An additional direct assignment is possible.',
-    unassignedHint: 'This realm role can be assigned directly.',
+    inheritedHint: 'This role applies through another role. You can also assign it directly.',
+    unassignedHint: 'You can assign this role directly.',
     protectedHint: 'This technical or protected role is read-only here.',
     systemAdminHint:
       'System administrator is managed exclusively through the protected local Studio role assignment.',
@@ -95,12 +93,13 @@ export const usersAdminENResources = {
   },
   createDialog: {
     title: 'Create user',
-    description: 'Creates a new user account in Keycloak and IAM.',
-    groupsLabel: 'Group assignment',
-    groupsHint: 'Groups are the preferred starting point for new users and bundle matching roles.',
+    description: 'Creates a user account. Choose below whether to send an invitation email.',
+    groupsLabel: 'Choose groups',
+    groupsHint: 'Choose a group to grant several related permissions together.',
     groupsEmpty: 'No active groups are available.',
     advancedRolesTitle: 'Optionally add direct roles',
-    advancedRolesHint: 'Direct roles are additive exceptions and should only complement groups.',
+    advancedRolesHint:
+      'Assign an additional role directly if the selected group does not grant all needed permissions.',
     rolePlaceholder: 'No direct roles are available.',
     sendPasswordSetupEmail: 'Send invitation email to set password',
     invitationPurpose: 'Destination after password setup',
@@ -108,9 +107,9 @@ export const usersAdminENResources = {
     invitationPurposeStudio: 'Studio',
     invitationPurposeSsf: 'KasselDIALOG',
     invitationPurposeHint: 'The selection is saved for future invitations to this account.',
-    isTechnicalAccount: 'Is a technical account',
+    isTechnicalAccount: 'Technical account',
     isTechnicalAccountHint:
-      'Technical accounts are excluded from configured account deletion rules. Other account behavior remains unchanged.',
+      'Technical accounts are excluded from automatic rules for deactivation, removal of personal details, and deletion. Sign-in, roles, and groups are unaffected.',
   },
   confirm: {
     activateTitle: 'Activate user',
@@ -124,7 +123,7 @@ export const usersAdminENResources = {
       'The Mainserver data for all selected users will be refreshed (max 50). Partial successes are reported individually.',
     deleteTitle: 'Delete user account permanently',
     deleteDescription:
-      'The selected tenant account will be physically deleted in Studio and Keycloak. Owned content is handled according to the effective tenant or account rule.',
+      'This account will be permanently removed from Studio and the Keycloak sign-in service. Depending on the applicable rule, related content will remain without a link to the person or be marked as deleted.',
     deleteSystemAdminDisabled:
       'Accounts with an active system administrator role can only be deleted after that role has been removed.',
   },
@@ -139,37 +138,37 @@ export const usersAdminENResources = {
       'The user was created, but the invitation email for setting the password could not be delivered.',
     mainserverApplicationIdLabel: 'Mainserver application ID',
     mainserverApplicationSecretLabel: 'Mainserver application secret',
-    mainserverApplicationSecretPlaceholder: 'Enter a new secret',
-    mainserverApplicationSecretConfigured: 'A secret is already configured.',
-    mainserverApplicationSecretMissing: 'No secret is configured yet.',
-    mainserverApplicationSecretHint: 'Leave empty to keep the existing secret unchanged.',
-    isTechnicalAccount: 'Is a technical account',
+    mainserverApplicationSecretPlaceholder: 'Enter a new access key',
+    mainserverApplicationSecretConfigured: 'An access key is already stored.',
+    mainserverApplicationSecretMissing: 'No access key is stored yet.',
+    mainserverApplicationSecretHint: 'Leave this field empty to keep the existing access key.',
+    isTechnicalAccount: 'Technical account',
     isTechnicalAccountHint:
-      'This classification excludes the account from deletion rules and does not change login, roles, or groups.',
+      'Technical accounts are excluded from automatic rules for deactivation, removal of personal details, and deletion. Sign-in, roles, and groups are unaffected.',
     removeTechnicalAccountWarning:
-      'After saving, this account is evaluated by the existing deletion rules again from the next run. Existing lifecycle states are not reset.',
-    rolesLabel: 'Role assignment',
-    groupsLabel: 'Group assignment',
+      'If you remove this label, the automatic deletion rules will apply to this account again from the next check. Earlier changes to the account status will not be undone.',
+    rolesLabel: 'Choose roles',
+    groupsLabel: 'Choose groups',
     notesLabel: 'Notes',
     notesCounter: '{{count}} / 2000 characters',
     validation: {
       notesTooLong: 'Notes must not exceed 2000 characters.',
     },
-    effectivePermissionsTitle: 'Currently effective permissions',
+    effectivePermissionsTitle: 'Currently available permissions',
     effectivePermissionsHint:
-      'This list shows the permissions currently resolved for the user from role and group assignments.',
+      'The person currently receives these permissions through their roles and groups.',
     permissionsLoading: 'Loading permission catalog ...',
     permissionDescriptionFallback: 'No additional description available.',
     permissionsEmpty: 'No effective permissions available.',
     permissionTrace: {
-      title: 'Effective permissions',
-      description: 'Read-only resolution of effective and non-effective permission sources.',
-      effectiveTitle: 'Effective sources',
-      inactiveTitle: 'Non-effective sources',
+      title: 'Which permissions apply?',
+      description: 'See which roles and groups grant a permission or why it does not apply.',
+      effectiveTitle: 'Currently valid assignments',
+      inactiveTitle: 'Currently invalid assignments',
       directAssignmentsTitle: 'Direct assignments',
       resourceType: 'Resource: {{value}}',
       organization: 'Organization: {{value}}',
-      scope: 'Scope: {{value}}',
+      scope: 'Applies to: {{value}}',
       inheritedOrganization: 'Inherited from organization: {{value}}',
       inheritedGeoUnit: 'Geo grant from: {{value}}',
       restrictedGeoUnit: 'Geo restriction: {{value}}',
@@ -214,14 +213,15 @@ export const usersAdminENResources = {
     groupOrigin: 'Origin: {{value}}',
     organizations: {
       title: 'Organizations',
-      description: 'View and manage this account’s organization memberships.',
+      description:
+        'Assign organizations to this account. The default organization is used if no other active organization is selected.',
       empty: 'No organization memberships available.',
       searchLabel: 'Search organizations',
       searchPlaceholder: 'Filter by organization name or key',
       selectLabel: 'Select organization',
       selectPlaceholder: 'Select an organization to assign',
-      assignDefaultLabel: 'Set as default context',
-      defaultContextLabel: 'Default context',
+      assignDefaultLabel: 'Use as default organization',
+      defaultContextLabel: 'Default organization',
       createdAt: 'Assigned on {{value}}',
       assignAction: 'Assign organization',
       updateAction: 'Update membership for {{name}}',
@@ -295,31 +295,30 @@ export const usersAdminENResources = {
     csrfValidationFailed: 'Security validation failed. Reload the page and try again.',
     rateLimited: 'Too many requests in a short time. Please wait a moment and try again.',
     conflict: 'The user update conflicts with the current state. Refresh and try again.',
-    keycloakReconcile:
-      'User sync with Keycloak failed or needs manual follow-up. Please inspect the reconcile finding.',
+    keycloakReconcile: 'User sync with Keycloak failed or needs review. Check the sync result.',
     tenantAdminClientNotConfigured:
-      'No tenant admin client is configured for this instance yet. Reconcile the instance contract first.',
+      'Technical access to the sign-in service is missing for this instance. Ask an administrator to check the instance setup.',
     tenantAdminClientSecretMissing:
-      'The tenant admin client secret is still missing for this instance. Reconcile the instance contract first.',
+      'The access key for the sign-in service is missing for this instance. Ask an administrator to check the instance setup.',
     keycloakUnavailable:
       'The connection to Keycloak is currently unavailable. Please try again later.',
     databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
     mainserverConfigurationIncomplete:
-      'The Mainserver integration is configured incompletely. Check the interface configuration.',
+      'The connection to Mainserver is not fully set up. Ask an administrator to check the connection.',
     mainserverCredentialsMissing:
-      'The Mainserver refresh is missing the required Mainserver credentials for the acting account.',
+      'The account used for this update has no Mainserver sign-in details.',
     mainserverCredentialsUnavailable:
-      'The Mainserver credentials for the acting account could not be resolved right now.',
+      'The Mainserver sign-in details for the account used are currently unavailable.',
     mainserverCredentialsInvalid:
-      'The Mainserver rejected the stored credentials for this refresh. Check the Mainserver credentials.',
+      'Mainserver rejected the stored sign-in details. Ask an administrator to check them.',
     mainserverUserConflict:
       'The Mainserver user is already linked to a different identity. Retrying will not resolve the conflict. Contact the Mainserver operations team with the displayed request ID.',
     mainserverProvisioningFailed:
       'Refreshing Mainserver data failed on the Mainserver side. Check the integration and try again.',
     mainserverTenantForbidden:
-      'The Mainserver rejected provisioning for this organization. Check the active organization and tenant assignment.',
+      'Mainserver rejected the setup for this organization. Check the active organization and its assignment.',
     mainserverRequestRejected:
-      'The Mainserver rejected the provisioning request as invalid. Check the integration contract and requested role.',
+      'Mainserver rejected the setup request. Ask an administrator to check the connection and requested role.',
     lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
     selfProtection: 'The currently signed-in account cannot be deactivated this way.',
     systemAdminDeleteProtection:

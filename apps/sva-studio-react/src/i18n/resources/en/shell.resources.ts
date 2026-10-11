@@ -119,7 +119,7 @@ export const shellENResources = {
     organizationContextError: 'Organization context could not be changed.',
     organizationContextErrorInvalid: 'This organization is not available in the current context.',
     organizationContextErrorInactive: 'Inactive organizations cannot be set as the active context.',
-    organizationContextDefault: 'Default context',
+    organizationContextDefault: 'Default organization',
     iamViewer: 'IAM Viewer',
   },
   sidebar: {

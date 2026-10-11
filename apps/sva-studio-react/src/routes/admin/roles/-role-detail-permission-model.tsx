@@ -30,12 +30,104 @@ export const ROLE_PERMISSION_ACTION_LABELS = {
   execute: 'admin.roles.permissionActions.execute',
   moderate: 'admin.roles.permissionActions.moderate',
   pushnotification: 'admin.roles.permissionActions.pushNotification',
+  transferownership: 'admin.roles.permissionActions.transferOwnership',
+  toggle: 'admin.roles.permissionActions.toggle',
+  deliver: 'admin.roles.permissionActions.deliver',
 } as const;
 
 export const ROLE_PERMISSION_DESCRIPTION_LABELS: Readonly<Record<string, TranslationKey>> = {
+  'iam.user.read': 'admin.roles.permissionDescriptions.iamUserRead',
+  'iam.user.write': 'admin.roles.permissionDescriptions.iamUserWrite',
+  'iam.invitationTemplate.manage': 'admin.roles.permissionDescriptions.iamInvitationTemplateManage',
+  'iam.role.read': 'admin.roles.permissionDescriptions.iamRoleRead',
+  'iam.role.write': 'admin.roles.permissionDescriptions.iamRoleWrite',
+  'iam.org.read': 'admin.roles.permissionDescriptions.iamOrgRead',
+  'iam.org.write': 'admin.roles.permissionDescriptions.iamOrgWrite',
+  'iam.legalText.read': 'admin.roles.permissionDescriptions.iamLegalTextRead',
+  'iam.legalText.write': 'admin.roles.permissionDescriptions.iamLegalTextWrite',
+  'iam.governance.read': 'admin.roles.permissionDescriptions.iamGovernanceRead',
+  'iam.governance.write': 'admin.roles.permissionDescriptions.iamGovernanceWrite',
+  'iam.governance.export': 'admin.roles.permissionDescriptions.iamGovernanceExport',
+  'iam.dsr.read': 'admin.roles.permissionDescriptions.iamDsrRead',
+  'iam.dsr.write': 'admin.roles.permissionDescriptions.iamDsrWrite',
+  'iam.dsr.export': 'admin.roles.permissionDescriptions.iamDsrExport',
+  'iam.deletionRules.read': 'admin.roles.permissionDescriptions.iamDeletionRulesRead',
+  'iam.deletionRules.write': 'admin.roles.permissionDescriptions.iamDeletionRulesWrite',
+  'iam.monitoring.read': 'admin.roles.permissionDescriptions.iamMonitoringRead',
+  'iam.monitoring.write': 'admin.roles.permissionDescriptions.iamMonitoringWrite',
+  'iam.accounts.delete': 'admin.roles.permissionDescriptions.iamAccountsDelete',
+  'experimental.read': 'admin.roles.permissionDescriptions.experimentalRead',
+  'app.read': 'admin.roles.permissionDescriptions.appRead',
+  'cockpit.read': 'admin.roles.permissionDescriptions.cockpitRead',
+  'modules.read': 'admin.roles.permissionDescriptions.modulesRead',
+  'content.read': 'admin.roles.permissionDescriptions.contentRead',
+  'content.create': 'admin.roles.permissionDescriptions.contentCreate',
+  'content.updateMetadata': 'admin.roles.permissionDescriptions.contentUpdateMetadata',
+  'content.updatePayload': 'admin.roles.permissionDescriptions.contentUpdatePayload',
+  'content.transferOwnership': 'admin.roles.permissionDescriptions.contentTransferOwnership',
   'content.publish': 'admin.roles.permissionDescriptions.contentPublish',
   'content.changeStatus': 'admin.roles.permissionDescriptions.contentChangeStatus',
+  'content.archive': 'admin.roles.permissionDescriptions.contentArchive',
+  'content.restore': 'admin.roles.permissionDescriptions.contentRestore',
+  'content.readHistory': 'admin.roles.permissionDescriptions.contentReadHistory',
+  'content.manageRevisions': 'admin.roles.permissionDescriptions.contentManageRevisions',
+  'content.delete': 'admin.roles.permissionDescriptions.contentDelete',
+  'integration.manage': 'admin.roles.permissionDescriptions.integrationManage',
+  'feature.toggle': 'admin.roles.permissionDescriptions.featureToggle',
+  'instance.registry.manage': 'admin.roles.permissionDescriptions.instanceRegistryManage',
+  'media.read': 'admin.roles.permissionDescriptions.mediaRead',
+  'media.create': 'admin.roles.permissionDescriptions.mediaCreate',
+  'media.update': 'admin.roles.permissionDescriptions.mediaUpdate',
+  'media.reference.manage': 'admin.roles.permissionDescriptions.mediaReferenceManage',
+  'media.delete': 'admin.roles.permissionDescriptions.mediaDelete',
+  'media.deliver.protected': 'admin.roles.permissionDescriptions.mediaDeliverProtected',
   'news.pushNotification': 'admin.roles.permissionDescriptions.newsPushNotification',
+  'surveys.moderate': 'admin.roles.permissionDescriptions.surveysModerate',
+  'surveys.export': 'admin.roles.permissionDescriptions.surveysExport',
+  'ssf.configuration.tenant.read': 'admin.roles.permissionDescriptions.ssfTenantRead',
+  'ssf.configuration.tenant.manage': 'admin.roles.permissionDescriptions.ssfTenantManage',
+  'waste-management.read': 'admin.roles.permissionDescriptions.wasteRead',
+  'waste-management.master-data.manage': 'admin.roles.permissionDescriptions.wasteMasterDataManage',
+  'waste-management.tours.manage': 'admin.roles.permissionDescriptions.wasteToursManage',
+  'waste-management.scheduling.manage': 'admin.roles.permissionDescriptions.wasteSchedulingManage',
+  'waste-management.import.execute': 'admin.roles.permissionDescriptions.wasteImportExecute',
+  'waste-management.export.execute': 'admin.roles.permissionDescriptions.wasteExportExecute',
+  'waste-management.seed.execute': 'admin.roles.permissionDescriptions.wasteSeedExecute',
+  'waste-management.reset.execute': 'admin.roles.permissionDescriptions.wasteResetExecute',
+  'waste-management.settings.manage': 'admin.roles.permissionDescriptions.wasteSettingsManage',
+};
+
+const STANDARD_PERMISSION_SUBJECT_LABELS: Readonly<Record<string, TranslationKey>> = {
+  categories: 'admin.roles.permissionSubjects.categories',
+  news: 'admin.roles.permissionSubjects.news',
+  events: 'admin.roles.permissionSubjects.events',
+  poi: 'admin.roles.permissionSubjects.poi',
+  'generic-items': 'admin.roles.permissionSubjects.genericItems',
+  faq: 'admin.roles.permissionSubjects.faq',
+  'cockpit-cards': 'admin.roles.permissionSubjects.cockpitCards',
+  projects: 'admin.roles.permissionSubjects.projects',
+  surveys: 'admin.roles.permissionSubjects.surveys',
+};
+
+const STANDARD_PERMISSION_ACTION_DESCRIPTION_LABELS: Readonly<Record<string, TranslationKey>> = {
+  read: 'admin.roles.permissionDescriptions.standardRead',
+  create: 'admin.roles.permissionDescriptions.standardCreate',
+  update: 'admin.roles.permissionDescriptions.standardUpdate',
+  delete: 'admin.roles.permissionDescriptions.standardDelete',
+};
+
+export const describeRolePermission = (permissionKey: string, fallback?: string | null): string => {
+  const descriptionKey = ROLE_PERMISSION_DESCRIPTION_LABELS[permissionKey];
+  if (descriptionKey) return t(descriptionKey);
+
+  const [subject, action, extra] = permissionKey.split('.');
+  const subjectKey = subject && STANDARD_PERMISSION_SUBJECT_LABELS[subject];
+  const actionKey = action && STANDARD_PERMISSION_ACTION_DESCRIPTION_LABELS[action];
+  if (subjectKey && actionKey && !extra) {
+    return t(actionKey, { subject: t(subjectKey) });
+  }
+
+  return fallback?.trim() || t('admin.roles.detail.permissions.permissionDescriptionFallback');
 };
 
 export const ROLE_PERMISSION_SCOPE_LABELS: Record<PermissionAccessScope, TranslationKey> = {
@@ -64,6 +156,15 @@ export const ROLE_PERMISSION_RESOURCE_LABELS = {
   events: 'admin.roles.permissionResources.events',
   poi: 'admin.roles.permissionResources.poi',
   'waste-management': 'admin.roles.permissionResources.wasteManagement',
+  categories: 'admin.roles.permissionResources.categories',
+  'generic-items': 'admin.roles.permissionResources.genericItems',
+  faq: 'admin.roles.permissionResources.faq',
+  'cockpit-cards': 'admin.roles.permissionResources.cockpitCards',
+  projects: 'admin.roles.permissionResources.projects',
+  surveys: 'admin.roles.permissionResources.surveys',
+  ssf: 'admin.roles.permissionResources.ssf',
+  modules: 'admin.roles.permissionResources.modules',
+  experimental: 'admin.roles.permissionResources.experimental',
 } as const;
 
 export const humanizePermissionSegment = (value: string): string =>
@@ -88,7 +189,10 @@ export const mapPermissionResourceLabel = (resource: string): string => {
 };
 
 export const summarizePermission = (permissionKey: string) => {
-  const [resourceSegment, actionSegment = 'access'] = permissionKey.split('.');
+  const segments = permissionKey.split('.');
+  const resourceSegment = segments[0] ?? permissionKey;
+  const actionSegment =
+    permissionKey === 'media.deliver.protected' ? 'deliver' : (segments.at(-1) ?? 'access');
   return {
     resourceLabel: mapPermissionResourceLabel(resourceSegment),
     actionLabel: mapPermissionActionLabel(actionSegment),

@@ -264,13 +264,15 @@ describe('OrganizationDetailPage', () => {
       }
     );
     fireEvent.change(
-      screen.getByLabelText('Autoren-Policy', { selector: '#organization-policy' }),
+      screen.getByLabelText('Unter welchem Namen Inhalte erstellt werden dürfen', {
+        selector: '#organization-policy',
+      }),
       {
         target: { value: 'org_or_personal' },
       }
     );
     fireEvent.change(
-      screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }),
+      screen.getByLabelText('Übergeordnete Organisation', { selector: '#organization-parent' }),
       {
         target: { value: 'parent-2' },
       }
@@ -313,7 +315,7 @@ describe('OrganizationDetailPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Mitgliedschaften' }));
     expect(onTabChangeMock).toHaveBeenCalledWith('memberships');
     expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Benutzerkonten' }));
     fireEvent.change(screen.getByPlaceholderText('Nach Name, E-Mail oder Kennung suchen'), {
       target: { value: 'zoe' },
     });
@@ -331,7 +333,7 @@ describe('OrganizationDetailPage', () => {
 
     fireEvent.click(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' }));
     fireEvent.click(screen.getByRole('option', { name: 'Zoe Zimmer <zimmer@example.org>' }));
-    expect(screen.getByRole('button', { name: 'Accounts' }).textContent).toContain('2 ausgewählt');
+    expect(screen.getByRole('button', { name: 'Benutzerkonten' }).textContent).toContain('2 ausgewählt');
     expect(screen.queryByText('Sichtbarkeit')).toBeNull();
     fireEvent.click(document.getElementById('membership-default') as HTMLInputElement);
     fireEvent.click(screen.getByRole('button', { name: 'Mitglieder zuweisen' }));
@@ -421,7 +423,7 @@ describe('OrganizationDetailPage', () => {
     renderDetailPage('memberships');
 
     await waitFor(() => expect(listUsersMock).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Benutzerkonten' }));
     fireEvent.click(screen.getByRole('option', { name: 'Account Eins <eins@example.org>' }));
     fireEvent.click(screen.getByRole('option', { name: 'Account Zwei <zwei@example.org>' }));
     fireEvent.click(screen.getByRole('option', { name: 'Account Drei <drei@example.org>' }));
@@ -664,7 +666,7 @@ describe('OrganizationDetailPage', () => {
     });
 
     fireEvent.change(
-      screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }),
+      screen.getByLabelText('Übergeordnete Organisation', { selector: '#organization-parent' }),
       {
         target: { value: 'parent-2' },
       }

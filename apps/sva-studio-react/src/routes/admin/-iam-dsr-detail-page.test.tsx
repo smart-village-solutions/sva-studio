@@ -84,7 +84,10 @@ describe('IamDsrDetailPage', () => {
     render(<IamDsrDetailPage caseId="dsr-1" />);
 
     await waitFor(() => {
-      expect(getAdminDsrCaseMock).toHaveBeenCalledWith('dsr-1', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(getAdminDsrCaseMock).toHaveBeenCalledWith(
+        'dsr-1',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
     });
 
     expect(screen.getAllByText('Auskunftsersuchen').length).toBeGreaterThan(0);
@@ -108,7 +111,9 @@ describe('IamDsrDetailPage', () => {
     cleanup();
     hasIamCockpitAccessRoleMock.mockReturnValue(false);
     render(<IamDsrDetailPage caseId="dsr-1" />);
-    expect(screen.getByText('Für dieses IAM Transparenz-Cockpit fehlen die erforderlichen Rollen.')).toBeTruthy();
+    expect(
+      screen.getByText('Sie haben keinen Zugriff auf die Prüfung von Rechten und Vorgängen.')
+    ).toBeTruthy();
     expect(getAdminDsrCaseMock).toHaveBeenCalledTimes(1);
   });
 });

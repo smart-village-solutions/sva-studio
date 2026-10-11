@@ -1,7 +1,7 @@
 export const organizationsAdminENResources = {
   page: {
     title: 'Organization Management',
-    subtitle: 'Maintain organizations hierarchically and manage memberships',
+    subtitle: 'Manage organizations and their members',
   },
   mainserverProvisioning: {
     title: 'Mainserver provisioning',
@@ -29,8 +29,8 @@ export const organizationsAdminENResources = {
     ariaLabel: 'Organizations table',
     headerName: 'Organization',
     headerType: 'Type',
-    headerParent: 'Parent',
-    headerChildren: 'Children',
+    headerParent: 'Parent organization',
+    headerChildren: 'Child organizations',
     headerMembers: 'Members',
     headerStatus: 'Status',
     headerActions: 'Actions',
@@ -69,7 +69,7 @@ export const organizationsAdminENResources = {
   },
   editDialog: {
     title: 'Edit organization',
-    description: 'Maintain base data, parent and policy of the organization.',
+    description: 'Change this organization’s details and its place in the hierarchy.',
   },
   detail: {
     backToList: 'Back to organization list',
@@ -85,25 +85,26 @@ export const organizationsAdminENResources = {
     overviewTitle: 'Overview',
     overviewDescription: 'Status, hierarchy, and key figures of the current organization.',
     baseDataTitle: 'Base data',
-    baseDataDescription:
-      'Maintain key, display name, type, parent, and author policy of the organization.',
+    baseDataDescription: 'Edit the name, type, parent organization, and how authors are shown.',
     membershipsTitle: 'Memberships',
-    membershipsDescription: 'Assign accounts and manage their default context.',
+    membershipsDescription:
+      'Assign people. Their default organization is used if no other active organization is selected.',
   },
   membershipsDialog: {
     title: 'Manage memberships',
-    description: 'Assign or remove members for {{name}}.',
+    description:
+      'Add or remove members of {{name}}. Their default organization is used if no other active organization is selected.',
     searchLabel: 'Search members',
     searchPlaceholder: 'Search by name, email, or identifier',
-    accountLabel: 'Accounts',
-    accountPlaceholder: 'Select accounts',
+    accountLabel: 'User accounts',
+    accountPlaceholder: 'Select user accounts',
     selectedCount: '{{count}} selected',
     removeSelectionLabel: 'Remove {{name}} from selection',
     loading: 'Loading members.',
-    availableCount: '{{count}} available accounts found.',
-    emptySelection: 'No matching accounts available.',
-    defaultLabel: 'Set as default context',
-    defaultBadge: 'Default',
+    availableCount: '{{count}} available user accounts found.',
+    emptySelection: 'No matching user accounts available.',
+    defaultLabel: 'Use as default organization',
+    defaultBadge: 'Default organization',
     saveMembershipLabel: 'Save membership for {{name}}',
     membersTitle: 'Assigned members',
     empty: 'No memberships yet.',
@@ -112,15 +113,15 @@ export const organizationsAdminENResources = {
   confirm: {
     deleteTitle: 'Delete organization',
     deleteDescription:
-      'The organization is deleted permanently. Memberships and organization-scoped credentials are removed. Child organizations still block the deletion.',
+      'This organization and its memberships will be permanently removed. Its stored sign-in details will also be removed. The organization cannot be deleted while it has child organizations.',
   },
   form: {
     keyLabel: 'Technical key',
     nameLabel: 'Display name',
     typeLabel: 'Organization type',
     parentLabel: 'Parent organization',
-    parentNone: 'No parent',
-    policyLabel: 'Author policy',
+    parentNone: 'No parent organization',
+    policyLabel: 'Whose name may be used when creating content',
     mainserverApplicationIdLabel: 'Mainserver application ID',
     mainserverApplicationSecretLabel: 'Mainserver application secret',
     mainserverApplicationSecretPlaceholder: 'Enter a new secret',
@@ -129,8 +130,8 @@ export const organizationsAdminENResources = {
     mainserverApplicationSecretHint: 'Leave empty to keep the existing secret unchanged.',
   },
   policies: {
-    orgOnly: 'Organization only',
-    orgOrPersonal: 'Organization or person',
+    orgOnly: 'Organization name only',
+    orgOrPersonal: 'Organization name or personal name',
   },
   types: {
     county: 'County',

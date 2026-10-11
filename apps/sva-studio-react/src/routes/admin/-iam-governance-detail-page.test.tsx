@@ -82,16 +82,24 @@ describe('IamGovernanceDetailPage', () => {
     render(<IamGovernanceDetailPage caseId="gov-1" />);
 
     await waitFor(() => {
-      expect(getGovernanceCaseMock).toHaveBeenCalledWith('gov-1', expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(getGovernanceCaseMock).toHaveBeenCalledWith(
+        'gov-1',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
     });
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Impersonation für Support-Fall' })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Impersonation für Support-Fall' })
+    ).toBeTruthy();
     expect(screen.getByText('Temporäre Einsicht für Incident-Analyse.')).toBeTruthy();
     expect(screen.getByText('INC-42')).toBeTruthy();
     expect(screen.getByText('reason: incident_review')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Zur Governance-Übersicht' }));
-    expect(useNavigateMock).toHaveBeenCalledWith({ to: '/admin/iam', search: { tab: 'governance' } });
+    expect(useNavigateMock).toHaveBeenCalledWith({
+      to: '/admin/iam',
+      search: { tab: 'governance' },
+    });
   });
 
   it('renders not-found and forbidden states without loading detail data', async () => {
@@ -105,7 +113,9 @@ describe('IamGovernanceDetailPage', () => {
     cleanup();
     hasIamCockpitAccessRoleMock.mockReturnValue(false);
     render(<IamGovernanceDetailPage caseId="gov-1" />);
-    expect(screen.getByText('Für dieses IAM Transparenz-Cockpit fehlen die erforderlichen Rollen.')).toBeTruthy();
+    expect(
+      screen.getByText('Sie haben keinen Zugriff auf die Prüfung von Rechten und Vorgängen.')
+    ).toBeTruthy();
     expect(getGovernanceCaseMock).toHaveBeenCalledTimes(1);
   });
 });

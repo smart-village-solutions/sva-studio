@@ -1,7 +1,7 @@
 export const organizationsAdminDEResources = {
   page: {
     title: 'Organisationsverwaltung',
-    subtitle: 'Organisationen hierarchisch pflegen, filtern und Mitgliedschaften verwalten',
+    subtitle: 'Organisationen und ihre Mitglieder verwalten',
   },
   mainserverProvisioning: {
     title: 'Mainserver-Provisionierung',
@@ -30,8 +30,8 @@ export const organizationsAdminDEResources = {
     ariaLabel: 'Organisationstabelle',
     headerName: 'Organisation',
     headerType: 'Typ',
-    headerParent: 'Parent',
-    headerChildren: 'Children',
+    headerParent: 'Übergeordnete Organisation',
+    headerChildren: 'Untergeordnete Organisationen',
     headerMembers: 'Mitglieder',
     headerStatus: 'Status',
     headerActions: 'Aktionen',
@@ -70,7 +70,7 @@ export const organizationsAdminDEResources = {
   },
   editDialog: {
     title: 'Organisation bearbeiten',
-    description: 'Pflegt Stammdaten, Parent und Policy der Organisation.',
+    description: 'Ändern Sie die Angaben und die Zuordnung dieser Organisation.',
   },
   detail: {
     backToList: 'Zur Organisationsliste',
@@ -87,24 +87,26 @@ export const organizationsAdminDEResources = {
     overviewDescription: 'Status, Hierarchie und Kennzahlen der aktuellen Organisation.',
     baseDataTitle: 'Stammdaten',
     baseDataDescription:
-      'Pflegt Schlüssel, Anzeigename, Typ, Parent und Autoren-Policy der Organisation.',
+      'Bearbeiten Sie Name, Typ, übergeordnete Organisation und die Anzeige von Autoren.',
     membershipsTitle: 'Mitgliedschaften',
-    membershipsDescription: 'Ordnet Accounts zu und verwaltet ihren Default-Kontext.',
+    membershipsDescription:
+      'Ordnen Sie Personen zu. Ihre Standardorganisation wird verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
   },
   membershipsDialog: {
     title: 'Mitgliedschaften verwalten',
-    description: 'Mitglieder von {{name}} zuordnen oder entfernen.',
+    description:
+      'Ordnen Sie Personen {{name}} zu oder entfernen Sie sie. Die Standardorganisation wird verwendet, wenn keine andere aktive Organisation ausgewählt ist.',
     searchLabel: 'Mitglieder suchen',
     searchPlaceholder: 'Nach Name, E-Mail oder Kennung suchen',
-    accountLabel: 'Accounts',
-    accountPlaceholder: 'Accounts auswählen',
+    accountLabel: 'Benutzerkonten',
+    accountPlaceholder: 'Benutzerkonten auswählen',
     selectedCount: '{{count}} ausgewählt',
     removeSelectionLabel: '{{name}} aus Auswahl entfernen',
     loading: 'Mitglieder werden geladen.',
-    availableCount: '{{count}} verfügbare Accounts gefunden.',
-    emptySelection: 'Keine passenden Accounts verfügbar.',
-    defaultLabel: 'Als Default-Kontext setzen',
-    defaultBadge: 'Default',
+    availableCount: '{{count}} verfügbare Benutzerkonten gefunden.',
+    emptySelection: 'Keine passenden Benutzerkonten verfügbar.',
+    defaultLabel: 'Als Standardorganisation auswählen',
+    defaultBadge: 'Standardorganisation',
     saveMembershipLabel: 'Mitgliedschaft für {{name}} speichern',
     membersTitle: 'Zugeordnete Mitglieder',
     empty: 'Noch keine Mitgliedschaften vorhanden.',
@@ -113,15 +115,15 @@ export const organizationsAdminDEResources = {
   confirm: {
     deleteTitle: 'Organisation löschen',
     deleteDescription:
-      'Die Organisation wird endgültig gelöscht. Zugehörigkeiten und organisationsgebundene Credentials werden entfernt. Kind-Organisationen verhindern das Löschen weiterhin.',
+      'Diese Organisation und ihre Mitgliedschaften werden dauerhaft entfernt. Auch ihre gespeicherten Zugangsdaten werden entfernt. Solange untergeordnete Organisationen vorhanden sind, ist das Löschen nicht möglich.',
   },
   form: {
     keyLabel: 'Technischer Schlüssel',
     nameLabel: 'Anzeigename',
     typeLabel: 'Organisationstyp',
-    parentLabel: 'Parent-Organisation',
-    parentNone: 'Kein Parent',
-    policyLabel: 'Autoren-Policy',
+    parentLabel: 'Übergeordnete Organisation',
+    parentNone: 'Keine übergeordnete Organisation',
+    policyLabel: 'Unter welchem Namen Inhalte erstellt werden dürfen',
     mainserverApplicationIdLabel: 'Mainserver Application-ID',
     mainserverApplicationSecretLabel: 'Mainserver Application-Secret',
     mainserverApplicationSecretPlaceholder: 'Neues Secret eingeben',
@@ -130,8 +132,8 @@ export const organizationsAdminDEResources = {
     mainserverApplicationSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
   },
   policies: {
-    orgOnly: 'Nur Organisation',
-    orgOrPersonal: 'Organisation oder Person',
+    orgOnly: 'Nur im Namen der Organisation',
+    orgOrPersonal: 'Im Namen der Organisation oder persönlich',
   },
   types: {
     county: 'Landkreis',

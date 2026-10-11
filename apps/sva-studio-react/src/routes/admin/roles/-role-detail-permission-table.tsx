@@ -9,9 +9,9 @@ import { resolvePermissionTitle } from '../../../lib/permission-labels';
 
 import {
   PermissionAccessScope,
-  ROLE_PERMISSION_DESCRIPTION_LABELS,
   ROLE_PERMISSION_SCOPE_LABELS,
   RolePermissionTableRow,
+  describeRolePermission,
   normalizePermissionAccessScope,
   normalizePermissionSearch,
   normalizeSupportedAccessScopes,
@@ -70,11 +70,7 @@ export const useRolePermissionTable = ({
         return {
           id: permission.id,
           permissionKey: permission.permissionKey,
-          description:
-            (ROLE_PERMISSION_DESCRIPTION_LABELS[permission.permissionKey]
-              ? t(ROLE_PERMISSION_DESCRIPTION_LABELS[permission.permissionKey])
-              : permission.description?.trim()) ||
-            t('admin.roles.detail.permissions.permissionDescriptionFallback'),
+          description: describeRolePermission(permission.permissionKey, permission.description),
           resourceLabel: summary.resourceLabel,
           actionLabel: summary.actionLabel,
           detailLabel: resolvePermissionTitle(permission.permissionKey) ?? summary.detailLabel,

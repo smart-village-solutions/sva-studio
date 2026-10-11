@@ -550,9 +550,7 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-1" activeTab="general" />);
 
     expect(
-      screen.getByText(
-        'Die Rechte dieser vorgegebenen Systemrolle können hier nicht geändert werden.'
-      )
+      screen.getByText('Die Rechte dieser Systemrolle können hier nicht geändert werden.')
     ).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
@@ -595,9 +593,7 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-legacy-editor" activeTab="general" />);
 
     expect(
-      screen.queryByText(
-        'Die Rechte dieser vorgegebenen Systemrolle können hier nicht geändert werden.'
-      )
+      screen.queryByText('Die Rechte dieser Systemrolle können hier nicht geändert werden.')
     ).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
@@ -783,7 +779,7 @@ describe('RoleDetailPage', () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        'Rechte und Zuweisungen werden in Studio gespeichert. Sie sind nicht Teil dieses Abgleichs.'
+        'Rechte und Zuweisungen bleiben in Studio. Sie sind nicht Teil des Abgleichs.'
       )
     ).toBeTruthy();
     expect(screen.getByText('Status des Abgleichs')).toBeTruthy();

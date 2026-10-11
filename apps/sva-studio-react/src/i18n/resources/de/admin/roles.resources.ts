@@ -122,12 +122,9 @@ export const rolesAdminDEResources = {
     modulesRead: 'Die Übersicht der verfügbaren Module sehen.',
     contentRead: 'Inhalte ansehen.',
     contentCreate: 'Neue Inhalte anlegen.',
-    contentUpdateMetadata:
-      'Angaben zu Inhalten bearbeiten, zum Beispiel Zuordnungen und Einstellungen.',
-    contentUpdatePayload:
-      'Den eigentlichen Inhalt bearbeiten, zum Beispiel Texte und weitere Inhaltsdaten.',
-    contentTransferOwnership:
-      'Inhalte einem anderen Konto oder einer anderen Organisation zuordnen.',
+    contentUpdateMetadata: 'Zuordnungen und Einstellungen eines Inhalts bearbeiten.',
+    contentUpdatePayload: 'Texte und weitere Daten eines Inhalts bearbeiten.',
+    contentTransferOwnership: 'Zuständigkeit für Inhalte übertragen.',
     contentPublish: 'Entwürfe veröffentlichen und damit sichtbar machen.',
     contentChangeStatus: 'Redaktionellen Status ändern, ohne Inhalte zu veröffentlichen.',
     contentArchive: 'Inhalte ins Archiv verschieben.',
@@ -251,17 +248,14 @@ export const rolesAdminDEResources = {
   },
   workspace: {
     title: 'Berechtigungsarbeitsbereich',
-    subtitle:
-      'Sehen Sie, welche Rechte eine Rolle vergibt, und prüfen Sie einzelne Zugriffe bei Bedarf.',
+    subtitle: 'Sehen Sie, welche Rechte eine Rolle vergibt, und prüfen Sie einzelne Zugriffe.',
     editPermissionsTitle: 'Rechte bearbeiten',
-    editPermissionsSubtitle:
-      'Verfügbare Berechtigungen pro Fachbereich auswählen und direkt an der Rolle speichern.',
+    editPermissionsSubtitle: 'Rechte nach Fachbereich auswählen und an der Rolle speichern.',
     sideTitle: 'Zugriff prüfen',
     sideSubtitle: 'Prüfen Sie, ob eine bestimmte Person eine Aktion ausführen darf.',
     editable: 'Bearbeitbar',
     readOnly: 'Nur ansehen',
-    readOnlySystemHint:
-      'Die Rechte dieser vorgegebenen Systemrolle können hier nicht geändert werden.',
+    readOnlySystemHint: 'Die Rechte dieser Systemrolle können hier nicht geändert werden.',
     readOnlyExternalHint: 'Diese Rolle wird außerhalb von Studio verwaltet. Ändern Sie sie dort.',
     technicalKey: 'Technischer Schlüssel: {{value}}',
     resourceLabel: 'Fachbereich: {{value}}',
@@ -300,8 +294,7 @@ export const rolesAdminDEResources = {
     },
     permissions: {
       subtitle: 'Wählen Sie aus, was Personen mit dieser Rolle tun dürfen.',
-      cockpitHint:
-        'Unter „Zugriff prüfen“ sehen Sie, warum ein Recht für eine bestimmte Person gilt oder nicht gilt.',
+      cockpitHint: 'Unter „Zugriff prüfen“ sehen Sie, warum ein Recht gilt oder nicht gilt.',
       permissionDescriptionFallback: 'Keine zusätzliche Beschreibung vorhanden.',
       showTechnicalDetails: 'Technische Details anzeigen',
       hideTechnicalDetails: 'Technische Details ausblenden',
@@ -368,7 +361,7 @@ export const rolesAdminDEResources = {
       title: 'Abgleich mit dem Anmeldedienst',
       subtitle: 'Hier sehen Sie, ob die Rollendaten mit Keycloak abgeglichen wurden.',
       metadataOnlyHint:
-        'Rechte und Zuweisungen werden in Studio gespeichert. Sie sind nicht Teil dieses Abgleichs.',
+        'Rechte und Zuweisungen bleiben in Studio. Sie sind nicht Teil des Abgleichs.',
       externalHint:
         'Diese Rolle wird außerhalb von Studio verwaltet. Der Status zeigt nur den Abgleich mit Keycloak.',
       metadataStatus: 'Status des Abgleichs',
@@ -377,8 +370,7 @@ export const rolesAdminDEResources = {
       errorCode: 'Keycloak-Fehlercode',
       notAvailable: 'Nicht verfügbar',
       localChangesTitle: 'Änderungen nur in Studio',
-      localChangesBody:
-        'Folgende Änderungen werden nur in Studio gespeichert und nicht mit Keycloak abgeglichen:',
+      localChangesBody: 'Diese Änderungen bleiben in Studio und werden nicht abgeglichen:',
       localChangeItems: {
         permissions: 'Berechtigungen der Rolle',
         assignments: 'Benutzerzuweisungen zur Rolle',

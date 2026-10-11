@@ -24,7 +24,7 @@ describe('ContextualHelp', () => {
       Response.json({
         id: 'home.overview',
         markdown:
-          '# Startseite\n\n[Mehr](https://docs.example.test/guide)\n\n<script>alert(1)</script>',
+          '---\nid: home.overview\ntitle: Startseite\npageType: overview\n---\n\n# Startseite\n\n[Mehr](https://docs.example.test/guide)\n\n<script>alert(1)</script>',
         documentationBaseUrl: 'https://docs.example.test/',
         websiteUrl: 'https://docs.example.test/pages/home.overview/',
       })
@@ -42,6 +42,9 @@ describe('ContextualHelp', () => {
     fireEvent.click(trigger);
 
     expect(await screen.findByRole('heading', { name: 'Startseite' })).toBeTruthy();
+    expect(screen.queryByText(/id: home\.overview/u)).toBeNull();
+    expect(screen.queryByText(/pageType: overview/u)).toBeNull();
+    expect(screen.queryByRole('separator')).toBeNull();
     expect(screen.queryByText('alert(1)')).toBeNull();
     expect(screen.getByRole('link', { name: 'Mehr' }).getAttribute('href')).toBe(
       'https://docs.example.test/guide'
@@ -105,6 +108,8 @@ describe('ContextualHelp', () => {
             '',
             '[E-Mail](mailto:hilfe@example.test)',
             '',
+            '[Kategorien pflegen](/guides/kategorien-pflegen)',
+            '',
             '[Unsicher](javascript:alert(1))',
             '',
             '![Intern](../media/hilfe.png)',
@@ -125,6 +130,9 @@ describe('ContextualHelp', () => {
     expect(await screen.findByRole('heading', { name: 'Verweise' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'E-Mail' }).getAttribute('href')).toBe(
       'mailto:hilfe@example.test'
+    );
+    expect(screen.getByRole('link', { name: 'Kategorien pflegen' }).getAttribute('href')).toBe(
+      'https://docs.example.test/studio/guides/kategorien-pflegen'
     );
     expect(screen.queryByRole('link', { name: 'Unsicher' })).toBeNull();
     expect(screen.getByRole('img', { name: 'Intern' }).getAttribute('src')).toBe(

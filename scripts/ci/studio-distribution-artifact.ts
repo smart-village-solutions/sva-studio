@@ -28,6 +28,7 @@ const excludedPackages: Readonly<Record<'studio' | 'ssf', readonly string[]>> = 
   studio: ['plugin-ssf'],
   ssf: [
     'plugin-categories',
+    'plugin-cockpit',
     'plugin-cockpit-cards',
     'plugin-events',
     'plugin-faq',
@@ -45,6 +46,7 @@ const excludedPackages: Readonly<Record<'studio' | 'ssf', readonly string[]>> = 
 const includedPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
   studio: [
     'categories',
+    'cockpit',
     'cockpit-cards',
     'events',
     'faq',
@@ -59,7 +61,7 @@ const includedPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> =
 };
 
 const workspacePluginIds = pluginCatalog
-  .filter(({ sourceType }) => sourceType === 'workspace')
+  .filter(({ sourceType, enabled }) => sourceType === 'workspace' && enabled)
   .map(({ pluginId }) => pluginId);
 const builtInPluginIds: Readonly<Record<'studio' | 'ssf', readonly string[]>> = {
   studio: includedPluginIds.studio,

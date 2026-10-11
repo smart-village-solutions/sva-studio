@@ -30,7 +30,8 @@ type RouterLocationMock = Readonly<{
 }>;
 type PluginNavigationItemMock = {
   id: string;
-  to: string;
+  to?: string;
+  href?: string;
   titleKey: string;
   section: 'dataManagement' | 'applications' | 'system';
   requiredAction?: string;
@@ -264,6 +265,12 @@ beforeEach(() => {
       section: 'dataManagement',
       requiredAction: 'news.read',
     },
+    {
+      id: 'cockpit.navigation',
+      href: COCKPIT_URL,
+      titleKey: 'shell.sidebar.cockpit',
+      section: 'applications',
+    },
   ];
   studioContentTypesMock.items = [];
   studioPluginActionLookupMock.get.mockReset();
@@ -389,6 +396,7 @@ describe('Sidebar', () => {
         name: 'Admin',
         roles: ['system_admin'],
         instanceId: 'de-musterhausen',
+        assignedModules: ['cockpit'],
         permissionActions: [
           'experimental.read',
           'iam.user.read',
@@ -1017,12 +1025,13 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
   });
 
-  it('zeigt im Bereich Anwendungen nur den Cockpit-Link mit cockpit.read-Berechtigung', () => {
+  it('zeigt den Cockpit-Link nur bei Zuweisung und cockpit.read-Berechtigung', () => {
     renderSidebar({
       user: createSidebarUser({
         id: 'user-4',
         name: 'Cockpit Reader',
         permissionActions: ['experimental.read'],
+        assignedModules: ['cockpit'],
       }),
       contentAccess: createContentAccessState({
         access: defaultReadOnlyAccessState,
@@ -1033,6 +1042,31 @@ describe('Sidebar', () => {
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'App' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
+  });
+
+  it('blendet Cockpit ohne Modulzuweisung trotz cockpit.read aus', () => {
+    renderSidebar({
+      user: createSidebarUser({ permissionActions: ['experimental.read'] }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['cockpit.read'],
+      }),
+    });
+
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
+  });
+
+  it('zeigt keinen Cockpit-Link, wenn das Plugin keinen Navigationsbeitrag liefert', () => {
+    studioPluginNavigationMock.items = [];
+    renderSidebar({
+      user: createSidebarUser({ permissionActions: ['experimental.read'] }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['cockpit.read'],
+      }),
+    });
+
+    expect(screen.queryByRole('link', { name: 'Cockpit' })).toBeNull();
   });
 
   it('reduziert die Kassel-DIALOG-Navigation unabhängig von Rechten und Datentypen', () => {

@@ -36,6 +36,12 @@
     "sourceRef": "packages/plugin-faq"
   },
   {
+    "pluginId": "cockpit",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-cockpit"
+  },
+  {
     "pluginId": "cockpit-cards",
     "sourceType": "workspace",
     "enabled": true,
@@ -64,5 +70,26 @@
     "sourceType": "workspace",
     "enabled": true,
     "sourceRef": "packages/plugin-waste-management"
+  },
+  {
+    "pluginId": "notifications",
+    "sourceType": "workspace",
+    "enabled": false,
+    "availability": "in-development",
+    "sourceRef": "packages/plugin-notifications"
+  },
+  {
+    "pluginId": "assistant",
+    "sourceType": "workspace",
+    "enabled": false,
+    "availability": "in-development",
+    "sourceRef": "packages/plugin-assistant"
+  },
+  {
+    "pluginId": "search",
+    "sourceType": "workspace",
+    "enabled": false,
+    "availability": "in-development",
+    "sourceRef": "packages/plugin-search"
   }
 ]

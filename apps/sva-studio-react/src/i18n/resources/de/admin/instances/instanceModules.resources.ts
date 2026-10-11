@@ -6,6 +6,11 @@ export const instanceModulesInstancesAdminDEResources = {
   title: 'Instanzmodule',
   subtitle: 'Module pro Instanz zuweisen, entziehen und die zugehörige IAM-Basis neu aufbauen.',
   empty: 'Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.',
+  development: {
+    title: 'Plugins in Entwicklung',
+    description: 'Diese Plugins sind vorbereitet, aber noch nicht verfügbar oder zuweisbar.',
+    status: 'In Entwicklung',
+  },
   instanceSelect: {
     label: 'Instanz auswählen',
     hint: 'Die Modulverwaltung arbeitet immer auf einer konkreten Instanz.',

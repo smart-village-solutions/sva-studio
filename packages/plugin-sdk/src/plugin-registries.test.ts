@@ -1721,6 +1721,37 @@ describe('plugin registries', () => {
       createPluginRegistry([
         {
           ...newsPlugin,
+          navigation: [
+            {
+              id: 'news.external',
+              href: 'http://example.org',
+              titleKey: 'news.navigation.title',
+              section: 'applications',
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_navigation_target_invalid:news:news.external');
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          navigation: [
+            {
+              id: 'news.conflicting-targets',
+              to: '/plugins/news',
+              href: 'https://example.org',
+              titleKey: 'news.navigation.title',
+              section: 'applications',
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_navigation_target_invalid:news:news.conflicting-targets');
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
           contentTypes: [{ contentType: 'other.article', displayName: 'Other' }],
         },
       ])

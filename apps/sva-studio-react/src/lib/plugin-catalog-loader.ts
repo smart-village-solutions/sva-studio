@@ -18,6 +18,7 @@ export type StudioPluginCatalogConfigEntry = {
   readonly pluginId: string;
   readonly sourceType: PluginCatalogSourceType;
   readonly enabled: boolean;
+  readonly availability?: 'in-development';
   readonly sourceRef: string;
 };
 
@@ -219,6 +220,7 @@ export const createStudioPluginCatalogSeed = (
         pluginId: rawEntry.pluginId,
         sourceType: rawEntry.sourceType,
         enabled: rawEntry.enabled,
+        ...(rawEntry.availability ? { availability: rawEntry.availability } : {}),
         sourceRef: rawEntry.sourceRef,
         manifest,
       })

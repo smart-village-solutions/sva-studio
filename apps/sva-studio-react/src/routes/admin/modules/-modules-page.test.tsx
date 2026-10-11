@@ -121,6 +121,19 @@ describe('ModulesPage', () => {
       ),
       'media',
     ]);
+    expect(studioPluginSnapshot.registry.pluginModuleIamRegistry.get('cockpit')).toMatchObject({
+      ownerPluginId: 'cockpit',
+      permissionIds: [],
+    });
+    expect(
+      studioModuleIamContracts.find((contract) => contract.moduleId === 'cockpit')
+    ).toMatchObject({
+      descriptionKey: 'plugins.cockpit.description',
+      permissionIds: [],
+    });
+    expect(studioPluginSnapshot.tenantActivationPolicySnapshot.modules).toContainEqual(
+      expect.objectContaining({ moduleId: 'cockpit', activationPolicy: 'optional' })
+    );
     expect(
       createStudioModuleIamContracts([], studioHostModuleIamContracts).map(
         (contract) => contract.moduleId
@@ -209,6 +222,26 @@ describe('ModulesPage', () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it('shows prepared plugins as in development without assignment controls', () => {
+    useAuthMock.mockReturnValue({
+      user: { instanceId: 'demo', assignedModules: [] },
+    });
+
+    render(<ModulesPage />);
+
+    const heading = screen.getByRole('heading', { name: 'Plugins in Entwicklung' });
+    const card = heading.closest('div');
+    expect(card).toBeTruthy();
+    expect(within(card!).getByText('Meldungen')).toBeTruthy();
+    expect(within(card!).getByText('Frag den Assistenten')).toBeTruthy();
+    expect(within(card!).getByText('Suche')).toBeTruthy();
+    expect(within(card!).getAllByText('In Entwicklung')).toHaveLength(3);
+    expect(within(card!).queryByRole('button')).toBeNull();
+    expect(studioPluginSnapshot.registry.plugins.some((plugin) => plugin.id === 'search')).toBe(
+      false
+    );
   });
 
   beforeEach(() => {

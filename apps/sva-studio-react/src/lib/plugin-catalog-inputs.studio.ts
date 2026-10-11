@@ -8,10 +8,14 @@ const workspacePluginCatalogConfig = [
   { pluginId: 'poi', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-poi' },
   { pluginId: 'generic-items', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-generic-items' },
   { pluginId: 'faq', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-faq' },
+  { pluginId: 'cockpit', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-cockpit' },
   { pluginId: 'cockpit-cards', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-cockpit-cards' },
   { pluginId: 'projects', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-projects' },
   { pluginId: 'surveys', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-surveys' },
   { pluginId: 'waste-management', sourceType: 'workspace', enabled: true, sourceRef: 'packages/plugin-waste-management' },
+  { pluginId: 'notifications', sourceType: 'workspace', enabled: false, availability: 'in-development', sourceRef: 'packages/plugin-notifications' },
+  { pluginId: 'assistant', sourceType: 'workspace', enabled: false, availability: 'in-development', sourceRef: 'packages/plugin-assistant' },
+  { pluginId: 'search', sourceType: 'workspace', enabled: false, availability: 'in-development', sourceRef: 'packages/plugin-search' },
 ] as const satisfies readonly StudioPluginCatalogConfigEntry[];
 
 export const pluginCatalogConfig = [

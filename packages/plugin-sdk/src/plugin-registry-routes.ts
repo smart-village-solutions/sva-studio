@@ -30,6 +30,7 @@ const routeDefinitionAllowedKeys = new Set([
 const navigationItemAllowedKeys = new Set([
   'id',
   'to',
+  'href',
   'titleKey',
   'section',
   'actionId',
@@ -161,6 +162,12 @@ export const assertPluginRegistryNavigation = ({
       pluginNamespace,
       normalizePluginIdentifier(navigationItem.id)
     );
+    if (
+      Boolean(navigationItem.to) === Boolean(navigationItem.href) ||
+      (navigationItem.href && !/^https:\/\/[^\s]+$/i.test(navigationItem.href))
+    ) {
+      throw new Error(`plugin_navigation_target_invalid:${pluginNamespace}:${navigationItem.id}`);
+    }
     assertPluginPermissionReference(
       plugin,
       pluginNamespace,

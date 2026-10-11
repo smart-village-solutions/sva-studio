@@ -27,7 +27,6 @@ import {
 } from './sidebar-access';
 import type { SidebarItem, SidebarLeafItem } from './sidebar-model';
 
-const COCKPIT_URL = 'https://cockpit.guben.de';
 const pluginIconBySection = {
   dataManagement: IconArticle,
   applications: IconAppWindow,
@@ -35,8 +34,9 @@ const pluginIconBySection = {
 } as const;
 
 const resolvePluginNavigationItems = (access: SidebarAccess) => {
-  const { user, brandingProfile, contentAccessApi, decideAccess } = access;
+  const { user, brandingProfile, contentAccessApi, decideAccess, canAccessCockpitLink } = access;
   const pluginNavigationItems = studioPluginNavigation
+    .filter((item) => item.id !== 'cockpit.navigation' || canAccessCockpitLink)
     .map((item) => {
       const action = item.actionId ? getStudioPluginAction(item.actionId) : undefined;
       return {
@@ -67,8 +67,9 @@ const resolvePluginNavigationItems = (access: SidebarAccess) => {
       kind: 'link' as const,
       id: `plugin-${item.id}`,
       to: item.to,
+      href: item.href,
       label: t(resolvedTitleKey),
-      icon: pluginIconBySection[item.section],
+      icon: item.id === 'cockpit.navigation' ? IconGauge : pluginIconBySection[item.section],
       section: item.section,
       moduleId: getStudioPluginNavigationModuleId(item),
       accessScope: resolvedAccessRequirement?.kind,
@@ -89,7 +90,6 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
     canAccessMedia,
     canAccessCategories,
     canAccessApplicationLink,
-    canAccessCockpitLink,
   } = access;
   const pluginNavigationItems = resolvePluginNavigationItems(access);
   const pluginDataManagementItems = pluginNavigationItems.filter(
@@ -213,17 +213,6 @@ export const buildSidebarPrimaryItems = (access: SidebarAccess) => {
             to: '/app',
             label: t('shell.sidebar.app'),
             icon: IconAppWindow,
-          },
-        ]
-      : []),
-    ...(canAccessCockpitLink
-      ? [
-          {
-            kind: 'link' as const,
-            id: 'cockpit',
-            href: COCKPIT_URL,
-            label: t('shell.sidebar.cockpit'),
-            icon: IconGauge,
           },
         ]
       : []),

@@ -14,6 +14,7 @@ import {
   assertPluginServerHandlerCoverage,
   createPluginServerHandlerDispatcher,
 } from './dispatcher.js';
+import { pluginServerHost } from '../plugin-server-host.js';
 
 const tenantDescriptor = (): PluginServerHandlerRegistryEntry => ({
   id: 'news.list',
@@ -301,6 +302,90 @@ describe('plugin server handler dispatcher', () => {
     expect(await methodDenied?.json()).toMatchObject({ error: 'method_not_allowed' });
   });
 
+  it('resolves a successful Waste request once and clears its authorization after dispatch', async () => {
+    const descriptor = wasteDescriptor();
+    const readTenantAccess = vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' });
+    const resolvePermissions = vi.fn().mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'waste-management.read', resourceType: 'waste-management' }],
+    });
+    const handler = vi.fn<PluginServerExecutionHandler>(async ({ request, handlerId }) => {
+      expect(
+        pluginServerHost.isAuthorizedPluginRequest({
+          request,
+          handlerId,
+          pluginId: 'waste-management',
+          instanceId: 'tenant-a',
+          keycloakSubject: 'user-1',
+        })
+      ).toBe(true);
+      expect(
+        await pluginServerHost.authorizePluginAction({
+          request,
+          handlerId,
+          instanceId: 'tenant-a',
+          keycloakSubject: 'user-1',
+          action: 'waste-management.read',
+          resourceType: 'waste-management',
+        })
+      ).toMatchObject({ ok: true, allowed: true });
+      return new Response('ok');
+    });
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }),
+        readTenantAccess,
+        resolvePermissions,
+      },
+    });
+    const request = new Request('https://tenant.test/api/v1/waste-management/history');
+
+    expect((await dispatch(request))?.status).toBe(200);
+    expect(readTenantAccess).toHaveBeenCalledOnce();
+    expect(resolvePermissions).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledOnce();
+    expect(
+      pluginServerHost.isAuthorizedPluginRequest({
+        request,
+        handlerId: descriptor.id,
+        pluginId: 'waste-management',
+        instanceId: 'tenant-a',
+        keycloakSubject: 'user-1',
+      })
+    ).toBe(false);
+  });
+
+  it('clears Waste authorization when the handler fails', async () => {
+    const descriptor = wasteDescriptor();
+    const handler = vi.fn<PluginServerExecutionHandler>(() => {
+      throw new Error('handler failed');
+    });
+    const dispatch = createPluginServerHandlerDispatcher({
+      descriptors: new Map([[descriptor.id, descriptor]]),
+      handlers: { [descriptor.id]: handler },
+      dependencies: {
+        authenticate: authenticateAs({ id: 'user-1', roles: [], instanceId: 'tenant-a' }),
+        readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),
+        resolvePermissions: vi.fn().mockResolvedValue({
+          ok: true,
+          permissions: [{ action: 'waste-management.read', resourceType: 'waste-management' }],
+        }),
+      },
+    });
+    const request = new Request('https://tenant.test/api/v1/waste-management/history');
+
+    await expect(dispatch(request)).rejects.toThrow('handler failed');
+    expect(pluginServerHost.isAuthorizedPluginRequest({
+      request,
+      handlerId: descriptor.id,
+      pluginId: 'waste-management',
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+    })).toBe(false);
+  });
+
   it('accepts any one granted domain action', async () => {
     const descriptor = {
       ...wasteDescriptor(),
@@ -473,7 +558,13 @@ describe('plugin server handler dispatcher', () => {
       handlers: { [descriptor.id]: handler },
       dependencies: {
         authenticate: authenticateAs(
-          { id: 'user-1', roles: [], instanceId: 'tenant-a', email: 'person@example.test', displayName: 'Person' },
+          {
+            id: 'user-1',
+            roles: [],
+            instanceId: 'tenant-a',
+            email: 'person@example.test',
+            displayName: 'Person',
+          },
           'organization-a'
         ),
         readTenantAccess: vi.fn().mockResolvedValue({ allowed: true, reason: 'ready' }),

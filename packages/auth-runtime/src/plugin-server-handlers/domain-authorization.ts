@@ -6,6 +6,7 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import { createApiError } from '../api-error.js';
 import { translatePluginTenantLifecycleMessage } from '../plugin-tenant-lifecycle/messages.js';
 import type { TenantAuthorizationInput } from './tenant-authorization.js';
+import { setAuthorizedPluginRequest } from './authorized-request.js';
 
 const createDomainError = (
   input: TenantAuthorizationInput,
@@ -82,7 +83,17 @@ export const authorizeDomainHandler = async (
     requirement.actions.mode === 'allOf'
       ? decisions.every(({ decision }) => decision.allowed)
       : decisions.some(({ decision }) => decision.allowed);
-  if (allowed) return null;
+  if (allowed) {
+    setAuthorizedPluginRequest(input.request, {
+      pluginId: input.descriptor.ownerPluginId,
+      handlerId: input.descriptor.id,
+      instanceId,
+      keycloakSubject: input.context.user.id,
+      permissions: resolved.permissions,
+      decisions: new Map(decisions.map(({ action, decision }) => [action, decision])),
+    });
+    return null;
+  }
   const denied = decisions.find(({ decision }) => !decision.allowed);
   if (!denied) return createDomainError(input, 'permissionDenied');
   return createApiError(

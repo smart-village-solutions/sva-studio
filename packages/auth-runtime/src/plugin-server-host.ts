@@ -16,7 +16,7 @@ import {
   reserveIdempotency,
   resolveActorInfo,
 } from './iam-account-management/shared.js';
-import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
+import { getAuthorizedPluginRequest } from './plugin-server-handlers/authorized-request.js';
 import { buildLogContext } from './log-context.js';
 import { withAuthenticatedUser } from './middleware.js';
 import {
@@ -30,34 +30,47 @@ import {
 } from './plugin-operations/core.shared.js';
 import { withStudioJobRepository } from './plugin-operations/repository.js';
 import { queuePluginOperationJob } from './plugin-operations/runner.js';
-import { readConfiguredPluginTenantAccess } from './plugin-tenant-lifecycle/access.js';
-import { translatePluginTenantLifecycleMessage } from './plugin-tenant-lifecycle/messages.js';
 import { createApiError, toPayloadHash } from './shared/request-helpers.js';
 import { validateCsrf } from './shared/request-security.js';
 
 const authorizePluginAction = async (input: {
+  request?: Request;
+  handlerId?: string;
   instanceId: string;
   keycloakSubject: string;
   action: string;
   resourceType: string;
   requestId?: string;
 }) => {
-  const resolved = await resolveEffectivePermissions({
+  const authorized = getAuthorizedPluginRequest({
+    request: input.request,
+    handlerId: input.handlerId,
+    pluginId: input.resourceType,
     instanceId: input.instanceId,
     keycloakSubject: input.keycloakSubject,
   });
-  if (!resolved.ok) return { ok: false as const };
-  const decision = evaluateAuthorizeDecision(
-    {
-      instanceId: input.instanceId,
-      action: input.action,
-      resource: { type: input.resourceType },
-      context: input.requestId ? { requestId: input.requestId } : {},
-    },
-    resolved.permissions
-  );
+  if (!authorized) return { ok: true as const, allowed: false, reason: 'unverified_request' };
+  const decision =
+    authorized.decisions.get(input.action) ??
+    evaluateAuthorizeDecision(
+      {
+        instanceId: input.instanceId,
+        action: input.action,
+        resource: { type: input.resourceType },
+        context: input.requestId ? { requestId: input.requestId } : {},
+      },
+      authorized.permissions
+    );
   return { ok: true as const, allowed: decision.allowed, reason: decision.reason };
 };
+
+const isAuthorizedPluginRequest = (input: {
+  request: Request;
+  handlerId: string;
+  pluginId: string;
+  instanceId: string;
+  keycloakSubject: string;
+}): boolean => getAuthorizedPluginRequest(input) !== null;
 
 export const pluginServerHost = {
   emitAuthAuditEvent,
@@ -74,6 +87,7 @@ export const pluginServerHost = {
   reserveIdempotency,
   resolveActorInfo,
   authorizePluginAction,
+  isAuthorizedPluginRequest,
   buildLogContext,
   withAuthenticatedUser,
   readPluginOperationInput,
@@ -83,8 +97,6 @@ export const pluginServerHost = {
   markPluginOperationEnqueueFailed,
   withStudioJobRepository,
   queuePluginOperationJob,
-  readConfiguredPluginTenantAccess,
-  translatePluginTenantLifecycleMessage,
   createApiError,
   toPayloadHash,
   validateCsrf,

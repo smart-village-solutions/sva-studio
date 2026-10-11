@@ -17,6 +17,7 @@ import {
   type PluginServerHandlerMessageKey,
 } from './messages.js';
 import { authorizePluginPlatformHandler } from './platform-authorization.js';
+import { clearAuthorizedPluginRequest } from './authorized-request.js';
 import { dispatchPluginServiceHandler } from './service-execution.js';
 import { authorizeTenantHandler } from './tenant-authorization.js';
 import {
@@ -205,24 +206,28 @@ export const createPluginServerHandlerDispatcher = (input: {
         return createError(request, translate, 403, 'forbidden', 'unsupportedScope');
       }
 
-      return handler({
-        request,
-        sessionId: context.sessionId,
-        pluginId: descriptor.ownerPluginId,
-        handlerId: descriptor.id,
-        scope: requirement.kind,
-        pathParams,
-        ...(context.activeOrganizationId
-          ? { activeOrganizationId: context.activeOrganizationId }
-          : {}),
-        actor: {
-          id: context.user.id,
-          roles: context.user.roles,
-          ...(context.user.instanceId ? { instanceId: context.user.instanceId } : {}),
-          ...(context.user.email ? { email: context.user.email } : {}),
-          ...(context.user.displayName ? { displayName: context.user.displayName } : {}),
-        },
-      });
+      try {
+        return await handler({
+          request,
+          sessionId: context.sessionId,
+          pluginId: descriptor.ownerPluginId,
+          handlerId: descriptor.id,
+          scope: requirement.kind,
+          pathParams,
+          ...(context.activeOrganizationId
+            ? { activeOrganizationId: context.activeOrganizationId }
+            : {}),
+          actor: {
+            id: context.user.id,
+            roles: context.user.roles,
+            ...(context.user.instanceId ? { instanceId: context.user.instanceId } : {}),
+            ...(context.user.email ? { email: context.user.email } : {}),
+            ...(context.user.displayName ? { displayName: context.user.displayName } : {}),
+          },
+        });
+      } finally {
+        clearAuthorizedPluginRequest(request);
+      }
     });
   };
 };

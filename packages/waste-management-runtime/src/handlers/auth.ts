@@ -17,7 +17,10 @@ export const emitWasteAuditEvent = async (input: {
   readonly batchSummary?: WasteAuditEvent['pluginAction']['batchSummary'];
 }) => {
   const context = getWorkspaceContext();
-  await requireDeps(input.deps.emitAuditEvent, 'emitAuditEvent')({
+  await requireDeps(
+    input.deps.emitAuditEvent,
+    'emitAuditEvent'
+  )({
     eventType:
       input.result === 'success'
         ? 'plugin_action_authorized'
@@ -53,7 +56,12 @@ export const authorizeWasteManagementAction = async (
     return instanceId;
   }
 
-  return requireDeps(deps.authorizeAction, 'authorizeAction')({
+  return requireDeps(
+    deps.authorizeAction,
+    'authorizeAction'
+  )({
+    request: ctx.request,
+    handlerId: ctx.handlerId,
     instanceId,
     keycloakSubject: ctx.user.id,
     action,

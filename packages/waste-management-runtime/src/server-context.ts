@@ -25,29 +25,33 @@ type RequiredDependency<K extends keyof WasteManagementHandlerDeps> = NonNullabl
 >;
 
 export type WasteServerContextHost = Readonly<{
-  readConfiguredPluginTenantAccess: (
-    instanceId: string,
-    pluginId: string
-  ) => Promise<{ allowed: true } | { allowed: false; reason: string }>;
-  translatePluginTenantLifecycleMessage: (request: Request, key: 'pluginAccessBlocked') => string;
   buildLogContext: (
     instanceId?: string,
     options?: { includeTraceId?: boolean }
   ) => Record<string, string | undefined>;
   createApiError: (
     status: number,
-    code: 'plugin_tenant_access_blocked' | 'database_unavailable' | 'forbidden',
+    code: 'database_unavailable' | 'forbidden',
     message: string,
     requestId?: string,
     details?: Record<string, unknown>
   ) => Response;
   authorizePluginAction: (input: {
+    request?: Request;
+    handlerId?: string;
     instanceId: string;
     keycloakSubject: string;
     action: string;
     resourceType: string;
     requestId?: string;
   }) => Promise<{ ok: true; allowed: boolean; reason: string } | { ok: false }>;
+  isAuthorizedPluginRequest: (input: {
+    request: Request;
+    handlerId: string;
+    pluginId: string;
+    instanceId: string;
+    keycloakSubject: string;
+  }) => boolean;
   resolveIamActorInfo: (
     request: Request,
     ctx: AuthenticatedRequestContext,
@@ -88,21 +92,23 @@ const createAuthenticatedWasteHandler =
     withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
       try {
         const instanceId = ctx.user.instanceId;
-        if (instanceId) {
-          const access = await host.readConfiguredPluginTenantAccess(
+        if (
+          !instanceId ||
+          !ctx.handlerId ||
+          !host.isAuthorizedPluginRequest({
+            request,
+            handlerId: ctx.handlerId,
+            pluginId: wasteManagementOperationsContract.pluginId,
             instanceId,
-            wasteManagementOperationsContract.pluginId
+            keycloakSubject: ctx.user.id,
+          })
+        )
+          return host.createApiError(
+            403,
+            'forbidden',
+            'Keine Berechtigung für diese Waste-Management-Operation.',
+            host.buildLogContext(instanceId).request_id
           );
-          if (!access.allowed) {
-            return host.createApiError(
-              409,
-              'plugin_tenant_access_blocked',
-              host.translatePluginTenantLifecycleMessage(request, 'pluginAccessBlocked'),
-              host.buildLogContext(instanceId).request_id,
-              { reason_code: access.reason }
-            );
-          }
-        }
         return handler(request, ctx);
       } catch (error) {
         const logContext = host.buildLogContext('default', { includeTraceId: true });
@@ -127,6 +133,8 @@ const createAuthenticatedWasteHandler =
 const createWasteActionAuthorizer =
   (host: WasteServerContextHost) =>
   async (input: {
+    request?: Request;
+    handlerId?: string;
     instanceId: string;
     keycloakSubject: string;
     action: string;

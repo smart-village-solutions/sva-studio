@@ -161,6 +161,7 @@ export const shellDEResources = {
     wasteManagement: 'Abfallmanagement',
     modules: 'Module',
     monitoring: 'Monitoring',
+    community: 'Anwendergemeinschaft',
     help: 'Hilfe',
     support: 'Support',
     license: 'Lizenz',

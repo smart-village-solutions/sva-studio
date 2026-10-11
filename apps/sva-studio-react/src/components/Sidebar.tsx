@@ -1,5 +1,5 @@
 /** Sidebar der App-Shell mit Bereichsnavigation, Untermenüs und Desktop-Collapse. */
-import { IconCertificate, IconHeadset, IconHelpCircle } from '@tabler/icons-react';
+import { IconCertificate, IconHeadset, IconHelpCircle, IconUsersGroup } from '@tabler/icons-react';
 import React from 'react';
 import { Sheet, SheetContent } from './ui/sheet';
 import { t } from '../i18n';
@@ -15,6 +15,7 @@ type SidebarProps = Readonly<{
 }>;
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'sva-studio-sidebar-collapsed';
+const COMMUNITY_URL = 'https://verwaltungen-havelland.humhub.smart-village.app/s/sva-community/';
 const HELP_DOCUMENTATION_URL =
   'https://smart-village-solutions.github.io/sva-studio-user-documentation/';
 const SUPPORT_ISSUES_URL = 'https://github.com/smart-village-solutions/sva-studio/issues';
@@ -54,6 +55,13 @@ export default function Sidebar({
     () => [
       ...(canAccessExperimentalFeatures
         ? [
+            {
+              kind: 'link' as const,
+              id: 'community',
+              href: COMMUNITY_URL,
+              label: t('shell.sidebar.community'),
+              icon: IconUsersGroup,
+            },
             {
               kind: 'link' as const,
               id: 'help',

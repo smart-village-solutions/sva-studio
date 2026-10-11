@@ -31,7 +31,8 @@ export type ContractWorkerProcess = {
 export const spawnContractWorker = (
   port: string,
   jobId: string,
-  mode: 'hold' | 'run' | 'shutdown'
+  mode: 'hold' | 'run' | 'shutdown',
+  identity?: { readonly pluginId: string; readonly jobTypeId: string; readonly queueName: string }
 ): ContractWorkerProcess => {
   const child = spawn(
     process.execPath,
@@ -44,6 +45,13 @@ export const spawnContractWorker = (
         STUDIO_JOB_WORKER_DATABASE_URL: `postgres://sva_job_worker:${workerPassword}@127.0.0.1:${port}/${database}`,
         SVA_LIFECYCLE_CONTRACT_JOB_ID: jobId,
         SVA_LIFECYCLE_CONTRACT_WORKER_MODE: mode,
+        ...(identity
+          ? {
+              SVA_LIFECYCLE_CONTRACT_PLUGIN_ID: identity.pluginId,
+              SVA_LIFECYCLE_CONTRACT_JOB_TYPE_ID: identity.jobTypeId,
+              SVA_LIFECYCLE_CONTRACT_QUEUE_NAME: identity.queueName,
+            }
+          : {}),
         SVA_PLUGIN_OPERATION_WORKER_ENABLED: 'true',
         SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged',
       },

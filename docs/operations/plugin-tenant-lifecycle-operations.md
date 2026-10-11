@@ -88,6 +88,14 @@ WHERE key = :'expected_deterministic_key';
 
 Payloads, Fehlertexte, Datenbank-URLs und Secrets werden dabei nicht selektiert oder weitergegeben.
 
+### Übergang bestehender Waste-Provisionierungsjobs
+
+Der aktuelle Waste-Vertrag legt neue Tenant-Provisionierungsjobs auf `waste-provisioning` mit dem Task `studio_job_execute_privileged`. Ein Rollout verschiebt bereits gespeicherte Graphile-Jobs nicht von selbst. Vor und nach dem Rollout sind daher aktive Waste-Lifecycle-Jobs tenantgebunden über das obige Ledger sowie, falls nötig, durch einen berechtigten Datenbankoperator über den deterministischen Key `studio-job:<job_id>` zu inventarisieren. Für den Key werden nur Queue, Task-Identifier, Versuche und Lock-Zustand gelesen; Payloads und Secrets bleiben unberührt. `iam.studio_jobs.queue_name` bezeichnet bei einem Altjob weiterhin die bei seiner Anlage gespeicherte Queue und ist kein Beweis für die aktuelle Graphile-Zuordnung.
+
+Ein noch `queued` oder `retrying` geführter Lifecycle-Job wird durch die bestehende Lifecycle-Kontrolle mit demselben Job-Key auf die registrierte Queue und privilegierte Task-Lane erneut eingereiht. Das ist im PostgreSQL-/Graphile-Vertragstest für einen Altjob und für genau einen fachlichen Abschluss geprüft. Ist der Job bereits `running` oder in Graphile gelockt, wird er nicht manuell verschoben: zuerst Lease, Heartbeat und Recovery-Ausgang prüfen. Graphile kann beim erneuten Enqueue eines gesperrten Keys einen neuen technischen Auftrag erzeugen; deshalb keine pauschalen Re-Enqueues, SQL-Updates, Löschungen oder Entsperrungen. Terminale beziehungsweise bewusst abgebrochene fachliche Jobs werden nicht automatisch neu gestartet.
+
+Die Nachprüfung korreliert pro betroffenem Tenant den Lifecycle-Owner, den einen aktiven Studio-Job, dessen Events und den technischen Key. Für noch aktive Provisionierung müssen Queue `waste-provisioning` und Task `studio_job_execute_privileged` gelten; abgeschlossene Läufe benötigen genau einen fachlichen Terminalzustand. Abweichungen bleiben ein Incident zur begrenzten Einzelfallprüfung. Der reguläre Rollout und seine Freigaben folgen ausschließlich dem verlinkten Studio-Rollout-Prozess.
+
 ## Entscheidungspfad
 
 ### SSF ohne konfigurierte Plugin-Datenbank

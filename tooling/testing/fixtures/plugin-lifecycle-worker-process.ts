@@ -1,7 +1,8 @@
 const instanceId = '00000000-0000-4000-8000-000000000040';
-const pluginId = 'fault-plugin';
-const jobTypeId = 'fault-plugin.provision';
-const queueName = 'plugin-tenant-lifecycle-contract';
+const pluginId = process.env.SVA_LIFECYCLE_CONTRACT_PLUGIN_ID ?? 'fault-plugin';
+const jobTypeId = process.env.SVA_LIFECYCLE_CONTRACT_JOB_TYPE_ID ?? 'fault-plugin.provision';
+const queueName =
+  process.env.SVA_LIFECYCLE_CONTRACT_QUEUE_NAME ?? 'plugin-tenant-lifecycle-contract';
 
 const mode = process.env.SVA_LIFECYCLE_CONTRACT_WORKER_MODE;
 const jobId = process.env.SVA_LIFECYCLE_CONTRACT_JOB_ID;

@@ -38,15 +38,40 @@ export const rewriteReactShimRequires = (source: string): string => {
   return source.replaceAll(externalReactRequire, 'require_react()');
 };
 
-const patchReactShimRequires = async () => {
-  const files = (await readdir(outputSsrDir)).filter((fileName) => fileName.endsWith('.mjs'));
+export const patchReactShimRequires = async (serverDir: string = outputServerDir) => {
+  const ssrDir = path.join(serverDir, '_ssr');
+  const files = (await readdir(ssrDir)).filter((fileName) => fileName.endsWith('.mjs'));
   let patchedChunks = 0;
   for (const fileName of files) {
-    const filePath = path.join(outputSsrDir, fileName);
+    const filePath = path.join(ssrDir, fileName);
     const source = await readFile(filePath, 'utf8');
     if (!source.includes(reactShimMarker)) continue;
     await writeFile(filePath, rewriteReactShimRequires(source), 'utf8');
     patchedChunks += 1;
+  }
+  if (patchedChunks === 0) {
+    const libraryFiles = (await readdir(path.join(serverDir, '_libs'), { recursive: true })).filter(
+      (fileName) => fileName.endsWith('.mjs')
+    );
+    const shimLibraries = (
+      await Promise.all(
+        libraryFiles.map(async (fileName) => readFile(path.join(serverDir, '_libs', fileName), 'utf8'))
+      )
+    ).filter((source) => source.includes(reactShimMarker));
+    const bundledShim = shimLibraries[0];
+    const shimRegion = bundledShim?.match(
+      /\/\/#region[^\n]*use-sync-external-store-shim\/with-selector\.production\.js[\s\S]*?\/\/#endregion/
+    )?.[0];
+    if (
+      shimLibraries.length === 1 &&
+      bundledShim &&
+      /^import \{[^}]*\bas require_react\b[^}]*\} from /m.test(bundledShim) &&
+      shimRegion &&
+      /\bvar React = require_react\(\);/.test(shimRegion) &&
+      !/(['"`])react\1/.test(bundledShim)
+    ) {
+      return;
+    }
   }
   if (patchedChunks !== 1) {
     throw new Error(`SSR-React-Shim-Vertrag geaendert: ${patchedChunks} Chunks statt einem gefunden.`);

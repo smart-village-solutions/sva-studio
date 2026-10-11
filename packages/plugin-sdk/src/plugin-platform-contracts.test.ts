@@ -294,6 +294,32 @@ describe('plugin platform contracts', () => {
     );
   });
 
+  it('keeps development entries disabled at the catalog boundary', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'search',
+      manifestVersion: 1,
+      extensionTier: 'feature',
+      tenantActivationPolicy: 'optional',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { browser: './dist/index.js' },
+    });
+    const entry = definePluginCatalogEntry({
+      pluginId: 'search',
+      sourceType: 'workspace',
+      enabled: false,
+      availability: 'in-development',
+      sourceRef: 'packages/plugin-search',
+      manifest,
+    });
+
+    expect(entry.availability).toBe('in-development');
+    expect(() => definePluginCatalogEntry({ ...entry, enabled: true })).toThrowError(
+      'plugin_catalog_development_enabled:search'
+    );
+  });
+
   it('materializes local and installed plugins into one canonical host snapshot', () => {
     const manifest = definePluginManifest({
       pluginId: 'news',

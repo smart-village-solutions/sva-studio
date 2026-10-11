@@ -6,6 +6,11 @@ export const instanceModulesInstancesAdminENResources = {
   title: 'Instance modules',
   subtitle: 'Assign and revoke modules per instance and rebuild the matching IAM baseline.',
   empty: 'Select an instance to manage module assignments.',
+  development: {
+    title: 'Plugins in development',
+    description: 'These plugins are prepared but cannot yet be used or assigned.',
+    status: 'In development',
+  },
   instanceSelect: {
     label: 'Select instance',
     hint: 'Module management always operates on one concrete instance.',

@@ -46,6 +46,7 @@ export type PluginCatalogEntry = {
   readonly pluginId: string;
   readonly sourceType: PluginCatalogSourceType;
   readonly enabled: boolean;
+  readonly availability?: 'in-development';
   readonly sourceRef: string;
   readonly manifest: PluginManifest;
 };

@@ -51,7 +51,7 @@ export const studioPluginIds = resolveStudioPluginIds(
   studioDistribution,
   import.meta.env.VITE_SVA_STUDIO_PLUGIN_IDS,
   pluginCatalogConfig
-    .filter(({ sourceType }) => sourceType === 'workspace')
+    .filter(({ sourceType, enabled }) => sourceType === 'workspace' && enabled)
     .map(({ pluginId }) => pluginId)
 );
 
@@ -165,7 +165,6 @@ type StudioModuleCatalogEntry = Pick<
   StudioModuleIamContract,
   'moduleId' | 'descriptionKey' | 'permissionIds' | 'systemRoles'
 >;
-
 export const createStudioModuleIamContracts = (
   pluginContracts: readonly PluginModuleIamRegistryEntry[],
   hostContracts: readonly StudioModuleIamContract[]
@@ -236,12 +235,12 @@ const unifiedContentNavigationTargets = new Set(
     .map((resource) => `/admin/${resource.basePath}`)
 );
 export const studioPluginNavigation = studioBuildTimeRegistry.navigation.filter(
-  (item) => !unifiedContentNavigationTargets.has(item.to)
+  (item) => !item.to || !unifiedContentNavigationTargets.has(item.to)
 );
 const studioPluginNavigationOwners = new Map(
   studioPlugins.flatMap((plugin) =>
     (plugin.navigation ?? [])
-      .filter((item) => !unifiedContentNavigationTargets.has(item.to))
+      .filter((item) => !item.to || !unifiedContentNavigationTargets.has(item.to))
       .map((item) => [item.id, plugin.id] as const)
   )
 );

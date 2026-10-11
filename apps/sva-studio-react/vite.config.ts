@@ -145,7 +145,9 @@ const studioDistribution = (() => {
 const studioPluginIds = resolveStudioPluginIds(
   studioDistribution,
   process.env.SVA_STUDIO_PLUGIN_IDS,
-  pluginCatalog.filter((entry) => entry.sourceType === 'workspace').map((entry) => entry.pluginId)
+  pluginCatalog
+    .filter((entry) => entry.sourceType === 'workspace' && entry.enabled)
+    .map((entry) => entry.pluginId)
 );
 process.env.VITE_SVA_STUDIO_DISTRIBUTION = studioDistribution;
 process.env.VITE_SVA_STUDIO_PLUGIN_IDS =

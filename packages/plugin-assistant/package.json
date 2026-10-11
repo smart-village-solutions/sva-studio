@@ -1,0 +1,32 @@
+{
+  "name": "@sva/plugin-assistant",
+  "version": "0.0.1",
+  "type": "module",
+  "files": [
+    "dist",
+    "plugin.manifest.json"
+  ],
+  "main": "dist/plugin.js",
+  "types": "dist/plugin.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/plugin.d.ts",
+      "default": "./dist/plugin.js"
+    },
+    "./plugin.manifest.json": {
+      "default": "./plugin.manifest.json"
+    }
+  },
+  "dependencies": {
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/studio-ui-react": "workspace:*",
+    "lucide-react": "^1.28.0"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
+  }
+}

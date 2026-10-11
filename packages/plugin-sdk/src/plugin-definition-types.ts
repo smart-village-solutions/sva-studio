@@ -58,7 +58,8 @@ export type PluginServerHandlerAccessRequirement =
 
 export type PluginNavigationItem = {
   readonly id: string;
-  readonly to: string;
+  readonly to?: string;
+  readonly href?: string;
   readonly titleKey: string;
   readonly section: PluginNavigationSection;
   readonly actionId?: string;

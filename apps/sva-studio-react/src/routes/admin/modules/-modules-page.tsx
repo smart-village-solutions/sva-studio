@@ -7,7 +7,7 @@ import { Card } from '../../../components/ui/card';
 import { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
-import { studioModuleIamContracts } from '../../../lib/plugins';
+import { studioModuleIamContracts, studioPluginCatalog } from '../../../lib/plugins';
 import { useEffectiveAuth } from '../../../providers/effective-access-provider';
 import { InstanceModulesWorkspace } from './-instance-modules-workspace';
 import { resolveModuleDescription } from './-module-description';
@@ -172,10 +172,43 @@ const AdminModulesPage = () => {
 
 export const ModulesPage = () => {
   const { user } = useEffectiveAuth();
+  const developmentPlugins = studioPluginCatalog.filter(
+    (entry) => entry.availability === 'in-development'
+  );
+  const developmentPluginNames: Readonly<Record<string, string>> = {
+    notifications: t('shell.header.notificationsTooltip'),
+    assistant: t('shell.header.assistantPrompt'),
+    search: t('shell.header.searchPrompt'),
+  };
 
-  if (user?.instanceId) {
-    return <TenantModulesPage assignedModules={user.assignedModules ?? []} />;
-  }
-
-  return <AdminModulesPage />;
+  return (
+    <div className="space-y-5">
+      {user?.instanceId ? (
+        <TenantModulesPage assignedModules={user.assignedModules ?? []} />
+      ) : (
+        <AdminModulesPage />
+      )}
+      {developmentPlugins.length > 0 ? (
+        <Card className="space-y-3 p-4">
+          <h2 className="font-medium">{t('admin.instances.instanceModules.development.title')}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t('admin.instances.instanceModules.development.description')}
+          </p>
+          <ul className="space-y-2">
+            {developmentPlugins.map((entry) => (
+              <li
+                key={entry.pluginId}
+                className="flex flex-wrap justify-between gap-2 rounded-lg border border-border p-3"
+              >
+                <span>{developmentPluginNames[entry.pluginId] ?? entry.pluginId}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t('admin.instances.instanceModules.development.status')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+    </div>
+  );
 };

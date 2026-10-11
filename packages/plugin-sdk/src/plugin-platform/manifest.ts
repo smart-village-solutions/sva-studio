@@ -110,6 +110,10 @@ export const definePluginCatalogEntry = (entry: PluginCatalogEntry): PluginCatal
   const pluginId = normalizePluginNamespace(entry.pluginId);
   const manifest = definePluginManifest(entry.manifest);
 
+  if (entry.availability === 'in-development' && entry.enabled) {
+    throw new Error(`plugin_catalog_development_enabled:${pluginId}`);
+  }
+
   if (manifest.pluginId !== pluginId) {
     throw new Error(`plugin_catalog_manifest_mismatch:${pluginId}:${manifest.pluginId}`);
   }
@@ -118,6 +122,7 @@ export const definePluginCatalogEntry = (entry: PluginCatalogEntry): PluginCatal
     pluginId,
     sourceType: entry.sourceType,
     enabled: entry.enabled,
+    ...(entry.availability ? { availability: entry.availability } : {}),
     sourceRef: entry.sourceRef.trim(),
     manifest,
   };

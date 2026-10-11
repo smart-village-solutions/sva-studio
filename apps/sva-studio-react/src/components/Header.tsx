@@ -1,14 +1,5 @@
 /** Header-Komponente der App-Shell mit globalen Aktionen. */
-import {
-  Bell,
-  Languages,
-  Menu,
-  MessageCircle,
-  Moon,
-  Search,
-  SendHorizontal,
-  Sun,
-} from 'lucide-react';
+import { Languages, Menu, Moon, Sun } from 'lucide-react';
 import React from 'react';
 import { useRouterState } from '@tanstack/react-router';
 import {
@@ -17,11 +8,9 @@ import {
   resolveUserInitials,
 } from '@sva/core';
 import { Button } from '@sva/studio-ui-react';
-import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { useOrganizationContext } from '../hooks/use-organization-context';
-import { hasExperimentalAccess } from '../lib/iam-admin-access';
 import { useAuth } from '../providers/auth-provider';
 import { useLocale } from '../providers/locale-provider';
 import { useTheme } from '../providers/theme-provider';
@@ -44,31 +33,6 @@ const LocaleFlag = ({ locale }: { readonly locale: 'de' | 'en' }) => {
 
   return <span aria-hidden="true">🇬🇧</span>;
 };
-
-const HeaderPromptField = ({
-  icon,
-  label,
-}: {
-  readonly icon: React.ReactNode;
-  readonly label: string;
-}) => (
-  <div className="relative min-w-0 flex-1">
-    <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground">
-      {icon}
-    </span>
-    <Input
-      type="text"
-      value={label}
-      readOnly
-      disabled
-      aria-label={label}
-      className="h-11 rounded-full border-border bg-[rgb(var(--waste-panel-surface))] pl-11 pr-11 text-sm text-muted-foreground disabled:bg-[rgb(var(--waste-panel-surface))] disabled:text-muted-foreground disabled:opacity-100"
-    />
-    <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground">
-      <SendHorizontal className="h-4 w-4" />
-    </span>
-  </div>
-);
 
 /**
  * Rendert die Kopfzeile mit globalen Aktionen.
@@ -112,9 +76,6 @@ export default function Header({
     Boolean(user) &&
     !organizationContext.isLoading &&
     organizationContextState.hasVisibleMemberships;
-  const showAuthenticatedHeaderTools =
-    isHydrated && isAuthenticated && !isLoading && !isAuthLoading;
-  const showExperimentalHeaderTools = showAuthenticatedHeaderTools && hasExperimentalAccess(user);
   const hideAnonymousLoginAction = !isAuthenticated && currentPathname === '/';
   const displayName = user ? resolveUserDisplayName(user) : '';
   const initials = displayName ? resolveUserInitials(displayName) : '';
@@ -141,17 +102,6 @@ export default function Header({
       onSelect: () => setLocale('en'),
     },
   ];
-  const notificationItems: readonly HeaderDropdownItem[] = [
-    {
-      id: 'notifications-empty',
-      label: t('shell.header.notificationsEmptyTitle'),
-      description: t('shell.header.notificationsEmptyBody'),
-      disabled: true,
-    },
-  ];
-  const searchPromptLabel = t('shell.header.searchPrompt');
-  const assistantPromptLabel = t('shell.header.assistantPrompt');
-
   return (
     <header className="sticky top-0 z-40 bg-background">
       <div className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-sm text-foreground sm:px-6">
@@ -175,41 +125,8 @@ export default function Header({
             </Button>
           ) : null}
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          {showExperimentalHeaderTools ? (
-            <div className="hidden min-w-0 flex-1 items-center gap-3 xl:flex">
-              <HeaderPromptField icon={<Search className="h-4 w-4" />} label={searchPromptLabel} />
-              <HeaderPromptField
-                icon={<MessageCircle className="h-4 w-4" />}
-                label={assistantPromptLabel}
-              />
-            </div>
-          ) : null}
-        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-3" />
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          {showAuthenticatedHeaderTools ? (
-            <HeaderDropdownMenu
-              align="right"
-              menuLabel={t('shell.header.notifications')}
-              items={notificationItems}
-              trigger={({ open, toggle, menuId }) => (
-                <Button
-                  type="button"
-                  variant="tertiary"
-                  size="icon"
-                  tooltip={t('shell.header.notificationsTooltip')}
-                  aria-label={t('shell.header.notifications')}
-                  aria-haspopup="menu"
-                  aria-expanded={open}
-                  aria-controls={menuId}
-                  className={iconButtonClassName}
-                  onClick={toggle}
-                >
-                  <Bell className="h-4 w-4" />
-                </Button>
-              )}
-            />
-          ) : null}
           <HeaderDropdownMenu
             align="right"
             menuLabel={t('shell.header.languageSwitcher')}

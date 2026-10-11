@@ -112,7 +112,7 @@ describe('studio-distribution-artifact', () => {
     expect(selection.pluginSetFingerprint).toMatch(/^[a-f0-9]{64}$/u);
   });
 
-  it.each(['', 'news,news', 'unknown', 'news,', 'media'])(
+  it.each(['', 'news,news', 'unknown', 'news,', 'media', 'search', 'assistant', 'notifications'])(
     'rejects an invalid custom selection %j before writing an artifact',
     (pluginIds) => {
       expect(() => runArtifactCommand('selection', '', 'custom', pluginIds)).toThrow();
@@ -399,6 +399,7 @@ describe('studio-distribution-artifact', () => {
       distribution: 'studio',
       includedPluginIds: [
         'categories',
+        'cockpit',
         'cockpit-cards',
         'events',
         'faq',
@@ -482,6 +483,7 @@ describe('studio-distribution-artifact', () => {
       installedPlugins: [],
       excludedWorkspacePackages: [
         'plugin-categories',
+        'plugin-cockpit',
         'plugin-cockpit-cards',
         'plugin-events',
         'plugin-faq',

@@ -295,11 +295,7 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('menuitem', { name: 'E-Mail ändern' })).toBeNull();
     expect(screen.getAllByRole('separator')).toHaveLength(3);
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
-    expect(
-      screen
-        .getAllByRole('textbox')
-        .some((element) => element.className.includes('bg-[rgb(var(--waste-panel-surface))]'))
-    ).toBe(true);
+    expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
     expect(screen.queryByText('Bereich')).toBeNull();
     expect(screen.queryByText('Organisationskontext')).toBeNull();
     expect(screen.queryByText('Sicherheit')).toBeNull();
@@ -525,7 +521,6 @@ describe('Header auth actions', () => {
       screen.getByRole('button', { name: 'Navigation öffnen' }),
       screen.getByRole('button', { name: 'Sprache wechseln' }),
       screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }),
-      screen.getByRole('button', { name: 'Systemmeldungen' }),
     ];
 
     for (const element of interactiveElements) {
@@ -564,13 +559,8 @@ describe('Header auth actions', () => {
     const { rerender } = render(<Header />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Systemmeldungen' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Sprache wechseln' })).toBeTruthy();
     });
-
-    fireEvent.pointerMove(screen.getByRole('button', { name: 'Systemmeldungen' }), {
-      pointerType: 'mouse',
-    });
-    expect(await screen.findByRole('tooltip', { name: 'Meldungen' })).toBeTruthy();
 
     fireEvent.focus(screen.getByRole('button', { name: 'Sprache wechseln' }));
     expect(screen.getByRole('tooltip', { name: 'Sprachen' })).toBeTruthy();
@@ -1091,45 +1081,7 @@ describe('Header auth actions', () => {
     expect(germanMenuItem.textContent).toContain('Deutsch');
   });
 
-  it('versteckt Such- und Assistenten-Platzhalter ohne experimental.read', async () => {
-    useAuthMock.mockReturnValue({
-      user: {
-        id: 'user-plain',
-        name: 'Plain User',
-        roles: ['editor'],
-        permissionActions: ['news.read'],
-      },
-      isAuthenticated: true,
-      isLoading: false,
-      error: null,
-      hasResolvedSession: true,
-      refetch: vi.fn(),
-      logout: vi.fn(),
-      refreshSession: vi.fn(),
-    });
-    useThemeMock.mockReturnValue({
-      mode: 'light',
-      themeName: 'sva-default',
-      themeLabel: 'SVA Studio',
-      setMode: vi.fn(),
-      toggleMode: vi.fn(),
-    });
-    useLocaleMock.mockReturnValue({
-      locale: 'de',
-      setLocale: vi.fn(),
-    });
-
-    render(<Header />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Systemmeldungen' })).toBeTruthy();
-    });
-
-    expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
-    expect(screen.queryByRole('textbox', { name: 'Frag den Assistenten' })).toBeNull();
-  });
-
-  it('zeigt Such- und Assistenten-Platzhalter nur mit experimental.read', async () => {
+  it('zeigt auch mit experimental.read keine unfertigen Header-Plugins', async () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-experimental',
@@ -1152,17 +1104,15 @@ describe('Header auth actions', () => {
       setMode: vi.fn(),
       toggleMode: vi.fn(),
     });
-    useLocaleMock.mockReturnValue({
-      locale: 'de',
-      setLocale: vi.fn(),
-    });
+    useLocaleMock.mockReturnValue({ locale: 'de', setLocale: vi.fn() });
 
     render(<Header />);
 
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: 'Suche' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Sprache wechseln' })).toBeTruthy();
     });
-
-    expect(screen.getByRole('textbox', { name: 'Frag den Assistenten' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Systemmeldungen' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Suche' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Frag den Assistenten' })).toBeNull();
   });
 });

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1838,
+  "body": "Die Waste-Tenant-Provisionierung ist gegen blockierte und wiederholt fehlschlagende Plugin-Jobs abgesichert: Ein PostgreSQL-/Graphile-Test prüft den Verarbeitungsversuch innerhalb von 150 Sekunden sowie Retry und bestehende Queue-Einträge. Die betriebliche Nachprüfung ist dokumentiert."
+}

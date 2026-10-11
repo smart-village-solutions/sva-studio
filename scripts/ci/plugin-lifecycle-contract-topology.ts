@@ -1,18 +1,13 @@
 import { runTaskList } from './plugin-lifecycle-contract-database.js';
-import { Pool } from './plugin-lifecycle-contract-database.js';
-import {
-  assert,
-  database,
-  instanceId,
-  privilegedQueueName,
-  queueName,
-  scalar,
-  waitFor,
-  workerPassword,
-} from './plugin-lifecycle-contract-base.js';
-import type { ContractRunner } from './plugin-lifecycle-contract-base.js';
+import { wasteManagementOperationsContract } from '../../packages/waste-management-contracts/src/index.js';
+import { assert, instanceId, scalar, waitFor } from './plugin-lifecycle-contract-base.js';
 import { cleanLifecycle } from './plugin-lifecycle-contract-fixture.js';
-import { configureRuntime } from './plugin-lifecycle-contract-runtime.js';
+import { configureRuntime, getHandlerAttempts } from './plugin-lifecycle-contract-runtime.js';
+import {
+  runQueueIsolation,
+  startWasteLifecycle,
+  wasteIdentity,
+} from './plugin-lifecycle-contract-queue-isolation.js';
 import type { MatrixContext } from './plugin-lifecycle-contract-runtime.js';
 import {
   reportCase,
@@ -26,8 +21,15 @@ const runTopologyPart1 = async (context: MatrixContext): Promise<void> => {
   const { adminPool, workerPool, runtime, port } = context;
   await reportCase('TOP-01-negative-default-lane-cannot-claim-privileged-job', async () => {
     await cleanLifecycle(adminPool);
-    configureRuntime(runtime, 'contract-1', 'ready', 'privileged');
-    const started = await startLifecycle(runtime);
+    configureRuntime(
+      runtime,
+      'contract-1',
+      'ready',
+      'privileged',
+      wasteManagementOperationsContract.provisioningQueueName,
+      wasteIdentity
+    );
+    const started = await startWasteLifecycle(runtime);
     const defaultRunner = runTaskList(
       { concurrency: 1, noHandleSignals: true },
       runtime.createTaskList(runtime.registry, 'studio_job_execute'),
@@ -52,7 +54,10 @@ const runTopologyPart1 = async (context: MatrixContext): Promise<void> => {
       'top01_privileged_job_key_missing_after_default_lane'
     );
 
-    const privilegedWorker = spawnContractWorker(port, started.job.id, 'run');
+    const privilegedWorker = spawnContractWorker(port, started.job.id, 'run', {
+      ...wasteIdentity,
+      queueName: wasteManagementOperationsContract.provisioningQueueName,
+    });
     await waitForWorkerOutput(privilegedWorker, 'WORKER_READY');
     const exit = await waitForWorkerExit(privilegedWorker);
     assert(exit.code === 0, `top01_privileged_worker_failed:${privilegedWorker.output.stderr}`);
@@ -68,19 +73,33 @@ const runTopologyPart1 = async (context: MatrixContext): Promise<void> => {
 
   await reportCase('TOP-01-positive-existing-job-reroutes-to-current-queue', async () => {
     await cleanLifecycle(adminPool);
-    configureRuntime(runtime, 'contract-1', 'ready', 'privileged', queueName);
-    const started = await startLifecycle(runtime);
+    configureRuntime(
+      runtime,
+      'contract-1',
+      'ready',
+      'privileged',
+      wasteManagementOperationsContract.queueName,
+      wasteIdentity
+    );
+    const started = await startWasteLifecycle(runtime);
 
-    configureRuntime(runtime, 'contract-1', 'ready', 'privileged', privilegedQueueName);
+    configureRuntime(
+      runtime,
+      'contract-1',
+      'ready',
+      'privileged',
+      wasteManagementOperationsContract.provisioningQueueName,
+      wasteIdentity
+    );
     await runtime.ensure(instanceId);
 
     assert(
       (await scalar(
         adminPool,
-        `SELECT (queue_name = $2)::text AS value
+        `SELECT (queue_name = $2 AND task_identifier = 'studio_job_execute_privileged')::text AS value
          FROM graphile_worker.jobs
          WHERE key = $1`,
-        [`studio-job:${started.job.id}`, privilegedQueueName]
+        [`studio-job:${started.job.id}`, wasteManagementOperationsContract.provisioningQueueName]
       )) === 'true',
       'top01_existing_job_not_rerouted_to_current_queue'
     );
@@ -103,78 +122,21 @@ const runTopologyPart1 = async (context: MatrixContext): Promise<void> => {
     } finally {
       await privilegedRunner.gracefulShutdown();
     }
+    assert(getHandlerAttempts() === 1, 'top01_existing_job_executed_more_than_once');
+    assert(
+      (await scalar(
+        adminPool,
+        "SELECT (count(*) = 1)::text AS value FROM iam.studio_job_events WHERE job_id = $1 AND event_type = 'job.succeeded'",
+        [started.job.id]
+      )) === 'true',
+      'top01_existing_job_duplicate_terminal_effect'
+    );
   });
 };
 
 const runTopologyPart2 = async (context: MatrixContext): Promise<void> => {
-  const { adminPool, workerPool, runtime, port } = context;
-  await reportCase(
-    'TOP-01-positive-privileged-queue-progresses-while-default-queue-blocked',
-    async () => {
-      await cleanLifecycle(adminPool);
-      configureRuntime(runtime, 'contract-1', 'ready', 'privileged', privilegedQueueName);
-
-      let defaultJobStarted = false;
-      let releaseDefaultJob = (): void => undefined;
-      const defaultJobRelease = new Promise<void>((resolve) => {
-        releaseDefaultJob = resolve;
-      });
-      await adminPool.query(
-        `SELECT graphile_worker.sva_enqueue_job(
-           'studio_job_execute', '{}'::json, $1, 1, 'studio-job:top01-default-blocker', now()
-         )`,
-        [queueName]
-      );
-      const defaultRunner = runTaskList(
-        { concurrency: 1, noHandleSignals: true },
-        {
-          studio_job_execute: async () => {
-            defaultJobStarted = true;
-            await defaultJobRelease;
-          },
-        },
-        workerPool
-      );
-      const privilegedWorkerPool = new Pool({
-        connectionString: `postgres://sva_job_worker:${workerPassword}@127.0.0.1:${port}/${database}`,
-        max: 2,
-        idleTimeoutMillis: 5_000,
-        statement_timeout: 10_000,
-        idle_in_transaction_session_timeout: 10_000,
-      });
-      let privilegedRunner: ContractRunner | undefined;
-      try {
-        await waitFor('top01-default-queue-blocker-started', async () => defaultJobStarted);
-        const started = await startLifecycle(runtime);
-        privilegedRunner = runTaskList(
-          { concurrency: 1, noHandleSignals: true },
-          runtime.createTaskList(runtime.registry, 'studio_job_execute_privileged'),
-          privilegedWorkerPool
-        );
-        await waitFor(
-          'top01-privileged-job-completed-while-default-queue-blocked',
-          async () =>
-            (await scalar(
-              adminPool,
-              "SELECT (status = 'succeeded')::text AS value FROM iam.studio_jobs WHERE id = $1",
-              [started.job.id]
-            )) === 'true'
-        );
-        assert(
-          defaultJobStarted,
-          'top01_privileged_job_completed_without_default_queue_contention'
-        );
-      } finally {
-        releaseDefaultJob();
-        await Promise.all([
-          privilegedRunner?.gracefulShutdown() ?? Promise.resolve(),
-          defaultRunner.gracefulShutdown(),
-        ]);
-        await privilegedWorkerPool.end();
-      }
-    }
-  );
-
+  const { adminPool, runtime, port } = context;
+  await runQueueIsolation(context);
   await reportCase('TOP-01-positive-crash-recovery-without-http-request', async () => {
     await cleanLifecycle(adminPool);
     configureRuntime(runtime, 'contract-1', 'ready', 'privileged');
@@ -246,6 +208,14 @@ const runTopologyPart3 = async (context: MatrixContext): Promise<void> => {
 };
 
 export const runTopology = async (context: MatrixContext): Promise<void> => {
+  await context.adminPool.query(
+    `INSERT INTO iam.instance_modules (
+       instance_id, module_id, activation_policy, activation_origin, effective_active,
+       manual_override, manifest_version, policy_revision, state_revision
+     ) VALUES ($1, $2, 'automatic', 'policy_reconcile', true, NULL, 1, 'contract-1', 1)
+     ON CONFLICT (instance_id, module_id) DO UPDATE SET effective_active = true`,
+    [instanceId, wasteIdentity.pluginId]
+  );
   await runTopologyPart1(context);
   await runTopologyPart2(context);
   await runTopologyPart3(context);

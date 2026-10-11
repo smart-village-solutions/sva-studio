@@ -101,7 +101,8 @@ export const configureRuntime = (
     | 'always-fail'
     | 'idempotent-effect' = 'ready',
   executionLane: 'default' | 'privileged' = 'default',
-  registeredQueueName = queueName
+  registeredQueueName = queueName,
+  identity: { readonly pluginId: string; readonly jobTypeId: string } = { pluginId, jobTypeId }
 ): void => {
   handlerAttempts = 0;
   runtime.configure({
@@ -109,7 +110,7 @@ export const configureRuntime = (
       revision: contractRevision,
       modules: [
         {
-          moduleId: pluginId,
+          moduleId: identity.pluginId,
           activationPolicy: 'automatic',
           manifestVersion: contractRevision === 'contract-1' ? 1 : 2,
           policyRevision: contractRevision,
@@ -120,20 +121,20 @@ export const configureRuntime = (
     pluginOidcClientRequirements: [],
     tenantLifecycles: [
       {
-        pluginId,
+        pluginId: identity.pluginId,
         contractVersion: 1,
         operations: [
-          { operation: 'provision', jobTypeId },
-          { operation: 'reconcile', jobTypeId },
+          { operation: 'provision', jobTypeId: identity.jobTypeId },
+          { operation: 'reconcile', jobTypeId: identity.jobTypeId },
         ],
         readinessChecks: [
-          { checkId: `${pluginId}.database`, titleKey: 'contract', required: true },
+          { checkId: `${identity.pluginId}.database`, titleKey: 'contract', required: true },
         ],
       },
     ],
   });
   runtime.register({
-    [jobTypeId]: {
+    [identity.jobTypeId]: {
       queueName: registeredQueueName,
       executionLane,
       handler: async () => {
@@ -148,7 +149,7 @@ export const configureRuntime = (
             `INSERT INTO lifecycle_contract.effects(effect_key) VALUES ($1)
              ON CONFLICT (effect_key) DO UPDATE
              SET deliveries = lifecycle_contract.effects.deliveries + 1`,
-            [`${instanceId}:${pluginId}`]
+            [`${instanceId}:${identity.pluginId}`]
           );
         }
         if (behavior === 'always-fail' || (behavior === 'retry-once' && handlerAttempts === 1)) {
@@ -159,7 +160,7 @@ export const configureRuntime = (
             revision: 'database-1',
             checks: [
               {
-                checkId: `${pluginId}.database`,
+                checkId: `${identity.pluginId}.database`,
                 status: behavior === 'pending' ? 'pending' : 'ready',
               },
             ],

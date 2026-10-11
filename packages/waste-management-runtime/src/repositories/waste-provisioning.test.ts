@@ -200,6 +200,44 @@ describe('waste management runtime provisioning repository', () => {
 
 
 describe('Waste provisioning host access', () => {
+  it('delegates every provisioning transition through the scoped host database connection', async () => {
+    const query = vi.fn(async () => ({ rowCount: null, rows: [provisioningRow] }));
+    const withInstanceDb = vi.fn(
+      async (_instanceId: string, work: (client: never) => Promise<unknown>) =>
+        work({ query } as never)
+    );
+    const access = createWasteProvisioningAccess(withInstanceDb as never);
+    const transition = {
+      instanceId: 'tenant-a',
+      jobId: '00000000-0000-4000-8000-000000000001',
+      desiredGeneration: 2,
+    };
+
+    await access.requestWasteTenantProvisioning('tenant-a');
+    await access.disableWasteTenantProvisioning('tenant-a');
+    await access.claimWasteTenantProvisioning(transition);
+    await access.completeWasteTenantProvisioning({
+      ...transition,
+      databaseName: 'tenant-db',
+      interfaceId: 'interface-1',
+    });
+    await access.failWasteTenantProvisioning({
+      ...transition,
+      errorCode: 'migration_failed',
+      errorMessage: 'redacted',
+    });
+    await access.failWasteTenantProvisioningRequest({
+      instanceId: 'tenant-a',
+      desiredGeneration: 2,
+      errorCode: 'job_start_failed',
+      errorMessage: 'redacted',
+    });
+
+    expect(withInstanceDb).toHaveBeenCalledTimes(6);
+    expect(withInstanceDb.mock.calls.every(([instanceId]) => instanceId === 'tenant-a')).toBe(true);
+    expect(query).toHaveBeenCalledTimes(6);
+  });
+
   it('keeps provisioning reads inside the generic tenant-scoped host transaction', async () => {
     const query = vi.fn(async () => ({ rowCount: 1, rows: [provisioningRow] }));
     const client = { query };

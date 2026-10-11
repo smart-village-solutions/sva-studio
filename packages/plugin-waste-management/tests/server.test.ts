@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const wasteHandler = vi.hoisted(() => vi.fn(async () => new Response('waste-handler')));
+const runtimeMocks = vi.hoisted(() => ({
+  createWasteJobStarter: vi.fn(() => vi.fn()),
+  createWasteServerContext: vi.fn(() => ({ sharedWasteManagementDeps: {} })),
+  createWasteServerLoaders: vi.fn(() => ({ loadSettings: vi.fn() })),
+}));
 
 vi.mock('@sva/waste-management-runtime/server', () => ({
   wasteManagementHttpRuntime: {
     createWasteManagementHandlers: () => new Proxy({}, { get: () => wasteHandler }),
+    ...runtimeMocks,
   },
 }));
 vi.mock('../src/server-context.js', () => ({
@@ -19,6 +25,27 @@ import { pluginWasteManagement } from '../src/plugin.js';
 import { createPluginServerHandlers } from '../src/server.js';
 
 describe('Waste server entry', () => {
+  it('assembles server dependencies only from the supplied host capabilities', async () => {
+    const { createWastePluginServerDependencies } =
+      await vi.importActual<typeof import('../src/server-context.js')>('../src/server-context.js');
+    const capabilities = { resolveIamActorInfo: vi.fn() } as never;
+
+    const dependencies = createWastePluginServerDependencies(capabilities);
+
+    expect(runtimeMocks.createWasteJobStarter).toHaveBeenCalledWith(capabilities);
+    expect(runtimeMocks.createWasteServerContext).toHaveBeenCalledWith(
+      expect.objectContaining({ resolveIamActorInfo: capabilities.resolveIamActorInfo })
+    );
+    expect(runtimeMocks.createWasteServerLoaders).toHaveBeenCalledWith(capabilities);
+    expect(dependencies).toMatchObject({
+      sharedWasteManagementDeps: {},
+      loaders: { loadSettings: expect.any(Function) },
+    });
+    expect(() => createWastePluginServerDependencies(undefined as never)).toThrow(
+      'waste_plugin_server_capabilities_required'
+    );
+  });
+
   it('binds every declared method to the Waste handler', async () => {
     const capabilities = {} as never;
     const bindings = createPluginServerHandlers(capabilities);

@@ -130,6 +130,32 @@ describe('waste data source repository', () => {
 
 
 describe('Waste data source host access', () => {
+  it('delegates reads and writes through the scoped host database connection', async () => {
+    const query = vi.fn(async () => ({ rowCount: null, rows: [] }));
+    const withInstanceDb = vi.fn(
+      async (_instanceId: string, work: (client: never) => Promise<unknown>) =>
+        work({ query } as never)
+    );
+    const access = createWasteDataSourceAccess(withInstanceDb as never);
+
+    await expect(access.loadWasteDataSourceRecord('tenant-a')).resolves.toBeNull();
+    await access.saveWasteDataSourceRecord(record);
+    await access.saveWasteConnectionCheck({
+      instanceId: 'tenant-a',
+      checkedAt: '2026-05-09T10:00:00.000Z',
+      checkStatus: 'failed',
+      visibleStatus: 'error',
+      errorCode: 'connection_refused',
+      errorMessage: 'Host unreachable',
+    });
+
+    expect(withInstanceDb).toHaveBeenCalledTimes(3);
+    expect(withInstanceDb).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM iam.instance_waste_data_sources'), ['tenant-a']);
+    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('ON CONFLICT (instance_id) DO UPDATE'), expect.any(Array));
+    expect(query).toHaveBeenNthCalledWith(3, expect.stringContaining('UPDATE iam.instance_waste_data_sources'), expect.any(Array));
+  });
+
   it('reads datasource schema availability inside the tenant-scoped host transaction', async () => {
     const query = vi.fn(async () => ({ rowCount: 1, rows: [{ exists: true }] }));
     const scopedClient = { query };

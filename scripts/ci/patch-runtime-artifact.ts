@@ -68,7 +68,7 @@ export const patchReactShimRequires = async (serverDir: string = outputServerDir
       /^import \{[^}]*\bas require_react\b[^}]*\} from /m.test(bundledShim) &&
       shimRegion &&
       /\bvar React = require_react\(\);/.test(shimRegion) &&
-      !/(?:__require|require)\s*\(\s*["']react["']\s*\)/.test(bundledShim)
+      !/(['"`])react\1/.test(bundledShim)
     ) {
       return;
     }

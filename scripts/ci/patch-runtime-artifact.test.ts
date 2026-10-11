@@ -49,6 +49,9 @@ describe('SSR React shim artifact', () => {
     await writeFile(libraryPath, bundledLibraryShim.replace('var React = require_react();', "var React = __require('react');"));
     await expect(patchReactShimRequires(serverDir)).rejects.toThrow('SSR-React-Shim-Vertrag geaendert');
 
+    await writeFile(libraryPath, `${bundledLibraryShim}\nvar other = __require2("react");`);
+    await expect(patchReactShimRequires(serverDir)).rejects.toThrow('SSR-React-Shim-Vertrag geaendert');
+
     await writeFile(libraryPath, bundledLibraryShim.replace('as require_react', 'as other_react'));
     await expect(patchReactShimRequires(serverDir)).rejects.toThrow('SSR-React-Shim-Vertrag geaendert');
 

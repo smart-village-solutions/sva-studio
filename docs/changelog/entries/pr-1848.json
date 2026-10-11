@@ -1,0 +1,4 @@
+{
+  "prNumber": 1848,
+  "body": "Der Studio-Build akzeptiert den React-Shim jetzt auch dann, wenn er sicher gebündelt unter den Server-Bibliotheken liegt. Die Prüfung verhindert weiterhin einen zweiten React-Laufzeitpfad."
+}

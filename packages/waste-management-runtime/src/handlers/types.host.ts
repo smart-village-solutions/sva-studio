@@ -36,6 +36,8 @@ type IdempotencyReserveResult =
 
 export type AuthenticatedRequestContext = Readonly<{
   sessionId: string;
+  request?: Request;
+  handlerId?: string;
   activeOrganizationId?: string;
   user: Readonly<{
     id: string;
@@ -117,6 +119,8 @@ export type WasteManagementHandlerHostDeps = WasteCityHandlerDeps &
       interfaceId: string
     ) => Promise<Omit<ExternalInterfaceConnectionCheckRecord, 'interfaceId'>>;
     readonly authorizeAction?: (input: {
+      readonly request?: Request;
+      readonly handlerId?: string;
       readonly instanceId: string;
       readonly keycloakSubject: string;
       readonly action: string;

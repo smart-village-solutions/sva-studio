@@ -16,6 +16,8 @@ export const createPluginServerHandlers = (capabilities: WastePluginServerCapabi
         if (executionContext.scope !== 'tenant') return new Response(null, { status: 403 });
         const ctx = {
           sessionId: executionContext.sessionId,
+          request: executionContext.request,
+          handlerId: executionContext.handlerId,
           activeOrganizationId: executionContext.activeOrganizationId,
           user: {
             id: executionContext.actor.id,

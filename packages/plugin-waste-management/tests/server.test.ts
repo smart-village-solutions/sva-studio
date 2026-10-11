@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 const wasteHandler = vi.hoisted(() => vi.fn(async () => new Response('waste-handler')));
+const authenticatedContext = vi.hoisted(() => vi.fn());
 const runtimeMocks = vi.hoisted(() => ({
   createWasteJobStarter: vi.fn(() => vi.fn()),
   createWasteServerContext: vi.fn(() => ({ sharedWasteManagementDeps: {} })),
@@ -9,7 +10,12 @@ const runtimeMocks = vi.hoisted(() => ({
 
 vi.mock('@sva/waste-management-runtime/server', () => ({
   wasteManagementHttpRuntime: {
-    createWasteManagementHandlers: () => new Proxy({}, { get: () => wasteHandler }),
+    createWasteManagementHandlers: (input: {
+      withAuthenticatedHandler: (
+        request: Request,
+        handler: (request: Request) => Promise<Response>
+      ) => Promise<Response>;
+    }) => new Proxy({}, { get: () => (request: Request) => input.withAuthenticatedHandler(request, () => wasteHandler(request)) }),
     ...runtimeMocks,
   },
 }));
@@ -17,7 +23,10 @@ vi.mock('../src/server-context.js', () => ({
   createWastePluginServerDependencies: vi.fn(() => ({
     sharedWasteManagementDeps: {},
     loaders: {},
-    withAuthenticatedWasteManagementHandler: async (ctx: unknown, request: Request, handler: (request: Request, ctx: unknown) => Promise<Response>) => handler(request, ctx),
+    withAuthenticatedWasteManagementHandler: async (ctx: unknown, request: Request, handler: (request: Request, ctx: unknown) => Promise<Response>) => {
+      authenticatedContext(ctx);
+      return handler(request, ctx);
+    },
   })),
 }));
 
@@ -63,6 +72,10 @@ describe('Waste server entry', () => {
       actor: { id: 'user-1', roles: [], instanceId: 'tenant-a' },
     });
     expect(response?.status).toBe(200);
+    expect(authenticatedContext).toHaveBeenCalledWith(expect.objectContaining({
+      request,
+      handlerId: 'waste-management.getHistory.get',
+    }));
     expect(wasteHandler).toHaveBeenCalledWith(request);
   });
 

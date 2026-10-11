@@ -99,6 +99,7 @@ describe('plugin server runtime loader', () => {
         withInstanceDb: expect.any(Function),
         withStudioJobRepository: expect.any(Function),
         authorizePluginAction: expect.any(Function),
+        isAuthorizedPluginRequest: expect.any(Function),
         validateCsrf: expect.any(Function),
       })
     );

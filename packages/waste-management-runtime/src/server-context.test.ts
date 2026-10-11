@@ -10,13 +10,10 @@ const dataRepositoryMocks = vi.hoisted(() => ({
   saveExternalInterfaceRecord: vi.fn(),
 }));
 
-const authMocks = vi.hoisted(() => ({
-  readConfiguredPluginTenantAccess: vi.fn(),
-}));
-
 const hostCapabilityMocks = vi.hoisted(() => ({
   emitAuthAuditEvent: vi.fn(),
   authorizePluginAction: vi.fn(),
+  isAuthorizedPluginRequest: vi.fn(),
   resolveActorInfo: vi.fn(),
   startPluginOperationJobFromFacade: vi.fn(),
   storePluginOperationInput: vi.fn(),
@@ -66,7 +63,6 @@ import { createWasteServerContext, type WasteServerContextHost } from './server-
 const { sharedWasteManagementDeps, withAuthenticatedWasteManagementHandler } =
   createWasteServerContext({
     ...dataRepositoryMocks,
-    ...authMocks,
     ...hostCapabilityMocks,
     resolveIamActorInfo: hostCapabilityMocks.resolveActorInfo,
     emitAuthAuditEvent: hostCapabilityMocks.emitAuthAuditEvent,
@@ -74,8 +70,6 @@ const { sharedWasteManagementDeps, withAuthenticatedWasteManagementHandler } =
     startPluginOperationJobFromFacade: hostCapabilityMocks.startPluginOperationJobFromFacade,
     storePluginOperationInput: hostCapabilityMocks.storePluginOperationInput,
     buildLogContext: () => ({ request_id: 'req-1' }),
-    translatePluginTenantLifecycleMessage: () =>
-      'The plugin is not ready for tenant operations yet.',
     createApiError: (
       status: number,
       code: string,
@@ -170,6 +164,8 @@ describe('sharedWasteManagementDeps', () => {
       })
     ).resolves.toBeNull();
     expect(hostCapabilityMocks.authorizePluginAction).toHaveBeenCalledWith({
+      request: undefined,
+      handlerId: undefined,
       instanceId: 'tenant-a',
       keycloakSubject: 'user-1',
       action: 'waste-management.read',
@@ -231,44 +227,39 @@ describe('sharedWasteManagementDeps', () => {
     });
   });
 
-  it('blocks dedicated waste handlers when tenant lifecycle access is not ready', async () => {
-    authMocks.readConfiguredPluginTenantAccess.mockResolvedValueOnce({
-      allowed: false,
-      reason: 'blocked',
-    });
+  it('blocks a direct Waste handler call without dispatcher authorization', async () => {
+    vi.clearAllMocks();
+    hostCapabilityMocks.isAuthorizedPluginRequest.mockReturnValueOnce(false);
     const handler = vi.fn(async () => new Response('handled'));
+    const request = new Request('https://studio.example/api/v1/waste-management/settings');
 
     const response = await withAuthenticatedWasteManagementHandler(
-      tenantContext,
-      new Request('https://studio.example/api/v1/waste-management/settings', {
-        headers: { 'accept-language': 'en-GB,en;q=0.9,de;q=0.8' },
-      }),
+      { ...tenantContext, handlerId: 'waste-management.getSettings.get' },
+      request,
       handler
     );
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: 'plugin_tenant_access_blocked',
-        message: 'The plugin is not ready for tenant operations yet.',
-      },
+      error: { code: 'forbidden' },
     });
     expect(handler).not.toHaveBeenCalled();
-    expect(authMocks.readConfiguredPluginTenantAccess).toHaveBeenCalledWith(
-      'tenant-a',
-      'waste-management'
-    );
+    expect(hostCapabilityMocks.isAuthorizedPluginRequest).toHaveBeenCalledWith({
+      request,
+      handlerId: 'waste-management.getSettings.get',
+      pluginId: 'waste-management',
+      instanceId: 'tenant-a',
+      keycloakSubject: 'user-1',
+    });
   });
 
-  it('dispatches dedicated waste handlers when tenant lifecycle access is ready', async () => {
-    authMocks.readConfiguredPluginTenantAccess.mockResolvedValueOnce({
-      allowed: true,
-      reason: 'ready',
-    });
+  it('dispatches a request with verified dispatcher authorization', async () => {
+    vi.clearAllMocks();
+    hostCapabilityMocks.isAuthorizedPluginRequest.mockReturnValueOnce(true);
     const handler = vi.fn(async () => new Response('handled'));
 
     const response = await withAuthenticatedWasteManagementHandler(
-      tenantContext,
+      { ...tenantContext, handlerId: 'waste-management.getSettings.get' },
       new Request('https://studio.example/api/v1/waste-management/settings'),
       handler
     );

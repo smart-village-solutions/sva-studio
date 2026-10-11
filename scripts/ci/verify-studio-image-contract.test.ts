@@ -9,6 +9,7 @@ const revision = 'a'.repeat(40);
 const digest = `sha256:${'b'.repeat(64)}`;
 const regularPlugins = [
   'categories',
+  'cockpit',
   'cockpit-cards',
   'events',
   'faq',
@@ -34,6 +35,7 @@ const workspacePluginIds = [
   'poi',
   'generic-items',
   'faq',
+  'cockpit',
   'cockpit-cards',
   'projects',
   'surveys',

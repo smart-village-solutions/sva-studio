@@ -9,6 +9,7 @@ const repositories = {
 };
 const regularPlugins = [
   'categories',
+  'cockpit',
   'cockpit-cards',
   'events',
   'faq',
@@ -27,6 +28,7 @@ const workspacePluginIds = [
   'poi',
   'generic-items',
   'faq',
+  'cockpit',
   'cockpit-cards',
   'projects',
   'surveys',

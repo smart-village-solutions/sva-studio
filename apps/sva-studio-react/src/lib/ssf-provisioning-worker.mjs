@@ -1,22 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { configureInstanceRegistryPluginRuntimeSnapshot } from '@sva/auth-runtime/server';
 import { pluginSdkVersion, resolvePluginCatalog } from '@sva/plugin-sdk';
-import { ssfPlugin } from '@sva/plugin-ssf/descriptor';
-import {
-  SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
-  readSsfLoginClientRequirement,
-} from '@sva/plugin-ssf/provisioning';
-import ssfManifest from '@sva/plugin-ssf/plugin.manifest.json' with { type: 'json' };
 import { studioHostModuleIamContracts } from '@sva/studio-module-iam';
-
-const catalogEntry = {
-  pluginId: 'ssf',
-  sourceType: 'workspace',
-  sourceRef: 'packages/plugin-ssf',
-  enabled: true,
-  manifest: ssfManifest,
-};
 
 export const runSsfProvisioningWorker = async (
   startWorker = async () => {
@@ -28,6 +15,53 @@ export const runSsfProvisioningWorker = async (
     await runKeycloakProvisioningWorkerLoop();
   }
 ) => {
+  const customManifest =
+    process.env.SVA_STUDIO_DISTRIBUTION === 'custom'
+      ? JSON.parse(
+          readFileSync(
+            new URL('./.output/server/generated/studio-distribution.json', import.meta.url),
+            'utf8'
+          )
+        )
+      : undefined;
+  if (customManifest) {
+    const snapshot = customManifest.provisioningSnapshot;
+    const selected = customManifest.includedPluginIds;
+    const moduleIds = snapshot?.activationPolicies?.modules?.map(({ moduleId }) => moduleId);
+    if (
+      customManifest.distribution !== 'custom' ||
+      !Array.isArray(selected) ||
+      !Array.isArray(moduleIds) ||
+      JSON.stringify([...selected].sort()) !== JSON.stringify([...moduleIds].sort())
+    ) {
+      throw new Error('custom_provisioning_snapshot_mismatch');
+    }
+    let pluginOidcClientRequirements = [];
+    if (selected.includes('ssf')) {
+      const { SSF_TENANT_OIDC_CLIENT_REQUIREMENT, readSsfLoginClientRequirement } =
+        await import('@sva/plugin-ssf/provisioning');
+      pluginOidcClientRequirements = [
+        SSF_TENANT_OIDC_CLIENT_REQUIREMENT,
+        ...[readSsfLoginClientRequirement()].filter((entry) => entry !== null),
+      ];
+    }
+    configureInstanceRegistryPluginRuntimeSnapshot({ ...snapshot, pluginOidcClientRequirements });
+    await startWorker();
+    return;
+  }
+  const { ssfPlugin } = await import('@sva/plugin-ssf/descriptor');
+  const { default: ssfManifest } = await import('@sva/plugin-ssf/plugin.manifest.json', {
+    with: { type: 'json' },
+  });
+  const { SSF_TENANT_OIDC_CLIENT_REQUIREMENT, readSsfLoginClientRequirement } =
+    await import('@sva/plugin-ssf/provisioning');
+  const catalogEntry = {
+    pluginId: 'ssf',
+    sourceType: 'workspace',
+    sourceRef: 'packages/plugin-ssf',
+    enabled: true,
+    manifest: ssfManifest,
+  };
   const resolved = resolvePluginCatalog({
     catalog: [catalogEntry],
     host: {

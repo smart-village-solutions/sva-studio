@@ -30,6 +30,7 @@ import {
 import {
   filterPluginCatalogForDistribution,
   resolveStudioDistribution,
+  resolveStudioPluginIds,
 } from './studio-distribution.js';
 import {
   nodeManifestModules,
@@ -43,7 +44,15 @@ import {
 import { studioHostModuleContracts } from '#studio-module-iam-inputs';
 
 export const studioDistribution = resolveStudioDistribution(
-  import.meta.env.VITE_SVA_STUDIO_DISTRIBUTION
+  import.meta.env.VITE_SVA_STUDIO_DISTRIBUTION,
+  import.meta.env.VITE_SVA_STUDIO_PLUGIN_IDS
+);
+export const studioPluginIds = resolveStudioPluginIds(
+  studioDistribution,
+  import.meta.env.VITE_SVA_STUDIO_PLUGIN_IDS,
+  pluginCatalogConfig
+    .filter(({ sourceType }) => sourceType === 'workspace')
+    .map(({ pluginId }) => pluginId)
 );
 
 const pluginLogger = createBrowserLogger({
@@ -117,7 +126,8 @@ const resolveDescriptorModule = (
 
 const studioPluginCatalogConfigEntries = filterPluginCatalogForDistribution(
   pluginCatalogConfig,
-  studioDistribution
+  studioDistribution,
+  studioPluginIds
 );
 
 const studioPluginCatalogReport = await createStudioPluginCatalogReport({

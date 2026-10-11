@@ -23,6 +23,7 @@ import {
   createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
   type WasteManagementOperationRuntime,
 } from '@sva/waste-management-runtime/server';
+import { selectedPluginJobRuntimeFactories } from '#studio-plugin-runtime-factories';
 type PluginOperationExecutionHandler =
   import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 type PluginJobModuleFactory = (
@@ -143,6 +144,7 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
       protectSecret: protectField,
       createPostalCodeResolver: createMapPostalCodeResolver,
     }),
+  ...selectedPluginJobRuntimeFactories,
 };
 
 const resolvePluginJobRuntimeRequirement = (input: {

@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { loadConfigFromFile } from 'vite';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   filterModuleContractsForDistribution,
   filterPluginCatalogForDistribution,
   resolveStudioDistribution,
+  resolveStudioPluginIds,
 } from './studio-distribution.js';
 
 const catalog = [
@@ -12,6 +15,21 @@ const catalog = [
 ] as const;
 
 describe('studio distribution', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('selects content-capable route bindings for the mixed custom build', async () => {
+    vi.stubEnv('SVA_STUDIO_DISTRIBUTION', 'custom');
+    vi.stubEnv('SVA_STUDIO_PLUGIN_IDS', 'categories,news,ssf');
+    const loaded = await loadConfigFromFile(
+      { command: 'build', mode: 'production' },
+      join(process.cwd(), 'vite.config.ts')
+    );
+    const aliases = loaded?.config.resolve?.alias as Record<string, string>;
+    expect(aliases['#studio-app-route-bindings']).toBe(
+      join(process.cwd(), 'src/routing/app-route-bindings.tsx')
+    );
+  });
+
   it('excludes SSF from the default Studio distribution', () => {
     expect(resolveStudioDistribution(undefined)).toBe('studio');
     expect(filterPluginCatalogForDistribution(catalog, 'studio')).toEqual([catalog[0]]);
@@ -52,5 +70,34 @@ describe('studio distribution', () => {
 
   it('rejects unknown distributions', () => {
     expect(() => resolveStudioDistribution('other')).toThrow('invalid_studio_distribution:other');
+  });
+
+  it('canonicalizes a custom selection and retains only its plugin and host media contract', () => {
+    expect(resolveStudioDistribution(undefined, 'ssf,news')).toBe('custom');
+    const selected = resolveStudioPluginIds('custom', 'ssf,news', ['news', 'ssf']);
+    expect(selected).toEqual(['news', 'ssf']);
+    expect(filterPluginCatalogForDistribution(catalog, 'custom', selected)).toEqual(catalog);
+    expect(
+      filterModuleContractsForDistribution(
+        ['news', 'ssf', 'media', 'events'].map((moduleId) => ({ moduleId })),
+        'custom',
+        selected
+      )
+    ).toEqual([{ moduleId: 'news' }, { moduleId: 'ssf' }, { moduleId: 'media' }]);
+  });
+
+  it('rejects empty, duplicate, unknown, and conflicting selections', () => {
+    expect(() => resolveStudioPluginIds('custom', '', ['news'])).toThrow(
+      'studio_plugin_selection_required'
+    );
+    expect(() => resolveStudioPluginIds('custom', 'news,news', ['news'])).toThrow(
+      'studio_plugin_selection_duplicate'
+    );
+    expect(() => resolveStudioPluginIds('custom', 'unknown', ['news'])).toThrow(
+      'studio_plugin_selection_unknown:unknown'
+    );
+    expect(() => resolveStudioDistribution('studio', 'news')).toThrow(
+      'studio_distribution_and_plugin_selection_conflict:studio'
+    );
   });
 });

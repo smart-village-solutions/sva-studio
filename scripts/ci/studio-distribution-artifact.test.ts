@@ -14,12 +14,17 @@ const writeEmptyInstalledCatalog = (appRoot: string): void => {
 };
 
 const runArtifactCommand = (
-  command: 'write-manifest' | 'write-chunk-provenance' | 'prune-deploy',
+  command: 'selection' | 'write-manifest' | 'write-chunk-provenance' | 'prune-deploy',
   target: string,
-  distribution: string
+  distribution: string,
+  pluginIds?: string
 ) => {
-  execFileSync(process.execPath, ['--import', 'tsx', scriptPath, command, target, distribution], {
+  const args = ['--import', 'tsx', scriptPath, command];
+  if (command !== 'selection') args.push(target, distribution);
+  else args.push('ignored', distribution);
+  return execFileSync(process.execPath, args, {
     cwd: workspaceRoot,
+    env: { ...process.env, ...(pluginIds ? { SVA_STUDIO_PLUGIN_IDS: pluginIds } : {}) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 };
@@ -96,6 +101,73 @@ describe('studio-distribution-artifact', () => {
       ).toEqual([distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news']);
     }
   );
+
+  it('canonicalizes and fingerprints a custom plugin selection', () => {
+    const output = runArtifactCommand('selection', '', 'custom', 'ssf,news,categories');
+    const selection = JSON.parse(output.toString('utf8'));
+    expect(selection).toMatchObject({
+      distribution: 'custom',
+      pluginIds: ['categories', 'news', 'ssf'],
+    });
+    expect(selection.pluginSetFingerprint).toMatch(/^[a-f0-9]{64}$/u);
+  });
+
+  it.each(['', 'news,news', 'unknown', 'news,', 'media'])(
+    'rejects an invalid custom selection %j before writing an artifact',
+    (pluginIds) => {
+      expect(() => runArtifactCommand('selection', '', 'custom', pluginIds)).toThrow();
+    }
+  );
+
+  it('attests every selected custom plugin and rejects an excluded executable source', () => {
+    const { outputRoot, reportRoot } = createChunkFixture('ssf');
+    const selected = ['categories', 'news', 'ssf'];
+    const modules = selected.map((id) => `/workspace/packages/plugin-${id}/src/index.ts`);
+    writeFileSync(
+      path.join(reportRoot, 'client.json'),
+      JSON.stringify([{ fileName: 'assets/index.js', modules }])
+    );
+    writeFileSync(
+      path.join(reportRoot, 'ssr.json'),
+      JSON.stringify([{ fileName: 'assets/router.js', modules }])
+    );
+    runArtifactCommand('write-manifest', outputRoot, 'custom', 'ssf,news,categories');
+    runArtifactCommand('write-chunk-provenance', outputRoot, 'custom', 'ssf,news,categories');
+    const manifest = JSON.parse(
+      readFileSync(path.join(outputRoot, 'server/generated/studio-distribution.json'), 'utf8')
+    );
+    const provenance = JSON.parse(
+      readFileSync(path.join(outputRoot, 'server/generated/studio-chunk-provenance.json'), 'utf8')
+    );
+    expect(manifest.includedPluginIds).toEqual(selected);
+    expect(
+      manifest.provisioningSnapshot.activationPolicies.modules.map(
+        ({ moduleId }: { moduleId: string }) => moduleId
+      )
+    ).toEqual(selected);
+    expect(
+      manifest.provisioningSnapshot.moduleIamContracts.map(
+        ({ moduleId }: { moduleId: string }) => moduleId
+      )
+    ).toEqual(expect.arrayContaining([...selected, 'media']));
+    expect(manifest.provisioningSnapshot.tenantLifecycles).toEqual([
+      expect.objectContaining({ pluginId: 'ssf' }),
+    ]);
+    expect(provenance.pluginSetFingerprint).toBe(manifest.pluginSetFingerprint);
+    expect(manifest.excludedWorkspacePackages).toContain('plugin-events');
+    writeFileSync(
+      path.join(reportRoot, 'client.json'),
+      JSON.stringify([
+        {
+          fileName: 'assets/index.js',
+          modules: [...modules, '/workspace/packages/plugin-events/src/index.ts'],
+        },
+      ])
+    );
+    expect(() =>
+      runArtifactCommand('write-chunk-provenance', outputRoot, 'custom', 'ssf,news,categories')
+    ).toThrow();
+  });
 
   it('rejects an excluded source module and an unknown final JavaScript file', () => {
     const { outputRoot, reportRoot } = createChunkFixture('ssf');

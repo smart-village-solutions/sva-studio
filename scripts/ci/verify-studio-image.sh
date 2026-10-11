@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ "${1:-}" = "" ] || [ "${4:-}" = "" ]; then
-  echo "usage: verify-studio-image.sh <image-ref> <artifact-dir> <studio|ssf> <expected-revision>" >&2
+  echo "usage: verify-studio-image.sh <image-ref> <artifact-dir> <studio|ssf|custom> <expected-revision> [expected-plugin-ids]" >&2
   exit 1
 fi
 
@@ -10,8 +10,9 @@ IMAGE_REF="$1"
 ARTIFACT_DIR_INPUT="${2:-artifacts/runtime/image-verify}"
 SVA_STUDIO_DISTRIBUTION="${3:-studio}"
 EXPECTED_REVISION="$4"
+EXPECTED_PLUGIN_IDS="${5:-}"
 case "${SVA_STUDIO_DISTRIBUTION}" in
-  studio|ssf) ;;
+  studio|ssf|custom) ;;
   *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;;
 esac
 VERIFY_ID="studio-image-verify-$(date +%s)"
@@ -178,12 +179,13 @@ if jq -n \
   --arg imageRef "${IMAGE_REF}" \
   --arg expectedRevision "${EXPECTED_REVISION}" \
   --arg distribution "${SVA_STUDIO_DISTRIBUTION}" \
+  --arg expectedPluginIds "${EXPECTED_PLUGIN_IDS}" \
   --slurpfile inspection "${IMAGE_INSPECT_PATH}" \
   --slurpfile manifest "${RUNTIME_MANIFEST_PATH}" \
   --slurpfile chunkProvenance "${CHUNK_PROVENANCE_PATH}" \
   --slurpfile chunkFiles "${CHUNK_FILES_PATH}" \
   --rawfile packages "${PACKAGE_INVENTORY_PATH}" \
-  '{imageRef: $imageRef, expectedRevision: $expectedRevision, distribution: $distribution, inspection: $inspection[0], runtimeManifest: $manifest[0], chunkProvenance: $chunkProvenance[0], chunkFiles: $chunkFiles[0], packages: ($packages | split("\n") | map(select(length > 0)))}' |
+  '{imageRef: $imageRef, expectedRevision: $expectedRevision, distribution: $distribution, expectedPluginIds: (if $expectedPluginIds == "" then null else ($expectedPluginIds | split(",")) end), inspection: $inspection[0], runtimeManifest: $manifest[0], chunkProvenance: $chunkProvenance[0], chunkFiles: $chunkFiles[0], packages: ($packages | split("\n") | map(select(length > 0)))}' |
   node "$(dirname "${BASH_SOURCE[0]}")/verify-studio-image-contract.mjs" > "${IMAGE_CONTRACT_PATH}"
 then
   set_phase_var PLUGIN_INVENTORY_STATUS ok
@@ -195,6 +197,8 @@ else
   fail_verify artifact-inventory-mismatch plugin-inventory "Image-Identitaet oder Paket-Inventar stimmt nicht mit dem Buildprofil ueberein."
   exit 1
 fi
+
+SSF_SELECTED="$(jq -r '.includedPluginIds | index("ssf") != null' "${IMAGE_CONTRACT_PATH}")"
 
 wait_for_postgres() {
   for _ in $(seq 1 20); do
@@ -620,7 +624,7 @@ SVA_SERVER_ENTRY_DEBUG=true
 NODE_EXTRA_CA_CERTS=/tmp/verify-mock.crt
 EOF
 
-if [ "${SVA_STUDIO_DISTRIBUTION}" = "ssf" ]; then
+if [ "${SSF_SELECTED}" = "true" ]; then
   cat >>"${ENV_FILE}" <<EOF
 SSF_PLUGIN_DATABASE_ENABLED=true
 SVA_STUDIO_SSF_DATABASE_URL=postgres://sva_ssf_runtime:verify-ssf-runtime-password@${POSTGRES_NAME}:5432/sva_studio_ssf?options=-c%20role%3Dssf_plugin_tenant_runtime
@@ -646,7 +650,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
   fi
 fi
 
-if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SVA_STUDIO_DISTRIBUTION}" = "ssf" ]; then
+if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SSF_SELECTED}" = "true" ]; then
   if docker run --rm \
     --network "${NETWORK_NAME}" \
     --env-file "${ENV_FILE}" \
@@ -786,7 +790,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
   fi
 fi
 
-if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SVA_STUDIO_DISTRIBUTION}" = "ssf" ]; then
+if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SSF_SELECTED}" = "true" ]; then
   # An active optional assignment without lifecycle evidence must fail closed;
   # this is not the positive tenant-ready acceptance required by #1325.
   if probe_authenticated "${TENANT_HOST}" "${TENANT_ORIGIN}" "${AUTH_TMP_DIR}" "${SSF_TENANT_PATH}" 403 && \
@@ -801,7 +805,7 @@ if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SVA_STUDIO_DISTRIBUTION}" = "ssf" ]; th
   fi
 fi
 
-if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SVA_STUDIO_DISTRIBUTION}" = "ssf" ]; then
+if [ "${VERIFY_STATUS}" = "ok" ] && [ "${SSF_SELECTED}" = "true" ]; then
   ROOT_DENIED_TMP_DIR="$(mktemp -d)"
   ROOT_ALLOWED_TMP_DIR="$(mktemp -d)"
   chmod 700 "${ROOT_DENIED_TMP_DIR}" "${ROOT_ALLOWED_TMP_DIR}"

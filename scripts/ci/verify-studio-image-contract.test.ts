@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -22,11 +23,39 @@ const excludedWorkspacePackages = {
   studio: ['plugin-ssf'],
   ssf: [...regularPlugins.map((id) => `plugin-${id}`)],
 };
+const workspacePluginIds = [
+  'categories',
+  'news',
+  'events',
+  'poi',
+  'generic-items',
+  'faq',
+  'cockpit-cards',
+  'projects',
+  'surveys',
+  'ssf',
+  'waste-management',
+];
 
-const validInput = (distribution: 'studio' | 'ssf') => {
+const validInput = (
+  distribution: 'studio' | 'ssf' | 'custom',
+  customPluginIds = ['categories', 'news', 'ssf']
+) => {
   const repository = `ghcr.io/smart-village-solutions/sva-studio${distribution === 'ssf' ? '-ssf' : ''}`;
   const imageRef = `${repository}@${digest}`;
-  const includedPluginIds = distribution === 'studio' ? [...regularPlugins] : ['ssf'];
+  const selectedPluginIds =
+    distribution === 'custom'
+      ? workspacePluginIds.filter((id) => customPluginIds.includes(id))
+      : distribution === 'studio'
+        ? [...regularPlugins]
+        : ['ssf'];
+  const fingerprint =
+    distribution === 'custom'
+      ? createHash('sha256').update(JSON.stringify(selectedPluginIds)).digest('hex')
+      : undefined;
+  const excluded = workspacePluginIds
+    .filter((id) => !selectedPluginIds.includes(id))
+    .map((id) => `plugin-${id}`);
   return {
     imageRef,
     expectedRevision: revision,
@@ -40,6 +69,7 @@ const validInput = (distribution: 'studio' | 'ssf') => {
               'https://github.com/smart-village-solutions/sva-studio',
             'org.opencontainers.image.revision': revision,
             'com.sva-studio.distribution': distribution,
+            'com.sva-studio.plugin-set-fingerprint': fingerprint ?? '',
           },
           Env: [`SVA_STUDIO_DISTRIBUTION=${distribution}`],
         },
@@ -48,32 +78,53 @@ const validInput = (distribution: 'studio' | 'ssf') => {
     runtimeManifest: {
       schemaVersion: 1,
       distribution,
-      includedPluginIds,
+      ...(fingerprint ? { pluginSetFingerprint: fingerprint } : {}),
+      includedPluginIds: selectedPluginIds,
       installedPlugins: [] as { pluginId: string; sourceRef: string }[],
-      excludedWorkspacePackages: excludedWorkspacePackages[distribution],
+      excludedWorkspacePackages:
+        distribution === 'custom' ? excluded : excludedWorkspacePackages[distribution],
     },
+    expectedPluginIds: distribution === 'custom' ? selectedPluginIds : null,
     packages:
-      distribution === 'studio'
+      distribution === 'custom'
         ? [
             'plugin-sdk',
-            ...regularPlugins.filter((id) => id !== 'waste-management').map((id) => `plugin-${id}`),
+            ...selectedPluginIds
+              .filter((id) => id !== 'waste-management')
+              .map((id) => `plugin-${id}`),
             'waste-management-contracts',
             'waste-management-runtime',
           ]
-        : ['plugin-sdk', 'plugin-ssf', 'waste-management-contracts', 'waste-management-runtime'],
+        : distribution === 'studio'
+          ? [
+              'plugin-sdk',
+              ...regularPlugins
+                .filter((id) => id !== 'waste-management')
+                .map((id) => `plugin-${id}`),
+              'waste-management-contracts',
+              'waste-management-runtime',
+            ]
+          : ['plugin-sdk', 'plugin-ssf', 'waste-management-contracts', 'waste-management-runtime'],
     chunkProvenance: {
       schemaVersion: 1,
       distribution,
+      ...(fingerprint ? { pluginSetFingerprint: fingerprint } : {}),
       chunks: [
         {
           path: 'public/assets/index.js',
           sha256: 'c'.repeat(64),
-          pluginPackages: [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news'],
+          pluginPackages:
+            distribution === 'custom'
+              ? selectedPluginIds.map((id) => `plugin-${id}`)
+              : [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news'],
         },
         {
           path: 'server/_ssr/router.mjs',
           sha256: 'd'.repeat(64),
-          pluginPackages: [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news'],
+          pluginPackages:
+            distribution === 'custom'
+              ? selectedPluginIds.map((id) => `plugin-${id}`)
+              : [distribution === 'ssf' ? 'plugin-ssf' : 'plugin-news'],
         },
       ],
     },
@@ -132,6 +183,72 @@ describe('verify-studio-image-contract', () => {
       });
     }
   );
+
+  it('accepts a custom digest only with its normalized set fingerprint and exact package inventory', () => {
+    const input = validInput('custom');
+    expect(JSON.parse(verify(input))).toMatchObject({
+      distribution: 'custom',
+      includedPluginIds: ['categories', 'news', 'ssf'],
+      excludedWorkspacePackages: input.runtimeManifest.excludedWorkspacePackages,
+    });
+    input.inspection[0]!.Config.Labels['com.sva-studio.plugin-set-fingerprint'] = '0'.repeat(64);
+    expect(() => verify(input)).toThrow();
+  });
+
+  it.each([
+    [
+      'manifest fingerprint',
+      (input: ReturnType<typeof validInput>) => {
+        input.runtimeManifest.pluginSetFingerprint = '0'.repeat(64);
+      },
+    ],
+    [
+      'provenance fingerprint',
+      (input: ReturnType<typeof validInput>) => {
+        input.chunkProvenance.pluginSetFingerprint = '0'.repeat(64);
+      },
+    ],
+    [
+      'unselected package',
+      (input: ReturnType<typeof validInput>) => {
+        input.packages.push('plugin-events');
+      },
+    ],
+    [
+      'unselected executable source',
+      (input: ReturnType<typeof validInput>) => {
+        input.chunkProvenance.chunks[0]!.pluginPackages.push('plugin-events');
+      },
+    ],
+    [
+      'missing selected package',
+      (input: ReturnType<typeof validInput>) => {
+        input.packages = input.packages.filter((name) => name !== 'plugin-categories');
+      },
+    ],
+    [
+      'missing selected server entry',
+      (input: ReturnType<typeof validInput>) => {
+        input.chunkProvenance.chunks[1]!.pluginPackages = ['plugin-news', 'plugin-ssf'];
+      },
+    ],
+    [
+      'noncanonical selection',
+      (input: ReturnType<typeof validInput>) => {
+        input.expectedPluginIds = ['ssf', 'news', 'categories'];
+      },
+    ],
+    [
+      'duplicate selection',
+      (input: ReturnType<typeof validInput>) => {
+        input.expectedPluginIds = ['news', 'news'];
+      },
+    ],
+  ])('rejects a custom image with %s', (_reason, mutate) => {
+    const input = validInput('custom');
+    mutate(input);
+    expect(() => verify(input)).toThrow();
+  });
 
   it.each([
     [

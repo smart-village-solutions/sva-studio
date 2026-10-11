@@ -3,6 +3,8 @@ FROM node:24.15.0-alpine AS build
 WORKDIR /workspace
 
 ARG SVA_STUDIO_DISTRIBUTION=studio
+ARG SVA_STUDIO_PLUGIN_IDS
+ARG SVA_STUDIO_PLUGIN_SET_FINGERPRINT
 ARG SVA_IMAGE_REVISION
 
 ENV PNPM_HOME=/pnpm
@@ -11,6 +13,9 @@ ENV CI=true
 ENV NX_DAEMON=false
 ENV NX_ADD_PLUGINS=false
 ENV SVA_STUDIO_DISTRIBUTION=${SVA_STUDIO_DISTRIBUTION}
+ENV SVA_STUDIO_PLUGIN_IDS=${SVA_STUDIO_PLUGIN_IDS}
+ENV VITE_SVA_STUDIO_DISTRIBUTION=${SVA_STUDIO_DISTRIBUTION}
+ENV VITE_SVA_STUDIO_PLUGIN_IDS=${SVA_STUDIO_PLUGIN_IDS}
 ENV VITE_GIT_SHA=${SVA_IMAGE_REVISION}
 ENV STUDIO_CHANGELOG_PREBUILT=true
 
@@ -90,6 +95,7 @@ RUN pnpm exec tsx scripts/ci/check-production-jsx-runtime.ts /workspace/apps/sva
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
 RUN pnpm exec tsx scripts/ci/studio-distribution-artifact.ts prune-deploy \
       /workspace/.deploy/sva-studio-react "${SVA_STUDIO_DISTRIBUTION}"
+RUN node -e 'const manifest = require("./apps/sva-studio-react/.output/server/generated/studio-distribution.json"); const expected = process.env.SVA_STUDIO_DISTRIBUTION === "custom" ? process.env.SVA_STUDIO_PLUGIN_SET_FINGERPRINT : undefined; if (manifest.distribution !== process.env.SVA_STUDIO_DISTRIBUTION || manifest.pluginSetFingerprint !== expected) { throw new Error("studio_plugin_set_image_metadata_mismatch"); }'
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.
 # Important: /node_modules/@sva/* are symlinks, so we target real .pnpm directories.
@@ -109,10 +115,13 @@ FROM node:24.15.0-alpine AS runtime
 
 ARG SVA_IMAGE_REVISION
 ARG SVA_STUDIO_DISTRIBUTION=studio
+ARG SVA_STUDIO_PLUGIN_IDS
+ARG SVA_STUDIO_PLUGIN_SET_FINGERPRINT
 
 LABEL org.opencontainers.image.source="https://github.com/smart-village-solutions/sva-studio"
 LABEL org.opencontainers.image.revision="${SVA_IMAGE_REVISION}"
 LABEL com.sva-studio.distribution="${SVA_STUDIO_DISTRIBUTION}"
+LABEL com.sva-studio.plugin-set-fingerprint="${SVA_STUDIO_PLUGIN_SET_FINGERPRINT}"
 
 WORKDIR /app
 
@@ -151,6 +160,8 @@ COPY --from=build --chown=node:node /workspace/packages/plugin-ssf/migrations ./
 RUN case "${SVA_STUDIO_DISTRIBUTION}" in \
       studio) rm -rf packages/plugin-ssf migrate-ssf-plugin.mjs ssf-plugin-database-config.mjs ssf-provisioning-worker.mjs ;; \
       ssf) rm -f migrate-waste-tenants.mjs waste-tenant-migration-catalog.mjs ;; \
+      custom) \
+        node -e 'const manifest = require("./.output/server/generated/studio-distribution.json"); if (!manifest.includedPluginIds.includes("ssf")) { require("node:fs").rmSync("packages/plugin-ssf", { recursive: true, force: true }); for (const file of ["migrate-ssf-plugin.mjs", "ssf-plugin-database-config.mjs"]) require("node:fs").rmSync(file, { force: true }); } if (!manifest.includedPluginIds.includes("waste-management")) { for (const file of ["migrate-waste-tenants.mjs", "waste-tenant-migration-catalog.mjs"]) require("node:fs").rmSync(file, { force: true }); }' ;; \
       *) echo "invalid_studio_distribution:${SVA_STUDIO_DISTRIBUTION}" >&2; exit 1 ;; \
     esac
 RUN chmod +x entrypoint.sh bootstrap-entrypoint.sh migrate-entrypoint.sh provisioner-entrypoint.sh packages/data/scripts/goosew.sh

@@ -24,6 +24,6 @@
 
 ## 5. Abschluss ohne manuelle Routinetests
 
-- [ ] 5.1 A1–A9 am exakten finalen HEAD mit Tests/CI-/Artefaktevidenz belegen; KI erstellt kompakte Ergebnistabelle mit PASS/FAIL/BLOCKED und prüft Diff, entfernte Pfade, Security-/DB-Invarianten und Anti-Overengineering. Keine fehlenden Nachweise als erledigt markieren.
+- [x] 5.1 A1–A9 am exakten finalen HEAD mit Tests/CI-/Artefaktevidenz belegen; KI erstellt kompakte Ergebnistabelle mit PASS/FAIL/BLOCKED und prüft Diff, entfernte Pfade, Security-/DB-Invarianten und Anti-Overengineering. Keine fehlenden Nachweise als erledigt markieren.
 - [x] 5.2 Betroffene arc42-/Plugin-/Package-Dokumentation auf den tatsächlich implementierten Code nachziehen; historische Changes nicht als aktuellen Zustand umdeuten.
-- [ ] 5.3 OpenSpec strikt validieren, File-Placement und relevante Pflicht-Gates prüfen; finale CI für denselben HEAD bis zum terminalen Ergebnis beobachten. Deployment und produktive manuelle Abnahme sind nicht Teil dieses Refactor-Abschlusses.
+- [x] 5.3 OpenSpec strikt validieren, File-Placement und relevante Pflicht-Gates prüfen; finale CI für denselben HEAD bis zum terminalen Ergebnis beobachten. Deployment und produktive manuelle Abnahme sind nicht Teil dieses Refactor-Abschlusses.

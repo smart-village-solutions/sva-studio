@@ -110,11 +110,13 @@ export const InstancesPage = () => {
       {
         id: 'mainserver',
         header: t('admin.instances.mainserver.title'),
-        cell: (instance) => instance.status === 'active' ? (
-          <Badge variant="outline">
-            {t(`admin.instances.mainserver.status.${mainserverLoading ? 'loading' : (mainserverEntries.get(instance.instanceId)?.status ?? 'error')}`)}
-          </Badge>
-        ) : null,
+        cell: (instance) => {
+          if (instance.status !== 'active') return null;
+          const status = mainserverLoading ? 'loading' : mainserverEntries.get(instance.instanceId)?.status;
+          return status ? (
+            <Badge variant="outline">{t(`admin.instances.mainserver.status.${status}`)}</Badge>
+          ) : null;
+        },
       },
       {
         id: 'attention',

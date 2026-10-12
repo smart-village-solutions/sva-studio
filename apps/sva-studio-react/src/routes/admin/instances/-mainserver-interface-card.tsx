@@ -78,6 +78,11 @@ export const MainserverInterfaceCard = ({ instanceId }: { instanceId: string }) 
         const { data } = await getRootMainserverInterface(instanceId);
         if (currentInstanceId.current !== instanceId) return;
         setInterfaceState(data);
+        if (data.config) {
+          setGraphqlBaseUrl(data.config.graphqlBaseUrl);
+          setOauthTokenUrl(data.config.oauthTokenUrl);
+          setEnabled(data.config.enabled);
+        }
       } catch {
         // Preserve the submitted fields so the user can retry after the read failure.
       }

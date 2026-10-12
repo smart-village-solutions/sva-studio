@@ -1,13 +1,12 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstancesPage } from './-instances-page';
 
 const useInstancesMock = vi.fn();
+const listMainserverInterfacesMock = vi.hoisted(() => vi.fn());
 vi.mock('../../../lib/iam-api-instances', () => ({
-  listRootMainserverInterfaces: vi.fn(async () => ({ data: { entries: [
-    { instanceId: 'demo', displayName: 'Demo', status: 'missing', config: null },
-  ] } })),
+  listRootMainserverInterfaces: listMainserverInterfacesMock,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -79,6 +78,20 @@ describe('InstancesPage', () => {
 
   beforeEach(() => {
     useInstancesMock.mockReset();
+    listMainserverInterfacesMock.mockReset();
+    listMainserverInterfacesMock.mockResolvedValue({ data: { entries: [
+      { instanceId: 'demo', displayName: 'Demo', status: 'missing', config: null },
+    ] } });
+  });
+
+  it('shows a page error without labeling every instance as a failed read', async () => {
+    listMainserverInterfacesMock.mockRejectedValue(new Error('inventory unavailable'));
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+
+    render(<InstancesPage />);
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Mainserver-Schnittstellen konnten nicht geladen'));
+    expect(screen.queryByText('Lesefehler')).toBeNull();
   });
 
   it('renders the overview table and the Mainserver inventory without an activation shortcut', async () => {

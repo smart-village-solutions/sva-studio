@@ -201,6 +201,51 @@ describe('iam-instance-registry/server', () => {
     }
   });
 
+  it.each([
+    ['instance.list', '/api/v1/iam/instances/mainserver-interfaces'],
+    ['instance.read', '/api/v1/iam/instances/demo/mainserver-interface'],
+  ] as const)('rejects tenant-host Mainserver %s requests', async (actionId, path) => {
+    vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
+    try {
+      const { withRootMainserverRegistryAccess } = await import('./server.js');
+      const work = vi.fn(async () => new Response('unreachable'));
+      const response = await withRootMainserverRegistryAccess(
+        new Request(`https://tenant.studio.example.org${path}`, {
+          headers: { authorization: 'Bearer signed-token' },
+        }),
+        actionId,
+        work
+      );
+      expect(response.status).toBe(403);
+      expect(work).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('rejects a Root session PUT without the required CSRF header', async () => {
+    vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
+    state.withAuthenticatedUser.mockImplementation(
+      async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
+        work({ user: { id: 'admin-1', roles: ['instance_registry_admin'] }, request } as never)
+    );
+    try {
+      const { withRootMainserverRegistryAccess } = await import('./server.js');
+      const work = vi.fn(async () => new Response('unreachable'));
+      const response = await withRootMainserverRegistryAccess(
+        new Request('https://studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
+          method: 'PUT',
+        }),
+        'instance.update',
+        work
+      );
+      expect(response.status).toBe(403);
+      expect(work).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('authorizes explicit tenant provisioning retries with instance.create', async () => {
     const { instanceRegistryHandlers } = await import('./server.js');
     const request = new Request(

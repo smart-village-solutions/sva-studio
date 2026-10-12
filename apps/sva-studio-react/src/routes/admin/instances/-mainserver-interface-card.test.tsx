@@ -119,4 +119,28 @@ describe('MainserverInterfaceCard', () => {
     expect(screen.getByDisplayValue('https://bb-spremberg.example.test/graphql')).toBeTruthy();
     expect(screen.queryByText('Deaktiviert')).toBeNull();
   });
+
+  it('shows the persisted values from readback after an uncertain save failure', async () => {
+    api.get
+      .mockResolvedValueOnce({ data: { instanceId: 'bb-prenzlau', status: 'configured', config: {
+        graphqlBaseUrl: 'https://old.example.test/graphql',
+        oauthTokenUrl: 'https://old.example.test/token',
+        enabled: true,
+      } } })
+      .mockResolvedValueOnce({ data: { instanceId: 'bb-prenzlau', status: 'disabled', config: {
+        graphqlBaseUrl: 'https://stored.example.test/graphql',
+        oauthTokenUrl: 'https://stored.example.test/token',
+        enabled: false,
+      } } });
+    api.save.mockRejectedValue(new Error('audit unavailable'));
+    render(<MainserverInterfaceCard instanceId="bb-prenzlau" />);
+    await screen.findByDisplayValue('https://old.example.test/graphql');
+    fireEvent.change(screen.getByLabelText('GraphQL-URL'), { target: { value: 'https://stored.example.test/graphql' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Schnittstelle speichern' }));
+
+    expect(await screen.findByDisplayValue('https://stored.example.test/graphql')).toBeTruthy();
+    expect(screen.getByDisplayValue('https://stored.example.test/token')).toBeTruthy();
+    expect(screen.getByLabelText('Schnittstelle aktiviert')).toHaveProperty('checked', false);
+    expect(screen.getByRole('alert').textContent).toContain('Bitte den Zustand erneut prüfen');
+  });
 });

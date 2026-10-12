@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const access = {
-  actorId: 'admin',
   listActiveInstances: vi.fn(),
   instanceExists: vi.fn(),
   recordSave: vi.fn(),

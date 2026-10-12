@@ -32,7 +32,8 @@ export const runSsfProvisioningWorker = async (
       customManifest.distribution !== 'custom' ||
       !Array.isArray(selected) ||
       !Array.isArray(moduleIds) ||
-      JSON.stringify([...selected].sort()) !== JSON.stringify([...moduleIds].sort())
+      JSON.stringify([...selected].sort((left, right) => left.localeCompare(right))) !==
+        JSON.stringify([...moduleIds].sort((left, right) => left.localeCompare(right)))
     ) {
       throw new Error('custom_provisioning_snapshot_mismatch');
     }

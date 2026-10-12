@@ -95,8 +95,12 @@ export class KeycloakTenantAdminAccessOperations extends KeycloakOidcClientOpera
     return {
       defaultRealmRoleId: defaultRole.defaultRole.id,
       defaultRealmRoleAssigned: defaultRole.assigned,
-      directRoleNames: [...new Set(directRoles.map((role) => role.name))].sort(),
-      effectiveRoleNames: [...new Set(effectiveRoles.map((role) => role.name))].sort(),
+      directRoleNames: [...new Set(directRoles.map((role) => role.name))].sort((left, right) =>
+        left.localeCompare(right)
+      ),
+      effectiveRoleNames: [...new Set(effectiveRoles.map((role) => role.name))].sort(
+        (left, right) => left.localeCompare(right)
+      ),
       rolesSafe: tenantAdminServiceRoleMappingsAreSafe(directRoles, effectiveRoles),
     };
   }

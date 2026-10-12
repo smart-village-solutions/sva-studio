@@ -22,7 +22,8 @@ vi.mock('node:dns/promises', () => ({
   lookup: state.dnsLookup,
 }));
 
-vi.mock('@sva/server-runtime', () => ({
+vi.mock('@sva/server-runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/server-runtime')>()),
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({
     requestId: 'req-mainserver',

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1851,
+  "body": "Die Mainserver-Schnittstellen aktiver Mandanten lassen sich jetzt zentral im Studio-Root prüfen und gezielt verwalten. Fehlende oder deaktivierte Konfigurationen sind auch über den Studio-MCP sichtbar."
+}

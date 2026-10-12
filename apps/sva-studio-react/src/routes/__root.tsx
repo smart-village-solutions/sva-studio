@@ -154,13 +154,15 @@ export const getRootHead = ({ loaderData }: { loaderData?: RootLoaderData } = {}
   ],
 });
 
-export const Route = createRootRoute({
+export const createAppRootRoute = () => createRootRoute({
   errorComponent: ErrorFallback,
   notFoundComponent: NotFound,
   loader: loadRootData,
   head: getRootHead,
   component: RootComponent,
 });
+
+export const Route = createAppRootRoute();
 
 export const rootRoute = Route;
 

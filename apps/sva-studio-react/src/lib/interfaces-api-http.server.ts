@@ -1,5 +1,6 @@
 import { mailTransportContract } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { dispatchRootMainserverInterfacesRequest } from '@sva/sva-mainserver/server';
 import { z } from 'zod';
 
 import {
@@ -209,6 +210,10 @@ const handleDelete = async (request: Request, id: string): Promise<Response> => 
 
 export const dispatchInterfacesApiRequest = async (request: Request): Promise<Response | null> => {
   const { pathname } = new URL(request.url);
+  if (pathname === '/api/v1/iam/instances/mainserver-interfaces' ||
+      /^\/api\/v1\/iam\/instances\/[^/]+\/mainserver-interface$/u.test(pathname)) {
+    return dispatchRootMainserverInterfacesRequest(request);
+  }
   if (pathname === '/api/v1/interfaces/mainserver') {
     try {
       return await dispatchMainserverSettingsRequest(request);

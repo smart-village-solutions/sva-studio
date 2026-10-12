@@ -15,7 +15,39 @@ import type {
   PluginTenantReadinessReadModel,
 } from '@sva/plugin-sdk';
 
-import { patchJson, postJson, requestJson } from './iam-http-client';
+import { patchJson, postJson, putJson, requestJson } from './iam-http-client';
+
+export type RootMainserverInterface = {
+  readonly instanceId: string;
+  readonly status: 'missing' | 'disabled' | 'configured' | 'error';
+  readonly errorCode?: string;
+  readonly config: {
+    readonly graphqlBaseUrl: string;
+    readonly oauthTokenUrl: string;
+    readonly enabled: boolean;
+  } | null;
+};
+
+export type RootMainserverInterfaceListEntry = RootMainserverInterface & {
+  readonly displayName: string;
+};
+
+export const listRootMainserverInterfaces = () =>
+  requestJson<{ data: { entries: RootMainserverInterfaceListEntry[] } }>(
+    '/api/v1/iam/instances/mainserver-interfaces'
+  );
+
+export const getRootMainserverInterface = (instanceId: string) =>
+  requestJson<{ data: RootMainserverInterface }>(
+    `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/mainserver-interface`
+  );
+
+export const saveRootMainserverInterface = (
+  instanceId: string,
+  payload: { graphqlBaseUrl: string; oauthTokenUrl: string; enabled: boolean }
+) => putJson<{ data: RootMainserverInterface }, typeof payload>(
+  `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/mainserver-interface`, payload
+);
 
 import type {
   CreateInstancePayload,

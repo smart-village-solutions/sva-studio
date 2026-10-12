@@ -120,6 +120,10 @@ export {
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export {
+  withRootMainserverRegistryAccess,
+  type RootMainserverRegistryAccess,
+} from './iam-instance-registry/server.js';
+export {
   assertPluginServerHandlerCoverage,
   createPluginServerHandlerDispatcher,
   type PluginServerHandlerDispatcherDependencies,

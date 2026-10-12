@@ -193,6 +193,7 @@ describe('instance provisioner proxy', () => {
     ['GET', '/api/v1/iam/instances'],
     ['GET', '/api/v1/iam/instances/draft-readiness'],
     ['GET', '/api/v1/iam/instances/audit'],
+    ['GET', '/api/v1/iam/instances/mainserver-interfaces'],
     ['POST', '/api/v1/iam/instances/keycloak-realms'],
     ['GET', '/api/v1/iam/instances/tenant-one/keycloak/status'],
     ['GET', '/api/v1/iam/instances/tenant-one/keycloak/execute'],

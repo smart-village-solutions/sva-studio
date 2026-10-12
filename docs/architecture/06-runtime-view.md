@@ -1159,6 +1159,12 @@ Fehlerpfad:
 
 Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine abgelaufene, wiederverwendete oder durch Zustandsänderung veraltete Challenge verlangt einen neuen Vorab-Read. Weder MCP noch Studio wiederholen Mutationen automatisch.
 
+### Root-Verwaltung der Mainserver-Schnittstelle
+
+1. Root-Oberfläche oder zentraler Studio-MCP ruft `GET /api/v1/iam/instances/mainserver-interfaces` auf. Die Registry liefert nur aktive Instanzen; je Instanz wird der vorhandene, an `instance_id` gebundene Default-Eintrag gelesen. Die Antwort unterscheidet `missing`, `disabled`, `configured` und `error`. Das ist ein Konfigurationsstatus, kein Provider-Healthcheck.
+2. Für eine aktive Zielinstanz liest `GET /api/v1/iam/instances/{instanceId}/mainserver-interface` die öffentlichen URLs. `PUT` validiert URL und Aktivierung, speichert über denselben Settings-Pfad wie die Tenant-Verwaltung, protokolliert den Registry-Audit-Eintrag und liest den Zustand erneut.
+3. Root-Host und `instance_registry_admin` gelten für Browser- und Service-Zugriff. Browser-Mutationen benötigen CSRF, Service-Tokens die Registry-Action `instance.update`. Ein Lesefehler wird nie als fehlender Eintrag ausgegeben; bei unklarem Schreibergebnis erfolgt ein erneuter Detailread.
+
 ## Backup-Agent-Laufzeit
 
 1. `Promote` bezieht ein GitHub-OIDC-Token, signiert den kurzlebigen Auftrag und sendet ihn an den Zielhost.

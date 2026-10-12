@@ -26,6 +26,7 @@ import { InstanceDetailBetriebSection } from './-instance-detail-betrieb-section
 import { InstanceDetailDoctorSection } from './-instance-detail-doctor-section';
 import { InstanceDetailAuditSection } from './-instance-detail-audit-section';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
+import { MainserverInterfaceCard } from './-mainserver-interface-card';
 
 type WorkspaceTab = 'betrieb' | 'doctor' | 'einstellungen';
 
@@ -261,6 +262,9 @@ export const InstanceDetailWorkspace = ({
             onSaveAccountInvitationTemplate={onSaveAccountInvitationTemplate}
             saveStatus={saveStatus}
           />
+          {selectedInstance.status === 'active' ? (
+            <MainserverInterfaceCard instanceId={selectedInstance.instanceId} />
+          ) : null}
         </TabsContent>
       </Tabs>
 

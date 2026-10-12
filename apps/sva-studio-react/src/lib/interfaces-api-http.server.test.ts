@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   remove: vi.fn(),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'sanitized-request-id' })),
   logger: { error: vi.fn() },
+  rootMainserver: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -17,11 +18,21 @@ vi.mock('./interfaces-api', () => ({
   upsertInstanceInterfaceForRequest: state.upsert,
 }));
 vi.mock('./interfaces-api-list', () => ({ listInstanceInterfaces: state.list }));
+vi.mock('@sva/sva-mainserver/server', () => ({ dispatchRootMainserverInterfacesRequest: state.rootMainserver }));
 
 describe('personal interface HTTP routes', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+  });
+
+  it('routes root Mainserver inventory to the shared Root contract', async () => {
+    state.rootMainserver.mockResolvedValue(Response.json({ data: { entries: [] } }));
+    const { dispatchInterfacesApiRequest } = await import('./interfaces-api-http.server');
+    const request = new Request('https://studio.example.test/api/v1/iam/instances/mainserver-interfaces');
+    const response = await dispatchInterfacesApiRequest(request);
+    expect(response?.status).toBe(200);
+    expect(state.rootMainserver).toHaveBeenCalledWith(request);
   });
 
   it('serves the sanitized tenant-owned interface list without the Mainserver contract', async () => {

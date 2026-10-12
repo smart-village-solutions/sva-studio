@@ -793,6 +793,8 @@ Referenzen:
 
 ### Persönliche MCP-Schnittstellenverwaltung
 
+Die Root-Verwaltung der Mainserver-Schnittstelle ergänzt die tenantgebundene Verwaltung über denselben kanonischen `iam.instance_external_interfaces`-Datensatz. Ihr HTTP-/MCP-Vertrag ist auf aktive Instanzen und einen einzelnen Zielmandanten pro Schreibaufruf begrenzt. `missing` bedeutet kein Datensatz, `disabled` einen deaktivierten Datensatz, `configured` einen aktivierten Datensatz und `error` einen fehlgeschlagenen Read. Öffentliche Endpunkt-URLs und Aktivierungsstatus sind die einzigen Schreibfelder; Credential- oder Provider-Readiness ist nicht Teil dieses Status. Audit-Daten enthalten weder Zugangsdaten noch URLs.
+
 - Mainserver-Konfigurationen besitzen den dedizierten GET-/POST-Vertrag `/api/v1/interfaces/mainserver`. Actor-/Host-/Tenant-Bindung und `integration.manage` bleiben zuständig; POST delegiert öffentliche URLs und Aktivierungsstatus an den vorhandenen Mainserver-Speicherpfad. Browser-CSRF und persönliche Bearer-Prüfung bleiben erhalten; Save und Provider-Readiness sind getrennte Nachweise.
 
 - Persönliche Schnittstellenaufrufe verwenden ausschließlich die explizit gewählte Tenant-API und den bestehenden `integration.manage`-Autorisierungs- und Instanzkontext. Die Listenprojektion enthält keine Mainserver-Übersicht; pluginverwaltete Interfaces bleiben außerhalb allgemeiner Tenant-Verwaltung.

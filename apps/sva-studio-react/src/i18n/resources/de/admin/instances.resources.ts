@@ -19,6 +19,7 @@ import { invitationInstancesAdminDEResources } from './instances/invitation.reso
 import { keycloakPanelInstancesAdminDEResources } from './instances/keycloakPanel.resources.js';
 import { keycloakStatusInstancesAdminDEResources } from './instances/keycloakStatus.resources.js';
 import { messagesInstancesAdminDEResources } from './instances/messages.resources.js';
+import { mainserverInstancesAdminDEResources } from './instances/mainserver.resources.js';
 import { operationsInstancesAdminDEResources } from './instances/operations.resources.js';
 import { pageInstancesAdminDEResources } from './instances/page.resources.js';
 import { pluginReadinessInstancesAdminDEResources } from './instances/pluginReadiness.resources.js';
@@ -52,6 +53,7 @@ export const instancesAdminDEResources = {
   keycloakPanel: keycloakPanelInstancesAdminDEResources,
   keycloakStatus: keycloakStatusInstancesAdminDEResources,
   messages: messagesInstancesAdminDEResources,
+  mainserver: mainserverInstancesAdminDEResources,
   operations: operationsInstancesAdminDEResources,
   page: pageInstancesAdminDEResources,
   pluginReadiness: pluginReadinessInstancesAdminDEResources,

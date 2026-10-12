@@ -118,6 +118,7 @@ export const MainserverInterfaceCard = ({ instanceId }: { instanceId: string }) 
               id="mainserver-graphql-url"
               type="url"
               required
+              disabled={saving}
               maxLength={4096}
               value={graphqlBaseUrl}
               onChange={(event) => setGraphqlBaseUrl(event.target.value)}
@@ -131,6 +132,7 @@ export const MainserverInterfaceCard = ({ instanceId }: { instanceId: string }) 
               id="mainserver-oauth-url"
               type="url"
               required
+              disabled={saving}
               maxLength={4096}
               value={oauthTokenUrl}
               onChange={(event) => setOauthTokenUrl(event.target.value)}
@@ -140,6 +142,7 @@ export const MainserverInterfaceCard = ({ instanceId }: { instanceId: string }) 
             <input
               id="mainserver-enabled"
               type="checkbox"
+              disabled={saving}
               checked={enabled}
               onChange={(event) => setEnabled(event.target.checked)}
             />

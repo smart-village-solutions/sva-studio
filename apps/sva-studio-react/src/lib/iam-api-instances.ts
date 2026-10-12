@@ -28,7 +28,7 @@ export type RootMainserverInterface = {
   } | null;
 };
 
-export type RootMainserverInterfaceListEntry = RootMainserverInterface & {
+export type RootMainserverInterfaceListEntry = Pick<RootMainserverInterface, 'instanceId' | 'status' | 'errorCode'> & {
   readonly displayName: string;
 };
 

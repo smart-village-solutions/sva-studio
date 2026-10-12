@@ -49,8 +49,8 @@ describe('root Mainserver interface HTTP contract', () => {
     const response = await dispatchRootMainserverInterfacesRequest(new Request(`${base}/mainserver-interfaces`));
     expect(response?.status).toBe(200);
     expect(await response?.json()).toEqual({ data: { entries: [
-      { instanceId: 'bb-prenzlau', displayName: 'Prenzlau', status: 'configured', config },
-      { instanceId: 'bb-spremberg', displayName: 'Spremberg', status: 'error', errorCode: 'mainserver_interface_read_failed', config: null },
+      { instanceId: 'bb-prenzlau', displayName: 'Prenzlau', status: 'configured' },
+      { instanceId: 'bb-spremberg', displayName: 'Spremberg', status: 'error', errorCode: 'mainserver_interface_read_failed' },
     ] } });
     expect(withRootMainserverRegistryAccess).toHaveBeenCalledWith(expect.any(Request), 'instance.list', expect.any(Function));
   });

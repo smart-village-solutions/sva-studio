@@ -63,9 +63,9 @@ export const dispatchRootMainserverInterfacesRequest = (request: Request): Promi
         const batch = await Promise.all(instances.slice(offset, offset + 8).map(async (instance) => {
           try {
             const config = await loadSvaMainserverSettings(instance.instanceId);
-            return { ...instance, status: statusFor(config), config };
+            return { ...instance, status: statusFor(config) };
           } catch {
-            return { ...instance, status: 'error' as const, errorCode: 'mainserver_interface_read_failed', config: null };
+            return { ...instance, status: 'error' as const, errorCode: 'mainserver_interface_read_failed' };
           }
         }));
         entries.push(...batch);

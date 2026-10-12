@@ -143,4 +143,25 @@ describe('MainserverInterfaceCard', () => {
     expect(screen.getByLabelText('Schnittstelle aktiviert')).toHaveProperty('checked', false);
     expect(screen.getByRole('alert').textContent).toContain('Bitte den Zustand erneut prüfen');
   });
+
+  it('locks the draft while a save is in flight', async () => {
+    let finishSave: ((value: unknown) => void) | undefined;
+    const data = { instanceId: 'bb-prenzlau', status: 'configured', config: {
+      graphqlBaseUrl: 'https://server.example.test/graphql',
+      oauthTokenUrl: 'https://server.example.test/token',
+      enabled: true,
+    } };
+    api.get.mockResolvedValue({ data });
+    api.save.mockImplementation(() => new Promise((resolve) => { finishSave = resolve; }));
+    render(<MainserverInterfaceCard instanceId="bb-prenzlau" />);
+    await screen.findByDisplayValue(data.config.graphqlBaseUrl);
+    fireEvent.click(screen.getByRole('button', { name: 'Schnittstelle speichern' }));
+
+    await waitFor(() => expect(api.save).toHaveBeenCalledOnce());
+    expect(screen.getByLabelText('GraphQL-URL').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('OAuth-Token-URL').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('Schnittstelle aktiviert').hasAttribute('disabled')).toBe(true);
+    await act(async () => { finishSave?.({ data }); });
+    expect(screen.getByLabelText('GraphQL-URL').hasAttribute('disabled')).toBe(false);
+  });
 });

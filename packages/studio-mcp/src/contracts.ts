@@ -23,6 +23,7 @@ export const instanceInput = z.object({ instanceId }).strict();
 export const instanceMutationInput = z.object({ instanceId, ...mutationMeta }).strict();
 
 export const schemas = {
+  empty: emptyInput,
   list: listQuerySchema.strict(),
   realmCatalog: z
     .object({
@@ -33,6 +34,12 @@ export const schemas = {
     .strict(),
   draftReadiness: createInstanceSchema.strict(),
   instance: instanceInput,
+  mainserverInterfaceSave: z.object({
+    instanceId,
+    graphqlBaseUrl: z.url(),
+    oauthTokenUrl: z.url(),
+    enabled: z.boolean(),
+  }).strict(),
   auditAll: z
     .object({
       instanceIds: z.array(instanceId).max(100).optional(),

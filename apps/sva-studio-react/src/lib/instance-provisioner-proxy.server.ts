@@ -10,7 +10,7 @@ const forwardedRoutes = new Map<string, ReadonlySet<string>>([
   ['/api/v1/iam/instances/keycloak-realms', new Set(['GET'])],
 ]);
 
-const reservedInstancePaths = new Set(['audit', 'draft-readiness', 'keycloak-realms']);
+const reservedInstancePaths = new Set(['audit', 'draft-readiness', 'keycloak-realms', 'mainserver-interfaces']);
 const forwardedInstanceRoutes = new Map<string, ReadonlySet<string>>([
   ['', new Set(['GET'])],
   ['/keycloak/plan', new Set(['GET', 'POST'])],

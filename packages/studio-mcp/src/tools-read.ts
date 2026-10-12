@@ -46,6 +46,22 @@ const registerCatalogTools = (register: ToolRegistrar, client: StudioApiClient):
     (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}` })
   );
   register(
+    'studio_mainserver_interfaces_list',
+    'Mainserver-Schnittstellen aktiver Instanzen auflisten',
+    'Liest je aktiver Instanz den zentral gespeicherten Mainserver-Status: missing, disabled, configured oder error.',
+    schemas.empty,
+    readAnnotations,
+    () => call(client, { path: '/api/v1/iam/instances/mainserver-interfaces' })
+  );
+  register(
+    'studio_instance_mainserver_interface_get',
+    'Mainserver-Schnittstelle einer Instanz lesen',
+    'Liest die öffentliche Mainserver-Konfiguration einer aktiven Instanz.',
+    schemas.instance,
+    readAnnotations,
+    (p) => call(client, { path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/mainserver-interface` })
+  );
+  register(
     'studio_instance_audit',
     'Instanz-Audit lesen',
     'Liest den Audit-Lauf einer Instanz.',

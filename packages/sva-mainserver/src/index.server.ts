@@ -12,6 +12,7 @@ export {
 } from './server/mutation-principal.js';
 export * from './server/poi-route.js';
 export * from './server/settings.js';
+export * from './server/root-interface-contract.js';
 export * from './server/service.js';
 export * from './server/surveys-route.js';
 export {

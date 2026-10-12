@@ -6,6 +6,7 @@ import {
 } from '@sva/server-runtime';
 
 import { withAuthenticatedUser } from '../middleware.js';
+import { validateCsrf as validateSessionCsrf } from '../iam-account-management/csrf.js';
 import { buildLogContext } from '../log-context.js';
 
 import {
@@ -13,6 +14,8 @@ import {
   type RegistryActionId,
   type RegistryRequestContext,
 } from './auth-context.js';
+import { ensurePlatformAccess } from './http.js';
+import { withRegistryRepository } from './repository.js';
 import { prepareInstanceConfirmationInternal } from './confirmation.js';
 import {
   authenticateRegistryServiceToken,
@@ -117,6 +120,44 @@ const withAuthenticatedRegistryHandler = (
         requestId: logContext.request_id,
       });
     }
+  });
+
+export type RootMainserverRegistryAccess = {
+  readonly listActiveInstances: () => Promise<readonly { instanceId: string; displayName: string }[]>;
+  readonly instanceExists: (instanceId: string) => Promise<boolean>;
+  readonly recordSave: (instanceId: string, enabled: boolean) => Promise<void>;
+};
+
+export const withRootMainserverRegistryAccess = (
+  request: Request,
+  actionId: 'instance.list' | 'instance.read' | 'instance.update',
+  work: (access: RootMainserverRegistryAccess) => Promise<Response>
+): Promise<Response> =>
+  withAuthenticatedRegistryHandler(request, actionId, async (authorizedRequest, ctx) => {
+    const accessError = ensurePlatformAccess(authorizedRequest, ctx);
+    if (accessError) return accessError;
+    if (actionId === 'instance.update' && ctx.authKind === 'session') {
+      const csrfError = validateSessionCsrf(authorizedRequest, buildLogContext('platform').request_id);
+      if (csrfError) return csrfError;
+    }
+    return work({
+      listActiveInstances: async () =>
+        (await withRegistryRepository((repository) => repository.listInstances({ status: 'active' }))).map(
+          ({ instanceId, displayName }) => ({ instanceId, displayName })
+        ),
+      instanceExists: async (instanceId) =>
+        (await withRegistryRepository((repository) => repository.getInstanceById(instanceId)))?.status === 'active',
+      recordSave: async (instanceId, enabled) =>
+        withRegistryRepository((repository) =>
+          repository.appendAuditEvent({
+            instanceId,
+            eventType: 'instance_reconfigured',
+            actorId: ctx.user.id,
+            requestId: buildLogContext('platform').request_id,
+            details: { area: 'mainserver_interface', enabled },
+          })
+        ),
+    });
   });
 
 export const instanceRegistryHandlers = {

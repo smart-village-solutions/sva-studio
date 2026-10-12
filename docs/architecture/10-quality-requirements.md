@@ -1,5 +1,7 @@
 # 10 Qualitätsanforderungen
 
+Für die zentrale Mainserver-Verwaltung muss jeder aktive Mandant im Root-Inventar erscheinen, auch wenn seine Schnittstelle fehlt oder der instanzgebundene Read scheitert. Nur ein autorisierter Root-Administrator oder Service-Token mit passender Registry-Action darf lesen beziehungsweise gezielt speichern. Der Save verwendet die vorhandene URL-Validierung und bestätigt den Zustand durch Datenbank-Readback; ein fehlgeschlagener Read darf nie als `missing` gelten.
+
 ## Plugin-Aktivierungsrichtlinien
 
 - Ein vorhandener manueller Modulzustand muss bei der Schema-Migration als aktiver manueller Override erhalten bleiben; Migration und Reconcile dürfen keine Plugin-Fachdaten löschen.

@@ -9,6 +9,18 @@ const registerInstanceWriteTools = (
   config: StudioMcpConfig
 ): void => {
   register(
+    'studio_instance_mainserver_interface_save',
+    'Mainserver-Schnittstelle einer Instanz speichern',
+    'Erstellt oder aktualisiert die Mainserver-Schnittstelle genau einer aktiven Instanz und liest den gespeicherten Zustand zurück.',
+    schemas.mainserverInterfaceSave,
+    writeAnnotations,
+    (p) => call(client, {
+      method: 'PUT',
+      path: `/api/v1/iam/instances/${encodeURIComponent(p.instanceId)}/mainserver-interface`,
+      body: { graphqlBaseUrl: p.graphqlBaseUrl, oauthTokenUrl: p.oauthTokenUrl, enabled: p.enabled },
+    })
+  );
+  register(
     'studio_instances_create',
     'Studio-Instanz erstellen',
     'Erstellt idempotent eine Registry-Instanz; Provisionierung und Aktivierung bleiben getrennt. adoptExisting im tenantAdminBootstrap erlaubt bei einem eindeutigen E-Mail-Treffer die Übernahme eines unmarkierten Bestands-Admins; der konfigurierte Username wird für die Zuordnung nicht verwendet.',

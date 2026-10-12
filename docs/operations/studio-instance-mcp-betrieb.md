@@ -70,6 +70,8 @@ Das ist bewusst ein mächtiges Credential. Studio prüft trotzdem pro Route die 
 
 Die drei Clients verwenden unterschiedliche Secrets. Ein Credential darf nie zwischen Umgebungen wiederverwendet werden.
 
+Für Mainserver-Konfigurationen aktiver Mandanten stellt der zentrale MCP `studio_mainserver_interfaces_list`, `studio_instance_mainserver_interface_get` und `studio_instance_mainserver_interface_save` bereit. Der Listenaufruf liefert `missing`, `disabled`, `configured` oder `error`; das ist keine Prüfung der Erreichbarkeit des Mainservers. Der Save verlangt `instanceId`, `graphqlBaseUrl`, `oauthTokenUrl` und `enabled` und schreibt genau einen Mandanten. Nach einem unklaren Schreibfehler den Detailaufruf erneut ausführen, bevor der Save wiederholt wird. Die bisherigen tenantgebundenen persönlichen Schnittstellenaufrufe bleiben verfügbar.
+
 ## Lokale Konfiguration und Geheimnisse
 
 Studio-Basis-URL, Realm, Client-ID und Client-Secret werden über OS-Keychain oder eine nicht versionierte lokale Umgebungskonfiguration an den MCP-Prozess gegeben. Secrets gehören nicht in `.codex/config.toml`, Shell-History, Repository-Dateien, Screenshots oder Betriebsberichte.
@@ -157,6 +159,7 @@ Für gezielte Betriebsprüfungen stehen neben der aggregierten Diagnose eigenst�
 | Bereich                  | MCP-Tools                                                                                                                                                    | Erforderliche Studio-Action                                                                                              |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | Bestand und Evidenz      | `studio_instances_list`, `studio_instance_get`, `studio_instance_audit`, `studio_instances_audit`                                                            | `instance.list`, `instance.read`, `instance.audit.read`                                                                  |
+| Mainserver-Schnittstelle | `studio_mainserver_interfaces_list`, `studio_instance_mainserver_interface_get`, `studio_instance_mainserver_interface_save` | `instance.list`, `instance.read`, `instance.update` |
 | Diagnose                 | `studio_instance_diagnose`, `studio_instance_keycloak_status`, `studio_instance_keycloak_preflight`                                                          | `instance.diagnose`                                                                                                      |
 | Provisioning             | `studio_instance_provisioning_plan`, `studio_instance_provisioning_execute`, `studio_instance_provisioning_run_get`, `studio_instance_reconcile`             | `instance.provision.plan`, `instance.provision.execute`, `instance.provision.run.read`, `instance.reconcile`             |
 | Konfiguration und Module | `studio_instances_create`, `studio_instance_update`, `studio_instance_module_assign`, `studio_instance_iam_baseline_seed`, `studio_instance_admin_bootstrap` | `instance.create`, `instance.update`, `instance.module.assign`, `instance.iam.baseline.seed`, `instance.admin.bootstrap` |

@@ -22,6 +22,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
+import { listRootMainserverInterfaces, type RootMainserverInterfaceListEntry } from '../../../lib/iam-api-instances';
 import { getErrorMessage } from './-instance-error-messages';
 import { InstanceAuditRunSection } from './-instance-audit-run-section';
 import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
@@ -48,6 +49,21 @@ export const InstancesPage = () => {
   const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const instancesApi = useInstances();
   const [auditExpanded, setAuditExpanded] = React.useState(false);
+  const [mainserverEntries, setMainserverEntries] = React.useState<ReadonlyMap<string, RootMainserverInterfaceListEntry>>(new Map());
+  const [mainserverLoadError, setMainserverLoadError] = React.useState(false);
+  const [mainserverLoading, setMainserverLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let current = true;
+    void listRootMainserverInterfaces().then(({ data }) => {
+      if (current) setMainserverEntries(new Map(data.entries.map((entry) => [entry.instanceId, entry])));
+    }).catch(() => {
+      if (current) setMainserverLoadError(true);
+    }).finally(() => {
+      if (current) setMainserverLoading(false);
+    });
+    return () => { current = false; };
+  }, []);
 
   const instanceColumns = React.useMemo<readonly StudioColumnDef<InstanceRow>[]>(
     () => [
@@ -92,6 +108,17 @@ export const InstancesPage = () => {
         sortValue: (instance) => instance.status,
       },
       {
+        id: 'mainserver',
+        header: t('admin.instances.mainserver.title'),
+        cell: (instance) => {
+          if (instance.status !== 'active') return null;
+          const status = mainserverLoading ? 'loading' : mainserverEntries.get(instance.instanceId)?.status;
+          return status ? (
+            <Badge variant="outline">{t(`admin.instances.mainserver.status.${status}`)}</Badge>
+          ) : null;
+        },
+      },
+      {
         id: 'attention',
         header: t('admin.instances.table.attention'),
         cell: (instance) =>
@@ -105,7 +132,7 @@ export const InstancesPage = () => {
           ),
       },
     ],
-    [instancesApi.instances]
+    [instancesApi.instances, mainserverEntries, mainserverLoading]
   );
 
   return (
@@ -228,6 +255,9 @@ export const InstancesPage = () => {
             <IamRuntimeDiagnosticDetails error={instancesApi.error} />
           </AlertDescription>
         </Alert>
+      ) : null}
+      {mainserverLoadError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive"><AlertDescription>{t('admin.instances.mainserver.error')}</AlertDescription></Alert>
       ) : null}
 
       {instancesApi.mutationError ? (

@@ -1,9 +1,13 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstancesPage } from './-instances-page';
 
 const useInstancesMock = vi.fn();
+const listMainserverInterfacesMock = vi.hoisted(() => vi.fn());
+vi.mock('../../../lib/iam-api-instances', () => ({
+  listRootMainserverInterfaces: listMainserverInterfacesMock,
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -74,9 +78,23 @@ describe('InstancesPage', () => {
 
   beforeEach(() => {
     useInstancesMock.mockReset();
+    listMainserverInterfacesMock.mockReset();
+    listMainserverInterfacesMock.mockResolvedValue({ data: { entries: [
+      { instanceId: 'demo', displayName: 'Demo', status: 'missing', config: null },
+    ] } });
   });
 
-  it('renders the overview table without an activation shortcut', () => {
+  it('shows a page error without labeling every instance as a failed read', async () => {
+    listMainserverInterfacesMock.mockRejectedValue(new Error('inventory unavailable'));
+    useInstancesMock.mockReturnValue(createInstancesApiState());
+
+    render(<InstancesPage />);
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Mainserver-Schnittstellen konnten nicht geladen'));
+    expect(screen.queryByText('Lesefehler')).toBeNull();
+  });
+
+  it('renders the overview table and the Mainserver inventory without an activation shortcut', async () => {
     const setSearch = vi.fn();
     const setStatus = vi.fn();
     const activateInstance = vi.fn();
@@ -99,6 +117,7 @@ describe('InstancesPage', () => {
     expect(screen.getByRole('heading', { name: 'Instanzverwaltung' })).toBeTruthy();
     expect(screen.getByRole('table', { name: 'Instanzliste' })).toBeTruthy();
     expect(screen.getAllByText('Demo').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Fehlt')).length).toBeGreaterThan(0);
     const hostnameLink = screen.getAllByRole('link', { name: 'demo.studio.example.org' })[0];
     expect(hostnameLink.getAttribute('href')).toBe('https://demo.studio.example.org');
     expect(hostnameLink.getAttribute('target')).toBe('_blank');

@@ -17,7 +17,12 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     error: vi.fn(),
     info: vi.fn(),
+    warn: vi.fn(),
   }),
+  getWorkspaceContext: () => ({ requestId: 'req-1' }),
+  isCanonicalAuthHost: (host: string) => host === process.env.SVA_STUDIO_ROOT_HOST,
+  createApiError: (status: number, code: string) =>
+    Response.json({ error: { code } }, { status }),
   toSafeLogPath: (value: string) => new URL(value).pathname,
   toJsonErrorResponse: vi.fn(
     (status: number, code: string, message?: string, options?: { requestId?: string }) =>
@@ -166,6 +171,79 @@ describe('iam-instance-registry/server', () => {
     );
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
     expect(state.markAuthenticatedRegistryServiceRequest).toHaveBeenCalledWith(request);
+  });
+
+  it('keeps root Mainserver administration on the Root host and binds the update action', async () => {
+    vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
+    try {
+      const { withRootMainserverRegistryAccess } = await import('./server.js');
+      const work = vi.fn(async () => new Response('saved', { status: 200 }));
+      const tenantResponse = await withRootMainserverRegistryAccess(
+        new Request('https://tenant.studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
+          method: 'PUT', headers: { authorization: 'Bearer signed-token' },
+        }),
+        'instance.update', work
+      );
+      expect(tenantResponse.status).toBe(403);
+      expect(work).not.toHaveBeenCalled();
+
+      const rootResponse = await withRootMainserverRegistryAccess(
+        new Request('https://studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
+          method: 'PUT', headers: { authorization: 'Bearer signed-token' },
+        }),
+        'instance.update', work
+      );
+      expect(rootResponse.status).toBe(200);
+      expect(state.authenticateRegistryServiceToken).toHaveBeenLastCalledWith('signed-token', 'instance.update');
+      expect(work).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    ['instance.list', '/api/v1/iam/instances/mainserver-interfaces'],
+    ['instance.read', '/api/v1/iam/instances/demo/mainserver-interface'],
+  ] as const)('rejects tenant-host Mainserver %s requests', async (actionId, path) => {
+    vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
+    try {
+      const { withRootMainserverRegistryAccess } = await import('./server.js');
+      const work = vi.fn(async () => new Response('unreachable'));
+      const response = await withRootMainserverRegistryAccess(
+        new Request(`https://tenant.studio.example.org${path}`, {
+          headers: { authorization: 'Bearer signed-token' },
+        }),
+        actionId,
+        work
+      );
+      expect(response.status).toBe(403);
+      expect(work).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('rejects a Root session PUT without the required CSRF header', async () => {
+    vi.stubEnv('SVA_STUDIO_ROOT_HOST', 'studio.example.org');
+    state.withAuthenticatedUser.mockImplementation(
+      async (request: Request, work: (ctx: unknown) => Promise<Response>) =>
+        work({ user: { id: 'admin-1', roles: ['instance_registry_admin'] }, request } as never)
+    );
+    try {
+      const { withRootMainserverRegistryAccess } = await import('./server.js');
+      const work = vi.fn(async () => new Response('unreachable'));
+      const response = await withRootMainserverRegistryAccess(
+        new Request('https://studio.example.org/api/v1/iam/instances/demo/mainserver-interface', {
+          method: 'PUT',
+        }),
+        'instance.update',
+        work
+      );
+      expect(response.status).toBe(403);
+      expect(work).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('authorizes explicit tenant provisioning retries with instance.create', async () => {

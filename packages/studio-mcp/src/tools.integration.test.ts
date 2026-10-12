@@ -330,7 +330,7 @@ describe('Studio MCP tools', () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const tools = await client.listTools();
-    expect(tools.tools).toHaveLength(27);
+    expect(tools.tools).toHaveLength(30);
     expect(
       tools.tools.find((tool) => tool.name === 'studio_instances_list')?.annotations?.readOnlyHint
     ).toBe(true);
@@ -1890,6 +1890,34 @@ describe('Studio MCP tools', () => {
         confirmationPhrase: 'REVOKE news FROM demo',
       })
     );
+    await Promise.all([client.close(), server.close()]);
+  });
+  it('exposes active Mainserver inventory and one-instance read/save through the root service API', async () => {
+    const request = vi.fn().mockResolvedValue({ data: { entries: [] } });
+    const server = createStudioMcpServer({ request }, config);
+    const client = new Client({ name: 'test-client', version: '1' });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+    await client.callTool({ name: 'studio_mainserver_interfaces_list', arguments: {} });
+    await client.callTool({ name: 'studio_instance_mainserver_interface_get', arguments: { instanceId: 'bb-prenzlau' } });
+    await client.callTool({ name: 'studio_instance_mainserver_interface_save', arguments: {
+      instanceId: 'bb-prenzlau',
+      graphqlBaseUrl: 'https://server.example.test/graphql',
+      oauthTokenUrl: 'https://server.example.test/oauth/token',
+      enabled: true,
+    } });
+    expect(request).toHaveBeenNthCalledWith(1, expect.objectContaining({ path: '/api/v1/iam/instances/mainserver-interfaces' }));
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ path: '/api/v1/iam/instances/bb-prenzlau/mainserver-interface' }));
+    expect(request).toHaveBeenNthCalledWith(3, expect.objectContaining({
+      method: 'PUT',
+      path: '/api/v1/iam/instances/bb-prenzlau/mainserver-interface',
+      body: {
+        graphqlBaseUrl: 'https://server.example.test/graphql',
+        oauthTokenUrl: 'https://server.example.test/oauth/token',
+        enabled: true,
+      },
+    }));
     await Promise.all([client.close(), server.close()]);
   });
 });

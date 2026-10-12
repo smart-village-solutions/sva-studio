@@ -1,0 +1,4 @@
+{
+  "prNumber": 1855,
+  "body": "Direkte Aufrufe des Abfallkalenders und anderer mandantenbezogener Plugin-Seiten funktionieren auch nach Aufrufen der zentralen Verwaltung. Freigegebene Zugriffe auf die Abfallverwaltung werden korrekt erkannt; irrtümliche Berechtigungsfehlermeldungen durch den Serverbuild werden behoben."
+}

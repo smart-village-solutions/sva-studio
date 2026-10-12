@@ -24,6 +24,7 @@
 4. `/auth/me` gibt dieselbe hostvalidierte Auflösung im Header `X-SVA-Plugin-Route-Scope` zurück, auch wenn keine Session besteht. Der Browser verwendet diesen Header für einen hydrierungsgleichen Routenbaum.
 5. Im Plattformbaum werden ausschließlich explizite Plattformbeiträge materialisiert. Im Tenant-Baum werden Plattformbeiträge nicht registriert; tenantbezogene Guards verlangen weiterhin den persistent aktiven Modulsatz und die namespaceten Actions.
 6. Ein fehlender oder ungültiger Scope-Nachweis materialisiert browserseitig fail-closed nur den Plattformbaum und verleiht keine Plattformberechtigung; jeder Route- und Serverzugriff prüft die deklarierte Autorisierung zusätzlich.
+7. Jeder Router-Aufruf erzeugt eine eigene Root-Route mit den bestehenden Root-Optionen. Der SSR-Routencache darf einen Plattformbaum nicht unter derselben Root-Identität für spätere Tenant-Requests wiederverwenden.
 
 ## Revisionsgebundener Permission-Cache
 
@@ -153,6 +154,7 @@ Fehlerpfad:
 2. Die App-Shell materialisiert die freie Plugin-Route hostgeführt über `@sva/routing` und prüft Guard plus Modulfreigabe fail-closed.
 3. Das Plugin lädt fachliche Leseansichten ausschließlich über `/api/v1/waste-management/settings`, `/history`, `/master-data`, `/tours`, `/scheduling` und `/outputs`.
 4. Der Plugin-Dispatcher prüft Session, Instanzkontext, Tenant-Zugang, modulbezogene `waste-management.*`-Rechte und den stabilen Fehlervertrag. Der Host hält die Entscheidung und die aufgelösten Rechte nur für die Dauer des konkreten Request-/Handler-Aufrufs bereit; ein direkter Handler-Aufruf ohne diesen Nachweis scheitert geschlossen.
+   Im Produktionsbuild werden Dispatcher und `@sva/auth-runtime/plugin-server-host` aus derselben externen Runtime-Package-Instanz geladen. Ein separat gebündelter Host hätte einen eigenen Autorisierungsspeicher und würde auch freigegebene Requests ablehnen.
 5. `@sva/waste-management-runtime` führt Settings, Ausgabe-Stamminhalte, Seed, Reset, Migrationen, Import und weitere Waste-Operationen aus. Die Host-Composition injiziert die dafür nötigen begrenzten Fähigkeiten; zusätzliche bodyabhängige Rechteprüfungen verwenden die bereits für diesen Request aufgelösten Rechte. Authentifizierung, CSRF, Tenantkontext, zentrale Queue, Audit und privilegierte Worker-Lane bleiben hostgeführt.
 6. Waste-Runtime und die von ihr verwendeten Hostadapter lösen die aktive Waste-Datenquelle der Instanz auf und verwenden serverseitig geschützte Secrets.
 7. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.

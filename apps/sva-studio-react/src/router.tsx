@@ -17,7 +17,7 @@ import {
   type PluginRouteScope,
 } from './lib/plugin-route-scope';
 import { appRouteBindings, studioRoutePlugins } from '#studio-app-route-bindings';
-import { rootRoute } from './routes/__root';
+import { createAppRootRoute } from './routes/__root';
 const getRuntimeRouteFactories = createIsomorphicFn()
   .server(async () => {
     const [{ getRequest }, { resolveServerPluginRouteScope }, mod] = await Promise.all([
@@ -361,15 +361,15 @@ type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
   readonly [K in keyof TFactories]: ReturnType<TFactories[K]>;
 };
 
-const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factories: TFactories) =>
-  factories.map((factory) =>
-    factory(rootRoute as unknown as RootRoute)
-  ) as MaterializedRoutes<TFactories>;
 export const createRuntimeRouteTree = <TFactories extends readonly AppRouteFactory[]>(
   runtimeRouteFactories: TFactories
 ) => {
-  const runtimeRoutes = materializeRoutes(runtimeRouteFactories);
-  return rootRoute.addChildren([...runtimeRoutes]);
+  // SSR verwendet die Root-Identität als Cache-Schlüssel; jeder Aufruf benötigt einen eigenen Baum.
+  const requestRootRoute = createAppRootRoute();
+  const runtimeRoutes = runtimeRouteFactories.map((factory) =>
+    factory(requestRootRoute as unknown as RootRoute)
+  ) as MaterializedRoutes<TFactories>;
+  return requestRootRoute.addChildren([...runtimeRoutes]);
 };
 
 export const getRouter = async () => {

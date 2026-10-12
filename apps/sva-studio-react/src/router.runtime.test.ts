@@ -27,19 +27,26 @@ const routerMocks = vi.hoisted(() => {
   const fetchWithRequestTimeoutSpy = vi.fn();
   const getRequestSpy = vi.fn(() => new Request('https://studio.example.org/admin/users'));
   const rootRoute = {
+    options: {},
     addChildren: vi.fn((children: unknown[]) => ({ kind: 'route-tree', children })),
   };
+  const createRootRouteSpy = vi.fn(() => ({
+    addChildren: vi.fn((children: unknown[]) => ({ kind: 'route-tree', children })),
+  }));
   const routeFactorySpy = vi.fn(() => ({ id: 'materialized-route' }));
   const getClientRouteFactoriesSpy = vi.fn(() => [routeFactorySpy]);
-  const getServerRouteFactoriesSpy = vi.fn(() => [routeFactorySpy]);
+  const getServerRouteFactoriesSpy = vi.fn((_options: Record<string, unknown>) => [routeFactorySpy]);
   const parseRuntimeProfile = vi.fn((value: unknown) => (typeof value === 'string' ? value : null));
   const isMockAuthRuntimeProfile = vi.fn((value: unknown) => value === 'mock-profile');
-  const resolveAuthConfigForRequest = vi.fn(async () => ({ kind: 'platform' as const }));
+  const resolveAuthConfigForRequest = vi.fn(async (): Promise<{ kind: 'platform' | 'instance' }> =>
+    ({ kind: 'platform' })
+  );
   const warnSpy = vi.fn();
   const createSdkLoggerSpy = vi.fn(() => ({ warn: warnSpy }));
 
   return {
     createRouterSpy,
+    createRootRouteSpy,
     executionMode,
     fetchWithRequestTimeoutSpy,
     getClientRouteFactoriesSpy,
@@ -142,6 +149,7 @@ vi.mock('./lib/plugins', () => ({
 
 vi.mock('./routes/__root', () => ({
   rootRoute: routerMocks.rootRoute,
+  createAppRootRoute: routerMocks.createRootRouteSpy,
 }));
 
 vi.mock('@tanstack/react-start/server', () => ({
@@ -154,6 +162,7 @@ describe('router runtime helpers', () => {
     cookieState = '';
     routerMocks.executionMode.current = 'client';
     routerMocks.createRouterSpy.mockClear();
+    routerMocks.createRootRouteSpy.mockClear();
     routerMocks.fetchWithRequestTimeoutSpy.mockReset();
     routerMocks.getClientRouteFactoriesSpy.mockClear();
     routerMocks.getRequestSpy.mockClear();
@@ -182,6 +191,27 @@ describe('router runtime helpers', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it('isolates platform and tenant route trees across server requests', async () => {
+    routerMocks.executionMode.current = 'server';
+    const { getRouter } = await import('./router');
+    await getRouter();
+    routerMocks.resolveAuthConfigForRequest.mockResolvedValueOnce({ kind: 'instance' });
+    await getRouter();
+
+    expect(routerMocks.getServerRouteFactoriesSpy.mock.calls.map(([options]) =>
+      (options as { pluginScope: string }).pluginScope
+    )).toEqual(['platform', 'tenant']);
+    const [platformRoot, tenantRoot] = routerMocks.createRootRouteSpy.mock.results.map(
+      (result) => result.value
+    );
+    expect(platformRoot).toBeDefined();
+    expect(tenantRoot).toBeDefined();
+    expect(platformRoot).not.toBe(tenantRoot);
+    expect(routerMocks.routeFactorySpy).toHaveBeenNthCalledWith(1, platformRoot);
+    expect(routerMocks.routeFactorySpy).toHaveBeenNthCalledWith(2, tenantRoot);
+    expect(routerMocks.rootRoute.addChildren).not.toHaveBeenCalled();
   });
 
   it('returns the canonical tenant-admin mock-auth user', async () => {
@@ -309,8 +339,9 @@ describe('router runtime helpers', () => {
       plugins: [{ id: 'plugin-a' }],
       pluginScope: 'platform',
     });
-    expect(routerMocks.routeFactorySpy).toHaveBeenCalledWith(routerMocks.rootRoute);
-    expect(routerMocks.rootRoute.addChildren).toHaveBeenCalledWith([{ id: 'materialized-route' }]);
+    const requestRootRoute = routerMocks.createRootRouteSpy.mock.results.at(-1)?.value;
+    expect(routerMocks.routeFactorySpy).toHaveBeenCalledWith(requestRootRoute);
+    expect(requestRootRoute.addChildren).toHaveBeenCalledWith([{ id: 'materialized-route' }]);
     expect(routerMocks.createRouterSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         routeTree: { kind: 'route-tree', children: [{ id: 'materialized-route' }] },
@@ -583,7 +614,9 @@ describe('router runtime helpers', () => {
       plugins: [{ id: 'plugin-a' }],
       pluginScope: 'platform',
     });
-    expect(routerMocks.routeFactorySpy).toHaveBeenCalledWith(routerMocks.rootRoute);
+    expect(routerMocks.routeFactorySpy).toHaveBeenCalledWith(
+      routerMocks.createRootRouteSpy.mock.results.at(-1)?.value
+    );
     expect(router).toEqual(
       expect.objectContaining({
         __router: true,

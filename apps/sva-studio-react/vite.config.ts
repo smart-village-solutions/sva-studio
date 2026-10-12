@@ -540,11 +540,13 @@ const config = defineConfig({
   },
   build: {
     rolldownOptions: {
-      // Node.js modules für Client-Build blocken
+      // Server-Entries und ihr Autorisierungshost müssen dieselbe Package-Instanz
+      // verwenden; ein gebündelter Host würde die Dispatcher-Freigaben verlieren.
       external: [
         /^node:/,
         /^(async_hooks|crypto|fs|path|net|tls|events|stream|util|os|http|https|dns|url)$/,
         /^@sva\/.+\/server$/,
+        '@sva/auth-runtime/plugin-server-host',
         /^jiti(?:\/.+)?$/,
         /^@tailwindcss\/node$/,
         /^@tailwindcss\/oxide(?:-.+)?$/,

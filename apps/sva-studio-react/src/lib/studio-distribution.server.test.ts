@@ -17,6 +17,23 @@ const catalog = [
 describe('studio distribution', () => {
   afterEach(() => vi.unstubAllEnvs());
 
+  it('loads the authorization dispatcher and host from the same runtime package', async () => {
+    const loaded = await loadConfigFromFile(
+      { command: 'build', mode: 'production' },
+      join(process.cwd(), 'vite.config.ts')
+    );
+    const external = loaded?.config.build?.rolldownOptions?.external;
+    expect(Array.isArray(external)).toBe(true);
+    for (const entry of ['@sva/auth-runtime/server', '@sva/auth-runtime/plugin-server-host']) {
+      expect(
+        (external as (string | RegExp)[]).some((rule) =>
+          typeof rule === 'string' ? rule === entry : rule.test(entry)
+        ),
+        `${entry} must share the external authorization runtime`
+      ).toBe(true);
+    }
+  });
+
   it('selects content-capable route bindings for the mixed custom build', async () => {
     vi.stubEnv('SVA_STUDIO_DISTRIBUTION', 'custom');
     vi.stubEnv('SVA_STUDIO_PLUGIN_IDS', 'categories,news,ssf');

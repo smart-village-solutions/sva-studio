@@ -1,6 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { DEFAULT_ACCOUNT_INVITATION_TEMPLATE } from '@sva/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z as z4 } from 'zod/v4';
 
 import * as instancesShared from './-instances-shared';
 import { buildInstanceDetailCockpitModel } from './-instance-detail-cockpit';
@@ -113,6 +115,20 @@ describe('instances shared helpers', () => {
     expect(getCreateStepValidationMessages('auth', formValues)).toContain(
       'Bitte ein gültiges Auth-Realm ohne Leerzeichen oder Fließtext angeben.'
     );
+  });
+
+  it('passes Zod 4 validation issues to react-hook-form', async () => {
+    const resolver = zodResolver(
+      z4.object({ authRealm: z4.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u) })
+    );
+
+    const result = await resolver(
+      { authRealm: 'invalid realm' },
+      {},
+      { fields: {}, shouldUseNativeValidation: false }
+    );
+
+    expect(result.errors.authRealm?.message).toBeTruthy();
   });
 
   it('pre-populates both client ids for new create forms', () => {

@@ -55,7 +55,6 @@ export const MainserverInterfaceCard = ({ instanceId }: { instanceId: string }) 
 
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (loadedFor !== instanceId) return;
     setSaving(true);
     setError(false);
     setSaved(false);

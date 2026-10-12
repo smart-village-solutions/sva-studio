@@ -361,22 +361,14 @@ type MaterializedRoutes<TFactories extends readonly AppRouteFactory[]> = {
   readonly [K in keyof TFactories]: ReturnType<TFactories[K]>;
 };
 
-const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(
-  factories: TFactories,
-  requestRootRoute: RootRoute
-) =>
-  factories.map((factory) =>
-    factory(requestRootRoute)
-  ) as MaterializedRoutes<TFactories>;
 export const createRuntimeRouteTree = <TFactories extends readonly AppRouteFactory[]>(
   runtimeRouteFactories: TFactories
 ) => {
-  // SSR cached nach Root-Identität; Plattform- und Mandantenrouten dürfen keinen Baum teilen.
+  // SSR verwendet die Root-Identität als Cache-Schlüssel; jeder Aufruf benötigt einen eigenen Baum.
   const requestRootRoute = createAppRootRoute();
-  const runtimeRoutes = materializeRoutes(
-    runtimeRouteFactories,
-    requestRootRoute as unknown as RootRoute
-  );
+  const runtimeRoutes = runtimeRouteFactories.map((factory) =>
+    factory(requestRootRoute as unknown as RootRoute)
+  ) as MaterializedRoutes<TFactories>;
   return requestRootRoute.addChildren([...runtimeRoutes]);
 };
 

@@ -3,6 +3,8 @@ import { definePluginManifest, type PluginCatalogSourceType } from '@sva/plugin-
 
 const registerPluginOperationExecutionHandlersMock = vi.fn();
 const registerStudioJobExecutionHandlersMock = vi.fn();
+const listActiveInstanceIdsForWorkerMock = vi.fn();
+const createWasteManagementOperationRuntimeMock = vi.fn(() => ({}));
 
 vi.mock('@sva/auth-runtime/server', () => ({
   dsrExportStudioJobRegistration: { jobTypeId: 'studio.dsr-export' },
@@ -15,6 +17,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   readTenantPermissionProjectionSubjects: vi.fn(),
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
+  listActiveInstanceIdsForWorker: listActiveInstanceIdsForWorkerMock,
   resolveInstanceKeycloakProjectionTenant: vi.fn(),
 }));
 
@@ -43,7 +46,7 @@ const createPluginJobExecutionHandlersMock = vi.fn(() => ({
 
 vi.mock('@sva/waste-management-runtime/server', () => ({
   createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
-  createWasteManagementOperationRuntime: vi.fn(() => ({})),
+  createWasteManagementOperationRuntime: createWasteManagementOperationRuntimeMock,
 }));
 
 const declaredWasteJobTypeIds = [
@@ -99,6 +102,9 @@ describe('plugin operation runtime registration', () => {
     registerPluginOperationExecutionHandlersMock.mockReset();
     registerStudioJobExecutionHandlersMock.mockReset();
     createPluginJobExecutionHandlersMock.mockClear();
+    listActiveInstanceIdsForWorkerMock.mockReset();
+    createWasteManagementOperationRuntimeMock.mockReset();
+    createWasteManagementOperationRuntimeMock.mockReturnValue({});
     vi.resetModules();
     vi.doMock('./plugin-catalog.server.js', () => ({
       studioServerPluginCatalogReport: {
@@ -152,6 +158,41 @@ describe('plugin operation runtime registration', () => {
         },
       },
     }));
+  });
+
+  it('processes active tenants independently and schedules the next reminder pass', async () => {
+    vi.useFakeTimers();
+    try {
+      const processEmailReminderOutbox = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('tenant unavailable'))
+        .mockResolvedValue({});
+      const materializeEmailReminders = vi.fn().mockResolvedValue({});
+      listActiveInstanceIdsForWorkerMock.mockResolvedValue(['tenant-1', 'tenant-2']);
+      createWasteManagementOperationRuntimeMock.mockReturnValue({
+        materializeEmailReminders,
+        processEmailReminderOutbox,
+      });
+      const { startWasteEmailReminderProcessing } =
+        await import('./plugin-operation-runtime.server');
+
+      startWasteEmailReminderProcessing();
+      startWasteEmailReminderProcessing();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(processEmailReminderOutbox).toHaveBeenCalledTimes(2);
+      expect(materializeEmailReminders).toHaveBeenCalledTimes(2);
+      expect(processEmailReminderOutbox).toHaveBeenCalledWith('tenant-2', {
+        operation: 'process-email-reminder-outbox',
+        materialize: 'if-reminder-due',
+      });
+      await vi.advanceTimersByTimeAsync(60 * 1000);
+      expect(processEmailReminderOutbox).toHaveBeenCalledTimes(4);
+      expect(materializeEmailReminders).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it('registers only regular Studio plugin operation handlers after coverage validation', async () => {
@@ -615,7 +656,9 @@ describe('plugin operation runtime registration', () => {
         workspacePluginRegistry: new Map([
           [
             'packages/plugin-other::src/server-jobs.ts',
-            async () => ({ createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock }),
+            async () => ({
+              createPluginJobExecutionHandlers: createPluginJobExecutionHandlersMock,
+            }),
           ],
         ]),
         nodePluginRegistry: new Map(),

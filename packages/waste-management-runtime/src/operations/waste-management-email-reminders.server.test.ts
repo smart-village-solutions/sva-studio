@@ -12,7 +12,11 @@ const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn()
 
 const withReminderReconciliation = <T extends object>(repository: T) => ({
   listActiveSubscriptions: vi.fn(async () => []),
+  refreshPendingOutboxEntry: vi.fn(async () => false),
   cancelInvalidReminderOutboxEntries: vi.fn(async () => 0),
+  cancelExpiredDoiOutboxEntries: vi.fn(async () => 0),
+  hasDueReminderOutboxEntries: vi.fn(async () => false),
+  deleteExpiredPendingSubscriptions: vi.fn(async () => 0),
   claimOutboxEntryForDispatch: vi.fn(async () => true),
   ...repository,
 });
@@ -43,7 +47,7 @@ const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
 const revealPostgresqlSecretConfig = (ciphertext: string | null | undefined): string | undefined =>
   ciphertext === 'cipher-secret'
     ? JSON.stringify({ databaseUrl: 'postgres://waste:test@localhost:5432/waste' })
-    : ciphertext ?? undefined;
+    : (ciphertext ?? undefined);
 
 describe('waste management operations runtime', () => {
   beforeEach(() => {
@@ -132,7 +136,8 @@ describe('waste management operations runtime', () => {
     };
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -164,6 +169,7 @@ describe('waste management operations runtime', () => {
     const result = await runtime.processEmailReminderOutbox('instance-1', {
       operation: 'process-email-reminder-outbox',
       referenceTime: '2026-06-15T06:00:00.000Z',
+      materialize: false,
     });
 
     expect(dispatchMail).toHaveBeenCalledWith({
@@ -202,9 +208,7 @@ describe('waste management operations runtime', () => {
       leasedAt: '2026-06-15T06:00:00.000Z',
       providerMessageId: 'provider-1',
     });
-    expect(
-      listActiveSubscriptions.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
-    ).toBeLessThan(leaseDueOutboxEntries.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY);
+    expect(listActiveSubscriptions).not.toHaveBeenCalled();
     expect(result.details).toMatchObject({
       operation: 'process-email-reminder-outbox',
       mode: 'executed',
@@ -213,7 +217,7 @@ describe('waste management operations runtime', () => {
       retryScheduledCount: 0,
       failedCount: 0,
     });
-  });
+  }, 15_000);
 
   it('does not dispatch a reminder when its lease can no longer be claimed', async () => {
     const dispatchMail = vi.fn();
@@ -235,7 +239,8 @@ describe('waste management operations runtime', () => {
     };
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -288,26 +293,38 @@ describe('waste management operations runtime', () => {
   it('cancels an already materialized reminder after its tour is archived before dispatch', async () => {
     let pending = true;
     const dispatchMail = vi.fn();
+    const hasDueReminderOutboxEntries = vi.fn(async () => true);
     const listWasteTours = vi.fn(async () => []);
     const cancelInvalidReminderOutboxEntries = vi.fn(async () => {
       pending = false;
       return 1;
     });
-    const leaseDueOutboxEntries = vi.fn(async () => pending ? [{
-      id: 'outbox-from-published-tour',
-      transportId: 'transport-smtp',
-      attemptCount: 0,
-      payload: {},
-    }] : []);
+    const leaseDueOutboxEntries = vi.fn(async () =>
+      pending
+        ? [
+            {
+              id: 'outbox-from-published-tour',
+              transportId: 'transport-smtp',
+              attemptCount: 0,
+              payload: {},
+            },
+          ]
+        : []
+    );
     const repository = createRepositoryMock({ listWasteTours });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
         createWasteEmailReminderRepository: vi.fn(() =>
-          withReminderReconciliation({ cancelInvalidReminderOutboxEntries, leaseDueOutboxEntries })
+          withReminderReconciliation({
+            cancelInvalidReminderOutboxEntries,
+            hasDueReminderOutboxEntries,
+            leaseDueOutboxEntries,
+          })
         ),
       };
     });
@@ -330,8 +347,10 @@ describe('waste management operations runtime', () => {
     const result = await runtime.processEmailReminderOutbox('instance-1', {
       operation: 'process-email-reminder-outbox',
       referenceTime: '2026-06-15T06:00:00.000Z',
+      materialize: 'if-reminder-due',
     });
 
+    expect(hasDueReminderOutboxEntries).toHaveBeenCalledWith({ now: '2026-06-15T06:00:00.000Z' });
     expect(listWasteTours).toHaveBeenCalledWith({ status: 'published' });
     expect(cancelInvalidReminderOutboxEntries).toHaveBeenCalledWith({
       validDedupeKeys: [],
@@ -479,7 +498,8 @@ describe('waste management operations runtime', () => {
     };
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -551,7 +571,8 @@ describe('waste management operations runtime', () => {
     };
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -660,7 +681,8 @@ describe('waste management operations runtime', () => {
     };
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteEmailReminderRepository: vi.fn(() =>
@@ -814,7 +836,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -876,7 +899,7 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('matches region-scoped subscriptions against legacy locations without a region id', async () => {
+  it('matches region-scoped subscriptions and catches up on a reminder due earlier today', async () => {
     const enqueueOutboxEntry = vi.fn(async () => 'inserted' as const);
     const reminderRepository = {
       listActiveSubscriptions: vi.fn(async () => [
@@ -953,7 +976,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -976,15 +1000,20 @@ describe('waste management operations runtime', () => {
           }))
         )
       ),
-      now: () => new Date('2026-06-15T06:00:00.000Z'),
+      now: () => new Date('2026-06-15T06:05:00.000Z'),
     });
 
     const result = await runtime.materializeEmailReminders('instance-1', {
       operation: 'materialize-email-reminders',
-      referenceTime: '2026-06-15T06:00:00.000Z',
+      referenceTime: '2026-06-15T06:05:00.000Z',
     });
 
     expect(enqueueOutboxEntry).toHaveBeenCalledTimes(1);
+    expect(enqueueOutboxEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sendAt: '2026-06-15T06:05:00.000Z',
+      })
+    );
     expect(result.details).toMatchObject({
       operation: 'materialize-email-reminders',
       mode: 'executed',
@@ -1065,7 +1094,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1213,7 +1243,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1348,7 +1379,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1471,7 +1503,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1603,7 +1636,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1736,7 +1770,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -1908,7 +1943,8 @@ describe('waste management operations runtime', () => {
     });
 
     vi.doMock('@sva/waste-management-runtime/repositories', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
+      const actual =
+        await importOriginal<typeof import('@sva/waste-management-runtime/repositories')>();
       return {
         ...actual,
         createWasteMasterDataRepository: vi.fn(() => repository),
@@ -2070,8 +2106,7 @@ const createMailTransportInterfaceRecord = (
     maxBatchSize: overrides.maxBatchSize ?? 25,
     ...(overrides.rateLimitPerMinute ? { rateLimitPerMinute: overrides.rateLimitPerMinute } : {}),
   },
-  secretConfigCiphertext:
-    JSON.stringify({ password: 'smtp-password' }),
+  secretConfigCiphertext: JSON.stringify({ password: 'smtp-password' }),
   statusCheckKind: 'mail_transport',
   visibleStatus: 'ok',
   lastCheckStatus: 'succeeded',

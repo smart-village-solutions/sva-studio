@@ -12,8 +12,17 @@ import type {
   PublicWasteResolvedSelection,
 } from '../lib/public-waste-contract.js';
 import type { PublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
+import {
+  createPublicWasteTranslator,
+  type PublicWasteTranslationKey,
+} from '../lib/public-waste-translations.js';
 
 type ReminderSelectionState = Readonly<Record<string, string>>;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const reminderText = (key: PublicWasteTranslationKey): string =>
+  createPublicWasteTranslator(
+    typeof document === 'undefined' ? 'de' : document.documentElement.lang || 'de'
+  )(key);
 
 const buildReminderSlotSelection = (
   activeFractionIds: readonly string[],
@@ -148,17 +157,15 @@ const useReminderSubmission = (
   const [submitting, setSubmitting] = React.useState(false);
   const submit = async () => {
     if (!input.reminderSignup?.enabled) {
-      feedback.setError('Der E-Mail-Erinnerungsdienst ist derzeit nicht verfügbar.');
+      feedback.setError(reminderText('reminder.unavailable'));
       return;
     }
     if (
       !emailSelectionComplete ||
       !feedback.consentAccepted ||
-      feedback.email.trim().length === 0
+      !EMAIL_PATTERN.test(feedback.email.trim())
     ) {
-      feedback.setError(
-        'Bitte wählen Sie gültige Fraktionen, eine E-Mail-Adresse und die Datenschutz-Einwilligung aus.'
-      );
+      feedback.setError(reminderText('reminder.invalidInput'));
       return;
     }
     setSubmitting(true);
@@ -178,7 +185,7 @@ const useReminderSubmission = (
       feedback.setError(
         requestError instanceof Error
           ? requestError.message
-          : 'Die Erinnerung konnte nicht angefordert werden.'
+          : reminderText('reminder.requestFailed')
       );
     } finally {
       setSubmitting(false);
@@ -233,7 +240,7 @@ export const usePublicWasteActionState = (input: ActionStateInput) => {
     canSubmit:
       emailSelectionComplete &&
       feedback.consentAccepted &&
-      feedback.email.trim().length > 0 &&
+      EMAIL_PATTERN.test(feedback.email.trim()) &&
       !submission.submitting,
     consentAccepted: feedback.consentAccepted,
     email: feedback.email,

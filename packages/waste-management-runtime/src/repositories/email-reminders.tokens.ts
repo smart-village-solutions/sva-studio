@@ -1,6 +1,6 @@
 import type { SqlExecutor, SqlStatement } from '@sva/data-repositories';
 import type { WasteEmailReminderRepository } from './email-reminders.js';
-import { buildCancelPendingReminderOutboxEntriesStatement } from './email-reminders.outbox-dispatch.js';
+import { buildCancelPendingReminderOutboxEntriesStatement } from './email-reminders.outbox-reconcile.js';
 
 type SubscriptionStatusRow = Readonly<{
   id: string;

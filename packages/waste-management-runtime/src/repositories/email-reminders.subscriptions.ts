@@ -152,11 +152,27 @@ ORDER BY s.created_at ASC, i.created_at ASC;
   values: [],
 });
 
+const buildDeleteExpiredPendingSubscriptionsStatement = (input: {
+  readonly now: string;
+  readonly pendingSubscriptionTtlHours: number;
+}): SqlStatement => ({
+  text: `
+DELETE FROM waste_email_reminder_subscriptions
+WHERE status = 'pending'
+  AND expires_at <= $1::timestamptz
+  AND created_at <= $1::timestamptz - ($2::int * INTERVAL '1 hour');
+`,
+  values: [input.now, input.pendingSubscriptionTtlHours],
+});
+
 export const createSubscriptionMethods = (
   executor: SqlExecutor
 ): Pick<
   WasteEmailReminderRepository,
-  'createPendingSignup' | 'countSubscriptionsForEmailLocation' | 'listActiveSubscriptions'
+  | 'createPendingSignup'
+  | 'countSubscriptionsForEmailLocation'
+  | 'listActiveSubscriptions'
+  | 'deleteExpiredPendingSubscriptions'
 > => ({
   async createPendingSignup(input) {
     await executor.execute(buildInsertSubscriptionStatement(input));
@@ -210,6 +226,10 @@ export const createSubscriptionMethods = (
     }
     return [...subscriptions.values()];
   },
+  async deleteExpiredPendingSubscriptions(input) {
+    const result = await executor.execute(buildDeleteExpiredPendingSubscriptionsStatement(input));
+    return result.rowCount;
+  },
 });
 
 export const subscriptionStatements = {
@@ -218,4 +238,5 @@ export const subscriptionStatements = {
   createPendingSignupOutbox: buildInsertOutboxStatement,
   countSubscriptionsForEmailLocation: buildCountSubscriptionsForEmailLocationStatement,
   listActiveSubscriptions: buildListActiveSubscriptionsStatement,
+  deleteExpiredPendingSubscriptions: buildDeleteExpiredPendingSubscriptionsStatement,
 } as const;

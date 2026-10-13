@@ -123,6 +123,7 @@ export {
   withRootMainserverRegistryAccess,
   type RootMainserverRegistryAccess,
 } from './iam-instance-registry/server.js';
+export { listActiveInstanceIdsForWorker } from './iam-instance-registry/repository.js';
 export {
   assertPluginServerHandlerCoverage,
   createPluginServerHandlerDispatcher,

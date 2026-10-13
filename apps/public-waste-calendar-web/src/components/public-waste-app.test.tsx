@@ -406,6 +406,9 @@ describe('PublicWasteApp', () => {
       .find(
         (element) => element.getAttribute('id') === 'public-waste-action-panel-email'
       ) as HTMLElement;
+    expect(within(emailPanel).getByText('Bioabfall: 1 Tag vor der Abholung')).toBeTruthy();
+    expect(within(emailPanel).getByText('Papier: 2 Tage vor der Abholung')).toBeTruthy();
+    expect(within(emailPanel).getByText(/7 Uhr im Winter und 8 Uhr im Sommer/)).toBeTruthy();
     fireEvent.change(within(emailPanel).getByLabelText('E-Mail-Adresse'), {
       target: { value: 'person@example.invalid' },
     });
@@ -538,6 +541,7 @@ describe('PublicWasteApp', () => {
 
   it.each([
     { label: 'missing e-mail', email: '', consent: true, removeFractions: false },
+    { label: 'invalid e-mail', email: 'invalid', consent: true, removeFractions: false },
     {
       label: 'missing consent',
       email: 'person@example.invalid',

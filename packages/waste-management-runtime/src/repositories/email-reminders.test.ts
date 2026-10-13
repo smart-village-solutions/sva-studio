@@ -357,11 +357,15 @@ describe('waste email reminder repository', () => {
       })
     ).resolves.toBe(true);
 
-    expect(statements[0]?.text).toContain('FOR UPDATE SKIP LOCKED');
+    expect(statements[0]?.text).toContain('FOR UPDATE OF outbox SKIP LOCKED');
+    expect(statements[0]?.text).toContain("subscription.status = 'pending'");
+    expect(statements[0]?.text).toContain('subscription.expires_at > $1::timestamptz');
+    expect(statements[0]?.text).toContain("subscription.status = 'active'");
     expect(statements[0]?.text).toContain("status = 'processing'");
     expect(statements[0]?.text).toContain('leased_at');
     expect(statements[0]?.text).toContain('last_error = NULL');
     expect(statements[1]?.text).toContain("SET last_error = 'dispatch_claimed'");
+    expect(statements[1]?.text).toContain('subscription.expires_at > $2::timestamptz');
     expect(statements[1]?.text).toContain('leased_at = $2::timestamptz');
     expect(statements[2]?.text).toContain("SET status = 'sent'");
     expect(statements[2]?.text).toContain("last_error = 'dispatch_claimed'");
@@ -369,6 +373,45 @@ describe('waste email reminder repository', () => {
       "CASE WHEN $4::timestamptz IS NULL THEN 'failed' ELSE 'pending' END"
     );
     expect(statements[3]?.text).toContain("last_error = 'dispatch_claimed'");
+  });
+
+  it('cancels expired DOI mail and purges old pending subscriptions with their cascade records', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({ rowCount: 2, rows: [] }, { rowCount: 1, rows: [] });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.cancelExpiredDoiOutboxEntries({
+        now: '2026-06-20T06:00:00.000Z',
+      })
+    ).resolves.toBe(2);
+    await expect(
+      repository.deleteExpiredPendingSubscriptions({
+        now: '2026-06-20T06:00:00.000Z',
+        pendingSubscriptionTtlHours: 72,
+      })
+    ).resolves.toBe(1);
+
+    expect(statements[0]?.text).toContain("outbox.message_kind = 'doi'");
+    expect(statements[0]?.text).toContain('subscription.expires_at <= $1::timestamptz');
+    expect(statements[1]?.text).toContain("WHERE status = 'pending'");
+    expect(statements[1]?.text).toContain("INTERVAL '1 hour'");
+    expect(statements[1]?.values).toEqual(['2026-06-20T06:00:00.000Z', 72]);
+  });
+
+  it('checks for due reminder mail using the outbox status and send time', async () => {
+    const { executor, statements, queuedResults } = createExecutor();
+    queuedResults.push({ rowCount: 1, rows: [{ due: true }] });
+    const repository = createWasteEmailReminderRepository(executor);
+
+    await expect(
+      repository.hasDueReminderOutboxEntries({
+        now: '2026-06-15T06:00:00.000Z',
+      })
+    ).resolves.toBe(true);
+    expect(statements[0]?.text).toContain("message_kind = 'reminder'");
+    expect(statements[0]?.text).toContain("status = 'pending' AND send_at <= $1::timestamptz");
+    expect(statements[0]?.text).toContain("status = 'processing' AND leased_at <=");
   });
 
   it('cancels reminder outbox entries that are no longer materialized', async () => {

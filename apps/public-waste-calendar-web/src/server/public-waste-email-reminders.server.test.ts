@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
 import type { WasteManagementEmailReminderConfig } from '@sva/waste-management-contracts';
-import type { WasteEmailReminderActivationResult, WasteEmailReminderPendingSignupInput, WasteEmailReminderUnsubscribeResult, WasteEmailReminderUnsubscribeSubscription } from '@sva/waste-management-runtime/repositories';
+import type {
+  WasteEmailReminderActivationResult,
+  WasteEmailReminderPendingSignupInput,
+  WasteEmailReminderUnsubscribeResult,
+  WasteEmailReminderUnsubscribeSubscription,
+} from '@sva/waste-management-runtime/repositories';
 import {
   createPublicWasteReminderPageHandler as createReminderPageHandler,
   createPublicWasteReminderSignupRateLimitConsumer as createReminderSignupRateLimitConsumer,
@@ -75,7 +80,7 @@ describe('public waste email reminders server helper', () => {
         signupRateLimitPerIpPerHour: 10,
         signupRateLimitPerEmailPerHour: 3,
         doiTokenTtlHours: 24,
-        pendingSubscriptionTtlHours: 48,
+        pendingSubscriptionTtlHours: 12,
         materializationLookaheadDays: 7,
       },
       repository: {
@@ -103,7 +108,7 @@ describe('public waste email reminders server helper', () => {
         consentAcceptedAt: '2026-06-14T20:00:00.000Z',
         doiTokenHash: 'sha256:confirm-token',
         unsubscribeTokenHash: 'sha256:unsubscribe-token',
-        expiresAt: '2026-06-15T20:00:00.000Z',
+        expiresAt: '2026-06-15T08:00:00.000Z',
         items: [
           { id: 'item-1', fractionId: 'bio', slotId: 'bio:first' },
           { id: 'item-2', fractionId: 'paper', slotId: 'paper:second' },

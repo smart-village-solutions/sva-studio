@@ -6,6 +6,7 @@ import {
   type PluginOperationExecutionRegistration,
   readPluginOperationInput,
   storePluginOperationArtifact,
+  listActiveInstanceIdsForWorker,
 } from '@sva/auth-runtime/server';
 import {
   loadDefaultExternalInterfaceRecord,
@@ -32,6 +33,7 @@ import { createNodemailerMailDispatcher } from '@sva/mail-runtime';
 import { protectField, revealField } from '@sva/auth-runtime/server';
 import { pluginServerHost } from '@sva/auth-runtime/plugin-server-host';
 import { createWasteManagementOperationRuntime } from '@sva/waste-management-runtime/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { createMapPostalCodeResolver } from './map-geocoding-api.operations.js';
 import { selectedPluginJobRuntimeFactories } from '#studio-plugin-runtime-factories';
 type PluginOperationExecutionHandler =
@@ -56,6 +58,62 @@ const compareAlphabetically = (left: string, right: string): number =>
 
 const hostOwnedRuntimeOwners = new Map([['waste-management.operations', 'waste-management']]);
 
+const emailReminderPollIntervalMs = 60 * 1000;
+const emailReminderMaterializationIntervalMs = 60 * 60 * 1000;
+const emailReminderLogger = createSdkLogger({ component: 'waste-email-reminder-worker' });
+let emailReminderTimer: ReturnType<typeof setTimeout> | undefined;
+const lastEmailReminderMaterializationByInstance = new Map<string, number>();
+
+export const startWasteEmailReminderProcessing = (): void => {
+  if (emailReminderTimer) return;
+  const run = async (): Promise<void> => {
+    try {
+      const instanceIds = await listActiveInstanceIdsForWorker();
+      const runtime = studioPluginJobRuntimeFactories[
+        'waste-management.operations'
+      ]() as ReturnType<typeof createWasteManagementOperationRuntime>;
+      for (const instanceId of instanceIds) {
+        try {
+          const lastMaterializedAt =
+            lastEmailReminderMaterializationByInstance.get(instanceId) ?? 0;
+          if (Date.now() - lastMaterializedAt >= emailReminderMaterializationIntervalMs) {
+            try {
+              await runtime.materializeEmailReminders(instanceId, {
+                operation: 'materialize-email-reminders',
+              });
+              lastEmailReminderMaterializationByInstance.set(instanceId, Date.now());
+            } catch (error) {
+              emailReminderLogger.error('Waste email reminder materialization failed', {
+                operation: 'waste_email_reminder_materialization',
+                instance_id: instanceId,
+                error_type: error instanceof Error ? error.name : typeof error,
+              });
+            }
+          }
+          await runtime.processEmailReminderOutbox(instanceId, {
+            operation: 'process-email-reminder-outbox',
+            materialize: 'if-reminder-due',
+          });
+        } catch (error) {
+          emailReminderLogger.error('Waste email reminder processing failed', {
+            operation: 'waste_email_reminder_processing',
+            instance_id: instanceId,
+            error_type: error instanceof Error ? error.name : typeof error,
+          });
+        }
+      }
+    } catch (error) {
+      emailReminderLogger.error('Waste email reminder tenant listing failed', {
+        operation: 'waste_email_reminder_tenant_listing',
+        error_type: error instanceof Error ? error.name : typeof error,
+      });
+    } finally {
+      emailReminderTimer = setTimeout(() => void run(), emailReminderPollIntervalMs);
+    }
+  };
+  emailReminderTimer = setTimeout(() => void run(), 0);
+};
+
 const {
   workspacePluginRegistry: workspaceJobModuleRegistry,
   nodePluginRegistry: nodeJobModuleRegistry,
@@ -69,8 +127,7 @@ const studioPluginCatalogReport = studioServerPluginCatalogReport;
 const studioDeclaredPluginOperationJobTypeIds =
   studioPluginCatalogReport.snapshot.registry.jobTypes.map((jobType) => jobType.jobTypeId);
 const studioPluginJobSources = studioPluginCatalogReport.snapshot.pluginSources.filter(
-  (entry): entry is StudioPluginJobSource =>
-    Boolean(entry.manifest.entryPoints.jobs)
+  (entry): entry is StudioPluginJobSource => Boolean(entry.manifest.entryPoints.jobs)
 );
 
 const normalizeEntryPath = (value: string): string => value.replace(/^[.][/]/, '').trim();
@@ -175,9 +232,9 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
       }
 
       const runtimeRequirement = resolvePluginJobRuntimeRequirement({
-          pluginId: source.pluginId,
-          manifest: source.manifest,
-        });
+        pluginId: source.pluginId,
+        manifest: source.manifest,
+      });
       const runtimeFactory = input.runtimeFactories[runtimeRequirement];
       if (!runtimeFactory) {
         throw new Error(
@@ -186,7 +243,9 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
       }
       const runtimeOwner = hostOwnedRuntimeOwners.get(runtimeRequirement);
       if (runtimeOwner && runtimeOwner !== source.pluginId) {
-        throw new Error(`plugin_job_runtime_owner_mismatch:${source.pluginId}:${runtimeRequirement}`);
+        throw new Error(
+          `plugin_job_runtime_owner_mismatch:${source.pluginId}:${runtimeRequirement}`
+        );
       }
 
       const createPluginJobExecutionHandlers = (
@@ -233,27 +292,35 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
       runtimeFactories: studioPluginJobRuntimeFactories,
     });
 
-    return Object.fromEntries(Object.entries(handlers).map(([jobTypeId, handler]) => {
-      const jobType = studioPluginCatalogReport.snapshot.registry.pluginJobTypeRegistry.get(jobTypeId);
-      if (!jobType) throw new Error(`plugin_operation_job_type_missing:${jobTypeId}`);
-      const source = studioPluginJobSources.find((entry) => entry.pluginId === jobType.ownerPluginId);
-      const runtimeRequirement = source?.manifest.runtimeRequirements?.jobs;
-      const executionLane = jobType.executionLane ?? 'default';
-      if (
-        executionLane === 'privileged' &&
-        hostOwnedRuntimeOwners.get(runtimeRequirement ?? '') !== jobType.ownerPluginId
-      ) {
-        throw new Error(`plugin_job_privileged_execution_not_allowed:${jobType.ownerPluginId}`);
-      }
-      return [jobTypeId, {
-        handler,
-        queueName: jobType.queue,
-        executionLane,
-        supportsCancellation: jobType.supportsCancellation === true,
-        startPolicy: jobType.startPolicy ?? 'standard',
-        artifactPermissionId: jobType.artifactPermissionId,
-      }];
-    }));
+    return Object.fromEntries(
+      Object.entries(handlers).map(([jobTypeId, handler]) => {
+        const jobType =
+          studioPluginCatalogReport.snapshot.registry.pluginJobTypeRegistry.get(jobTypeId);
+        if (!jobType) throw new Error(`plugin_operation_job_type_missing:${jobTypeId}`);
+        const source = studioPluginJobSources.find(
+          (entry) => entry.pluginId === jobType.ownerPluginId
+        );
+        const runtimeRequirement = source?.manifest.runtimeRequirements?.jobs;
+        const executionLane = jobType.executionLane ?? 'default';
+        if (
+          executionLane === 'privileged' &&
+          hostOwnedRuntimeOwners.get(runtimeRequirement ?? '') !== jobType.ownerPluginId
+        ) {
+          throw new Error(`plugin_job_privileged_execution_not_allowed:${jobType.ownerPluginId}`);
+        }
+        return [
+          jobTypeId,
+          {
+            handler,
+            queueName: jobType.queue,
+            executionLane,
+            supportsCancellation: jobType.supportsCancellation === true,
+            startPolicy: jobType.startPolicy ?? 'standard',
+            artifactPermissionId: jobType.artifactPermissionId,
+          },
+        ];
+      })
+    );
   })();
 };
 

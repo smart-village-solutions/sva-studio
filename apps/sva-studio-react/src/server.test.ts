@@ -30,6 +30,7 @@ const createServerFunctionRequestDiagnosticsMock = vi.fn();
 const readServerFunctionResponseBodyForDiagnosticsMock = vi.fn();
 const resolveServerFunctionBranchDecisionMock = vi.fn();
 const registerStudioPluginOperationHandlersMock = vi.fn();
+const startWasteEmailReminderProcessingMock = vi.fn();
 const ensurePluginActivationPoliciesConfiguredMock = vi.fn();
 const startPluginActivationPolicyFleetReconcileInBackgroundMock = vi.fn();
 
@@ -113,6 +114,7 @@ vi.mock('./lib/server-function-request-diagnostics.server', () => ({
 
 vi.mock('#studio-plugin-operation-runtime', () => ({
   registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
+  startWasteEmailReminderProcessing: startWasteEmailReminderProcessingMock,
 }));
 
 vi.mock('./lib/plugin-server-runtime.server', () => ({
@@ -180,6 +182,7 @@ describe('server transport', () => {
     readServerFunctionResponseBodyForDiagnosticsMock.mockReset();
     resolveServerFunctionBranchDecisionMock.mockReset();
     registerStudioPluginOperationHandlersMock.mockReset();
+    startWasteEmailReminderProcessingMock.mockReset();
     ensurePluginActivationPoliciesConfiguredMock.mockReset();
     startPluginActivationPolicyFleetReconcileInBackgroundMock.mockReset();
   });
@@ -260,6 +263,7 @@ describe('server transport', () => {
     await vi.waitFor(() =>
       expect(startPluginActivationPolicyFleetReconcileInBackgroundMock).toHaveBeenCalledOnce()
     );
+    expect(startWasteEmailReminderProcessingMock).toHaveBeenCalledOnce();
     expect(registerStudioPluginOperationHandlersMock.mock.invocationCallOrder[0]).toBeLessThan(
       startPluginActivationPolicyFleetReconcileInBackgroundMock.mock.invocationCallOrder[0] ?? 0
     );
@@ -919,6 +923,7 @@ describe('server transport', () => {
     });
     expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
     expect(startPluginActivationPolicyFleetReconcileInBackgroundMock).not.toHaveBeenCalled();
+    expect(startWasteEmailReminderProcessingMock).not.toHaveBeenCalled();
   });
 
   it('exits with an error after a terminal worker failure', async () => {

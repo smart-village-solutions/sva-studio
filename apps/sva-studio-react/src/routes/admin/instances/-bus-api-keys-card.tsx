@@ -1,5 +1,4 @@
 /** Instance-scoped Bus management; raw keys exist only in this mounted component. */
-import React from 'react';
 import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';

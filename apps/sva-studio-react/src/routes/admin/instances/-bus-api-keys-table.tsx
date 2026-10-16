@@ -1,4 +1,3 @@
-import React from 'react';
 import type { InstanceBusKey } from '@sva/core';
 import { Button } from '@sva/studio-ui-react';
 import { Badge } from '../../../components/ui/badge';

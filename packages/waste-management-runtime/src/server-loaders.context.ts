@@ -6,7 +6,7 @@ import { resolveWasteDataSource } from './repositories/data-source.server.js';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
 import { mutateWasteAddressInTransaction } from './repositories/address-mutations.js';
 import { previewWasteAddressMutation } from './repositories/address-mutation-snapshot.js';
-import type { WasteAddressImpactPreview, WasteAddressMutationPreviewInput, WasteAddressImpactCounts } from '@sva/waste-management-contracts';
+import type { WasteAddressImpactCounts, WasteAddressImpactPreview, WasteAddressMutationPreviewInput } from '@sva/waste-management-contracts';
 import { createWasteProvisioningAccess } from './repositories/waste-provisioning-access.js';
 import type { WasteServerLoaderHost } from './server-loaders.js';
 
@@ -24,7 +24,6 @@ export class WasteLoaderContext {
   constructor(private readonly host: WasteServerLoaderHost) {
     this.provisioning = createWasteProvisioningAccess(host.withInstanceDb);
   }
-
   schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
   logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 
@@ -44,7 +43,6 @@ export class WasteLoaderContext {
   ): Promise<void> => {
     await client.query(`SET search_path TO ${this.quoteIdentifier(schemaName)}, public;`);
   };
-
   createSqlExecutor = (client: {
     query: <TRow = Record<string, unknown>>(
       text: string,
@@ -58,11 +56,9 @@ export class WasteLoaderContext {
       return { rowCount: result.rowCount ?? 0, rows: result.rows };
     },
   });
-
   wastePoolCache = new Map<string, WastePoolEntry>();
   WASTE_POOL_IDLE_TTL_MS = 5 * 60 * 1_000;
   WASTE_POOL_MAX_ENTRIES = 32;
-
   measureWasteStep = async <T>(
     operation: string,
     step: string,
@@ -81,7 +77,6 @@ export class WasteLoaderContext {
       });
     }
   };
-
   measureWasteRepositoryStep = <T>(
     instanceId: string,
     operation: string,
@@ -94,10 +89,8 @@ export class WasteLoaderContext {
       { instance_id: instanceId },
       work
     );
-
   createWastePoolKey = (dataSource: WasteDataSource): string =>
     `${dataSource.databaseUrl}::${dataSource.schemaName}`;
-
   loadSelectedWasteInterfaceRecord = async (instanceId: string) => {
     const records = await this.host.listExternalInterfaceRecords(instanceId);
     return (
@@ -105,7 +98,6 @@ export class WasteLoaderContext {
       (await this.host.loadDefaultExternalInterfaceRecord(instanceId, 'postgresql'))
     );
   };
-
   resolveScopedWasteDataSource = (
     instanceId: string,
     operation: string
@@ -118,20 +110,17 @@ export class WasteLoaderContext {
         revealSecret: (ciphertext, aad) => this.host.revealField(ciphertext, aad) ?? undefined,
       })
     );
-
   closeWastePoolEntry = async (entry: WastePoolEntry): Promise<void> => {
     const cachedEntry = this.wastePoolCache.get(entry.key);
     if (cachedEntry === entry) this.wastePoolCache.delete(entry.key);
     await entry.pool.end();
   };
-
   evictExpiredWastePoolEntries = async (now = Date.now()): Promise<void> => {
     const expiredEntries = [...this.wastePoolCache.values()].filter(
       (entry) => now - entry.lastUsedAt >= this.WASTE_POOL_IDLE_TTL_MS
     );
     await Promise.all(expiredEntries.map(async (entry) => this.closeWastePoolEntry(entry)));
   };
-
   evictLeastRecentlyUsedWastePoolEntry = async (): Promise<void> => {
     const oldestEntry = [...this.wastePoolCache.values()].reduce<WastePoolEntry | null>(
       (oldest, candidate) =>
@@ -140,7 +129,6 @@ export class WasteLoaderContext {
     );
     if (oldestEntry) await this.closeWastePoolEntry(oldestEntry);
   };
-
   getOrCreateWastePoolEntry = async (
     dataSource: WasteDataSource,
     now = Date.now()
@@ -168,13 +156,11 @@ export class WasteLoaderContext {
     this.wastePoolCache.set(key, nextEntry);
     return nextEntry;
   };
-
   resetWastePoolCache = async (): Promise<void> => {
     const entries = [...this.wastePoolCache.values()];
     this.wastePoolCache.clear();
     await Promise.all(entries.map(async (entry) => entry.pool.end()));
   };
-
   withWasteClient = async <T>(
     instanceId: string,
     operation: string,
@@ -219,7 +205,6 @@ export class WasteLoaderContext {
       client.release();
     }
   };
-
   withWasteRepository = async <T>(
     instanceId: string,
     operation: string,
@@ -228,7 +213,6 @@ export class WasteLoaderContext {
     this.withWasteClient(instanceId, operation, async (client) =>
       work(createWasteMasterDataRepository(this.createSqlExecutor(client)))
     );
-
   previewWasteAddressMutation = async (
     instanceId: string,
     input: WasteAddressMutationPreviewInput
@@ -236,7 +220,6 @@ export class WasteLoaderContext {
     this.withWasteClient(instanceId, 'preview_waste_address_mutation', (client) =>
       previewWasteAddressMutation(client, input)
     );
-
   mutateWasteAddressInTransaction = async (
     instanceId: string,
     input: WasteAddressMutationPreviewInput & {
@@ -257,7 +240,6 @@ export class WasteLoaderContext {
         throw error;
       }
     });
-
   createLoader =
     <TArgs extends readonly unknown[], TResult>(
       operation: string,

@@ -20,7 +20,6 @@ import { WasteManagementPageDescription } from './waste-management.page.descript
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WasteManagementPageTabs } from './waste-management.page.layout.js';
-
 const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTabId | undefined => {
   if (tab === 'fractions' || tab === 'locations') {
     return tab;
@@ -30,7 +29,6 @@ const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTa
 
   return undefined;
 };
-
 const updateSearch = (
   navigate: ReturnType<typeof useNavigate>,
   currentSearch: WasteManagementSearchParams,

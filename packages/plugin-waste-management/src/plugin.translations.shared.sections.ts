@@ -1,7 +1,4 @@
-import {
-  createTabCard,
-  type WasteManagementTabCardCopy,
-} from './plugin.translations.shared.base.js';
+import { createTabCard, type WasteManagementTabCardCopy } from './plugin.translations.shared.base.js';
 
 type WasteManagementTabsCopy = Readonly<{
   ariaLabel: string;

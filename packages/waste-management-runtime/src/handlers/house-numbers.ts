@@ -71,6 +71,9 @@ export const wasteManagementHouseNumberHandlers = {
     }
 
     const loadWasteHouseNumber = requireDeps(deps.loadWasteHouseNumberById, 'loadWasteHouseNumberById');
+    const existingHouseNumber = await loadWasteHouseNumber(instanceId, houseNumberId);
+    if (!existingHouseNumber) return createApiError(404, 'not_found', 'Die Waste-Hausnummer wurde nicht gefunden.', requestId);
+    const movesStreet = existingHouseNumber.streetId !== parsed.data.streetId;
 
     return runWasteUpdateMutation({
       deps,
@@ -86,14 +89,30 @@ export const wasteManagementHouseNumberHandlers = {
         notFound: 'Die Waste-Hausnummer wurde nicht gefunden.',
         verificationFailed: 'Die Waste-Hausnummer konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Hausnummer konnte nicht gespeichert werden.',
+        mapPersistenceError: (error) => {
+          const message = error instanceof Error ? error.message : '';
+          const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+          if (message === 'address_confirmation_required') return { status: 409, code: 'conflict', message: 'Bitte laden Sie die Folgen des Elternwechsels und bestätigen Sie die betroffenen E-Mail-Abos ausdrücklich.', reasonCode: message };
+          if (code === '40001' || code === '40P01') return { status: 409, code: 'conflict', message: 'Die Adressdaten wurden gleichzeitig geändert. Bitte laden Sie die Vorschau erneut.', reasonCode: 'address_preview_stale' };
+          if (message === 'address_preview_stale' || message === 'address_data_inconsistent') return { status: 409, code: 'conflict', message: 'Die Vorschau ist nicht mehr aktuell oder die Adressdaten sind widersprüchlich. Bitte laden Sie die Vorschau erneut.', reasonCode: message };
+          return undefined;
+        },
       },
       loadExisting: () => loadWasteHouseNumber(instanceId, houseNumberId),
-      save: () =>
-        requireDeps(deps.saveWasteHouseNumber, 'saveWasteHouseNumber')(instanceId, {
+      save: () => {
+        if (movesStreet) {
+          if (!parsed.data.confirmationToken) return Promise.reject(new Error('address_confirmation_required'));
+          return requireDeps(deps.mutateWasteAddressInTransaction, 'mutateWasteAddressInTransaction')(
+            instanceId,
+            { entityType: 'houseNumber', entityId: houseNumberId, mode: 'move', targetParentId: parsed.data.streetId, confirmationToken: parsed.data.confirmationToken, number: parsed.data.number.trim() }
+          ).then(() => undefined);
+        }
+        return requireDeps(deps.saveWasteHouseNumber, 'saveWasteHouseNumber')(instanceId, {
           id: houseNumberId,
           number: parsed.data.number.trim(),
           streetId: parsed.data.streetId,
-        }),
+        });
+      },
       loadSaved: () => loadWasteHouseNumber(instanceId, houseNumberId),
     });
   },

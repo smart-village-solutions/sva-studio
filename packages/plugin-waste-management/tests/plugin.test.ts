@@ -48,9 +48,9 @@ describe('pluginWasteManagement contract', () => {
 
   it('declares each existing Waste method and path once as a server handler', () => {
     const descriptors = pluginWasteManagement.serverHandlers ?? [];
-    expect(descriptors).toHaveLength(62);
-    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(49);
-    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(62);
+    expect(descriptors).toHaveLength(67);
+    expect(new Set(descriptors.map(({ path }) => path)).size).toBe(50);
+    expect(new Set(descriptors.map(({ method, path }) => `${method} ${path}`)).size).toBe(67);
     expect(descriptors).toContainEqual(
       expect.objectContaining({
         path: '/api/v1/waste-management/tours/annual-transfer',
@@ -175,6 +175,8 @@ describe('pluginWasteManagement contract', () => {
     ).toEqual({
       tab: 'settings',
       masterDataTab: 'locations',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       fractionsView: 'list',
       toursView: 'list',
       locationsView: 'list',
@@ -212,6 +214,8 @@ describe('pluginWasteManagement contract', () => {
     expect(pluginWasteManagement.routes[0]?.validateSearch?.({})).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      addressEntityType: 'region',
+      addressParentId: undefined,
       fractionsView: 'list',
       toursView: 'list',
       locationsView: 'list',
@@ -448,8 +452,10 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.region.updated',
         titleKey: 'wasteManagement.audit.regionUpdated',
       },
+      { eventType: 'waste-management.region.deleted', titleKey: 'wasteManagement.audit.regionDeleted' },
       { eventType: 'waste-management.city.created', titleKey: 'wasteManagement.audit.cityCreated' },
       { eventType: 'waste-management.city.updated', titleKey: 'wasteManagement.audit.cityUpdated' },
+      { eventType: 'waste-management.city.deleted', titleKey: 'wasteManagement.audit.cityDeleted' },
       {
         eventType: 'waste-management.street.created',
         titleKey: 'wasteManagement.audit.streetCreated',
@@ -458,6 +464,7 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.street.updated',
         titleKey: 'wasteManagement.audit.streetUpdated',
       },
+      { eventType: 'waste-management.street.deleted', titleKey: 'wasteManagement.audit.streetDeleted' },
       {
         eventType: 'waste-management.house-number.created',
         titleKey: 'wasteManagement.audit.houseNumberCreated',
@@ -466,6 +473,7 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.house-number.updated',
         titleKey: 'wasteManagement.audit.houseNumberUpdated',
       },
+      { eventType: 'waste-management.house-number.deleted', titleKey: 'wasteManagement.audit.houseNumberDeleted' },
       {
         eventType: 'waste-management.collection-location.created',
         titleKey: 'wasteManagement.audit.collectionLocationCreated',

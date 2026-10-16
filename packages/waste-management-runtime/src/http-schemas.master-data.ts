@@ -130,6 +130,7 @@ const updateWasteCitySchema = z
     name: z.string().trim().min(1).optional(),
     postalCode: z.string().trim().max(16).nullable().optional(),
     regionId: z.string().trim().min(1).nullable().optional(),
+    confirmationToken: z.string().trim().min(1).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'Mindestens ein Feld muss aktualisiert werden.',
@@ -141,7 +142,9 @@ const createWasteStreetSchema = z.object({
   cityId: z.string().trim().min(1),
 });
 
-const updateWasteStreetSchema = createWasteStreetSchema.omit({ id: true });
+const updateWasteStreetSchema = createWasteStreetSchema.omit({ id: true }).extend({
+  confirmationToken: z.string().trim().min(1).optional(),
+});
 
 const createWasteHouseNumberSchema = z.object({
   id: z.string().trim().min(1),
@@ -149,7 +152,20 @@ const createWasteHouseNumberSchema = z.object({
   streetId: z.string().trim().min(1),
 });
 
-const updateWasteHouseNumberSchema = createWasteHouseNumberSchema.omit({ id: true });
+const updateWasteHouseNumberSchema = createWasteHouseNumberSchema.omit({ id: true }).extend({
+  confirmationToken: z.string().trim().min(1).optional(),
+});
+
+const wasteAddressMutationPreviewSchema = z.object({
+  entityType: z.enum(['region', 'city', 'street', 'houseNumber']),
+  entityId: z.string().trim().min(1),
+  mode: z.enum(['delete', 'move']),
+  targetParentId: z.string().trim().min(1).optional(),
+});
+
+const wasteAddressDeleteSchema = z.object({
+  confirmationToken: z.string().trim().min(1),
+});
 
 const createWasteCollectionLocationSchema = z.object({
   id: z.string().trim().min(1),
@@ -173,6 +189,8 @@ export const wasteManagementMasterDataSchemas = {
   updateWasteStreetSchema,
   createWasteHouseNumberSchema,
   updateWasteHouseNumberSchema,
+  wasteAddressMutationPreviewSchema,
+  wasteAddressDeleteSchema,
   createWasteCollectionLocationSchema,
   updateWasteCollectionLocationSchema,
 } as const;

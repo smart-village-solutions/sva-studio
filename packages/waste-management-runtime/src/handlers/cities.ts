@@ -72,6 +72,12 @@ export const wasteManagementCityHandlers = {
     }
 
     const loadWasteCity = requireDeps(deps.loadWasteCityById, 'loadWasteCityById');
+    const existingCity = await loadWasteCity(instanceId, cityId);
+    if (!existingCity) return createApiError(404, 'not_found', 'Die Waste-Stadt wurde nicht gefunden.', requestId);
+    const nextRegionId = parsed.data.regionId === undefined
+      ? existingCity.regionId ?? null
+      : normalizeOptionalString(parsed.data.regionId ?? undefined) ?? null;
+    const movesRegion = (existingCity.regionId ?? null) !== nextRegionId;
 
     return runWasteUpdateMutation({
       deps,
@@ -87,10 +93,30 @@ export const wasteManagementCityHandlers = {
         notFound: 'Die Waste-Stadt wurde nicht gefunden.',
         verificationFailed: 'Die Waste-Stadt konnte nicht verifiziert werden.',
         persistenceFailed: 'Die Waste-Stadt konnte nicht gespeichert werden.',
+        mapPersistenceError: (error) => {
+          const message = error instanceof Error ? error.message : '';
+          const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+          if (message === 'address_confirmation_required') return { status: 409, code: 'conflict', message: 'Bitte laden Sie die Folgen des Elternwechsels und bestätigen Sie die betroffenen E-Mail-Abos ausdrücklich.', reasonCode: message };
+          if (code === '40001' || code === '40P01') return { status: 409, code: 'conflict', message: 'Die Adressdaten wurden gleichzeitig geändert. Bitte laden Sie die Vorschau erneut.', reasonCode: 'address_preview_stale' };
+          if (message === 'address_preview_stale' || message === 'address_data_inconsistent') return { status: 409, code: 'conflict', message: 'Die Vorschau ist nicht mehr aktuell oder die Adressdaten sind widersprüchlich. Bitte laden Sie die Vorschau erneut.', reasonCode: message };
+          return undefined;
+        },
       },
       loadExisting: () => loadWasteCity(instanceId, cityId),
-      save: () =>
-        requireDeps(deps.patchWasteCity, 'patchWasteCity')(instanceId, cityId, {
+      save: () => {
+        if (movesRegion) {
+          if (!parsed.data.confirmationToken) return Promise.reject(new Error('address_confirmation_required'));
+          return requireDeps(deps.mutateWasteAddressInTransaction, 'mutateWasteAddressInTransaction')(
+            instanceId,
+            {
+              entityType: 'city', entityId: cityId, mode: 'move', targetParentId: nextRegionId ?? undefined,
+              confirmationToken: parsed.data.confirmationToken,
+              ...(parsed.data.name === undefined ? {} : { name: parsed.data.name.trim() }),
+              ...(parsed.data.postalCode === undefined ? {} : { postalCode: normalizeOptionalString(parsed.data.postalCode ?? undefined) ?? null }),
+            }
+          ).then(() => undefined);
+        }
+        return requireDeps(deps.patchWasteCity, 'patchWasteCity')(instanceId, cityId, {
           ...(parsed.data.name === undefined ? {} : { name: parsed.data.name.trim() }),
           ...(parsed.data.postalCode === undefined
             ? {}
@@ -98,7 +124,8 @@ export const wasteManagementCityHandlers = {
           ...(parsed.data.regionId === undefined
             ? {}
             : { regionId: normalizeOptionalString(parsed.data.regionId ?? undefined) ?? null }),
-        }),
+        });
+      },
       loadSaved: () => loadWasteCity(instanceId, cityId),
     });
   },

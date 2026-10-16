@@ -1,4 +1,4 @@
-import type { WasteStreetRecord } from '@sva/waste-management-contracts';
+import type { WasteCityRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
   useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
+import { createStreetOptionLabels } from './waste-management.address-option-labels.js';
 
 const withDefaultStreetId = (
   form: HouseNumberFormState,
@@ -37,13 +38,15 @@ export const HouseNumberDialog = ({
   mode,
   form,
   streets,
+  cities,
+  regions,
   saving,
   message,
   onOpenChange,
   onChange,
   onBeforeSubmit,
   onSubmit,
-}: BaseProps<HouseNumberFormState> & { readonly streets: readonly WasteStreetRecord[] }) => {
+}: BaseProps<HouseNumberFormState> & { readonly streets: readonly WasteStreetRecord[]; readonly cities: readonly WasteCityRecord[]; readonly regions: readonly WasteRegionRecord[] }) => {
   const pt = usePluginTranslation('wasteManagement');
   const formApi = useForm<HouseNumberFormState>({
     defaultValues: withDefaultStreetId(form, streets),
@@ -70,6 +73,8 @@ export const HouseNumberDialog = ({
       pt={pt}
       saving={saving}
       streets={streets}
+      cities={cities}
+      regions={regions}
     />
   );
 };
@@ -77,6 +82,8 @@ export const HouseNumberDialog = ({
 const HouseNumberDialogForm = ({
   open,
   streets,
+  cities,
+  regions,
   formApi,
   message,
   mode,
@@ -98,6 +105,8 @@ const HouseNumberDialogForm = ({
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly saving: boolean;
   readonly streets: readonly WasteStreetRecord[];
+  readonly cities: readonly WasteCityRecord[];
+  readonly regions: readonly WasteRegionRecord[];
 }) => {
   const {
     clearErrors,
@@ -137,6 +146,8 @@ const HouseNumberDialogForm = ({
             pt={pt}
             register={register}
             streets={streets}
+            cities={cities}
+            regions={regions}
           />
           <MasterDataDialogActions
             cancelLabel={pt('masterData.houseNumbers.actions.cancel')}
@@ -161,6 +172,8 @@ const HouseNumberDialogFields = ({
   pt,
   register,
   streets,
+  cities,
+  regions,
 }: {
   readonly clearErrors: ReturnType<typeof useForm<HouseNumberFormState>>['clearErrors'];
   readonly control: ReturnType<typeof useForm<HouseNumberFormState>>['control'];
@@ -169,6 +182,8 @@ const HouseNumberDialogFields = ({
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly register: ReturnType<typeof useForm<HouseNumberFormState>>['register'];
   readonly streets: readonly WasteStreetRecord[];
+  readonly cities: readonly WasteCityRecord[];
+  readonly regions: readonly WasteRegionRecord[];
 }) => (
   <StudioFieldGroup>
     <StudioField {...numberField} label={pt('masterData.houseNumbers.fields.number')}>
@@ -204,7 +219,7 @@ const HouseNumberDialogFields = ({
             <option value="">{pt('masterData.houseNumbers.fields.streetUnset')}</option>
             {streets.map((street) => (
               <option key={street.id} value={street.id}>
-                {street.name}
+                {createStreetOptionLabels(streets, cities, regions, pt('masterData.locationsWorkspace.table.regionUnavailable')).get(street.id) ?? street.name}
               </option>
             ))}
           </Select>

@@ -1,4 +1,5 @@
 import type { WasteServerHandlerDeps } from './server-handler-deps.js';
+import { createWasteAddressEntityImpactHandlers } from './handlers/address-entities.js';
 export const createWasteFractionAndRegionHandlers = (deps: WasteServerHandlerDeps) => {
   const {
     bindWasteAuditActor,
@@ -79,6 +80,7 @@ export const createWasteAddressHandlers = (deps: WasteServerHandlerDeps) => {
     withAuthenticatedWasteManagementHandler,
   } = deps;
   return {
+    ...createWasteAddressEntityImpactHandlers(deps, withAuthenticatedWasteManagementHandler),
     createCity: (request: Request): Promise<Response> =>
       withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
         createWasteManagementCityInternal(nextRequest, ctx, {

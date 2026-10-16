@@ -7,6 +7,7 @@ export type CreateWasteManagementHouseNumberInput = Readonly<{
 export type UpdateWasteManagementHouseNumberInput = Readonly<{
   number: string;
   streetId: string;
+  confirmationToken?: string;
 }>;
 
 export type CreateWasteManagementCollectionLocationInput = Readonly<{

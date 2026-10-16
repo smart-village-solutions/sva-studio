@@ -130,6 +130,11 @@ export {
   type WasteTenantProvisioningStatus,
 } from './waste-tenant-provisioning-contract.js';
 export type {
+  WasteAddressEntityType,
+  WasteAddressEntityDeleteInput,
+  WasteAddressImpactCounts,
+  WasteAddressImpactPreview,
+  WasteAddressMutationPreviewInput,
   WasteDateShiftReasonType,
   WasteCollectionLocationListFilter,
   WasteCollectionLocationListItem,

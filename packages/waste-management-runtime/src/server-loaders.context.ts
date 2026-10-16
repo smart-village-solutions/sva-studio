@@ -4,6 +4,8 @@ import { findSelectedWasteManagementInterfaceRecord } from '@sva/waste-managemen
 import { Pool } from 'pg';
 import { resolveWasteDataSource } from './repositories/data-source.server.js';
 import { createWasteMasterDataRepository } from './repositories/master-data.js';
+import { mutateWasteAddressInTransaction, previewWasteAddressMutation } from './repositories/address-mutations.js';
+import type { WasteAddressImpactPreview, WasteAddressMutationPreviewInput, WasteAddressImpactCounts } from '@sva/waste-management-contracts';
 import { createWasteProvisioningAccess } from './repositories/waste-provisioning-access.js';
 import type { WasteServerLoaderHost } from './server-loaders.js';
 
@@ -225,6 +227,35 @@ export class WasteLoaderContext {
     this.withWasteClient(instanceId, operation, async (client) =>
       work(createWasteMasterDataRepository(this.createSqlExecutor(client)))
     );
+
+  previewWasteAddressMutation = async (
+    instanceId: string,
+    input: WasteAddressMutationPreviewInput
+  ): Promise<WasteAddressImpactPreview> =>
+    this.withWasteClient(instanceId, 'preview_waste_address_mutation', (client) =>
+      previewWasteAddressMutation(client, input)
+    );
+
+  mutateWasteAddressInTransaction = async (
+    instanceId: string,
+    input: WasteAddressMutationPreviewInput & {
+      readonly confirmationToken: string;
+      readonly name?: string;
+      readonly postalCode?: string | null;
+      readonly number?: string;
+    }
+  ): Promise<WasteAddressImpactCounts> =>
+    this.withWasteClient(instanceId, 'mutate_waste_address', async (client) => {
+      await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+      try {
+        const result = await mutateWasteAddressInTransaction(client, input);
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    });
 
   createLoader =
     <TArgs extends readonly unknown[], TResult>(

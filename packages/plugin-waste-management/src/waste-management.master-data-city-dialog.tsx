@@ -23,6 +23,7 @@ import {
   useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
+import { createRegionOptionLabels } from './waste-management.address-option-labels.js';
 
 export const CityDialog = ({
   open,
@@ -212,7 +213,7 @@ const CityDialogFields = ({
             <option value="">{pt('masterData.cities.fields.regionUnset')}</option>
             {regions.map((region) => (
               <option key={region.id} value={region.id}>
-                {region.name}
+                {createRegionOptionLabels(regions).get(region.id) ?? region.name}
               </option>
             ))}
           </Select>

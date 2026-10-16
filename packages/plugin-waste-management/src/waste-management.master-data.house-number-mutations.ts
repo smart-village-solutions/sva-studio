@@ -5,6 +5,7 @@ import {
 } from './waste-management.api.js';
 import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
 import { applySuccess } from './use-waste-master-data-state.js';
+import { confirmWasteAddressMove } from './waste-management.master-data-address-move.js';
 import type { WasteMasterDataSubmissionContext } from './waste-management.master-data.submission.types.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 
@@ -36,6 +37,26 @@ export const createWasteMasterDataHouseNumberMutations = ({
           wasteMasterDataInputMappers.toCreateHouseNumberInput(submittedForm)
         );
       } else {
+        const existingHouseNumber = state.overview?.houseNumbers.find((item) => item.id === state.houseNumberForm.id);
+        if (existingHouseNumber && existingHouseNumber.streetId !== submittedForm.streetId) {
+          const streetLabel = (id: string) => {
+            const street = state.overview?.streets.find((item) => item.id === id);
+            const city = street ? state.overview?.cities.find((item) => item.id === street.cityId) : undefined;
+            const region = city?.regionId ? state.overview?.regions.find((item) => item.id === city.regionId)?.name : undefined;
+            return [street?.name, city?.postalCode, city?.name, region].filter(Boolean).join(' · ');
+          };
+          await confirmWasteAddressMove({
+            state, pt, entityType: 'houseNumber', entityId: existingHouseNumber.id, targetParentId: submittedForm.streetId,
+            sourceLabel: streetLabel(existingHouseNumber.streetId), targetLabel: streetLabel(submittedForm.streetId),
+            save: (confirmationToken) => updateWasteManagementHouseNumber(existingHouseNumber.id, {
+              ...wasteMasterDataInputMappers.toUpdateHouseNumberInput(submittedForm), confirmationToken,
+            }),
+            closeDialog: () => state.setHouseNumberDialogOpen(false),
+            successMessage: pt('masterData.houseNumbers.messages.updateSuccess'),
+            loadOverview, loadCollectionLocationList,
+          });
+          return;
+        }
         await updateWasteManagementHouseNumber(
           state.houseNumberForm.id,
           wasteMasterDataInputMappers.toUpdateHouseNumberInput(submittedForm)
@@ -56,6 +77,10 @@ export const createWasteMasterDataHouseNumberMutations = ({
         text:
           code === 'forbidden'
             ? pt('masterData.houseNumbers.messages.saveForbidden')
+            : code === 'conflict'
+              ? pt('masterData.locationsWorkspace.addresses.previewStale')
+              : saveError instanceof Error && saveError.message === 'address_data_inconsistent'
+                ? pt('masterData.locationsWorkspace.addresses.previewError')
             : pt('masterData.houseNumbers.messages.saveError'),
       });
     } finally {

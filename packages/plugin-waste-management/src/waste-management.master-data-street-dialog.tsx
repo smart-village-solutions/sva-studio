@@ -1,4 +1,4 @@
-import type { WasteCityRecord } from '@sva/waste-management-contracts';
+import type { WasteCityRecord, WasteRegionRecord } from '@sva/waste-management-contracts';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
   useResetOnFormContextChange,
 } from './waste-management.master-data-entity-dialogs.shared.js';
 import { StatusNotice } from './waste-management.page.support.js';
+import { createCityOptionLabels } from './waste-management.address-option-labels.js';
 
 const withDefaultCityId = (
   form: StreetFormState,
@@ -37,13 +38,14 @@ export const StreetDialog = ({
   mode,
   form,
   cities,
+  regions,
   saving,
   message,
   onOpenChange,
   onChange,
   onBeforeSubmit,
   onSubmit,
-}: BaseProps<StreetFormState> & { readonly cities: readonly WasteCityRecord[] }) => {
+}: BaseProps<StreetFormState> & { readonly cities: readonly WasteCityRecord[]; readonly regions: readonly WasteRegionRecord[] }) => {
   const pt = usePluginTranslation('wasteManagement');
   const formApi = useForm<StreetFormState>({
     defaultValues: withDefaultCityId(form, cities),
@@ -60,6 +62,7 @@ export const StreetDialog = ({
   return (
     <StreetDialogForm
       cities={cities}
+      regions={regions}
       formApi={formApi}
       message={message}
       mode={mode}
@@ -77,6 +80,7 @@ export const StreetDialog = ({
 const StreetDialogForm = ({
   open,
   cities,
+  regions,
   formApi,
   message,
   mode,
@@ -88,6 +92,7 @@ const StreetDialogForm = ({
   saving,
 }: {
   readonly cities: readonly WasteCityRecord[];
+  readonly regions: readonly WasteRegionRecord[];
   readonly formApi: ReturnType<typeof useForm<StreetFormState>>;
   readonly message: BaseProps<StreetFormState>['message'];
   readonly mode: BaseProps<StreetFormState>['mode'];
@@ -131,6 +136,7 @@ const StreetDialogForm = ({
           <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
           <StreetDialogFields
             cities={cities}
+            regions={regions}
             clearErrors={clearErrors}
             control={control}
             nameField={nameField}
@@ -155,6 +161,7 @@ const StreetDialogForm = ({
 
 const StreetDialogFields = ({
   cities,
+  regions,
   clearErrors,
   control,
   nameField,
@@ -163,6 +170,7 @@ const StreetDialogFields = ({
   register,
 }: {
   readonly cities: readonly WasteCityRecord[];
+  readonly regions: readonly WasteRegionRecord[];
   readonly clearErrors: ReturnType<typeof useForm<StreetFormState>>['clearErrors'];
   readonly control: ReturnType<typeof useForm<StreetFormState>>['control'];
   readonly nameField: ReturnType<typeof getStudioFormFieldProps>;
@@ -201,7 +209,7 @@ const StreetDialogFields = ({
             <option value="">{pt('masterData.streets.fields.cityUnset')}</option>
             {cities.map((city) => (
               <option key={city.id} value={city.id}>
-                {city.name}
+                {createCityOptionLabels(cities, regions, pt('masterData.locationsWorkspace.table.regionUnavailable')).get(city.id) ?? city.name}
               </option>
             ))}
           </Select>

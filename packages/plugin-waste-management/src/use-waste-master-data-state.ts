@@ -1,5 +1,5 @@
 import type { StudioJobResponse } from '@sva/plugin-sdk';
-import type { WasteCollectionLocationPage } from '@sva/waste-management-contracts';
+import type { WasteAddressImpactPreview, WasteCollectionLocationPage } from '@sva/waste-management-contracts';
 import { startTransition, useState } from 'react';
 
 import type { WasteManagementMasterDataOverview } from './waste-management.api.js';
@@ -8,6 +8,14 @@ import { useWasteMasterDataEntityState } from './waste-management.master-data.en
 import { useWasteMasterDataLocationState } from './waste-management.master-data.location-state.js';
 
 export type WasteLocationCoverageDataStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export type PendingWasteAddressMove = Readonly<{
+  preview: WasteAddressImpactPreview;
+  sourceLabel: string;
+  targetLabel: string;
+  onConfirm: () => Promise<void>;
+  refresh: () => Promise<void>;
+}>;
 
 export const useWasteMasterDataState = () => {
   const [loading, setLoading] = useState(true);
@@ -39,6 +47,7 @@ export const useWasteMasterDataState = () => {
     | null
   >(null);
   const [saving, setSaving] = useState(false);
+  const [pendingAddressMove, setPendingAddressMove] = useState<PendingWasteAddressMove | null>(null);
   const entityState = useWasteMasterDataEntityState();
   const locationState = useWasteMasterDataLocationState();
 
@@ -55,6 +64,7 @@ export const useWasteMasterDataState = () => {
     trackedSyncWasteTypesJob,
     lastOutcome,
     saving,
+    pendingAddressMove,
     ...entityState,
     ...locationState,
     setLoading,
@@ -71,6 +81,7 @@ export const useWasteMasterDataState = () => {
     setTrackedSyncWasteTypesJob,
     setLastOutcome,
     setSaving,
+    setPendingAddressMove,
   };
 };
 

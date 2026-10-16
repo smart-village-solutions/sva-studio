@@ -26,6 +26,8 @@ const toMasterDataTab = (tab: WasteManagementTabId): WasteManagementMasterDataTa
     return tab;
   }
 
+  if (tab === 'masterData') return 'locations';
+
   return undefined;
 };
 
@@ -253,6 +255,7 @@ export const WasteManagementPage = () => {
         access={uiAccess}
         visibleTabIds={uiAccess.visibleTabIds}
         onTabChange={(value) => updateSearch(navigate, search, { tab: value })}
+        onAddressSearchChange={(patch) => updateSearch(navigate, search, patch)}
       />
     </StudioOverviewPageTemplate>
   );

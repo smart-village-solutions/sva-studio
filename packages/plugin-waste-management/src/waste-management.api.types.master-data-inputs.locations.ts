@@ -18,6 +18,7 @@ export type UpdateWasteManagementCityInput = Readonly<{
   name?: string;
   postalCode?: string | null;
   regionId?: string | null;
+  confirmationToken?: string;
 }>;
 
 export type CreateWasteManagementStreetInput = Readonly<{
@@ -29,4 +30,5 @@ export type CreateWasteManagementStreetInput = Readonly<{
 export type UpdateWasteManagementStreetInput = Readonly<{
   name: string;
   cityId: string;
+  confirmationToken?: string;
 }>;

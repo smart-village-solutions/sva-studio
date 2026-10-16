@@ -1,4 +1,7 @@
 import type {
+  WasteAddressEntityDeleteInput,
+  WasteAddressImpactPreview,
+  WasteAddressMutationPreviewInput,
   WasteCityRecord,
   WasteHouseNumberRecord,
   WasteRegionRecord,
@@ -77,6 +80,27 @@ const updateWasteManagementHouseNumber = async (
     'PUT'
   );
 
+const previewWasteAddressMutation = async (
+  input: WasteAddressMutationPreviewInput
+): Promise<WasteAddressImpactPreview> =>
+  requestWasteManagementMutation('/api/v1/waste-management/address-entities/impact-preview', input);
+
+const deleteWasteAddressEntity = async (
+  entityType: WasteAddressEntityDeleteInput['entityType'],
+  entityId: string,
+  confirmationToken: string
+): Promise<{ readonly counts: WasteAddressImpactPreview['counts'] }> => {
+  const path = entityType === 'region' ? 'regions'
+    : entityType === 'city' ? 'cities'
+      : entityType === 'street' ? 'streets'
+        : 'house-numbers';
+  return requestWasteManagementMutation(
+    `/api/v1/waste-management/${path}/${encodeURIComponent(entityId)}`,
+    { confirmationToken },
+    'DELETE'
+  );
+};
+
 export {
   createWasteManagementCity,
   createWasteManagementHouseNumber,
@@ -86,4 +110,6 @@ export {
   updateWasteManagementHouseNumber,
   updateWasteManagementRegion,
   updateWasteManagementStreet,
+  deleteWasteAddressEntity,
+  previewWasteAddressMutation,
 };

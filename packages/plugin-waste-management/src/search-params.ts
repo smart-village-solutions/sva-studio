@@ -17,6 +17,7 @@ const wasteManagementTabs = [
   'fractions',
   'tours',
   'locations',
+  'masterData',
   'scheduling',
   'output',
   'tools',
@@ -42,6 +43,8 @@ const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
 export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
+const wasteManagementAddressEntityTypes = ['region', 'city', 'street', 'houseNumber'] as const;
+export type WasteManagementAddressEntityType = (typeof wasteManagementAddressEntityTypes)[number];
 type WasteManagementFractionsView = (typeof wasteManagementFractionsViews)[number];
 type WasteManagementToursView = (typeof wasteManagementToursViews)[number];
 type WasteManagementLocationsView = (typeof wasteManagementLocationsViews)[number];
@@ -58,6 +61,8 @@ export type WasteManagementFractionSortDirection =
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
   masterDataTab: WasteManagementMasterDataTabId;
+  addressEntityType: WasteManagementAddressEntityType;
+  addressParentId?: string;
   fractionsView: WasteManagementFractionsView;
   toursView: WasteManagementToursView;
   locationsView: WasteManagementLocationsView;
@@ -198,6 +203,8 @@ const normalizeMasterDataTabForTab = (
     return tab;
   }
 
+  if (tab === 'masterData') return 'locations';
+
   return masterDataTab;
 };
 
@@ -216,6 +223,10 @@ export const normalizeWasteManagementSearchParams = (
   return {
     tab,
     masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
+    addressEntityType: typeof search.addressEntityType === 'string' && wasteManagementAddressEntityTypes.includes(search.addressEntityType as WasteManagementAddressEntityType)
+      ? search.addressEntityType as WasteManagementAddressEntityType
+      : 'region',
+    addressParentId: compactOptionalString(search.addressParentId),
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),

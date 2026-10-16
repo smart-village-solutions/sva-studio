@@ -17,6 +17,26 @@ import type {
 
 import { patchJson, postJson, putJson, requestJson } from './iam-http-client';
 
+import type { CreateInstanceBusKey, InstanceBusKey, InstanceBusKeyCreated } from '@sva/core';
+const busKeysPath = (instanceId: string) =>
+  `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/bus-api-keys`;
+export const listInstanceBusKeys = (instanceId: string) =>
+  requestJson<ApiItemResponse<InstanceBusKey[]>>(busKeysPath(instanceId), { cache: 'no-store' });
+export const createInstanceBusKey = (instanceId: string, payload: CreateInstanceBusKey) =>
+  postJson<ApiItemResponse<InstanceBusKeyCreated>, CreateInstanceBusKey>(
+    busKeysPath(instanceId),
+    payload
+  );
+export const mutateInstanceBusKey = (
+  instanceId: string,
+  keyId: string,
+  action: 'revoke' | 'activate'
+) =>
+  postJson<ApiItemResponse<{ keyId: string; auditRecorded: boolean }>, Record<string, never>>(
+    `${busKeysPath(instanceId)}/${encodeURIComponent(keyId)}/${action}`,
+    {}
+  );
+
 export type RootMainserverInterface = {
   readonly instanceId: string;
   readonly status: 'missing' | 'disabled' | 'configured' | 'error';
@@ -28,7 +48,10 @@ export type RootMainserverInterface = {
   } | null;
 };
 
-export type RootMainserverInterfaceListEntry = Pick<RootMainserverInterface, 'instanceId' | 'status' | 'errorCode'> & {
+export type RootMainserverInterfaceListEntry = Pick<
+  RootMainserverInterface,
+  'instanceId' | 'status' | 'errorCode'
+> & {
   readonly displayName: string;
 };
 
@@ -45,9 +68,11 @@ export const getRootMainserverInterface = (instanceId: string) =>
 export const saveRootMainserverInterface = (
   instanceId: string,
   payload: { graphqlBaseUrl: string; oauthTokenUrl: string; enabled: boolean }
-) => putJson<{ data: RootMainserverInterface }, typeof payload>(
-  `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/mainserver-interface`, payload
-);
+) =>
+  putJson<{ data: RootMainserverInterface }, typeof payload>(
+    `/api/v1/iam/instances/${encodeURIComponent(instanceId)}/mainserver-interface`,
+    payload
+  );
 
 import type {
   CreateInstancePayload,

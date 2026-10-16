@@ -2,7 +2,7 @@
 
 ## Status, Abhängigkeit und bestehende Pfade
 
-Überführung vom 16. Oktober 2026; Studio-Funktion noch nicht implementiert.
+Überführung und lokale Implementierung vom 16. Oktober 2026; gemeinsame Abnahme und Rollout noch offen.
 Der erforderliche Bus-Vertrag ist mit `0.7.3` bereits veröffentlicht. Release und
 archivierter Bus-Change sind in [proposal.md](./proposal.md) verknüpft.
 
@@ -16,7 +16,7 @@ Die serverseitige Einbindung orientiert sich am bestehenden Root-Instanz-Routing
 `Browser mit Studio-Session → Studio-Server → Bus-Admin-Schnittstelle → Bus-Redis`
 
 Die Funktion bleibt eine Einstellung der zentralen Instanzverwaltung. Es entsteht
-kein Tenant-Modul, Plugin, neues Package oder lokaler Key-Bestand. Key-Lifecycle,
+kein Tenant-Modul, Plugin, neues Package oder zusätzlicher Studio-Key-Bestand. Key-Lifecycle,
 Hashing und Gültigkeitsprüfung bleiben vollständig beim Bus-Server.
 
 ## Autorisierung und Instanzzuordnung
@@ -27,6 +27,11 @@ Tenant-Hosts und Tenant-`system_admin` bleiben auch bei direktem HTTP-Aufruf ges
 Organisationen oder tenantseitige Permissions ersetzen die Plattformrolle nicht.
 Schreibaktionen verwenden die bestehenden CSRF- und Fresh-Reauth-Verträge.
 Navigation und UI spiegeln diese Regeln, ersetzen aber keine Serverprüfung.
+Eine normale interaktive Anmeldung zählt mit geprüftem frischem `auth_time`-Claim
+ebenfalls als Nachweis. Silent-SSO und Token-Refresh erzeugen keinen neuen Nachweis.
+Das gemeinsame Frischefenster bleibt standardmäßig bei zehn Minuten; die Bus-Integration
+verlängert es nicht für andere Instanzverwaltungsaktionen. Nach Ablauf führt der
+Anmeldelink im Fehlertext über den vorhandenen expliziten Reauth-Login zurück zur Instanz.
 
 `instanceId` stammt aus der geprüften Route; `owner` wird aus `displayName` der Registry
 und `label` exakt aus dieser `instanceId` erzeugt. Der Browser darf diese beiden Werte
@@ -52,6 +57,8 @@ feste Ziel-Origin, begrenzte Timeouts und keine automatischen Write-Retries. Ein
 Label oder unbekannter Key ergibt beim Bus HTTP 404, leere/wiederholte Label-Filter 400.
 Studio sendet den Label-Kontext immer mit und beschränkt auch die Antwortprojektion auf
 exakt passende Datensätze. Vom Browser gelieferte Admin-Header werden nicht übernommen.
+`Content-Type: application/json` wird nur mit einem JSON-Body gesendet; Sperren und
+Reaktivieren senden keinen Body und keinen JSON-Content-Type.
 
 `BUS_API_BASE_URL` und `BUS_API_ADMIN_TOKEN` gehören ausschließlich zur Serverkonfiguration;
 der Token entspricht dem Bus-`ADMIN_API_TOKEN`. Remote-Ziele erfordern HTTPS; lokales
@@ -67,8 +74,9 @@ Fehlende Bus-Konfiguration ist ein lokaler Fehlerzustand dieses Abschnitts.
 
 Ort und Instanz-ID sind sichtbar. Bei jeder Erstellung sind die syntaktisch gültige,
 getrimmte Kunden-Kontakt-E-Mail (`contact`) und getrimmte Initialen (`createdBy`) Pflicht.
-Initialen können editierbar aus dem angemeldeten Namen vorgeschlagen werden; es entsteht
-kein neues Profilfeld. Der tatsächliche Audit-Akteur stammt separat aus der Session.
+Initialen werden bei jeder Erstellung manuell eingegeben und dürfen ein bis 32 Buchstaben
+einschließlich kombinierender Zeichen enthalten; es entsteht kein neues Profilfeld.
+Der tatsächliche Audit-Akteur stammt separat aus der Session.
 
 Der Browser sendet `contact`, `createdBy` und das Date-only-Feld `validThrough`.
 Der Server validiert diese Werte erneut und berechnet `expiresAt` mit UTC-Kalenderarithmetik:
@@ -88,13 +96,21 @@ Der Server validiert diese Werte erneut und berechnet `expiresAt` mit UTC-Kalend
 ## Bedienung und Fehlerverhalten
 
 Der Bereich unter „Betrieb“ nutzt vorhandene Studio-Tabellen, Statusdarstellung,
-Formulare und Dialoge. Die Liste enthält Key-ID, Kontakt, Initialen, Erstellung,
+Formulare und Dialoge und steht unter „IAM-Basis neu aufbauen“. „Key erstellen“ steht
+unten links vor „Metadaten neu laden“. Die Liste enthält Key-ID, Kontakt, Initialen, Erstellung,
 Gültigkeit und Status; keine Hashes oder Klartext-Keys. Neue Keys erscheinen einmalig
 mit einer expliziten Kopieraktion und Hinweis auf die einmalige Anzeige. Ihr Wert bleibt
 nur im flüchtigen UI-Zustand und wird nach Schließen oder Instanzwechsel verworfen.
 Verspätete Antworten einer zuvor ausgewählten Instanz werden ignoriert.
+Der Erstelldialog zeigt den API-Key ohne zusätzliche Key-ID. Die Kopierbestätigung
+steht im reservierten Platz der Buttonzeile; ein Kopierfehler erscheint im Dialog.
+Nach erfolgreicher Kopieraktion schließt „Schließen“ direkt. Andernfalls erscheint
+eine Rückfrage: „Ja, ich habe den API-Key kopiert“ verwirft den Key und schließt;
+„Nein, ich muss den API-Key noch kopieren“ führt zur Anzeige desselben Keys zurück.
 
-Sperren wird bestätigt. Reaktivieren ist nur für gesperrte, noch nicht abgelaufene Keys
+Sperren wird bestätigt; die betroffene Key-ID ist im Dialog ausdrücklich beschriftet,
+und beide Sperrbuttons verwenden die vorhandene Variante `destructive`.
+Reaktivieren ist nur für gesperrte, noch nicht abgelaufene Keys
 zulässig und verlängert kein Ablaufdatum. Rotation erfolgt manuell: erstellen, den
 neuen Key im tatsächlichen Client verteilen und prüfen, anschließend den alten sperren.
 Das Erstellen sperrt keinen bestehenden Key automatisch.
@@ -105,9 +121,18 @@ nicht automatisch erneut. Der nicht wieder auslesbare Key kann bewusst gesperrt 
 ersetzt werden. Nach bestätigtem Bus-Erfolg verursacht auch ein nachgelagerter Auditfehler
 keine Wiederholung; Erfolg und Auditstörung werden getrennt korreliert dargestellt.
 Bus-Fehler werden sicher abgebildet, ohne rohe Downstream-Antworten offenzulegen.
+Unbestätigte Sperrungen und Reaktivierungen erhalten eigene Meldungen ohne
+Anweisungen zur Neuerstellung. Bei abgelehnten oder nicht erreichbaren Bus-Aufrufen
+wird zum Laden der Metadaten und Prüfen des aktuellen Status aufgefordert.
 
 Alle Texte werden deutsch/englisch über i18n geführt; Tastaturbedienung, Fokusführung
-und Formularfehler folgen dem bestehenden Design-System und WCAG 2.1 AA.
+und Formularfehler sollen dem bestehenden Design-System und WCAG 2.1 AA folgen.
+Die Bus-Karte stellt den Fokus nach Dialogschluss auf den auslösenden oder nächsten
+verfügbaren Aktionsbutton zurück; vorübergehend deaktivierte Buttons werden erst nach
+Mutation und Readback fokussiert. Kopierergebnisse werden nur übernommen, solange
+derselbe Key angezeigt wird. Gezielte Regressionstests und der ergänzende bestandene
+Chromium-Tastaturcheck mit API-Testantworten sind in [tasks.md](./tasks.md) festgehalten;
+sie ersetzen nicht die vollständige Integrations- und Releaseabnahme.
 
 ## Audit, Invarianten und Nachweise
 

@@ -8,6 +8,16 @@ const routeHandler =
     handler(request);
 
 export const instanceAuthHandlerMap = {
+  '/api/v1/iam/instances/$instanceId/bus-api-keys': {
+    GET: routeHandler(authRuntimeRoutes.busApiKeyHandlers.list),
+    POST: routeHandler(authRuntimeRoutes.busApiKeyHandlers.create),
+  },
+  '/api/v1/iam/instances/$instanceId/bus-api-keys/$keyId/revoke': {
+    POST: routeHandler(authRuntimeRoutes.busApiKeyHandlers.revoke),
+  },
+  '/api/v1/iam/instances/$instanceId/bus-api-keys/$keyId/activate': {
+    POST: routeHandler(authRuntimeRoutes.busApiKeyHandlers.activate),
+  },
   '/api/v1/iam/instances': {
     GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.listInstances),
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.createInstance),

@@ -9,6 +9,7 @@ type RemoteConfigKeyContract = Readonly<{
 }>;
 
 const configKeys = [
+  'BUS_API_BASE_URL',
   'APP_DB_USER',
   'ENABLE_OTEL',
   'STUDIO_JOB_WORKER_DB_USER',
@@ -88,6 +89,7 @@ const configKeys = [
 ] as const;
 
 const secretValueKeys = [
+  'BUS_API_ADMIN_TOKEN',
   'APP_DB_PASSWORD',
   'BEACON_API_KEY',
   'FALLOW_BROWSER_INGEST_KEY',
@@ -120,6 +122,7 @@ const secretValueKeys = [
 export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContract>> = {
   ...Object.fromEntries(configKeys.map((key) => [key, { kind: 'config' as const }])),
   ...Object.fromEntries(secretValueKeys.map((key) => [key, { kind: 'secret-value' as const }])),
+  BUS_API_BASE_URL: { kind: 'config', type: 'url' },
   WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME: { kind: 'secret-reference', required: true },
   ENABLE_OTEL: { kind: 'config', type: 'boolean' },
   QUANTUM_ENDPOINT_ID: { kind: 'config', type: 'integer' },

@@ -55,7 +55,7 @@ describe('http guards', () => {
     });
   });
 
-  it('requires explicit fresh reauth confirmation for mutations', () => {
+  it('accepts server-side auth evidence for 10 minutes before requiring reauth', () => {
     const guards = createInstanceRegistryHttpGuards(deps);
 
     expect(
@@ -63,6 +63,11 @@ describe('http guards', () => {
         freshReauthAt: Date.now() - 11 * 60 * 1000,
       })?.status
     ).toBe(403);
+    expect(
+      guards.requireFreshReauth(new Request('https://studio.example.org/api/instances'), {
+        freshReauthAt: Date.now() - 9 * 60 * 1000,
+      })
+    ).toBeNull();
     expect(
       guards.requireFreshReauth(
         new Request('https://studio.example.org/api/instances'),

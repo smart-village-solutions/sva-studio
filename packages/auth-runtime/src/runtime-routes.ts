@@ -139,3 +139,4 @@ export {
   listPluginOperationJobsHandler,
   startPluginOperationJobHandler,
 } from './plugin-operations/core.js';
+export { busApiKeyHandlers } from './iam-instance-registry/bus-api-keys.js';

@@ -129,6 +129,48 @@ const baseInstanceDetail = {
     },
   },
 };
+
+test('platform admin manages Bus keys with one-time display and deliberate revocation', async ({ page }) => {
+  await registerPlatformAccountAdminAuthRoute(page);
+  const instance = { ...baseInstanceDetail, status: 'active' };
+  await registerInstanceListRoutes(page, [instance]);
+  await page.route('**/api/v1/iam/instances/demo', (route) => route.fulfill({ json: { data: instance } }));
+  const keys = [{ keyId: 'old-test-key', owner: 'Demo', label: 'demo', contact: 'customer@example.test', createdBy: 'dk', createdAt: '2026-01-01T00:00:00Z', revoked: false }];
+  let creates = 0;
+  await page.route('**/api/v1/iam/instances/demo/bus-api-keys', async (route) => {
+    if (route.request().method() === 'POST') {
+      creates += 1;
+      expect(route.request().postDataJSON()).toEqual({ contact: 'customer@example.test', createdBy: 'dk', validThrough: '2028-12-31' });
+      await route.fulfill({ status: 201, json: { data: { keyId: 'new-test-key', apiKey: 'sk_browser_fixture_only', auditRecorded: true } } });
+    } else await route.fulfill({ json: { data: keys } });
+  });
+  let revokes = 0;
+  await page.route('**/bus-api-keys/old-test-key/revoke', async (route) => {
+    revokes += 1;
+    keys[0].revoked = true;
+    await route.fulfill({ json: { data: { keyId: 'old-test-key', auditRecorded: true } } });
+  });
+  await gotoHomeAsAuthenticatedUser(page, 'Root Admin');
+  await navigateClientSide(page, '/admin/instances/demo');
+  await expect(page.getByRole('heading', { name: 'Bus-API-Keys' })).toBeVisible();
+  await page.getByRole('button', { name: 'Key erstellen', exact: true }).click();
+  const form = page.getByRole('dialog');
+  await form.getByLabel('Kontakt-E-Mail des Kunden').fill('customer@example.test');
+  await form.getByLabel('Erstellerinitialen').fill('dk');
+  await form.getByLabel('Gültig bis einschließlich').fill('2028-12-31');
+  await expect(form.getByText(/2029-01-01T00:00:00.000Z/u)).toBeVisible();
+  await form.getByRole('button', { name: 'Key erstellen', exact: true }).click();
+  await expect(page.getByText('sk_browser_fixture_only')).toBeVisible();
+  expect(creates).toBe(1);
+  await page.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await page.getByRole('button', { name: 'Ja, ich habe den API-Key kopiert' }).click();
+  await expect(page.getByText('sk_browser_fixture_only')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sperren', exact: true }).click();
+  expect(revokes).toBe(0);
+  await page.getByRole('button', { name: 'Key jetzt sperren' }).click();
+  await expect(page.getByText('Gesperrt', { exact: true })).toBeVisible();
+  expect(revokes).toBe(1);
+});
 test('root control plane exposes tenant IAM reconcile for platform admins', async ({ page }) => {
   const instanceDetail = baseInstanceDetail;
   await registerPlatformAccountAdminAuthRoute(page);

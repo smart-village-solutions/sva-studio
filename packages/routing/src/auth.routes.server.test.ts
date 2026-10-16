@@ -126,8 +126,12 @@ const authServerMocks = vi.hoisted(() => {
     syncUsersFromKeycloakHandler: vi.fn(async () => response('syncUsersFromKeycloakHandler')),
     getMyProfileHandler: vi.fn(async () => response('getMyProfileHandler')),
     updateMyProfileHandler: vi.fn(async () => response('updateMyProfileHandler')),
-    getTenantInvitationTemplateHandler: vi.fn(async () => response('getTenantInvitationTemplateHandler')),
-    updateTenantInvitationTemplateHandler: vi.fn(async () => response('updateTenantInvitationTemplateHandler')),
+    getTenantInvitationTemplateHandler: vi.fn(async () =>
+      response('getTenantInvitationTemplateHandler')
+    ),
+    updateTenantInvitationTemplateHandler: vi.fn(async () =>
+      response('updateTenantInvitationTemplateHandler')
+    ),
     listGroupsHandler: vi.fn(async () => response('listGroupsHandler')),
     createGroupHandler: vi.fn(async () => response('createGroupHandler')),
     getGroupHandler: vi.fn(async () => response('getGroupHandler')),
@@ -137,6 +141,12 @@ const authServerMocks = vi.hoisted(() => {
     removeGroupRoleHandler: vi.fn(async () => response('removeGroupRoleHandler')),
     assignGroupMembershipHandler: vi.fn(async () => response('assignGroupMembershipHandler')),
     removeGroupMembershipHandler: vi.fn(async () => response('removeGroupMembershipHandler')),
+    busApiKeyHandlers: {
+      list: vi.fn(async () => response('busList')),
+      create: vi.fn(async () => response('busCreate')),
+      revoke: vi.fn(async () => response('busRevoke')),
+      activate: vi.fn(async () => response('busActivate')),
+    },
     instanceRegistryHandlers: {
       listInstances: vi.fn(async () => response('listInstancesHandler')),
       getInstanceAuditRun: vi.fn(async () => response('getInstanceAuditRunHandler')),
@@ -644,6 +654,20 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.deletionRulesAdminHandler).toHaveBeenCalledTimes(2);
     expect(authServerMocks.myDeletionRulesOverviewHandler).toHaveBeenCalledTimes(1);
     expect(authServerMocks.myDeletionRulesPreferenceHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispatches all four instance Bus key operations to the session-only facade', async () => {
+    const base = '/api/v1/iam/instances/$instanceId/bus-api-keys';
+    const collection = resolveAuthHandlers(base);
+    const request = new Request('https://studio.example.test/api/v1/iam/instances/demo/bus-api-keys');
+    await collection.GET?.({ request });
+    await collection.POST?.({ request });
+    await resolveAuthHandlers(`${base}/$keyId/revoke`).POST?.({ request });
+    await resolveAuthHandlers(`${base}/$keyId/activate`).POST?.({ request });
+    for (const handler of Object.values(authServerMocks.busApiKeyHandlers)) {
+      expect(handler).toHaveBeenCalledWith(request);
+    }
+    expect(collection.DELETE).toBeUndefined();
   });
 
   it('dispatches self-service privacy detail routes to the auth runtime', async () => {

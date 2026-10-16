@@ -1,4 +1,5 @@
 import { InstanceModulesWorkspace } from '../modules/-instance-modules-workspace';
+import { BusApiKeysCard } from './-bus-api-keys-card';
 
 import type { usePluginTenantReadiness } from '../../../hooks/use-plugin-tenant-readiness';
 import type { IamHttpError } from '../../../lib/iam-api';
@@ -42,6 +43,11 @@ export const InstanceDetailBetriebSection = ({
         onSeedIamBaseline={onSeedIamBaseline}
         onBootstrapAdminStructure={onBootstrapAdminStructure}
         showBootstrapAction={false}
+      />
+      <BusApiKeysCard
+        instanceId={selectedInstance.instanceId}
+        displayName={selectedInstance.displayName}
+        status={selectedInstance.status}
       />
     </>
   );

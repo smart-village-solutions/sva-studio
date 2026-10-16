@@ -1,6 +1,7 @@
 import { actionsInstancesAdminENResources } from './instances/actions.resources.js';
 import { adminBootstrapInstancesAdminENResources } from './instances/adminBootstrap.resources.js';
 import { auditInstancesAdminENResources } from './instances/audit.resources.js';
+import { busKeysInstancesAdminENResources } from './instances/busKeys.resources.js';
 import { cockpitInstancesAdminENResources } from './instances/cockpit.resources.js';
 import { configurationInstancesAdminENResources } from './instances/configuration.resources.js';
 import { detailInstancesAdminENResources } from './instances/detail.resources.js';
@@ -18,8 +19,8 @@ import { instanceModulesInstancesAdminENResources } from './instances/instanceMo
 import { invitationInstancesAdminENResources } from './instances/invitation.resources.js';
 import { keycloakPanelInstancesAdminENResources } from './instances/keycloakPanel.resources.js';
 import { keycloakStatusInstancesAdminENResources } from './instances/keycloakStatus.resources.js';
-import { messagesInstancesAdminENResources } from './instances/messages.resources.js';
 import { mainserverInstancesAdminENResources } from './instances/mainserver.resources.js';
+import { messagesInstancesAdminENResources } from './instances/messages.resources.js';
 import { operationsInstancesAdminENResources } from './instances/operations.resources.js';
 import { pageInstancesAdminENResources } from './instances/page.resources.js';
 import { pluginReadinessInstancesAdminENResources } from './instances/pluginReadiness.resources.js';
@@ -35,6 +36,7 @@ export const instancesAdminENResources = {
   actions: actionsInstancesAdminENResources,
   adminBootstrap: adminBootstrapInstancesAdminENResources,
   audit: auditInstancesAdminENResources,
+  busKeys: busKeysInstancesAdminENResources,
   cockpit: cockpitInstancesAdminENResources,
   configuration: configurationInstancesAdminENResources,
   detail: detailInstancesAdminENResources,
@@ -52,8 +54,8 @@ export const instancesAdminENResources = {
   invitation: invitationInstancesAdminENResources,
   keycloakPanel: keycloakPanelInstancesAdminENResources,
   keycloakStatus: keycloakStatusInstancesAdminENResources,
-  messages: messagesInstancesAdminENResources,
   mainserver: mainserverInstancesAdminENResources,
+  messages: messagesInstancesAdminENResources,
   operations: operationsInstancesAdminENResources,
   page: pageInstancesAdminENResources,
   pluginReadiness: pluginReadinessInstancesAdminENResources,

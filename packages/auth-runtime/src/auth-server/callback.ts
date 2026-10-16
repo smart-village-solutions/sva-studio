@@ -119,7 +119,7 @@ const readFreshReauthAt = (input: {
   loginState: LoginState;
   issuedAt: number;
 }): number | undefined => {
-  if (input.loginState.silent === true || input.loginState.freshReauthRequested !== true) {
+  if (input.loginState.silent === true) {
     return undefined;
   }
 

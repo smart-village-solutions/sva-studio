@@ -17,6 +17,13 @@ freigeben. Tenant-Permissions und ein übermittelter Actor-Header SHALL keine Fr
 - **WHEN** eine angemeldete Plattform-Session die bestehende CSRF- oder erforderliche Fresh-Reauth-Prüfung nicht erfüllt
 - **THEN** wird die Bus-Key-Mutation vor dem Downstream-Aufruf abgelehnt
 
+#### Scenario: Frische normale Anmeldung
+
+- **WHEN** eine normale interaktive Plattformanmeldung einen geprüften `auth_time`-Claim seit Beginn des Login-Vorgangs enthält
+- **THEN** zählt dieser als Nachweis für die bestehende Fresh-Reauth-Prüfung
+- **AND** bleibt das gemeinsame Frischefenster standardmäßig bei zehn Minuten
+- **AND** erneuern Silent-SSO und Token-Refresh dieses Fenster nicht
+
 ### Requirement: Registrygebundene Bus-Aufrufe und geschützte technische Credentials
 
 Das System SHALL Registry-Existenz und Instanzstatus vor dem Bus-Aufruf prüfen,

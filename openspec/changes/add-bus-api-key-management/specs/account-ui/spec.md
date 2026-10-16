@@ -11,6 +11,7 @@ zugänglich und kein pro Tenant aktivierbares Modul sein.
 - **WHEN** ein auf dem Root-Host angemeldeter Benutzer `instance_registry_admin` besitzt
 - **THEN** kann er die Keys der ausgewählten Instanz auflisten, erstellen, sperren und zulässig reaktivieren
 - **AND** werden ausschließlich Datensätze mit exakt passender `label = instanceId` angezeigt
+- **AND** steht der Bereich unter „IAM-Basis neu aufbauen“ mit „Key erstellen“ als erster Aktion unten links vor „Metadaten neu laden“
 
 #### Scenario: Tenant-Administrator versucht Zugriff
 
@@ -43,6 +44,26 @@ Das System SHALL neu erzeugte Klartext-Keys nur einmal im flüchtigen UI-Zustand
 expliziter Kopieraktion anzeigen und deren Persistenz in Browser-Speichern verhindern.
 Rotation SHALL einen neuen und alten Key vorübergehend parallel erlauben.
 
+#### Scenario: Key wurde über den Button kopiert
+
+- **WHEN** das Kopieren des angezeigten API-Keys über den Kopierbutton erfolgreich ist
+- **THEN** erscheint die Bestätigung im reservierten Platz neben den Buttons
+- **AND** zeigt der Dialog keine zusätzliche Key-ID
+- **AND** schließt „Schließen“ den Dialog ohne weitere Rückfrage
+
+#### Scenario: Benutzer muss vor dem Schließen noch kopieren
+
+- **WHEN** der Benutzer die Key-Anzeige ohne erfolgreiche Kopieraktion schließen möchte
+- **THEN** erscheint eine Rückfrage zur einmaligen Sichtbarkeit des API-Keys
+- **AND** schließt „Ja, ich habe den API-Key kopiert“ den Dialog
+- **AND** führt „Nein, ich muss den API-Key noch kopieren“ zur Anzeige desselben API-Keys zurück
+
+#### Scenario: Kopieren in die Zwischenablage schlägt fehl
+
+- **WHEN** die Zwischenablage den Kopieraufruf ablehnt
+- **THEN** erscheint die Fehlermeldung im geöffneten Key-Dialog mit dem Hinweis zur manuellen Übernahme
+- **AND** wird der Key nicht als erfolgreich kopiert markiert
+
 #### Scenario: Anzeige wird geschlossen oder Instanz gewechselt
 
 - **WHEN** der Benutzer die Key-Anzeige schließt oder eine andere Instanz öffnet
@@ -54,6 +75,7 @@ Rotation SHALL einen neuen und alten Key vorübergehend parallel erlauben.
 - **WHEN** ein neuer Key erstellt wird
 - **THEN** bleibt der bisherige Key zunächst gültig
 - **AND** kann der Benutzer ihn nach Client-Umstellung bewusst mit Bestätigung sperren
+- **AND** kennzeichnet der Sperrdialog die betroffene ID mit **Key-ID:** und verwendet für die Sperraktion die rote Buttonvariante
 - **AND** verlängert Reaktivieren niemals das Ablaufdatum und bleibt für abgelaufene Keys gesperrt
 
 #### Scenario: Erstellung endet mit unklarem Ausgang

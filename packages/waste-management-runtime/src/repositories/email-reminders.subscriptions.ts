@@ -4,6 +4,7 @@ import type {
   WasteEmailReminderPendingSignupItem,
   WasteEmailReminderRepository,
 } from './email-reminders.js';
+import { STALE_OUTBOX_LEASE_INTERVAL } from './email-reminders.outbox-dispatch.js';
 
 type CountRow = Readonly<{
   total: number | string;
@@ -157,10 +158,18 @@ const buildDeleteExpiredPendingSubscriptionsStatement = (input: {
   readonly pendingSubscriptionTtlHours: number;
 }): SqlStatement => ({
   text: `
-DELETE FROM waste_email_reminder_subscriptions
-WHERE status = 'pending'
-  AND expires_at <= $1::timestamptz
-  AND created_at <= $1::timestamptz - ($2::int * INTERVAL '1 hour');
+DELETE FROM waste_email_reminder_subscriptions AS subscription
+WHERE subscription.status = 'pending'
+  AND subscription.expires_at <= $1::timestamptz
+  AND subscription.created_at <= $1::timestamptz - ($2::int * INTERVAL '1 hour')
+  AND NOT EXISTS (
+    SELECT 1
+    FROM waste_email_reminder_outbox AS outbox
+    WHERE outbox.subscription_id = subscription.id
+      AND outbox.message_kind = 'doi'
+      AND outbox.status = 'processing'
+      AND outbox.leased_at > $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+  );
 `,
   values: [input.now, input.pendingSubscriptionTtlHours],
 });

@@ -394,8 +394,15 @@ describe('waste email reminder repository', () => {
 
     expect(statements[0]?.text).toContain("outbox.message_kind = 'doi'");
     expect(statements[0]?.text).toContain('subscription.expires_at <= $1::timestamptz');
-    expect(statements[1]?.text).toContain("WHERE status = 'pending'");
+    expect(statements[1]?.text).toContain("subscription.status = 'pending'");
     expect(statements[1]?.text).toContain("INTERVAL '1 hour'");
+    expect(statements[1]?.text).toContain('NOT EXISTS (');
+    expect(statements[1]?.text).toContain('outbox.subscription_id = subscription.id');
+    expect(statements[1]?.text).toContain("outbox.message_kind = 'doi'");
+    expect(statements[1]?.text).toContain("outbox.status = 'processing'");
+    expect(statements[1]?.text).toContain(
+      "outbox.leased_at > $1::timestamptz - INTERVAL '15 minutes'"
+    );
     expect(statements[1]?.values).toEqual(['2026-06-20T06:00:00.000Z', 72]);
   });
 

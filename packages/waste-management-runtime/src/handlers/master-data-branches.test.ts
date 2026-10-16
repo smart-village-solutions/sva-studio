@@ -1480,6 +1480,13 @@ describe('waste-management master-data branch handlers', () => {
             createdAt: '',
             updatedAt: '',
           })
+          .mockResolvedValueOnce({
+            id: 'city-verify',
+            name: 'Alt',
+            regionId: 'region-1',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce(null);
         return {
           ...createDeps(),
@@ -1509,6 +1516,13 @@ describe('waste-management master-data branch handlers', () => {
             createdAt: '',
             updatedAt: '',
           })
+          .mockResolvedValueOnce({
+            id: 'house-verify',
+            number: '41',
+            streetId: 'street-1',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce(null);
         return {
           ...createDeps(),
@@ -1530,6 +1544,13 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => {
         const loadWasteStreetById = vi
           .fn()
+          .mockResolvedValueOnce({
+            id: 'street-verify',
+            name: 'Alt',
+            cityId: 'city-1',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce({
             id: 'street-verify',
             name: 'Alt',

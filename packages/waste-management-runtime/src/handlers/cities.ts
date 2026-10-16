@@ -124,7 +124,7 @@ export const wasteManagementCityHandlers = {
         persistenceFailed: 'Die Waste-Stadt konnte nicht gespeichert werden.',
         mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
-      loadExisting: async () => existingCity,
+      loadExisting: () => loadWasteCity(instanceId, cityId),
       save: saveCityUpdate(deps, instanceId, cityId, nextRegionId, movesRegion, parsed.data),
       loadSaved: () => loadWasteCity(instanceId, cityId),
     });

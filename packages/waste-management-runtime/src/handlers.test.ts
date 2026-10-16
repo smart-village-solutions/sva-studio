@@ -1070,6 +1070,7 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteCityById = vi
       .fn<(_: string, __: string) => Promise<WasteCityRecord | null>>()
       .mockResolvedValueOnce(existingCity)
+      .mockResolvedValueOnce(existingCity)
       .mockResolvedValueOnce(updatedCity);
     const patchWasteCity = vi.fn(async () => undefined);
 
@@ -1127,6 +1128,7 @@ describe('waste-management auth runtime handlers', () => {
     const loadWasteCityById = vi
       .fn<(_: string, __: string) => Promise<WasteCityRecord | null>>()
       .mockResolvedValueOnce(existingCity)
+      .mockResolvedValueOnce(existingCity)
       .mockResolvedValueOnce(updatedCity);
     const patchWasteCity = vi.fn(async () => undefined);
 
@@ -1175,6 +1177,7 @@ describe('waste-management auth runtime handlers', () => {
     };
     const loadWasteCityById = vi
       .fn<(_: string, __: string) => Promise<WasteCityRecord | null>>()
+      .mockResolvedValueOnce(existingCity)
       .mockResolvedValueOnce(existingCity)
       .mockResolvedValueOnce(updatedCity);
     const patchWasteCity = vi.fn(async () => undefined);
@@ -1276,6 +1279,7 @@ describe('waste-management auth runtime handlers', () => {
 
     const loadWasteStreetById = vi
       .fn<(_: string, __: string) => Promise<WasteStreetRecord | null>>()
+      .mockResolvedValueOnce(existingStreet)
       .mockResolvedValueOnce(existingStreet)
       .mockResolvedValueOnce(updatedStreet);
     const saveWasteStreet = vi.fn(async () => undefined);
@@ -1386,6 +1390,7 @@ describe('waste-management auth runtime handlers', () => {
 
     const loadWasteHouseNumberById = vi
       .fn<(_: string, __: string) => Promise<WasteHouseNumberRecord | null>>()
+      .mockResolvedValueOnce(existingHouseNumber)
       .mockResolvedValueOnce(existingHouseNumber)
       .mockResolvedValueOnce(updatedHouseNumber);
     const saveWasteHouseNumber = vi.fn(async () => undefined);

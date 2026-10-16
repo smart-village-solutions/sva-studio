@@ -90,7 +90,7 @@ export const wasteManagementStreetHandlers = {
         persistenceFailed: 'Die Waste-Straße konnte nicht gespeichert werden.',
         mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
-      loadExisting: async () => existingStreet,
+      loadExisting: () => loadWasteStreet(instanceId, streetId),
       save: () => {
         if (movesCity) {
           if (!parsed.data.confirmationToken) return Promise.reject(new Error('address_confirmation_required'));

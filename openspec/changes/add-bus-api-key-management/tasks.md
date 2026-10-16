@@ -58,7 +58,9 @@ und die noch ausstehende Integrationsabnahme sind in den Checkboxen getrennt aus
 ## Lokaler Implementierungsnachweis vom 16. Oktober 2026
 
 Branch `feature/bus-api-key-management` basiert unverändert auf Planungscommit
-`a0abb81894fe2548c07af82b3648841dcf01ef66`. PR 1858 wurde nicht gemergt;
+`a0abb81894fe2548c07af82b3648841dcf01ef66`. Der Planungs-PR 1858 wurde geschlossen
+und sein Branch gelöscht; Spezifikation und Implementierung sind gemeinsam in PR 1860
+gegen `main` enthalten.
 Es wurden ausschließlich Keys im isolierten lokalen Test-Bus erstellt und verändert;
 produktive Bus-Keys, externe Konten und zentrale Zielumgebungen blieben unverändert.
 
@@ -125,8 +127,9 @@ Der lokale Bericht liegt als ignoriertes Artefakt unter
 `output/playwright/bus-keyboard-report.json`; er enthält ausschließlich Prüfergebnisse
 und Testdaten. Nicht simulierte Admin-Endpunkte antworteten in diesem isolierten
 Kontext ohne echte Session mit 401; der Check ist deshalb kein vollständiger
-authentifizierter E2E- oder Proxy-Nachweis. Der verpflichtende Changelog-Eintrag zur tatsächlichen
-Implementierungs-PR und die finalen Checks vor Freigabe stehen ebenfalls aus.
+authentifizierter E2E- oder Proxy-Nachweis. Der verpflichtende Changelog-Eintrag ist
+unter `docs/changelog/entries/pr-1860.json` enthalten; die finalen Checks vor Freigabe
+stehen weiterhin aus.
 
 Weder der Browser-Test mit simulierten Bus-Antworten noch der isolierte lokale Bus
 mit Dummy-Upstream belegen einen echten Proxy-Key-Lifecycle. Registry-/Bestandsabgleich,

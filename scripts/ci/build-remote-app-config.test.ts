@@ -35,6 +35,69 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it('adds the separate Bus token when the existing bundle has no Bus entry', () => {
+    const existingBundle = overrides
+      .split('\n')
+      .filter((line) => !line.startsWith('BUS_API_ADMIN_TOKEN='))
+      .join('\n');
+    const result = buildRemoteAppConfig({
+      environment: 'prod',
+      profile,
+      overrides: existingBundle,
+      busApiAdminToken: 'separate-bus-token',
+    });
+    expect(result.source).toContain('BUS_API_ADMIN_TOKEN=separate-bus-token\n');
+    expect(result.source).toContain('APP_DB_PASSWORD=sensitive-APP_DB_PASSWORD\n');
+  });
+
+  it.each(['dev', 'staging', 'prod'] as const)(
+    'uses the separate Bus token in %s without replacing other protected values',
+    (environment) => {
+      const result = buildRemoteAppConfig({
+        environment,
+        profile,
+        overrides,
+        busApiAdminToken: 'separate-bus-token',
+      });
+      expect(result.source).toContain('BUS_API_ADMIN_TOKEN=separate-bus-token\n');
+      expect(result.source).not.toContain('BUS_API_ADMIN_TOKEN=sensitive-BUS_API_ADMIN_TOKEN');
+      expect(result.source).toContain('APP_DB_PASSWORD=sensitive-APP_DB_PASSWORD\n');
+      expect(result.configRevision).toBe(
+        buildRemoteAppConfig({ environment, profile, overrides }).configRevision
+      );
+      expect(
+        JSON.stringify({ keys: result.keys, secretReferences: result.secretReferences })
+      ).not.toContain('separate-bus-token');
+    }
+  );
+
+  it.each([undefined, ''])(
+    'preserves the bundle token when the separate secret is %s',
+    (busApiAdminToken) => {
+      const result = buildRemoteAppConfig({
+        environment: 'dev',
+        profile,
+        overrides,
+        busApiAdminToken,
+      });
+      expect(result.source).toContain('BUS_API_ADMIN_TOKEN=sensitive-BUS_API_ADMIN_TOKEN\n');
+    }
+  );
+
+  it.each([' private', 'private ', 'private\nAPP_DB_PASSWORD=injected', 'private\rvalue'])(
+    'rejects a non-canonical separate token without exposing it',
+    (busApiAdminToken) => {
+      expect(() =>
+        buildRemoteAppConfig({ environment: 'dev', profile, overrides, busApiAdminToken })
+      ).toThrow(/PROMOTE_CONFIG_INVALID/u);
+      try {
+        buildRemoteAppConfig({ environment: 'dev', profile, overrides, busApiAdminToken });
+      } catch (error) {
+        expect(String(error)).not.toContain('private');
+      }
+    }
+  );
+
   it('keeps optional Bus credentials in protected overrides and passes them only to the app', () => {
     expect(remoteConfigContract.BUS_API_BASE_URL).toMatchObject({ kind: 'config', type: 'url' });
     expect(remoteConfigContract.BUS_API_ADMIN_TOKEN).toEqual({ kind: 'secret-value' });
@@ -120,6 +183,7 @@ describe('remote app config builder', () => {
       const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
 
       expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
+      expect(result.source).toContain('BUS_API_BASE_URL=https://bus-api.smart-village.app\n');
       expect(result.source).toContain('ENABLE_OTEL=false\n');
       expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
     }
@@ -169,6 +233,7 @@ describe('remote app config builder', () => {
           ],
           {
             PROMOTE_CONFIG_OVERRIDES: overrides,
+            BUS_API_ADMIN_TOKEN: 'separate-bus-token',
             FALLOW_BROWSER_INGEST_KEY: 'fallow_pub_k1_test_browser_key_1234567890',
             BEACON_API_KEY: 'fallow_live_k1_test_server_key_1234567890',
             GITHUB_OUTPUT: githubOutput,
@@ -176,6 +241,7 @@ describe('remote app config builder', () => {
         )
       ).toBe(0);
       const config = readFileSync(join(directory, 'config.vars'), 'utf8');
+      expect(config).toContain('BUS_API_ADMIN_TOKEN=separate-bus-token\n');
       expect(config).toContain(
         'FALLOW_BROWSER_INGEST_KEY=fallow_pub_k1_test_browser_key_1234567890'
       );
@@ -187,6 +253,12 @@ describe('remote app config builder', () => {
       expect(output).not.toContain('APP_DB_PASSWORD');
       expect(output).not.toContain('test_browser_key');
       expect(output).not.toContain('test_server_key');
+      expect(output).not.toContain('separate-bus-token');
+      const workflow = readFileSync(
+        new URL('../../.github/workflows/promote.yml', import.meta.url),
+        'utf8'
+      );
+      expect(workflow).toContain('BUS_API_ADMIN_TOKEN: ${{ secrets.BUS_API_ADMIN_TOKEN }}');
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

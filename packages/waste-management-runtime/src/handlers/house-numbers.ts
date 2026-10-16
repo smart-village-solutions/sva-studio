@@ -91,7 +91,7 @@ export const wasteManagementHouseNumberHandlers = {
         persistenceFailed: 'Die Waste-Hausnummer konnte nicht gespeichert werden.',
         mapPersistenceError: mapWasteAddressMutationPersistenceError,
       },
-      loadExisting: () => loadWasteHouseNumber(instanceId, houseNumberId),
+      loadExisting: async () => existingHouseNumber,
       save: () => {
         if (movesStreet) {
           if (!parsed.data.confirmationToken) return Promise.reject(new Error('address_confirmation_required'));

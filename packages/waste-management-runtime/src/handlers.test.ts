@@ -1270,7 +1270,7 @@ describe('waste-management auth runtime handlers', () => {
     const updatedStreet: WasteStreetRecord = {
       ...existingStreet,
       name: 'Parkweg Nord',
-      cityId: 'city-2',
+      cityId: 'city-1',
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
 
@@ -1290,7 +1290,7 @@ describe('waste-management auth runtime handlers', () => {
         },
         body: JSON.stringify({
           name: 'Parkweg Nord',
-          cityId: 'city-2',
+          cityId: 'city-1',
         }),
       }),
       actor,
@@ -1309,7 +1309,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteStreet).toHaveBeenCalledWith('tenant-a', {
       id: 'street-1',
       name: 'Parkweg Nord',
-      cityId: 'city-2',
+      cityId: 'city-1',
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -1380,7 +1380,7 @@ describe('waste-management auth runtime handlers', () => {
     const updatedHouseNumber: WasteHouseNumberRecord = {
       ...existingHouseNumber,
       number: '14a',
-      streetId: 'street-2',
+      streetId: 'street-1',
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
 
@@ -1400,7 +1400,7 @@ describe('waste-management auth runtime handlers', () => {
         },
         body: JSON.stringify({
           number: '14a',
-          streetId: 'street-2',
+          streetId: 'street-1',
         }),
       }),
       actor,
@@ -1419,7 +1419,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteHouseNumber).toHaveBeenCalledWith('tenant-a', {
       id: 'house-1',
       number: '14a',
-      streetId: 'street-2',
+      streetId: 'street-1',
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

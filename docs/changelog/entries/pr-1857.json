@@ -1,0 +1,4 @@
+{
+  "prNumber": 1857,
+  "body": "Der Browser-Test für die Tenant-Admin-Verwaltung verwendet nun eine feste Instanzliste. Dadurch ist der Test unabhängig von sporadischen IAM-Listenfehlern während der E2E-Prüfung."
+}

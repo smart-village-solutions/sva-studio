@@ -209,9 +209,11 @@ Erweiterter Reminder-Pfad:
 2. Der Browser öffnet ein Formular in derselben App, das nur Fraktionen mit aktivem Kanal `E-Mail` sowie nur deren freigegebene Reminder-Slots anbietet.
 3. Nach Zustimmung zur Datenverarbeitung sendet die Public-Waste-Runtime ein Pending-Abo an die Waste-Persistenz und erzeugt sofort einen DOI-Outbox-Eintrag.
 4. Der Benutzer bestätigt den Link auf einer Unterseite derselben Public-Waste-App; erst danach wird das Abo aktiv.
-5. Die Waste-Operations-Runtime materialisiert anschließend ressourcenschonend Reminder-Einzelaufträge pro Abo, Fraktion, Slot und Abholdatum in die Waste-Outbox.
-6. Ein separater Mail-Dispatch-Adapter oder eine eigenständige Mail-App leased fällige Outbox-Einträge in kleinen Batches und verschickt daraus die eigentlichen E-Mails über die zentrale Schnittstelle `mail_transport`.
+5. Nach dem Start des Standard-Job-Workers durchläuft der Studio-Prozess jede Minute die aktiven Instanzen. Die Waste-Operations-Runtime materialisiert Reminder-Einzelaufträge pro Abo, Fraktion, Slot und Abholdatum beim Start und danach höchstens einmal pro Stunde je Instanz. Ein am selben UTC-Tag verspätet gestarteter Lauf holt noch nicht angelegte Aufträge sofort nach. Ein Fehler einer Instanz unterbricht die anderen Instanzen nicht.
+6. Derselbe Lauf leased fällige DOI- und Reminder-Outbox-Einträge in kleinen Batches und verschickt daraus die E-Mails über die zentrale Schnittstelle `mail_transport`. Steht ein Reminder zur Zustellung an, gleicht der Lauf zuvor die Termine erneut ab. Abgelaufene Pending-Abos und DOI-Einträge werden bereinigt; der Versand prüft den Abo-Status unmittelbar vor der Übergabe an den Mail-Transport erneut.
 7. Jede Reminder-E-Mail enthält einen Abmeldelink zurück in dieselbe Public-Waste-App; der Link deaktiviert das Abo idempotent.
+
+Die stündliche Materialisierung lädt derzeit alle aktiven Abos und die relevanten Waste-Stammdaten einer Instanz. Für eine produktive Abnahme mit größerem Datenbestand muss dieser Pfad noch auf eine begrenzte, indexgestützte Vorauswahl umgestellt und mit realistischen Datenmengen gemessen werden.
 
 Erweiterter Exportpfad:
 

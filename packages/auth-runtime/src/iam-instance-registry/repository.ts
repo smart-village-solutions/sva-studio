@@ -1,8 +1,6 @@
 import { createPoolResolver } from '../db.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
-import {
-  invalidateInstanceRegistryHost,
-} from '@sva/data-repositories/server';
+import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
 import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 import {
@@ -199,3 +197,8 @@ export const {
   withRegistryProvisioningWorkerService,
   withRegistryProvisioningWorkerDeps,
 } = registryRuntime;
+
+export const listActiveInstanceIdsForWorker = async (): Promise<readonly string[]> =>
+  (
+    await withRegistryRepository((repository) => repository.listInstances({ status: 'active' }))
+  ).map(({ instanceId }) => instanceId);

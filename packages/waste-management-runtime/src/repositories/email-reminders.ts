@@ -12,6 +12,10 @@ import {
   createOutboxDispatchMethods,
   outboxDispatchStatements,
 } from './email-reminders.outbox-dispatch.js';
+import {
+  createOutboxReconcileMethods,
+  outboxReconcileStatements,
+} from './email-reminders.outbox-reconcile.js';
 import { createTokenMethods, tokenStatements } from './email-reminders.tokens.js';
 
 export type WasteEmailReminderPendingSignupItem = Readonly<{
@@ -118,6 +122,10 @@ export type WasteEmailReminderRepository = Readonly<{
     readonly selection: WasteEmailReminderPendingSignupInput['selection'];
   }) => Promise<number>;
   listActiveSubscriptions: () => Promise<readonly WasteEmailReminderActiveSubscription[]>;
+  deleteExpiredPendingSubscriptions: (input: {
+    readonly now: string;
+    readonly pendingSubscriptionTtlHours: number;
+  }) => Promise<number>;
   enqueueOutboxEntry: (
     input: WasteEmailReminderOutboxEntryInput
   ) => Promise<'inserted' | 'refreshed' | 'duplicate'>;
@@ -126,10 +134,12 @@ export type WasteEmailReminderRepository = Readonly<{
     readonly validDedupeKeys: readonly string[];
     readonly now: string;
   }) => Promise<number>;
+  hasDueReminderOutboxEntries: (input: { readonly now: string }) => Promise<boolean>;
   leaseDueOutboxEntries: (input: {
     readonly now: string;
     readonly limit: number;
   }) => Promise<readonly WasteEmailReminderOutboxLease[]>;
+  cancelExpiredDoiOutboxEntries: (input: { readonly now: string }) => Promise<number>;
   claimOutboxEntryForDispatch: (input: {
     readonly outboxId: string;
     readonly leasedAt: string;
@@ -166,6 +176,7 @@ export const createWasteEmailReminderRepository = (
   ...createSubscriptionMethods(executor),
   ...createOutboxUpsertMethods(executor),
   ...createOutboxDispatchMethods(executor),
+  ...createOutboxReconcileMethods(executor),
   ...createTokenMethods(executor),
 });
 
@@ -176,14 +187,17 @@ export const wasteEmailReminderStatements = {
   createOutboxEntry: outboxUpsertStatements.createOutboxEntry,
   countSubscriptionsForEmailLocation: subscriptionStatements.countSubscriptionsForEmailLocation,
   listActiveSubscriptions: subscriptionStatements.listActiveSubscriptions,
+  deleteExpiredPendingSubscriptions: subscriptionStatements.deleteExpiredPendingSubscriptions,
   leaseDueOutboxEntries: outboxDispatchStatements.leaseDueOutboxEntries,
+  cancelExpiredDoiOutboxEntries: outboxReconcileStatements.cancelExpiredDoiOutboxEntries,
   claimOutboxEntryForDispatch: outboxDispatchStatements.claimOutboxEntryForDispatch,
   markOutboxEntrySent: outboxDispatchStatements.markOutboxEntrySent,
   markOutboxEntryFailed: outboxDispatchStatements.markOutboxEntryFailed,
-  cancelPendingReminderOutboxEntries: outboxDispatchStatements.cancelPendingReminderOutboxEntries,
-  cancelInvalidReminderOutboxEntries: outboxDispatchStatements.cancelInvalidReminderOutboxEntries,
+  cancelPendingReminderOutboxEntries: outboxReconcileStatements.cancelPendingReminderOutboxEntries,
+  cancelInvalidReminderOutboxEntries: outboxReconcileStatements.cancelInvalidReminderOutboxEntries,
   selectSubscriptionByDoiTokenHash: tokenStatements.selectSubscriptionByDoiTokenHash,
-  selectSubscriptionByUnsubscribeTokenHash: tokenStatements.selectSubscriptionByUnsubscribeTokenHash,
+  selectSubscriptionByUnsubscribeTokenHash:
+    tokenStatements.selectSubscriptionByUnsubscribeTokenHash,
   selectSubscriptionById: tokenStatements.selectSubscriptionById,
   activateSubscription: tokenStatements.activateSubscription,
   unsubscribeSubscription: tokenStatements.unsubscribeSubscription,

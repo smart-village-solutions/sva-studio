@@ -3,6 +3,10 @@ import { IconCalendarPlus, IconFileTypePdf, IconMail } from '@tabler/icons-react
 import type { PublicWasteCalendarResponse } from '../lib/public-waste-api.js';
 import type { PublicWasteResolvedSelection } from '../lib/public-waste-contract.js';
 import type { PublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
+import {
+  createPublicWasteTranslator,
+  type PublicWasteTranslationKey,
+} from '../lib/public-waste-translations.js';
 import { usePublicWasteActionState } from './public-waste-reminder-selection.js';
 
 type ActionPanel = 'calendar' | 'pdf' | 'email';
@@ -23,6 +27,10 @@ type State = ReturnType<typeof usePublicWasteActionState>;
 const REMINDER_ERROR_ID = 'public-waste-reminder-error';
 const triggerId = (panel: ActionPanel): string => `public-waste-action-trigger-${panel}`;
 const panelId = (panel: ActionPanel): string => `public-waste-action-panel-${panel}`;
+const reminderText = (key: PublicWasteTranslationKey): string =>
+  createPublicWasteTranslator(
+    typeof document === 'undefined' ? 'de' : document.documentElement.lang || 'de'
+  )(key);
 
 const ActionToolbar = ({
   activePanel,
@@ -34,7 +42,7 @@ const ActionToolbar = ({
       [
         ['calendar', IconCalendarPlus, 'Kalender exportieren'],
         ['pdf', IconFileTypePdf, 'PDF / Druckversion'],
-        ['email', IconMail, 'E-Mail-Erinnerung'],
+        ['email', IconMail, reminderText('reminder.action')],
       ] as const
     )
       .filter(([panel]) => panel !== 'email' || emailAvailable)
@@ -108,16 +116,32 @@ const PdfAction = ({ props }: { props: Props }) => (
 
 const ReminderFields = ({ props, state }: { props: Props; state: State }) => (
   <>
-    <p className="action-panel-copy">
-      Das Abo verwendet automatisch die Standard-Erinnerungen der aktiven Fraktionen.
-    </p>
+    <p className="action-panel-copy">{reminderText('reminder.description')}</p>
+    <ul className="action-panel-copy">
+      {state.emailContext.supportedFractions.map((fraction) => {
+        const days = fraction.slots[0]?.defaultLeadDays ?? 0;
+        const timing =
+          days === 0
+            ? reminderText('reminder.sameDay')
+            : days === 1
+              ? reminderText('reminder.oneDayBefore')
+              : reminderText('reminder.daysBefore').replace('{days}', String(days));
+        return (
+          <li key={fraction.id}>
+            {fraction.label}: {timing}
+          </li>
+        );
+      })}
+    </ul>
+    <p className="action-panel-copy">{reminderText('reminder.sendTime')}</p>
     <label className="action-field">
-      <span>E-Mail-Adresse</span>
+      <span>{reminderText('reminder.email')}</span>
       <input
-        aria-label="E-Mail-Adresse"
+        aria-label={reminderText('reminder.email')}
         aria-describedby={state.error ? REMINDER_ERROR_ID : undefined}
         aria-invalid={state.error ? 'true' : undefined}
         type="email"
+        autoComplete="email"
         value={state.email}
         onChange={(event) => state.setEmail(event.target.value)}
       />
@@ -130,12 +154,10 @@ const ReminderFields = ({ props, state }: { props: Props; state: State }) => (
         checked={state.consentAccepted}
         onChange={(event) => state.setConsentAccepted(event.target.checked)}
       />
-      <span>
-        {props.reminderSignup?.consentLabel ?? 'Ich stimme der Verarbeitung meiner Daten zu.'}
-      </span>
+      <span>{props.reminderSignup?.consentLabel ?? reminderText('reminder.consentFallback')}</span>
       {props.reminderSignup?.privacyPolicyUrl ? (
         <a href={props.reminderSignup.privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
-          Datenschutzerklärung
+          {reminderText('reminder.privacy')}
         </a>
       ) : null}
     </label>
@@ -147,10 +169,7 @@ const ReminderForm = ({ props, state }: { props: Props; state: State }) => (
     {state.emailContext.isFullySupported ? (
       <ReminderFields props={props} state={state} />
     ) : (
-      <p className="action-warning">
-        Für die aktuelle Fraktionsauswahl sind nicht für alle Fraktionen E-Mail-Erinnerungen
-        verfügbar. Passen Sie die Fraktionsauswahl an, um das Abo zu aktivieren.
-      </p>
+      <p className="action-warning">{reminderText('reminder.unsupported')}</p>
     )}
     {state.error ? (
       <p id={REMINDER_ERROR_ID} className="action-warning" role="alert">
@@ -163,7 +182,7 @@ const ReminderForm = ({ props, state }: { props: Props; state: State }) => (
       disabled={!state.canSubmit}
       onClick={() => void state.submit()}
     >
-      {state.submitting ? 'Wird angefordert…' : 'E-Mail-Erinnerung anfordern'}
+      {state.submitting ? reminderText('reminder.submitting') : reminderText('reminder.submit')}
     </button>
   </>
 );

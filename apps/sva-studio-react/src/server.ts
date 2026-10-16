@@ -66,10 +66,9 @@ const getDispatchAuthRouteRequest = async () => {
   return dispatchAuthRouteRequestPromise;
 };
 const getDispatchSsfAdminLoginDirectoryRequest = async () => {
-  dispatchSsfAdminLoginDirectoryRequestPromise ??=
-    import('#studio-ssf-admin-login-directory').then(
-      (mod) => mod.dispatchStudioSsfAdminLoginDirectoryRequest
-    );
+  dispatchSsfAdminLoginDirectoryRequestPromise ??= import('#studio-ssf-admin-login-directory').then(
+    (mod) => mod.dispatchStudioSsfAdminLoginDirectoryRequest
+  );
   return dispatchSsfAdminLoginDirectoryRequestPromise;
 };
 const getPluginServerHandlerDispatcher = async () => {
@@ -93,13 +92,11 @@ const getEnsureStudioJobWorkerStarted = async () => {
 };
 const getRegisterStudioPluginOperationHandlers = async () => {
   if (devRuntimeRefreshEnabled) {
-    return (await import('#studio-plugin-operation-runtime'))
-      .registerStudioPluginOperationHandlers;
+    return (await import('#studio-plugin-operation-runtime')).registerStudioPluginOperationHandlers;
   }
-  registerStudioPluginOperationHandlersPromise ??=
-    import('#studio-plugin-operation-runtime').then(
-      (mod) => mod.registerStudioPluginOperationHandlers
-    );
+  registerStudioPluginOperationHandlersPromise ??= import('#studio-plugin-operation-runtime').then(
+    (mod) => mod.registerStudioPluginOperationHandlers
+  );
   return registerStudioPluginOperationHandlersPromise;
 };
 const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
@@ -154,6 +151,11 @@ const startPluginOperationWorkerInBackground = (): void => {
       await startWorker({
         onTerminalFailure: terminateAfterTerminalWorkerFailure,
       });
+      if (studioJobWorkerLane === 'default') {
+        const { startWasteEmailReminderProcessing } =
+          await import('#studio-plugin-operation-runtime');
+        startWasteEmailReminderProcessing();
+      }
     } catch (error) {
       await reportPluginWorkerBootstrapFailure(error);
     } finally {
@@ -264,9 +266,8 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       }
     }
     if (requestPath === ssfInstallationContentV2Path) {
-      const dispatchInstallationContent = (
-        await import('#studio-ssf-admin-login-directory')
-      ).dispatchStudioSsfInstallationContentV2Request;
+      const dispatchInstallationContent = (await import('#studio-ssf-admin-login-directory'))
+        .dispatchStudioSsfInstallationContentV2Request;
       const installationResponse = await dispatchInstallationContent(request);
       if (installationResponse) return installationResponse;
     }
@@ -279,10 +280,7 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       return routedResponse;
     }
 
-    if (
-      requestPath.startsWith('/api/v1/') ||
-      requestPath.startsWith('/internal/plugins/')
-    ) {
+    if (requestPath.startsWith('/api/v1/') || requestPath.startsWith('/internal/plugins/')) {
       const dispatchPluginServerHandler = await getPluginServerHandlerDispatcher();
       const pluginServerResponse = await dispatchPluginServerHandler(request);
       if (pluginServerResponse) {

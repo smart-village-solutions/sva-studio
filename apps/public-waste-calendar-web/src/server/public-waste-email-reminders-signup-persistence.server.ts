@@ -90,7 +90,15 @@ export const buildPendingReminderSignup = (input: {
   consentAcceptedAt: toIsoString(input.now),
   doiTokenHash: input.hashValue(input.confirmToken),
   unsubscribeTokenHash: input.hashValue(input.unsubscribeToken),
-  expiresAt: toIsoString(addHours(input.now, input.request.reminderConfig.doiTokenTtlHours)),
+  expiresAt: toIsoString(
+    addHours(
+      input.now,
+      Math.min(
+        input.request.reminderConfig.doiTokenTtlHours,
+        input.request.reminderConfig.pendingSubscriptionTtlHours
+      )
+    )
+  ),
   items: input.request.payload.items.map((item) => ({
     id: input.createId(),
     fractionId: item.fractionId,

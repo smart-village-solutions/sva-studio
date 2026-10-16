@@ -17,8 +17,8 @@ type EnqueuedOutboxRow = Readonly<{
   id: string;
 }>;
 
-const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
-const OUTBOX_DISPATCH_CLAIM = 'dispatch_claimed';
+export const STALE_OUTBOX_LEASE_INTERVAL = "INTERVAL '15 minutes'";
+export const OUTBOX_DISPATCH_CLAIM = 'dispatch_claimed';
 
 const buildLeaseDueOutboxEntriesStatement = (input: {
   readonly now: string;
@@ -26,19 +26,25 @@ const buildLeaseDueOutboxEntriesStatement = (input: {
 }): SqlStatement => ({
   text: `
 WITH due AS (
-  SELECT id
-  FROM waste_email_reminder_outbox
+  SELECT outbox.id
+  FROM waste_email_reminder_outbox AS outbox
+  INNER JOIN waste_email_reminder_subscriptions AS subscription
+    ON subscription.id = outbox.subscription_id
   WHERE (
-    status = 'pending'
-    AND send_at <= $1::timestamptz
-  ) OR (
-    status = 'processing'
-    AND leased_at IS NOT NULL
-    AND leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+    (outbox.status = 'pending' AND outbox.send_at <= $1::timestamptz)
+    OR (
+      outbox.status = 'processing'
+      AND outbox.leased_at IS NOT NULL
+      AND outbox.leased_at <= $1::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
+    )
   )
-  ORDER BY send_at ASC, created_at ASC
+  AND (
+    (outbox.message_kind = 'doi' AND subscription.status = 'pending' AND subscription.expires_at > $1::timestamptz)
+    OR (outbox.message_kind = 'reminder' AND subscription.status = 'active')
+  )
+  ORDER BY outbox.send_at ASC, outbox.created_at ASC
   LIMIT $2
-  FOR UPDATE SKIP LOCKED
+  FOR UPDATE OF outbox SKIP LOCKED
 )
 UPDATE waste_email_reminder_outbox AS outbox
 SET status = 'processing',
@@ -61,61 +67,25 @@ RETURNING
   values: [input.now, input.limit],
 });
 
-export const buildCancelPendingReminderOutboxEntriesStatement = (input: {
-  readonly subscriptionId: string;
-  readonly now: string;
-}): SqlStatement => ({
-  text: `
-UPDATE waste_email_reminder_outbox
-SET status = 'cancelled',
-    leased_at = NULL,
-    updated_at = $2::timestamptz,
-    last_error = 'subscription_unsubscribed'
-WHERE subscription_id = $1::uuid
-  AND message_kind = 'reminder'
-  AND status IN ('pending', 'processing')
-  AND (
-    last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
-    OR leased_at <= $2::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
-  );
-`,
-  values: [input.subscriptionId, input.now],
-});
-
-const buildCancelInvalidReminderOutboxEntriesStatement = (input: {
-  readonly validDedupeKeys: readonly string[];
-  readonly now: string;
-}): SqlStatement => ({
-  text: `
-UPDATE waste_email_reminder_outbox
-SET status = 'cancelled',
-    leased_at = NULL,
-    updated_at = $2::timestamptz,
-    last_error = 'reminder_no_longer_applicable'
-WHERE message_kind = 'reminder'
-  AND status IN ('pending', 'processing')
-  AND (
-    last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
-    OR leased_at <= $2::timestamptz - ${STALE_OUTBOX_LEASE_INTERVAL}
-  )
-  AND NOT (dedupe_key = ANY($1::text[]));
-`,
-  values: [input.validDedupeKeys, input.now],
-});
-
 const buildClaimOutboxEntryForDispatchStatement = (input: {
   readonly outboxId: string;
   readonly leasedAt: string;
 }): SqlStatement => ({
   text: `
-UPDATE waste_email_reminder_outbox
+UPDATE waste_email_reminder_outbox AS outbox
 SET last_error = '${OUTBOX_DISPATCH_CLAIM}',
     updated_at = $2::timestamptz
-WHERE id = $1::uuid
-  AND status = 'processing'
-  AND leased_at = $2::timestamptz
-  AND last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
-RETURNING id;
+FROM waste_email_reminder_subscriptions AS subscription
+WHERE outbox.id = $1::uuid
+  AND subscription.id = outbox.subscription_id
+  AND outbox.status = 'processing'
+  AND outbox.leased_at = $2::timestamptz
+  AND outbox.last_error IS DISTINCT FROM '${OUTBOX_DISPATCH_CLAIM}'
+  AND (
+    (outbox.message_kind = 'doi' AND subscription.status = 'pending' AND subscription.expires_at > $2::timestamptz)
+    OR (outbox.message_kind = 'reminder' AND subscription.status = 'active')
+  )
+RETURNING outbox.id;
 `,
   values: [input.outboxId, input.leasedAt],
 });
@@ -172,16 +142,11 @@ export const createOutboxDispatchMethods = (
   executor: SqlExecutor
 ): Pick<
   WasteEmailReminderRepository,
-  | 'cancelInvalidReminderOutboxEntries'
   | 'leaseDueOutboxEntries'
   | 'claimOutboxEntryForDispatch'
   | 'markOutboxEntrySent'
   | 'markOutboxEntryFailed'
 > => ({
-  async cancelInvalidReminderOutboxEntries(input) {
-    const result = await executor.execute(buildCancelInvalidReminderOutboxEntriesStatement(input));
-    return result.rowCount;
-  },
   async leaseDueOutboxEntries(input) {
     const result = await executor.execute<LeasedOutboxRow>(
       buildLeaseDueOutboxEntriesStatement(input)
@@ -225,6 +190,4 @@ export const outboxDispatchStatements = {
   claimOutboxEntryForDispatch: buildClaimOutboxEntryForDispatchStatement,
   markOutboxEntrySent: buildMarkOutboxEntrySentStatement,
   markOutboxEntryFailed: buildMarkOutboxEntryFailedStatement,
-  cancelPendingReminderOutboxEntries: buildCancelPendingReminderOutboxEntriesStatement,
-  cancelInvalidReminderOutboxEntries: buildCancelInvalidReminderOutboxEntriesStatement,
 } as const;

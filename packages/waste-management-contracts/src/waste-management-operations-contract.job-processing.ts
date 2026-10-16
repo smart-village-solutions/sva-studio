@@ -20,6 +20,7 @@ type WasteManagementMaterializeEmailRemindersJobInput = {
 type WasteManagementProcessEmailReminderOutboxJobInput = {
   readonly operation: 'process-email-reminder-outbox';
   readonly referenceTime?: string;
+  readonly materialize?: boolean | 'if-reminder-due';
   readonly maxBatchSize?: number;
   readonly maxAttempts?: number;
   readonly retryDelayMinutes?: number;

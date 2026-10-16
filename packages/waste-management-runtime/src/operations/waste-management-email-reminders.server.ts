@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { createWasteEmailReminderRepository } from '@sva/waste-management-runtime/repositories';
+import {
+  createWasteEmailReminderRepository,
+  type WasteEmailReminderOutboxEntryInput,
+  type WasteEmailReminderRepository,
+} from '@sva/waste-management-runtime/repositories';
 
 import { buildMaterializedLocationTourPickupDates } from './waste-management-mainserver-sync.materialization.js';
 import {
@@ -26,12 +30,28 @@ const DEFAULT_OUTBOX_RETRY_DELAY_MINUTES = 15;
 const DEFAULT_OUTBOX_MAX_ATTEMPTS = 5;
 const DEFAULT_OUTBOX_BATCH_SIZE = 25;
 
-const countOverdueReminderRefresh = (refreshed: boolean): Readonly<{
-  duplicateOutboxCount: number;
-  skippedPickupCount: number;
-}> => refreshed
-  ? { duplicateOutboxCount: 1, skippedPickupCount: 0 }
-  : { duplicateOutboxCount: 0, skippedPickupCount: 1 };
+const scheduleReminder = async (
+  repository: WasteEmailReminderRepository,
+  entry: Omit<WasteEmailReminderOutboxEntryInput, 'id'>,
+  referenceTime: Date,
+  lookaheadDays: number
+): Promise<'created' | 'duplicate' | 'skipped' | 'outside-lookahead'> => {
+  const sendAt = new Date(entry.sendAt);
+  if (sendAt.getTime() < referenceTime.getTime()) {
+    if (await repository.refreshPendingOutboxEntry(entry)) return 'duplicate';
+    if (entry.sendAt.slice(0, 10) !== referenceTime.toISOString().slice(0, 10)) return 'skipped';
+    const result = await repository.enqueueOutboxEntry({
+      id: randomUUID(),
+      ...entry,
+      sendAt: referenceTime.toISOString(),
+    });
+    return result === 'inserted' ? 'created' : 'duplicate';
+  }
+  if (sendAt.getTime() > addDaysUtc(referenceTime, lookaheadDays).getTime())
+    return 'outside-lookahead';
+  const result = await repository.enqueueOutboxEntry({ id: randomUUID(), ...entry });
+  return result === 'inserted' ? 'created' : 'duplicate';
+};
 
 export const createMaterializeEmailRemindersOperation = (
   deps: WasteOperationRuntimeDeps
@@ -164,26 +184,15 @@ export const createMaterializeEmailRemindersOperation = (
             }),
           };
           validDedupeKeys.add(outboxEntry.dedupeKey);
-          if (new Date(sendAt).getTime() < referenceTime.getTime()) {
-            const refreshed = await reminderRepository.refreshPendingOutboxEntry(outboxEntry);
-            const refreshCounts = countOverdueReminderRefresh(refreshed);
-            duplicateOutboxCount += refreshCounts.duplicateOutboxCount;
-            skippedPickupCount += refreshCounts.skippedPickupCount;
-            continue;
-          }
-          const lookaheadBoundary = addDaysUtc(referenceTime, reminderConfig.materializationLookaheadDays);
-          if (new Date(sendAt).getTime() > lookaheadBoundary.getTime()) {
-            continue;
-          }
-          const result = await reminderRepository.enqueueOutboxEntry({
-            id: randomUUID(),
-            ...outboxEntry,
-          });
-          if (result === 'inserted') {
-            createdOutboxCount += 1;
-          } else {
-            duplicateOutboxCount += 1;
-          }
+          const result = await scheduleReminder(
+            reminderRepository,
+            outboxEntry,
+            referenceTime,
+            reminderConfig.materializationLookaheadDays
+          );
+          if (result === 'created') createdOutboxCount += 1;
+          else if (result === 'duplicate') duplicateOutboxCount += 1;
+          else if (result === 'skipped') skippedPickupCount += 1;
         }
       }
     }
@@ -210,11 +219,8 @@ export const createProcessEmailReminderOutboxOperation = (
   deps: WasteOperationRuntimeDeps
 ): WasteManagementOperationRuntime['processEmailReminderOutbox'] => async (instanceId, input) => {
   const startedAt = Date.now();
-  if (!deps.dispatchMail) {
-    throw new Error('mail_dispatch_not_configured');
-  }
   const reminderSettings = await loadWasteEmailReminderSettings(deps, instanceId);
-  if (!reminderSettings?.config.enabled) {
+  if (!reminderSettings) {
     return buildOperationSummary(startedAt, {
       operation: 'process-email-reminder-outbox',
       mode: 'skipped',
@@ -231,11 +237,47 @@ export const createProcessEmailReminderOutboxOperation = (
   if (Number.isNaN(referenceTime.getTime())) {
     throw new Error(`invalid_reference_time:${input.referenceTime}`);
   }
-  await createMaterializeEmailRemindersOperation(deps)(instanceId, {
-    operation: 'materialize-email-reminders',
-    referenceTime: referenceTime.toISOString(),
-  });
   const reminderConfig = reminderSettings.config;
+  const cleanup = await withWasteClient(deps, instanceId, async ({ client }) => {
+    const reminderRepository = createWasteEmailReminderRepository(createSqlExecutor(client));
+    const expiredDoiCount = await reminderRepository.cancelExpiredDoiOutboxEntries({
+      now: referenceTime.toISOString(),
+    });
+    const expiredPendingCount = await reminderRepository.deleteExpiredPendingSubscriptions({
+      now: referenceTime.toISOString(),
+      pendingSubscriptionTtlHours: reminderConfig.pendingSubscriptionTtlHours,
+    });
+    return { expiredDoiCount, expiredPendingCount };
+  });
+  if (!reminderConfig.enabled) {
+    return buildOperationSummary(startedAt, {
+      operation: 'process-email-reminder-outbox',
+      mode: 'skipped',
+      reason: 'email_reminders_disabled',
+      leasedCount: 0,
+      sentCount: 0,
+      retryScheduledCount: 0,
+      failedCount: 0,
+      batchSize: 0,
+      ...cleanup,
+    });
+  }
+  if (!deps.dispatchMail) {
+    throw new Error('mail_dispatch_not_configured');
+  }
+  const shouldMaterialize = input.materialize === 'if-reminder-due'
+    ? await withWasteClient(deps, instanceId, async ({ client }) =>
+        createWasteEmailReminderRepository(createSqlExecutor(client)).hasDueReminderOutboxEntries({
+          now: referenceTime.toISOString(),
+        })
+      )
+    : input.materialize !== false;
+  if (shouldMaterialize) {
+    await createMaterializeEmailRemindersOperation(deps)(instanceId, {
+      operation: 'materialize-email-reminders',
+      referenceTime: referenceTime.toISOString(),
+    });
+  }
   const transportConfigs = await loadMailTransportConfigs(deps, instanceId);
   if (transportConfigs.size === 0) {
     throw new Error(`mail_transport_not_available:${reminderConfig.transportId}`);
@@ -328,6 +370,7 @@ export const createProcessEmailReminderOutboxOperation = (
       retryScheduledCount,
       failedCount,
       batchSize,
+      ...cleanup,
     };
   });
 
